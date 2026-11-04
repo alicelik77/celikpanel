@@ -41,8 +41,12 @@ const (
 )
 
 // rightProgramApps (alpha.119): running an uploaded program as the site's
-// service. Python apps get python_apps from their own workstream.
-const rightProgramApps = "program_apps"
+// service; rightPythonApps: running a Python web app the same way. Each kind
+// is also gated by its offering (runtime:program, component:python:<minor>).
+const (
+	rightProgramApps = "program_apps"
+	rightPythonApps  = "python_apps"
+)
 
 // runtimeOffering is one row of the administrator's offered layer.
 type runtimeOffering struct {
@@ -96,7 +100,15 @@ func (p *Panel) loadRuntimeOfferings(ctx context.Context) (map[string]runtimeOff
 // held, its kind implemented and offered with the risk summary this release
 // shows (a changed summary asks the administrator again).
 func runtimeOfferOpen(o runtimeOffering) bool {
-	return o.Offered && !o.Held && siteruntime.Implemented(o.Kind) && o.RiskDigest == siteruntime.RiskDigest(o.Kind)
+	return o.Offered && !o.Held && siteruntime.Implemented(o.Kind) &&
+		(o.RiskDigest == siteruntime.RiskDigest(o.Kind) || runtimeOfferSourceBuilds(o))
+}
+
+// runtimeOfferSourceBuilds: the administrator offered the Python kind with
+// source builds allowed. The stored risk digest records it (the summary the
+// administrator agreed to names source builds), so 063 needs no column.
+func runtimeOfferSourceBuilds(o runtimeOffering) bool {
+	return o.Kind == siteruntime.KindPython && o.RiskDigest == siteruntime.RiskDigestFor(siteruntime.KindPython, true)
 }
 
 // loadOfferedRuntimes is the admin layer for the rights model.
@@ -203,8 +215,17 @@ func (a runtimeApp) spec(o runtimeOffering, ok bool) transport.RuntimeAppSpec {
 	if ok && o.AcceptedLevel == string(sitesandbox.LevelReduced) {
 		level, gaps = string(sitesandbox.LevelReduced), o.AcceptedGaps
 	}
-	return transport.RuntimeAppSpec{Entry: a.Entry, Args: a.Args, Port: a.Port, Level: level, AcceptedGaps: gaps,
+	spec := transport.RuntimeAppSpec{Entry: a.Entry, Args: a.Args, Port: a.Port, Level: level, AcceptedGaps: gaps,
 		Limits: transport.RuntimeAppLimits{MemoryMB: limits.MemoryMB, CPUPercent: limits.CPUPercent, TasksMax: limits.Tasks}}
+	if a.Kind == siteruntime.KindPython {
+		// The record keeps the callable in entry and the server and
+		// workers as two argument tokens (siteruntime.PythonSettings).
+		settings, _ := siteruntime.PythonSettingsFrom(a.Entry, a.Args)
+		spec.Args = []string{}
+		spec.Python = &transport.RuntimeAppPython{Server: settings.Server, Workers: settings.Workers,
+			SourceBuilds: ok && runtimeOfferSourceBuilds(o)}
+	}
+	return spec
 }
 
 // envEntries is the full environment the Agent is sent: public values and
@@ -334,6 +355,11 @@ type runtimeAppNative interface {
 	setSuspension(ctx context.Context, req transport.SetRuntimeAppSuspensionRequest) (transport.SetAppUnitSuspensionResponse, error)
 	renderSite(ctx context.Context, domainID int) error
 	sandboxCaps(ctx context.Context) (transport.SandboxCapsResponse, error)
+	// The Python kind: the server's distribution Python, and the build of
+	// an app's environment.
+	python(ctx context.Context) (transport.RuntimePythonResponse, error)
+	build(ctx context.Context, req transport.RuntimeAppBuildRequest) (transport.RuntimeAppBuildResponse, error)
+	buildAdvance(ctx context.Context, req transport.RuntimeAppBuildAdvanceRequest) (transport.RuntimeAppBuildResponse, error)
 }
 
 var runtimeAppNativeOverride runtimeAppNative
@@ -413,4 +439,54 @@ func (n panelRuntimeAppNative) sandboxCaps(ctx context.Context) (transport.Sandb
 	return resp, n.call(ctx, "Agent.SandboxCapsV1", &transport.Empty{}, &resp)
 }
 
-func runtimeAppLabel(a runtimeApp) string { return "the uploaded program on " + a.Domain }
+func (n panelRuntimeAppNative) python(ctx context.Context) (transport.RuntimePythonResponse, error) {
+	var resp transport.RuntimePythonResponse
+	return resp, n.call(ctx, "Agent.RuntimePythonV1", &transport.Empty{}, &resp)
+}
+
+func (n panelRuntimeAppNative) build(ctx context.Context, req transport.RuntimeAppBuildRequest) (transport.RuntimeAppBuildResponse, error) {
+	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	var resp transport.RuntimeAppBuildResponse
+	return resp, n.call(ctx, "Agent.RuntimeAppBuildV1", &req, &resp)
+}
+
+func (n panelRuntimeAppNative) buildAdvance(ctx context.Context, req transport.RuntimeAppBuildAdvanceRequest) (transport.RuntimeAppBuildResponse, error) {
+	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
+	var resp transport.RuntimeAppBuildResponse
+	return resp, n.call(ctx, "Agent.RuntimeAppBuildAdvanceV1", &req, &resp)
+}
+
+func runtimeAppLabel(a runtimeApp) string {
+	if a.Kind == siteruntime.KindPython {
+		return "the Python app on " + a.Domain
+	}
+	return "the uploaded program on " + a.Domain
+}
+
+// runtimeKindName is a kind in a sentence ("uploaded programs").
+func runtimeKindName(k siteruntime.Kind) string {
+	if k == siteruntime.KindPython {
+		return "Python apps"
+	}
+	return "uploaded programs"
+}
+
+// runtimeKindOffering is the offering a kind is gated by on this server:
+// runtime:program, or component:python:<minor> for the distribution Python
+// the Agent reports. py is the Agent's answer for the Python kind (nil for a
+// program); id is "" when the server's Python is unknown.
+func (p *Panel) runtimeKindOffering(ctx context.Context, kind siteruntime.Kind) (string, *transport.RuntimePythonResponse) {
+	if kind != siteruntime.KindPython {
+		return siteruntime.OfferingID(kind), nil
+	}
+	callCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	py, err := p.runtimeAppNativeOps().python(callCtx)
+	if err != nil {
+		return "", &transport.RuntimePythonResponse{Reason: siteruntime.PythonRuntimeMissing, Error: "the server did not say which Python it has: " + err.Error()}
+	}
+	if py.Minor == "" || !siteruntime.ValidPythonMinor(py.Minor) {
+		return "", &py
+	}
+	return siteruntime.PythonOffering(py.Minor), &py
+}

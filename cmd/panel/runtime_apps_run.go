@@ -10,13 +10,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/siteruntime"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // The runtime-app operation (D-025). Steps, each repeatable:
 //
-//	deploy: validate -> render -> restart -> proof -> health -> publish -> done
+//	deploy: validate -> [build] -> render -> restart -> proof -> health -> publish -> done
 //	remove: unpublish -> remove -> done
+//
+// build is the Python kind's: the Agent builds the next environment beside
+// the running one (a failed build changes nothing that runs), and its record
+// names the generation built and the one that ran before. When a Python app
+// that was deployed before does not come up after the restart, the unit is
+// rendered again with the environment it ran with and restarted (one step
+// back), and the operation still fails with what went wrong.
 //
 // Nothing secret is in memory only: the environment file is already on the
 // server, so a Panel restart continues the same operation from its step.
@@ -34,6 +42,9 @@ var (
 	runtimeAppStartTimeout = 2 * time.Minute
 	// runtimeAppHealthTimeout bounds the wait for a healthy answer.
 	runtimeAppHealthTimeout = 90 * time.Second
+	// runtimeAppBuildTimeout bounds a Python app's build (the unit's own
+	// limit is siteruntime.BuildTimeoutSec).
+	runtimeAppBuildTimeout = 35 * time.Minute
 )
 
 // startRuntimeAppOperation runs an operation in the background once.
@@ -43,7 +54,7 @@ func (p *Panel) startRuntimeAppOperation(opID string) {
 	}
 	go func() {
 		defer runtimeAppActiveOps.Delete(opID)
-		ctx, cancel := context.WithTimeout(context.Background(), runtimeAppStartTimeout+runtimeAppHealthTimeout+15*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), runtimeAppBuildTimeout+runtimeAppStartTimeout+runtimeAppHealthTimeout+15*time.Minute)
 		defer cancel()
 		if err := p.runRuntimeAppOperation(ctx, opID); err != nil {
 			log.Printf("[runtime apps] operation %s: %v", opID, err)
@@ -143,7 +154,47 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 			return nil
 		}
 		op.Step = "render"
+		if a.Kind == siteruntime.KindPython {
+			op.Step = "build"
+		}
 		_ = p.setRuntimeAppStep(ctx, op.ID, op.Step)
+	}
+	if op.Step == "build" {
+		if !gate(false) {
+			return nil
+		}
+		if !p.runRuntimePythonBuild(ctx, native, op, a, spec) {
+			return nil
+		}
+		op.Step = "render"
+		_ = p.setRuntimeAppStep(ctx, op.ID, op.Step)
+	}
+	if a.Kind == siteruntime.KindPython && spec.Python != nil {
+		// The generation this deploy built, from the Agent's record of the
+		// operation (a restarted Panel reads it again).
+		built, err := native.buildAdvance(ctx, transport.RuntimeAppBuildAdvanceRequest{OperationID: op.ID, Target: a.target()})
+		if err != nil {
+			p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppUnknown, "agent_unreachable", "the server did not answer: "+err.Error())
+			return nil
+		}
+		if !built.Done || built.Phase != siteruntime.BuildPhaseSucceeded {
+			p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppUnknown, siteruntime.BuildFailed, "the server has no finished build of this deploy; deploy again")
+			return nil
+		}
+		py := *spec.Python
+		py.Venv = built.Venv
+		spec.Python = &py
+	}
+	// failStarted ends a deploy whose new version did not come up: a
+	// Python app that ran before goes back to the environment it ran with.
+	failStarted := func(stopFirst bool, reason, message string) {
+		if stopFirst {
+			stop()
+		}
+		if a.Kind == siteruntime.KindPython && a.Deployed {
+			message += p.runtimePythonRollback(ctx, native, op.ID, a, spec)
+		}
+		p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppVerifiedFailure, reason, message)
 	}
 	if op.Step == "render" {
 		resp, err := native.render(ctx, transport.RuntimeAppRenderRequest{OperationID: op.ID, Target: a.target(), Spec: spec})
@@ -180,8 +231,7 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 			status, err := native.status(ctx, transport.RuntimeAppStatusRequest{Target: a.target(), Spec: spec, Proof: true})
 			if err == nil && status.Error == "" {
 				if reason, message := runtimeStatusFailure(status, a.Port); reason != "" {
-					stop()
-					p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppVerifiedFailure, reason, message)
+					failStarted(true, reason, message)
 					return nil
 				}
 				if status.Serving && status.Proof != nil {
@@ -197,8 +247,7 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 					break
 				}
 				if status.ActiveState == "failed" {
-					p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppVerifiedFailure, "start_failed",
-						"the program stopped while starting ("+status.Result+"); its log shows why")
+					failStarted(false, "start_failed", "the program stopped while starting ("+status.Result+"); its log shows why")
 					return nil
 				}
 			}
@@ -207,7 +256,7 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 					p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppUnknown, "agent_unreachable", "the server did not answer while the program started")
 					return nil
 				}
-				p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppVerifiedFailure, "not_listening",
+				failStarted(false, "not_listening",
 					fmt.Sprintf("the program runs but did not listen on 127.0.0.1:%d in time; it must read PORT and HOST from its environment (or use {port} in its arguments)", a.Port))
 				return nil
 			}
@@ -224,8 +273,7 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 			status, err := native.status(ctx, transport.RuntimeAppStatusRequest{Target: a.target(), Spec: spec, HealthPath: a.HealthPath})
 			if err == nil && status.Error == "" {
 				if reason, message := runtimeStatusFailure(status, a.Port); reason != "" {
-					stop()
-					p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppVerifiedFailure, reason, message)
+					failStarted(true, reason, message)
 					return nil
 				}
 				if status.Health.OK {
@@ -239,7 +287,7 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 				}
 				// The program keeps running so its log and its answers can be
 				// read; the site is not switched to it.
-				p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppVerifiedFailure, "health_failing",
+				failStarted(false, "health_failing",
 					"the program did not answer "+a.HealthPath+" with a success or client status ("+detail+"), so the site was not switched to it")
 				return nil
 			}
@@ -272,6 +320,69 @@ func (p *Panel) runRuntimeAppOperation(ctx context.Context, opID string) error {
 	return p.succeedRuntimeAppOperation(ctx, op.ID, "")
 }
 
+// runRuntimePythonBuild starts the build of the operation (once: the Agent
+// answers a repeat with its record) and waits for it. It returns false when
+// the operation ended. A build never touches the running app.
+func (p *Panel) runRuntimePythonBuild(ctx context.Context, native runtimeAppNative, op runtimeAppOperation, a runtimeApp, spec transport.RuntimeAppSpec) bool {
+	started, err := native.build(ctx, transport.RuntimeAppBuildRequest{OperationID: op.ID, Target: a.target(), Spec: spec})
+	if err != nil {
+		p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppUnknown, "agent_unreachable", "the server did not answer: "+err.Error())
+		return false
+	}
+	if !started.Done {
+		p.failRuntimeAppOperation(ctx, op, started.Class, started.Reason, started.Error)
+		return false
+	}
+	deadline := time.Now().Add(runtimeAppBuildTimeout)
+	for {
+		state, err := native.buildAdvance(ctx, transport.RuntimeAppBuildAdvanceRequest{OperationID: op.ID, Target: a.target()})
+		if err == nil {
+			if !state.Done {
+				p.failRuntimeAppOperation(ctx, op, state.Class, state.Reason, state.Error)
+				return false
+			}
+			if state.Phase == siteruntime.BuildPhaseSucceeded {
+				return true
+			}
+		}
+		if time.Now().After(deadline) {
+			p.failRuntimeAppOperation(ctx, op, transport.RuntimeAppUnknown, siteruntime.BuildFailed,
+				"the build did not finish in time (the server did not say it ended); the running app was not changed. Deploy again")
+			return false
+		}
+		if !sleepContext(ctx, runtimeAppPollInterval) {
+			return false
+		}
+	}
+}
+
+// runtimePythonRollback renders the unit again with the environment the app
+// ran with before this deploy's build and restarts it; it returns the
+// sentence the failure adds ("" when there is nothing to go back to).
+func (p *Panel) runtimePythonRollback(ctx context.Context, native runtimeAppNative, opID string, a runtimeApp, spec transport.RuntimeAppSpec) string {
+	built, err := native.buildAdvance(ctx, transport.RuntimeAppBuildAdvanceRequest{OperationID: opID, Target: a.target()})
+	if err != nil || built.Phase != siteruntime.BuildPhaseSucceeded || built.Previous <= 0 || built.Previous == built.Venv || spec.Python == nil {
+		return ""
+	}
+	back := spec
+	py := *spec.Python
+	py.Venv = built.Previous
+	back.Python = &py
+	rendered, err := native.render(ctx, transport.RuntimeAppRenderRequest{OperationID: opID, Target: a.target(), Spec: back})
+	if err != nil || !rendered.Done {
+		detail := "no answer"
+		if err == nil {
+			detail = rendered.Error
+		}
+		return ". Going back to the previous environment failed too: " + detail
+	}
+	restarted, err := native.control(ctx, transport.RuntimeAppControlRequest{Target: a.target(), Action: "restart"})
+	if err != nil || !restarted.Done {
+		return fmt.Sprintf(". The unit names the previous environment (venv-%d) again, but it did not restart; start it on this page", built.Previous)
+	}
+	return fmt.Sprintf(". The app was put back on its previous environment (venv-%d) and restarted; the code in app/src is what you uploaded", built.Previous)
+}
+
 // runtimeDeployGate reads the hold, the administrator's offer and the
 // suspension now ("" = the deploy may go on).
 func (p *Panel) runtimeDeployGate(ctx context.Context, a runtimeApp) (string, string) {
@@ -282,9 +393,9 @@ func (p *Panel) runtimeDeployGate(ctx context.Context, a runtimeApp) (string, st
 	o, has := offerings[a.OfferingID]
 	switch {
 	case has && o.Held:
-		return "held", "the administrator put uploaded programs on a security hold"
+		return "held", "the administrator put " + runtimeKindName(a.Kind) + " on a security hold"
 	case !has || !runtimeOfferOpen(o):
-		return "not_offered", "the administrator no longer offers uploaded programs"
+		return "not_offered", "the administrator no longer offers " + runtimeKindName(a.Kind)
 	}
 	if suspended, err := p.subscriptionSuspended(ctx, a.SubscriptionID); err == nil && suspended {
 		return "suspended", "the subscription is suspended"

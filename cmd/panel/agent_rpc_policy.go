@@ -147,6 +147,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
+		Agent.RuntimePythonV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -187,6 +188,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceAppControlV1 Agent.ServiceAppSecretsV1 Agent.ServiceAppRemoveV1
 		Agent.SetServiceAppSuspensionV1
 		Agent.RuntimeAppRenderV1 Agent.RuntimeAppControlV1 Agent.RuntimeAppEnvV1 Agent.RuntimeAppRemoveV1
+		Agent.RuntimeAppBuildV1 Agent.RuntimeAppBuildAdvanceV1
 		Agent.SetRuntimeAppSuspensionV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
@@ -556,6 +558,12 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RuntimeAppEnvV1":           agentRPCMutationTimeout,
 	"Agent.RuntimeAppRemoveV1":        agentRPCDatabaseTimeout,
 	"Agent.SetRuntimeAppSuspensionV1": agentRPCMutationTimeout,
+	// The Python kind: the distribution Python (files only), starting a
+	// build (systemd-run; the build itself runs in its own unit) and
+	// completing one (a rename and removals as the site's account).
+	"Agent.RuntimePythonV1":          agentRPCQuickReadTimeout,
+	"Agent.RuntimeAppBuildV1":        agentRPCMutationTimeout,
+	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

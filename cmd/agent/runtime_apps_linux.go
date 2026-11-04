@@ -75,6 +75,7 @@ func readRuntimeAppEntryFacts(appRoot, relative string) (siteruntime.FileFacts, 
 	facts.UID = int(st.Uid)
 	facts.Mode = st.Mode & 0o7777
 	facts.Regular = st.Mode&unix.S_IFMT == unix.S_IFREG
+	facts.Dir = st.Mode&unix.S_IFMT == unix.S_IFDIR
 	if facts.Regular {
 		buf := make([]byte, 256)
 		n, _ := unix.Read(fd, buf)
@@ -85,15 +86,15 @@ func readRuntimeAppEntryFacts(appRoot, relative string) (siteruntime.FileFacts, 
 	return facts, nil
 }
 
-// runRuntimeAppAsUser executes one program (mkdir, rm) directly as the site's
+// runRuntimeAppAsUser executes one program (mkdir, rm, mv) directly as the site's
 // account: no shell, no supplementary groups, a minimal environment, "/" as
 // the working folder. It refuses a system account.
 func runRuntimeAppAsUser(account serviceAppAccount, program string, args ...string) ([]byte, error) {
 	if account.UID < 1000 || account.GID < 1000 {
 		return nil, errors.New("refusing to run as a system account")
 	}
-	if program != "/bin/mkdir" && program != "/bin/rm" {
-		return nil, errors.New("only mkdir and rm run as the site's account here")
+	if program != "/bin/mkdir" && program != "/bin/rm" && program != "/bin/mv" {
+		return nil, errors.New("only mkdir, rm and mv run as the site's account here")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()

@@ -95,6 +95,8 @@ type runtimeRefusal struct {
 	layer      string
 	permission bool
 	e          *effectiveRights
+	// offeringID is the offering refused at a rights layer.
+	offeringID string
 }
 
 func (p *Panel) runtimeKindRefusal(ctx context.Context, r *http.Request, kind siteruntime.Kind, subID int) (*runtimeRefusal, error) {
@@ -102,7 +104,12 @@ func (p *Panel) runtimeKindRefusal(ctx context.Context, r *http.Request, kind si
 		return &runtimeRefusal{status: http.StatusConflict, reason: "kind_unavailable",
 			message: "Nothing was changed: this kind of app cannot run in this release."}, nil
 	}
-	offeringID := siteruntime.OfferingID(kind)
+	// Installed before offered: a Python app needs the server's own Python
+	// with its venv module, which the administrator installs in Components.
+	offeringID, py := p.runtimeKindOffering(ctx, kind)
+	if kind == siteruntime.KindPython && (py == nil || !py.Ready || offeringID == "") {
+		return runtimePythonMissingRefusal(py), nil
+	}
 	offerings, err := p.loadRuntimeOfferings(ctx)
 	if err != nil {
 		return nil, err
@@ -110,20 +117,20 @@ func (p *Panel) runtimeKindRefusal(ctx context.Context, r *http.Request, kind si
 	o, has := offerings[offeringID]
 	if has && o.Held {
 		return &runtimeRefusal{status: http.StatusConflict, reason: "held",
-			message: "Nothing was changed: the administrator has put uploaded programs on a security hold. They can be deployed or started again when the administrator lifts the hold."}, nil
+			message: "Nothing was changed: the administrator has put " + runtimeKindName(kind) + " on a security hold. They can be deployed or started again when the administrator lifts the hold."}, nil
 	}
 	e, err := p.serviceAppRights(ctx, r, subID)
 	if err != nil {
 		return nil, err
 	}
 	if !has || !runtimeOfferOpen(o) {
-		return &runtimeRefusal{layer: rightsLayerAdministrator, e: e}, nil
+		return &runtimeRefusal{layer: rightsLayerAdministrator, e: e, offeringID: offeringID}, nil
 	}
 	if layer := e.permissionRefusal(siteruntime.Permission(kind)); layer != "" {
 		return &runtimeRefusal{layer: layer, permission: true, e: e}, nil
 	}
 	if layer := e.offeringRefusal(offeringID); layer != "" {
-		return &runtimeRefusal{layer: layer, e: e}, nil
+		return &runtimeRefusal{layer: layer, e: e, offeringID: offeringID}, nil
 	}
 	caps, err := p.runtimeHostLevel(ctx)
 	if err != nil {
@@ -132,7 +139,7 @@ func (p *Panel) runtimeKindRefusal(ctx context.Context, r *http.Request, kind si
 	}
 	if gaps := runtimeLevelRefusal(caps, o); gaps != "" {
 		return &runtimeRefusal{status: http.StatusConflict, reason: "sandbox_reduced",
-			message: "Nothing was changed: this server does not enforce the full sandbox (" + gaps + "), and the administrator has not accepted these gaps for uploaded programs. The administrator reviews them in the Store's catalog management.",
+			message: "Nothing was changed: this server does not enforce the full sandbox (" + gaps + "), and the administrator has not accepted these gaps for " + runtimeKindName(kind) + ". The administrator reviews them in the Store's catalog management.",
 			vars:    map[string]string{"gaps": gaps}}, nil
 	}
 	return nil, nil
@@ -143,10 +150,29 @@ func writeRuntimeRefusal(w http.ResponseWriter, refusal *runtimeRefusal, kind si
 	case refusal.e != nil && refusal.permission:
 		writeRightNotGranted(w, refusal.e, siteruntime.Permission(kind), refusal.layer)
 	case refusal.e != nil:
-		writeNotOffered(w, refusal.e, siteruntime.OfferingID(kind), "Uploaded programs", refusal.layer)
+		name := "Uploaded programs"
+		if kind == siteruntime.KindPython {
+			name = "Python apps"
+		}
+		writeNotOffered(w, refusal.e, refusal.offeringID, name, refusal.layer)
 	default:
 		writeRuntimeAppRefusal(w, refusal.status, refusal.reason, refusal.message, refusal.vars)
 	}
+}
+
+// runtimePythonMissingRefusal: the server's own Python cannot build apps
+// (not installed, no venv module, another Python, or no pins in this
+// release). The administrator acts; the detail says what is missing.
+func runtimePythonMissingRefusal(py *transport.RuntimePythonResponse) *runtimeRefusal {
+	detail := "the server did not say which Python it has"
+	if py != nil && py.Detail != "" {
+		detail = py.Detail
+	} else if py != nil && py.Error != "" {
+		detail = py.Error
+	}
+	return &runtimeRefusal{status: http.StatusConflict, reason: siteruntime.PythonRuntimeMissing,
+		message: "Nothing was changed: Python apps need this server's own Python with its venv module (" + detail + "). The administrator installs Python in Components.",
+		vars:    map[string]string{"detail": detail}}
 }
 
 // refuseRuntimeNewUse applies every gate of new use for a domain's app: the
@@ -194,6 +220,29 @@ type runtimeKindView struct {
 	Limits            siteruntime.Limits `json:"limits"`
 	AcceptedLevel     string             `json:"accepted_level"`
 	AcceptedGaps      []string           `json:"accepted_gaps"`
+	// Python is the server's Python for the Python kind.
+	Python *runtimePythonView `json:"python,omitempty"`
+}
+
+// runtimePythonView is the distribution Python as the screens show it.
+type runtimePythonView struct {
+	Minor        string   `json:"minor,omitempty"`
+	Ready        bool     `json:"ready"`
+	Detail       string   `json:"detail,omitempty"`
+	Packages     []string `json:"packages,omitempty"`
+	MaxWorkers   int      `json:"max_workers"`
+	SourceBuilds bool     `json:"source_builds"`
+}
+
+func pythonView(py *transport.RuntimePythonResponse, limits siteruntime.Limits, sourceBuilds bool) *runtimePythonView {
+	v := &runtimePythonView{MaxWorkers: siteruntime.MaxWorkers(limits.MemoryMB), SourceBuilds: sourceBuilds}
+	if py != nil {
+		v.Minor, v.Ready, v.Detail, v.Packages = py.Minor, py.Ready, py.Detail, py.Packages
+		if v.Detail == "" && py.Error != "" {
+			v.Detail = py.Error
+		}
+	}
+	return v
 }
 
 type runtimeEnvView struct {
@@ -216,6 +265,8 @@ type runtimeAppView struct {
 	UploadDir  string           `json:"upload_dir"`
 	Unit       string           `json:"unit"`
 	Env        []runtimeEnvView `json:"env"`
+	// Python: the Python app's settings (nil for a program).
+	Python *siteruntime.PythonSettings `json:"python,omitempty"`
 	// Status is the server's read; StatusUnknown when it did not answer.
 	Status        *transport.RuntimeAppStatusResponse `json:"status,omitempty"`
 	StatusUnknown bool                                `json:"status_unknown,omitempty"`
@@ -285,6 +336,9 @@ func runtimeAppStates(in runtimeGuidanceInput) []string {
 		switch {
 		case code == siteruntime.EntryInvalid:
 			code = siteruntime.EntryMissing
+		case runtimePythonEntryState(code):
+			// The Python kind's own states: the server's Python, app/src,
+			// the environment, a refused requirements line.
 		case !strings.HasPrefix(code, "entry_") && code != siteruntime.EntryFolderNotOwned && code != siteruntime.EntryFolderNotReal:
 			// The account or the request could not be resolved: the
 			// entry's state is unknown, not a verdict.
@@ -299,6 +353,15 @@ func runtimeAppStates(in runtimeGuidanceInput) []string {
 	add(s.Unit.Active && !s.Serving && !s.Squatted && len(s.Exposed) == 0, "not_listening")
 	add(s.Health.Checked && !s.Health.OK && s.Serving, "health_failing")
 	return out
+}
+
+// runtimePythonEntryState: a Python check code that is a state of its own.
+func runtimePythonEntryState(code string) bool {
+	switch code {
+	case siteruntime.PythonRuntimeMissing, siteruntime.PythonSrcMissing, siteruntime.PythonVenvMissing, siteruntime.RequirementsRefused:
+		return true
+	}
+	return false
 }
 
 func (p *Panel) writeRuntimeAppsView(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -339,14 +402,21 @@ func (p *Panel) writeRuntimeAppsView(w http.ResponseWriter, r *http.Request, dom
 	offeredByKind := map[siteruntime.Kind]bool{}
 	heldByKind := map[siteruntime.Kind]bool{}
 	for _, kind := range siteruntime.Kinds {
-		id := siteruntime.OfferingID(kind)
-		if id == "" {
+		id, py := p.runtimeKindOffering(ctx, kind)
+		if id == "" && kind != siteruntime.KindPython {
 			continue
 		}
 		o, has := offerings[id]
+		if id == "" {
+			o, has = runtimeOffering{}, false
+		}
 		limits := runtimeLimitsFor(kind, o, has)
+		sourceBuilds := has && runtimeOfferSourceBuilds(o)
 		kv := runtimeKindView{Kind: string(kind), Implemented: siteruntime.Implemented(kind), OfferingID: id, Held: o.Held,
-			Risk: siteruntime.RiskOf(kind), Limits: limits, AcceptedLevel: "full", AcceptedGaps: []string{}}
+			Risk: siteruntime.RiskOfOffer(kind, sourceBuilds), Limits: limits, AcceptedLevel: "full", AcceptedGaps: []string{}}
+		if kind == siteruntime.KindPython {
+			kv.Python = pythonView(py, limits, sourceBuilds)
+		}
 		if has && o.AcceptedLevel != "" {
 			kv.AcceptedLevel, kv.AcceptedGaps = o.AcceptedLevel, o.AcceptedGaps
 		}
@@ -382,6 +452,10 @@ func (p *Panel) writeRuntimeAppsView(w http.ResponseWriter, r *http.Request, dom
 		av := &runtimeAppView{ID: a.ID, Kind: string(a.Kind), Entry: a.Entry, Args: a.Args, HealthPath: a.HealthPath, Port: a.Port,
 			State: a.State, Deployed: a.Deployed, URL: "https://" + a.Domain + "/", UploadDir: "app/bin",
 			Unit: siteruntime.UnitName(a.ID), Env: []runtimeEnvView{}, CreatedAt: a.CreatedAt}
+		if a.Kind == siteruntime.KindPython {
+			settings, _ := siteruntime.PythonSettingsFrom(a.Entry, a.Args)
+			av.Python, av.UploadDir, av.Args = &settings, "app/src", []string{}
+		}
 		if layout, err := siteruntime.LayoutFor(a.SubscriptionID, a.DomainID); err == nil {
 			av.Folder = layout.Root
 		}
@@ -426,6 +500,51 @@ type runtimeAppSettingsRequest struct {
 	Entry      string   `json:"entry"`
 	Args       []string `json:"args"`
 	HealthPath string   `json:"health_path"`
+	// The Python kind: Entry is "module:callable"; Server is wsgi or asgi.
+	Server  string `json:"server"`
+	Workers int    `json:"workers"`
+}
+
+// validatePythonSettings checks a Python app's settings against the
+// offering's memory limit and turns them into the record's entry and
+// argument tokens.
+func validatePythonSettings(w http.ResponseWriter, limits siteruntime.Limits, req *runtimeAppSettingsRequest) bool {
+	settings := siteruntime.PythonSettings{Server: strings.TrimSpace(req.Server), Callable: strings.TrimSpace(req.Entry), Workers: req.Workers}
+	if settings.Workers == 0 {
+		settings.Workers = 1
+	}
+	if err := settings.Validate(limits); err != nil {
+		writeRuntimeAppRefusal(w, http.StatusBadRequest, "python_settings", "Nothing was changed: "+err.Error()+".",
+			map[string]string{"max": strconv.Itoa(siteruntime.MaxWorkers(limits.MemoryMB))})
+		return false
+	}
+	if req.HealthPath == "" {
+		req.HealthPath = "/"
+	}
+	if !siteruntime.ValidHealthPath(req.HealthPath) {
+		writeRuntimeAppRefusal(w, http.StatusBadRequest, "health_path_invalid",
+			"Nothing was changed: the health path starts with / and holds only letters, digits and . _ ~ / -.", nil)
+		return false
+	}
+	req.Entry, req.Args = settings.Callable, settings.Args()
+	return true
+}
+
+// runtimeSettingsFor validates a create or settings request of a kind:
+// the program's entry and arguments, or the Python app's settings. It
+// returns the offering the kind is gated by on this server.
+func (p *Panel) runtimeSettingsFor(w http.ResponseWriter, r *http.Request, kind siteruntime.Kind, layout siteruntime.Layout, req *runtimeAppSettingsRequest) (string, bool) {
+	offeringID, _ := p.runtimeKindOffering(r.Context(), kind)
+	if kind != siteruntime.KindPython {
+		return offeringID, validateRuntimeSettings(w, layout, req)
+	}
+	offerings, err := p.loadRuntimeOfferings(r.Context())
+	if err != nil {
+		writeServerError(w, err)
+		return "", false
+	}
+	o, has := offerings[offeringID]
+	return offeringID, validatePythonSettings(w, runtimeLimitsFor(kind, o, has), req)
 }
 
 // validateRuntimeSettings checks the entry, arguments and health path.
@@ -484,7 +603,8 @@ func (p *Panel) handleRuntimeAppCreate(w http.ResponseWriter, r *http.Request, d
 		writeServerError(w, err)
 		return
 	}
-	if !validateRuntimeSettings(w, layout, &req) {
+	offeringID, valid := p.runtimeSettingsFor(w, r, kind, layout, &req)
+	if !valid {
 		return
 	}
 	if _, has, err := p.serviceAppInstallForDomain(ctx, domainID); err != nil {
@@ -532,7 +652,7 @@ func (p *Panel) handleRuntimeAppCreate(w http.ResponseWriter, r *http.Request, d
 		INSERT INTO runtime_apps (subscription_id, domain_id, site_id, kind, offering_id, entry, args, health_path, port,
 		       previous_project_type, previous_app_port, created_by)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		site.SubscriptionID, domainID, site.SiteID, string(kind), siteruntime.OfferingID(kind), req.Entry, string(args), req.HealthPath, port,
+		site.SubscriptionID, domainID, site.SiteID, string(kind), offeringID, req.Entry, string(args), req.HealthPath, port,
 		previous, site.AppPort, nullablePositiveInt(callerID(currentCaller(r))))
 	if err != nil {
 		writeServerError(w, err)
@@ -592,12 +712,19 @@ func (p *Panel) handleRuntimeAppSettings(w http.ResponseWriter, r *http.Request,
 		writeServerError(w, err)
 		return
 	}
-	if !validateRuntimeSettings(w, layout, &req) {
+	offeringID, valid := p.runtimeSettingsFor(w, r, a.Kind, layout, &req)
+	if !valid {
 		return
 	}
 	args, _ := json.Marshal(req.Args)
-	if _, err := p.db.GetDB().ExecContext(ctx, `UPDATE runtime_apps SET entry = ?, args = ?, health_path = ?, updated_at = datetime('now') WHERE id = ?`,
-		req.Entry, string(args), req.HealthPath, a.ID); err != nil {
+	// A Python app follows the server's Python: after a system upgrade
+	// (Debian 12 to 13) saving the settings moves it to the offering of
+	// the new Python, which the gate above checked.
+	if offeringID == "" {
+		offeringID = a.OfferingID
+	}
+	if _, err := p.db.GetDB().ExecContext(ctx, `UPDATE runtime_apps SET entry = ?, args = ?, health_path = ?, offering_id = ?, updated_at = datetime('now') WHERE id = ?`,
+		req.Entry, string(args), req.HealthPath, offeringID, a.ID); err != nil {
 		writeServerError(w, err)
 		return
 	}
@@ -657,6 +784,14 @@ func (p *Panel) handleRuntimeAppDeploy(w http.ResponseWriter, r *http.Request, d
 	if p.refuseRuntimeNewUse(w, r, a.Kind, site) {
 		return
 	}
+	if a.Kind == siteruntime.KindPython {
+		if current, _ := p.runtimeKindOffering(ctx, a.Kind); current != a.OfferingID {
+			writeRuntimeAppRefusal(w, http.StatusConflict, "python_moved",
+				"Nothing was changed: this app was set up for "+strings.TrimPrefix(a.OfferingID, "component:")+", and this server's Python is now different. Open the app's settings and save them once to move it to the server's Python, then deploy.",
+				map[string]string{"offering": a.OfferingID})
+			return
+		}
+	}
 	if !site.Certificate {
 		writeRuntimeAppRefusal(w, http.StatusConflict, "no_certificate",
 			"Nothing was changed: a program is served only over HTTPS, and "+site.Domain+" has no certificate yet. Get a free certificate on the domain's SSL page, then deploy.",
@@ -715,7 +850,7 @@ func (p *Panel) handleRuntimeAppControl(w http.ResponseWriter, r *http.Request, 
 		o, has := offerings[a.OfferingID]
 		if has && o.Held {
 			writeRuntimeAppRefusal(w, http.StatusConflict, "held",
-				"Nothing was changed: the administrator has put uploaded programs on a security hold. It can be started again when the hold is lifted.", nil)
+				"Nothing was changed: the administrator has put "+runtimeKindName(a.Kind)+" on a security hold. It can be started again when the hold is lifted.", nil)
 			return
 		}
 		if suspended, err := p.subscriptionSuspended(ctx, a.SubscriptionID); err != nil {

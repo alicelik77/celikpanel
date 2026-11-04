@@ -92,6 +92,7 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.perm.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
     'rights.perm.service_apps': 'Yapay zekâ ve otomasyon uygulamaları',
     'rights.perm.program_apps': 'Yüklenen programlar',
+    'rights.perm.python_apps': 'Python uygulamaları',
 
     'rights.review': 'Değişikliği gözden geçir',
     'rights.back': 'Düzenlemeye dön',

@@ -41,6 +41,72 @@ type RuntimeAppSpec struct {
 	// them, so a reduced sandbox never passes silently.
 	Level        string   `json:"level"`
 	AcceptedGaps []string `json:"accepted_gaps,omitempty"`
+	// Python is the Python kind's part (Entry is then "module:callable").
+	Python *RuntimeAppPython `json:"python,omitempty"`
+}
+
+// RuntimeAppPython is a Python app's unit and build settings.
+type RuntimeAppPython struct {
+	// Server is "wsgi" (gunicorn) or "asgi" (uvicorn).
+	Server  string `json:"server"`
+	Workers int    `json:"workers"`
+	// Venv is the environment generation the unit runs (render); 0 in a
+	// check or a build.
+	Venv int `json:"venv,omitempty"`
+	// SourceBuilds: the administrator allowed pip to build packages from
+	// source for the offering (off by default).
+	SourceBuilds bool `json:"source_builds,omitempty"`
+}
+
+// RuntimePythonResponse is the server's distribution Python (read-only):
+// the minor /usr/bin/python3 is, whether the interpreter and its venv module
+// are installed and whether this release pins an app server for it. Ready
+// means a Python app can be built here; otherwise Reason (runtime_missing)
+// and Detail say what is missing.
+type RuntimePythonResponse struct {
+	Minor    string   `json:"minor,omitempty"`
+	Expected string   `json:"expected,omitempty"`
+	Family   string   `json:"family,omitempty"`
+	Packages []string `json:"packages,omitempty"`
+	Ready    bool     `json:"ready"`
+	Reason   string   `json:"reason,omitempty"`
+	Detail   string   `json:"detail,omitempty"`
+	Error    string   `json:"error,omitempty"`
+}
+
+// RuntimeAppBuildRequest starts a Python app's environment build (a
+// transient sandboxed unit) for one deploy operation. Repeating it for the
+// same operation starts nothing new.
+type RuntimeAppBuildRequest struct {
+	ExpectedBuildCommit string           `json:"expected_build_commit"`
+	OperationID         string           `json:"operation_id"`
+	Target              RuntimeAppTarget `json:"target"`
+	Spec                RuntimeAppSpec   `json:"spec"`
+}
+
+// RuntimeAppBuildAdvanceRequest reads the build of an operation and, when
+// the unit finished, completes it: the finished environment is renamed into
+// place and older generations are removed (success), or the partial one is
+// removed and pip's last lines are kept (failure). Repeating it changes
+// nothing more.
+type RuntimeAppBuildAdvanceRequest struct {
+	ExpectedBuildCommit string           `json:"expected_build_commit"`
+	OperationID         string           `json:"operation_id"`
+	Target              RuntimeAppTarget `json:"target"`
+}
+
+// RuntimeAppBuildResponse answers both: Phase is running, succeeded or
+// failed; Venv the generation built; Previous the generation the unit ran
+// when the build started (0: none, the one-step rollback target); Package
+// the package without a wheel (wheel_unavailable); Lines the last lines of
+// the build's output, redacted.
+type RuntimeAppBuildResponse struct {
+	RuntimeAppStepResponse
+	Phase    string   `json:"phase,omitempty"`
+	Venv     int      `json:"venv,omitempty"`
+	Previous int      `json:"previous,omitempty"`
+	Package  string   `json:"package,omitempty"`
+	Lines    []string `json:"lines,omitempty"`
 }
 
 // RuntimeAppCheckRequest checks an app before a deploy: the site account,

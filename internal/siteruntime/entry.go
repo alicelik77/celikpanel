@@ -90,6 +90,7 @@ func MachineFor(goarch string) uint16 {
 // FileFacts is what the Agent read of the entry without following a link.
 type FileFacts struct {
 	Regular    bool
+	Dir        bool // a real folder (the Python kind's app/src)
 	Link       bool
 	UID        int
 	Mode       uint32 // permission and set-id bits

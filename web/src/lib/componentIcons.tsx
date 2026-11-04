@@ -29,6 +29,7 @@ export const categoryIcons: Record<string, LucideIcon> = {
 const componentIconMap: Record<string, LucideIcon> = {
     'php-fpm': FileCode2,
     node: Hexagon,
+    python: FileCode2,
     nginx: ArrowLeftRight,
     apache: Feather,
     postgresql: Database,

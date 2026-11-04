@@ -35,6 +35,15 @@ Python apps and uploaded programs. Uploaded programs are described in
 **Additions by kind:**
 
 - **Python apps and uploaded programs** also get `ProcSubset=pid`.
+- **Python apps get nothing more** than the base set and `ProcSubset=pid`:
+  no `MemoryDenyWriteExecute` and no `NoExecPaths`/`ExecPaths`. An
+  interpreter executes its own extension modules from its environment, and
+  some packages generate code at run time, so these would break ordinary
+  apps. A Python app can therefore start other programs of the server,
+  `/bin/sh` included; what they reach is what this sandbox allows. Its
+  environment build runs as the transient unit `celikrtbuild-<id>`: the
+  same account and sandbox, no listening port, outbound open for PyPI, the
+  SMTP block in place ([RUNTIME-APPS.md §18](RUNTIME-APPS.md)).
 - **Uploaded programs** also get `MemoryDenyWriteExecute`, `NoExecPaths=/` and
   `ExecPaths=<app folder> /usr/lib /usr/lib64 /lib /lib64`. These are defence
   in depth, not the boundary. They make `/bin/sh`, `python3` and

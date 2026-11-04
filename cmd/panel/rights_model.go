@@ -57,6 +57,7 @@ var rightPermissionIDs = []string{
 	rightRemoteBackupDestinations,
 	rightServiceApps,
 	rightProgramApps,
+	rightPythonApps,
 }
 
 var rightPermissionNames = map[string]string{
@@ -82,6 +83,7 @@ var rightPermissionNames = map[string]string{
 	rightServiceApps:              "AI and automation apps",
 	// alpha.119 (runtime_apps_model.go).
 	rightProgramApps: "Uploaded programs",
+	rightPythonApps:  "Python apps",
 }
 
 // legacyGrantPermissions are the two product permissions that still need an
@@ -99,7 +101,8 @@ func knownPermission(id string) bool {
 // extension:<vendor>:<name>, app:<id> (alpha.118: one namespace for both app
 // catalogs, the PHP application catalog and the AI and automation service
 // apps; their ids never overlap), runtime:program (alpha.119: uploaded
-// programs; Python apps use component:python:<minor>). Lowercase, bounded.
+// programs; Python apps use component:python:<minor>, the distribution's
+// Python of this server, closed until the administrator offers it). Lowercase, bounded.
 var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60}|app:[a-z][a-z0-9-]{1,40}|runtime:program)$`)
 
 // validOfferingID: the shape of an offering id, and never an administrator-only

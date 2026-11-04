@@ -81,7 +81,7 @@ func (p *Panel) runRuntimeAppSuspensionEffect(ctx context.Context, op suspension
 			return "", "", unknownResult(err)
 		}
 		if held == 1 {
-			return effectDone, "kept stopped: the administrator holds uploaded programs for security; it is started again after the hold is lifted", nil
+			return effectDone, "kept stopped: the administrator holds these apps for security; it is started again after the hold is lifted", nil
 		}
 	}
 	resp, err := native.setSuspension(ctx, transport.SetRuntimeAppSuspensionRequest{AppID: e.Ref.RuntimeAppID, Suspend: suspend, Before: before})

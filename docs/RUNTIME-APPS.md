@@ -1,16 +1,20 @@
-# Uploaded programs (runtime apps)
+# Uploaded programs and Python apps (runtime apps)
 
 *alpha.119 · In source and component-tested. The lab round on the five
 supported systems is pending.*
 
 Turkish: [RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md) · Sandbox:
 [SITE-SANDBOX.md](SITE-SANDBOX.md) · Rights:
-[PLANS-AND-RIGHTS.md §4.8](PLANS-AND-RIGHTS.md)
+[PLANS-AND-RIGHTS.md §4.8–4.9](PLANS-AND-RIGHTS.md)
 
 A customer can run their own compiled program (Go, Rust, or any other program
 built for this server's processor) as their site. The program runs as the
 site's own account, inside the site sandbox, on one port that only the server
 itself can reach. Visitors reach it only over HTTPS, through the site's nginx.
+
+A customer can also run a Python web app (Django, Flask, FastAPI) on the same
+engine, built into its own environment from PyPI with the distribution's
+Python (§18).
 
 CelikPanel treats every uploaded program as arbitrary code. An uploaded Go
 binary could start Python. The security boundary is therefore the sandbox,
@@ -27,7 +31,7 @@ to come (§17).
 | Kind | State in alpha.119 |
 |---|---|
 | `program` | Implemented: an uploaded executable. |
-| `python` | Known to the database, but not implemented in this release. The Python apps workstream builds it on the same engine, with its own permission (`python_apps`) and its offering per distribution Python (`component:python:<minor>`). A request to create one is refused with `kind_unavailable`. |
+| `python` | Implemented: a WSGI or ASGI web app in a virtual environment of the distribution's Python, with its own permission (`python_apps`) and its offering per distribution Python (`component:python:<minor>`). See §18. |
 
 A domain can have at most one runtime app.
 
@@ -470,3 +474,267 @@ update and automatic rollback across these tables has been run yet.
   sent yet. The counts are shown on the Programs tab.
 - On Ubuntu 22.04, nft's `socket cgroupv2` matching (the SMTP block) is
   unproven.
+
+## 18. Python apps
+
+A customer can run a Python web app (Django, Flask, FastAPI or any WSGI or
+ASGI app) on the same engine. Everything in §§5–16 applies: the site's own
+account, the site sandbox, one loopback port, HTTPS only, the durable deploy,
+the hold, the suspension, the D-024 states and the native files. This section
+lists what is different.
+
+The uploaded code is arbitrary code, and so is every package pip installs.
+The boundary is the sandbox, not the language.
+
+### 18.1 The distribution's Python only
+
+| System | Python | Packages |
+|---|---|---|
+| Debian 12 | 3.11 | `python3`, `python3-venv` |
+| Debian 13 | 3.13 | `python3`, `python3-venv` (pulls `python3.13-venv`) |
+| Ubuntu 22.04 | 3.10 | `python3`, `python3-venv` (pulls `python3.10-venv`) |
+| Ubuntu 24.04 | 3.12 | `python3`, `python3-venv` (pulls `python3.12-venv`) |
+| Arch | 3.14 (rolling) | `python` (carries `ensurepip`) |
+
+Checked against the distributions' package indexes on 2026-11-04. No
+deadsnakes, pyenv or python.org builds are used.
+
+The administrator installs **Python** under Components (category Web, kind
+Runtime). The Agent reads the minor from `/usr/bin/python3`'s link and checks
+`/usr/bin/python3.<minor>` and `/usr/lib/python3.<minor>/ensurepip/__init__.py`.
+On Debian and Ubuntu a `python3` that is not the system's own minor is
+refused. On Arch, whatever minor `python3` names is the distribution's, as
+long as this release pins an app server for it (3.10–3.14). A newer Arch
+Python (3.15) waits for a CelikPanel update; the screen says so.
+
+Removing the Python component is refused while other packages need `python3`
+(the removal simulation names them, as for every component).
+
+### 18.2 Rights and the offering
+
+- Permission **`python_apps`** (Python apps).
+- Offering **`component:python:<minor>`** for the server's Python, for
+  example `component:python:3.13`. Unlike other component versions it is
+  **closed until the administrator offers it** on the Add-ons page, after
+  reading its risk summary (§18.9). Installing Python offers nothing.
+- The administrator may also allow **source builds** for the offering. That is
+  off by default and changes the risk summary the administrator agrees to (it
+  adds “source builds”). The stored risk digest records the choice, so no
+  schema change was needed (migration 063 holds the Python kind; 064 is not
+  used).
+- The route itself names no permission: `program_apps` or `python_apps` is
+  checked inside, by the kind of the app.
+- After a system upgrade (for example Debian 12 to 13) an app still names the
+  old offering. Deploy refuses with `python_moved`; saving the app's settings
+  once moves it to the server's current Python, under that offering's gates.
+
+### 18.3 Files
+
+```
+<site home>/app/
+  src/              the uploaded code and its requirements.txt
+  venv-<n>/         the environment of build n (the running one and the one before)
+  venv-<n>.partial  a build in progress (removed when it fails)
+  .pip-cache/       pip's download cache (counts toward the site's disk)
+  .build-tmp/       pip's temporary folder during a build
+  data/ config/     as in §2
+```
+
+The unit runs in `app/src` (`WorkingDirectory`), so `module:callable` is
+imported from there.
+
+### 18.4 Settings
+
+| Setting | Rule |
+|---|---|
+| App server | `wsgi` (gunicorn: Django, Flask) or `asgi` (uvicorn: FastAPI, Starlette). |
+| App | `module:callable`, for example `mysite.wsgi:application` or `main:app`. A dotted module of identifiers and one identifier; no factory call, no expression. |
+| Workers | 1 to `min(8, memory limit / 128 MB)`. |
+| Health path | As in §8. |
+
+The record keeps the callable in `runtime_apps.entry` and the server and
+workers as two argument tokens (`server=wsgi`, `workers=2`) in
+`runtime_apps.args`.
+
+### 18.5 requirements.txt
+
+Before a build the Agent reads `app/src/requirements.txt` and every file it
+includes, all beneath `app/src`, without following a link (openat2
+`RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS`). It refuses, naming the file and the
+line:
+
+| Refused | Code |
+|---|---|
+| `-e`, `--editable` | `editable` |
+| `git+…`, `hg+…`, `svn+…`, `bzr+…`, `name @ git+…` | `vcs` |
+| any other URL, `name @ https://…` | `url` |
+| `./x`, `../x`, `/x`, `x/y`, `*.whl`, `*.tar.gz` and other archives | `path` |
+| `-i`, `--index-url`, `--no-index` | `index_url` |
+| `--extra-index-url` | `extra_index_url` |
+| `--trusted-host` | `trusted_host` |
+| `-f`, `--find-links` | `find_links` |
+| `-c` naming a file outside `app/src` | `constraint_outside` |
+| `-r` naming a file outside `app/src` | `nested_outside` |
+| `-r`/`-c` naming a missing file | `nested_missing` |
+| any other option (`--no-binary`, `--global-option`, …) | `option` |
+| `$`, a backquote, or a line that is not `name[extras] spec ; marker` | `syntax` |
+| more than 16 files, 256 KiB per file or 4000 lines | `too_large` |
+| `-r` deeper than four levels | `nested_too_deep` |
+
+Allowed: requirement lines, `--hash=sha256:…` (and sha384/sha512) after a
+requirement, `--require-hashes`, `--pre`, `--prefer-binary`, and `-r`/`-c`
+inside `app/src`. Credentials in a refused line are hidden before it is
+shown.
+
+pip reads a **flattened copy** that the Agent writes as root into
+`/run/celikpanel-rtbuild/<app id>/` (directory 0750 and files 0640,
+`root:<site group>`), never the customer's file. When any line carries a hash
+(or the file says `--require-hashes`), pip runs with `--require-hashes`.
+
+This is the offering's supply-chain policy, not the security boundary: the
+customer can upload any code into `app/src` anyway.
+
+### 18.6 The build (deploy step `build`)
+
+Deploy: `validate → build → render → restart → proof → health → publish`.
+
+The build is a transient unit `celikrtbuild-<id>.service`: the site's own
+account, the app's sandbox without a listening port (outbound network open
+for PyPI, the SMTP block in place, `Type=oneshot`, at most 30 minutes). Like
+the app's own unit it requires its bind unit `celikpanel-sandbox@celikrtbuild-<id>`,
+which binds the app folder from a root-owned mount point, and its only root
+commands are the static helper's `egress-add`/`egress-remove`, which come
+before the steps ([SITE-SANDBOX.md](SITE-SANDBOX.md) §1a). Its
+steps are separate command lines; there is no shell:
+
+```
+ExecStartPre=/usr/bin/python3.<m> -m venv <app>/venv-<n>.partial
+ExecStartPre=<venv>/bin/python -m pip install --isolated --no-input … --index-url=https://pypi.org/simple
+             --cache-dir=<app>/.pip-cache --only-binary=:all: --require-hashes --no-deps -r /run/celikpanel-rtbuild/<id>/server.txt
+ExecStartPre=<venv>/bin/python -m pip install --isolated … --only-binary=:all: [--require-hashes] -r …/requirements.txt [-c …/constraints.txt]
+ExecStart=<venv>/bin/python -m pip check
+```
+
+`--isolated` and `PIP_CONFIG_FILE=/dev/null` keep a `pip.conf` or a `PIP_*`
+variable from changing the index. `--only-binary=:all:` is left out of the
+customer's step only when the offering allows source builds; the pins are
+always wheels.
+
+Generations (`internal/siteruntime/venv.go`):
+
+1. Leftover `venv-*.partial` folders are removed; `n` is one above every
+   generation the folder or the unit names.
+2. The build writes `venv-<n>.partial`. **The running app is not touched.**
+3. Success: one rename (`mv -T`, as the site's account) to `venv-<n>`. Every
+   other generation except `venv-<n>` and the one the unit runs is removed.
+4. Failure: `venv-<n>.partial` is removed; the operation names why.
+5. Render writes the unit with `venv-<n>` and the app is restarted.
+6. If an app that was deployed before does not come up (no listener, a
+   failed start, a restart loop, an OOM, a public listener or a failing
+   health path), the unit is written again with the generation it ran with
+   and restarted. The operation still fails and says so. The code in
+   `app/src` is what the customer uploaded; only the environment goes back.
+
+The Agent keeps a record of each build (`runtime-apps/<id>/build.json`,
+root's): the operation, the generation built and the one before. A Panel
+restart continues the same build; a repeat of the same operation starts
+nothing new. A build that systemd no longer knows (a reboot) is an unknown
+result, never a success.
+
+Why `python -m gunicorn` and not `venv/bin/gunicorn`: a console script keeps
+the folder name it was installed under in its `#!` line, and the
+environment is built as `venv-<n>.partial` and renamed. The interpreter link
+and `pyvenv.cfg` do not depend on the folder name.
+
+### 18.7 App servers pinned by hash
+
+CelikPanel installs these wheels first, with `--require-hashes --no-deps`.
+They are `py3-none-any`, so the same pins serve every supported minor;
+`typing_extensions` is installed only on 3.10.
+
+| Package | Version | Uploaded to PyPI | sha256 of the wheel |
+|---|---|---|---|
+| gunicorn | 26.2.0 | 2026-08-24 | `bd249d0b3f7972f7432f0a6b6ff3b3ee2d129f70cd1ff6c09a9dd9e29a2b88e3` |
+| uvicorn | 0.54.0 | 2026-09-25 | `505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf` |
+| click | 8.5.0 | 2026-08-26 | `255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360` |
+| h11 | 0.16.0 | 2025-04-24 | `63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86` |
+| typing_extensions | 4.16.0 | 2026-07-02 | `481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8` |
+
+Source: PyPI's JSON API (`https://pypi.org/pypi/<name>/<version>/json`, the
+`digests.sha256` of the `bdist_wheel` file), read on 2026-11-04. Every
+version was at least two weeks old and not yanked. uvicorn is installed
+without its `[standard]` extra, so nothing compiled comes with it. A new pin
+is a reviewed change of `internal/siteruntime/pins.go`.
+
+A requirements line that names gunicorn or uvicorn may change the installed
+copy; the app server must stay importable.
+
+### 18.8 The unit
+
+```
+WorkingDirectory=<app>/src
+Environment=PATH=<app>/venv-<n>/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONNOUSERSITE=1
+ExecStart=<app>/venv-<n>/bin/python -m gunicorn --bind 127.0.0.1:<port> --workers <N> <module:callable>
+ExecStart=<app>/venv-<n>/bin/python -m uvicorn --host 127.0.0.1 --port <port> --workers <N> <module:callable>
+```
+
+The ExecStart is fixed: every word is checked, there is no shell and no `$`
+or `%` reaches the text.
+
+**Sandbox:** the base set of [SITE-SANDBOX.md §1](SITE-SANDBOX.md) and
+`ProcSubset=pid`. A Python app does **not** get `MemoryDenyWriteExecute` or
+`NoExecPaths`/`ExecPaths`: an interpreter executes its own extension modules
+from the environment, and some packages generate code at run time. So a
+Python app can start other programs of the server (`/bin/sh` too); what they
+can reach is what the sandbox allows, nothing more.
+
+### 18.9 Risk summary
+
+What the administrator reads before offering, and the customer before
+deploying:
+
+- **It can:** run any code, read and write its own folder, listen on one
+  loopback port, open outbound connections, install packages from PyPI into
+  its own environment.
+- **The sandbox blocks:** other sites, CelikPanel's files, privileges, the
+  mail ports, the metadata address, other ports.
+- **Remains a risk:** outbound abuse; mail APIs; sharing CPU and memory; the
+  reduced level where accepted; the customer's own code; **PyPI packages are
+  third-party code — CelikPanel checks only that a file matches PyPI's
+  published hash, not what it does;** an interpreter can start other
+  programs and generate code; and, when allowed, **source builds** run each
+  package's own build code during the deploy, in the same sandbox.
+
+### 18.10 States (D-024)
+
+| Code | Kind | Who acts | Meaning |
+|---|---|---|---|
+| `runtime_missing` | prerequisite | administrator | The server's Python or its venv module is not ready (or another minor, or no pins). |
+| `src_missing` | prerequisite | customer | `app/src` is not there, or is a link or a file. |
+| `venv_missing` | prerequisite | customer | The environment the unit names is gone; deploy builds a new one. |
+| `requirements_refused` | prerequisite | customer | A line is refused; the screen names the file, the line and why. |
+| `wheel_unavailable` | verified failure | customer | A package has no wheel for this Python on PyPI (or does not exist); the package is named. |
+| `build_failed` | verified failure | customer | pip or the venv step failed; pip's last lines, redacted. |
+| `pypi_unreachable` | unknown | customer, then administrator | The build could not reach pypi.org. |
+
+Every build failure says that the running app was not changed. Polling reads
+the operation; it never starts a build.
+
+### 18.11 Without CelikPanel
+
+The unit, its environment file and `app/venv-<n>` are ordinary files. The
+owner can run `systemctl restart celikrt-<id>`, or rebuild an environment by
+hand as the site's account (`python3 -m venv`, `pip install -r
+app/src/requirements.txt`). A unit the owner changed is kept (§13).
+
+### 18.12 Known gaps
+
+- No lab run yet: Django (gunicorn), FastAPI (uvicorn) and the escape kit's
+  Python probe on the five systems, with `ProcSubset=pid` and the build's
+  outbound access, are for the lab round.
+- The rollback restores the environment, not the code in `app/src`.
+- pip itself (from `ensurepip`, the distribution's bundled wheel) is not
+  pinned by CelikPanel.
+- The build's outbound traffic is not limited to pypi.org.

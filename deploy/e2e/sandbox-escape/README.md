@@ -19,8 +19,9 @@ namespace, and it removes all of them at the end. It never runs
 | `bin/sandbox-helper` | The Agent, built by `run.sh build`; the bind units and the egress lines run it as the sandbox helper. When the host has none, the kit installs it at `/usr/lib/celikpanel-sandbox/sandbox-helper` and the bind template `celikpanel-sandbox@.service` (`render -what bind-template`), and removes both at the end. |
 | `probes/goprobe/` | A static Go probe (the "uploaded program" kind: `NoExecPaths`, `MemoryDenyWriteExecute`). |
 | `probes/probe.py` | A Python probe (the python kind), using ctypes for the system calls. |
+| `probes/wsgi_probe.py` | The Python probe as a WSGI app (`wsgi_probe:application`): `GET /matrix` runs the matrix once, for `panel-runtime.sh KIND=python`. |
 | `run.sh` | The runner. |
-| `panel-runtime.sh` | Runs the Go probe as a real runtime app through a lab panel's API (below). |
+| `panel-runtime.sh` | Runs the Go probe (or, with `KIND=python`, the Python probe) as a real runtime app through a lab panel's API (below). |
 
 There is no C or Rust probe: the development system used to write the kit
 had neither toolchain. The Go probe is built static (`CGO_ENABLED=0`). A Rust
@@ -136,6 +137,21 @@ LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> DOMAIN_ID
   probe prints it on purpose, and the log view must hide it), and
   `PROBE_OTHER_SITE` from `OTHER_SITE_FILE`. Without `OTHER_SITE_FILE`,
   item 1 reads a path that may not exist, which proves nothing.
+- **The Python probe (`KIND=python`).** The script uploads `probes/probe.py`
+  and `probes/wsgi_probe.py` into `app/src` and creates a Python app
+  `wsgi_probe:application` with gunicorn and one worker. There is no
+  `requirements.txt`, so the build installs only CelikPanel's pinned
+  gunicorn from PyPI (the lab VM needs outbound HTTPS to pypi.org). After the
+  deploy it asks `GET /matrix` once (`APP_URL`, default
+  `http://127.0.0.1:<port>` with `UPLOAD=local`, else `https://<domain>`);
+  the matrix runs in a thread and the lines are judged from the log view as
+  for the Go probe. Item 14 is `SKIP` for the python kind. Prerequisites: the
+  administrator installed Python in Components and offered
+  `component:python:<minor>`; the plan grants `python_apps`.
+
+  ```sh
+  sudo LAB_ONLY=yes KIND=python PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session>     DOMAIN_ID=<id> OTHER_SITE_FILE=<a 0644 file of another lab site> CURL_INSECURE=1 ./panel-runtime.sh
+  ```
 - **One operation id.** The deploy is posted with one operation id. If no
   answer arrives, the same id is posted again (the panel's lost-answer
   guard). The script then only reads (`GET` without `?health=1`) until the

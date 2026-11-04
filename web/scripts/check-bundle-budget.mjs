@@ -238,8 +238,10 @@ const screenPartBudgets = {
   // alpha.119: uploaded programs of a site and the administrator's offering,
   // the guidance of every state and failure reason (runtime.,
   // err.RUNTIME_APP., their audit words). A new part, set with at least 25%
-  // headroom from its Turkish file: 33.06 / 8.70 KiB.
-  runtimeApps: kib(42, 11),
+  // headroom from its Turkish file: 33.06 / 8.70 KiB. alpha.119 W5 adds the
+  // Python apps (their states, the requirements refusals, the build step and
+  // the source-build offer): 43.57 / 11.31 KiB, again with 25% headroom.
+  runtimeApps: kib(55, 14.25),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

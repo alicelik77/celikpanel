@@ -1,15 +1,18 @@
-# Yüklenen programlar (çalışma ortamı uygulamaları)
+# Yüklenen programlar ve Python uygulamaları (çalışma ortamı uygulamaları)
 
 *alpha.119 · Kaynakta var, bileşen testlerinden geçti. Desteklenen beş sistemde laboratuvar turu
 bekliyor.*
 
 İngilizcesi: [RUNTIME-APPS.md](RUNTIME-APPS.md) · Koruma: [SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) ·
-Haklar: [PLANS-AND-RIGHTS.tr.md §4.8](PLANS-AND-RIGHTS.tr.md)
+Haklar: [PLANS-AND-RIGHTS.tr.md §4.8–4.9](PLANS-AND-RIGHTS.tr.md)
 
 Müşteri kendi derlenmiş programını (Go, Rust ya da bu sunucunun işlemcisi için derlenmiş başka
 bir program) sitesi olarak çalıştırabilir. Program sitenin kendi hesabıyla, site koruması
 (sandbox) içinde, yalnız sunucunun kendisinin erişebildiği tek bir portta çalışır. Ziyaretçiler
 ona yalnız HTTPS ile, sitenin nginx'i üzerinden ulaşır.
+
+Müşteri aynı altyapı üzerinde bir Python web uygulaması (Django, Flask, FastAPI) da
+çalıştırabilir; uygulama dağıtımın Python'uyla, PyPI'dan kendi ortamına kurulur (§18).
 
 CelikPanel yüklenen her programı rastgele kod sayar. Yüklenen bir Go programı Python
 başlatabilir. Bu yüzden güvenlik sınırı izin verilen diller değil, korumanın kendisidir.
@@ -24,7 +27,7 @@ söylemez; laboratuvar turu daha yapılacak (§17).
 | Tür | alpha.119'daki durumu |
 |---|---|
 | `program` | Hazır: yüklenen çalıştırılabilir dosya. |
-| `python` | Veritabanı tanır ama bu sürümde çalışmaz. Python uygulamaları işi bunu aynı altyapı üzerine kendi izniyle (`python_apps`) ve dağıtımın her Python sürümü için ayrı sunumla (`component:python:<sürüm>`) kurar. Bu türde oluşturma isteği `kind_unavailable` ile reddedilir. |
+| `python` | Hazır: dağıtımın Python'uyla kurulan sanal ortamda çalışan bir WSGI ya da ASGI web uygulaması; kendi izni (`python_apps`) ve dağıtımın her Python sürümü için ayrı sunumu (`component:python:<sürüm>`) vardır. Bkz. §18. |
 
 Bir alan adında en çok bir program olabilir.
 
@@ -423,3 +426,254 @@ tablolarla gerçek bir güncelleme ve otomatik geri alma henüz denenmedi.
 - cgroup olaylarından (bellek aşımı, süreç sınırı) kötüye kullanım bildirimi henüz
   gönderilmiyor. Sayılar Programlar sekmesinde görünür.
 - Ubuntu 22.04'te nft'nin `socket cgroupv2` eşleşmesi (SMTP engeli) kanıtlanmadı.
+
+## 18. Python uygulamaları
+
+Müşteri aynı altyapı üzerinde bir Python web uygulaması (Django, Flask,
+FastAPI ya da herhangi bir WSGI veya ASGI uygulaması) çalıştırabilir. §5–16'nın
+hepsi geçerlidir: sitenin kendi hesabı, site koruması, tek yerel port, yalnız
+HTTPS, kalıcı yayımlama işlemi, güvenlik beklemesi, askıya alma, D-024
+durumları ve yerel dosyalar. Bu bölüm yalnız farkları yazar.
+
+Yüklenen kod rastgele koddur; pip'in kurduğu her paket de öyledir. Sınır dil
+değil, korumanın kendisidir.
+
+### 18.1 Yalnız dağıtımın kendi Python'u
+
+| Sistem | Python | Paketler |
+|---|---|---|
+| Debian 12 | 3.11 | `python3`, `python3-venv` |
+| Debian 13 | 3.13 | `python3`, `python3-venv` (`python3.13-venv`'i çeker) |
+| Ubuntu 22.04 | 3.10 | `python3`, `python3-venv` (`python3.10-venv`'i çeker) |
+| Ubuntu 24.04 | 3.12 | `python3`, `python3-venv` (`python3.12-venv`'i çeker) |
+| Arch | 3.14 (sürekli güncellenen) | `python` (`ensurepip` içinde) |
+
+4 Kasım 2026'da dağıtımların paket dizinlerinden doğrulandı. deadsnakes, pyenv
+ya da python.org derlemeleri kullanılmaz.
+
+Yönetici **Python**'u Bileşenler altından kurar (Web bölümü, çalışma ortamı
+türü). Ajan sürümü `/usr/bin/python3` bağlantısından okur;
+`/usr/bin/python3.<sürüm>` ve `/usr/lib/python3.<sürüm>/ensurepip/__init__.py`
+dosyalarını denetler. Debian ve Ubuntu'da sistemin kendi sürümü olmayan bir
+`python3` reddedilir. Arch'ta `python3` hangi sürümü gösteriyorsa dağıtımınkidir;
+yeter ki bu sürüm o Python için bir uygulama sunucusu sabitlemiş olsun
+(3.10–3.14). Daha yeni bir Arch Python'u (3.15) bir CelikPanel güncellemesini
+bekler; ekran bunu söyler.
+
+Python bileşenini kaldırmak, `python3`'e başka paketler gerek duydukça
+reddedilir (kaldırma benzetimi onları adıyla yazar).
+
+### 18.2 Haklar ve sunum
+
+- İzin **`python_apps`** (Python uygulamaları).
+- Sunucunun Python'u için sunum **`component:python:<sürüm>`**, örneğin
+  `component:python:3.13`. Diğer bileşen sürümlerinden farklı olarak yönetici
+  Eklentiler sayfasında risk özetini (§18.9) okuyup sunana dek **kapalıdır**.
+  Python'u kurmak hiçbir şeyi sunmaz.
+- Yönetici bu sunum için **kaynaktan derlemeye** de izin verebilir. Varsayılan
+  olarak kapalıdır ve yöneticinin onayladığı risk özetini değiştirir (özete
+  “kaynaktan derleme” eklenir). Saklanan risk özeti bu seçimi kaydeder; şema
+  değişmedi (Python türü 063 tablolarına sığar, 064 kullanılmadı).
+- Yolun kendisi bir izin adı taşımaz: uygulamanın türüne göre `program_apps`
+  ya da `python_apps` içeride denetlenir.
+- Bir sistem yükseltmesinden sonra (örneğin Debian 12'den 13'e) uygulama hâlâ
+  eski sunumu taşır. Yayımlama `python_moved` ile reddedilir; uygulamanın
+  ayarlarını bir kez kaydetmek onu, o sunumun kapılarından geçirerek
+  sunucunun şu anki Python'una taşır.
+
+### 18.3 Dosyalar
+
+```
+<site klasörü>/app/
+  src/              yüklenen kod ve requirements.txt
+  venv-<n>/         n numaralı kurulumun ortamı (çalışan ve bir öncekisi)
+  venv-<n>.partial  süren bir kurulum (başarısız olursa silinir)
+  .pip-cache/       pip'in indirme önbelleği (sitenin diskine sayılır)
+  .build-tmp/       kurulum sırasında pip'in geçici klasörü
+  data/ config/     §2'deki gibi
+```
+
+Birim `app/src` içinde çalışır (`WorkingDirectory`); `modül:nesne` oradan içe
+aktarılır.
+
+### 18.4 Ayarlar
+
+| Ayar | Kural |
+|---|---|
+| Uygulama sunucusu | `wsgi` (gunicorn: Django, Flask) ya da `asgi` (uvicorn: FastAPI, Starlette). |
+| Uygulama | `modül:nesne`, örneğin `mysite.wsgi:application` ya da `main:app`. Noktalı adlardan oluşan bir modül ve bir ad; fabrika çağrısı ya da ifade yok. |
+| İşçi sayısı | 1 ile `min(8, bellek sınırı / 128 MB)` arası. |
+| Sağlık yolu | §8'deki gibi. |
+
+Kayıt, nesneyi `runtime_apps.entry` içinde, sunucuyu ve işçi sayısını
+`runtime_apps.args` içinde iki argüman olarak (`server=wsgi`, `workers=2`)
+tutar.
+
+### 18.5 requirements.txt
+
+Kurulumdan önce ajan `app/src/requirements.txt` dosyasını ve eklediği her
+dosyayı, hepsi `app/src` altında ve hiçbir bağlantıyı izlemeden (openat2
+`RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS`) okur. Şunları dosya ve satır adıyla
+reddeder:
+
+| Reddedilen | Kod |
+|---|---|
+| `-e`, `--editable` | `editable` |
+| `git+…`, `hg+…`, `svn+…`, `bzr+…`, `ad @ git+…` | `vcs` |
+| başka her adres, `ad @ https://…` | `url` |
+| `./x`, `../x`, `/x`, `x/y`, `*.whl`, `*.tar.gz` ve başka arşivler | `path` |
+| `-i`, `--index-url`, `--no-index` | `index_url` |
+| `--extra-index-url` | `extra_index_url` |
+| `--trusted-host` | `trusted_host` |
+| `-f`, `--find-links` | `find_links` |
+| `app/src` dışını gösteren `-c` | `constraint_outside` |
+| `app/src` dışını gösteren `-r` | `nested_outside` |
+| olmayan dosyayı gösteren `-r`/`-c` | `nested_missing` |
+| başka her seçenek (`--no-binary`, `--global-option`, …) | `option` |
+| `$`, ters tırnak ya da `ad[ekler] sürüm ; koşul` olarak okunamayan satır | `syntax` |
+| 16'dan çok dosya, dosya başına 256 KiB ya da toplam 4000 satır | `too_large` |
+| dört düzeyden derin `-r` | `nested_too_deep` |
+
+İzin verilenler: paket satırları, bir paketin ardından `--hash=sha256:…`
+(sha384/sha512 de), `--require-hashes`, `--pre`, `--prefer-binary` ve
+`app/src` içindeki `-r`/`-c`. Reddedilen satırdaki kimlik bilgileri
+gösterilmeden önce gizlenir.
+
+pip, müşterinin dosyasını değil, ajanın root olarak
+`/run/celikpanel-rtbuild/<uygulama no>/` altına yazdığı **düzleştirilmiş
+kopyayı** okur (klasör 0750, dosyalar 0640, `root:<site grubu>`). Bir satırda
+özet varsa (ya da dosya `--require-hashes` diyorsa) pip `--require-hashes` ile
+çalışır.
+
+Bu, sunumun tedarik zinciri kuralıdır, güvenlik sınırı değildir: müşteri zaten
+`app/src` içine her kodu yükleyebilir.
+
+### 18.6 Kurulum (yayımlama adımı `build`)
+
+Yayımlama: `validate → build → render → restart → proof → health → publish`.
+
+Kurulum geçici bir birimdir, `celikrtbuild-<no>.service`: sitenin kendi
+hesabı, uygulamanın koruması ama dinlenen port yok (PyPI için dışa bağlantı
+açık, posta portu engeli yerinde, `Type=oneshot`, en çok 30 dakika). Uygulamanın
+kendi birimi gibi `celikpanel-sandbox@celikrtbuild-<no>` bağlama birimini ister; bu birim
+uygulama klasörünü root'a ait bir bağlama noktasından bağlar. Root komutları yalnız statik
+yardımcının adımlardan önce gelen `egress-add`/`egress-remove` çağrılarıdır
+([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) §1a). Adımlar
+ayrı komut satırlarıdır; kabuk yoktur (komutlar İngilizce belgede, §18.6).
+`--isolated` ve `PIP_CONFIG_FILE=/dev/null`, bir `pip.conf` dosyasının ya da
+`PIP_*` değişkeninin paket dizinini değiştirmesini engeller. Müşterinin
+adımından `--only-binary=:all:` yalnız sunum kaynaktan derlemeye izin
+veriyorsa çıkarılır; sabitlenmiş paketler her zaman hazır pakettir.
+
+Kuşaklar (`internal/siteruntime/venv.go`):
+
+1. Kalmış `venv-*.partial` klasörleri silinir; `n`, klasörün ya da birimin
+   andığı her kuşaktan bir fazladır.
+2. Kurulum `venv-<n>.partial` içine yazar. **Çalışan uygulamaya dokunulmaz.**
+3. Başarı: sitenin hesabıyla tek bir yeniden adlandırma (`mv -T`) ile
+   `venv-<n>`. `venv-<n>` ve birimin çalıştırdığı kuşak dışındaki her kuşak
+   silinir.
+4. Başarısızlık: `venv-<n>.partial` silinir; işlem nedenini söyler.
+5. Birim `venv-<n>` ile yazılır ve uygulama yeniden başlatılır.
+6. Daha önce yayımlanmış bir uygulama açılmazsa (dinlemiyor, başlarken
+   durdu, sürekli yeniden başlıyor, bellek aşımı, dış adreste dinliyor ya da
+   sağlık yolu yanıt vermiyor) birim önceki kuşakla yeniden yazılır ve
+   yeniden başlatılır. İşlem yine başarısız sayılır ve bunu söyler. `app/src`
+   içindeki kod müşterinin yüklediğidir; yalnız ortam geri döner.
+
+Ajan her kurulumun kaydını tutar (`runtime-apps/<no>/build.json`, root'un):
+işlem, kurulan kuşak ve öncekisi. Panel yeniden başlarsa aynı kurulum sürer;
+aynı işlemin tekrarı yeni bir şey başlatmaz. systemd'nin artık tanımadığı bir
+kurulum (yeniden başlatma) bilinmeyen sonuçtur, asla başarı sayılmaz.
+
+Neden `venv/bin/gunicorn` değil de `python -m gunicorn`: bir komut betiği
+kurulduğu klasörün adını `#!` satırında tutar; ortam `venv-<n>.partial` olarak
+kurulup yeniden adlandırılır. Yorumlayıcı bağlantısı ve `pyvenv.cfg` klasör
+adına bağlı değildir.
+
+### 18.7 Özetle sabitlenmiş uygulama sunucuları
+
+CelikPanel önce bu paketleri `--require-hashes --no-deps` ile kurar. Hepsi
+`py3-none-any`'dir; aynı sabitler desteklenen her Python sürümüne yeter.
+`typing_extensions` yalnız 3.10'da kurulur.
+
+| Paket | Sürüm | PyPI'a yüklenme | Paketin sha256 özeti |
+|---|---|---|---|
+| gunicorn | 26.2.0 | 2026-08-24 | `bd249d0b3f7972f7432f0a6b6ff3b3ee2d129f70cd1ff6c09a9dd9e29a2b88e3` |
+| uvicorn | 0.54.0 | 2026-09-25 | `505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf` |
+| click | 8.5.0 | 2026-08-26 | `255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360` |
+| h11 | 0.16.0 | 2025-04-24 | `63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86` |
+| typing_extensions | 4.16.0 | 2026-07-02 | `481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8` |
+
+Kaynak: PyPI'ın JSON arayüzü (`https://pypi.org/pypi/<ad>/<sürüm>/json`,
+`bdist_wheel` dosyasının `digests.sha256` alanı), 4 Kasım 2026'da okundu. Her
+sürüm en az iki haftalıktı ve geri çekilmemişti. uvicorn `[standard]` eki
+olmadan kurulur; derlenmiş bir şey gelmez. Yeni bir sabit,
+`internal/siteruntime/pins.go` dosyasının incelenmiş bir değişikliğidir.
+
+gunicorn ya da uvicorn'u adıyla anan bir gereksinim satırı kurulu kopyayı
+değiştirebilir; uygulama sunucusu içe aktarılabilir kalmalıdır.
+
+### 18.8 Birim
+
+ExecStart sabittir: `<app>/venv-<n>/bin/python -m gunicorn --bind
+127.0.0.1:<port> --workers <N> <modül:nesne>` ya da `… -m uvicorn --host
+127.0.0.1 --port <port> --workers <N> <modül:nesne>`. Her sözcük denetlenir;
+kabuk yoktur, metne `$` ya da `%` girmez. `WorkingDirectory=<app>/src`,
+`PATH=<app>/venv-<n>/bin:/usr/bin:/bin`, `PYTHONUNBUFFERED=1`,
+`PYTHONNOUSERSITE=1`.
+
+**Koruma:** [SITE-SANDBOX.tr.md §1](SITE-SANDBOX.tr.md) temel kümesi ve
+`ProcSubset=pid`. Python uygulaması `MemoryDenyWriteExecute` ya da
+`NoExecPaths`/`ExecPaths` **almaz**: yorumlayıcı ortamdaki kendi eklenti
+modüllerini çalıştırır, bazı paketler çalışırken kod üretir. Bu yüzden bir
+Python uygulaması sunucunun başka programlarını (`/bin/sh` dahil)
+başlatabilir; neye ulaşabilecekleri yalnız korumanın izin verdiğidir.
+
+### 18.9 Risk özeti
+
+Yöneticinin sunmadan önce, müşterinin yayımlamadan önce okuduğu:
+
+- **Yapabilir:** her kodu çalıştırır, kendi klasörünü okur ve yazar, tek yerel
+  portta dinler, dışa bağlantı açar, PyPI'dan kendi ortamına paket kurar.
+- **Koruma engeller:** diğer siteler, CelikPanel dosyaları, yetki yükseltme,
+  posta portları, bulut bilgi adresi, diğer portlar.
+- **Risk olarak kalır:** dışa dönük kötüye kullanım; posta arayüzleri; işlemci
+  ve belleğin paylaşılması; kabul edilmişse eksik koruma düzeyi; müşterinin
+  kendi kodu; **PyPI paketleri başkalarının kodudur — CelikPanel yalnız
+  dosyanın PyPI'ın yayımladığı özetle eşleştiğini denetler, ne yaptığını
+  denetlemez;** yorumlayıcı başka programlar başlatıp kod üretebilir; izin
+  verilmişse **kaynaktan derleme**, yayımlama sırasında her paketin kendi
+  derleme kodunu aynı korumada çalıştırır.
+
+### 18.10 Durumlar (D-024)
+
+| Kod | Tür | Kim yapar | Anlamı |
+|---|---|---|---|
+| `runtime_missing` | önkoşul | yönetici | Sunucunun Python'u ya da venv modülü hazır değil (ya da başka sürüm, ya da sabit yok). |
+| `src_missing` | önkoşul | müşteri | `app/src` yok ya da bağlantı veya dosya. |
+| `venv_missing` | önkoşul | müşteri | Birimin andığı ortam silinmiş; yayımlama yenisini kurar. |
+| `requirements_refused` | önkoşul | müşteri | Bir satır reddedildi; ekran dosyayı, satırı ve nedeni yazar. |
+| `wheel_unavailable` | doğrulanmış hata | müşteri | Bir paketin PyPI'da bu Python için hazır paketi yok (ya da paket yok); paket adıyla yazılır. |
+| `build_failed` | doğrulanmış hata | müşteri | pip ya da venv adımı başarısız oldu; pip'in son satırları, gizli bilgiler gizlenmiş. |
+| `pypi_unreachable` | bilinmiyor | önce müşteri, sonra yönetici | Kurulum pypi.org'a ulaşamadı. |
+
+Her kurulum hatası çalışan uygulamanın değişmediğini söyler. Durum sorgusu
+yalnız işlemi okur; asla kurulum başlatmaz.
+
+### 18.11 CelikPanel olmadan
+
+Birim, ortam dosyası ve `app/venv-<n>` sıradan dosyalardır. Sunucu sahibi
+`systemctl restart celikrt-<no>` çalıştırabilir ya da bir ortamı sitenin
+hesabıyla elle yeniden kurabilir (`python3 -m venv`, `pip install -r
+app/src/requirements.txt`). Sahibin değiştirdiği birim korunur (§13).
+
+### 18.12 Bilinen açıklar
+
+- Laboratuvar denemesi yok: beş sistemde Django (gunicorn), FastAPI (uvicorn)
+  ve kaçış kitinin Python sondası, `ProcSubset=pid` ve kurulumun dışa erişimi
+  laboratuvar turuna kaldı.
+- Geri dönüş ortamı geri getirir, `app/src` içindeki kodu değil.
+- pip'in kendisi (`ensurepip`'in getirdiği, dağıtımın paketlediği) CelikPanel
+  tarafından sabitlenmez.
+- Kurulumun dışa trafiği yalnız pypi.org ile sınırlı değildir.

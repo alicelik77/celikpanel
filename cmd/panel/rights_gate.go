@@ -142,6 +142,12 @@ func (a adminOfferLayer) offers(offeringID string) bool {
 	if offeringID == siteruntime.OfferingProgram {
 		return a.runtimes[offeringID]
 	}
+	// alpha.119: a Python line (component:python:<minor>) is a runtime
+	// offering, closed until the administrator offers it with its risk
+	// summary, unlike the other components' versions.
+	if _, ok := siteruntime.PythonMinorOfOffering(offeringID); ok {
+		return !a.hidden["component:python"] && a.runtimes[offeringID]
+	}
 	if appID, ok := serviceAppOfferingApp(offeringID); ok {
 		return a.serviceApps[appID]
 	}
@@ -396,6 +402,12 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 			continue
 		}
 		switch id {
+		case "python":
+			// alpha.119: the distribution's Python is offered per minor
+			// (component:python:<minor>), and only when it can build apps.
+			if py, err := p.runtimeAppNativeOps().python(ctx); err == nil && py.Ready && siteruntime.ValidPythonMinor(py.Minor) {
+				out = append(out, siteruntime.PythonOffering(py.Minor))
+			}
 		case "php-fpm":
 			versions, err := p.phpVersionsFromAgent(ctx)
 			if err != nil {
@@ -610,11 +622,11 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	// stopping, logs and removal stay open (D-042 P5).
 	"service-apps-install": {right: rightServiceApps},
 	"service-apps-update":  {right: rightServiceApps},
-	// alpha.119: creating, changing and deploying a program is new use;
-	// reading, stopping, logs, the environment and removal stay open.
-	"runtime-apps-create":   {right: rightProgramApps},
-	"runtime-apps-settings": {right: rightProgramApps},
-	"runtime-apps-deploy":   {right: rightProgramApps},
+	// alpha.119: creating, changing and deploying a runtime app is new use,
+	// but its permission depends on the kind (program_apps or python_apps),
+	// which the route does not carry: runtimeKindRefusal checks it inside,
+	// with the same refusal. Reading, stopping, logs, the environment and
+	// removal stay open.
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

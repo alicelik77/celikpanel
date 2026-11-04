@@ -9,14 +9,17 @@ import { useRemote } from '../lib/remote';
 import { decodeRuntimeAdmin, type RuntimeAdminKind, type RuntimeSandboxLevel } from '../lib/runtimeApps';
 import { RuntimeAppRisk } from './RuntimeAppRisk';
 
-// The administrator's offering of uploaded programs (alpha.119, D-042:
+// The administrator's offering of uploaded programs and Python apps (alpha.119, D-042:
 // third-party code is gated at the "offer" step). Nothing is open until the
 // administrator has read the risk summary, ticked that they read it and
 // offered it; the request carries the summary's digest, so an offer made
 // against an older summary is refused. On a server that enforces a reduced
 // sandbox every missing protection is named and must be accepted one by one:
 // a reduced level never passes silently. A security hold stops every program
-// at once and says which ones it could not stop.
+// at once and says which ones it could not stop. Python apps are offered for
+// this server's own Python (component:python:<minor>) once it is installed in
+// Components; building packages from source is a separate, named choice that
+// changes the summary the administrator agrees to.
 //
 // Yöneticinin yüklenen programları sunması. Risk özeti okunmadan hiçbir şey
 // açılmaz; eksik korumalı sunucuda her eksik tek tek kabul edilir; güvenlik
@@ -64,12 +67,18 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
     const [accepted, setAccepted] = useState<string[]>([]);
     const [reason, setReason] = useState('');
     const [busy, setBusy] = useState('');
+    const [sourceBuilds, setSourceBuilds] = useState(!!kind.source_builds);
+    const python = kind.kind === 'python';
+    // Installed before offered: without the server's Python nothing is offered.
+    const missing = python && !kind.python?.ready;
+    const risk = python && sourceBuilds && kind.risk_source_builds ? kind.risk_source_builds : kind.risk;
+    const digest = python && sourceBuilds && kind.risk_digest_source_builds ? kind.risk_digest_source_builds : kind.risk_digest;
 
     const reduced = sandbox.known && sandbox.level === 'reduced';
     // Every gap the server has now must be ticked; none is ticked for the
     // administrator, not even one accepted before.
     const allAccepted = !reduced || sandbox.gaps.every((gap) => accepted.includes(gap));
-    const needsOffer = !kind.offered || kind.offer_stale || kind.level_gap;
+    const needsOffer = !missing && (!kind.offered || kind.offer_stale || kind.level_gap || (python && sourceBuilds !== !!kind.source_builds));
     const limitsOK = inRange(memory, 64, 65536) && inRange(cpu, 10, 1600) && inRange(tasks, 16, 8192);
 
     const post = async (action: string, body: unknown) => {
@@ -111,7 +120,14 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
             {kind.held && <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{t('runtime.admin.held', { reason: kind.held_reason ?? '' })}</div>}
             {kind.offer_stale && <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">{t('runtime.admin.offerStale')}</div>}
             {kind.level_gap && <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">{t('runtime.admin.levelGap')}</div>}
-            <RuntimeAppRisk risk={kind.risk} limits={kind.limits} sandbox={sandbox} />
+            {python && (missing ? (
+                <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning" data-runtime-python-missing="">
+                    {t('runtime.admin.python.missing', { detail: kind.python?.detail || '—', packages: (kind.python?.packages ?? []).join(' ') || '—' })}
+                </div>
+            ) : (
+                <p className="text-sm text-fg-muted">{t('runtime.admin.python.version', { minor: kind.python?.minor ?? '' })}</p>
+            ))}
+            <RuntimeAppRisk risk={risk} limits={kind.limits} sandbox={sandbox} />
             <p className="text-xs text-fg-subtle">{t('runtime.admin.portRange', { from: portRange[0], to: portRange[1] })}</p>
             {needsOffer && (
                 <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
@@ -135,14 +151,21 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
                             ))}
                         </div>
                     )}
+                    {python && (
+                        <label className="flex items-start gap-2 text-sm text-fg" data-runtime-source-builds="">
+                            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={sourceBuilds} onChange={(e) => { setSourceBuilds(e.target.checked); setRead(false); }} />
+                            <span>{t('runtime.admin.sourceBuilds')}<span className="block text-xs text-fg-subtle">{t('runtime.admin.sourceBuilds.note')}</span></span>
+                        </label>
+                    )}
                     <label className="flex items-start gap-2 text-sm text-fg">
                         <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={read} onChange={(e) => setRead(e.target.checked)} />
-                        {t('runtime.admin.readRisks')}
+                        {t(python ? 'runtime.admin.readRisks.python' : 'runtime.admin.readRisks')}
                     </label>
                     <Button variant="primary" icon={PlayCircle} loading={busy === 'offer'} disabled={!read || !allAccepted || !limitsOK || !sandbox.known || !!busy}
                         onClick={() => void post('offer', {
-                            risk_digest: kind.risk_digest, memory_mb: Number(memory), cpu_percent: Number(cpu), tasks_max: Number(tasks),
+                            risk_digest: digest, memory_mb: Number(memory), cpu_percent: Number(cpu), tasks_max: Number(tasks),
                             accepted_gaps: reduced ? sandbox.gaps.filter((gap) => accepted.includes(gap)) : [],
+                            ...(python ? { source_builds: sourceBuilds } : {}),
                         })}>
                         {t('runtime.admin.offer')}
                     </Button>
@@ -152,7 +175,7 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
                 {kind.offered && (
                     <Button icon={XCircle} loading={busy === 'withdraw'} disabled={!!busy} title={t('runtime.admin.withdrawNote')} onClick={() => void post('withdraw', {})}>{t('runtime.admin.withdraw')}</Button>
                 )}
-                {!kind.held ? (
+                {missing ? null : !kind.held ? (
                     <>
                         <div className="min-w-56 flex-1">
                             <Field label={t('runtime.admin.holdReason')} htmlFor={`rt-hold-${kind.kind}`} hint={t('runtime.admin.holdNote')}>

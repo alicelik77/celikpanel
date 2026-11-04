@@ -1,5 +1,5 @@
-// Uploaded programs (alpha.119, docs/RUNTIME-APPS.md): the shapes the domain's
-// "Programs" tab and the administrator's offering read, the decoders that
+// Uploaded programs and Python apps (alpha.119, docs/RUNTIME-APPS.md): the
+// shapes the domain's "Programs" tab and the administrator's offering read, the decoders that
 // refuse an answer of another shape, and the guidance of every state the
 // server names (D-024): which kind of problem it is and who acts. The words
 // are runtime.state.<code> (the reason), .next and .resume in the
@@ -42,6 +42,25 @@ export interface RuntimeKindView {
     limits: RuntimeLimits;
     accepted_level: 'full' | 'reduced';
     accepted_gaps: string[];
+    /** The Python kind: the server's own Python. */
+    python?: RuntimePython;
+}
+
+/** The server's distribution Python as the Panel reports it. */
+export interface RuntimePython {
+    minor?: string;
+    ready: boolean;
+    detail?: string;
+    packages?: string[];
+    max_workers: number;
+    source_builds: boolean;
+}
+
+/** A Python app's settings: wsgi (gunicorn) or asgi (uvicorn), module:callable, workers. */
+export interface RuntimePythonSettings {
+    server: 'wsgi' | 'asgi';
+    callable: string;
+    workers: number;
 }
 
 export interface RuntimeEnvEntry {
@@ -91,6 +110,8 @@ export interface RuntimeApp {
     upload_dir: string;
     unit: string;
     env: RuntimeEnvEntry[];
+    /** The Python app's settings (absent for an uploaded program). */
+    python?: RuntimePythonSettings;
     status?: RuntimeAppStatus;
     status_unknown?: boolean;
     /** D-024 state codes, most blocking first. */
@@ -144,6 +165,11 @@ export interface RuntimeAdminKind {
     level_gap: boolean;
     apps: number;
     running: number;
+    /** The Python kind: the server's Python, whether source builds are allowed, and the summary that allows them. */
+    python?: RuntimePython;
+    source_builds?: boolean;
+    risk_source_builds?: RuntimeRisk;
+    risk_digest_source_builds?: string;
 }
 
 export interface RuntimeAdminView {
@@ -230,6 +256,14 @@ export const RUNTIME_STATE_GUIDANCE: Record<string, { class: RuntimeClass; who: 
     port_taken: { class: 'verified_failure', who: 'administrator' },
     not_listening: { class: 'verified_failure', who: 'you' },
     health_failing: { class: 'verified_failure', who: 'you' },
+    // Python apps (siteruntime.PythonStateCodes).
+    runtime_missing: { class: 'prerequisite', who: 'administrator' },
+    src_missing: { class: 'prerequisite', who: 'you' },
+    venv_missing: { class: 'prerequisite', who: 'you' },
+    requirements_refused: { class: 'prerequisite', who: 'you' },
+    wheel_unavailable: { class: 'verified_failure', who: 'you' },
+    build_failed: { class: 'verified_failure', who: 'you' },
+    pypi_unreachable: { class: 'unknown', who: 'youThenAdministrator' },
 };
 
 export const RUNTIME_STATE_CODES = Object.keys(RUNTIME_STATE_GUIDANCE);
@@ -244,17 +278,33 @@ export const RUNTIME_OPERATION_REASONS = [
     'entry_invalid', 'entry_unreadable', 'unit_edited', 'unit_render', 'unit_write', 'unit_dir', 'unit_copy',
     'unit_remove', 'unit_missing', 'env_remove', 'env_file', 'sandbox_egress', 'sandbox_helper', 'sandbox_proof', 'site_folder',
     'site_account', 'build_mismatch', 'systemctl', 'start_failed', 'publish', 'unpublish', 'files', 'verify',
-    'app_missing', 'invalid_request',
+    'app_missing', 'invalid_request', 'build_files', 'build_record',
 ] as const;
 
-export const RUNTIME_STEPS = ['validate', 'render', 'restart', 'proof', 'health', 'publish', 'done', 'unpublish', 'remove'] as const;
+export const RUNTIME_STEPS = ['validate', 'build', 'render', 'restart', 'proof', 'health', 'publish', 'done', 'unpublish', 'remove'] as const;
+
+/** Why a requirements.txt line was refused (siteruntime.ReqRefusalCodes; runtime.req.<code>). */
+export const RUNTIME_REQ_CODES = [
+    'editable', 'vcs', 'url', 'path', 'index_url', 'extra_index_url', 'trusted_host', 'find_links', 'constraint_outside',
+    'nested_outside', 'nested_missing', 'option', 'syntax', 'too_large', 'nested_too_deep',
+] as const;
+
+/**
+ * The server's words of a refused requirements line, "<file>:<line> <code>:
+ * <text>", read back into its parts; null when the message has another shape.
+ */
+export function parseRequirementsRefusal(message: string | undefined): { file: string; line: number; code: string; text: string } | null {
+    const m = /^(\S+):(\d+) ([a-z_]+): (.*)$/s.exec(message ?? '');
+    if (!m || !(RUNTIME_REQ_CODES as readonly string[]).includes(m[3])) return null;
+    return { file: m[1], line: Number(m[2]), code: m[3], text: m[4] };
+}
 
 /** The risk codes the server sends (runtime.risk.<code>). */
 export const RUNTIME_RISK_CODES: Record<keyof RuntimeRisk, readonly string[]> = {
-    can_do: ['any_code', 'own_folder', 'loopback_port', 'own_outbound'],
+    can_do: ['any_code', 'own_folder', 'loopback_port', 'own_outbound', 'pypi_packages'],
     blocked: ['other_sites', 'panel_files', 'privileges', 'mail_ports', 'metadata', 'other_ports', 'system_interpreters'],
     network: ['https_only', 'outbound_open'],
-    remains: ['outbound_abuse', 'mail_apis', 'cpu_memory_share', 'reduced_level', 'customer_code'],
+    remains: ['outbound_abuse', 'mail_apis', 'cpu_memory_share', 'reduced_level', 'customer_code', 'pypi_third_party', 'interpreter_exec', 'source_builds'],
 };
 
 /** The refusal reasons of code RUNTIME_APP (err.RUNTIME_APP.<reason>). */
@@ -264,6 +314,7 @@ export const RUNTIME_REFUSAL_REASONS = [
     'args_invalid', 'health_path_invalid', 'site_type', 'site_features', 'already_created', 'port_taken',
     'not_created', 'busy', 'no_certificate', 'not_deployed', 'env_values', 'logs_unavailable', 'confirm_files',
     'app_created', 'unit_missing', 'systemctl', 'env_file', 'invalid_request', 'risk_changed', 'limits', 'hold_reason',
+    'runtime_missing', 'python_settings', 'python_moved',
 ] as const;
 
 /**
@@ -273,6 +324,7 @@ export const RUNTIME_REFUSAL_REASONS = [
  */
 export const RUNTIME_DETAIL_REASONS: ReadonlySet<string> = new Set([
     'entry_invalid', 'args_invalid', 'env_values', 'site_features', 'unit_missing', 'systemctl', 'env_file', 'invalid_request',
+    'runtime_missing', 'python_settings', 'python_moved',
 ]);
 
 /** Environment keys CelikPanel or the sandbox sets; the server refuses them. */
@@ -298,3 +350,9 @@ export function argsFromText(text: string): string[] {
 export const argsValid = (args: string[]): boolean => args.length <= 32 && args.every((arg) => arg.length <= 256 && ARG.test(arg));
 export const entryValid = (entry: string): boolean => ENTRY.test(entry.trim().replace(/^bin\//, '')) && !entry.split('/').some((part) => part.startsWith('..'));
 export const healthPathValid = (path: string): boolean => path === '' || HEALTH.test(path);
+
+const CALLABLE = /^[A-Za-z_][A-Za-z0-9_]{0,63}(\.[A-Za-z_][A-Za-z0-9_]{0,63}){0,7}:[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+/** "module:callable" as siteruntime.ValidCallable reads it; the server decides. */
+export const callableValid = (callable: string): boolean => CALLABLE.test(callable.trim());
+/** The workers a memory limit allows: one per 128 MB, 1 to 8 (siteruntime.MaxWorkers). */
+export const maxWorkers = (memoryMB: number): number => Math.min(8, Math.max(1, Math.floor(memoryMB / 128)));

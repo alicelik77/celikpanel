@@ -3,6 +3,7 @@ package siteruntime
 import (
 	"errors"
 	"fmt"
+	"path"
 	"regexp"
 	"strings"
 
@@ -30,6 +31,8 @@ type UnitParams struct {
 	// DropInDir is the owner's place (<unit>.d); CelikPanel never writes
 	// or removes it.
 	DropInDir string
+	// Python is the Python kind's part (nil for an uploaded program).
+	Python *PythonUnit
 }
 
 var domainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,62}\.)+[a-z0-9-]{1,63}$`)
@@ -49,8 +52,23 @@ const RuntimeMarker = "# celikpanel-runtime-kind: "
 // StartCommand is the ExecStart vector: the entry and the expanded
 // arguments. There is no shell: systemd executes the entry itself.
 func StartCommand(p UnitParams) ([]string, error) {
+	if p.Kind == KindPython {
+		if p.Python == nil {
+			return nil, errors.New("the Python settings are missing")
+		}
+		command, err := PythonStartCommand(p.Layout, *p.Python, p.Port)
+		if err != nil {
+			return nil, err
+		}
+		for _, word := range command {
+			if err := sitesandbox.CheckValue(word); err != nil {
+				return nil, err
+			}
+		}
+		return command, nil
+	}
 	if p.Kind != KindProgram {
-		return nil, errors.New("this release starts only uploaded programs")
+		return nil, errors.New("unknown runtime kind")
 	}
 	entry, err := ValidEntry(p.Layout, p.Entry)
 	if err != nil {
@@ -107,8 +125,18 @@ func RenderUnit(p UnitParams) (string, error) {
 	if err := sitesandbox.CheckValue(p.DropInDir); err != nil {
 		return "", err
 	}
+	what, workdir, pathEnv := "Uploaded program", p.Layout.Root, p.Layout.BinDir()
+	if p.Kind == KindPython {
+		if err := p.Python.Settings.Validate(p.Limits); err != nil {
+			return "", err
+		}
+		// The code's folder is the working folder, so "module:callable"
+		// imports from app/src; the venv's bin comes first on PATH.
+		what, workdir = "Python web app", p.Layout.SrcDir()
+		pathEnv = path.Join(p.Layout.Root, VenvName(p.Python.Venv), "bin") + ":/usr/bin:/bin"
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "# Uploaded program of %s, written by CelikPanel (docs/RUNTIME-APPS.md).\n", p.Domain)
+	fmt.Fprintf(&b, "# %s of %s, written by CelikPanel (docs/RUNTIME-APPS.md).\n", what, p.Domain)
 	fmt.Fprintf(&b, "# It runs without CelikPanel: systemctl status|stop|start %s ; journalctl -u %s\n", unit, unit)
 	fmt.Fprintf(&b, "# Your own settings go in %s/*.conf; CelikPanel never writes or removes them,\n", p.DropInDir)
 	b.WriteString("# but the Panel lists them, and its proof stops a deploy when the protections it reads differ.\n")
@@ -116,7 +144,7 @@ func RenderUnit(p UnitParams) (string, error) {
 	fmt.Fprintf(&b, "%s%d\n", sitesandbox.GenerationMarker, sitesandbox.Generation)
 	fmt.Fprintf(&b, "%s%s\n", RuntimeMarker, p.Kind)
 	b.WriteString("[Unit]\n")
-	fmt.Fprintf(&b, "Description=CelikPanel uploaded program of %s\n", p.Domain)
+	fmt.Fprintf(&b, "Description=CelikPanel %s of %s\n", strings.ToLower(what), p.Domain)
 	b.WriteString("After=network-online.target\nWants=network-online.target\n")
 	for _, line := range append(sitesandbox.UnitDirectives(), unitLines...) {
 		b.WriteString(line + "\n")
@@ -125,10 +153,13 @@ func RenderUnit(p UnitParams) (string, error) {
 	fmt.Fprintf(&b, "User=%s\nGroup=%s\n", p.User, p.Group)
 	// Resolved inside the sandbox, where the folder's path is the helper's
 	// bind of the folder itself (never the site home's entry on the host).
-	fmt.Fprintf(&b, "WorkingDirectory=%s\n", p.Layout.Root)
+	fmt.Fprintf(&b, "WorkingDirectory=%s\n", workdir)
 	fmt.Fprintf(&b, "EnvironmentFile=-%s\n", EnvFile(p.AppID))
 	fmt.Fprintf(&b, "Environment=HOME=%s\n", p.Layout.DataDir())
-	fmt.Fprintf(&b, "Environment=PATH=%s\n", p.Layout.BinDir())
+	fmt.Fprintf(&b, "Environment=PATH=%s\n", pathEnv)
+	if p.Kind == KindPython {
+		b.WriteString("Environment=PYTHONUNBUFFERED=1\nEnvironment=PYTHONNOUSERSITE=1\n")
+	}
 	fmt.Fprintf(&b, "Environment=PORT=%d\n", p.Port)
 	b.WriteString("Environment=HOST=127.0.0.1\n")
 	for _, line := range pre {

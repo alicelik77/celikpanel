@@ -1,8 +1,8 @@
 // Package siteruntime is the site runtime engine (alpha.119,
 // docs/RUNTIME-APPS.md): a customer's own program that runs as a sandboxed
-// site service behind the site's HTTPS. This release implements the
-// "program" kind (an uploaded Go, Rust or any other executable); the "python"
-// kind is reserved here and built on the same engine by its own workstream.
+// site service behind the site's HTTPS. It runs two kinds on one
+// engine: "program" (an uploaded Go, Rust or any other executable) and
+// "python" (a WSGI or ASGI web app in a virtual environment, python.go).
 //
 // Every program is arbitrary code. The boundary is the site sandbox
 // (internal/sitesandbox), never the absence of an interpreter: an uploaded
@@ -40,8 +40,9 @@ const (
 	// KindProgram: an uploaded executable (ELF, or a "#!" script whose
 	// interpreter is inside the app folder).
 	KindProgram Kind = "program"
-	// KindPython: a Python web app (reserved; built by the Python
-	// workstream on this engine, migration 064).
+	// KindPython: a Python web app (WSGI or ASGI) built into a virtual
+	// environment of the distribution's Python (python.go). It fits
+	// migration 063's tables; no migration of its own.
 	KindPython Kind = "python"
 )
 
@@ -52,8 +53,7 @@ var Kinds = []Kind{KindProgram, KindPython}
 func Known(k Kind) bool { return k == KindProgram || k == KindPython }
 
 // Implemented reports whether this release can create and deploy apps of k.
-// The Python kind's workstream turns its own kind on here.
-func Implemented(k Kind) bool { return k == KindProgram }
+func Implemented(k Kind) bool { return k == KindProgram || k == KindPython }
 
 // Permission is the D-042 permission id of a kind.
 func Permission(k Kind) string {
@@ -70,8 +70,8 @@ func Permission(k Kind) string {
 const OfferingProgram = "runtime:program"
 
 // OfferingID is the offering a kind is gated by. The Python kind is offered
-// per distribution Python (component:python:<minor>), which its workstream
-// supplies; "" here.
+// per distribution Python (PythonOffering(<minor>)), which only the server
+// knows, so it is "" here; the Panel asks the Agent for the minor.
 func OfferingID(k Kind) string {
 	if k == KindProgram {
 		return OfferingProgram
@@ -84,8 +84,10 @@ func KindOfOffering(id string) (Kind, bool) {
 	switch {
 	case id == OfferingProgram:
 		return KindProgram, true
-	case strings.HasPrefix(id, "component:python:"):
-		return KindPython, true
+	case strings.HasPrefix(id, PythonOfferingPrefix):
+		if _, ok := PythonMinorOfOffering(id); ok {
+			return KindPython, true
+		}
 	}
 	return "", false
 }
@@ -191,6 +193,9 @@ type Risk struct {
 
 // RiskOf is the risk summary of a kind.
 func RiskOf(k Kind) Risk {
+	if k == KindPython {
+		return RiskOfOffer(k, false)
+	}
 	return Risk{
 		CanDo:   []string{"any_code", "own_folder", "loopback_port", "own_outbound"},
 		Blocked: []string{"other_sites", "panel_files", "privileges", "mail_ports", "metadata", "other_ports", "system_interpreters"},
@@ -199,11 +204,38 @@ func RiskOf(k Kind) Risk {
 	}
 }
 
+// RiskOfOffer is the risk summary of an offer. A Python app installs
+// third-party packages from PyPI (CelikPanel checks only PyPI's hashes, not
+// what the packages do) and runs with an interpreter that may execute any
+// file and generate code, so the uploaded-program defence against that
+// (system_interpreters) is not in its blocked list; allowing source builds
+// adds one more named risk.
+func RiskOfOffer(k Kind, sourceBuilds bool) Risk {
+	if k != KindPython {
+		return RiskOf(k)
+	}
+	r := Risk{
+		CanDo:   []string{"any_code", "own_folder", "loopback_port", "own_outbound", "pypi_packages"},
+		Blocked: []string{"other_sites", "panel_files", "privileges", "mail_ports", "metadata", "other_ports"},
+		Network: []string{"https_only", "outbound_open"},
+		Remains: []string{"outbound_abuse", "mail_apis", "cpu_memory_share", "reduced_level", "customer_code", "pypi_third_party", "interpreter_exec"},
+	}
+	if sourceBuilds {
+		r.Remains = append(r.Remains, "source_builds")
+	}
+	return r
+}
+
 // RiskDigest is the digest of what the administrator agrees to when
 // offering: the kind, the risk summary, the default limits and the sandbox
 // generation. A release that changes any of them asks again.
-func RiskDigest(k Kind) string {
-	r := RiskOf(k)
+func RiskDigest(k Kind) string { return RiskDigestFor(k, false) }
+
+// RiskDigestFor is the digest of an offer. For the Python kind the stored
+// digest also records whether source builds were allowed (the summary the
+// administrator agreed to names them), so no column is needed for it.
+func RiskDigestFor(k Kind, sourceBuilds bool) string {
+	r := RiskOfOffer(k, sourceBuilds && k == KindPython)
 	l := DefaultLimits(k)
 	parts := []string{string(k), fmt.Sprint(sitesandbox.Generation), fmt.Sprint(l.MemoryMB, l.CPUPercent, l.Tasks),
 		strings.Join(r.CanDo, ","), strings.Join(r.Blocked, ","), strings.Join(r.Network, ","), strings.Join(r.Remains, ",")}

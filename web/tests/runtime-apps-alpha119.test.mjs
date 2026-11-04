@@ -48,6 +48,10 @@ test('every state code has its reason, who acts, the next action and how work re
   const fromGo = new Set([...fn.matchAll(/add\([^,]+,\s*"([a-z_]+)"\)/g)].map((m) => m[1]));
   const entry = read('../../internal/siteruntime/entry.go');
   for (const m of entry.matchAll(/Entry\w+\s*=\s*"([a-z_]+)"/g)) if (m[1] !== 'ok' && m[1] !== 'entry_invalid') fromGo.add(m[1]);
+  // alpha.119 W5: the Python kind's states (siteruntime.PythonStateCodes).
+  const python = read('../../internal/siteruntime/python.go');
+  const pyBlock = python.slice(python.indexOf('const ('), python.indexOf('// PythonStateCodes'));
+  for (const m of pyBlock.matchAll(/\w+\s*=\s*"([a-z_]+)"/g)) fromGo.add(m[1]);
   assert.ok(fromGo.size >= 20, `read ${[...fromGo].join(',')}`);
   assert.deepEqual([...fromGo].sort(), [...lib.RUNTIME_STATE_CODES].sort());
   for (const code of lib.RUNTIME_STATE_CODES) {
@@ -70,6 +74,8 @@ test('every failure reason, step, risk code and refusal has words in both langua
   // Every reason the Panel writes for a failed operation is a state or has its own words.
   const run = read('../../cmd/panel/runtime_apps_run.go');
   const named = new Set([...run.matchAll(/failRuntimeAppOperation\([^,]+,[^,]+,[^,]+,\s*"([a-z_]+)"/g)].map((m) => m[1]));
+  // A deploy whose new version did not come up (failStarted, alpha.119 W5).
+  for (const m of run.matchAll(/failStarted\((?:true|false),\s*"([a-z_]+)"/g)) named.add(m[1]);
   assert.ok(named.size >= 8, [...named].join(','));
   for (const reason of named) assert.ok(lib.RUNTIME_STATE_GUIDANCE[reason] || en[`runtime.reason.${reason}`], `no words for ${reason}`);
   // Every RUNTIME_APP refusal the Panel writes has words.
@@ -94,7 +100,7 @@ test('the audit words cover the twelve actions and the resource', () => {
 
 test('the tab, the screen part and its budget are wired', () => {
   const detail = read('../src/components/DomainDetail.tsx');
-  assert.match(detail, /!isTeamMember && !isDnsOnly && \(open\('program_apps'\) \|\| projectType === 'runtime_app'\) \? \[\{ id: 'programs', labelKey: 'runtime\.tab', icon: Cpu/);
+  assert.match(detail, /!isTeamMember && !isDnsOnly && \(open\('program_apps'\) \|\| open\('python_apps'\) \|\| projectType === 'runtime_app'\) \? \[\{ id: 'programs', labelKey: 'runtime\.tab', icon: Cpu/);
   assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\/DomainRuntimeApps'\)/);
   assert.doesNotMatch(detail, /^import \{[^}]*DomainRuntimeApps[^}]*\} from/m);
   const addons = read('../src/components/AddonsPage.tsx');
