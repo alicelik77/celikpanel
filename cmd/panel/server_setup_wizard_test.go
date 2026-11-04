@@ -32,10 +32,18 @@ func catalogChoice(t *testing.T, catalog serverSetupComponentCatalog, id string)
 func TestServerSetupCatalogListsEveryCatalogueComponent(t *testing.T) {
 	host := core.ManagedServiceHostProfile{PackageFamily: "apt", DistroFamily: "debian", ServiceManager: "systemd", DistroID: "debian", VersionID: "13", Architecture: "amd64"}
 	catalog := buildServerSetupComponentCatalogFrom(serverSetupCatalogInputs{Host: host, InventoryReady: true, DNSState: &dnsEngineDBState{}})
-	if len(catalog.Components) != len(core.ManagedServices) {
-		t.Fatalf("wizard lists %d components, catalogue has %d", len(catalog.Components), len(core.ManagedServices))
+	// The administrator-only developer toolchains (alpha.119) are not a server
+	// purpose and are not in the wizard: they install from Components.
+	listed := []core.ManagedService{}
+	for _, service := range core.ManagedServices {
+		if !service.AdminOnly {
+			listed = append(listed, service)
+		}
 	}
-	for index, service := range core.ManagedServices {
+	if len(catalog.Components) != len(listed) {
+		t.Fatalf("wizard lists %d components, catalogue has %d", len(catalog.Components), len(listed))
+	}
+	for index, service := range listed {
 		if catalog.Components[index].ID != service.ID {
 			t.Fatalf("catalogue order lost at %d: %s != %s", index, catalog.Components[index].ID, service.ID)
 		}
@@ -177,6 +185,17 @@ func TestServerSetupCatalogDNSEnginesFollowReviewRules(t *testing.T) {
 	}
 }
 
+// adminOnlyComponentCount: the developer toolchains (alpha.119) are not in the wizard.
+func adminOnlyComponentCount() int {
+	count := 0
+	for _, service := range core.ManagedServices {
+		if service.AdminOnly {
+			count++
+		}
+	}
+	return count
+}
+
 func TestServerSetupCatalogEndpointIsReadOnly(t *testing.T) {
 	f, _ := setupOperationFixture(t)
 	attachSetupComponentsAgent(t, f)
@@ -184,7 +203,7 @@ func TestServerSetupCatalogEndpointIsReadOnly(t *testing.T) {
 	w := httptest.NewRecorder()
 	f.panel.handleServerSetupComponents(w, serviceOperationAdminRequest(t, http.MethodGet, serverSetupPath+"/components", "", f.userID))
 	var catalog serverSetupComponentCatalog
-	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &catalog) != nil || len(catalog.Components) != len(core.ManagedServices) || len(catalog.DNSEngines) != 4 {
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &catalog) != nil || len(catalog.Components) != len(core.ManagedServices)-adminOnlyComponentCount() || len(catalog.DNSEngines) != 4 {
 		t.Fatalf("catalog: %d %s", w.Code, w.Body.String())
 	}
 	if f.agent.installCalls.Load() != 0 || len(f.agent.capturedMutationEvents()) != 0 {

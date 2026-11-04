@@ -55,6 +55,8 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/admin/store-catalog/":  gateAdmin,
 	"/api/v1/admin/service-apps":    gateAdmin, // alpha.118: offering AI and automation apps
 	"/api/v1/admin/service-apps/":   gateAdmin,
+	"/api/v1/admin/runtime-apps":    gateAdmin, // alpha.119: offering runtime apps
+	"/api/v1/admin/runtime-apps/":   gateAdmin,
 	"/api/v1/apps":                  gateTenant, // catalog read; install is ownership-checked
 	"/api/v1/audit-logs":            gateAdmin,
 	"/api/v1/auth/2fa/disable":      gateTenant, // own account only
@@ -160,6 +162,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/auth/email":                 gateTenant, // own address only
 	"/api/v1/host-mutation-readiness":    gateTenant, // read-only readiness
 	"/api/v1/license/access":             gateTenant, // the caller's own access state
+	"/api/v1/me/guide-state":             gateTenant, // alpha.119: the caller's own tour state only
 	"/api/v1/maintenance/restarts":       gateTenant, // admin-only in handler
 	"/api/v1/offered-versions":           gateTenant, // read for all; changed by admin (handler)
 	"/api/v1/panel/access-address":       gatePublic, // GET is public (how to reach the panel)

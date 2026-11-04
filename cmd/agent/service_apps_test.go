@@ -53,6 +53,7 @@ func useServiceAppHost(t *testing.T) *serviceAppHost {
 	serviceAppEnvDir = host.envDir
 	serviceAppEnvOwner = func() (uint32, uint32) { return uint32(os.Geteuid()), uint32(os.Getegid()) }
 	account := serviceAppAccount{Name: "flows_example_com", Group: "flows_example_com", UID: 1500, GID: 1500, Home: "/var/www/celikpanel/subscriptions/3/sites/7"}
+	useSandboxHost(t, true)
 	serviceAppLookupAccount = func(target transport.ServiceAppTarget) (serviceAppAccount, error) {
 		return account, nil
 	}
@@ -161,7 +162,9 @@ func TestServiceAppPrepareStartsTheInstallOnceAsTheSiteUser(t *testing.T) {
 	}
 	args := strings.Join(host.systemdRuns[0], "\n")
 	for _, want := range []string{"--uid=flows_example_com", "--unit=celiksvcinst-5", "--property=ProtectSystem=strict",
-		"--property=NoNewPrivileges=yes", "--property=ReadWritePaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n", "--property=MemoryMax=3072M"} {
+		"--property=NoNewPrivileges=yes", "--property=MemoryMax=3072M",
+		"--property=BindPaths=/run/celikpanel-sandbox/celiksvcinst-5.service/app:/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n",
+		"--property=Requires=celikpanel-sandbox@celiksvcinst-5.service", "--property=After=celikpanel-sandbox@celiksvcinst-5.service"} {
 		if !strings.Contains(args, want) {
 			t.Errorf("install unit lacks %s", want)
 		}
@@ -272,4 +275,24 @@ func TestServiceAppUnitKeepsAnOwnerEdit(t *testing.T) {
 		t.Fatalf("state: %s", serviceAppUnitFileState(5))
 	}
 	_ = host
+}
+
+// alpha.119 lab round 3: an install unit whose start job waits for its bind
+// unit shows "inactive" with a job; it runs, it is not "none".
+func TestInstallUnitQueuedIsRunning(t *testing.T) {
+	old := appUnitSystemctl
+	t.Cleanup(func() { appUnitSystemctl = old })
+	show := ""
+	appUnitSystemctl = func(args ...string) ([]byte, error) { return []byte(show), nil }
+	for _, c := range []struct{ show, want string }{
+		{"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nJob=77\n", "running"},
+		{"LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nJob=\n", "none"},
+		{"LoadState=loaded\nActiveState=active\nSubState=exited\nResult=success\nJob=\n", "succeeded"},
+		{"LoadState=not-found\nActiveState=inactive\nJob=\n", "none"},
+	} {
+		show = c.show
+		if got, _ := installUnitState(12); got != c.want {
+			t.Errorf("%q: %s, want %s", c.show, got, c.want)
+		}
+	}
 }

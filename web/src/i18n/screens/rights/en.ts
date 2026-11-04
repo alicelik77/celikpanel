@@ -99,6 +99,8 @@ export const enRightsScreens = {
     'rights.perm.malware_scan': 'Malware scan results',
     'rights.perm.remote_backup_destinations': 'Own remote backup destinations',
     'rights.perm.service_apps': 'AI and automation apps',
+    'rights.perm.program_apps': 'Uploaded programs',
+    'rights.perm.python_apps': 'Python apps',
 
     'rights.review': 'Review the change',
     'rights.back': 'Back to editing',

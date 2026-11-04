@@ -51,7 +51,7 @@ CelikPanel hiçbir paket kaynağı eklemez (NodeSource yok, deadsnakes yok, Dock
 | Arch | 26 / lts 24 | 3.14 | evet | **hayır** |
 
 n8n, Node.js 24 ister (`engines: >=24.0.0`; bağımlılığı isolated-vm de öyle). Arch dışında
-desteklenen hiçbir dağıtım bunu sunmaz; bu yüzden n8n, yöneticinin Hizmetler → Node.js
+desteklenen hiçbir dağıtım bunu sunmaz; bu yüzden n8n, yöneticinin Bileşenler → Node.js
 altından kurduğu Node.js çalışma ortamını kullanır: resmî nodejs.org arşivi, açılmadan önce
 resmî SHASUMS256.txt ile denetlenir (Node.js sitelerinin kullandığı çalışma ortamının
 aynısı). Node.js 24 kurulu değilse ekran bunu ve kimin kuracağını söyler. Sistemin Python'u
@@ -109,6 +109,12 @@ doğrulanmış hata, karşılanmamış önkoşul ya da bilinmeyen sonuç olarak 
 işlem yapacağını ve sonraki adımı söyler (D-024).
 
 ## 5. Korumalı alan
+
+alpha.119'dan beri her uygulama ortak site korumasında çalışır ([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md)):
+aşağıdakilere ek olarak ajan soketi ve bütün PHP-FPM soketleri gizlenir, bağlantı yerel ve üst veri
+adresleri kapanır, uygulama yalnız kendi döngü portlarına bağlanır ve 25, 465, 587 posta portları
+ona kapalıdır (127.0.0.1 dahil). alpha.118 ile kurulan uygulamalar, yönetici yeni korumayı
+uygulayana kadar kendi birimlerini korur.
 
 Her uygulamanın birimi (ve kurulum birimi) şu ayarlarla çalışır:
 
@@ -174,6 +180,11 @@ günlüğü onu adıyla yazar.
 **Yedekler.** Ortam dosyası sitenin klasöründe olmadığından site yedeği onu taşımaz. Aynı
 sunucuda geri yükleme uygulamanın değerlerini korur; başka bir sunucuda uygulamanın anahtarları
 (ve n8n'in kayıtlı kimlik bilgilerinin bağlı olduğu şifreleme anahtarı) yeniden girilmelidir.
+
+alpha.119'dan beri uygulama klasörünün kendisi, her başlatmadan önce bir bağlama biriminin
+bağlantı izlemeden yaptığı root'a ait bir bağlamayla korumaya bağlanır
+([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) §1a). Ortam yine yukarıdaki root dosyasıdır: bağlama
+birimi site klasöründen hiçbir dosya okumaz ve oradaki hiçbir şey uygulamanın ortamı olmaz.
 
 ## 6. Bu sürümde sunulmayanlar
 

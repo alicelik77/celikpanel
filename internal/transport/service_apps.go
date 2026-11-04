@@ -87,6 +87,12 @@ type ServiceAppStatusRequest struct {
 	Version     string           `json:"version"`
 	Port        int              `json:"port"`
 	OperationID string           `json:"operation_id,omitempty"`
+	// Proof (alpha.119, additive) asks for the sandbox proof of a running
+	// unit against these limits and the aux port; a status read still
+	// changes nothing.
+	Proof   bool             `json:"proof,omitempty"`
+	AuxPort int              `json:"aux_port,omitempty"`
+	Limits  ServiceAppLimits `json:"limits,omitempty"`
 }
 
 // ServiceAppStatusResponse is what systemd and the folder show.
@@ -107,6 +113,11 @@ type ServiceAppStatusResponse struct {
 	Exposed     []string     `json:"exposed,omitempty"`
 	Squatted    bool         `json:"squatted,omitempty"`
 	Error       string       `json:"error,omitempty"`
+	// SandboxGeneration (alpha.119, additive) is the sandbox generation the
+	// unit file declares (1: an alpha.118 unit, 0: no unit file).
+	SandboxGeneration int `json:"sandbox_generation,omitempty"`
+	// SandboxProof is the proof of the running unit, when Proof was asked.
+	SandboxProof *SandboxProof `json:"sandbox_proof,omitempty"`
 }
 
 // ServiceAppActivateRequest writes the long-running unit for Version, starts

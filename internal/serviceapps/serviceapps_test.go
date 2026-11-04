@@ -3,6 +3,8 @@ package serviceapps
 import (
 	"strings"
 	"testing"
+
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 )
 
 func n8nParams(t *testing.T) UnitParams {
@@ -18,6 +20,7 @@ func n8nParams(t *testing.T) UnitParams {
 		Port: 21010, AuxPort: 21011,
 		Runtime:   RuntimeChoice{Available: true, Path: "/opt/celikpanel/runtimes/node/24.11.1/bin/node", NPMCLI: "/opt/celikpanel/runtimes/node/24.11.1/lib/node_modules/npm/bin/npm-cli.js", Version: "24.11.1", Source: "panel"},
 		Limits:    app.Defaults,
+		Caps:      sitesandbox.Caps{SystemdVersion: 252, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true},
 		DropInDir: "/etc/systemd/system/celiksvc-12.service.d",
 	}
 }
@@ -31,8 +34,8 @@ func TestUnitCarriesTheSandbox(t *testing.T) {
 		"User=flows_example_com\n", "NoNewPrivileges=yes\n", "ProtectSystem=strict\n", "ProtectHome=yes\n",
 		"PrivateTmp=yes\n", "CapabilityBoundingSet=\n", "ProtectProc=invisible\n",
 		"TemporaryFileSystem=/var/www/celikpanel:ro\n",
-		"BindPaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
-		"ReadWritePaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
+		"BindPaths=/run/celikpanel-sandbox/celiksvc-12.service/app:/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
+		"WorkingDirectory=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n\n",
 		"MemoryMax=1536M\n", "CPUQuota=100%\n", "TasksMax=512\n",
 		"EnvironmentFile=/etc/celikpanel-svcapps/celiksvc-12.env\n",
 		"ExecStart=/opt/celikpanel/runtimes/node/24.11.1/bin/node /var/www/celikpanel/subscriptions/3/sites/7/apps/n8n/app-2.46.4/node_modules/n8n/bin/n8n start\n",
@@ -371,6 +374,150 @@ func TestRenderedUnitHasNoExpansionSurprises(t *testing.T) {
 		}
 		if strings.Contains(line, "%") && !(strings.HasPrefix(line, "CPUQuota=") && strings.Count(line, "%") == 1 && strings.HasSuffix(line, "%")) {
 			t.Errorf("unit line has a specifier: %q", line)
+		}
+	}
+}
+
+// TestUnitClosesTheAlpha118Gaps is the rendering difference of the retrofit:
+// the service-app unit now renders through sitesandbox and gains the hidden
+// sockets, the metadata block, the bind rules, the log limit and the SMTP
+// block; an alpha.118 unit (no marker) reads as generation 1.
+func TestUnitClosesTheAlpha118Gaps(t *testing.T) {
+	text, err := RenderUnit(n8nParams(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"# celikpanel-sandbox-generation: 3\n",
+		"StartLimitBurst=5\n",
+		"InaccessiblePaths=-/run/celikpanel -/run/php -/run/php-fpm ",
+		"-/var/spool/postfix\n",
+		"IPAddressDeny=169.254.0.0/16 fe80::/10",
+		"SocketBindAllow=tcp:21010\n", "SocketBindAllow=tcp:21011\n", "SocketBindDeny=any\n",
+		"LogRateLimitIntervalSec=30s\n", "LogRateLimitBurst=1000\n",
+		"SystemCallFilter=~@debug @mount @raw-io",
+		"PrivateIPC=yes\n",
+		"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celiksvc-12.service\n",
+		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celiksvc-12.service\n",
+		"Requires=celikpanel-sandbox@celiksvc-12.service\n", "After=celikpanel-sandbox@celiksvc-12.service\n",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("unit lacks %q", want)
+		}
+	}
+	unitSection, _, _ := strings.Cut(text, "[Service]")
+	if !strings.Contains(unitSection, "StartLimitIntervalSec=300") {
+		t.Errorf("StartLimit must be in [Unit]")
+	}
+	// Node.js reads /proc/cpuinfo; the service apps keep the full /proc view
+	// and are not an uploaded program (no MemoryDenyWriteExecute for V8).
+	for _, refused := range []string{"ProcSubset=", "MemoryDenyWriteExecute=", "NoExecPaths=", "PrivatePIDs="} {
+		if strings.Contains(text, refused) {
+			t.Errorf("service-app unit has %q", refused)
+		}
+	}
+	if UnitGeneration(text) != sitesandbox.Generation {
+		t.Fatalf("generation = %d", UnitGeneration(text))
+	}
+	if UnitGeneration("# celikpanel-render-sha256: x\n[Unit]\n") != 1 {
+		t.Fatalf("an alpha.118 unit is generation 1")
+	}
+
+	// A host without nft cgroup matching gets no egress lines (they would
+	// stop every start); its reduced level names the gap instead.
+	p := n8nParams(t)
+	p.Caps.NFTSocketCgroup = false
+	text, err = RenderUnit(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(text, "egress-add") || !strings.Contains(text, "Requires=celikpanel-sandbox@celiksvc-12.service") {
+		t.Fatalf("egress asked for without nft support, or no bind unit:\n%s", text)
+	}
+	// No privileged command of the unit is a dynamically linked program:
+	// every command gets the unit's environment, which is the customer's.
+	for _, line := range strings.Split(text, "\n") {
+		for _, prefix := range []string{"ExecStartPre=", "ExecStartPost=", "ExecStop=", "ExecStopPost=", "ExecReload=", "ExecCondition="} {
+			if rest, ok := strings.CutPrefix(line, prefix); ok && strings.Contains(strings.TrimLeft(rest, "-@:!"), "+") &&
+				!strings.HasPrefix(strings.TrimLeft(rest, "-@:!+"), sitesandbox.HelperPath+" ") {
+				t.Errorf("a privileged command other than the helper: %q", line)
+			}
+		}
+	}
+}
+
+// TestNoSitePathOnTheHost: the paths systemd resolves as root on the host
+// (bind sources, the environment file) never name the site home.
+func TestNoSitePathOnTheHost(t *testing.T) {
+	text, err := RenderUnit(n8nParams(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(text, "\n") {
+		name, value, _ := strings.Cut(line, "=")
+		switch name {
+		case "BindPaths", "BindReadOnlyPaths":
+			for _, field := range strings.Fields(value) {
+				if source, _, _ := strings.Cut(strings.TrimPrefix(field, "-"), ":"); strings.HasPrefix(source, "/var/www/") {
+					t.Errorf("bind source in the site home: %q", line)
+				}
+			}
+		case "EnvironmentFile", "ReadWritePaths", "RootDirectory":
+			if strings.Contains(value, "/var/www/") {
+				t.Errorf("%s names the site home: %q", name, line)
+			}
+		}
+	}
+}
+
+func TestInstallUnitPropertiesBlockSMTPAndBindNothing(t *testing.T) {
+	app, _ := Lookup("n8n")
+	layout, _ := LayoutFor(3, 7, "n8n")
+	caps := sitesandbox.Caps{SystemdVersion: 255, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true}
+	props, err := InstallUnitProperties(12, layout, "flows_example_com", "flows_example_com", app.Defaults, app.Defaults.InstallMemoryMB, caps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(props, "\n")
+	for _, want := range []string{"SocketBindDeny=any", "MemoryMax=3072M",
+		"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celiksvcinst-12.service",
+		"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celiksvcinst-12.service",
+		"Requires=celikpanel-sandbox@celiksvcinst-12.service", "After=celikpanel-sandbox@celiksvcinst-12.service",
+		"BindPaths=/run/celikpanel-sandbox/celiksvcinst-12.service/app:/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("install properties lack %q", want)
+		}
+	}
+	if strings.Contains(joined, "SocketBindAllow") || strings.Contains(joined, "StartLimit") || strings.Contains(joined, "EnvironmentFile") {
+		t.Errorf("the install unit binds nothing and has no [Unit] lines:\n%s", joined)
+	}
+	if _, err := InstallUnitProperties(12, layout, "root", "root", app.Defaults, 3072, caps); err == nil {
+		t.Fatal("root accepted")
+	}
+}
+
+// alpha.119 lab round 2: systemd 257's systemd-run refused
+// "ProtectControlGroups=strict". The install unit's properties (and the two
+// the Agent adds) parse on every pinned systemd.
+func TestInstallPropertiesParseInSystemdRunOnEverySystemd(t *testing.T) {
+	for _, id := range []string{"n8n", "open-webui"} {
+		app, ok := Lookup(id)
+		if !ok {
+			t.Fatalf("%s missing", id)
+		}
+		layout, _ := LayoutFor(3, 7, id)
+		for _, version := range []int{249, 252, 255, 256, 257, 258, 262} {
+			for _, caps := range []sitesandbox.Caps{{SystemdVersion: version, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true}, {SystemdVersion: version, CgroupV2: true}} {
+				props, err := InstallUnitProperties(12, layout, "flows_example_com", "flows_example_com", app.Defaults, app.Defaults.InstallMemoryMB, caps)
+				if err != nil {
+					t.Fatalf("%s %d: %v", id, version, err)
+				}
+				for _, line := range append(props, "RemainAfterExit=yes", "RuntimeMaxSec=7200") {
+					if why := sitesandbox.TransientPropertyRefusal(line, version); why != "" {
+						t.Errorf("%s, systemd %d: --property=%s: %s", id, version, line, why)
+					}
+				}
+			}
 		}
 	}
 }

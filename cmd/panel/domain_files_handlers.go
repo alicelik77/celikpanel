@@ -110,7 +110,42 @@ const (
 		"The server owner restores the folder (for example from a backup) or recreates it; the file manager works again as soon as it exists."
 	siteFilePathExistsMessage = "An entry with this name already exists in this folder. " +
 		"Choose another name, or rename or delete the existing entry first, then try again."
+	// A request the file manager cannot use is a client error with a next
+	// step, never a 500 (alpha.119; lab round 6 answered 500 INTERNAL for a
+	// folder create).
+	// Dosya yöneticisinin kullanamayacağı istek 500 değil, sonraki adımı olan
+	// istemci hatasıdır.
+	siteFileRequestInvalidMessage = "The file manager could not use this request: the name is empty, longer than 255 bytes or has control characters, " +
+		"or the request itself was unreadable. Nothing was changed. Check the name and try again; if it keeps failing, reload the page."
 )
+
+// siteFileTargetValid reports whether a cleaned path inside the site names
+// something the file system can hold: not the web folder itself, and every
+// part non-empty, at most 255 bytes and free of control characters. The Agent
+// would otherwise answer such a path with a raw error that reached the
+// browser as 500 INTERNAL.
+// siteFileTargetValid, temizlenmiş yolun dosya sisteminin tutabileceği bir
+// şeyi adlandırıp adlandırmadığını bildirir.
+func siteFileTargetValid(relative string) bool {
+	if relative == "" {
+		return false
+	}
+	for _, part := range strings.Split(relative, "/") {
+		if part == "" || len(part) > 255 {
+			return false
+		}
+		for _, r := range part {
+			if r < 0x20 || r == 0x7f {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func writeSiteFileRequestInvalid(w http.ResponseWriter) {
+	writeCodedError(w, http.StatusBadRequest, errCodeFileRequestInvalid, siteFileRequestInvalidMessage, "")
+}
 
 // writeSiteFileError answers an Agent file-manager error: the known
 // conditions as coded client errors with guidance, anything else through
@@ -254,7 +289,14 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		writeSiteFileRequestInvalid(w)
+		return
+	}
+	// Every action but an upload (whose path is the folder, the web folder
+	// included) acts on a named entry, and rename also on its new name.
+	// Yükleme dışındaki her eylem adı belli bir öğeye işler.
+	if req.Action != "upload" && req.Action != "" && !siteFileTargetValid(relativePath) {
+		writeSiteFileRequestInvalid(w)
 		return
 	}
 
@@ -331,6 +373,10 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
 		}
+		if !siteFileTargetValid(newRelativePath) {
+			writeSiteFileRequestInvalid(w)
+			return
+		}
 		var success bool
 		err := p.callAgentContext(r.Context(), "Agent.RenameFile", &transport.RenameFileRequest{
 			SubscriptionID: scope.SubscriptionID,
@@ -400,7 +446,7 @@ func (p *Panel) handleFileAction(w http.ResponseWriter, r *http.Request, relativ
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 
 	default:
-		http.Error(w, "Unknown action", http.StatusBadRequest)
+		writeSiteFileRequestInvalid(w)
 	}
 }
 

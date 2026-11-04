@@ -86,7 +86,7 @@ export const enSetupJoinScreens = {
     "setup.v5.card.title": "The server that will join uses a code",
     "setup.v5.card.why": "This server's setup waits for the server that will join: its address and names come with the join.",
     "setup.v5.card.who": "You, on the setup screen of the server that will join",
-    "setup.v5.card.next": "Create a code here. On the server that will join, choose “Join the first server with a code” and enter this server's address and the code.",
+    "setup.v5.card.next": "Create a code here. On the server that will join, choose “Join an existing server” and enter this server's address and the code.",
     "setup.v5.card.then": "Setup continues here by itself once the joined server has joined and started its setup.",
     "setup.v5.card.create": "Create a join code",
     "setup.v5.card.createAgain": "Create a new code",

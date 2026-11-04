@@ -39,7 +39,7 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'wpt.upToDate': 'Güncel',
     'wpt.notFromOrg': 'wordpress.org’dan değil — WordPress’in kendi Başlangıç ekranından güncelleyin',
     'wpt.notVerifiable': '{version} — WordPress’in kendi Başlangıç > Güncellemeler ekranından güncelleyin',
-    'wpt.themeNote': 'wordpress.org tema paketleri için sağlama değeri yayımlamıyor; bu yüzden CelikPanel temaları kurmaz. Temaları WordPress’in kendi Başlangıç > Güncellemeler ekranından güncelleyin; önce Yedekler sekmesinden yedek alın.',
+    'wpt.themeNote': 'wordpress.org tema paketleri için sağlama değeri yayımlamıyor; bu yüzden CelikPanel temaları kurmaz. Temaları WordPress’in kendi Başlangıç > Güncellemeler ekranından güncelleyin; önce bu alan adının sayfasında Gelişmiş → Yedekler bölümünden yedek alın.',
     'wpt.updateSelected': 'Seçili eklentileri güncelle ({count})',
     'wpt.confirmPlugins': '{count} eklenti güncellensin mi? Önce yedek alınır; site bozulursa eklentilerin önceki dosyaları geri konur.',
 

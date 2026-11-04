@@ -402,6 +402,24 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "service-apps-secrets", []string{http.MethodPut}
 	case "service-apps/uninstall":
 		match.kind, match.methods = "service-apps-uninstall", []string{http.MethodPost}
+	// alpha.119: the site's own program (docs/RUNTIME-APPS.md). Not mapped
+	// for additional users: it runs code under the site's account.
+	case "runtime-apps":
+		match.kind, match.methods = "runtime-apps", []string{http.MethodGet}
+	case "runtime-apps/create":
+		match.kind, match.methods = "runtime-apps-create", []string{http.MethodPost}
+	case "runtime-apps/settings":
+		match.kind, match.methods = "runtime-apps-settings", []string{http.MethodPut}
+	case "runtime-apps/deploy":
+		match.kind, match.methods = "runtime-apps-deploy", []string{http.MethodPost}
+	case "runtime-apps/control":
+		match.kind, match.methods = "runtime-apps-control", []string{http.MethodPost}
+	case "runtime-apps/env":
+		match.kind, match.methods = "runtime-apps-env", []string{http.MethodPut}
+	case "runtime-apps/logs":
+		match.kind, match.methods = "runtime-apps-logs", []string{http.MethodGet}
+	case "runtime-apps/remove":
+		match.kind, match.methods = "runtime-apps-remove", []string{http.MethodPost}
 	case "usage":
 		match.kind, match.methods = "usage", []string{http.MethodGet}
 	case "connection":
@@ -545,6 +563,9 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 	case "service-apps", "service-apps-install", "service-apps-update", "service-apps-control",
 		"service-apps-logs", "service-apps-secrets", "service-apps-uninstall":
 		p.handleDomainServiceApps(w, r, match.domainID, match.kind)
+	case "runtime-apps", "runtime-apps-create", "runtime-apps-settings", "runtime-apps-deploy", "runtime-apps-control",
+		"runtime-apps-env", "runtime-apps-logs", "runtime-apps-remove":
+		p.handleDomainRuntimeApps(w, r, match.domainID, match.kind)
 	case "usage":
 		p.handleDomainUsage(w, r)
 	case "connection":
@@ -1470,6 +1491,9 @@ func main() {
 	// alpha.118: the administrator's AI and automation app catalog.
 	http.HandleFunc(serviceAppsAdminPath, panel.handleServiceAppsAdmin)
 	http.HandleFunc(serviceAppsAdminPath+"/", panel.handleServiceAppsAdmin)
+	// alpha.119: the administrator's offering of runtime apps.
+	http.HandleFunc(runtimeAppsAdminPath, panel.handleRuntimeAppsAdmin)
+	http.HandleFunc(runtimeAppsAdminPath+"/", panel.handleRuntimeAppsAdmin)
 	http.HandleFunc("/api/v1/audit-logs", panel.handleAuditLogs)
 	http.HandleFunc("/api/v1/dashboard", panel.handleDashboard)
 	http.HandleFunc("/api/v1/dns/remote/enrollments", panel.handleRemoteDNSAdmin)
@@ -1501,6 +1525,8 @@ func main() {
 	http.HandleFunc(serverSetupPath+"/operation", panel.handleServerSetupOperation)
 	http.HandleFunc("/api/v1/auth/password", panel.handleChangeOwnPassword)
 	http.HandleFunc(ownEmailPath, panel.handleChangeOwnEmail)
+	// alpha.119: the first-login tour's state, the signed-in person's own row.
+	http.HandleFunc(guideStatePath, panel.handleGuideState)
 	http.HandleFunc("/api/v1/auth/2fa/status", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)
@@ -1755,6 +1781,8 @@ func main() {
 	// Service apps (alpha.118): continue install, update and removal
 	// operations a restart interrupted.
 	panel.resumeServiceAppOperations()
+	// Runtime apps (alpha.119): continue deploys and removals.
+	panel.resumeRuntimeAppOperations()
 	// A pending paired DNS publication whose cause is transient (the backup
 	// has not caught up) completes by itself through its exact recovery.
 	panel.startDNSPendingPublicationReconciler(discoveryCtx)

@@ -286,6 +286,8 @@ type serviceAppNative interface {
 	unitState(ctx context.Context, installID int) (transport.ServiceAppUnitStateResponse, error)
 	setSuspension(ctx context.Context, req transport.SetServiceAppSuspensionRequest) (transport.SetAppUnitSuspensionResponse, error)
 	renderSite(ctx context.Context, domainID int) error
+	// sandboxCaps reads the site sandbox (alpha.119); it changes nothing.
+	sandboxCaps(ctx context.Context) (transport.SandboxCapsResponse, error)
 }
 
 var serviceAppNativeOverride serviceAppNative
@@ -366,6 +368,11 @@ func (n panelServiceAppNative) setSuspension(ctx context.Context, req transport.
 	req.ExpectedBuildCommit = strings.TrimSpace(buildCommit)
 	var resp transport.SetAppUnitSuspensionResponse
 	return resp, n.call(ctx, "Agent.SetServiceAppSuspensionV1", &req, &resp)
+}
+
+func (n panelServiceAppNative) sandboxCaps(ctx context.Context) (transport.SandboxCapsResponse, error) {
+	var resp transport.SandboxCapsResponse
+	return resp, n.call(ctx, "Agent.SandboxCapsV1", &transport.Empty{}, &resp)
 }
 
 func (n panelServiceAppNative) renderSite(ctx context.Context, domainID int) error {

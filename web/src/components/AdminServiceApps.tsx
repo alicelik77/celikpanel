@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Bot, PauseCircle, PlayCircle, ShieldAlert, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bot, PauseCircle, PlayCircle, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, Field, RemoteGate, inputClass } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
-import { decodeAdminServiceApps, type AdminServiceAppEntry } from '../lib/serviceApps';
+import { decodeAdminServiceApps, newOperationID, type AdminSandboxView, type AdminServiceAppEntry, type SandboxRefreshResult } from '../lib/serviceApps';
 import { ServiceAppRisk } from './ServiceAppRisk';
 
 // The administrator's offering of AI and automation apps (alpha.118, D-042:
@@ -37,14 +37,15 @@ export function AdminServiceApps() {
             <RemoteGate remote={apps.remote} checking={t('svcapps.checking')} failed={t('svcapps.unknown')} onRetry={() => void apps.retry()} busy={apps.reading}>
                 {(shown) => (
                     <div className="space-y-3">
-                        {shown.value.filter((app) => !app.deferred).map((app) => (
+                        {shown.value.sandbox && <SandboxPanel sandbox={shown.value.sandbox} onDone={() => void apps.retry()} onFailure={setFailure} />}
+                        {shown.value.apps.filter((app) => !app.deferred).map((app) => (
                             <AdminAppCard key={app.id} app={app} onDone={() => void apps.retry()} onFailure={setFailure} />
                         ))}
-                        {shown.value.some((app) => app.deferred) && (
+                        {shown.value.apps.some((app) => app.deferred) && (
                             <details className="rounded-xl border border-border bg-surface-2 p-4">
                                 <summary className="cursor-pointer text-sm font-medium text-fg-muted">{t('svcapps.admin.deferredTitle')}</summary>
                                 <ul className="mt-2 space-y-2 text-sm text-fg-muted">
-                                    {shown.value.filter((app) => app.deferred).map((app) => (
+                                    {shown.value.apps.filter((app) => app.deferred).map((app) => (
                                         <li key={app.id}>
                                             <span className="font-medium text-fg">{app.name}</span> ({app.licence}) — {t(('svcapps.deferred.' + app.deferred) as TranslationKey)}
                                         </li>
@@ -147,6 +148,90 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
                     <Button icon={PauseCircle} loading={busy === 'release'} disabled={!!busy} title={t('svcapps.admin.releaseNote')} onClick={() => void post('release', {})}>{t('svcapps.admin.release')}</Button>
                 )}
             </div>
+        </div>
+    );
+}
+
+// The site sandbox on this server (alpha.119, docs/SITE-SANDBOX.md): the
+// level and its named gaps, the mail-port block, and the apps that still run
+// in an earlier release's sandbox. Nothing here changes anything until the
+// administrator presses the one button; a repeated press (a lost answer)
+// reuses the same request id, so it never starts a second refresh.
+//
+// Bu sunucudaki site koruması: düzey, eksikler, posta engeli ve eski korumada
+// çalışan uygulamalar. Düğmeye basılmadan hiçbir şey değişmez.
+function SandboxPanel({ sandbox, onDone, onFailure }: { sandbox: AdminSandboxView; onDone: () => void; onFailure: (e: ApiError | null) => void }) {
+    const { t } = useI18n();
+    const [requestID, setRequestID] = useState(newOperationID);
+    const [busy, setBusy] = useState(false);
+    const working = busy || sandbox.busy;
+    // While a refresh runs on the server the page reads again by itself.
+    useEffect(() => {
+        if (!sandbox.busy) return;
+        const timer = window.setTimeout(onDone, 5000);
+        return () => window.clearTimeout(timer);
+    }, [sandbox.busy, onDone]);
+
+    const apply = async () => {
+        setBusy(true);
+        try {
+            const res = await fetch(`${URL}/sandbox-refresh`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ request_id: requestID, expected: sandbox.needs_refresh }),
+            });
+            if (!res.ok) {
+                onFailure(await readApiError(res));
+                return;
+            }
+            const result = (await res.json()) as SandboxRefreshResult;
+            onFailure(null);
+            setRequestID(newOperationID());
+            showToast(result.skipped.length ? 'error' : 'success', t('svcapps.sandbox.result', {
+                started: result.started.length, rewritten: result.rewritten.length,
+                skipped: result.skipped.map((s) => `${s.domain} (${t(('svcapps.sandbox.skip.' + s.reason) as TranslationKey)})`).join(', ') || '—',
+            }));
+        } catch {
+            // The answer was lost: the same request id is kept, so pressing
+            // again returns the first answer instead of starting again.
+            onFailure({ message: t('svcapps.sandbox.lost') });
+        } finally {
+            setBusy(false);
+            onDone();
+        }
+    };
+
+    if (!sandbox.known) {
+        return <div className="rounded-xl border border-border bg-surface-2 p-4 text-sm text-fg-muted">{t('svcapps.sandbox.unknown')}</div>;
+    }
+    const reduced = sandbox.level === 'reduced';
+    return (
+        <div className="space-y-2 rounded-xl border border-border bg-surface p-4 text-sm">
+            <div className="flex items-center gap-2 font-semibold text-fg">
+                {reduced ? <ShieldAlert className="h-4 w-4 text-warning" /> : <ShieldCheck className="h-4 w-4 text-success" />}
+                {t(reduced ? 'svcapps.sandbox.reduced' : 'svcapps.sandbox.full', { systemd: sandbox.systemd_version ?? '?' })}
+            </div>
+            {reduced && (
+                <ul className="list-disc space-y-1 pl-5 text-warning">
+                    {sandbox.gaps.map((gap) => <li key={gap}>{t(('svcapps.sandbox.gap.' + gap) as TranslationKey)}</li>)}
+                </ul>
+            )}
+            <p className="text-fg-muted">
+                {sandbox.egress_loaded ? t('svcapps.sandbox.smtp', { count: Math.max(0, sandbox.smtp_rejects) }) : t('svcapps.sandbox.smtpIdle')}
+                {' '}{t('svcapps.sandbox.smtpNotCovered')}
+            </p>
+            {(sandbox.egress_file === 'owner_edited' || sandbox.egress_file === 'foreign' || sandbox.egress_file === 'unknown_origin') && (
+                <p className="text-warning">{t('svcapps.sandbox.egressKept')}</p>
+            )}
+            {sandbox.edited > 0 && <p className="text-warning">{t('svcapps.sandbox.edited', { count: sandbox.edited })}</p>}
+            {working && <p className="text-fg-muted">{t('svcapps.sandbox.busy')}</p>}
+            {sandbox.needs_refresh > 0 && (
+                <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+                    <p className="text-fg">{t('svcapps.sandbox.needs', { count: sandbox.needs_refresh, running: sandbox.running })}</p>
+                    <Button variant="primary" icon={ShieldCheck} loading={working} disabled={working} onClick={() => void apply()}>
+                        {t('svcapps.sandbox.apply', { count: sandbox.needs_refresh })}
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

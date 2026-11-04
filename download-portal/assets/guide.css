@@ -1,0 +1,75 @@
+/* CelikPanel user guide on celikpanel.net (alpha.119). The pages are written
+   by web/scripts/build-guide.mjs and use site.css for the header, footer and
+   tokens; this file only adds the reading layout. No scripts, no inline
+   styles (the CSP forbids both).
+   Kullanım kılavuzu sayfaları: başlık, alt bilgi ve belirteçler site.css'ten;
+   bu dosya yalnız okuma düzenini ekler. */
+
+.language-switch.guide-language a {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 0.5rem; border-radius: 3px;
+  font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; color: var(--ink-2); text-decoration: none;
+}
+.language-switch.guide-language a[aria-current="true"] { background: var(--paper-2); color: var(--ink); }
+.language-switch.guide-language a:hover { color: var(--ink); text-decoration: underline; }
+.site-nav a[aria-current="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+
+.guide-layout { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); gap: 3.5rem; padding: 3rem 0 4rem; align-items: start; }
+.guide-toc { position: sticky; top: 6.5rem; max-height: calc(100vh - 8rem); overflow-y: auto; font-size: 0.9375rem; border-right: 1px solid var(--rule); padding-right: 1.5rem; }
+.guide-toc-home a { font-weight: 700; text-decoration: none; }
+.guide-toc-group { margin-top: 1.25rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.guide-toc ol, .guide-index ol { list-style: none; padding: 0; margin-top: 0.4rem; display: grid; gap: 0.15rem; }
+.guide-toc a { display: inline-flex; min-height: 36px; align-items: center; color: var(--ink-2); text-decoration: none; }
+.guide-toc a:hover { color: var(--ink); text-decoration: underline; }
+.guide-toc a[aria-current="page"] { color: var(--ink); font-weight: 700; }
+
+.guide-index { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 4rem; }
+.guide-index h2 { font-size: 1.1875rem; }
+.guide-index ol { margin-top: 0.75rem; border-top: 1px solid var(--rule); }
+.guide-index li { border-bottom: 1px solid var(--rule); }
+.guide-index a { display: flex; min-height: 44px; align-items: center; padding: 0.6rem 0; font-weight: 600; text-decoration: none; }
+.guide-index a:hover { text-decoration: underline; }
+
+.guide-article { min-width: 0; max-width: 72ch; }
+.guide-article h1 { font-size: clamp(1.9rem, 2.4vw, 2.75rem); line-height: 1.16; letter-spacing: -0.025em; max-width: 24ch; }
+.guide-audience { margin-top: 0.75rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.guide-article > p:first-of-type { margin-top: 1.5rem; }
+.guide-article h2 { margin-top: 2.75rem; font-size: 1.1875rem; scroll-margin-top: 7rem; }
+.guide-article h3 { margin-top: 2rem; font-size: 1.0625rem; scroll-margin-top: 7rem; }
+.guide-article p, .guide-article ul, .guide-article ol { margin-top: 1rem; color: var(--ink-2); }
+.guide-article ul, .guide-article ol { padding-left: 1.4rem; display: grid; gap: 0.4rem; }
+.guide-article strong { color: var(--ink); font-weight: 700; }
+.guide-article a { color: var(--lever); font-weight: 600; }
+.guide-article code { padding: 0.05rem 0.35rem; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-2); font-size: 0.875em; color: var(--ink); overflow-wrap: anywhere; }
+.guide-code { margin: 1rem 0 0; padding: 1rem 1.15rem; overflow-x: auto; background: var(--board); color: var(--track); border-radius: var(--radius); font-size: 0.8125rem; line-height: 1.55; }
+.guide-code code { padding: 0; border: 0; background: none; color: inherit; font-size: inherit; overflow-wrap: normal; white-space: pre; }
+
+.guide-table-scroll { margin-top: 1.25rem; }
+.guide-table { width: 100%; border-collapse: collapse; min-width: 32rem; }
+.guide-table th, .guide-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; font-size: 0.9375rem; line-height: 1.5; }
+.guide-table thead th { font-size: 0.8125rem; color: var(--ink-2); border-bottom-color: var(--rule-strong); }
+
+/* A note is plain paper; a warning carries the attention ink in its thin
+   frame and label, never red (signal colours mean state). */
+.guide-callout { margin-top: 1.5rem; padding: 1rem 1.15rem; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-2); }
+.guide-callout > :first-child { margin-top: 0; }
+.guide-callout-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.guide-callout.guide-note { border-color: var(--rule-strong); }
+.guide-callout.guide-warning { border-color: var(--lamp-amber); }
+.guide-callout.guide-warning .guide-callout-label { color: var(--amber-ink); }
+
+.guide-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+.guide-pager a { display: grid; gap: 0.15rem; min-height: 44px; padding: 0.5rem 0; text-decoration: none; font-weight: 700; }
+.guide-pager a span { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+.guide-pager a[rel="next"] { grid-column: 2; text-align: right; }
+.guide-pager a:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .guide-layout { grid-template-columns: minmax(0, 1fr); gap: 2rem; padding-top: 2rem; }
+  .guide-toc { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--rule); padding: 0 0 1.25rem; }
+  .guide-index { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .guide-pager { grid-template-columns: minmax(0, 1fr); }
+  .guide-pager a[rel="next"] { grid-column: 1; text-align: left; }
+}

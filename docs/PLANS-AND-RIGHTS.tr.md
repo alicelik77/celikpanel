@@ -164,6 +164,8 @@ yazılır.
 | WordPress araçları (alpha.118, `wordpress_tools`) | WordPress araçları bölümü görünmez; durum, güncelleme, küçük sürüm anahtarı ve deneme kopyası reddedilir. Çalışan site ve açık anahtarlar değişmez (hak kapalıyken otomatik güncelleme atlanır) |
 | Zararlı yazılım taraması sonuçları (alpha.118, `malware_scan`) | Zararlı yazılım taraması bölümü görünmez; müşteri tarama başlatamaz, bulgular üzerinde işlem yapamaz. Yönetici her siteyi yine tarayabilir; yöneticinin haftalık taraması onu da kapsar |
 | Kendi uzak yedek hedefleri (alpha.118) | Hesap kendi S3 ya da SFTP hedefini ekleyemez; yöneticinin sunduğu hedefi yine seçebilir. Kurulmuş zamanlamalar çalışmayı sürdürür ([REMOTE-BACKUPS.tr.md](REMOTE-BACKUPS.tr.md)) |
+| Python uygulamaları (alpha.119, `python_apps`) | Programlar sekmesinde Python uygulaması oluşturulamaz, değiştirilemez, yayımlanamaz. Çalışan uygulama çalışmayı sürdürür; yine durdurulabilir, başlatılabilir, ortam değişkenleri değiştirilebilir, günlüğü okunabilir ve kaldırılabilir ([RUNTIME-APPS.tr.md §18](RUNTIME-APPS.tr.md)) |
+| Yüklenen programlar (alpha.119, `program_apps`) | Alan adının Programlar sekmesinde program oluşturulamaz, değiştirilemez, yayımlanamaz. Çalışan program çalışmayı sürdürür; yine durdurulabilir, başlatılabilir, ortam değişkenleri değiştirilebilir, günlüğü okunabilir ve kaldırılabilir ([RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md)) |
 
 **Dosya erişimi bugün yok.** Sahip, 2 Kasım 2026'da bir alan adının FTP ve SSH
 ayarlarını aradı ve bulamadı. Koddan doğrulandı: panelde FTP, SFTP ya da SSH
@@ -311,6 +313,65 @@ ayrıca **Yapay zekâ ve otomasyon uygulamaları** iznini (`service_apps`) ister
   (OpenClaw, Hermes Agent, Paperclip) bu sürümde sunulamaz; ayrıntı
   AI-APPS.tr.md'de.
 
+### 4.7 Geliştirici araç zincirleri (alpha.119): asla sunulmaz
+
+Go ve Rust (Bileşenler, "Geliştirici araçları (yalnız yönetici)" kategorisi) sunucu yöneticisinin kendi
+araçlarıdır ve yalnız işletim sisteminin resmi paketlerinden kurulur (`golang-go`; `rustc` ve `cargo`;
+Arch'ta `go` ve `rust`). Sürüm dağıtımın kendi sürümüdür ve en yeniden eski olabilir (Debian 12
+Go 1.19, Ubuntu 22.04 Go 1.18); ekran bunu açıkça söyler. Upstream arşivleri sonraki sürümdür.
+
+- **Sunum kimliği yok.** `validOfferingID`, `component:go` ve `component:rust` adlarını (sürüm eki
+  olsa da) reddeder; böylece hiçbir plan, bayi seti, gizli sunum listesi ya da mağaza ürünü onları
+  adlandıramaz ve hak ekranları onları listelemez. Müşteri programları derlenmiş yüklenir ve kum
+  havuzunda çalışır; derleyici müşterinin aldığı şeyin parçası değildir.
+- **Sunucuda yalnız yönetici.** Kurulum ve kaldırma olağan bileşen kurulum/kaldırma yollarından
+  geçer (tek uçuşlu, `service.install:<id>` ve `service.install.failed:<id>` olarak denetlenir,
+  kayıp-yanıt korumalı), yalnız-yönetici yol kuralının arkasındadır ve iki işleyici de başka
+  çağıranı yine reddeder. Kurulum sihirbazı onları listelemez.
+- **Dosya erişimi jail'inde asla.** Komutları ve paketleri SSH/SFTP jail'inde (`internal/fileaccess`)
+  yoktur; bir test bunu sabitler.
+### 4.8 Yüklenen programlar (alpha.119)
+
+Müşterinin kendi derlenmiş programı (Go, Rust ya da sunucunun işlemcisi için derlenmiş başka
+bir program), site korumasında sitenin hizmeti olarak çalışır
+([RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md)). Tek bir sunumdur, **`runtime:program`**; kullanmak
+ayrıca **Yüklenen programlar** iznini (`program_apps`) ister. Python web uygulamaları kendi izni
+ve sunumu olan ayrı bir türdür (4.9).
+
+- **Sunulana kadar kapalı.** Yapay zekâ ve otomasyon uygulamaları (4.6) gibi, PHP ve Node.js
+  sürümlerinin aksine kendiliğinden sunulmaz. Yönetici onu Eklentiler sayfasında risk özetini
+  (programın neler yapabildiği, korumanın neyi engellediği, ağ, geriye kalan riskler) okuduktan
+  sonra, her programın birimine yazılan bellek, işlemci ve süreç sınırlarıyla birlikte sunar.
+  Sunum özetin parmak izini kaydeder; özeti, varsayılan sınırları ya da koruma kuşağını
+  değiştiren bir sürüm, yönetici yeniden okuyup sunana kadar onu yine kapatır.
+- **Eksik koruma düzeyi.** Tam korumayı uygulamayan sunucuda sunum, yönetici her eksiği adıyla
+  tek tek kabul ederse olur. Sonradan çıkan ve kabul edilmemiş bir eksik, kabul edilene ya da
+  düzeltilene kadar yayımlamayı ve başlatmayı reddettirir. Eksik düzey asla sessizce geçmez.
+- **Zincir yalnız daraltır.** Sınırsız planlar sunulan `runtime:program`'ı kendiliğinden alır
+  (İ4); bayi ya da plan yalnız dışarıda bırakabilir. Sunucu program oluşturulurken,
+  değiştirilirken ve yayımlanırken bütün katmanlara bakar. Durdurma, günlük, ortam değişkenleri
+  ve kaldırma asla reddedilmez (İ5); sunumu geri çekmek yalnız yeni kullanımı durdurur, çalışan
+  çalışmaya devam eder.
+- **Güvenlik beklemesi.** Yönetici yüklenen programları bekletebilir: yayımlanmış her program
+  durdurulur ve başlaması engellenir; bekleme kalkana kadar kimse program oluşturamaz,
+  yayımlayamaz, başlatamaz. Beklemeyi kaldırmak hiçbir şeyi başlatmaz. Dosyalar asla silinmez.
+
+### 4.9 Python uygulamaları (alpha.119)
+
+Müşterinin Python web uygulaması (Django, Flask, FastAPI); sunucunun kendi Python'uyla PyPI'dan
+kendi ortamına kurulur ([RUNTIME-APPS.tr.md §18](RUNTIME-APPS.tr.md)). Kullanmak **Python
+uygulamaları** iznini (`python_apps`) ve sunucunun Python'unun **`component:python:<sürüm>`**
+sunumunu (örneğin `component:python:3.13`) ister.
+
+- **Önce kurulu, sonra sunulur.** Yönetici önce Bileşenler altından Python'u kurar.
+- **Sunulana kadar kapalı.** Diğer bileşen sürümlerinin aksine Python sürümü, 4.7'deki gibi
+  Eklentiler sayfasında risk özeti okunduktan sonra sunulur. Kaynaktan derleme, sunumun ayrı ve
+  adı konmuş bir seçimidir (varsayılan kapalı); seçilirse özet ve parmak izi değişir.
+- **Zincir yalnız daraltır**, İ5 geçerlidir; Python uygulamalarının güvenlik beklemesi, hangi
+  Python sürümü için kurulmuş olursa olsun her Python uygulamasını durdurur.
+- Bir plandaki ya da bayi kümesindeki bütün bileşen öğesi `component:python`, PHP ve Node.js
+  sürümlerinde olduğu gibi sunucunun Python sürümünü kapsar.
+
 ---
 
 ## 5. Roller ve hareket alanı
@@ -394,8 +455,8 @@ kullanım engellenir.
 Özel abonelikler bu ekranda yer almaz, çünkü plandan çıkmışlardır.
 
 **6.5 Plan silme.** Plana bağlı bir abonelik varsa reddedilir (bugünkü gibi).
-Hazır gelen iki Sınırsız plan silinemez. Yönetici sınırlarını ve kalemlerini
-değiştirebilir.
+Hazır gelen iki Sınırsız plan silinemez ve düzenlenemez: sunulana kendiliğinden
+uyan sabit satırlardır (P4). Daraltmak için yönetici başka adla yeni bir plan açar.
 
 **6.6 Bayi hak seti daralırsa.** Yönetici bir bayinin hak setinden bir kalemi
 kaldırırsa, bayinin planları ve müşterileri o kalemi kullanmayı sürdürebilir

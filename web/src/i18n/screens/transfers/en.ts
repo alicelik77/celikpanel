@@ -71,6 +71,8 @@ export const enTransfersScreens = {
     'transfer.permission.malware_scan': 'Malware scan results',
     'transfer.permission.remote_backup_destinations': 'Own remote backup destinations',
     'transfer.permission.service_apps': 'AI and automation apps',
+    'transfer.permission.program_apps': 'Uploaded programs',
+    'transfer.permission.python_apps': 'Python apps',
     'transfer.item.acme': 'Certificates from {provider}',
 
     'transfer.requests.title': 'Transfer requests',

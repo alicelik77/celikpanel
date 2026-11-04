@@ -85,7 +85,7 @@ export const trSetupJoinScreens: Record<SetupJoinScreenKey, string> = {
     "setup.v5.card.title": "Katılacak sunucu kodla katılır",
     "setup.v5.card.why": "Bu sunucunun kurulumu katılacak sunucuyu bekliyor: adresi ve adları katılmayla gelir.",
     "setup.v5.card.who": "Siz, katılacak sunucunun kurulum ekranında",
-    "setup.v5.card.next": "Burada bir kod oluşturun. Katılacak sunucuda “İlk sunucuya kodla katıl”ı seçip bu sunucunun adresini ve kodu girin.",
+    "setup.v5.card.next": "Burada bir kod oluşturun. Katılacak sunucuda “Mevcut bir sunucuya katıl”ı seçip bu sunucunun adresini ve kodu girin.",
     "setup.v5.card.then": "Katılan sunucu katılıp kurulumunu başlatınca kurulum burada kendiliğinden devam eder.",
     "setup.v5.card.create": "Katılma kodu oluştur",
     "setup.v5.card.createAgain": "Yeni kod oluştur",

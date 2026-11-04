@@ -49,7 +49,7 @@ CelikPanel adds no package source (no NodeSource, no deadsnakes, no Docker, no `
 
 n8n needs Node.js 24 (`engines: >=24.0.0`; its isolated-vm dependency too). No supported
 distribution except Arch ships it, so n8n uses the Node.js runtime the administrator installs
-under Services → Node.js: the official nodejs.org tarball, checked against the official
+under Components → Node.js: the official nodejs.org tarball, checked against the official
 SHASUMS256.txt before it is unpacked (the same runtime Node.js sites use). If no Node.js 24 is
 installed, the screen says so and who installs it. Where the system's Python is outside 3.11-3.12
 Open WebUI is shown as not available on that system, with the found version.
@@ -103,6 +103,12 @@ names each failure as a verified failure, an unmet prerequisite or an unknown re
 acts and the next step (D-024).
 
 ## 5. The sandbox
+
+Since alpha.119 every app runs in the shared site sandbox ([SITE-SANDBOX.md](SITE-SANDBOX.md)): in
+addition to the list below, the Agent socket and every PHP-FPM socket are hidden, link-local and
+metadata addresses are blocked, the app binds only its own loopback ports, and mail ports 25, 465
+and 587 are closed to it (127.0.0.1 included). Apps installed by alpha.118 keep their unit until
+the administrator applies the new sandbox.
 
 Each app's unit (and its install unit) runs with:
 
@@ -164,6 +170,11 @@ owner changed is kept; the Agent log names it.
 **Backups.** The environment file is not in the site's folder, so a site backup does not carry
 it. Restoring a site on the same server keeps the app's values; on another server the app's keys
 (and n8n's encryption key, which its saved credentials depend on) must be set again.
+
+Since alpha.119 the app folder itself is bound into the sandbox by a root-owned mount that a
+bind unit makes before every start, without following links
+([SITE-SANDBOX.md](SITE-SANDBOX.md) §1a). The environment stays the root file above: the bind
+unit reads no file of the site's folder, and nothing there becomes the app's environment.
 
 ## 6. Not offered in this release
 

@@ -63,6 +63,8 @@ import type { PlanUsageScreenKey } from './screens/planUsage/en';
 import type { RightsScreenKey } from './screens/rights/en';
 import type { RemoteBackupScreenKey } from './screens/remoteBackup/en';
 import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
+import type { GuideScreenKey } from './screens/guide/en';
+import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -241,7 +243,7 @@ export const en = {
     'panelUpdate.interactionLocked': 'Navigation is temporarily locked while this update is checked. It unlocks by itself after two minutes; if the panel is still restarting then, once it answers again, at the latest six minutes after the start. Tracking continues.',
     'panelUpdate.ambiguous': 'The start response is uncertain. This request will not be repeated; its exact server status will be tracked.',
     'panelUpdate.outcome.rolledBackTitle': 'Update not completed; previous version restored',
-    'panelUpdate.outcome.rolledBack': 'The update to {target} did not complete. The server was returned to {previous} automatically and is running it now.',
+    'panelUpdate.outcome.rolledBack': 'The update to {target} did not complete. The server was returned to {previous} automatically and is running it now. Panel data comes back from the copy taken before the update, so panel changes made after the update started are not kept.',
     'panelUpdate.outcome.cause.candidate_panel_startup_check_failed': "Cause: the new version's panel failed its start check before anything was switched on.",
     'panelUpdate.outcome.cause.panel_start_unverified': "Cause: the new version's panel did not start and answer after the update was applied.",
     'panelUpdate.outcome.cause.update_finishing_scheduler': "Cause: turning automatic certificate renewal back on did not confirm after the new version was installed.",
@@ -291,6 +293,7 @@ export const en = {
     'nav.security': 'Security',
     'nav.maintenance': 'Maintenance',
     'nav.account': 'My account',
+    'nav.help': 'User guide',
     'nav.group.hosting': 'Hosting',
     'nav.group.server': 'Server',
 
@@ -569,5 +572,7 @@ export type ScreenKey =
     | AppCatalogScreenKey
     | SiteToolsScreenKey
     | RemoteBackupScreenKey
-    | ServiceAppsScreenKey;
+    | ServiceAppsScreenKey
+    | GuideScreenKey
+    | RuntimeAppsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

@@ -166,6 +166,10 @@ const (
 	errCodeFileNotFound    = "FILE_NOT_FOUND"
 	errCodeFileRootMissing = "FILE_ROOT_MISSING"
 	errCodeFileExists      = "FILE_EXISTS"
+	// A file-manager request that names no usable entry or cannot be read:
+	// 400 with a next step, never a 500 (alpha.119).
+	// Kullanılabilir bir öğe adlandırmayan ya da okunamayan istek: 400.
+	errCodeFileRequestInvalid = "FILE_REQUEST_INVALID"
 	// Native cron runs every scheduled job on the server, including the
 	// owner's own, so the panel never removes it (D-022).
 	// Yerel cron, sahibinkiler dahil sunucudaki her görevi çalıştırır; panel

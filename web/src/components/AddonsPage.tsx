@@ -11,6 +11,8 @@ import { useAuth } from '../auth/AuthContext';
 import { StoreCatalogAdmin } from './StoreCatalogAdmin';
 // alpha.118: offering AI and automation apps, fetched with the catalogue tab.
 const AdminServiceApps = lazy(() => import('./AdminServiceApps').then((module) => ({ default: module.AdminServiceApps })));
+// alpha.119: offering uploaded programs, fetched with the catalogue tab too.
+const AdminRuntimeApps = lazy(() => import('./AdminRuntimeApps').then((module) => ({ default: module.AdminRuntimeApps })));
 import {
     StoreCatalog,
     type StoreEntitlementState,
@@ -293,6 +295,9 @@ export function AddonsPage() {
                     <StoreCatalogAdmin onDirtyChange={setCatalogDirty} />
                     <div className="mt-6">
                         <Suspense fallback={null}><AdminServiceApps /></Suspense>
+                    </div>
+                    <div className="mt-6">
+                        <Suspense fallback={null}><AdminRuntimeApps /></Suspense>
                     </div>
                 </div>
             ) : loadingSubscriptions ? (

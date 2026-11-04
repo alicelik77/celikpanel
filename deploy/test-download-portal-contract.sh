@@ -43,7 +43,29 @@ for page in index.html technical.html systems.html; do
   grep -Fq 'href="/systems.html"' "$tmp/site/$page" || fail "portal page does not link to the supported systems: $page"
 done
 grep -Fq "dataset.page === 'systems'" "$repo_root/download-portal/assets/site.js" || fail "site script does not title the systems page"
-for asset in site.css site.js favicon-v2.svg \
+# alpha.119: the user guide. Every page of its reviewed manifest is shipped
+# byte for byte, in both languages, without script; the manifest itself is
+# not; the other pages link to the guide in the visitor's language.
+guide_manifest="$repo_root/download-portal/guide/manifest.sha256"
+[[ -s "$guide_manifest" ]] || fail "the guide manifest is missing"
+(cd "$tmp/site/guide" && sha256sum --quiet --strict -c "$guide_manifest") >/dev/null 2>&1 \
+  || fail "guide pages were not shipped exactly"
+[[ ! -e "$tmp/site/guide/manifest.sha256" ]] || fail "the guide manifest was published"
+[[ "$(cd "$tmp/site/guide" && find . -type f | wc -l)" -eq "$(wc -l < "$guide_manifest")" ]] \
+  || fail "the guide has pages its manifest does not list"
+for page in index.html en/index.html tr/index.html en/getting-started.html tr/getting-started.html \
+  en/reading-states.html tr/reading-states.html en/files-access.html tr/files-access.html; do
+  [[ -s "$tmp/site/guide/$page" ]] || fail "guide page was not shipped: $page"
+  ! grep -Fq '<script' "$tmp/site/guide/$page" || fail "guide page carries a script: $page"
+  grep -Fq 'href="/assets/guide.css"' "$tmp/site/guide/$page" || fail "guide page lacks its stylesheet: $page"
+done
+grep -Fq '<html lang="tr">' "$tmp/site/guide/tr/files-access.html" || fail "Turkish guide page is not marked Turkish"
+grep -Fq '<html lang="en">' "$tmp/site/guide/en/files-access.html" || fail "English guide page is not marked English"
+for page in index.html technical.html systems.html; do
+  grep -Fq 'data-href-tr="/guide/tr/" data-href-en="/guide/en/"' "$tmp/site/$page" \
+    || fail "portal page does not link to the guide: $page"
+done
+for asset in site.css site.js guide.css favicon-v2.svg \
   product-overview-tr.webp product-overview-en.webp \
   product-domains-tr.webp product-domains-en.webp \
   product-databases-tr.webp product-databases-en.webp; do
@@ -141,8 +163,8 @@ if grep -Eq '<button[^>]*>(+ Yeni site|×|Devam et)' "$tmp/site/index.html"; the
   fail "illustrative product controls must not enter the keyboard tab order"
 fi
 grep -Fq -- "--proto '=https'" "$bootstrap" || fail "HTTPS protocol restriction is missing"
-grep -Fxq 'bootstrap_release_sequence=118' "$bootstrap" || fail "bootstrap sequence pin is missing"
-grep -Fxq 'bootstrap_release_version=v0.1.0-alpha.118' "$bootstrap" || fail "bootstrap version pin is missing"
+grep -Fxq 'bootstrap_release_sequence=119' "$bootstrap" || fail "bootstrap sequence pin is missing"
+grep -Fxq 'bootstrap_release_version=v0.1.0-alpha.119' "$bootstrap" || fail "bootstrap version pin is missing"
 grep -Fxq 'bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb' "$bootstrap" \
   || fail "bootstrap public-key pin is missing"
 grep -Fq "sha256sum -c" "$bootstrap" || fail "archive checksum is not verified"

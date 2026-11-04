@@ -13,6 +13,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/siteruntime"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -57,6 +58,10 @@ type adminOfferLayer struct {
 	// serviceApps: the catalog service apps the administrator offers and
 	// has not put on a security hold (alpha.118). Closed by default.
 	serviceApps map[string]bool
+	// runtimes (alpha.119): the runtime offerings (runtime:program) the
+	// administrator offers, not held, with this release's risk digest.
+	// Closed by default.
+	runtimes map[string]bool
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -113,7 +118,11 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps}, nil
+	runtimes, err := p.loadOfferedRuntimes(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("runtime apps offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps, runtimes: runtimes}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
@@ -130,6 +139,15 @@ func (a adminOfferLayer) offers(offeringID string) bool {
 	// first, by its exact catalog id. Every other "app:" id belongs to the
 	// application catalog, offered only when the administrator chose it
 	// (WordPress alone before any choice); an unknown one is not offered.
+	if offeringID == siteruntime.OfferingProgram {
+		return a.runtimes[offeringID]
+	}
+	// alpha.119: a Python line (component:python:<minor>) is a runtime
+	// offering, closed until the administrator offers it with its risk
+	// summary, unlike the other components' versions.
+	if _, ok := siteruntime.PythonMinorOfOffering(offeringID); ok {
+		return !a.hidden["component:python"] && a.runtimes[offeringID]
+	}
 	if appID, ok := serviceAppOfferingApp(offeringID); ok {
 		return a.serviceApps[appID]
 	}
@@ -384,6 +402,12 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 			continue
 		}
 		switch id {
+		case "python":
+			// alpha.119: the distribution's Python is offered per minor
+			// (component:python:<minor>), and only when it can build apps.
+			if py, err := p.runtimeAppNativeOps().python(ctx); err == nil && py.Ready && siteruntime.ValidPythonMinor(py.Minor) {
+				out = append(out, siteruntime.PythonOffering(py.Minor))
+			}
 		case "php-fpm":
 			versions, err := p.phpVersionsFromAgent(ctx)
 			if err != nil {
@@ -413,6 +437,7 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 	}
 	out = append(out, catalogOfferingIDs()...)
 	out = append(out, serviceAppCandidateOfferings()...)
+	out = append(out, runtimeCandidateOfferings()...)
 	return out, nil
 }
 
@@ -597,6 +622,11 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	// stopping, logs and removal stay open (D-042 P5).
 	"service-apps-install": {right: rightServiceApps},
 	"service-apps-update":  {right: rightServiceApps},
+	// alpha.119: creating, changing and deploying a runtime app is new use,
+	// but its permission depends on the kind (program_apps or python_apps),
+	// which the route does not carry: runtimeKindRefusal checks it inside,
+	// with the same refusal. Reading, stopping, logs, the environment and
+	// removal stay open.
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

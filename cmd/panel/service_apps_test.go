@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/serviceapps"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -32,6 +33,11 @@ type fakeServiceAppNative struct {
 	installed map[int]bool
 	units     map[int]transport.AppUnitState
 	exposed   bool
+	// proof is the sandbox proof a running unit returns (nil: a passed one);
+	// generations the sandbox generation of each unit file (default current).
+	proof        *transport.SandboxProof
+	generations  map[int]int
+	sandboxReads int
 }
 
 func newFakeServiceAppNative() *fakeServiceAppNative {
@@ -61,12 +67,22 @@ func (f *fakeServiceAppNative) status(_ context.Context, req transport.ServiceAp
 	defer f.mu.Unlock()
 	unit := f.units[req.Target.InstallID]
 	resp := transport.ServiceAppStatusResponse{Install: "none", Installed: f.installed[req.Target.InstallID], Unit: unit, UnitFile: "ours"}
+	resp.SandboxGeneration = sitesandbox.Generation
+	if g, ok := f.generations[req.Target.InstallID]; ok {
+		resp.SandboxGeneration = g
+	}
 	if unit.Active {
 		resp.ActiveState = "active"
 		if f.exposed {
 			resp.Exposed = []string{"0.0.0.0:5678"}
 		} else {
 			resp.Serving = true
+		}
+		if req.Proof {
+			resp.SandboxProof = &transport.SandboxProof{OK: true, Code: "ok"}
+			if f.proof != nil {
+				resp.SandboxProof = f.proof
+			}
 		}
 	}
 	return resp, nil
@@ -76,7 +92,12 @@ func (f *fakeServiceAppNative) activate(_ context.Context, req transport.Service
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.activates++
-	f.units[req.Target.InstallID] = transport.AppUnitState{Present: true, Active: true, Enabled: true}
+	if req.KeepStopped {
+		f.units[req.Target.InstallID] = transport.AppUnitState{Present: true}
+	} else {
+		f.units[req.Target.InstallID] = transport.AppUnitState{Present: true, Active: true, Enabled: true}
+	}
+	delete(f.generations, req.Target.InstallID)
 	return transport.ServiceAppStepResponse{Done: true}, nil
 }
 
@@ -132,6 +153,21 @@ func (f *fakeServiceAppNative) setSuspension(_ context.Context, req transport.Se
 		f.units[req.InstallID] = target
 	}
 	resp.State = f.units[req.InstallID]
+	return resp, nil
+}
+
+func (f *fakeServiceAppNative) sandboxCaps(context.Context) (transport.SandboxCapsResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sandboxReads++
+	resp := transport.SandboxCapsResponse{Level: "full", Gaps: []string{}, Generation: sitesandbox.Generation, SMTPRejects: 0}
+	for id := range f.units {
+		generation := sitesandbox.Generation
+		if g, ok := f.generations[id]; ok {
+			generation = g
+		}
+		resp.Units = append(resp.Units, transport.SandboxUnit{InstallID: id, Unit: serviceapps.UnitName(id) + ".service", File: "ours", Generation: generation})
+	}
 	return resp, nil
 }
 

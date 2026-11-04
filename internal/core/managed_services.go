@@ -320,6 +320,14 @@ type ManagedService struct {
 	// Panel, kurulumdan sonra mevcut olan her yardımcı unit'i etkinleştirip
 	// başlatır, kaldırmada durdurur.
 	HelperUnits []string
+	// AdminOnly marks a component only the server administrator uses
+	// (alpha.119 developer toolchains). It has no offering id: a customer
+	// cannot be offered it, a plan or a reseller cannot grant it and the store
+	// cannot sell it, and it never appears in a sandbox or the file-access
+	// jail. Install and remove stay behind the administrator-only routes.
+	// AdminOnly: yalnız sunucu yöneticisinin kullandığı bileşen; sunulamaz,
+	// verilemez, satılamaz; jail'e ve kum havuzuna girmez.
+	AdminOnly bool
 }
 
 // ManagedServiceInstallBlockKind distinguishes missing platform support from
@@ -587,6 +595,31 @@ var ManagedServices = []ManagedService{
 		// bir Node uygulamasına yalnız ters vekille ulaşılır, önce bir web
 		// sunucusu olmalıdır (grubun herhangi bir üyesi yeter).
 		Requires: []string{"web-server"},
+	},
+	{
+		// The distribution's own Python for customers' Python web apps
+		// (alpha.119, docs/RUNTIME-APPS.md): python3 and its venv module
+		// (apt's python3-venv pulls python3.<minor>-venv; Arch's python
+		// carries ensurepip). One version, the system's: Debian 12 3.11,
+		// Debian 13 3.13, Ubuntu 22.04 3.10, Ubuntu 24.04 3.12, Arch 3.14.
+		// No daemon: each app runs in its own sandboxed unit, so the
+		// version drawer only shows the minor (Agent.ListServiceInstances).
+		// Installing it offers nothing: Python apps stay closed until the
+		// administrator offers component:python:<minor> with its risk
+		// summary. Removing it is refused while other software needs
+		// python3 (the removal simulation names it).
+		//
+		// Müşterilerin Python uygulamaları için dağıtımın kendi Python'u.
+		// Kurmak hiçbir şeyi sunmaz; yönetici risk özetiyle sunana dek kapalıdır.
+		ID:          "python",
+		Name:        "Python",
+		Description: "Python Runtime (distribution)",
+		Icon:        "🐍",
+		Category:    "web",
+		Kind:        KindRuntime,
+		SystemNames: []string{},
+		Packages:    map[string][]string{"apt": {"python3", "python3-venv"}, "pacman": {"python"}},
+		Requires:    []string{"web-server"},
 	},
 	{
 		ID:            "nginx",
@@ -1220,6 +1253,59 @@ var ManagedServices = []ManagedService{
 		SystemNames: []string{"cron", "cronie"},
 		Packages:    map[string][]string{"apt": {"cron"}, "pacman": {"cronie"}},
 	},
+	// Developer tools for the server administrator's own work on this server
+	// (alpha.119). Official distribution packages only: the version is the
+	// distribution's, which can be older than the newest release (Debian 12
+	// ships Go 1.19, Ubuntu 22.04 Go 1.18), and the screen says so. Customers'
+	// programs are uploaded already built and run in a sandbox, so a compiler
+	// is never part of what a customer receives: these rows are AdminOnly,
+	// never offerable and never in the file-access jail (a test in
+	// internal/fileaccess pins it). Kind=tool: no daemon, nothing to start or
+	// stop.
+	//
+	// Sunucu yöneticisinin bu sunucudaki kendi işi için geliştirici araçları.
+	// Yalnız resmi dağıtım paketleri: sürüm dağıtımın sürümüdür ve en yeniden
+	// eski olabilir; ekran bunu açıkça söyler. Müşteri programları derlenmiş
+	// yüklenir ve kum havuzunda koşar; derleyici müşterinin aldığı şeyin parçası
+	// değildir: bu satırlar yalnız yöneticinindir, sunulamaz, jail'e girmez.
+	{
+		ID:          "go",
+		Name:        "Go",
+		Description: "Go compiler and tools from your Linux distribution. The version is the distribution's own and can be older than the newest Go. For the administrator's own work on this server; customers' programs are uploaded already built and run in a sandbox.",
+		Icon:        "🐹",
+		Category:    DeveloperToolsCategory,
+		Kind:        KindTool,
+		AdminOnly:   true,
+		SystemNames: []string{},
+		Packages:    map[string][]string{"apt": {"golang-go"}, "pacman": {"go"}},
+	},
+	{
+		ID:          "rust",
+		Name:        "Rust",
+		Description: "Rust compiler and Cargo from your Linux distribution. The version is the distribution's own and can be older than the newest Rust. For the administrator's own work on this server; customers' programs are uploaded already built and run in a sandbox.",
+		Icon:        "🦀",
+		Category:    DeveloperToolsCategory,
+		Kind:        KindTool,
+		AdminOnly:   true,
+		SystemNames: []string{},
+		Packages:    map[string][]string{"apt": {"rustc", "cargo"}, "pacman": {"rust"}},
+	},
+}
+
+// DeveloperToolsCategory is the Components category of the administrator-only
+// toolchains. Rows in it carry AdminOnly.
+// DeveloperToolsCategory, yalnız yöneticiye ait araç zincirlerinin Bileşenler
+// kategorisidir.
+const DeveloperToolsCategory = "devtools"
+
+// IsAdminOnlyComponent reports whether a catalogue component is for the
+// server administrator alone: it is never offered to a customer, never
+// granted in a plan or a reseller's set, and never sold in the store.
+// IsAdminOnlyComponent, bir katalog bileşeninin yalnız sunucu yöneticisine ait
+// olup olmadığını söyler.
+func IsAdminOnlyComponent(id string) bool {
+	svc := GetManagedServiceByID(id)
+	return svc != nil && svc.AdminOnly
 }
 
 // NativeCronServiceID is the catalogue entry for the server's own cron daemon.

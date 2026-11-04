@@ -25,8 +25,10 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/sandboxbind"
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -342,12 +344,16 @@ func writeServiceAppMarker(installID int, marker serviceAppMarker) error {
 // installUnitState reads the transient install unit: none, running,
 // succeeded (active/exited, RemainAfterExit) or failed.
 func installUnitState(installID int) (string, string) {
-	out, err := appUnitSystemctl(systemctlArgs("show", serviceapps.InstallUnitName(installID), "--property=LoadState,ActiveState,SubState,Result")...)
+	out, err := appUnitSystemctl(systemctlArgs("show", serviceapps.InstallUnitName(installID), "--property=LoadState,ActiveState,SubState,Result,Job")...)
 	if err != nil {
 		return "unknown", strings.TrimSpace(string(out))
 	}
 	props := parseShow(string(out))
 	switch {
+	// A queued start job: the unit waits for its bind unit and shows
+	// "inactive" until it starts (alpha.119 lab round 3). It runs.
+	case props["LoadState"] != "not-found" && props["Job"] != "":
+		return "running", ""
 	case props["LoadState"] == "not-found" || props["ActiveState"] == "inactive" && props["Result"] == "success":
 		return "none", ""
 	case props["ActiveState"] == "failed":
@@ -358,6 +364,28 @@ func installUnitState(installID int) (string, string) {
 		return "running", ""
 	}
 	return "none", props["ActiveState"]
+}
+
+// serviceAppInstallRunArgs are systemd-run's arguments for an install unit
+// (celiksvcinst-<id>): the account, the environment, the sandbox in
+// systemd-run's own property form, its bind unit and the SMTP egress lines,
+// then the command.
+func serviceAppInstallRunArgs(sc serviceAppContext, version string, runtime serviceapps.RuntimeChoice, limits serviceapps.Resources, caps sitesandbox.Caps, command []string) ([]string, error) {
+	unit := serviceapps.InstallUnitName(sc.installID)
+	pathEnv := filepath.Dir(runtime.Path) + ":/usr/local/bin:/usr/bin:/bin"
+	run := []string{"--unit=" + unit, "--description=CelikPanel install of " + sc.app.Name + " " + version,
+		"--uid=" + sc.account.Name, "--gid=" + sc.account.Group, "--working-directory=" + sc.layout.Root,
+		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
+		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
+	properties, err := serviceapps.InstallUnitProperties(sc.installID, sc.layout, sc.account.Name, sc.account.Group, limits, sc.app.Defaults.InstallMemoryMB, caps)
+	if err != nil {
+		return nil, err
+	}
+	for _, directive := range properties {
+		run = append(run, "--property="+directive)
+	}
+	run = append(run, "--")
+	return append(run, command...), nil
 }
 
 func parseShow(out string) map[string]string {
@@ -716,24 +744,28 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 		return nil
 	}
 	unit := serviceapps.InstallUnitName(req.Target.InstallID)
-	_, _ = appUnitSystemctl(systemctlArgs("stop", unit)...)
-	_, _ = appUnitSystemctl(systemctlArgs("reset-failed", unit)...)
+	// A unit of an earlier attempt (and its bind unit) is stopped and
+	// unloaded first: a loaded one refuses systemd-run's new unit of the
+	// same name ("already loaded").
+	if err := clearTransientUnit(unit + ".service"); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "install_unit", err.Error())
+		return nil
+	}
 	limits := serviceAppLimits(sc.app, req.Limits)
-	pathEnv := filepath.Dir(runtime.Path) + ":/usr/local/bin:/usr/bin:/bin"
-	run := []string{"--unit=" + unit, "--description=CelikPanel install of " + sc.app.Name + " " + req.Version,
-		"--uid=" + sc.account.Name, "--gid=" + sc.account.Group, "--working-directory=" + sc.layout.Root,
-		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
-		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
-	for _, directive := range serviceapps.SandboxDirectives(sc.layout, limits, sc.app.Defaults.InstallMemoryMB) {
-		run = append(run, "--property="+directive)
+	caps := sandboxCaps(ctx)
+	if !serviceAppSandboxReady(sc, caps, resp) {
+		return nil
 	}
 	command, err := serviceapps.InstallCommand(sc.app, args)
 	if err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "invalid_request", err.Error())
 		return nil
 	}
-	run = append(run, "--")
-	run = append(run, command...)
+	run, err := serviceAppInstallRunArgs(sc, req.Version, runtime, limits, caps, command)
+	if err != nil {
+		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "sandbox_render", err.Error())
+		return nil
+	}
 	if out, err := serviceAppRun(ctx, "systemd-run", run...); err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "install_unit",
 			"the install step could not be started: "+strings.TrimSpace(string(out)))
@@ -777,6 +809,20 @@ func serviceAppUnitFileState(installID int) string {
 	return serviceapps.UnitTextState(string(raw))
 }
 
+// serviceAppUnitGeneration is the sandbox generation of the unit file (0:
+// no readable file).
+func serviceAppUnitGeneration(installID int) int {
+	path, err := serviceAppUnitPath(installID)
+	if err != nil {
+		return 0
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	return serviceapps.UnitGeneration(string(raw))
+}
+
 // ServiceAppStatusV1 reads an install (read-only).
 func (a *Agent) ServiceAppStatusV1(req *transport.ServiceAppStatusRequest, resp *transport.ServiceAppStatusResponse) error {
 	if req == nil {
@@ -796,6 +842,7 @@ func (a *Agent) ServiceAppStatusV1(req *transport.ServiceAppStatusRequest, resp 
 		resp.Installed = statErr == nil
 	}
 	resp.UnitFile = serviceAppUnitFileState(req.Target.InstallID)
+	resp.SandboxGeneration = serviceAppUnitGeneration(req.Target.InstallID)
 	name := serviceapps.UnitName(req.Target.InstallID)
 	out, err := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState,UnitFileState,MemoryCurrent,Result")...)
 	if err != nil {
@@ -820,6 +867,16 @@ func (a *Agent) ServiceAppStatusV1(req *transport.ServiceAppStatusRequest, resp 
 			return nil
 		}
 		resp.Serving, resp.Exposed, resp.Squatted = proof.Serving, proof.Exposed, proof.Squatted
+		if req.Proof {
+			var step transport.ServiceAppStepResponse
+			if sc, ok := resolveServiceApp(req.Target, &step); ok {
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				resp.SandboxProof = serviceAppSandboxProof(ctx, sc, req, proof)
+				cancel()
+			} else {
+				resp.SandboxProof = &transport.SandboxProof{Code: "unreadable", Detail: step.Error}
+			}
+		}
 	}
 	return nil
 }
@@ -884,10 +941,14 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 		serviceAppStep(resp, transport.ServiceAppUnknown, "unit_dir", err.Error())
 		return nil
 	}
+	caps := sandboxCaps(ctx)
+	if !serviceAppSandboxReady(sc, caps, resp) {
+		return nil
+	}
 	text, err := serviceapps.RenderUnit(serviceapps.UnitParams{
 		InstallID: req.Target.InstallID, App: sc.app, Version: req.Version, Domain: req.Target.Domain,
 		User: sc.account.Name, Group: sc.account.Group, Layout: sc.layout, Port: req.Port, AuxPort: req.AuxPort,
-		Runtime: runtime, Limits: serviceAppLimits(sc.app, req.Limits), DropInDir: path + ".d",
+		Runtime: runtime, Limits: serviceAppLimits(sc.app, req.Limits), Caps: caps, DropInDir: path + ".d",
 	})
 	if err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "unit_render", err.Error())
@@ -920,6 +981,9 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 	}
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {
+			if step[0] == "restart" && serviceAppFolderRefused(sc, resp) {
+				return nil
+			}
 			serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "systemctl",
 				fmt.Sprintf("systemctl %s: %v: %s", strings.Join(step, " "), err, strings.TrimSpace(string(out))))
 			return nil
@@ -1015,6 +1079,14 @@ func (a *Agent) ServiceAppControlV1(req *transport.ServiceAppControlRequest, res
 	}
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {
+			// A start the sandbox helper refused: name the app folder's
+			// state instead of systemd's exit status.
+			if step[0] == "start" || step[0] == "restart" {
+				var probe transport.ServiceAppStepResponse
+				if sc, ok := resolveServiceApp(req.Target, &probe); ok && serviceAppFolderRefused(sc, resp) {
+					return nil
+				}
+			}
 			serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "systemctl",
 				fmt.Sprintf("systemctl %s: %v: %s", strings.Join(step, " "), err, strings.TrimSpace(string(out))))
 			return nil
@@ -1334,4 +1406,34 @@ func moveLegacyServiceAppEnvFrom(installID int, legacy, user string) error {
 		return err
 	}
 	return moveLegacyServiceAppEnv(serviceAppContext{installID: installID, app: app, account: account, layout: layout})
+}
+
+// serviceAppSandboxReady puts the sandbox's native files in place (the
+// helper, and the SMTP block where the host holds it) and checks the app
+// folder as the helper will at the start. It answers the step when not.
+func serviceAppSandboxReady(sc serviceAppContext, caps sitesandbox.Caps, resp *transport.ServiceAppStepResponse) bool {
+	if err := ensureSandboxHelper(); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_helper", err.Error())
+		return false
+	}
+	if err := ensureSandboxEgress(caps); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_egress", err.Error())
+		return false
+	}
+	return !serviceAppFolderRefused(sc, resp)
+}
+
+// serviceAppFolderRefused answers the step when the app folder is not one
+// the sandbox helper would start (a link swapped in, another owner).
+func serviceAppFolderRefused(sc serviceAppContext, resp *transport.ServiceAppStepResponse) bool {
+	code, detail := sandboxFolderRefusal(sc.layout.Root, sc.account.UID)
+	switch code {
+	case "":
+		return false
+	case sandboxbind.CodeUnreadable:
+		serviceAppStep(resp, transport.ServiceAppUnknown, code, detail)
+	default:
+		serviceAppStep(resp, transport.ServiceAppPrerequisite, code, detail)
+	}
+	return true
 }

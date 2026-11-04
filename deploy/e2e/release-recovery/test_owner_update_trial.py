@@ -1503,9 +1503,9 @@ class Set3PublishedBaselineTests(unittest.TestCase):
         # alpha.117 schemas 52 to 56 (rights sets, suspension, transfers,
         # security emergency, transfer credential rotation); alpha.118 schemas
         # 57 to 61 (usage limits, application catalog, site tools, remote
-        # backups, service apps).
+        # backups, service apps); alpha.119 schemas 62 and 63 (the first-login tour, runtime apps).
         self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-                                                      57, 58, 59, 60, 61])
+                                                      57, 58, 59, 60, 61, 62, 63])
 
         def reading(version, guarded):
             return {"schema_version": version, "ledger_rows": version, "ledger_contiguous": True,
@@ -2140,13 +2140,17 @@ UPD3_SC_RECOVERY = {"failure_code": "candidate_panel_startup_check_failed", "obs
                     "terminal_proof": "rollback_verified"}
 UPD3_SC_CARD = {
     "en": "Update not completed; previous version restored || The update to v0.1.0-alpha.82 did not complete. The "
-          "server was returned to v0.1.0-alpha.81 automatically and is running it now. || Cause: the new version's "
+          "server was returned to v0.1.0-alpha.81 automatically and is running it now. Panel data comes back from the "
+          "copy taken before the update, so panel changes made after the update started are not kept. || Cause: the "
+          "new version's "
           "panel failed its start check before anything was switched on. || Nothing needs to be done on the server. "
           "Do not start the update to v0.1.0-alpha.82 again until a corrected version is published. If the server's "
           "message names a problem on this server, fix it first. || Nothing resumes by itself: the server keeps "
           "running v0.1.0-alpha.81. When a newer version is published, “Check for updates” offers it.",
     "tr": "Güncelleme tamamlanmadı; önceki sürüm geri yüklendi || v0.1.0-alpha.82 sürümüne güncelleme tamamlanmadı. "
-          "Sunucu otomatik olarak v0.1.0-alpha.81 sürümüne döndürüldü ve şu an onu çalıştırıyor. || Neden: yeni "
+          "Sunucu otomatik olarak v0.1.0-alpha.81 sürümüne döndürüldü ve şu an onu çalıştırıyor. Panel verileri "
+          "güncelleme öncesi alınan kopyadan döner; güncelleme başladıktan sonra panelde yapılan değişiklikler "
+          "korunmaz. || Neden: yeni "
           "sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi. || Sunucuda yapmanız "
           "gereken bir şey yok. Düzeltilmiş bir sürüm yayımlanana kadar v0.1.0-alpha.82 güncellemesini yeniden "
           "başlatmayın. Sunucunun iletisi bu sunucudaki bir sorunu belirtiyorsa önce onu giderin. || Hiçbir işlem "

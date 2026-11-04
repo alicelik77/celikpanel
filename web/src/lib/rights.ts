@@ -29,7 +29,8 @@ export const PERMISSION_IDS = [
     'site_protect_redirects', 'site_proxy', 'app_installer', 'vpn', 'team_members', 'file_access', 'ssh',
     // alpha.118, in the server's order: own remote backup destinations, AI and
     // automation apps, then the site tools (rights_site_tools.go appends them).
-    'remote_backup_destinations', 'service_apps', 'wordpress_tools', 'malware_scan',
+    // alpha.119: uploaded programs and Python apps follow the AI apps (rights_model.go).
+    'remote_backup_destinations', 'service_apps', 'program_apps', 'python_apps', 'wordpress_tools', 'malware_scan',
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 

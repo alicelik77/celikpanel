@@ -65,6 +65,9 @@ const budgets = {
 // Ekran katalogu parçaları; her parçanın kendi tavanı, oluşturulduğunda en az
 // %25 payla.
 const kib = (raw, gzip) => ({ raw: raw * 1024, gzip: gzip * 1024 })
+const guideIndexBudget = kib(40, 14)
+const guideChapterBudget = kib(12, 4)
+const guideChaptersDir = fileURLToPath(new URL('../src/help/guide/gen/chapters/', import.meta.url))
 const screenPartBudgets = {
   setup: kib(80, 21),
   sites: kib(68, 19),
@@ -228,6 +231,17 @@ const screenPartBudgets = {
   // set with at least 25% headroom from its Turkish file as source:
   // 21.4 / 6.5 KiB.
   serviceApps: kib(27, 8.5),
+  // alpha.119: the user guide's screens - the "?" help menu, the guide
+  // drawer, /help and the first-login tour (guide.). A new part, set with at
+  // least 25% headroom from its Turkish file: 4.04 / 1.65 KiB.
+  guide: kib(5.25, 2.1),
+  // alpha.119: uploaded programs of a site and the administrator's offering,
+  // the guidance of every state and failure reason (runtime.,
+  // err.RUNTIME_APP., their audit words). A new part, set with at least 25%
+  // headroom from its Turkish file: 33.06 / 8.70 KiB. alpha.119 W5 adds the
+  // Python apps (their states, the requirements refusals, the build step and
+  // the source-build offer): 43.57 / 11.31 KiB, again with 25% headroom.
+  runtimeApps: kib(55, 14.25),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
@@ -246,6 +260,21 @@ const namedChunkBudgets = {
   // route to 0.29 KiB of its limit (2026-10-09).
   // Yardım metinleri, yardım çekmecesi açıldığında getirilir.
   'src/help/serviceHelp.ts': budgets.async,
+  // The user guide (alpha.119), generated from docs/guide by
+  // scripts/build-guide.mjs. Each role and language has a small index (the
+  // chapter list, topics and search index), fetched when the guide is first
+  // opened; each chapter is its own chunk per language, shared by every role
+  // that reads it, fetched when it is opened. A chapter that outgrows its
+  // ceiling is split into two chapters; an index that outgrows it trims its
+  // search words. Neither ceiling is raised to make room.
+  // Kılavuz: rol ve dil başına dizin, bölüm ve dil başına parça; tavan
+  // yükseltilmez.
+  ...Object.fromEntries(['admin', 'reseller', 'customer'].flatMap((role) => ['en', 'tr'].map((locale) => [
+    `src/help/guide/gen/${role}.${locale}.ts`, guideIndexBudget,
+  ]))),
+  ...Object.fromEntries((await readdir(guideChaptersDir)).filter((name) => name.endsWith('.ts')).map((name) => [
+    `src/help/guide/gen/chapters/${name}`, guideChapterBudget,
+  ])),
 }
 
 const jsNames = (await readdir(assetsDir))

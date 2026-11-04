@@ -28,6 +28,7 @@ Kurallar:
 | Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
 |---|---|---|---|---|---|
 | 🐘 PHP-FPM | Çalışma ortamı | `php-fpm` · sürüm seçimi: Sury PHP (packages.sury.org) | `php-fpm` | — | — |
+| 🐍 Python | Çalışma ortamı | `python3` `python3-venv` | `python` | — | web sunucusu |
 | 🔄 Nginx | Servis | `nginx` | `nginx` | web sunucusu | — |
 | 🪶 Apache | Servis | — | — | web sunucusu | — |
 
@@ -92,6 +93,13 @@ Kurallar:
 | Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
 |---|---|---|---|---|---|
 | ⏰ Scheduled tasks (cron) | Servis | `cron` | `cronie` | — | — |
+
+### Geliştirici araçları (yalnız yönetici)
+
+| Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
+|---|---|---|---|---|---|
+| 🐹 Go | Araç | `golang-go` | `go` | — | — |
+| 🦀 Rust | Araç | `rustc` `cargo` | `rust` | — | — |
 
 ## Kapalı hücreler ve gerekçeleri
 

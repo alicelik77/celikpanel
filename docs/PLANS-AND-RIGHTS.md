@@ -160,6 +160,8 @@ An item left at 0 or empty means **unlimited**, and the screen says "unlimited".
 | WordPress tools (alpha.118, `wordpress_tools`) | The WordPress tools section is not visible; status, updates, the automatic minor-release switch and staging copies are refused. A site that already runs, and switches already on, are not changed (an automatic update is skipped while the right is closed) |
 | Malware scan results (alpha.118, `malware_scan`) | The Malware scan section is not visible; the customer cannot start scans or act on findings. The administrator can still scan every site, and the administrator's weekly scan still covers it |
 | Own remote backup destinations (alpha.118) | The account cannot add its own S3 or SFTP destination; it can still choose a destination the administrator offers. Schedules already set keep running ([REMOTE-BACKUPS.md](REMOTE-BACKUPS.md)) |
+| Python apps (alpha.119, `python_apps`) | A Python app cannot be created, changed or deployed on the Programs tab. One that runs keeps running and can still be stopped, started, given environment values, read in the log and removed ([RUNTIME-APPS.md §18](RUNTIME-APPS.md)) |
+| Uploaded programs (alpha.119, `program_apps`) | A program cannot be created, changed or deployed on the domain's Programs tab. A program that already runs keeps running; it can still be stopped, started, given new environment values, read in the log and removed ([RUNTIME-APPS.md](RUNTIME-APPS.md)) |
 
 **File access does not exist today.** On November 2, 2026 the owner looked for the FTP and SSH
 settings of a domain and could not find them. Verified from the code: there is no path in the
@@ -301,6 +303,66 @@ namespace (their ids never overlap); each keeps its own offer rule below. Each a
 - **Not offerable.** Apps that run commands on the server on their own (OpenClaw, Hermes Agent,
   Paperclip) cannot be offered in this release; see AI-APPS.md.
 
+### 4.7 Developer toolchains (alpha.119): never offered
+
+Go and Rust (Components, category "Developer tools (administrator only)") are the server
+administrator's own tools, installed from the operating system's official packages only
+(`golang-go`; `rustc` and `cargo`; on Arch `go` and `rust`). The version is the distribution's own and can
+be older than the newest release (Debian 12 Go 1.19, Ubuntu 22.04 Go 1.18); the screen says so.
+Upstream tarballs are a later release.
+
+- **No offering id.** `validOfferingID` refuses `component:go` and `component:rust` (any version
+  suffix), so no plan, reseller set, hidden-offering list or store product can name them, and the
+  rights screens never list them. Customers' programs are uploaded already built and run in a
+  sandbox, so a compiler is never part of what a customer receives.
+- **Administrator-only on the server.** Their install and removal ride the ordinary component
+  install and uninstall routes (single-flight, audited as `service.install:<id>` and
+  `service.install.failed:<id>`, lost-answer guard) behind the administrator-only path rule, and
+  both handlers refuse any other caller again. The setup wizard does not list them.
+- **Never in the file-access jail.** Their commands and packages are not in the SSH/SFTP jail
+  (`internal/fileaccess`); a test pins it.
+### 4.8 Uploaded programs (alpha.119)
+
+A customer's own compiled program (Go, Rust or any other program for the server's processor),
+run as the site's service in the site sandbox ([RUNTIME-APPS.md](RUNTIME-APPS.md)). It is one
+offering, **`runtime:program`**, and using it also needs the permission **Uploaded programs**
+(`program_apps`). Python web apps are a separate kind with their own permission and offering (4.9).
+
+- **Closed until offered.** Like the AI and automation apps (4.6), and unlike PHP and Node.js
+  versions, it is not offered by default. The administrator offers it on the Add-ons page after
+  reading its risk summary (what a program can do, what the sandbox blocks, network, what
+  remains a risk), together with the memory, CPU and process limits written into every
+  program's unit. The offer records the summary's digest; a release that changes the summary,
+  the default limits or the sandbox generation closes it again until the administrator reads
+  and offers it once more.
+- **Reduced sandbox level.** On a server that enforces less than the full sandbox, the offer
+  is accepted only when the administrator accepts each named gap. A gap that appears later and
+  was not accepted refuses deploys and starts until it is accepted or fixed. A reduced level
+  never passes silently.
+- **The chain narrows.** Unlimited plans take the offered `runtime:program` automatically (P4);
+  a reseller or a plan can only leave it out. The server checks every layer when a program is
+  created, changed or deployed. Stopping, the log, the environment and removal are never
+  refused (P5); withdrawing the offer stops new use only, and what runs keeps running.
+- **Security hold.** The administrator can hold uploaded programs: every deployed program is
+  stopped and kept from starting, and nobody creates, deploys or starts one until the hold is
+  lifted. Lifting starts nothing. Files are never removed.
+
+### 4.9 Python apps (alpha.119)
+
+A customer's Python web app (Django, Flask, FastAPI) built into its own environment from PyPI
+with the server's own Python ([RUNTIME-APPS.md §18](RUNTIME-APPS.md)). Using it needs the
+permission **Python apps** (`python_apps`) and the offering **`component:python:<minor>`** of the
+server's Python (for example `component:python:3.13`).
+
+- **Installed before offered.** The administrator installs Python under Components first.
+- **Closed until offered.** Unlike other component versions, the Python line is offered only on
+  the Add-ons page after reading its risk summary, as in 4.7. Source builds are a separate,
+  named choice of the offer (off by default); choosing them changes the summary and its digest.
+- **The chain narrows**, P5 holds, and a security hold of Python apps stops every Python app,
+  whatever Python line it was made for, as in 4.7.
+- A whole-component item `component:python` in a plan or a reseller's set covers the server's
+  Python line, as for PHP and Node.js versions.
+
 ---
 
 ## 5. Roles and the room to play
@@ -381,8 +443,8 @@ differences are shown first; if there are items where usage is larger than the p
 Custom subscriptions do not appear on this screen, because they have left the plan.
 
 **6.5 Deleting a plan.** It is refused if a subscription is bound to the plan (as today). The two
-ready-made Unlimited plans cannot be deleted. The administrator can change their limits and
-items.
+ready-made Unlimited plans cannot be deleted or edited: they are fixed rows that follow what is
+offered (P4). To narrow one, the administrator creates a new plan with another name.
 
 **6.6 If a reseller's rights set narrows.** If the administrator removes an item from a reseller's
 rights set, the reseller's plans and customers may keep using that item (P5). But none of them can

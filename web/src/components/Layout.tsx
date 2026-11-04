@@ -1,6 +1,6 @@
 import { BrandMark } from './BrandMark';
 import { BuildCommit } from './BuildCommit';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { LogOut, ChevronDown, Menu, KeyRound, Mail, UserCheck, DownloadCloud } from 'lucide-react';
 import { api } from '../lib/api';
 import { Link } from '../router';
@@ -27,6 +27,15 @@ const ChangePasswordModal = lazy(() => import('./ChangePasswordModal').then((mod
 // their password. Its words are screen copy, so the item is offered only once
 // that copy has arrived.
 const ChangeEmailModal = lazy(() => import('./ChangeEmailModal').then((module) => ({ default: module.ChangeEmailModal })));
+// The "?" help menu, the guide drawer and the first-login tour (alpha.119).
+// Their words are screen copy, so the control is fetched once that copy is
+// here. It is optional: if its part cannot be fetched (a page loaded before an
+// update removed it), the header has no "?" and the page is not affected; the
+// next page load tries again. A lazy component would have thrown into the
+// whole shell instead.
+// Yardım menüsü, kılavuz çekmecesi ve tur; ekran metni gelince getirilir.
+// İsteğe bağlıdır: getirilemezse başlıkta "?" olmaz, sayfa etkilenmez.
+let helpControl: ComponentType | null = null;
 
 // The single inherited shell: a dark navigation rail (grouped, with live
 // counts) beside a light content column with a top bar. Feature pages
@@ -105,8 +114,21 @@ function writeRailCollapsed(collapsed: boolean) {
 }
 
 export function Layout({ children, currentPage = '', onPageChange, mode = 'panel', setupNavigation }: LayoutProps) {
-    const { t } = useI18n();
+    const { t, screensReady, screensFailed } = useI18n();
     const setupMode = mode === 'setup';
+    const helpReady = !setupMode && screensReady && !screensFailed;
+    const [HelpControl, setHelpControl] = useState(() => helpControl);
+    useEffect(() => {
+        if (!helpReady || helpControl) return;
+        let current = true;
+        import('../help/guide/HelpControl').then((module) => {
+            helpControl = module.HelpControl;
+            if (current) setHelpControl(() => module.HelpControl);
+        }, () => undefined);
+        return () => {
+            current = false;
+        };
+    }, [helpReady]);
     const { role, user } = useAuth();
     const navAccess: NavAccessContext = {
         accountType: typeof user?.account_type === 'string' ? user.account_type : undefined,
@@ -294,6 +316,7 @@ export function Layout({ children, currentPage = '', onPageChange, mode = 'panel
                             data-shell-page-header-target
                         >{setupMode && <p className="text-lg font-semibold">{t('setup.settingsTitle')}</p>}</div>
                         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+                            {helpReady && (HelpControl ? <HelpControl /> : <span className="h-9 w-9 max-sm:h-11 max-sm:w-11" aria-hidden="true" />)}
                             <div className="hidden sm:block">
                                 <LanguageSwitcher />
                             </div>
@@ -482,6 +505,7 @@ function SidebarItem({
     return (
         <button
             onClick={onClick}
+            data-tour={`nav-${item.id}`}
             {...(rail ? { title: railName, 'aria-label': railName, ...tip.handlers } : {})}
             className={`flex w-full items-center ${rail ? 'justify-center px-0' : 'gap-3 px-3'} rounded-lg py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                 active
@@ -737,6 +761,7 @@ function UserMenu({ access }: { access: NavAccessContext }) {
                 type="button"
                 aria-expanded={open}
                 aria-controls={open ? 'personal-menu' : undefined}
+                data-tour="account"
                 onClick={() => setOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 py-1 pl-1 pr-2 text-sm transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >

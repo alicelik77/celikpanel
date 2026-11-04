@@ -74,6 +74,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.cat.ftp': 'FTP',
     'services.cat.monitoring': 'İzleme',
     'services.cat.system': 'Sistem',
+    'services.cat.devtools': 'Geliştirici araçları (yalnız yönetici)',
     'services.installTitle': '{name} kur',
     'services.willInstall': 'Bu sunucuya şu paketler kurulacak:',
     'services.phpVersionNote': 'Dağıtımın varsayılan PHP sürümü kurulur. Ek sürümler site başına çalışma zamanlarından yönetilir.',
@@ -367,6 +368,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     // (2026-10-15). Ürün adları olduğu gibi kalır, betimleyici adlar çevrilir.
     'services.component.name.php-fpm': 'PHP-FPM',
     'services.component.name.node': 'Node.js',
+    'services.component.name.python': 'Python',
     'services.component.name.nginx': 'Nginx',
     'services.component.name.apache': 'Apache',
     'services.component.name.postgresql': 'PostgreSQL',
@@ -392,10 +394,13 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.component.name.memcached': 'Memcached',
     'services.component.name.netdata': 'Netdata',
     'services.component.name.cron': 'Zamanlanmış görevler (cron)',
+    'services.component.name.go': 'Go',
+    'services.component.name.rust': 'Rust',
     // Her bileşenin tek satırlık açıklaması (katalogdaki İngilizcedir;
     // lib/componentName.ts componentDescription, 2026-10-15). Adlarla aynı kimlikler.
     'services.component.description.php-fpm': 'PHP FastCGI Süreç Yöneticisi',
     'services.component.description.node': 'JavaScript çalışma ortamı',
+    'services.component.description.python': 'Müşterilerin Python web uygulamaları için Python çalışma ortamı (işletim sisteminin kendi Python’u)',
     'services.component.description.nginx': 'Ters vekil sunucu',
     'services.component.description.apache': 'Web sunucusu',
     'services.component.description.postgresql': 'Veritabanı sunucusu',
@@ -421,6 +426,9 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.component.description.memcached': 'Önbellek sunucusu',
     'services.component.description.netdata': 'Gerçek zamanlı ölçüm aracısı',
     'services.component.description.cron': 'Zamanlanmış görevleri çalıştıran yerel cron hizmeti',
+    // Geliştirici araçları (alpha.119): dağıtımın kendi sürümü, yalnız yönetici için.
+    'services.component.description.go': 'Go derleyicisi ve araçları, Linux dağıtımınızdan gelir. Sürüm dağıtımın kendi sürümüdür ve en yeni Go sürümünden eski olabilir. Yöneticinin bu sunucudaki kendi işi içindir; müşteri programları derlenmiş yüklenir ve kum havuzunda çalışır.',
+    'services.component.description.rust': 'Rust derleyicisi ve Cargo, Linux dağıtımınızdan gelir. Sürüm dağıtımın kendi sürümüdür ve en yeni Rust sürümünden eski olabilir. Yöneticinin bu sunucudaki kendi işi içindir; müşteri programları derlenmiş yüklenir ve kum havuzunda çalışır.',
     // Türlü engel ve uyarı cümleleri (cmd/panel mailProfileTextCode, 2026-10-14).
     'services.mailProfiles.code.state_unverified': 'Hizmet durumu henüz doğrulanmadı; bir sonraki bileşen kontrolü bunu doğrular.',
     'services.mailProfiles.code.state_incomplete': 'Okunan hizmet durumu eksik; bir sonraki bileşen kontrolü onu yeniden okur.',

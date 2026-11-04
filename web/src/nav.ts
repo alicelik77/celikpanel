@@ -98,6 +98,11 @@ export const navItems: NavItem[] = [
     // Hesabım'a götürür.
     { id: 'settings', path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin'], group: 'server' },
     { id: 'account', path: '/account', labelKey: 'nav.account', icon: UserCheck, roles: ACCOUNT_ROLES, group: 'personal' },
+    // The user guide (alpha.119), for every role: the help menu behind "?" in
+    // the header opens it, so it is not drawn in the rail either. It is public
+    // content and reads nothing from the server; the icon is never drawn.
+    // Kullanım kılavuzu, her rol için; başlıktaki "?" menüsü açar.
+    { id: 'help', path: '/help', labelKey: 'nav.help', icon: ScrollText, roles: DOMAIN_ROLES, group: 'personal' },
 ];
 
 // Group order and their heading translation keys. A group with no visible
