@@ -42,4 +42,4 @@ update screen.**
 
 No schema change. Web tests pass within the bundle budgets; release sequence
 121 → 122.
-<!-- LAB -->
+Screen-only release: no Agent or Panel server change, so no lab round; checked by the automatic checks.

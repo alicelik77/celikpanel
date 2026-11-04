@@ -41,4 +41,4 @@ günceller.**
 
 Şema değişmedi. Web testleri paket bütçeleri içinde geçiyor; sürüm sırası
 121 → 122.
-<!-- LAB -->
+Yalnız ekran sürümü: Agent ya da Panel sunucu tarafında değişiklik yok, bu yüzden laboratuvar turu yapılmadı; otomatik denetimlerle denetlendi.
