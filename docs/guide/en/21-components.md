@@ -8,15 +8,19 @@ keywords: [install, uninstall, php, node.js, versions, bundle, repository, nginx
 
 **Components** lists the server's services, runtimes such as PHP and Node.js, and tools such as phpMyAdmin. Software comes from the operating system's own packages.
 
-## Installed and Catalog {#views}
+## One list {#views}
 
-**Installed** shows what runs, with its state and **Start**, **Stop**, **Restart**, **Repair and start** and **Manage**. **Catalog** shows what can be installed. **Rescan** reads the server again, for example after you installed something yourself.
+Every component the server offers is listed in its category, the installed ones first. An installed row shows its state with **Start**, **Stop**, **Restart**, **Repair and start** and **Manage**. A row that reads **Not installed** has **Install**, or says in one line why it cannot be installed here, for example **Conflicts with Nginx** beside Apache. Mail engines such as Postfix and Dovecot are installed with a mail setup at the top of the email category: their row says **Install with a mail setup**. DNS engines are chosen on the DNS page.
+
+Every category is open on the first visit. **Collapse all**, **Expand all** or a category's own header folds and unfolds the categories; this browser remembers what you folded. Search finds any component. **Rescan** reads the server again, for example after you installed something yourself.
+
+When another page says a component is missing, such as Fail2ban, ClamAV, vsftpd, Python, Node.js or WireGuard, its **Install** link opens that component's install window here. Nothing starts until you confirm.
 
 ## Installing and removing {#install}
 
 **Install** shows what will be installed before anything changes. **Uninstall** shows **What is removed**, **Affected on this server** and **What stays**, and is refused while something still depends on the component. Removing a database engine keeps its data.
 
-**Ready bundles** install several components in a row, such as **Core Mail** or **Nginx + PHP-FPM**. If one step fails, **Continue** installs only what is still missing; nothing is removed.
+**Ready bundles** install several components in a row, such as **Core Mail** or **Nginx + PHP-FPM**. A bundle with nothing installed yet says **Install**; one whose parts are partly here names what it adds, for example **Add phpPgAdmin**. If one step fails, **Continue** installs only what is still missing; nothing is removed.
 
 ## Versions {#versions}
 

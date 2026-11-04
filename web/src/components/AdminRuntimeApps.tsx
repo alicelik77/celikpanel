@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Cpu, PauseCircle, PlayCircle, ShieldAlert, XCircle } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { useNavigate } from '../router';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, Field, RemoteGate, inputClass } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
@@ -60,6 +61,7 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
     onFailure: (e: ApiError | null) => void;
 }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const [read, setRead] = useState(false);
     const [memory, setMemory] = useState(String(kind.limits.memory_mb));
     const [cpu, setCPU] = useState(String(kind.limits.cpu_percent));
@@ -123,6 +125,10 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
             {python && (missing ? (
                 <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning" data-runtime-python-missing="">
                     {t('runtime.admin.python.missing', { detail: kind.python?.detail || '—', packages: (kind.python?.packages ?? []).join(' ') || '—' })}
+                    {/* alpha.122: Python's own install in Components. / Python'un Bileşenler'deki kurulumu. */}
+                    {' '}<button type="button" onClick={() => navigate('/components?component=python&install=')} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-install-link="python">
+                        {t('services.installTitle', { name: t('services.component.name.python') })}
+                    </button>
                 </div>
             ) : (
                 <p className="text-sm text-fg-muted">{t('runtime.admin.python.version', { minor: kind.python?.minor ?? '' })}</p>

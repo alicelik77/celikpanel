@@ -110,7 +110,7 @@ const guide: GuideIndex = {
     [10,"join","İkinci sunucuyu bağlamak",""],
     [10,"done","Kurulum bitince",""],
     [11,"","Bileşenler: yazılım kurmak ve sunmak","kurulum kaldirma php node surumler hazir paket depo nginx mariadb postgresql"],
-    [11,"views","Kurulu ve Katalog",""],
+    [11,"views","Tek liste",""],
     [11,"install","Kurmak ve kaldırmak",""],
     [11,"versions","Sürümler",""],
     [11,"offering","Yazılım sunmak",""],

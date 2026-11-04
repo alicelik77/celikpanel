@@ -115,9 +115,10 @@ test('the unchecked server is told so plainly, with the check one click away', (
     serviceList,
     /const hostNeverChecked = services\.length > 0 && services\.every\(notChecked\);/,
   );
-  // The installed-only view must not hide what was never checked; hiding it
-  // would restore the very claim this fix removes.
-  assert.match(serviceList, /!hideNotInstalled \|\| s\.is_installed !== false/);
+  // alpha.122: there is no installed-only view any more; a row nobody has
+  // checked is drawn like every other, between the installed and the absent.
+  assert.match(serviceList, /s\.is_installed === true \? 0 : s\.is_installed === null \? 1 : 2/);
+  assert.doesNotMatch(serviceList, /hideNotInstalled/);
 });
 
 test('the unchecked copy exists in both locales and claims nothing about the host', () => {

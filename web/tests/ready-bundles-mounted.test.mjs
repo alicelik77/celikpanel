@@ -358,7 +358,8 @@ test('under Apache the MariaDB bundle says what it installs, what is installed a
   apache.services.push(component('apache', 'web', true));
   await mount(apache);
   try {
-    assert.equal(label(bundleNode('db.mariadb')), `MariaDB + phpMyAdmin·${say('services.bundles.chip.install')}`);
+    // alpha.122: MariaDB and PHP-FPM are here, Nginx is not needed: the chip names what it adds.
+    assert.equal(label(bundleNode('db.mariadb')), `MariaDB + phpMyAdmin·${say('services.bundles.chip.addNamed', { names: nameOf('phpmyadmin') })}`);
     await press(bundleNode('db.mariadb'));
     const parts = Object.fromEntries(tree.root.findAll((node) => node.props && node.props['data-bundle-part'] !== undefined)
       .map((node) => [partName(node), node.props['data-bundle-part']]));
@@ -391,15 +392,16 @@ test('an installed bundle\'s part that was never observed says "not checked yet"
   } finally { await unmount(); }
 });
 
-test('the installed view of a server with nothing installed still draws the strips', async () => {
-  globalThis.localStorage = { getItem: (key) => (key === 'celikpanel.components.view' ? 'installed' : null), setItem() {}, removeItem() {} };
+test('a server with nothing installed says so once and still draws the strips', async () => {
   const empty = payload({ bundles: [webBundle(), bundle('db.mariadb', 'database', MARIADB_BUNDLE)] });
   empty.services = empty.services.map((item) => ({ ...item, is_installed: false, status: 'not_installed', versions: [] }));
   await mount(empty);
   try {
     assert.ok(label(tree.root).includes(say('services.noneInstalledYet')), 'the empty view no longer says nothing is installed');
-    assert.ok(bundleNode('web.nginx_php') && bundleNode('db.mariadb'), 'the strips are not drawn in the installed view');
-  } finally { await unmount(); delete globalThis.localStorage; }
+    assert.ok(bundleNode('web.nginx_php') && bundleNode('db.mariadb'), 'the strips are not drawn');
+    // alpha.122: every component is still listed, as not installed.
+    assert.ok(rowOf('nginx') && rowOf('mariadb'), 'the not-installed rows are listed');
+  } finally { await unmount(); }
 });
 
 // --- The owner's two servers ----------------------------------------------------------
@@ -462,8 +464,10 @@ test('Boston and Frankfurt draw the same chips in the same order; PostgreSQL + p
     assert.deepEqual(seen.boston[category].map(([id]) => id), seen.frankfurt[category].map(([id]) => id), category);
   }
   assert.deepEqual(seen.boston.database, [
-    ['db.postgresql', 'available', `PostgreSQL + phpPgAdmin·${say('services.bundles.chip.install')}`],
-    ['db.mariadb', 'available', `MariaDB + phpMyAdmin·${say('services.bundles.chip.install')}`],
+    // alpha.122 (owner's Boston screens): PostgreSQL and Nginx are here, so
+    // each database chip names what it adds instead of "Install".
+    ['db.postgresql', 'available', `PostgreSQL + phpPgAdmin·${say('services.bundles.chip.addNamed', { names: `${nameOf('php-fpm')}, ${nameOf('phppgadmin')}` })}`],
+    ['db.mariadb', 'available', `MariaDB + phpMyAdmin·${say('services.bundles.chip.addNamed', { names: `${nameOf('mariadb')}, ${nameOf('php-fpm')}, ${nameOf('phpmyadmin')}` })}`],
   ]);
   assert.deepEqual(seen.frankfurt.database, [
     ['db.postgresql', 'verified', 'PostgreSQL + phpPgAdmin'],
@@ -930,48 +934,162 @@ const rowOf = (id) => tree.root.findAll((node) => node.type === 'li' && node.pro
 const posts = () => urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => JSON.parse(call.body).service_id);
 
 // alpha.120 (owner's Boston screens, alpha.119): "why is the PostgreSQL server
-// component not like MariaDB? it looks like a side thing". A core server that
-// is not installed has its own row in the installed view, Not installed with
-// Install, instead of a small link under the bundles.
-// Kurulu olmayan çekirdek sunucu, kurulu görünümde kendi satırını alır.
-const installIn = (row) => row.findAll((node) => node.type === 'button' && label(node).includes(say('services.install')))[0];
+// component not like MariaDB? it looks like a side thing". alpha.122 (owner,
+// Boston, alpha.121: "why can't phpPgAdmin and phpMyAdmin be installed
+// separately?"): one list. Every offered component has its own row in its
+// category, installed ones first; one not installed reads Not installed with
+// Install, or says in one line why it cannot be installed here.
+// Tek liste: her bileşenin kendi satırı; kurulu olmayan Kur ya da nedenini söyler.
+const installIn = (row) => row.findAll((node) => node.type === 'button' && label(node) === say('services.install'))[0];
+const rowNames = () => tree.root.findAll((node) => node.type === 'li' && node.props['data-component-row'] === '')
+  .map((row) => label(row.findAll((child) => child.type === 'a')[0]));
+const sentPosts = () => urls.filter((call) => call.method === 'POST' && !call.url.startsWith('/api/v1/managed-services/scan')).length;
 
 test('PostgreSQL that is not installed has its own row like MariaDB: Not installed and Install, which opens its own install dialog with its versions', async () => {
   await mount(databaseServer());
   try {
     const row = rowOf('postgresql');
-    assert.ok(row, 'the installed view shows the PostgreSQL row');
+    assert.ok(row, 'the list shows the PostgreSQL row');
     assert.ok(label(row).includes(say('services.notInstalled')), label(row));
     assert.ok(rowOf('mariadb'), 'MariaDB keeps its row');
     assert.equal(tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] !== undefined).length, 0, 'no "install one on its own" link');
-    assert.ok(!stripText('database').includes('Or install one on its own'), stripText('database'));
     assert.ok(bundleNode('db.postgresql'), 'the ready bundles stay');
-    // An optional tool that is not installed stays in the catalogue.
-    assert.equal(rowOf('phppgadmin'), undefined, 'phpPgAdmin is not a core server');
+    // phpPgAdmin has its row too, and says what it needs first.
+    assert.ok(label(rowOf('phppgadmin')).includes(say('services.requiresLabel', { names: nameOf('postgresql') })), label(rowOf('phppgadmin')));
+    assert.equal(installIn(rowOf('phppgadmin')), undefined, 'no Install while PostgreSQL is missing');
     await press(installIn(row));
     assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('postgresql') })), dialogText());
     // The version choice is the install dialog's own: it asks for PostgreSQL's repository and candidate.
     assert.ok(urls.some((call) => call.url === '/api/v1/repo?service_id=postgresql'), urls.map((call) => call.url).join(', '));
     assert.ok(urls.some((call) => call.url === '/api/v1/service/candidate?id=postgresql'));
-    assert.equal(urls.filter((call) => call.method === 'POST' && !call.url.startsWith('/api/v1/managed-services/scan')).length, 0, 'opening the dialog sends nothing');
+    assert.equal(sentPosts(), 0, 'opening the dialog sends nothing');
   } finally { await unmount(); }
 });
 
-test('a blocked bundle (phpPgAdmin on Arch) still lets PostgreSQL be installed from its own row; a core server another one excludes or the host does not offer gets no row', async () => {
+// The owner's question itself: both database servers are installed, so both
+// browser tools are offered on their own rows.
+const bothDatabases = () => {
+  const answer = databaseServer({ postgresql: true });
+  answer.bundles = [pgBundle({ missing_components: ['phppgadmin'] }), dbBundle({ status: 'available', action: 'install', missing_components: ['phpmyadmin'] })];
+  answer.services = answer.services.map((item) => (item.id === 'phppgadmin' ? { ...item, requires_missing: undefined }
+    : item.id === 'phpmyadmin' ? component('phpmyadmin', 'database', false, { kind: 'tool' }) : item));
+  return answer;
+};
+
+test('alpha.122: with PostgreSQL and MariaDB installed, phpPgAdmin and phpMyAdmin each have a Not installed row with Install, after the installed rows', async () => {
+  await mount(bothDatabases());
+  try {
+    for (const id of ['phppgadmin', 'phpmyadmin']) {
+      const row = rowOf(id);
+      assert.ok(row, `${id} has its own row`);
+      assert.ok(label(row).includes(say('services.notInstalled')), label(row));
+      assert.ok(installIn(row), `${id} offers Install`);
+    }
+    // Installed first within the category.
+    const names = [nameOf('mariadb'), nameOf('postgresql'), nameOf('phpmyadmin'), nameOf('phppgadmin')];
+    const order = rowNames().filter((name) => names.includes(name));
+    assert.deepEqual(order.slice(0, 2).sort(), [nameOf('mariadb'), nameOf('postgresql')].sort(), order.join(', '));
+    // phpPgAdmin's Install opens its own dialog; nothing is sent.
+    await press(installIn(rowOf('phppgadmin')));
+    assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('phppgadmin') })), dialogText());
+    assert.equal(sentPosts(), 0);
+  } finally { await unmount(); }
+});
+
+test('alpha.122: a bundle some of whose parts are here names what it adds; one with nothing here says Install', async () => {
+  await mount(bothDatabases());
+  try {
+    assert.equal(label(bundleNode('db.postgresql')), `PostgreSQL + phpPgAdmin·${say('services.bundles.chip.addNamed', { names: nameOf('phppgadmin') })}`);
+    assert.equal(label(bundleNode('db.mariadb')), `MariaDB + phpMyAdmin·${say('services.bundles.chip.addNamed', { names: nameOf('phpmyadmin') })}`);
+    assert.equal(bundleNode('db.postgresql').findAll((node) => node.props && node.props['data-bundle-adds'] === 'phppgadmin').length, 1);
+  } finally { await unmount(); }
+  await mount(payload({ bundles: [webBundle()] }));
+  try {
+    assert.equal(label(bundleNode('web.nginx_php')), `Nginx + PHP-FPM·${say('services.bundles.chip.install')}`);
+  } finally { await unmount(); }
+  // Both languages have the words; Turkish puts no suffix on a name.
+  assert.equal(words['services.bundles.chip.addNamed'], 'Add {names}');
+  assert.match(source('i18n/screens/components/tr.ts'), /'services\.bundles\.chip\.addNamed': 'Ekle: \{names\}',/);
+});
+
+test('alpha.122: Fail2ban, ClamAV and vsftpd are listed as not installed with Install; the count says how many are installed', async () => {
+  const answer = databaseServer();
+  answer.services.push(component('fail2ban', 'security', false), component('clamav', 'security', false), component('vsftpd', 'ftp', false));
+  await mount(answer);
+  try {
+    for (const id of ['fail2ban', 'clamav', 'vsftpd']) {
+      assert.ok(rowOf(id), `${id} has a row`);
+      assert.ok(label(rowOf(id)).includes(say('services.notInstalled')), label(rowOf(id)));
+      assert.ok(installIn(rowOf(id)), `${id} offers Install`);
+    }
+    const count = tree.root.findAll((node) => node.props && node.props['data-component-count'] !== undefined)[0];
+    const installed = answer.services.filter((item) => item.is_installed === true).length;
+    assert.equal(label(count), say('services.countInstalled', { total: answer.services.length, installed }));
+  } finally { await unmount(); }
+});
+
+test('a component another one excludes or the host does not offer keeps its row and says why in one line, without Install', async () => {
   const answer = databaseServer();
   answer.bundles = [pgBundle({ status: 'blocked', action: 'none', blocked_code: 'component_not_installable', blocked_vars: { component: 'phpPgAdmin' } }), dbBundle()];
-  answer.services = answer.services.map((item) => (item.id === 'nginx' ? { ...item, is_installed: false, status: 'not_installed', versions: [], conflict_with: 'Apache' } : item));
+  answer.services.push(component('apache', 'web', false, { name: 'Apache', conflict_with: 'Nginx' }));
   await mount(answer);
   try {
     assert.ok(installIn(rowOf('postgresql')), 'PostgreSQL offers Install on its row');
-    assert.equal(rowOf('nginx'), undefined, 'Nginx excluded by an installed Apache stays in the catalogue');
+    const apache = rowOf('apache');
+    assert.ok(apache, 'Apache beside Nginx keeps its row');
+    assert.ok(label(apache).includes(say('services.conflictWith', { name: 'Nginx' })), label(apache));
+    assert.equal(apache.findAll((node) => node.props && node.props['data-row-conflict'] === 'Nginx').length, 1);
+    assert.equal(installIn(apache), undefined, 'no Install beside Nginx');
   } finally { await unmount(); }
   const notOffered = databaseServer();
   notOffered.services = notOffered.services.map((item) => (item.id === 'postgresql' ? { ...item, not_offered: true, not_offered_reason: 'not on this system' } : item));
   await mount(notOffered);
   try {
-    assert.equal(rowOf('postgresql'), undefined, 'a server this host does not offer gets no row');
+    assert.ok(label(rowOf('postgresql')).includes(say('services.notOffered')), label(rowOf('postgresql')));
+    assert.equal(installIn(rowOf('postgresql')), undefined);
   } finally { await unmount(); }
+});
+
+test('alpha.122: a mail engine that is not installed points to the mail setup; Exim beside Postfix says the conflict', async () => {
+  const answer = server('boston');
+  answer.services.push(component('exim', 'email', false, { name: 'Exim', conflict_with: 'Postfix' }));
+  await mount(answer);
+  try {
+    for (const id of ['postfix', 'dovecot', 'rspamd', 'roundcube']) {
+      const row = rowOf(id);
+      assert.ok(row, `${id} has a row`);
+      assert.equal(row.findAll((node) => node.props && node.props['data-row-mail-setup'] !== undefined).length, 1, `${id} points to the mail setup`);
+      assert.equal(installIn(row), undefined, `${id} does not install one part of a mail setup alone`);
+    }
+    assert.ok(label(rowOf('exim')).includes(say('services.conflictWith', { name: 'Postfix' })), label(rowOf('exim')));
+    // PHP-FPM is in Webmail too, but it is not a mail engine: its row keeps Install.
+    assert.equal(rowOf('php-fpm').findAll((node) => node.props && node.props['data-row-mail-setup'] !== undefined).length, 0);
+    assert.ok(installIn(rowOf('php-fpm')), 'PHP-FPM keeps Install');
+  } finally { await unmount(); }
+});
+
+test('alpha.122: ?component=<id>&install= opens that component\'s install dialog, sends nothing and leaves the address; a blocked one says why', async () => {
+  globalThis.bundleSearch = '?component=phppgadmin&install=';
+  globalThis.bundleNavigated = [];
+  globalThis.bundleNavigateOptions = [];
+  await mount(bothDatabases());
+  try {
+    assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('phppgadmin') })), dialogText());
+    assert.equal(sentPosts(), 0, 'nothing starts before the owner confirms');
+    assert.deepEqual(globalThis.bundleNavigated, ['/components?component=phppgadmin']);
+    assert.deepEqual(globalThis.bundleNavigateOptions, [{ replace: true }]);
+    assert.ok(rowOf('phppgadmin'), 'the search shows the linked row');
+  } finally { await unmount(); }
+  globalThis.bundleSearch = '?component=apache&install=';
+  globalThis.bundleNavigated = [];
+  const blocked = databaseServer();
+  blocked.services.push(component('apache', 'web', false, { name: 'Apache', conflict_with: 'Nginx' }));
+  await mount(blocked);
+  try {
+    assert.equal(tree.root.findAll((node) => node.props && node.props.role === 'dialog').length, 0, 'no dialog for a blocked component');
+    assert.deepEqual(globalThis.bundleToasts.map(([, text]) => text), [say('services.installLinkBlocked', { name: nameOf('apache') })]);
+    assert.equal(sentPosts(), 0);
+  } finally { await unmount(); delete globalThis.bundleSearch; delete globalThis.bundleNavigated; delete globalThis.bundleNavigateOptions; }
 });
 
 test('no security emergency section in the list; an open emergency puts a short red badge on its row that links to it', async () => {

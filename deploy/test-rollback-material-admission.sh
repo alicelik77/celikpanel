@@ -6,7 +6,9 @@ set -euo pipefail
 [[ $EUID == 0 ]] || { echo 'SKIP: rollback material admission requires root'; exit 0; }
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 TEST_ROOT=$(mktemp -d /run/celikpanel-material-admission-test.XXXXXXXX)
-trap 'rm -rf -- "$TEST_ROOT"' EXIT
+source "$ROOT/deploy/test-private-tmpfs.sh"
+mount_private_test_tmpfs "$TEST_ROOT"
+trap 'remove_private_test_root "$TEST_ROOT"' EXIT
 chmod 0700 "$TEST_ROOT"
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 die() { printf '%s\n' "$*" >&2; exit 41; }

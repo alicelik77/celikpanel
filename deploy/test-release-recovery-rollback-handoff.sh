@@ -11,7 +11,9 @@ fail() { printf 'rollback recovery handoff: %s\n' "$*" >&2; exit 1; }
 REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 ROLLBACK_SOURCE=${1:-$REPO_ROOT/rollback.sh}
 TEST_ROOT=$(mktemp -d /run/celikpanel-rollback-handoff.XXXXXXXX)
-trap 'rm -rf -- "$TEST_ROOT"' EXIT
+source "$REPO_ROOT/deploy/test-private-tmpfs.sh"
+mount_private_test_tmpfs "$TEST_ROOT"
+trap 'remove_private_test_root "$TEST_ROOT"' EXIT
 chmod 0700 "$TEST_ROOT"
 TARGET_COMMIT=1111111111111111111111111111111111111111
 SNAPSHOT=20260914T043142Z-from-unknown-to-$TARGET_COMMIT-db8813bd340936d749913d55dbcda68d

@@ -41,7 +41,9 @@ command -v systemd-analyze >/dev/null || fail 'systemd-analyze is required'
 
 REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 TEST_ROOT=$(mktemp -d /run/celikpanel-release-recovery-contract.XXXXXXXX)
-trap 'rm -rf -- "$TEST_ROOT"' EXIT
+source "$REPO_ROOT/deploy/test-private-tmpfs.sh"
+mount_private_test_tmpfs "$TEST_ROOT"
+trap 'remove_private_test_root "$TEST_ROOT"' EXIT
 chmod 0700 "$TEST_ROOT"
 
 TARGET_VERSION=v9.9.51

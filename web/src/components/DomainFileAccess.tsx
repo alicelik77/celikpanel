@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Download, KeyRound, Plug, ShieldCheck, Trash2 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { useNavigate } from '../router';
 import type { TranslationKey } from '../i18n/en';
 import { Button, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -484,7 +485,11 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
 // What stops access, or limits it, comes first: who acts and what they do.
 function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean }) {
     const { t } = useI18n();
-    const notes: Array<{ tone: 'warning' | 'danger' | 'info'; key: TranslationKey; vars?: Record<string, string | number> }> = [];
+    const navigate = useNavigate();
+    // install (alpha.122): the administrator's link to that component's own
+    // install dialog in Components; nothing starts until it is confirmed there.
+    // Yöneticinin bileşenin kurulum penceresine bağlantısı.
+    const notes: Array<{ tone: 'warning' | 'danger' | 'info'; key: TranslationKey; vars?: Record<string, string | number>; install?: 'vsftpd' | 'fail2ban' }> = [];
     if (!view.available) notes.push({ tone: 'info', key: 'fileAccess.block.noSite' });
     else if (!view.rights.fileAccess) notes.push({ tone: 'warning', key: 'fileAccess.block.notInPlan' });
     if (view.available && view.subscriptionStatus !== 'active') notes.push({ tone: 'danger', key: 'fileAccess.block.suspended' });
@@ -499,16 +504,25 @@ function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean 
         if (server.sshDropIn === 'owner') notes.push({ tone: 'danger', key: 'fileAccess.block.sshOwner' });
         if (account?.keysFile === 'owner') notes.push({ tone: 'warning', key: 'fileAccess.block.keysOwner' });
         if (server.passwordAuthentication === 'no') notes.push({ tone: 'warning', key: 'fileAccess.block.passwordAuthOff' });
-        if (!server.ftpInstalled) notes.push({ tone: 'info', key: isAdmin ? 'fileAccess.block.ftpMissingAdmin' : 'fileAccess.block.ftpMissing' });
+        if (!server.ftpInstalled) notes.push(isAdmin ? { tone: 'info', key: 'fileAccess.block.ftpMissingAdmin', install: 'vsftpd' } : { tone: 'info', key: 'fileAccess.block.ftpMissing' });
         else if (server.ftpConfig === 'owner') notes.push({ tone: 'info', key: 'fileAccess.block.ftpOwner' });
         if (server.ftpCertificate === 'self_signed') notes.push({ tone: 'info', key: 'fileAccess.block.selfSigned', vars: { sha: server.ftpCertificateSHA256 } });
-        if (isAdmin && !server.fail2banInstalled) notes.push({ tone: 'info', key: 'fileAccess.block.fail2ban' });
+        if (isAdmin && !server.fail2banInstalled) notes.push({ tone: 'info', key: 'fileAccess.block.fail2ban', install: 'fail2ban' });
         if (isAdmin && server.siteUsersWithShell > 0) notes.push({ tone: 'warning', key: 'fileAccess.block.shells', vars: { count: server.siteUsersWithShell } });
     }
     if (notes.length === 0) return null;
     return (
         <div className="space-y-2">
-            {notes.map((note) => <Notice key={note.key} tone={note.tone}>{t(note.key, note.vars)}</Notice>)}
+            {notes.map((note) => (
+                <Notice key={note.key} tone={note.tone}>
+                    {t(note.key, note.vars)}
+                    {note.install && (
+                        <>{' '}<button type="button" onClick={() => navigate(`/components?component=${note.install}&install=`)} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-install-link={note.install}>
+                            {t('services.installTitle', { name: t(`services.component.name.${note.install}`) })}
+                        </button></>
+                    )}
+                </Notice>
+            ))}
         </div>
     );
 }

@@ -110,7 +110,7 @@ const guide: GuideIndex = {
     [10,"join","Joining a second server",""],
     [10,"done","When it is done",""],
     [11,"","Components: installing and offering software","install uninstall php node versions bundle repository nginx mariadb postgresql"],
-    [11,"views","Installed and Catalog",""],
+    [11,"views","One list",""],
     [11,"install","Installing and removing",""],
     [11,"versions","Versions",""],
     [11,"offering","Offering software",""],

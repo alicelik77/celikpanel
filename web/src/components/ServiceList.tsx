@@ -361,19 +361,6 @@ function persistServiceVerificationState(value: ServiceVerificationState) {
 // "paketi olmayan runtime" tam olarak o kümedir.
 const isTarballRuntime = (s: ManagedService) => s.kind === 'runtime' && !(s.packages && s.packages.length > 0);
 
-// The core hosting servers (alpha.120, owner's Boston screens): what customer
-// sites run on directly and every hosting server is expected to have one of.
-// Not installed, each still has its own row in the Installed view, with
-// "Not installed" and Install, instead of a link under the ready bundles.
-// Mail and DNS engines are not here: they are chosen as a set (mail setup,
-// DNS infrastructure) and come with alternatives that exclude each other.
-// Optional runtimes and tools stay in the catalogue.
-// Çekirdek barındırma sunucuları: kurulu değilken de Kurulu görünümünde kendi
-// satırları vardır. Posta ve DNS motorları kendi kurulum yollarıyla seçilir.
-const CORE_SERVER_COMPONENTS = new Set(['nginx', 'php-fpm', 'mariadb', 'postgresql']);
-const coreRowWhenAbsent = (s: ManagedService) =>
-    CORE_SERVER_COMPONENTS.has(s.id) && s.is_installed === false && !s.not_offered && !s.conflict_with;
-
 // The copies a runtime's Versions button counts: the ones the panel installed;
 // a runtime that is the distribution's own (Python) counts the one it found,
 // which is the version its drawer lists and its offering names.
@@ -620,69 +607,38 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         markStateUnverified();
         showToast('error', apiErrorText(error, t, 'services.actionFailed'));
     };
-    // Installed-first (D-010, Jul 18): the page shows what this server RUNS,
-    // not the whole catalog. Page length then tracks the installed count, not
-    // the catalog size — a clean server is 3-4 rows whether the catalog holds
-    // 19 items or 40. This is the constitution's "a service that isn't
-    // installed is invisible" as mechanics instead of a checkbox; the catalog
-    // is the same list with the filter off, not a second screen.
-    // Kurulu-önce (D-010, 18 Tem): sayfa, sunucunun ÇALIŞTIRDIĞINI gösterir,
-    // tüm kataloğu değil. Böylece sayfa uzunluğu katalog boyutunu değil kurulu
-    // kalem sayısını izler — temiz sunucu, katalog 19 da olsa 40 da olsa 3-4
-    // satırdır. Bu, anayasanın "kurulu olmayan görünmezdir" maddesinin onay
-    // kutusu değil mekanik hâli; katalog, aynı listenin süzgeci kapalı hâlidir,
-    // ikinci ekran değil.
-    // …with one correction from the field (operator, Jul 23: "hide not
-    // installed keeps coming back checked"): installed-first is the right
-    // FIRST impression, not a standing rule. The choice is now remembered,
-    // and the catalog is reachable by a labelled button instead of a
-    // checkbox — a filter that hides the only path to installing is not a
-    // filter, it is a hidden step.
-    // …sahadan gelen bir düzeltmeyle (operatör, 23 Tem: "hide not installed
-    // sürekli seçili geliyor"): kurulu-önce doğru İLK izlenimdir, kalıcı bir
-    // kural değil. Seçim artık hatırlanıyor ve kataloğa onay kutusu yerine
-    // adı yazan bir düğmeyle ulaşılıyor — kurulumun tek yolunu gizleyen bir
-    // süzgeç, süzgeç değil gizli bir adımdır.
-    const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+    // One list (alpha.122, owner's Boston screens: "why can't phpPgAdmin be
+    // installed separately?"): every offered component is shown in its
+    // category, installed ones first, every category open on the first visit.
+    // The installed-only view of D-010 hid the very rows other screens sent
+    // the owner to (vsftpd, Fail2ban, ClamAV, phpPgAdmin). A category the
+    // viewer folds stays folded for that viewer; nothing else is remembered.
+    // Tek liste: her bileşen kendi bölümünde, kurulular önce; ilk ziyarette
+    // her bölüm açık. Katlanan bölüm yalnız o tarayıcıda hatırlanır.
+    const collapsedKey = 'celikpanel.components.collapsed';
+    const [collapsed, setCollapsedState] = useState<Set<string>>(() => {
+        try {
+            const stored: unknown = JSON.parse(localStorage.getItem(collapsedKey) ?? '[]');
+            return new Set(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : []);
+        } catch {
+            return new Set();
+        }
+    });
+    const setCollapsed = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => setCollapsedState((prev) => {
+        const value = typeof next === 'function' ? next(prev) : next;
+        try {
+            localStorage.setItem(collapsedKey, JSON.stringify([...value]));
+        } catch {
+            /* private mode / kısıtlı depolama — katlama yine değişir */
+        }
+        return value;
+    });
     // ?component=<id> opens this page at one component (alpha.114: another
     // page's "Install X" leads to X's own row, not to the top of a long list):
-    // the search is filled with its id and the catalogue view shown, so a
-    // component that is not installed is visible with its Install button.
+    // the search is filled with its id.
     // ?component=<id> sayfayi o bilesenin satirinda acar.
     const linkedComponent = new URLSearchParams(location.search).get('component');
     const [query, setQuery] = useState(() => linkedComponent ?? '');
-    const viewKey = 'celikpanel.components.view';
-    // The first visit opens the installed view (D-010). Only an explicit,
-    // remembered "catalog" opens the catalogue; a missing, unknown or
-    // unreadable choice is a first visit (alpha.100: it used to open the
-    // catalogue whenever nothing was stored).
-    // İlk ziyaret Kurulu görünümü açar (D-010). Kataloğu yalnız hatırlanan
-    // açık bir "catalog" seçimi açar; olmayan, bilinmeyen ya da okunamayan
-    // seçim ilk ziyarettir.
-    const [hideNotInstalled, setHideNotInstalled] = useState(() => {
-        if (linkedComponent) return false;
-        try {
-            return typeof localStorage === 'undefined' || localStorage.getItem(viewKey) !== 'catalog';
-        } catch {
-            return true;
-        }
-    });
-
-    // Collapse follows the view, not a fixed default: the installed list is
-    // short and wants to be readable at a glance; the full catalog is long
-    // and wants folding (D-010 correction, learned from implementing it).
-    // Katlama görünümü izler, sabit varsayılanı değil: kurulu liste kısadır ve
-    // tek bakışta okunmak ister; tam katalog uzundur ve katlanmak ister
-    // (D-010 düzeltmesi, uygulamadan öğrenildi).
-    const setView = (installedOnly: boolean) => {
-        setHideNotInstalled(installedOnly);
-        try {
-            localStorage.setItem(viewKey, installedOnly ? 'installed' : 'catalog');
-        } catch {
-            /* private mode / kısıtlı depolama — görünüm yine değişir */
-        }
-        setCollapsed(installedOnly ? new Set() : new Set(categoryOrder.map((c) => c.id)));
-    };
 
     const loadHostMutationReadiness = async (): Promise<boolean> => {
         try {
@@ -798,24 +754,23 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // Açık acil durumlar yalnız satır rozeti için okunur; okumak hiçbir şey başlatmaz.
     const emergencies = useRemote(SECURITY_EMERGENCIES_URL, decodeEmergencyList);
     const emergencyRows = emergencies.remote.state === 'known' ? rowsWithOpenEmergency(emergencies.remote.value) : new Set<string>();
-    const filtered = services.filter(
-        (s) =>
-            // The installed view hides what we KNOW is absent. A component
-            // nobody has checked is not known to be absent, so hiding it here
-            // would turn "not checked" back into "not installed" — the exact
-            // claim this page must stop making.
-            // Kurulu görünümü, YOK olduğunu BİLDİĞİMİZİ gizler.
-            // Roundcube's leftovers offer stays in sight: since alpha.100 the
-            // first visit opens this view, and the Panel's record of an
-            // unfinished install or removal must not hide behind the switch.
-            // Roundcube kalıntı teklifi görünür kalır; ilk ziyaret artık bu
-            // görünümü açar ve Panel kaydı düğmenin arkasında saklanmamalı.
-            // alpha.120: a core server that is not installed keeps its row,
-            // and so does a row whose security emergency is open.
-            // Kurulu olmayan çekirdek sunucu ve acil durumu açık satır görünür kalır.
-            (!hideNotInstalled || s.is_installed !== false || coreRowWhenAbsent(s) || emergencyRows.has(s.id) || (s.id === 'roundcube' && webmailCleanup !== null)) &&
-            (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`.toLowerCase().includes(q)),
-    );
+    // Every offered component, installed ones first within each category
+    // (alpha.122); a component nobody has checked sits between the two, since
+    // it is not known to be absent. The search reads every row.
+    // Her bileşen; bölüm içinde kurulular önce, bakılmamışlar arada. Arama her satırı okur.
+    const installedRank = (s: ManagedService) => (s.is_installed === true ? 0 : s.is_installed === null ? 1 : 2);
+    const filtered = services
+        .filter((s) => q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`.toLowerCase().includes(q))
+        .sort((a, b) => installedRank(a) - installedRank(b));
+    // The engines a mail setup installs (from the Panel's mail bundles): not
+    // installed, their row points to the mail setup in the email category
+    // instead of installing one part of it on its own.
+    // Posta kurulumunun kurduğu motorlar: satırları tek parça kurmak yerine posta kurulumuna yönlendirir.
+    const mailSetupParts = new Set(bundles.filter((bundle) => bundle.action_route === 'mail_profile').flatMap((bundle) => bundle.components));
+    const showMailSetup = () => {
+        setCollapsed((prev) => { const next = new Set(prev); next.delete('email'); return next; });
+        window.requestAnimationFrame?.(() => document.querySelector('[data-bundle-strip="email"]')?.scrollIntoView({ block: 'start' }));
+    };
 
     // A server nobody has looked at yet: every row is unknown. This is the
     // ordinary first state of a fresh or restored host, not a fault, so it
@@ -1526,23 +1481,32 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setPendingAction(action);
     };
 
-    // ?component=php-fpm&install=php8.4-fpm (alpha.118): the application
-    // catalog's "Install PHP 8.4 extensions" opens this page with the
-    // confirmation of that version's install, whose preview lists the
-    // extension packages; nothing starts before the owner confirms. The link
-    // is used once and leaves the address.
-    // Uygulama kataloğunun bağlantısı o PHP sürümünün kurulum onayını açar;
-    // sahip onaylamadan hiçbir şey başlamaz.
+    // ?component=<id>&install=<package?> (alpha.118 for PHP-FPM, every
+    // component since alpha.122): another screen's "Install X" opens this page
+    // at X's row with X's own install dialog, whose review lists what comes
+    // with it; nothing starts before the owner confirms. A PHP version
+    // (install=php8.4-fpm) opens that version's install. A component that is
+    // installed, blocked or not offered here opens nothing; its row, which
+    // the search shows, says why. The link is used once and leaves the address.
+    // Başka ekranın "X'i kur" bağlantısı bu sayfayı X'in satırında ve X'in kendi
+    // kurulum penceresiyle açar; sahip onaylamadan hiçbir şey başlamaz.
     const installLinkRef = useRef(false);
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const pkg = params.get('install');
-        if (installLinkRef.current || !pkg || loading || hostMutationReadiness === null) return;
+        if (installLinkRef.current || pkg === null || loading || hostMutationReadiness === null) return;
         installLinkRef.current = true;
-        const php = services.find((service) => service.id === 'php-fpm');
+        const target = services.find((service) => service.id === params.get('component'));
         const version = /^php([0-9]+\.[0-9]+)-fpm$/.exec(pkg)?.[1];
-        if (php && version && params.get('component') === 'php-fpm') {
-            requestComponentAction({ kind: 'install-package', service: php, pkg, version });
+        if (target && target.id === 'php-fpm' && version) {
+            requestComponentAction({ kind: 'install-package', service: target, pkg, version });
+        } else if (target && pkg === '' && target.is_installed === false && !target.conflict_with && !target.not_offered && !target.requires_missing?.length
+            && !(target.category === 'email' && mailSetupParts.has(target.id)) && target.id !== 'pdns' && target.id !== 'bind') {
+            if (mutationControlsDisabled) showToast('warning', stateUnverified ? t('services.stateUnverifiedHint') : readinessMessage);
+            else if (isTarballRuntime(target)) setOpenDrawers((prev) => new Set(prev).add(target.id));
+            else setInstallTarget(target);
+        } else if (target && pkg === '') {
+            showToast('info', t(target.is_installed === true ? 'services.installLinkInstalled' : 'services.installLinkBlocked', { name: componentName(target, t) }));
         } else {
             showToast('warning', t('services.installLinkUnavailable', { package: pkg }));
         }
@@ -1674,43 +1638,16 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         <div className="w-full sm:w-56">
                             <SearchInput value={query} onChange={setQuery} placeholder={t('services.search')} />
                         </div>
-                        {/* View controls kept as one tight cluster, clearly
-                            separated from the search by the larger gap-x-5. */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            {/* Two named views instead of one checkbox: each
-                                says what it shows and how many, so "where do I
-                                install from?" is answered by reading, not by
-                                discovering a filter.
-                                Tek onay kutusu yerine adı yazan iki görünüm:
-                                her biri neyi kaç kalemle gösterdiğini söyler;
-                                "nereden kurarım?" sorusu süzgeç keşfederek
-                                değil okuyarak cevaplanır. */}
-                            <div className="inline-flex overflow-hidden rounded-lg border border-border-strong">
-                                <button
-                                    onClick={() => setView(true)}
-                                    className={`whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 ${
-                                        hideNotInstalled ? 'bg-primary text-primary-fg' : 'bg-surface text-fg-muted hover:bg-surface-2'
-                                    }`}
-                                >
-                                    {t('services.viewInstalled', { n: services.filter((s) => s.is_installed).length })}
-                                </button>
-                                <button
-                                    onClick={() => setView(false)}
-                                    className={`whitespace-nowrap border-l border-border-strong px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 ${
-                                        hideNotInstalled ? 'bg-surface text-fg-muted hover:bg-surface-2' : 'bg-primary text-primary-fg'
-                                    }`}
-                                >
-                                    {t('services.viewCatalog', { n: services.length })}
-                                </button>
-                            </div>
-                            <div className="flex gap-1 text-xs">
-                                <button onClick={expandAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
-                                    {t('services.expandAll')}
-                                </button>
-                                <button onClick={collapseAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
-                                    {t('services.collapseAll')}
-                                </button>
-                            </div>
+                        {/* Fold controls, clearly separated from the search by
+                            the larger gap-x-5. No view switch since alpha.122:
+                            the list is every component, installed ones first. */}
+                        <div className="flex gap-1 text-xs" data-fold-controls="">
+                            <button onClick={expandAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                                {t('services.expandAll')}
+                            </button>
+                            <button onClick={collapseAll} className="whitespace-nowrap rounded-md px-2 py-1 max-sm:min-h-11 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                                {t('services.collapseAll')}
+                            </button>
                         </div>
                     </div>
                 )}
@@ -1817,39 +1754,28 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 />
             ) : (
                 <>
-                <p className="mb-2 text-xs text-fg-subtle">
-                    {filtered.length === services.length
-                        ? (services.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: services.length }))
+                {/* alpha.122: the whole list, with how many are installed;
+                    a search says how many of them it shows.
+                    Bütün liste ve kurulu sayısı; arama kaçını gösterdiğini söyler. */}
+                <p className="mb-2 text-xs text-fg-subtle" data-component-count="">
+                    {q === ''
+                        ? t('services.countInstalled', { total: services.length, installed: services.filter((s) => s.is_installed === true).length })
                         : t('services.matchCount', { shown: filtered.length, total: services.length })}
                 </p>
-                {/* alpha.120: the core servers' own rows (not installed) do not
-                    hide that nothing is installed yet.
-                    Çekirdek sunucuların satırları hiçbir şeyin kurulu olmadığını gizlemez. */}
-                {(filtered.length === 0 || (hideNotInstalled && q === '' && !filtered.some((s) => s.is_installed !== false))) && (
+                {/* A fresh server: nothing installed yet is a starting point,
+                    said once above the list it starts from.
+                    Taze sunucu: hiçbir şeyin kurulu olmaması bir başlangıçtır. */}
+                {q === '' && !hostNeverChecked && services.length > 0 && !services.some((s) => s.is_installed === true) && (
+                    <p className="mb-4 text-sm text-fg-muted" data-none-installed="">{t('services.noneInstalledYet')}</p>
+                )}
+                {filtered.length === 0 && q !== '' && (
                     <div className="mb-4 rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">
-                        {/* A fresh server's installed view is legitimately
-                            empty — that is a starting point, not a failed
-                            search, so it offers the next step instead of
-                            reporting nothing.
-                            Taze sunucunun kurulu görünümü meşru olarak boştur —
-                            bu başarısız arama değil başlangıç noktasıdır; hiçlik
-                            bildirmek yerine sonraki adımı sunar. */}
-                        {hideNotInstalled && q === '' ? (
-                            <div className="flex flex-col items-center gap-3">
-                                <span>{t('services.noneInstalledYet')}</span>
-                                <Button variant="primary" icon={DownloadCloud} onClick={() => setView(false)}>
-                                    {t('services.browseCatalog')}
-                                </Button>
-                            </div>
-                        ) : (
-                            t('services.noMatches')
-                        )}
+                        {t('services.noMatches')}
                     </div>
                 )}
-                {/* With nothing installed the installed view still draws each
-                    category's ready bundles strip: the strip is the offer
-                    (alpha.94 review).
-                    Hiçbir şey kurulu değilken de kurulu görünüm şeritleri çizer. */}
+                {/* The list is drawn when a row matches, or, with nothing
+                    searched, when there are ready bundles to offer.
+                    Liste, eşleşen satır varken ya da arama yokken paket varken çizilir. */}
                 {(filtered.length > 0 || (q === '' && bundles.length > 0)) && (
                 <div id='bundles' tabIndex={-1} className="space-y-4 scroll-mt-24 outline-none">
                     {/* A component whose category is not in categoryOrder used to
@@ -1869,10 +1795,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         sayfanın bütün vaadi de budur. */}
                     {[...categoryOrder, ...unknownCategories(filtered)].map(({ id: cat, labelKey, icon: CatIcon, tint }) => {
                         const group = filtered.filter((s) => s.category === cat);
-                        // A category whose rows the installed view hides
-                        // still shows its ready bundles strip (alpha.94).
-                        // Kurulu görünümün satırlarını gizlediği bölüm de
-                        // hazır paket şeridini gösterir.
+                        // A category with ready bundles shows its strip
+                        // while nothing is searched (alpha.94).
+                        // Paketi olan bölüm, arama yokken şeridini gösterir.
                         const hasBundles = q === '' && bundles.some((bundle) => bundle.category === cat);
                         if (group.length === 0 && !hasBundles) return null;
                         const counted = group.length > 0 ? group : services.filter((s) => s.category === cat);
@@ -2112,7 +2037,20 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         şey yok: buradaki Kur düğmesi tahmin, "çakışıyor" ya
                                         da "gerekli" rozeti ise hiç yapılmamış bir envanter
                                         hakkında iddia olurdu. */}
-                                    {notChecked(s) ? null : (s.id === 'pdns' || s.id === 'bind') ? (
+                                    {/* alpha.122: a conflict is said first, for every
+                                        component (Apache beside Nginx, Exim beside Postfix,
+                                        PowerDNS beside BIND); then the engines chosen
+                                        elsewhere point there.
+                                        Önce çakışma söylenir; sonra başka yerde seçilen motorlar oraya yönlendirir. */}
+                                    {notChecked(s) ? null : s.conflict_with ? (
+                                                            <span
+                                                                title={t('services.conflictHint', { name: s.conflict_with })}
+                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg-subtle"
+                                                                data-row-conflict={s.conflict_with}
+                                                            >
+                                                                <span><KeepWords text={t('services.conflictWith', { name: s.conflict_with })} /></span>
+                                                            </span>
+                                                        ) : (s.id === 'pdns' || s.id === 'bind') ? (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => navigate('/dns-infrastructure')}
@@ -2122,13 +2060,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 <Settings className="h-3.5 w-3.5" />
                                                                 {t('services.manageDNSEngine')}
                                                             </button>
-                                                        ) : s.conflict_with ? (
-                                                            <span
-                                                                title={t('services.conflictHint', { name: s.conflict_with })}
-                                                                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg-subtle"
-                                                            >
-                                                                <span><KeepWords text={t('services.conflictWith', { name: s.conflict_with })} /></span>
-                                                            </span>
                                                         ) : s.not_offered_kind === 'integration' && s.id === 'vsftpd' ? (
                                                             /* The why is visible text, not only a tooltip (alpha.114). */
                                                             <span className="flex max-w-xs flex-col items-end gap-1 text-right" data-builtin-sftp="">
@@ -2162,6 +2093,15 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                     ? t('services.integrationPending')
                                                                     : t('services.notOffered')}
                                                             </span>
+                                                        ) : s.category === 'email' && mailSetupParts.has(s.id) ? (
+                                                            /* alpha.122: a mail engine comes with a mail setup
+                                                               (Core Mail, Webmail, Spam-Protected Mail), whose
+                                                               chips head this category.
+                                                               Posta motoru bir posta kurulumuyla gelir. */
+                                                            <button type="button" onClick={showMailSetup} title={t('services.mailSetupHint')} className={rowButtonClass} data-row-mail-setup="">
+                                                                <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                                                                {t('services.mailSetupLink')}
+                                                            </button>
                                                         ) : s.requires_missing && s.requires_missing.length > 0 ? (
                                                             <span
                                                                 title={t('services.requiresHint', { names: reqNames(s.requires_missing) })}
