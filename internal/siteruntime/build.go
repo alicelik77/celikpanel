@@ -17,10 +17,20 @@ import (
 // still blocked), Type=oneshot. Its steps are separate command lines, never
 // a shell:
 //
-//	ExecStartPre  /usr/bin/python3.<m> -m venv <app>/venv-<n>.partial
-//	ExecStartPre  <venv>/bin/python -m pip install ... --require-hashes --no-deps -r <build dir>/server.txt
-//	ExecStartPre  <venv>/bin/python -m pip install ... -r <build dir>/requirements.txt [-c <build dir>/constraints.txt]
-//	ExecStart     <venv>/bin/python -m pip check
+//	ExecStart     /usr/bin/python3.<m> -m venv <app>/venv-<n>.partial
+//	ExecStartPost <venv>/bin/python -m pip install ... --require-hashes --no-deps -r <build dir>/server.txt
+//	ExecStartPost <venv>/bin/python -m pip install ... -r <build dir>/requirements.txt [-c <build dir>/constraints.txt]
+//	ExecStartPost <venv>/bin/python -m pip check
+//
+// The unit's ExecStart is the system's own interpreter: systemd-run looks
+// up the executable of its command on the host before the unit exists
+// ("Failed to find executable"), so the command can never be a path the
+// build itself creates. The steps that run the new environment's python
+// are ExecStartPost lines, which systemd runs in order after ExecStart
+// succeeded; the first one that fails ends the build (Result=exit-code)
+// and the rest do not run. The root egress ExecStartPre=+ still comes
+// before every step (alpha.119 lab round 1: every build failed with the
+// environment's python as the command).
 //
 // pip runs isolated (--isolated, PIP_CONFIG_FILE=/dev/null: no pip.conf of
 // the customer's and no PIP_* variable changes the index), from
@@ -31,8 +41,10 @@ import (
 // customer's own file.
 //
 // Python derlemesi: geçici celikrtbuild-<id> birimi, sitenin kendi hesabı ve
-// aynı site koruması; adımlar ayrı komut satırlarıdır, kabuk yoktur. pip
-// yalnız pypi.org'dan, açık izin yoksa yalnız hazır paketle kurar.
+// aynı site koruması; adımlar ayrı komut satırlarıdır, kabuk yoktur. Birimin
+// ana komutu sistemin kendi Python'udur (ortamı kurar); yeni ortamın
+// python'u ile çalışan adımlar ExecStartPost satırlarıdır. pip yalnız
+// pypi.org'dan, açık izin yoksa yalnız hazır paketle kurar.
 
 // PyPIIndex is the only index a build installs from.
 const PyPIIndex = "https://pypi.org/simple"
@@ -97,8 +109,10 @@ func (p BuildParams) pipInstall() []string {
 	return out
 }
 
-// BuildSteps are the build's command lines in order; the last one is the
-// unit's ExecStart, the others its ExecStartPre lines.
+// BuildSteps are the build's command lines in order. The first one creates
+// the environment with the system's interpreter and is the unit's command
+// (ExecStart); the others run the new environment's python and are its
+// ExecStartPost lines (see the package comment of this file).
 func BuildSteps(p BuildParams) ([][]string, error) {
 	if !ValidPythonMinor(p.Minor) || !PinnedMinor(p.Minor) {
 		return nil, fmt.Errorf("Python %s has no app-server pins in this release", p.Minor)
@@ -141,7 +155,8 @@ func BuildSteps(p BuildParams) ([][]string, error) {
 
 // BuildRunArgs are systemd-run's arguments for the build (after the program
 // name): the unit, the account, the environment, the sandbox, the SMTP
-// egress lines, the steps. Nothing here holds "$" or "%" (CheckValue).
+// egress lines, the later steps as ExecStartPost lines, then "--" and the
+// environment's creation with the system's interpreter as the command. Nothing here holds "$" or "%" (CheckValue).
 func BuildRunArgs(p BuildParams) ([]string, error) {
 	if p.AppID <= 0 || !domainPattern.MatchString(p.Domain) {
 		return nil, errors.New("an app identity and its domain are required")
@@ -180,7 +195,7 @@ func BuildRunArgs(p BuildParams) ([]string, error) {
 	// app folder from its bind unit's root-owned mount point (Requires=,
 	// After=), and its only root commands are the static helper's SMTP
 	// egress calls, which start nft with an empty environment. The egress
-	// ExecStartPre=+ comes before the pip steps.
+	// ExecStartPre=+ runs before every step (ExecStart and ExecStartPost).
 	unitLines, pre, post, err := sitesandbox.HelperLines(profile, p.Caps)
 	if err != nil {
 		return nil, err
@@ -188,11 +203,17 @@ func BuildRunArgs(p BuildParams) ([]string, error) {
 	for _, line := range append(append(append(unitLines, sandbox...), pre...), post...) {
 		args = append(args, "--property="+line)
 	}
-	for _, step := range steps[:len(steps)-1] {
-		args = append(args, "--property=ExecStartPre="+strings.Join(step, " "))
+	// Only the command is looked up by systemd-run before the unit starts:
+	// it must already exist on the host, never inside the app folder the
+	// build writes to.
+	if strings.HasPrefix(steps[0][0], p.Layout.Root+"/") || !path.IsAbs(steps[0][0]) {
+		return nil, errors.New("the build's command must be an existing system program")
+	}
+	for _, step := range steps[1:] {
+		args = append(args, "--property=ExecStartPost="+strings.Join(step, " "))
 	}
 	args = append(args, "--")
-	args = append(args, steps[len(steps)-1]...)
+	args = append(args, steps[0]...)
 	return args, nil
 }
 

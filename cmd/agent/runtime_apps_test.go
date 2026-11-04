@@ -308,6 +308,17 @@ func TestRuntimeAppControlAndRemove(t *testing.T) {
 	if step.Done || step.Reason != "unit_missing" {
 		t.Fatalf("start without a unit: %+v", step)
 	}
+	// A stop of an app that was never deployed: systemd does not know the
+	// unit, nothing runs, the stop is done without "systemctl stop" (whose
+	// "Unit … not loaded" never reaches the screen).
+	host.show = "LoadState=not-found\nActiveState=inactive\n"
+	host.systemctl = nil
+	step = transport.RuntimeAppStepResponse{}
+	_ = (&Agent{}).RuntimeAppControlV1(&transport.RuntimeAppControlRequest{Target: runtimeTarget, Action: "stop"}, &step)
+	if !step.Done || step.Reason != "" || step.Error != "" || strings.Contains(strings.Join(host.systemctl, "\n"), "stop celikrt-12") {
+		t.Fatalf("stop of an unknown unit: %+v %v", step, host.systemctl)
+	}
+	host.show = ""
 	var render transport.RuntimeAppRenderResponse
 	_ = (&Agent{}).RuntimeAppRenderV1(&transport.RuntimeAppRenderRequest{OperationID: "op-runtime-3", Target: runtimeTarget, Spec: runtimeSpec()}, &render)
 	step = transport.RuntimeAppStepResponse{}

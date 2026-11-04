@@ -186,10 +186,16 @@ func TestPythonBuildStartsOnceAndCompletesAsTheSiteAccount(t *testing.T) {
 	}
 	run := strings.Join(h.runs[0], "\n")
 	for _, want := range []string{"--unit=celikrtbuild-12.service", "--uid=shop_example_com",
-		"--property=ExecStartPre=/usr/bin/python3.13 -m venv /var/www/celikpanel/subscriptions/3/sites/7/app/venv-4.partial"} {
+		"--property=ExecStartPost=/var/www/celikpanel/subscriptions/3/sites/7/app/venv-4.partial/bin/python -m pip check --disable-pip-version-check"} {
 		if !strings.Contains(run, want) {
 			t.Fatalf("missing %q\n%s", want, run)
 		}
+	}
+	// systemd-run resolves its command on the host before the unit starts:
+	// the command is the system's interpreter creating the environment,
+	// never the environment's own python.
+	if !strings.HasSuffix(run, "\n--\n/usr/bin/python3.13\n-m\nvenv\n/var/www/celikpanel/subscriptions/3/sites/7/app/venv-4.partial") {
+		t.Fatalf("the command is not the environment's creation\n%s", run)
 	}
 	if !strings.Contains(h.written["server.txt"], "gunicorn==26.2.0 --hash=sha256:") || h.written["requirements.txt"] != "Django==4.2.16\n" {
 		t.Fatalf("build files %v", h.written)

@@ -38,6 +38,8 @@
 #   SFTP_PORT         default 22;  SFTP_IDENTITY: optional key file
 #   OTHER_SITE_FILE   optional: a readable (0644) file of ANOTHER site on the
 #                     same server, for matrix item 1
+#   TARGET_PID        optional: a host PID outside the app, for item 5 (with
+#                     UPLOAD=local the default is the site's PHP-FPM worker)
 #   REMOVE=1          remove the program at the end; REMOVE_FILES=1 also
 #                     removes its app folder
 #   CURL_INSECURE=1   accept the lab panel's self-signed certificate
@@ -197,17 +199,32 @@ esac
 # --- 3. environment: a run marker, a secret for the log check --------------
 RUN=$(python3 -c 'import secrets;print("r"+secrets.token_hex(6))')
 SECRET=$(python3 -c 'import secrets;print(secrets.token_hex(12))')
-ENV=$(RUN=$RUN SECRET=$SECRET OTHER=${OTHER_SITE_FILE:-} python3 -c 'import json,os
+# Item 5: a process outside the app's PID namespace (TARGET_PID, or with
+# UPLOAD=local the site's own PHP-FPM worker, else journald). Under
+# PrivatePIDs the program is PID 1 and sees no other process of the host, so
+# the probe also forks a child of its own; the host PID names no process in
+# its namespace (ESRCH) or is refused (EPERM), both BLOCKED.
+if [ -z "${TARGET_PID:-}" ] && [ "$UPLOAD" = local ]; then
+	TARGET_PID=$( { pgrep -o -u "$OWNER" php-fpm || pgrep -o php-fpm || pidof -s systemd-journald || true; } 2>/dev/null | head -1)
+fi
+case "${TARGET_PID:-}" in *[!0-9]*) die "TARGET_PID is a number" ;; esac
+ENV=$(RUN=$RUN SECRET=$SECRET OTHER=${OTHER_SITE_FILE:-} TARGET=${TARGET_PID:-} python3 -c 'import json,os
 e=[{"key":"PROBE_RUN","value":os.environ["RUN"],"secret":False},
    {"key":"PROBE_SECRET","value":os.environ["SECRET"],"secret":True}]
 if os.environ["OTHER"]:
     e.append({"key":"PROBE_OTHER_SITE","value":os.environ["OTHER"],"secret":False})
+if os.environ["TARGET"]:
+    e.append({"key":"PROBE_TARGET_PID","value":os.environ["TARGET"],"secret":False})
 print(json.dumps({"entries":e}))')
+[ -n "${TARGET_PID:-}" ] || note "item 5: no TARGET_PID, so the probe tries only a child of its own (the system-call filter), not a process outside its namespace"
 api PUT /env "$ENV" || die "environment: no answer; the values may or may not be saved, so run again"
 [ "$HTTP_CODE" = 200 ] || die "environment refused (HTTP $HTTP_CODE): $(refusal)"
 [ -n "${OTHER_SITE_FILE:-}" ] || note "item 1: OTHER_SITE_FILE not set, so the probe reads the run.sh default path (a missing file is not proof)"
 
-counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1; }
+# Under "set -euo pipefail" a failed nft (the egress table is not loaded
+# before the first sandboxed start) must not end the script: no counter
+# reads as empty (alpha.119 lab round 1).
+counter() { { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null || true; } | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1; }
 COUNTER_BEFORE=""
 if [ "$UPLOAD" = local ] && command -v nft >/dev/null; then COUNTER_BEFORE=$(counter); COUNTER_BEFORE=${COUNTER_BEFORE:-0}; fi
 

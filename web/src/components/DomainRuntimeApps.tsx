@@ -357,7 +357,11 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
         setActing(action);
         const res = await sendJSON(base + '/control', 'POST', { action });
         setActing('');
-        if (await after(res)) showToast('success', t('runtime.actionDone'));
+        if (!(await after(res))) return;
+        // Stopping an app that was never deployed changes nothing: say why
+        // and what starts it, instead of a bare "Done".
+        if (action === 'stop' && !app.deployed) showToast('info', t('runtime.stopNotDeployed'));
+        else showToast('success', t('runtime.actionDone'));
     };
     const deploy = async () => {
         setActing('deploy');

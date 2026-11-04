@@ -106,6 +106,73 @@ func smtp() {
 	}
 }
 
+// tracePeers is item 5: ptrace and process_vm_readv of another process.
+// With PrivatePIDs (systemd 257+) the probe is PID 1 of its own namespace
+// and its parent PID is 0, so PID 1 and the parent leave nothing to try
+// (alpha.119 lab round 1: item 5 had no result). The probe therefore tries:
+//
+//   - a child of its own (the same account, inside the namespace): only the
+//     system-call filter (~@debug, process_vm_readv) stands in the way;
+//   - PROBE_TARGET_PID, a host PID outside its namespace that the runner
+//     passes (a PHP-FPM worker, journald): in the probe's namespace the
+//     number names no process (ESRCH) or the attempt is refused (EPERM).
+//
+// Every refusal is BLOCKED; a success is ESCAPED.
+func tracePeers() {
+	self := os.Getpid()
+	type target struct {
+		pid  int
+		name string
+	}
+	var targets []target
+	for _, pid := range []int{1, os.Getppid()} {
+		if pid > 0 && pid != self {
+			targets = append(targets, target{pid, strconv.Itoa(pid)})
+		}
+	}
+	child := 0
+	if pid, err := syscall.ForkExec("/proc/self/exe", []string{"goprobe"}, &syscall.ProcAttr{Env: []string{"PROBE_MODE=sleep"}}); err == nil {
+		child = pid
+		targets = append(targets, target{pid, "own-child"})
+	} else {
+		skip(5, "own-child", "no child could be started: "+err.Error())
+	}
+	if v := os.Getenv("PROBE_TARGET_PID"); v != "" {
+		pid, err := strconv.Atoi(v)
+		switch {
+		case err != nil || pid <= 0:
+			skip(5, "outside", "PROBE_TARGET_PID is not a PID: "+v)
+		case pid == self || pid == child:
+			skip(5, "outside", "host PID "+v+" is this probe's own number in its namespace; pass another")
+		default:
+			targets = append(targets, target{pid, "outside-" + v})
+		}
+	} else if child == 0 {
+		skip(5, "outside", "no PROBE_TARGET_PID and no child: nothing to try")
+	}
+	for _, t := range targets {
+		err := syscall.PtraceAttach(t.pid)
+		if err == nil {
+			_ = syscall.PtraceDetach(t.pid)
+		}
+		attempt(5, "ptrace-"+t.name, err)
+		var buf [8]byte
+		local := iovec{base: uintptr(unsafe.Pointer(&buf[0])), len: 8}
+		remote := iovec{base: 0x400000, len: 8}
+		_, _, errno := syscall.Syscall6(310, uintptr(t.pid), uintptr(unsafe.Pointer(&local)), 1, uintptr(unsafe.Pointer(&remote)), 1, 0) // process_vm_readv (amd64)
+		if errno == 0 {
+			attempt(5, "process_vm_readv-"+t.name, nil)
+		} else {
+			attempt(5, "process_vm_readv-"+t.name, errno)
+		}
+	}
+	if child > 0 {
+		_ = syscall.Kill(child, syscall.SIGKILL)
+		var status syscall.WaitStatus
+		_, _ = syscall.Wait4(child, &status, 0, nil)
+	}
+}
+
 func matrix(appDir string, port int) {
 	uid := os.Getuid()
 	// 1. Another site's files.
@@ -153,26 +220,7 @@ func matrix(appDir string, port int) {
 		_ = os.Remove(suid)
 	}
 	// 5. ptrace and process_vm_readv.
-	for _, pid := range []int{1, os.Getppid()} {
-		if pid <= 0 || pid == os.Getpid() {
-			// With PrivatePIDs the program is PID 1 of its own namespace.
-			continue
-		}
-		err := syscall.PtraceAttach(pid)
-		if err == nil {
-			_ = syscall.PtraceDetach(pid)
-		}
-		attempt(5, "ptrace-"+strconv.Itoa(pid), err)
-		var buf [8]byte
-		local := iovec{base: uintptr(unsafe.Pointer(&buf[0])), len: 8}
-		remote := iovec{base: 0x400000, len: 8}
-		_, _, errno := syscall.Syscall6(310, uintptr(pid), uintptr(unsafe.Pointer(&local)), 1, uintptr(unsafe.Pointer(&remote)), 1, 0) // process_vm_readv (amd64)
-		if errno == 0 {
-			attempt(5, "process_vm_readv-"+strconv.Itoa(pid), nil)
-		} else {
-			attempt(5, "process_vm_readv-"+strconv.Itoa(pid), errno)
-		}
-	}
+	tracePeers()
 	// 6. mount, unshare, pivot_root.
 	attempt(6, "mount", syscall.Mount("none", filepath.Join(appDir, "data"), "tmpfs", 0, ""))
 	attempt(6, "unshare-user", syscall.Unshare(syscall.CLONE_NEWUSER))

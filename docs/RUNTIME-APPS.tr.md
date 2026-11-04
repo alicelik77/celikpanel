@@ -243,7 +243,7 @@ birlikte gösterir (§12).
 |---|---|---|
 | Ayarlar (`PUT …/settings`) | Başlangıç dosyasını, argümanları ve sağlık yolunu değiştirir. Bir sonraki yayımlamada geçerli olur. | Yeni kullanımın her kapısında: haklar, bekleme, askıya alma, sunucu düzeyi, dolu disk (§10, §11). |
 | Başlat / Yeniden başlat | `reset-failed`, `enable`, `restart`. | Henüz yayımlanmadıysa; beklemedeyse; askıdaysa; sunucu düzeyi kabul edilmediyse; başka bir işlem sürüyorsa (`busy`). |
-| Durdur | `stop` ve `disable`; program yeniden açılışta da durmuş kalır. | Haklar yüzünden asla. Yalnız uygulamanın yayımlaması ya da kaldırılması sürerken (`busy`). |
+| Durdur | `stop` ve `disable`; program yeniden açılışta da durmuş kalır. systemd'nin tanımadığı birimde (hiç yayımlanmamış ya da birimi silinmiş) çalışan bir şey yoktur: durdurma `systemctl` çağrılmadan başarılı olur. Hiç yayımlanmamış uygulamada yanıt `reason: not_deployed` ile “durdurulacak bir şey yok; başlatmak için yayına alın” der, durumu değişmez. | Haklar yüzünden asla. Yalnız uygulamanın yayımlaması ya da kaldırılması sürerken (`busy`). |
 | Ortam değişkenleri | §5. | Yalnız bir işlem sürerken (`busy`). |
 | Günlük | Son satırlar (varsayılan 200, en çok 500), sunucuda ayıklanmış. | Haklar yüzünden asla. Günlük okunamazsa `logs_unavailable`. |
 | Kaldır | Kalıcı işlem: `unpublish` → `remove` → `done`. | Haklar yüzünden asla. Yalnız bir işlem sürerken (`busy`). |
@@ -560,6 +560,12 @@ uygulama klasörünü root'a ait bir bağlama noktasından bağlar. Root komutla
 yardımcının adımlardan önce gelen `egress-add`/`egress-remove` çağrılarıdır
 ([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) §1a). Adımlar
 ayrı komut satırlarıdır; kabuk yoktur (komutlar İngilizce belgede, §18.6).
+Birimin ana komutu (`ExecStart`) sistemin kendi Python'udur ve ortamı kurar.
+`systemd-run`, ana komutun programını birim başlamadan önce sunucuda arar; bu
+yüzden ana komut, kurulumun daha sonra oluşturacağı bir yol olamaz (alpha.119
+deneme turu 1'de her kurulum bu nedenle başlayamadı). Yeni ortamın python'u ile
+çalışan pip adımları `ExecStartPost` satırlarıdır; sırayla çalışır, ilk başarısız
+adım kurulumu bitirir ve sonrakiler çalışmaz.
 `--isolated` ve `PIP_CONFIG_FILE=/dev/null`, bir `pip.conf` dosyasının ya da
 `PIP_*` değişkeninin paket dizinini değiştirmesini engeller. Müşterinin
 adımından `--only-binary=:all:` yalnız sunum kaynaktan derlemeye izin

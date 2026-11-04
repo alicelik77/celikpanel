@@ -15,9 +15,11 @@ import ctypes.util
 import glob
 import http.server
 import os
+import signal
 import socket
 import subprocess
 import sys
+import time
 
 libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
@@ -67,6 +69,70 @@ def smtp():
         attempt(9, f"smtp-remote-{port}", lambda: socket.create_connection((remote, port), timeout=3).close())
 
 
+class IOVec(ctypes.Structure):
+    _fields_ = [("base", ctypes.c_void_p), ("len", ctypes.c_size_t)]
+
+
+def trace_peers():
+    """Item 5: ptrace and process_vm_readv of another process.
+
+    Under PrivatePIDs the probe's main process is PID 1 of its own namespace
+    (or its parent is), so PID 1 and the parent leave little to try. The
+    probe also forks a child of its own (inside the namespace, the same
+    account: only the system-call filter stands in the way) and tries
+    PROBE_TARGET_PID, a host PID outside its namespace that the runner
+    passes: there the number names no process (ESRCH) or the attempt is
+    refused (EPERM). Every refusal is BLOCKED; a success is ESCAPED.
+    """
+    PTRACE_ATTACH, PTRACE_DETACH = 16, 17
+    me = os.getpid()
+    targets = [(pid, str(pid)) for pid in (1, os.getppid()) if pid > 0 and pid != me]
+    child = 0
+    try:
+        child = os.fork()
+        if child == 0:
+            time.sleep(600)
+            os._exit(0)
+        targets.append((child, "own-child"))
+    except OSError as exc:
+        say(5, "own-child", "SKIP", f"no child could be started: {exc}")
+    raw = os.environ.get("PROBE_TARGET_PID", "")
+    if raw:
+        if not raw.isdigit() or int(raw) <= 0:
+            say(5, "outside", "SKIP", f"PROBE_TARGET_PID is not a PID: {raw}")
+        elif int(raw) in (me, child):
+            say(5, "outside", "SKIP", f"host PID {raw} is this probe's own number in its namespace; pass another")
+        else:
+            targets.append((int(raw), f"outside-{raw}"))
+
+    def errno_raise():
+        raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
+
+    for pid, name in targets:
+        def ptrace(pid=pid):
+            if libc.ptrace(PTRACE_ATTACH, pid, None, None) == 0:
+                libc.ptrace(PTRACE_DETACH, pid, None, None)
+                return 0
+            errno_raise()
+
+        def vm_readv(pid=pid):
+            buf = ctypes.create_string_buffer(8)
+            local = IOVec(ctypes.cast(buf, ctypes.c_void_p), 8)
+            remote = IOVec(0x400000, 8)
+            if libc.process_vm_readv(pid, ctypes.byref(local), 1, ctypes.byref(remote), 1, 0) >= 0:
+                return 0
+            errno_raise()
+
+        attempt(5, f"ptrace-{name}", ptrace)
+        attempt(5, f"process_vm_readv-{name}", vm_readv)
+    if child > 0:
+        try:
+            os.kill(child, signal.SIGKILL)
+            os.waitpid(child, 0)
+        except OSError:
+            pass
+
+
 def matrix(app_dir, port):
     uid = os.getuid()
     other = os.environ.get("PROBE_OTHER_SITE", "/var/www/celikpanel/subscriptions/990002/sites/990002/secret.txt")
@@ -100,15 +166,7 @@ def matrix(app_dir, port):
 
     attempt(4, "chmod-u+s", set_suid)
     os.remove(suid)
-    PTRACE_ATTACH, PTRACE_DETACH = 16, 17
-    for pid in (1, os.getppid()):
-        def ptrace(pid=pid):
-            rc = libc.ptrace(PTRACE_ATTACH, pid, None, None)
-            if rc == 0:
-                libc.ptrace(PTRACE_DETACH, pid, None, None)
-                return 0
-            raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
-        attempt(5, f"ptrace-{pid}", ptrace)
+    trace_peers()
     CLONE_NEWNS, CLONE_NEWUSER = 0x00020000, 0x10000000
 
     def errno_call(rc):

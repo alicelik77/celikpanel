@@ -13,6 +13,7 @@ export const trRuntimeAppsScreens: Record<RuntimeAppsScreenKey, string> = {
     'runtime.lost': 'Yanıt kayboldu, bu yüzden sonuç bilinmiyor. Sayfa yeniden okundu; yeniden basmadan önce bakın. Tekrarlanan Yayına al veya Kaldır aynı işlemle yanıtlanır, asla iki kez başlamaz.',
     'runtime.serverSaid': 'Sunucunun yanıtı: {message}',
     'runtime.actionDone': 'Tamam.',
+    'runtime.stopNotDeployed': 'Durdurulacak bir şey yok: program henüz yayında değil, bu yüzden çalışmıyor. Başlatmak için Yayına al’a basın.',
     'runtime.kindUnavailable': 'Yüklenen programlar bu sürümde kullanılamıyor.',
     'runtime.label.who': 'Kim yapar:',
     'runtime.label.next': 'Sonraki adım:',

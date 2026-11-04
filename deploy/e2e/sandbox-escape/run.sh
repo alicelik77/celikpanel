@@ -48,6 +48,10 @@ mark() { # item verdict detail: FAIL wins over SKIP wins over PASS
 		*) RESULT[$item]=$verdict ;;
 	esac
 	[ -n "$detail" ] && DETAIL[$item]="${DETAIL[$item]:-}${DETAIL[$item]:+; }$detail"
+	# Always 0: callers write "cond && mark N PASS || mark N FAIL", and a
+	# detail-less PASS must not fall through to the FAIL (alpha.119 lab
+	# round 1: false FAILs for items 9, 11, 17 and 18).
+	return 0
 }
 
 build() {
@@ -63,7 +67,7 @@ build() {
 
 preflight() {
 	[ "$(id -u)" = 0 ] || { log "run as root on a lab VM"; exit 1; }
-	for tool in systemctl journalctl nft ip ss python3 nsenter; do
+	for tool in systemctl journalctl nft ip ss python3 findmnt; do
 		command -v $tool >/dev/null || { log "missing: $tool"; exit 1; }
 	done
 	[ -x "$BIN/render" ] && [ -x "$BIN/goprobe" ] || { log "run ./run.sh build first (on a machine with Go)"; exit 1; }
@@ -122,7 +126,20 @@ wait_line() { # unit pattern seconds
 	return 1
 }
 
-counter() { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1; }
+# The egress table may not be loaded yet (before the first sandboxed start):
+# no counter reads as empty, never as an error.
+counter() { { nft list counter inet celikpanel_egress smtp_rejects 2>/dev/null || true; } | sed -n 's/.*packets \([0-9]*\).*/\1/p' | head -1; }
+
+# Item 5's target outside the probe's PID namespace: a host PID the probe
+# must not reach (a PHP-FPM worker if one runs, else journald). In the
+# probe's namespace the number names no process (ESRCH) or the attempt is
+# refused (EPERM); both are BLOCKED.
+target_pid() {
+	local pid
+	pid=$(pgrep -o php-fpm 2>/dev/null || true)
+	[ -n "$pid" ] || pid=$(pidof -s systemd-journald 2>/dev/null || true)
+	echo "${pid:-$$}"
+}
 
 in_set() { nft list set inet celikpanel_egress smtp_blocked 2>/dev/null | grep -q "system.slice/$1"; }
 
@@ -149,7 +166,7 @@ run_matrix() { # unit kind port exec
 	local unit=$1 kind=$2 port=$3 exec=$4 before after
 	before=$(counter); before=${before:-0}
 	STARTED=$(date +%s)
-	render_unit "$unit" "$kind" "$port" "$exec" "PROBE_APPDIR=$APP,PROBE_PORT=$port,PROBE_KIND=$kind,PROBE_OTHER_SITE=$OTHER" || { mark 13 FAIL "$kind: render failed"; return; }
+	render_unit "$unit" "$kind" "$port" "$exec" "PROBE_APPDIR=$APP,PROBE_PORT=$port,PROBE_KIND=$kind,PROBE_OTHER_SITE=$OTHER,PROBE_TARGET_PID=$(target_pid)" || { mark 13 FAIL "$kind: render failed"; return; }
 	systemctl start "$unit"
 	if ! wait_line "$unit" "SANDBOX-PROBE DONE" 120; then
 		mark 1 FAIL "$kind probe did not finish: $(systemctl show -p Result --value "$unit")"
@@ -208,8 +225,9 @@ item18() { # the app folder swapped for a link to another site
 	[ -n "$pid" ] || { mark 18 FAIL "the program's process was not found"; return; }
 	mv "$APP" "$APP.moved" && ln -s "$(dirname "$OTHER")" "$APP" || { mark 18 FAIL "the folder could not be swapped"; return; }
 	# The running program keeps its own folder: the mount holds the folder,
-	# not its name.
-	if nsenter -t "$pid" -m test -x "$APP/bin/goprobe" && ! nsenter -t "$pid" -m test -e "$APP/secret.txt"; then
+	# not its name. Read through /proc/<pid>/root, which shows the program's
+	# own mount namespace: "nsenter -m test" cannot run there (NoExecPaths).
+	if [ -x "/proc/$pid/root$APP/bin/goprobe" ] && [ ! -e "/proc/$pid/root$APP/secret.txt" ]; then
 		mark 18 PASS
 	else
 		mark 18 FAIL "after the swap the running program sees another folder"
@@ -222,7 +240,12 @@ item18() { # the app folder swapped for a link to another site
 	systemctl is-active -q "$UNIT_GO" && mark 18 FAIL "the unit started with a link in place of its folder"
 	journalctl -u "celikpanel-sandbox@${UNIT_GO%.service}.service" -o cat --since "@$STARTED" --no-pager | grep -q "celikpanel-sandbox: $UNIT_GO was not started (app_folder_not_real)" \
 		&& mark 18 PASS || mark 18 FAIL "no refusal of the helper in the bind unit's journal"
-	findmnt -rn -o SOURCE,TARGET | grep -q "990002" && mark 18 FAIL "the other site is mounted somewhere"
+	# Judge each mount's source folder (FSROOT), not its target: the python
+	# test unit's own mount point is /run/celikpanel-sandbox/celikrt-990002.service/app
+	# and holds this site's folder.
+	if findmnt -rn -o FSROOT | grep -q "/subscriptions/990002\(/\|$\)"; then
+		mark 18 FAIL "the other site is mounted somewhere: $(findmnt -rn -o FSROOT,TARGET | grep "/subscriptions/990002" | head -3 | tr '\n' ' ')"
+	fi
 	# The real folder back: the unit starts again.
 	systemctl stop "$UNIT_GO" 2>/dev/null
 	rm -f "$APP"; mv "$APP.moved" "$APP"
@@ -231,7 +254,11 @@ item18() { # the app folder swapped for a link to another site
 	systemctl start "$UNIT_GO"
 	wait_line "$UNIT_GO" "SANDBOX-PROBE DONE" 120 && mark 18 PASS || mark 18 FAIL "the unit did not start again with its real folder"
 	systemctl stop "$UNIT_GO"
-	[ -e "/run/celikpanel-sandbox/$UNIT_GO" ] && mark 18 FAIL "the stop left /run/celikpanel-sandbox/$UNIT_GO behind"
+	# The bind unit stops after the app's unit, a moment later: wait for it
+	# before judging what the stop left.
+	local i
+	for i in $(seq 1 15); do [ -e "/run/celikpanel-sandbox/$UNIT_GO" ] || break; sleep 1; done
+	[ -e "/run/celikpanel-sandbox/$UNIT_GO" ] && mark 18 FAIL "the stop left /run/celikpanel-sandbox/$UNIT_GO behind (15 s after the stop)"
 }
 
 item10_bind_any() {
@@ -258,7 +285,9 @@ s=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind((
 	ip netns exec $NS timeout 5 bash -c "</dev/tcp/10.250.250.1/$((PORT_LOAD+1))" 2>/dev/null || reference=closed
 	kill $control 2>/dev/null
 	if [ "$sandboxed" = open ]; then mark 10 FAIL "a sandboxed 0.0.0.0 listener was reachable from outside"
-	elif [ "$reference" = closed ]; then mark 10 SKIP "the host firewall drops both; inconclusive for the egress table's input rule"
+	elif [ "$reference" = closed ]; then
+		mark 10 SKIP "inconclusive, not a failure: this host's own firewall dropped both the sandboxed 0.0.0.0 listener and the reference listener outside the sandbox, so the egress table's input rule could not be seen. The bind attempts of item 10 were judged as usual. To judge the rule, run on a lab VM whose firewall accepts 10.250.250.0/30 on celiksbxh"
+		log "item 10: SKIP - the host firewall drops the veth traffic before the sandbox's own rule (the reference listener is unreachable too)"
 	else mark 10 PASS; fi
 	systemctl stop "$UNIT_LOAD"
 }
@@ -323,6 +352,11 @@ summary() {
 		log "item $item: ${RESULT[$item]:-FAIL}${DETAIL[$item]:+ — ${DETAIL[$item]}}"
 		[ "${RESULT[$item]:-FAIL}" = FAIL ] && failed=1
 	done
+	local skipped=""
+	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+		[ "${RESULT[$item]:-}" = SKIP ] && skipped="$skipped $item"
+	done
+	[ -n "$skipped" ] && log "SKIP is not a failure, but these items were not judged:$skipped (each names its reason above)"
 	if [ $failed = 0 ]; then log "PASS"; else log "FAIL"; fi
 	return $failed
 }
