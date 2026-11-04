@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.120.md)
 
+> **Yayımlandı**, 4 Kasım 2026 (UTC): sürüm commit'i `bb3aa249d`, GitHub ön sürümü 09:54:22Z, indirme portalı yaklaşık 10:00Z (dış denetim 27/27).
+
 Sahibin Boston ve Frankfurt'u alpha.119'a güncelledikten sonra istediği
 Bileşenler düzeltmeleriyle küçük bir sürüm. **Kurulu panelleri yalnız sahibi,
 panelin kendi güncelleme ekranından günceller.**
