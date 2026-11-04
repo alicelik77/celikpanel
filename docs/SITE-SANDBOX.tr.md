@@ -36,6 +36,90 @@ ortamı işi de Python uygulamaları ve yüklenen programlar için bunu kullanı
 
 **systemd 257 ve sonrasında:** program kendi ad alanında 1 numaralı süreçtir (`PrivatePIDs`) ve cgroup ağacı sıkı biçimde salt okunurdur.
 
+## 1a. App klasörü korumaya nasıl girer
+
+systemd bir birimin yollarını root olarak, ana sistemde çözer ve bağlantıları izler:
+`BindPaths=` kaynağı ve `EnvironmentFile=`. Site klasörü sitenin hesabınındır. Hesap,
+CelikPanel'in denetimiyle başlatma arasında ya da sonraki bir yeniden başlatmadan önce app
+klasörünün adını değiştirip yerine bir bağlantı koyabilir. Birim klasörü adıyla anarsa systemd
+bağlantının gösterdiği yeri bağlar: başka bir sitenin klasörünü ya da `/etc/celikpanel`'i. Unix
+izinleri yine geçerli olurdu, ama koruma onlara dayanmamalı.
+
+Bu yüzden hiçbir birim ana sistemde site klasörünün içindeki bir yolu anmaz. Her korumalı birim
+bir **bağlama birimi** gerektirir: `celikpanel-sandbox@<birim adı>.service` (`Requires=` ve
+`After=`); şablonu `/etc/systemd/system/celikpanel-sandbox@.service`. Bağlama biriminde hiçbir
+koruma ayarı yoktur; **koruma yardımcısını** root olarak ana sistemin bağlama ad alanında çalıştırır
+(ayrı birim gerekir: systemd `BindPaths=` ve `TemporaryFileSystem=` ayarlarını birimin her
+komutu için, `ExecStartPre=+` dahil, kurar). Korumalı birim başlamadan önce yardımcı:
+
+1. Korumalı birimin kendi `User=`, `BindPaths=` ve `EnvironmentFile=` ayarlarını systemd'den
+   okur (`systemctl show`). Hangi klasörü bağlayacağını başka hiçbir şey söylemez.
+2. App klasörünü `/var/www/celikpanel/subscriptions` içinden, her seferinde bir klasör olmak
+   üzere `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)` ile açar.
+   Yoldaki her bağlantı reddedilir. Site klasörünün altında bağlama noktası da reddedilir
+   (`RESOLVE_NO_XDEV`).
+3. Sahipleri denetler: abonelik klasörü ve onun `sites` klasörü root'undur, başkası yazamaz.
+   Site klasörü ve altındaki her klasör sitenin hesabınındır. Hesabın ev klasörü o site
+   klasörü olmalı ve hesap olağan bir hesap olmalı (uid 1000 ya da üstü).
+4. Açtığı klasörü adıyla değil tanımlayıcısıyla `/run/celikpanel-sandbox/<birim>/app` noktasına
+   `nosuid` ve `nodev` olarak, alt bağlamalar olmadan bağlar (`open_tree`, `mount_setattr`,
+   `move_mount`; bunlar olmayan çekirdekte `/proc/self/fd/<n>` ile `mount`). Sonra bağlama
+   noktasının tam o klasörü gösterdiğini denetler. `/run/celikpanel-sandbox` ve her birimin
+   klasörü root'undur, kipi 0700.
+
+Yardımcı hiçbir ortam dosyası okumaz. Bir birimin değerleri yalnız barındırma ağacının dışındaki,
+root'a ait ve Ajan'ın bağlantı izlemeden yazdığı dosyadan gelir: hizmet uygulaması için
+`/etc/celikpanel-svcapps/celiksvc-<id>.env` (alpha.118 güvenlik düzeltmesi,
+[AI-APPS.tr.md](AI-APPS.tr.md) §5), çalışma zamanı uygulaması için `/etc/celikpanel-runtime/`
+([RUNTIME-APPS.tr.md](RUNTIME-APPS.tr.md)). Site klasöründeki hiçbir dosya ve onun hiçbir kopyası
+bir birimin ortamı olmaz.
+
+Korumalı birimde `BindPaths=/run/celikpanel-sandbox/<birim>/app:<app klasörü>` bulunur: program
+klasörünü olağan yolunda, bunun dışında boş olan barındırma ağacında görür.
+`WorkingDirectory=`, `ExecPaths=` ve `ExecStart=` de bu yolu anar, ama systemd onları koruma
+içinde çözer; orada bu yol bağlanan klasördür. Bağlama klasörün kendisini tutar: klasörün adı
+sonradan değişse ya da yerine bağlantı konsa çalışan program etkilenmez.
+
+Bağlama birimi korumalı birimin parçasıdır (`PartOf=`): korumalı birimin her başlatılması,
+durdurulması ve yeniden başlatılması (panelden, sahipten ya da açılışta) onu da başlatır,
+durdurur ya da yeniden başlatır; her başlatma yeniden denetler. Korumalı birim artık çalışmıyorsa
+bağlama birimi kendiliğinden durur (`StopWhenUnneeded=`); çıkmış bir program sonraki başlatmada
+yeniden denetlenir. Bir çökmeden sonraki otomatik
+yeniden başlatma (`Restart=on-failure`) zaten denetlenmiş bağlamayı korur.
+
+Yardımcı kapalı kalır. Bir denetim ya da bağlama başarısız olursa bağlama birimi başarısız olur
+ve korumalı birim başlamaz ("bir bağımlılık işi başarısız oldu"). Bağlama biriminin günlüğü
+klasörü ve nedeni İngilizce ve Türkçe yazar (`journalctl -u celikpanel-sandbox@<birim adı>`).
+Panel `app_folder_not_real` (bağlantı, klasör değil, bağlama noktası: müşteri gerçek klasörü
+geri koyar) ya da `app_folder_not_owned` (yönetici sahibini düzeltir) gösterir. Ajan da aynı
+yürüyüşü, bağlamadan, bir birimi yazmadan ya da başlatmadan önce ve başlatma başarısız olduğunda
+yapar. Bağlama birimini durdurmak bağlamayı kaldırır.
+
+**Hiçbir root komutu müşterinin ortamını dinamik yükleyiciyle almaz.** systemd bir birimin her
+komutuna birimin ortamını verir; bu ortamda müşterinin girdiği değerler vardır. Korumalı
+birimin root komutları yalnız yardımcının `egress-add`/`egress-remove` çağrılarıdır (§3):
+yardımcı statik bir Go programıdır, ortamını yok sayar ve nft'yi boş bir ortamla başlatır.
+3. kuşaktan önce birimler nft'yi bu ortamla doğrudan root olarak çalıştırıyordu.
+
+**Yardımcı**, `sandbox-helper` adıyla başlatılan ajan programıdır. Ajan kendini
+`/usr/lib/celikpanel-sandbox/sandbox-helper` olarak kopyalar (§4); böylece birimler CelikPanel
+kaldırılsa da başlar.
+
+| Sistem | Çekirdek | `openat2` (5.6) | `open_tree`/`move_mount` (5.2) | `mount_setattr` (5.12) | systemd |
+|---|---|---|---|---|---|
+| Ubuntu 22.04 | 5.15 (GA), 6.x (HWE) | var | var | var | 249 |
+| Debian 12 | 6.1 | var | var | var | 252 |
+| Ubuntu 24.04 | 6.8 | var | var | var | 255 |
+| Debian 13 | 6.12 | var | var | var | 257 |
+| Arch | güncel | var | var | var | 258+ |
+
+systemd tarafı (şablon birim, `Requires=`/`After=`/`PartOf=`, `BindPaths=kaynak:hedef`,
+`RemainAfterExit=` ile `Type=oneshot`) desteklenen her sürümden eskidir. `openat2` olmayan
+çekirdekte yardımcı hiçbir şey başlatmaz (`app_folder_unreadable`); ada göre yürüyüşe asla geri
+dönmez. WSL Debian 13 üzerinde (systemd 257, çekirdek 6.18) bir kez çalıştırıldı: bağlama,
+sitenin hesabından yazma, çalışırken bağlantıyla değiştirme (program kendi klasörünü korudu),
+reddedilen yeniden başlatma ve temiz durdurma. Beş sistem laboratuvarda hâlâ ölçülecek.
+
 ## 2. Sistemlere göre ve eksik (reduced) düzey
 
 Her ayar yalnız sunucudaki systemd onu tanıyorsa yazılır. BPF olmadan kabul edilip sessizce
@@ -85,8 +169,10 @@ tablosuna asla girmez.
   boşaltılıp yeniden doldurulur; kümedeki üyeler ve sayaç korunur. Bu, nft 1.1.3 üzerinde bir
   ağ ad alanında ölçüldü.
 
-Her korumalı birim başlamadan önce tabloyu yükler ve kendi cgroup'unu kümeye ekler. Durduktan
-sonra cgroup'unu kümeden çıkarır. nft tabloyu yükleyemezse ya da birimin cgroup'u
+Engeli tutabilen sunucuda her korumalı birim yardımcıyı (§1a) çalıştırır:
+`ExecStartPre=+… sandbox-helper egress-add --unit=<birim>` tabloyu yükler ve birimin cgroup'unu
+kümeye ekler; `ExecStopPost=-+… egress-remove` durduktan sonra çıkarır. nft boş bir ortamla
+çalışır. nft tabloyu yükleyemezse ya da birimin cgroup'u
 `/system.slice/<birim>` değilse birim başlamaz; engel kapalı kalacağına program hiç çalışmaz.
 
 `celikpanel-egress-guard.timer` 30 saniyede bir çalışır. Biri `nft flush ruleset`
@@ -107,6 +193,14 @@ başlık satırı bulunur:
 - `celikpanel-egress-guard.service`
 - `celikpanel-egress-guard.timer`
 
+Ajan yardımcıyla birlikte bağlama birimlerinin şablonunu
+(`/etc/systemd/system/celikpanel-sandbox@.service`) da aynı kuralla, her sunucuda yazar.
+
+Altıncı dosya yardımcıdır: `/usr/lib/celikpanel-sandbox/sandbox-helper`, ajan programının
+kopyası (0755, root'un). Ajan onu yoksa yazar ve bir güncellemeden sonra kendi önceki kopyasını
+yeniler. Sahibin yerine koyduğu dosya korunur ve olduğu gibi kullanılır. Yardımcı CelikPanel
+olmadan da çalışır.
+
 Her yazma `/var/lib/celikpanel-agent-private/sandbox/native-files.json` dosyasına kaydedilir.
 
 Ajan eksik dosyayı yazar ve CelikPanel'in değişmemiş metnini yeniler. Sahibin değiştirdiği
@@ -122,7 +216,10 @@ yazar; bir durum okuması bunları asla yazmaz.
 
 İşlem `verify` adımına gelince ajan çalışan birimi profiliyle karşılaştırır. Üç şey denetlenir:
 
-- `systemctl show` profille uyuşuyor.
+- `systemctl show` profille uyuşuyor; bağlama biriminin `Requires=`/`After=` satırları, onun
+  bağlama noktasından gelen `BindPaths=` ve yardımcının çıkış satırları dahil.
+- Hiçbir bağlama kaynağı ve ortam dosyası ana sistemde barındırma ağacında değil (örneğin
+  sahibin bir ek dosyasından: `site_path_on_host`).
 - Birim SMTP kümesinde ve engel kuralı yüklü.
 - Birim yalnız döngü (loopback) adresinde dinliyor.
 
@@ -131,7 +228,8 @@ Uyuşmayan ya da okunamayan her şey kodlu bir rettir. Panel uygulamayı durduru
 
 ## 6. Çalışan uygulamaları yeni korumaya geçirmek
 
-Önceki bir sürümün yazdığı birim sessizce yeniden yazılmaz. Alan adı sayfası "önceki sürümün
+Önceki bir sürümün yazdığı birim (kuşak işareti olmayan ya da 3'ten küçük) sessizce yeniden
+yazılmaz. 3. kuşak, bağlama birimi ve uygulama klasörünün root'a ait bağlamasıdır (§1a); ortam dosyası yine root'un `/etc/celikpanel-svcapps/celiksvc-<id>.env` dosyasıdır. Alan adı sayfası "önceki sürümün
 korumasıyla çalışıyor" der. Yönetici sayfası kaç uygulamanın beklediğini gösterir ve tek bir
 düğme sunar: "Yeni korumayı N uygulamaya uygula".
 
@@ -147,5 +245,5 @@ düğme sunar: "Yeni korumayı N uygulamaya uygula".
 ## 7. Kaçış denemeleri
 
 Deneme takımı `deploy/e2e/sandbox-escape/` içindedir. Statik bir Go yoklaması ve bir Python
-yoklaması, korumalı birimler altında matrisin 1–17. maddelerini dener. Her deneme başarısız
+yoklaması, korumalı birimler altında matrisin 1–18. maddelerini dener. Her deneme başarısız
 olursa takım PASS bildirir. Desteklenen beş sistemde laboratuvar turu hâlâ açıktır.

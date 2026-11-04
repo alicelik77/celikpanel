@@ -181,6 +181,11 @@ günlüğü onu adıyla yazar.
 sunucuda geri yükleme uygulamanın değerlerini korur; başka bir sunucuda uygulamanın anahtarları
 (ve n8n'in kayıtlı kimlik bilgilerinin bağlı olduğu şifreleme anahtarı) yeniden girilmelidir.
 
+alpha.119'dan beri uygulama klasörünün kendisi, her başlatmadan önce bir bağlama biriminin
+bağlantı izlemeden yaptığı root'a ait bir bağlamayla korumaya bağlanır
+([SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md) §1a). Ortam yine yukarıdaki root dosyasıdır: bağlama
+birimi site klasöründen hiçbir dosya okumaz ve oradaki hiçbir şey uygulamanın ortamı olmaz.
+
 ## 6. Bu sürümde sunulmayanlar
 
 Paylaşımlı bir barındırma sunucusunda, kabuk komutları çalıştıran ve güvenilmeyen içerik okuyan

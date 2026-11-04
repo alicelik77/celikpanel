@@ -171,6 +171,11 @@ owner changed is kept; the Agent log names it.
 it. Restoring a site on the same server keeps the app's values; on another server the app's keys
 (and n8n's encryption key, which its saved credentials depend on) must be set again.
 
+Since alpha.119 the app folder itself is bound into the sandbox by a root-owned mount that a
+bind unit makes before every start, without following links
+([SITE-SANDBOX.md](SITE-SANDBOX.md) §1a). The environment stays the root file above: the bind
+unit reads no file of the site's folder, and nothing there becomes the app's environment.
+
 ## 6. Not offered in this release
 
 On a shared hosting server an agent that runs shell commands and reads untrusted content

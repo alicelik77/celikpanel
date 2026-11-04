@@ -281,7 +281,8 @@ func serviceAppSandboxProof(ctx context.Context, sc serviceAppContext, req *tran
 	if sc.app.AuxPort {
 		aux = req.AuxPort
 	}
-	profile := serviceapps.SandboxProfile(sc.layout, sc.account.Name, sc.account.Group, limits, limits.MemoryMB, req.Port, aux, caps)
-	result := sandboxProof(ctx, serviceapps.UnitName(req.Target.InstallID)+".service", profile, caps, &listen)
+	unit := serviceapps.UnitName(req.Target.InstallID) + ".service"
+	profile := serviceapps.SandboxProfile(unit, sc.layout, sc.account.Name, sc.account.Group, limits, limits.MemoryMB, req.Port, aux, caps)
+	result := sandboxProof(ctx, unit, profile, caps, &listen)
 	return &transport.SandboxProof{OK: result.OK, Code: result.Code, Detail: result.Detail}
 }

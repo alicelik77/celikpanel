@@ -162,7 +162,9 @@ func TestServiceAppPrepareStartsTheInstallOnceAsTheSiteUser(t *testing.T) {
 	}
 	args := strings.Join(host.systemdRuns[0], "\n")
 	for _, want := range []string{"--uid=flows_example_com", "--unit=celiksvcinst-5", "--property=ProtectSystem=strict",
-		"--property=NoNewPrivileges=yes", "--property=ReadWritePaths=/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n", "--property=MemoryMax=3072M"} {
+		"--property=NoNewPrivileges=yes", "--property=MemoryMax=3072M",
+		"--property=BindPaths=/run/celikpanel-sandbox/celiksvcinst-5.service/app:/var/www/celikpanel/subscriptions/3/sites/7/apps/n8n",
+		"--property=Requires=celikpanel-sandbox@celiksvcinst-5.service", "--property=After=celikpanel-sandbox@celiksvcinst-5.service"} {
 		if !strings.Contains(args, want) {
 			t.Errorf("install unit lacks %s", want)
 		}

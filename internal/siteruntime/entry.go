@@ -35,6 +35,11 @@ const (
 	EntryWrongArch      = "entry_wrong_arch"
 	EntryInterpreter    = "entry_interpreter"
 	EntryFolderNotOwned = "app_folder_not_owned"
+	// EntryFolderNotReal: the app folder, or a folder on its way from the
+	// site home, is a link, not a folder, or another file system's mount
+	// point. The sandbox helper refuses to start the program then
+	// (sitesandbox/helper.go); the customer puts the real folder back.
+	EntryFolderNotReal = "app_folder_not_real"
 	// EntryUnreadable: the entry could not be read (an unknown result, never a
 	// verdict on the file).
 	EntryUnreadable = "entry_unreadable"
@@ -99,7 +104,9 @@ type FileFacts struct {
 // be inside it).
 func CheckEntry(f FileFacts, uid int, appRoot string) (string, string) {
 	switch {
-	case f.FolderLink || f.FolderUID != uid:
+	case f.FolderLink:
+		return EntryFolderNotReal, "the app folder is a link, not a real folder of this site; put the real folder back"
+	case f.FolderUID != uid:
 		return EntryFolderNotOwned, "the app folder must be a real folder of the site's own account"
 	case f.Link:
 		return EntryLink, "the entry is a link; upload the program itself"

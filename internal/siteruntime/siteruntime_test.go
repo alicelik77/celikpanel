@@ -85,7 +85,7 @@ func TestEntryCheckEdgeCases(t *testing.T) {
 		want string
 	}{
 		{"link", func(f *FileFacts) { f.Link = true }, EntryLink},
-		{"folder link", func(f *FileFacts) { f.FolderLink = true }, EntryFolderNotOwned},
+		{"folder link", func(f *FileFacts) { f.FolderLink = true }, EntryFolderNotReal},
 		{"folder of another account", func(f *FileFacts) { f.FolderUID = 0 }, EntryFolderNotOwned},
 		{"directory", func(f *FileFacts) { f.Regular = false }, EntryNotRegular},
 		{"root's file", func(f *FileFacts) { f.UID = 0 }, EntryNotOwned},
@@ -218,10 +218,13 @@ func TestUnitTextHasNoShellAndNoExpansion(t *testing.T) {
 			"User=shop_example_com\n", "ExecStart=/var/www/celikpanel/subscriptions/3/sites/7/app/bin/server --listen 127.0.0.1:30010\n",
 			"Restart=on-failure\n", "StartLimitBurst=5\n", "MemoryDenyWriteExecute=yes\n", "NoExecPaths=/\n", "ProcSubset=pid\n",
 			"EnvironmentFile=-/etc/celikpanel-runtime/celikrt-12.service.env\n", "Environment=PORT=30010\n", "Environment=HOST=127.0.0.1\n",
-			"ExecStartPre=+/usr/sbin/nft -f /usr/lib/celikpanel-sandbox/egress.nft\n",
-			`ExecStartPre=+/usr/sbin/nft add element inet celikpanel_egress smtp_blocked '{ "system.slice/celikrt-12.service" }'` + "\n",
-			"ExecStopPost=-+/usr/sbin/nft delete element", "SocketBindAllow=tcp:30010\n", "SocketBindDeny=any\n",
-			"# celikpanel-sandbox-generation: 2\n", "# celikpanel-runtime-kind: program\n",
+			"ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celikrt-12.service\n",
+			"ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celikrt-12.service\n",
+			"Requires=celikpanel-sandbox@celikrt-12.service\n", "After=celikpanel-sandbox@celikrt-12.service\n",
+			"BindPaths=/run/celikpanel-sandbox/celikrt-12.service/app:" + p.Layout.Root + "\n",
+			"WorkingDirectory=" + p.Layout.Root + "\n",
+			"SocketBindAllow=tcp:30010\n", "SocketBindDeny=any\n",
+			"# celikpanel-sandbox-generation: 3\n", "# celikpanel-runtime-kind: program\n",
 		} {
 			if !strings.Contains(text, want) {
 				t.Fatalf("%d: missing %q\n%s", version, want, text)

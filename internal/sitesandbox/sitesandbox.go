@@ -27,7 +27,10 @@ import (
 // Generation is the sandbox text this release renders. A unit written by an
 // earlier release carries no marker (generation 1: alpha.118's service apps)
 // and is shown as "needs the new sandbox"; it is never rewritten silently.
-const Generation = 2
+// Generation 3 binds the app folder only through the bind unit's root-owned
+// mount point (helper.go) and reads a service app's environment file only
+// through its copy.
+const Generation = 3
 
 // GenerationMarker is the comment line a rendered unit carries.
 const GenerationMarker = "# celikpanel-sandbox-generation: "
@@ -66,11 +69,15 @@ type Limits struct {
 
 // Profile is everything one sandboxed unit is made of.
 type Profile struct {
-	Kind  Kind
+	Kind Kind
+	// Unit is the systemd unit's name (ValidUnitName); the helper's mount
+	// point is named after it.
+	Unit  string
 	User  string
 	Group string
 	// AppDir is the only writable path; it is bound into an otherwise empty,
-	// read-only hosting tree.
+	// read-only hosting tree at its own path, from the helper's root-owned
+	// mount point (never from the site home on the host).
 	AppDir string
 	// ReadOnlyPaths are further paths the program may read (for example the
 	// distribution's Python); never inside the hosting tree.
@@ -121,6 +128,9 @@ func (p Profile) Validate() error {
 	case KindServiceApp, KindPython, KindProgram:
 	default:
 		return errors.New("unknown sandbox kind")
+	}
+	if !ValidUnitName(p.Unit) {
+		return errors.New("the sandbox needs its unit's name")
 	}
 	if !userPattern.MatchString(p.User) || !userPattern.MatchString(p.Group) || p.User == "root" || p.Group == "root" {
 		return errors.New("the sandbox needs the site's own account")

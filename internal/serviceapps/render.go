@@ -145,9 +145,14 @@ func (p UnitParams) validate() error {
 // processes, cannot reach the Agent's or any PHP-FPM socket, the metadata
 // address or a mail port, binds only its own loopback ports and writes only
 // to its own folder (and its private /tmp). port is 0 for the install unit.
-func SandboxProfile(layout Layout, user, group string, limits Resources, memoryMB, port, aux int, caps sitesandbox.Caps) sitesandbox.Profile {
+//
+// unit is the systemd unit's name with ".service". The sandbox reads no
+// environment file from the app folder: the long-running unit's values come
+// only from root's file in EnvDir (the alpha.118 security fix), which
+// RenderUnit names; the install unit reads none.
+func SandboxProfile(unit string, layout Layout, user, group string, limits Resources, memoryMB, port, aux int, caps sitesandbox.Caps) sitesandbox.Profile {
 	profile := sitesandbox.Profile{
-		Kind: sitesandbox.KindServiceApp, User: user, Group: group, AppDir: layout.Root, Port: port,
+		Kind: sitesandbox.KindServiceApp, Unit: unit, User: user, Group: group, AppDir: layout.Root, Port: port,
 		Limits: sitesandbox.Limits{MemoryMB: memoryMB, CPUPercent: limits.CPUPercent, Tasks: limits.TasksMax, NOFILE: 8192},
 		// The service apps were offered before levels existed: they run at
 		// what this host enforces, and the Panel shows the level.
@@ -166,21 +171,21 @@ func SandboxDirectives(profile sitesandbox.Profile, caps sitesandbox.Caps) ([]st
 }
 
 // InstallUnitProperties are the --property values of the transient install
-// unit: the sandbox and, where the host can hold it, the SMTP block (npm and
-// pip run third-party install scripts).
+// unit: the sandbox, its bind unit (Requires=, After=) and, where the host
+// can hold it, the SMTP block (npm and pip run third-party install scripts).
 func InstallUnitProperties(installID int, layout Layout, user, group string, limits Resources, memoryMB int, caps sitesandbox.Caps) ([]string, error) {
-	directives, err := SandboxDirectives(SandboxProfile(layout, user, group, limits, memoryMB, 0, 0, caps), caps)
+	profile := SandboxProfile(InstallUnitName(installID)+".service", layout, user, group, limits, memoryMB, 0, 0, caps)
+	directives, err := SandboxDirectives(profile, caps)
 	if err != nil {
 		return nil, err
 	}
-	if caps.EgressEnforced() {
-		pre, post, err := sitesandbox.EgressExecLines(InstallUnitName(installID) + ".service")
-		if err != nil {
-			return nil, err
-		}
-		directives = append(directives, pre...)
-		directives = append(directives, post...)
+	unitLines, pre, post, err := sitesandbox.HelperLines(profile, caps)
+	if err != nil {
+		return nil, err
 	}
+	directives = append(directives, unitLines...)
+	directives = append(directives, pre...)
+	directives = append(directives, post...)
 	return directives, nil
 }
 
@@ -216,17 +221,16 @@ func RenderUnit(p UnitParams) (string, error) {
 		}
 	}
 	name := UnitName(p.InstallID)
-	sandbox, err := SandboxDirectives(SandboxProfile(p.Layout, p.User, p.Group, p.Limits, p.Limits.MemoryMB, p.Port, p.AuxPort, p.Caps), p.Caps)
+	profile := SandboxProfile(name+".service", p.Layout, p.User, p.Group, p.Limits, p.Limits.MemoryMB, p.Port, p.AuxPort, p.Caps)
+	sandbox, err := SandboxDirectives(profile, p.Caps)
 	if err != nil {
 		return "", err
 	}
-	if p.Caps.EgressEnforced() {
-		pre, post, err := sitesandbox.EgressExecLines(name + ".service")
-		if err != nil {
-			return "", err
-		}
-		sandbox = append(append(pre, sandbox...), post...)
+	unitLines, pre, post, err := sitesandbox.HelperLines(profile, p.Caps)
+	if err != nil {
+		return "", err
 	}
+	sandbox = append(append(pre, sandbox...), post...)
 	pathEnv := path.Dir(p.Runtime.Path) + ":/usr/local/bin:/usr/bin:/bin"
 	if p.App.Runtime == RuntimePython {
 		pathEnv = path.Join(p.Layout.InstallDir(p.Version), "bin") + ":/usr/local/bin:/usr/bin:/bin"
@@ -240,12 +244,16 @@ func RenderUnit(p UnitParams) (string, error) {
 	b.WriteString("[Unit]\n")
 	fmt.Fprintf(&b, "Description=CelikPanel service app %s for %s\n", p.App.Name, p.Domain)
 	b.WriteString("After=network-online.target\nWants=network-online.target\n")
-	for _, line := range sitesandbox.UnitDirectives() {
+	for _, line := range append(sitesandbox.UnitDirectives(), unitLines...) {
 		b.WriteString(line + "\n")
 	}
 	b.WriteString("\n")
 	b.WriteString("[Service]\nType=simple\n")
 	fmt.Fprintf(&b, "User=%s\nGroup=%s\n", p.User, p.Group)
+	// The working folder is resolved inside the sandbox (the bind unit's
+	// bind of the folder itself). The environment file is root's own, outside
+	// the hosting tree (EnvDir): systemd reads it as root and follows links,
+	// so it is never a file of the site's folder or a copy of one.
 	fmt.Fprintf(&b, "WorkingDirectory=%s\n", p.Layout.Root)
 	fmt.Fprintf(&b, "EnvironmentFile=%s\n", EnvFile(p.InstallID))
 	fmt.Fprintf(&b, "Environment=HOME=%s\n", p.Layout.DataDir())

@@ -128,10 +128,15 @@ func Directives(p Profile, c Caps) ([]string, error) {
 		{line: "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK"},
 		{line: "UMask=0077"},
 		// Every other site and subscription disappears: an empty read-only
-		// hosting tree with only this program's folder bound into it.
+		// hosting tree with only this program's folder bound into it. The
+		// source is the helper's root-owned mount point, never the folder's
+		// name in the site home: systemd resolves a source as root and
+		// follows links (helper.go). The destination is created by systemd
+		// inside the empty tmpfs, so nothing of the customer's lies on its
+		// way. A BindPaths= mount is writable; no ReadWritePaths= is needed
+		// (systemd drops one at the same path as a duplicate of the bind).
 		{line: "TemporaryFileSystem=" + hostingpath.HostingBase() + ":ro"},
-		{line: "BindPaths=" + p.AppDir},
-		{line: "ReadWritePaths=" + p.AppDir},
+		{line: "BindPaths=" + BindSource(p.Unit) + ":" + p.AppDir},
 		{line: "InaccessiblePaths=" + withOptional(InaccessiblePaths)},
 		{line: "IPAddressDeny=" + strings.Join(DeniedAddresses, " "), bpf: true},
 		{line: "LogRateLimitIntervalSec=30s"},

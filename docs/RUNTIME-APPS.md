@@ -69,7 +69,8 @@ refused. A FIFO planted as the entry cannot stall the Agent.
 
 | Rule | Refusal code | What to do |
 |---|---|---|
-| The `app` folder is a real folder of the site's account (not a link) | `app_folder_not_owned` | Remove the link, or make the folder again with the file manager. |
+| The `app` folder, and every folder from the hosting tree down to it, is a real folder (not a link, not a mount point) | `app_folder_not_real` | Replace the link with the real folder, with the file manager or SFTP. |
+| The `app` folder and the site home belong to the site's account; the folders above the site home belong to root and others cannot write to them | `app_folder_not_owned` | The administrator corrects the owner. |
 | The file exists | `entry_missing` | Upload it to `app/bin/<entry>`. |
 | It is not a link | `entry_link` | Upload the program itself. |
 | It is a regular file | `entry_not_regular` | Upload the program file, not a folder or a special file. |
@@ -181,14 +182,19 @@ the app's number, shown on the Programs tab. It contains:
 - `[Unit]`: `After=`/`Wants=network-online.target`,
   `StartLimitIntervalSec=300`, `StartLimitBurst=5`.
 - `[Service]`: `Type=simple`; `User=`/`Group=` the site's account;
-  `WorkingDirectory=<app folder>`; `EnvironmentFile=-<env file>`;
+  `WorkingDirectory=<app folder>` (resolved inside the sandbox, where that
+  path is the bind of the folder); `EnvironmentFile=-<env file>`;
   `HOME=<app>/data`, `PATH=<app>/bin`, `PORT`, `HOST`;
   `ExecStart=<app>/bin/<entry> <arguments>`; `Restart=on-failure`,
   `RestartSec=5`, `TimeoutStopSec=30`; and the sandbox directives (§7).
-- The SMTP egress lines, on a host that enforces the egress block:
-  `ExecStartPre=+` loads the egress table and adds the unit's cgroup to the
-  `smtp_blocked` set; `ExecStopPost=-+` removes it again
-  ([SITE-SANDBOX.md §3](SITE-SANDBOX.md)).
+- `Requires=` and `After=` of the bind unit `celikpanel-sandbox@celikrt-<id>.service`
+  ([SITE-SANDBOX.md §1a](SITE-SANDBOX.md)): it checks the app folder before
+  every start and binds it onto `/run/celikpanel-sandbox/celikrt-<id>.service/app`.
+  `BindPaths=` binds only that root-owned path into the sandbox, at the
+  folder's usual path.
+- On a host that enforces the egress block, `ExecStartPre=+… sandbox-helper
+  egress-add` adds the unit's cgroup to the `smtp_blocked` set and
+  `ExecStopPost=-+… egress-remove` removes it ([SITE-SANDBOX.md §3](SITE-SANDBOX.md)).
 - `[Install]`: `WantedBy=multi-user.target`.
 
 A program that stops 5 times within 5 minutes is not restarted again
@@ -233,7 +239,7 @@ A deploy is one durable operation (D-025). Its steps run in this order:
 | Step | What happens | Failure and what it means |
 |---|---|---|
 | `validate` | The Panel checks the security hold, the offering and the suspension again. The Agent checks the site's account, the host's sandbox level against the accepted level, and the entry (§3). Nothing changes. | `held`, `not_offered`, `suspended`, `sandbox_reduced`, an entry code, `site_account`: unmet prerequisites. `entry_unreadable` and `agent_unreachable`: unknown result. |
-| `render` | The Agent makes `data/` and `config/` as the site's account, renders the unit, checks the egress table, writes the unit under the D-031 rule and reloads systemd. It starts nothing. | `unit_edited` (prerequisite: the owner changed the unit). `site_folder` and `unit_render` (verified failures). `unit_write`, `unit_dir` and `sandbox_egress` (unknown). `build_mismatch` (prerequisite: the Panel and the Agent are from different builds; it clears when the update finishes). |
+| `render` | The Agent makes `data/` and `config/` as the site's account, renders the unit, checks the egress table, writes the unit under the D-031 rule and reloads systemd. It starts nothing. | `unit_edited` (prerequisite: the owner changed the unit). `site_folder` and `unit_render` (verified failures). `unit_write`, `unit_dir`, `sandbox_helper` and `sandbox_egress` (unknown). `build_mismatch` (prerequisite: the Panel and the Agent are from different builds; it clears when the update finishes). |
 | `restart` | `systemctl reset-failed`, `enable` and `restart`. | `systemctl` (verified failure), `unit_missing` (prerequisite). |
 | `proof` | For up to 2 minutes, the Panel waits until a process **of this unit** listens on `127.0.0.1:<port>`, then proves the loaded sandbox against its profile ([SITE-SANDBOX.md §5](SITE-SANDBOX.md)). | `listens_elsewhere`, `port_taken`, `oom`, `restart_loop`, `sandbox_proof`: the program is stopped and disabled, and nothing is published. `start_failed`: the unit failed while starting. `not_listening`: it ran but did not listen in time. |
 | `health` | For up to 90 seconds, one GET to `http://127.0.0.1:<port><health path>` every 3 seconds, with the site's name as `Host`, `X-Forwarded-Proto: https`, redirects not followed. Any answer below 500 counts as healthy. | `health_failing`: the program keeps running so its log and answers can be read, but the site is not switched to it. |
@@ -352,7 +358,8 @@ failure.
 | `entry_unknown_format` | prerequisite | Neither ELF nor `#!`. | Customer | Upload the compiled program. | Deploy. |
 | `entry_wrong_arch` | prerequisite | It was built for another processor. | Customer | Build it for this server's processor. | Deploy. |
 | `entry_interpreter` | prerequisite | A `#!` script names an interpreter outside the app folder. | Customer | Upload a compiled program. | Deploy. |
-| `app_folder_not_owned` | prerequisite | `app` is a link, or not the site's own folder. | Customer; the administrator if root owns it | Make `app` a real folder of the site. | Deploy. |
+| `app_folder_not_real` | prerequisite | `app`, or a folder on its way, is a link or a mount point; the sandbox helper does not start the program. | Customer | Replace the link with the real folder. | Deploy. |
+| `app_folder_not_owned` | prerequisite | `app` is not the site's own folder, or a folder above the site home is not root's alone. | Administrator | Correct the owner. | Deploy. |
 | `restart_loop` | verified failure | The program stopped 5 times within 5 minutes, and systemd gave up. | Customer | Read the log, fix the program, upload it again. | Start or deploy (the counter is cleared). |
 | `oom` | verified failure | It used more memory than its limit, and the kernel stopped it. | Customer, or the administrator for a higher limit | Use less memory, or raise the offering's limit. | Start (a new limit needs a deploy). |
 | `listens_elsewhere` | verified failure | It listened beyond 127.0.0.1. It was stopped. | Customer | Listen on `HOST:PORT` from the environment. | Deploy. |
@@ -447,10 +454,12 @@ update and automatic rollback across these tables has been run yet.
 - `ProcSubset=pid`, `MemoryDenyWriteExecute` and `NoExecPaths`/`ExecPaths`
   have not been measured with real Go and Rust programs. Some programs may
   need a `/proc` file or a JIT, and would fail to start.
-- `BindPaths=` follows a link. If the customer replaces `<site home>/app` with
-  a link between the folder check and systemd's start, the link is bound in.
-  The folder check is not atomic with the start. This is a gap of the sandbox
-  core, shared with service apps.
+- Closed in source (alpha.119): `BindPaths=` no longer names the site home.
+  The bind unit opens the folder without following links at every start and
+  binds it by descriptor; a folder swapped for a link later changes nothing
+  for the running program, and the next start is refused
+  (`app_folder_not_real`). Matrix item 18 of the escape kit proves it on a
+  real system; the lab round is still open.
 - The sandbox proof compares a fixed list of properties (account, cgroup,
   file and kernel protections, memory, processes, IP and bind denial, the
   egress lines). A drop-in that changes something outside that list, for

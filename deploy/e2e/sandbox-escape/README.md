@@ -16,6 +16,7 @@ namespace, and it removes all of them at the end. It never runs
 | Path | What it is |
 |---|---|
 | `render/` | Prints the egress table, its guard and a sandboxed unit for this host's capabilities (`sitesandbox.Probe`). It changes nothing. |
+| `bin/sandbox-helper` | The Agent, built by `run.sh build`; the bind units and the egress lines run it as the sandbox helper. When the host has none, the kit installs it at `/usr/lib/celikpanel-sandbox/sandbox-helper` and the bind template `celikpanel-sandbox@.service` (`render -what bind-template`), and removes both at the end. |
 | `probes/goprobe/` | A static Go probe (the "uploaded program" kind: `NoExecPaths`, `MemoryDenyWriteExecute`). |
 | `probes/probe.py` | A Python probe (the python kind), using ctypes for the system calls. |
 | `run.sh` | The runner. |
@@ -31,11 +32,11 @@ reporting format.
 On the development machine (needs Go):
 
 ```sh
-deploy/e2e/sandbox-escape/run.sh build      # writes bin/render and bin/goprobe
+deploy/e2e/sandbox-escape/run.sh build      # writes bin/render, bin/goprobe and bin/sandbox-helper
 ```
 
 Copy `deploy/e2e/sandbox-escape/` to the lab VM. The VM needs root, systemd,
-nft, ip, ss and python3. Then:
+nft, ip, ss, nsenter and python3. Then:
 
 ```sh
 sudo ./run.sh               # the whole matrix
@@ -84,6 +85,7 @@ from the journal. An item with no line at all is a FAIL.
 | 15 | Kernel keyring (keyctl) | must fail |
 | 16 | Writes to /sys/fs/cgroup (root and own memory.max) | must fail |
 | 17 | The SMTP block after a restart, after a reboot and after the egress table is removed | the unit's cgroup is in `@smtp_blocked` again, and a new attempt is refused (the counter rises). After the table is removed, the guard timer must restore it within 45 seconds. |
+| 18 | Swap the app folder for a link to another site's folder while the program runs, then restart | the running program still sees only its own folder (checked with `nsenter` into its mount namespace); the restart is refused (`app_folder_not_real` in the journal of `celikpanel-sandbox@<unit name>`) and nothing of the other site is mounted; with the real folder back the unit starts again, and a stop leaves no `/run/celikpanel-sandbox/<unit>` behind |
 
 ## Running the probe as a real runtime app
 

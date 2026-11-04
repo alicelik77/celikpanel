@@ -11,7 +11,7 @@ const appDir = "/var/www/celikpanel/subscriptions/3/sites/7/app"
 
 func programProfile() Profile {
 	return Profile{
-		Kind: KindProgram, User: "shop_example_com", Group: "shop_example_com", AppDir: appDir,
+		Kind: KindProgram, Unit: "celikrt-5.service", User: "shop_example_com", Group: "shop_example_com", AppDir: appDir,
 		Port: 30010, Limits: Limits{MemoryMB: 512, CPUPercent: 100, Tasks: 128}, Level: LevelFull,
 	}
 }
@@ -116,7 +116,7 @@ func TestBaseSetAndKinds(t *testing.T) {
 		"NoNewPrivileges=yes\n", "CapabilityBoundingSet=\n", "RestrictSUIDSGID=yes\n",
 		"SystemCallFilter=@system-service\n", "SystemCallFilter=" + SyscallDeny + "\n",
 		"RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK\n",
-		"TemporaryFileSystem=/var/www/celikpanel:ro\n", "BindPaths=" + appDir + "\n", "ReadWritePaths=" + appDir + "\n",
+		"TemporaryFileSystem=/var/www/celikpanel:ro\n", "BindPaths=/run/celikpanel-sandbox/celikrt-5.service/app:" + appDir + "\n",
 		"InaccessiblePaths=-/run/celikpanel -/run/php -/run/php-fpm -/etc/celikpanel -/var/lib/celikpanel ",
 		"-/root -/opt/celikpanel/toolchains -/var/spool/postfix\n",
 		"IPAddressDeny=169.254.0.0/16 fe80::/10 ", "LogRateLimitBurst=1000\n",
@@ -175,6 +175,8 @@ func TestValuesAreRefusedNotEscaped(t *testing.T) {
 		"tiny memory":        func(p *Profile) { p.Limits.MemoryMB = 8 },
 		"unknown kind":       func(p *Profile) { p.Kind = "shell" },
 		"extra without main": func(p *Profile) { p.Port = 0; p.ExtraPorts = []int{30011} },
+		"no unit":            func(p *Profile) { p.Unit = "" },
+		"foreign unit":       func(p *Profile) { p.Unit = "nginx.service" },
 	}
 	for name, mutate := range cases {
 		p := programProfile()
@@ -220,29 +222,18 @@ func TestEgressFileAndLines(t *testing.T) {
 		t.Fatal("the chain is flushed before the set is declared")
 	}
 
-	pre, post, err := EgressExecLines("celikrt-42.service")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(pre) != 2 || pre[0] != "ExecStartPre=+/usr/sbin/nft -f /usr/lib/celikpanel-sandbox/egress.nft" ||
-		pre[1] != `ExecStartPre=+/usr/sbin/nft add element inet celikpanel_egress smtp_blocked '{ "system.slice/celikrt-42.service" }'` {
-		t.Fatalf("pre = %q", pre)
-	}
-	if len(post) != 1 || post[0] != `ExecStopPost=-+/usr/sbin/nft delete element inet celikpanel_egress smtp_blocked '{ "system.slice/celikrt-42.service" }'` {
-		t.Fatalf("post = %q", post)
-	}
-	for _, l := range append(pre, post...) {
-		if strings.ContainsAny(l, "$%") {
-			t.Errorf("exec line with an expansion character: %q", l)
-		}
+	element, err := CgroupElement("celikrt-42.service")
+	if err != nil || element != `{ "system.slice/celikrt-42.service" }` {
+		t.Fatalf("element = %q, %v", element, err)
 	}
 	for _, bad := range []string{"nginx.service", "celikrt-1", "celikrt-1.service; rm", "celikrt-0.service", "../celikrt-1.service"} {
-		if _, _, err := EgressExecLines(bad); err == nil {
+		if _, err := CgroupElement(bad); err == nil {
 			t.Errorf("unit %q accepted", bad)
 		}
 	}
 	guard := EgressGuardScriptText()
-	if !strings.Contains(guard, "/system.slice/$unit") || !strings.Contains(guard, EgressFile) || strings.Contains(guard, "flush ruleset") {
+	if !strings.Contains(guard, "/system.slice/$unit") || !strings.Contains(guard, EgressFile) || strings.Contains(guard, "flush ruleset") ||
+		!strings.Contains(guard, "grep -q -F 'argv[]="+HelperPath+" egress-add '") {
 		t.Fatalf("guard script:\n%s", guard)
 	}
 	if !strings.Contains(EgressGuardServiceText(), "ExecStart=/bin/sh "+EgressGuardScript) || !strings.Contains(EgressGuardTimerText(), "OnUnitActiveSec=30s") {
@@ -333,6 +324,21 @@ func TestProofComparison(t *testing.T) {
 		"squatted":         {func(in *ProofInput) { in.Listen = &ListenProof{Squatted: true} }, ProofPortTaken},
 		"silent":           {func(in *ProofInput) { in.Listen = &ListenProof{} }, ProofNotListening},
 		"bad unit":         {func(in *ProofInput) { in.Unit = "sshd.service" }, ProofUnreadable},
+		"no egress helper": {func(in *ProofInput) {
+			in.Show = strings.Replace(in.Show, "argv[]="+HelperPath+" egress-add", "argv[]=/usr/sbin/nft -f", 1)
+		}, ProofProperty},
+		"no bind unit": {func(in *ProofInput) {
+			in.Show = strings.Replace(in.Show, "Requires={ x celikpanel-sandbox@celikrt-5.service y }", "Requires=sysinit.target", 1)
+		}, ProofProperty},
+		"bind from the site home": {func(in *ProofInput) {
+			in.Show += "BindReadOnlyPaths=-" + appDir + ":/srv/x:rbind\n"
+		}, ProofSitePath},
+		"bind source swapped": {func(in *ProofInput) {
+			in.Show = strings.Replace(in.Show, "/run/celikpanel-sandbox/celikrt-5.service/app:", appDir+":", 1)
+		}, ProofSitePath},
+		"env file in the site home": {func(in *ProofInput) {
+			in.Show += "EnvironmentFiles=/run/x.env (ignore_errors=yes)\nEnvironmentFiles=" + appDir + "/config/app.env (ignore_errors=no)\n"
+		}, ProofSitePath},
 	}
 	for name, tc := range cases {
 		in := good
@@ -420,4 +426,71 @@ func gapStrings(gaps []Gap) []string {
 		out[i] = string(g)
 	}
 	return out
+}
+
+// TestHelperLinesAndHostPaths: the unit binds the app folder only from its
+// bind unit's root-owned mount point; it requires that unit and starts after
+// it; the egress lines run only the helper.
+func TestHelperLinesAndHostPaths(t *testing.T) {
+	p := programProfile()
+	unitLines, pre, post, err := HelperLines(p, fullCaps(257))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(unitLines, "|") != "Requires=celikpanel-sandbox@celikrt-5.service|After=celikpanel-sandbox@celikrt-5.service" {
+		t.Fatalf("unit lines = %q", unitLines)
+	}
+	if len(pre) != 1 || pre[0] != "ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celikrt-5.service" ||
+		len(post) != 1 || post[0] != "ExecStopPost=-+/usr/lib/celikpanel-sandbox/sandbox-helper egress-remove --unit=celikrt-5.service" {
+		t.Fatalf("pre = %q\npost = %q", pre, post)
+	}
+	noNFT := fullCaps(249)
+	noNFT.NFTSocketCgroup = false
+	unitLines, pre, post, _ = HelperLines(p, noNFT)
+	if len(pre) != 0 || len(post) != 0 || len(unitLines) != 2 {
+		t.Fatalf("a host without the block: %q %q %q", unitLines, pre, post)
+	}
+	svc := p
+	svc.Kind, svc.Unit = KindServiceApp, "celiksvc-12.service"
+	if _, _, _, err := HelperLines(Profile{}, fullCaps(257)); err == nil {
+		t.Fatal("an invalid profile rendered helper lines")
+	}
+	if BindUnit("celiksvcinst-12.service") != "celikpanel-sandbox@celiksvcinst-12.service" {
+		t.Fatal(BindUnit("celiksvcinst-12.service"))
+	}
+	tmpl := BindTemplateText()
+	for _, want := range []string{"PartOf=%i.service\n", "StopWhenUnneeded=yes\n", "Type=oneshot\n", "RemainAfterExit=yes\n",
+		"ExecStart=/usr/lib/celikpanel-sandbox/sandbox-helper bind --unit=%i.service\n",
+		"ExecStop=/usr/lib/celikpanel-sandbox/sandbox-helper unbind --unit=%i.service\n"} {
+		if !strings.Contains(tmpl, want) {
+			t.Errorf("template lacks %q", want)
+		}
+	}
+	// The bind unit runs in the host's namespace: no sandbox setting at all.
+	for _, refused := range []string{"BindPaths", "TemporaryFileSystem", "PrivateTmp", "ProtectSystem", "RootDirectory", "EnvironmentFile", "User="} {
+		if strings.Contains(tmpl, refused) {
+			t.Errorf("template has %q", refused)
+		}
+	}
+	// No directive systemd resolves on the host names the site home.
+	for _, version := range []int{249, 252, 255, 257} {
+		lines, err := Directives(svc, fullCaps(version))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, l := range lines {
+			name, value, _ := strings.Cut(l, "=")
+			switch name {
+			case "BindPaths", "BindReadOnlyPaths":
+				source, _, _ := strings.Cut(value, ":")
+				if strings.HasPrefix(source, "/var/www/") || source != BindSource(svc.Unit) {
+					t.Errorf("%d: bind source %q", version, source)
+				}
+			case "ReadWritePaths", "EnvironmentFile", "RootDirectory":
+				if strings.Contains(value, "/var/www/") {
+					t.Errorf("%d: %s names the site home: %q", version, name, l)
+				}
+			}
+		}
+	}
 }

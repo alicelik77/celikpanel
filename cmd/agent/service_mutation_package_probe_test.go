@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 )
@@ -49,5 +50,29 @@ func TestMain(m *testing.M) {
 	if !nativeV3 && os.Getenv("CELIKPANEL_DISPOSABLE_MAIL_VM") != "debian13-20260911" {
 		blockRealCertificateAuthority()
 	}
-	os.Exit(m.Run())
+	// The site sandbox's native files (the helper copy, the egress table)
+	// go to a throwaway folder, never /usr/lib/celikpanel-sandbox, and the
+	// app-folder walk, which reads the real hosting tree, passes unless a
+	// test sets its own (sandbox_helper_test.go).
+	sandboxDir, err := os.MkdirTemp("", "celikpanel-sandbox-test-")
+	if err != nil {
+		panic(err)
+	}
+	sandboxEgressDir = sandboxDir
+	sandboxLedgerPath = filepath.Join(sandboxDir, "native-files.json")
+	sandboxFolderRefusal = func(string, int) (string, string) { return "", "" }
+	sandboxHelperSource = filepath.Join(sandboxDir, "agent-under-test")
+	if err := os.WriteFile(sandboxHelperSource, []byte("#!/bin/false\n"), 0o755); err != nil {
+		panic(err)
+	}
+	sandboxEgressDir = filepath.Join(sandboxDir, "celikpanel-sandbox")
+	sandboxUnits := filepath.Join(sandboxDir, "systemd")
+	if err := os.MkdirAll(sandboxUnits, 0o755); err != nil {
+		panic(err)
+	}
+	sandboxUnitDir = func() (string, error) { return sandboxUnits, nil }
+	sandboxDaemonReload = func() error { return nil }
+	code := m.Run()
+	_ = os.RemoveAll(sandboxDir)
+	os.Exit(code)
 }

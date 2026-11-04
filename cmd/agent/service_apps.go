@@ -25,8 +25,10 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/sandboxbind"
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -725,8 +727,7 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
 		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
 	caps := sandboxCaps(ctx)
-	if err := ensureSandboxEgress(caps); err != nil {
-		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_egress", err.Error())
+	if !serviceAppSandboxReady(sc, caps, resp) {
 		return nil
 	}
 	properties, err := serviceapps.InstallUnitProperties(req.Target.InstallID, sc.layout, sc.account.Name, sc.account.Group, limits, sc.app.Defaults.InstallMemoryMB, caps)
@@ -920,8 +921,7 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 		return nil
 	}
 	caps := sandboxCaps(ctx)
-	if err := ensureSandboxEgress(caps); err != nil {
-		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_egress", err.Error())
+	if !serviceAppSandboxReady(sc, caps, resp) {
 		return nil
 	}
 	text, err := serviceapps.RenderUnit(serviceapps.UnitParams{
@@ -960,6 +960,9 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 	}
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {
+			if step[0] == "restart" && serviceAppFolderRefused(sc, resp) {
+				return nil
+			}
 			serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "systemctl",
 				fmt.Sprintf("systemctl %s: %v: %s", strings.Join(step, " "), err, strings.TrimSpace(string(out))))
 			return nil
@@ -1055,6 +1058,14 @@ func (a *Agent) ServiceAppControlV1(req *transport.ServiceAppControlRequest, res
 	}
 	for _, step := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(step...)...); err != nil {
+			// A start the sandbox helper refused: name the app folder's
+			// state instead of systemd's exit status.
+			if step[0] == "start" || step[0] == "restart" {
+				var probe transport.ServiceAppStepResponse
+				if sc, ok := resolveServiceApp(req.Target, &probe); ok && serviceAppFolderRefused(sc, resp) {
+					return nil
+				}
+			}
 			serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "systemctl",
 				fmt.Sprintf("systemctl %s: %v: %s", strings.Join(step, " "), err, strings.TrimSpace(string(out))))
 			return nil
@@ -1374,4 +1385,34 @@ func moveLegacyServiceAppEnvFrom(installID int, legacy, user string) error {
 		return err
 	}
 	return moveLegacyServiceAppEnv(serviceAppContext{installID: installID, app: app, account: account, layout: layout})
+}
+
+// serviceAppSandboxReady puts the sandbox's native files in place (the
+// helper, and the SMTP block where the host holds it) and checks the app
+// folder as the helper will at the start. It answers the step when not.
+func serviceAppSandboxReady(sc serviceAppContext, caps sitesandbox.Caps, resp *transport.ServiceAppStepResponse) bool {
+	if err := ensureSandboxHelper(); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_helper", err.Error())
+		return false
+	}
+	if err := ensureSandboxEgress(caps); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_egress", err.Error())
+		return false
+	}
+	return !serviceAppFolderRefused(sc, resp)
+}
+
+// serviceAppFolderRefused answers the step when the app folder is not one
+// the sandbox helper would start (a link swapped in, another owner).
+func serviceAppFolderRefused(sc serviceAppContext, resp *transport.ServiceAppStepResponse) bool {
+	code, detail := sandboxFolderRefusal(sc.layout.Root, sc.account.UID)
+	switch code {
+	case "":
+		return false
+	case sandboxbind.CodeUnreadable:
+		serviceAppStep(resp, transport.ServiceAppUnknown, code, detail)
+	default:
+		serviceAppStep(resp, transport.ServiceAppPrerequisite, code, detail)
+	}
+	return true
 }

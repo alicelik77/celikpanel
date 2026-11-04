@@ -63,7 +63,8 @@ bekletemez.
 
 | Kural | Ret kodu | Ne yapılır |
 |---|---|---|
-| `app` klasörü sitenin hesabının gerçek klasörüdür (bağlantı değildir) | `app_folder_not_owned` | Bağlantıyı kaldırın ya da klasörü dosya yöneticisiyle yeniden açın. |
+| `app` klasörü ve barındırma ağacından ona giden her klasör gerçek bir klasördür (bağlantı ya da bağlama noktası değildir) | `app_folder_not_real` | Bağlantıyı dosya yöneticisi veya SFTP ile gerçek klasörle değiştirin. |
+| `app` klasörü ve site klasörü sitenin hesabınındır; site klasörünün üstündekiler root'undur ve başkaları yazamaz | `app_folder_not_owned` | Yönetici sahibini düzeltir. |
 | Dosya vardır | `entry_missing` | `app/bin/<dosya>` olarak yükleyin. |
 | Bağlantı değildir | `entry_link` | Programın kendisini yükleyin. |
 | Sıradan bir dosyadır | `entry_not_regular` | Klasör ya da özel dosya değil, program dosyasını yükleyin. |
@@ -164,12 +165,17 @@ numarasıdır ve Programlar sekmesinde görünür. İçinde şunlar vardır:
   `# celikpanel-runtime-kind: program`.
 - `[Unit]`: `After=`/`Wants=network-online.target`, `StartLimitIntervalSec=300`,
   `StartLimitBurst=5`.
-- `[Service]`: `Type=simple`; `User=`/`Group=` sitenin hesabı; `WorkingDirectory=<app klasörü>`;
+- `[Service]`: `Type=simple`; `User=`/`Group=` sitenin hesabı; `WorkingDirectory=<app klasörü>`
+  (koruma içinde çözülür; orada bu yol bağlanan klasördür);
   `EnvironmentFile=-<ortam dosyası>`; `HOME=<app>/data`, `PATH=<app>/bin`, `PORT`, `HOST`;
   `ExecStart=<app>/bin/<dosya> <argümanlar>`; `Restart=on-failure`, `RestartSec=5`,
   `TimeoutStopSec=30`; ve koruma ayarları (§7).
-- Çıkış engelini uygulayan sunucuda SMTP satırları: `ExecStartPre=+` çıkış tablosunu yükler ve
-  birimin cgroup'unu `smtp_blocked` kümesine ekler; `ExecStopPost=-+` onu kümeden çıkarır
+- Bağlama birimi `celikpanel-sandbox@celikrt-<id>.service` için `Requires=` ve `After=`
+  ([SITE-SANDBOX.tr.md §1a](SITE-SANDBOX.tr.md)): her başlatmadan önce app klasörünü denetler ve
+  onu `/run/celikpanel-sandbox/celikrt-<id>.service/app` noktasına bağlar. `BindPaths=` korumaya
+  yalnız root'a ait bu yolu, klasörün olağan yolunda bağlar.
+- Çıkış engelini uygulayan sunucuda `ExecStartPre=+… sandbox-helper egress-add` birimin
+  cgroup'unu `smtp_blocked` kümesine ekler, `ExecStopPost=-+… egress-remove` çıkarır
   ([SITE-SANDBOX.tr.md §3](SITE-SANDBOX.tr.md)).
 - `[Install]`: `WantedBy=multi-user.target`.
 
@@ -213,7 +219,7 @@ Yayımlama tek bir kalıcı işlemdir (D-025). Adımları bu sırayla çalışı
 | Adım | Ne olur | Hata ve anlamı |
 |---|---|---|
 | `validate` | Panel güvenlik beklemesine, sunuma ve askıya almaya yeniden bakar. Ajan sitenin hesabını, sunucunun koruma düzeyini kabul edilen düzeyle ve başlangıç dosyasını (§3) denetler. Hiçbir şey değişmez. | `held`, `not_offered`, `suspended`, `sandbox_reduced`, bir başlangıç dosyası kodu, `site_account`: eksik önkoşul. `entry_unreadable` ve `agent_unreachable`: bilinmeyen sonuç. |
-| `render` | Ajan `data/` ve `config/` klasörlerini sitenin hesabıyla açar, birimi hazırlar, çıkış tablosunu denetler, birimi D-031 kuralıyla yazar ve systemd'yi yeniden yükler. Hiçbir şey başlatmaz. | `unit_edited` (önkoşul: sahip birimi değiştirdi). `site_folder` ve `unit_render` (doğrulanmış hata). `unit_write`, `unit_dir` ve `sandbox_egress` (bilinmeyen). `build_mismatch` (önkoşul: Panel ve ajan farklı yapımlardan; güncelleme bitince düzelir). |
+| `render` | Ajan `data/` ve `config/` klasörlerini sitenin hesabıyla açar, birimi hazırlar, çıkış tablosunu denetler, birimi D-031 kuralıyla yazar ve systemd'yi yeniden yükler. Hiçbir şey başlatmaz. | `unit_edited` (önkoşul: sahip birimi değiştirdi). `site_folder` ve `unit_render` (doğrulanmış hata). `unit_write`, `unit_dir`, `sandbox_helper` ve `sandbox_egress` (bilinmeyen). `build_mismatch` (önkoşul: Panel ve ajan farklı yapımlardan; güncelleme bitince düzelir). |
 | `restart` | `systemctl reset-failed`, `enable` ve `restart`. | `systemctl` (doğrulanmış hata), `unit_missing` (önkoşul). |
 | `proof` | Panel en çok 2 dakika, **bu birime ait** bir sürecin `127.0.0.1:<port>`'ta dinlemesini bekler; sonra yüklenen korumayı profiliyle karşılaştırır ([SITE-SANDBOX.tr.md §5](SITE-SANDBOX.tr.md)). | `listens_elsewhere`, `port_taken`, `oom`, `restart_loop`, `sandbox_proof`: program durdurulur, açılışta başlaması kapatılır, hiçbir şey yayımlanmaz. `start_failed`: birim başlarken çöktü. `not_listening`: çalıştı ama zamanında dinlemedi. |
 | `health` | En çok 90 saniye, 3 saniyede bir `http://127.0.0.1:<port><sağlık yolu>` adresine bir GET; `Host` sitenin adı, `X-Forwarded-Proto: https`, yönlendirmeler izlenmez. 500'ün altındaki her yanıt sağlıklı sayılır. | `health_failing`: günlüğü ve yanıtları okunabilsin diye program çalışmaya devam eder, ama site ona geçirilmez. |
@@ -318,7 +324,8 @@ gösterilmez.
 | `entry_unknown_format` | önkoşul | Ne ELF ne `#!`. | Müşteri | Derlenmiş programı yükleyin. | Yayımlayın. |
 | `entry_wrong_arch` | önkoşul | Başka bir işlemci için derlenmiş. | Müşteri | Bu sunucunun işlemcisi için derleyin. | Yayımlayın. |
 | `entry_interpreter` | önkoşul | `#!` betiğinin yorumlayıcısı `app` klasörünün dışında. | Müşteri | Derlenmiş program yükleyin. | Yayımlayın. |
-| `app_folder_not_owned` | önkoşul | `app` bir bağlantı ya da sitenin kendi klasörü değil. | Müşteri; root'unsa yönetici | `app`'i sitenin gerçek klasörü yapın. | Yayımlayın. |
+| `app_folder_not_real` | önkoşul | `app` ya da yolundaki bir klasör bağlantı veya bağlama noktası; koruma yardımcısı programı başlatmaz. | Müşteri | Bağlantıyı gerçek klasörle değiştirin. | Yayımlayın. |
+| `app_folder_not_owned` | önkoşul | `app` sitenin kendi klasörü değil ya da site klasörünün üstündeki bir klasör yalnız root'un değil. | Yönetici | Sahibini düzeltin. | Yayımlayın. |
 | `restart_loop` | doğrulanmış hata | Program 5 dakikada 5 kez durdu; systemd vazgeçti. | Müşteri | Günlüğü okuyun, programı düzeltin, yeniden yükleyin. | Başlatın ya da yayımlayın (sayaç sıfırlanır). |
 | `oom` | doğrulanmış hata | Sınırından fazla bellek kullandı; çekirdek durdurdu. | Müşteri; daha yüksek sınır için yönetici | Daha az bellek kullanın ya da sunumun sınırını büyütün. | Başlatın (yeni sınır yayımlama ister). |
 | `listens_elsewhere` | doğrulanmış hata | 127.0.0.1'in dışında da dinledi; durduruldu. | Müşteri | Ortamdaki `HOST:PORT` üzerinde dinleyin. | Yayımlayın. |
@@ -403,10 +410,11 @@ tablolarla gerçek bir güncelleme ve otomatik geri alma henüz denenmedi.
   gerçek bir program olarak çalıştırabilir (yalnız deneme sanal makinesinde).
 - `ProcSubset=pid`, `MemoryDenyWriteExecute` ve `NoExecPaths`/`ExecPaths` gerçek Go ve Rust
   programlarıyla ölçülmedi. Bir `/proc` dosyasına ya da JIT'e gerek duyan program başlayamayabilir.
-- `BindPaths=` bağlantıyı izler. Müşteri klasör denetimiyle systemd'nin başlatması arasında
-  `<site klasörü>/app`'i bir bağlantıyla değiştirirse bağlantının gösterdiği yer bağlanır.
-  Klasör denetimi başlatmayla aynı anda (atomik) yapılmıyor. Bu, koruma çekirdeğinin açığıdır;
-  hizmet uygulamalarında da vardır.
+- Kaynakta kapatıldı (alpha.119): `BindPaths=` artık site klasörünü adlandırmıyor. Bağlama birimi her
+  başlatmada klasörü bağlantı izlemeden açar ve tanımlayıcısıyla bağlar; klasör sonradan bir
+  bağlantıyla değiştirilirse çalışan program bundan etkilenmez, sonraki başlatma reddedilir
+  (`app_folder_not_real`). Kaçış setinin 18. maddesi bunu gerçek sistemde kanıtlar; laboratuvar
+  turu hâlâ açık.
 - Koruma kanıtı sabit bir özellik listesini karşılaştırır (hesap, cgroup, dosya ve çekirdek
   korumaları, bellek, süreç, IP ve bağlanma engeli, çıkış satırları). Bu listenin dışındaki bir
   şeyi değiştiren ek ayar dosyası (örneğin `NoExecPaths=`, `SystemCallFilter=` ya da

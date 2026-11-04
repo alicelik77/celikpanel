@@ -222,6 +222,7 @@ export const RUNTIME_STATE_GUIDANCE: Record<string, { class: RuntimeClass; who: 
     entry_wrong_arch: { class: 'prerequisite', who: 'you' },
     entry_interpreter: { class: 'prerequisite', who: 'you' },
     app_folder_not_owned: { class: 'prerequisite', who: 'administrator' },
+    app_folder_not_real: { class: 'prerequisite', who: 'you' },
     entry_unreadable: { class: 'unknown', who: 'youThenAdministrator' },
     restart_loop: { class: 'verified_failure', who: 'you' },
     oom: { class: 'verified_failure', who: 'you' },
@@ -241,7 +242,7 @@ export const RUNTIME_STATE_CODES = Object.keys(RUNTIME_STATE_GUIDANCE);
 export const RUNTIME_OPERATION_REASONS = [
     'env_edited',
     'entry_invalid', 'entry_unreadable', 'unit_edited', 'unit_render', 'unit_write', 'unit_dir', 'unit_copy',
-    'unit_remove', 'unit_missing', 'env_remove', 'env_file', 'sandbox_egress', 'sandbox_proof', 'site_folder',
+    'unit_remove', 'unit_missing', 'env_remove', 'env_file', 'sandbox_egress', 'sandbox_helper', 'sandbox_proof', 'site_folder',
     'site_account', 'build_mismatch', 'systemctl', 'start_failed', 'publish', 'unpublish', 'files', 'verify',
     'app_missing', 'invalid_request',
 ] as const;

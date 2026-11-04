@@ -1,10 +1,11 @@
 #!/bin/bash
 # Site sandbox escape-test kit (README.md). Runs each probe under a unit
 # rendered exactly as CelikPanel renders one and reports PASS when every
-# escape attempt of the matrix (items 1-17 in docs/SITE-SANDBOX.md) fails.
+# escape attempt of the matrix (items 1-18 in docs/SITE-SANDBOX.md) fails.
 #
-#   ./run.sh build            build bin/render and bin/goprobe (needs Go; run
-#                             on the development machine)
+#   ./run.sh build            build bin/render, bin/goprobe and
+#                             bin/sandbox-helper (needs Go; run on the
+#                             development machine)
 #   sudo ./run.sh             the matrix, on a lab VM (root, systemd, nft)
 #   sudo ./run.sh reboot-prepare / reboot-verify
 #                             item 17 across a reboot
@@ -32,6 +33,10 @@ PORT_LOAD=34992
 NS=celiksbxns
 EGRESS=/usr/lib/celikpanel-sandbox/egress.nft
 INSTALLED_EGRESS=/run/celikpanel-sandbox-kit-installed-egress
+HELPER=/usr/lib/celikpanel-sandbox/sandbox-helper
+INSTALLED_HELPER=/run/celikpanel-sandbox-kit-installed-helper
+BIND_TEMPLATE=/etc/systemd/system/celikpanel-sandbox@.service
+INSTALLED_TEMPLATE=/run/celikpanel-sandbox-kit-installed-template
 declare -A RESULT DETAIL
 
 log() { printf '%s\n' "$*"; }
@@ -51,15 +56,18 @@ build() {
 	mkdir -p "$BIN"
 	(cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$BIN/render" ./deploy/e2e/sandbox-escape/render) || exit 1
 	(cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$BIN/goprobe" ./deploy/e2e/sandbox-escape/probes/goprobe) || exit 1
-	log "built $BIN/render and $BIN/goprobe (static)"
+	# The sandbox helper is the Agent started under this name.
+	(cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o "$BIN/sandbox-helper" ./cmd/agent) || exit 1
+	log "built $BIN/render, $BIN/goprobe and $BIN/sandbox-helper (static)"
 }
 
 preflight() {
 	[ "$(id -u)" = 0 ] || { log "run as root on a lab VM"; exit 1; }
-	for tool in systemctl journalctl nft ip ss python3; do
+	for tool in systemctl journalctl nft ip ss python3 nsenter; do
 		command -v $tool >/dev/null || { log "missing: $tool"; exit 1; }
 	done
 	[ -x "$BIN/render" ] && [ -x "$BIN/goprobe" ] || { log "run ./run.sh build first (on a machine with Go)"; exit 1; }
+	[ -x "$HELPER" ] || [ -x "$BIN/sandbox-helper" ] || { log "run ./run.sh build first: bin/sandbox-helper is missing"; exit 1; }
 	"$BIN/render" -what caps | tee /tmp/celik-sbx-caps.json
 	LEVEL=$(python3 -c 'import json;print(json.load(open("/tmp/celik-sbx-caps.json"))["assessment"]["level"])')
 	EGRESS_OK=$(python3 -c 'import json;c=json.load(open("/tmp/celik-sbx-caps.json"))["caps"];print(1 if c["nft_socket_cgroupv2"] and c["cgroup_v2"] else 0)')
@@ -68,7 +76,9 @@ preflight() {
 
 setup() {
 	mkdir -p "$APP/bin" "$APP/src" "$APP/data" "$(dirname "$OTHER")"
-	id "$USER_NAME" >/dev/null 2>&1 || useradd --system --home-dir "$HOME_DIR" --no-create-home --shell /usr/sbin/nologin "$USER_NAME"
+	# A regular account (uid 1000 or above), as CelikPanel's site accounts:
+	# the helper refuses a system account.
+	id "$USER_NAME" >/dev/null 2>&1 || useradd --home-dir "$HOME_DIR" --no-create-home --shell /usr/sbin/nologin "$USER_NAME"
 	echo "another site's secret" > "$OTHER"; chmod 0644 "$OTHER"
 	install -m 0755 "$BIN/goprobe" "$APP/bin/goprobe"
 	install -m 0644 "$KIT/probes/probe.py" "$APP/src/probe.py"
@@ -85,6 +95,15 @@ setup() {
 		systemctl daemon-reload
 		[ "$EGRESS_OK" = 1 ] && systemctl enable --now celikpanel-egress-guard.timer
 		touch "$INSTALLED_EGRESS"
+	fi
+	if [ ! -e "$HELPER" ]; then
+		install -D -m 0755 "$BIN/sandbox-helper" "$HELPER"
+		touch "$INSTALLED_HELPER"
+	fi
+	if [ ! -e "$BIND_TEMPLATE" ]; then
+		"$BIN/render" -what bind-template > "$BIND_TEMPLATE"
+		touch "$INSTALLED_TEMPLATE"
+		systemctl daemon-reload
 	fi
 }
 
@@ -171,6 +190,50 @@ item17() { # restart and nft table removal, with the Go probe
 	[ $((after - before)) -ge 6 ] && mark 17 PASS || mark 17 FAIL "after the guard: counter moved by $((after - before))"
 }
 
+item18() { # the app folder swapped for a link to another site
+	local pid
+	if ! systemctl is-active -q "$UNIT_GO"; then
+		STARTED=$(date +%s)
+		render_unit "$UNIT_GO" program "$PORT_GO" "$APP/bin/goprobe" "PROBE_APPDIR=$APP,PROBE_PORT=$PORT_GO,PROBE_KIND=program,PROBE_OTHER_SITE=$OTHER"
+		systemctl start "$UNIT_GO"
+		wait_line "$UNIT_GO" "SANDBOX-PROBE DONE" 120 || { mark 18 FAIL "the Go probe did not start"; return; }
+	fi
+	# With PrivatePIDs (systemd 257+) the main PID is the "(sd-pidns-child)"
+	# process outside the final mount namespace: take the program itself
+	# from the unit's cgroup.
+	pid=""
+	for p in $(cat "/sys/fs/cgroup/system.slice/$UNIT_GO/cgroup.procs" 2>/dev/null); do
+		case "$(cat "/proc/$p/comm" 2>/dev/null)" in "(sd-pidns"*) ;; *) pid=$p ;; esac
+	done
+	[ -n "$pid" ] || { mark 18 FAIL "the program's process was not found"; return; }
+	mv "$APP" "$APP.moved" && ln -s "$(dirname "$OTHER")" "$APP" || { mark 18 FAIL "the folder could not be swapped"; return; }
+	# The running program keeps its own folder: the mount holds the folder,
+	# not its name.
+	if nsenter -t "$pid" -m test -x "$APP/bin/goprobe" && ! nsenter -t "$pid" -m test -e "$APP/secret.txt"; then
+		mark 18 PASS
+	else
+		mark 18 FAIL "after the swap the running program sees another folder"
+	fi
+	# A restart is refused by the helper, and nothing of the other site is
+	# bound.
+	STARTED=$(date +%s)
+	systemctl restart "$UNIT_GO" 2>/dev/null
+	sleep 2
+	systemctl is-active -q "$UNIT_GO" && mark 18 FAIL "the unit started with a link in place of its folder"
+	journalctl -u "celikpanel-sandbox@${UNIT_GO%.service}.service" -o cat --since "@$STARTED" --no-pager | grep -q "celikpanel-sandbox: $UNIT_GO was not started (app_folder_not_real)" \
+		&& mark 18 PASS || mark 18 FAIL "no refusal of the helper in the bind unit's journal"
+	findmnt -rn -o SOURCE,TARGET | grep -q "990002" && mark 18 FAIL "the other site is mounted somewhere"
+	# The real folder back: the unit starts again.
+	systemctl stop "$UNIT_GO" 2>/dev/null
+	rm -f "$APP"; mv "$APP.moved" "$APP"
+	systemctl reset-failed "$UNIT_GO" 2>/dev/null
+	STARTED=$(date +%s)
+	systemctl start "$UNIT_GO"
+	wait_line "$UNIT_GO" "SANDBOX-PROBE DONE" 120 && mark 18 PASS || mark 18 FAIL "the unit did not start again with its real folder"
+	systemctl stop "$UNIT_GO"
+	[ -e "/run/celikpanel-sandbox/$UNIT_GO" ] && mark 18 FAIL "the stop left /run/celikpanel-sandbox/$UNIT_GO behind"
+}
+
 item10_bind_any() {
 	STARTED=$(date +%s)
 	render_unit "$UNIT_LOAD" program "$PORT_LOAD" "$APP/bin/goprobe" "PROBE_MODE=bind-any,PROBE_PORT=$PORT_LOAD" || return
@@ -233,6 +296,13 @@ cleanup() {
 		systemctl stop "$u" 2>/dev/null; systemctl disable "$u" 2>/dev/null; rm -f "/etc/systemd/system/$u"
 	done
 	ip netns del $NS 2>/dev/null; ip link del celiksbxh 2>/dev/null
+	[ -L "$APP" ] && { rm -f "$APP"; mv "$APP.moved" "$APP" 2>/dev/null; }
+	if [ -e "$INSTALLED_HELPER" ]; then
+		rm -f "$HELPER" "$INSTALLED_HELPER"
+	fi
+	if [ -e "$INSTALLED_TEMPLATE" ]; then
+		rm -f "$BIND_TEMPLATE" "$INSTALLED_TEMPLATE"
+	fi
 	if [ -e "$INSTALLED_EGRESS" ]; then
 		systemctl disable --now celikpanel-egress-guard.timer 2>/dev/null
 		rm -f /etc/systemd/system/celikpanel-egress-guard.service /etc/systemd/system/celikpanel-egress-guard.timer
@@ -249,7 +319,7 @@ cleanup() {
 summary() {
 	local item failed=0
 	log ""; log "== site sandbox escape matrix (level: $LEVEL) =="
-	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
+	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
 		log "item $item: ${RESULT[$item]:-FAIL}${DETAIL[$item]:+ — ${DETAIL[$item]}}"
 		[ "${RESULT[$item]:-FAIL}" = FAIL ] && failed=1
 	done
@@ -266,6 +336,7 @@ case "${1:-matrix}" in
 		run_matrix "$UNIT_GO" program "$PORT_GO" "$APP/bin/goprobe"
 		run_matrix "$UNIT_PY" python "$PORT_PY" "/usr/bin/python3 -I $APP/src/probe.py"
 		item17
+		item18
 		systemctl stop "$UNIT_PY"
 		item10_bind_any
 		item11_load
@@ -278,6 +349,7 @@ case "${1:-matrix}" in
 		setup
 		run_matrix "$UNIT_GO" program "$PORT_GO" "$APP/bin/goprobe"
 		run_matrix "$UNIT_PY" python "$PORT_PY" "/usr/bin/python3 -I $APP/src/probe.py"
+		item18
 		for item in 11 17; do RESULT[$item]=SKIP; DETAIL[$item]="not run in quick mode"; done
 		summary ;;
 	reboot-prepare)
@@ -297,7 +369,7 @@ case "${1:-matrix}" in
 		python3 -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:$PORT_GO/smtp',timeout=60).read()"
 		after=$(counter); after=${after:-0}
 		[ $((after - before)) -ge 6 ] && mark 17 PASS || mark 17 FAIL "after the reboot the counter moved by $((after - before))"
-		LEVEL=reboot; for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do RESULT[$item]=SKIP; done
+		LEVEL=reboot; for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18; do RESULT[$item]=SKIP; done
 		summary ;;
 	*) log "usage: $0 [build|matrix|quick|reboot-prepare|reboot-verify]"; exit 2 ;;
 esac
