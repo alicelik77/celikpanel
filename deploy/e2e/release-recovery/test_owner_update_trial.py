@@ -2140,13 +2140,17 @@ UPD3_SC_RECOVERY = {"failure_code": "candidate_panel_startup_check_failed", "obs
                     "terminal_proof": "rollback_verified"}
 UPD3_SC_CARD = {
     "en": "Update not completed; previous version restored || The update to v0.1.0-alpha.82 did not complete. The "
-          "server was returned to v0.1.0-alpha.81 automatically and is running it now. || Cause: the new version's "
+          "server was returned to v0.1.0-alpha.81 automatically and is running it now. Panel data comes back from the "
+          "copy taken before the update, so panel changes made after the update started are not kept. || Cause: the "
+          "new version's "
           "panel failed its start check before anything was switched on. || Nothing needs to be done on the server. "
           "Do not start the update to v0.1.0-alpha.82 again until a corrected version is published. If the server's "
           "message names a problem on this server, fix it first. || Nothing resumes by itself: the server keeps "
           "running v0.1.0-alpha.81. When a newer version is published, “Check for updates” offers it.",
     "tr": "Güncelleme tamamlanmadı; önceki sürüm geri yüklendi || v0.1.0-alpha.82 sürümüne güncelleme tamamlanmadı. "
-          "Sunucu otomatik olarak v0.1.0-alpha.81 sürümüne döndürüldü ve şu an onu çalıştırıyor. || Neden: yeni "
+          "Sunucu otomatik olarak v0.1.0-alpha.81 sürümüne döndürüldü ve şu an onu çalıştırıyor. Panel verileri "
+          "güncelleme öncesi alınan kopyadan döner; güncelleme başladıktan sonra panelde yapılan değişiklikler "
+          "korunmaz. || Neden: yeni "
           "sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi. || Sunucuda yapmanız "
           "gereken bir şey yok. Düzeltilmiş bir sürüm yayımlanana kadar v0.1.0-alpha.82 güncellemesini yeniden "
           "başlatmayın. Sunucunun iletisi bu sunucudaki bir sorunu belirtiyorsa önce onu giderin. || Hiçbir işlem "
