@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.122.tr.md)
 
+> **Published** on 2026-11-04 (UTC): release commit `f4f6252ff`, GitHub pre-release at 20:54:41Z, download portal at about 20:58Z (public check 27/27).
+
 A small release with one Components list, after the owner's question on
 Boston (alpha.121): "Why can't phpPgAdmin and phpMyAdmin be installed
 separately?" **Only the owner updates installed panels, from the panel's own
