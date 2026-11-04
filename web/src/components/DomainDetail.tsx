@@ -1,5 +1,6 @@
 import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ReactNode } from 'react';
 import { useSearchParams } from '../router';
+import { publishGuideTopic } from '../help/guide/context';
 import {
     ArrowLeft, Globe, Lock, ExternalLink,
     LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound, Bot,
@@ -240,6 +241,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // ?tab=dns ve ?tab=ssl sayfanın o bölümünü açar.
     const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : requestedTab === 'ssl' ? 'hosting' : 'overview');
     const [activeSub, setActiveSub] = useState<Record<string, string>>(requestedTab === 'ssl' ? { hosting: 'ssl' } : {});
+    // The guide's "?" opens the chapter of the tab on screen (alpha.119).
+    // Kılavuzun "?" düğmesi ekrandaki sekmenin bölümünü açar.
+    useEffect(() => publishGuideTopic(`domain.${activeTab}`), [activeTab]);
 
     const handleCertificateChange = useCallback((status: SSLRuntimeSummary) => {
         setChanged((current) => ({ ...current, ssl_enabled: status.activated }));

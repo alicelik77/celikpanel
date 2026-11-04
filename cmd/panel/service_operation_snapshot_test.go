@@ -1441,6 +1441,9 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the first-login tour's state (migration 62, alpha.119).
+        DROP TRIGGER user_guide_state_user_deleted;
+        DROP TABLE user_guide_state;
         -- Reverse the service apps (migration 61, alpha.118).
         DROP TABLE service_app_operations;
         DROP TABLE service_app_installs;

@@ -448,11 +448,12 @@ class PopulatedDatabaseTests(unittest.TestCase):
         with self.assertRaises(p.Refused):
             self.verify(result, 57)
 
-    def test_actual_39_through_61_migrations_add_tables_and_change_no_other_old_row(self):
+    def test_actual_39_through_62_migrations_add_tables_and_change_no_other_old_row(self):
         # alpha.118: 58 application catalog operations, 59 WordPress tools and
         # malware scans, 60 remote backups, 61 service apps; all additive.
-        self.assertEqual(len(self.sql), 61, 'a migration after 61 needs its own pin before a candidate carries it')
-        counts = {58: 102, 59: 107, 60: 110, 61: 113}
+        # alpha.119: 62 the first-login tour's state (one table, one trigger).
+        self.assertEqual(len(self.sql), 62, 'a migration after 62 needs its own pin before a candidate carries it')
+        counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114}
         for version, tables in counts.items():
             with self.subTest(version=version):
                 self.setUp()
@@ -464,7 +465,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
                 self.assertEqual(proof['old_rows_missing_or_changed'], 0)
                 self.assertEqual(proof['tables']['schema_migrations']['added'], version - 38)
                 self.assertEqual(p.added_columns(version), p.added_columns(56))
-        for version in (62, '61', True):
+        for version in (63, '62', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

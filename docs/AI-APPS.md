@@ -49,7 +49,7 @@ CelikPanel adds no package source (no NodeSource, no deadsnakes, no Docker, no `
 
 n8n needs Node.js 24 (`engines: >=24.0.0`; its isolated-vm dependency too). No supported
 distribution except Arch ships it, so n8n uses the Node.js runtime the administrator installs
-under Services → Node.js: the official nodejs.org tarball, checked against the official
+under Components → Node.js: the official nodejs.org tarball, checked against the official
 SHASUMS256.txt before it is unpacked (the same runtime Node.js sites use). If no Node.js 24 is
 installed, the screen says so and who installs it. Where the system's Python is outside 3.11-3.12
 Open WebUI is shown as not available on that system, with the found version.

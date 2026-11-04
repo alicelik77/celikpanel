@@ -72,6 +72,12 @@ Four parallel layouts (AdminLayout, ResellerLayout, CustomerLayout, UserLayout) 
 
 ---
 
+## Help and the user guide (alpha.119)
+
+The `?` in the shell's header opens a small help menu: help for the page on screen (the guide drawer, at the chapter that claims the page's topic), the whole guide at `/help`, and the first-login tour. The guide is written in `docs/guide/{en,tr}` in the format of [guide/FORMAT.md](guide/FORMAT.md) and built by `web/scripts/build-guide.mjs` into a small index per role and language and one lazy chunk per chapter and language (shared by the roles that read it), and into the pages of celikpanel.net. The role chooses which chapters are shown, nothing else: the guide is public, and the administrator can read another role's guide ("view as"). A team member reads the customer guide. A screen links into the guide with `<GuideLink topic="…" />`; a page that shows several things names the one on screen with `publishGuideTopic`. The only thing the server keeps is each person's tour state (`/api/v1/me/guide-state`): shown once while it is pending, offered again (never forced) after the tour's version is raised, never shown while the state could not be read or to an operator signed in as someone else.
+
+---
+
 ## Theming (decided)
 
 The panel supports **both light and dark themes**, user-switchable via a theme toggle. The default follows the operating system preference (`prefers-color-scheme`), falling back to light. Mechanically: the tokens live as CSS custom properties in `web/src/index.css`, `web/tailwind.config.js` binds each semantic Tailwind name to one of them, and `web/src/theme/ThemeProvider.tsx` toggles `.dark` (and the skin's `data-theme`) on `<html>`. Both themes are two value sets of the *same* variables — components reference the variables, never hardcoded colors. The documented system is [DESIGN.md](../DESIGN.md). This is skin over the shell; it changes no structure.

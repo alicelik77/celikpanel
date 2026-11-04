@@ -78,6 +78,8 @@ const MariaDBManagement = lazyNamed(() => import('./components/MariaDBManagement
 const ComponentDetail = lazyNamed(() => import('./components/ComponentDetail'), 'ComponentDetail');
 const ServiceRecordLookup = lazyNamed(() => import('./components/ServiceRecordLookup'), 'ServiceRecordLookup');
 const AccountLinkPage = lazyNamed(() => import('./components/AccountLinkPage'), 'AccountLinkPage');
+// The user guide (alpha.119); its chapters are fetched by role and language.
+const GuidePage = lazyNamed(() => import('./help/guide/GuidePage'), 'GuidePage');
 // The plain screen of an account whose services are suspended. Its copy is screen
 // copy, so it is fetched with the screen and not with the boot payload.
 // Hizmetleri askıya alınmış hesabın düz ekranı; metni ekran metnidir.
@@ -413,6 +415,8 @@ function AppRoutes() {
         {/* Settings, and the signed-in person's own account (personal menu) */}
         <Route path="/settings" element={<SettingsRoute />} />
         <Route path="/account" element={<PageWithLayout><AccountPage /></PageWithLayout>} />
+        <Route path="/help" element={<PageWithLayout><GuidePage /></PageWithLayout>} />
+        <Route path="/help/:chapter" element={<PageWithLayout><GuidePage /></PageWithLayout>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

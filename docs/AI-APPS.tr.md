@@ -51,7 +51,7 @@ CelikPanel hiçbir paket kaynağı eklemez (NodeSource yok, deadsnakes yok, Dock
 | Arch | 26 / lts 24 | 3.14 | evet | **hayır** |
 
 n8n, Node.js 24 ister (`engines: >=24.0.0`; bağımlılığı isolated-vm de öyle). Arch dışında
-desteklenen hiçbir dağıtım bunu sunmaz; bu yüzden n8n, yöneticinin Hizmetler → Node.js
+desteklenen hiçbir dağıtım bunu sunmaz; bu yüzden n8n, yöneticinin Bileşenler → Node.js
 altından kurduğu Node.js çalışma ortamını kullanır: resmî nodejs.org arşivi, açılmadan önce
 resmî SHASUMS256.txt ile denetlenir (Node.js sitelerinin kullandığı çalışma ortamının
 aynısı). Node.js 24 kurulu değilse ekran bunu ve kimin kuracağını söyler. Sistemin Python'u

@@ -71,6 +71,9 @@ MIGRATIONS = {
     59: 'c45aa19999b34f438cbfc7d21ebd1642b4e514bfee2497d8f4ff42892112c905',
     60: '14a1836f9b469d59abb37346651de96f0687f786db0d20fb78db0199cf4d99c8',
     61: 'b7fdaa9ef9fff2b1bae30ab8b90ead624f427ec84e18052724647a51855cd2f0',
+    # alpha.119: 62 the first-login tour's state (one table and a trigger that
+    # removes a row with its user; no old table or row changed).
+    62: '8a0377bf59fb80273b7551398db13d5d7a60dbe621e260a50cd5c2fafc801141',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -96,6 +99,7 @@ SCHEMAS = {
     59: '87f30dce413ed06825d297ee4c77f2dc2dc8739ed2e2ab7dd61cbe3eb72a3a53',
     60: '8ea008b1a7bf4f97e940db98408de0ae50eaa00d4fed1f0a142290de7e6d09ab',
     61: 'c08629e3e2507c86dc666cb093d15907024bae1a00ef10c8aeadd007ec6a44ab',
+    62: '82aca65218fe743294243dd697f9f4beb88adc766a5e62d5aa018883377a8372',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -129,6 +133,7 @@ NEW_TABLES_59 = NEW_TABLES_58 | {'wordpress_operations', 'wordpress_site_setting
                                  'malware_findings', 'malware_notices'}
 NEW_TABLES_60 = NEW_TABLES_59 | {'remote_backup_destinations', 'remote_backup_policies', 'remote_backup_operations'}
 NEW_TABLES_61 = NEW_TABLES_60 | {'service_app_offerings', 'service_app_installs', 'service_app_operations'}
+NEW_TABLES_62 = NEW_TABLES_61 | {'user_guide_state'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -143,7 +148,7 @@ NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_T
               47: NEW_TABLES_47, 48: NEW_TABLES_48, 49: NEW_TABLES_49, 50: NEW_TABLES_50, 51: NEW_TABLES_51,
               52: NEW_TABLES_52, 53: NEW_TABLES_53, 54: NEW_TABLES_54, 55: NEW_TABLES_55,
               56: NEW_TABLES_56, 57: NEW_TABLES_57, 58: NEW_TABLES_58, 59: NEW_TABLES_59, 60: NEW_TABLES_60,
-              61: NEW_TABLES_61}
+              61: NEW_TABLES_61, 62: NEW_TABLES_62}
 # Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
 # value is only inside the sealed row digest, so a reset row is accepted only
 # when its digest is reproduced with one of these old values (NULL in 001's
@@ -302,7 +307,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38 or schema42 through schema61 is supported')
+        raise Refused('only exact schema38 or schema42 through schema62 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')

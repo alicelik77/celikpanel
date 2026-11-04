@@ -350,7 +350,7 @@ func (p *Panel) handleWordPressUpdate(w http.ResponseWriter, r *http.Request, do
 		// wordpress.org publishes no checksum for theme packages: refused
 		// before anything is recorded, with the native path to use instead.
 		writeCodedError(w, http.StatusConflict, transport.WordPressCodeNotVerifiable,
-			"Nothing was changed: CelikPanel installs only packages it can verify, and wordpress.org publishes no checksum for themes. Update the theme from WordPress's own Dashboard > Updates page; make a backup first from the Backups tab.", "")
+			"Nothing was changed: CelikPanel installs only packages it can verify, and wordpress.org publishes no checksum for themes. Update the theme from WordPress's own Dashboard > Updates page; make a backup first under Advanced > Backups on the domain's page.", "")
 		return
 	default:
 		writeClientError(w, http.StatusBadRequest, "kind must be core, plugin or theme")
