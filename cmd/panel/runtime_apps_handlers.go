@@ -877,6 +877,17 @@ func (p *Panel) handleRuntimeAppControl(w http.ResponseWriter, r *http.Request, 
 		writeRuntimeAppRefusal(w, http.StatusConflict, resp.Reason, resp.Error, nil)
 		return
 	}
+	if !a.Deployed && req.Action == "stop" {
+		// Stop is never refused, and an app that was never deployed has
+		// nothing running (the Agent stopped whatever a failed deploy may
+		// have left). Its state stays as it is; the answer says why
+		// nothing changed and what starts it (D-024).
+		p.auditDetailed(r, "runtime.stop", "domain", domainID, map[string]any{"app": a.ID, "not_deployed": true})
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"state": a.State, "reason": "not_deployed",
+			"message": "Nothing to stop: the program is not deployed yet, so it does not run. Deploy it to start it."})
+		return
+	}
 	state := runtimeAppRunning
 	if req.Action == "stop" {
 		state = runtimeAppStopped

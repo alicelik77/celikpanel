@@ -382,7 +382,16 @@ func TestRuntimeAppsAreClosedUntilOfferedAndLayersOnlyNarrow(t *testing.T) {
 	if v.App == nil || !containsString(v.App.States, "not_offered") {
 		t.Fatalf("states %+v", v.App)
 	}
-	wantStatus(t, f.as(t, 9703, http.MethodPost, runtimePath+"/control", `{"action":"stop"}`), http.StatusOK, "")
+	// Stop of an app that was never deployed is never refused: it answers
+	// why nothing changed (not raw systemd text) and keeps the state.
+	rec = f.as(t, 9703, http.MethodPost, runtimePath+"/control", `{"action":"stop"}`)
+	wantStatus(t, rec, http.StatusOK, "")
+	if !strings.Contains(rec.Body.String(), `"reason":"not_deployed"`) || !strings.Contains(rec.Body.String(), "Deploy it to start it") {
+		t.Fatalf("stop of a never-deployed app: %s", rec.Body.String())
+	}
+	if a, _, _ := f.panel.runtimeAppForDomain(context.Background(), 9902); a.State != runtimeAppCreated {
+		t.Fatalf("the state changed: %s", a.State)
+	}
 	wantStatus(t, f.as(t, 9703, http.MethodGet, runtimePath+"/logs", ""), http.StatusOK, "")
 }
 

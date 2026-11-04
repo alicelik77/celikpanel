@@ -21,6 +21,7 @@ export const enRuntimeAppsScreens = {
     'runtime.lost': 'The answer was lost, so the result is not known. The page was read again; check it before you press again. A repeated Deploy or Remove is answered with the same operation and never starts twice.',
     'runtime.serverSaid': 'The server said: {message}',
     'runtime.actionDone': 'Done.',
+    'runtime.stopNotDeployed': 'Nothing to stop: the program is not deployed yet, so it does not run. Press Deploy to start it.',
     'runtime.kindUnavailable': 'Uploaded programs are not available in this release.',
     'runtime.label.who': 'Who acts:',
     'runtime.label.next': 'Next:',

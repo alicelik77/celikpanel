@@ -308,9 +308,9 @@ func TestBuildUnitIsSandboxedPipFromPyPIWithoutAShell(t *testing.T) {
 	for _, want := range []string{
 		"--unit=celikrtbuild-12.service", "--uid=shop_example_com", "--gid=shop_example_com", "--property=Type=oneshot",
 		"--setenv=PIP_CONFIG_FILE=/dev/null", "--setenv=TMPDIR=" + root + "/.build-tmp", "--setenv=HOME=" + root + "/data",
-		"--property=ExecStartPre=/usr/bin/python3.13 -m venv " + root + "/venv-4.partial",
-		"--property=ExecStartPre=" + root + "/venv-4.partial/bin/python -m pip install --isolated --no-input --disable-pip-version-check --no-warn-script-location --progress-bar=off --index-url=https://pypi.org/simple --cache-dir=" + root + "/.pip-cache --only-binary=:all: --require-hashes --no-deps -r /run/celikpanel-rtbuild/12/server.txt",
-		"--property=ExecStartPre=" + root + "/venv-4.partial/bin/python -m pip install --isolated --no-input --disable-pip-version-check --no-warn-script-location --progress-bar=off --index-url=https://pypi.org/simple --cache-dir=" + root + "/.pip-cache --only-binary=:all: -r /run/celikpanel-rtbuild/12/requirements.txt",
+		"--property=ExecStartPost=" + root + "/venv-4.partial/bin/python -m pip install --isolated --no-input --disable-pip-version-check --no-warn-script-location --progress-bar=off --index-url=https://pypi.org/simple --cache-dir=" + root + "/.pip-cache --only-binary=:all: --require-hashes --no-deps -r /run/celikpanel-rtbuild/12/server.txt",
+		"--property=ExecStartPost=" + root + "/venv-4.partial/bin/python -m pip install --isolated --no-input --disable-pip-version-check --no-warn-script-location --progress-bar=off --index-url=https://pypi.org/simple --cache-dir=" + root + "/.pip-cache --only-binary=:all: -r /run/celikpanel-rtbuild/12/requirements.txt",
+		"--property=ExecStartPost=" + root + "/venv-4.partial/bin/python -m pip check --disable-pip-version-check",
 		"--property=ProtectSystem=strict", "--property=SocketBindDeny=any",
 		// Sandbox generation 3: the app folder comes from the bind unit's
 		// root-owned mount point; the only root commands are the static
@@ -324,21 +324,16 @@ func TestBuildUnitIsSandboxedPipFromPyPIWithoutAShell(t *testing.T) {
 			t.Fatalf("missing %q\n%s", want, text)
 		}
 	}
-	// The SMTP block is in place before pip runs any install script.
-	egressAt, venvAt := -1, -1
-	for i, a := range args {
-		if strings.Contains(a, "sandbox-helper egress-add") && egressAt < 0 {
-			egressAt = i
-		}
-		if strings.Contains(a, " -m venv ") && venvAt < 0 {
-			venvAt = i
-		}
+	// The SMTP block is in place before pip runs any install script: the
+	// egress line is an ExecStartPre=+, which systemd runs before ExecStart
+	// and every ExecStartPost.
+	if !containsLine(args, "--property=ExecStartPre=+/usr/lib/celikpanel-sandbox/sandbox-helper egress-add --unit=celikrtbuild-12.service") {
+		t.Fatal("no egress-add before the steps")
 	}
-	if egressAt < 0 || venvAt < 0 || egressAt > venvAt {
-		t.Fatalf("egress-add at %d, venv at %d", egressAt, venvAt)
-	}
-	tail := strings.Join(args[len(args)-6:], " ")
-	if !strings.HasSuffix(tail, "-- "+root+"/venv-4.partial/bin/python -m pip check --disable-pip-version-check") {
+	// The unit's command creates the environment with the system's own
+	// interpreter (systemd-run resolves it on the host before the unit runs).
+	tail := strings.Join(args[len(args)-5:], " ")
+	if tail != "-- /usr/bin/python3.13 -m venv "+root+"/venv-4.partial" {
 		t.Fatalf("ExecStart %q", tail)
 	}
 	for _, banned := range []string{"/bin/sh", "sh -c", "$", "SocketBindAllow", "MemoryDenyWriteExecute", "NoExecPaths", "extra-index", "trusted-host"} {
@@ -384,6 +379,77 @@ func TestBuildUnitIsSandboxedPipFromPyPIWithoutAShell(t *testing.T) {
 	}
 	if !sitesandbox.ValidUnitName(BuildUnitName(12)) {
 		t.Fatal("the build unit is not a sandboxed unit name")
+	}
+}
+
+// The alpha.119 lab round 1 defect: systemd-run looks up its command's
+// executable on the host before the transient unit starts, so a build whose
+// command was the new environment's python could never start ("Failed to
+// find executable …/venv-1.partial/bin/python"). Every build shape is walked
+// in the order systemd runs it: the command never names a path inside the
+// app folder, and no step runs a program inside the app folder that an
+// earlier step did not create.
+func TestBuildCommandsNeverNameAPathTheBuildCreates(t *testing.T) {
+	shapes := map[string]func(*BuildParams){
+		"pins only":            func(p *BuildParams) { p.HasRequirements = false },
+		"requirements":         func(p *BuildParams) {},
+		"hashed + constraints": func(p *BuildParams) { p.Hashed, p.HasConstraints = true, true },
+		"source builds":        func(p *BuildParams) { p.SourceBuilds = true },
+	}
+	for name, edit := range shapes {
+		p := buildParams(t)
+		edit(&p)
+		args, err := BuildRunArgs(p)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		root := p.Layout.Root
+		var pre, post, command []string
+		for i, a := range args {
+			if a == "--" {
+				command = args[i+1:]
+				break
+			}
+			switch {
+			case strings.HasPrefix(a, "--property=ExecStartPre="):
+				pre = append(pre, strings.TrimLeft(strings.TrimPrefix(a, "--property=ExecStartPre="), "+-:!@"))
+			case strings.HasPrefix(a, "--property=ExecStartPost="):
+				post = append(post, strings.TrimLeft(strings.TrimPrefix(a, "--property=ExecStartPost="), "+-:!@"))
+			case strings.HasPrefix(a, "--property=ExecStart="):
+				t.Fatalf("%s: an ExecStart= property besides the command: %q", name, a)
+			}
+		}
+		if len(command) == 0 {
+			t.Fatalf("%s: no command", name)
+		}
+		// The command is resolved by systemd-run before anything runs.
+		if !strings.HasPrefix(command[0], "/usr/bin/") || strings.HasPrefix(command[0], root+"/") {
+			t.Fatalf("%s: the command %q is not an existing system program", name, command[0])
+		}
+		var created []string
+		order := append(append(append([]string{}, pre...), strings.Join(command, " ")), post...)
+		for _, line := range order {
+			words := strings.Fields(line)
+			if exe := words[0]; strings.HasPrefix(exe, root+"/") {
+				ok := false
+				for _, dir := range created {
+					if strings.HasPrefix(exe, dir+"/") {
+						ok = true
+					}
+				}
+				if !ok {
+					t.Fatalf("%s: %q runs %s before any step created it", name, line, exe)
+				}
+			}
+			for i, w := range words {
+				if w == "venv" && i > 0 && words[i-1] == "-m" && i+1 < len(words) {
+					created = append(created, words[len(words)-1])
+				}
+			}
+		}
+		if len(created) != 1 || len(post) < 2 {
+			t.Fatalf("%s: created %v, later steps %v", name, created, post)
+		}
 	}
 }
 

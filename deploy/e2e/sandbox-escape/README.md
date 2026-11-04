@@ -37,7 +37,7 @@ deploy/e2e/sandbox-escape/run.sh build      # writes bin/render, bin/goprobe and
 ```
 
 Copy `deploy/e2e/sandbox-escape/` to the lab VM. The VM needs root, systemd,
-nft, ip, ss, nsenter and python3. Then:
+nft, ip, ss, findmnt and python3. Then:
 
 ```sh
 sudo ./run.sh               # the whole matrix
@@ -73,12 +73,12 @@ from the journal. An item with no line at all is a FAIL.
 | 2 | `/etc/shadow`, `/etc/celikpanel`, `/var/lib/celikpanel*` | read or list |
 | 3 | The Agent socket, other sites' PHP-FPM sockets | connect; any visible socket is a FAIL |
 | 4 | setuid(0), sudo, su, `chmod u+s` | each must fail; the setuid bit must not stick |
-| 5 | ptrace and process_vm_readv of another process | each must fail |
+| 5 | ptrace and process_vm_readv of another process | each must fail. Under `PrivatePIDs` the probe is PID 1 and has no parent in its namespace, so it forks a child of its own (only the system-call filter stands in the way) and tries `PROBE_TARGET_PID`, a host PID outside its namespace that the runner passes (a PHP-FPM worker, else journald). In the probe's namespace that number names no process (`ESRCH`) or the attempt is refused (`EPERM`): both are PASS. |
 | 6 | mount, unshare (user, mount), pivot_root | each must fail |
 | 7 | Processes of other users in /proc | none visible |
 | 8 | AF_PACKET, raw ICMP | socket() must fail |
 | 9 | Ports 25, 465 and 587 on 127.0.0.1, ::1 and the internet; sendmail | each must fail, **and** the egress counter must rise by at least 6 (so an absent listener cannot pass for the block) |
-| 10 | Binding another port, port 0 or UDP; listening on 0.0.0.0 | bind must fail. A 0.0.0.0 listener on the app's own port (which SocketBind allows) must not be reachable from a veth in a throwaway namespace. If a reference listener outside the sandbox is unreachable too, the result is SKIP (inconclusive) |
+| 10 | Binding another port, port 0 or UDP; listening on 0.0.0.0 | bind must fail. A 0.0.0.0 listener on the app's own port (which SocketBind allows) must not be reachable from a veth in a throwaway namespace. If a reference listener outside the sandbox is unreachable too, the host's own firewall dropped both, and the result is SKIP: inconclusive, not a failure. The runner says so in the item's line and lists every SKIP item before the verdict |
 | 11 | Fork bomb, memory balloon, CPU spin, log flood | refused after TasksMax; `Result=oom-kill`; CPU ≤ 14 s in 20 s at 50 %; fewer than 20 000 of 50 000 lines in the journal |
 | 12 | 169.254.169.254, fd00:ec2::254 | connect must fail |
 | 13 | Writes outside the app folder; /tmp and /var/tmp persistence | write must fail; markers must not survive a restart |
@@ -86,7 +86,7 @@ from the journal. An item with no line at all is a FAIL.
 | 15 | Kernel keyring (keyctl) | must fail |
 | 16 | Writes to /sys/fs/cgroup (root and own memory.max) | must fail |
 | 17 | The SMTP block after a restart, after a reboot and after the egress table is removed | the unit's cgroup is in `@smtp_blocked` again, and a new attempt is refused (the counter rises). After the table is removed, the guard timer must restore it within 45 seconds. |
-| 18 | Swap the app folder for a link to another site's folder while the program runs, then restart | the running program still sees only its own folder (checked with `nsenter` into its mount namespace); the restart is refused (`app_folder_not_real` in the journal of `celikpanel-sandbox@<unit name>`) and nothing of the other site is mounted; with the real folder back the unit starts again, and a stop leaves no `/run/celikpanel-sandbox/<unit>` behind |
+| 18 | Swap the app folder for a link to another site's folder while the program runs, then restart | the running program still sees only its own folder (read through `/proc/<pid>/root`, its own mount namespace; `nsenter -m test` cannot run there under `NoExecPaths`); the restart is refused (`app_folder_not_real` in the journal of `celikpanel-sandbox@<unit name>`) and no mount's source folder (`FSROOT`) is the other site's; with the real folder back the unit starts again, and within 15 seconds of a stop no `/run/celikpanel-sandbox/<unit>` is left |
 
 ## Running the probe as a real runtime app
 
@@ -156,6 +156,10 @@ LAB_ONLY=yes PANEL_URL=https://lab-vm:1923 COOKIE=<celikpanel_session> DOMAIN_ID
   answer arrives, the same id is posted again (the panel's lost-answer
   guard). The script then only reads (`GET` without `?health=1`) until the
   operation ends. It never posts a new id while one is running.
+- **Item 5's outside process.** `TARGET_PID` is a host PID outside the app.
+  With `UPLOAD=local` the default is the site's own PHP-FPM worker, then any
+  PHP-FPM worker, then journald. Without it (`UPLOAD=sftp` or `none`) the
+  probe tries only a child of its own, and the script notes that.
 - **Judging.** The script reads `GET …/runtime-apps/logs?lines=500` and
   judges the lines after this run's marker as `run.sh` does: an item with no
   line is a FAIL, and any `ESCAPED` is a FAIL. It also checks that `HOST` is
@@ -176,7 +180,23 @@ The last line is `PASS` or `FAIL`, and the exit status is 0 or 1.
   leaves the lab VM's firewall in place.
 - Item 10's reachability test relies on the host firewall not dropping
   the veth traffic first. When the firewall drops both listeners, the
-  result is SKIP rather than PASS.
+  result is SKIP rather than PASS, and the runner says why. This happened on
+  the alpha.119 lab VMs.
+- alpha.119 lab round 1 found these kit errors, all now corrected:
+  - `panel-runtime.sh` stopped silently (`set -euo pipefail`) when it read
+    the SMTP counter before the egress table existed (the first deploy).
+  - `run.sh`'s `mark` returned 1 after a PASS without a detail, so every
+    `cond && mark N PASS || mark N FAIL` also marked FAIL (false FAILs for
+    items 9, 11, 17 and 18).
+  - Item 18 ran `nsenter -m test` inside the program's namespace
+    (impossible under `NoExecPaths`). Its mount check matched the python
+    test unit's name (`celikrt-990002`) instead of the other site's folder.
+    Its check that the stop left nothing raced the bind unit's stop.
+  - Item 5 had no result: under `PrivatePIDs` the probe is PID 1 with no
+    parent in its namespace. It now forks a child of its own and tries a
+    host PID that the runner passes.
+
+  The corrected kit has not been run again yet.
 - The kit was smoke-run once (`quick`) on WSL Debian 13 (systemd 257, a
   kernel without `CONFIG_NFT_SOCKET`). Both probes started under the
   rendered units. Items 1–4, 6–8, 10, 12 and 14–16 passed. Item 9 failed,

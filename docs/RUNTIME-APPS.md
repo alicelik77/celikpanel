@@ -266,7 +266,7 @@ screen shows them with who acts and the next step (§12).
 |---|---|---|
 | Settings (`PUT …/settings`) | Changes entry, arguments and health path. They apply at the next deploy. | Any gate of new use: rights, hold, suspension, host level, full disk (§10, §11). |
 | Start / Restart | `reset-failed`, `enable`, `restart`. | Not deployed yet; held; suspended; host level not accepted; another operation is running (`busy`). |
-| Stop | `stop` and `disable`, so the program stays stopped after a reboot. | Never by rights. Only while a deploy or removal of the app runs (`busy`). |
+| Stop | `stop` and `disable`, so the program stays stopped after a reboot. A unit systemd does not know (never deployed, or its unit is gone) has nothing running: the stop succeeds without `systemctl`. For an app that was never deployed the answer is `reason: not_deployed` with “nothing to stop; deploy it to start it”, and its state stays. | Never by rights. Only while a deploy or removal of the app runs (`busy`). |
 | Environment | §5. | Only while an operation runs (`busy`). |
 | Log | The last lines (default 200, at most 500), redacted on the server. | Never by rights. `logs_unavailable` when the journal cannot be read. |
 | Remove | Durable operation: `unpublish` → `remove` → `done`. | Never by rights. Only while an operation runs (`busy`). |
@@ -608,12 +608,22 @@ before the steps ([SITE-SANDBOX.md](SITE-SANDBOX.md) §1a). Its
 steps are separate command lines; there is no shell:
 
 ```
-ExecStartPre=/usr/bin/python3.<m> -m venv <app>/venv-<n>.partial
-ExecStartPre=<venv>/bin/python -m pip install --isolated --no-input … --index-url=https://pypi.org/simple
-             --cache-dir=<app>/.pip-cache --only-binary=:all: --require-hashes --no-deps -r /run/celikpanel-rtbuild/<id>/server.txt
-ExecStartPre=<venv>/bin/python -m pip install --isolated … --only-binary=:all: [--require-hashes] -r …/requirements.txt [-c …/constraints.txt]
-ExecStart=<venv>/bin/python -m pip check
+ExecStart=/usr/bin/python3.<m> -m venv <app>/venv-<n>.partial
+ExecStartPost=<venv>/bin/python -m pip install --isolated --no-input … --index-url=https://pypi.org/simple
+              --cache-dir=<app>/.pip-cache --only-binary=:all: --require-hashes --no-deps -r /run/celikpanel-rtbuild/<id>/server.txt
+ExecStartPost=<venv>/bin/python -m pip install --isolated … --only-binary=:all: [--require-hashes] -r …/requirements.txt [-c …/constraints.txt]
+ExecStartPost=<venv>/bin/python -m pip check
 ```
+
+The unit's command (`ExecStart`) is the system's own interpreter, which
+creates the environment. `systemd-run` looks up the program of its command
+on the host before the unit exists, so the command can never be a path the
+build creates. (alpha.119 lab round 1: with the environment's python as the
+command, every build failed with "Failed to find executable
+…/venv-1.partial/bin/python".) systemd runs the `ExecStartPost` lines in
+order after `ExecStart` succeeded. The first one that fails ends the build
+(`Result=exit-code`), and the rest do not run. The root `egress-add`
+(`ExecStartPre=+`) runs before all of them.
 
 `--isolated` and `PIP_CONFIG_FILE=/dev/null` keep a `pip.conf` or a `PIP_*`
 variable from changing the index. `--only-binary=:all:` is left out of the

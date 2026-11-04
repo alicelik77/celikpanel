@@ -448,6 +448,19 @@ func (a *Agent) RuntimeAppControlV1(req *transport.RuntimeAppControlRequest, res
 		runtimeStep(resp, transport.RuntimeAppPrerequisite, "unit_missing", "the app's unit is not on the server; deploy the app again")
 		return nil
 	}
+	// A stop of a unit systemd does not know (an app that was never
+	// deployed, or whose unit is gone): nothing of it runs, so the stop is
+	// already done. systemctl would answer "Unit … not loaded" (alpha.119
+	// lab round 1); stop stays idempotent and never shows systemd's text.
+	if req.Action == "stop" {
+		if out, err := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState")...); err == nil {
+			props := parseShow(string(out))
+			if props["LoadState"] == "not-found" && (props["ActiveState"] == "" || props["ActiveState"] == "inactive") {
+				resp.Done = true
+				return nil
+			}
+		}
+	}
 	for _, s := range steps {
 		if out, err := appUnitSystemctl(systemctlArgs(s...)...); err != nil {
 			if s[0] == "reset-failed" {
