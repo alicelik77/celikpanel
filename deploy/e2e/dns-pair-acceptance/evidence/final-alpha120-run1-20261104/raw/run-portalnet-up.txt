@@ -1,0 +1,14 @@
+site/get.sh
+site/release-signing-ed25519.pem
+site/releases/latest.txt
+site/releases/v0.1.0-alpha.119/linux/amd64/celikpanel-v0.1.0-alpha.119-linux-amd64.tar.gz
+site/releases/v0.1.0-alpha.119/linux/amd64/celikpanel-v0.1.0-alpha.119-linux-amd64.tar.gz.sha256
+site/releases/v0.1.0-alpha.119/linux/amd64/release-manifest-v2
+site/releases/v0.1.0-alpha.119/linux/amd64/release-manifest-v2.sig
+site/releases/v0.1.0-alpha.120/linux/amd64/celikpanel-v0.1.0-alpha.120-linux-amd64.tar.gz
+site/releases/v0.1.0-alpha.120/linux/amd64/celikpanel-v0.1.0-alpha.120-linux-amd64.tar.gz.sha256
+site/releases/v0.1.0-alpha.120/linux/amd64/release-manifest-v2
+site/releases/v0.1.0-alpha.120/linux/amd64/release-manifest-v2.sig
+Running as unit: a114-portal.service; invocation ID: c7674fc75d10438aa219e82ba4eea2fd
+active
+v0.1.0-alpha.120

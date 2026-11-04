@@ -1,0 +1,2 @@
+source /mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/lib.sh
+as cust119b GET /api/v1/domains/$(cat $T/id-py119.test)/runtime-apps | python3 -c 'import json,sys; b=json.loads(json.load(sys.stdin)["body"]); print(json.dumps(b.get("operation"))); a=b.get("app") or {}; print(a.get("state"), json.dumps(a.get("python"))[:300])'

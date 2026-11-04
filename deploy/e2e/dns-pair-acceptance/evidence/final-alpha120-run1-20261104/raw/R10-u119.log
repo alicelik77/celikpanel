@@ -1,0 +1,36 @@
+== on 119 08:24:41
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+confirming: ["libpython3.12-minimal", "libpython3.12-stdlib", "libpython3.12t64", "python3.12", "python3.12-minimal"]
+202 {"operation": {"id": "7dd426fbdd7e3a2507de33916d8f964a", "kind": "service_install", "phase": "queued", "request_id": "c9246e5e72bce03badf833ced78cefbd", "service_id": "python", "started_at": "2026-11-04T08:24:45.208742491Z", "status": "queued"}}
+  op c9246e5e72bce03badf833ced78cefbd: succeeded completed "" (08:25:16)
+  row {"id": "python", "instances": [{"managed": false, "path": "/usr/bin/python3.12", "version": "3.12"}], "is_installed": true, "kind": "runtime", "status": "installed", "versions": []}
+  row {"id": "postgresql", "instances": [], "is_installed": false, "kind": "service", "status": "not_installed", "versions": []}
+== update to 120 through the panel 08:25:18
+check 200 {  "available": true,  "current_commit": "7e4ebeb49b9e2d53bb638dfa3d3602a59dc5d34e",  "current_version": "v0.1.0-alpha.119",  "supported": true,  "target": {   "arch": "amd64",   "archive_sha256": "b7c7798bafb21252e2c95f5d27b35ba9040cf73bc16d03f1ed863bacd496bfd9",   "archive_size": "71028291",   "commit": "74121094ffec004d52bb6a18292a69d44795bcd0",   "os": "linux",   "published_at": "2026-11-04T08:12:58Z",   "sequence": "120",   "version": "v0.1.0-alpha.120"  } }
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-04T08:25:18Z", "state": "running"}, 
+  10s 200 running None
+  31s 
+  72s 200 running verifying
+  82s 200 succeeded None
+== after update 08:26:40
+active active active active active active active 
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+panics: 0
+== Components API 08:27:01
+  row {"id": "python", "instances": [{"managed": false, "path": "/usr/bin/python3.12", "version": "3.12"}], "is_installed": true, "kind": "runtime", "package_version": "3.12.3-0ubuntu2.1", "package_version_read_at": "2026-11-04T08:25:04Z", "package_version_short": "3.12.3", "package_versions": [{"package": "python3", "version": "3.12.3-0ubuntu2.1"}, {"package": "python3-venv", "version": "3.12.3-0ubuntu2.1"}], "status": "installed", "versions": []}
+  row {"id": "postgresql", "instances": [], "is_installed": false, "kind": "service", "status": "not_installed", "versions": []}
+200 {"version": "16"}
+== security emergencies 08:27:04
+200 {"emergencies": []}
+200 {"component": "postgresql", "customers": [], "name": "PostgreSQL", "notes": ["CelikPanel does not know which site uses which database, so every site of a subscription with a database on PostgreSQL is listed.", "Nothing is deleted: files, databases and mailboxes stay. Removing customer data is always a separate, explicitly requested operation."], "offered_by": ["Unlimited: 1 subscription(s)"], "resellers": [], "sites": [], "version": ""}
+201 {"alternatives": [], "can": {"cancel": true, "continue": false, "move": false, "reenable": true, "remove": false, "stop": true}, "confirm_name": "PostgreSQL", "emergency": {"component": "postgresql", "created_at": "2026-11-04 08:27:04", "created_by": 2, "id": "4b87da82dda3d28d38b362ad67db27a1", "name": "PostgreSQL", "reason": "lab test only: withdraw step, then undo", "stage": "withdrawn", "updated_at": "2026-11-04 08:27:04", "version": "", "withdrawn": true}, "guidance": {"next_action": "If the
+emergency id 4b87da82dda3d28d38b362ad67db27a1
+  row {"id": "postgresql", "instances": [], "is_installed": false, "kind": "service", "status": "not_installed", "versions": []}
+200 {"alternatives": [], "can": {"cancel": false, "continue": false, "move": false, "reenable": false, "remove": false, "stop": false}, "confirm_name": "PostgreSQL", "emergency": {"component": "postgresql", "created_at": "2026-11-04 08:27:04", "created_by": 2, "id": "4b87da82dda3d28d38b362ad67db27a1", "name": "PostgreSQL", "reason": "lab test only: withdraw step, then undo", "resolved_at": "2026-11-04
+  row {"id": "postgresql", "instances": [], "is_installed": false, "kind": "service", "status": "not_installed", "versions": []}
+200 {"emergencies": [{"alternatives": [], "can": {"cancel": false, "continue": false, "move": false, "reenable": false, "remove": false, "stop": false}, "confirm_name": "PostgreSQL", "emergency": {"component": "postgresql", "created_at": "2026-11-04 08:27:04", "created_by": 2, "id": "4b87da82dda3d28d38b
+== SPA routes 08:27:08
+/components 200
+/services 200
+/help 200
+== R10 done 08:27:08
