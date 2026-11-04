@@ -66,12 +66,12 @@ export async function followRemovalOperation(first: unknown, onUpdate: (op: Remo
     return op;
 }
 
-type Say = (key: 'rmrule.phase.removing' | 'rmrule.phase.setting' | 'rmrule.phase.firewall' | 'rmrule.phase.starting', vars?: Record<string, string>) => string;
+type Say = (key: 'services.operation.phase.removing' | 'services.operation.phase.removeSetting' | 'services.operation.phase.syncing' | 'services.operation.starting', vars?: Record<string, string>) => string;
 
 // The phase a running removal is in, said plainly.
 export function removalPhaseText(t: Say, phase: string, nameOf: (id: string) => string): string {
-    if (phase.startsWith('removing:')) return t('rmrule.phase.removing', { name: nameOf(phase.slice(9)) });
-    if (phase === 'setting:malware_schedule') return t('rmrule.phase.setting');
-    if (phase.startsWith('firewall')) return t('rmrule.phase.firewall');
-    return t('rmrule.phase.starting');
+    if (phase.startsWith('removing:')) return t('services.operation.phase.removing', { name: nameOf(phase.slice(9)) });
+    if (phase === 'setting:malware_schedule') return t('services.operation.phase.removeSetting');
+    if (phase.startsWith('firewall')) return t('services.operation.phase.syncing');
+    return t('services.operation.starting');
 }

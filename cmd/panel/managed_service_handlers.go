@@ -696,6 +696,16 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 			isInstalled = &installedTrue
 			if managed.Kind == core.KindTool {
 				needsMissing = toolNeedsMissing(&managed, byID, installedSet)
+			} else {
+				// alpha.123 (D-045): an installed service whose required
+				// component is gone (Fail2ban without the firewall engine)
+				// says so on its row with the install button; roles are left
+				// to the install side.
+				for _, missing := range toolNeedsMissing(&managed, byID, installedSet) {
+					if core.GetManagedServiceByID(missing) != nil {
+						needsMissing = append(needsMissing, missing)
+					}
+				}
 			}
 		}
 

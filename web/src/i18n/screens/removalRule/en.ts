@@ -45,10 +45,6 @@ export const enRemovalRuleScreens = {
     'rmrule.nothingStops': 'Nothing on this server requires it.',
     'rmrule.withdraws': 'Offered to customers: {count} entr(ies) in {sets} plan(s) or account(s) are withdrawn with it. Sites already using it are listed above, so none breaks.',
     'rmrule.unitsUnknown': 'Which apps run on this version could not be read now. The server checks again when you press Remove and refuses if one still runs on it.',
-    'rmrule.phase.starting': 'Starting the removal on the server…',
-    'rmrule.phase.removing': 'Removing {name} on the server… You can close this page: the removal goes on, and Components shows the result.',
-    'rmrule.phase.setting': 'Turning off the scheduled malware scan…',
-    'rmrule.phase.firewall': 'Closing the ports it used in the firewall…',
     'rmrule.done': 'Removed: {names}.',
     'rmrule.removedSoFar': 'Already removed: {names}. Press Remove again to continue; what is already gone is skipped.',
     'rmrule.install.title': '{name} needs other components first',
@@ -62,6 +58,7 @@ export const enRemovalRuleScreens = {
     'dashboard.audit.action.service.uninstall.together.failed': 'could not finish removing {target} together',
     'dashboard.audit.action.service.uninstall.together.recovered': 'finished removing {target} together after a restart',
     'dashboard.audit.action.service.uninstall.together.recovered.failed': 'could not finish removing {target} together after a restart',
+    'rmrule.needs': '{name} needs {needs}, which is not installed, so it cannot work. Who acts: you. Next: install the {needs} with the button here; {name} keeps its settings.',
     'err.REMOVAL_NEEDS_TOGETHER': 'Some components can only be removed together with it: nothing else uses them and they cannot work without it. Nothing was removed. Who acts: you. Next: leave them ticked in the removal window and press Remove again.',
 } as const;
 

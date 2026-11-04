@@ -166,7 +166,7 @@ test('the server-side removal is followed by its id until it ends; a lost read i
     assert.deepEqual(done.removed, ['phppgadmin', 'postgresql']);
     assert.deepEqual(phases, ['queued', 'removing:postgresql', 'done']);
     assert.ok(seen.every((url) => url === `/api/v1/service/operation?id=${'b'.repeat(32)}`), 'only reads');
-    const say = (key, vars) => (key === 'rmrule.phase.removing' ? `removing ${vars.name}` : key);
+    const say = (key, vars) => (key === 'services.operation.phase.removing' ? `removing ${vars.name}` : key);
     assert.equal(ops.removalPhaseText(say, 'removing:postgresql', nameOf), 'removing PostgreSQL');
   } finally { globalThis.fetch = original; }
 });

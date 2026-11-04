@@ -250,7 +250,7 @@ const screenPartBudgets = {
   // removal window's three groups, the server-side removal's progress and the
   // install window's "needs first" (rmrule.). A new part because "components"
   // had little headroom left. Set with at least 25% headroom from its Turkish
-  // file: 6.30 / 2.24 KiB.
+  // file: 6.12 / 2.19 KiB.
   removalRule: kib(8, 3),
 }
 

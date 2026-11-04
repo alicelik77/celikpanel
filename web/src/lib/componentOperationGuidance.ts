@@ -76,3 +76,16 @@ export function componentOperationPhaseKey(phase: string): TranslationKey {
     const key = profile ? profile[2] : phase;
     return Object.prototype.hasOwnProperty.call(phaseKeys, key) ? phaseKeys[key] : 'services.operation.running';
 }
+
+// alpha.123 (D-045): the server-side remove-together operation, as its lock
+// says it: the step it is on ("removing:phppgadmin"), who acts (nobody) and
+// how it resumes (it goes on on the server, and after a restart by itself).
+// Sunucudaki birlikte kaldırma işleminin adımı, kimin yapacağı, nasıl sürdüğü.
+export const REMOVE_TOGETHER_KIND = 'service_remove_together';
+
+export function removalOperationPhase(phase: string): { key: TranslationKey; name: string } {
+    if (phase.startsWith('removing:')) return { key: 'services.operation.phase.removing', name: phase.slice(9) };
+    if (phase === 'setting:malware_schedule') return { key: 'services.operation.phase.removeSetting', name: '' };
+    if (phase.startsWith('firewall')) return { key: 'services.operation.phase.syncing', name: '' };
+    return { key: 'services.operation.starting', name: '' };
+}

@@ -39,10 +39,6 @@ export const trRemovalRuleScreens: Record<RemovalRuleScreenKey, string> = {
     'rmrule.nothingStops': 'Bu sunucuda hiçbir şey buna ihtiyaç duymuyor.',
     'rmrule.withdraws': 'Müşterilere sunulanlar: {sets} plan ya da hesaptaki {count} kayıt bununla birlikte geri çekilir. Onu kullanan siteler yukarıda sayılır; hiçbiri bozulmaz.',
     'rmrule.unitsUnknown': 'Bu sürümde hangi uygulamaların çalıştığı şu an okunamadı. Kaldır’a bastığınızda sunucu yeniden bakar ve biri hâlâ çalışıyorsa reddeder.',
-    'rmrule.phase.starting': 'Kaldırma sunucuda başlıyor…',
-    'rmrule.phase.removing': '{name} sunucuda kaldırılıyor… Bu sayfayı kapatabilirsiniz: kaldırma sürer, sonucu Bileşenler gösterir.',
-    'rmrule.phase.setting': 'Zamanlanmış kötücül yazılım taraması kapatılıyor…',
-    'rmrule.phase.firewall': 'Kullandığı portlar güvenlik duvarında kapatılıyor…',
     'rmrule.done': 'Kaldırıldı: {names}.',
     'rmrule.removedSoFar': 'Şimdiye dek kaldırılanlar: {names}. Sürdürmek için Kaldır’a yeniden basın; gitmiş olanlar atlanır.',
     'rmrule.install.title': '{name} için önce başka bileşenler gerekiyor',
@@ -56,5 +52,6 @@ export const trRemovalRuleScreens: Record<RemovalRuleScreenKey, string> = {
     'dashboard.audit.action.service.uninstall.together.failed': '{target} bileşenini birlikte kaldırmayı bitiremedi',
     'dashboard.audit.action.service.uninstall.together.recovered': '{target} bileşenini birlikte kaldırmayı yeniden başlatmadan sonra bitirdi',
     'dashboard.audit.action.service.uninstall.together.recovered.failed': '{target} bileşenini birlikte kaldırmayı yeniden başlatmadan sonra bitiremedi',
+    'rmrule.needs': '{name} için {needs} gerekiyor ve kurulu değil; bu yüzden çalışamaz. Yapacak olan: siz. Sonraki adım: buradaki düğmeyle {needs} kurulsun; {name} ayarlarını korur.',
     'err.REMOVAL_NEEDS_TOGETHER': 'Bazı bileşenler ancak bununla birlikte kaldırılabilir: onları başka hiçbir şey kullanmıyor ve bu olmadan çalışamazlar. Hiçbir şey kaldırılmadı. Yapacak olan: siz. Sonraki adım: kaldırma penceresinde işaretli bırakıp Kaldır’a yeniden basın.',
 };

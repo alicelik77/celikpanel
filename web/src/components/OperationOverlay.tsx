@@ -3,7 +3,7 @@ import { AlertTriangle, Loader2 as LoaderCircle, WifiOff, X } from 'lucide-react
 import { useI18n } from '../i18n';
 import type { ApiError } from '../lib/apiError';
 import { operationError, type ComponentOperation, type InteractionBlockView } from './ComponentOperation';
-import { componentOperationGuidance, componentOperationPhaseKey } from '../lib/componentOperationGuidance';
+import { componentOperationGuidance, componentOperationPhaseKey, removalOperationPhase, REMOVE_TOGETHER_KIND } from '../lib/componentOperationGuidance';
 import { Button, ErrorBanner, KeepWords } from './ui';
 
 type OperationOverlayProps = {
@@ -84,10 +84,21 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
     let statusText = view?.status ?? (guidance.statusKey
         ? t(guidance.statusKey)
         : t('services.operation.starting'));
-    if (!view && !guidance.statusKey && !submitting && operation) {
-        statusText = t(componentOperationPhaseKey(operation.phase));
+    // alpha.123 (D-045): a remove-together operation says its own step, who
+    // acts and how it resumes, never the install wording.
+    const removal = !view && operation?.kind === REMOVE_TOGETHER_KIND ? operation : null;
+    const together = removal?.package_name ? removal.package_name.split(',').join(', ') : '';
+    if (!view && !guidance.statusKey && operation) {
+        if (removal) {
+            const step = removalOperationPhase(removal.phase);
+            statusText = t(step.key, { name: step.name });
+        } else if (!submitting) {
+            statusText = t(componentOperationPhaseKey(operation.phase));
+        }
     }
-    const hint = view?.hint ?? t(guidance.hintKey);
+    const hint = view?.hint ?? (removal && guidance.hintKey === 'services.operation.backgroundHint'
+        ? t('services.operation.removeHint', { name: removal.service_id, together: together || '—' })
+        : t(guidance.hintKey));
     const operationID = view?.operationID || operation?.id;
     const busy = view?.busy ?? (!disconnected && !knownFailure);
     const severity = view?.severity ?? (knownFailure ? 'error' : 'warning');
@@ -122,7 +133,9 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
                             : <AlertTriangle className="h-7 w-7" />}
                 </span>
                 <h2 id="component-operation-title" className="text-xl font-semibold text-fg">
-                    {view?.title ?? t(knownFailure ? 'services.operation.failedTitle' : 'services.operation.title', { name: label || t('services.install') })}
+                    {view?.title ?? (removal
+                        ? t(knownFailure ? 'services.operation.removeFailedTitle' : 'services.operation.removeTitle', { name: removal.service_id })
+                        : t(knownFailure ? 'services.operation.failedTitle' : 'services.operation.title', { name: label || t('services.install') }))}
                 </h2>
                 {/* While reconnecting the lock reads by itself: shown with motion and a
                     sentence that nothing needs pressing, for a bounded time (owner rule
@@ -133,7 +146,7 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
                     Dar ekranda cümle kırılınca da ilk sözcüğün yanında kalır. */}
                 <p role={statusRole} aria-live="polite" className="mt-2 text-sm font-medium text-fg-muted">
                     {reconnecting && !reconnectSlow && <LoaderCircle className="mr-2 inline-block h-4 w-4 align-[-0.2em] text-primary motion-safe:animate-spin" aria-hidden="true" data-operation-reconnecting="" />}
-                    <span>{statusText}</span>
+                    <span data-operation-status={removal ? 'remove-together' : undefined}>{statusText}</span>
                 </p>
                 {reconnecting && (reconnectSlow
                     ? (

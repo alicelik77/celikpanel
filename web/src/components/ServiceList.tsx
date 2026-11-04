@@ -1921,7 +1921,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 Kurulu aracın bileşeni gitmiş; iki eylem olağan pencereleri açar. */}
                                                             {s.is_installed === true && s.needs_missing?.length ? (
                                                                 <div className="relative mt-1 flex flex-wrap gap-x-3 text-pretty text-xs text-warning" data-tool-needs={s.needs_missing.join(' ')}>
-                                                                    <span>{t('services.toolNeeds', { name: componentName(s, t), needs: reqNames(s.needs_missing) })}</span>
+                                                                    <span>{t(s.kind === 'tool' ? 'services.toolNeeds' : 'rmrule.needs', { name: componentName(s, t), needs: reqNames(s.needs_missing) })}</span>
                                                                     {services.filter((item) => s.needs_missing?.includes(item.id) && item.is_installed === false && !item.not_offered).map((item) => (
                                                                         <button key={item.id} type="button" className="font-semibold text-primary underline max-sm:min-h-11" disabled={mutationControlsDisabled} onClick={() => setInstallTarget(item)} data-tool-needs-install={item.id}>{t('services.installTitle', { name: componentName(item, t) })}</button>
                                                                     ))}

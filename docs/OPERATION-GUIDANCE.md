@@ -10911,7 +10911,10 @@ remove-together operation and the security emergency read the same plan.
   Ticked, the Panel answers 202 with a durable operation (`service_remove_together`, one
   Agent lease, qualifier = the sorted members): settings first, then each dependent, then
   the target, each checked by a fresh scan. Closing the page does not stop it. The page
-  shows the current step; the result lists what was removed.
+  shows the current step; the result lists what was removed. The global operation lock
+  knows this operation: a page opened while it runs (a reload, or after a panel restart)
+  re-attaches to it and says its step, that nobody needs to act and that it continues by
+  itself, never the install wording or a lost connection.
 - **Unknown result.** A lost answer starts nothing again: the operation is read by its
   id. After a panel restart the same run resumes; what is already gone is skipped and
   the plan is checked again first, so a use that appeared meanwhile refuses the rest

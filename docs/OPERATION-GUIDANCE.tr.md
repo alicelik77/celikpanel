@@ -10851,7 +10851,10 @@ birlikte kaldırma işlemi ve güvenlik acil durumu aynı planı okur.
   hiçbir şey kaldırılmaz). İşaretliyse Panel 202 ve kalıcı bir işlemle yanıtlar
   (`service_remove_together`, tek Agent kirası, niteleyici = sıralı üyeler): önce
   ayarlar, sonra her bağımlı, sonra hedef; her adım taze taramayla denetlenir. Sayfayı
-  kapatmak işlemi durdurmaz. Sayfa o anki adımı, sonuç kaldırılanları söyler.
+  kapatmak işlemi durdurmaz. Sayfa o anki adımı, sonuç kaldırılanları söyler. Genel işlem
+  kilidi bu işlemi tanır: işlem sürerken açılan sayfa (yenileme ya da panel yeniden
+  başladıktan sonra) ona yeniden bağlanır; adımını, kimsenin bir şey yapması gerekmediğini
+  ve kendiliğinden sürdüğünü söyler; kurulum sözleri ya da kopan bağlantı göstermez.
 - **Bilinmeyen sonuç.** Kaybolan yanıt hiçbir şeyi yeniden başlatmaz: işlem kimliğiyle
   okunur. Panel yeniden başlarsa aynı çalışma sürer; gitmiş olan atlanır ve önce plan
   yeniden denetlenir; arada ortaya çıkan bir kullanım kalanını reddeder

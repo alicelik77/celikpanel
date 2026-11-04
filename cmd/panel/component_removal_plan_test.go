@@ -359,3 +359,31 @@ func TestRemoveTogetherResumesAndChecksThePlanAgain(t *testing.T) {
 		t.Fatalf("blocked resume: %+v", failure)
 	}
 }
+
+// Fail2ban without the firewall engine says so on its row with the engine's
+// install button (needs_missing); with it, nothing is said.
+func TestInstalledServiceNamesItsMissingRequiredComponent(t *testing.T) {
+	needs := func(obs []serviceObservation) []string {
+		for _, service := range catalogView(obs, "apt") {
+			if service.ID == "fail2ban" {
+				return service.NeedsMissing
+			}
+		}
+		t.Fatal("fail2ban missing from the view")
+		return nil
+	}
+	without := []serviceObservation{{ID: "fail2ban", IsInstalled: true, Status: "active (running)"}, {ID: "nftables", IsInstalled: false, Status: "not_installed"}}
+	if got := needs(without); !slices.Equal(got, []string{"nftables"}) {
+		t.Fatalf("needs = %v", got)
+	}
+	with := []serviceObservation{{ID: "fail2ban", IsInstalled: true, Status: "active (running)"}, {ID: "nftables", IsInstalled: true, Status: "installed"}}
+	if got := needs(with); len(got) != 0 {
+		t.Fatalf("needs with nftables = %v", got)
+	}
+	// Node.js's role requirement stays on the install side.
+	for _, service := range catalogView([]serviceObservation{{ID: "node", IsInstalled: true, Status: "installed"}, {ID: "nginx", IsInstalled: false, Status: "not_installed"}}, "apt") {
+		if service.ID == "node" && len(service.NeedsMissing) != 0 {
+			t.Fatalf("node needs = %v", service.NeedsMissing)
+		}
+	}
+}
