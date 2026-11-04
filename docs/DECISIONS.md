@@ -3917,6 +3917,13 @@ nothing but make the correction day more expensive. That was the devil's
 advocate's own collapse condition: "I concede once non-service rows
 multiply" — the roadmap promises exactly that.
 
+*Amendment (2026-11-04, alpha.120 candidate):* the address follows the name.
+The screen route is `/components` and `/components/<id>`; the old
+`/services` and `/services/<id>` addresses (bookmarks, outside links, guidance
+links and stored Store paths of earlier releases) are replaced client-side by
+the same address under `/components`, path tail, query and hash kept. The API
+paths (`/api/v1/service/...`, `/api/v1/managed-services`) do not change.
+
 ---
 
 ## D-015 · An extension is a package, a kind is a nature: the store grants but never installs, the core catalog's boundary is responsibility not price, and the kind list is open

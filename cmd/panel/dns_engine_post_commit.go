@@ -597,7 +597,7 @@ func writeDNSEnginePostCommitFailed(
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadGateway)
 	_ = json.NewEncoder(w).Encode(apiErrorBody{
-		Error: message, Code: code, Action: "/services",
+		Error: message, Code: code, Action: "/components",
 		PartialSuccess: true, MutationApplied: true,
 	})
 }

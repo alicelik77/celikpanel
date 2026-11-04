@@ -57,7 +57,7 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (globalThis.bundleWords?.[key] !== undefined ? fill(globalThis.bundleWords[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => (path, options) => { globalThis.bundleNavigated?.push(path); globalThis.bundleNavigateOptions?.push(options ?? null); return true; };
-  export const useLocation = () => ({ hash: '', pathname: '/services', search: globalThis.bundleSearch ?? '' });
+  export const useLocation = () => ({ hash: '', pathname: '/components', search: globalThis.bundleSearch ?? '' });
   export const useNavigationBlocker = () => {};
   export const Link = (props) => React.createElement('a', null, props.children);
   export const showToast = (...args) => globalThis.bundleToasts.push(args);

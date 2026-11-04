@@ -102,7 +102,7 @@ Malformed or expired stored timestamps fail closed.
 
 GET follows normal subscription visibility rules. POST and DELETE are
 administrator-only until a typed reseller entitlement-pool model exists.
-Resellers receive no hidden administrator action or `/services` management
+Resellers receive no hidden administrator action or `/components` management
 path from the Store API.
 
 Grant and revoke write the entitlement and its audit record in the same

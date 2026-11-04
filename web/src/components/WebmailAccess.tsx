@@ -45,7 +45,7 @@ export default function WebmailAccess({ domainId }: { domainId: number }) {
                 ) : isAdmin ? (
                     <>
                         <p className='text-xs text-fg-muted'>{t('mail.webmail.noAddressAdmin')}</p>
-                        <Link to='/services/roundcube' className='mt-1 inline-block text-xs font-medium text-primary underline underline-offset-2' data-webmail-set-address=''>
+                        <Link to='/components/roundcube' className='mt-1 inline-block text-xs font-medium text-primary underline underline-offset-2' data-webmail-set-address=''>
                             {t('mail.webmail.setAddress')}
                         </Link>
                     </>

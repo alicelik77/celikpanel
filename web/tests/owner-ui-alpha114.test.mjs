@@ -40,14 +40,14 @@ test('Domains: a delete tells every reader; the kept-records card is shown after
 
 test('install buttons lead to the right place, in the panel, without a page load', () => {
   const vpn = source('components/VPNPage.tsx');
-  assert.doesNotMatch(vpn, /window\.location\.assign\('\/services'\)/);
-  assert.match(vpn, /navigate\('\/services\?component=wireguard'\)/);
+  assert.doesNotMatch(vpn, /window\.location\.assign\('\/(services|components)'\)/);
+  assert.match(vpn, /navigate\('\/components\?component=wireguard'\)/);
   const list = source('components/ServiceList.tsx');
   assert.match(list, /get\('component'\)/, 'the Components page does not open at one component');
   assert.match(list, /if \(linkedComponent\) return false;/, 'a linked component that is not installed would stay hidden');
   // The DNS engine is chosen on the DNS page's own engine card: no ping-pong.
   const dns = source('components/DNSServerSettings.tsx');
-  assert.doesNotMatch(dns, /to="\/services"/);
+  assert.doesNotMatch(dns, /to="\/(services|components)"/);
   assert.match(dns, /onClick=\{focusEngineCard\}/);
   assert.match(dns, /id=\{ENGINE_CARD_ID\}/);
   // PowerDNS: records are managed from the DNS page; a failed repair says why.

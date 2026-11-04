@@ -21,7 +21,7 @@ test('a route names its topic; an address the guide does not know names none', (
     assert.equal(routes.topicForPath('/'), 'dashboard');
     assert.equal(routes.topicForPath('/domains/example.com'), 'domains');
     assert.equal(routes.topicForPath('/domains/infrastructure/example.com'), 'dns.infrastructure');
-    assert.equal(routes.topicForPath('/services/nginx'), 'components');
+    assert.equal(routes.topicForPath('/components/nginx'), 'components');
     assert.equal(routes.topicForPath('/help/files-access'), 'help');
     assert.equal(routes.topicForPath('/account/'), 'account');
     assert.equal(routes.topicForPath('/nowhere'), null);

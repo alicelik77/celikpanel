@@ -207,7 +207,7 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 			// key: the source and key are rewritten from the catalogue, the
 			// confinement and the drop-in stay.
 			if strings.TrimSpace(repo.ReleaseOrigin) != "" && !p.repoEnabledNow(repo.ID) {
-				writeCodedError(w, http.StatusConflict, "REPO_LANE_REQUIRED", "this repository is enabled only together with its confinement and automatic updates", "/services")
+				writeCodedError(w, http.StatusConflict, "REPO_LANE_REQUIRED", "this repository is enabled only together with its confinement and automatic updates", "/components")
 				return
 			}
 		case "disable":
@@ -252,7 +252,7 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 		if err != nil && st.Error == "" {
 			log.Printf("[repo][%s][%s][transport] %v", repo.ID, req.Action, err)
 			p.audit(r, "repo."+req.Action+".failed:"+repo.ID+" — "+errCodeRepoAgentUnavailable, "repo", 0)
-			writeCodedError(w, http.StatusBadGateway, errCodeRepoAgentUnavailable, safeRepoErrorMessage(errCodeRepoAgentUnavailable), "/services")
+			writeCodedError(w, http.StatusBadGateway, errCodeRepoAgentUnavailable, safeRepoErrorMessage(errCodeRepoAgentUnavailable), "/components")
 			return
 		}
 		if st.Error != "" {
@@ -273,14 +273,14 @@ func (p *Panel) handleRepo(w http.ResponseWriter, r *http.Request) {
 				_ = json.NewEncoder(w).Encode(apiErrorBody{
 					Error:           safeRepoErrorMessage(code),
 					Code:            code,
-					Action:          "/services",
+					Action:          "/components",
 					PartialSuccess:  true,
 					MutationApplied: true,
 				})
 				return
 			}
 			p.audit(r, "repo."+req.Action+".failed:"+repo.ID+" — "+code, "repo", 0)
-			writeCodedError(w, http.StatusConflict, code, safeRepoErrorMessage(code), "/services")
+			writeCodedError(w, http.StatusConflict, code, safeRepoErrorMessage(code), "/components")
 			return
 		}
 		details := map[string]any{"repository": repo.ID, "name": repo.Name}

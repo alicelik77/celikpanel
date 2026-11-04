@@ -171,7 +171,7 @@ test('mounted setup shell preserves server identity and build without ordinary n
         for (const recovery of ['/settings?section=panel', '/dns-infrastructure', '/settings?section=updates']) {
             assert.ok(links.includes(recovery), 'missing recovery link: ' + recovery);
         }
-        assert.equal(links.some(href => href === '/services' || href.startsWith('/services/')), false);
+        assert.equal(links.some(href => href === '/components' || href.startsWith('/components/') || href === '/services' || href.startsWith('/services/')), false);
         assert.equal(links.some(href => href === '/domains' || href.startsWith('/domains/')), false);
     });
 });

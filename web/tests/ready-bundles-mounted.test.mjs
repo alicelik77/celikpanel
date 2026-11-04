@@ -46,7 +46,7 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (globalThis.bundleWords?.[key] !== undefined ? fill(globalThis.bundleWords[key], vars) : vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => (path, options) => { globalThis.bundleNavigated?.push(path); globalThis.bundleNavigateOptions?.push(options ?? null); return true; };
-  export const useLocation = () => ({ hash: '', pathname: '/services', search: globalThis.bundleSearch ?? '' });
+  export const useLocation = () => ({ hash: '', pathname: '/components', search: globalThis.bundleSearch ?? '' });
   export const useNavigationBlocker = () => {};
   export const Link = (props) => React.createElement('a', null, props.children);
   export const showToast = (...args) => globalThis.bundleToasts.push(args);
@@ -575,7 +575,7 @@ test('Roundcube leftovers: without the Panel\'s record of an unfinished install 
   try {
     assert.ok(tree.root.findAll((node) => node.props && node.props['data-webmail-cleanup-list'] !== undefined).length === 1, 'the cleanup link did not open the dialogue');
     assert.equal(leftoversButton(), undefined);
-    assert.deepEqual(globalThis.bundleNavigated, ['/services']);
+    assert.deepEqual(globalThis.bundleNavigated, ['/components']);
     assert.deepEqual(globalThis.bundleNavigateOptions, [{ replace: true }]);
   } finally { await unmount(); delete globalThis.bundleSearch; delete globalThis.bundleNavigated; delete globalThis.bundleNavigateOptions; }
 });
@@ -929,14 +929,26 @@ const rowOf = (id) => tree.root.findAll((node) => node.type === 'li' && node.pro
   && node.findAll((child) => child.type === 'a' && label(child) === nameOf(id)).length > 0)[0];
 const posts = () => urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => JSON.parse(call.body).service_id);
 
-test('PostgreSQL that is not installed is offered on its own beside the bundle, through its own install dialog with its versions', async () => {
+// alpha.120 (owner's Boston screens, alpha.119): "why is the PostgreSQL server
+// component not like MariaDB? it looks like a side thing". A core server that
+// is not installed has its own row in the installed view, Not installed with
+// Install, instead of a small link under the bundles.
+// Kurulu olmayan çekirdek sunucu, kurulu görünümde kendi satırını alır.
+const installIn = (row) => row.findAll((node) => node.type === 'button' && label(node).includes(say('services.install')))[0];
+
+test('PostgreSQL that is not installed has its own row like MariaDB: Not installed and Install, which opens its own install dialog with its versions', async () => {
   await mount(databaseServer());
   try {
-    assert.equal(rowOf('postgresql'), undefined, 'the installed view hides the PostgreSQL row');
-    const alone = tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] !== undefined);
-    assert.deepEqual(alone.map((node) => node.props['data-bundle-alone-install']), ['postgresql'], 'MariaDB is installed; only PostgreSQL is offered alone');
-    assert.ok(stripText('database').includes(say('services.bundles.alone')), stripText('database'));
-    await press(alone[0]);
+    const row = rowOf('postgresql');
+    assert.ok(row, 'the installed view shows the PostgreSQL row');
+    assert.ok(label(row).includes(say('services.notInstalled')), label(row));
+    assert.ok(rowOf('mariadb'), 'MariaDB keeps its row');
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] !== undefined).length, 0, 'no "install one on its own" link');
+    assert.ok(!stripText('database').includes('Or install one on its own'), stripText('database'));
+    assert.ok(bundleNode('db.postgresql'), 'the ready bundles stay');
+    // An optional tool that is not installed stays in the catalogue.
+    assert.equal(rowOf('phppgadmin'), undefined, 'phpPgAdmin is not a core server');
+    await press(installIn(row));
     assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('postgresql') })), dialogText());
     // The version choice is the install dialog's own: it asks for PostgreSQL's repository and candidate.
     assert.ok(urls.some((call) => call.url === '/api/v1/repo?service_id=postgresql'), urls.map((call) => call.url).join(', '));
@@ -945,13 +957,61 @@ test('PostgreSQL that is not installed is offered on its own beside the bundle, 
   } finally { await unmount(); }
 });
 
-test('a blocked bundle (phpPgAdmin on Arch) still lets PostgreSQL be installed on its own', async () => {
+test('a blocked bundle (phpPgAdmin on Arch) still lets PostgreSQL be installed from its own row; a core server another one excludes or the host does not offer gets no row', async () => {
   const answer = databaseServer();
   answer.bundles = [pgBundle({ status: 'blocked', action: 'none', blocked_code: 'component_not_installable', blocked_vars: { component: 'phpPgAdmin' } }), dbBundle()];
+  answer.services = answer.services.map((item) => (item.id === 'nginx' ? { ...item, is_installed: false, status: 'not_installed', versions: [], conflict_with: 'Apache' } : item));
   await mount(answer);
   try {
-    const alone = tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] === 'postgresql');
-    assert.equal(alone.length, 1);
+    assert.ok(installIn(rowOf('postgresql')), 'PostgreSQL offers Install on its row');
+    assert.equal(rowOf('nginx'), undefined, 'Nginx excluded by an installed Apache stays in the catalogue');
+  } finally { await unmount(); }
+  const notOffered = databaseServer();
+  notOffered.services = notOffered.services.map((item) => (item.id === 'postgresql' ? { ...item, not_offered: true, not_offered_reason: 'not on this system' } : item));
+  await mount(notOffered);
+  try {
+    assert.equal(rowOf('postgresql'), undefined, 'a server this host does not offer gets no row');
+  } finally { await unmount(); }
+});
+
+test('no security emergency section in the list; an open emergency puts a short red badge on its row that links to it', async () => {
+  await mount(databaseServer());
+  try {
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-security-emergency'] !== undefined).length, 0, 'no section in the list');
+    assert.ok(!label(rowOf('mariadb')).includes(say('emg.rowBadge')), 'no badge while nothing is open');
+    assert.ok(urls.some((call) => call.method === 'GET' && call.url === '/api/v1/security-emergencies'), 'the list is read');
+  } finally { await unmount(); }
+  const open = { emergency: { id: 'e1', component: 'mariadb', version: '', name: 'MariaDB', reason: 'CVE-2026-0003', stage: 'withdrawn', withdrawn: true },
+    guidance: { result: '', reason: '', who_acts: 'administrator', next_action: '', resumes: '' }, operation: null,
+    preview: { sites: [], customers: [], resellers: [], offered_by: [], notes: [] },
+    notices: { total: 0, seen: 0, mail_sent: 0, mail_pending: 0, mail_failed: 0, no_address: 0, mail_not_available: 0 }, confirm_name: 'MariaDB', alternatives: [], can: {} };
+  extraRoutes = { 'GET /api/v1/security-emergencies': [{ emergencies: [open] }] };
+  await mount(databaseServer());
+  try {
+    assert.ok(label(rowOf('mariadb')).includes(say('emg.rowBadge')), label(rowOf('mariadb')));
+    assert.ok(!label(rowOf('postgresql')).includes(say('emg.rowBadge')), 'only the component whose emergency is open');
+    assert.equal(tree.root.findAll((node) => node.props && node.props['data-security-emergency'] !== undefined).length, 0);
+    assert.equal(urls.filter((call) => call.method === 'POST' && !call.url.startsWith('/api/v1/managed-services/scan')).length, 0, 'reading sends nothing');
+  } finally { await unmount(); extraRoutes = {}; }
+  const list = source('components/ServiceList.tsx');
+  assert.match(list, /<Link to=\{emergencyPath\(s\.id\)\}[^>]*data-row-emergency=\{s\.id\}>/);
+  assert.match(source('lib/securityEmergency.ts'), /return `\/components\/\$\{serviceId\}#\$\{EMERGENCY_ANCHOR\}`;/);
+});
+
+test("Python, the distribution's own runtime, shows its package version and its one version", async () => {
+  const answer = databaseServer();
+  answer.services.push(component('python', 'web', true, {
+    kind: 'runtime', status: 'installed', versions: [], packages: ['python3', 'python3-venv'],
+    instances: [{ version: '3.12', path: '/usr/bin/python3.12', managed: false }],
+    package_version: '3.12.3-0ubuntu2', package_version_short: '3.12.3', package_version_read_at: '2026-11-04T08:00:00Z',
+    package_versions: [{ package: 'python3', version: '3.12.3-0ubuntu2' }, { package: 'python3-venv', version: '3.12.3-0ubuntu2' }],
+  }));
+  await mount(answer);
+  try {
+    const row = rowOf('python');
+    assert.ok(label(row).includes('3.12.3'), label(row));
+    const toggle = row.findAll((node) => node.type === 'button' && label(node).startsWith(say('services.versionsToggle')))[0];
+    assert.equal(label(toggle), say('services.versionsToggle') + '1', 'Versions counts the one Python found, not 0');
   } finally { await unmount(); }
 });
 

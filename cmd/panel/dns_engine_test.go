@@ -963,7 +963,7 @@ func TestDNSEnginePostCommitFailureIsRetryableWithoutRollbackOrReplay(t *testing
 		t.Fatal(err)
 	}
 	if body.Code != errCodeFirewallSyncFailed ||
-		body.Action != "/services" ||
+		body.Action != "/components" ||
 		!body.PartialSuccess || !body.MutationApplied ||
 		strings.Contains(first.Body.String(), "nftables.conf") {
 		t.Fatalf("unsafe/non-actionable partial response=%+v body=%s", body, first.Body.String())
@@ -1060,7 +1060,7 @@ func TestDNSEngineScanFailureIsCommittedAndSafelyRetryable(t *testing.T) {
 	if first.Code != http.StatusBadGateway ||
 		json.Unmarshal(first.Body.Bytes(), &body) != nil ||
 		body.Code != errCodeServiceStateRefreshFailed ||
-		body.Action != "/services" ||
+		body.Action != "/components" ||
 		!body.PartialSuccess || !body.MutationApplied ||
 		strings.Contains(first.Body.String(), "/proc/999") {
 		t.Fatalf("scan partial status=%d body=%s", first.Code, first.Body.String())

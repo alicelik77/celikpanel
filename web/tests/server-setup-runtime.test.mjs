@@ -414,7 +414,7 @@ test('draft decoding distinguishes an untouched preset from explicit empty custo
 
 test('completion links and labels follow customized services instead of the original profile', async () => {
     const scenarios = [
-        ['web', ['fail2ban'], '/services', 'setup.nextComponents'],
+        ['web', ['fail2ban'], '/components', 'setup.nextComponents'],
         ['custom', [], '/dns-infrastructure', 'setup.nextDNS'],
         ['custom', ['nginx'], '/domains', 'setup.nextWebsite'],
         ['web', ['node'], '/domains', 'setup.nextApplication'],

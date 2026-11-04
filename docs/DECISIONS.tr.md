@@ -3733,6 +3733,13 @@ gününü pahalılaştırmaktan başka işe yaramaz. Şeytanın avukatının ken
 koşulu da buydu: "servis olmayan satırlar çoğaldığında teslim olurum" — yol
 haritası tam bunu vaat ediyor.
 
+*Ek (2026-11-04, alpha.120 adayı):* adres adı izler. Ekran rotası
+`/components` ve `/components/<kimlik>`'tir; eski `/services` ve
+`/services/<kimlik>` adresleri (yer imleri, dış bağlantılar, önceki sürümlerin
+yönlendirme bağlantıları ve kayıtlı Mağaza yolları) istemcide aynı adresin
+`/components` altındakiyle değiştirilir; yolun devamı, sorgu ve çapa korunur.
+API yolları (`/api/v1/service/...`, `/api/v1/managed-services`) değişmez.
+
 ---
 
 ## D-015 · Eklenti pakettir, cins doğadır: mağaza hak verir kurmaz, çekirdek kataloğun sınırı para değil sorumluluktur, cins listesi açıktır

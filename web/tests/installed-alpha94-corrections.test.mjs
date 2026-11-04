@@ -65,7 +65,7 @@ test('the leftovers cleanup is offered on the row only with a record, and always
   assert.match(services, /const decodeWebmailCleanup = \(value: unknown\): WebmailCleanupRecord \| null => \(value === 'install_failed' \|\| value === 'removal_incomplete' \? value : null\);/);
   assert.match(services, /get\('cleanup'\) !== 'roundcube'/);
   const shell = read('../src/components/ServiceShell.tsx');
-  assert.match(shell, /\{serviceId === 'roundcube' && \(\s*\n\s*<button\s*\n\s*type="button"\s*\n\s*onClick=\{\(\) => navigate\('\/services\?cleanup=roundcube'\)\}/);
+  assert.match(shell, /\{serviceId === 'roundcube' && \(\s*\n\s*<button\s*\n\s*type="button"\s*\n\s*onClick=\{\(\) => navigate\('\/components\?cleanup=roundcube'\)\}/);
   const record = read('../../cmd/panel/webmail_cleanup_record.go');
   assert.match(record, /webmailCleanupInstallFailed\s+= "install_failed"/);
   assert.match(record, /webmailCleanupRemovalIncomplete = "removal_incomplete"/);

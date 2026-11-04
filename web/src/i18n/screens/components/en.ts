@@ -332,7 +332,6 @@ export const enComponentsScreens = {
     'services.bundles.chip.web_nginx_php': 'Nginx + PHP-FPM',
     'services.bundles.chip.install': 'Install',
     // alpha.118: the bundle's main component on its own, through its ordinary install dialog (version choice included).
-    'services.bundles.alone': 'Or install one on its own (its install window shows the versions):',
     'services.bundles.chip.add': 'Add',
     'services.bundles.chip.progress': '{n} of {total} installed',
     'services.bundles.chip.included': 'included',

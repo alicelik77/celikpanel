@@ -3,11 +3,18 @@
 import type { EmergencyScreenKey } from './en';
 
 export const trEmergencyScreens: Record<EmergencyScreenKey, string> = {
-    // Sürüm çekmecesindeki bölüm.
+    // Bileşenin kendi sayfasındaki bölüm.
     'emg.title': 'Güvenlik acil durumu',
-    'emg.toolsTitle': 'Güvenlik acil durumu araçları',
-    'emg.toolsHint': 'Bir sorun yok. Bunları yalnız {name} bileşeninde bir güvenlik açığı varsa ve henüz düzeltmesi yoksa kullanın.',
+    'emg.toolsTitle': 'Güvenlik acil durumu',
+    'emg.toolsHint': 'Şu an bir sorun yok. Yalnız {name} içinde henüz düzeltmesi olmayan bir güvenlik açığı için: onu adım adım geri çekebilir, durdurabilir, sitelerini taşıyabilir ve kaldırabilirsiniz.',
     'emg.intro': 'Bunu yalnız {name} bileşeninde bir güvenlik açığı varsa ve yaması yoksa kullanın. Dört ayrı adım, en hafifi önce: geri çek, durdur, siteleri taşı, kaldır. Müşteri verisi asla silinmez.',
+    'emg.rowBadge': 'Güvenlik acil durumu açık',
+    'emg.area.title': 'Güvenlik acil durumu',
+    'emg.area.intro': 'PHP, Node.js, MariaDB ve PostgreSQL, müşteri sitelerinin doğrudan üzerinde çalıştığı programlardır. Birinde henüz düzeltmesi olmayan bir güvenlik açığı çıkarsa onu adım adım geri çekebilir, durdurabilir, onu kullanan siteleri taşıyabilir ve kaldırabilirsiniz. Her birinin araçları kendi sayfasındadır. Diğer bileşenlerde bu adımlar yoktur; olağan yolla durdurulur ya da kaldırılır.',
+    'emg.area.none': 'Açık bir güvenlik acil durumu yok.',
+    'emg.area.openOne': 'Acil durum açık',
+    'emg.area.unknown': 'Açık bir acil durum olup olmadığı okunamadı. Görmek için bileşenin sayfasını açın.',
+    'emg.area.go': '{name} acil durum adımlarını aç',
     'emg.open': 'Güvenlik acil durumu adımlarını aç',
     'emg.close': 'Gizle',
     'emg.version': 'Sürüm',

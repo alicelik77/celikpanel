@@ -31,7 +31,7 @@ func TestWordPressRefusesMissingExtensionsBeforeChangingAnything(t *testing.T) {
 		t.Fatal(err)
 	}
 	if body.Code != errCodeAppExtensionsMissing || !strings.Contains(body.Error, "php8.2-mysql") ||
-		body.Action != "/services?component=php-fpm&install=php8.2-fpm" {
+		body.Action != "/components?component=php-fpm&install=php8.2-fpm" {
 		t.Fatalf("refusal %+v", body)
 	}
 	creates, deletes, installs := agent.snapshot()

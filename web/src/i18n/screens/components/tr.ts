@@ -320,7 +320,6 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.bundles.chip.db_mariadb_phpmyadmin': 'MariaDB + phpMyAdmin',
     'services.bundles.chip.web_nginx_php': 'Nginx + PHP-FPM',
     'services.bundles.chip.install': 'Kur',
-    'services.bundles.alone': 'Ya da birini tek başına kurun (kurulum penceresi sürümlerini gösterir):',
     'services.bundles.chip.add': 'Ekle',
     'services.bundles.chip.progress': '{n}/{total} bileşen kurulu',
     'services.bundles.chip.included': 'içinde',

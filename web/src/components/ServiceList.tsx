@@ -30,7 +30,7 @@ import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRou
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
-import { SecurityEmergencySection } from './SecurityEmergency';
+import { SECURITY_EMERGENCIES_URL, decodeEmergencyList, emergencyPath, rowsWithOpenEmergency } from '../lib/securityEmergency';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { VendorLaneDialog } from './VendorLaneDialog';
 import { LANE_FOR_COMPONENT } from '../lib/vendorLane';
@@ -360,6 +360,29 @@ function persistServiceVerificationState(value: ServiceVerificationState) {
 // kurulum kutusu paket modalında değil sürüm çekmecesindedir. Veriden türer:
 // "paketi olmayan runtime" tam olarak o kümedir.
 const isTarballRuntime = (s: ManagedService) => s.kind === 'runtime' && !(s.packages && s.packages.length > 0);
+
+// The core hosting servers (alpha.120, owner's Boston screens): what customer
+// sites run on directly and every hosting server is expected to have one of.
+// Not installed, each still has its own row in the Installed view, with
+// "Not installed" and Install, instead of a link under the ready bundles.
+// Mail and DNS engines are not here: they are chosen as a set (mail setup,
+// DNS infrastructure) and come with alternatives that exclude each other.
+// Optional runtimes and tools stay in the catalogue.
+// Çekirdek barındırma sunucuları: kurulu değilken de Kurulu görünümünde kendi
+// satırları vardır. Posta ve DNS motorları kendi kurulum yollarıyla seçilir.
+const CORE_SERVER_COMPONENTS = new Set(['nginx', 'php-fpm', 'mariadb', 'postgresql']);
+const coreRowWhenAbsent = (s: ManagedService) =>
+    CORE_SERVER_COMPONENTS.has(s.id) && s.is_installed === false && !s.not_offered && !s.conflict_with;
+
+// The copies a runtime's Versions button counts: the ones the panel installed;
+// a runtime that is the distribution's own (Python) counts the one it found,
+// which is the version its drawer lists and its offering names.
+// Sürümler düğmesinin saydığı kopyalar; dağıtımın kendi çalışma ortamı bulduğunu sayar.
+const versionCount = (s: ManagedService) => {
+    const copies = s.instances ?? [];
+    const managed = copies.filter((i) => i.managed).length;
+    return managed > 0 || isTarballRuntime(s) ? managed : copies.length;
+};
 
 // "Nobody has looked" is its own row state, distinct from "we looked and it
 // is not there". It reaches the screen from a server that has never been
@@ -769,6 +792,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // Masaüstü sürüm sütunu yalnız en az bir kurulu bileşenin paket sürümü
     // biliniyorsa döner; yoksa sürüm açıklamanın altında kalır.
     const versionColumn = services.some((s) => packageVersionFacts(s) !== null);
+    // alpha.120: the open security emergencies, read only to badge their rows;
+    // the steps themselves are on the component's own page. Reading never
+    // starts anything; an unread list shows no badge.
+    // Açık acil durumlar yalnız satır rozeti için okunur; okumak hiçbir şey başlatmaz.
+    const emergencies = useRemote(SECURITY_EMERGENCIES_URL, decodeEmergencyList);
+    const emergencyRows = emergencies.remote.state === 'known' ? rowsWithOpenEmergency(emergencies.remote.value) : new Set<string>();
     const filtered = services.filter(
         (s) =>
             // The installed view hides what we KNOW is absent. A component
@@ -781,7 +810,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             // unfinished install or removal must not hide behind the switch.
             // Roundcube kalıntı teklifi görünür kalır; ilk ziyaret artık bu
             // görünümü açar ve Panel kaydı düğmenin arkasında saklanmamalı.
-            (!hideNotInstalled || s.is_installed !== false || (s.id === 'roundcube' && webmailCleanup !== null)) &&
+            // alpha.120: a core server that is not installed keeps its row,
+            // and so does a row whose security emergency is open.
+            // Kurulu olmayan çekirdek sunucu ve acil durumu açık satır görünür kalır.
+            (!hideNotInstalled || s.is_installed !== false || coreRowWhenAbsent(s) || emergencyRows.has(s.id) || (s.id === 'roundcube' && webmailCleanup !== null)) &&
             (q === '' || `${componentName(s, t)} ${s.name} ${s.description} ${componentDescription(s, t)} ${s.id}`.toLowerCase().includes(q)),
     );
 
@@ -1790,7 +1822,10 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         ? (services.length === 1 ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: services.length }))
                         : t('services.matchCount', { shown: filtered.length, total: services.length })}
                 </p>
-                {filtered.length === 0 && (
+                {/* alpha.120: the core servers' own rows (not installed) do not
+                    hide that nothing is installed yet.
+                    Çekirdek sunucuların satırları hiçbir şeyin kurulu olmadığını gizlemez. */}
+                {(filtered.length === 0 || (hideNotInstalled && q === '' && !filtered.some((s) => s.is_installed !== false))) && (
                     <div className="mb-4 rounded-xl border border-border bg-surface p-8 text-center text-sm text-fg-muted">
                         {/* A fresh server's installed view is legitimately
                             empty — that is a starting point, not a failed
@@ -1877,7 +1912,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                         notice={cat === 'email' ? mailNotice : undefined}
                                         onMail={openMailBundle}
                                         onComponents={openComponentBundle}
-                                        onAlone={hideNotInstalled ? (id) => setInstallTarget(services.find((item) => item.id === id) ?? null) : undefined}
                                     />
                                 )}
                                 {isOpen && group.length > 0 && (
@@ -1922,12 +1956,18 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 erişilebilir adı bileşenin adıdır. Yönet, var
                                                                 olduğu yerde birincil eylem olarak kalır. */}
                                                             <Link
-                                                                to={`/services/${s.id}`}
+                                                                to={`/components/${s.id}`}
                                                                 className={`rounded-md text-base font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-primary/40 ${s.is_installed ? 'text-fg' : 'text-fg-muted'}`}
                                                             >
                                                                 <KeepWords text={componentName(s, t)} />
                                                             </Link>
                                                             <div className="text-pretty text-xs text-fg-subtle">{componentDescription(s, t)}</div>
+                                                            {/* alpha.120: only while an emergency is open; relative: above the row link. */}
+                                                            {emergencyRows.has(s.id) && (
+                                                                <Link to={emergencyPath(s.id)} className="relative mt-1 inline-block rounded bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger underline-offset-2 hover:underline" data-row-emergency={s.id}>
+                                                                    {t('emg.rowBadge')}
+                                                                </Link>
+                                                            )}
                                                             {/* alpha.118: an installed tool whose own component is
                                                                 gone (owner's Boston screens: phpPgAdmin stayed after
                                                                 PostgreSQL). Read from the scan; the two actions only
@@ -2278,7 +2318,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                     >
                                                         {openDrawers.has(s.id) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                                         {t('services.versionsToggle')}
-                                                        <span className="rounded bg-surface-2 px-1 font-mono text-xs text-fg-subtle">{(s.instances ?? []).filter((i) => i.managed).length}</span>
+                                                        <span className="rounded bg-surface-2 px-1 font-mono text-xs text-fg-subtle">{versionCount(s)}</span>
                                                     </button>
                                                     )}
                                                     {/* Manage: extensions/config pages. A tool has nothing to
@@ -2340,12 +2380,6 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                             onRemoveComponent={removeComponentById}
                                                             onRemoveWhole={() => openUninstallDialog(s)}
                                                         />
-                                                        </div>
-                                                    )}
-                                                    {/* alpha.117 (D-043): a database engine's security emergency, closed until opened. */}
-                                                    {(s.id === 'mariadb' || s.id === 'postgresql') && s.is_installed === true && (
-                                                        <div className="basis-full xl:col-span-full">
-                                                            <SecurityEmergencySection component={s.id} name={componentName(s, t)} versions={[]} />
                                                         </div>
                                                     )}
                                                 </li>
@@ -3908,14 +3942,6 @@ function VersionDrawer({
                         </>
                     )}
                 </div>
-            )}
-            {/* alpha.117 (D-043): the security emergency of a version. */}
-            {(service.id === 'php-fpm' || service.id === 'node') && instances.some((i) => i.managed) && (
-                <SecurityEmergencySection
-                    component={service.id === 'php-fpm' ? 'php' : 'node'}
-                    name={componentName(service, t)}
-                    versions={instances.filter((i) => i.managed).map((i) => i.version)}
-                />
             )}
             {repoAction && repo?.lane && (
                 <VendorLaneDialog

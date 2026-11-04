@@ -1,7 +1,7 @@
 // The installed package version of a component (v0.1.0-alpha.97, D-036).
 //
 // The Panel sends, for an installed component that is not a multi-version
-// runtime, the version the system package database printed (package_version,
+// runtime (alpha.120: the distribution's own Python is not one), the version the system package database printed (package_version,
 // epoch and revision kept), its upstream part for the row
 // (package_version_short), whether its packages report different versions
 // (package_versions_differ), the packages themselves (package_versions), and
@@ -45,7 +45,10 @@ const instant = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 export function packageVersionFacts(service: unknown): PackageVersionFacts | null {
     if (!service || typeof service !== 'object') return null;
     const value = service as Record<string, unknown>;
-    if (value.is_installed !== true || value.kind === 'runtime') return null;
+    // A multi-version runtime says its copies instead; since alpha.120 a
+    // runtime with none (the distribution's own Python) says its package's.
+    // Çok sürümlü çalışma ortamı kopyalarını söyler; kopyasız olan paketinkini.
+    if (value.is_installed !== true || (value.kind === 'runtime' && !(Array.isArray(value.versions) && value.versions.length === 0))) return null;
     const raw = value.package_versions;
     if (!Array.isArray(raw) || raw.length === 0 || raw.length > 16) return null;
     const packages: InstalledPackageVersion[] = [];

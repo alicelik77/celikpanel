@@ -225,7 +225,7 @@ export function DatabaseManagementV2() {
                         // Motoru yalniz yonetici kurar; digerlerine kimin kurabilecegi soylenir.
                         hint={t(isAdmin ? 'databases.noServersHint' : 'databases.noServersHintCustomer')}
                         action={isAdmin ? (
-                            <Button variant="primary" icon={Server} onClick={() => navigate('/services')}>
+                            <Button variant="primary" icon={Server} onClick={() => navigate('/components')}>
                                 {t('domains.goServices')}
                             </Button>
                         ) : undefined}

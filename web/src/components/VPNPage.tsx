@@ -601,7 +601,7 @@ function VPNPageBody() {
                                     variant="primary"
                                     icon={Server}
                                     disabled={busyAction !== null}
-                                    onClick={() => navigate('/services?component=wireguard')}
+                                    onClick={() => navigate('/components?component=wireguard')}
                                 >
                                     {t('vpn.installWireGuard')}
                                 </Button>

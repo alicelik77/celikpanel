@@ -22,7 +22,7 @@ The **Security audit** checks the firewall, SSH sign-in, a pending reboot, updat
 
 ## Security emergency {#emergency}
 
-When a PHP or Node.js version, MariaDB or PostgreSQL has a security hole and no fix yet, open it on **Components**. **Security emergency tools** has four steps, lightest first:
+PHP, Node.js, MariaDB and PostgreSQL are the programs customer sites run on directly, so only they have these steps. When one of them has a security hole and no fix yet, open **Security emergency** at the bottom of its own page (**Components**, then **Manage**), or follow its link in **Security emergency** on this page. While an emergency is open, its row on **Components** says **Security emergency open**. There are four steps, lightest first:
 
 1. Withdraw (step 1): nobody can choose it for anything new; sites using it keep running. It can be undone.
 2. **Emergency stop (step 2)**: stopped and locked; affected sites show a maintenance page.

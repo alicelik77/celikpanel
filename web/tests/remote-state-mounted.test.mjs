@@ -50,6 +50,8 @@ const stubbedComponents = [
   // alpha.117 (D-042): the rights panels and tabs of the Accounts page read
   // their own addresses; the Accounts list and the plans list are under test.
   'AccountRightsPanel', 'NewAccountRightsSection', 'BuiltinPlanRow', 'OfferedItemsTab', 'PlanEditorGate', 'ResellerPlansTab', 'AdminRightsNotices',
+  // alpha.120: the security emergency on the component pages reads its own address.
+  'SecurityEmergencySection',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -161,7 +163,7 @@ const LicenseNotice = await load('LicenseNotice');
 const NoWebsiteCards = await load('NoWebsiteCards');
 const MonitoringPage = await load('MonitoringPage');
 const ServiceShell = await load('ServiceShell');
-const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`) });
+const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`), '/SecurityEmergency': stub });
 const ServiceRecordLookup = await load('ServiceRecordLookup');
 const DomainDetailByName = (await import(shared.compile('components/DomainDetail.tsx', {
   ...own,

@@ -96,7 +96,7 @@ const stub = dataModule(`
   export const MyPlanCard = () => null;
   export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
   // What the Components page imports beside these.
-  export const useLocation = () => ({ hash: '', pathname: '/services' });
+  export const useLocation = () => ({ hash: '', pathname: '/components' });
   export const ServiceActionNotice = () => null, isServiceActionOutcome = () => false;
   // The mail-stack card is drawn only where a test asks for it.
   export const accountStart = () => null;
@@ -1075,7 +1075,7 @@ test('Dashboard bundles card: what is installed is counted in the interface lang
     assert.ok(cardText.includes('1 kurulu ve doğrulandı · 2 kurulabilir'), cardText);
     assert.ok(!cardText.includes(trScreens['dashboard.audit.profile.webmail']), cardText);
     await act(async () => { card.findAll((node) => node.type === 'button').find((node) => label(node).includes('dashboard.bundles.open')).props.onClick(); });
-    assert.deepEqual(globalThis.batch3Navigated, ['/services#bundles']);
+    assert.deepEqual(globalThis.batch3Navigated, ['/components#bundles']);
     assert.equal(requests.filter((line) => !line.startsWith('GET ')).length, 0, `the card sent a change: ${requests.join(', ')}`);
   } finally { await unmount(); delete globalThis.batch3Words; delete globalThis.batch3Navigated; }
 });

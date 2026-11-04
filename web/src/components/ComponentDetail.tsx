@@ -8,6 +8,8 @@ import { RoundcubeUpdateCard } from './RoundcubeUpdateCard';
 import { WebmailAddressCard } from './WebmailAddressCard';
 import { IsolationFact } from './AppAccountLine';
 import { phpToolForService } from '../lib/phpTools';
+import { SecurityEmergencySection } from './SecurityEmergency';
+import { EMERGENCY_COMPONENTS } from '../lib/securityEmergency';
 import { Checking, CouldNotCheck, KnownEmpty, RemoteGate } from './ui';
 import { useI18n } from '../i18n';
 import { apiErrorText } from '../lib/apiError';
@@ -198,12 +200,26 @@ export function ComponentPanels({
                         {want.facts && <Facts svc={svc} />}
                         {want.configs && svc && <ConfigFiles svc={svc} onSelectConfig={onSelectConfig} />}
                         {want.journal && <Journal unit={svc?.unit || serviceId} />}
+                        {svc && <ComponentEmergency svc={svc} />}
                     </div>
                 )}
             </RemoteGate>
             )}
         </div>
     );
+}
+
+// alpha.120 (D-043): the security emergency of Node.js, MariaDB and
+// PostgreSQL, closed at the bottom of their own page (PHP's is on its own
+// page). It left the Components list, where it looked like part of MariaDB.
+// Node.js, MariaDB ve PostgreSQL'in güvenlik acil durumu, kendi sayfalarının altında.
+function ComponentEmergency({ svc }: { svc: Component }) {
+    const { t } = useI18n();
+    const entry = EMERGENCY_COMPONENTS.find((item) => item.serviceId === svc.id);
+    if (!entry || entry.component === 'php') return null;
+    const copies = entry.component === 'node' ? (svc.instances ?? []).filter((i) => i.managed).map((i) => i.version) : [];
+    const installed = svc.is_installed === true && (entry.component !== 'node' || copies.length > 0);
+    return <SecurityEmergencySection component={entry.component} name={componentName(svc, t)} versions={copies} installed={installed} />;
 }
 
 function Card({ title, icon: Icon, right, children }: { title: string; icon: typeof Boxes; right?: React.ReactNode; children: React.ReactNode }) {

@@ -77,7 +77,7 @@ test('the new address is guarded like the Settings section it was: administrator
         assert.equal(nav.canAccessPath(role, '/server-setup'), false, role);
     }
     assert.equal(nav.canAccessPath('customer', '/server-setup', { accountType: 'account', teamMembers: true }), false);
-    // It is not mistaken for Components (/services) by a prefix.
+    // It is not mistaken for Components (/components) by a prefix.
     const match = [...nav.navItems].sort((a, b) => b.path.length - a.path.length)
         .find((entry) => '/server-setup' === entry.path || '/server-setup'.startsWith(`${entry.path}/`));
     assert.equal(match.id, 'serverSetup');

@@ -44,7 +44,7 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (globalThis.bundleWords?.[key] !== undefined ? fill(globalThis.bundleWords[key], vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
-  export const useLocation = () => ({ hash: '', pathname: '/services', search: '' });
+  export const useLocation = () => ({ hash: '', pathname: '/components', search: '' });
   export const useNavigationBlocker = () => {};
   export const Link = (props) => React.createElement('a', null, props.children);
   export const showToast = (...args) => globalThis.bundleToasts.push(args);

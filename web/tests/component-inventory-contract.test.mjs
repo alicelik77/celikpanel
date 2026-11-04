@@ -156,7 +156,7 @@ test('every component row links to its component page, whatever its state', () =
 
     const link = rows.indexOf('<Link');
     assert.ok(link > 0, 'each row needs a real link, not a click handler');
-    assert.match(rows.slice(link), /to=\{`\/services\/\$\{s\.id\}`\}/);
+    assert.match(rows.slice(link), /to=\{`\/components\/\$\{s\.id\}`\}/);
     // A real anchor: the keyboard and middle-click reach it, which a div with
     // an onClick never does.
     assert.match(serviceList, /import \{ Link, useLocation, useNavigate \} from '\.\.\/router';/);

@@ -226,7 +226,7 @@ func (p *Panel) handleServerSetupExtend(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if request.Scope == serverSetupExtensionScopeMail && !serverSetupDraftHasMailProfile(draft) {
-		writeCodedError(w, http.StatusBadRequest, errCodeServerSetupExtendNoMail, serverSetupExtendNoMailMessage, "/services")
+		writeCodedError(w, http.StatusBadRequest, errCodeServerSetupExtendNoMail, serverSetupExtendNoMailMessage, "/components")
 		return
 	}
 	if extending && serverSetupDraftsEqual(draft, state.Draft) {

@@ -22,7 +22,7 @@ Fail2ban, girişte sürekli başarısız olan adresleri engeller. **Fail2ban'ı 
 
 ## Güvenlik acil durumu {#emergency}
 
-Bir PHP ya da Node.js sürümünde, MariaDB'de ya da PostgreSQL'de güvenlik açığı varsa ve henüz yaması yoksa onu **Bileşenler** sayfasında açın. **Güvenlik acil durumu araçları** en hafifinden başlayan dört adımdır:
+PHP, Node.js, MariaDB ve PostgreSQL müşteri sitelerinin doğrudan üzerinde çalıştığı programlardır; bu adımlar yalnız onlarda vardır. Birinde güvenlik açığı varsa ve henüz yaması yoksa kendi sayfasının (**Bileşenler**, sonra **Yönet**) altındaki **Güvenlik acil durumu** bölümünü açın ya da bu sayfadaki **Güvenlik acil durumu** alanından onun bağlantısını izleyin. Acil durum açıkken **Bileşenler** sayfasındaki satırında **Güvenlik acil durumu açık** yazar. En hafifinden başlayan dört adım vardır:
 
 1. Geri çekme (1. adım): kimse onu yeni bir iş için seçemez; onu kullanan siteler çalışmaya devam eder. Geri alınabilir.
 2. **Acil durdurma (2. adım)**: durdurulur ve kilitlenir; etkilenen siteler bakım sayfası gösterir.

@@ -52,7 +52,7 @@ Dört paralel yerleşim (AdminLayout, ResellerLayout, CustomerLayout, UserLayout
 
 1. **AuthContext** — yüklemede `GET /api/v1/auth/me`, `{ username, role, capabilities }` döndürür. Bu, router'ın üstünde, kökte bir React context'inde yaşar.
 2. **Navigasyon kaydı** — her navigasyon öğesini / rotayı gerektirdiği yetkiye eşleyen tek bir bildirimsel liste. Kenar çubuğu, bu listeyi kullanıcının yetkilerine göre süzerek oluşturulur. Rol-başına hiçbir şey sabit kodlanmaz.
-3. **Rota koruyucuları** — her rota gerektirdiği yetkiyi kontrol eder. `/services` yazan bir müşteri bozuk bir sayfa görmek yerine yönlendirilir. (Derinlemesine savunma — API zaten çağrıları reddederdi.)
+3. **Rota koruyucuları** — her rota gerektirdiği yetkiyi kontrol eder. `/components` yazan bir müşteri bozuk bir sayfa görmek yerine yönlendirilir. (Derinlemesine savunma — API zaten çağrıları reddederdi.)
 4. **Eylem kısıtlama** — sayfa içi butonlar ("Domain sil", "SSL al") yetkileri aynı şekilde kontrol eder; böylece salt-okunur bir ek kullanıcı veriyi değiştiren kontroller olmadan görür.
 5. **Backend doğruluğun kaynağıdır.** Arayüz kısıtlaması kullanılabilirlik içindir, asla güvenlik için değil; her istek yine sunucu tarafında yetkilendirilir (bkz. [ROLES.tr.md](ROLES.tr.md) uygulama bölümü). Kurcalanmış bir frontend hiçbir şey kazanmaz.
 

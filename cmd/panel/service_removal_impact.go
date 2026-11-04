@@ -492,14 +492,14 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		writeCodedError(w, http.StatusServiceUnavailable, errCodeServiceStateUnverified,
-			serviceStateUnverifiedMessage, "/services")
+			serviceStateUnverifiedMessage, "/components")
 		return
 	}
 	snapshot, decodeErr := decodeScanCacheSnapshot(data)
 	if decodeErr != nil {
 		log.Printf("removal impact: cached service state is unverified: %v", decodeErr)
 		writeCodedError(w, http.StatusServiceUnavailable, errCodeServiceStateUnverified,
-			serviceStateUnverifiedMessage, "/services")
+			serviceStateUnverifiedMessage, "/components")
 		return
 	}
 	host := p.managedServiceHostProfile()
