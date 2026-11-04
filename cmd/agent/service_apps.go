@@ -724,7 +724,17 @@ func (a *Agent) ServiceAppPrepareV1(req *transport.ServiceAppPrepareRequest, res
 		"--uid=" + sc.account.Name, "--gid=" + sc.account.Group, "--working-directory=" + sc.layout.Root,
 		"--setenv=HOME=" + sc.layout.DataDir(), "--setenv=PATH=" + pathEnv,
 		"--property=RemainAfterExit=yes", "--property=RuntimeMaxSec=7200", "--no-block", "--quiet"}
-	for _, directive := range serviceapps.SandboxDirectives(sc.layout, limits, sc.app.Defaults.InstallMemoryMB) {
+	caps := sandboxCaps(ctx)
+	if err := ensureSandboxEgress(caps); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_egress", err.Error())
+		return nil
+	}
+	properties, err := serviceapps.InstallUnitProperties(req.Target.InstallID, sc.layout, sc.account.Name, sc.account.Group, limits, sc.app.Defaults.InstallMemoryMB, caps)
+	if err != nil {
+		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "sandbox_render", err.Error())
+		return nil
+	}
+	for _, directive := range properties {
 		run = append(run, "--property="+directive)
 	}
 	command, err := serviceapps.InstallCommand(sc.app, args)
@@ -777,6 +787,20 @@ func serviceAppUnitFileState(installID int) string {
 	return serviceapps.UnitTextState(string(raw))
 }
 
+// serviceAppUnitGeneration is the sandbox generation of the unit file (0:
+// no readable file).
+func serviceAppUnitGeneration(installID int) int {
+	path, err := serviceAppUnitPath(installID)
+	if err != nil {
+		return 0
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	return serviceapps.UnitGeneration(string(raw))
+}
+
 // ServiceAppStatusV1 reads an install (read-only).
 func (a *Agent) ServiceAppStatusV1(req *transport.ServiceAppStatusRequest, resp *transport.ServiceAppStatusResponse) error {
 	if req == nil {
@@ -796,6 +820,7 @@ func (a *Agent) ServiceAppStatusV1(req *transport.ServiceAppStatusRequest, resp 
 		resp.Installed = statErr == nil
 	}
 	resp.UnitFile = serviceAppUnitFileState(req.Target.InstallID)
+	resp.SandboxGeneration = serviceAppUnitGeneration(req.Target.InstallID)
 	name := serviceapps.UnitName(req.Target.InstallID)
 	out, err := appUnitSystemctl(systemctlArgs("show", name, "--property=LoadState,ActiveState,UnitFileState,MemoryCurrent,Result")...)
 	if err != nil {
@@ -820,6 +845,16 @@ func (a *Agent) ServiceAppStatusV1(req *transport.ServiceAppStatusRequest, resp 
 			return nil
 		}
 		resp.Serving, resp.Exposed, resp.Squatted = proof.Serving, proof.Exposed, proof.Squatted
+		if req.Proof {
+			var step transport.ServiceAppStepResponse
+			if sc, ok := resolveServiceApp(req.Target, &step); ok {
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				resp.SandboxProof = serviceAppSandboxProof(ctx, sc, req, proof)
+				cancel()
+			} else {
+				resp.SandboxProof = &transport.SandboxProof{Code: "unreadable", Detail: step.Error}
+			}
+		}
 	}
 	return nil
 }
@@ -884,10 +919,15 @@ func (a *Agent) ServiceAppActivateV1(req *transport.ServiceAppActivateRequest, r
 		serviceAppStep(resp, transport.ServiceAppUnknown, "unit_dir", err.Error())
 		return nil
 	}
+	caps := sandboxCaps(ctx)
+	if err := ensureSandboxEgress(caps); err != nil {
+		serviceAppStep(resp, transport.ServiceAppUnknown, "sandbox_egress", err.Error())
+		return nil
+	}
 	text, err := serviceapps.RenderUnit(serviceapps.UnitParams{
 		InstallID: req.Target.InstallID, App: sc.app, Version: req.Version, Domain: req.Target.Domain,
 		User: sc.account.Name, Group: sc.account.Group, Layout: sc.layout, Port: req.Port, AuxPort: req.AuxPort,
-		Runtime: runtime, Limits: serviceAppLimits(sc.app, req.Limits), DropInDir: path + ".d",
+		Runtime: runtime, Limits: serviceAppLimits(sc.app, req.Limits), Caps: caps, DropInDir: path + ".d",
 	})
 	if err != nil {
 		serviceAppStep(resp, transport.ServiceAppVerifiedFailure, "unit_render", err.Error())

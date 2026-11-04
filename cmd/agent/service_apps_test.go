@@ -53,6 +53,7 @@ func useServiceAppHost(t *testing.T) *serviceAppHost {
 	serviceAppEnvDir = host.envDir
 	serviceAppEnvOwner = func() (uint32, uint32) { return uint32(os.Geteuid()), uint32(os.Getegid()) }
 	account := serviceAppAccount{Name: "flows_example_com", Group: "flows_example_com", UID: 1500, GID: 1500, Home: "/var/www/celikpanel/subscriptions/3/sites/7"}
+	useSandboxHost(t, true)
 	serviceAppLookupAccount = func(target transport.ServiceAppTarget) (serviceAppAccount, error) {
 		return account, nil
 	}

@@ -56,6 +56,7 @@ var rightPermissionIDs = []string{
 	rightAppInstaller, rightVPN, rightTeamMembers, rightFileAccess, rightSSH,
 	rightRemoteBackupDestinations,
 	rightServiceApps,
+	rightProgramApps,
 }
 
 var rightPermissionNames = map[string]string{
@@ -79,6 +80,8 @@ var rightPermissionNames = map[string]string{
 	// alpha.118 (remote_backup_model.go).
 	rightRemoteBackupDestinations: "Own remote backup destinations",
 	rightServiceApps:              "AI and automation apps",
+	// alpha.119 (runtime_apps_model.go).
+	rightProgramApps: "Uploaded programs",
 }
 
 // legacyGrantPermissions are the two product permissions that still need an
@@ -95,8 +98,9 @@ func knownPermission(id string) bool {
 // Offering ids of D-017: component:<id>[:<version>], integration:acme:<id>,
 // extension:<vendor>:<name>, app:<id> (alpha.118: one namespace for both app
 // catalogs, the PHP application catalog and the AI and automation service
-// apps; their ids never overlap). Lowercase, bounded.
-var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60}|app:[a-z][a-z0-9-]{1,40})$`)
+// apps; their ids never overlap), runtime:program (alpha.119: uploaded
+// programs; Python apps use component:python:<minor>). Lowercase, bounded.
+var offeringIDPattern = regexp.MustCompile(`^(component:[a-z0-9][a-z0-9-]{0,40}(:[0-9][0-9a-z.]{0,20})?|integration:acme:[a-z0-9][a-z0-9-]{0,40}|extension:[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,60}|app:[a-z][a-z0-9-]{1,40}|runtime:program)$`)
 
 // validOfferingID: the shape of an offering id, and never an administrator-only
 // component (alpha.119): the developer toolchains (Go, Rust) have no offering id,

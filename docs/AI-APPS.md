@@ -104,6 +104,12 @@ acts and the next step (D-024).
 
 ## 5. The sandbox
 
+Since alpha.119 every app runs in the shared site sandbox ([SITE-SANDBOX.md](SITE-SANDBOX.md)): in
+addition to the list below, the Agent socket and every PHP-FPM socket are hidden, link-local and
+metadata addresses are blocked, the app binds only its own loopback ports, and mail ports 25, 465
+and 587 are closed to it (127.0.0.1 included). Apps installed by alpha.118 keep their unit until
+the administrator applies the new sandbox.
+
 Each app's unit (and its install unit) runs with:
 
 - `User=` the site's own account (proved: its home is exactly the site's home); never root, no

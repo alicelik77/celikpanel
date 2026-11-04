@@ -155,6 +155,9 @@ type suspensionEffectRef struct {
 	// InstallID (alpha.118): the effect is a service app's unit
 	// (celiksvc-<id>) rather than the site's Node.js app unit.
 	InstallID int `json:"install_id,omitempty"`
+	// RuntimeAppID (alpha.119): the effect is a runtime app's unit
+	// (celikrt-<id>).
+	RuntimeAppID int `json:"runtime_app_id,omitempty"`
 }
 
 type suspensionPlanItem struct {
@@ -294,6 +297,12 @@ func planSuspension(ctx context.Context, q sqlQueryer, subscriptionID int, actio
 		return nil, preview, err
 	}
 	apps = append(apps, serviceApps...)
+	// alpha.119: and its runtime apps (uploaded programs).
+	runtimeApps, err := planRuntimeAppSuspension(ctx, q, subscriptionID, &preview)
+	if err != nil {
+		return nil, preview, err
+	}
+	apps = append(apps, runtimeApps...)
 
 	if action == suspensionKindSuspend {
 		preview.Notes = append(preview.Notes,
@@ -596,6 +605,9 @@ func (p *Panel) runSuspensionEffect(ctx context.Context, native suspensionNative
 		return effectDone, "serves the site again; nginx validated and reloaded", nil
 
 	case suspensionEffectApp:
+		if e.Ref.RuntimeAppID > 0 {
+			return p.runRuntimeAppSuspensionEffect(ctx, op, e)
+		}
 		if e.Ref.InstallID > 0 {
 			return p.runServiceAppSuspensionEffect(ctx, op, e)
 		}

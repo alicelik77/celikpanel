@@ -13,6 +13,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/siteruntime"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -57,6 +58,10 @@ type adminOfferLayer struct {
 	// serviceApps: the catalog service apps the administrator offers and
 	// has not put on a security hold (alpha.118). Closed by default.
 	serviceApps map[string]bool
+	// runtimes (alpha.119): the runtime offerings (runtime:program) the
+	// administrator offers, not held, with this release's risk digest.
+	// Closed by default.
+	runtimes map[string]bool
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -113,7 +118,11 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("service apps offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps}, nil
+	runtimes, err := p.loadOfferedRuntimes(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("runtime apps offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps, runtimes: runtimes}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
@@ -130,6 +139,9 @@ func (a adminOfferLayer) offers(offeringID string) bool {
 	// first, by its exact catalog id. Every other "app:" id belongs to the
 	// application catalog, offered only when the administrator chose it
 	// (WordPress alone before any choice); an unknown one is not offered.
+	if offeringID == siteruntime.OfferingProgram {
+		return a.runtimes[offeringID]
+	}
 	if appID, ok := serviceAppOfferingApp(offeringID); ok {
 		return a.serviceApps[appID]
 	}
@@ -413,6 +425,7 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 	}
 	out = append(out, catalogOfferingIDs()...)
 	out = append(out, serviceAppCandidateOfferings()...)
+	out = append(out, runtimeCandidateOfferings()...)
 	return out, nil
 }
 
@@ -597,6 +610,11 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	// stopping, logs and removal stay open (D-042 P5).
 	"service-apps-install": {right: rightServiceApps},
 	"service-apps-update":  {right: rightServiceApps},
+	// alpha.119: creating, changing and deploying a program is new use;
+	// reading, stopping, logs, the environment and removal stay open.
+	"runtime-apps-create":   {right: rightProgramApps},
+	"runtime-apps-settings": {right: rightProgramApps},
+	"runtime-apps-deploy":   {right: rightProgramApps},
 }
 
 // domainSubrouteRightFor: the permission a request needs, "" when none.

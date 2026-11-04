@@ -235,6 +235,11 @@ const screenPartBudgets = {
   // drawer, /help and the first-login tour (guide.). A new part, set with at
   // least 25% headroom from its Turkish file: 4.04 / 1.65 KiB.
   guide: kib(5.25, 2.1),
+  // alpha.119: uploaded programs of a site and the administrator's offering,
+  // the guidance of every state and failure reason (runtime.,
+  // err.RUNTIME_APP., their audit words). A new part, set with at least 25%
+  // headroom from its Turkish file: 33.06 / 8.70 KiB.
+  runtimeApps: kib(42, 11),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

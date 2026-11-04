@@ -735,6 +735,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	if p.refuseDomainDeleteWithServiceApp(w, r, domainID) {
 		return
 	}
+	// alpha.119: and a runtime app (uploaded program).
+	if p.refuseDomainDeleteWithRuntimeApp(w, r, domainID) {
+		return
+	}
 	if domain.DNSManagement == setupDNSModeLocal {
 		if _, ready := p.requireActiveDNSPublisherForMutation(w, r.Context()); !ready {
 			return

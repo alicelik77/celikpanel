@@ -71,6 +71,8 @@ export interface ServiceAppInstall {
     serving: boolean;
     exposed?: string[];
     unit_file?: string;
+    /** alpha.119: the unit runs in an earlier release's sandbox; the administrator applies the new one. */
+    needs_sandbox?: boolean;
     status_unknown?: boolean;
     unit: string;
     folder: string;
@@ -111,9 +113,40 @@ export function decodeDomainServiceApps(raw: unknown): DomainServiceAppsView {
     return raw as unknown as DomainServiceAppsView;
 }
 
-export function decodeAdminServiceApps(raw: unknown): AdminServiceAppEntry[] {
+/** alpha.119: the site sandbox on this server (read-only; docs/SITE-SANDBOX.md). */
+export interface AdminSandboxView {
+    known: boolean;
+    level?: 'full' | 'reduced';
+    gaps: string[];
+    systemd_version?: number;
+    egress_file?: string;
+    egress_loaded: boolean;
+    guard_timer?: string;
+    smtp_rejects: number;
+    needs_refresh: number;
+    running: number;
+    edited: number;
+    busy: boolean;
+}
+
+export interface AdminServiceAppsPage {
+    apps: AdminServiceAppEntry[];
+    sandbox: AdminSandboxView | null;
+}
+
+export function decodeAdminServiceApps(raw: unknown): AdminServiceAppsPage {
     if (!isObject(raw) || !Array.isArray(raw.apps)) throw new Error('shape');
-    return raw.apps as AdminServiceAppEntry[];
+    const s = raw.sandbox;
+    const sandbox = isObject(s) && typeof s.known === 'boolean' && Array.isArray(s.gaps) && typeof s.needs_refresh === 'number'
+        ? (s as unknown as AdminSandboxView) : null;
+    return { apps: raw.apps as AdminServiceAppEntry[], sandbox };
+}
+
+export interface SandboxRefreshResult {
+    request_id: string;
+    started: string[];
+    rewritten: string[];
+    skipped: { domain: string; reason: string }[];
 }
 
 /** A new operation identity; the server answers a repeat with the same operation. */

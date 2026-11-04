@@ -50,6 +50,14 @@ func (p *Panel) handleServiceAppsAdmin(w http.ResponseWriter, r *http.Request) {
 		p.writeServiceAppsAdmin(w, r)
 		return
 	}
+	if rest == "sandbox-refresh" {
+		if r.Method != http.MethodPost {
+			rejectRouteMethod(w, []string{http.MethodPost})
+			return
+		}
+		p.refreshServiceAppSandbox(w, r)
+		return
+	}
 	parts := strings.Split(rest, "/")
 	if len(parts) != 2 || r.Method != http.MethodPost {
 		http.NotFound(w, r)
@@ -115,7 +123,7 @@ func (p *Panel) writeServiceAppsAdmin(w http.ResponseWriter, r *http.Request) {
 		entries = append(entries, entry)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"apps": entries, "availability_known": probeErr == nil})
+	_ = json.NewEncoder(w).Encode(map[string]any{"apps": entries, "availability_known": probeErr == nil, "sandbox": p.serviceAppSandboxView(ctx)})
 }
 
 func (p *Panel) offerServiceApp(w http.ResponseWriter, r *http.Request, app serviceapps.App) {
