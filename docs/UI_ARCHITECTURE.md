@@ -52,7 +52,7 @@ Four parallel layouts (AdminLayout, ResellerLayout, CustomerLayout, UserLayout) 
 
 1. **AuthContext** — on load, `GET /api/v1/auth/me` returns `{ username, role, capabilities }`. This lives in a React context at the root, above the router.
 2. **Navigation registry** — a single declarative list maps each nav item / route to the capability it requires. The sidebar is built by filtering this list against the user's capabilities. Nothing is hardcoded per role.
-3. **Route guards** — each route checks its required capability. A customer who types `/services` is redirected, not shown a broken page. (Defense in depth — the API would reject the calls anyway.)
+3. **Route guards** — each route checks its required capability. A customer who types `/components` is redirected, not shown a broken page. (Defense in depth — the API would reject the calls anyway.)
 4. **Action gating** — in-page buttons ("Delete domain", "Issue SSL") check capabilities the same way, so a read-only additional user sees data without the mutating controls.
 5. **The backend stays the source of truth.** The UI gating is for usability, never for security; every request is still authorized server-side (see [ROLES.md](ROLES.md) enforcement section). A tampered frontend gains nothing.
 

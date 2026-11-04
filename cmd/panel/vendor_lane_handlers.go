@@ -129,7 +129,7 @@ func (p *Panel) handleVendorLane(w http.ResponseWriter, r *http.Request) {
 			p.auditDetailed(r, vendorLaneAudit+".unknown:"+repo.ID+" — "+auditReason(err.Error()), "repo", 0, details)
 			// The answer was lost: whether anything was written is not
 			// known. The card reads the lane again; nothing is resent.
-			writeCodedError(w, http.StatusBadGateway, "LANE_RESULT_UNKNOWN", "the vendor repository's answer was lost; read the card again", "/services")
+			writeCodedError(w, http.StatusBadGateway, "LANE_RESULT_UNKNOWN", "the vendor repository's answer was lost; read the card again", "/components")
 			return
 		}
 		if response.ErrorCode != "" {

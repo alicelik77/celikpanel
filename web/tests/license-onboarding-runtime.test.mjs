@@ -193,7 +193,7 @@ test('an open session is held at the signed deadline and browser history cannot 
   assert.equal(heldPages().length,1,'no management control is reachable past the deadline');
   assert.equal(holdLayer().length,1);
   assert.equal(navigations.length,0,'legacy false has no activation diagnosis');
-  globalThis.licenseTest.pathname='/services';
+  globalThis.licenseTest.pathname='/components';
   await act(async()=>tree.update(React.createElement(LicenseOnboarding,null,React.createElement('main',null,'management'))));
   assert.equal(navigations.length,0);
   assert.equal(heldPages().length,1,'another address is held the same way');

@@ -10,7 +10,7 @@ export const APP_CATALOG_URL = '/api/v1/apps';
 export const domainAppsURL = (domainId: number) => `/api/v1/domains/${domainId}/apps`;
 export const domainAppInstallURL = (domainId: number) => `/api/v1/domains/${domainId}/apps/install`;
 /** Components, opened at PHP-FPM with the install of one PHP version asked for. */
-export const phpExtensionsInstallPath = (pkg: string) => `/services?component=php-fpm&install=${encodeURIComponent(pkg)}`;
+export const phpExtensionsInstallPath = (pkg: string) => `/components?component=php-fpm&install=${encodeURIComponent(pkg)}`;
 export const domainAppOperationURL = (domainId: number, operationId: string, action?: 'retry' | 'credentials') =>
     `/api/v1/domains/${domainId}/apps/${operationId}${action ? `/${action}` : ''}`;
 

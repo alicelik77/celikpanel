@@ -130,7 +130,7 @@ func writePHPVersionNotInstalled(w http.ResponseWriter, requested string, instal
 	_ = json.NewEncoder(w).Encode(apiErrorBody{
 		Error:  phpVersionNotInstalledMessage(requested, list),
 		Code:   errCodePHPVersionNotInstalled,
-		Action: "/services",
+		Action: "/components",
 		Vars:   map[string]string{"version": requested, "installed": list},
 	})
 }

@@ -3,6 +3,7 @@ import { FileCode, Puzzle, FileText, type LucideIcon } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { RepoCard } from './RepoCard';
 import { OfferedVersionsCard } from './OfferedVersionsCard';
+import { SecurityEmergencySection } from './SecurityEmergency';
 import { PHPExtendedConfig } from './PHPExtendedConfig';
 import { KnownEmpty, RemoteGate } from './ui';
 import { decodeList, useRemote } from '../lib/remote';
@@ -144,6 +145,8 @@ export function PHPManagement({ versions, onBack }: PHPManagementProps) {
             <div className="mt-6 empty:hidden"><OfferedVersionsCard component="php" installed={versions} /></div>
             {/* alpha.107: the vendor PHP repository's card (D-038 §12). */}
             <div className="mt-6 empty:hidden"><RepoCard serviceId="php-fpm" /></div>
+            {/* alpha.120 (D-043): PHP's security emergency, closed near the bottom of its own page. */}
+            <SecurityEmergencySection component="php" name="PHP" versions={versions} installed={versions.length > 0} />
         </ServiceShell>
     );
 }

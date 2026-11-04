@@ -47,7 +47,7 @@ const { StoreCatalog, componentStateNotKnown } = await import(catalogURL);
 
 const item = (id, blockerReason, state = 'unsupported') => ({
   id, name: id, description: `${id} for sites`, category: 'applications', vendor: 'CelikPanel', icon: '', tags: [],
-  entitlementState: 'included', state, stateReason: `${blockerReason} sentence`, blockerReason, action: 'open_components', actionPath: '/services',
+  entitlementState: 'included', state, stateReason: `${blockerReason} sentence`, blockerReason, action: 'open_components', actionPath: '/components',
 });
 const items = [
   item('cache', 'component_state_unavailable'),

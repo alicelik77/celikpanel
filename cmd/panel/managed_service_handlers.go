@@ -699,7 +699,14 @@ func catalogViewForHost(obs []serviceObservation, host core.ManagedServiceHostPr
 		var packageVersionsDiffer bool
 		var packageVersions []transport.InstalledPackageVersion
 		packageVersionReadAt, packageVersionKept, packageVersionKeptLong := "", false, false
-		if isInstalled != nil && *isInstalled && managed.Kind != core.KindRuntime && len(o.PackageVersions) > 0 {
+		// alpha.120: a runtime that is the distribution's own single version
+		// (Python: no vendor repository, no copies the panel installed) says
+		// its package version like any other component; the multi-version
+		// runtimes keep their per-copy versions (owner's Boston screens: the
+		// Python row said "Installed" with no version).
+		// Dağıtımın tek sürümlü çalışma ortamı (Python) paket sürümünü söyler.
+		distributionRuntime := managed.Kind == core.KindRuntime && managed.Repo == nil && len(versions) == 0
+		if isInstalled != nil && *isInstalled && (managed.Kind != core.KindRuntime || distributionRuntime) && len(o.PackageVersions) > 0 {
 			packageVersion, packageVersionShort, packageVersionsDiffer = packageVersionView(o.PackageVersions)
 			if packageVersion != "" || packageVersionsDiffer {
 				packageVersions = o.PackageVersions
@@ -787,7 +794,7 @@ func (p *Panel) handleManagedServices(w http.ResponseWriter, r *http.Request) {
 		if decodeErr != nil {
 			log.Printf("cached service state is unverified: %v", decodeErr)
 			writeCodedError(w, http.StatusServiceUnavailable, errCodeServiceStateUnverified,
-				serviceStateUnverifiedMessage, "/services")
+				serviceStateUnverifiedMessage, "/components")
 			return
 		}
 		if t, terr := time.Parse(time.RFC3339, scannedAt); terr == nil {

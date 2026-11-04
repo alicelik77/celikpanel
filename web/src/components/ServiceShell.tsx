@@ -610,7 +610,7 @@ export function ServiceShell({
                                 {serviceId === 'roundcube' && (
                                     <button
                                         type="button"
-                                        onClick={() => navigate('/services?cleanup=roundcube')}
+                                        onClick={() => navigate('/components?cleanup=roundcube')}
                                         className="text-sm font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11"
                                         data-webmail-cleanup-link=""
                                     >

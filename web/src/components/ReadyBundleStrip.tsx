@@ -251,7 +251,6 @@ export function ReadyBundleStrip({
     notice,
     onMail,
     onComponents,
-    onAlone,
 }: {
     category: string;
     bundles: readonly ReadyBundle[];
@@ -266,16 +265,6 @@ export function ReadyBundleStrip({
     notice?: ReactNode;
     onMail: (bundle: ReadyBundle) => void;
     onComponents: (bundle: ReadyBundle) => void;
-    /**
-     * alpha.118: the installed view hides what is not installed, so the
-     * bundle was the only database offer on the owner's screen. Given, the
-     * strip also offers each component bundle's main component on its own
-     * (PostgreSQL, MariaDB, Nginx) through its ordinary install dialog, where
-     * its version is chosen (owner: "earlier PostgreSQL could be installed
-     * alone, in the version we wanted").
-     * Kurulu görünümde paketin ana bileşeni tek başına, olağan kurulum penceresiyle sunulur.
-     */
-    onAlone?: (id: string) => void;
 }) {
     const { t } = useI18n();
     const [details, setDetails] = useState<string | null>(null);
@@ -498,23 +487,6 @@ export function ReadyBundleStrip({
                 </p>,
             );
         }
-    }
-
-    const alone = onAlone && !model.unknown
-        ? [...new Set(bundles.filter((bundle) => bundle.category === category && bundle.action_route === 'components').map((bundle) => bundle.components[0]))]
-            .filter((id) => services.some((s) => s.id === id && s.is_installed === false && !s.not_offered && !s.conflict_with && !s.requires_missing?.length))
-        : [];
-    if (onAlone && alone.length > 0) {
-        lines.push(
-            <p key='alone' className='min-w-0 basis-full text-xs leading-5 text-fg-muted' data-bundle-alone=''>
-                {t('services.bundles.alone')}{' '}
-                {alone.map((id) => (
-                    <button key={id} type='button' className='mr-2 font-semibold text-primary underline decoration-1 underline-offset-[3px] disabled:opacity-50 max-sm:min-h-11' disabled={disabled || runActive} onClick={() => onAlone(id)} data-bundle-alone-install={id}>
-                        {nameOf(id)}
-                    </button>
-                ))}
-            </p>,
-        );
     }
 
     const open = details ? model.chips.find((item) => item.bundle.id === details) : undefined;

@@ -21,7 +21,7 @@ import { RecoveryAccess } from './components/RecoveryAccess';
 import { AccessHold } from './components/AccessHold';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import type { CurrentUser } from './lib/api';
-import { navItems, canAccessPath, settingsRedirect, type NavAccessContext } from './nav';
+import { navItems, canAccessPath, componentsAddress, settingsRedirect, type NavAccessContext } from './nav';
 import { Layout } from './components/Layout';
 import { ComponentOperationProvider } from './components/ComponentOperation';
 import { useI18n } from './i18n';
@@ -124,7 +124,7 @@ interface ServiceManagementProps {
 
 function ServiceManagement({ serviceId, versions, onSelectConfig }: ServiceManagementProps) {
   const navigate = useNavigate();
-  const onBack = () => navigate('/services');
+  const onBack = () => navigate('/components');
 
   switch (serviceId) {
     case 'php-fpm':
@@ -190,7 +190,7 @@ function ServiceManagementPage() {
     <ServiceRecordLookup
       serviceId={serviceId ?? ''}
       carriedVersions={navigationState?.versions}
-      onBack={() => navigate('/services')}
+      onBack={() => navigate('/components')}
     >
       {(versions) => (configPath
         ? <ConfigEditor path={configPath} onBack={() => setConfigPath(null)} />
@@ -224,7 +224,7 @@ function ServicesPage() {
           return;
         }
         // Navigate with state to avoid refetch if possible
-        navigate(`/services/${serviceId}`, { state: { versions } });
+        navigate(`/components/${serviceId}`, { state: { versions } });
       }}
     />
   );
@@ -367,6 +367,15 @@ function RouteLoadBoundary({ children }: { children: ReactNode }) {
   );
 }
 
+// /services and /services/<id> until alpha.120: a bookmark, an outside link or
+// a guidance link from an earlier release arrives at /components with its
+// path, query and hash; the old address is replaced, not kept in history.
+// Eski /services adresleri yolu, sorgusu ve çapasıyla /components'e gider.
+function MovedToComponents() {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate to={componentsAddress(pathname, search, hash)} replace />;
+}
+
 // /settings, and every old address of a section that has its own page now
 // (D-037). The address is replaced, so Back does not return to the old one.
 // /settings ve artık kendi sayfası olan her bölümün eski adresi. Adres
@@ -394,9 +403,12 @@ function AppRoutes() {
         {/* Databases */}
         <Route path="/databases" element={<PageWithLayout><DatabaseManagementV2 /></PageWithLayout>} />
 
-        {/* Services */}
-        <Route path="/services" element={<PageWithLayout><ServicesPage /></PageWithLayout>} />
-        <Route path="/services/:serviceId" element={<PageWithLayout><ServiceManagementPage /></PageWithLayout>} />
+        {/* Components (alpha.120: the address follows the page's name; the
+            old /services addresses lead here with their path and query). */}
+        <Route path="/components" element={<PageWithLayout><ServicesPage /></PageWithLayout>} />
+        <Route path="/components/:serviceId" element={<PageWithLayout><ServiceManagementPage /></PageWithLayout>} />
+        <Route path="/services" element={<MovedToComponents />} />
+        <Route path="/services/:serviceId" element={<MovedToComponents />} />
         <Route path="/server-setup" element={<PageWithLayout><ServerSetupPage /></PageWithLayout>} />
         <Route path="/dns-infrastructure" element={<PageWithLayout><DNSPeersPage /></PageWithLayout>} />
         <Route path="/monitoring" element={<PageWithLayout><MonitoringPage /></PageWithLayout>} />

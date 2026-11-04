@@ -30,6 +30,7 @@ const stub = dataModule(`
   ${[...icons].map((name) => `export const ${name} = (props) => React.createElement('i', { 'data-icon': '${name}', className: props.className });`).join('\n')}
   export const useI18n = () => ({ t: (key, vars) => key + (vars ? JSON.stringify(vars) : ''), locale: 'en' });
   export const useNavigate = () => () => { globalThis.emergencyNavigated = true; };
+  export const useLocation = () => ({ pathname: '/components/mariadb', search: '', hash: globalThis.emergencyHash ?? '' });
   export const useAuth = () => ({ role: 'admin' });
   export const showToast = () => {};
 `);
@@ -49,7 +50,7 @@ const originalFetch = globalThis.fetch;
 let tree, calls;
 function serve(list) {
   calls = [];
-  globalThis.document = { addEventListener() {}, removeEventListener() {} };
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null };
   globalThis.fetch = (url, options = {}) => {
     calls.push(`${options.method || 'GET'} ${url}`);
     if (String(url) === '/api/v1/security-emergencies') return Promise.resolve(Response.json({ emergencies: list }));
@@ -58,25 +59,26 @@ function serve(list) {
   };
 }
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
-async function mount(list) {
+async function mount(list, props = {}) {
   serve(list);
-  await act(async () => { tree = Renderer.create(React.createElement(SecurityEmergencySection, { component: 'mariadb', name: 'MariaDB', versions: [] })); await settled(); await settled(); });
+  await act(async () => { tree = Renderer.create(React.createElement(SecurityEmergencySection, { component: 'mariadb', name: 'MariaDB', versions: [], ...props })); await settled(); await settled(); });
 }
 async function cleanup() {
   if (tree) await act(async () => tree.unmount());
-  tree = undefined; globalThis.fetch = originalFetch; delete globalThis.document; delete globalThis.emergencyNavigated;
+  tree = undefined; globalThis.fetch = originalFetch; delete globalThis.document; delete globalThis.emergencyNavigated; delete globalThis.emergencyHash;
 }
 const text = () => JSON.stringify(tree.toJSON());
 const section = () => tree.root.find((node) => node.props && node.props['data-security-emergency'] === 'mariadb');
 const toggle = () => section().findAll((node) => node.type === 'button')[0];
 const iconsShown = () => toggle().findAll((node) => node.props && node.props['data-icon'] !== undefined).map((node) => `${node.props['data-icon']} ${node.props.className}`);
 
-test('the tools copy exists in both languages and says nothing is wrong', () => {
+test('the tools copy exists in both languages, says nothing is wrong and what the steps are for', () => {
   for (const key of ['emg.toolsTitle', 'emg.toolsHint']) assert.ok(enEmergencyScreens[key] && trEmergencyScreens[key], key);
-  assert.equal(enEmergencyScreens['emg.toolsTitle'], 'Security emergency tools');
-  assert.equal(trEmergencyScreens['emg.toolsTitle'], 'Güvenlik acil durumu araçları');
-  assert.match(enEmergencyScreens['emg.toolsHint'], /^Nothing is wrong\./);
-  assert.match(trEmergencyScreens['emg.toolsHint'], /^Bir sorun yok\./);
+  // alpha.120: no "tools" in the title (owner: "why is there something called security emergency tools in the database?").
+  assert.equal(enEmergencyScreens['emg.toolsTitle'], 'Security emergency');
+  assert.equal(trEmergencyScreens['emg.toolsTitle'], 'Güvenlik acil durumu');
+  assert.match(enEmergencyScreens['emg.toolsHint'], /^Nothing is wrong now\..*withdraw it, stop it, move its sites and remove it/);
+  assert.match(trEmergencyScreens['emg.toolsHint'], /^Şu an bir sorun yok\..*geri çekebilir, durdurabilir, sitelerini taşıyabilir ve kaldırabilirsiniz/);
 });
 
 test('with no emergency open the closed section is a quiet tool with its hint, and sits above the row link', async () => {
@@ -120,14 +122,44 @@ test('a click on the title only opens and closes the section; it navigates nowhe
   } finally { await cleanup(); }
 });
 
-test('the Components row draws the section under MariaDB and PostgreSQL, inside the row, and the strip is source-checked for the alone offer', () => {
+test('alpha.120: the section left the Components list and the version drawer; it is on the component pages', () => {
   const list = source('components/ServiceList.tsx');
+  assert.doesNotMatch(list, /SecurityEmergencySection/, 'no emergency section in the list or the drawer');
+  assert.doesNotMatch(list, /onAlone/, 'the "install one on its own" line is gone; the row itself offers Install');
   // The row link stretches over the row; every control in the row sits above it.
   assert.match(list, /after:absolute after:inset-0/);
-  assert.match(list, /<SecurityEmergencySection component=\{s\.id\} name=\{componentName\(s, t\)\} versions=\{\[\]\} \/>/);
-  // The alone offer is given in the installed view only; the catalogue shows the rows themselves.
-  assert.match(list, /onAlone=\{hideNotInstalled \? \(id\) => setInstallTarget\(/);
   // The mail dialog is fetched lazily (the route budget, alpha.118).
   assert.match(list, /const MailSetupDialog = lazy\(\(\) => import\('\.\/MailSetupDialog'\)/);
   assert.doesNotMatch(list, /import \{ MailSetupDialog \} from/);
+  // Node.js, MariaDB and PostgreSQL: at the bottom of their derived panels; PHP: its own page.
+  const detail = source('components/ComponentDetail.tsx');
+  assert.match(detail, /\{svc && <ComponentEmergency svc=\{svc\} \/>\}/);
+  assert.match(detail, /<SecurityEmergencySection component=\{entry\.component\}/);
+  assert.match(source('components/PHPManagement.tsx'), /<SecurityEmergencySection component="php" name="PHP" versions=\{versions\} installed=\{versions\.length > 0\} \/>/);
+  assert.match(source('components/MariaDBManagement.tsx'), /<ComponentPanels serviceId="mariadb"/);
+  assert.match(source('components/PostgreSQLManagement.tsx'), /<ComponentPanels serviceId="postgresql"/);
+});
+
+test('a link to #security-emergency opens the section and carries its anchor', async () => {
+  globalThis.emergencyHash = '#security-emergency';
+  await mount([]);
+  try {
+    assert.equal(section().props.id, 'security-emergency');
+    assert.equal(toggle().props['aria-expanded'], true);
+    assert.ok(text().includes('emg.intro'), text());
+    assert.ok(calls.every((call) => call.startsWith('GET ')), 'opening it sends nothing');
+  } finally { await cleanup(); }
+});
+
+test('a component that is gone shows the section only while its emergency is open, without a new withdrawal', async () => {
+  await mount([], { installed: false });
+  try {
+    assert.equal(tree.toJSON(), null, 'nothing open, nothing installed: no section');
+  } finally { await cleanup(); }
+  globalThis.emergencyHash = '#security-emergency';
+  await mount([emergency('mariadb', 'removed')], { installed: false });
+  try {
+    assert.equal(section().props['data-emergency-open'], 1);
+    assert.ok(!text().includes('emg.withdraw'), 'no withdrawal is offered for a removed component');
+  } finally { await cleanup(); }
 });

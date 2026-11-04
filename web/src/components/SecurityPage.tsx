@@ -9,6 +9,8 @@ import { SecurityAuditCard } from './SecurityAuditCard';
 import { SecurityUpdatesCard } from './SecurityUpdatesCard';
 import { fetchHostMutationReadiness, type HostMutationReadiness } from '../lib/panelUpdateAdmission';
 import { useManagedServices } from '../lib/managedServices';
+import { useRemote } from '../lib/remote';
+import { EMERGENCY_COMPONENTS, SECURITY_EMERGENCIES_URL, decodeEmergencyList, emergencyPath, openEmergenciesFor } from '../lib/securityEmergency';
 import { isServiceRunning } from '../lib/serviceStatus';
 
 // Server → Security (D-037, owner 2026-10-22): one page that answers "is my
@@ -65,6 +67,7 @@ export function SecurityPage() {
                 {/* alpha.107 (D-038 §4): the operating system's own security updates. */}
                 <SecurityUpdatesCard />
                 <Fail2banStatus />
+                <EmergencyArea />
                 <div data-security-section="audit">
                     <SecurityAuditCard />
                 </div>
@@ -151,7 +154,7 @@ function Fail2banStatus() {
                             <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone}`} aria-hidden="true" />
                             <p className="min-w-0 flex-1 basis-64 text-sm text-fg">{t(`securityPage.f2b.${state}` as Parameters<typeof t>[0])}</p>
                             <Link
-                                to={installed ? '/services/fail2ban' : '/services'}
+                                to={installed ? '/components/fail2ban' : '/components'}
                                 className="inline-flex items-center text-sm font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11"
                             >
                                 {installed ? t('securityPage.f2b.manage') : t('securityPage.f2b.openComponents')}
@@ -160,6 +163,42 @@ function Fail2banStatus() {
                     );
                 }}
             </RemoteGate>
+        </section>
+    );
+}
+
+// alpha.120 (D-043): one place that says what the security emergency is and
+// why only these four have it, with a link to each one's steps on its own
+// page. An open emergency is named; reading never starts anything.
+// Güvenlik acil durumu: ne olduğu, neden yalnız bu dördünde olduğu ve her
+// birinin kendi sayfasındaki adımlarına bağlantı. Okumak hiçbir şey başlatmaz.
+function EmergencyArea() {
+    const { t } = useI18n();
+    const list = useRemote(SECURITY_EMERGENCIES_URL, decodeEmergencyList);
+    const known = list.remote.state === 'known' ? list.remote.value : null;
+    const anyOpen = known !== null && EMERGENCY_COMPONENTS.some((entry) => openEmergenciesFor(known, entry.component).length > 0);
+    return (
+        <section id="emergency" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5" data-security-section="emergency">
+            <h2 className="text-base font-semibold text-fg">{t('emg.area.title')}</h2>
+            <p className="mt-0.5 max-w-[75ch] text-sm text-fg-muted">{t('emg.area.intro')}</p>
+            {known !== null && !anyOpen && <p className="mt-2 text-sm text-fg">{t('emg.area.none')}</p>}
+            {list.remote.state === 'unknown' && <p className="mt-2 text-sm text-warning">{t('emg.area.unknown')}</p>}
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                {EMERGENCY_COMPONENTS.map((entry) => {
+                    const open = known !== null && openEmergenciesFor(known, entry.component).length > 0;
+                    return (
+                        <li key={entry.component} className="flex flex-wrap items-center gap-2" data-emergency-link={entry.serviceId}>
+                            <Link
+                                to={emergencyPath(entry.serviceId)}
+                                className="inline-flex items-center text-sm font-semibold text-primary underline decoration-1 underline-offset-[3px] hover:decoration-2 max-sm:min-h-11"
+                            >
+                                {t('emg.area.go', { name: entry.name })}
+                            </Link>
+                            {open && <span className="rounded bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger" data-emergency-open={entry.serviceId}>{t('emg.area.openOne')}</span>}
+                        </li>
+                    );
+                })}
+            </ul>
         </section>
     );
 }

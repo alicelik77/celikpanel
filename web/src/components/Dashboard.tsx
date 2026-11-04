@@ -857,7 +857,7 @@ function AdminDashboard() {
             icon: Activity,
             text: t('dashboard.svcStoppedItem', { name: componentName(s, t) }),
             action: t('dashboard.goServices'),
-            to: '/services',
+            to: '/components',
         });
     }
     if (fw && !fw.enabled) {
@@ -866,7 +866,7 @@ function AdminDashboard() {
             icon: ShieldOff,
             text: t('dashboard.fwOffItem'),
             action: t('firewall.turnOn'),
-            to: '/services',
+            to: '/components',
             danger: true,
             onAct: requestTurnOnFirewall,
         });
@@ -876,7 +876,7 @@ function AdminDashboard() {
             icon: Shield,
             text: t('dashboard.fwPersistenceItem'),
             action: t('dashboard.saveFirewall'),
-            to: '/services',
+            to: '/components',
         });
     }
     // Security posture suggestions — surfaced only when they actually apply,
@@ -909,7 +909,7 @@ function AdminDashboard() {
             icon: Shield,
             text: t('dashboard.avItem'),
             action: t('dashboard.openComponents'),
-            to: '/services',
+            to: '/components',
         });
     }
     if (mailProfileVerified && !hasSpam) {
@@ -918,7 +918,7 @@ function AdminDashboard() {
             icon: Mail,
             text: t('dashboard.spamItem'),
             action: t('dashboard.openComponents'),
-            to: '/services',
+            to: '/components',
         });
     }
 
@@ -1113,7 +1113,7 @@ function AdminDashboard() {
                     </section>
                 ) : (
                 <button
-                    onClick={() => navigate('/services')}
+                    onClick={() => navigate('/components')}
                     className="rounded-xl border border-border bg-surface p-5 text-left transition-colors hover:bg-surface-2/60"
                 >
                     <div className="flex items-center justify-between">
@@ -1184,7 +1184,7 @@ function AdminDashboard() {
                 card={servicesCard}
                 checking={componentScanBusy}
                 onCheck={scanComponents}
-                onOpen={() => navigate('/services#bundles')}
+                onOpen={() => navigate('/components#bundles')}
             />
 
             {/* Needs attention BEFORE the journey: an active problem outranks
@@ -1401,7 +1401,7 @@ function AdminDashboard() {
                 <SectionTitle icon={Plus} tint="bg-primary/10 text-primary" title={t('dashboard.quickActions')} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <QuickAction icon={Globe} labelKey="dashboard.addDomain" to="/domains" />
-                    <QuickAction icon={Server} labelKey="dashboard.installService" to="/services" />
+                    <QuickAction icon={Server} labelKey="dashboard.installService" to="/components" />
                     <QuickAction icon={UserPlus} labelKey="dashboard.addUser" to="/users" />
                     <QuickAction icon={DownloadCloud} labelKey="nav.import" to="/import" />
                 </div>

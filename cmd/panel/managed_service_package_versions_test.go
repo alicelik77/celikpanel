@@ -209,6 +209,18 @@ func TestCatalogViewPackageVersionsAndOldCacheRows(t *testing.T) {
 	if got := serviceByID(view, "certbot"); got.PackageVersion != "" {
 		t.Fatalf("an absent component was given a version: %+v", got)
 	}
+
+	// alpha.120: the distribution's own Python (no repository, no managed
+	// copy) says its package version; its system copy stays unmanaged.
+	python := []transport.InstalledPackageVersion{{Package: "python3", Version: "3.12.3-0ubuntu2"}, {Package: "python3-venv", Version: "3.12.3-0ubuntu2"}}
+	pyView := catalogView([]serviceObservation{{
+		ID: "python", IsInstalled: true, PackageVersions: python, PackageVersionsReadAt: "2026-11-04T08:00:00Z",
+		Instances: []core.ServiceInstance{{Version: "3.12", Path: "/usr/bin/python3.12", Managed: false}},
+	}}, "apt")
+	if got := serviceByID(pyView, "python"); got.PackageVersion != "3.12.3-0ubuntu2" || got.PackageVersionShort != "3.12.3" ||
+		len(got.Versions) != 0 || len(got.Instances) != 1 {
+		t.Fatalf("python view = %+v", got)
+	}
 	if got := serviceByID(view, "postfix"); got.PackageVersion != "" {
 		t.Fatalf("an unobserved component was given a version: %+v", got)
 	}

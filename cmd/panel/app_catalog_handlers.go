@@ -567,7 +567,7 @@ func (p *Panel) handleCatalogAppInstall(w http.ResponseWriter, r *http.Request, 
 	databaseName, databaseUser, serverID, err := p.reserveAppDatabaseNames(ctx, target, app)
 	if errors.Is(err, sql.ErrNoRows) {
 		writeCodedError(w, http.StatusConflict, errCodeAppNoDatabaseServer,
-			"no MariaDB server is installed on this server, so "+app.Name+" cannot get its database. Nothing was changed. The administrator installs MariaDB in Components; then install again.", "/services")
+			"no MariaDB server is installed on this server, so "+app.Name+" cannot get its database. Nothing was changed. The administrator installs MariaDB in Components; then install again.", "/components")
 		return
 	}
 	if err != nil {
@@ -803,7 +803,7 @@ func (p *Panel) requireAppPrerequisites(w http.ResponseWriter, r *http.Request, 
 			message = "PHP " + resp.PHPLine + " on this server lacks what " + app.Name + " needs (" + strings.Join(packages, " ") + "). Nothing was changed. The administrator installs PHP " + resp.PHPLine + " in Components (PHP-FPM, version " + resp.PHPLine + "): that adds its standard extensions from the official packages. Then install again."
 		}
 		if callerIsAdministrator(r) {
-			action = "/services?component=php-fpm"
+			action = "/components?component=php-fpm"
 			if install != "" {
 				action += "&install=" + install
 			}

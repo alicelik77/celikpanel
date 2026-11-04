@@ -10,12 +10,21 @@
 // acil durumu ve müşterilerinin gördüğü bildirim.
 
 export const enEmergencyScreens = {
-    // The section in the version drawer.
+    // The section on the component's own page (alpha.120: it left the
+    // Components list and the version drawer).
     'emg.title': 'Security emergency',
     // alpha.118: the closed section while no emergency is open is a tool, not an alarm.
-    'emg.toolsTitle': 'Security emergency tools',
-    'emg.toolsHint': 'Nothing is wrong. Use these only if {name} has a security hole and no fix is available yet.',
+    'emg.toolsTitle': 'Security emergency',
+    'emg.toolsHint': 'Nothing is wrong now. Only for a security hole in {name} that has no fix yet: you can withdraw it, stop it, move its sites and remove it, step by step.',
     'emg.intro': 'Use this only when {name} has a security hole and no patch is available. Four separate steps, lightest first: withdraw, stop, move the sites, remove. No customer data is ever deleted.',
+    // alpha.120: the Components row while an emergency is open, and the Security page's area.
+    'emg.rowBadge': 'Security emergency open',
+    'emg.area.title': 'Security emergency',
+    'emg.area.intro': 'PHP, Node.js, MariaDB and PostgreSQL are the programs customer sites run on directly. When one of them has a security hole with no fix yet, you can withdraw it, stop it, move the sites that use it and remove it, step by step. Each one’s tools are on its own page. Other components have no such steps: they are stopped or removed in the ordinary way.',
+    'emg.area.none': 'No security emergency is open.',
+    'emg.area.openOne': 'Emergency open',
+    'emg.area.unknown': 'Whether an emergency is open could not be read. Open the component’s page to see it.',
+    'emg.area.go': 'Open {name}’s emergency steps',
     'emg.open': 'Open the security emergency steps',
     'emg.close': 'Hide',
     'emg.version': 'Version',

@@ -184,7 +184,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 				http.StatusBadRequest,
 				errCodeRuntimeVersionRequired,
 				"pick a Node.js version installed by the panel",
-				"/services",
+				"/components",
 			)
 			return
 		}
@@ -274,7 +274,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	case errors.Is(err, errHostingPortInUse):
 		writeClientError(w, http.StatusConflict, "the selected application port is already assigned")
 	case errors.Is(err, errHostingPHPMissing):
-		writeHostingPHPRefusal(w, errCodePHPRequired, "/services",
+		writeHostingPHPRefusal(w, errCodePHPRequired, "/components",
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
 				"The server administrator installs PHP-FPM from Components, then the site is switched to PHP again.")
 	case errors.As(err, new(*hostingPHPWithdrawnError)):
@@ -286,7 +286,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 		_ = json.NewEncoder(w).Encode(apiErrorBody{
 			Error: "Nothing was changed: " + name + " is withdrawn for security on this server, so the site was not switched to PHP. " +
 				"The administrator installs a PHP version that is not withdrawn, or re-enables " + name + " once it is patched; then the site is switched to PHP again.",
-			Code: errCodeSecurityEmergencyWithdrawn, Reason: hostingReasonSwitch, Action: "/services",
+			Code: errCodeSecurityEmergencyWithdrawn, Reason: hostingReasonSwitch, Action: "/components",
 			Vars: map[string]string{"name": name},
 		})
 	case errors.Is(err, errHostingPHPNotOffered):

@@ -7722,7 +7722,7 @@ Agent, 2026-10-14 denetim kaydındaki temiz bağlama ad alanında).
     saklamaz; bu yüzden önceden var olan bir `system` satırı yine "Sistem"
     çizilirdi (bu Panelden doğamaz).
 14. **Bileşenin kendi sayfası, doğrulanamayan kayıtta kendisi kontrol eder**
-    (D-032, D-033). `/services/<id>` sayfasında `503 SERVICE_STATE_UNVERIFIED`
+    (D-032, D-033). `/components/<id>` sayfasında `503 SERVICE_STATE_UNVERIFIED`
     yanıtı, Pano ya da Bileşenler sayfası kontrolünü çalıştırana dek Tekrar
     dene'nin başarısız kaldığı genel "Bu bileşenin kaydı okunamadı" idi. Sayfa
     artık bu kodu onlar gibi yanıtlar: tek koşullu
@@ -9061,7 +9061,7 @@ ekranlarından gelir; burada dosya olarak saklanmaz ve kurulu bir sunucuda hiçb
   kaldırma sunumu bitirir; kayıt yoksa satır bir şey söylemez (Boston'da böyle bir
   kayıt yoktur, bu yüzden satırında kalıntı sunumu görünmez). Roundcube'un kendi
   bileşen sayfasında aynı onayı Bileşenler sayfasında açan
-  (`/services?cleanup=roundcube`) bir "Kalıntıları temizle…" bağlantısı her zaman
+  (`/components?cleanup=roundcube`) bir "Kalıntıları temizle…" bağlantısı her zaman
   vardır. Panel dosyaların diskte gerçekten kalıp kalmadığını hâlâ göremez; kendi
   kaydına dayanır. Sahip karar verir; onay penceresi Agent'ın tam olarak neyi sildiğini sıralar:
   `/var/lib/celikpanel-webmail` (Roundcube dosyaları, kendi ayarları ve adres defteri
@@ -9128,7 +9128,7 @@ web `npm test` 1599 geçti, 0 başarısız, `npm run build` başarılı; Go
 `./cmd/panel/` ve `./internal/...` 7124 geçti, 0 başarısız, 44 atlandı,
 `go vet ./cmd/panel/` ve gofmt temiz; yeni Go testi webmail_cleanup_record_test.
 Tarayıcı 20. grubu inceleme düzeltmelerinden önce iki kez incelendi; incelemeden
-sonra Boston senaryosu kalıntı onayını `/services?cleanup=roundcube` ile açar ve
+sonra Boston senaryosu kalıntı onayını `/components?cleanup=roundcube` ile açar ve
 **inceleme düzeltmelerinden sonra yeniden çalıştırılmadı.** Şema değişikliği yok
 (44), Agent değişikliği yok, gerçek sistem kaydı yok, P0 kısmi kalır.
 
@@ -10760,6 +10760,32 @@ kurulu sunucuda ölçülmedi). **Kim yapar:** yönetici, Bileşenler sayfasında
   yalnız … bileşeninde bir güvenlik açığı varsa ve henüz düzeltmesi yoksa kullanın."
   Bölüm yalnız o bileşen için açık bir acil durum varken, adıyla birlikte kırmızı olur.
   Tıklama bölümü açar ya da kapatır; artık bileşenin sayfasını açmaz.
+
+Şema değişmedi. Kurulu paneller yalnız sahiplerince güncellenir.
+
+## Bileşenler: çekirdek sunucuların kendi satırı, güvenlik acil durumu bileşenin sayfasında, Python sürümü (alpha.120)
+
+alpha.120 adayı için kaynakta (sahibin Boston ekranları, Ubuntu 24.04, alpha.119; kurulu
+sunucuda ölçülmedi). **Kim yapar:** yönetici. Hiçbir şey kendiliğinden başlamaz.
+
+- **Çekirdek sunucu kurulu değil.** Nginx, PHP-FPM, MariaDB ve PostgreSQL (müşteri
+  sitelerinin doğrudan üzerinde çalıştığı programlar) kurulu görünümde kendi satırlarını
+  korur: **Kurulu değil** ve **Kur**. Kur, bileşenin olağan kurulum penceresini sürümleriyle
+  açar (PostgreSQL: dağıtımınki, PGDG yalnız seçilirse). Paketlerin altındaki "Ya da birini
+  tek başına kurun" satırı kalktı. Kurulu başka bir sunucunun dışladığı (Apache yanında
+  Nginx) ya da bu sistemin sunmadığı çekirdek sunucunun orada satırı olmaz; posta ve DNS
+  motorları posta kurulumunda ve DNS altyapısında seçilir; isteğe bağlı çalışma ortamları
+  ve araçlar Katalog görünümünde kalır.
+- **Güvenlik acil durumu** (D-043, değişmedi) artık Bileşenler listesinde ve sürüm
+  çekmecelerinde değil. Bileşenin kendi sayfasının (PHP, Node.js, MariaDB, PostgreSQL)
+  altına yakın kapalı bir bölümdür; Güvenlik → **Güvenlik acil durumu** ne işe yaradığını
+  söyler ve her birine bağlanır. **Acil durum açıkken** bileşenin satırında bölümü açan
+  kırmızı **Güvenlik acil durumu açık** rozeti görünür. 4. adımda kaldırılan bileşen,
+  acil durumu açık kaldıkça bölümünü korur; böylece yeniden etkinleştirilebilir.
+- **Python** dağıtımın sürümünü diğer bileşenler gibi paket veritabanından okuyup gösterir;
+  **Sürümler** bulunan tek Python'u sayar (çekmecesi onu listeler).
+- **Adres.** Sayfa `/components` (ve `/components/<kimlik>`); eski `/services`
+  bağlantıları yolu, sorgusu ve çapasıyla oraya gider. API yolları değişmedi.
 
 Şema değişmedi. Kurulu paneller yalnız sahiplerince güncellenir.
 

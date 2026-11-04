@@ -102,7 +102,7 @@ olmalıdır. Bozuk veya süresi geçmiş kayıtlı zaman damgaları kapalı davr
 
 GET normal abonelik görünürlük kurallarını izler. Tipli bir bayi hak havuzu
 modeli gelene kadar POST ve DELETE yalnızca yöneticidir. Bayiler Mağaza
-API'sinden gizli yönetici işlemi veya `/services` yönetim yolu alamaz.
+API'sinden gizli yönetici işlemi veya `/components` yönetim yolu alamaz.
 
 Hak verme ve kaldırma, hak kaydını ve denetim kaydını aynı işlem içinde yazar.
 Aynı etkin hakkın aynı süre sonuyla birebir tekrarı, ilk yanıt kaybolduktan sonra

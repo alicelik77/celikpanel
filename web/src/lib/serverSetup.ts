@@ -155,9 +155,10 @@ export function decodeServerSetup(value: unknown): ServerSetupSnapshot | null {
 // Kurulum gerekirken açık kalan sayfalar. alpha.98'e dek Ayarlar bölümü olan
 // dört sayfa ve alpha.100'den beri Sunucu kurulumu, /settings altındayken
 // olduğu gibi ulaşılabilir kalır.
-const SETUP_RECOVERY_PAGES = new Set(['/settings', '/account', '/security', '/dns-infrastructure', '/maintenance', '/server-setup', '/services']);
+// /services stays until its redirect to /components (alpha.120) has run.
+const SETUP_RECOVERY_PAGES = new Set(['/settings', '/account', '/security', '/dns-infrastructure', '/maintenance', '/server-setup', '/components', '/services']);
 export function isSetupRecoveryPath(pathname: string): boolean {
-    return SETUP_RECOVERY_PAGES.has(pathname) || pathname.startsWith('/services/');
+    return SETUP_RECOVERY_PAGES.has(pathname) || pathname.startsWith('/components/') || pathname.startsWith('/services/');
 }
 export function shouldOpenServerSetup(snapshot: ServerSetupSnapshot, pathname: string): boolean {
     // Extending a completed setup never routes the owner into setup: the
@@ -172,9 +173,9 @@ export function setupNextPath(purpose: SetupPurpose, selected?: ReadonlySet<stri
     if (selected) {
         if (['nginx', 'node', 'phpmyadmin', 'phppgadmin', 'roundcube'].some(id => selected.has(id))) return '/domains';
         if (selected.size === 0) return '/dns-infrastructure';
-        return '/services';
+        return '/components';
     }
-    return purpose === 'dns' ? '/dns-infrastructure' : purpose === 'custom' ? '/services' : '/domains';
+    return purpose === 'dns' ? '/dns-infrastructure' : purpose === 'custom' ? '/components' : '/domains';
 }
 export function chooseSetupPurpose(draft: ServerSetupDraft, purpose: SetupPurpose): ServerSetupDraft {
     return {

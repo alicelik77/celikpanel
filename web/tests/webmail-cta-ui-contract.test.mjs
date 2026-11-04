@@ -54,7 +54,7 @@ test('webmail CTA is safe, read-only accessible, and absent when unavailable', (
   assert.ok(accessSource.includes("t('mail.webmail.unavailable')"));
   assert.ok(accessSource.includes("t('mail.webmail.noAddressAdmin')"), 'an administrator is told where to set the address');
   assert.ok(accessSource.includes("role === 'admin'"));
-  assert.ok(accessSource.includes("to='/services/roundcube'"));
+  assert.ok(accessSource.includes("to='/components/roundcube'"));
   assert.ok(!accessSource.includes('readOnly'));
 });
 

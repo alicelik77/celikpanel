@@ -1,5 +1,9 @@
 // The security emergency of a component or one of its versions (D-043,
-// alpha.117), in the Components page's version drawer. Four separate steps,
+// alpha.117). Since alpha.120 it lives on the component's own page (PHP,
+// Node.js, MariaDB, PostgreSQL), closed near the bottom, and the Security
+// page links to each; the Components list only shows a short red badge while
+// an emergency is open (owner's Boston screens: the tools looked like part of
+// MariaDB itself). Four separate steps,
 // lightest first: withdraw, stop, move the sites, remove. Each emergency
 // shows its guidance first (what is true now, who acts, the next action, how
 // it goes on: D-024), then the steps it allows, then the progress of the
@@ -16,50 +20,14 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, ErrorBanner } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
+import { useLocation } from '../router';
+import {
+    SECURITY_EMERGENCIES_URL, EMERGENCY_ANCHOR, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor,
+    type EmergencyComponent, type EmergencyDetail, type EmergencySite,
+} from '../lib/securityEmergency';
 
-export const SECURITY_EMERGENCIES_URL = '/api/v1/security-emergencies';
-
-export type EmergencyComponent = 'php' | 'node' | 'mariadb' | 'postgresql';
-type Step = 'stop' | 'move' | 'remove' | 'reenable' | 'cancel' | 'continue';
-
-export interface EmergencySite {
-    domain_id: number;
-    domain: string;
-    customer: string;
-    reseller?: string;
-    maintenance: boolean;
-    moved_to?: string;
-}
-
-export interface EmergencyDetail {
-    emergency: { id: string; component: EmergencyComponent; version: string; name: string; reason: string; stage: string; withdrawn: boolean; recommended?: string };
-    guidance: { result: string; reason: string; who_acts: string; next_action: string; resumes: string };
-    operation: null | { id: string; kind: string; state: string; done: number; total: number; last_error?: string; effects: { kind: string; target: string; state: string; detail?: string }[] };
-    preview: { sites: EmergencySite[]; customers: { id: number; name: string; sites: number }[]; resellers: { id: number; name: string; sites: number }[]; offered_by: string[]; notes: string[] };
-    notices: { total: number; seen: number; mail_sent: number; mail_pending: number; mail_failed: number; no_address: number; mail_not_available: number };
-    confirm_name: string;
-    alternatives: string[];
-    can: Partial<Record<Step, boolean>>;
-}
-
-export function decodeEmergencyDetail(raw: unknown): EmergencyDetail {
-    const body = raw as EmergencyDetail | null;
-    if (!body || typeof body !== 'object' || !body.emergency || typeof body.emergency.id !== 'string' || !body.guidance || !body.preview || !Array.isArray(body.preview.sites)) {
-        throw new Error('shape');
-    }
-    return { ...body, alternatives: Array.isArray(body.alternatives) ? body.alternatives : [], can: body.can ?? {} };
-}
-
-export function decodeEmergencyList(raw: unknown): EmergencyDetail[] {
-    const body = raw as { emergencies?: unknown[] } | null;
-    if (!body || !Array.isArray(body.emergencies)) throw new Error('shape');
-    return body.emergencies.map(decodeEmergencyDetail);
-}
-
-/** The open emergencies of one component (and version, when named). */
-export function openEmergenciesFor(list: EmergencyDetail[], component: EmergencyComponent): EmergencyDetail[] {
-    return list.filter((item) => item.emergency.component === component && item.emergency.stage !== 'resolved');
-}
+export { SECURITY_EMERGENCIES_URL, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor };
+export type { EmergencyComponent, EmergencyDetail, EmergencySite };
 
 const stepKey: Record<'stop' | 'move' | 'remove' | 'reenable', TranslationKey> = {
     stop: 'emg.step.stop', move: 'emg.step.move', remove: 'emg.step.remove', reenable: 'emg.step.reenable',
@@ -82,11 +50,24 @@ async function post(url: string, body: unknown): Promise<{ ok: true } | { ok: fa
 
 /**
  * The emergency section of one component. versions: the installed versions
- * (PHP lines or Node.js versions); empty for a whole component.
+ * (PHP lines or Node.js versions); empty for a whole component. installed:
+ * false once the component is gone (step 4 removes it): the section then
+ * appears only while an emergency is still open, so it can be re-enabled,
+ * and offers no new withdrawal.
  */
-export function SecurityEmergencySection({ component, name, versions }: { component: EmergencyComponent; name: string; versions: string[] }) {
+export function SecurityEmergencySection({ component, name, versions, installed = true }: { component: EmergencyComponent; name: string; versions: string[]; installed?: boolean }) {
     const { t } = useI18n();
-    const [open, setOpen] = useState(false);
+    // A link to #security-emergency (the Components badge, the Security
+    // page) opens the section and brings it into view.
+    // #security-emergency bağlantısı bölümü açar ve görünür kılar.
+    const { hash } = useLocation();
+    const linked = hash === `#${EMERGENCY_ANCHOR}`;
+    const [open, setOpen] = useState(linked);
+    useEffect(() => {
+        if (!linked) return;
+        setOpen(true);
+        document.getElementById(EMERGENCY_ANCHOR)?.scrollIntoView?.({ block: 'start' });
+    }, [linked]);
     // alpha.118 (owner's Boston screens): the list is read while closed too,
     // only to know whether an emergency is open: the section then looks like
     // the alarm it is; otherwise it is a quiet tool. One shared GET for every
@@ -104,12 +85,10 @@ export function SecurityEmergencySection({ component, name, versions }: { compon
     }, [open, running, list]);
     const busyVersions = new Set(openOnes.map((item) => item.emergency.version));
     const free = versions.filter((version) => !busyVersions.has(version));
+    // Not installed and nothing open: nothing to show (alpha.120).
+    if (!installed && openOnes.length === 0) return null;
     return (
-        // relative: on a Components row the row's link stretches over the
-        // whole row; without it a click here opened the component's page
-        // instead of this section (alpha.118, owner's Boston screens).
-        // relative: satır bağlantısı bütün satıra yayılır; yoksa tıklama sayfayı açıyordu.
-        <section className={`relative mt-4 rounded-lg border p-3 ${openOnes.length > 0 ? 'border-danger/40' : 'border-border'}`} data-security-emergency={component} data-emergency-open={openOnes.length}>
+        <section id={EMERGENCY_ANCHOR} className={`relative mt-4 scroll-mt-24 rounded-lg border p-3 ${openOnes.length > 0 ? 'border-danger/40' : 'border-border'}`} data-security-emergency={component} data-emergency-open={openOnes.length}>
             <button type="button" className="flex w-full items-center gap-2 text-left text-sm font-semibold text-fg max-sm:min-h-11" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
                 {open ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
                 {openOnes.length > 0 ? <ShieldOff className="h-4 w-4 text-danger" aria-hidden="true" /> : <Shield className="h-4 w-4 text-fg-muted" aria-hidden="true" />}
@@ -123,7 +102,7 @@ export function SecurityEmergencySection({ component, name, versions }: { compon
                     {list.remote.state === 'loading' && <p className="text-sm text-fg-muted">{t('emg.reading')}</p>}
                     {list.remote.state === 'unknown' && <p className="text-sm text-warning">{t('emg.readFailed')}</p>}
                     {openOnes.map((item) => <EmergencyCard key={item.emergency.id} id={item.emergency.id} onChanged={() => void list.retry()} />)}
-                    {list.remote.state === 'known' && (versions.length === 0 ? openOnes.length === 0 : free.length > 0) && (
+                    {list.remote.state === 'known' && installed && (versions.length === 0 ? openOnes.length === 0 : free.length > 0) && (
                         <WithdrawForm component={component} name={name} versions={free} alternatives={versions} onDone={() => void list.retry()} />
                     )}
                 </div>

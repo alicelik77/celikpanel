@@ -1015,7 +1015,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // One way to the same action: when the ready screen offers "Host a website",
     // the bottom button leads away from it; a site that exists makes the next one "another".
     const readyCount = readyTasks.length + (readyPeerPending ? 1 : 0);
-    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/services' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : offerFirstSite ? 'setup.nextDashboard' : readyDraft.main_site === 'here' || readySiteDone ? 'setup.nextWebsiteMore' : 'setup.nextWebsite';
+    const nextLabel = nextPath === '/dns-infrastructure' ? 'setup.nextDNS' : nextPath === '/components' ? 'setup.nextComponents' : isNode ? 'setup.nextApplication' : offerFirstSite ? 'setup.nextDashboard' : readyDraft.main_site === 'here' || readySiteDone ? 'setup.nextWebsiteMore' : 'setup.nextWebsite';
     const readyNextPath = offerFirstSite && nextPath === '/domains' && !isNode ? '/' : nextPath;
 
     if (manualExit) return <Navigate to="/" replace />;

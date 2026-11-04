@@ -76,7 +76,7 @@ export const navItems: NavItem[] = [
     // güvenliği ve bakımı Sunucu altında; Ayarlar'da yalnız bir kez seçilip
     // panelin davranışını belirleyenler; kişinin kendi hesabı kişisel menüde.
     // Yalnız yer değişti; her sayfa Ayarlar içindeki rollerini korur.
-    { id: 'services', path: '/services', labelKey: 'nav.services', icon: Server, roles: ['admin'], group: 'server', countKey: 'services' },
+    { id: 'services', path: '/components', labelKey: 'nav.services', icon: Server, roles: ['admin'], group: 'server', countKey: 'services' },
     // Server setup (v0.1.0-alpha.100, owner 2026-10-22): the server's purpose,
     // its setup wizard and extending what it does. It was Settings → Server
     // setup; it sits under Components because both prepare the server.
@@ -169,6 +169,13 @@ export const movedSettingsSections: Partial<Record<string, string>> = {
     // v0.1.0-alpha.100: Sunucu kurulumunun Sunucu altında kendi sayfası var.
     setup: '/server-setup',
 };
+
+// The Components page's address for an old /services one (alpha.120): the
+// path tail, the query and the hash are kept.
+// Eski /services adresinin Bileşenler karşılığı; yol, sorgu ve çapa korunur.
+export function componentsAddress(pathname: string, search: string, hash: string): string {
+    return `/components${pathname.replace(/^\/services/, '')}${search}${hash}`;
+}
 
 // Where /settings sends this person, or null to stay. A section that moved
 // goes to its page; a person for whom Settings has no section any more (a

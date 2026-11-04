@@ -27,6 +27,7 @@ const stub = dataModule(`
   ${[...icons].map((name) => `export const ${name} = () => null;`).join('\n')}
   export const useI18n = () => ({ t: (key, vars) => key + (vars ? JSON.stringify(vars) : ''), locale: 'en' });
   export const useNavigate = () => () => {};
+  export const useLocation = () => ({ pathname: '/components/php-fpm', search: '', hash: '' });
   export const useAuth = () => ({ role: globalThis.emergencyTest?.role ?? 'customer' });
   export const showToast = () => {};
 `);
@@ -52,7 +53,7 @@ let tree, calls;
 function serve(answers) {
   calls = [];
   globalThis.emergencyTest = { role: answers.role };
-  globalThis.document = { addEventListener() {}, removeEventListener() {} };
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null };
   globalThis.fetch = (url, options = {}) => {
     const method = options.method || 'GET';
     calls.push({ method, url: String(url), body: options.body });

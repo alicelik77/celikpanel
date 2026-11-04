@@ -333,7 +333,7 @@ func TestHostingTransitionAdminDefaultSkipsWithdrawnPHP(t *testing.T) {
 func TestHostingPHPRefusalsSayTheSiteWasNotSwitched(t *testing.T) {
 	for _, code := range []string{errCodePHPRequired, errCodeNoVersionOffered} {
 		recorder := httptest.NewRecorder()
-		writeHostingPHPRefusal(recorder, code, "/services", "not switched")
+		writeHostingPHPRefusal(recorder, code, "/components", "not switched")
 		var body apiErrorBody
 		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 			t.Fatal(err)

@@ -592,9 +592,9 @@ func writeAgentUnreachable(w http.ResponseWriter, err error) {
 }
 
 // writeCodedError is the single writer of the contract. action, when
-// non-empty, is an in-panel path that fixes the refusal (e.g. "/services").
+// non-empty, is an in-panel path that fixes the refusal (e.g. "/components").
 // writeCodedError, sözleşmenin tek yazıcısıdır. action boş değilse reti
-// düzelten panel-içi yoldur (örn. "/services").
+// düzelten panel-içi yoldur (örn. "/components").
 func writeCodedError(w http.ResponseWriter, status int, code, message, action string) {
 	writeCodedErrorDetails(w, status, code, message, action, nil)
 }
@@ -651,7 +651,7 @@ func writeServiceFirewallSyncFailed(w http.ResponseWriter) {
 	_ = json.NewEncoder(w).Encode(apiErrorBody{
 		Error:           "service action completed, but the active firewall policy could not be synchronized",
 		Code:            errCodeFirewallSyncFailed,
-		Action:          "/services",
+		Action:          "/components",
 		PartialSuccess:  true,
 		MutationApplied: true,
 	})
@@ -667,7 +667,7 @@ func writeServiceMailFilterSyncFailed(w http.ResponseWriter) {
 	_ = json.NewEncoder(w).Encode(apiErrorBody{
 		Error:           "service removal completed, but the Postfix mail-filter chain could not be synchronized",
 		Code:            errCodeMailFilterSyncFailed,
-		Action:          "/services",
+		Action:          "/components",
 		PartialSuccess:  true,
 		MutationApplied: true,
 	})
@@ -683,7 +683,7 @@ func writeServiceUninstallPartial(w http.ResponseWriter) {
 	_ = json.NewEncoder(w).Encode(apiErrorBody{
 		Error:           "the service was stopped or disabled, but its packages could not be fully removed",
 		Code:            errCodeServiceUninstallPartial,
-		Action:          "/services",
+		Action:          "/components",
 		PartialSuccess:  true,
 		MutationApplied: true,
 	})
@@ -698,7 +698,7 @@ func writeWebmailUninstallPartial(w http.ResponseWriter, mutationApplied bool) {
 	_ = json.NewEncoder(w).Encode(apiErrorBody{
 		Error:           "Roundcube removal is no longer detected, but webmail cleanup or durable finalization could not be fully verified",
 		Code:            errCodeWebmailUninstallPartial,
-		Action:          "/services",
+		Action:          "/components",
 		PartialSuccess:  true,
 		MutationApplied: mutationApplied,
 	})

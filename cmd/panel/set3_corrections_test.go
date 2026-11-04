@@ -168,7 +168,7 @@ func TestNewSitePHPVersionIsOneTheServerRuns(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	writePHPVersionNotInstalled(recorder, "8.3", []string{"8.5"})
 	body := decodeErrorBody(t, recorder)
-	if recorder.Code != http.StatusConflict || body.Code != errCodePHPVersionNotInstalled || body.Action != "/services" ||
+	if recorder.Code != http.StatusConflict || body.Code != errCodePHPVersionNotInstalled || body.Action != "/components" ||
 		body.Vars["version"] != "8.3" || body.Vars["installed"] != "8.5" ||
 		body.Error != phpVersionNotInstalledMessage("8.3", "8.5") || !strings.HasPrefix(body.Error, "Nothing was created: PHP 8.3 is not installed on this server. Installed: 8.5.") {
 		t.Fatalf("status %d, body %+v", recorder.Code, body)

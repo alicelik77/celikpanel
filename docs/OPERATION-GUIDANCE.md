@@ -7756,7 +7756,7 @@ the Agent in the clean mount namespace of the 2026-10-14 audit entry).
     does not store an actor kind, so a pre-existing `system` row would still be
     drawn as "System" (it cannot arise from this Panel).
 14. **A component's own page checks by itself on an unverifiable record**
-    (D-032, D-033). On `/services/<id>` a `503 SERVICE_STATE_UNVERIFIED` answer
+    (D-032, D-033). On `/components/<id>` a `503 SERVICE_STATE_UNVERIFIED` answer
     was the generic "This component's record could not be read" whose Retry
     kept failing until the Dashboard or the Components page ran its check. The
     page now answers that code as they do: one conditional
@@ -9098,7 +9098,7 @@ v0.1.0-alpha.95 candidate. This entry replaces "nothing observed yet" above.
   install or removal ends the offer; without a record the row says nothing (Boston
   has no such record, so its row shows no leftovers offer). Roundcube's own
   component page always has a "Clean up leftovers…" link that opens the same
-  confirmation on the Components page (`/services?cleanup=roundcube`). The Panel
+  confirmation on the Components page (`/components?cleanup=roundcube`). The Panel
   still cannot see whether files are actually left on disk; it relies on its own
   record. The owner decides; the
   confirmation lists exactly what the Agent removes: `/var/lib/celikpanel-webmail`
@@ -9163,7 +9163,7 @@ dialogue in its install form. Evidence on the final candidate tree: web `npm tes
 `./internal/...` 7124 passed, 0 failed, 44 skipped, `go vet ./cmd/panel/` and
 gofmt clean; the new Go test is webmail_cleanup_record_test. Browser batch 20 was
 looked at twice before the review fixes; after the review its Boston scenario
-opens the cleanup through `/services?cleanup=roundcube`, and **it was not re-run
+opens the cleanup through `/components?cleanup=roundcube`, and **it was not re-run
 after the review fixes.** No schema change (44), no Agent change, no native record,
 P0 stays partial.
 
@@ -10820,6 +10820,33 @@ Components. Nothing starts by itself; every action opens its ordinary dialog.
   if … has a security hole and no fix is available yet." The section turns red, with
   the emergency's name, only while an emergency is open for that component. A click
   opens or closes it; it no longer opens the component's page.
+
+Schema unchanged. Installed panels are updated only by their owners.
+
+## Components: core servers have their own row, the security emergency on its component's page, Python's version (alpha.120)
+
+In source for the alpha.120 candidate (owner's Boston screens, Ubuntu 24.04, alpha.119;
+nothing measured on an installed server). **Who acts:** the administrator. Nothing
+starts by itself.
+
+- **A core server is not installed.** Nginx, PHP-FPM, MariaDB and PostgreSQL (what
+  customer sites run on directly) keep their own row in the installed view, saying
+  **Not installed**, with **Install**: it opens the component's ordinary install dialog
+  with its versions (PostgreSQL: the distribution's, PGDG only when chosen). The line
+  "Or install one on its own" under the bundles is gone. A core server another installed
+  one excludes (Nginx beside Apache) or this system does not offer gets no row there;
+  mail and DNS engines are chosen in mail setup and on DNS infrastructure; optional
+  runtimes and tools stay in the Catalogue view.
+- **Security emergency** (D-043, unchanged) is no longer in the Components list or the
+  version drawers. It is a closed section near the bottom of the component's own page
+  (PHP, Node.js, MariaDB, PostgreSQL), and Security → **Security emergency** says what it
+  is for and links to each. **While an emergency is open** the component's row shows a
+  red **Security emergency open** badge that opens the section. A component removed in
+  step 4 keeps its section while its emergency is open, so it can be re-enabled.
+- **Python** shows the distribution's version, read from the package database like
+  other components, and **Versions** counts the one Python found (its drawer lists it).
+- **Address.** The page is `/components` (and `/components/<id>`); old `/services`
+  links lead there with their path, query and hash. API paths are unchanged.
 
 Schema unchanged. Installed panels are updated only by their owners.
 

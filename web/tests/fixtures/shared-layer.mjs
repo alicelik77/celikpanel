@@ -128,6 +128,7 @@ export const siteCertificateRequestURL = compileSource('lib/siteCertificateReque
 
 // alpha.118: remote backups' decoders and decisions; no imports of its own.
 export const remoteBackupURL = compileSource('lib/remoteBackup.ts', unexpected('lib/remoteBackup.ts'));
+export const securityEmergencyURL = compileSource('lib/securityEmergency.ts', unexpected('lib/securityEmergency.ts'));
 
 // A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
 // test that mounts the screen: the compiled module, with that one import
@@ -171,6 +172,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/vendorLane': vendorLaneURL,
     '/lib/testedVersions': testedVersionsURL,
     '/lib/remoteBackup': remoteBackupURL,
+    '/lib/securityEmergency': securityEmergencyURL,
     '/ui': uiURL,
     ...extra,
   };

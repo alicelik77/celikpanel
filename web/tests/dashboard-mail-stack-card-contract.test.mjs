@@ -23,7 +23,7 @@ test('the bundles card is read-only, always shown and uses the closed bundle dec
   assert.match(dashboard, /<ReadyBundlesCard\s/);
   // Always shown: no activity gate in front of it.
   assert.doesNotMatch(dashboard, /&& \(\s*\n\s*<ReadyBundlesCard/);
-  assert.match(dashboard, /navigate\('\/services#bundles'\)/);
+  assert.match(dashboard, /navigate\('\/components#bundles'\)/);
   assert.doesNotMatch(dashboard, /service\/profile\/install|startInstall|service\/install/);
   assert.match(card, /bundlesSummary\(bundles\)/);
   // One counting rule for the card and the chips: every registry entry,

@@ -454,7 +454,7 @@ func (p *Panel) buildStoreItem(ctx context.Context, offering storeOffering, subs
 		case offering.EntitlementMode == "grant" && runtimeState == "not_installed":
 			if isAdmin {
 				action.Type = "open_components"
-				action.Path = "/services"
+				action.Path = "/components"
 				action.Enabled = true
 				blocker = "components_not_installed"
 			} else {
@@ -473,7 +473,7 @@ func (p *Panel) buildStoreItem(ctx context.Context, offering storeOffering, subs
 			if isAdmin {
 				if runtimeState == "not_installed" {
 					action.Type = "open_components"
-					action.Path = "/services"
+					action.Path = "/components"
 				} else {
 					action.Type = "manage_components"
 					action.Path = offering.ManagePath
