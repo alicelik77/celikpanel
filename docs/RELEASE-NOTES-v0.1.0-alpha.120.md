@@ -31,4 +31,4 @@ from the panel's own update screen.**
 ## Evidence
 
 Go tests for the panel pass; 2432 web tests pass within the bundle budgets;
-release sequence 119 → 120. <!-- LAB -->
+release sequence 119 → 120. Lab (`final-alpha120-run1-20261104`, lab branch commit `bc14f1f21`): Ubuntu 24.04 at alpha.119 with mail and MariaDB, like Boston, updated to 120 in 82 seconds; Python reports 3.12.3; PostgreSQL is listed as not installed with its distribution version; a security emergency opened and was cancelled; `/components`, `/services` and `/help` answer.

@@ -32,4 +32,4 @@ panelin kendi güncelleme ekranından günceller.**
 ## Kanıt
 
 Panel için Go testleri geçiyor; 2432 web testi paket bütçeleri içinde geçiyor;
-sürüm sırası 119 → 120. <!-- LAB -->
+sürüm sırası 119 → 120. Laboratuvar (`final-alpha120-run1-20261104`, laboratuvar dalı `bc14f1f21`): Boston gibi posta ve MariaDB'li alpha.119 Ubuntu 24.04, 82 saniyede 120'ye güncellendi; Python 3.12.3 gösteriyor; PostgreSQL dağıtım sürümüyle kurulu değil olarak listeleniyor; bir güvenlik acil durumu açıldı ve iptal edildi; `/components`, `/services` ve `/help` yanıt veriyor.
