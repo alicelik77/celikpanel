@@ -60,4 +60,4 @@ ve 3.0 çözücüleri): Ubuntu benzeri bir sunucu Boston gibi başarısız olur,
 ortak paket adıyla istenince başarılı olur (3 yükseltme, 2 yeni, 0 kaldırma).
 Debian benzeri bir sunucuda yalnız `libpq5` gerekir.
 
-<!-- LAB -->
+Laboratuvar (`final-alpha121-run1-20261104`, laboratuvar dalı `31fb2aec0`): Ubuntu'nun PostgreSQL 16'sı, phpPgAdmin ve bir veritabanı olan, PGDG'si açık alpha.120 Ubuntu 24.04, 84 saniyede 121'e güncellendi. PGDG 18 önizlemesi libpq5 (16.15 → 18.6), postgresql-common ve postgresql-client-common (257build1.1 → 293) paketlerini onaya sundu; 18 kuruldu ve 16'nın yanında çalışıyor; iki küme de listeleniyor; PHP'nin PostgreSQL eklentisi duruyor; 16'nın verisi bozulmadı. PGDG 17 yalnız libpq5'i gösterdi. PGDG paket listeleri silinince önizleme onları yeniledi ve normal denetledi. Debian 13: PGDG 18 yalnız libpq5'i gösterdi ve kuruldu. Paket yöneticisi tutulurken güncelleme başlatma geride hiçbir şey bırakmadan reddedildi, boşalınca tek basışla başladı. Gerçek sistemde denenmeyenler: sunucu adı uyarısı (laboratuvarın sunucu adı alan adı değil) ve açılış meşguliyeti mesajı (güncellemeden sonraki ilk kurulum meşgul değildi).

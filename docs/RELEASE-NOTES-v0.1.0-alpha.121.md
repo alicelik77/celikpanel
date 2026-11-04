@@ -60,4 +60,4 @@ solvers): an Ubuntu-like host fails as Boston did, and succeeds when the two
 common packages are named (3 upgraded, 2 new, 0 removed). A Debian-like host
 needs only `libpq5`.
 
-<!-- LAB -->
+Lab (`final-alpha121-run1-20261104`, lab branch commit `31fb2aec0`): Ubuntu 24.04 at alpha.120 with Ubuntu's PostgreSQL 16, phpPgAdmin and a database, PGDG enabled, updated to 121 in 84 seconds. PGDG 18's preview named libpq5 (16.15 → 18.6), postgresql-common and postgresql-client-common (257build1.1 → 293) for confirmation; 18 installed and runs beside 16; both clusters are listed; PHP still has its PostgreSQL extension; 16's data is intact. PGDG 17 named only libpq5. With PGDG's package lists deleted, the preview refreshed them and checked normally. Debian 13: PGDG 18 named only libpq5 and installed. With the package manager held, an update start was refused with nothing left behind, and one press started it once free. Not exercised on a real system: the host-name notice (the lab host name is not a domain name) and the start-up busy wording (the first install after the update was not busy).
