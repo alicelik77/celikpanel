@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.122.md)
 
+> **Yayımlandı**, 4 Kasım 2026 (UTC): sürüm commit'i `f4f6252ff`, GitHub ön sürümü 20:54:41Z, indirme portalı yaklaşık 20:58Z (dış denetim 27/27).
+
 Sahibin Boston'daki (alpha.121) sorusundan sonra tek Bileşenler listesiyle
 küçük bir sürüm: "phpPgAdmin ve phpMyAdmin neden ayrı ayrı kurulamıyor?"
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
