@@ -1,0 +1,102 @@
+== 1 on 120 11:41:42
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libjson-perl', 'postgresql-client-common', 'postgresql-common', 'libllvm17t64', 'libpq5', 'postgresql-client-16', 'postgresql-16', 'postgresql']
+  install postgresql confirming []
+202 {"operation": {"id": "7284b9ff6331576e6b7893fd22a384d4", "kind": "service_install", "phase": "queued", "request_id": "4633451803dbc0b54232341012be03fd", "service_id": "postgresql", "started_at": "2026-11-04T11:41:47.870522797Z", "status": "queued"}}
+  op 4633451803dbc0b54232341012be03fd: succeeded completed "" (11:42:28)
+200 {"operation": {"finished_at": "2026-11-04T11:42:19.185414713Z", "id": "7284b9ff6331576e6b7893fd22a384d4", "kind": "service_install", "phase": "completed", "request_id": "4633451803dbc0b54232341012be03fd", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-04T11:41:47.870522797Z", "status": "succeeded"}}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libjs-jquery', 'libphp-adodb', 'php8.3-mbstring', 'php-mbstring', 'php8.3-pgsql', 'php-pgsql', 'phppgadmin']
+  install phppgadmin confirming []
+202 {"operation": {"id": "5e618f635d41464021c4a4f40f2676a5", "kind": "service_install", "phase": "queued", "request_id": "530458bced28e5db0a494ce616f22b40", "service_id": "phppgadmin", "started_at": "2026-11-04T11:42:31.90944384Z", "status": "queued"}}
+  op 530458bced28e5db0a494ce616f22b40: succeeded completed "" (11:43:02)
+200 {"operation": {"finished_at": "2026-11-04T11:42:59.596334747Z", "id": "5e618f635d41464021c4a4f40f2676a5", "kind": "service_install", "phase": "completed", "request_id": "530458bced28e5db0a494ce616f22b40", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.3"}, "success": true}, "service_id": "phppgadmin", "started_at": "2026-11-04T11:42:31.90944384Z", "status": "succeeded"}}
+pdo_pgsql
+pgsql
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+200 {"id": 3, "rights": "unlimited", "success": true}
+pg11.test id=1
+200 {"id": 1, "name": "pg11_test_keep16", "status": "success", "type": "postgresql", "user": "pg11_test_keep16_user"}
+200 [{"admin_username": "celikpanel_admin", "created_at": "2026-11-04T11:43:15Z", "host": "localhost", "id": 3, "is_default": true, "is_local": true, "name": "MariaDB", "port": 3306, "status": "active", "type_icon": "\ud83e\uddad", "type_id": 2, "type_name": "MariaDB", "version": "10.11.14-MariaDB-0ubuntu0.24.04.1"}, {"admin_username": "celikpanel_admin", "created_at": "2026-11-04T11:43:15Z", "host": "localhost", "id": 4, "is_default": false, "is_local": true, "name": "PostgreSQL", "port": 5432, "status": "active", "type_icon": "\ud83d\udc18", "type_id": 1, "type_name": "PostgreSQL", "version": "1
+-- remove PostgreSQL
+200 {"all_versions": true, "bundles": [{"id": "db.postgresql", "name_code": "db_postgresql_phppgadmin"}], "companion_tools": ["phppgadmin"], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": true, "count": 1, "kind": "databases", "names": ["pg11_test_keep16"]}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["postgresql"], "
+409 {"code": "SERVICE_HAS_DEPENDENTS", "details": ["pg11_test_keep16"], "error": "1 thing(s) on this server depend on postgresql \u2014 remove or move them first."}
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+total 12
+drwxr-xr-x  3 postgres postgres 4096 Nov  4 11:42 .
+drwxr-xr-x 59 root     root     4096 Nov  4 11:42 ..
+drwxr-xr-x  3 postgres postgres 4096 Nov  4 11:42 16
+PG_VERSION
+base
+global
+-- enable PGDG from Components (vendor lane)
+  lane read ready True sha f5fb2e7b5e37 steps 3 error None
+  lane enable 200 None True repo enabled True packages ['postgresql-18', 'postgresql-17', 'postgresql-16', 'postgresql-15', 'postgresql-14', 'postgresql-13', 'postgresql-12', 'postgresql-11', 'postgresql-10'] 
+200 {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-pgdg.pref", "state": "confined", "written_at": "2026-11-04T11:43:27Z", "written_by": "lane"}, "detail": "Official PostgreSQL repository \u2014 every current major version, kept up to date.", "enabled": true, "enabled_at": "2026-11-04T11:43:27Z", "id": "pgdg", "key": {"created_at": "2011-10-13T20:19:14Z", "fingerprint": "B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8", "state": "valid"}, "lane": true, "lists": {"date": "
+== 6 update UX: dpkg lock held, start the update from 120 11:43:28
+Running as unit: lab-dpkg-hold.service; invocation ID: dc225c9f39ad40458d4036b61d593f5b
+active
+  request f8c5bdbd2aac2a7b12ee7cb18b4a770f v0.1.0-alpha.121
+409 {"code": "HOST_MUTATION_BUSY", "error": "This server's package manager is busy \u2014 a package task is still running on this server. Wait for it to finish, then try again.", "reason": "package_manager_active"}
+200 {"found": false, "request_id": "f8c5bdbd2aac2a7b12ee7cb18b4a770f"}
+200 {"code": "HOST_MUTATION_BUSY", "ready": false, "reason": "package_manager_active"}
+-- release the lock 11:44:00
+inactive
+200 {"ready": true}
+-- one press of Update (new request id) 11:44:03
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-04T11:44:03Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "stat
+  6s 200 running None
+  32s 
+  73s 200 running verifying
+  84s 200 succeeded None
+== 2 busy wording right after the update 11:45:27
+  11:45:28 202 {"operation": {"id": "24a5dc43d07321787a03fc3f2771ce62", "kind": "service_install", "phase": "queued", "request_id": "5053ba7e791422b2f128dfae54ad92d6", "service_id": "go", "started_at": "2026-11-04T11:45:28.17785924Z", "status": "queued"}}
+cat: /opt/celikpanel/release.commit: No such file or directory
+active active active active active active active 
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+panics: 0
+== 4 preview PGDG 17 (18 not installed) 11:46:01
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    notable libpq5 vendor_shared pgdg 16.15-0ubuntu0.24.04.1 -> 18.6-1.pgdg24.04+2 point_update None
+    installs ['libllvm19', 'libpq5', 'postgresql-client-17', 'postgresql-17']
+== 5 stale lists: delete PGDG list files (lab load), then preview 18 11:46:04
+apt.postgresql.org_pub_repos_apt_dists_noble-pgdg_InRelease
+apt.postgresql.org_pub_repos_apt_dists_noble-pgdg_main_binary-amd64_Packages
+0
+  preview 200 state known lists_refreshed pgdg reason_code None reason None refusals []
+    notable libpq5 vendor_shared pgdg 16.15-0ubuntu0.24.04.1 -> 18.6-1.pgdg24.04+2 point_update None
+    notable postgresql-client-common vendor_shared pgdg 257build1.1 -> 293.pgdg24.04+1 point_update None
+    notable postgresql-common vendor_shared pgdg 257build1.1 -> 293.pgdg24.04+1 point_update None
+    installs ['postgresql-common', 'postgresql-client-common', 'libpq5', 'postgresql-client-18', 'postgresql-18']
+== 3 PGDG 18 11:46:11
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    notable libpq5 vendor_shared pgdg 16.15-0ubuntu0.24.04.1 -> 18.6-1.pgdg24.04+2 point_update None
+    notable postgresql-client-common vendor_shared pgdg 257build1.1 -> 293.pgdg24.04+1 point_update None
+    notable postgresql-common vendor_shared pgdg 257build1.1 -> 293.pgdg24.04+1 point_update None
+    installs ['postgresql-common', 'postgresql-client-common', 'libpq5', 'postgresql-client-18', 'postgresql-18']
+  install postgresql:postgresql-18 confirming ["libpq5", "postgresql-client-common", "postgresql-common"]
+202 {"operation": {"id": "a8feb5fb6432088704e74250b74499ea", "kind": "service_install", "package_name": "postgresql-18", "phase": "queued", "request_id": "3383a09ad4e0d2a72f01746389790711", "service_id": "postgresql", "started_at": "2026-11-04T11:46:15.01209213Z", "status": "queued"}}
+  op 3383a09ad4e0d2a72f01746389790711: succeeded completed "" (11:46:45)
+200 {"operation": {"finished_at": "2026-11-04T11:46:40.300935643Z", "id": "a8feb5fb6432088704e74250b74499ea", "kind": "service_install", "package_name": "postgresql-18", "phase": "completed", "request_id": "3383a09ad4e0d2a72f01746389790711", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-04T11:46:15.01209213Z", "status": "succeeded"}}
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+active active 
+pdo_pgsql
+pgsql
+libpq5:amd64 18.6-1.pgdg24.04+2
+postgresql-client-common 293.pgdg24.04+1
+postgresql-common 293.pgdg24.04+1
+total 16
+drwxr-xr-x  4 postgres postgres 4096 Nov  4 11:46 .
+drwxr-xr-x 61 root     root     4096 Nov  4 11:44 ..
+drwxr-xr-x  3 postgres postgres 4096 Nov  4 11:42 16
+drwxr-xr-x  3 postgres postgres 4096 Nov  4 11:46 18
+PG_VERSION
+base
+global
+200 [{"admin_username": "celikpanel_admin", "created_at": "2026-11-04T11:43:15Z", "host": "localhost", "id": 3, "is_default": true, "is_local": true, "name": "MariaDB", "port": 3306, "status": "active", "type_icon": "\ud83e\uddad", "type_id": 2, "type_name": "MariaDB", "version": "10.11.14-MariaDB-0ubuntu0.24.04.1"}, {"admin_username": "celikpanel_admin", "created_at": "2026-11-04T11:43:15Z", "host": "localhost", "id": 4, "is_default": false, "is_local": true, "name": "PostgreSQL", "port": 5432, "status": "active", "type_icon": "\ud83d\udc18", "type_id": 1, "type_name": "PostgreSQL", "version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)"}]
+== R11U done 11:46:48

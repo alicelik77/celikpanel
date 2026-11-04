@@ -1,0 +1,21 @@
+== 8 host-name notice 11:44:34
+frankfurt
+cat: /opt/celikpanel/release.commit: No such file or directory
+200 {"addresses": [], "hostname": "frankfurt", "ipv4": "192.0.3.190", "state": "not_a_domain_name"}
+== 7 PGDG 18 11:44:34
+  lane read ready True sha ca0e6ea2c1e5 steps 3 error None
+  lane enable 200 None True repo enabled True packages ['postgresql-18', 'postgresql-17', 'postgresql-16', 'postgresql-15', 'postgresql-14', 'postgresql-13', 'postgresql-12', 'postgresql-11', 'postgresql-10'] 
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    notable libpq5 vendor_shared None None -> None point_update None
+    installs ['libjson-perl', 'postgresql-client-common', 'libio-pty-perl', 'libipc-run-perl', 'postgresql-common-dev', 'postgresql-common', 'libpq5', 'postgresql-client-18', 'postgresql-18']
+  install postgresql:postgresql-18 confirming ["libpq5"]
+202 {"operation": {"id": "82847c94c89c3bc92ddb4e34379174db", "kind": "service_install", "package_name": "postgresql-18", "phase": "queued", "request_id": "ef243c385b7ab02ec1a815bfab01ca99", "service_id": "postgresql", "started_at": "2026-11-04T11:44:41.801640382Z", "status": "queued"}}
+  op ef243c385b7ab02ec1a815bfab01ca99: succeeded completed "" (11:45:13)
+200 {"operation": {"finished_at": "2026-11-04T11:45:04.696941685Z", "id": "82847c94c89c3bc92ddb4e34379174db", "kind": "service_install", "package_name": "postgresql-18", "phase": "completed", "request_id": "ef243c385b7ab02ec1a815bfab01ca99", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-04T11:44:41.801640382Z", "status": "succeeded"}}
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+libpq5:amd64 18.6-1.pgdg13+2
+postgresql-client-common 278
+postgresql-common 278
+200 [{"admin_username": "celikpanel_admin", "created_at": "2026-11-04T11:45:13Z", "host": "localhost", "id": 1, "is_default": true, "is_local": true, "name": "MariaDB", "port": 3306, "status": "active", "type_icon": "\ud83e\uddad", "type_id": 2, "type_name": "MariaDB", "version": "11.8.6-MariaDB-0+deb13u1 from Debian"}, {"admin_username": "celikpanel_admin", "created_at": "2026-11-04T11:45:13Z", "host": "localhost", "id": 2, "is_default": false, "is_local": true, "name": "PostgreSQL", "port": 5432, "status": "active", "type_icon": "\ud83d\udc18", "type_id": 1, "type_name": "PostgreSQL", "version":
+== R11D done 11:45:14

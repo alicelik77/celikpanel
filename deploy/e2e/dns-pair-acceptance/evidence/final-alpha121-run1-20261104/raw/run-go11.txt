@@ -1,0 +1,21 @@
+start 11:31:20
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 11:33:06
+labnet-tools-ok
+builds done 11:34:57
+/var/tmp/a118r1/out-build121.out:EXIT 0
+/var/tmp/a118r1/out-build121.out:  "commit": "850ade4358f713e6c7f1ea8d9e8f51a2505c0654",
+/var/tmp/a118r1/out-build120.out:EXIT 0
+/var/tmp/a118r1/out-build120.out:  "commit": "bb3aa249d259ce4b84aab44afd4b89456415bf59",
+portal121 exit 0
+version=v0.1.0-alpha.121
+commit=850ade4358f713e6c7f1ea8d9e8f51a2505c0654
+portal120 exit 0
+version=v0.1.0-alpha.120
+commit=bb3aa249d259ce4b84aab44afd4b89456415bf59
+phase1 done 11:35:00
