@@ -550,3 +550,36 @@ func TestBuildFailureNamesThePackageAndHidesSecrets(t *testing.T) {
 		t.Fatal("python risk")
 	}
 }
+
+// alpha.119 lab round 2: systemd 257's systemd-run refused
+// "ProtectControlGroups=strict", so no Python build could start. Every
+// --property of the build is pinned against the systemd versions on which
+// systemd-run is known to parse it (sitesandbox.TransientPropertyMinimums).
+func TestBuildPropertiesParseInSystemdRunOnEverySystemd(t *testing.T) {
+	for _, version := range []int{249, 252, 255, 256, 257, 258, 262} {
+		for _, caps := range []sitesandbox.Caps{fullCaps(version), {SystemdVersion: version, CgroupV2: true}} {
+			p := buildParams(t)
+			p.Caps, p.Level = caps, sitesandbox.Assess(caps).Level
+			p.Hashed, p.HasConstraints = true, true
+			args, err := BuildRunArgs(p)
+			if err != nil {
+				t.Fatalf("%d: %v", version, err)
+			}
+			n := 0
+			for _, a := range args {
+				if a == "--" {
+					break
+				}
+				if line, ok := strings.CutPrefix(a, "--property="); ok {
+					n++
+					if why := sitesandbox.TransientPropertyRefusal(line, version); why != "" {
+						t.Errorf("systemd %d: %s: %s", version, a, why)
+					}
+				}
+			}
+			if n < 30 {
+				t.Fatalf("%d: only %d properties", version, n)
+			}
+		}
+	}
+}

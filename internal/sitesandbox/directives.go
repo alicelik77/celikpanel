@@ -52,6 +52,12 @@ type directive struct {
 	// bpf: enforced only with systemd's BPF framework; left out without it
 	// (it would be accepted and silently not enforced).
 	bpf bool
+	// transient: the systemd-run --property form when it differs from the
+	// unit-file line (TransientDirectives). systemd 257's systemd-run parses
+	// ProtectControlGroups= as a boolean only ("Failed to parse
+	// ProtectControlGroups: strict", alpha.119 lab round 2) and takes
+	// strict through ProtectControlGroupsEx=.
+	transient string
 }
 
 // DirectiveMinimums is the table the gating follows, for the documentation
@@ -93,6 +99,20 @@ func withOptional(paths []string) string {
 // Assessment names that gap). The profile is validated first: an invalid
 // profile renders nothing and returns the reason.
 func Directives(p Profile, c Caps) ([]string, error) {
+	return render(p, c, false)
+}
+
+// TransientDirectives are the same settings as Directives in the form
+// systemd-run's --property parser accepts on this host's systemd (a
+// transient unit: the Python build, a service app's install). The values and
+// their effect are the same; only the property name can differ
+// (ProtectControlGroupsEx=strict on systemd 257+). Every name it renders is
+// in TransientPropertyMinimums, which the tests pin per systemd version.
+func TransientDirectives(p Profile, c Caps) ([]string, error) {
+	return render(p, c, true)
+}
+
+func render(p Profile, c Caps, transient bool) ([]string, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
@@ -177,7 +197,7 @@ func Directives(p Profile, c Caps) ([]string, error) {
 	if c.SystemdVersion >= 257 {
 		list = append(list,
 			directive{line: "PrivatePIDs=yes", min: 257},
-			directive{line: "ProtectControlGroups=strict", min: 257},
+			directive{line: "ProtectControlGroups=strict", min: 257, transient: "ProtectControlGroupsEx=strict"},
 		)
 	} else {
 		list = append(list, directive{line: "ProtectControlGroups=yes"})
@@ -190,10 +210,14 @@ func Directives(p Profile, c Caps) ([]string, error) {
 		if d.bpf && !c.bpfEnforced() {
 			continue
 		}
-		if err := checkLine(d.line); err != nil {
+		line := d.line
+		if transient && d.transient != "" {
+			line = d.transient
+		}
+		if err := checkLine(line); err != nil {
 			return nil, err
 		}
-		out = append(out, d.line)
+		out = append(out, line)
 	}
 	return out, nil
 }

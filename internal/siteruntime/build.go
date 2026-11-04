@@ -172,7 +172,9 @@ func BuildRunArgs(p BuildParams) ([]string, error) {
 	if err := sitesandbox.Permit(profile, p.Caps); err != nil {
 		return nil, err
 	}
-	sandbox, err := sitesandbox.Directives(profile, p.Caps)
+	// A transient unit: the systemd-run form of the sandbox (systemd 257's
+	// systemd-run refuses ProtectControlGroups=strict).
+	sandbox, err := sitesandbox.TransientDirectives(profile, p.Caps)
 	if err != nil {
 		return nil, err
 	}

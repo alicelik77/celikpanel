@@ -55,6 +55,20 @@ Python apps and uploaded programs. Uploaded programs are described in
 **Additions on systemd 257 and later:** `PrivatePIDs=yes` (the program is
 PID 1 of its own namespace) and `ProtectControlGroups=strict`.
 
+**Transient units** (the Python build `celikrtbuild-<id>` and a service
+app's install `celiksvcinst-<id>`, started with `systemd-run --property`)
+get the same settings, but in the form that systemd-run parses
+(`sitesandbox.TransientDirectives`). systemd 257's systemd-run reads
+`ProtectControlGroups=` only as a boolean and refuses `strict`, while a unit
+file accepts it. So a transient unit gets `ProtectControlGroupsEx=strict`,
+which has the same effect. In alpha.119 lab round 2, every Python build
+failed with "Failed to parse ProtectControlGroups: strict". Every property
+name passed to systemd-run is listed in
+`sitesandbox.TransientPropertyMinimums`, with the oldest systemd whose
+systemd-run parses it, and tests check every list against systemd 249, 252,
+255, 256, 257, 258 and 262. The rendered lists were run with systemd-run
+on systemd 257 (Debian 13) and 262 (Arch).
+
 ## 1a. How the app folder gets into the sandbox
 
 systemd resolves the paths of a unit as root, on the host, and follows
