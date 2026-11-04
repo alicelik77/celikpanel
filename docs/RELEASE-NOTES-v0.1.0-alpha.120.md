@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.120.tr.md)
 
+> **Published** on 2026-11-04 (UTC): release commit `bb3aa249d`, GitHub pre-release at 09:54:22Z, download portal at about 10:00Z (public check 27/27).
+
 A small release with the Components fixes the owner asked for after updating
 Boston and Frankfurt to alpha.119. **Only the owner updates installed panels,
 from the panel's own update screen.**
