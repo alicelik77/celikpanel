@@ -213,6 +213,11 @@ type SystemUpdateOperationContextValue = {
     // the server's readiness again; Start stays closed until the notice is
     // closed (the lock above is unchanged). null otherwise.
     stopped?: SystemUpdateStopped | null;
+    // Additive (alpha.121, Frankfurt 4 Nov): closes the open notice of this
+    // exact stopped request (the browser's record only; nothing starts on
+    // the server), so the update card's Start can close it and start in one
+    // press. true when the notice was closed.
+    acknowledgeStopped?: (requestID: string) => Promise<boolean>;
 };
 
 export type SystemUpdateStopped = {
@@ -2031,6 +2036,11 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
         if (!stored) return;
         await acknowledgeTerminal(stored);
     };
+    const acknowledgeStopped = useCallback(async (requestID: string): Promise<boolean> => {
+        const stored = terminalRecordRef.current;
+        if (!stored || stored.outcome !== 'failed' || stored.marker.request_id !== requestID) return false;
+        return acknowledgeTerminal(stored);
+    }, [acknowledgeTerminal]);
     useLayoutEffect(() => {
         if (!blocking) return;
         const ready = focusSystemUpdateDialog(dialogRef.current, applicationRef.current);
@@ -2306,6 +2316,7 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
             steps: stepsView,
             updated,
             stopped,
+            acknowledgeStopped,
         }}>
             <div ref={applicationRef} className="contents" aria-hidden={blocking ? true : undefined}>
                 {children}

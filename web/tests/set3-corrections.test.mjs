@@ -191,7 +191,7 @@ test('the update card says before Start that the offered version was already tri
   // (alpha.103: Start also waits for the check made on opening and for the
   // stopped update's own notice to be closed; neither is the earlier attempt.)
   const start = card.slice(card.indexOf('id="panel-update-start-button"'));
-  assert.match(start, /disabled=\{starting \|\| readinessChecking \|\| openChecking \|\| stopped !== null \|\| readiness\?\.ready !== true\}/);
+  assert.match(start, /disabled=\{starting \|\| readinessChecking \|\| openChecking \|\| \(stopped !== null && !closableStop\) \|\| readiness\?\.ready !== true\}/);
   assert.doesNotMatch(start.slice(0, 400), /previousAttempt/);
   for (const language of ['en', 'tr']) {
     const value = (key) => valueOf(server[language], key);

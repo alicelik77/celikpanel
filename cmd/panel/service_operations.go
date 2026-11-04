@@ -323,13 +323,52 @@ func writeAcceptedServiceOperation(w http.ResponseWriter, op serviceOperation) {
 }
 
 func writeServiceOperationBusy(w http.ResponseWriter) {
-	writeCodedError(
-		w,
-		http.StatusConflict,
-		errCodeServiceOperationBusy,
-		"another package operation is already in progress",
-		"/api/v1/service/operation",
-	)
+	writeServiceOperationBusyReason(w, "")
+}
+
+// Right after an update the first one-click install said "another package
+// operation is already in progress" while no operation was listed (owner,
+// alpha.120): the holder was the start-up work the Agent and the Panel run
+// after an update or restart. A busy refusal whose holder is such work says
+// so (reason agent_startup): nobody needs to act, it ends by itself within a
+// minute or two, and the same press works then. Nothing is retried for the
+// owner.
+// Guncellemeden sonraki baslangic isi mesgul ettiyse ret bunu soyler.
+const (
+	serviceOperationBusyReasonStartup = "agent_startup"
+	panelStartupBusyWindow            = 10 * time.Minute
+)
+
+// panelProcessStartedAt is when this Panel process started.
+var panelProcessStartedAt = time.Now()
+
+// serviceOperationBusyReason: agent_startup when the active Agent job that
+// refused the change is start-up work: this Panel process started at most
+// panelStartupBusyWindow ago and the job did not start before it (a job
+// older than this start is something else, said as before). "" otherwise.
+func serviceOperationBusyReason(job *agentMutationJob, started, now time.Time) string {
+	if job == nil || now.Sub(started) > panelStartupBusyWindow {
+		return ""
+	}
+	if !job.StartedAt.IsZero() && job.StartedAt.Before(started.Add(-2*time.Minute)) {
+		return ""
+	}
+	return serviceOperationBusyReasonStartup
+}
+
+func writeServiceOperationBusyReason(w http.ResponseWriter, reason string) {
+	message := "another package operation is already in progress"
+	if reason == serviceOperationBusyReasonStartup {
+		message = "the server is finishing its start-up work after an update or restart; this ends by itself in a minute or two"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{
+		Error:  message,
+		Code:   errCodeServiceOperationBusy,
+		Action: "/api/v1/service/operation",
+		Reason: reason,
+	})
 }
 
 func writeServiceOperationRequestConflict(w http.ResponseWriter) {
@@ -385,7 +424,11 @@ func (p *Panel) beginServiceMutation(w http.ResponseWriter, r *http.Request) (fu
 	}
 	if agentJob != nil && agentMutationActive(agentJob.Status) {
 		release()
-		writeServiceOperationBusy(w)
+		reason := serviceOperationBusyReason(agentJob, panelProcessStartedAt, time.Now())
+		if reason != "" {
+			log.Printf("[409] service mutation refused: start-up work %s holds the server", hostMutationBusyHolderName(agentJob))
+		}
+		writeServiceOperationBusyReason(w, reason)
 		return nil, true
 	}
 	return release, false

@@ -30,8 +30,10 @@ import (
 // sunucuda yine denetlenir.
 
 const (
-	serviceInstallPreviewPath  = "/api/v1/service/install-preview"
-	serviceInstallPreviewBound = 30 * time.Second
+	serviceInstallPreviewPath = "/api/v1/service/install-preview"
+	// alpha.121: a first simulation, at most one refresh of a managed
+	// repository's lists and a second simulation (the Agent bounds them).
+	serviceInstallPreviewBound = 110 * time.Second
 	maxInstallPreviewSteps     = 8
 )
 
@@ -51,6 +53,66 @@ type serviceInstallPreviewAnswer struct {
 	// replaces. Absent when os-release cannot be read. Additive.
 	// Sunucunun dağıtımı; onay, kimin sürümünün değiştirileceğini adıyla söyler.
 	Distribution string `json:"distribution,omitempty"`
+	// Reason (alpha.121, D-024): why the read said "unknown" (or why the
+	// package manager could not answer), as a stable code, the package names
+	// and the managed repository it concerns, and one short sentence built
+	// from them, never the package manager's own text. Additive.
+	// Okumanın neden "bilinmiyor" dediği: kod, paket adları, depo.
+	ReasonCode     string   `json:"reason_code,omitempty"`
+	ReasonPackages []string `json:"reason_packages,omitempty"`
+	ReasonRepo     string   `json:"reason_repo,omitempty"`
+	Reason         string   `json:"reason,omitempty"`
+	// ListsRefreshed names the repository whose package lists the check
+	// refreshed once before answering. Additive.
+	ListsRefreshed string `json:"lists_refreshed,omitempty"`
+}
+
+// installPreviewReasonCodes are the reasons a screen may be told.
+var installPreviewReasonCodes = map[string]string{
+	"unmet_dependencies":   "unmet dependencies",
+	"package_not_found":    "not offered by the package lists",
+	"lists_refresh_failed": "the repository's package lists could not be refreshed",
+	"package_manager_busy": "another program holds the package manager",
+	"timed_out":            "the package manager did not answer in time",
+	"invalid_request":      "the request does not name an installable version",
+	"agent_unreachable":    "the server agent did not answer",
+	"other":                "the package manager reported an error",
+}
+
+// installPreviewReason sanitizes the Agent's reason: a known code only,
+// valid package names (at most 8) and a catalogue repository id.
+func installPreviewReason(resp transport.ServiceInstallPreviewResponse) (code string, packages []string, repo, sentence string) {
+	code = resp.ErrorCode
+	if _, ok := installPreviewReasonCodes[code]; !ok {
+		code = "other"
+	}
+	packages = []string{}
+	for _, name := range resp.ErrorPackages {
+		if len(packages) < 8 && installPreviewPackagePattern.MatchString(name) && !strings.Contains(name, ":") {
+			packages = append(packages, name)
+		}
+	}
+	if resp.ErrorRepo != "" && repoCatalogued(resp.ErrorRepo) {
+		repo = resp.ErrorRepo
+	}
+	sentence = installPreviewReasonCodes[code]
+	if len(packages) > 0 {
+		sentence += ": " + strings.Join(packages, ", ")
+	}
+	if repo != "" && (code == "package_not_found" || code == "lists_refresh_failed") {
+		sentence += " (" + repo + ")"
+	}
+	return code, packages, repo, sentence
+}
+
+// repoCatalogued: id is a managed repository of the catalogue.
+func repoCatalogued(id string) bool {
+	for i := range core.ManagedServices {
+		if repo := core.ManagedServices[i].Repo; repo != nil && repo.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // serverDistributionID is this server's os-release ID, or "".
@@ -135,8 +197,21 @@ func (p *Panel) handleServiceInstallPreview(w http.ResponseWriter, r *http.Reque
 	resp, err := installPackagePreview(p, ctx, transport.ServiceInstallPreviewRequest{Steps: steps})
 	if err != nil {
 		log.Printf("install preview: %v", err)
+		answer.ReasonCode, answer.Reason = "agent_unreachable", installPreviewReasonCodes["agent_unreachable"]
+		if ctx.Err() != nil {
+			answer.ReasonCode, answer.Reason = "timed_out", installPreviewReasonCodes["timed_out"]
+		}
+		answer.ReasonPackages = []string{}
 		_ = json.NewEncoder(w).Encode(answer)
 		return
+	}
+	if repo := resp.ListsRefreshed; repo != "" {
+		for _, id := range strings.Split(repo, ",") {
+			if !repoCatalogued(id) {
+				repo = ""
+			}
+		}
+		answer.ListsRefreshed = repo
 	}
 	switch resp.State {
 	case "known":
@@ -153,6 +228,7 @@ func (p *Panel) handleServiceInstallPreview(w http.ResponseWriter, r *http.Reque
 		if resp.Error != "" {
 			log.Printf("install preview: %s", resp.Error)
 		}
+		answer.ReasonCode, answer.ReasonPackages, answer.ReasonRepo, answer.Reason = installPreviewReason(resp)
 	}
 	// A refusal stands whatever the simulation said: it is the catalogue's
 	// answer for the chosen PHP version.

@@ -128,9 +128,9 @@ async function flushMicrotasks() {
     await Promise.resolve();
 }
 
-async function mountCheckedCard(nextReadiness, start, check = updateCheck) {
+async function mountCheckedCard(nextReadiness, start, check = updateCheck, operation = {}) {
     globalThis.__nextPanelReadiness = nextReadiness;
-    globalThis.__panelUpdateOperation = { active: false, start };
+    globalThis.__panelUpdateOperation = { active: false, start, ...operation };
     globalThis.fetch = async (input) => {
         const path = String(input);
         if (path === '/api/v1/panel/version') {
@@ -479,6 +479,63 @@ test('an earlier stop because the package manager was busy is named calmly, and 
         if (renderer) act(() => renderer.unmount());
         globalThis.fetch = originalFetch;
         delete globalThis.__panelUpdateAttemptSummary;
+        delete globalThis.__nextPanelReadiness;
+        delete globalThis.__panelUpdateOperation;
+    }
+});
+
+// alpha.121 (Frankfurt, 4 Nov): after an update stopped on a busy package
+// manager, the owner no longer closes the notice first. The one explicit
+// press runs the read-only check again, then closes that notice, then starts.
+// Nothing starts by itself; a verified return keeps its own notice to close.
+test('Start closes a stopped update’s notice and starts in one press, after the read-only check', async () => {
+    const originalFetch = globalThis.fetch;
+    const order = [];
+    let ready = true;
+    let renderer;
+    const stopped = { requestID: 'f'.repeat(32), version: updateCheck.target.version, commit: updateCheck.target.commit, at: Date.now(), packageManagerBusy: true, rolledBack: false };
+    try {
+        renderer = await mountCheckedCard(
+            async () => { order.push('check'); return ready ? { ready: true } : { ready: false, code: 'HOST_MUTATION_BUSY', reason: 'package_manager_active' }; },
+            async () => { order.push('start'); return { kind: 'accepted' }; },
+            updateCheck,
+        );
+        // The stopped attempt's notice is open (the update lock is held).
+        globalThis.__panelUpdateOperation = {
+            ...globalThis.__panelUpdateOperation, active: true, stopped, acknowledgeStopped: async (id) => { order.push('close:' + id); return true; },
+        };
+        await act(async () => { renderer.update(React.createElement(PanelUpdateCard)); await flushMicrotasks(); });
+        assert.match(textOf(renderer.root), /panelUpdate\.stoppedNoticeStart/);
+        assert.doesNotMatch(textOf(renderer.root), /panelUpdate\.stoppedNoticeOpen/);
+        const startButton = renderer.root.findByProps({ id: 'panel-update-start-button' });
+        assert.equal(startButton.props.disabled, false);
+        // Nothing was closed or started by reading.
+        assert.ok(!order.some((step) => step === 'start' || step.startsWith('close')), order.join());
+        order.length = 0;
+        await act(async () => { startButton.props.onClick(); await flushMicrotasks(); await flushMicrotasks(); });
+        assert.deepEqual(order, ['check', 'close:' + 'f'.repeat(32), 'start']);
+        // The server is busy at the press: the notice stays open, nothing starts.
+        order.length = 0;
+        ready = false;
+        await act(async () => { renderer.root.findByProps({ id: 'panel-update-start-button' }).props.onClick(); await flushMicrotasks(); });
+        assert.deepEqual(order, ['check']);
+    } finally {
+        if (renderer) act(() => renderer.unmount());
+        renderer = null;
+        globalThis.fetch = originalFetch;
+        delete globalThis.__nextPanelReadiness;
+        delete globalThis.__panelUpdateOperation;
+    }
+    // A verified return to the previous version keeps its notice: Start waits for it.
+    try {
+        renderer = await mountCheckedCard(async () => ({ ready: true }), async () => ({ kind: 'accepted' }), updateCheck);
+        globalThis.__panelUpdateOperation = { ...globalThis.__panelUpdateOperation, active: true, stopped: { ...stopped, rolledBack: true }, acknowledgeStopped: async () => true };
+        await act(async () => { renderer.update(React.createElement(PanelUpdateCard)); await flushMicrotasks(); });
+        assert.equal(renderer.root.findByProps({ id: 'panel-update-start-button' }).props.disabled, true);
+        assert.match(textOf(renderer.root), /panelUpdate\.stoppedNoticeOpen/);
+    } finally {
+        if (renderer) act(() => renderer.unmount());
+        globalThis.fetch = originalFetch;
         delete globalThis.__nextPanelReadiness;
         delete globalThis.__panelUpdateOperation;
     }

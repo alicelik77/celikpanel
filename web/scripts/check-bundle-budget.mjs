@@ -242,6 +242,10 @@ const screenPartBudgets = {
   // Python apps (their states, the requirements refusals, the build step and
   // the source-build offer): 43.57 / 11.31 KiB, again with 25% headroom.
   runtimeApps: kib(55, 14.25),
+  // v0.1.0-alpha.121: this server's own host name in public DNS (hostDNS.),
+  // a new part because "dashboard" had no headroom left. Set with at least
+  // 25% headroom from its Turkish file: 2.24 / 0.90 KiB.
+  hostName: kib(3, 1.25),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

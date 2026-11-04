@@ -306,9 +306,106 @@ func runAptSimulation(ctx context.Context, run packageSimulationRunner, aptGet s
 	defer cancel()
 	out, err := run(simCtx, packageCommandEnv(), aptGet, aptSimulateArgs(args)...)
 	if err != nil {
-		return aptSimulation{}, fmt.Errorf("APT simulation failed: %v: %s", err, firstLine(lastLines(string(out), 3)))
+		code, packages := classifyAptFailure(string(out), simCtx.Err() != nil)
+		return aptSimulation{}, &aptSimulationError{
+			message:  fmt.Sprintf("APT simulation failed: %v: %s", err, firstLine(lastLines(string(out), 3))),
+			Code:     code,
+			Packages: packages,
+		}
 	}
 	return parseAptSimulation(out), nil
+}
+
+// Why a simulation failed, as a stable code the screen can say (alpha.121,
+// D-024: the install preview said "could not be checked" with no reason).
+// Only these codes and package names leave the Agent, never apt's text.
+// Benzetimin neden başarısız olduğu, kararlı bir kodla.
+const (
+	aptFailureUnmetDependencies = "unmet_dependencies"
+	aptFailurePackageNotFound   = "package_not_found"
+	aptFailurePackageManager    = "package_manager_busy"
+	aptFailureTimedOut          = "timed_out"
+	aptFailureOther             = "other"
+	aptFailurePackageCap        = 8
+)
+
+// aptSimulationError is a failed simulation with its classified cause; its
+// text is the one the Agent always gave.
+type aptSimulationError struct {
+	message  string
+	Code     string
+	Packages []string
+}
+
+func (e *aptSimulationError) Error() string { return e.message }
+
+// classifyAptFailure reads apt's output: the packages whose dependencies it
+// could not meet, the packages (or versions) it could not find, or the lock
+// another program holds. The packages are valid package names only, at most
+// aptFailurePackageCap, in apt's order.
+func classifyAptFailure(out string, timedOut bool) (string, []string) {
+	var unmet, missing []string
+	seen := map[string]bool{}
+	add := func(list *[]string, name string) {
+		name = strings.Trim(strings.TrimSpace(name), "'\"‘’")
+		if colon := strings.Index(name, ":"); colon > 0 {
+			name = name[:colon]
+		}
+		if !validPackageName(name) || seen[name] || len(*list) >= aptFailurePackageCap {
+			return
+		}
+		seen[name] = true
+		*list = append(*list, name)
+	}
+	busy := false
+	inUnmet := false
+	for _, raw := range strings.Split(out, "\n") {
+		line := strings.TrimSpace(raw)
+		switch {
+		case strings.HasPrefix(line, "The following packages have unmet dependencies"):
+			inUnmet = true
+			continue
+		case strings.HasPrefix(line, "E: Unable to locate package "):
+			add(&missing, strings.TrimPrefix(line, "E: Unable to locate package "))
+		case strings.HasPrefix(line, "E: Package '") && strings.Contains(line, "has no installation candidate"):
+			add(&missing, strings.SplitN(strings.TrimPrefix(line, "E: Package '"), "'", 2)[0])
+		case strings.HasPrefix(line, "E: Version '") && strings.Contains(line, "' was not found"):
+			if _, rest, ok := strings.Cut(line, "' for '"); ok {
+				add(&missing, strings.SplitN(rest, "'", 2)[0])
+			}
+		case strings.Contains(line, "Could not get lock") || strings.Contains(line, "Unable to acquire the dpkg frontend lock") || strings.Contains(line, "Unable to lock directory"):
+			busy = true
+		}
+		if !inUnmet {
+			continue
+		}
+		if line == "" || strings.HasPrefix(line, "E:") {
+			inUnmet = false
+			continue
+		}
+		// " postgresql-18 : Depends: libpq5 (>= 17~~) but 16.15 is to be installed"
+		// "                 Depends: postgresql-common (>= 275~) but …"
+		for _, field := range []string{"PreDepends:", "Pre-Depends:", "Depends:", "Breaks:", "Conflicts:"} {
+			if _, rest, ok := strings.Cut(line, field); ok {
+				name := strings.Fields(strings.TrimSpace(rest))
+				if len(name) > 0 {
+					add(&unmet, name[0])
+				}
+				break
+			}
+		}
+	}
+	switch {
+	case timedOut:
+		return aptFailureTimedOut, nil
+	case busy:
+		return aptFailurePackageManager, nil
+	case len(missing) > 0:
+		return aptFailurePackageNotFound, missing
+	case len(unmet) > 0:
+		return aptFailureUnmetDependencies, unmet
+	}
+	return aptFailureOther, nil
 }
 
 func lastLines(text string, n int) string {

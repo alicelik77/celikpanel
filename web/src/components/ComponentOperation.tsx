@@ -1652,7 +1652,9 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 }
                 if (response.status === 409) {
                     const error = await readApiError(response);
-                    if (error.code === ERROR_CODE_OPERATION_BUSY) {
+                    // The server's own start-up work holds it (alpha.121): not
+                    // this request, so it is said, not recovered.
+                    if (error.code === ERROR_CODE_OPERATION_BUSY && error.reason !== 'agent_startup') {
                         return await recoverCurrentOperation(
                             request,
                             'busy',

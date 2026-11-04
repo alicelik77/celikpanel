@@ -65,6 +65,7 @@ import type { RemoteBackupScreenKey } from './screens/remoteBackup/en';
 import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
 import type { GuideScreenKey } from './screens/guide/en';
 import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
+import type { HostNameScreenKey } from './screens/hostName/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -358,6 +359,7 @@ export const en = {
     'err.HOST_MUTATION_BUSY.host_lock_busy': 'A change that did not finish is still holding this server, and it will not clear by waiting. Restarting the server releases the hold; if it comes back, this needs looking at.',
     'err.HOST_MUTATION_UNAVAILABLE': 'CelikPanel could not safely verify that the server is ready for changes. Refresh the page and try again.',
     'err.service_operation_busy': 'Another package operation is already in progress. Wait for it to finish.',
+    'err.service_operation_busy.agent_startup': 'The server is finishing its start-up work after the update or restart. Nothing needs to be done: this ends by itself in a minute or two. Then press the same button again.',
     'err.service_operation_request_conflict': 'This request identifier already belongs to a different package operation. Reload and try again.',
     'err.service_operation_runner_panicked': 'The package operation stopped unexpectedly. Its final machine state must be verified before another action.',
     'err.operation_state_persist_failed': 'The package operation state could not be saved. Verify the machine state before another action.',
@@ -574,5 +576,6 @@ export type ScreenKey =
     | RemoteBackupScreenKey
     | ServiceAppsScreenKey
     | GuideScreenKey
-    | RuntimeAppsScreenKey;
+    | RuntimeAppsScreenKey
+    | HostNameScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

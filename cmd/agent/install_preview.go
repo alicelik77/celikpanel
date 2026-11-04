@@ -467,13 +467,101 @@ type installPreviewOps struct {
 	vendorShared func(repo *core.ManagedRepo, selected string) []string
 	lock         func() bool
 	unlock       func()
+	// repoEnabled and refreshRepo (alpha.121): a managed repository this
+	// server has enabled, and one bounded, single-flight refresh of its
+	// package lists. nil: never refreshed.
+	repoEnabled func(id string) bool
+	refreshRepo func(ctx context.Context, id string) error
 }
 
-// serviceInstallPreviewWithOps answers one preview.
+// errCodeInstallPreviewListsRefreshFailed: refreshing a managed repository's
+// lists, to find a package it should offer, failed (alpha.121).
+const (
+	errCodeInstallPreviewInvalid            = "invalid_request"
+	errCodeInstallPreviewListsRefreshFailed = "lists_refresh_failed"
+)
+
+// serviceInstallPreviewWithOps answers one preview. A package that an
+// enabled managed repository should offer and the package manager cannot
+// find (Boston, 4 Nov: its lists had not been read yet) makes the preview
+// refresh that repository's lists once, as enabling it did, and simulate
+// again before it says why it could not check (alpha.121, D-024).
+// Etkin bir deponun sunması gereken paket bulunamazsa o deponun listeleri
+// bir kez tazelenir ve benzetim yeniden yapılır.
 func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceInstallPreviewRequest, resp *transport.ServiceInstallPreviewResponse, ops installPreviewOps) {
+	serviceInstallPreviewOnce(ctx, req, resp, ops)
+	if resp.ErrorCode != aptFailurePackageNotFound || ops.repoEnabled == nil || ops.refreshRepo == nil {
+		return
+	}
+	repos := previewManagedRepos(req, ops.repoEnabled)
+	if len(repos) == 0 {
+		return
+	}
+	refreshed := 0
+	for _, id := range repos {
+		err := ops.refreshRepo(ctx, id)
+		switch {
+		case err == nil:
+			refreshed++
+		case errors.Is(err, errRepoListsRecentlyRefreshed):
+			// Refreshed a moment ago: the answer stands; nothing is run again.
+		case errors.Is(err, errRepoListsBusy):
+			resp.State, resp.ErrorCode = "busy", ""
+			return
+		default:
+			resp.ErrorCode, resp.ErrorRepo = errCodeInstallPreviewListsRefreshFailed, id
+			resp.Error = "refresh the " + id + " package lists: " + err.Error()
+			return
+		}
+	}
+	if refreshed == 0 {
+		resp.ErrorRepo = repos[0]
+		return
+	}
+	*resp = emptyServiceInstallPreview()
+	serviceInstallPreviewOnce(ctx, req, resp, ops)
+	resp.ListsRefreshed = strings.Join(repos, ",")
+	if resp.ErrorCode == aptFailurePackageNotFound {
+		resp.ErrorRepo = repos[0]
+	}
+}
+
+// previewManagedRepos are the enabled managed repositories of the steps
+// (at most two), sorted.
+func previewManagedRepos(req *transport.ServiceInstallPreviewRequest, enabled func(string) bool) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, step := range req.Steps {
+		svc := core.GetManagedServiceByID(strings.TrimSpace(step.ID))
+		if svc == nil || svc.Repo == nil || seen[svc.Repo.ID] || !enabled(svc.Repo.ID) {
+			continue
+		}
+		seen[svc.Repo.ID] = true
+		out = append(out, svc.Repo.ID)
+	}
+	sort.Strings(out)
+	if len(out) > 2 {
+		out = out[:2]
+	}
+	return out
+}
+
+// previewFailure sets a failed preview's internal text and its code.
+func previewFailure(resp *transport.ServiceInstallPreviewResponse, err error) {
+	resp.Error = err.Error()
+	var sim *aptSimulationError
+	if errors.As(err, &sim) {
+		resp.ErrorCode = sim.Code
+		resp.ErrorPackages = append([]string{}, sim.Packages...)
+		return
+	}
+	resp.ErrorCode = aptFailureOther
+}
+
+func serviceInstallPreviewOnce(ctx context.Context, req *transport.ServiceInstallPreviewRequest, resp *transport.ServiceInstallPreviewResponse, ops installPreviewOps) {
 	resp.PackageFamily = ops.family
 	if len(req.Steps) == 0 || len(req.Steps) > 8 {
-		resp.Error = "a preview names one to eight components"
+		resp.Error, resp.ErrorCode = "a preview names one to eight components", errCodeInstallPreviewInvalid
 		return
 	}
 	if ops.family != "apt" && ops.family != "pacman" {
@@ -487,7 +575,7 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 	for _, step := range req.Steps {
 		svc := core.GetManagedServiceByID(strings.TrimSpace(step.ID))
 		if svc == nil {
-			resp.Error = "unknown service"
+			resp.Error, resp.ErrorCode = "unknown service", errCodeInstallPreviewInvalid
 			return
 		}
 		if refusal := genericDNSEngineMutationRefusal(svc); refusal != "" {
@@ -507,7 +595,7 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 		if step.Package == "" && ops.exactDefault != nil {
 			exact, err := ops.exactDefault(ctx, svc)
 			if err != nil {
-				resp.Error = err.Error()
+				previewFailure(resp, err)
 				return
 			}
 			if exact != "" {
@@ -517,11 +605,11 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 		if step.Package != "" {
 			match, err := validateRepoPackageSelection(svc, step.Package)
 			if err != nil {
-				resp.Error = err.Error()
+				resp.Error, resp.ErrorCode = err.Error(), errCodeInstallPreviewInvalid
 				return
 			}
 			if ops.family != "apt" {
-				resp.Error = "choosing a version needs a managed repository, which currently requires a verified APT package ecosystem"
+				resp.Error, resp.ErrorCode = "choosing a version needs a managed repository, which currently requires a verified APT package ecosystem", errCodeInstallPreviewInvalid
 				return
 			}
 			pkgs = []string{step.Package}
@@ -542,7 +630,7 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 		if version := strings.TrimSpace(step.PHPVersion); version != "" {
 			tool := phpToolForInstall(svc.ID)
 			if tool == "" || !phpVersionText.MatchString(version) {
-				resp.Error = "a PHP version is chosen only for phpMyAdmin and phpPgAdmin"
+				resp.Error, resp.ErrorCode = "a PHP version is chosen only for phpMyAdmin and phpPgAdmin", errCodeInstallPreviewInvalid
 				return
 			}
 			phpVersions = append(phpVersions, version)
@@ -576,7 +664,7 @@ func serviceInstallPreviewWithOps(ctx context.Context, req *transport.ServiceIns
 	sim, err := ops.simulate(ctx, requested)
 	ops.unlock()
 	if err != nil {
-		resp.Error = err.Error()
+		previewFailure(resp, err)
 		return
 	}
 	resp.State = "known"
@@ -644,7 +732,9 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 		resp.Error = "missing request"
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), serviceInstallPreviewBound)
+	// Bounded as a whole: a first simulation, at most one refresh of a
+	// managed repository's lists, and a second simulation.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*serviceInstallPreviewBound+repoListsRefreshBound)
 	defer cancel()
 	profile, err := detectHostPlatform()
 	if err != nil {
@@ -686,7 +776,16 @@ func (a *Agent) ServiceInstallPreviewV1(req *transport.ServiceInstallPreviewRequ
 			return exactDefaultPackage(ctx, svc, family, defaults)
 		}
 		ops.simulate = func(ctx context.Context, packages []string) (aptSimulation, error) {
-			return runAptSimulation(ctx, runPackageSimulationCommand, aptGet, aptInstallArgs(packages))
+			simCtx, cancel := context.WithTimeout(ctx, serviceInstallPreviewBound)
+			defer cancel()
+			return runAptSimulation(simCtx, runPackageSimulationCommand, aptGet, aptInstallArgs(packages))
+		}
+		ops.repoEnabled = func(id string) bool {
+			_, ok := enabledRepoLocations()[id]
+			return ok
+		}
+		ops.refreshRepo = func(ctx context.Context, id string) error {
+			return refreshManagedRepoLists(ctx, aptGet, id)
 		}
 	case "pacman":
 		pacman, err := executableForProfile(profile, family, "pacman")

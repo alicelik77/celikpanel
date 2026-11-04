@@ -4,6 +4,7 @@ import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
 import { DashboardUpdateNotice } from './PanelUpdateNotice';
 import { PendingUpdatesCard } from './PendingUpdatesCard';
+import { ServerHostnameNotice } from './ServerHostnameNotice';
 import { accountStart } from '../lib/startGuidance';
 import {
     Cpu, MemoryStick, HardDrive, Server, Globe, Database, Activity, Bell,
@@ -987,6 +988,11 @@ function AdminDashboard() {
             {/* Waiting operating-system updates (alpha.114): a compact read-only card.
                 Bekleyen işletim sistemi güncellemeleri: kısa, salt-okur kart. */}
             <PendingUpdatesCard />
+
+            {/* alpha.121: this server's own host name, when public DNS does not
+                answer for it. Read-only; nothing is shown otherwise.
+                Sunucunun adı genel DNS'te çözülmüyorsa söylenir. */}
+            <ServerHostnameNotice />
 
             {/* Health strip: only living numbers. Firewall state earned no
                 card (operator call, Jul 17): OFF is an alert with a button,

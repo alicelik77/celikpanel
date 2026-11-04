@@ -185,6 +185,8 @@ test('every dialogue in the product is the shared one', () => {
     // alpha.110: webmail's own address - add to the zone, set up, remove.
     'WebmailAddressCard.tsx': 3,
     'SecurityUpdatesCard.tsx': 1,
+    // alpha.121: adding this server's own address record after review.
+    'ServerHostnameNotice.tsx': 1,
     // alpha.108: install a major, change a port, move a database, a move's step.
     'PostgreSQLClusters.tsx': 4,
     // alpha.98: the firewall's confirmation moved with the box to FirewallPanel.tsx.
