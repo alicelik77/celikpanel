@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.118.md)
 
+> **Yayımlandı**, 4 Kasım 2026 (UTC): sürüm commit'i `70c61f9d7`, GitHub ön sürümü 00:29:10Z, indirme portalı yaklaşık 00:32Z (dış denetim 27/27). Güvenlik düzeltmesi laboratuvar 5. ve 6. turlarında yeniden denetlendi (`final-alpha118-run5`/`run6-20261104`): yerleştirilen bir bağ yönetici dosyalarını hiç göstermedi, geri yükleme ve deneme kopyaları klasör izinlerini koruyor, alpha.117'den güncelleme hiçbir şeyi yerinden oynatmadı.
+
 Sahibin 3 Kasım 2026'da verdiği kararlarla (D-044): gerçekten işleyen plan
 sınırları, uygulama kataloğu, WordPress araçları, zararlı yazılım taraması, uzak
 yedek ve ilk yapay zekâ ve otomasyon uygulamaları. **Kurulu panelleri yalnız
