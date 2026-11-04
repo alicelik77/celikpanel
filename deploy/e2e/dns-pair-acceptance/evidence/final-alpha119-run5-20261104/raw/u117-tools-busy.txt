@@ -1,0 +1,8 @@
+04:11:38
+    869       11:17 /usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal
+active None
+  dns_zone_sync site9.test succeeded commit/dns-zone-sync/v3/published/236bd6a30963f7213eb83daeca363477/site9.test/dns-zone-sync/v3:sha256:a8e2ee1a04cba5f77265a956bacb094c6ed71deeda0c1a396d98d08a5a2cfc7a 2026-11-04T04:09:08.79428016Z
+  dkim_signing_configure opendkim succeeded completed 2026-11-04T04:09:14.427111479Z
+  dns_zone_sync site9.test succeeded commit/dns-zone-sync/v3/published/f111f3f73d0bdeeee8ac42f64172f29c/site9.test/dns-zone-sync/v3:sha256:0c1a56609e871f09492a96be13c8a3a9ee596ff09445e9a3e8469f5109e61e52 2026-11-04T04:09:19.481426472Z
+  mail_tls_sync mail-tls succeeded commit/mail-tls-sync/v1/published/79e1e1298a0344ef58a6bd00f0354098/mail-tls-sync/v1:sha256:0db500ac7a5ab1d941374a97c3fa07b312d6322426e4a35cf110823d0d5736e4 2026-11-04T04:11:27.148200212Z
+  mail_filter_wire startup succeeded completed 2026-11-04T04:11:32.435590703Z

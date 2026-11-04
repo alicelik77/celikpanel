@@ -1,0 +1,71 @@
+== data on 117 04:06:39 (d117)
+bin
+dns-owner-tools
+runtimes
+web
+plan 1
+reseller plan 1
+200 {"id": 3, "rights": "plan", "success": true}
+200 {"id": 4, "rights": "plan", "success": true}
+site9.test id=2
+200 {"success": true}
+200 {"id": 1, "success": true}
+200 {"id": 1, "name": "site9_test_app9", "status": "success", "type": "mysql", "user": "site9_test_app9_user"}
+db user site9_test_app9_user
+200 {"backup": {"created_at": "2026-11-04T04:06:47.759536671Z", "name": "full-20261104T040647.803907524Z-3783ceef0d115a5f.cpbak", "origin": "manual", "restorable": true, "size": 2870, "type": "full"}, "success": true}
+-- baseline
+get site9.test/hello.txt http 200 http://192.0.3.190/hello.txt title:  | hello-from-117
+MAIL (250, b'2.1.0 Ok')
+RCPT box@site9.test (250, b'2.1.5 Ok')
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/R9.sh: line 28: dbt: command not found
+== update through the panel's own update path 04:06:54
+check 200 {  "available": true,  "current_commit": "b22348ff86f806c7132cc067221ce74c6fd09cdc",  "current_version": "v0.1.0-alpha.117",  "supported": true,  "target": {   "arch": "amd64",   "archive_sha256": "a863803ae9b24af65a3e1d83062f062bfe5a545715a758b1d220099d823c4eaf",   "archive_size": "71026799",   "commit": "1b4c32ae2a5c3a7f05f639ed0e347faa43be533e",   "os": "linux",   "published_at": "2026-11-04T03:59:36Z",   "sequence": "119",   "version": "v0.1.0-alpha.119"  } }
+409 {"code": "PANEL_UPDATE_BUSY", "error": "another server operation is active"}
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-04T04:07:24Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "stat
+  10s 200 running None
+  51s 
+  91s 200 running verifying
+  102s 200 succeeded None
+== after update 04:09:07
+## 04:09:07 PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+bin
+dns-owner-tools
+runtimes
+web
+migrations >=56: [56, 57, 58, 59, 60, 61, 62, 63]
+usage_notices []
+rights_notices [(1, 'traffic_measured', 2, 'traffic', 'Traffic is measured from this release; every traffic limit starts as unlimited.', '2026-11-04 04:08:38', None)]
+subscriptions bandwidth_quota_mb: [(2, 0), (3, 0)]
+## services
+active active active active active active active inactive 
+## nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+## panics: 0
+## env migration (118) at agent start
+ls: cannot access '/etc/celikpanel-svcapps': No such file or directory
+-- No entries --
+get site9.test/hello.txt http 200 http://192.0.3.190/hello.txt title:  | hello-from-117
+-- mail
+MAIL (250, b'2.1.0 Ok')
+RCPT box@site9.test (250, b'2.1.5 Ok')
+DATA ok 2079
+hdr.subject: lab quota probe 2000
+-- database
+/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a118/lab/R9.sh: line 49: dbt: command not found
+-- backup restore
+200 {"safety_backup": {"created_at": "2026-11-04T04:09:23.133065212Z", "name": "full-20261104T040923.199890819Z-9034a675c88ab080.cpbak", "origin": "pre_restore", "restorable": true, "size": 2823, "type": "full"}, "success": true}
+get site9.test/hello.txt http 200 http://192.0.3.190/hello.txt title:  | hello-from-117
+-- plans and users
+  plan 1 Plan117 disk 2000 bw 0
+  reseller-plans 200 {  "builtin": [   {    "key": "unlimited",    "kind": "reseller",    "name": "Unlimited reseller"   }  ],  "plans": [   {    "disk_quota_mb": 5000,    "id": 1,    "max_customers": 5,    "max_databases": 5,    "max_domains": 10,    "max_email_accounts": 5,    "name": "RPlan117",    "resellers": 1,   
+  user res9 reseller {"plan_name": "RPlan117", "state": "plan"}
+  user cust9 customer {"plan_name": "Plan117", "state": "plan"}
+  user owner admin null
+  cust9 limits: traffic_limit_bytes 0 disk_limit_bytes 2097152000 domains_limit 5
+-- notices
+200 {"notices": []}
+200 {"notices": [{"created_at": "2026-11-04 04:08:38", "detail": "Traffic is measured from this release; every traffic limit starts as unlimited.", "id": 1, "kind": "traffic_measured", "subject": "traffic", "user_id": 2, "username": "owner"}]}
+-- guide
+/help 200
+200 {"tour_state": "pending", "tour_version": 0}
+== R9 done 04:09:25

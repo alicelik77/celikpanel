@@ -1,0 +1,1 @@
+nft list tables; nft list table inet celikpanel_egress 2>&1 | head -40; ls -la /usr/lib/celikpanel-sandbox/ 2>&1; systemctl list-units 'celikpanel-sandbox*' 'celikpanel-egress*' --all --no-legend --plain 2>&1 | head
