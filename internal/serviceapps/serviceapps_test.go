@@ -495,3 +495,29 @@ func TestInstallUnitPropertiesBlockSMTPAndBindNothing(t *testing.T) {
 		t.Fatal("root accepted")
 	}
 }
+
+// alpha.119 lab round 2: systemd 257's systemd-run refused
+// "ProtectControlGroups=strict". The install unit's properties (and the two
+// the Agent adds) parse on every pinned systemd.
+func TestInstallPropertiesParseInSystemdRunOnEverySystemd(t *testing.T) {
+	for _, id := range []string{"n8n", "open-webui"} {
+		app, ok := Lookup(id)
+		if !ok {
+			t.Fatalf("%s missing", id)
+		}
+		layout, _ := LayoutFor(3, 7, id)
+		for _, version := range []int{249, 252, 255, 256, 257, 258, 262} {
+			for _, caps := range []sitesandbox.Caps{{SystemdVersion: version, BPFFramework: true, CgroupV2: true, NFTSocketCgroup: true}, {SystemdVersion: version, CgroupV2: true}} {
+				props, err := InstallUnitProperties(12, layout, "flows_example_com", "flows_example_com", app.Defaults, app.Defaults.InstallMemoryMB, caps)
+				if err != nil {
+					t.Fatalf("%s %d: %v", id, version, err)
+				}
+				for _, line := range append(props, "RemainAfterExit=yes", "RuntimeMaxSec=7200") {
+					if why := sitesandbox.TransientPropertyRefusal(line, version); why != "" {
+						t.Errorf("%s, systemd %d: --property=%s: %s", id, version, line, why)
+					}
+				}
+			}
+		}
+	}
+}

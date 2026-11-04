@@ -37,6 +37,17 @@ ortamı işi de Python uygulamaları ve yüklenen programlar için bunu kullanı
 
 **systemd 257 ve sonrasında:** program kendi ad alanında 1 numaralı süreçtir (`PrivatePIDs`) ve cgroup ağacı sıkı biçimde salt okunurdur.
 
+**Geçici birimler** (`systemd-run --property` ile başlatılan Python kurulumu
+`celikrtbuild-<no>` ve hizmet uygulaması kurulumu `celiksvcinst-<no>`) aynı
+ayarları alır, ama systemd-run'ın okuyabildiği biçimde. systemd 257'nin
+systemd-run'ı `ProtectControlGroups=strict` değerini kabul etmez; birim dosyası
+eder. Bu yüzden geçici birimde aynı etkiyi veren `ProtectControlGroupsEx=strict`
+kullanılır. alpha.119 deneme turu 2'de her Python kurulumu "Failed to parse
+ProtectControlGroups: strict" hatasıyla başlayamamıştı. systemd-run'a verilen
+her ad, onu okuyan en eski systemd ile birlikte
+`sitesandbox.TransientPropertyMinimums` içinde yazılıdır. Testler her listeyi
+systemd 249, 252, 255, 256, 257, 258 ve 262 için denetler.
+
 ## 1a. App klasörü korumaya nasıl girer
 
 systemd bir birimin yollarını root olarak, ana sistemde çözer ve bağlantıları izler:

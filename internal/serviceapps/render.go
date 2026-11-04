@@ -175,7 +175,9 @@ func SandboxDirectives(profile sitesandbox.Profile, caps sitesandbox.Caps) ([]st
 // can hold it, the SMTP block (npm and pip run third-party install scripts).
 func InstallUnitProperties(installID int, layout Layout, user, group string, limits Resources, memoryMB int, caps sitesandbox.Caps) ([]string, error) {
 	profile := SandboxProfile(InstallUnitName(installID)+".service", layout, user, group, limits, memoryMB, 0, 0, caps)
-	directives, err := SandboxDirectives(profile, caps)
+	// systemd-run's form of the sandbox: systemd 257's systemd-run refuses
+	// ProtectControlGroups=strict (alpha.119 lab round 2).
+	directives, err := sitesandbox.TransientDirectives(profile, caps)
 	if err != nil {
 		return nil, err
 	}
