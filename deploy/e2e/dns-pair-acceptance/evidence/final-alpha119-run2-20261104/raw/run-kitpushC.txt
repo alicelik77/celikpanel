@@ -1,0 +1,14 @@
+tar: deploy/e2e/sandbox-escape/prt.sh: time stamp 2026-11-04 02:27:50 is 0.004492362 s in the future
+/root/kit/deploy/e2e/sandbox-escape:
+README.md
+bin
+panel-runtime.sh
+probes
+prt.sh
+render
+run.sh
+
+/root/kit/deploy/e2e/sandbox-escape/bin:
+goprobe
+render
+sandbox-helper

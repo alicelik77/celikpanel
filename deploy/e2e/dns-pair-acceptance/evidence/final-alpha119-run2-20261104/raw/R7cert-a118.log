@@ -1,0 +1,30 @@
+== guide chunks 02:29:30
+assets
+favicon.svg
+index.html
+recovery-offline.html
+recovery-worker.js
+admin.en chunk: assets/admin.en-s0FuGp9L.js http 200 text/javascript; charset=utf-8 11505
+customer.en chunk: assets/customer.en-5CmQ--GL.js http 200 text/javascript; charset=utf-8 6833
+reseller.en chunk: assets/reseller.en-B6dbfoQo.js http 200 text/javascript; charset=utf-8 7247
+chapter getting-started: assets/getting-started.en-CGDk1s1k.js http 200 text/javascript; charset=utf-8 3615
+chapter server-setup: assets/server-setup.en-oZPYvTAO.js http 200 text/javascript; charset=utf-8 3076
+chapter team-members: assets/team-members.en-s5tdnOAE.js http 200 text/javascript; charset=utf-8 2684
+guide js chunks: 6  chapter chunks: 10
+== portal guide pages in the built portal tree (source + manifest check) 02:29:30
+  pages: 53 (en 26, tr 26)
+tr/vpn.html: OK
+tr/without-panel.html: OK
+  manifest lines 53
+grep: /var/tmp/a118r1/repo-v0.1.0-alpha.119/deploy/build-download-portal.sh: No such file or directory
+== certificates 02:29:30
+200 {"expires_at": "2031-11-04T02:29:32Z", "status": "success"}
+  prog119.test certificate: True
+200 {"expires_at": "2031-11-04T02:29:35Z", "status": "success"}
+  py119.test certificate: True
+200 {"expires_at": "2031-11-04T02:29:37Z", "status": "success"}
+  flask119.test certificate: True
+200 {"expires_at": "2031-11-04T02:29:40Z", "status": "success"}
+  fast119.test certificate: True
+200 {"expires_at": "2031-11-04T02:29:43Z", "status": "success"}
+  n8n119.test certificate: True

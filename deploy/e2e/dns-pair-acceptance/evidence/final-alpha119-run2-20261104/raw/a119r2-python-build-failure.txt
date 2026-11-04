@@ -1,0 +1,3 @@
+systemd 257 (257.13-1~deb13u1)
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+## systemd-run property parse check (no unit started: --dry-run is not available, so this only parses via show)
