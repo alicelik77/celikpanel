@@ -41,6 +41,9 @@ panels, from the panel's own update screen.**
   systemd itself still only lets the root user use.
 - BIND is recognised on Debian 12 and Ubuntu 22.04, where its service file
   is still found under `/lib/systemd/system`.
+- BIND also starts on Ubuntu 22.04, whose own BIND service file runs the
+  name server in the background (the older way); only that exact file is
+  accepted there.
 - PowerDNS is offered only on the systems it has been tested on: Debian 13,
   Ubuntu 24.04 and Arch Linux, as the main and as the backup DNS server.
   Elsewhere setup, joining by code and the DNS page say so and use BIND;

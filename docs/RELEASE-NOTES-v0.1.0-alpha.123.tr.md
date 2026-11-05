@@ -43,6 +43,9 @@ günceller.**
   systemd'nin kendisi o soketi yine yalnız root kullanıcısına açar.
 - BIND, hizmet dosyasının hâlâ `/lib/systemd/system` altında bulunduğu
   Debian 12 ve Ubuntu 22.04'te tanınıyor.
+- BIND, Ubuntu 22.04'te de başlıyor: oradaki BIND hizmet dosyası ad
+  sunucusunu arka planda (eski yöntemle) çalıştırır; orada yalnız o dosyanın
+  birebir kendisi kabul edilir.
 - PowerDNS yalnız denendiği sistemlerde sunulur: Debian 13, Ubuntu 24.04
   ve Arch Linux; hem ana hem yedek DNS sunucusu olarak. Diğer sistemlerde
   kurulum, kodla katılma ve DNS sayfası bunu söyler ve BIND kullanılır;

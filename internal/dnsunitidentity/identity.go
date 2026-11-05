@@ -161,6 +161,31 @@ func IsAPTVendorUnitFragment(fragment, unit string) bool {
 	}
 }
 
+// The APT vendor named.service command. Debian 12/13 and Ubuntu 24.04 run
+// named in the foreground (Type=notify, -f). Ubuntu 22.04's bind9
+// (1:9.18.x-0ubuntu0.22.04) ships Type=forking without -f; that command is
+// accepted only on an Ubuntu 22.04 host, whose exact unit bytes the vendor
+// proof pins separately (alpha.123 lab, 2026-11-05).
+const (
+	aptNamedForegroundArgv = "/usr/sbin/named -f $OPTIONS"
+	aptNamedForkingArgv    = "/usr/sbin/named $OPTIONS"
+)
+
+// aptNamedForkingHost reports whether this host is Ubuntu 22.04. Tests
+// replace it.
+var aptNamedForkingHost = hostIsUbuntu2204
+
+func isAPTVendorNamedArgv(argv string) bool {
+	switch argv {
+	case aptNamedForegroundArgv:
+		return true
+	case aptNamedForkingArgv:
+		return aptNamedForkingHost()
+	default:
+		return false
+	}
+}
+
 func ValidateAPTBINDVendorNamedIdentity(
 	named Identity,
 	aliasEnabled bool,
@@ -174,7 +199,7 @@ func ValidateAPTBINDVendorNamedIdentity(
 		!IsAPTVendorUnitFragment(named.FragmentPath, "named.service") ||
 		len(named.DropInPaths) != 0 || named.SourcePath != "" ||
 		named.Transient != "no" || named.ExecStartPath != "/usr/sbin/named" ||
-		named.ExecStartArgv != "/usr/sbin/named -f $OPTIONS" {
+		!isAPTVendorNamedArgv(named.ExecStartArgv) {
 		return errors.New("named.service does not resolve to the exact APT vendor BIND identity")
 	}
 	return nil

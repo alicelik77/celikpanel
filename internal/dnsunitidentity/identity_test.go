@@ -163,3 +163,59 @@ func TestIsAPTVendorUnitFragmentRefusesMalformedUnitNames(t *testing.T) {
 		}
 	}
 }
+
+// ubuntu2204NamedIdentity is what systemd 249 reported for bind9
+// 1:9.18.39-0ubuntu0.22.04.8 on a fresh Ubuntu 22.04 image (alpha.123 lab,
+// 2026-11-05): Type=forking, named without -f.
+const ubuntu2204NamedIdentity = "Id=named.service\nNames=named.service\n" +
+	"FragmentPath=/lib/systemd/system/named.service\nDropInPaths=\nSourcePath=\nTransient=no\n" +
+	"ExecStart={ path=/usr/sbin/named ; argv[]=/usr/sbin/named $OPTIONS ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+
+func withForkingHost(t *testing.T, ubuntu2204 bool) {
+	t.Helper()
+	previous := aptNamedForkingHost
+	aptNamedForkingHost = func() bool { return ubuntu2204 }
+	t.Cleanup(func() { aptNamedForkingHost = previous })
+}
+
+func TestAPTBINDVendorIdentityAcceptsUbuntu2204ForkingCommandOnlyThere(t *testing.T) {
+	named, err := Parse(ubuntu2204NamedIdentity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withLibAlias(t, true)
+	withForkingHost(t, true)
+	if err := ValidateAPTBINDVendorNamedIdentity(named, false); err != nil {
+		t.Fatalf("Ubuntu 22.04 vendor identity refused on Ubuntu 22.04: %v", err)
+	}
+	aliased := named
+	aliased.Names = []string{"bind9.service", "named.service"}
+	if err := ValidateAPTBINDVendorAliasIdentity(aliased, aliased); err != nil {
+		t.Fatalf("Ubuntu 22.04 enabled alias identity refused: %v", err)
+	}
+	foreground, err := Parse(debian12NamedIdentity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateAPTBINDVendorNamedIdentity(foreground, false); err != nil {
+		t.Fatalf("foreground identity refused on Ubuntu 22.04: %v", err)
+	}
+	for name, argv := range map[string]string{
+		"extra option": "/usr/sbin/named -u root $OPTIONS",
+		"no options":   "/usr/sbin/named",
+		"other order":  "/usr/sbin/named $OPTIONS -f",
+	} {
+		candidate := named
+		candidate.ExecStartArgv = argv
+		if err := ValidateAPTBINDVendorNamedIdentity(candidate, false); err == nil {
+			t.Fatalf("%s accepted", name)
+		}
+	}
+	withForkingHost(t, false)
+	if err := ValidateAPTBINDVendorNamedIdentity(named, false); err == nil {
+		t.Fatal("forking BIND command accepted on a host that is not Ubuntu 22.04")
+	}
+	if err := ValidateAPTBINDVendorNamedIdentity(foreground, false); err != nil {
+		t.Fatalf("foreground identity refused elsewhere: %v", err)
+	}
+}
