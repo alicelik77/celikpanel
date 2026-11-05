@@ -343,7 +343,7 @@ export const en = {
     'err.ADMIN_ONLY': 'This action requires an administrator.',
     'err.ACCOUNT_SUSPENDED': 'This account is suspended.',
     'err.INTERNAL': 'The server hit an internal error. Try again; if it persists, check the panel logs.',
-    'err.AGENT_UNREACHABLE': 'The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with sudo systemctl start celikpanel-agent. Once the Agent is running, try again.',
+    'err.AGENT_UNREACHABLE': 'The CelikPanel Agent on this server is not reachable, so this request was not carried out and nothing was changed. The server owner checks it with sudo systemctl status celikpanel-agent and restarts it with sudo systemctl restart celikpanel-agent (only the Agent restarts). Then try again.',
     'err.PLATFORM_CAPABILITY_UNAVAILABLE': 'This operation is not available for the connected server platform.',
     'err.PLATFORM_IDENTITY_UNAVAILABLE': 'The connected server\'s platform identity could not be verified. Try again; if it persists, check the agent connection.',
     // Scheduled tasks need the server's native cron (upd1, 1 Oct 2026). The

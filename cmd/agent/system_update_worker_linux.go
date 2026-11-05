@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -132,6 +133,34 @@ func (backend *linuxSystemUpdateBackend) probeWorkerUnit(ctx context.Context, re
 		return systemUpdateUnitInactive, nil
 	}
 	return systemUpdateUnitAmbiguous, nil
+}
+
+// resetFailedWorkerUnit clears systemd's failed mark of one attempt's own
+// transient unit, only when systemd reports exactly that unit as failed. A
+// unit that is gone, inactive or running is left alone.
+func (backend *linuxSystemUpdateBackend) resetFailedWorkerUnit(ctx context.Context, requestID string) error {
+	unit, err := systemUpdateUnitName(requestID)
+	if err != nil {
+		return err
+	}
+	systemctl, err := systemUpdateExecutableResolver("/usr/bin/systemctl", "/bin/systemctl")
+	if err != nil {
+		return err
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+	output, err := systemUpdateCommandRunner(probeCtx, systemctl, []string{"show", unit, "--property=ActiveState", "--no-pager"})
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(output)) != "ActiveState=failed" {
+		return nil
+	}
+	if output, err := systemUpdateCommandRunner(probeCtx, systemctl, []string{"reset-failed", unit}); err != nil {
+		return fmt.Errorf("systemctl reset-failed: %w: %s", err, sanitizedSystemUpdateError(errors.New(string(output))))
+	}
+	log.Printf("self-update: cleared the failed mark of %s; a later update succeeded and the attempt's record is kept", unit)
+	return nil
 }
 
 func proveSystemUpdateRecoveryFinalState(ctx context.Context, state *systemUpdateState) error {

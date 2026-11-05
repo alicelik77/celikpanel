@@ -83,6 +83,15 @@ type serverSetupDraft struct {
 	// every older draft, which keeps its plan identity and creates no site.
 	// Ana alan adinin web sitesi bu sunucuda mi; bos eski taslakta site yok.
 	MainSite string `json:"main_site,omitempty"`
+	// HostName (alpha.124, Frankfurt 2026-11-05): this machine's own fully
+	// qualified name (hostname -f) when the draft was saved for a first
+	// setup. When it lies inside the infrastructure zone setup creates, the
+	// zone gets its A record with the rest (it was missing on Frankfurt and
+	// the dashboard later asked for it). Set by the server, never typed;
+	// empty in every older draft and in an extension of a completed setup,
+	// which keep their plan identity.
+	// Makinenin kendi tam adi; ilk kurulumda sunucu doldurur.
+	HostName string `json:"host_name,omitempty"`
 }
 
 // Reason and Vars are additive (2026-10-10): the typed cause of a check that
@@ -382,10 +391,6 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 	if active {
 		return serverSetupState{}, errServerSetupConflict
 	}
-	raw, err := json.Marshal(canonical)
-	if err != nil {
-		return serverSetupState{}, err
-	}
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
 		return serverSetupState{}, err
@@ -394,11 +399,16 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 	// A draft saved over a completed setup extends it: the completed draft is
 	// kept, as stored, as the extension's base (see handleServerSetupExtend).
 	// Tamamlanmis kurulumun uzerine kaydedilen taslak onu genisletir.
-	var currentStatus, currentDraft string
-	if err := tx.QueryRowContext(ctx, `SELECT status,draft_json FROM server_setup_state WHERE id=1 AND revision=?`, revision).Scan(&currentStatus, &currentDraft); err != nil {
+	var currentStatus, currentDraft, completedAt string
+	if err := tx.QueryRowContext(ctx, `SELECT status,draft_json,COALESCE(completed_at,'') FROM server_setup_state WHERE id=1 AND revision=?`, revision).Scan(&currentStatus, &currentDraft, &completedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return serverSetupState{}, errServerSetupConflict
 		}
+		return serverSetupState{}, err
+	}
+	canonical.HostName = serverSetupDraftHostName(completedAt, currentDraft)
+	raw, err := json.Marshal(canonical)
+	if err != nil {
 		return serverSetupState{}, err
 	}
 	if currentStatus == "ready" {
@@ -423,6 +433,30 @@ func (p *Panel) saveServerSetupDraft(ctx context.Context, revision int, draft se
 		return serverSetupState{}, err
 	}
 	return p.loadServerSetup(ctx)
+}
+
+// serverSetupDraftHostName is the HostName a saved draft carries: on a first
+// setup the machine's own name as the system reports it now; on a completed
+// setup (an extension) the name the stored draft already had, so an install
+// set up before alpha.124 keeps its plan and gets no new record. A name the
+// browser sent is never used.
+func serverSetupDraftHostName(completedAt, storedDraft string) string {
+	if completedAt != "" {
+		var stored struct {
+			HostName string `json:"host_name"`
+		}
+		_ = json.Unmarshal([]byte(storedDraft), &stored)
+		return stored.HostName
+	}
+	name, err := localServerName()
+	if err != nil {
+		return ""
+	}
+	canonical, err := hostname.CanonicalFQDN(strings.TrimSuffix(strings.TrimSpace(name), "."))
+	if err != nil || !strings.Contains(canonical, ".") {
+		return ""
+	}
+	return canonical
 }
 
 func serverSetupChecksReady(checks []serverSetupCheck) bool {

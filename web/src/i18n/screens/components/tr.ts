@@ -595,4 +595,6 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.version.versionsChecking': 'Kurulu PHP sürümleri okunuyor…',
     'services.version.versionsUnknown': 'Kurulu PHP sürümleri şu an okunamadı; araçların nereye taşınabileceği bilinmiyor. Hiçbir şey değiştirilmedi.',
     'services.version.removalUnknown': 'PHP {version} sürümünün kaldırılıp kaldırılmadığı bilinmiyor: yanıt gelmedi. Liste sürümleri yeniden okur; yeniden denemeden önce ona bakın.',
+    'services.operation.phase.panel_busy': "Bekleniyor: CelikPanel'in kendi veritabanı başka bir işle meşgul; bu işlem ilerlemesini şu an kaydedemiyor. Sunucudaki iş bundan etkilenmez. Veritabanı boşalınca kendiliğinden kaydeder; hiçbir şey iki kez başlatılmaz. Kimsenin bir şey yapması gerekmiyor.",
+    'services.operation.phase.panel_stayed_busy': "CelikPanel'in kendi veritabanı yaklaşık on dakika boyunca meşgul kaldı; bu işlemin ilerlemesi kaydedilemedi. Hiçbir sonuç tahmin edilmez: işlem panel açılırken yeniden denetlenir. Siz, sunucu sahibi: bu sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın (yalnız paneli yeniden başlatır; siteler, e-posta ve DNS çalışmaya devam eder). Yeniden olursa sudo journalctl -u celikpanel-panel -n 100 veritabanını neyin meşgul ettiğini gösterir.",
 };

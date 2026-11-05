@@ -18,6 +18,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -524,6 +525,13 @@ func main() {
 		os.Exit(sandboxbind.Main(os.Args[1:], os.Stderr))
 	}
 
+	// --version prints the version and nothing else (alpha.124: an unknown
+	// --version once started a second full agent; agent_instance.go).
+	if agentVersionArgument(os.Args[1:]) {
+		printAgentVersion(os.Stdout)
+		return
+	}
+
 	// Hidden system-update modes exit before managers, RPC, sockets, or
 	// background tasks. The worker accepts only one canonical request ID.
 	if len(os.Args) == 2 && os.Args[1] == "--inspect-build-identity" {
@@ -679,6 +687,32 @@ func main() {
 		return
 	}
 
+	// Every mode with arguments has returned. The daemon takes none: an
+	// argument it does not know is a usage error before anything starts.
+	if err := validateAgentDaemonArguments(os.Args[1:]); err != nil {
+		if errors.Is(err, errAgentHelp) {
+			fmt.Println(agentUsage)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "agent: %v\n%s\n", err, agentUsage)
+		os.Exit(2)
+	}
+	// One Agent per server, held for the process lifetime and taken before
+	// any manager, reconciliation or the socket: a second one leaves the
+	// running Agent's socket alone.
+	socketPath := transport.AgentSocketPath()
+	instanceLock, lockPath, err := acquireAgentInstanceLock(filepath.Dir(socketPath))
+	if errors.Is(err, errAgentAlreadyRunning) {
+		fmt.Fprintln(os.Stderr, agentAlreadyRunningMessage(lockPath))
+		os.Exit(1)
+	}
+	if err != nil {
+		log.Fatalf("Agent instance lock: %v", err)
+	}
+	if instanceLock != nil {
+		defer instanceLock.Close()
+	}
+
 	// A ledger that cannot be brought up is a reason to refuse mutations, not a
 	// reason to leave the host without an agent. Exiting here is what turned a
 	// single poisoned DNS transaction into a total outage: the agent dies, the
@@ -774,12 +808,14 @@ func main() {
 		log.Fatalf("Failed to load agent token: %v", err)
 	}
 
-	socketPath := transport.AgentSocketPath()
 	listener, err := transport.ListenAgent(socketPath)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	defer listener.Close()
+	if err := alignAgentSocketGroup(socketPath); err != nil {
+		log.Printf("Warning: the agent socket's group could not be matched to its directory: %v", err)
+	}
 	log.Printf("Agent listening on unix socket %s", socketPath)
 	startPanelCertificateActivationReconciler(mutationManager)
 

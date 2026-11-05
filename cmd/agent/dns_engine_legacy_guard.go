@@ -46,6 +46,11 @@ func validateLegacyPowerDNSDurableAuthority(
 	return nil
 }
 
+// errDirectionalPowerDNSNeedsV3: PowerDNS is the active engine, in a
+// primary/secondary pair (the V3 catalog state); the legacy mutation paths
+// have no authority there. DNSSEC signing tells it apart (alpha.124).
+var errDirectionalPowerDNSNeedsV3 = errors.New("directional PowerDNS state requires V3 mutation authority")
+
 func validateLegacyPowerDNSMutationAuthority(
 	state dnsEngineStateReceipt,
 	stateExists, journalExists, requireResolved bool,
@@ -58,7 +63,7 @@ func validateLegacyPowerDNSMutationAuthority(
 	if stateExists {
 		if state.PairRole != "" || state.PairLocalIP != "" ||
 			state.PairPeerIP != "" || state.PrimaryCatalogSerial != 0 {
-			return errors.New("directional PowerDNS state requires V3 mutation authority")
+			return errDirectionalPowerDNSNeedsV3
 		}
 		return requireDNSPanelWriteAuthority(state)
 	}

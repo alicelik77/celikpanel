@@ -197,4 +197,5 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.PHP_TOOL_NOT_INSTALLED': 'Bu araç kurulu değil.',
     'err.PHP_TOOL_UNSUPPORTED': 'Bir araç için PHP sürümü seçmek Debian ve Ubuntu sunucularında kullanılabilir.',
     'err.PHP_TOOL_BIND_FAILED': 'PHP sürümü değişikliği tamamlanmadı.',
+    'err.DNSSEC_PAIR_UNSUPPORTED': "Bölge imzalama bu DNS sunucu ikilisinde (PowerDNS ana + yedek sunucu) henüz denenmedi; bu yüzden bu sürümde kapalı. Hiçbir şey değiştirilmedi: bölge eskisi gibi imzasız yanıt vermeye devam ediyor. Kimsenin bir şey yapması gerekmiyor; bu ikili için denendiğinde imzalama burada sunulacak.",
 };

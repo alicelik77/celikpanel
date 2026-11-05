@@ -206,6 +206,7 @@ export const enErrorsScreens = {
     'err.PHP_TOOL_NOT_INSTALLED': 'This tool is not installed.',
     'err.PHP_TOOL_UNSUPPORTED': 'Choosing a PHP version for a tool is available on Debian and Ubuntu servers.',
     'err.PHP_TOOL_BIND_FAILED': 'The PHP version change did not complete.',
+    'err.DNSSEC_PAIR_UNSUPPORTED': "Signing this zone has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair.",
 } as const;
 
 export type ErrorsScreenKey = keyof typeof enErrorsScreens;

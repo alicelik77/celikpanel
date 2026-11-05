@@ -910,11 +910,7 @@ func (p *Panel) handSuspensionAppToEmergency(ctx context.Context, subscriptionID
 }
 
 func (p *Panel) auditEmergencySystem(ctx context.Context, actorID int, action string, details map[string]any) {
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details) VALUES (?, ?, 'service', NULL, ?)`,
-		nullablePositiveInt(actorID), action, auditDetailsJSON(details)); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
+	p.recordAudit(auditRecord{UserID: actorID, Action: action, ResourceType: "service", Details: auditDetailsText(details)})
 }
 
 // runPendingEmergencyOperations runs every running operation once, oldest

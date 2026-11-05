@@ -613,6 +613,10 @@ export const enComponentsScreens = {
     'services.version.versionsChecking': 'Reading which PHP versions are installed…',
     'services.version.versionsUnknown': 'The installed PHP versions could not be read now, so where the tools could move is not known. Nothing was changed.',
     'services.version.removalUnknown': 'Whether PHP {version} was removed is not known: the answer did not arrive. The list reads the versions again; check it before trying again.',
+    // alpha.124: the operation's own state could not be saved yet because
+    // CelikPanel's own database is held by another task.
+    'services.operation.phase.panel_busy': "Waiting: CelikPanel's own database is busy with another task, so this operation cannot save its progress just now. The work on the server is not affected. It saves by itself as soon as the database is free; nothing is started twice. Nobody needs to act.",
+    'services.operation.phase.panel_stayed_busy': "CelikPanel's own database stayed busy for about ten minutes, so this operation's progress could not be saved. Nothing is guessed: the operation is checked again when the panel starts. You, the owner: run sudo systemctl restart celikpanel-panel on this server (it restarts only the panel; websites, mail and DNS keep running). If it happens again, sudo journalctl -u celikpanel-panel -n 100 shows what kept the database busy.",
 } as const;
 
 export type ComponentsScreenKey = keyof typeof enComponentsScreens;

@@ -28,7 +28,27 @@ interface AuditEntry {
 // doğrudan okunur.
 // A failed or malformed read is "not known", never an empty list (D-024).
 // Başarısız ya da bozuk okuma "bilinmiyor"dur, asla boş liste değil.
-const decodeAudit = (raw: unknown) => decodeListIn<AuditEntry>(raw, 'entries');
+// alpha.124: rows recorded while the panel's own database was busy are kept
+// and saved later; the page says how many wait, and why (D-024).
+// Panel veritabanı meşgulken kaydedilen satırlar bekletilir; sayfa söyler.
+interface AuditPending {
+    count: number;
+    stalled: boolean;
+}
+
+interface AuditPage {
+    entries: AuditEntry[];
+    pending: AuditPending | null;
+}
+
+function decodeAudit(raw: unknown): AuditPage {
+    const entries = decodeListIn<AuditEntry>(raw, 'entries');
+    const pending = (raw as Record<string, unknown>).pending;
+    if (pending === undefined || pending === null) return { entries, pending: null };
+    const p = pending as Record<string, unknown>;
+    if (typeof p.count !== 'number' || (p.code !== 'audit_rows_waiting' && p.code !== 'audit_rows_stalled')) throw new Error('shape');
+    return { entries, pending: { count: p.count, stalled: p.code === 'audit_rows_stalled' } };
+}
 
 export function AuditLogPage() {
     const { t } = useI18n();
@@ -43,7 +63,13 @@ export function AuditLogPage() {
             />
 
             <RemoteGate remote={audit.remote} checking={t('settings.audit.checking')} failed={t('settings.audit.unknown')} onRetry={() => void audit.retry()} busy={audit.reading}>
-                {(shown) => shown.value.length === 0 ? (
+                {(shown) => (<>
+                {shown.value.pending && (
+                    <p role="status" className="mb-4 rounded-lg border border-warning-mark/60 bg-warning-mark/20 px-3 py-2.5 text-sm text-fg">
+                        {t(shown.value.pending.stalled ? 'life.audit.pending.stalled' : 'life.audit.pending.waiting', { count: shown.value.pending.count })}
+                    </p>
+                )}
+                {shown.value.entries.length === 0 ? (
                 <KnownEmpty of={shown} icon={ScrollText} title={t('audit.empty')} />
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-border-strong bg-surface">
@@ -58,7 +84,7 @@ export function AuditLogPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {shown.value.map((e) => {
+                            {shown.value.entries.map((e) => {
                                 // The action is said as a sentence in the interface language
                                 // (its target inside it); the detail names what the row is about
                                 // only when the sentence does not already.
@@ -99,6 +125,7 @@ export function AuditLogPage() {
                     </table>
                 </div>
                 )}
+                </>)}
             </RemoteGate>
         </div>
     );
