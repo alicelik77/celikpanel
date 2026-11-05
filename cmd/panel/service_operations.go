@@ -145,6 +145,9 @@ type serviceOperation struct {
 // adımı olarak listeliyorsa SetupChild'ı ayarlar. Arama başarısız olursa false
 // kalır; işlem sıradan sayılır.
 func (p *Panel) markServerSetupChild(ctx context.Context, op serviceOperation) serviceOperation {
+	// A state the runner could not save yet is shown from memory (it is
+	// presentation only: the saved row keeps its real phase).
+	op = overlayServiceOperationPanelBusy(op)
 	if !validServiceOperationID(op.RequestID) {
 		return op
 	}
@@ -1111,13 +1114,30 @@ func runServiceOperationRunner(
 	return runner(ctx, advance)
 }
 
+// execServiceOperationState writes one change of an operation's own state.
+// A busy panel database is asked again with a bounded backoff, and the
+// reads show the operation waiting meanwhile, instead of the write being
+// dropped or a succeeded operation being recorded as failed because its
+// result could not be saved under someone else's lock (alpha.123 lab).
+// Every write is a compare-and-set on the row's status, so a retry never
+// applies twice.
+func (p *Panel) execServiceOperationState(ctx context.Context, id, query string, args ...any) (sql.Result, error) {
+	var result sql.Result
+	err := retryPanelBusyWrite(ctx, panelBusyKeyOperation(id), func(attempt context.Context) error {
+		var execErr error
+		result, execErr = p.db.GetDB().ExecContext(attempt, query, args...)
+		return execErr
+	})
+	return result, err
+}
+
 func (p *Panel) forceFailActiveServiceOperation(
 	ctx context.Context,
 	id, phase string,
 	failure *serviceOperationFailure,
 ) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	update, err := p.db.GetDB().ExecContext(ctx, `
+	update, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase=?, result_json='{"success":false}',
 		    error_code=?, error_message=?, finished_at=?, updated_at=?
@@ -1140,7 +1160,7 @@ func (p *Panel) forceFailActiveServiceOperation(
 
 func (p *Panel) markServiceOperationRunning(ctx context.Context, id, phase string) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := p.db.GetDB().ExecContext(ctx, `
+	result, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase=?, updated_at=?
 		WHERE id=? AND status=?`,
@@ -1161,7 +1181,7 @@ func (p *Panel) markServiceOperationRunning(ctx context.Context, id, phase strin
 
 func (p *Panel) updateServiceOperationPhase(ctx context.Context, id, phase string) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := p.db.GetDB().ExecContext(ctx, `
+	result, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations SET phase=?, updated_at=?
 		WHERE id=? AND status=?`,
 		phase, now, id, serviceOperationRunning,
@@ -1200,7 +1220,7 @@ func (p *Panel) finishServiceOperationSucceeded(
 		return err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	update, err := p.db.GetDB().ExecContext(ctx, `
+	update, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase='completed', result_json=?,
 		    error_code=NULL, error_message=NULL,
@@ -1232,7 +1252,7 @@ func (p *Panel) finishServiceOperationFailed(
 		return err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	update, err := p.db.GetDB().ExecContext(ctx, `
+	update, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase=?, result_json=?, error_code=?, error_message=?,
 		    finished_at=?, updated_at=?
@@ -2434,16 +2454,10 @@ func (p *Panel) resumeInterruptedServiceOperation(op serviceOperation) error {
 func (p *Panel) auditServiceOperation(ctx context.Context, actor serviceOperationActor, action string) {
 	// alpha.107 (D-038 §16): the operation's details, when the caller gave
 	// them (withAuditDetails).
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (
-			user_id, action, resource_type, resource_id, ip_address, user_agent, details
-		) VALUES (?, ?, 'service', NULL, ?, ?, ?)`,
-		nullablePositiveInt(actor.UserID), action,
-		nullableNonEmpty(actor.IP), nullableNonEmpty(actor.UserAgent),
-		auditDetailsJSON(auditDetailsFrom(ctx)),
-	); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
+	p.recordAudit(auditRecord{
+		UserID: actor.UserID, Action: action, ResourceType: "service",
+		IP: actor.IP, UserAgent: actor.UserAgent, Details: auditDetailsText(auditDetailsFrom(ctx)),
+	})
 	if p.serviceOperationAudited != nil {
 		p.serviceOperationAudited(action)
 	}

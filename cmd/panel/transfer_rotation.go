@@ -861,12 +861,7 @@ func (p *Panel) auditRotationOutcome(ctx context.Context, op rotationOperationRo
 		rows.Close()
 	}
 	details, _ := json.Marshal(map[string]any{"transfer_id": op.TransferID, "operation": op.ID, "result": result, "counts": counts})
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details)
-		VALUES (?, ?, 'subscription', ?, ?)`,
-		nullablePositiveInt(op.ActorID), "subscription.transfer_rotate", op.SubscriptionID, string(details)); err != nil {
-		log.Printf("audit write failed (subscription.transfer_rotate): %v", err)
-	}
+	p.recordAudit(auditRecord{UserID: op.ActorID, Action: "subscription.transfer_rotate", ResourceType: "subscription", ResourceID: op.SubscriptionID, Details: string(details)})
 }
 
 // runPendingTransferRotations runs every running rotation once, oldest

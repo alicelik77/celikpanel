@@ -23,6 +23,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'audit.col.action': 'Eylem',
     'audit.col.detail': 'Ayrıntı',
     'audit.col.ip': 'IP',
+    'audit.pending.waiting': "{count} denetim kaydı kaydedilmeyi bekliyor: kaydedildikleri anda CelikPanel'in kendi veritabanı meşguldü. Kayıtlar saklanıyor; veritabanı boşalınca sırasıyla ve kendi saatleriyle kendiliğinden yazılır. Kimsenin bir şey yapması gerekmiyor.",
+    'audit.pending.stalled': "{count} denetim kaydı on dakikadan uzun süredir yazılamadı; CelikPanel'in kendi veritabanı onları almıyor. Kayıtlar kaybolmadı, saklanıyor ve kendiliğinden yeniden deneniyor. Siz, sunucu sahibi: bu sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın (yalnız paneli yeniden başlatır; siteler, e-posta ve DNS çalışmaya devam eder); kayıtlar açılıştan sonra yazılır. Bu uyarı kalırsa sudo journalctl -u celikpanel-panel -n 100 nedenini gösterir.",
     'audit.resource.config': 'Yapılandırma',
     'audit.resource.dns_engine': 'DNS yazılımı',
     'audit.resource.dns_zone': 'DNS bölgesi',

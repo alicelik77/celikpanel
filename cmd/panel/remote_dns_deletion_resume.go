@@ -474,11 +474,7 @@ func (p *Panel) finishRemoteDNSDeletion(ctx context.Context, domainID int, domai
 		log.Printf("domain deletion for %s completed; %v", domain, err)
 	}
 	p.clearRemoteDNSDeletionStage(ctx, domainID)
-	if _, err := p.db.GetDB().ExecContext(ctx,
-		`INSERT INTO audit_logs (action, resource_type, resource_id) VALUES (?, 'domain', ?)`,
-		"domain.delete:"+domain, domainID); err != nil {
-		log.Printf("audit write failed (domain.delete:%s): %v", domain, err)
-	}
+	p.recordAudit(auditRecord{Action: "domain.delete:" + domain, ResourceType: "domain", ResourceID: domainID})
 	return nil
 }
 

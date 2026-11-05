@@ -29,6 +29,9 @@ export const enDashboardScreens = {
     'audit.col.action': 'Action',
     'audit.col.detail': 'Detail',
     'audit.col.ip': 'IP',
+    // alpha.124: rows the panel's own database did not take at once.
+    'audit.pending.waiting': "{count} audit entries are waiting to be saved: CelikPanel's own database was busy when they were recorded. They are kept and saved by themselves, in order and with their own time, as soon as the database is free. Nobody needs to act.",
+    'audit.pending.stalled': "{count} audit entries have not been saved for more than ten minutes because CelikPanel's own database keeps refusing them. They are kept, not lost, and tried again by themselves. You, the owner: run sudo systemctl restart celikpanel-panel on this server (it restarts only the panel; websites, mail and DNS keep running); they are saved after the start. If this stays, sudo journalctl -u celikpanel-panel -n 100 shows the reason.",
     'audit.resource.config': 'Configuration',
     'audit.resource.dns_engine': 'DNS software',
     'audit.resource.dns_zone': 'DNS zone',

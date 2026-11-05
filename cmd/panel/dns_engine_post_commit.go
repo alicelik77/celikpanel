@@ -650,20 +650,12 @@ func (p *Panel) auditDNSEngineAction(
 	actor dnsEngineAuditActor,
 	action string,
 ) {
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (
-		  user_id, action, resource_type, resource_id, ip_address, user_agent
-		)
-		SELECT ?, ?, 'dns_engine', NULL, ?, ?
-		WHERE NOT EXISTS (
-		  SELECT 1 FROM audit_logs
-		  WHERE action = ? AND resource_type = 'dns_engine'
-		)`,
-		nullablePositiveInt(actor.UserID), action,
-		nullableNonEmpty(actor.IP), nullableNonEmpty(actor.UserAgent), action,
-	); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
+	// One row per outcome; a busy database keeps it pending, never drops
+	// it (the alpha.123 lab lost reconcile_required here).
+	p.recordAudit(auditRecord{
+		UserID: actor.UserID, Action: action, ResourceType: "dns_engine",
+		IP: actor.IP, UserAgent: actor.UserAgent, OncePerAction: true,
+	})
 }
 
 func (p *Panel) auditDNSEngineBounded(

@@ -87,6 +87,9 @@ type Panel struct {
 	// durable operation's audit is written after its terminal state (and the
 	// lock) and a test must not read the audit trail before it.
 	serviceOperationAudited func(action string)
+	// auditPending holds audit rows the database has not taken yet
+	// (audit_durable.go); its file is set at start, tests keep it in memory.
+	auditPending auditPendingQueue
 	// suspensionNative replaces the Agent for suspension operations in tests
 	// (nil in production); suspensionWorker runs them (suspension_run.go).
 	suspensionNative suspensionNative
@@ -1079,6 +1082,7 @@ func main() {
 		loginLimiter: newRateLimiter(10, 5*time.Minute),
 		demoMode:     *demo,
 	}
+	panel.auditPending.path = filepath.Join(dataDir(), auditPendingFileName)
 	panel.license, err = newServerLicense(filepath.Join(dataDir(), "license.json"))
 	if err != nil {
 		log.Fatalf("Cannot configure license verification: %v", err)
@@ -1761,6 +1765,8 @@ func main() {
 	defer stopDiscovery()
 	panel.preparePanelUpdateDiscovery(discoveryCtx)
 	startupGate.Open()
+	// Audit rows a stopped panel could not save are written first.
+	panel.resumePendingAudit()
 	panel.resumeServerSetupExecutions()
 	// Immediate background host mutators are started only after recovery,
 	// route registration, and admission of normal application traffic.

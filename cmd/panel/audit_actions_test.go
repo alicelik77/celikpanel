@@ -449,7 +449,26 @@ func emittedAuditNames(t *testing.T) (map[string][]string, int) {
 			}
 			ast.Inspect(decl.Body, func(node ast.Node) bool {
 				call, ok := node.(*ast.CallExpr)
-				if !ok || len(call.Args) < 2 {
+				if !ok {
+					return true
+				}
+				// alpha.124: every row outside a change's own transaction
+				// goes through recordAudit(auditRecord{Action: ...})
+				// (audit_durable.go); its action is that field.
+				if action, ok := recordAuditAction(call); ok {
+					writers++
+					for _, shape := range a.shapesIn(action, decl, 0) {
+						if os.Getenv("AUDIT_SHAPES") != "" {
+							t.Logf("SHAPE %q", strings.ReplaceAll(shape, auditWildcard, "{}"))
+						}
+						name := auditActionName(shape)
+						names[name] = append(names[name], decl.Name.Name)
+					}
+					return true
+				}
+				if len(call.Args) < 2 || decl.Name.Name == "insertAuditRecord" {
+					// insertAuditRecord is the sink of recordAudit; its
+					// action is counted at each recordAudit call.
 					return true
 				}
 				selector, ok := call.Fun.(*ast.SelectorExpr)
@@ -505,6 +524,29 @@ func emittedAuditNames(t *testing.T) (map[string][]string, int) {
 		}
 	}
 	return names, writers
+}
+
+// recordAuditAction is the Action field of a p.recordAudit(auditRecord{...})
+// call.
+func recordAuditAction(call *ast.CallExpr) (ast.Expr, bool) {
+	selector, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != "recordAudit" || len(call.Args) != 1 {
+		return nil, false
+	}
+	literal, ok := call.Args[0].(*ast.CompositeLit)
+	if !ok {
+		return nil, false
+	}
+	for _, element := range literal.Elts {
+		pair, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			continue
+		}
+		if key, ok := pair.Key.(*ast.Ident); ok && key.Name == "Action" {
+			return pair.Value, true
+		}
+	}
+	return nil, false
 }
 
 // auditActionName is the part of an action before its first ':' or space; the
