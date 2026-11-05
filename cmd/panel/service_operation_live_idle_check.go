@@ -87,20 +87,20 @@ func checkWALAwareServiceOperationsIdleWith(
 	}
 	snapshotPath := filepath.Join(temporaryDirectory, filepath.Base(databasePath))
 	if err := copyPinnedLiveSQLiteFile(pinned.file, pinned.info, snapshotPath); err != nil {
-		return fmt.Errorf(
+		return explainTornLiveSQLiteRead(pinned, fmt.Errorf(
 			"%w: copy pinned panel database: %v",
 			errServiceOperationsNotIdle,
 			err,
-		)
+		))
 	}
 	if wal := pinned.sidecars["-wal"]; wal != nil && wal.info.Size() != 0 {
 		walSnapshotSize, err := recoverPinnedLiveSQLiteWAL(wal)
 		if err != nil {
-			return fmt.Errorf(
+			return explainTornLiveSQLiteRead(pinned, fmt.Errorf(
 				"%w: recover pinned SQLite WAL: %v",
 				errServiceOperationsNotIdle,
 				err,
-			)
+			))
 		}
 		if walSnapshotSize != 0 {
 			if err := copyPinnedLiveSQLiteFilePrefix(
@@ -109,11 +109,11 @@ func checkWALAwareServiceOperationsIdleWith(
 				walSnapshotSize,
 				snapshotPath+"-wal",
 			); err != nil {
-				return fmt.Errorf(
+				return explainTornLiveSQLiteRead(pinned, fmt.Errorf(
 					"%w: copy recovered SQLite WAL prefix: %v",
 					errServiceOperationsNotIdle,
 					err,
-				)
+				))
 			}
 		}
 	}
@@ -156,6 +156,19 @@ func checkWALAwareServiceOperationsIdleWith(
 		return fmt.Errorf("validate private live SQLite snapshot: %w", err)
 	}
 	return pinned.verifyPath()
+}
+
+// explainTornLiveSQLiteRead: copying or scanning the source happens before
+// the first path re-check. A writer appending a WAL frame or checkpointing at
+// that moment leaves an incomplete tail or a frame whose checksum is not yet
+// valid. When the pinned files are seen to have changed, that failure is the
+// concurrent-write refusal itself; with unchanged files it stays final.
+// Kopyalama/WAL taraması sırasında dosyalar değiştiyse bu eşzamanlı yazımdır.
+func explainTornLiveSQLiteRead(pinned *pinnedPanelDatabase, readErr error) error {
+	if changed := pinned.verifyPath(); isConcurrentPanelDatabaseWrite(changed) {
+		return changed
+	}
+	return readErr
 }
 
 // recoverPinnedLiveSQLiteWAL reproduces SQLite's WAL recovery scan without

@@ -59,6 +59,10 @@ type linuxSystemUpdateBackend struct {
 	// clearedAfter is the successful attempt whose resolved units this
 	// process already cleared from Status, so a status poll clears once.
 	clearedAfter string
+	// awaitingRecovery is set by the last Reconcile when a failed attempt
+	// already shows its exact target installed and waits only for release
+	// recovery's final proof (alpha.125; see RecoveryPromotionPending).
+	awaitingRecovery bool
 }
 
 type systemUpdateIdleLease interface{ Close() error }
@@ -893,9 +897,23 @@ func (backend *linuxSystemUpdateBackend) clearAfterSuccessLocked(ctx context.Con
 	backend.clearFinishedWorkerUnits(ctx, finished)
 }
 
+// RecoveryPromotionPending reports whether the last Reconcile left a failed
+// attempt whose exact target is installed and whose final proof waits for
+// release recovery. alpha.124 Boston (123 -> 124): recovery started the new
+// Agent at 16:48:08 and finalized the update forward at 16:48:28; the start-time
+// Reconcile ran in between, nothing reconciled again, so the attempt stayed
+// "failed" and its unit stayed under systemctl --failed. The Agent re-reads
+// such an attempt until recovery's proof promotes it (and clears its unit).
+func (backend *linuxSystemUpdateBackend) RecoveryPromotionPending() bool {
+	backend.mu.Lock()
+	defer backend.mu.Unlock()
+	return backend.awaitingRecovery
+}
+
 func (backend *linuxSystemUpdateBackend) Reconcile(ctx context.Context) error {
 	backend.mu.Lock()
 	defer backend.mu.Unlock()
+	backend.awaitingRecovery = false
 	exists, err := systemUpdateRootExistsForReconcile(backend.stateRoot)
 	if err != nil || !exists {
 		return err
@@ -1103,6 +1121,7 @@ func (backend *linuxSystemUpdateBackend) reconcileStateLocked(ctx context.Contex
 			if state.Status == systemUpdateFailed {
 				// OnFailure recovery may still complete and promote this exact
 				// reviewed target on a later reconciliation.
+				backend.awaitingRecovery = true
 				return state, nil
 			}
 			if withinRecoveryGrace {

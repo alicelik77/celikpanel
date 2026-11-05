@@ -4,8 +4,11 @@ package main
 
 import (
 	"context"
+	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -182,5 +185,128 @@ func TestSystemUpdateStatusClearsResolvedUnitsOnceAfterTheSuccess(t *testing.T) 
 		if _, err := readSystemUpdateState(root, s.RequestID); err != nil {
 			t.Fatalf("the attempt's record %s is gone: %v", s.RequestID, err)
 		}
+	}
+}
+
+// alpha.124 Boston (123 -> 124): the update's worker failed (a transient
+// database read after the new panel started), OnFailure release recovery
+// started the new Agent at 16:48:08 and finalized the update forward at
+// 16:48:28. The start-time Reconcile ran in between: it cleared the older
+// resolved unit but kept the attempt failed while recovery's final proof was
+// missing, and nothing read it again, so its unit stayed under systemctl
+// --failed. The Agent now re-reads such an attempt until recovery finishes.
+func TestSystemUpdateAttemptFinalizedByRecoveryAfterAgentStartIsResolved(t *testing.T) {
+	root := linuxSystemUpdateTestRoot(t)
+	at := func(id, status, created string) *systemUpdateState {
+		state := linuxSystemUpdateTestState(strings.Repeat(id, 32))
+		state.Status, state.CreatedAt, state.UpdatedAt = status, created, created
+		if id == "1" || id == "2" {
+			// The earlier attempts targeted the previous release.
+			state.TargetVersion, state.TargetCommit, state.TargetSequence = "v1.2.2", strings.Repeat("c", 40), "41"
+			state.ExpectedCurrentVersion, state.ExpectedCurrentCommit = "v1.2.1", strings.Repeat("d", 40)
+		}
+		if status == systemUpdateFailed {
+			state.Error = "database publication is unverified"
+		}
+		if err := writeSystemUpdateState(root, state, nil); err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+	busyEarlier := at("1", systemUpdateFailed, "2026-11-04T09:00:00Z")
+	previous := at("2", systemUpdateSucceeded, "2026-11-04T09:10:00Z")
+	update := at("3", systemUpdateFailed, "2026-11-05T16:46:40Z")
+
+	backend := newLinuxSystemUpdateBackend()
+	backend.stateRoot = root
+	backend.floorPath = filepath.Join(filepath.Dir(root), "sequence.floor")
+	if err := os.WriteFile(backend.floorPath, canonicalSystemUpdateFloor(systemUpdateFloor{Sequence: update.TargetSequence, Version: update.TargetVersion}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	backend.now = func() time.Time { return time.Date(2026, 11, 5, 16, 48, 8, 0, time.UTC) }
+	backend.installedBuild = func(context.Context) (string, string, error) {
+		return update.TargetVersion, update.TargetCommit, nil
+	}
+	backend.unitState = func(context.Context, string) (systemUpdateUnitState, error) { return systemUpdateUnitInactive, nil }
+	backend.observe = nil
+	recoveryFinished := false
+	backend.finalProof = func(context.Context, *systemUpdateState) error {
+		if !recoveryFinished {
+			return errors.New("release completion marker is still present")
+		}
+		return nil
+	}
+	var cleared []string
+	backend.resetFailedUnit = func(_ context.Context, id string) error { cleared = append(cleared, id); return nil }
+
+	// Agent start, recovery still running: the attempt waits, only the
+	// earlier resolved units are cleared.
+	if err := backend.Reconcile(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{busyEarlier.RequestID, previous.RequestID}; !reflect.DeepEqual(cleared, want) {
+		t.Fatalf("cleared %v, want %v", cleared, want)
+	}
+	if !backend.RecoveryPromotionPending() {
+		t.Fatal("the attempt waiting for release recovery is not followed")
+	}
+
+	// Recovery finishes between two follow-up reads; the follow-up promotes
+	// the attempt, clears its unit and stops.
+	cleared = nil
+	reads := 0
+	start := time.Date(2026, 11, 5, 16, 48, 8, 0, time.UTC)
+	clock := start
+	followSystemUpdateRecovery(backend, backend, start.Add(systemUpdateRecoveryGrace),
+		func() time.Time { return clock },
+		func(d time.Duration) {
+			reads++
+			clock = clock.Add(d)
+			recoveryFinished = reads == 2
+		})
+	if reads != 2 {
+		t.Fatalf("follow-up reads = %d, want 2 (stops once reconciled)", reads)
+	}
+	state, err := readSystemUpdateState(root, update.RequestID)
+	if err != nil || state.Status != systemUpdateSucceeded {
+		t.Fatalf("the attempt finalized by recovery is %v (%v)", state, err)
+	}
+	if !slices.Contains(cleared, update.RequestID) {
+		t.Fatalf("the attempt's own unit mark was not cleared: %v", cleared)
+	}
+	if backend.RecoveryPromotionPending() {
+		t.Fatal("still pending after promotion")
+	}
+
+	// A rollback (installed build is not the target) is never followed.
+	other := newLinuxSystemUpdateBackend()
+	other.stateRoot = root
+	other.floorPath = backend.floorPath
+	other.now = backend.now
+	other.installedBuild = func(context.Context) (string, string, error) { return "v1.2.2", strings.Repeat("c", 40), nil }
+	other.unitState = backend.unitState
+	other.observe = nil
+	other.resetFailedUnit = func(context.Context, string) error { return nil }
+	at("4", systemUpdateFailed, "2026-11-05T17:00:00Z")
+	if err := other.Reconcile(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if other.RecoveryPromotionPending() {
+		t.Fatal("a failed attempt whose target is not installed was followed")
+	}
+
+	// The follow-up is bounded by the recovery window.
+	never := 0
+	backend.finalProof = func(context.Context, *systemUpdateState) error { return errors.New("marker remains") }
+	at("5", systemUpdateFailed, "2026-11-05T17:10:00Z")
+	backend.installedBuild = func(context.Context) (string, string, error) {
+		return update.TargetVersion, update.TargetCommit, nil
+	}
+	clock = start
+	followSystemUpdateRecovery(backend, backend, start.Add(time.Minute),
+		func() time.Time { return clock },
+		func(d time.Duration) { never++; clock = clock.Add(d) })
+	if never != 4 {
+		t.Fatalf("bounded follow-up made %d reads, want 4 within one minute", never)
 	}
 }
