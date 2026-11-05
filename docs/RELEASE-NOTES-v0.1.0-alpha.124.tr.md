@@ -20,8 +20,8 @@ yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   sayfa aynı ilerlemeyi gösterir. Bir adım başarısız olursa o ana dek kurulan
   kurulu kalır ve pencere bunları adıyla söyler.
 - Pencere açıldıktan sonra Kur'a basılana dek plan değiştiyse (örneğin başka
-  bir yönetici bir şey kurduysa) hiçbir şey başlamaz ve pencere güncel planı
-  gösterir.
+  bir yönetici bir şey kurduysa) hiçbir şey kurulmaz ve pencere listeye yeniden
+  bakıp onaylamayı ister.
 - phpMyAdmin, phpPgAdmin ve Roundcube hangi kurulu PHP sürümüyle çalışacağını
   sorar; varsayılan olarak dağıtımın kendi PHP'si (yoksa en yenisi) seçilidir.
 - Paket adları artık yalnız sahibin onay vermesi gereken yerde görünür: depo

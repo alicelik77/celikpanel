@@ -22,8 +22,8 @@ installed panels, from the panel's own update screen.**
   step fails, what was already installed stays installed and the window names
   it.
 - If the plan changed between opening the window and pressing Install (for
-  example another administrator installed something), nothing starts and the
-  window shows the new plan.
+  example another administrator installed something), nothing is installed
+  and the window asks to look at the list again and confirm it.
 - phpMyAdmin, phpPgAdmin and Roundcube ask which installed PHP version they
   run on; the distribution's own PHP (or the newest) is chosen by default.
 - Package names now appear only where the owner must consent to something: a
