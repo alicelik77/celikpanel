@@ -148,6 +148,12 @@ printf 'recovery runtime shell contract: ok\n'
 # always uses FD9. Exercise actual inherited flock and inode identity in a child.
 # Redirect only the fixed selected CLI path into this private fixture.
 eval "$(extract_function prepare_independent_recovery_runtime | sed 's@/usr/libexec/celikpanel/recovery@"$TEST_ROOT/selected-recovery"@g')"
+# a125: the compatibility check waits, bounded, for a running Agent operation.
+for name in update_agent_refusal_is_transient run_update_probe_waiting \
+    recovery_compatibility_refusal_is_transient run_recovery_compatibility_waiting; do
+    eval "$(extract_function "$name")"
+done
+eval "$(grep -E '^UPDATE_AGENT_IDLE_(WAIT|POLL)_SECONDS=' "$ROOT/update.sh")"
 # upd3 F1: selected-runtime preflight refusals report their typed, unchanged
 # outcome through the real reporter (exit 1, summary last), not the fixture die.
 eval "$(extract_function fail_recovery_runtime_preflight)"
@@ -213,6 +219,15 @@ else: raise AssertionError(args)
 with open(os.environ['FIXTURE_CALLS'],'a') as f: f.write(args[0]+'\n')
 if args[0]=='verify-compatibility' and os.environ.get('FIXTURE_COMPAT_REJECT')=='1':
     sys.stderr.write('The selected recovery runtime cannot verify this installation. The update has not stopped the panel. step=panel_database_check: Recovery database check: service operations are not idle: SQLite sidecar -wal changed after pinning\n'); sys.exit(3)
+if args[0]=='verify-compatibility' and os.environ.get('FIXTURE_COMPAT_BUSY'):
+    # An Agent operation (the panel's start-up mail work, a124 lab) runs for
+    # the first FIXTURE_COMPAT_BUSY reads, or for every read with "always".
+    counter=os.environ['FIXTURE_COMPAT_COUNTER']
+    reads=int(open(counter).read() or '0')+1 if os.path.exists(counter) else 1
+    open(counter,'w').write(str(reads))
+    busy=os.environ['FIXTURE_COMPAT_BUSY']
+    if busy=='always' or reads<=int(busy):
+        sys.stderr.write('The selected recovery runtime cannot verify this installation. The update has not stopped the panel. step=agent_ledger_check: Recovery agent check: service mutation state is not idle: privileged mutation 0ff22f3864a0988121833f5ed483fc72 is active\n'); sys.exit(3)
 if args[0]=='prepare-mail-renewal-runtime' and os.environ.get('FIXTURE_MAIL_REJECT')=='1': sys.exit(81)
 if args[0]=='prepare-runtime' and os.environ.get('FIXTURE_REJECT_PREPARATION')=='1': sys.exit(78)
 if args[0]=='prepare-firewall-runtime' and os.environ.get('FIXTURE_FIREWALL_REJECT')=='1': sys.exit(79)
@@ -297,7 +312,33 @@ chmod 0755 "$TEST_ROOT/fresh/recovery-runtime/bin/recovery"
     [[ $status == 1 && $(tail -n 1 "$FIXTURE_CALLS") == verify-compatibility ]] || fail 'refused compatibility continued'
     expect_preflight_stop "$TEST_ROOT/compat-rejected.log" panel_database_check
     grep -F 'SQLite sidecar -wal changed after pinning detail=' "$TEST_ROOT/compat-rejected.log" >/dev/null || fail 'checker line lost'
+    ! grep -F 'waiting up to' "$TEST_ROOT/compat-rejected.log" >/dev/null || fail 'a database refusal was waited for'
     unset FIXTURE_COMPAT_REJECT
+    # a124 lab: an Agent operation that began one second after the update was
+    # accepted is waited for (bounded, announced, FD9 held on every read) and
+    # the update continues; one that does not end keeps the typed stop.
+    sleep() { printf 'sleep %s\n' "$*" >> "$TEST_ROOT/compat.sleeps"; }
+    export FIXTURE_COMPAT_COUNTER=$TEST_ROOT/compat.counter FIXTURE_COMPAT_BUSY=2
+    rm -f -- "$FIXTURE_COMPAT_COUNTER" "$TEST_ROOT/compat.sleeps"
+    before_calls=$(wc -l < "$FIXTURE_CALLS")
+    (prepare_independent_recovery_runtime) >"$TEST_ROOT/compat-waited.log" 2>&1 || { cat "$TEST_ROOT/compat-waited.log" >&2; fail 'a finishing Agent operation stopped the update'; }
+    [[ $(cat "$FIXTURE_COMPAT_COUNTER") == 3 && $(wc -l < "$TEST_ROOT/compat.sleeps") == 2 ]] || fail 'finishing operation was not read exactly three times'
+    tail -n +"$((before_calls + 1))" "$FIXTURE_CALLS" | grep -c '^verify-compatibility$' | grep -qx 3 || fail 'compatibility reads not recorded'
+    [[ $(tail -n 1 "$FIXTURE_CALLS") == selected-database-support ]] || fail 'update did not continue after the wait'
+    grep -F 'waiting up to 60 s' "$TEST_ROOT/compat-waited.log" >/dev/null || fail 'the wait was not announced'
+    grep -F 'bir şey yapmanız gerekmiyor' "$TEST_ROOT/compat-waited.log" >/dev/null || fail 'the Turkish wait line is missing'
+    grep -F 'finished its operation after about 6 s' "$TEST_ROOT/compat-waited.log" >/dev/null || fail 'the end of the wait was not announced'
+    ! grep -F CELIKPANEL_UPDATE_FAILURE "$TEST_ROOT/compat-waited.log" >/dev/null || fail 'a waited operation reported a failure'
+    export FIXTURE_COMPAT_BUSY=always
+    rm -f -- "$FIXTURE_COMPAT_COUNTER" "$TEST_ROOT/compat.sleeps"
+    status=0
+    (prepare_independent_recovery_runtime) >"$TEST_ROOT/compat-busy.log" 2>&1 || status=$?
+    [[ $status == 1 && $(tail -n 1 "$FIXTURE_CALLS") == verify-compatibility ]] || fail 'a lasting Agent operation continued'
+    [[ $(cat "$FIXTURE_COMPAT_COUNTER") == 21 && $(wc -l < "$TEST_ROOT/compat.sleeps") == 20 ]] || fail 'lasting operation was not waited for exactly 60 s'
+    expect_preflight_stop "$TEST_ROOT/compat-busy.log" agent_ledger_check
+    grep -F 'privileged mutation 0ff22f3864a0988121833f5ed483fc72 is active detail=' "$TEST_ROOT/compat-busy.log" >/dev/null || fail 'agent checker line lost'
+    unset FIXTURE_COMPAT_BUSY FIXTURE_COMPAT_COUNTER
+    unset -f sleep
     export FIXTURE_UNSUPPORTED=1
     status=0
     (prepare_independent_recovery_runtime) >"$TEST_ROOT/unsupported-kit.log" 2>&1 || status=$?

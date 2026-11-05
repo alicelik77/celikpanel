@@ -688,8 +688,9 @@ func (p *Panel) handlePanelUpdateStart(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, "PANEL_UPDATE_START_REFUSED", "the update service did not accept this request", "")
 		return
 	}
-	// The scheduled update check stays away from an admitted update.
-	p.markPanelUpdateAdmitted(panelUpdateNow())
+	// The scheduled update check and the deferred startup mail work stay
+	// away from an admitted update.
+	p.rememberAdmittedPanelUpdate(request.RequestID, panelUpdateNow())
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(panelUpdateStartResponse{
 		Accepted: true, RequestID: request.RequestID, Status: reply.Status, Target: request.panelUpdateTarget,
