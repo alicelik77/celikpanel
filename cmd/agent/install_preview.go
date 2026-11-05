@@ -203,7 +203,14 @@ func (c installClassification) classifySimulation(sim aptSimulation) []transport
 	for _, name := range sim.Installed {
 		if _, upgrade := sim.Upgrades[name]; !upgrade {
 			if c.shared[packageBaseName(name)] {
-				notable = append(notable, transport.NotableInstall{Package: packageBaseName(name), Reason: notableReasonVendorShared})
+				// alpha.124 (lab: PostgreSQL 18 on Debian 12 said "vendor"):
+				// a shared package installed fresh names its repository too,
+				// from the version it would install.
+				item := transport.NotableInstall{Package: packageBaseName(name), Reason: notableReasonVendorShared}
+				if version, ok := sim.Versions[name]; ok && c.vendorOf != nil {
+					item.Component = c.vendorOf(item.Package, version.To)
+				}
+				notable = append(notable, item)
 				continue
 			}
 			fresh = append(fresh, name)

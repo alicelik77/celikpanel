@@ -86,7 +86,10 @@ test('every new sentence exists in English and Turkish', () => {
 
 test('the component install dialogue reads the same simulation and sends what was confirmed; the server checks it again', () => {
   const list = source('components/ServiceList.tsx');
-  assert.match(list, /installPreviewURL\(\[\{ id: service\.id, \.\.\.\(selectedPkg \? \{ package: selectedPkg \} : \{\}\) \}\]\)/);
+  // alpha.124: the requirements installed together are part of the same check.
+  assert.match(list, /\.\.\.together\.map\(\(id\) => \(\{ id \}\)\),/);
+  assert.match(list, /id: service\.id,\s*\.\.\.\(selectedPkg \? \{ package: selectedPkg \} : \{\}\),/);
+  assert.match(list, /const previewURL = plan \? installPreviewURL\(previewSteps\) : null;/);
   assert.match(list, /checkInstalls: true, confirmInstalls: confirmed/);
   assert.match(source('components/ComponentOperation.tsx'), /check_installs: true, confirmed_installs: request\.confirmInstalls \?\? \[\]/);
 });

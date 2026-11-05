@@ -189,6 +189,16 @@ export function installedNotes({ result, name, fallbackOnly, t }: { result: unkn
             : said(t, 'services.phpToolProof.notReady', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version || proof.first, why });
         if (text) notes.push({ kind: 'warning', text });
     }
+    // alpha.124: the PHP version chosen in the install window could not be
+    // used; the tool runs on the version it had.
+    const bind = (result as { php_tool_bind?: Record<string, unknown> } | null | undefined)?.php_tool_bind;
+    const version = typeof bind?.version === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(bind.version) ? bind.version : '';
+    if (bind && bind.bound === false && version && typeof bind.tool === 'string' && bind.tool in PHP_TOOL_NAMES) {
+        const previous = typeof bind.previous === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(bind.previous) ? bind.previous : proof?.version || '—';
+        const detail = typeof bind.detail === 'string' ? bind.detail.slice(0, 240) : '';
+        const text = said(t, 'cinst.bindFailed', { tool: PHP_TOOL_NAMES[bind.tool as keyof typeof PHP_TOOL_NAMES], version, previous, why: detail ? ` (${detail})` : '' });
+        if (text) notes.push({ kind: 'warning', text });
+    }
     // Another PHP tool needing attention does not fail this install
     // (alpha.104 review): it is said as a warning that names the tool.
     for (const problem of decodePHPToolProblems(result)) {

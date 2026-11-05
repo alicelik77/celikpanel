@@ -56,6 +56,11 @@ type serviceInstallRequest struct {
 	PHPVersion        string   `json:"php_version,omitempty"`
 	CheckInstalls     bool     `json:"check_installs,omitempty"`
 	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
+	// InstallTogether (alpha.124, D-045 follow-up): the missing requirements
+	// the owner confirmed to install first, as the install plan lists them.
+	// It must equal the plan's list; the install then runs on the server as
+	// one durable operation (service_install_together).
+	InstallTogether []string `json:"install_together,omitempty"`
 	// AcceptedPointUpdates is set only by a reviewed server setup step (never
 	// from a request body): the exact "package=version" distribution point
 	// updates its review listed and its confirmation covered.
@@ -67,8 +72,9 @@ const maxConfirmedInstalls = 64
 // validServiceInstallChoices checks the alpha.105 fields of an install.
 func validServiceInstallChoices(req serviceInstallRequest) string {
 	if req.PHPVersion != "" {
-		if req.ServiceID != "phpmyadmin" && req.ServiceID != "phppgadmin" {
-			return "php_version is chosen only for phpMyAdmin and phpPgAdmin"
+		// alpha.124: Roundcube's PHP version is chosen at its install too.
+		if req.ServiceID != "phpmyadmin" && req.ServiceID != "phppgadmin" && req.ServiceID != "roundcube" {
+			return "php_version is chosen only for phpMyAdmin, phpPgAdmin and Roundcube"
 		}
 		if !phpToolVersionPattern.MatchString(req.PHPVersion) {
 			return "invalid php_version"
@@ -246,6 +252,12 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !requireAdministratorForComponent(w, r, req.ServiceID) {
+		return
+	}
+	// alpha.124 (D-045 follow-up): missing requirements confirmed in the
+	// install window are installed first, in one durable operation.
+	if len(req.InstallTogether) > 0 {
+		p.startInstallTogether(w, r, req)
 		return
 	}
 	existing, found, err := p.idempotentServiceOperation(
@@ -626,7 +638,8 @@ func parseMailTLSChildPhase(phase string) (mailTLSChildIdentity, bool) {
 func serviceOperationNeedsFirewallSync(op serviceOperation) bool {
 	return op.Kind == serviceOperationKindInstall ||
 		op.Kind == serviceOperationKindMailProfileInstall ||
-		op.Kind == serviceOperationKindRemoveTogether
+		op.Kind == serviceOperationKindRemoveTogether ||
+		op.Kind == serviceOperationKindInstallTogether
 }
 
 func serviceOperationFirewallPhase(op serviceOperation) string {
@@ -2369,6 +2382,17 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 			successAudit = "webmail.address.remove.recovered:" + op.PackageName
 			failureAudit = "webmail.address.remove.recovered.failed:" + op.PackageName
 		}
+	case serviceOperationKindInstallTogether:
+		// alpha.124: the plan is read again first and a requirement already
+		// installed is skipped, so the same run resumes; an install the
+		// Agent finished is idempotent.
+		resumed, err := p.installTogetherRunner(op)
+		if err != nil {
+			return fmt.Errorf("interrupted install-together operation: %w", err)
+		}
+		runner = resumed
+		successAudit = "service.install.together.recovered:" + op.ServiceID + pkgSuffix(op.PackageName)
+		failureAudit = "service.install.together.recovered.failed:" + op.ServiceID + pkgSuffix(op.PackageName)
 	case serviceOperationKindRemoveTogether:
 		// alpha.123 (D-045): every step is idempotent and the plan is
 		// checked again first, so the same run resumes.

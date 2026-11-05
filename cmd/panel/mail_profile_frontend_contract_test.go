@@ -102,11 +102,20 @@ func TestMailProfileFrontendRecoveryAndFallbackStayKindBound(t *testing.T) {
 		`'/api/v1/service/profile/install'`,
 		`profile_id: request.serviceId`,
 		`verifiedProfileResult?.fallbackOnly`,
-		`showToast('warning', t('services.mailProfiles.fallbackWarning'`,
+		// alpha.124: the warning is said by the notes fetched when the
+		// operation ends (web/src/lib/componentOperationNotes.ts).
+		`installedNotes({ result: next.result, name: installedName, fallbackOnly,`,
 	} {
 		if !strings.Contains(source, required) {
 			t.Fatalf(`mail-profile recovery contract is missing %q`, required)
 		}
+	}
+	notes, err := os.ReadFile(filepath.Join("..", "..", "web", "src", "lib", "componentOperationNotes.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(notes), `fallbackOnly ? said(t, 'services.mailProfiles.fallbackWarning'`) {
+		t.Fatal(`the operation notes must say the mail profile's fallback warning`)
 	}
 	decoder := sourceSection(
 		t,

@@ -192,6 +192,43 @@ func serviceMutationRemoveTogetherAny(job *ServiceMutationJob, match func(string
 	return false
 }
 
+// serviceMutationInstallTogetherMembers (alpha.124, D-045 follow-up): the
+// components an install-together lease covers: the requirements in its
+// qualifier (each a plain component the target requires, ParseInstall-
+// TogetherQualifier), then the target. Anything else is no install-together
+// lease.
+// Birlikte kurulum kirasının kapsadığı bileşenler: gereksinimler, sonra hedef.
+func serviceMutationInstallTogetherMembers(job *ServiceMutationJob) []string {
+	if job == nil || job.Kind != "service_install_together" {
+		return nil
+	}
+	target := core.GetManagedServiceByID(job.Target)
+	if target == nil || target.ConflictGroup == "dns-server" || job.Target == core.NativeCronServiceID {
+		return nil
+	}
+	members, err := core.ParseInstallTogetherQualifier(job.Target, job.PackageName)
+	if err != nil {
+		return nil
+	}
+	return append(members, job.Target)
+}
+
+func serviceMutationInstallTogetherContains(job *ServiceMutationJob, serviceID string) bool {
+	for _, member := range serviceMutationInstallTogetherMembers(job) {
+		if member == serviceID {
+			return true
+		}
+	}
+	return false
+}
+
+// serviceMutationInstallTogetherTarget: the lease is an install-together
+// lease and its target is serviceID.
+func serviceMutationInstallTogetherTarget(job *ServiceMutationJob, serviceID string) bool {
+	members := serviceMutationInstallTogetherMembers(job)
+	return len(members) > 0 && members[len(members)-1] == serviceID
+}
+
 func serviceMutationDNSEngineTarget(target string) bool {
 	target = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(target)), ".service")
 	service := core.GetManagedServiceByID(target)
@@ -233,7 +270,8 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepInstallService:
 		return claim.action == "install" && claim.target != "roundcube" &&
 			(serviceMutationJobMatches(job, "service_install", claim.target, claim.packageName) ||
-				(claim.packageName == "" && serviceMutationMailProfileContains(job, claim.target)))
+				(claim.packageName == "" && serviceMutationMailProfileContains(job, claim.target)) ||
+				(claim.packageName == "" && serviceMutationInstallTogetherContains(job, claim.target)))
 
 	case serviceMutationStepUninstallService:
 		return claim.action == "uninstall" && claim.target != "roundcube" &&
@@ -243,7 +281,8 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepInstallRoundcube:
 		return claim.target == "roundcube" && claim.packageName == "" && claim.action == "install" &&
 			(serviceMutationJobMatches(job, "service_install", "roundcube", "") ||
-				serviceMutationMailProfileContains(job, "roundcube"))
+				serviceMutationMailProfileContains(job, "roundcube") ||
+				serviceMutationInstallTogetherTarget(job, "roundcube"))
 
 	case serviceMutationStepRemoveRoundcube:
 		return claim.target == "roundcube" && claim.packageName == "" && claim.action == "remove" &&
@@ -255,7 +294,8 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 			(serviceMutationJobMatches(job, "service_install", "roundcube", "") ||
 				serviceMutationJobMatches(job, "service_uninstall", "roundcube", "") ||
 				serviceMutationRemoveTogetherContains(job, "roundcube") ||
-				serviceMutationMailProfileContains(job, "roundcube"))
+				serviceMutationMailProfileContains(job, "roundcube") ||
+				serviceMutationInstallTogetherTarget(job, "roundcube"))
 
 	case serviceMutationStepInstallNodeVersion:
 		return claim.target == "node" && claim.action == "install" &&
@@ -441,7 +481,8 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepEnsureNginxReady:
 		return claim.target == "nginx" && claim.packageName == "" && claim.action == "ready" &&
 			(serviceMutationJobMatches(job, "service_install", "nginx", "") ||
-				serviceMutationMailProfileContains(job, "nginx"))
+				serviceMutationMailProfileContains(job, "nginx") ||
+				serviceMutationInstallTogetherContains(job, "nginx"))
 
 	case serviceMutationStepSetServerHostname:
 		// Mail installation has no authority to rename the operating system.
@@ -466,6 +507,7 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 			(job.Target == "startup" || serviceMutationSpamFilter(job.Target))) ||
 			(job.Kind == "service_install" && job.PackageName == "" &&
 				serviceMutationSpamFilter(job.Target)) ||
+			(serviceMutationSpamFilter(job.Target) && serviceMutationInstallTogetherTarget(job, job.Target)) ||
 			serviceMutationRemoveTogetherAny(job, serviceMutationSpamFilter) ||
 			serviceMutationJobMatches(job, "mail_profile_install", core.MailProfileProtected, "")
 
@@ -498,8 +540,18 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepBindPHPTool:
 		// One tool to one PHP version, inside its own "php_tool_bind" job
 		// (alpha.104).
-		return claim.action == "bind" && claim.packageName != "" &&
-			(claim.target == "webmail" || claim.target == "phpmyadmin" || claim.target == "phppgadmin") &&
+		if claim.action != "bind" || claim.packageName == "" {
+			return false
+		}
+		// alpha.124: webmail is bound to the PHP version the owner chose in
+		// its install window, inside that install's own job.
+		// Web postası, kurulum penceresinde seçilen PHP sürümüne kendi kurulum
+		// işinde bağlanır.
+		if claim.target == "webmail" && (serviceMutationJobMatches(job, "service_install", "roundcube", "") ||
+			serviceMutationInstallTogetherTarget(job, "roundcube")) {
+			return true
+		}
+		return (claim.target == "webmail" || claim.target == "phpmyadmin" || claim.target == "phppgadmin") &&
 			serviceMutationJobMatches(job, "php_tool_bind", claim.target, claim.packageName)
 
 	case serviceMutationStepProvePHPTool:
@@ -518,10 +570,12 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		}
 		switch claim.target {
 		case "phpmyadmin", "phppgadmin":
-			return serviceMutationJobMatches(job, "service_install", claim.target, "")
+			return serviceMutationJobMatches(job, "service_install", claim.target, "") ||
+				serviceMutationInstallTogetherTarget(job, claim.target)
 		case "webmail":
 			return serviceMutationJobMatches(job, "service_install", "roundcube", "") ||
-				serviceMutationMailProfileContains(job, "roundcube")
+				serviceMutationMailProfileContains(job, "roundcube") ||
+				serviceMutationInstallTogetherTarget(job, "roundcube")
 		}
 		return false
 
@@ -530,6 +584,9 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 			return false
 		}
 		if serviceMutationRemoveTogetherAny(job, func(id string) bool { return id == "phpmyadmin" || id == "phppgadmin" }) {
+			return true
+		}
+		if serviceMutationInstallTogetherTarget(job, "phpmyadmin") || serviceMutationInstallTogetherTarget(job, "phppgadmin") {
 			return true
 		}
 		if job.Target != "phpmyadmin" && job.Target != "phppgadmin" {

@@ -112,7 +112,9 @@ test('Turkish: one replaced package says what, why and what follows, each with i
     + 'php-common: Ubuntu’nun sürümü (2:93) yerine Sury PHP deposunun sürümü (2:101) kurulacak.'
     + 'Neden: PHP-FPM 8.5 yalnız Sury PHP deposunda var ve bu paketin o depodaki sürümüne ihtiyaç duyuyor.'
     + 'Sonrası: Bu paketin güncellemeleri artık Ubuntu’dan değil Sury PHP deposundan gelir.'), body);
-  assert.ok(body.includes('Ek olarak kurulacak paketlermariadb-server: bir veritabanı sunucusu'), body);
+  // alpha.124: what else comes is said by component, never by package name.
+  assert.ok(body.includes('Bununla birlikte gelenlerBir veritabanı sunucusu'), body);
+  assert.ok(!body.includes('mariadb-server'), body);
   assert.ok(body.includes('Bunu istemiyorsanız İptal’e basın ve Ubuntu’nun kendi sürümünü (8.3) seçin.'), body);
   assert.ok(body.endsWith('Yukarıdaki değişiklikleri okudum, onaylıyorum.'), body);
   const line = tree.root.find((node) => node.props['data-notable-package'] === 'php-common');
@@ -120,7 +122,7 @@ test('Turkish: one replaced package says what, why and what follows, each with i
   assert.equal(line.findByType('strong').children[0], 'php-common');
 });
 
-test('English: several packages sharing a reason are listed under it, one per line; no way back without a distribution version', () => {
+test('English: replaced packages one per line; other packages said by component; no way back without a distribution version', () => {
   const tree = render('en', known([
     SHARED, { ...SHARED, package: 'php-pear', from: '1:1.10.13+submodules+notgz+2024-1', to: '1:1.10.16+submodules+notgz+2025-1+ubuntu24.04.1+deb.sury.org+1' },
     { package: 'php8.4-common', reason: 'new_php_version', version: '8.4' }, { package: 'php8.4-xml', reason: 'new_php_version', version: '8.4' },
@@ -130,7 +132,8 @@ test('English: several packages sharing a reason are listed under it, one per li
   assert.ok(body.includes('php-pear: Debian’s version (1:1.10.13) will be replaced by the Sury PHP repository’s version (1:1.10.16).'), body);
   assert.ok(body.includes('Why: phpMyAdmin is only in the Sury PHP repository and needs that repository’s version of these packages.'), body);
   assert.ok(body.includes('Afterwards: these packages’ updates come from the Sury PHP repository, not from Debian.'), body);
-  assert.ok(body.includes('Additional packagesPart of another PHP version (8.4):php8.4-commonphp8.4-xml'), body);
+  assert.ok(body.includes('It also bringsPHP 8.4, beside the PHP already here'), body);
+  assert.ok(!body.includes('php8.4-common') && !body.includes('php8.4-xml'), body);
   assert.ok(!body.includes('press Cancel'), 'the way back is offered only when the distribution has its own version');
   assert.ok(body.endsWith('I have read the changes above and confirm them.'), body);
   // The confirmation still binds the exact names it showed.

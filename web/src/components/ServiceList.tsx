@@ -24,7 +24,9 @@ import { Link, useLocation, useNavigate } from '../router';
 import { FirewallBar } from './FirewallPanel';
 import { componentStateWord, isServiceRunning, phpBindingOf, phpNotReadyHintKey } from '../lib/serviceStatus';
 import { decodeCandidateVersion, decodeRepoInfo, type RepoInfo } from '../lib/componentRepo';
-import { decodeInstallPreview, installPreviewURL, shortCandidate, versionOfPackage } from '../lib/installPreview';
+import { decodeInstallPreview, installPreviewURL, shortCandidate, versionOfPackage, type InstallStep } from '../lib/installPreview';
+import { decodeInstallPlan, defaultPHPVersion, installedPHPVersions, installPlanURL, PHP_VERSION_TOOLS, togetherQualifier } from '../lib/installPlan';
+import { InstallRequirements } from './InstallRequirements';
 import { decodeRoundcubeUpdate, ROUNDCUBE_UPDATE_URL } from '../lib/roundcubeUpdate';
 import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRoundcubeUpdate } from './RoundcubeUpdateFlow';
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
@@ -971,7 +973,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // exactly the whitelisted packages for this id, then enables the unit.
     // Gerçek kurulum, onay modalından sonra koşar. Agent bu id için yalnız
     // beyaz-listedeki paketleri kurar, sonra unit'i etkinleştirir.
-    const doInstall = async (service: ManagedService, pkg?: string, confirmed: string[] = []) => {
+    const doInstall = async (service: ManagedService, pkg?: string, confirmed: string[] = [], together: string[] = [], phpVersion = '') => {
         if (stateUnverified) {
             showToast('error', t('services.stateUnverifiedHint'));
             return;
@@ -981,6 +983,11 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             serviceId: service.id,
             name: componentName(service, t),
             ...(pkg ? { package: pkg } : {}),
+            // alpha.124 (D-045 follow-up): the requirements confirmed in the
+            // window are installed first, in one operation on the server;
+            // a PHP tool runs on the PHP version chosen there.
+            ...(together.length > 0 ? { operationKind: 'service_install_together' as const, installTogether: together, package: togetherQualifier(together) } : {}),
+            ...(phpVersion ? { phpVersion } : {}),
             // alpha.105: what the install brings is checked again on the
             // server against what the owner confirmed (Roundcube is a
             // verified tarball, not a package install).
@@ -1528,7 +1535,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         const version = /^php([0-9]+\.[0-9]+)-fpm$/.exec(pkg)?.[1];
         if (target && target.id === 'php-fpm' && version) {
             requestComponentAction({ kind: 'install-package', service: target, pkg, version });
-        } else if (target && pkg === '' && target.is_installed === false && !target.conflict_with && !target.not_offered && !target.requires_missing?.length
+        } else if (target && pkg === '' && target.is_installed === false && !target.conflict_with && !target.not_offered && !(target.requires_missing?.length && isTarballRuntime(target))
             && !(target.category === 'email' && mailSetupParts.has(target.id)) && target.id !== 'pdns' && target.id !== 'bind') {
             if (mutationControlsDisabled) showToast('warning', stateUnverified ? t('services.stateUnverifiedHint') : readinessMessage);
             else if (isTarballRuntime(target)) setOpenDrawers((prev) => new Set(prev).add(target.id));
@@ -2130,7 +2137,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                                                                 <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                                                                 {t('services.mailSetupLink')}
                                                             </button>
-                                                        ) : s.requires_missing && s.requires_missing.length > 0 ? (
+                                                        ) : s.requires_missing && s.requires_missing.length > 0 && isTarballRuntime(s) ? (
                                                             /* alpha.123 (D-045): Install opens what it needs first,
                                                                each with its own Install button.
                                                                Kur, önce gerekenleri kendi Kur düğmeleriyle açar. */
@@ -2379,7 +2386,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         service={installTarget}
                         busy={busy === installTarget.id}
                         onCancel={() => setInstallTarget(null)}
-                        onConfirm={(pkg, confirmed) => doInstall(installTarget, pkg, confirmed)}
+                        services={services}
+                        onConfirm={(pkg, confirmed, together, phpVersion) => doInstall(installTarget, pkg, confirmed, together, phpVersion)}
                     />
                 )}
                 {profileTarget && mailThroughSetup && (
@@ -2932,16 +2940,34 @@ function MailProfileInstallDialog({
 
 function InstallServiceDialog({
     service,
+    services,
     busy,
     onCancel,
     onConfirm,
 }: {
     service: ManagedService;
+    services: readonly ManagedService[];
     busy: boolean;
     onCancel: () => void;
-    onConfirm: (pkg: string | undefined, confirmed: string[]) => void;
+    onConfirm: (pkg: string | undefined, confirmed: string[], together: string[], phpVersion: string) => void;
 }) {
     const { t } = useI18n();
+    // alpha.124 (D-045 follow-up): what this component needs, at component
+    // level, from the server's install plan. Missing requirements that can
+    // be installed here are installed first, in the same operation.
+    // Bu bileşenin bileşen düzeyinde gerektirdikleri.
+    const planRead = useRemote(installPlanURL(service.id), decodeInstallPlan);
+    const plan = planRead.remote.state === 'known' && !planRead.reading ? planRead.remote.value : null;
+    const together = plan?.together ?? [];
+    // A PHP tool chooses the installed PHP-FPM version it runs on: the
+    // distribution's own when it is installed, otherwise the newest.
+    const phpTool = PHP_VERSION_TOOLS.includes(service.id);
+    const phpRow = services.find((item) => item.id === 'php-fpm');
+    const phpVersions = phpTool && phpRow?.is_installed === true ? installedPHPVersions(phpRow.versions) : [];
+    const phpDistribution = useRemote(phpVersions.length > 0 ? '/api/v1/service/candidate?id=php-fpm' : null, decodeCandidateVersion);
+    const phpDefault = phpDistribution.remote.state === 'known' ? shortCandidate(phpDistribution.remote.value) : '';
+    const [phpPicked, setPHPPicked] = useState('');
+    const phpChosen = phpVersions.includes(phpPicked) ? phpPicked : defaultPHPVersion(phpVersions, phpDefault);
     // What the package manager would install right now, as the server reports
     // it: '' is the server saying it names no version; a read that failed is
     // neither a version nor "the distribution default".
@@ -3008,17 +3034,23 @@ function InstallServiceDialog({
     // alpha.105: the package manager's simulation of this install, read while
     // the dialogue is open; notable packages need the owner's confirmation.
     // Bu kurulumun benzetimi; dikkat çeken paketler onay ister.
-    const previewURL = service.id === 'roundcube' ? null : installPreviewURL([{ id: service.id, ...(selectedPkg ? { package: selectedPkg } : {}) }]);
+    // The requirements installed together are part of the same check; a PHP
+    // tool's chosen version too (Roundcube is a verified archive, not a
+    // package: only its requirements are checked).
+    const previewSteps: InstallStep[] = [
+        ...together.map((id) => ({ id })),
+        ...(service.id === 'roundcube' ? [] : [{
+            id: service.id,
+            ...(selectedPkg ? { package: selectedPkg } : {}),
+            ...(phpChosen && phpTool ? { phpVersion: phpChosen } : {}),
+        }]),
+    ];
+    const previewURL = plan ? installPreviewURL(previewSteps) : null;
     const preview = useRemote(previewURL, decodeInstallPreview);
     const [acknowledgedFor, setAcknowledgedFor] = useState<string | null>(null);
     const ackKey = installPreviewAckKey(previewURL, preview);
     const previewGate = installPreviewGate(previewURL ? preview : null, ackKey !== null && acknowledgedFor === ackKey);
 
-    const willInstall = selectedPkg
-        ? [selectedPkg]
-        : service.packages && service.packages.length > 0
-          ? service.packages
-          : [service.id];
 
     return (
         <>
@@ -3034,8 +3066,8 @@ function InstallServiceDialog({
                         <Button variant="secondary" onClick={onCancel} disabled={busy || repoBusy}>{t('common.cancel')}</Button>
                         <Button
                             variant="primary"
-                            onClick={() => onConfirm(selectedPkg || undefined, previewGate.confirmed)}
-                            disabled={busy || repoBusy || !repoKnown || previewGate.hold || Boolean(repo?.required && (repo.error_code || !repo.enabled))}
+                            onClick={() => onConfirm(selectedPkg || undefined, previewGate.confirmed, together, phpVersions.length > 0 ? phpChosen : '')}
+                            disabled={busy || repoBusy || !repoKnown || !plan || plan.blocked || previewGate.hold || Boolean(repo?.required && (repo.error_code || !repo.enabled))}
                             icon={DownloadCloud}
                         >
                             {busy ? t('services.installing') : t('services.install')}
@@ -3043,6 +3075,17 @@ function InstallServiceDialog({
                     </>
                 }
             >
+                <InstallRequirements
+                    name={componentName(service, t)}
+                    handle={planRead}
+                    components={services.map((item) => ({ id: item.id, name: componentName(item, t), versions: item.versions }))}
+                    roleName={(token) => (REQ_ROLE_KEYS[token] ? t(REQ_ROLE_KEYS[token] as TranslationKey) : null)}
+                    phpVersions={phpVersions}
+                    phpVersion={phpChosen}
+                    phpDefault={phpDefault}
+                    onPHPVersion={setPHPPicked}
+                    busy={busy || repoBusy}
+                />
                 <div className="mb-4 rounded-lg border border-border bg-surface-2/50 p-3">
                     <div className="mb-2 flex items-center justify-between">
                         <span className="text-xs font-medium text-fg-subtle">{t('services.versionToInstall')}</span>
@@ -3060,17 +3103,14 @@ function InstallServiceDialog({
                             </span>
                         )}
                     </div>
-                    <p className="mb-1 text-xs font-medium text-fg-subtle">{t('services.willInstall')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {willInstall.map((pkg) => (
-                            <span key={pkg} className="rounded bg-surface-3 px-2 py-0.5 font-mono text-xs text-fg">{pkg}</span>
-                        ))}
-                    </div>
+                    {/* alpha.124: no package names here; what the component
+                        needs is said at component level above. */}
                     {service.id === 'php-fpm' && (
                         <p className="mt-2 text-xs text-fg-subtle">{t('services.phpVersionNote')}</p>
                     )}
                     {previewURL && (
                         <InstallPreviewNotes
+                            repo={repo?.id}
                             handle={preview}
                             acknowledged={ackKey !== null && acknowledgedFor === ackKey}
                             onAcknowledge={(value) => setAcknowledgedFor(value ? ackKey : null)}

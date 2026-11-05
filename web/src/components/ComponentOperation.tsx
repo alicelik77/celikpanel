@@ -35,15 +35,16 @@ const ERROR_CODE_OPERATION_BUSY = 'service_operation_busy';
 const OPERATION_ID_RE = /^[a-f0-9]{32}$/;
 
 type OperationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
-type InstallOperationKind = 'service_install' | 'runtime_install' | 'mail_profile_install' | 'service_remove_together';
+type InstallOperationKind = 'service_install' | 'runtime_install' | 'mail_profile_install' | 'service_remove_together' | 'service_install_together';
 type MailProfileStatus = 'unknown' | 'available' | 'partial' | 'complete' | 'blocked';
 type MailProfileAttemptStatus = 'none' | 'in_progress' | 'succeeded' | 'failed';
 
 const MAIL_PROFILE_IDS = ['core-mail', 'webmail', 'protected-mail'] as const;
 const MAIL_PROFILE_ID_SET: ReadonlySet<string> = new Set(MAIL_PROFILE_IDS);
 // alpha.123 (D-045): the server-side remove-together operation is followed and
-// re-attached like an install; a browser marker never starts one.
-const OPERATION_KINDS: ReadonlySet<unknown> = new Set(['service_install', 'runtime_install', 'mail_profile_install', 'service_remove_together']);
+// re-attached like an install; a browser marker never starts one. alpha.124:
+// install-together the same way (its package name is the member list).
+const OPERATION_KINDS: ReadonlySet<unknown> = new Set(['service_install', 'runtime_install', 'mail_profile_install', 'service_remove_together', 'service_install_together']);
 
 function isMailProfileID(value: unknown): value is (typeof MAIL_PROFILE_IDS)[number] {
     return typeof value === 'string' && MAIL_PROFILE_ID_SET.has(value);
@@ -102,7 +103,7 @@ const MAIL_HOSTNAME_SOURCES: ReadonlySet<string> = new Set([
 // the screen copy (alpha.124, boot path). Without them the plain words stay.
 // Biten işlemin notları işlem bitince getirilir.
 const loadOperationNotes = () => import('../lib/componentOperationNotes');
-const RESULT_NOTE_FIELDS = ['php_tool_proof', 'php_tool_problems', 'waiting'];
+const RESULT_NOTE_FIELDS = ['php_tool_proof', 'php_tool_problems', 'php_tool_bind', 'waiting'];
 const hasResultNotes = (result: unknown) => Boolean(result && typeof result === 'object'
     && RESULT_NOTE_FIELDS.some((field) => (result as Record<string, unknown>)[field] !== undefined));
 
@@ -192,6 +193,12 @@ export interface InstallOperationRequest {
     version?: string;
     /** alpha.105: the PHP version a database tool is installed for (a bundle's choice). */
     phpVersion?: string;
+    /**
+     * alpha.124: the missing requirements installed first, in one operation
+     * on the server (operationKind service_install_together; package is
+     * their canonical list, as the operation names it).
+     */
+    installTogether?: string[];
     /** alpha.105: the server checks what the install brings against confirmInstalls. */
     checkInstalls?: boolean;
     confirmInstalls?: string[];
@@ -514,7 +521,7 @@ function snapshotConfirmsTerminalOperation(
     const service = snapshot.services.find((candidate) => candidate.id === operation.service_id);
     if (operation.kind === 'service_remove_together') return service?.is_installed === false;
     if (!service || service.is_installed !== true) return false;
-    if (operation.kind !== 'runtime_install') return operation.kind === 'service_install';
+    if (operation.kind !== 'runtime_install') return operation.kind === 'service_install' || operation.kind === 'service_install_together';
 
     const expectedVersion = operation.package_name || '';
     if (!expectedVersion) return false;
@@ -1501,6 +1508,15 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                       confirmed: true,
                       ...(request.mailHostname ? { mail_hostname: request.mailHostname } : {}),
                   }
+                : marker.operation_kind === 'service_install_together'
+                ? {
+                      service_id: request.serviceId,
+                      install_together: request.installTogether ?? [],
+                      ...(request.phpVersion ? { php_version: request.phpVersion } : {}),
+                      check_installs: true,
+                      confirmed_installs: request.confirmInstalls ?? [],
+                      request_id: marker.request_id,
+                  }
                 : {
                       service_id: request.serviceId,
                       ...(request.package ? { package: request.package } : {}),
@@ -1749,6 +1765,12 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
 
                 if (next.status === 'failed') {
                     const refused = operationError(next.error, t('services.operation.failed'));
+                    // alpha.124: an install-together that stopped keeps what it
+                    // installed before the failed step, and says so.
+                    const kept = (next.result as { installed_together?: unknown } | undefined)?.installed_together;
+                    if (next.kind === 'service_install_together' && Array.isArray(kept) && kept.length > 0) {
+                        refused.details = [...(refused.details ?? []), t('services.operation.installTogetherKept', { names: kept.filter((id): id is string => typeof id === 'string').join(', ') })];
+                    }
                     // A refused notable install says what it would have
                     // brought and where to confirm it (alpha.105 review).
                     if ((next.result as { notable_installs?: unknown } | undefined)?.notable_installs !== undefined) {

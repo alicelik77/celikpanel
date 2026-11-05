@@ -306,7 +306,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.installPreview.next.agent_unreachable': 'Şimdilik bir şey yapmanız gerekmiyor: bir dakika sonra Tekrar dene’ye basın. Sürerse sunucudaki yardımcının yeniden başlatılması gerekebilir.',
     'services.installPreview.next.invalid_request': 'Sonraki adım: bu pencereyi kapatıp sürümü yeniden seçin.',
     'services.installPreview.next.other': 'Sonraki adım: Tekrar dene’ye basın. Yinelenirse kurulumun kendisi hiçbir şeyi değiştirmeden durur ve paket yöneticisinin iletisini gösterir.',
-    'services.installPreview.nothingElse': 'Paket yöneticisi yalnız burada listelenenleri ve onların bağlı olduğu paketleri kurar; hiçbiri başka bir PHP, Apache, başka bir bileşen ya da veritabanı sunucusu değildir.',
+    'services.installPreview.nothingElse': 'Onayınızı gerektiren başka bir şey yok: paket yöneticisi yalnız bu bileşenin ihtiyaç duyduklarını getirir; hiçbiri başka bir PHP, Apache, başka bir bileşen ya da veritabanı sunucusu değildir.',
     // alpha.109 (sahip: “birkaç paketle hiç anlaşılmıyor”): gruplu liste, her satırda bir paket.
     'services.installPreview.heading': 'Bu kurulum, {selected} yanında şunları da yapacak:',
     'services.installPreview.selectedUnknown': 'seçtiğiniz sürüm',
@@ -317,7 +317,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.installPreview.whyMany': 'Neden: {selected} yalnız {repo} deposunda var ve bu paketlerin o depodaki sürümlerine ihtiyaç duyuyor.',
     'services.installPreview.afterOne': 'Sonrası: Bu paketin güncellemeleri artık {distroFrom} değil {repo} deposundan gelir.',
     'services.installPreview.afterMany': 'Sonrası: Bu paketlerin güncellemeleri artık {distroFrom} değil {repo} deposundan gelir.',
-    'services.installPreview.additionalTitle': 'Ek olarak kurulacak paketler',
+    'services.installPreview.additionalTitle': 'Bununla birlikte gelenler',
     'services.installPreview.note.new_php_version': 'Burada zaten olan PHP’ye ek olarak kurulur ve sistemle birlikte güncellenir.',
     'services.installPreview.note.apache': 'CelikPanel Nginx ile sunar; Apache 80 numaralı bağlantı noktasını kullanmaya çalışabilir.',
     'services.installPreview.note.upgrade': 'İşletim sisteminin kendi güncellemesi de aynı sürümleri getirirdi.',

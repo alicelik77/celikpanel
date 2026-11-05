@@ -18,7 +18,7 @@ When another page says a component is missing, such as Fail2ban, ClamAV, vsftpd,
 
 ## Installing and removing {#install}
 
-**Install** shows what will be installed before anything changes. A component that needs another one first, such as phpMyAdmin without MariaDB, opens a window with **Install … first** for each missing part.
+**Install** shows what the component needs before anything changes, under **Requires**: each requirement is **Installed**, installed together with it first, or missing with the reason and where it is done (mail engines come with a mail setup, for example). Missing parts that can be installed here, such as MariaDB and Nginx for phpMyAdmin, are installed first in the same operation; if one step fails, what was installed before it stays. phpMyAdmin, phpPgAdmin and Roundcube choose here the installed PHP version they run on. Package names are not listed; the window asks you to confirm only a change of repository, which it names (for example PostgreSQL (PGDG)).
 
 **Uninstall** asks one question: what needs this component? The window answers in three groups:
 

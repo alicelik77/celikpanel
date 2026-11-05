@@ -1599,6 +1599,7 @@ func main() {
 	http.HandleFunc(serviceUninstallPath, panel.handleServiceUninstall)
 	http.HandleFunc(serviceRemovalImpactPath, panel.handleServiceRemovalImpact)
 	http.HandleFunc(serviceInstallPreviewPath, panel.handleServiceInstallPreview)
+	http.HandleFunc(serviceInstallPlanPath, panel.handleServiceInstallPlan)
 	http.HandleFunc(roundcubeUpdatePath, panel.handleRoundcubeUpdate)
 	// alpha.108: PostgreSQL majors side by side (clusters, ports, moves).
 	http.HandleFunc(pgServiceAPIPrefix, panel.handlePostgreSQLService)

@@ -9,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Checking, CouldNotCheck, KeepWords } from './ui';
-import { capitalize, confirmationGroups, distroWords, hasVendorReplacement, installPreviewReasonKeys, reasonPhrase, versionPair, versionsSaid, type InstallPreview, type NotableInstall } from '../lib/installPreview';
+import { capitalize, confirmationGroups, distroWords, hasVendorReplacement, installPreviewReasonKeys, versionPair, versionsSaid, type InstallPreview, type NotableInstall } from '../lib/installPreview';
 import type { RemoteHandle } from '../lib/remote';
 
 // installPreviewGate: what the confirmation may send. A known answer with
@@ -46,6 +46,7 @@ export function InstallPreviewNotes({
     avoidable,
     selected,
     recommended,
+    repo: chosenRepo,
 }: {
     handle: RemoteHandle<InstallPreview>;
     acknowledged: boolean;
@@ -58,6 +59,11 @@ export function InstallPreviewNotes({
     selected?: string;
     /** The distribution's own version, said short, when it is known. */
     recommended?: string;
+    /**
+     * alpha.124: the repository the chosen version comes from ("pgdg"), named
+     * for a repository change the server did not attribute (never "vendor").
+     */
+    repo?: string;
 }) {
     const { t, locale } = useI18n();
     const remote = handle.remote;
@@ -66,7 +72,8 @@ export function InstallPreviewNotes({
     }
     const preview = remote.state === 'known' ? remote.value : null;
     const say = (key: string, params?: Record<string, string>) => t(key as TranslationKey, params);
-    const repoLabel = (id: string) => {
+    const repoLabel = (named: string) => {
+        const id = named || chosenRepo || '';
         const key = `services.notable.repoName.${id}` as TranslationKey;
         const said = id ? t(key) : key;
         return said === key ? id || t('services.notable.repoUnknown') : said;
@@ -174,35 +181,32 @@ export function InstallPreviewNotes({
                     </section>
                 )}
                 {additional.length > 0 && (
+                    // alpha.124 (owner, 4 Nov 2026: "knowing that installing
+                    // postgresql-server also installs postgresql-common does
+                    // not concern me"): what else comes is said at component
+                    // level - another PHP, Apache, another component, a
+                    // database server, or how many installed system packages
+                    // are updated - never by package name. The names stay in
+                    // what is confirmed (the server checks them) and in the
+                    // tooltip.
+                    // Gelen diğer şeyler bileşen düzeyinde söylenir.
                     <section data-install-preview-group="additional">
                         <h4 className="font-semibold">{t('services.installPreview.additionalTitle')}</h4>
                         <ul className="mt-1 space-y-1.5">
                             {additional.map((group) => {
-                                const phrase = reasonPhrase(group, say, componentLabel, repoLabel);
                                 const noteKey = `services.installPreview.note.${group.reason}` as TranslationKey;
                                 const note = t(noteKey);
+                                const brings = group.reason === 'upgrade'
+                                    ? t('cinst.brings.upgrade', { count: group.items.length })
+                                    : t(`cinst.brings.${group.reason}` as TranslationKey, {
+                                        version: group.version ?? '',
+                                        component: group.component ? componentLabel(group.component) : '',
+                                    });
                                 return (
-                                    <li key={group.key} className="break-words" data-notable-reason={group.reason}>
-                                        {group.items.length === 1 ? (
-                                            <span title={fullTitle(group.items[0])} data-notable-package={group.items[0].package}>
-                                                <strong className="font-semibold">{group.items[0].package}</strong>
-                                                {versionsSaid(group.items[0])}
-                                                {': '}
-                                                {phrase}
-                                            </span>
-                                        ) : (
-                                            <>
-                                                <span>{capitalize(phrase, locale)}:</span>
-                                                <ul className="space-y-0.5 pl-3">
-                                                    {group.items.map((item) => (
-                                                        <li key={item.package} title={fullTitle(item)} data-notable-package={item.package}>
-                                                            <strong className="font-semibold">{item.package}</strong>
-                                                            {versionsSaid(item)}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </>
-                                        )}
+                                    <li key={group.key} className="break-words" data-notable-reason={group.reason}
+                                        title={group.items.map((item) => fullTitle(item) ?? item.package).join('\n')}
+                                        data-notable-packages={group.items.map((item) => item.package).join(' ')}>
+                                        <span>{capitalize(brings, locale)}</span>
                                         {note !== noteKey && <span className="block text-fg-muted">{note}</span>}
                                     </li>
                                 );
