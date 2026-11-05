@@ -1,0 +1,32 @@
+== owner switches to BIND 05:15:09
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u24.test', '06-access_dns:boston.u24.test', '07-panel_certificate:boston.u24.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u24.test', '12-mail_certificate:mail.u24.test', '13-mail_profile:webmail',
+start 202 {
+ "id": "204d749db632dd34e905d2fe97bcbf9a",
+ "panel_url": "https://boston.u24.test:1923/",
+ "phase": "queued",
+ "plan_id": "dfb57750309ac40f89bfaed0df588c20",
+ "request_id": "204d749db632dd34e905d2fe97bcbf9a",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id":
+== case 4 (intermittent): lab load on the panel database 05:15:33
+Running as unit: lab-dbhold.service; invocation ID: 07ddcac2d7214040b0630f4c58dd1eef
+active
+cycles start 05:15:34
+-- 05:15:35 running 01-dns null
+-- 05:16:14 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:16:23 running 02-service null
+-- 05:16:38 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+Nov 05 05:16:12.192714 boston panel[11609]: 2026/11/05 05:16:12 metrics sample: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:16:36.537024 boston panel[11609]: 2026/11/05 05:16:36 service operation bd7635d129efc76cd9563ab671f7fb69 (nginx) failed in queued: service install preflight scan: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:16:38.802819 boston panel[11609]: 2026/11/05 05:16:38 server setup execution 204d749db632dd34e905d2fe97bcbf9a: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)
+-- u24/main 05:17:45
+failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-dns=succeeded 02-service=failed 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+== end 05:17:45
+failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}

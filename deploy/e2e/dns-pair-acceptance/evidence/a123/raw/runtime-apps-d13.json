@@ -1,0 +1,147 @@
+{
+ "status": 200,
+ "sandbox": {
+  "gaps": [],
+  "known": true,
+  "level": "full"
+ },
+ "kinds": [
+  {
+   "accepted_gaps": [],
+   "accepted_level": "full",
+   "apps": 0,
+   "held": false,
+   "implemented": true,
+   "kind": "program",
+   "level_gap": false,
+   "limits": {
+    "cpu_percent": 100,
+    "memory_mb": 512,
+    "tasks_max": 256
+   },
+   "offer_stale": false,
+   "offered": false,
+   "offering_id": "runtime:program",
+   "risk": {
+    "blocked": [
+     "other_sites",
+     "panel_files",
+     "privileges",
+     "mail_ports",
+     "metadata",
+     "other_ports",
+     "system_interpreters"
+    ],
+    "can_do": [
+     "any_code",
+     "own_folder",
+     "loopback_port",
+     "own_outbound"
+    ],
+    "network": [
+     "https_only",
+     "outbound_open"
+    ],
+    "remains": [
+     "outbound_abuse",
+     "mail_apis",
+     "cpu_memory_share",
+     "reduced_level",
+     "customer_code"
+    ]
+   },
+   "running": 0
+  },
+  {
+   "accepted_gaps": [],
+   "accepted_level": "full",
+   "apps": 0,
+   "held": false,
+   "implemented": true,
+   "kind": "python",
+   "level_gap": false,
+   "limits": {
+    "cpu_percent": 100,
+    "memory_mb": 512,
+    "tasks_max": 256
+   },
+   "offer_stale": false,
+   "offered": false,
+   "offering_id": "component:python:3.13",
+   "python": {
+    "detail": "Python's venv module is not installed (python3 python3-venv); the administrator installs Python in Components",
+    "max_workers": 4,
+    "minor": "3.13",
+    "packages": [
+     "python3",
+     "python3-venv"
+    ],
+    "ready": false,
+    "source_builds": false
+   },
+   "risk": {
+    "blocked": [
+     "other_sites",
+     "panel_files",
+     "privileges",
+     "mail_ports",
+     "metadata",
+     "other_ports"
+    ],
+    "can_do": [
+     "any_code",
+     "own_folder",
+     "loopback_port",
+     "own_outbound",
+     "pypi_packages"
+    ],
+    "network": [
+     "https_only",
+     "outbound_open"
+    ],
+    "remains": [
+     "outbound_abuse",
+     "mail_apis",
+     "cpu_memory_share",
+     "reduced_level",
+     "customer_code",
+     "pypi_third_party",
+     "interpreter_exec"
+    ]
+   },
+   "risk_digest_source_builds": "8f1fd3e580b2f84e",
+   "risk_source_builds": {
+    "blocked": [
+     "other_sites",
+     "panel_files",
+     "privileges",
+     "mail_ports",
+     "metadata",
+     "other_ports"
+    ],
+    "can_do": [
+     "any_code",
+     "own_folder",
+     "loopback_port",
+     "own_outbound",
+     "pypi_packages"
+    ],
+    "network": [
+     "https_only",
+     "outbound_open"
+    ],
+    "remains": [
+     "outbound_abuse",
+     "mail_apis",
+     "cpu_memory_share",
+     "reduced_level",
+     "customer_code",
+     "pypi_third_party",
+     "interpreter_exec",
+     "source_builds"
+    ]
+   },
+   "running": 0
+  }
+ ]
+}

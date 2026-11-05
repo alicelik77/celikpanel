@@ -1,0 +1,74 @@
+== 04:33:01 setup operation (API read)
+200 waiting 01-dns
+{"id": "01-dns", "kind": "dns", "owner_id": "0a4d6a5c820e5d42add71c633ed78a0c", "request_id": "f6cfb4083df5bd94cbe6e8a362ad68e0", "status": "running", "target": "local"}
+{"id": "02-service", "kind": "service", "owner_id": "46db11e95b6cdceb552af0fd15fcbe54", "request_id": "53ef8a7aa397117cf828adb04b0656b8", "status": "pending", "target": "nginx"}
+{"id": "03-service", "kind": "service", "owner_id": "9568f3c34cadd9f45d0c2721343fa728", "request_id": "08e348686c452232c25ba5a1470639e6", "status": "pending", "target": "certbot"}
+error {"code": "server_setup_dns_agent_failed", "message": "The CelikPanel Agent recorded this DNS operation (request f6cfb4083df5bd94cbe6e8a362ad68e0) as failed. Reason: The privileged host operation did not complete. CelikPanel has not confirmed that this server is back to its state before the operation, so setup is paused at this step and will not start the operation again. The server administrator should run `sudo /usr/libexec/celikpanel/recovery dns-switch-status --quiesced --request-id f6cfb4083df5bd94cbe6e8a362ad68e0` on this server and follow what it reports. Setup rechecks this same operation automatically and continues, or offers a new plan, once its result is confirmed."}
+== guest journal
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+systemd 249 (249.11-0ubuntu3.23)
+Nov 05 04:29:21.924890 boston groupadd[13724]: group added to /etc/group: name=bind, GID=120
+Nov 05 04:29:21.956404 boston groupadd[13724]: group added to /etc/gshadow: name=bind
+Nov 05 04:29:21.957870 boston groupadd[13724]: new group: name=bind, GID=120
+Nov 05 04:29:21.996741 boston useradd[13732]: new user: name=bind, UID=112, GID=120, home=/var/cache/bind, shell=/usr/sbin/nologin, from=none
+Nov 05 04:29:22.089447 boston usermod[13739]: change user 'bind' password
+Nov 05 04:29:28.264586 boston agent[12205]: 2026/11/05 04:29:28 DNS switch (request f6cfb4083df5bd94cbe6e8a362ad68e0): BIND rndc key /etc/bind/rndc.key is owner_or_package_provided (key_present)
+Nov 05 04:29:35.019247 boston agent[12205]: 2026/11/05 04:29:35 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|569|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|569|systemd-resolved.service.
+Nov 05 04:29:35.320476 boston agent[12205]: 2026/11/05 04:29:35 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|569|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|569|systemd-resolved.service.
+Nov 05 04:29:35.907174 boston agent[12205]: 2026/11/05 04:29:35 DNS switch rollback (request f6cfb4083df5bd94cbe6e8a362ad68e0): BIND rndc key /etc/bind/rndc.key was left in place: it was provided by the package or the owner (key_present)
+Nov 05 04:29:37.706120 boston agent[12205]: 2026/11/05 04:29:37 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|569|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|569|systemd-resolved.service.
+Nov 05 04:29:37.755844 boston agent[12205]: 2026/11/05 04:29:37 Local port-53 listeners accepted as the systemd-resolved stub resolver (unit cgroup and address proved; not DNS authority): tcp|127.0.0.53|systemd-resolve|569|systemd-resolved.service, udp|127.0.0.53|systemd-resolve|569|systemd-resolved.service.
+Nov 05 04:29:37.810096 boston agent[12205]: 2026/11/05 04:29:37 DNS switch rollback (request f6cfb4083df5bd94cbe6e8a362ad68e0): BIND rndc key /etc/bind/rndc.key was left in place: it was provided by the package or the owner (key_present)
+Nov 05 04:29:37.810293 boston agent[12205]: 2026/11/05 04:29:37 DNS engine switch to bind at epoch 1 failed: activate BIND generation a3c571f76f1899d26fe740701e26a9f41cd05c6ced1fa038fb27b52887c3c16b: verify BIND vendor identity before enabling aliases: named.service does not resolve to the exact APT vendor BIND identity
+Nov 05 04:29:37.810293 boston agent[12205]: explicit empty recovery applied and first BIND generation pointer removed
+-- named
+inactive inactive 
+ii bind9 1:9.18.39-0ubuntu0.22.04.8
+Id=named.service
+Names=named.service
+LoadState=loaded
+FragmentPath=/lib/systemd/system/named.service
+DropInPaths=
+UnitFileState=disabled
+lrwxrwxrwx 1 root root   7 Oct 20 10:51 /lib -> usr/lib
+-rw-r--r-- 1 root root 374 Aug 21  2025 /lib/systemd/system/named.service
+-rw-r--r-- 1 root root 374 Aug 21  2025 /usr/lib/systemd/system/named.service
+systemd: /usr/share/man/man8/systemd-hostnamed.service.8.gz
+bind9: /lib/systemd/system/named.service
+systemd: /lib/systemd/system/systemd-hostnamed.service
+[Unit]
+Description=BIND Domain Name Server
+Documentation=man:named(8)
+After=network.target
+Wants=nss-lookup.target
+Before=nss-lookup.target
+
+[Service]
+Type=forking
+EnvironmentFile=-/etc/default/named
+ExecStart=/usr/sbin/named $OPTIONS
+ExecReload=/usr/sbin/rndc reload
+ExecStop=/usr/sbin/rndc stop
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=bind9.service
+-- No entries --
+-- apt
+Start-Date: 2026-11-05  04:28:12
+Commandline: /usr/bin/apt-get install -y -qq tar xz-utils curl ca-certificates nftables iproute2 logrotate less zip unzip nano vim-tiny rsync
+Requested-By: celik (1000)
+Install: zip:amd64 (3.0-12build2), unzip:amd64 (6.0-26ubuntu3.2)
+Upgrade: xz-utils:amd64 (5.2.5-2ubuntu1.1, 5.2.5-2ubuntu1.2), ca-certificates:amd64 (20260601~22.04.1, 20260816ubuntu0.22.04.1), nano:amd64 (6.2-1ubuntu0.2, 6.2-1ubuntu0.3)
+End-Date: 2026-11-05  04:28:19
+
+Start-Date: 2026-11-05  04:29:19
+Commandline: /usr/bin/apt-get install -y --no-install-recommends bind9
+Install: bind9:amd64 (1:9.18.39-0ubuntu0.22.04.8), bind9-utils:amd64 (1:9.18.39-0ubuntu0.22.04.8, automatic), dns-root-data:amd64 (2024071801~ubuntu0.22.04.1, automatic)
+Upgrade: bind9-host:amd64 (1:9.18.39-0ubuntu0.22.04.7, 1:9.18.39-0ubuntu0.22.04.8), bind9-dnsutils:amd64 (1:9.18.39-0ubuntu0.22.04.7, 1:9.18.39-0ubuntu0.22.04.8), bind9-libs:amd64 (1:9.18.39-0ubuntu0.22.04.7, 1:9.18.39-0ubuntu0.22.04.8)
+End-Date: 2026-11-05  04:29:24
+-- recovery tool view (read-only status)
+No DNS switch journal was observed for request f6cfb4083df5bd94cbe6e8a362ad68e0. Its exact ledger job records status failed. This is a point-in-time ledger observation, not proof of DNS rollback, completion or current service health. Inspect the native DNS service and this same operation before any new switch.
+Starting CelikPanel privileged agent...
+Started CelikPanel privileged agent.

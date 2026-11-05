@@ -1,0 +1,10 @@
+Nov 05 05:11:44.656486 frankfurt systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Nov 05 05:11:44.747361 frankfurt systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Nov 05 05:11:44.761126 frankfurt systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+Nov 05 05:11:44.844281 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Nov 05 05:11:46.137288 frankfurt panel[56247]: 2026/11/05 05:11:46 Starting CelikPanel Backend...
+Nov 05 05:11:46.170583 frankfurt panel[56247]: 2026/11/05 05:11:46 Panel startup listener active on :1923 (HTTPS; application gated)
+Nov 05 05:12:46.330611 frankfurt panel[56247]: 2026/11/05 05:12:46 site configuration d13.test (startup): unchanged
+Nov 05 05:12:46.340717 frankfurt panel[56247]: 2026/11/05 05:12:46 site configuration site123.test (startup): unchanged
+Nov 05 05:12:46.350163 frankfurt panel[56247]: 2026/11/05 05:12:46 site configuration files at start: 0 written, 2 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 a
+Nov 05 05:12:54.221788 frankfurt panel[56247]: 2026/11/05 05:12:54 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and

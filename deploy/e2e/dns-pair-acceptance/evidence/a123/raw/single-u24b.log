@@ -1,0 +1,113 @@
+== provision 05:29:23 ubuntu2404 192.0.3.193 zone=u24b.test version=v0.1.0-alpha.123
+earch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 22.7
+}
+
+== install through get.sh in a root terminal 05:29:46
+main terminal rc 0 57.0 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.193:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+== systemd private socket (read-only) 05:30:43
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+6.8.0-138-generic
+systemd 255 (255.4-1ubuntu8.17)
+drwxr-xr-x 755 root:root links=25 /run/systemd
+srwx------ 700 root:root links=1 /run/systemd/private
+-rw-r--r-- 1 root root 75043 Nov  5 05:29 /root/celikpanel-install.sh
+/etc/celikpanel
+/opt/celikpanel
+running
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+CELIKPANEL_LISTEN=:1923
+
+== setup DNS engine catalogue (GET /api/v1/setup/components, read-only) 05:30:46
+host {'distro_id': 'ubuntu', 'version_id': '24.04'} inventory ready
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.8.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_main_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.8.3", "id": "pdns", "offered": true, "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+host {'distro_id': 'ubuntu', 'version_id': '24.04'} inventory ready
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.8.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_main_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.8.3", "id": "pdns", "offered": true, "role": "backup"}
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u24b.test', '06-access_dns:boston.u24b.test', '07-panel_certificate:boston.u24b.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u24b.test', '12-mail_certificate:mail.u24b.test', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:u24b.test', '16-mail_enrollment:mail-renewal', '17-main_site:u24b.test', '18-verify:custom'] 
+== start 05:31:02 (try 1)
+start 202 {
+ "id": "f03458f8308485c8a44abf2e0ea41f52",
+ "panel_url": "https://boston.u24b.test:1923/",
+ "phase": "queued",
+ "plan_id": "115b821b28a3b3deb5282c84300f582b",
+ "request_id": "f03458f8308485c8a44abf2e0ea41f52",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "5069933695e8f6fdbfcafe0ebfc2b0d2",
+   "request_id": "20589f6af3bf65e1d852960f956d6bfc",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "caf872a992a8d8fdbf3ff5fa01d01d16",
+   "request_id": "debf50ff82c6779fcfcd358aead8609b",
+   "st
+== case 4: lab load holds the panel database write lock for 60 s 05:31:10
+Running as unit: lab-dbhold.service; invocation ID: c1d01be3ebf04f27931c6a2f9be2cd1f
+active
+cycles start 05:31:11
+Unit lab-dbhold.service could not be found.
+Started lab-dbhold.service - /usr/bin/python3 -c "\nimport sqlite3,time,sys\nc=sqlite3.connect(sys.argv[1], isolation_level=None, timeout=30)\nn,h,f=int(sys.argv[2]),float(sys.argv[3]),float(sys.argv[4])\nprint('cycles start', time.strftime('%T'), flush=True)\nfor i in range(n):\n    c.execute('BEGIN IMMEDIATE'); time.sleep(h); c.execute('ROLLBACK'); time.sleep(f)\nprint('cycles end', time.strftime('%T'), flush=True)" /var/lib/celikpanel/celikpanel.db 12 7 1.
+cycles start 05:31:11
+cycles end 05:32:47
+lab-dbhold.service: Deactivated successfully.
+-- 05:31:12 running 01-dns null
+-- 05:31:51 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:31:59 running 02-service null
+-- 05:32:08 waiting 02-service {"code": "server_setup_panel_busy", "message": "CelikPanel's own database was briefly busy with another task, so this step could not save its progress just now. This is not a problem with the server or with the software this step sets up. Setup tries the same step again by itself in a few seconds, using its saved operation, so nothing is started twice. Nobody needs to act."}
+-- 05:32:16 running 02-service null
+-- 05:32:55 running 03-service null
+-- 05:33:14 running 04-firewall null
+-- 05:33:16 running 05-infrastructure_dns null
+-- u24b/main 05:33:22
+running 07-panel_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=running 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u24b/main 05:33:42
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u24b/main 05:34:23
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u24b/main 05:34:43
+running 13-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u24b/main 05:37:44
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u24b/main 05:39:25
+running 16-mail_enrollment {"code": "server_setup_mail_enrollment_handoff", "message": "The independent worker handoff was accepted. Enrollment is not yet confirmed. Setup will check the same request automatically; the server administrator can inspect celikpanel-mail-enrollment-8c7247553aa9c07132c40a6e108ea762.service if it stops."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=running 17-main_site=pending 18-verify=pending
+-- u24b/main 05:39:45
+running verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=pending
+-- u24b/main 05:40:05
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=succeeded
+== end 05:40:05
+succeeded complete null
+== single done 05:40:06

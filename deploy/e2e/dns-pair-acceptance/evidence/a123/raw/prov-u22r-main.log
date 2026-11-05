@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "u22r",
+  "node": "main",
+  "os": "ubuntu2204",
+  "ip": "192.0.3.191",
+  "hostname": "boston",
+  "uuid": "2139fff7-1804-5992-a275-849b91063d25",
+  "tap": "cptc583077e",
+  "mac": "52:54:00:18:0c:a7",
+  "image": "ubuntu-22.04-server-cloudimg-amd64-20261020.img",
+  "image_digest": {
+   "sha256": "2099e63da0b822ef8e05e3d596c1b402eaaae658fc08ab919cb8495bfcdc488b"
+  },
+  "memory_mb": 4096,
+  "cpus": 2,
+  "started_at": "2026-11-05T04:44:40Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "5ad685eb-fed5-4392-a649-63fcabda976b",
+  "waited_seconds": 25.9
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.191 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.191 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nVERSION_ID=\"22.04\"\n5.15.0-198-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 27.7
+}

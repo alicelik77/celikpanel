@@ -1,0 +1,60 @@
+-- 05:15:35 running 01-dns null
+-- 05:15:37 running 01-dns null
+-- 05:15:40 running 01-dns null
+-- 05:15:42 running 01-dns null
+-- 05:15:44 running 01-dns null
+-- 05:15:46 running 01-dns null
+-- 05:15:48 running 01-dns null
+-- 05:15:51 running 01-dns null
+-- 05:15:53 running 01-dns null
+-- 05:15:55 running 01-dns null
+-- 05:15:57 running 01-dns null
+-- 05:15:59 running 01-dns null
+-- 05:16:01 running 01-dns null
+-- 05:16:04 running 01-dns null
+-- 05:16:06 running 01-dns null
+-- 05:16:08 running 01-dns null
+-- 05:16:10 running 01-dns null
+-- 05:16:12 running 01-dns null
+-- 05:16:14 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:16:16 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:16:19 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:16:21 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:16:23 running 02-service null
+-- 05:16:25 running 02-service null
+-- 05:16:27 running 02-service null
+-- 05:16:29 running 02-service null
+-- 05:16:32 running 02-service null
+-- 05:16:34 running 02-service null
+-- 05:16:36 running 02-service null
+-- 05:16:38 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:40 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:42 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:45 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:47 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:49 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:51 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:53 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:55 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:57 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:16:59 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:02 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:04 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:06 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:08 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:10 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:12 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:15 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:17 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:19 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:21 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:23 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:25 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:27 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:29 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:32 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:34 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:36 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:38 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:40 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}
+-- 05:17:42 failed 02-service {"code": "service_install_failed", "component": "nginx", "detail": "service install preflight scan: database is locked (5) (SQLITE_BUSY)", "message": "The service could not be installed and verified.", "step": "package_install"}

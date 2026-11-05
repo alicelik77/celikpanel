@@ -1,0 +1,7 @@
+Nov 05 05:31:16.854382 boston panel[11612]: 2026/11/05 05:31:16 metrics sample: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:32:05.963101 boston panel[11612]: 2026/11/05 05:32:05 server setup step 02-service: the panel database was busy; the step is asked again: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:32:20.949641 boston panel[11612]: 2026/11/05 05:32:20 service install preflight: the panel database was busy; asked again (1): service install preflight scan: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:32:23.318840 boston panel[11612]: 2026/11/05 05:32:23 server setup execution f03458f8308485c8a44abf2e0ea41f52: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:32:29.245316 boston panel[11612]: 2026/11/05 05:32:29 service install preflight: the panel database was busy; asked again (2): service install preflight scan: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:32:32.334067 boston panel[11612]: 2026/11/05 05:32:32 server setup execution f03458f8308485c8a44abf2e0ea41f52: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:32:45.350015 boston panel[11612]: 2026/11/05 05:32:45 server setup execution f03458f8308485c8a44abf2e0ea41f52: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)

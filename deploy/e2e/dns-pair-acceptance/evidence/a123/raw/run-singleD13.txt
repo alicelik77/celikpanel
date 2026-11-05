@@ -1,0 +1,125 @@
+== provision 04:45:10 debian13 192.0.3.192 zone=d13.test version=v0.1.0-alpha.123
+E=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 18.1
+}
+
+== install through get.sh in a root terminal 04:45:28
+main terminal rc 0 54.8 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.192:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+== systemd private socket (read-only) 04:46:23
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+6.12.105+deb13-cloud-amd64
+systemd 257 (257.13-1~deb13u1)
+drwxr-xr-x 755 root:root links=26 /run/systemd
+srwx------ 700 root:root links=1 /run/systemd/private
+-rw-r--r-- 1 root root 75043 Nov  5 04:45 /root/celikpanel-install.sh
+/etc/celikpanel
+/opt/celikpanel
+running
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+CELIKPANEL_LISTEN=:1923
+
+== setup DNS engine catalogue (GET /api/v1/setup/components, read-only) 04:46:25
+host {'distro_id': 'debian', 'version_id': '13'} inventory ready
+  dns_engine {"candidate_version": "9.20.30", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.20.30", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.9.18", "id": "pdns", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "4.9.18", "id": "pdns", "offered": true, "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+host {'distro_id': 'debian', 'version_id': '13'} inventory ready
+  dns_engine {"candidate_version": "9.20.30", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.20.30", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.9.18", "id": "pdns", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "4.9.18", "id": "pdns", "offered": true, "role": "backup"}
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:d13.test', '06-access_dns:frankfurt.d13.test', '07-panel_certificate:frankfurt.d13.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.d13.test', '13-mail_certificate:mail.d13.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:d13.test', '17-mail_enrollment:mail-renewal', '18-main_site:d13.test', '19-verify:custom'] 
+== start 04:46:41 (try 1)
+start 202 {
+ "id": "cd08c9cfef399d4babf6b0d4b6077e48",
+ "panel_url": "https://frankfurt.d13.test:1923/",
+ "phase": "queued",
+ "plan_id": "0836bf80d72a8aab7a0f5cdbdb055c4e",
+ "request_id": "cd08c9cfef399d4babf6b0d4b6077e48",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "fa0a0c0d5a9269910db9f73791bac4bf",
+   "request_id": "873def9f10039771223869917054f07a",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "5442602ac96bc06f97e70c0d8578f90d",
+   "request_id": "b4538414854521c66186cabe5f90b69d",
+   "
+== case 4: lab load holds the panel database write lock for 60 s 04:46:51
+panel user=celikpanel db=/var/lib/celikpanel/celikpanel.db journal_mode=wal
+Running as unit: lab-dbhold.service; invocation ID: 0561194d944e48a196d5c2a183518684
+active
+Started lab-dbhold.service - [systemd-run] /usr/bin/python3 -c "import sqlite3,time,sys; c=sqlite3.connect(sys.argv[1], isolation_level=None, timeout=30); c.execute('BEGIN IMMEDIATE'); print('lock held', time.strftime('%T'), flush=True); time.sleep(int(sys.argv[2])); c.execute('ROLLBACK'); print('lock released', time.strftime('%T'), flush=True)" /var/lib/celikpanel/celikpanel.db 60.
+lock held 04:46:52
+Unit lab-dbhold.service could not be found.
+Started lab-dbhold.service - [systemd-run] /usr/bin/python3 -c "import sqlite3,time,sys; c=sqlite3.connect(sys.argv[1], isolation_level=None, timeout=30); c.execute('BEGIN IMMEDIATE'); print('lock held', time.strftime('%T'), flush=True); time.sleep(int(sys.argv[2])); c.execute('ROLLBACK'); print('lock released', time.strftime('%T'), flush=True)" /var/lib/celikpanel/celikpanel.db 60.
+lock held 04:46:52
+lock released 04:47:52
+lab-dbhold.service: Deactivated successfully.
+-- 04:46:53 running 01-dns null
+-- 04:47:59 running 02-service null
+-- 04:48:12 running 03-service null
+-- 04:48:24 running 05-infrastructure_dns null
+-- 04:48:30 running 07-panel_certificate null
+-- 04:48:34 None None "Panel management is still starting. Read-only connection and recovery status remain available."
+-- 04:48:37 running 09-service null
+-- d13/main 04:49:15
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d13/main 04:49:55
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d13/main 04:50:16
+running 13-mail_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=running 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d13/main 04:50:36
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=running 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d13/main 04:52:37
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=running 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d13/main 04:53:37
+running 16-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=running 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d13/main 04:53:57
+running 18-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=running 19-verify=pending
+-- d13/main 04:54:17
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+Unit lab-dbhold.service could not be found.
+tail: option used in invalid context -- 5
+cut: invalid byte/character position ‘\r’
+Try 'cut --help' for more information.
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a123/kit/singleX.sh: line 62: $'fi\r': command not found
+-- d13/main 04:54:18
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+== end 04:54:18
+head: invalid trailing option -- 
+Try 'head --help' for more information.
+Exception ignored while flushing sys.stdout:
+BrokenPipeError: [Errno 32] Broken pipe
+== single done 04:54:18

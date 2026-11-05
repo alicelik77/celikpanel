@@ -1,0 +1,26 @@
+Nov 05 04:46:57.413883 frankfurt panel[11193]: 2026/11/05 04:46:57 metrics sample: database is locked (5) (SQLITE_BUSY)
+Nov 05 04:47:06.034820 frankfurt panel[11193]: 2026/11/05 04:47:06 server setup DNS request 873def9f10039771223869917054f07a switch a5b3f12a83d6693e17880339be3571d3 did not complete: DNS engine host switch was applied but panel follow-up is pending
+Nov 05 04:47:11.059111 frankfurt panel[11193]: 2026/11/05 04:47:11 audit write failed (dns.engine.switch.setup.reconcile_required request=873def9f10039771223869917054f07a switch=a5b3f12a83d6693e17880339be3571d3 source=none target=pdns action=install mode=switch): context deadline exceeded
+Nov 05 04:47:23.484965 frankfurt panel[11193]: 2026/11/05 04:47:23 server setup execution cd08c9cfef399d4babf6b0d4b6077e48: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)
+Nov 05 04:47:27.167471 frankfurt panel[11193]: 2026/11/05 04:47:27 VPN entitlement reconciliation failed: database is locked (5) (SQLITE_BUSY)
+Nov 05 04:47:27.506296 frankfurt panel[11193]: 2026/11/05 04:47:27 metrics sample: database is locked (5) (SQLITE_BUSY)
+Nov 05 04:47:37.976574 frankfurt panel[11193]: 2026/11/05 04:47:37 server setup execution cd08c9cfef399d4babf6b0d4b6077e48: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)
+Nov 05 04:47:56.334621 frankfurt panel[11193]: 2026/11/05 04:47:56 server setup execution cd08c9cfef399d4babf6b0d4b6077e48: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)
+Nov 05 04:48:26.698020 frankfurt panel[11193]: 2026/11/05 04:48:26 [panel-update] automatic update check skipped (setup_running); next try in 1 hour
+Nov 05 04:48:32.966712 frankfurt systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Nov 05 04:48:33.005997 frankfurt systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Nov 05 04:48:33.011847 frankfurt systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+Nov 05 04:48:33.049506 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Nov 05 04:48:33.290256 frankfurt panel[15212]: 2026/11/05 04:48:33 Starting CelikPanel Backend...
+Nov 05 04:48:33.304659 frankfurt panel[15212]: 2026/11/05 04:48:33 Panel startup listener active on :1923 (HTTPS; application gated)
+Nov 05 04:48:34.129334 frankfurt panel[15212]: 2026/11/05 04:48:34 certificate startup reconcile: mail TLS publication waits for a mail identity: none is saved yet and this server's name is not fully qualified; server setup's mail step (or a mail profile install) sets it, and nothing needs to be done before then
+Nov 05 04:48:34.129334 frankfurt panel[15212]: 2026/11/05 04:48:34 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release
+Nov 05 04:48:34.132097 frankfurt panel[15212]: 2026/11/05 04:48:34 milter chain: nothing to wire at startup: no mail server is installed on this server, so there is no Postfix milter chain to compose
+-- restarts
+Nov 05 04:46:20.809278 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Nov 05 04:46:21.838788 frankfurt systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Nov 05 04:46:21.859921 frankfurt systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Nov 05 04:46:22.025067 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+Nov 05 04:48:32.966712 frankfurt systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+Nov 05 04:48:33.005997 frankfurt systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+Nov 05 04:48:33.049506 frankfurt systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.

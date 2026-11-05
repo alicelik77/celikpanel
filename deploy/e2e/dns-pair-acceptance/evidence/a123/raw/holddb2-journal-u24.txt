@@ -1,0 +1,3 @@
+Nov 05 05:16:12.192714 boston panel[11609]: 2026/11/05 05:16:12 metrics sample: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:16:36.537024 boston panel[11609]: 2026/11/05 05:16:36 service operation bd7635d129efc76cd9563ab671f7fb69 (nginx) failed in queued: service install preflight scan: database is locked (5) (SQLITE_BUSY)
+Nov 05 05:16:38.802819 boston panel[11609]: 2026/11/05 05:16:38 server setup execution 204d749db632dd34e905d2fe97bcbf9a: the panel database was busy; this pass is asked again: database is locked (5) (SQLITE_BUSY)

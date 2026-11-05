@@ -1,0 +1,129 @@
+== 3.0 components 04:56:13
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "node", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "certbot", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "fail2ban", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nftables", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.1 install PostgreSQL, phpPgAdmin, phpMyAdmin, Fail2ban 04:56:14
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libjson-perl', 'postgresql-client-common', 'libio-pty-perl', 'libipc-run-perl', 'postgresql-common-dev', 'postgresql-common', 'libz3-4', 'libllvm19', 'libpq5', 'postgresql-client-17', 'postgresql-17', 'postgresql']
+  install postgresql confirming []
+202 {"operation": {"id": "95c5bf22fb6abb007819e8d28c35d8ed", "kind": "service_install", "phase": "queued", "request_id": "c287ea4217aeeeeae26b6ead7bd8b7de", "service_id": "postgresql", "started_at": "2026-11-05T04:56:17.767753189Z", "status": "queued"}}
+  op c287ea4217aeeeeae26b6ead7bd8b7de: succeeded completed "" (04:57:19)
+200 {"operation": {"finished_at": "2026-11-05T04:57:18.680602669Z", "id": "95c5bf22fb6abb007819e8d28c35d8ed", "kind": "service_install", "phase": "completed", "request_id": "c287ea4217aeeeeae26b6ead7bd8b7de", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-05T04:56:17.767753189Z", "status": "succeeded"}}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libphp-adodb', 'php8.4-pgsql', 'php-pgsql', 'phppgadmin']
+  install phppgadmin confirming []
+202 {"operation": {"id": "48db4db65724edcb1375771d6734ffae", "kind": "service_install", "phase": "queued", "request_id": "0316567dfbe5bc407f9ab3e8a7212e3c", "service_id": "phppgadmin", "started_at": "2026-11-05T04:57:21.066610839Z", "status": "queued"}}
+  op 0316567dfbe5bc407f9ab3e8a7212e3c: succeeded completed "" (04:57:31)
+200 {"operation": {"finished_at": "2026-11-05T04:57:30.858653463Z", "id": "48db4db65724edcb1375771d6734ffae", "kind": "service_install", "phase": "completed", "request_id": "0316567dfbe5bc407f9ab3e8a7212e3c", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true}, "service_id": "phppgadmin", "started_at": "2026-11-05T04:57:21.066610839Z", "status": "succeeded"}}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['dbconfig-common', 'dbconfig-mysql', 'libjs-codemirror', 'libjs-jquery-metadata', 'libjs-jquery-mousewheel', 'libjs-jquery-tablesorter', 'libjs-jquery-ui', 'libjs-jquery-timepicker', 'libjs-underscore', 'libjs-sphinxdoc', 'php-composer-ca-bundle', 'php-fig-http-message-util', 'php-getallheaders', 'php-google-recaptcha']
+  install phpmyadmin confirming []
+202 {"operation": {"id": "2eee9fee3d965b2bad79f41f7cf9cd6b", "kind": "service_install", "phase": "queued", "request_id": "e9d29713be0464e32bdd32cc75b6cccc", "service_id": "phpmyadmin", "started_at": "2026-11-05T04:57:33.962608998Z", "status": "queued"}}
+  op e9d29713be0464e32bdd32cc75b6cccc: succeeded completed "" (04:58:35)
+200 {"operation": {"finished_at": "2026-11-05T04:58:26.196640259Z", "id": "2eee9fee3d965b2bad79f41f7cf9cd6b", "kind": "service_install", "phase": "completed", "request_id": "e9d29713be0464e32bdd32cc75b6cccc", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phpmyadmin", "version": "8.4"}, "success": true}, "service_id": "phpmyadmin", "started_at": "2026-11-05T04:57:33.962608998Z", "status": "succeeded"}}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['python3-systemd', 'fail2ban']
+  install fail2ban confirming []
+202 {"operation": {"id": "7768a439f8d56373b73e2368658ed16e", "kind": "service_install", "phase": "queued", "request_id": "de9b27bc4e9b1bb52bb84b26b7cb3e0e", "service_id": "fail2ban", "started_at": "2026-11-05T04:58:37.307148001Z", "status": "queued"}}
+  op de9b27bc4e9b1bb52bb84b26b7cb3e0e: succeeded completed "" (04:58:58)
+200 {"operation": {"finished_at": "2026-11-05T04:58:50.027791987Z", "id": "7768a439f8d56373b73e2368658ed16e", "kind": "service_install", "phase": "completed", "request_id": "de9b27bc4e9b1bb52bb84b26b7cb3e0e", "result": {"installed": true, "success": true}, "service_id": "fail2ban", "started_at": "2026-11-05T04:58:37.307148001Z", "status": "succeeded"}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "node", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "certbot", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "fail2ban", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nftables", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.2 remove PostgreSQL: the plan, then without confirming the together list 04:58:58
+  impact 200 together ['phppgadmin'] stops [{"count": 0, "kind": "database_tool"}] withdraws []
+  together=["phppgadmin"]
+409 {"code": "REMOVAL_NEEDS_TOGETHER", "details": ["phpPgAdmin"], "error": "These are removed together with it, because nothing else uses them and they cannot work without it; confirm them to remove."}
+== 3.3 remove together; the tab is closed at once and a new page reads the operation 04:59:02
+428 {"code": "REQUEST_ID_REQUIRED", "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"}
+-- new page (active read)
+  read 200 {"operation": null}
+-- reload (the tab's marker, by request id)
+  read 404 {"error": "service operation not found"}
+  04:59:03  read 200 {"id": "7768a439f8d56373b73e2368658ed16e", "kind": "service_install", "service_id": "fail2ban", "package_name": null, "status": "succeeded", "phase": "completed", "request_id": "de9b27bc4e9b1bb52bb84b26b7cb3e0e", "result": {"installed": true, "success": true}, "error": null}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "node", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "certbot", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "fail2ban", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nftables", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.4 again with a panel restart in the middle 04:59:04
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs []
+  install postgresql confirming []
+202 {"operation": {"id": "650f7d0a2e39d342577afb5579f0e9b6", "kind": "service_install", "phase": "queued", "request_id": "fee46d18cbd335c2c57f22c24d724aea", "service_id": "postgresql", "started_at": "2026-11-05T04:59:04.541933473Z", "status": "queued"}}
+  op fee46d18cbd335c2c57f22c24d724aea: succeeded completed "" (04:59:15)
+200 {"operation": {"finished_at": "2026-11-05T04:59:10.022348082Z", "id": "650f7d0a2e39d342577afb5579f0e9b6", "kind": "service_install", "phase": "completed", "request_id": "fee46d18cbd335c2c57f22c24d724aea", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-05T04:59:04.541933473Z", "status": "succeeded"}}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs []
+  install phppgadmin confirming []
+202 {"operation": {"id": "a750e13fecf52349c82a71c911bbdc9b", "kind": "service_install", "phase": "queued", "request_id": "8b64c12e5d4fdb10dc86487b329f7fef", "service_id": "phppgadmin", "started_at": "2026-11-05T04:59:15.28376482Z", "status": "queued"}}
+  op 8b64c12e5d4fdb10dc86487b329f7fef: succeeded completed "" (04:59:25)
+200 {"operation": {"finished_at": "2026-11-05T04:59:20.506430728Z", "id": "a750e13fecf52349c82a71c911bbdc9b", "kind": "service_install", "phase": "completed", "request_id": "8b64c12e5d4fdb10dc86487b329f7fef", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true}, "service_id": "phppgadmin", "started_at": "2026-11-05T04:59:15.28376482Z", "status": "succeeded"}}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  impact 200 together ['phppgadmin'] stops [{"count": 0, "kind": "database_tool"}] withdraws []
+428 {"code": "REQUEST_ID_REQUIRED", "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"}
+  read 200 {"id": "a750e13fecf52349c82a71c911bbdc9b", "kind": "service_install", "service_id": "phppgadmin", "package_name": null, "status": "succeeded", "phase": "completed", "request_id": "8b64c12e5d4fdb10dc86487b329f7fef", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true}, "error": null}
+-- panel restart (as the owner would: systemctl restart celikpanel-panel) 04:59:30
+active
+  panel answers again 04:59:46
+-- new page after the restart (active read)
+  read 200 {"operation": null}
+-- tab marker after the restart
+  read 404 {"error": "service operation not found"}
+  04:59:46  read 200 {"id": "a750e13fecf52349c82a71c911bbdc9b", "kind": "service_install", "service_id": "phppgadmin", "package_name": null, "status": "succeeded", "phase": "completed", "request_id": "8b64c12e5d4fdb10dc86487b329f7fef", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true}, "error": null}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "node", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "certbot", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "fail2ban", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nftables", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.5 a site on PHP, then remove the PHP version phpMyAdmin and the site use 04:59:47
+200 {"id": 3, "rights": "unlimited", "success": true}
+site123.test id=2
+php version 8.4
+  impact 200 together [] stops [] withdraws []
+    blocker {"count": 1, "items": [{"link": "/domains/site123.test", "name": "site123.test (cust123)"}], "kind": "php_sites"}
+409 {"action": "/api/v1/service/operation", "code": "service_operation_busy", "error": "another package operation is already in progress"}
+== 3.6 Certbot and nftables 05:00:00
+  impact 200 together [] stops [] withdraws []
+    blocker {"count": 3, "items": [{"link": "/settings", "name": "frankfurt.d13.test"}, {"link": "/components", "name": "mail.d13.test"}, {"link": "/domains/d13.test?tab=ssl", "name": "d13.test"}], "kind": "certificates"}
+409 {"code": "SERVICE_HAS_DEPENDENTS", "details": ["frankfurt.d13.test", "mail.d13.test", "d13.test"], "error": "3 thing(s) on this server require certbot \u2014 move or remove them first.", "plan": {"blockers": [{"count": 3, "items": [{"link": "/settings", "name": "frankfurt.d13.test"}, {"link": "/components", "name": "mail.d13.test"}, {"link": "/domains/d13.test?tab=ssl", "name": "d13.test"}], "kind": "certificates"}], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}}
+  impact 200 together [] stops [] withdraws []
+    blocker {"component": "fail2ban", "count": 1, "items": [{"link": "/components", "name": "Fail2ban"}], "kind": "component"}
+    blocker {"count": 1, "items": [{"link": "/security", "name": "panel firewall"}], "kind": "panel_firewall"}
+409 {"code": "SERVICE_HAS_DEPENDENTS", "details": ["Fail2ban", "panel firewall"], "error": "2 thing(s) on this server require nftables \u2014 move or remove them first.", "plan": {"blockers": [{"component": "fail2ban", "count": 1, "items": [{"link": "/components", "name": "Fail2ban"}], "kind": "component"}, {"count": 1, "items": [{"link": "/security", "name": "panel firewall"}], "kind": "panel_firewall"}], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "node", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "certbot", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "fail2ban", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nftables", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== R3 part 1 done 05:00:09

@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "d12",
+  "node": "main",
+  "os": "debian12",
+  "ip": "192.0.3.190",
+  "hostname": "frankfurt",
+  "uuid": "6bb0235b-fb8a-5fd1-8fd2-f3346eba64c5",
+  "tap": "cptfc272efc",
+  "mac": "52:54:00:57:50:eb",
+  "image": "debian-12-genericcloud-amd64-20261026-2643.qcow2",
+  "image_digest": {
+   "sha512": "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652"
+  },
+  "memory_mb": 4096,
+  "cpus": 2,
+  "started_at": "2026-11-05T04:27:51Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "bfbee636-abe2-47a3-b73c-ee092dc6711a",
+  "waited_seconds": 15.6
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.190 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.190 uid 0 \n    cache \n\nnameserver 192.0.2.53\nsearch .\nPRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 17.8
+}

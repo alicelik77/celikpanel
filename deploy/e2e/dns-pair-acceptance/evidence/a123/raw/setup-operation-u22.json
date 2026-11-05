@@ -1,0 +1,185 @@
+200
+{
+ "context": {
+  "access_dns_ip": "192.0.3.191",
+  "dns_engine": "bind",
+  "dns_hosting_management": "",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "expected_digest": "036eb00f52545a84a905b971761e1245",
+   "records": [
+    {
+     "action": "add",
+     "content": "ns1.u22.test hostmaster.u22.test 1 3600 600 604800 300",
+     "name": "u22.test",
+     "ttl": 3600,
+     "type": "SOA"
+    },
+    {
+     "action": "add",
+     "content": "ns1.u22.test",
+     "name": "u22.test",
+     "ttl": 3600,
+     "type": "NS"
+    },
+    {
+     "action": "add",
+     "content": "ns2.u22.test",
+     "name": "u22.test",
+     "ttl": 3600,
+     "type": "NS"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "ns1.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "ns2.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "boston.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "192.0.3.191",
+     "name": "mail.u22.test",
+     "ttl": 300,
+     "type": "A"
+    },
+    {
+     "action": "add",
+     "content": "mail.u22.test",
+     "name": "u22.test",
+     "origin": "mail",
+     "priority": 10,
+     "ttl": 3600,
+     "type": "MX"
+    },
+    {
+     "action": "add",
+     "content": "\"v=spf1 mx a:mail.u22.test ~all\"",
+     "name": "u22.test",
+     "origin": "mail",
+     "ttl": 3600,
+     "type": "TXT"
+    },
+    {
+     "action": "add",
+     "content": "\"v=DMARC1; p=none; rua=mailto:dmarc@u22.test\"",
+     "name": "_dmarc.u22.test",
+     "origin": "mail",
+     "ttl": 3600,
+     "type": "TXT"
+    }
+   ],
+   "zone": "u22.test",
+   "zone_type": "NATIVE"
+  },
+  "local_ip": "192.0.3.191",
+  "local_nameserver": "ns1.u22.test",
+  "mail_hostname": "mail.u22.test",
+  "panel_domain": "boston.u22.test",
+  "peer_ip": "",
+  "peer_nameserver": ""
+ },
+ "error": {
+  "code": "server_setup_dns_agent_failed",
+  "message": "The CelikPanel Agent recorded this DNS operation (request f6cfb4083df5bd94cbe6e8a362ad68e0) as failed. Reason: The privileged host operation did not complete. CelikPanel has not confirmed that this server is back to its state before the operation, so setup is paused at this step and will not start the operation again. The server administrator should run `sudo /usr/libexec/celikpanel/recovery dns-switch-status --quiesced --request-id f6cfb4083df5bd94cbe6e8a362ad68e0` on this server and follow what it reports. Setup rechecks this same operation automatically and continues, or offers a new plan, once its result is confirmed."
+ },
+ "id": "ac08b073b8c65d47b21da75c268e525e",
+ "panel_url": "https://boston.u22.test:1923/",
+ "phase": "01-dns",
+ "plan_id": "dbb1bdc3a36ad0b17d968f3586cbdda1",
+ "request_id": "ac08b073b8c65d47b21da75c268e525e",
+ "status": "waiting",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "0a4d6a5c820e5d42add71c633ed78a0c",
+   "request_id": "f6cfb4083df5bd94cbe6e8a362ad68e0",
+   "status": "running",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "46db11e95b6cdceb552af0fd15fcbe54",
+   "request_id": "53ef8a7aa397117cf828adb04b0656b8",
+   "status": "pending",
+   "target": "nginx"
+  },
+  {
+   "id": "03-service",
+   "kind": "service",
+   "owner_id": "9568f3c34cadd9f45d0c2721343fa728",
+   "request_id": "08e348686c452232c25ba5a1470639e6",
+   "status": "pending",
+   "target": "certbot"
+  },
+  {
+   "id": "04-firewall",
+   "kind": "firewall",
+   "owner_id": "9adff94a84eac886c757a57f710d9bb1",
+   "request_id": "d9d55fb95bb24d28c5bf52767fa44f3b",
+   "status": "pending",
+   "target": "enable_and_persist"
+  },
+  {
+   "id": "05-infrastructure_dns",
+   "kind": "infrastructure_dns",
+   "owner_id": "555079868721af57a33ad9fd3857f879",
+   "request_id": "e6ff9e3b4f69197c21fca7ed2c4eb6a4",
+   "status": "pending",
+   "target": "u22.test"
+  },
+  {
+   "id": "06-access_dns",
+   "kind": "access_dns",
+   "owner_id": "2f5a67e99debe289499938b3dda07361",
+   "qualifier": "192.0.3.191",
+   "request_id": "b38cd0cf29bbb4820805231d4d160193",
+   "status": "pending",
+   "target": "boston.u22.test"
+  },
+  {
+   "id": "07-panel_certificate",
+   "kind": "panel_certificate",
+   "owner_id": "58aec9e21579ac6385f05ca0c140b15b",
+   "request_id": "6e8c9a0af1a38c6908d36df123408e45",
+   "status": "pending",
+   "target": "boston.u22.test"
+  },
+  {
+   "id": "08-dns_readiness",
+   "kind": "dns_readiness",
+   "owner_id": "b526041b740667b0c2de604cb946f480",
+   "request_id": "6e20932fff5253f512e96e2023e692d8",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "09-service",
+   "kind": "service",
+   "owner_id": "9be096e15f1e7694da33d2bf1143d60a",
+   "request_id": "9a978ddca0510811735c9f7d47e3fe46",
+   "status": "pending",
+   "target": "mariadb"
+  },
+  {
+   "id": "10-service",
+   "kind": "service",
+   "owner_id": "b0301af733aef228612022fef6928a1d",
+   "request_id":

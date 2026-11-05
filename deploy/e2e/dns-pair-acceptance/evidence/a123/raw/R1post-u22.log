@@ -1,0 +1,25 @@
+== u22 BIND unit identity 04:34:18
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+ActiveState=inactive
+SubState=dead
+FragmentPath=/lib/systemd/system/named.service
+bind9: /lib/systemd/system/named.service
+dpkg-query: no path found matching pattern /usr/lib/systemd/system/named.service
+'/lib' -> 'usr/lib' root:root
+bind9 1:9.18.39-0ubuntu0.22.04.8
+;; communications error to 127.0.0.1#53: connection refused
+== u22 host facts 04:34:19
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+5.15.0-198-generic
+systemd 249 (249.11-0ubuntu3.23)
+nftables v1.0.2 (Lester Gooch)
+cgroup: cgroup2fs
+bpf lsm: lockdown,capability,landlock,yama,apparmor
+panel: 
+active active 
+== u22 sandbox probe 04:34:19
+  runtime-apps 200 sandbox {"gaps": ["bpf_missing"], "known": true, "level": "reduced"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "available": null, "reason": null}
+  kind {"kind": "python", "offering_id": "component:python:3.10", "offered": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "available": null, "reason": null}
+  service-apps 200 sandbox {"busy": false, "edited": 0, "egress_file": "absent", "egress_loaded": false, "gaps": ["bpf_missing"], "guard_timer": "inactive", "known": true, "level": "reduced", "needs_refresh": 0, "running": 0, "smtp_rejects": -1, "systemd_version": 249}
+== R1post u22 done 04:34:20

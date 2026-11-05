@@ -1,0 +1,51 @@
+== 3.3r remove PostgreSQL together with phpPgAdmin; the tab is closed at once 05:10:11
+  impact 200 together ['phppgadmin'] stops [{"count": 0, "kind": "database_tool"}] withdraws []
+202 {"operation": {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "package_name": "phppgadmin", "phase": "queued", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "service_id": "postgresql", "started_at": "2026-11-05T05:10:16.584461477Z", "status": "queued"}}
+-- new page (active read)
+  read 200 {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "running", "phase": "removing", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "result": null, "error": null}
+-- reload (the tab's marker, by request id)
+  read 200 {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "running", "phase": "removing", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "result": null, "error": null}
+  05:10:17  read 200 {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "running", "phase": "removing", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "result": null, "error": null}
+  05:10:20  read 200 {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "running", "phase": "removing:phppgadmin", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "result": null, "error": null}
+  05:10:30  read 200 {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "running", "phase": "removing:postgresql", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "result": null, "error": null}
+  05:10:49  read 200 {"id": "f2a2beea137cbffad5b97c65936ea51c", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "succeeded", "phase": "completed", "request_id": "1fea38b2be4e00777b31ced2ae9775a0", "result": {"removed": ["phppgadmin", "postgresql"], "success": true, "target": "postgresql", "together": ["phppgadmin"]}, "error": null}
+  comp {"id": "postgresql", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.4r again with a panel restart in the middle 05:10:50
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libjson-perl', 'libio-pty-perl', 'libipc-run-perl', 'postgresql-common-dev', 'postgresql-common', 'libz3-4', 'libllvm19', 'postgresql-17', 'postgresql']
+  install postgresql confirming []
+202 {"operation": {"id": "85fcac134ecdc865c2a7a095de824437", "kind": "service_install", "phase": "queued", "request_id": "72193b3005a9ac742c98525b1439bd0f", "service_id": "postgresql", "started_at": "2026-11-05T05:10:53.651864557Z", "status": "queued"}}
+  op 72193b3005a9ac742c98525b1439bd0f: succeeded completed "" (05:11:14)
+200 {"operation": {"finished_at": "2026-11-05T05:11:13.058474935Z", "id": "85fcac134ecdc865c2a7a095de824437", "kind": "service_install", "phase": "completed", "request_id": "72193b3005a9ac742c98525b1439bd0f", "result": {"installed": true, "success": true}, "service_id": "postgresql", "started_at": "2026-11-05T05:10:53.651864557Z", "status": "succeeded"}}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libphp-adodb', 'phppgadmin']
+  install phppgadmin confirming []
+202 {"operation": {"id": "e75ea4583ed961c89dfa5f797e5108da", "kind": "service_install", "phase": "queued", "request_id": "470d69e7381e90b283d686ab4d35bc26", "service_id": "phppgadmin", "started_at": "2026-11-05T05:11:16.647639798Z", "status": "queued"}}
+  op 470d69e7381e90b283d686ab4d35bc26: succeeded completed "" (05:11:37)
+200 {"operation": {"finished_at": "2026-11-05T05:11:28.38489788Z", "id": "e75ea4583ed961c89dfa5f797e5108da", "kind": "service_install", "phase": "completed", "request_id": "470d69e7381e90b283d686ab4d35bc26", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true}, "service_id": "phppgadmin", "started_at": "2026-11-05T05:11:16.647639798Z", "status": "succeeded"}}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  impact 200 together ['phppgadmin'] stops [{"count": 0, "kind": "database_tool"}] withdraws []
+202 {"operation": {"id": "faf6c71af4990d74d4219ce33d2afd4a", "kind": "service_remove_together", "package_name": "phppgadmin", "phase": "queued", "request_id": "e22ec5040a91bf91925d136ef039d3de", "service_id": "postgresql", "started_at": "2026-11-05T05:11:42.836341442Z", "status": "queued"}}
+  read 200 {"id": "faf6c71af4990d74d4219ce33d2afd4a", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "running", "phase": "removing", "request_id": "e22ec5040a91bf91925d136ef039d3de", "result": null, "error": null}
+-- panel restart (as the owner would: systemctl restart celikpanel-panel) 05:11:43
+active
+  panel answers again 05:13:00
+-- new page after the restart (active read)
+  read 200 {"operation": null}
+-- tab marker after the restart
+  read 200 {"id": "faf6c71af4990d74d4219ce33d2afd4a", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "succeeded", "phase": "completed", "request_id": "e22ec5040a91bf91925d136ef039d3de", "result": {"removed": ["phppgadmin", "postgresql"], "success": true, "target": "postgresql", "together": ["phppgadmin"]}, "error": null}
+  05:13:00  read 200 {"id": "faf6c71af4990d74d4219ce33d2afd4a", "kind": "service_remove_together", "service_id": "postgresql", "package_name": "phppgadmin", "status": "succeeded", "phase": "completed", "request_id": "e22ec5040a91bf91925d136ef039d3de", "result": {"removed": ["phppgadmin", "postgresql"], "success": true, "target": "postgresql", "together": ["phppgadmin"]}, "error": null}
+  comp {"id": "postgresql", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+rc  postgresql     17+278       all          object-relation
+== 3.5r PHP 8.4 (site123.test and the PHP tools on it) 05:13:02
+  impact 200 blockers [{"count": 1, "items": [{"link": "/domains/site123.test", "name": "site123.test (cust123)"}], "kind": "php_sites"}]
+  bound_tools {"companion_tools": [], "database_tools_reconfigured": false} {"bound_tools": ["phpmyadmin", "webmail"], "collateral": [{"component": "php-fpm", "package": "php-fpm", "reason": "component"}, {"component": "phpmyadmin", "package": "phpmyadmin", "reason": "component"}, {"package": "php-mysql", "reason": "reverse_dependency"}, {"package": "php-phpmyadmin-sql-parser", "reason": "reverse_dependency"}, {"package": "php-symfony-config", "reason": "reverse_dependenc
+409 {"action": "/api/v1/service/operation", "code": "service_operation_busy", "error": "another package operation is already in progress"}
+  busy: wait 20 s and ask again
+  impact 200 blockers [{"count": 1, "items": [{"link": "/domains/site123.test", "name": "site123.test (cust123)"}], "kind": "php_sites"}]
+  bound_tools {"companion_tools": [], "database_tools_reconfigured": false} {"bound_tools": ["phpmyadmin", "webmail"], "collateral": [{"component": "php-fpm", "package": "php-fpm", "reason": "component"}, {"component": "phpmyadmin", "package": "phpmyadmin", "reason": "component"}, {"package": "php-mysql", "reason": "reverse_dependency"}, {"package": "php-phpmyadmin-sql-parser", "reason": "reverse_dependency"}, {"package": "php-symfony-config", "reason": "reverse_dependenc
+409 {"code": "RUNTIME_IN_USE", "details": ["site123.test (cust123)"], "error": "1 thing(s) use version 8.4 \u2014 move or remove them first.", "plan": {"blockers": [{"count": 1, "items": [{"link": "/domains/site123.test", "name": "site123.test (cust123)"}], "kind": "php_sites"}], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}}
+== R3r done 05:13:30

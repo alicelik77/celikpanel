@@ -1,0 +1,60 @@
+-- 05:31:12 running 01-dns null
+-- 05:31:14 running 01-dns null
+-- 05:31:16 running 01-dns null
+-- 05:31:19 running 01-dns null
+-- 05:31:21 running 01-dns null
+-- 05:31:23 running 01-dns null
+-- 05:31:25 running 01-dns null
+-- 05:31:27 running 01-dns null
+-- 05:31:29 running 01-dns null
+-- 05:31:31 running 01-dns null
+-- 05:31:34 running 01-dns null
+-- 05:31:36 running 01-dns null
+-- 05:31:38 running 01-dns null
+-- 05:31:40 running 01-dns null
+-- 05:31:42 running 01-dns null
+-- 05:31:44 running 01-dns null
+-- 05:31:46 running 01-dns null
+-- 05:31:48 running 01-dns null
+-- 05:31:51 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:31:53 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:31:55 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:31:57 running 01-dns {"code": "server_setup_reconciling", "message": "The previous DNS operation is being reconciled. Its exact receipt must be verified before the setup plan can change."}
+-- 05:31:59 running 02-service null
+-- 05:32:01 running 02-service null
+-- 05:32:03 running 02-service null
+-- 05:32:06 running 02-service null
+-- 05:32:08 waiting 02-service {"code": "server_setup_panel_busy", "message": "CelikPanel's own database was briefly busy with another task, so this step could not save its progress just now. This is not a problem with the server or with the software this step sets up. Setup tries the same step again by itself in a few seconds, using its saved operation, so nothing is started twice. Nobody needs to act."}
+-- 05:32:10 waiting 02-service {"code": "server_setup_panel_busy", "message": "CelikPanel's own database was briefly busy with another task, so this step could not save its progress just now. This is not a problem with the server or with the software this step sets up. Setup tries the same step again by itself in a few seconds, using its saved operation, so nothing is started twice. Nobody needs to act."}
+-- 05:32:12 waiting 02-service {"code": "server_setup_panel_busy", "message": "CelikPanel's own database was briefly busy with another task, so this step could not save its progress just now. This is not a problem with the server or with the software this step sets up. Setup tries the same step again by itself in a few seconds, using its saved operation, so nothing is started twice. Nobody needs to act."}
+-- 05:32:14 waiting 02-service {"code": "server_setup_panel_busy", "message": "CelikPanel's own database was briefly busy with another task, so this step could not save its progress just now. This is not a problem with the server or with the software this step sets up. Setup tries the same step again by itself in a few seconds, using its saved operation, so nothing is started twice. Nobody needs to act."}
+-- 05:32:16 running 02-service null
+-- 05:32:18 running 02-service null
+-- 05:32:20 running 02-service null
+-- 05:32:23 running 02-service null
+-- 05:32:25 running 02-service null
+-- 05:32:27 running 02-service null
+-- 05:32:29 running 02-service null
+-- 05:32:31 running 02-service null
+-- 05:32:33 running 02-service null
+-- 05:32:35 running 02-service null
+-- 05:32:38 running 02-service null
+-- 05:32:40 running 02-service null
+-- 05:32:42 running 02-service null
+-- 05:32:44 running 02-service null
+-- 05:32:46 running 02-service null
+-- 05:32:48 running 02-service null
+-- 05:32:50 running 02-service null
+-- 05:32:53 running 02-service null
+-- 05:32:55 running 03-service null
+-- 05:32:57 running 03-service null
+-- 05:32:59 running 03-service null
+-- 05:33:01 running 03-service null
+-- 05:33:03 running 03-service null
+-- 05:33:05 running 03-service null
+-- 05:33:08 running 03-service null
+-- 05:33:10 running 03-service null
+-- 05:33:12 running 03-service null
+-- 05:33:14 running 04-firewall null
+-- 05:33:16 running 05-infrastructure_dns null
+-- 05:33:18 running 05-infrastructure_dns null

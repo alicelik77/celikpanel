@@ -1,0 +1,61 @@
+== d12 BIND unit identity 04:34:18
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+ActiveState=active
+SubState=running
+FragmentPath=/lib/systemd/system/named.service
+bind9: /lib/systemd/system/named.service
+dpkg-query: no path found matching pattern /usr/lib/systemd/system/named.service
+'/lib' -> 'usr/lib' root:root
+bind9 1:9.18.49-1~deb12u3
+== d12 host facts 04:34:20
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+6.1.0-54-cloud-amd64
+systemd 252 (252.39-1~deb12u2)
+nftables v1.0.6 (Lester Gooch #5)
+cgroup: cgroup2fs
+bpf lsm: lockdown,capability,landlock,yama,apparmor,tomoyo,bpf
+panel: 
+active active 
+== d12 sandbox probe 04:34:20
+  runtime-apps 200 sandbox {"gaps": ["bpf_missing"], "known": true, "level": "reduced"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "available": null, "reason": null}
+  kind {"kind": "python", "offering_id": "component:python:3.11", "offered": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "available": null, "reason": null}
+  service-apps 200 sandbox {"busy": false, "edited": 0, "egress_file": "absent", "egress_loaded": false, "gaps": ["bpf_missing"], "guard_timer": "inactive", "known": true, "level": "reduced", "needs_refresh": 0, "running": 0, "smtp_rejects": -1, "systemd_version": 252}
+== PGDG 18 preview 04:34:21
+-- before the lane (apt simulation, read-only)
+postgresql-common:
+  Installed: (none)
+  Candidate: 248+deb12u1
+     248+deb12u1 500
+postgresql-client-common:
+  Installed: (none)
+  Candidate: 248+deb12u1
+     248+deb12u1 500
+libpq5:
+  Installed: (none)
+  Candidate: 15.19-0+deb12u1
+     15.19-0+deb12u1 500
+     15.18-0+deb12u1 500
+-- simulate
+  lane read ready True sha 7cb1da1aaf45 steps 3 error None
+  lane enable 409 server_setup_busy None repo enabled None packages None Server setup is in progress. Follow its current operation.
+-- after the lane (apt simulation, read-only)
+postgresql-common:
+  Installed: (none)
+  Candidate: 248+deb12u1
+     248+deb12u1 500
+postgresql-client-common:
+  Installed: (none)
+  Candidate: 248+deb12u1
+     248+deb12u1 500
+libpq5:
+  Installed: (none)
+  Candidate: 15.19-0+deb12u1
+     15.19-0+deb12u1 500
+     15.18-0+deb12u1 500
+-- simulate
+  preview 200 state unknown lists_refreshed None reason_code package_not_found reason not offered by the package lists: postgresql-18 refusals []
+    installs []
+-- no install (preview only); installed state after the preview:
+debian.sources
+== R1post d12 done 04:34:24

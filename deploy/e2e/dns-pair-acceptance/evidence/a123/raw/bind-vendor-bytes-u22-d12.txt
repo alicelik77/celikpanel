@@ -1,0 +1,66 @@
+==== u22
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+-- /usr/lib/systemd/system/named.service 26250537dafeaf30b0a07fd2ff2678fc3f9d5ad52c27e6ea370d2d5bf8ab3a38 644 root:root 374
+0000540   t  \n   A   l   i   a   s   =   b   i   n   d   9   .   s   e
+0000560   r   v   i   c   e  \n
+0000566
+'[Unit]\nDescription=BIND Domain Name Server\nDocumentation=man:named(8)\nAfter=network.target\nWants=nss-lookup.target\nBefore=nss-lookup.target\n\n[Service]\nType=forking\nEnvironmentFile=-/etc/default/named\nExecStart=/usr/sbin/named $OPTIONS\nExecReload=/usr/sbin/rndc reload\nExecStop=/usr/sbin/rndc stop\nRestart=on-failure\n\n[Install]\nWantedBy=multi-user.target\nAlias=bind9.service\n'
+-- /etc/default/named b825c0739a949b3dff55d2587d94df934a3a16384d5a9d0b1a2e0e969b8fca42 644 root:root 86
+0000100   v   e   r  \n   O   P   T   I   O   N   S   =   "   -   u    
+0000120   b   i   n   d   "  \n
+0000126
+'#\n# run resolvconf?\nRESOLVCONF=no\n\n# startup options for the server\nOPTIONS="-u bind"\n'
+bind9: /etc/default/named
+/etc/apparmor.d/usr.sbin.named
+/etc/bind/bind.keys
+--
+/etc/bind/named.conf
+/etc/bind/named.conf.default-zones
+/etc/bind/named.conf.local
+/etc/bind/named.conf.options
+/etc/bind/zones.rfc1918
+/etc/default/named
+/etc/init.d/named
+/etc/insserv.conf.d/bind9
+2ea058809196551201d8d88748e46f6f  lib/systemd/system/named.service
+Type=forking
+ExecStart={ path=/usr/sbin/named ; argv[]=/usr/sbin/named $OPTIONS ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+Id=named.service
+Names=named.service
+FragmentPath=/lib/systemd/system/named.service
+SourcePath=
+DropInPaths=
+Transient=no
+==== d12
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+-- /usr/lib/systemd/system/named.service ed631f7bfee5e9175e2d98511315cb877d1f91bbc118b79c74332c1008dfd4dd 644 root:root 376
+0000540   g   e   t  \n   A   l   i   a   s   =   b   i   n   d   9   .
+0000560   s   e   r   v   i   c   e  \n
+0000570
+'[Unit]\nDescription=BIND Domain Name Server\nDocumentation=man:named(8)\nAfter=network.target\nWants=nss-lookup.target\nBefore=nss-lookup.target\n\n[Service]\nType=notify\nEnvironmentFile=-/etc/default/named\nExecStart=/usr/sbin/named -f $OPTIONS\nExecReload=/usr/sbin/rndc reload\nExecStop=/usr/sbin/rndc stop\nRestart=on-failure\n\n[Install]\nWantedBy=multi-user.target\nAlias=bind9.service\n'
+-- /etc/default/named b825c0739a949b3dff55d2587d94df934a3a16384d5a9d0b1a2e0e969b8fca42 644 root:root 86
+0000100   v   e   r  \n   O   P   T   I   O   N   S   =   "   -   u    
+0000120   b   i   n   d   "  \n
+0000126
+'#\n# run resolvconf?\nRESOLVCONF=no\n\n# startup options for the server\nOPTIONS="-u bind"\n'
+bind9: /etc/default/named
+/etc/apparmor.d/usr.sbin.named
+/etc/bind/bind.keys
+--
+/etc/bind/named.conf
+/etc/bind/named.conf.default-zones
+/etc/bind/named.conf.local
+/etc/bind/named.conf.options
+/etc/bind/zones.rfc1918
+/etc/default/named
+/etc/init.d/named
+/etc/insserv.conf.d/bind9
+8b951de04daa9470d24c08a38fa9845d  lib/systemd/system/named.service
+Type=notify
+ExecStart={ path=/usr/sbin/named ; argv[]=/usr/sbin/named -f $OPTIONS ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+Id=named.service
+Names=named.service bind9.service
+FragmentPath=/lib/systemd/system/named.service
+SourcePath=
+DropInPaths=
+Transient=no

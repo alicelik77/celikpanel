@@ -1,0 +1,6 @@
+== u22 systemd features
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+systemd 249 
+== d12 systemd features
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+systemd 252 -BPF_FRAMEWORK 

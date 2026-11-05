@@ -1,0 +1,42 @@
+start 04:24:26
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 04:25:56
+labnet-tools-ok
+build done 04:26:43
+commit e99fa018eb88f365184e441907df2bb4c1d27728
+bundle budget check passed
+EXIT 0
+  "version": "v0.1.0-alpha.123"
+  "commit": "e99fa018eb88f365184e441907df2bb4c1d27728",
+  "sha256": "671c647a9dabb66e7078c0f91dee649486720505ef731591bdf5cb98f4d2f86c",
+  "version": "v0.1.0-alpha.123"
+portal123 exit 0
+sequence=123
+version=v0.1.0-alpha.123
+commit=e99fa018eb88f365184e441907df2bb4c1d27728
+== get.sh difference from the release's download-portal/get.sh:
+8c8
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+---
+> bootstrap_release_public_key_sha256=515a65b7a85bc0ea0af63b94df235d2a0485e21321e4e0d5a313b84dbab2c554
+format=celikpanel-release-manifest-v2
+sequence=123
+version=v0.1.0-alpha.123
+commit=e99fa018eb88f365184e441907df2bb4c1d27728
+published_at=2026-11-05T04:26:45Z
+os=linux
+arch=amd64
+archive=celikpanel-v0.1.0-alpha.123-linux-amd64.tar.gz
+archive_sha256=671c647a9dabb66e7078c0f91dee649486720505ef731591bdf5cb98f4d2f86c
+archive_size=71174004
+releases/v0.1.0-alpha.123/linux/amd64/celikpanel-v0.1.0-alpha.123-linux-amd64.tar.gz 71174004
+releases/v0.1.0-alpha.123/linux/amd64/celikpanel-v0.1.0-alpha.123-linux-amd64.tar.gz.sha256 113
+releases/v0.1.0-alpha.123/linux/amd64/release-manifest-v2.sig 64
+releases/v0.1.0-alpha.123/linux/amd64/release-manifest-v2 335
+releases/latest.txt 17
+phase1 done 04:26:45

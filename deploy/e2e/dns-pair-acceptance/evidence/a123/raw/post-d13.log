@@ -1,0 +1,253 @@
+==== d13 05:40:17
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 383, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 375, in main
+    os.execvpe("ssh", ssh_argv(cell, node, " ".join(rest)), {**os.environ, "PATH": PATH_ENV})
+                      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 109, in ssh_argv
+    argv += [f"celik@{address_of(cell, node)}"]
+                      ~~~~~~~~~~^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 383, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 375, in main
+    os.execvpe("ssh", ssh_argv(cell, node, " ".join(rest)), {**os.environ, "PATH": PATH_ENV})
+                      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 109, in ssh_argv
+    argv += [f"celik@{address_of(cell, node)}"]
+                      ~~~~~~~~~~^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 383, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 375, in main
+    os.execvpe("ssh", ssh_argv(cell, node, " ".join(rest)), {**os.environ, "PATH": PATH_ENV})
+                      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 109, in ssh_argv
+    argv += [f"celik@{address_of(cell, node)}"]
+                      ~~~~~~~~~~^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 383, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 375, in main
+    os.execvpe("ssh", ssh_argv(cell, node, " ".join(rest)), {**os.environ, "PATH": PATH_ENV})
+                      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 109, in ssh_argv
+    argv += [f"celik@{address_of(cell, node)}"]
+                      ~~~~~~~~~~^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 383, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 375, in main
+    os.execvpe("ssh", ssh_argv(cell, node, " ".join(rest)), {**os.environ, "PATH": PATH_ENV})
+                      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 109, in ssh_argv
+    argv += [f"celik@{address_of(cell, node)}"]
+                      ~~~~~~~~~~^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 383, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 375, in main
+    os.execvpe("ssh", ssh_argv(cell, node, " ".join(rest)), {**os.environ, "PATH": PATH_ENV})
+                      ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 109, in ssh_argv
+    argv += [f"celik@{address_of(cell, node)}"]
+                      ~~~~~~~~~~^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 306, in cmd_api
+    c = client_for(a.cell, a.node, rec, st)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 164, in client_for
+    ip = lab.address_of(cell, node)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(open(sys.argv[1])); b=json.loads(d["body"]); print("  runtime-apps", d["status"], "sandbox", json.dumps(b.get("sandbox")))
+                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(open(sys.argv[1])); b=json.loads(d["body"]); json.dump({"status":d["status"],"sandbox":b.get("sandbox"),"kinds":[{x:k.get(x) for x in k if x not in ("risk_digest",)} for k in b.get("kinds") or []]}, open(sys.argv[2],"w"), indent=1)
+                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 306, in cmd_api
+    c = client_for(a.cell, a.node, rec, st)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 164, in client_for
+    ip = lab.address_of(cell, node)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(open(sys.argv[1])); b=json.loads(d["body"]); print("  service-apps", d["status"], "sandbox", json.dumps(b.get("sandbox"))[:900])
+                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 306, in cmd_api
+    c = client_for(a.cell, a.node, rec, st)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 164, in client_for
+    ip = lab.address_of(cell, node)
+  File "/var/tmp/a123r1/h/deploy/e2e/dns-pair-acceptance/beta1/lab.py", line 101, in address_of
+    return json.loads((node_dir(cell, node) / "node.json").read_text())["ip"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/cp-beta1/lab/cells/d13/main/node.json'
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(open(sys.argv[1])); b=json.loads(d["body"]); print("  setup dns_engines", json.dumps(b.get("dns_engines"))[:900])
+                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)

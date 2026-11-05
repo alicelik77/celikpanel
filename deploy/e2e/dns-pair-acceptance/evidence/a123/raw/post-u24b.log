@@ -1,0 +1,24 @@
+==== u24b 05:40:27
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+ActiveState=active
+SubState=running
+FragmentPath=/usr/lib/systemd/system/named.service
+dpkg-query: no path found matching pattern /lib/systemd/system/named.service
+bind9: /usr/lib/systemd/system/named.service
+'/lib' -> 'usr/lib' root:root
+bind9 1:9.18.39-0ubuntu0.24.04.9
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+6.8.0-138-generic
+systemd 255 (255.4-1ubuntu8.17)
+nftables v1.0.9 (Old Doc Yak #3)
+cgroup: cgroup2fs
+bpf lsm: lockdown,capability,landlock,yama,apparmor
+panel: 
+active active 
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+-BPF_FRAMEWORK 
+  runtime-apps 200 sandbox {"gaps": ["bpf_missing"], "known": true, "level": "reduced"}
+  kind {"kind": "program", "offering_id": "runtime:program", "offered": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "available": null, "reason": null}
+  kind {"kind": "python", "offering_id": "component:python:3.12", "offered": false, "accepted_level": "full", "accepted_gaps": [], "level_gap": false, "available": null, "reason": null}
+  service-apps 200 sandbox {"busy": false, "edited": 0, "egress_file": "absent", "egress_loaded": false, "gaps": ["bpf_missing"], "guard_timer": "inactive", "known": true, "level": "reduced", "needs_refresh": 0, "running": 0, "smtp_rejects": -1, "systemd_version": 255}
+  setup dns_engines [{"active": true, "id": "bind", "installed_version": "9.18.39", "offered": true, "role": "main"}, {"active": true, "id": "bind", "installed_version": "9.18.39", "offered": true, "role": "backup"}, {"candidate_version": "4.8.3", "id": "pdns", "offered": false, "reason": "server_setup_dns_installed_differs", "role": "main"}, {"candidate_version": "4.8.3", "id": "pdns", "offered": false, "reason": "server_setup_dns_installed_differs", "role": "backup"}]

@@ -1,0 +1,34 @@
+{
+ "distribution": "debian",
+ "installs": [
+  "libjson-perl",
+  "postgresql-client-common",
+  "postgresql-common",
+  "libpq5",
+  "postgresql-client-18",
+  "postgresql-18"
+ ],
+ "notable": [
+  {
+   "package": "libpq5",
+   "reason": "vendor_shared"
+  },
+  {
+   "package": "postgresql-client-common",
+   "reason": "vendor_shared"
+  },
+  {
+   "package": "postgresql-common",
+   "reason": "vendor_shared"
+  }
+ ],
+ "refusals": [],
+ "removes": [],
+ "requested": [
+  "postgresql-18",
+  "libpq5=18.6-1.pgdg12+2",
+  "postgresql-client-common=293.pgdg12+1",
+  "postgresql-common=293.pgdg12+1"
+ ],
+ "state": "known"
+}

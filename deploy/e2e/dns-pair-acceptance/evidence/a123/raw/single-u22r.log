@@ -1,0 +1,247 @@
+== provision 04:44:40 ubuntu2204 192.0.3.191 zone=u22r.test version=v0.1.0-alpha.123
+arch .\nPRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nVERSION_ID=\"22.04\"\n5.15.0-198-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 27.7
+}
+
+== install through get.sh in a root terminal 04:45:08
+main terminal rc 0 57.4 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.191:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+== systemd private socket (read-only) 04:46:06
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+5.15.0-198-generic
+systemd 249 (249.11-0ubuntu3.23)
+drwxr-xr-x 755 root:root links=26 /run/systemd
+srwxrwxrwx 777 root:root links=1 /run/systemd/private
+-rw-r--r-- 1 root root 75043 Nov  5 04:45 /root/celikpanel-install.sh
+/etc/celikpanel
+/opt/celikpanel
+running
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+CELIKPANEL_LISTEN=:1923
+
+== setup DNS engine catalogue (GET /api/v1/setup/components, read-only) 04:46:08
+host {'distro_id': 'ubuntu', 'version_id': '22.04'} inventory ready
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_untested_system", "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+== owner picks PowerDNS (wizard default) 04:46:13
+save dnshome(pdns) 200 {
+ "checks": [],
+ "draft": {
+  "customization": {
+   "components": [
+    "dovecot",
+    "mariadb",
+    "nginx",
+    "php-fpm",
+    "postfix",
+    "roundcube",
+    "rspamd"
+   ]
+  },
+  "database": "mariadb",
+  "dns_engine": "pdns",
+  "dns_mode": "local",
+  "dns_role": "primary",
+  "infrastructure_dns": {
+   "zone": "u22r.test"
+  },
+  "local_ip": "192.0.3.191",
+  "mail_hostname": "mail.u22r.test",
+  "main_dns_server": "this",
+  "main_domain": "u22r.test",
+  "main_site": "here",
+  "node_version": "",
+  "ns1": "ns1.u22r.test",
+  "ns2": "ns2.u22r.test",
+  "panel_domain": "boston.u22r.test",
+  "peer_ip": "",
+  "peer_ns": "",
+  "purpose": "custom",
+  "remote_dns_connection_id": "",
+  "server_count": 1,
+  "short_name": "boston"
+ },
+ "guidance": "guided",
+ "origin": "fresh",
+ "required": true,
+ "revision": 7,
+ "status": "draft",
+ "version": 1
+}
+mail 200 
+plan-pdns 200 can_start False blockers ["server_setup_pdns_untested_system"] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u22r.test', '06-access_dns:boston.u22r.test', '07-panel_certificate:boston.u22r.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u22r.test', '12-mail_certificate:mail.u22r.test', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:u22r.test', '16-mail_enrollment:mail-renewal', '17-main_site:u22r.test', '18-verify:custom'] 
+  refusal 200 {"code": null, "error": null, "reason": null, "reason_code": null, "next_action": null, "who": null, "message": null}
+  body head {
+ "actor": {
+  "IP": "192.0.3.2",
+  "UserAgent": "",
+  "UserID": 2
+ },
+ "blockers": [
+  "server_setup_pdns_untested_system"
+ ],
+ "build_commit": "894fd63c9d67c210cf9265390145086f909a6603",
+ "can_start": false,
+ "components": [
+  {
+   "id": "postfix",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "dovecot",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "mariadb",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "nginx",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "php-fpm",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "roundcube",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "rspamd",
+   "installed": false,
+   "required": false,
+   "selected": true
+  },
+  {
+   "id": "nftables",
+   "installed": true,
+   "required": true,
+   "selected": false
+  },
+  {
+   "id": "certbot",
+   "installed": false,
+   "required": true,
+   "selected": false
+  },
+  {
+   "id": "cron",
+   "installed": true,
+   "required": true,
+   "selected": false
+  },
+  {
+   "id": "pdns",
+   "installed": 
+== owner switches to BIND 04:46:20
+dnshome 200 
+mail 200 
+host {'distro_id': 'ubuntu', 'version_id': '22.04'} inventory ready
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.39", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.5.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_untested_system", "role": "backup"}
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u22r.test', '06-access_dns:boston.u22r.test', '07-panel_certificate:boston.u22r.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u22r.test', '12-mail_certificate:mail.u22r.test', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:u22r.test', '16-mail_enrollment:mail-renewal', '17-main_site:u22r.test', '18-verify:custom'] 
+== start 04:46:33 (try 1)
+start 202 {
+ "id": "1f6f7b56336c86ff3a3206f0b2cf22ea",
+ "panel_url": "https://boston.u22r.test:1923/",
+ "phase": "queued",
+ "plan_id": "553a0f00662180acc67bea295a640028",
+ "request_id": "1f6f7b56336c86ff3a3206f0b2cf22ea",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "803e21e0c7bb57ae6dc5e044996a4c41",
+   "request_id": "dbf430951664413c5b2b2cc272c31f46",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "195b60e043d78b23d4af1d62592ed019",
+   "request_id": "f8d01ca6eee1f5d197231e5bd2dd4b0d",
+   "st
+-- u22r/main 04:46:40
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:47:20
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:48:00
+running 03-service null
+01-dns=succeeded 02-service=succeeded 03-service=running 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:48:20
+running 07-panel_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=running 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:48:40
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:49:01
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:49:41
+running 12-mail_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=running 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:50:01
+running 13-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:53:02
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:54:43
+running 15-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=running 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22r/main 04:55:03
+running 16-mail_enrollment {"code": "server_setup_mail_enrollment_running", "message": "The mail renewal request is recorded, but its final result is not verified. Setup will keep checking. The server administrator can inspect celikpanel-mail-enrollment-01ece0e9f7e8c8afd5de57a47446138f.service and continue the same recorded operation if it stopped."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=running 17-main_site=pending 18-verify=pending
+-- u22r/main 04:55:24
+running verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=pending
+-- u22r/main 04:55:44
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=succeeded
+Unit lab-dbhold.service could not be found.
+tail: option used in invalid context -- 5
+uniq: cut: invalid byte/character position ‘\r’/var/tmp/a123r1/logs/holddb-watch-u22r.log
+Try 'cut --help' for more information.
+: No such file or directory
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a123/kit/singleX.sh: line 62: $'fi\r': command not found
+-- u22r/main 04:55:44
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=succeeded
+== end 04:55:44
+head: invalid trailing option -- 
+Try 'head --help' for more information.
+Exception ignored while flushing sys.stdout:
+BrokenPipeError: [Errno 32] Broken pipe
+== single done 04:55:45

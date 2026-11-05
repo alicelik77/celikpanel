@@ -1,0 +1,54 @@
+== d12 PGDG 18 preview after setup 04:40:54
+  lane read ready True sha 7cb1da1aaf45 steps 3 error None
+  lane enable 200 None True repo enabled True packages ['postgresql-18', 'postgresql-17', 'postgresql-16', 'postgresql-15', 'postgresql-14', 'postgresql-13', 'postgresql-12', 'postgresql-11', 'postgresql-10'] 
+-- after the lane (apt simulation, read-only)
+postgresql-common:
+  Installed: (none)
+  Candidate: 248+deb12u1
+     293.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     291.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     290.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     248+deb12u1 500
+postgresql-client-common:
+  Installed: (none)
+  Candidate: 248+deb12u1
+     293.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     291.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     290.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     248+deb12u1 500
+libpq5:
+  Installed: (none)
+  Candidate: 15.19-0+deb12u1
+     18.6-1.pgdg12+2 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     18.4-1.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     18.3-1.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     15.19-0+deb12u1 500
+     15.18-0+deb12u1 500
+postgresql-18:
+  Installed: (none)
+  Candidate: 18.6-1.pgdg12+2
+     18.6-1.pgdg12+2 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     18.4-1.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+     18.3-1.pgdg12+1 100
+        100 https://apt.postgresql.org/pub/repos/apt bookworm-pgdg/main amd64 Packages
+-- simulate
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    notable libpq5 vendor_shared None None -> None point_update None
+    notable postgresql-client-common vendor_shared None None -> None point_update None
+    notable postgresql-common vendor_shared None None -> None point_update None
+    installs ['libjson-perl', 'postgresql-client-common', 'postgresql-common', 'libpq5', 'postgresql-client-18', 'postgresql-18']
+-- no install (preview only); installed state after the preview:
+celikpanel-pgdg.list
+debian.sources
+== done 04:41:03
