@@ -44,8 +44,10 @@ panels, from the panel's own update screen.**
 - BIND also starts on Ubuntu 22.04, whose own BIND service file runs the
   name server in the background (the older way); only that exact file is
   accepted there.
-- PowerDNS is offered only on the systems it has been tested on: Debian 13,
-  Ubuntu 24.04 and Arch Linux, as the main and as the backup DNS server.
+- PowerDNS is offered only where it has been tested: as the main DNS server
+  on Debian 13 and Arch Linux, and as the backup DNS server also on Ubuntu
+  24.04 (unchanged from alpha.122: on Ubuntu 24.04 the main DNS server uses
+  BIND).
   Elsewhere setup, joining by code and the DNS page say so and use BIND;
   nothing is changed on the server.
 

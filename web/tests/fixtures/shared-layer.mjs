@@ -176,6 +176,8 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/remoteBackup': remoteBackupURL,
     '/lib/securityEmergency': securityEmergencyURL,
     '/lib/removalOperation': removalOperationURL,
+    // alpha.123: ServiceList sends the removal's own request identity header.
+    '/lib/requestIdentity': requestIdentityURL,
     '/ui': uiURL,
     ...extra,
   };

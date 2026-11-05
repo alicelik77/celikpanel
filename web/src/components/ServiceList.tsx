@@ -49,6 +49,7 @@ import { WebmailRepairButton } from './WebmailRepairButton';
 import { decodeRemovalTraces, RemovalTracesNote, type RemovalTraces } from './RemovalTraces';
 import { decodeRemovalPlan, InstallNeedsDialog, removalPlanRefused, RemovalPlanGroups, type RemovalPlan } from './RemovalPlan';
 import { followRemovalOperation, newRemovalRequestID, removalPhaseText } from '../lib/removalOperation';
+import { REQUEST_ID_HEADER } from '../lib/requestIdentity';
 import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo, phpToolCauseText } from '../lib/phpTools';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -1100,12 +1101,18 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         setUninstallError(null);
         try {
             // alpha.123 (D-045): what goes together is removed on the server in
-            // one durable operation; the window only follows it.
+            // one durable operation; the window only follows it. The removal
+            // route requires the request identity header, and a body that names
+            // its request_id gets no header from the fetch interceptor, so the
+            // same identity goes in both (alpha.123 lab: 428 without it).
+            const removalID = also.length > 0 ? newRemovalRequestID() : '';
             const res = await fetch('/api/v1/service/uninstall', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: also.length > 0
-                    ? JSON.stringify({ service_id: service.id, remove_together: also, request_id: newRemovalRequestID() })
+                headers: removalID
+                    ? { 'Content-Type': 'application/json', [REQUEST_ID_HEADER]: removalID }
+                    : { 'Content-Type': 'application/json' },
+                body: removalID
+                    ? JSON.stringify({ service_id: service.id, remove_together: also, request_id: removalID })
                     : JSON.stringify({ service_id: service.id }),
             });
             if (res.status === 202) {

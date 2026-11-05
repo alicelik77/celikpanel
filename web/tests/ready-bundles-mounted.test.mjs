@@ -167,7 +167,7 @@ function serve(managed) {
   globalThis.fetch = async (input, init = {}) => {
     const path = String(input).split('?')[0];
     requests.push(`${init.method || 'GET'} ${path}`);
-    urls.push({ method: init.method || 'GET', url: String(input), body: init.body });
+    urls.push({ method: init.method || 'GET', url: String(input), body: init.body, headers: new Headers(init.headers) });
     const extra = extraRoutes[`${init.method || 'GET'} ${path}`];
     if (extra) return answer(...extra);
     if (path === '/api/v1/managed-services' || path === '/api/v1/managed-services/scan') return answer(managed);
@@ -1184,7 +1184,7 @@ async function removePostgreSQL({ keepTool }) {
   }
   await press(remove);
   await settle();
-  return urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => JSON.parse(call.body));
+  return urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => ({ ...JSON.parse(call.body), header: call.headers.get('X-CelikPanel-Request-Id') }));
 }
 
 test('removing PostgreSQL offers phpPgAdmin, ticked, and removes both on the server', async () => {
@@ -1194,6 +1194,9 @@ test('removing PostgreSQL offers phpPgAdmin, ticked, and removes both on the ser
     assert.equal(sent[0].service_id, 'postgresql');
     assert.deepEqual(sent[0].remove_together, ['phppgadmin']);
     assert.match(sent[0].request_id, /^[0-9a-f]{32}$/);
+    // The removal route requires the identity header; a body that names its
+    // request_id gets none from the interceptor (alpha.123 lab: 428).
+    assert.equal(sent[0].header, sent[0].request_id, 'the request identity header carries the same id');
   } finally { await unmount(); extraRoutes = {}; }
 });
 

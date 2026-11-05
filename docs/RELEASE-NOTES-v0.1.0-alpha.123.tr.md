@@ -46,9 +46,11 @@ günceller.**
 - BIND, Ubuntu 22.04'te de başlıyor: oradaki BIND hizmet dosyası ad
   sunucusunu arka planda (eski yöntemle) çalıştırır; orada yalnız o dosyanın
   birebir kendisi kabul edilir.
-- PowerDNS yalnız denendiği sistemlerde sunulur: Debian 13, Ubuntu 24.04
-  ve Arch Linux; hem ana hem yedek DNS sunucusu olarak. Diğer sistemlerde
-  kurulum, kodla katılma ve DNS sayfası bunu söyler ve BIND kullanılır;
+- PowerDNS yalnız denendiği yerde sunulur: ana DNS sunucusu olarak Debian 13
+  ve Arch Linux'ta, yedek DNS sunucusu olarak ayrıca Ubuntu 24.04'te
+  (alpha.122'den beri aynı: Ubuntu 24.04'te ana DNS sunucusu BIND kullanır).
+  Diğer sistemlerde kurulum, kodla katılma ve DNS sayfası bunu söyler ve
+  BIND kullanılır;
   sunucuda hiçbir şey değiştirilmez.
 
 ## Sunucu kurulumu
