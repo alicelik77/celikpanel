@@ -167,6 +167,8 @@ test('every dialogue in the product is the shared one', () => {
     'Dashboard.tsx': 1,
     'DatabaseAccountStrip.tsx': 1,
     'DomainMailManager.tsx': 1,
+    // alpha.124: the sending mailbox's settings, password shown once (passwordless mail).
+    'PasswordlessMailNotice.tsx': 1,
     // alpha.118: installing, changing the keys of and removing an AI or automation app.
     'DomainServiceApps.tsx': 3,
     // alpha.119: an uploaded program's environment values and its removal.

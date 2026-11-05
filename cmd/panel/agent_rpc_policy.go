@@ -140,6 +140,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
+		Agent.PasswordlessMailReportV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
@@ -325,13 +326,15 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServiceMutationReadiness":   agentRPCQuickReadTimeout,
 
 	// Bounded disk/log reads.
-	"Agent.AppUnitLogs":                   agentRPCStandardReadTimeout,
-	"Agent.GetAccessLogs":                 agentRPCStandardReadTimeout,
-	"Agent.GetErrorLogs":                  agentRPCStandardReadTimeout,
-	"Agent.GetPHPLogs":                    agentRPCStandardReadTimeout,
-	"Agent.InspectCpmove":                 agentRPCStandardReadTimeout,
-	"Agent.ListFiles":                     agentRPCStandardReadTimeout,
-	"Agent.MailHealth":                    agentRPCStandardReadTimeout,
+	"Agent.AppUnitLogs":   agentRPCStandardReadTimeout,
+	"Agent.GetAccessLogs": agentRPCStandardReadTimeout,
+	"Agent.GetErrorLogs":  agentRPCStandardReadTimeout,
+	"Agent.GetPHPLogs":    agentRPCStandardReadTimeout,
+	"Agent.InspectCpmove": agentRPCStandardReadTimeout,
+	"Agent.ListFiles":     agentRPCStandardReadTimeout,
+	"Agent.MailHealth":    agentRPCStandardReadTimeout,
+	// One bounded journal read of Postfix lines (45 s in the Agent).
+	"Agent.PasswordlessMailReportV1":      agentRPCStandardReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,

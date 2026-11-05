@@ -19,6 +19,61 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-046 · No mail without a password: sites send only through authenticated submission
+
+*2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · implemented in two phases: phase 1 (read-only report and sending mailboxes) in alpha.124, phase 2 (closing) planned for alpha.125*
+
+**Why.** A stock Postfix lets anything running on the server send mail to the
+whole Internet without a password, two ways: SMTP to port 25 on the server
+itself (loopback is in `mynetworks`, and `permit_mynetworks` allows relaying)
+and the `sendmail` command, which PHP `mail()`, cron and scripts use
+(`postdrop` → `pickup`). A hacked site then sends spam in the server's name and
+the whole server's address ends up on block lists.
+
+**Decision.** Sites send mail only with a mailbox's user name and password,
+through submission (587 STARTTLS or 465 TLS). Both passwordless ways are closed
+with two native Postfix settings, for every site, PHP version and pool at once:
+
+- `authorized_submit_users = root, vmail`: the `sendmail` command and `postdrop`
+  refuse every other Unix account ("User x(uid) is not allowed to submit mail",
+  in the mail log; PHP `mail()` returns false). root keeps it for cron,
+  unattended-upgrades, fail2ban and every other system notice; `vmail` keeps it
+  for Dovecot's Sieve out-of-office replies. CelikPanel's own account mail is
+  handed to `sendmail` by the Agent as root.
+- `smtpd_relay_restrictions` without `permit_mynetworks`: SMTP from the server
+  itself may still deliver into this server's own mailboxes (what any server on
+  the Internet may do) but relaying elsewhere needs SASL ("Relay access denied").
+  `mynetworks` and `smtpd_recipient_restrictions` are not changed.
+
+A PHP-level `sendmail_path` override was not used: it would need a CelikPanel
+helper on every PHP version's path that stays behind if the panel is removed,
+and it closes nothing the Postfix list does not close. Roundcube already sends
+through 587 with the user's password; the mailbox 90% warning is delivered by
+Dovecot's own delivery agent, not by `sendmail`.
+
+**Two phases.** Phase 1 (alpha.124) changes nothing on the server: the Postfix
+page says that mail without a password closes in the next release and lists the
+sites that used it in the last 30 days, read from Postfix's own log (`pickup`
+uid lines mapped to the site's system user; unauthenticated loopback SMTP
+relayed elsewhere, mapped by the sender's domain). Each site gets one button,
+"Create a sending mailbox", which makes `noreply@<domain>` and shows the server,
+port, user name and the password once. Phase 2 (alpha.125) closes it on the
+first panel start after the update (the Agent's mail filter step), with a
+verified Postfix reload; if Postfix does not take the change the earlier values
+are written back and the failure is shown.
+
+**Owner independence (D-022).** Ordinary `main.cf` settings that keep working
+with the panel removed. CelikPanel changes a setting only while it holds
+Postfix's default or the value CelikPanel itself wrote (its before/after record
+in `/var/lib/celikpanel-agent-private/mail-passwordless.json`); a value the
+owner set is kept and shown with CelikPanel's form beside it.
+
+**Resilience (D-025).** Affected invariant: native service ownership and
+owner-change detection; no schema change. Recovery: rollback of the two
+settings on a failed check or reload, recorded and retried at the next start.
+Evidence: Go tests of the log reading, the plan, the rollback and the owner's
+values; phase 2 lab check on Debian 13.
+
 ## D-045 · Component dependency rule: Linux's package rule at component level; removal asks what requires it
 
 *2026-11-04 (owner's decision) · Applies D-038 point 2 ("nothing in use is removed") and D-042 (offerings) to every component; implemented in alpha.123, lab trial pending*

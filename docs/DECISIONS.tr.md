@@ -19,6 +19,61 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
+
+*2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · iki aşamada uygulanır: 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124'te, 2. aşama (kapatma) alpha.125 için planlı*
+
+**Neden.** Dağıtımın Postfix'i, sunucuda çalışan her şeyin parolasız olarak bütün
+İnternet'e posta göndermesine iki yoldan izin verir: sunucunun kendi 25 numaralı
+bağlantı noktasına SMTP (loopback `mynetworks` içindedir ve `permit_mynetworks`
+aktarıma izin verir) ve PHP `mail()`, cron ve betiklerin kullandığı `sendmail`
+komutu (`postdrop` → `pickup`). Ele geçirilmiş bir site sunucunun adıyla istenmeyen
+posta gönderir ve sunucunun adresi engel listelerine girer.
+
+**Karar.** Siteler postayı yalnız bir posta kutusunun kullanıcı adı ve parolasıyla,
+gönderim hizmetinden (587 STARTTLS ya da 465 TLS) gönderir. İki parolasız yol, her
+site, PHP sürümü ve havuz için birden, iki yerel Postfix ayarıyla kapanır:
+
+- `authorized_submit_users = root, vmail`: `sendmail` komutu ve `postdrop` başka
+  her Unix hesabını reddeder (posta günlüğünde "User x(uid) is not allowed to
+  submit mail"; PHP `mail()` false döndürür). root cron, otomatik güncellemeler,
+  fail2ban ve diğer sistem bildirimleri için gönderebilir; `vmail` Dovecot'un
+  Sieve "ofis dışında" yanıtları için. CelikPanel'in kendi hesap postasını Agent
+  root olarak `sendmail`'e verir.
+- `permit_mynetworks`'süz `smtpd_relay_restrictions`: sunucunun kendisinden SMTP
+  bu sunucudaki posta kutularına teslim etmeye devam eder (İnternet'teki her
+  sunucunun yapabildiği gibi), başka yere aktarım SASL ister ("Relay access
+  denied"). `mynetworks` ve `smtpd_recipient_restrictions` değişmez.
+
+PHP düzeyinde `sendmail_path` değişikliği kullanılmadı: her PHP sürümünün yoluna
+panel kaldırılınca geride kalan bir CelikPanel yardımcısı gerektirirdi ve Postfix
+listesinin kapatmadığı hiçbir şeyi kapatmaz. Roundcube zaten 587'den kullanıcının
+parolasıyla gönderir; posta kutusu %90 uyarısını `sendmail` değil Dovecot'un kendi
+teslim aracı bırakır.
+
+**İki aşama.** 1. aşama (alpha.124) sunucuda hiçbir şeyi değiştirmez: Postfix
+sayfası parolasız postanın bir sonraki sürümde kapanacağını söyler ve son 30 günde
+onu kullanan siteleri Postfix'in kendi günlüğünden okuyarak listeler (`pickup` uid
+satırları sitenin sistem kullanıcısına; başka yere aktarılan parolasız loopback
+SMTP gönderenin alan adına göre eşlenir). Her siteye tek düğme: "Gönderim posta
+kutusu oluştur"; `noreply@<alan adı>` kutusunu oluşturur ve sunucu, bağlantı
+noktası, kullanıcı adı ve parolayı bir kez gösterir. 2. aşama (alpha.125) güncel-
+lemeden sonraki ilk panel başlangıcında (Agent'ın posta süzgeci adımı) doğrulanmış
+bir Postfix yeniden yüklemesiyle kapatır; Postfix değişikliği almazsa önceki
+değerler geri yazılır ve hata gösterilir.
+
+**Sahibin bağımsızlığı (D-022).** Panel kaldırılınca da çalışan sıradan `main.cf`
+ayarları. CelikPanel bir ayarı yalnız Postfix'in varsayılanını ya da kendi yazdığı
+değeri taşıdıkça değiştirir (önce/sonra kaydı
+`/var/lib/celikpanel-agent-private/mail-passwordless.json`); sahibin koyduğu değer
+korunur ve yanında CelikPanel'in biçimiyle gösterilir.
+
+**Dayanıklılık (D-025).** Etkilenen ilke: yerel hizmet sahipliği ve sahip
+değişikliğinin saptanması; şema değişikliği yok. Kurtarma: başarısız denetim ya da
+yeniden yüklemede iki ayar geri alınır, kaydedilir ve sonraki başlangıçta yeniden
+denenir. Kanıt: günlük okuma, plan, geri alma ve sahip değerleri için Go testleri;
+2. aşama için Debian 13 laboratuvar denetimi.
+
 ## D-045 · Bileşen bağımlılık kuralı: Linux'un paket kuralı bileşen düzeyinde; kaldırma neyin ona ihtiyaç duyduğunu sorar
 
 *2026-11-04 (sahibin kararı) · D-038 2. maddeyi ("kullanılan hiçbir şey kaldırılmaz") ve D-042'yi (sunumlar) her bileşene uygular; alpha.123'te uygulandı, laboratuvar denemesi bekliyor*
