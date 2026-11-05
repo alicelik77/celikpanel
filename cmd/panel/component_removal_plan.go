@@ -479,6 +479,18 @@ func computeRemovalPlan(ctx context.Context, db *sql.DB, svc *core.ManagedServic
 			plan.Blockers = append(plan.Blockers, dependent)
 		}
 	}
+	// alpha.124 (D-045 follow-up): one PHP version that sites still use is
+	// refused; the refusal also names the PHP tools that run on it, each with
+	// its own window to move it, so the owner sees everything that must move
+	// (lab: it named the site but not phpMyAdmin). Tools alone never refuse:
+	// they are moved with the removal (move_tools_to).
+	// Sitelerin kullandığı PHP sürümünün reddi, üzerindeki PHP araçlarını da
+	// adlandırır.
+	if version != "" && svc.ID == "php-fpm" && len(plan.Blockers) > 0 {
+		if tools := phpToolsOnVersion(facts.PHPTools, version); len(tools.Items) > 0 {
+			plan.Blockers = append(plan.Blockers, tools)
+		}
+	}
 	if version != "" && svc.ID == "node" && !facts.RuntimeUnitsKnown {
 		plan.Notes = append(plan.Notes, removalNoteUnitsUnknown)
 	}
@@ -514,6 +526,22 @@ func computeRemovalPlan(ctx context.Context, db *sql.DB, svc *core.ManagedServic
 	sort.Strings(withdraws)
 	plan.Withdraws, plan.WithdrawSets = withdraws, sets
 	return plan, nil
+}
+
+// removalKindPHPTools: PHP tools that run on the version being removed.
+const removalKindPHPTools = "php_tools"
+
+// phpToolsOnVersion lists the PHP tools on one version, in a fixed order,
+// each linked to its own page (where its PHP version is chosen).
+func phpToolsOnVersion(tools map[string]string, version string) removalDependent {
+	dependent := removalDependent{Kind: removalKindPHPTools, Items: []removalItem{}}
+	for _, id := range []string{"phpmyadmin", "phppgadmin", "roundcube"} {
+		if tools[id] == version {
+			dependent.Items = append(dependent.Items, removalItem{Name: componentDisplayName(id), Link: "/components/" + id})
+		}
+	}
+	dependent.Count = len(dependent.Items)
+	return dependent
 }
 
 func componentDisplayName(id string) string {

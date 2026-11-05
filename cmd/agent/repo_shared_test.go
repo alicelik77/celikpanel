@@ -68,3 +68,25 @@ func TestTheVendorsSharedPackageIsNamedAndConfirmedNeverSilent(t *testing.T) {
 		t.Fatalf("confirmed = %v", err)
 	}
 }
+
+// alpha.124 (lab: PostgreSQL 18 on Debian 12 was said to come from
+// "vendor"): a shared package the install brings fresh names its repository,
+// read from the version it would install.
+func TestAFreshSharedPackageNamesItsRepository(t *testing.T) {
+	args := []string{"postgresql-18", "libpq5=18.0-1.pgdg12+1"}
+	c := newInstallClassification("apt", args, []string{"postgresql"}, nil, nil)
+	c.vendorOf = func(name, version string) string {
+		if strings.Contains(version, "pgdg") {
+			return "pgdg"
+		}
+		return ""
+	}
+	sim := aptSimulation{
+		Installed: []string{"postgresql-18", "libpq5"},
+		Versions:  map[string]aptUpgrade{"libpq5": {To: "18.0-1.pgdg12+1"}, "postgresql-18": {To: "18.0-1.pgdg12+1"}},
+	}
+	notable := c.classifySimulation(sim)
+	if len(notable) != 1 || notable[0].Package != "libpq5" || notable[0].Reason != notableReasonVendorShared || notable[0].Component != "pgdg" {
+		t.Fatalf("notable = %+v", notable)
+	}
+}

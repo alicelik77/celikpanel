@@ -860,9 +860,11 @@ test('notable installs are named with their reason and hold Install until the ow
   });
   try {
     const notes = tree.root.find((node) => node.props && node.props['data-install-preview'] === 'notable');
-    // alpha.109: grouped, one package a line; packages sharing a reason under it.
-    assert.ok(label(notes).includes('The Apache web server:apache2libapache2-mod-php8.5'), label(notes));
-    assert.ok(label(notes).includes(`php8.5-common: ${say('services.notable.why.new_php_version', { version: '8.5' })}`), label(notes));
+    // alpha.124 (owner, 4 Nov 2026): said by component, never by package name;
+    // the names stay in what is confirmed.
+    assert.ok(label(notes).includes(say('cinst.brings.apache')), label(notes));
+    assert.ok(label(notes).includes(say('cinst.brings.new_php_version', { version: '8.5' })), label(notes));
+    assert.ok(!label(notes).includes('apache2') && !label(notes).includes('php8.5-common'), label(notes));
     assert.equal(confirmButton(3).props.disabled, true, 'Install was offered before the owner confirmed');
     const box = tree.root.find((node) => node.type === 'input' && node.props['data-install-preview-confirm'] !== undefined);
     await act(async () => { box.props.onChange({ target: { checked: true } }); });
@@ -954,9 +956,9 @@ test('PostgreSQL that is not installed has its own row like MariaDB: Not install
     assert.ok(rowOf('mariadb'), 'MariaDB keeps its row');
     assert.equal(tree.root.findAll((node) => node.props && node.props['data-bundle-alone-install'] !== undefined).length, 0, 'no "install one on its own" link');
     assert.ok(bundleNode('db.postgresql'), 'the ready bundles stay');
-    // phpPgAdmin has its row too, and says what it needs first.
-    assert.ok(label(rowOf('phppgadmin')).includes(say('services.requiresLabel', { names: nameOf('postgresql') })), label(rowOf('phppgadmin')));
-    assert.equal(installIn(rowOf('phppgadmin')), undefined, 'no Install while PostgreSQL is missing');
+    // phpPgAdmin has its row too, with Install: its window says what it
+    // needs (alpha.124: PostgreSQL is installed together with it).
+    assert.ok(installIn(rowOf('phppgadmin')), label(rowOf('phppgadmin')));
     await press(installIn(row));
     assert.ok(dialogText().includes(say('services.installTitle', { name: nameOf('postgresql') })), dialogText());
     // The version choice is the install dialog's own: it asks for PostgreSQL's repository and candidate.

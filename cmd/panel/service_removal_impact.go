@@ -91,6 +91,10 @@ type removalHostFacts struct {
 	// they could not be read.
 	RuntimeUnits      []string
 	RuntimeUnitsKnown bool
+	// PHPTools (alpha.124): for PHP-FPM, the PHP version each installed PHP
+	// tool runs on (catalogue id -> "8.4"), read from the Agent; nil when it
+	// could not be read.
+	PHPTools map[string]string
 }
 
 type serviceRemovalBundle struct {
@@ -742,6 +746,17 @@ func (p *Panel) removalHostFacts(ctx context.Context, serviceID string) removalH
 	case "certbot":
 		facts.PanelCertificate = removalPanelCertificate()
 		facts.MailHosts = removalMailHostCertificates(p, ctx)
+	case "php-fpm":
+		// alpha.124: a version's refusal names the PHP tools on it as well as
+		// its sites (lab: it named the site but not phpMyAdmin).
+		if bindings, err := p.readPHPToolBindings(ctx); err == nil {
+			facts.PHPTools = map[string]string{}
+			for _, binding := range bindings.Tools {
+				if id := phpToolServiceIDs[binding.Tool]; id != "" && binding.Installed && binding.Version != "" {
+					facts.PHPTools[id] = binding.Version
+				}
+			}
+		}
 	case "nftables":
 		type answer struct {
 			status FirewallStatusResp

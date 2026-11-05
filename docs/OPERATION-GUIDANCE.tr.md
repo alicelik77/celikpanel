@@ -10879,3 +10879,44 @@ birlikte kaldırma işlemi ve güvenlik acil durumu aynı planı okur.
   görebilen bileşenler listelenir.
 
 Şema değişmedi; geçiş yok. Laboratuvar denetimi bekliyor (D-025).
+
+### Bileşen kurmak: gerekenler, birlikte kurulum (D-045, alpha.124)
+
+Kurulum penceresi aynanın sorusunu sorar: "bu bileşene ne gerekir?" Aynı harita
+yanıtlar (`cmd/panel/component_install_together.go`, `GET
+/api/v1/service/install-plan`), bileşen düzeyinde; paket adı yoktur.
+
+- **Kurulu / birlikte / eksik.** Her gereksinim durumunu söyler: kurulu (sürümüyle),
+  önce dağıtımın sürümüyle birlikte kurulacak ya da eksik ve bu pencereden kurulamaz.
+- **Karşılanmamış önkoşul.** Burada kurulamayan bir gereksinim Kur'u kapatır; pencere
+  her şeyden önce hangisi, neden ve sonraki adımı söyler: posta motorları posta
+  kurulumuyla gelir (Bileşenler'deki E-posta kartı), bu sistemde sunulmayan bileşen,
+  aynı görevi üstlenen başka bileşen (önce o kaldırılır) ya da kendi satırından kurulan
+  çalışma ortamı. Yapacak olan: yönetici. Hiçbir şey değişmedi.
+- **Bilinmeyen.** Okunamayan plan Yeniden dene ile söylenir; yanıt gelene dek Kur kapalı
+  kalır. Durumu hiç gözlenmemiş gereksinim "henüz bilinmiyor" der; sonraki adım tarama.
+- **Birlikte kurulum.** Onay, önce eksik gereksinimleri, sonra bileşeni tek kalıcı işlem
+  olarak kurar (`service_install_together`, 202, tek Agent kirası, niteleyici = sıralı
+  üyeler). Planınkinden farklı liste reddedilir (`INSTALL_PLAN_CHANGED`, 409, yeni
+  planla); kurulamayan eksik gereksinim reddeder (`INSTALL_REQUIREMENT_UNAVAILABLE`).
+  Sayfayı kapatmak onu durdurmaz; genel işlem kilidi onu izler, şu an kurulan bileşeni,
+  kimsenin bir şey yapması gerekmediğini ve kendiliğinden sürdüğünü söyler, yeniden
+  yüklemeden ya da panel yeniden başladıktan sonra ona bağlanır. Tarayıcı işareti asla
+  işlem başlatmaz.
+- **Hata.** Başarısız adım ondan önce kurulanları korur; sunucunun mesajı onları adlandırır
+  ("Installed before this step and kept: …") ve adımın kendi yönlendirmesi gelir. Sonraki adım:
+  nedeni okuyun, giderin, yeniden Kur'a basın; plan artık yalnız eksik kalanları listeler.
+- **Sürdürme.** Panel yeniden başladıktan sonra aynı işlem sürer: plan taze taramayla
+  yeniden okunur, kurulu olan atlanır, kimsenin onaylamadığı gereksinim işlemi durdurur
+  (`install_plan_changed`) ve başka bir şey kurulmaz.
+- **PHP araçları.** phpMyAdmin, phpPgAdmin ve Roundcube pencerede seçilen kurulu PHP-FPM
+  sürümüyle çalışır (kuruluysa dağıtımınki, değilse en yenisi); kanıtlama seçilen sürümü
+  asla değiştirmez. Roundcube seçilen sürüme taşınamazsa önceki sürümüyle kurulu kalır
+  ve biten kurulum bunu, sonraki adım olarak Yönet penceresiyle söyler.
+- **Depo değişikliği.** Paket düzeyinde kalan tek onay, bir deponun sürümünün dağıtımınkinin
+  yerini almasıdır (örneğin Debian 12'de PostgreSQL (PGDG) deposundan libpq5): depo
+  açıkça adlandırılır, asla "üretici" denmez.
+- **PHP sürümü kaldırma.** Sitelerin kullandığı sürüm reddedilir (`RUNTIME_IN_USE`) ve ret
+  üzerindeki PHP araçlarını da, taşınacakları kendi sayfalarına bağlantıyla adlandırır.
+
+Şema değişmedi; geçiş yok. Laboratuvar denetimi bekliyor (D-025).

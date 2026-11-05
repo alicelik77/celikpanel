@@ -66,10 +66,44 @@ kaldırma adımından önce aynı bağımlıları gösterir. Agent, bir hizmet u
 **Kurulum.** Aynı harita gereksinimleri ve çakışmaları denetler. Eksik gereksinim
 "Önce … kurulsun" olarak sunulur; çakışma gerekçesiyle reddedilir.
 
-**İddia edilmeyen.** Python uygulamalarının sürümleri, PostgreSQL'in ana sürüm
-başına kaldırılması, tek bir "birlikte kur" işlemi ve kurulum penceresinde alt düzey
-paket adlarının gizlenmesi sonraki işlerdir. Sürüm hâlâ laboratuvar turunu bekler
-(D-025).
+**Kurulum, alpha.124 (sahip, 4 Kasım 2026: "bir bileşen kurmak istediğimizde
+bağımlılıklar listelenir; sürümler seçilebilir ya da değiştirilemez olarak
+listelenir; sonra kur denir kurulur" ve "postgresql-server yüklerken
+postgresql-common'ı da yükleyeceğini bilmek beni ilgilendirmiyor").** Kurulum
+penceresi aynanın sorusunu sorar: *bu bileşene ne gerekir?* Her gereksinim
+bileşen düzeyinde yanıtlanır (`GET /api/v1/service/install-plan`): kurulu
+(sürümüyle), önce onunla birlikte kurulacak ya da eksik ve bu pencereden
+kurulamaz; nedeni ve nerede yapıldığıyla (posta motorları posta kurulumuyla
+gelir; bu sistemde sunulmayan bileşen; aynı görevi üstlenen başka bileşen;
+çalışma ortamları ve DNS motorları kendi yerinden). Eksik ve kurulamayan bir
+gereksinim varken Kur kapalıdır ve pencere kimin ne yapacağını söyler.
+- **Birlikte kurulum** sunucuda tek kalıcı işlemdir (`service_install_together`):
+  niteleyicisi üye listesi olan tek Agent kirası (`core.ParseInstallTogetherQualifier`:
+  hedefin gerektirdiği düz dağıtım bileşenleri: Nginx, PHP-FPM, MariaDB,
+  PostgreSQL, nftables); her adımdan önce ve kaldığı yerden sürerken taze
+  taramayla plan yeniden okunur, zaten kurulu üye atlanır, kimsenin onaylamadığı
+  bir üye işlemi durdurur, her kurulum olağan kurulumdur (ön denetim, Agent,
+  yapılandırma, tarama). Bir hata önceki kurulumları yerinde bırakır ve mesajı
+  onları adlandırır. Genel işlem kilidi onu izler, yeniden yüklemeden ya da
+  yeniden başlatmadan sonra ona bağlanır; tarayıcı işareti asla işlem başlatmaz.
+- **Sürümler.** Birlikte kurulan gereksinim dağıtımın sürümüyle gelir
+  (değiştirilemez); başka sürüm o bileşenin kendi kurulumudur. phpMyAdmin,
+  phpPgAdmin ve Roundcube hangi kurulu PHP-FPM sürümüyle çalışacaklarını burada
+  seçer (kuruluysa dağıtımınki, değilse en yenisi); sahibin seçtiği sürüm
+  kanıtlamanın yedek denemesiyle asla değiştirilmez.
+- **Paketler.** Kurulum penceresi paket adı söylemez. Kurulumun getirdiği başka
+  şeyler bileşen düzeyinde söylenir (başka bir PHP, Apache, başka bir bileşen,
+  bir veritabanı sunucusu, "kurulu N sistem paketi güncellenir"); adlar onaylanan
+  ve sunucuda denetlenen listede kalır. Tek istisna sahibin onay verdiği depo
+  değişikliğidir: paketlerini ve depoyu açıkça adlandırır ("PostgreSQL (PGDG)",
+  asla "üretici"; Agent artık yeni kurduğu ortak paketin deposunu da adlandırır).
+- **PHP sürümleri.** Sitelerin hâlâ kullandığı bir sürüm reddedilir ve ret
+  üzerindeki PHP araçlarını da, her birinin kendi sayfasına bağlantısıyla,
+  adlandırır; yalnız araçlar asla reddetmez (kaldırmayla birlikte taşınırlar).
+
+**İddia edilmeyen.** Python uygulamalarının sürümleri ve PostgreSQL'in ana sürüm
+başına kaldırılması sonraki işlerdir; hazır paketler hâlâ tarayıcıdan sırayla
+kurulur. alpha.123 ve alpha.124 hâlâ laboratuvar turunu bekler (D-025).
 
 ---
 

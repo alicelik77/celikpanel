@@ -67,11 +67,9 @@ import type { GuideScreenKey } from './screens/guide/en';
 import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
 import type { HostNameScreenKey } from './screens/hostName/en';
 import type { RemovalRuleScreenKey } from './screens/removalRule/en';
+import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
 
 export const en = {
-    // ---- alpha.108 tools ----
-    'services.phpToolProof.whyCheck': 'PHP-FPM {version} could not open CelikPanel’s check file (HTTP {status}); Check again in its Manage window repairs it',
-    'services.phpToolProof.whySaid': 'it did not answer as itself; the server said: {detail}',
     'app.name': 'CelikPanel',
     'recovery.checkingTitle': 'Checking panel access',
     'recovery.checkingHelp': 'Confirming your session and panel readiness. This check does not start a server operation.',
@@ -405,33 +403,17 @@ export const en = {
     'dnssrv.continue': 'Continue',
     'services.install': 'Install',
     'services.installed': '{name} installed.',
-    'services.installedWaitingSignatures': '{name} is installed and is downloading its first virus signatures, which usually takes a few minutes. You do not need to do anything: its scanner starts by itself when the download finishes, and Components shows it as running at its next check.',
-    'services.phpToolProblem.versionGone': '{tool} is set to PHP {version}, which is no longer installed, so {tool} cannot answer. Open {tool} in Components and choose an installed PHP version in Manage.',
-    'services.phpToolProof.moved': '{tool} runs on PHP {version}: it did not work on PHP {first} ({why}), so the next installed PHP version that has its extensions was used. You can change it in {tool}’s Manage window.',
-    'services.phpToolProof.notReady': '{tool} was installed, but it did not answer on PHP {version} ({why}). It reads Not ready: open its Manage window in Components; the reason is shown there, and Check again asks it again without moving it.',
-    'services.phpToolProof.whyMissing': 'PHP {version} lacks {extensions}',
-    'services.phpToolProof.whyOther': 'it did not answer as itself',
     // alpha.109: a refused install lists what it would have brought, one package a line, grouped by reason.
-    'services.installRefused.notable': 'Nothing was installed: it would also have brought the packages below, which were not confirmed — the package manager’s answer changed after the install dialog was shown. Press Install again: the dialog now lists them for you to confirm.',
     // alpha.109: why a package comes with an install, said once for the dialog and the refusal.
-    'services.notable.why.new_php_version': 'part of another PHP version ({version})',
-    'services.notable.why.apache': 'the Apache web server',
-    'services.notable.why.component': 'another component: {component}',
-    'services.notable.why.database_server': 'a database server',
-    'services.notable.why.upgrade': 'already installed; would be upgraded although the install did not ask for it',
-    'services.notable.why.vendor_shared': 'the {repo} repository’s version instead of the distribution’s',
-    'services.notable.repoUnknown': 'vendor',
-    'services.notable.repoName.sury': 'Sury PHP',
-    'services.notable.repoName.pgdg': 'PostgreSQL (PGDG)',
-    'services.notable.repoName.netdata': 'Netdata',
-    'services.phpToolProblem.extensionsFailed': 'The PHP extensions {tool} needs could not be installed for PHP {version}, so {tool} may not work. Open {tool} in Components and choose PHP {version} again in Manage, or another version.',
-    'services.mailProfiles.fallbackWarning': '{name} is installed. No domain has an active trusted Secure Mail certificate yet, so mail clients are served the server’s default certificate. They show a trust warning unless a trusted certificate covers the mail host name. To give a domain its own, activate a trusted certificate with Secure Mail enabled.',
     'services.operation.title': 'Installing {name}',
     'services.operation.removeTitle': 'Removing {name}',
     'services.operation.removeFailedTitle': '{name}: removal stopped',
     'services.operation.removeHint': 'Nobody needs to act. Removed first: {together}. It goes on if you close this page or the panel restarts.',
     'services.operation.phase.removing': 'Removing {name}…',
     'services.operation.phase.removeSetting': 'Turning off scheduled scans…',
+    'services.operation.phase.installingStep': 'Installing {name}…',
+    'services.operation.installTogetherHint': 'Nobody needs to act. Installed first, in this one operation: {together}. It goes on if you close this page or the panel restarts.',
+    'services.operation.installTogetherKept': 'Installed before the step that failed, and kept: {names}. Press Install again after fixing the reason; only what is still missing is installed.',
     'services.operation.activeCheckInProgress': 'The panel is still checking for an active package operation. Try again in a moment.',
     'services.operation.actionLocked': 'Another package operation or safety check is already in progress.',
     'services.operation.starting': 'Starting the server operation…',
@@ -584,5 +566,6 @@ export type ScreenKey =
     | GuideScreenKey
     | RuntimeAppsScreenKey
     | HostNameScreenKey
-    | RemovalRuleScreenKey;
+    | RemovalRuleScreenKey
+    | ComponentInstallScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

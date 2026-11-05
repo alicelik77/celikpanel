@@ -218,6 +218,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/security/os-updates":              gateAdmin,
 	"/api/v1/security/os-updates/origins":      gateAdmin,
 	"/api/v1/service/install-preview":          gateAdmin,
+	"/api/v1/service/install-plan":             gateAdmin,
 	"/api/v1/service/php-tools":                gateAdmin,
 	"/api/v1/service/php-tools/bind":           gateAdmin,
 	"/api/v1/service/php-tools/prove":          gateAdmin,

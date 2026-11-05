@@ -329,6 +329,36 @@ func restoreServiceInstallChoices(req *serviceInstallRequest, raw string) {
 	*req = candidate
 }
 
+// bindChosenWebmailPHP moves webmail to the PHP version the owner chose in
+// its install window (alpha.124). The bind proves it there; true when it did
+// (nothing more to prove). A bind that fails leaves webmail where it was and
+// is carried in the result as php_tool_bind, so the finished install says
+// which version it runs on and why.
+// Web postasını kurulum penceresinde seçilen PHP sürümüne taşır.
+func (p *Panel) bindChosenWebmailPHP(ctx context.Context, binding transport.ServiceMutationBinding, version string, result serviceOperationResult) bool {
+	if version == "" {
+		return false
+	}
+	var bound transport.BindPHPToolResponse
+	if err := p.callAgentContext(ctx, "Agent.BindPHPToolV1", &transport.BindPHPToolRequest{
+		ServiceMutationBinding: binding,
+		Tool:                   "webmail",
+		Version:                version,
+	}, &bound); err != nil {
+		log.Printf("bind webmail to PHP %s after install: %v", version, err)
+		result["php_tool_bind"] = map[string]any{"tool": "webmail", "version": version, "bound": false}
+		return false
+	}
+	if bound.Error != "" || !bound.Bound {
+		log.Printf("bind webmail to PHP %s after install: %s", version, bound.Error)
+		result["php_tool_bind"] = map[string]any{"tool": "webmail", "version": version, "bound": false,
+			"previous": bound.Previous, "code": bound.ErrorCode, "detail": bound.Detail}
+		return false
+	}
+	result["php_tool_bind"] = map[string]any{"tool": "webmail", "version": version, "bound": true}
+	return true
+}
+
 // provePHPToolAfterInstall asks the Agent to prove a PHP tool just
 // installed (alpha.105). The install itself stands either way: a tool
 // proved nowhere stays installed and its row reads "Not ready" with the

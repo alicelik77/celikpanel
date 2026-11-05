@@ -67,9 +67,47 @@ to delete a Node.js version a service app runs on.
 **Install.** The same map checks requirements and conflicts. A missing
 requirement is offered as "Install … first"; a conflict refuses with its reason.
 
-**Not claimed.** Python apps' versions, per-major PostgreSQL removal, a single
-"install together" operation and hiding low-level package names in the install
-window are later work. The release still needs its lab round (D-025).
+**Install, alpha.124 (owner, 4 November 2026: "when we install a component its
+dependencies are listed; versions are listed as choosable or fixed; then
+Install installs it", and "knowing that installing postgresql-server also
+installs postgresql-common does not concern me").** The install window asks
+the mirror question, *what does this component need?*, and answers per
+requirement at component level (`GET /api/v1/service/install-plan`):
+installed (with its version), installed together with it first, or missing
+and not installable from this window, with the reason and where it is done
+(mail engines come with the mail setup; a component not offered on this
+system; another component holding the same role; runtimes and DNS engines
+from their own place). Install is off while one is missing and not
+installable, and the window says who acts and what next.
+- **Install together** runs on the server as one durable operation
+  (`service_install_together`): one Agent lease whose qualifier is the member
+  list (`core.ParseInstallTogetherQualifier`: plain distribution components
+  the target requires - Nginx, PHP-FPM, MariaDB, PostgreSQL, nftables), the
+  plan read again with a fresh scan before any step and on resume, a member
+  already installed skipped, a member nobody confirmed refusing the run, every
+  install the ordinary one (preflight, Agent, configuration, scan). A failure
+  leaves the earlier installs in place and its message names them. The global
+  operation lock follows it and re-attaches after a reload or restart; a
+  browser marker never starts one.
+- **Versions.** A requirement installed together comes at the distribution's
+  version (fixed); choosing another version is that component's own install.
+  phpMyAdmin, phpPgAdmin and Roundcube choose here the installed PHP-FPM
+  version they run on (the distribution's own when installed, otherwise the
+  newest); a version the owner chose is never moved by the proof's fallback.
+- **Packages.** The install window names no package. What else an install
+  brings is said by component (another PHP, Apache, another component, a
+  database server, "N installed system packages updated"); the names stay in
+  what is confirmed and checked on the server. The one exception is a
+  repository change the owner consents to, which names its packages and the
+  repository plainly ("PostgreSQL (PGDG)", never "vendor": the Agent now
+  names the repository of a shared package it installs fresh).
+- **PHP versions.** A version that sites still use is refused, and the refusal
+  names the PHP tools on it too, each linked to its own page; tools alone
+  never refuse (they move with the removal).
+
+**Not claimed.** Python apps' versions and per-major PostgreSQL removal are
+later work; ready bundles still install in a row from the browser. alpha.123
+and alpha.124 still need their lab round (D-025).
 
 ---
 

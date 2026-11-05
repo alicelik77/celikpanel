@@ -131,6 +131,8 @@ export const remoteBackupURL = compileSource('lib/remoteBackup.ts', unexpected('
 export const securityEmergencyURL = compileSource('lib/securityEmergency.ts', unexpected('lib/securityEmergency.ts'));
 // alpha.123: the server-side remove-together operation, followed by the removal window.
 export const removalOperationURL = compileSource('lib/removalOperation.ts', unexpected('lib/removalOperation.ts'));
+// alpha.124: what a component needs, read by the install window.
+export const installPlanURL = compileSource('lib/installPlan.ts', unexpected('lib/installPlan.ts'));
 
 // A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
 // test that mounts the screen: the compiled module, with that one import
@@ -176,6 +178,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/remoteBackup': remoteBackupURL,
     '/lib/securityEmergency': securityEmergencyURL,
     '/lib/removalOperation': removalOperationURL,
+    '/lib/installPlan': installPlanURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/ui': uiURL,
@@ -194,6 +197,8 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/RemovalTraces']) table['/RemovalTraces'] = compileSource('components/RemovalTraces.tsx', resolve);
   // alpha.123 (D-045): the removal plan's three groups and the install requirements.
   if (!extra['/RemovalPlan']) table['/RemovalPlan'] = compileSource('components/RemovalPlan.tsx', resolve);
+  // alpha.124: the install window's requirements.
+  if (!extra['/InstallRequirements']) table['/InstallRequirements'] = compileSource('components/InstallRequirements.tsx', resolve);
   if (!extra['/OfferedVersionsCard']) table['/OfferedVersionsCard'] = compileSource('components/OfferedVersionsCard.tsx', resolve);
   // alpha.108: the one confirmed webmail update flow, started by the webmail card and the Components row.
   if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);

@@ -86,9 +86,17 @@ func (p *Panel) runServiceInstall(
 		if !wmResp.Present {
 			return result, serviceInstallFailure(errors.New("agent did not confirm that Roundcube is present in the webmail configuration"))
 		}
+		// alpha.124: the PHP version the owner chose in the install window.
+		// Webmail is moved to it and proved there; a move that does not
+		// prove leaves it on the version it had and says so (the install
+		// itself stands).
+		chosen := p.bindChosenWebmailPHP(ctx, binding, req.PHPVersion, result)
 		// alpha.105: webmail is proved on its PHP version right after its
-		// install; a first install may try another installed version.
-		p.provePHPToolAfterInstall(ctx, binding, "webmail", rcResp.FirstInstall, result)
+		// install; a first install may try another installed version, but
+		// never away from a version the owner chose.
+		if !chosen {
+			p.provePHPToolAfterInstall(ctx, binding, "webmail", rcResp.FirstInstall && req.PHPVersion == "", result)
+		}
 		if err := advance("scanning"); err != nil {
 			return result, operationAdvanceFailure(err)
 		}
@@ -397,7 +405,9 @@ func (p *Panel) runServiceInstall(
 		if dbtResp.Warning != "" {
 			log.Printf("database tools configuration after installing %s: %s", req.ServiceID, dbtResp.Warning)
 		}
-		p.provePHPToolAfterInstall(ctx, binding, req.ServiceID, resp.FirstInstall, result)
+		// A version the owner chose is kept: the proof may try others only
+		// when none was chosen (alpha.124).
+		p.provePHPToolAfterInstall(ctx, binding, req.ServiceID, resp.FirstInstall && req.PHPVersion == "", result)
 	}
 
 	// (Roundcube's install is handled earlier and returns before this point.)

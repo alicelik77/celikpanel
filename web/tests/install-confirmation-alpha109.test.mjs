@@ -17,8 +17,10 @@ import { en as enShell } from '../src/i18n/en.ts';
 import { tr as trShell } from '../src/i18n/tr.ts';
 import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
 import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
+import { enComponentInstallScreens } from '../src/i18n/screens/componentInstall/en.ts';
+import { trComponentInstallScreens } from '../src/i18n/screens/componentInstall/tr.ts';
 
-const words = { en: { ...enShell, ...enComponentsScreens }, tr: { ...trShell, ...trComponentsScreens } };
+const words = { en: { ...enShell, ...enComponentsScreens, ...enComponentInstallScreens }, tr: { ...trShell, ...trComponentsScreens, ...trComponentInstallScreens } };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 const sayIn = (locale) => (key, vars) => (words[locale][key] !== undefined ? fill(words[locale][key], vars) : key);
 globalThis.confirmLocale = 'tr';
@@ -33,9 +35,10 @@ const shared = sharedLayer(stub);
 const preview = await import(installPreviewLibURL);
 const { InstallPreviewNotes, installPreviewGate, installPreviewAckKey } = await import(shared.compile('components/InstallPreviewNotes.tsx'));
 
-const operationSource = readFileSync(new URL('../src/components/ComponentOperation.tsx', import.meta.url), 'utf8');
-const refusalSlice = operationSource.slice(operationSource.indexOf('export interface RefusedNotable'), operationSource.indexOf('export function decodeMailHostnameIdentity'));
-const refusal = await import(dataModule(ts.transpileModule(refusalSlice, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText));
+// alpha.124: a refused install's lines are said by the notes the operation
+// provider fetches when an operation ends (lib/componentOperationNotes.ts).
+const notesSource = readFileSync(new URL('../src/lib/componentOperationNotes.ts', import.meta.url), 'utf8');
+const refusal = await import(dataModule(ts.transpileModule(notesSource, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText));
 
 const SHARED = { package: 'php-common', reason: 'vendor_shared', component: 'sury', from: '2:93ubuntu2', to: '2:101+0~20261021.78+ubuntu24.04~1.gbp53f25f' };
 const known = (notable, distribution = 'ubuntu') => ({
@@ -109,7 +112,9 @@ test('Turkish: one replaced package says what, why and what follows, each with i
     + 'php-common: Ubuntu’nun sürümü (2:93) yerine Sury PHP deposunun sürümü (2:101) kurulacak.'
     + 'Neden: PHP-FPM 8.5 yalnız Sury PHP deposunda var ve bu paketin o depodaki sürümüne ihtiyaç duyuyor.'
     + 'Sonrası: Bu paketin güncellemeleri artık Ubuntu’dan değil Sury PHP deposundan gelir.'), body);
-  assert.ok(body.includes('Ek olarak kurulacak paketlermariadb-server: bir veritabanı sunucusu'), body);
+  // alpha.124: what else comes is said by component, never by package name.
+  assert.ok(body.includes('Bununla birlikte gelenlerBir veritabanı sunucusu'), body);
+  assert.ok(!body.includes('mariadb-server'), body);
   assert.ok(body.includes('Bunu istemiyorsanız İptal’e basın ve Ubuntu’nun kendi sürümünü (8.3) seçin.'), body);
   assert.ok(body.endsWith('Yukarıdaki değişiklikleri okudum, onaylıyorum.'), body);
   const line = tree.root.find((node) => node.props['data-notable-package'] === 'php-common');
@@ -117,7 +122,7 @@ test('Turkish: one replaced package says what, why and what follows, each with i
   assert.equal(line.findByType('strong').children[0], 'php-common');
 });
 
-test('English: several packages sharing a reason are listed under it, one per line; no way back without a distribution version', () => {
+test('English: replaced packages one per line; other packages said by component; no way back without a distribution version', () => {
   const tree = render('en', known([
     SHARED, { ...SHARED, package: 'php-pear', from: '1:1.10.13+submodules+notgz+2024-1', to: '1:1.10.16+submodules+notgz+2025-1+ubuntu24.04.1+deb.sury.org+1' },
     { package: 'php8.4-common', reason: 'new_php_version', version: '8.4' }, { package: 'php8.4-xml', reason: 'new_php_version', version: '8.4' },
@@ -127,7 +132,8 @@ test('English: several packages sharing a reason are listed under it, one per li
   assert.ok(body.includes('php-pear: Debian’s version (1:1.10.13) will be replaced by the Sury PHP repository’s version (1:1.10.16).'), body);
   assert.ok(body.includes('Why: phpMyAdmin is only in the Sury PHP repository and needs that repository’s version of these packages.'), body);
   assert.ok(body.includes('Afterwards: these packages’ updates come from the Sury PHP repository, not from Debian.'), body);
-  assert.ok(body.includes('Additional packagesPart of another PHP version (8.4):php8.4-commonphp8.4-xml'), body);
+  assert.ok(body.includes('It also bringsPHP 8.4, beside the PHP already here'), body);
+  assert.ok(!body.includes('php8.4-common') && !body.includes('php8.4-xml'), body);
   assert.ok(!body.includes('press Cancel'), 'the way back is offered only when the distribution has its own version');
   assert.ok(body.endsWith('I have read the changes above and confirm them.'), body);
   // The confirmation still binds the exact names it showed.
@@ -164,7 +170,10 @@ test('a refused install lists what it would have brought, grouped, in the same w
     'php-common (2:93 → 2:101): dağıtımın sürümü yerine Sury PHP deposunun sürümü',
     'Apache web sunucusu:', '– apache2', '– libapache2-mod-php8.4',
   ]);
-  assert.match(operationSource, /t\('services\.installRefused\.notable'\),\s*\.\.\.notableRefusalLines\(notable,/);
+  assert.deepEqual(refusal.refusalDetails({ notable_installs: [SHARED] }, sayIn('en'), 'en'), [
+    words.en['services.installRefused.notable'],
+    'php-common (2:93 → 2:101): the Sury PHP repository’s version instead of the distribution’s',
+  ]);
 });
 
 test('every new sentence exists in English and Turkish', () => {

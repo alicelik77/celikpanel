@@ -13,12 +13,14 @@ import { en as enShell } from '../src/i18n/en.ts';
 import { tr as trShell } from '../src/i18n/tr.ts';
 import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
 import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
+import { enComponentInstallScreens } from '../src/i18n/screens/componentInstall/en.ts';
+import { trComponentInstallScreens } from '../src/i18n/screens/componentInstall/tr.ts';
 import { enHostNameScreens } from '../src/i18n/screens/hostName/en.ts';
 import { trHostNameScreens } from '../src/i18n/screens/hostName/tr.ts';
 
 const words = {
-  en: { ...enShell, ...enComponentsScreens, ...enHostNameScreens },
-  tr: { ...trShell, ...trComponentsScreens, ...trHostNameScreens },
+  en: { ...enShell, ...enComponentsScreens, ...enHostNameScreens, ...enComponentInstallScreens },
+  tr: { ...trShell, ...trComponentsScreens, ...trHostNameScreens, ...trComponentInstallScreens },
 };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 const sayIn = (locale) => (key, vars) => (words[locale][key] !== undefined ? fill(words[locale][key], vars) : key);

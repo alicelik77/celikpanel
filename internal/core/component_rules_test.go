@@ -118,3 +118,29 @@ func TestMayBeRequired(t *testing.T) {
 		}
 	}
 }
+
+// alpha.124: an install-together lease names only plain requirements of its
+// target, canonically.
+func TestParseInstallTogetherQualifier(t *testing.T) {
+	members, err := ParseInstallTogetherQualifier("phpmyadmin", "mariadb,nginx,php-fpm")
+	if err != nil || !slices.Equal(members, []string{"mariadb", "nginx", "php-fpm"}) {
+		t.Fatalf("members %v err %v", members, err)
+	}
+	if _, err := ParseInstallTogetherQualifier("fail2ban", "nftables"); err != nil {
+		t.Fatalf("fail2ban with nftables: %v", err)
+	}
+	for _, bad := range []struct{ target, qualifier string }{
+		{"phpmyadmin", ""},                 // empty
+		{"phpmyadmin", "php-fpm,nginx"},    // not canonical
+		{"phpmyadmin", "postgresql"},       // not its requirement
+		{"roundcube", "postfix"},           // mail engines go through the mail setup
+		{"phpmyadmin", "nginx,phpmyadmin"}, // itself
+		{"unknown", "nginx"},               // unknown target
+		{"phppgadmin", "apache"},           // not installed together
+		{"rspamd", "nginx"},                // rspamd needs no web server
+	} {
+		if _, err := ParseInstallTogetherQualifier(bad.target, bad.qualifier); err == nil {
+			t.Errorf("%s %q accepted", bad.target, bad.qualifier)
+		}
+	}
+}

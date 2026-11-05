@@ -35,15 +35,16 @@ const ERROR_CODE_OPERATION_BUSY = 'service_operation_busy';
 const OPERATION_ID_RE = /^[a-f0-9]{32}$/;
 
 type OperationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
-type InstallOperationKind = 'service_install' | 'runtime_install' | 'mail_profile_install' | 'service_remove_together';
+type InstallOperationKind = 'service_install' | 'runtime_install' | 'mail_profile_install' | 'service_remove_together' | 'service_install_together';
 type MailProfileStatus = 'unknown' | 'available' | 'partial' | 'complete' | 'blocked';
 type MailProfileAttemptStatus = 'none' | 'in_progress' | 'succeeded' | 'failed';
 
 const MAIL_PROFILE_IDS = ['core-mail', 'webmail', 'protected-mail'] as const;
 const MAIL_PROFILE_ID_SET: ReadonlySet<string> = new Set(MAIL_PROFILE_IDS);
 // alpha.123 (D-045): the server-side remove-together operation is followed and
-// re-attached like an install; a browser marker never starts one.
-const OPERATION_KINDS: ReadonlySet<unknown> = new Set(['service_install', 'runtime_install', 'mail_profile_install', 'service_remove_together']);
+// re-attached like an install; a browser marker never starts one. alpha.124:
+// install-together the same way (its package name is the member list).
+const OPERATION_KINDS: ReadonlySet<unknown> = new Set(['service_install', 'runtime_install', 'mail_profile_install', 'service_remove_together', 'service_install_together']);
 
 function isMailProfileID(value: unknown): value is (typeof MAIL_PROFILE_IDS)[number] {
     return typeof value === 'string' && MAIL_PROFILE_ID_SET.has(value);
@@ -96,137 +97,15 @@ const MAIL_HOSTNAME_SOURCES: ReadonlySet<string> = new Set([
 ]);
 
 
-// A PHP tool needing attention after this install (alpha.104 review): the
-// Panel carries the Agent's per-tool problems in the operation result. Here,
-// not in lib/phpTools, because this module boots with the shell.
-// Bu kurulumdan sonra ilgi isteyen PHP aracı; işlem sonucunda taşınır.
-const PHP_TOOL_NAMES = { webmail: 'Roundcube', phpmyadmin: 'phpMyAdmin', phppgadmin: 'phpPgAdmin' } as const;
-type PHPToolProblem = { tool: keyof typeof PHP_TOOL_NAMES; version: string; kind: 'version_gone' | 'extensions_failed' };
-
-export function decodePHPToolProblems(result: unknown): PHPToolProblem[] {
-    if (!result || typeof result !== 'object') return [];
-    const raw = (result as { php_tool_problems?: unknown }).php_tool_problems;
-    if (!Array.isArray(raw)) return [];
-    const out: PHPToolProblem[] = [];
-    for (const item of raw) {
-        const p = item as Record<string, unknown> | null;
-        if (!p || typeof p !== 'object' || typeof p.tool !== 'string' || !(p.tool in PHP_TOOL_NAMES)
-            || typeof p.version !== 'string' || !/^[0-9]{1,2}\.[0-9]{1,2}$/.test(p.version)
-            || (p.kind !== 'version_gone' && p.kind !== 'extensions_failed')) continue;
-        out.push({ tool: p.tool as PHPToolProblem['tool'], version: p.version, kind: p.kind });
-    }
-    return out;
-}
-
-// The proof of a PHP tool just installed (alpha.105 review): the Panel
-// carries the Agent's answer in the operation result. Said when it moved
-// the tool to another version, or when no version worked.
-// Yeni kurulan PHP aracının kanıtı; işlem sonucunda taşınır.
-export interface PHPToolProofNote {
-    tool: keyof typeof PHP_TOOL_NAMES; version: string; moved: boolean; proved: boolean; first: string; extensions: string[];
-    /** alpha.108: the first attempt's cause, so the toast says it (Boston said only "did not answer as itself"). */
-    kind: string; status: number; detail: string;
-}
-
-export function decodePHPToolProof(result: unknown): PHPToolProofNote | null {
-    if (!result || typeof result !== 'object') return null;
-    const raw = (result as { php_tool_proof?: unknown }).php_tool_proof as Record<string, unknown> | undefined;
-    if (!raw || typeof raw !== 'object' || typeof raw.tool !== 'string' || !(raw.tool in PHP_TOOL_NAMES)) return null;
-    const version = typeof raw.version === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(raw.version) ? raw.version : '';
-    const attempts = Array.isArray(raw.attempts) ? raw.attempts as Array<Record<string, unknown>> : [];
-    const first = attempts[0] && typeof attempts[0].version === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(attempts[0].version) ? attempts[0].version : '';
-    const cause = attempts[0]?.cause as Record<string, unknown> | undefined;
-    const extensions = cause && cause.kind === 'missing_extensions' && Array.isArray(cause.extensions)
-        ? cause.extensions.filter((item): item is string => typeof item === 'string' && /^[a-z0-9_]{1,32}$/.test(item))
-        : [];
-    const kind = cause && typeof cause.kind === 'string' ? cause.kind : '';
-    const status = cause && typeof cause.status === 'number' && Number.isInteger(cause.status) ? cause.status : 0;
-    const detail = cause && typeof cause.detail === 'string' ? cause.detail.slice(0, 240) : '';
-    return { tool: raw.tool as PHPToolProofNote['tool'], version, moved: raw.moved === true, proved: raw.proved === true, first, extensions, kind, status, detail };
-}
-
-// The packages a refused install would also have brought (alpha.105 review),
-// with what the server said of each (alpha.109: said as grouped lines).
-export interface RefusedNotable {
-    package: string;
-    reason: string;
-    component?: string;
-    version?: string;
-    from?: string;
-    to?: string;
-}
-
-export function decodeNotableRefusal(result: unknown): RefusedNotable[] {
-    if (!result || typeof result !== 'object') return [];
-    const raw = (result as { notable_installs?: unknown }).notable_installs;
-    if (!Array.isArray(raw)) return [];
-    const text = (value: unknown) => (typeof value === 'string' && value.length <= 200 ? value : undefined);
-    return raw.flatMap((item): RefusedNotable[] => {
-        if (!item || typeof item !== 'object') return [];
-        const value = item as Record<string, unknown>;
-        if (typeof value.package !== 'string' || !/^[a-z0-9][a-z0-9+.:-]{0,160}$/.test(value.package)) return [];
-        return [{
-            package: value.package,
-            reason: text(value.reason) ?? 'component',
-            ...(text(value.component) ? { component: text(value.component) } : {}),
-            ...(text(value.version) ? { version: text(value.version) } : {}),
-            ...(text(value.from) ? { from: text(value.from) } : {}),
-            ...(text(value.to) ? { to: text(value.to) } : {}),
-        }];
-    });
-}
-
-// notableRefusalLines: one package a line, packages sharing a reason under
-// that reason, versions short ("php-common (2:93 → 2:101)"), in the words the
-// install dialog uses (lib/installPreview.ts; repeated here because this
-// provider is imported without the screen's modules).
-// Reddedilen kurulumun paketleri, satır satır ve nedene göre gruplu.
-type Say = (key: string, params?: Record<string, string>) => string;
-const shortVersion = (version: string) => {
-    const match = /^(?:([0-9]+):)?([0-9]+(?:\.[0-9]+)*)/.exec(version);
-    return match ? (match[1] ? `${match[1]}:` : '') + match[2] : version;
-};
-export function notableRefusalLines(items: readonly RefusedNotable[], say: Say, locale: string): string[] {
-    const NOTABLE_WHY = ['new_php_version', 'apache', 'component', 'database_server', 'upgrade'];
-    const repoName = (id: string) => {
-        const key = `services.notable.repoName.${id}`;
-        const said = id ? say(key) : key;
-        return said === key ? id || say('services.notable.repoUnknown') : said;
-    };
-    const groups: { key: string; phrase: string; items: RefusedNotable[] }[] = [];
-    const sharedRepo = items.find((item) => item.reason === 'vendor_shared' && item.component)?.component ?? '';
-    for (const item of items) {
-        const vendor = item.reason === 'vendor_shared' || item.reason === 'vendor_replaces_distribution';
-        const reason = vendor ? 'vendor_shared' : NOTABLE_WHY.includes(item.reason) ? item.reason : 'component';
-        const component = vendor ? item.component ?? sharedRepo : item.component ?? '';
-        const key = `${reason}:${reason === 'new_php_version' ? item.version ?? '' : reason === 'apache' || reason === 'upgrade' ? '' : component}`;
-        let group = groups.find((candidate) => candidate.key === key);
-        if (!group) {
-            const phrase = vendor
-                ? say('services.notable.why.vendor_shared', { repo: repoName(component) })
-                : say(`services.notable.why.${reason}`, { version: item.version ?? '', component });
-            group = { key, phrase, items: [] };
-            groups.push(group);
-        }
-        group.items.push(item);
-    }
-    const versions = (item: RefusedNotable) => {
-        if (!item.from || !item.to) return '';
-        const from = shortVersion(item.from);
-        const to = shortVersion(item.to);
-        return from === to ? ` (${item.from} → ${item.to})` : ` (${from} → ${to})`;
-    };
-    const lines: string[] = [];
-    for (const group of groups) {
-        if (group.items.length === 1) {
-            lines.push(`${group.items[0].package}${versions(group.items[0])}: ${group.phrase}`);
-            continue;
-        }
-        lines.push(`${group.phrase.charAt(0).toLocaleUpperCase(locale) + group.phrase.slice(1)}:`);
-        for (const item of group.items) lines.push(`– ${item.package}${versions(item)}`);
-    }
-    return lines;
-}
+// The notes a finished operation may carry (a PHP tool's proof, another
+// tool's problem, a refused install's packages, ClamAV waiting for its first
+// signatures) are read only when it ends: fetched then, with their words in
+// the screen copy (alpha.124, boot path). Without them the plain words stay.
+// Biten işlemin notları işlem bitince getirilir.
+const loadOperationNotes = () => import('../lib/componentOperationNotes');
+const RESULT_NOTE_FIELDS = ['php_tool_proof', 'php_tool_problems', 'php_tool_bind', 'waiting'];
+const hasResultNotes = (result: unknown) => Boolean(result && typeof result === 'object'
+    && RESULT_NOTE_FIELDS.some((field) => (result as Record<string, unknown>)[field] !== undefined));
 
 export function decodeMailHostnameIdentity(value: unknown): MailHostnameIdentity | null {
     if (!value || typeof value !== 'object') return null;
@@ -314,6 +193,12 @@ export interface InstallOperationRequest {
     version?: string;
     /** alpha.105: the PHP version a database tool is installed for (a bundle's choice). */
     phpVersion?: string;
+    /**
+     * alpha.124: the missing requirements installed first, in one operation
+     * on the server (operationKind service_install_together; package is
+     * their canonical list, as the operation names it).
+     */
+    installTogether?: string[];
     /** alpha.105: the server checks what the install brings against confirmInstalls. */
     checkInstalls?: boolean;
     confirmInstalls?: string[];
@@ -636,7 +521,7 @@ function snapshotConfirmsTerminalOperation(
     const service = snapshot.services.find((candidate) => candidate.id === operation.service_id);
     if (operation.kind === 'service_remove_together') return service?.is_installed === false;
     if (!service || service.is_installed !== true) return false;
-    if (operation.kind !== 'runtime_install') return operation.kind === 'service_install';
+    if (operation.kind !== 'runtime_install') return operation.kind === 'service_install' || operation.kind === 'service_install_together';
 
     const expectedVersion = operation.package_name || '';
     if (!expectedVersion) return false;
@@ -1623,6 +1508,15 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                       confirmed: true,
                       ...(request.mailHostname ? { mail_hostname: request.mailHostname } : {}),
                   }
+                : marker.operation_kind === 'service_install_together'
+                ? {
+                      service_id: request.serviceId,
+                      install_together: request.installTogether ?? [],
+                      ...(request.phpVersion ? { php_version: request.phpVersion } : {}),
+                      check_installs: true,
+                      confirmed_installs: request.confirmInstalls ?? [],
+                      request_id: marker.request_id,
+                  }
                 : {
                       service_id: request.serviceId,
                       ...(request.package ? { package: request.package } : {}),
@@ -1871,15 +1765,25 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
 
                 if (next.status === 'failed') {
                     const refused = operationError(next.error, t('services.operation.failed'));
+                    // alpha.124: an install-together that stopped keeps what it
+                    // installed before the failed step, and says so.
+                    const kept = (next.result as { installed_together?: unknown } | undefined)?.installed_together;
+                    if (next.kind === 'service_install_together' && Array.isArray(kept) && kept.length > 0) {
+                        refused.details = [...(refused.details ?? []), t('services.operation.installTogetherKept', { names: kept.filter((id): id is string => typeof id === 'string').join(', ') })];
+                    }
                     // A refused notable install says what it would have
                     // brought and where to confirm it (alpha.105 review).
-                    const notable = decodeNotableRefusal(next.result);
-                    if (notable.length > 0) {
-                        refused.details = [
-                            ...(refused.details ?? []),
-                            t('services.installRefused.notable'),
-                            ...notableRefusalLines(notable, (key, params) => t(key as Parameters<typeof t>[0], params), locale),
-                        ];
+                    if ((next.result as { notable_installs?: unknown } | undefined)?.notable_installs !== undefined) {
+                        try {
+                            const notes = await loadOperationNotes();
+                            const lines = notes.refusalDetails(next.result, (key, params) => t(key as Parameters<typeof t>[0], params), locale);
+                            if (lines.length > 0) refused.details = [...(refused.details ?? []), ...lines];
+                        } catch (error) {
+                            // Without the notes the refusal keeps the server's
+                            // own sentence, which names the packages too.
+                            console.warn('install refusal notes could not be loaded', error);
+                        }
+                        if (cancelled) return;
                     }
                     await refreshFailedSnapshot(refused, next);
                     return;
@@ -1973,49 +1877,25 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                 // A server setup run installs the mail profile before it issues
                 // the mail host certificate and verifies mail TLS itself at the
                 // end, so the default certificate this install saw is not the
-                // final state: no warning for a step of that run.
+                // final state: no warning for a step of that run. A trusted
+                // mail host certificate serves: no trust warning either.
                 // Kurulum posta profilini posta ana bilgisayar sertifikasindan
-                // once kurar ve sonunda posta TLS durumunu kendisi dogrular;
-                // bu kurulumun gordugu varsayilan sertifika son durum degildir.
-                // A trusted mail host certificate serves: no trust warning.
-                if (verifiedProfileResult?.fallbackOnly && next.setup_child !== true
-                    && !verifiedProfileResult.hostCertificateManaged) {
-                    showToast('warning', t('services.mailProfiles.fallbackWarning', {
-                        name: installedName,
-                    }));
-                } else if ((next.result as { waiting?: unknown } | undefined)?.waiting === 'first_signatures') {
-                    // alpha.118 (ClamAV): installed, starting by itself after
-                    // the first signature download. Not a failure.
-                    // Kuruldu; ilk imza indirmesinden sonra kendiliğinden başlar.
-                    showToast('info', t('services.installedWaitingSignatures', { name: installedName }));
-                } else {
+                // once kurar; bu kurulumun gordugu varsayilan sertifika son
+                // durum degildir.
+                const fallbackOnly = Boolean(verifiedProfileResult?.fallbackOnly && next.setup_child !== true
+                    && !verifiedProfileResult.hostCertificateManaged);
+                if (!fallbackOnly && !hasResultNotes(next.result)) {
                     showToast('success', t('services.installed', { name: installedName }));
-                }
-                // Another PHP tool needing attention does not fail this
-                // install (alpha.104 review): it is said as a warning that
-                // names the tool and what to do.
-                // Başka bir PHP aracının sorunu bu kurulumu düşürmez; uyarıdır.
-                // The tool just installed: moved to another version, or Not ready.
-                const proof = decodePHPToolProof(next.result);
-                if (proof && (proof.moved || !proof.proved)) {
-                    // The first attempt's own cause (alpha.108).
-                    // İlk denemenin kendi nedeni.
-                    const why = proof.extensions.length > 0
-                        ? t('services.phpToolProof.whyMissing', { version: proof.first, extensions: proof.extensions.join(', ') })
-                        : proof.kind === 'check_unreadable'
-                            ? t('services.phpToolProof.whyCheck', { version: proof.first, status: proof.status })
-                            : proof.detail
-                                ? t('services.phpToolProof.whySaid', { detail: proof.detail })
-                                : t('services.phpToolProof.whyOther');
-                    showToast('warning', proof.moved
-                        ? t('services.phpToolProof.moved', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version, first: proof.first, why })
-                        : t('services.phpToolProof.notReady', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version || proof.first, why }));
-                }
-                for (const problem of decodePHPToolProblems(next.result)) {
-                    showToast('warning', t(problem.kind === 'version_gone' ? 'services.phpToolProblem.versionGone' : 'services.phpToolProblem.extensionsFailed', {
-                        tool: PHP_TOOL_NAMES[problem.tool],
-                        version: problem.version,
-                    }));
+                } else {
+                    // ClamAV waiting for its first signatures, a PHP tool's
+                    // proof or another tool's problem: said by the notes.
+                    void loadOperationNotes()
+                        .then((notes) => {
+                            for (const note of notes.installedNotes({ result: next.result, name: installedName, fallbackOnly, t: (key, params) => t(key as Parameters<typeof t>[0], params) })) {
+                                showToast(note.kind, note.text);
+                            }
+                        })
+                        .catch(() => showToast('success', t('services.installed', { name: installedName })));
                 }
             } catch {
                 // Network errors and 5xx/429 responses are transient. Never

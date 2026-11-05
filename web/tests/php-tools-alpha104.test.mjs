@@ -489,7 +489,7 @@ test('every alpha.104 text exists in English and Turkish, Turkish not English', 
 // alpha.104 review: another tool's PHP problem after an install is a warning
 // naming that tool, decoded from the operation result; the install worked.
 test('an install result naming another tool’s PHP problem is decoded for a warning, in both languages', async () => {
-  const { decodePHPToolProblems } = await import(operationURL);
+  const { decodePHPToolProblems, installedNotes } = await import(lib('lib/componentOperationNotes.ts'));
   assert.deepEqual(decodePHPToolProblems({ success: true, php_tool_problems: [
     { tool: 'phppgadmin', version: '8.4', kind: 'version_gone' },
     { tool: 'webmail', version: '8.5', kind: 'extensions_failed' },
@@ -500,12 +500,22 @@ test('an install result naming another tool’s PHP problem is decoded for a war
     { tool: 'webmail', version: '8.5', kind: 'extensions_failed' },
   ]);
   assert.deepEqual(decodePHPToolProblems({ success: true }), []);
+  const { enComponentInstallScreens: enNotes } = await import('../src/i18n/screens/componentInstall/en.ts');
+  const { trComponentInstallScreens: trNotes } = await import('../src/i18n/screens/componentInstall/tr.ts');
   for (const key of ['services.phpToolProblem.versionGone', 'services.phpToolProblem.extensionsFailed']) {
-    assert.equal(typeof enShellHalf[key], 'string', key);
-    assert.equal(typeof trShellHalf[key], 'string', key);
-    assert.notEqual(enShellHalf[key], trShellHalf[key], key);
+    assert.equal(typeof enNotes[key], 'string', key);
+    assert.equal(typeof trNotes[key], 'string', key);
+    assert.notEqual(enNotes[key], trNotes[key], key);
+    assert.equal(enShellHalf[key], undefined, key);
   }
-  assert.match(source('components/ComponentOperation.tsx'), /for \(const problem of decodePHPToolProblems\(next\.result\)\) \{\s*showToast\('warning'/);
+  // alpha.124: the notes are said by the module the provider fetches when an
+  // operation ends: "installed" first, then each problem as a warning.
+  const say = (key, vars = {}) => (key in enNotes || key === 'services.installed' ? key + JSON.stringify(vars) : key);
+  assert.deepEqual(installedNotes({ result: { php_tool_problems: [{ tool: 'phppgadmin', version: '8.4', kind: 'version_gone' }] }, name: 'phpMyAdmin', fallbackOnly: false, t: say }), [
+    { kind: 'success', text: 'services.installed{"name":"phpMyAdmin"}' },
+    { kind: 'warning', text: 'services.phpToolProblem.versionGone{"tool":"phpPgAdmin","version":"8.4"}' },
+  ]);
+  assert.match(source('components/ComponentOperation.tsx'), /showToast\(note\.kind, note\.text\)/);
 });
 
 // After moves no refusal says "Nothing was removed" (EN) or "Hiçbir şey

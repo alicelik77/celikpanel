@@ -207,14 +207,22 @@ test('Turkish: the Boston card speaks Turkish and does not say PHP-FPM is not ru
   } finally { await unmount(); }
 });
 
-test('the install toast says the proof’s own cause; the shell keeps its own small decoder', () => {
-  const source = readFileSync(new URL('../src/components/ComponentOperation.tsx', import.meta.url), 'utf8');
+// alpha.124: the notes are fetched when the operation ends, with their words
+// in the screen copy; the shell module never pulls them or lib/phpTools.
+test('the install toast says the proof’s own cause; the shell keeps no decoder of its own', async () => {
+  const shell = readFileSync(new URL('../src/components/ComponentOperation.tsx', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/lib/componentOperationNotes.ts', import.meta.url), 'utf8');
   assert.match(source, /proof\.kind === 'check_unreadable'/);
   assert.match(source, /t\('services\.phpToolProof\.whySaid', \{ detail: proof\.detail \}\)/);
-  assert.ok(!/from '\.\.\/lib\/phpTools'/.test(source), 'the shell module must not pull lib/phpTools');
-  for (const words of [enShell, trShell]) {
+  assert.ok(!/from '\.\.\/lib\/phpTools'/.test(shell), 'the shell module must not pull lib/phpTools');
+  assert.match(shell, /const loadOperationNotes = \(\) => import\('\.\.\/lib\/componentOperationNotes'\);/);
+  assert.ok(!/services\.phpToolProof/.test(shell), 'the shell module names no note words');
+  const { enComponentInstallScreens: en } = await import('../src/i18n/screens/componentInstall/en.ts');
+  const { trComponentInstallScreens: tr } = await import('../src/i18n/screens/componentInstall/tr.ts');
+  for (const words of [en, tr]) {
     for (const key of ['services.phpToolProof.whyCheck', 'services.phpToolProof.whySaid']) assert.ok(words[key], key);
   }
-  assert.ok(enShell['services.phpToolProof.notReady'].includes('Check again'));
-  assert.ok(trShell['services.phpToolProof.notReady'].includes('Yeniden denetle'));
+  assert.ok(en['services.phpToolProof.notReady'].includes('Check again'));
+  assert.ok(tr['services.phpToolProof.notReady'].includes('Yeniden denetle'));
+  assert.equal(enShell['services.phpToolProof.notReady'], undefined);
 });
