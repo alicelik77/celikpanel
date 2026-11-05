@@ -167,7 +167,7 @@ function serve(managed) {
   globalThis.fetch = async (input, init = {}) => {
     const path = String(input).split('?')[0];
     requests.push(`${init.method || 'GET'} ${path}`);
-    urls.push({ method: init.method || 'GET', url: String(input), body: init.body });
+    urls.push({ method: init.method || 'GET', url: String(input), body: init.body, headers: new Headers(init.headers) });
     const extra = extraRoutes[`${init.method || 'GET'} ${path}`];
     if (extra) return answer(...extra);
     if (path === '/api/v1/managed-services' || path === '/api/v1/managed-services/scan') return answer(managed);
@@ -1158,34 +1158,50 @@ test('an installed phpPgAdmin without PostgreSQL says it cannot work and offers 
   } finally { await unmount(); }
 });
 
+// alpha.123 (D-045): phpPgAdmin is removed together with PostgreSQL on the
+// server, in one durable operation the window follows; unticked, PostgreSQL
+// cannot be removed and nothing is sent.
 async function removePostgreSQL({ keepTool }) {
   extraRoutes = {
-    'GET /api/v1/service/removal-impact': [pgImpact],
-    'POST /api/v1/service/uninstall': [{ success: true }],
+    'GET /api/v1/service/removal-impact': [{ ...pgImpact, plan: { blockers: [], together: ['phppgadmin'], stops: [{ kind: 'database_tool', count: 0 }], withdraws: [], withdraw_sets: 0, notes: [] } }],
+    'POST /api/v1/service/uninstall': [{ operation: { id: 'a'.repeat(32), status: 'succeeded', phase: 'done', result: { removed: ['phppgadmin', 'postgresql'] } } }, 202],
   };
   await mount(databaseServer({ postgresql: true, phppgadmin: true }));
   await press(rowOf('postgresql').find((node) => node.type === 'button' && node.props.title === say('services.uninstall')));
   await settle();
   const choice = tree.root.find((node) => node.props && node.props['data-removal-companions'] === 'phppgadmin');
-  assert.ok(label(choice).includes(say('services.removal.alsoTools', { name: nameOf('postgresql'), tools: nameOf('phppgadmin') })), label(choice));
+  assert.ok(label(choice).includes(say('rmrule.togetherHint', { name: nameOf('postgresql') })), label(choice));
   const box = choice.find((node) => node.type === 'input');
   assert.equal(box.props.checked, true, 'ticked by default');
   assert.equal(posts().length, 0);
   if (keepTool) await act(async () => { box.props.onChange({ target: { checked: false } }); });
   const dialog = tree.root.findAll((node) => node.props && node.props.role === 'dialog')[0];
-  await press(dialog.findAll((node) => node.type === 'button' && label(node) === say('services.uninstall'))[0]);
+  const remove = dialog.findAll((node) => node.type === 'button' && label(node) === say('services.uninstall'))[0];
+  if (keepTool) {
+    assert.equal(remove, undefined, 'kept: PostgreSQL cannot be removed now');
+    assert.ok(dialog.findAll((node) => node.props && node.props['data-rmrule-kept'] !== undefined).length === 1);
+    return urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => JSON.parse(call.body));
+  }
+  await press(remove);
   await settle();
-  return posts();
+  return urls.filter((call) => call.method === 'POST' && call.url === '/api/v1/service/uninstall').map((call) => ({ ...JSON.parse(call.body), header: call.headers.get('X-CelikPanel-Request-Id') }));
 }
 
-test('removing PostgreSQL offers phpPgAdmin, ticked, and removes it after PostgreSQL', async () => {
+test('removing PostgreSQL offers phpPgAdmin, ticked, and removes both on the server', async () => {
   try {
-    assert.deepEqual(await removePostgreSQL({ keepTool: false }), ['postgresql', 'phppgadmin']);
+    const sent = await removePostgreSQL({ keepTool: false });
+    assert.equal(sent.length, 1, 'one request; the server removes phpPgAdmin first, then PostgreSQL');
+    assert.equal(sent[0].service_id, 'postgresql');
+    assert.deepEqual(sent[0].remove_together, ['phppgadmin']);
+    assert.match(sent[0].request_id, /^[0-9a-f]{32}$/);
+    // The removal route requires the identity header; a body that names its
+    // request_id gets none from the interceptor (alpha.123 lab: 428).
+    assert.equal(sent[0].header, sent[0].request_id, 'the request identity header carries the same id');
   } finally { await unmount(); extraRoutes = {}; }
 });
 
-test('removing PostgreSQL with phpPgAdmin unticked keeps phpPgAdmin', async () => {
+test('removing PostgreSQL with phpPgAdmin unticked is refused before anything is sent', async () => {
   try {
-    assert.deepEqual(await removePostgreSQL({ keepTool: true }), ['postgresql']);
+    assert.deepEqual(await removePostgreSQL({ keepTool: true }), []);
   } finally { await unmount(); extraRoutes = {}; }
 });

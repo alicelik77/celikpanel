@@ -434,7 +434,7 @@ test('the read is bounded and a late answer is not shown after the bound', () =>
   assert.match(list, /export const REMOVAL_IMPACT_READ_BOUND_MS = 40_000;/);
   assert.match(list, /setTimeout\(\(\) => \{\s*controller\?\.abort\(\);\s*finish\(\{ state: 'unknown' \}\);\s*\}, REMOVAL_IMPACT_READ_BOUND_MS\)/);
   assert.match(list, /if \(settled\) return;/);
-  assert.match(list, /const query = `service_id=\$\{encodeURIComponent\(serviceId\)\}\$\{packageName \? `&package=\$\{encodeURIComponent\(packageName\)\}` : ''\}`;/);
+  assert.match(list, /const query = `service_id=\$\{encodeURIComponent\(serviceId\)\}\$\{packageName \? `&package=\$\{encodeURIComponent\(packageName\)\}` : ''\}\$\{nodeVersion \? `&version=\$\{encodeURIComponent\(nodeVersion\)\}` : ''\}`;/);
   assert.match(list, /fetch\(`\/api\/v1\/service\/removal-impact\?\$\{query\}`, \{\s*cache: 'no-store'/);
 });
 

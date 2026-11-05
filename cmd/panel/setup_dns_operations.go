@@ -11,6 +11,12 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
+// errServerSetupPDNSUntestedSystem: PowerDNS was refused before anything was
+// staged or sent, because this system's PowerDNS is not certified.
+var errServerSetupPDNSUntestedSystem = errors.New("PowerDNS is not certified on this system")
+
+const serverSetupPDNSUntestedSystemText = "PowerDNS has not been tested on this server's system, so setup did not install it and nothing was changed. You, the owner: choose Review a revised plan and select BIND for DNS on this server; setup then continues from the new plan."
+
 var errServerSetupDNSReconciliationRequired = errors.New("the exact DNS setup operation must finish reconciliation")
 
 // errServerSetupDNSRolledBack marks a DNS setup step whose first install the
@@ -248,6 +254,11 @@ func (p *Panel) startServerSetupDNS(ctx context.Context, draft serverSetupDraft,
 	// DNS identity below is staged, with the same code the review shows.
 	if code := setupPDNSPairedPrimaryBlocker(draft, state); code != "" {
 		return fmt.Errorf("DNS setup prerequisites changed: %s", code)
+	}
+	// A plan reviewed before the system rule covered the backup role: the
+	// same rule refuses here, before anything is staged or sent.
+	if setupPDNSSystemBlocker(draft, p.managedServiceHostProfile()) == serverSetupPDNSUntestedSystemCode {
+		return errServerSetupPDNSUntestedSystem
 	}
 	// A secondary can be started first, but must wait before admitting an
 	// installation whose native catalog source is not available yet.

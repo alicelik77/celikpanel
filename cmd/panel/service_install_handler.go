@@ -41,7 +41,9 @@ func (p *Panel) runServiceInstall(
 	if err != nil {
 		return result, serviceInstallFailure(err)
 	}
-	if err := p.preflightManagedServiceInstall(ctx, req.ServiceID, req.Package); err != nil {
+	if err := preflightWhilePanelBusy(ctx, func() error {
+		return p.preflightManagedServiceInstall(ctx, req.ServiceID, req.Package)
+	}); err != nil {
 		return result, serviceInstallFailure(err)
 	}
 	// D-043: a withdrawn version or engine is not installed.
@@ -518,6 +520,12 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		// version is removed only when every move succeeded.
 		// MoveToolsTo: sürüm kaldırılmadan önce araçlar bu sürüme taşınır.
 		MoveToolsTo string `json:"move_tools_to,omitempty"`
+		// RemoveTogether (alpha.123, D-045): the leaf components (and
+		// settings) the plan removes together, as the owner confirmed them.
+		// It must equal the plan's list; the removal then runs on the server
+		// as one durable operation (RequestID names it).
+		RemoveTogether []string `json:"remove_together,omitempty"`
+		RequestID      string   `json:"request_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ServiceID == "" {
 		writeClientError(w, http.StatusBadRequest, "service_id is required")
@@ -543,7 +551,12 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	if busy {
 		return
 	}
-	defer release()
+	releaseInHandler := true
+	defer func() {
+		if releaseInHandler {
+			release()
+		}
+	}()
 
 	// Deletion protection (B3d): nothing is removed while something the
 	// panel knows about depends on it. The refusal names WHO blocks (D-014)
@@ -559,29 +572,65 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		removedVersion = version
-		count, blockers, err := runtimeVersionBlockers(r.Context(), p.db.GetDB(), req.ServiceID, version)
+	}
+	// alpha.123 (D-045): one question, "what requires the thing being
+	// removed?", answered by the dependency map and the Panel's records from
+	// the stored component record (the one the removal window read; a fresh
+	// scan only when there is none). Blockers refuse with every name; leaf
+	// components nobody else uses go together, on the server.
+	// Tek soru: kaldırılanı ne gerektiriyor? Engeller reddeder; yapraklar
+	// sunucuda birlikte gider.
+	installedNow := map[string]bool{}
+	if removedVersion == "" && core.MayBeRequired(req.ServiceID) {
+		installedNow = p.cachedInstalledSet(r.Context())
+	}
+	if installedNow == nil {
+		services, err := p.scanManagedServices(r.Context())
 		if err != nil {
-			writeServerError(w, err)
+			writeServerError(w, fmt.Errorf("read components before removal: %w", err))
 			return
 		}
-		if count > 0 {
-			writeCodedErrorDetails(w, http.StatusConflict, errCodeRuntimeInUse,
-				fmt.Sprintf("%d site(s) run on version %s — switch them to another version first.", count, version),
-				"", blockers)
+		installedNow = map[string]bool{}
+		for _, service := range services {
+			if service.Installed() {
+				installedNow[service.ID] = true
+			}
+		}
+	}
+	plan, err := computeRemovalPlan(r.Context(), p.db.GetDB(), core.GetManagedServiceByID(req.ServiceID), removedVersion, installedNow, p.removalHostFacts(r.Context(), req.ServiceID))
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if len(plan.Blockers) > 0 {
+		lines := plan.BlockerLines()
+		if removedVersion != "" {
+			writeRemovalPlanRefusal(w, errCodeRuntimeInUse,
+				fmt.Sprintf("%d thing(s) use version %s — move or remove them first.", len(lines), removedVersion), plan)
 			return
 		}
-	} else {
-		count, blockers, err := serviceDependents(r.Context(), p.db.GetDB(), req.ServiceID)
-		if err != nil {
-			writeServerError(w, err)
+		writeRemovalPlanRefusal(w, errCodeServiceHasDependents,
+			fmt.Sprintf("%d thing(s) on this server require %s — move or remove them first.", len(lines), req.ServiceID), plan)
+		return
+	}
+	if len(plan.Together) > 0 || len(req.RemoveTogether) > 0 {
+		if removedVersion != "" || !sameTogether(plan, req.RemoveTogether) {
+			together := []string{}
+			for _, item := range plan.Together {
+				if strings.HasPrefix(item, "setting:") {
+					together = append(together, item)
+				} else {
+					together = append(together, componentDisplayName(item))
+				}
+			}
+			writeCodedErrorDetails(w, http.StatusConflict, errCodeRemovalNeedsTogether,
+				"These are removed together with it, because nothing else uses them and they cannot work without it; confirm them to remove.", "", together)
 			return
 		}
-		if count > 0 {
-			writeCodedErrorDetails(w, http.StatusConflict, errCodeServiceHasDependents,
-				fmt.Sprintf("%d thing(s) on this server depend on %s — remove or move them first.", count, req.ServiceID),
-				"", blockers)
-			return
+		if p.startRemoveTogether(w, r, req.ServiceID, strings.TrimSpace(req.RequestID), plan, release) {
+			releaseInHandler = false
 		}
+		return
 	}
 
 	// Move the PHP tools off the version first, each move verified; nothing
@@ -794,13 +843,14 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		p.withdrawAfterRemoval(context.WithoutCancel(r.Context()), "roundcube", "")
 		auditDetached("service.uninstall:roundcube")
 		json.NewEncoder(w).Encode(map[string]any{"removed": rmResp.Removed, "success": true})
 		return
 	}
 
 	var resp transport.UninstallServiceResponse
-	err := p.withStandaloneAgentMutation(r.Context(), "service_uninstall", req.ServiceID, req.Package, func(callCtx context.Context, binding agentMutationBinding) error {
+	err = p.withStandaloneAgentMutation(r.Context(), "service_uninstall", req.ServiceID, req.Package, func(callCtx context.Context, binding agentMutationBinding) error {
 		request := transport.InstallServiceRequest{
 			ServiceMutationBinding: binding,
 			ID:                     req.ServiceID,
@@ -861,6 +911,11 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		if key == "version" || key == "support" {
 			removalDetails[key] = value
 		}
+	}
+	// alpha.123 (D-045): the removed component's or version's offerings are
+	// withdrawn from plans, reseller narrowings and custom sets.
+	if withdrawn := p.withdrawAfterRemoval(r.Context(), req.ServiceID, removedVersion); withdrawn > 0 {
+		removalDetails["offerings_withdrawn"] = withdrawn
 	}
 	if packageRemovalPartial {
 		p.auditDetailed(r, "service.uninstall.partial:"+req.ServiceID+pkgSuffix(req.Package)+" — "+auditReason(resp.Error), "service", 0, removalDetails)

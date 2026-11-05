@@ -90,6 +90,10 @@ type emergencyDetailView struct {
 	ConfirmName  string                  `json:"confirm_name"`
 	Alternatives []string                `json:"alternatives"`
 	Can          map[string]bool         `json:"can"`
+	// Dependents (alpha.123, D-045): what requires the component or version
+	// by the dependency rule, shown before the removal step. The emergency
+	// path is not blocked by it; the administrator acts knowingly.
+	Dependents []removalDependent `json:"dependents"`
 }
 
 func (p *Panel) handleSecurityEmergencies(w http.ResponseWriter, r *http.Request) {
@@ -388,7 +392,10 @@ func (p *Panel) writeEmergencyDetail(w http.ResponseWriter, ctx context.Context,
 // alternatives (an Agent read; unknown is an empty list).
 func (p *Panel) emergencyDetail(ctx context.Context, e securityEmergency, full bool) (emergencyDetailView, error) {
 	db := p.db.GetDB()
-	view := emergencyDetailView{Emergency: e, ConfirmName: e.Name, Alternatives: []string{}, Can: map[string]bool{}}
+	view := emergencyDetailView{Emergency: e, ConfirmName: e.Name, Alternatives: []string{}, Can: map[string]bool{}, Dependents: []removalDependent{}}
+	if full {
+		view.Dependents = p.emergencyDependents(ctx, e.Component, e.Version)
+	}
 	var sites []emergencySite
 	var err error
 	if e.Stage == emergencyStageWithdrawn {

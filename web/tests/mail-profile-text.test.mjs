@@ -103,8 +103,9 @@ test('a component that cannot be installed names the platform when the Panel sen
 test('a role in a requirement is named in the page language, never as its raw token', () => {
   // The roles are the catalogue's own: every ConflictGroup value (a requirement
   // names a role by it), read from internal/core ManagedServices.
-  const catalogue = readFileSync(new URL('../../internal/core/managed_services.go', import.meta.url), 'utf8');
-  const roles = [...new Set([...catalogue.matchAll(/^\t\tConflictGroup:\s+"([a-z-]+)"/gm)].map((m) => m[1]))];
+  // alpha.123 (D-045): the seats live in the one dependency map.
+  const catalogue = readFileSync(new URL('../../internal/core/component_rules.go', import.meta.url), 'utf8');
+  const roles = [...new Set([...catalogue.matchAll(/^\tSeat\w+\s*=\s*"([a-z-]+)"/gm)].map((m) => m[1]))];
   assert.ok(roles.length >= 6 && roles.includes('web-server'), `read ${roles.length} roles from the catalogue`);
   for (const role of roles) {
     const key = `services.mailProfiles.role.${role}`;

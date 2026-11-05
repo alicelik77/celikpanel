@@ -19,6 +19,60 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-045 · Component dependency rule: Linux's package rule at component level; removal asks what requires it
+
+*2026-11-04 (owner's decision) · Applies D-038 point 2 ("nothing in use is removed") and D-042 (offerings) to every component; implemented in alpha.123, lab trial pending*
+
+**Why.** Each component carried its own removal rule, in several places: some
+refused, some only warned (Certbot, nftables, WireGuard), some said nothing
+(Fail2ban, ClamAV), Apache refused for every site and Exim for none, and
+removing a Node.js version silently broke the n8n running on it. Removing a
+database engine with its admin tool ran in the browser, so a closed tab left
+the tool behind.
+
+**Decision.** Linux's package rule, applied to components. Every component
+declares what it **requires** (another component, or a role such as "web
+server" that any provider fills), the role it **provides** (two providers of one
+role **conflict**: Nginx and Apache, Postfix and Exim, BIND and PowerDNS) and
+what besides components can require it (sites, databases, mailboxes, zones,
+apps, certificates, VPN peers, quarantined files, the panel firewall). One map,
+in one place (`internal/core/component_rules.go`), read by install, removal, the
+screens and the bundles.
+
+**Removal asks one question: what requires the thing being removed?**
+- **Customer data, or a component that is itself in use:** refused. Every
+  dependent is named with a link to where it is moved or removed. There is no
+  "force".
+- **A leaf component nothing else uses** (phpMyAdmin, phpPgAdmin, Roundcube,
+  Rspamd, SpamAssassin) and settings (ClamAV's scan schedule): offered "remove
+  together", ticked. It runs on the server as one durable operation,
+  dependents first, each step checked, resumable. Unticked, the component
+  cannot be removed.
+- **Nothing requires it:** a plain confirmation that says what stops and what
+  keeps working (webmail, spam filtering, ban protection, FTP while SFTP keeps
+  working). There is no separate "feature loss" category.
+- The panel itself requires nftables while its firewall is on; Fail2ban
+  requires nftables. Runtimes and protection are never removed together.
+- Shared packages are never removed (the Agent's package simulation, unchanged).
+
+**Offerings.** The offerings of a removed component or version are withdrawn
+automatically as part of the removal: plans, reseller narrowings and custom
+sets lose the entry. A site using it already blocked the removal, so nothing
+breaks.
+
+**Security emergency (D-043).** Keeps its speed: not blocked by this rule, but
+it shows the same dependents before its removal step. The Agent still refuses
+to delete a Node.js version a service app runs on.
+
+**Install.** The same map checks requirements and conflicts. A missing
+requirement is offered as "Install … first"; a conflict refuses with its reason.
+
+**Not claimed.** Python apps' versions, per-major PostgreSQL removal, a single
+"install together" operation and hiding low-level package names in the install
+window are later work. The release still needs its lab round (D-025).
+
+---
+
 ## D-044 · Plan limits are real: website traffic per calendar month closes only the websites, a disk full for seven days suspends, Dovecot enforces mailbox sizes
 
 *2026-11-03 (owner's decisions of 3 November 2026) · Amends PLANS-AND-RIGHTS.md section 4.1 ("Traffic: not shown until measured", "Disk: a soft gate") and section 5 ("the traffic pool is not applied"); implemented in alpha.118, lab trial pending*
@@ -3664,7 +3718,9 @@ bootstrap. With no usable hint, or with conflicting hints, exactly one complete
 trusted toolchain must exist. APT means the fixed `apt-get` + `apt-cache` +
 `dpkg-query` set, pacman means fixed `pacman`, and DNF means fixed `dnf` + `rpm`.
 Fixed `systemctl` and `timeout` are always required, together with a root-owned,
-non-writable `/run/systemd` chain, a direct `/run/systemd/private` Unix socket,
+non-writable `/run/systemd` chain, a direct root:root `/run/systemd/private` Unix
+socket (owner-only writable, or the plain 0777 that systemd before v252 creates,
+as on Ubuntu 22.04; systemd itself refuses every non-root peer of that socket),
 and a bounded `systemctl is-system-running` proof of `running` or `degraded`.
 Every present candidate tool, its target, and its directory chain must satisfy
 the root-owned, non-writable fixed-path contract. Missing, incomplete, ambiguous,

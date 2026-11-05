@@ -50,6 +50,7 @@ const table: Record<string, { name: string; fix?: SetupProblemFix }> = {
     server_setup_existing_dns_requires_migration: { name: 'dnsMigration', fix: step('roles') },
     server_setup_dns_installed_differs: { name: 'dnsInstalledDiffers', fix: step('dnshome') },
     server_setup_pdns_main_untested_system: { name: 'pdnsMain', fix: step('dnshome') },
+    server_setup_pdns_untested_system: { name: 'pdnsUntested', fix: step('dnshome') },
     server_setup_pdns_main_untested_version: { name: 'pdnsMain', fix: step('dnshome') },
     server_setup_pdns_main_not_debian_archive: { name: 'pdnsRepo', fix: step('dnshome') },
     server_setup_pdns_main_not_official_repository: { name: 'pdnsRepo', fix: step('dnshome') },

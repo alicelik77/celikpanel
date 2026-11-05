@@ -707,6 +707,18 @@ chmod 0770 "$capability_root/run/systemd/private"
 if run_platform_classifier $'ID=custom\nID_LIKE=debian\n' x86_64 apt >/dev/null 2>&1; then
     die 'bootstrap accepted a group-writable systemd private socket'
 fi
+# systemd before v252 (Ubuntu 22.04: 249) binds the socket under umask 0.
+# systemd refuses non-root peers itself, so the plain 0777 is accepted;
+# any other writable shape is not systemd's and stays refused.
+chmod 0777 "$capability_root/run/systemd/private"
+[[ "$(run_platform_classifier $'ID=ubuntu\nVERSION_ID=22.04\n' x86_64 apt)" == 'apt amd64' ]] \
+    || die 'bootstrap rejected the 0777 systemd private socket of systemd before v252'
+for systemd_socket_mode in 0757 0776 0773; do
+    chmod "$systemd_socket_mode" "$capability_root/run/systemd/private"
+    if run_platform_classifier $'ID=custom\nID_LIKE=debian\n' x86_64 apt >/dev/null 2>&1; then
+        die "bootstrap accepted a $systemd_socket_mode systemd private socket"
+    fi
+done
 chmod 0700 "$capability_root/run/systemd/private"
 
 chmod 0775 "$capability_root/run/systemd"
@@ -1199,6 +1211,8 @@ for lifecycle_script in "$INSTALL" "$ROLLBACK"; do
         'vendor $role canonical target is not pinned'
     require_function_literal "$lifecycle_script" validate_vendor_tool \
         'vendor $role target must have exactly one hard link'
+    require_function_literal "$lifecycle_script" validate_systemd_runtime \
+        '(( (permissions & 0022) == 0 || permissions == 8#777 ))'
     require_function_sequence "$lifecycle_script" validate_systemd_runtime \
         'validate_vendor_tool systemctl' \
         'validate_vendor_tool timeout' \
@@ -1562,6 +1576,16 @@ if run_rollback_classifier $'ID=custom\nID_LIKE=debian\n' x86_64 apt >/dev/null 
     die 'rollback accepted a missing systemd private socket'
 fi
 mv -- "$capability_root/run/systemd/private.saved" "$capability_root/run/systemd/private"
+chmod 0777 "$capability_root/run/systemd/private"
+[[ "$(run_rollback_classifier $'ID=ubuntu\nVERSION_ID=22.04\n' x86_64 apt)" == 'inert apt' ]] \
+    || die 'rollback rejected the 0777 systemd private socket of systemd before v252'
+for systemd_socket_mode in 0770 0757; do
+    chmod "$systemd_socket_mode" "$capability_root/run/systemd/private"
+    if run_rollback_classifier $'ID=custom\nID_LIKE=debian\n' x86_64 apt >/dev/null 2>&1; then
+        die "rollback accepted a $systemd_socket_mode systemd private socket"
+    fi
+done
+chmod 0700 "$capability_root/run/systemd/private"
 rm -f -- "$platform_tmp/missing-rollback-os-release"
 if (
     eval "$rollback_platform_defs"

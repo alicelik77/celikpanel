@@ -129,6 +129,8 @@ export const siteCertificateRequestURL = compileSource('lib/siteCertificateReque
 // alpha.118: remote backups' decoders and decisions; no imports of its own.
 export const remoteBackupURL = compileSource('lib/remoteBackup.ts', unexpected('lib/remoteBackup.ts'));
 export const securityEmergencyURL = compileSource('lib/securityEmergency.ts', unexpected('lib/securityEmergency.ts'));
+// alpha.123: the server-side remove-together operation, followed by the removal window.
+export const removalOperationURL = compileSource('lib/removalOperation.ts', unexpected('lib/removalOperation.ts'));
 
 // A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
 // test that mounts the screen: the compiled module, with that one import
@@ -173,6 +175,9 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/testedVersions': testedVersionsURL,
     '/lib/remoteBackup': remoteBackupURL,
     '/lib/securityEmergency': securityEmergencyURL,
+    '/lib/removalOperation': removalOperationURL,
+    // alpha.123: ServiceList sends the removal's own request identity header.
+    '/lib/requestIdentity': requestIdentityURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -187,6 +192,8 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/SupportMark']) table['/SupportMark'] = compileSource('components/SupportMark.tsx', resolve);
   if (!extra['/LifeLine']) table['/LifeLine'] = compileSource('components/LifeLine.tsx', resolve);
   if (!extra['/RemovalTraces']) table['/RemovalTraces'] = compileSource('components/RemovalTraces.tsx', resolve);
+  // alpha.123 (D-045): the removal plan's three groups and the install requirements.
+  if (!extra['/RemovalPlan']) table['/RemovalPlan'] = compileSource('components/RemovalPlan.tsx', resolve);
   if (!extra['/OfferedVersionsCard']) table['/OfferedVersionsCard'] = compileSource('components/OfferedVersionsCard.tsx', resolve);
   // alpha.108: the one confirmed webmail update flow, started by the webmail card and the Components row.
   if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);

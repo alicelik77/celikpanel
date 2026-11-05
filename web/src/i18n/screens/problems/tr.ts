@@ -49,6 +49,8 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "setup.problem.dnsMigration.todo": "DNS işaretini kaldırın, sunucu o DNS’i olduğu gibi korusun; ya da o DNS yazılımını sunucudan kendiniz kaldırıp yeniden inceleyin.",
     "setup.problem.dnsInstalledDiffers.what": "Bu sunucuda önceki bir kurulumun kurduğu DNS yazılımı çalışıyor; bu plan ise başka bir yazılım, görev ya da ad söylüyor.",
     "setup.problem.dnsInstalledDiffers.todo": "Öncekiyle aynı DNS yazılımını ve adları seçin. Kurulum çalışan DNS’i değiştirmez.",
+    "setup.problem.pdnsUntested.what": "PowerDNS bu sistemde ne ana ne de yedek DNS sunucusu olarak denendi.",
+    "setup.problem.pdnsUntested.todo": "Bu sunucuda DNS için BIND'i seçin.",
     "setup.problem.pdnsMain.what": "PowerDNS bu sistemde ana DNS sunucusu olarak denenmedi.",
     "setup.problem.pdnsMain.todo": "Bu sunucu için BIND’i seçin ya da PowerDNS’i yedek sunucuda kullanın.",
     "setup.problem.pdnsRepo.what": "PowerDNS burada sistemin kendi paketlerinden değil, sonradan eklenmiş bir yazılım kaynağından kurulacak.",

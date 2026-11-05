@@ -201,3 +201,78 @@ func TestVerifySELinuxInactiveAtMatchesLifecycleContract(t *testing.T) {
 		t.Fatalf("directory SELinux state error = %v", err)
 	}
 }
+
+// Ubuntu 22.04's systemd 249 creates /run/systemd/private as 0777; v252 and
+// later create it as 0700. Both are systemd's own shapes; every other writable
+// mode stays refused. The shell copies in install.sh and rollback.sh use the
+// same rule.
+func TestSystemdPrivateSocketModeAcceptsOnlySystemdShapes(t *testing.T) {
+	for _, mode := range []os.FileMode{
+		os.ModeSocket | 0o700,
+		os.ModeSocket | 0o755,
+		os.ModeSocket | 0o600,
+		os.ModeSocket | 0o777,
+	} {
+		if !systemdPrivateSocketModeAllowed(mode) {
+			t.Fatalf("systemd socket mode %v refused", mode)
+		}
+	}
+	for _, mode := range []os.FileMode{
+		os.ModeSocket | 0o770,
+		os.ModeSocket | 0o720,
+		os.ModeSocket | 0o702,
+		os.ModeSocket | 0o776,
+		os.ModeSocket | 0o757,
+		os.ModeSocket | os.ModeSticky | 0o777,
+		os.ModeSocket | os.ModeSetuid | 0o777,
+		os.ModeSocket | os.ModeSetgid | 0o777,
+	} {
+		if systemdPrivateSocketModeAllowed(mode) {
+			t.Fatalf("non-systemd socket mode %v accepted", mode)
+		}
+	}
+}
+
+func TestValidateSystemdPrivateSocketRequiresRootOwner(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "private")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if os.Geteuid() == 0 {
+		if err := os.Chown(path, 1, 1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := validateSystemdPrivateSocket(path, info); err == nil ||
+		!strings.Contains(err.Error(), "root:root") {
+		t.Fatalf("non-root-owned 0777 socket path accepted or wrong refusal: %v", err)
+	}
+	if os.Geteuid() != 0 {
+		return
+	}
+	if err := os.Chown(path, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	if info, err = os.Lstat(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateSystemdPrivateSocket(path, info); err != nil {
+		t.Fatalf("root-owned 0777 rejected: %v", err)
+	}
+	if err := os.Chmod(path, 0o770); err != nil {
+		t.Fatal(err)
+	}
+	if info, err = os.Lstat(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateSystemdPrivateSocket(path, info); err == nil {
+		t.Fatal("root-owned 0770 accepted")
+	}
+}

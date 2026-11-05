@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/alicelik/celikpanel/internal/bindroot"
+	"github.com/alicelik/celikpanel/internal/dnsunitidentity"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"golang.org/x/sys/unix"
 )
@@ -108,16 +109,25 @@ func verifyExactAPTBINDVendorPackageOwnership(
 	ctx context.Context,
 	lookup aptBINDVendorOwnerLookup,
 ) error {
+	return verifyExactAPTBINDVendorPackageOwnershipWithAlias(
+		ctx, lookup, dnsunitidentity.LibIsUsrLibAlias(),
+	)
+}
+
+// verifyExactAPTBINDVendorPackageOwnershipWithAlias is the shared bindroot
+// proof: the unit's /lib name (Debian 12, Ubuntu 22.04 packaging) is asked for
+// only when /lib is the merged-/usr symlink to usr/lib.
+func verifyExactAPTBINDVendorPackageOwnershipWithAlias(
+	ctx context.Context,
+	lookup aptBINDVendorOwnerLookup,
+	libIsUsrLibAlias bool,
+) error {
 	if ctx == nil || lookup == nil {
 		return errors.New("invalid APT BIND vendor package ownership proof")
 	}
-	for _, path := range []string{"/usr/lib/systemd/system/named.service", "/etc/default/named"} {
-		output, err := lookup(ctx, path)
-		if err := bindroot.VerifyAPTVendorOwner(path, output, err); err != nil {
-			return err
-		}
-	}
-	return nil
+	return bindroot.VerifyAPTVendorPackageOwnership(
+		ctx, bindroot.APTVendorOwnerLookup(lookup), libIsUsrLibAlias,
+	)
 }
 
 func verifyExactPacmanBINDVendorPackageOwnership(

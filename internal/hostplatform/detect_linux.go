@@ -67,7 +67,7 @@ func Detect() (Profile, error) {
 			if info.Mode()&os.ModeSocket == 0 {
 				return fmt.Errorf("/run/systemd/private is not a socket")
 			}
-			if err := validateRootOwnedNotWritable("/run/systemd/private", info); err != nil {
+			if err := validateSystemdPrivateSocket("/run/systemd/private", info); err != nil {
 				return err
 			}
 			stat, ok := info.Sys().(*syscall.Stat_t)
@@ -331,6 +331,44 @@ func validateRootOwner(path string, info os.FileInfo) error {
 		return fmt.Errorf("path %q is not owned by root:root", path)
 	}
 	return nil
+}
+
+// validateSystemdPrivateSocket mirrors validate_systemd_runtime in install.sh
+// and rollback.sh. The socket must be root:root; its mode may be owner-only
+// writable or exactly the plain 0777 that systemd before v252 creates.
+//
+// systemd authenticates every peer of /run/systemd/private itself:
+// bus_on_connection() calls bus_check_peercred(), which drops any SO_PEERCRED
+// uid other than 0 (src/core/dbus.c, src/shared/bus-util.c, unchanged from
+// v249 to v257). The mode decides only who may attempt a connection, never who
+// is served. systemd before v252 binds the socket under PID 1's umask 0, so
+// Ubuntu 22.04 (v249) shows 0777; v252 and later bind it under umask 0077
+// (0700). Replacing the socket needs write access to /run/systemd, which the
+// caller already requires to be root-owned and not group/other writable. Any
+// other writable shape (0770, 01777, ...) is not one systemd creates and stays
+// refused.
+//
+// systemd, ozel soketin her istemcisini kendisi dogrular (yalniz uid 0).
+// v252 oncesi 0777, sonrasi 0700 olusturur; ikisi kabul edilir, baskasi edilmez.
+func validateSystemdPrivateSocket(path string, info os.FileInfo) error {
+	if err := validateRootOwner(path, info); err != nil {
+		return err
+	}
+	if !systemdPrivateSocketModeAllowed(info.Mode()) {
+		return fmt.Errorf(
+			"path %q is group/world-writable (mode %04o) and is not systemd's pre-v252 0777",
+			path, info.Mode().Perm(),
+		)
+	}
+	return nil
+}
+
+func systemdPrivateSocketModeAllowed(mode os.FileMode) bool {
+	if mode.Perm()&0o022 == 0 {
+		return true
+	}
+	special := mode & (os.ModeSetuid | os.ModeSetgid | os.ModeSticky)
+	return mode.Perm() == 0o777 && special == 0
 }
 
 func validateRootOwnedNotWritable(path string, info os.FileInfo) error {

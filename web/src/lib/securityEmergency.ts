@@ -32,6 +32,8 @@ export interface EmergencyDetail {
     confirm_name: string;
     alternatives: string[];
     can: Partial<Record<EmergencyStep, boolean>>;
+    /** alpha.123 (D-045): what requires the target, shown before the removal step; absent from an older Panel. */
+    dependents?: { kind: string; component?: string; count: number; items: { name: string; link?: string }[] }[];
 }
 
 export function decodeEmergencyDetail(raw: unknown): EmergencyDetail {

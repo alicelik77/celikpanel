@@ -35,12 +35,15 @@ const ERROR_CODE_OPERATION_BUSY = 'service_operation_busy';
 const OPERATION_ID_RE = /^[a-f0-9]{32}$/;
 
 type OperationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
-type InstallOperationKind = 'service_install' | 'runtime_install' | 'mail_profile_install';
+type InstallOperationKind = 'service_install' | 'runtime_install' | 'mail_profile_install' | 'service_remove_together';
 type MailProfileStatus = 'unknown' | 'available' | 'partial' | 'complete' | 'blocked';
 type MailProfileAttemptStatus = 'none' | 'in_progress' | 'succeeded' | 'failed';
 
 const MAIL_PROFILE_IDS = ['core-mail', 'webmail', 'protected-mail'] as const;
 const MAIL_PROFILE_ID_SET: ReadonlySet<string> = new Set(MAIL_PROFILE_IDS);
+// alpha.123 (D-045): the server-side remove-together operation is followed and
+// re-attached like an install; a browser marker never starts one.
+const OPERATION_KINDS: ReadonlySet<unknown> = new Set(['service_install', 'runtime_install', 'mail_profile_install', 'service_remove_together']);
 
 function isMailProfileID(value: unknown): value is (typeof MAIL_PROFILE_IDS)[number] {
     return typeof value === 'string' && MAIL_PROFILE_ID_SET.has(value);
@@ -631,6 +634,7 @@ function snapshotConfirmsTerminalOperation(
     }
 
     const service = snapshot.services.find((candidate) => candidate.id === operation.service_id);
+    if (operation.kind === 'service_remove_together') return service?.is_installed === false;
     if (!service || service.is_installed !== true) return false;
     if (operation.kind !== 'runtime_install') return operation.kind === 'service_install';
 
@@ -767,12 +771,8 @@ export function createOperationRecoveryMarker(
         || packageName === null
         || runtimeVersion === null
         || (packageName && runtimeVersion)
-        || (
-            operationKind !== 'service_install'
-            && operationKind !== 'runtime_install'
-            && operationKind !== 'mail_profile_install'
-        )
-        || (operationKind === 'service_install' && Boolean(runtimeVersion))
+        || !OPERATION_KINDS.has(operationKind)
+        || (operationKind !== 'runtime_install' && Boolean(runtimeVersion))
         || (operationKind === 'runtime_install' && (!runtimeVersion || Boolean(packageName)))
         || (
             operationKind === 'mail_profile_install'
@@ -816,11 +816,7 @@ export function decodeOperationRecoveryMarker(raw: string): OperationRecoveryMar
         : value.operation_kind;
     if (
         (value.version === 2 && value.operation_kind !== undefined)
-        || (
-            operationKind !== 'service_install'
-            && operationKind !== 'runtime_install'
-            && operationKind !== 'mail_profile_install'
-        )
+        || !OPERATION_KINDS.has(operationKind)
     ) {
         return null;
     }
@@ -834,7 +830,7 @@ export function decodeOperationRecoveryMarker(raw: string): OperationRecoveryMar
     return createOperationRecoveryMarker({
         serviceId: typeof value.service_id === 'string' ? value.service_id : '',
         name: typeof value.label === 'string' ? value.label : '',
-        operationKind,
+        operationKind: operationKind as InstallOperationKind,
         package: typeof value.package_name === 'string' ? value.package_name : undefined,
         version: typeof value.runtime_version === 'string' ? value.runtime_version : undefined,
     }, typeof value.created_at === 'number' ? value.created_at : Number.NaN,
@@ -966,11 +962,7 @@ function recoveryMarkerForOperation(operation: ComponentOperation): OperationRec
     if (
         !operation.request_id
         || !OPERATION_ID_RE.test(operation.request_id)
-        || (
-            operation.kind !== 'service_install'
-            && operation.kind !== 'runtime_install'
-            && operation.kind !== 'mail_profile_install'
-        )
+        || !OPERATION_KINDS.has(operation.kind)
         || !operation.service_id
         || (operation.kind === 'runtime_install' && !operation.package_name)
         || (
@@ -985,10 +977,10 @@ function recoveryMarkerForOperation(operation: ComponentOperation): OperationRec
         {
             serviceId: operation.service_id,
             name: operationDisplayLabel(operation),
-            operationKind: operation.kind,
+            operationKind: operation.kind as InstallOperationKind,
             ...(operation.kind === 'runtime_install'
                 ? { version: operation.package_name }
-                : operation.kind === 'service_install'
+                : operation.kind !== 'mail_profile_install'
                     ? { package: operation.package_name }
                     : {}),
         },

@@ -86,6 +86,11 @@ type removalHostFacts struct {
 	PanelCertificate string
 	MailHosts        []string
 	Firewall         *serviceRemovalFirewall
+	// RuntimeUnits (alpha.123, D-045): for one Node.js version, the service
+	// units the Agent found running on it; RuntimeUnitsKnown is false when
+	// they could not be read.
+	RuntimeUnits      []string
+	RuntimeUnitsKnown bool
 }
 
 type serviceRemovalBundle struct {
@@ -151,6 +156,10 @@ type serviceRemovalImpactResponse struct {
 	// (Agent.ServiceRemovalPreviewV1, alpha.104), or null when the removal
 	// does not go through the package manager.
 	Simulation *serviceRemovalSimulation `json:"simulation"`
+	// Plan (alpha.123, D-045) is the dependency rule's answer: what must be
+	// moved or removed first, what is removed together, what stops and which
+	// offerings are withdrawn. The uninstall enforces the same plan.
+	Plan *removalPlan `json:"plan,omitempty"`
 }
 
 // serviceRemovalSimulation is what the package manager says the removal
@@ -331,7 +340,7 @@ func removalHosted(ctx context.Context, db *sql.DB, svc *core.ManagedService, fa
 		"nginx": "sites", "apache": "sites",
 		"php-fpm": "php_sites", "node": "node_sites",
 		"mariadb": "databases", "postgresql": "databases",
-		"postfix": "mail_addresses", "dovecot": "mail_addresses",
+		"postfix": "mail_addresses", "exim": "mail_addresses", "dovecot": "mail_addresses",
 	}
 	if kind, ok := blockingKind[svc.ID]; ok {
 		count, lines, err := serviceDependents(ctx, db, svc.ID)
@@ -466,6 +475,13 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 	// package: one version of a runtime (the PHP-FPM versions panel).
 	packageName := strings.TrimSpace(r.URL.Query().Get("package"))
 	version := ""
+	// version (alpha.123): one managed Node.js version, which is a tree, not
+	// a package.
+	nodeVersion := strings.TrimSpace(r.URL.Query().Get("version"))
+	if nodeVersion != "" && (svc.ID != "node" || packageName != "" || !nodeSemverRe.MatchString(nodeVersion)) {
+		writeClientError(w, http.StatusBadRequest, "version names one managed Node.js version")
+		return
+	}
 	if packageName != "" {
 		version = versionFromPackage(svc, packageName)
 		if version == "" {
@@ -504,20 +520,41 @@ func (p *Panel) handleServiceRemovalImpact(w http.ResponseWriter, r *http.Reques
 	}
 	host := p.managedServiceHostProfile()
 	installed := map[string]bool{}
-	for _, service := range catalogViewForHost(snapshot.Observations, host) {
+	view := catalogViewForHost(snapshot.Observations, host)
+	for _, service := range view {
 		if service.Installed() {
 			installed[service.ID] = true
 		}
 	}
 	var response serviceRemovalImpactResponse
-	if packageName != "" {
+	facts := p.removalHostFacts(r.Context(), svc.ID)
+	switch {
+	case nodeVersion != "":
+		version = nodeVersion
+		facts = p.removalNodeVersionFacts(r.Context(), nodeVersion)
+		response, err = nodeVersionRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, nodeVersion)
+	case packageName != "":
 		response, err = serviceVersionRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, packageName, version)
-	} else {
-		response, err = serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, p.removalHostFacts(r.Context(), svc.ID))
+	default:
+		response, err = serviceRemovalImpact(r.Context(), p.db.GetDB(), svc, host.PackageFamily, installed, facts)
 	}
 	if err != nil {
 		writeServerError(w, err)
 		return
+	}
+	plan, err := computeRemovalPlan(r.Context(), p.db.GetDB(), svc, version, installed, facts)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if nodeVersion != "" && nodeLineStays(view, nodeVersion) {
+		plan.Withdraws, plan.WithdrawSets = []string{}, 0
+	}
+	response.Plan = &plan
+	// The older fields follow the plan: the companions are its together
+	// members (alpha.118 screens).
+	if version == "" {
+		response.CompanionTools = plan.TogetherComponents()
 	}
 	if response.Removal == "packages" {
 		preview, previewErr := removalPackagePreview(p, r.Context(), transport.ServiceRemovalPreviewRequest{ID: svc.ID, Package: packageName})
@@ -563,6 +600,55 @@ func serviceVersionRemovalImpact(ctx context.Context, db *sql.DB, svc *core.Mana
 	}
 	response.Hosted = &serviceRemovalHosted{Kind: kind, Count: count, Names: names, BlocksRemoval: count > 0}
 	return response, nil
+}
+
+// nodeVersionRemovalImpact is the answer for one managed Node.js version:
+// its tree is deleted; the component stays.
+func nodeVersionRemovalImpact(ctx context.Context, db *sql.DB, svc *core.ManagedService, family, version string) (serviceRemovalImpactResponse, error) {
+	response := serviceRemovalImpactResponse{
+		ServiceID: svc.ID, Removal: "runtime_tree", PackageFamily: family, Packages: []string{},
+		FirewallPorts: []string{}, RequiredBy: []string{}, CompanionTools: []string{}, Bundles: []serviceRemovalBundle{},
+		Version: version,
+	}
+	count, lines, err := runtimeVersionBlockers(ctx, db, "node", version)
+	if err != nil {
+		return serviceRemovalImpactResponse{}, err
+	}
+	names := []string{}
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "+") {
+			names = append(names, line)
+		}
+	}
+	response.Hosted = &serviceRemovalHosted{Kind: "node_sites", Count: count, Names: names, BlocksRemoval: count > 0}
+	return response, nil
+}
+
+// removalRuntimeUnitsBound bounds the Agent's read of the units on a version.
+const removalRuntimeUnitsBound = 10 * time.Second
+
+// removalNodeVersionFacts reads, bounded, which service units run on one
+// managed Node.js version (Agent.RuntimeVersionUsersV1).
+func (p *Panel) removalNodeVersionFacts(ctx context.Context, version string) removalHostFacts {
+	units, err := removalRuntimeUnits(p, ctx, version)
+	if err != nil {
+		log.Printf("removal plan: units on Node.js %s could not be read: %v", version, err)
+		return removalHostFacts{}
+	}
+	return removalHostFacts{RuntimeUnits: units, RuntimeUnitsKnown: true}
+}
+
+var removalRuntimeUnits = func(p *Panel, ctx context.Context, version string) ([]string, error) {
+	callCtx, cancel := context.WithTimeout(ctx, removalRuntimeUnitsBound)
+	defer cancel()
+	var resp transport.RuntimeVersionUsersResponse
+	if err := p.callAgentContext(callCtx, "Agent.RuntimeVersionUsersV1", &transport.RuntimeVersionUsersRequest{Runtime: "node", Version: version}, &resp); err != nil {
+		return nil, err
+	}
+	if resp.Error != "" {
+		return nil, errors.New(resp.Error)
+	}
+	return resp.Units, nil
 }
 
 // The readers of the facts outside the database, replaceable in tests.

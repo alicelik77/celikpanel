@@ -51,6 +51,8 @@ export const enProblemsScreens = {
     "setup.problem.dnsMigration.todo": "Untick DNS so this server keeps that DNS as it is, or remove that DNS software from the server yourself and review again.",
     "setup.problem.dnsInstalledDiffers.what": "This server already runs the DNS software an earlier setup installed, and this plan names different DNS software, role or names.",
     "setup.problem.dnsInstalledDiffers.todo": "Choose the same DNS software and names as before. Setup never replaces running DNS.",
+    "setup.problem.pdnsUntested.what": "PowerDNS has not been tested on this system, as the main or the backup DNS server.",
+    "setup.problem.pdnsUntested.todo": "Choose BIND for DNS on this server.",
     "setup.problem.pdnsMain.what": "PowerDNS has not been tested as the main DNS server on this system.",
     "setup.problem.pdnsMain.todo": "Choose BIND for this server, or use PowerDNS on the backup server.",
     "setup.problem.pdnsRepo.what": "PowerDNS would be installed here from an added software source, not from the system's own packages.",

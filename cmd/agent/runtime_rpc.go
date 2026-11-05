@@ -301,6 +301,10 @@ func (a *Agent) removeNodeVersion(req *NodeRemoveRequest, resp *NodeRemoveRespon
 		resp.Removed = true
 		return nil
 	}
+	// alpha.123 (D-045): never while a service unit still runs on it.
+	if nodeVersionUnitsRefusal(req.Version, resp) {
+		return nil
+	}
 	if err := os.RemoveAll(dir); err != nil {
 		resp.Error = fmt.Sprintf("could not remove %s: %v", req.Version, err)
 		return nil

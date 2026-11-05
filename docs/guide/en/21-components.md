@@ -18,7 +18,15 @@ When another page says a component is missing, such as Fail2ban, ClamAV, vsftpd,
 
 ## Installing and removing {#install}
 
-**Install** shows what will be installed before anything changes. **Uninstall** shows **What is removed**, **Affected on this server** and **What stays**, and is refused while something still depends on the component. Removing a database engine keeps its data.
+**Install** shows what will be installed before anything changes. A component that needs another one first, such as phpMyAdmin without MariaDB, opens a window with **Install … first** for each missing part.
+
+**Uninstall** asks one question: what needs this component? The window answers in three groups:
+
+- **Must be moved or removed first**: sites, databases, mailboxes, apps, certificates, VPN peers, quarantined files, the panel firewall, or another component that is itself in use. Each one has a link to where you move or remove it. The removal is refused until the list is empty.
+- **Will be removed together**: small components that nothing else uses and that cannot work without it, such as phpPgAdmin with PostgreSQL. They are ticked; the server removes them first, then the component, as one operation that goes on even if you close the page. Unticking them means the component cannot be removed.
+- **What stops**: for example webmail when Roundcube goes. Mail keeps working.
+
+Plans and accounts that offered the removed component or version lose that entry. Removing a database engine keeps its data.
 
 **Ready bundles** install several components in a row, such as **Core Mail** or **Nginx + PHP-FPM**. A bundle with nothing installed yet says **Install**; one whose parts are partly here names what it adds, for example **Add phpPgAdmin**. If one step fails, **Continue** installs only what is still missing; nothing is removed.
 

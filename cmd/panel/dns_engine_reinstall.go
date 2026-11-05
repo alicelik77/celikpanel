@@ -197,7 +197,7 @@ func (p *Panel) finalizeDNSEngineReinstallSuccess(
 	requestID, ownerID string,
 	manifest mutationpayload.DNSEngineSwitchManifestCommitment,
 ) error {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}

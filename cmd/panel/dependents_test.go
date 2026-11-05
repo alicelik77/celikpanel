@@ -33,7 +33,7 @@ func newDependentsTestDB(t *testing.T) *sql.DB {
 	CREATE TABLE domains (id INTEGER PRIMARY KEY, subscription_id INTEGER, name TEXT, dns_management TEXT NOT NULL DEFAULT 'local');
     CREATE TABLE remote_dns_clients(id TEXT PRIMARY KEY,label TEXT,revoked INTEGER DEFAULT 0);
     CREATE TABLE remote_dns_zone_ownership(zone_name TEXT PRIMARY KEY,client_id TEXT,generation INTEGER,applied_generation INTEGER,deleted INTEGER);
-	CREATE TABLE sites (id INTEGER PRIMARY KEY, domain_id INTEGER, project_type TEXT, php_version TEXT, runtime_version TEXT);
+	CREATE TABLE sites (id INTEGER PRIMARY KEY, domain_id INTEGER, project_type TEXT, php_version TEXT, runtime_version TEXT, web_server TEXT NOT NULL DEFAULT 'nginx');
 	CREATE TABLE email_accounts (id INTEGER PRIMARY KEY, domain_id INTEGER, address TEXT);
 	CREATE TABLE email_forwardings (id INTEGER PRIMARY KEY, domain_id INTEGER, source TEXT);
 	CREATE TABLE database_server_types (id INTEGER PRIMARY KEY, name TEXT);
@@ -129,7 +129,7 @@ func TestServiceDependents(t *testing.T) {
 		{"php-fpm", 3, "iki php sitesi + NULL-tip eski satır"},
 		{"node", 2, "sürümlü site + eski sistem-node satırı"},
 		{"nginx", 6, "dnsonly hariç tüm siteler"},
-		{"apache", 6, "web-server grubunun diğer üyesi, aynı sayım"},
+		{"apache", 0, "alpha.123: yalnız Apache'de kayıtlı siteler sayılır"},
 		{"pdns", 7, "tüm domain'ler (D-009: DNS'siz domain olmaz)"},
 		{"postfix", 1, "bir posta kutusu"},
 		{"mariadb", 2, "v2'de shopdb + eski tabloda mysql eşanlamlısı"},

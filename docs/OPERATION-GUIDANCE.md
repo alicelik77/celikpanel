@@ -10889,3 +10889,50 @@ makes sure it is installed before SSH is turned on.
 
 Still mandatory and already gated: the OpenSSH server (`sshd_missing`). Nothing else is
 required for the command line. Schema unchanged; no migration.
+
+### Removing a component: one dependency rule (D-045, alpha.123)
+
+Every removal asks one question, "what requires the thing being removed?", answered by
+the component dependency map (`internal/core/component_rules.go`) and the Panel's own
+records (`cmd/panel/component_removal_plan.go`). The removal window, the uninstall, the
+remove-together operation and the security emergency read the same plan.
+
+- **Verified refusal (prerequisite).** Customer data or objects, the panel's own needs
+  and components that are themselves in use: `SERVICE_HAS_DEPENDENTS` (whole component)
+  or `RUNTIME_IN_USE` (one version), 409, every name in `details`, and the plan in
+  `plan` with a link per item. Who acts: the administrator. Next: move or remove each
+  item at its link (a site → its page to change the PHP or Node.js version; a database →
+  Databases; a mailbox → the domain's Mail tab; a certificate → its SSL tab; a VPN peer →
+  VPN; quarantined files → the site's Malware scan; the panel firewall → Security), then
+  open the window again. There is no "force".
+- **Remove together.** Leaf components nothing else uses (phpMyAdmin, phpPgAdmin,
+  Roundcube, Rspamd, SpamAssassin) and settings (ClamAV's scan schedule) are listed
+  ticked. Unticked, the removal is refused (`REMOVAL_NEEDS_TOGETHER`, nothing removed).
+  Ticked, the Panel answers 202 with a durable operation (`service_remove_together`, one
+  Agent lease, qualifier = the sorted members): settings first, then each dependent, then
+  the target, each checked by a fresh scan. Closing the page does not stop it. The page
+  shows the current step; the result lists what was removed. The global operation lock
+  knows this operation: a page opened while it runs (a reload, or after a panel restart)
+  re-attaches to it and says its step, that nobody needs to act and that it continues by
+  itself, never the install wording or a lost connection.
+- **Unknown result.** A lost answer starts nothing again: the operation is read by its
+  id. After a panel restart the same run resumes; what is already gone is skipped and
+  the plan is checked again first, so a use that appeared meanwhile refuses the rest
+  (`removal_blocked`, with what was removed so far).
+- **Unknown state.** The panel firewall's state that cannot be read refuses nftables'
+  removal (`panel_firewall_unknown`); units on a Node.js version that cannot be read are
+  a note, and the Agent checks them again when the removal runs (`RUNTIME_UNITS_BOUND`,
+  the units named; the Panel names the service apps).
+- **What stops.** A removal nothing requires is a plain confirmation that says what
+  stops and what keeps working (webmail, spam filtering, ban protection, malware scans,
+  FTP for N accounts while SFTP keeps working, usage the panel does not record).
+- **Offerings.** Plans, reseller narrowings and custom sets lose the entries of the
+  removed component or version (`rights_set_items`), audited with the removal. A Node.js
+  line stays offered while another version of it is installed.
+- **Security emergency (D-043).** Not blocked by the rule; its removal step shows the
+  same dependents. A service app still running on a Node.js version stops the step as a
+  prerequisite (the Agent's wall).
+- **Install.** A component with unmet requirements opens "needs other components first"
+  with **Install … first** for each; a seat lists the components that fill it.
+
+Schema unchanged; no migration. Lab checks pending (D-025).

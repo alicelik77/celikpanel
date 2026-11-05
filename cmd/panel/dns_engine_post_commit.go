@@ -252,7 +252,7 @@ func (p *Panel) clearDNSEnginePostCommitMarker(
 	ctx context.Context,
 	persisted persistedDNSEngineSwitch,
 ) error {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func (p *Panel) updateDNSEnginePostCommitMarker(
 	persisted persistedDNSEngineSwitch,
 	mutate func(*dnsEngineOperationMarker) error,
 ) (dnsEngineOperationMarker, error) {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return dnsEngineOperationMarker{}, err
 	}

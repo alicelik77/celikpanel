@@ -19,6 +19,60 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-045 · Bileşen bağımlılık kuralı: Linux'un paket kuralı bileşen düzeyinde; kaldırma neyin ona ihtiyaç duyduğunu sorar
+
+*2026-11-04 (sahibin kararı) · D-038 2. maddeyi ("kullanılan hiçbir şey kaldırılmaz") ve D-042'yi (sunumlar) her bileşene uygular; alpha.123'te uygulandı, laboratuvar denemesi bekliyor*
+
+**Neden.** Her bileşenin kaldırma kuralı ayrıydı ve birkaç yere dağılmıştı: kimi
+reddediyor, kimi yalnız uyarıyordu (Certbot, nftables, WireGuard), kimi hiçbir şey
+demiyordu (Fail2ban, ClamAV); Apache her site için, Exim hiçbiri için reddediyordu;
+bir Node.js sürümünü kaldırmak üzerinde çalışan n8n'i sessizce bozuyordu. Bir
+veritabanı motorunu yönetim aracıyla birlikte kaldırmak tarayıcıda yürüyordu;
+kapanan sekme aracı geride bırakıyordu.
+
+**Karar.** Linux'un paket kuralı, bileşenlere uygulanır. Her bileşen neyi
+**gerektirdiğini** (başka bir bileşen ya da "web sunucusu" gibi herhangi bir
+sağlayıcının gördüğü bir görev), hangi görevi **sağladığını** (aynı görevin iki
+sağlayıcısı **çakışır**: Nginx ve Apache, Postfix ve Exim, BIND ve PowerDNS) ve
+bileşenler dışında ona neyin ihtiyaç duyabileceğini (siteler, veritabanları, posta
+kutuları, bölgeler, uygulamalar, sertifikalar, VPN eşleri, karantinadaki dosyalar,
+panel güvenlik duvarı) bildirir. Tek harita, tek yerde
+(`internal/core/component_rules.go`); kurulum, kaldırma, ekranlar ve paketler onu
+okur.
+
+**Kaldırma tek soru sorar: kaldırılan şeye ne ihtiyaç duyuyor?**
+- **Müşteri verisi ya da kendisi kullanılan bir bileşen:** reddedilir. Her bağımlı,
+  taşınacağı ya da kaldırılacağı yere bağlantısıyla adlandırılır. "Zorla" yoktur.
+- **Başka hiçbir şeyin kullanmadığı yaprak bileşen** (phpMyAdmin, phpPgAdmin,
+  Roundcube, Rspamd, SpamAssassin) ve ayarlar (ClamAV'ın tarama takvimi): "birlikte
+  kaldır" işaretli sunulur. Sunucuda tek kalıcı işlem olarak yürür; önce bağımlılar,
+  her adım denetlenir, kaldığı yerden sürer. İşaret kaldırılırsa bileşen kaldırılamaz.
+- **Hiçbir şey ona ihtiyaç duymuyorsa:** neyin durduğunu ve neyin çalışmaya devam
+  ettiğini söyleyen düz bir onay (web postası, istenmeyen posta süzgeci, engelleme
+  koruması, SFTP sürerken FTP). Ayrı bir "özellik kaybı" sınıfı yoktur.
+- Güvenlik duvarı açıkken panelin kendisi nftables'a ihtiyaç duyar; Fail2ban da
+  nftables'a. Çalışma ortamları ve koruma asla birlikte kaldırılmaz.
+- Ortak paketler asla kaldırılmaz (Agent'ın paket benzetimi, değişmedi).
+
+**Sunumlar.** Kaldırılan bileşenin ya da sürümün sunumları kaldırmanın parçası
+olarak kendiliğinden geri çekilir: planlar, bayi daraltmaları ve özel kümeler o
+kaydı kaybeder. Onu kullanan bir site kaldırmayı zaten engellemiştir; hiçbir şey
+bozulmaz.
+
+**Güvenlik acil durumu (D-043).** Hızını korur: bu kural onu engellemez, ama
+kaldırma adımından önce aynı bağımlıları gösterir. Agent, bir hizmet uygulamasının
+üzerinde çalıştığı Node.js sürümünü yine silmez.
+
+**Kurulum.** Aynı harita gereksinimleri ve çakışmaları denetler. Eksik gereksinim
+"Önce … kurulsun" olarak sunulur; çakışma gerekçesiyle reddedilir.
+
+**İddia edilmeyen.** Python uygulamalarının sürümleri, PostgreSQL'in ana sürüm
+başına kaldırılması, tek bir "birlikte kur" işlemi ve kurulum penceresinde alt düzey
+paket adlarının gizlenmesi sonraki işlerdir. Sürüm hâlâ laboratuvar turunu bekler
+(D-025).
+
+---
+
 ## D-044 · Plan sınırları gerçektir: takvim ayı trafiği dolunca yalnız web siteleri kapanır, yedi gün dolu kalan disk askıya alır, posta kutusu boyutunu Dovecot uygular
 
 *2026-11-03 (sahibin 3 Kasım 2026 kararları) · PLANS-AND-RIGHTS.tr.md 4.1. bölümü ("Trafik: ölçülene dek gösterilmez", "Disk: yumuşak kapı") ve 5. bölümü ("trafik havuzu uygulanmaz") değiştirir; alpha.118'de uygulandı, laboratuvar denemesi bekliyor*
@@ -3485,7 +3539,10 @@ yolunu değiştiremez. Kullanılabilir ipucu yoksa veya ipuçları çelişiyorsa
 olarak bir eksiksiz güvenilir araç zinciri bulunmalıdır. APT sabit `apt-get` +
 `apt-cache` + `dpkg-query`, pacman sabit `pacman`, DNF ise sabit `dnf` + `rpm`
 takımıdır. Sabit `systemctl` ile `timeout`; root sahipli ve yazılamaz
-`/run/systemd` zinciri; doğrudan `/run/systemd/private` Unix soketi ve zaman
+`/run/systemd` zinciri; root:root sahipli doğrudan `/run/systemd/private` Unix
+soketi (yalnız sahibi yazabilir ya da Ubuntu 22.04'teki gibi v252 öncesi
+systemd'nin oluşturduğu düz 0777; root olmayan her istemciyi systemd kendisi
+reddeder) ve zaman
 sınırlandırılmış `systemctl is-system-running` çağrısıyla `running` veya
 `degraded` kanıtı her durumda zorunludur. Var olan her aday aracın kendisi,
 hedefi ve dizin zinciri root sahipli, yazılamaz, sabit-yol sözleşmesini

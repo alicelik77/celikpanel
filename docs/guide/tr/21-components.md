@@ -18,7 +18,15 @@ Başka bir sayfa Fail2ban, ClamAV, vsftpd, Python, Node.js ya da WireGuard gibi 
 
 ## Kurmak ve kaldırmak {#install}
 
-**Kur**, hiçbir şey değişmeden önce neyin kurulacağını gösterir. **Kaldır**, **Silinenler**, **Bu sunucuda etkilenecekler** ve **Yerinde kalanlar** bölümlerini gösterir; bileşene hâlâ bağlı bir şey varsa reddedilir. Bir veritabanı motorunu kaldırmak verisini silmez.
+**Kur**, hiçbir şey değişmeden önce neyin kurulacağını gösterir. Önce başka bir bileşene ihtiyaç duyan bileşen, örneğin MariaDB olmadan phpMyAdmin, eksik her parça için **Önce … kurulsun** düğmesi olan bir pencere açar.
+
+**Kaldır** tek bir soru sorar: bu bileşene ne ihtiyaç duyuyor? Pencere üç bölümde yanıtlar:
+
+- **Önce taşınması ya da kaldırılması gerekenler**: siteler, veritabanları, posta kutuları, uygulamalar, sertifikalar, VPN eşleri, karantinadaki dosyalar, panel güvenlik duvarı ya da kendisi kullanılan başka bir bileşen. Her birinin, taşıyacağınız ya da kaldıracağınız yere bağlantısı vardır. Liste boşalana dek kaldırma reddedilir.
+- **Birlikte kaldırılacaklar**: başka hiçbir şeyin kullanmadığı ve onsuz çalışamayan küçük bileşenler, örneğin PostgreSQL ile phpPgAdmin. İşaretli gelirler; sunucu önce onları, sonra bileşeni tek işlemde kaldırır ve sayfayı kapatsanız da işlem sürer. İşareti kaldırırsanız bileşen kaldırılamaz.
+- **Neler durur**: örneğin Roundcube gidince web postası. Posta çalışmaya devam eder.
+
+Kaldırılan bileşeni ya da sürümü sunan planlar ve hesaplar o kaydı kaybeder. Bir veritabanı motorunu kaldırmak verisini silmez.
 
 **Hazır paketler**, **Temel Posta** ya da **Nginx + PHP-FPM** gibi birkaç bileşeni art arda kurar. Henüz hiçbir parçası kurulu olmayan paket **Kur** der; parçalarından bazıları kurulu olan paket neyi ekleyeceğini adıyla söyler, örneğin **Ekle: phpPgAdmin**. Bir adım başarısız olursa **Devam et** yalnız eksik kalanları kurar; hiçbir şey kaldırılmaz.
 

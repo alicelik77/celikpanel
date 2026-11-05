@@ -625,7 +625,8 @@ func parseMailTLSChildPhase(phase string) (mailTLSChildIdentity, bool) {
 
 func serviceOperationNeedsFirewallSync(op serviceOperation) bool {
 	return op.Kind == serviceOperationKindInstall ||
-		op.Kind == serviceOperationKindMailProfileInstall
+		op.Kind == serviceOperationKindMailProfileInstall ||
+		op.Kind == serviceOperationKindRemoveTogether
 }
 
 func serviceOperationFirewallPhase(op serviceOperation) string {
@@ -2368,6 +2369,20 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 			successAudit = "webmail.address.remove.recovered:" + op.PackageName
 			failureAudit = "webmail.address.remove.recovered.failed:" + op.PackageName
 		}
+	case serviceOperationKindRemoveTogether:
+		// alpha.123 (D-045): every step is idempotent and the plan is
+		// checked again first, so the same run resumes.
+		if core.GetManagedServiceByID(op.ServiceID) == nil {
+			return errors.New("interrupted remove-together operation has an unknown target")
+		}
+		if op.PackageName != "" {
+			if _, err := core.ParseRemoveTogetherQualifier(op.PackageName); err != nil {
+				return fmt.Errorf("interrupted remove-together operation: %w", err)
+			}
+		}
+		runner = p.removeTogetherRunner(op)
+		successAudit = "service.uninstall.together.recovered:" + op.ServiceID + pkgSuffix(op.PackageName)
+		failureAudit = "service.uninstall.together.recovered.failed:" + op.ServiceID + pkgSuffix(op.PackageName)
 	case serviceOperationKindMailProfileInstall:
 		if op.PackageName != "" {
 			return errors.New("interrupted mail profile operation has an unexpected package target")
@@ -2536,7 +2551,9 @@ func (p *Panel) runNodeInstall(
 	if err != nil {
 		return result, nodeInstallFailure(err)
 	}
-	if err := p.preflightManagedServiceInstall(ctx, "node", ""); err != nil {
+	if err := preflightWhilePanelBusy(ctx, func() error {
+		return p.preflightManagedServiceInstall(ctx, "node", "")
+	}); err != nil {
 		return result, nodeInstallFailure(err)
 	}
 	// D-043: a withdrawn Node.js version is not installed.

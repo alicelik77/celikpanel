@@ -66,6 +66,7 @@ import type { ServiceAppsScreenKey } from './screens/serviceApps/en';
 import type { GuideScreenKey } from './screens/guide/en';
 import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
 import type { HostNameScreenKey } from './screens/hostName/en';
+import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 
 export const en = {
     // ---- alpha.108 tools ----
@@ -426,6 +427,11 @@ export const en = {
     'services.phpToolProblem.extensionsFailed': 'The PHP extensions {tool} needs could not be installed for PHP {version}, so {tool} may not work. Open {tool} in Components and choose PHP {version} again in Manage, or another version.',
     'services.mailProfiles.fallbackWarning': '{name} is installed. No domain has an active trusted Secure Mail certificate yet, so mail clients are served the server’s default certificate. They show a trust warning unless a trusted certificate covers the mail host name. To give a domain its own, activate a trusted certificate with Secure Mail enabled.',
     'services.operation.title': 'Installing {name}',
+    'services.operation.removeTitle': 'Removing {name}',
+    'services.operation.removeFailedTitle': '{name}: removal stopped',
+    'services.operation.removeHint': 'Nobody needs to act. Removed first: {together}. It goes on if you close this page or the panel restarts.',
+    'services.operation.phase.removing': 'Removing {name}…',
+    'services.operation.phase.removeSetting': 'Turning off scheduled scans…',
     'services.operation.activeCheckInProgress': 'The panel is still checking for an active package operation. Try again in a moment.',
     'services.operation.actionLocked': 'Another package operation or safety check is already in progress.',
     'services.operation.starting': 'Starting the server operation…',
@@ -577,5 +583,6 @@ export type ScreenKey =
     | ServiceAppsScreenKey
     | GuideScreenKey
     | RuntimeAppsScreenKey
-    | HostNameScreenKey;
+    | HostNameScreenKey
+    | RemovalRuleScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

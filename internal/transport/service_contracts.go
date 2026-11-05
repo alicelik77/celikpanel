@@ -578,6 +578,24 @@ type NodeRemoveRequest struct {
 type NodeRemoveResponse struct {
 	Removed bool   `json:"removed"`
 	Error   string `json:"error,omitempty"`
+	// ErrorCode (alpha.123, D-045): RUNTIME_UNITS_BOUND when a service unit
+	// still runs on the version; Units names those units.
+	ErrorCode string   `json:"error_code,omitempty"`
+	Units     []string `json:"units,omitempty"`
+}
+
+// RuntimeVersionUsersRequest asks, read-only, which CelikPanel service units
+// run on one managed runtime version (alpha.123, D-045). Runtime is "node".
+type RuntimeVersionUsersRequest struct {
+	Runtime string `json:"runtime"`
+	Version string `json:"version"`
+}
+
+// RuntimeVersionUsersResponse names the units (celiksvc-12, celikrt-3) whose
+// unit file or drop-in points into the version's directory.
+type RuntimeVersionUsersResponse struct {
+	Units []string `json:"units"`
+	Error string   `json:"error,omitempty"`
 }
 
 type NodeLTSRelease struct {
