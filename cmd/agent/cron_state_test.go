@@ -239,7 +239,7 @@ func TestAddCronJobAppendsToTheCrontabItRead(t *testing.T) {
 	if err := addCronJobFor(cronTestUser, &AddCronJobRequest{Schedule: "0 3 * * *", Command: "/usr/bin/true", Version: cronVersion("")}); err != nil {
 		t.Fatal(err)
 	}
-	if len(first.installs) != 1 || first.installs[0] != "0 3 * * * /usr/bin/true\n" {
+	if len(first.installs) != 1 || first.installs[0] != cronMailtoComment+"\nMAILTO=\"\"\n0 3 * * * /usr/bin/true\n" {
 		t.Fatalf("installed %q", first.installs)
 	}
 }

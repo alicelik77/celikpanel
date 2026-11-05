@@ -52,6 +52,14 @@ listesinin kapatmadığı hiçbir şeyi kapatmaz. Roundcube zaten 587'den kullan
 parolasıyla gönderir; posta kutusu %90 uyarısını `sendmail` değil Dovecot'un kendi
 teslim aracı bırakır.
 
+**Site cron çıktısı.** Cron bir görevin çıktısını görevin kullanıcısı olarak
+`sendmail` ile postalar; site kullanıcıları için bu artık reddedilir. Bu yüzden
+panelin yazdığı site crontab'ı `MAILTO=""` ile başlar: site cron çıktısı artık
+postalanmaz ve panel onu başka bir yerde de kaydetmez (çıktısı gereken görev onu bir
+dosyaya yazar). `MAILTO`'yu zaten ayarlayan crontab sahibinindir ve olduğu gibi kalır;
+root'un crontab'ı hiç değişmez. Var olan site crontab'ı satırı, panelin onun bir
+görevini ilk değiştirişinde alır.
+
 **İki aşama.** 1. aşama (alpha.124) sunucuda hiçbir şeyi değiştirmez: Postfix
 sayfası parolasız postanın bir sonraki sürümde kapanacağını söyler ve son 30 günde
 onu kullanan siteleri Postfix'in kendi günlüğünden okuyarak listeler (`pickup` uid

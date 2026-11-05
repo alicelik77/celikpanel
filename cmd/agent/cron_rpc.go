@@ -144,7 +144,7 @@ func addCronJobFor(username string, req *AddCronJobRequest) error {
 	}
 	newCrontab += newEntry + "\n"
 
-	return setCrontab(username, newCrontab)
+	return setCrontab(username, withSiteCronMailto(username, newCrontab))
 }
 
 // UpdateCronJob updates an existing cron job
@@ -223,7 +223,7 @@ func updateCronJobFor(username string, req *UpdateCronJobRequest) error {
 		lines = append(lines[:index], append([]string{"# " + req.Comment}, lines[index:]...)...)
 	}
 
-	return setCrontab(username, strings.Join(lines, "\n"))
+	return setCrontab(username, withSiteCronMailto(username, strings.Join(lines, "\n")))
 }
 
 // DeleteCronJob deletes a cron job

@@ -52,6 +52,14 @@ and it closes nothing the Postfix list does not close. Roundcube already sends
 through 587 with the user's password; the mailbox 90% warning is delivered by
 Dovecot's own delivery agent, not by `sendmail`.
 
+**Site cron output.** Cron mails a job's output through `sendmail` as the job's
+user, which is now refused for site users. A site crontab the panel writes therefore
+starts with `MAILTO=""`: site cron output is no longer mailed, and the panel does not
+record it elsewhere either (a job that needs its output writes it to a file). A
+crontab that already sets `MAILTO` is the owner's and is left as it is; root's
+crontab is never changed. An existing site crontab gets the line at the panel's next
+change to one of its jobs.
+
 **Two phases.** Phase 1 (alpha.124) changes nothing on the server: the Postfix
 page says that mail without a password closes in the next release and lists the
 sites that used it in the last 30 days, read from Postfix's own log (`pickup`
