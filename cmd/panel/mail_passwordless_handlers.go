@@ -68,6 +68,8 @@ type passwordlessMailView struct {
 	Incomplete   bool                    `json:"incomplete,omitempty"`
 	Sites        []passwordlessMailSite  `json:"sites"`
 	Others       []passwordlessMailOther `json:"others"`
+	// Enforcement: whether the server refuses it now (phase 2, alpha.125).
+	Enforcement *transport.PasswordlessMailEnforcement `json:"enforcement,omitempty"`
 }
 
 type passwordlessDomainRow struct {
@@ -153,6 +155,7 @@ func buildPasswordlessMailView(report transport.PasswordlessMailReportResponse, 
 		Sites:      []passwordlessMailSite{},
 		Others:     []passwordlessMailOther{},
 	}
+	view.Enforcement = report.Enforcement
 	if !report.Read {
 		view.State = "unknown"
 		view.Reason = report.Error
