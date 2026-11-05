@@ -31,6 +31,9 @@ günceller.**
   özel haklar o kaydı kendiliğinden kaybeder.
 - Güvenlik acil durumu hızını korur, ama kaldırma adımından önce aynı
   listeyi gösterir.
+- Bileşenler sayfasındaki **Birlikte kaldır** işlemi artık "CelikPanel
+  güncellenmeden önce açılmış" gerekçesiyle reddedilmiyor: sayfa artık
+  sunucunun beklediği istek kimliğini gönderiyor.
 - Gerektirdiği bileşen eksik olan kurulu bir bileşen bunu kendi satırında
   söyler: **Fail2ban** eksik **Güvenlik duvarı motoru**nu adıyla verir ve
   onun **Kur** düğmesini gösterir. Önce başka bileşenlere ihtiyaç duyan bir
@@ -60,6 +63,23 @@ günceller.**
   kez başlatılmaz. Veritabanı yaklaşık on dakika meşgul kalırsa kurulum o
   adımı durdurur ve sahibe çalıştıracağı tek komutu ve nasıl devam edeceğini
   söyler; tamamlanan adımlar korunur.
+- Bileşenler sayfasından bileşen kurarken de panelin veritabanı kısa süre
+  meşgulse işlem hata vermek yerine bekler.
+
+## Laboratuvar sonuçları
+
+5 Kasım 2026 laboratuvar turu: sahibin `get.sh` yoluyla kurulan yeni Debian
+12, Ubuntu 22.04, Debian 13 ve Ubuntu 24.04 makinelerinde sunucu kurulumu
+dördünde de tamamlandı. DNS sunucusu Debian 12, Ubuntu 22.04 ve Ubuntu
+24.04'te BIND, Debian 13'te PowerDNS oldu. Ubuntu 24.04 PowerDNS'i yalnız
+yedek DNS sunucusu olarak sunar; alpha.122'den beri böyle. Tur şunları buldu:
+Ubuntu 22.04'te BIND'in başlaması, Bileşenler sayfasında birlikte kaldırma
+reddi ve bileşen kurulumunda meşgul veritabanı beklemesi; üçü de bu sürümde
+düzeltildi.
+
+Ölçülen site yalıtımı düzeyi: Debian 13'te tam; Debian 12, Ubuntu 22.04 ve
+Ubuntu 24.04'te azaltılmış (bu sistemlerin systemd'sinde tam düzeyin
+gerektirdiği BPF desteği yok). Ubuntu 22.04, Ubuntu 24.04'ten zayıf değil.
 
 ## Bilinen sınırlar
 
@@ -67,14 +87,21 @@ günceller.**
   bileşenleri gösteren görünüm alpha.124 için planlandı.
 - Bir bileşeni kurmak, ihtiyaç duyduklarını henüz aynı işlemde kurmuyor;
   pencere her biri için **Önce … kurulsun** seçeneğini sunar.
-- Debian 12 ve Ubuntu 22.04: bu düzeltmeler alpha.121 üzerindeki
-  laboratuvar turundan geliyor; ancak bu notlar yazılırken bu sürümle iki
-  sistemde de baştan sona kurulum ve sunucu kurulumu henüz yinelenmemişti.
-  Sıradaki iş o laboratuvar turu.
+- Bileşenler sayfası bu turda tarayıcıda denenmedi.
+- Panel yeniden başlatıldıktan sonra kaldırma işlemine yeniden bağlanma
+  kaldırma sürerken gözlenmedi: açılış kaldırmanın kendisinden uzun sürdü ve
+  kaldırma tamamlandı.
+- Bir PHP sürümünü kaldırma reddedilir ve siteleri adıyla söyler, ama ret
+  metni phpMyAdmin'i saymaz; kaldırma penceresi sayar.
+- PostgreSQL 18 kurulum önizlemesi PGDG deposunu adıyla değil "vendor" olarak
+  etiketler.
+- Panel veritabanı kesintisiz yaklaşık 5 saniyeden uzun kilitli kalırsa bir
+  bileşen işleminin ekranı "bekliyor" yerine "çalışıyor" durumunda kalabilir;
+  bu laboratuvar durumunda bir denetim kaydı da kayboldu. Düzeltmeler
+  alpha.124 için planlandı.
 
 ## Kanıt
 
 Şema değişmedi, geçiş yok. Sürüm sırası 122 → 123.
 Go testleri (bütün modül) ve web testleri geçiyor; web paketleri bütçeleri
-içinde. Yeni Debian 12, Ubuntu 22.04 ve olağan sistemlerdeki laboratuvar turu
-henüz bekliyor.
+içinde. 5 Kasım 2026 laboratuvar turu yukarıda anlatılmıştır.

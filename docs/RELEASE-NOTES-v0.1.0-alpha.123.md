@@ -29,6 +29,9 @@ panels, from the panel's own update screen.**
   component or version lose that entry automatically.
 - The security emergency keeps its speed, but shows the same list before its
   removal step.
+- The **Remove together** action on the Components page no longer gets
+  refused as "opened before CelikPanel was updated": the page now sends the
+  request identity the server expects.
 - An installed component whose required component is missing says so on its
   row: **Fail2ban** names the missing **Firewall engine** and has its
   **Install** button. A component that needs others first offers
@@ -58,6 +61,22 @@ panels, from the panel's own update screen.**
   twice. If the database stays busy for about ten minutes, setup stops that
   step and tells the owner the one command to run and how to continue;
   completed steps are kept.
+- Installing a component from the Components page also waits, instead of
+  failing, while the panel's database is briefly busy.
+
+## Lab results
+
+Lab round of 2026-11-05 on fresh Debian 12, Ubuntu 22.04, Debian 13 and
+Ubuntu 24.04 machines, installed through the owner's `get.sh` path: setup
+completed on all four. BIND was the DNS server on Debian 12, Ubuntu 22.04 and
+Ubuntu 24.04; PowerDNS on Debian 13. Ubuntu 24.04 offers PowerDNS only as the
+backup DNS server, as since alpha.122. The round found the BIND start on
+Ubuntu 22.04, the Components-page remove-together refusal and the busy-database
+wait for component installs; all three are fixed in this release.
+
+Site sandbox level measured: full on Debian 13; reduced on Debian 12, Ubuntu
+22.04 and Ubuntu 24.04, whose systemd lacks the BPF support the full level
+needs. Ubuntu 22.04 is no weaker than Ubuntu 24.04.
 
 ## Known limits
 
@@ -65,14 +84,20 @@ panels, from the panel's own update screen.**
   that shows components instead is planned for alpha.124.
 - Installing a component does not yet install what it needs in the same
   operation; the window offers **Install … first** for each.
-- Debian 12 and Ubuntu 22.04: these fixes come from the lab round on
-  alpha.121, but at the time of writing a complete install and setup on
-  both systems with this release had not yet been repeated. That lab round
-  comes next.
+- The Components page was not tested in a browser in this lab round.
+- Re-attaching to a removal after a panel restart was not observed mid-removal:
+  the start-up took longer than the removal itself, which completed.
+- Removing a PHP version refuses and names the sites, but the refusal text does
+  not list phpMyAdmin; the removal window does.
+- The PostgreSQL 18 install preview labels the PGDG repository as "vendor"
+  instead of naming it.
+- If the panel database stays locked continuously for more than about 5
+  seconds, a component operation's screen can stay on "running" instead of
+  "waiting", and in that lab case one audit entry was lost. Fixes are planned
+  for alpha.124.
 
 ## Evidence
 
 No schema change and no migration. Release sequence 122 → 123.
 Go tests (whole module) and web tests pass, the web bundles stay within their
-budgets. The lab round on fresh Debian 12, Ubuntu 22.04 and the usual systems
-is still pending.
+budgets. The lab round of 2026-11-05 is described above.
