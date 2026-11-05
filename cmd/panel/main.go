@@ -1575,6 +1575,7 @@ func main() {
 	// Email Management (Postfix & Dovecot)
 	http.HandleFunc("/api/v1/postfix/queue", panel.handlePostfixQueue)
 	http.HandleFunc("/api/v1/postfix/summary", panel.handlePostfixSummary)
+	http.HandleFunc(passwordlessMailPath, panel.handlePasswordlessMail)
 	http.HandleFunc("/api/v1/dovecot/stats", panel.handleDovecotStats)
 
 	http.HandleFunc("/api/v1/config", panel.handleConfig)

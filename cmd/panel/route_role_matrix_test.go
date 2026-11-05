@@ -91,6 +91,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/import/cpanel/apply":   gateAdmin,
 	"/api/v1/import/cpanel/inspect": gateAdmin,
 	"/api/v1/mail/configure":        gateAdmin,
+	"/api/v1/mail/passwordless":     gateAdmin,
 	"/api/v1/mail/policy":           gateAdmin,
 	"/api/v1/managed-services":      gateAdmin,
 	"/api/v1/managed-services/scan": gateAdmin,

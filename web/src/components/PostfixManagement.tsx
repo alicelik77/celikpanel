@@ -8,6 +8,7 @@ import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
+import { PasswordlessMailNotice } from './PasswordlessMailNotice';
 
 interface PostfixManagementProps {
     onBack: () => void;
@@ -111,6 +112,7 @@ export function PostfixManagement({ onBack }: PostfixManagementProps) {
 
     return (
         <ServiceShell serviceId="postfix" name="Postfix" icon={Mail} onBack={onBack}>
+            <PasswordlessMailNotice />
             <div className="mb-4 flex items-center gap-1 border-b border-border">
                 <Tab active={activeTab === 'queue'} onClick={() => setActiveTab('queue')} icon={Mail} label={t('postfix.tab.queue')} />
                 <Tab active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} icon={Activity} label={t('postfix.tab.logs')} />

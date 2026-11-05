@@ -30,6 +30,8 @@ const stub = dataModule(`
   export const useNavigate = () => () => true;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
+  // alpha.124: the passwordless mail notice on the Postfix page reads its own address; not under test here.
+  export const PasswordlessMailNotice = () => null;
 `);
 // Since 9 Oct 2026 these three screens stand on the shared remote-state layer,
 // so they are mounted with the real one: lib/remote.ts for the read and the
