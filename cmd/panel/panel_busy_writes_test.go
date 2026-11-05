@@ -59,17 +59,23 @@ func heldLockPanelForTest(t *testing.T) (p *Panel, path string, hold func(), rel
 
 func shortEvidenceRetriesForTest(t *testing.T) {
 	t.Helper()
-	saved := []any{panelBusyWriteBound, panelBusyWriteFirstDelay, panelBusyWriteMaxDelay, auditRetryFirstDelay, auditRetryMaxDelay, auditDirectTimeout}
-	panelBusyWriteBound, panelBusyWriteFirstDelay, panelBusyWriteMaxDelay = 5*time.Second, 10*time.Millisecond, 50*time.Millisecond
-	auditRetryFirstDelay, auditRetryMaxDelay, auditDirectTimeout = 10*time.Millisecond, 50*time.Millisecond, 2*time.Second
-	t.Cleanup(func() {
-		panelBusyWriteBound = saved[0].(time.Duration)
-		panelBusyWriteFirstDelay = saved[1].(time.Duration)
-		panelBusyWriteMaxDelay = saved[2].(time.Duration)
-		auditRetryFirstDelay = saved[3].(time.Duration)
-		auditRetryMaxDelay = saved[4].(time.Duration)
-		auditDirectTimeout = saved[5].(time.Duration)
-	})
+	tunables := []struct {
+		bound *tunableDuration
+		short time.Duration
+	}{
+		{panelBusyWriteBound, 5 * time.Second},
+		{panelBusyWriteFirstDelay, 10 * time.Millisecond},
+		{panelBusyWriteMaxDelay, 50 * time.Millisecond},
+		{auditRetryFirstDelay, 10 * time.Millisecond},
+		{auditRetryMaxDelay, 50 * time.Millisecond},
+		{auditDirectTimeout, 2 * time.Second},
+	}
+	for _, tunable := range tunables {
+		saved := tunable.bound.get()
+		tunable.bound.set(tunable.short)
+		bound := tunable.bound
+		t.Cleanup(func() { bound.set(saved) })
+	}
 }
 
 func auditRowsForTest(t *testing.T, p *Panel, action string) (count int, createdAt string) {
@@ -257,7 +263,7 @@ func TestServiceOperationResultWaitsForAHeldPanelDatabase(t *testing.T) {
 // stayed busy, and the read names the owner's action; nothing is guessed.
 func TestServiceOperationStateWriteStopsAtItsBound(t *testing.T) {
 	shortEvidenceRetriesForTest(t)
-	panelBusyWriteBound = 200 * time.Millisecond
+	panelBusyWriteBound.set(200 * time.Millisecond)
 	p, _, hold, _ := heldLockPanelForTest(t)
 	id := strings.Repeat("d", 32)
 	if _, err := p.db.GetDB().Exec(`INSERT INTO service_operations (id, kind, service_id, status, phase, started_at, created_at, updated_at) VALUES (?, 'service_install', 'nginx', 'running', 'installing', 'x', 'x', 'x')`, id); err != nil {

@@ -126,9 +126,9 @@ func (p *Panel) insertAuditRecord(ctx context.Context, rec auditRecord, replay b
 
 // Bounds of the pending rows. Variables only so tests can make them short.
 var (
-	auditDirectTimeout    = panelBusyAttemptTimeout
-	auditRetryFirstDelay  = time.Second
-	auditRetryMaxDelay    = 30 * time.Second
+	auditDirectTimeout    = newTunableDuration(panelBusyAttemptTimeout)
+	auditRetryFirstDelay  = newTunableDuration(time.Second)
+	auditRetryMaxDelay    = newTunableDuration(30 * time.Second)
 	auditPendingStallTime = 10 * time.Minute
 )
 
@@ -188,7 +188,7 @@ func (p *Panel) recordAudit(rec auditRecord) {
 	cause := errors.New("earlier audit rows are still waiting to be saved")
 	if !waiting {
 		// Rows already waiting keep their order: a new row joins them.
-		ctx, cancel := context.WithTimeout(context.Background(), auditDirectTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), auditDirectTimeout.get())
 		err := p.insertAuditRecord(ctx, rec, false)
 		cancel()
 		if err == nil {
@@ -350,7 +350,7 @@ func (p *Panel) startAuditDrainLocked() {
 // drainPendingAudit writes the pending rows in order until none is left.
 func (p *Panel) drainPendingAudit() {
 	q := &p.auditPending
-	delay := auditRetryFirstDelay
+	delay := auditRetryFirstDelay.get()
 	for {
 		time.Sleep(delay)
 		written, blocked := p.auditDrainPass()
@@ -372,12 +372,12 @@ func (p *Panel) drainPendingAudit() {
 		}
 		q.mu.Unlock()
 		if written > 0 && !blocked {
-			delay = auditRetryFirstDelay
+			delay = auditRetryFirstDelay.get()
 			continue
 		}
 		delay *= 2
-		if delay > auditRetryMaxDelay {
-			delay = auditRetryMaxDelay
+		if maxDelay := auditRetryMaxDelay.get(); delay > maxDelay {
+			delay = maxDelay
 		}
 	}
 }
@@ -393,7 +393,7 @@ func (p *Panel) auditDrainPass() (written int, blocked bool) {
 	done := map[string]bool{}
 	failed := map[string]string{}
 	for _, entry := range snapshot {
-		ctx, cancel := context.WithTimeout(context.Background(), auditDirectTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), auditDirectTimeout.get())
 		err := p.insertAuditRecord(ctx, entry.Record, entry.Replay)
 		busy := err != nil && retryableEvidenceWrite(context.Background(), ctx, err)
 		if err != nil && !busy && panelDatabaseConstraint(err) && (entry.Record.UserID > 0 || entry.Record.ActingAs > 0) {

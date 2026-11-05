@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -78,15 +79,29 @@ func panelBusyNoted(key string) (panelBusyWait, bool) {
 	return value.(panelBusyWait), true
 }
 
+// tunableDuration is a bound that tests may shorten. It is read atomically
+// because a background writer started by an earlier test can still read it
+// while a later test restores it; production never changes it.
+type tunableDuration struct{ ns atomic.Int64 }
+
+func newTunableDuration(d time.Duration) *tunableDuration {
+	t := &tunableDuration{}
+	t.ns.Store(int64(d))
+	return t
+}
+
+func (t *tunableDuration) get() time.Duration  { return time.Duration(t.ns.Load()) }
+func (t *tunableDuration) set(d time.Duration) { t.ns.Store(int64(d)) }
+
 // Bounds of the retried evidence writes. Variables only so tests can make
 // them short; production never changes them.
 var (
 	// panelBusyWriteBound: how long one state write is retried while the
 	// database answers busy (setup's own bound is about ten minutes too).
-	panelBusyWriteBound = 10 * time.Minute
+	panelBusyWriteBound = newTunableDuration(10 * time.Minute)
 	// panelBusyWriteFirstDelay / panelBusyWriteMaxDelay: the backoff.
-	panelBusyWriteFirstDelay = 250 * time.Millisecond
-	panelBusyWriteMaxDelay   = 5 * time.Second
+	panelBusyWriteFirstDelay = newTunableDuration(250 * time.Millisecond)
+	panelBusyWriteMaxDelay   = newTunableDuration(5 * time.Second)
 	// panelBusyAttemptTimeout bounds one attempt. It is longer than the
 	// pool's busy_timeout (5 s), so a held lock answers SQLITE_BUSY instead
 	// of an expired context that would hide the reason.
@@ -118,8 +133,8 @@ func retryableEvidenceWrite(parent, attempt context.Context, err error) bool {
 // the retries either (the bound does); cancelling the caller's context (a
 // lost Agent lease, a stop) does.
 func retryPanelBusyWrite(ctx context.Context, key string, write func(context.Context) error) error {
-	deadline := time.Now().Add(panelBusyWriteBound)
-	delay := panelBusyWriteFirstDelay
+	deadline := time.Now().Add(panelBusyWriteBound.get())
+	delay := panelBusyWriteFirstDelay.get()
 	base := context.WithoutCancel(ctx)
 	for {
 		attempt, cancel := context.WithTimeout(base, panelBusyAttemptTimeout)
@@ -162,8 +177,8 @@ func retryPanelBusyWrite(ctx context.Context, key string, write func(context.Con
 		case <-timer.C:
 		}
 		delay *= 2
-		if delay > panelBusyWriteMaxDelay {
-			delay = panelBusyWriteMaxDelay
+		if maxDelay := panelBusyWriteMaxDelay.get(); delay > maxDelay {
+			delay = maxDelay
 		}
 	}
 }
