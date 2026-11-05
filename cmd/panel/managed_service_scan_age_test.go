@@ -130,6 +130,9 @@ func TestAgentUnreachableNamesOnlyAFailedDial(t *testing.T) {
 	for _, err := range []error{
 		refusedAgentDial(syscall.ECONNREFUSED),
 		refusedAgentDial(syscall.ENOENT),
+		// alpha.124 (Frankfurt): a socket re-created by a hand-started
+		// agent refused the panel; nothing reached the Agent either.
+		refusedAgentDial(syscall.EACCES),
 		fmt.Errorf("verify privileged service mutation admission: %w", refusedAgentDial(syscall.ECONNREFUSED)),
 	} {
 		if !agentUnreachable(err) {
@@ -142,7 +145,6 @@ func TestAgentUnreachableNamesOnlyAFailedDial(t *testing.T) {
 		io.EOF,
 		rpc.ErrShutdown,
 		context.DeadlineExceeded,
-		refusedAgentDial(syscall.EACCES),
 		&net.OpError{Op: "read", Net: "unix", Err: os.NewSyscallError("read", syscall.ECONNRESET)},
 		&net.OpError{Op: "dial", Net: "tcp", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)},
 	} {
@@ -313,4 +315,34 @@ func TestAgentReadsNameUnreachableAgent(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	panel.handleSystemCheck(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/system/check", nil))
 	requireAgentUnreachableAnswer(t, recorder)
+}
+
+// alpha.124 (Frankfurt, 2026-11-05): the domain DNS tab said only "an
+// internal error" for 40 minutes while the panel was refused the Agent's
+// socket. A refused socket and a missing Agent are told apart, each with the
+// owner's one safe action.
+func TestAgentUnreachableTellsARefusedSocketFromAMissingAgent(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		reason string
+		says   string
+	}{
+		{refusedAgentDial(syscall.EACCES), agentUnreachableReasonSocketDenied, "sudo systemctl restart celikpanel-agent"},
+		{refusedAgentDial(syscall.EPERM), agentUnreachableReasonSocketDenied, "sudo systemctl restart celikpanel-agent"},
+		{refusedAgentDial(syscall.ENOENT), agentUnreachableReasonNotRunning, "sudo systemctl start celikpanel-agent"},
+		{refusedAgentDial(syscall.ECONNREFUSED), agentUnreachableReasonNotRunning, "sudo systemctl start celikpanel-agent"},
+	} {
+		recorder := httptest.NewRecorder()
+		writeServerError(recorder, tc.err)
+		var body apiErrorBody
+		if recorder.Code != http.StatusServiceUnavailable || json.Unmarshal(recorder.Body.Bytes(), &body) != nil {
+			t.Fatalf("%v: %d %s", tc.err, recorder.Code, recorder.Body.String())
+		}
+		if body.Code != errCodeAgentUnreachable || body.Reason != tc.reason || !strings.Contains(body.Error, tc.says) || !strings.Contains(body.Error, "nothing was changed") {
+			t.Fatalf("%v: %+v", tc.err, body)
+		}
+		if strings.Contains(body.Error, "permission denied") || strings.Contains(body.Error, "connect:") {
+			t.Fatalf("the raw dial error reached the client: %s", body.Error)
+		}
+	}
 }

@@ -49,6 +49,27 @@ func newPanelHTTPServer(addr string, handler http.Handler) *http.Server {
 	}
 }
 
+// emitPanelVersion answers --version (also -version, version) and nothing
+// else: it prints the version before any flag, database or listener
+// (alpha.124: an unknown --version once started a second full agent).
+func emitPanelVersion(args []string, output io.Writer) bool {
+	if len(args) != 1 || (args[0] != "--version" && args[0] != "-version" && args[0] != "version") {
+		return false
+	}
+	_, _ = fmt.Fprintf(output, "CelikPanel panel %s (commit %s)\n", buildVersion, buildCommit)
+	return true
+}
+
+// panelPositionalArguments refuses words the panel does not take: flags are
+// checked by the flag package (exit 2); a bare word would otherwise be
+// ignored and the full panel would start.
+func panelPositionalArguments(rest []string) error {
+	if len(rest) == 0 {
+		return nil
+	}
+	return fmt.Errorf("unknown argument %q: nothing was started or changed (the panel is started by systemd: sudo systemctl start celikpanel-panel; for the version: panel --version)", rest[0])
+}
+
 func emitPanelBuildIdentity(args []string, output io.Writer) bool {
 	if len(args) != 1 || args[0] != "--inspect-build-identity" {
 		return false
@@ -728,6 +749,9 @@ func main() {
 	if emitPanelBuildIdentity(os.Args[1:], os.Stdout) {
 		return
 	}
+	if emitPanelVersion(os.Args[1:], os.Stdout) {
+		return
+	}
 	// The updater's read-only startup readiness proof is a closed one-argument
 	// mode. It exits before flag parsing, migrations, the listener and Agent.
 	// Güncelleyicinin salt-okur açılış hazırlık kanıtı kapalı, tek bağımsız
@@ -771,6 +795,11 @@ func main() {
 		log.Fatalf("Invalid control-plane key file argument: %v", err)
 	}
 	flag.Parse()
+	if err := panelPositionalArguments(flag.Args()); err != nil {
+		fmt.Fprintf(os.Stderr, "panel: %v\n", err)
+		flag.Usage()
+		os.Exit(2)
+	}
 	if err := validateAdminCredentialsFileFlags(
 		*createAdmin,
 		adminCredentialsFileFlag,

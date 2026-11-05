@@ -14,6 +14,11 @@ import (
 // Native root or authorized sudo remains the recovery principal. The optional
 // owner view is loopback-only, temporary and read-only; it cannot dispatch work.
 func runEntry(args []string) int {
+	// alpha.124: --version is the same as "version" (an unknown --version
+	// once started a second full agent on a real server).
+	if len(args) == 1 && (args[0] == "--version" || args[0] == "-version") {
+		args = []string{"version"}
+	}
 	if len(args) > 0 && args[0] == "dns-switch-status" {
 		return runDNSSwitchStatus(args, os.Geteuid(), os.Stdout, os.Stderr)
 	}

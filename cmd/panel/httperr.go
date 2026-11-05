@@ -542,7 +542,37 @@ func agentUnreachable(err error) bool {
 	if err == nil || !errors.As(err, &opErr) || opErr.Op != "dial" || opErr.Net != "unix" {
 		return false
 	}
-	return errors.Is(opErr.Err, syscall.ECONNREFUSED) || errors.Is(opErr.Err, syscall.ENOENT)
+	return errors.Is(opErr.Err, syscall.ECONNREFUSED) || errors.Is(opErr.Err, syscall.ENOENT) ||
+		errors.Is(opErr.Err, syscall.EACCES) || errors.Is(opErr.Err, syscall.EPERM)
+}
+
+// Reasons of AGENT_UNREACHABLE (alpha.124, Frankfurt 2026-11-05). A second
+// agent started by hand re-created /run/celikpanel/agent.sock as
+// root:root 0660, so the panel's dial was refused (EACCES) for 40 minutes
+// while the domain DNS tab said only "an internal error". The two causes need
+// different words: the agent may be running fine behind a socket the panel
+// may no longer open.
+const (
+	agentUnreachableReasonSocketDenied = "socket_denied"
+	agentUnreachableReasonNotRunning   = "not_running"
+)
+
+// agentSocketDeniedMessage: reason, nothing changed, who acts, the one safe
+// action, how it resumes (D-024).
+const agentSocketDeniedMessage = "The panel is not allowed to open the CelikPanel Agent's connection " +
+	"(/run/celikpanel/agent.sock), so this request was not carried out and nothing was changed. " +
+	"This happens when the connection's permissions were changed, for example by an agent started by hand " +
+	"outside systemd. The server owner runs sudo systemctl restart celikpanel-agent on the server: " +
+	"it restarts only the Agent and gives the connection back its normal permissions; websites, mail and DNS keep running. " +
+	"Then try again."
+
+// agentUnreachableReason tells a refused socket from a missing agent.
+func agentUnreachableReason(err error) string {
+	var opErr *net.OpError
+	if errors.As(err, &opErr) && (errors.Is(opErr.Err, syscall.EACCES) || errors.Is(opErr.Err, syscall.EPERM)) {
+		return agentUnreachableReasonSocketDenied
+	}
+	return agentUnreachableReasonNotRunning
 }
 
 // agentUnreachableAlone is agentUnreachable for the shared error writer: the
@@ -588,7 +618,14 @@ func agentUnreachableAlone(err error) bool {
 // writeAgentUnreachable nedeni günlüğe yazar ve 503 AGENT_UNREACHABLE döner.
 func writeAgentUnreachable(w http.ResponseWriter, err error) {
 	log.Printf("[%d] %v", http.StatusServiceUnavailable, err)
-	writeCodedError(w, http.StatusServiceUnavailable, errCodeAgentUnreachable, agentUnreachableMessage, "")
+	reason := agentUnreachableReason(err)
+	message := agentUnreachableMessage
+	if reason == agentUnreachableReasonSocketDenied {
+		message = agentSocketDeniedMessage
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: message, Code: errCodeAgentUnreachable, Reason: reason})
 }
 
 // writeCodedError is the single writer of the contract. action, when
