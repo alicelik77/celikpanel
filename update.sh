@@ -2482,12 +2482,24 @@ read_database_migration_policy() {
     fi
 }
 
+# The checker's own reason becomes the failure detail (D-024): alpha.124 on
+# Boston reported this refusal with an empty detail, so the owner saw no cause.
+# Its output still reaches the worker log unchanged.
+# Denetleyicinin kendi nedeni hata ayrıntısı olur; çıktı işçi günlüğünde kalır.
 verify_database_publication_if_required() {
-    local snapshot=$1 policy
+    local snapshot=$1 policy output status=0 line
     policy=$(read_database_migration_policy "$snapshot") || return 1
     [[ $policy == required ]] || return 0
-    run_database_recovery_command verify-update-database --snapshot "$snapshot" \
-        || die "database publication is unverified; preserve the same operation and database evidence"
+    output=$(run_database_recovery_command verify-update-database --snapshot "$snapshot" 2>&1) || status=$?
+    [[ -z $output ]] || printf '%s\n' "$output" >&2
+    [[ $status -ne 0 ]] || return 0
+    line=$(printf '%s\n' "$output" | tr -d '\000-\010\013-\037\177' \
+        | grep -E '^Recovery database check: ' | tail -n 1 || true)
+    line=${line#Recovery database check: }
+    [[ -n $line ]] || line=$(printf '%s\n' "$output" | tr -d '\000-\010\013-\037\177' \
+        | sed '/^[[:space:]]*$/d' | tail -n 1 || true)
+    update_failure_detail="the read-only database check (exit status $status) reported: ${line:-no reason; the update worker log has its output}"
+    die "database publication is unverified; preserve the same operation and database evidence"
 }
 
 run_panel_migrations_offline() {

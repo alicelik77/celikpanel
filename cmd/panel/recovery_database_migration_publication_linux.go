@@ -818,10 +818,15 @@ func verifyRecoveryDatabaseMigrationWith(snapshot string, c recoveryDatabaseMigr
 		if !databaseMigrationStableFile(current, want) {
 			return fmt.Errorf("running database identity or owner changed")
 		}
+		// The panel is running here and owns its database: a commit or
+		// checkpoint during the private copy is re-read, never a verdict.
+		// Panel burada çalışıyor; kopya sırasında yazım yeniden okunur.
 		if v.id.Operation == "update" {
-			e = checkCompletedUpdateDatabaseWALAware(filepath.Join(c.parent, databaseMigrationDB))
+			e = settleRunningPanelDatabaseReads(func() error {
+				return checkCompletedUpdateDatabaseWALAware(filepath.Join(c.parent, databaseMigrationDB))
+			})
 		} else {
-			e = v.historicalSchema()
+			e = settleRunningPanelDatabaseReads(v.historicalSchema)
 		}
 		if e != nil {
 			return e
