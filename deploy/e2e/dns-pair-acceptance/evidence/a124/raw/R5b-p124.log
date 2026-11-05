@@ -1,0 +1,48 @@
+== 5b.0 before 12:51:31
+  -- before
+200 []
+200 {"covered_since": "2026-11-05T12:46:06Z", "others": [], "sites": [], "state": "none", "window_days": 30}
+200 {"version": "8.0.2"}
+200 {"distribution": "debian", "installs": [], "notable": [], "refusals": [], "removes": [], "requested": [], "state": "known"}
+409 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+409 {"action": "/dns-infrastructure", "code": "DNS_PEER_CATCHING_UP", "error": "Nothing was changed: the backup DNS server has not yet confirmed this server's current zone list, so CelikPanel does not publish another change yet. It usually catches up within a minute of the previous change; try again then. If this keeps happening, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53 (Server \u2192 DNS and peer servers shows the pair state
+== 5b.1 the Agent stopped (lab load) 12:52:16
+inactive
+  -- stopped
+503 {"code": "AGENT_UNREACHABLE", "error": "The CelikPanel Agent on this server is not running, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and starts it with sudo systemctl restart celikpanel-agent (only the Agent restarts; websites, mail and DNS keep running). Once the Agent is running, try again.", "reason": "not_running"}
+503 {"code": "AGENT_UNREACHABLE", "error": "The CelikPanel Agent on this server is not running, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and starts it with sudo systemctl restart celikpanel-agent (only the Agent restarts; websites, mail and DNS keep running). Once the Agent is running, try again.", "reason": "not_running"}
+503 {"code": "AGENT_UNREACHABLE", "error": "The CelikPanel Agent on this server is not running, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and starts it with sudo systemctl restart celikpanel-agent (only the Agent restarts; websites, mail and DNS keep running). Once the Agent is running, try again.", "reason": "not_running"}
+200 {"distribution": "debian", "installs": [], "notable": [], "reason": "the server agent did not answer", "reason_code": "agent_unreachable", "refusals": [], "removes": [], "requested": [], "state": "unknown"}
+502 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+503 {"code": "AGENT_UNREACHABLE", "error": "The CelikPanel Agent on this server is not running, so this request was not carried out and nothing was changed. The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent (its log: sudo journalctl -u celikpanel-agent) and starts it with sudo systemctl restart celikpanel-agent (only the Agent restarts; websites, mail and DNS keep running). Once the Agent is running, try again.", "reason": "not_running"}
+== 5b.2 the Agent started, its socket made root:root (lab load) 12:52:18
+srw-rw---- root:root /run/celikpanel/agent.sock
+  -- denied
+503 {"code": "AGENT_UNREACHABLE", "error": "The panel is not allowed to open the CelikPanel Agent's connection (/run/celikpanel/agent.sock), so this request was not carried out and nothing was changed. This happens when the connection's permissions were changed, for example by an agent started by hand outside systemd. The server owner runs sudo systemctl restart celikpanel-agent on the server: it restarts only the Agent and gives the connection back its normal permissions; websites, mail and DNS kee
+503 {"code": "AGENT_UNREACHABLE", "error": "The panel is not allowed to open the CelikPanel Agent's connection (/run/celikpanel/agent.sock), so this request was not carried out and nothing was changed. This happens when the connection's permissions were changed, for example by an agent started by hand outside systemd. The server owner runs sudo systemctl restart celikpanel-agent on the server: it restarts only the Agent and gives the connection back its normal permissions; websites, mail and DNS kee
+503 {"code": "AGENT_UNREACHABLE", "error": "The panel is not allowed to open the CelikPanel Agent's connection (/run/celikpanel/agent.sock), so this request was not carried out and nothing was changed. This happens when the connection's permissions were changed, for example by an agent started by hand outside systemd. The server owner runs sudo systemctl restart celikpanel-agent on the server: it restarts only the Agent and gives the connection back its normal permissions; websites, mail and DNS kee
+200 {"distribution": "debian", "installs": [], "notable": [], "reason": "the server agent did not answer", "reason_code": "agent_unreachable", "refusals": [], "removes": [], "requested": [], "state": "unknown"}
+502 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+503 {"code": "AGENT_UNREACHABLE", "error": "The panel is not allowed to open the CelikPanel Agent's connection (/run/celikpanel/agent.sock), so this request was not carried out and nothing was changed. This happens when the connection's permissions were changed, for example by an agent started by hand outside systemd. The server owner runs sudo systemctl restart celikpanel-agent on the server: it restarts only the Agent and gives the connection back its normal permissions; websites, mail and DNS kee
+== 5b.3 the owner runs sudo systemctl restart celikpanel-agent 12:52:29
+active
+srw-rw---- root:celikpanel /run/celikpanel/agent.sock
+  -- after
+200 []
+200 {"covered_since": "2026-11-05T12:46:06Z", "others": [], "sites": [], "state": "none", "window_days": 30}
+200 {"version": "8.0.2"}
+200 {"distribution": "debian", "installs": [], "notable": [], "refusals": [], "removes": [], "requested": [], "state": "known"}
+409 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+409 {"action": "/dns-infrastructure", "code": "DNS_PEER_CATCHING_UP", "error": "Nothing was changed: the backup DNS server has not yet confirmed this server's current zone list, so CelikPanel does not publish another change yet. It usually catches up within a minute of the previous change; try again then. If this keeps happening, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53 (Server \u2192 DNS and peer servers shows the pair state
+2026/11/05 12:48:46 [500] constraint failed: UNIQUE constraint failed: email_accounts.address (2067)
+2026/11/05 12:51:14 [500] invalid PHP version ""
+2026/11/05 12:51:31 [500] invalid PHP version ""
+2026/11/05 12:52:17 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026/11/05 12:52:17 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026/11/05 12:52:17 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026/11/05 12:52:18 [503] read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026/11/05 12:52:27 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026/11/05 12:52:27 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026/11/05 12:52:28 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026/11/05 12:52:28 [503] read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+== R5b done 12:53:26

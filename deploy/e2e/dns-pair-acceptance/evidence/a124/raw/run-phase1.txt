@@ -1,0 +1,33 @@
+start 12:05:28
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 12:06:26
+labnet-tools-ok
+build done 12:10:17
+commit d7b5f1ab579985fecbad0ccdc1682760003c810f
+bundle budget check passed
+EXIT 0
+  "version": "v0.1.0-alpha.123"
+  "commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f",
+  "sha256": "a9d9f3aaa17f5cd8030d48b048475fa7325cdf6f1af33e74e24e8c354e13c96d",
+  "version": "v0.1.0-alpha.123"
+commit dd6f657527a847db70b1b89d6c0419ae092bd9fb
+bundle budget check passed
+EXIT 0
+  "version": "v0.1.0-alpha.124"
+  "commit": "dd6f657527a847db70b1b89d6c0419ae092bd9fb",
+  "sha256": "4f2c60ae289ec778541a124bd1360fe91d17d94bba5dec2405a354d87afdb5fa",
+  "version": "v0.1.0-alpha.124"
+portal123 exit 0
+sequence=123
+version=v0.1.0-alpha.123
+commit=d7b5f1ab579985fecbad0ccdc1682760003c810f
+portal124 exit 0
+sequence=124
+version=v0.1.0-alpha.124
+commit=dd6f657527a847db70b1b89d6c0419ae092bd9fb
+phase1 done 12:10:20

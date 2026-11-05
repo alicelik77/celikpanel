@@ -1,0 +1,25 @@
+== 7.2b the site p124.test sends to outside@example.net 12:53:26
+--- 1. PHP mail() as the site user p124_test (php-cli; FPM uses the same sendmail_path)
+  bool(true)
+--- 2. SMTP to 127.0.0.1:25 without a password, to another server
+  250 accepted
+queue: 0
+postconf: static:anyone;permit_mynetworks permit_sasl_authenticated defer_unauth_destination;
+2026-11-05T12:53:27+00:00 host1.p124.test postfix/pickup[55693]: 4473E22D3B: uid=5001 from=<p124_test>
+2026-11-05T12:53:27+00:00 host1.p124.test postfix/smtpd[74412]: 6308F22D47: client=localhost[127.0.0.1]
+2026-11-05T12:53:27+00:00 host1.p124.test postfix/qmgr[55694]: 6308F22D47: from=<contact@p124.test>, size=399, nrcpt=1 (queue active)
+2026-11-05T12:53:27+00:00 host1.p124.test postfix/smtp[74416]: 6308F22D47: to=<outside@example.net>, relay=none, delay=0.38, delays=0.27/0.05/0.06/0, dsn=5.1.0, status=bounced (Domain example.net does not accept mail (nullMX))
+2026-11-05T12:53:27+00:00 host1.p124.test postfix/smtp[74417]: 4473E22D3B: to=<outside@example.net>, relay=none, delay=0.51, delays=0.4/0.07/0.03/0, dsn=5.1.0, status=bounced (Domain example.net does not accept mail (nullMX))
+== 7.3b the Postfix page's 30-day list 12:53:43
+  report 200 state found reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+    site {"domain": "p124.test", "domain_id": 1, "last": "2026-11-05T12:53:27Z", "messages": 2, "refused": 0, "sender_mailbox": "noreply@p124.test", "ways": ["sendmail", "smtp"]}
+== 7.5b authenticated submission 587 with noreply@p124.test to another server 12:53:44
+ starttls 220
+ auth 235
+ send 250 accepted
+2026-11-05T12:53:44+00:00 host1.p124.test postfix/submission/smtpd[74500]: 7A87921345: client=localhost[127.0.0.1], sasl_method=PLAIN, sasl_username=noreply@p124.test
+  report 200 state found reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+    site {"domain": "p124.test", "domain_id": 1, "last": "2026-11-05T12:53:27Z", "messages": 2, "refused": 0, "sender_mailbox": "noreply@p124.test", "ways": ["sendmail", "smtp"]}
+static:anyone;permit_mynetworks permit_sasl_authenticated defer_unauth_destination;
+0
+== R7b done 12:54:01

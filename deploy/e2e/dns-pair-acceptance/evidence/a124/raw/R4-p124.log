@@ -1,0 +1,57 @@
+== 4.0 audit rows before 12:44:36
+audit rows 42
+   (42, 'service.uninstall.failed:php-fpm:php8.3-fpm — phpMyAdmin run on PHP 8.3; move them to another PHP version first or keep this version; nothing was changed', '2026-11-05 12:44:32')
+   (41, 'auth.login', '2026-11-05 12:44:16')
+   (40, 'user.create:cust3/customer', '2026-11-05 12:44:14')
+   (39, 'service.install:phpmyadmin', '2026-11-05 12:44:08')
+   (38, 'service.install:php-fpm', '2026-11-05 12:42:51')
+ls: cannot access '/var/lib/celikpanel/audit-pending.json': No such file or directory
+  comp {"id": "redis", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  plan 200 target redis together [] blocked False
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['liblzf1', 'redis-tools', 'redis-server']
+  body {"service_id": "redis", "check_installs": true, "confirmed_installs": [], "request_id": "493660c0bae559d3630ff4c76283aff6"}
+== 4.1 start the install, hold the lock 30 s two seconds in 12:44:43
+202 {"operation": {"id": "37ae2a75126eddb5f7d1cb681a306296", "kind": "service_install", "phase": "queued", "request_id": "493660c0bae559d3630ff4c76283aff6", "service_id": "redis", "started_at": "2026-11-05T12:44:43.343873306Z", "status": "queued"}}
+panel user=celikpanel db=/var/lib/celikpanel/celikpanel.db journal_mode=wal
+Running as unit: lab-dbhold.service; invocation ID: f68ee963500d404386db95321386e408
+active
+Started lab-dbhold.service - [systemd-run] /usr/bin/python3 -c "import sqlite3,time,sys; c=sqlite3.connect(sys.argv[1], isolation_level=None, timeout=30); c.execute('BEGIN IMMEDIATE'); print('lock held', time.strftime('%T'), flush=True); time.sleep(int(sys.argv[2])); c.execute('ROLLBACK'); print('lock released', time.strftime('%T'), flush=True)" /var/lib/celikpanel/celikpanel.db 30.
+lock held 12:44:45
+  12:44:47  read 200 {"id": "37ae2a75126eddb5f7d1cb681a306296", "kind": "service_install", "service_id": "redis", "package_name": null, "status": "running", "phase": "installing", "request_id": "493660c0bae559d3630ff4c76283aff6", "result": null, "error": null}
+  12:44:57  read 200 {"id": "37ae2a75126eddb5f7d1cb681a306296", "kind": "service_install", "service_id": "redis", "package_name": null, "status": "running", "phase": "panel_busy", "request_id": "493660c0bae559d3630ff4c76283aff6", "result": null, "error": null}
+  -- audit page while held
+   200 {}
+     service.uninstall.failed:php-fpm:php8.3-fpm — phpMyAdmin run on PHP 8.3; move them to another PHP version first or keep this version; nothing was changed 2026-11-05 12:44:32 
+ls: cannot access '/var/lib/celikpanel/audit-pending.json': No such file or directory
+  12:45:17  read 200 {"id": "37ae2a75126eddb5f7d1cb681a306296", "kind": "service_install", "service_id": "redis", "package_name": null, "status": "running", "phase": "scanning", "request_id": "493660c0bae559d3630ff4c76283aff6", "result": null, "error": null}
+  12:45:19  read 200 {"id": "37ae2a75126eddb5f7d1cb681a306296", "kind": "service_install", "service_id": "redis", "package_name": null, "status": "succeeded", "phase": "completed", "request_id": "493660c0bae559d3630ff4c76283aff6", "result": {"installed": true, "success": true}, "error": null}
+  12:45:19  read 200 {"id": "37ae2a75126eddb5f7d1cb681a306296", "kind": "service_install", "service_id": "redis", "package_name": null, "status": "succeeded", "phase": "completed", "request_id": "493660c0bae559d3630ff4c76283aff6", "result": {"installed": true, "success": true}, "error": null}
+lock held 12:44:45
+lock released 12:45:15
+lab-dbhold.service: Deactivated successfully.
+== 4.2 audit rows after (drain allowed 40 s) 12:45:20
+audit rows 43
+   (43, 'service.install:redis', '2026-11-05 12:45:18')
+   (42, 'service.uninstall.failed:php-fpm:php8.3-fpm — phpMyAdmin run on PHP 8.3; move them to another PHP version first or keep this version; nothing was changed', '2026-11-05 12:44:32')
+   (41, 'auth.login', '2026-11-05 12:44:16')
+   (40, 'user.create:cust3/customer', '2026-11-05 12:44:14')
+   (39, 'service.install:phpmyadmin', '2026-11-05 12:44:08')
+   (38, 'service.install:php-fpm', '2026-11-05 12:42:51')
+   (37, 'repo.lane:sury — repository,confinement,updates', '2026-11-05 12:41:41')
+   (36, 'service.install.together.recovered:phppgadmin:postgresql', '2026-11-05 12:41:14')
+ls: cannot access '/var/lib/celikpanel/audit-pending.json': No such file or directory
+   200 {}
+     service.install:redis 2026-11-05 12:45:18 {'component': 'redis', 'operation': 'service_install'}
+     service.uninstall.failed:php-fpm:php8.3-fpm — phpMyAdmin run on PHP 8.3; move them to another PHP version first or keep this version; nothing was changed 2026-11-05 12:44:32 
+     auth.login 2026-11-05 12:44:16 
+     user.create:cust3/customer 2026-11-05 12:44:14 {'rights': 'unlimited'}
+     service.install:phpmyadmin 2026-11-05 12:44:08 {'component': 'phpmyadmin', 'operation': 'service_install', 'php_version': '8.3'}
+     service.install:php-fpm 2026-11-05 12:42:51 {'component': 'php-fpm', 'confirmed_installs': ['php-common'], 'operation': 'service_install', 'package': 'php8.3-fpm', 'support': 'supported', 'support_until':
+     repo.lane:sury — repository,confinement,updates 2026-11-05 12:41:41 {'code': '', 'completed': ['repository', 'confinement', 'updates'], 'confirmed_sha256': 'd7bfc286577520f5e620fdd69fc6d23936f5c4536e1ac5921c9ad511b98f7112', 'eff
+     service.install.together.recovered:phppgadmin:postgresql 2026-11-05 12:41:14 {'component': 'phppgadmin', 'operation': 'service_install_together', 'package': 'postgresql'}
+2026/11/05 12:43:49 [panel-update] automatic update check skipped (server_busy); next try in 1 hour
+2026/11/05 12:44:14 [audit] user 2 (admin) created user 4 (cust3, role=customer)
+2026/11/05 12:45:06 metrics sample: database is locked (5) (SQLITE_BUSY)
+  comp {"id": "redis", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== R4 done 12:46:05

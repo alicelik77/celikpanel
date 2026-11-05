@@ -1,0 +1,105 @@
+== provision 12:48:54 debian13 192.0.3.196 zone=u123b.test version=v0.1.0-alpha.123 host=host1.u123b.test
+NAME=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 25.3
+}
+
+== the owner's machine name (lab load: hostnamectl + /etc/hosts) 12:49:19
+host1.u123b.test
+host1.u123b.test
+v0.1.0-alpha.124
+== install through get.sh in a root terminal 12:49:23
+main terminal rc 0 65.2 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.196:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.124
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+CELIKPANEL_LISTEN=:1923
+host1.u123b.test
+
+host {'distro_id': 'debian', 'version_id': '13'} inventory ready
+  dns_engine {"candidate_version": "9.20.30", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.20.30", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.9.18", "id": "pdns", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "4.9.18", "id": "pdns", "offered": true, "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+== case 2: the setup DNS plan names the machine host1.u123b.test 12:50:44
+  host-record hits for host1.u123b.test 0
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u123b.test', '06-access_dns:boston.u123b.test', '07-panel_certificate:boston.u123b.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.u123b.test', '13-mail_certificate:mail.u123b.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:u123b.test', '17-mail_enrollment:mail-renewal', '18-main_site:u123b.test', '19-verify:custom'] 
+== start 12:50:52 (try 1)
+start 202 {
+ "id": "2bd2ca7c6a6fc06edfe614237ef0267e",
+ "panel_url": "https://boston.u123b.test:1923/",
+ "phase": "queued",
+ "plan_id": "a00c182f0c06939f17bb006c57941ee8",
+ "request_id": "2bd2ca7c6a6fc06edfe614237ef0267e",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "07898226b0a3f1a0137aba9fc2228908",
+   "request_id": "b19653e9193c2321bd33cc8a78425046",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "a6d27c96f2a7f2b7c08f9dab5decd669",
+   "request_id": "eb4a7b98b13eaf9e1e30c77dc41ade39",
+   "s
+  host-record hits for host1.u123b.test 0
+-- u123b/main 12:51:01
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:51:42
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:52:02
+running 03-service null
+01-dns=succeeded 02-service=succeeded 03-service=running 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:52:22
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:53:43
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:54:24
+running 11-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=running 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:54:45
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=running 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:57:07
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=running 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- u123b/main 12:58:49
+running 17-mail_enrollment null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=running 18-main_site=pending 19-verify=pending
+-- u123b/main 12:59:10
+running 18-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=running 19-verify=pending
+-- u123b/main 12:59:30
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+== end 12:59:30
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+== case 2: the setup operation's infrastructure DNS records name the machine
+  host-record hits for host1.u123b.test 0
+== case 2: host1.u123b.test resolves after setup (labnet dig @192.0.3.196) 12:59:30
+  A host1.u123b.test: 
+  SOA host1.u123b.test: 
+  A boston.u123b.test: 192.0.3.196  A mail.u123b.test: 192.0.3.196
+== single done 12:59:31

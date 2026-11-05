@@ -1,0 +1,51 @@
+== 7.0 the main site p124.test (new domains wait for the stopped backup DNS server) and a mailbox to receive 12:46:05
+p124.test id=1
+200 {"id": 1, "success": true}
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    b=json.loads(json.load(open(sys.argv[1]))["body"])
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+docroot from API: 
+docroot: 
+== 7.1 report before 12:46:06
+  report 200 state none reason None window_days 30 covered_since None
+== 7.2 the site sends with PHP mail() and with SMTP to localhost:25 without a password 12:46:06
+stat: cannot statx 'inbox7@p124.test': No such file or directory
+docroot inbox7@p124.test owner 
+/root/g_mail7.sh: line 4: inbox7@p124.test/a124-mail.php: No such file or directory
+chown: cannot access 'inbox7@p124.test/a124-mail.php': No such file or directory
+--- 1. PHP mail() from the site (FPM as )
+<html>
+<head><title>301 Moved Permanently</title></head>
+<body>
+<center><h1>301 Moved Permanently</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+--- 2. SMTP to 127.0.0.1:25 without a password
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+    print(" ", s.sendmail("contact@" + d, [to], msg) or "250 accepted"); s.quit()
+               ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/smtplib.py", line 890, in sendmail
+    raise SMTPRecipientsRefused(senderrs)
+smtplib.SMTPRecipientsRefused: {'': (501, b'5.1.3 Bad recipient address syntax')}
+queue: 0
+postconf: static:anyone;permit_mynetworks permit_sasl_authenticated defer_unauth_destination;127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128;
+== 7.3 the Postfix page's 30-day list 12:46:17
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a124lab/kit/R7.sh: line 42: script file read error: No data available

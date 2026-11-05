@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "u24",
+  "node": "main",
+  "os": "ubuntu2404",
+  "ip": "192.0.3.195",
+  "hostname": "boston",
+  "uuid": "a0489cba-d3ce-596c-be2c-615f323bfb5e",
+  "tap": "cpt8f73e551",
+  "mac": "52:54:00:96:00:b4",
+  "image": "ubuntu-24.04-server-cloudimg-amd64-20260826.img",
+  "image_digest": {
+   "sha256": "d0fe84bb5f80853425fa6be28e2c106f30104c3cfe8611933f2e65c9b63f0e30"
+  },
+  "memory_mb": 3072,
+  "cpus": 2,
+  "started_at": "2026-11-05T12:53:07Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "2793b1cd-2e79-4483-81a1-1846c7e43ab4",
+  "waited_seconds": 29.9
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.195 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.195 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 32.8
+}

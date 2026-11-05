@@ -1,0 +1,143 @@
+{
+ "public_records": {
+  "domain": "p124.test",
+  "extras": [],
+  "records": [
+   {
+    "name": "p124.test",
+    "type": "A",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "p124.test",
+    "type": "AAAA",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "p124.test",
+    "type": "MX",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "p124.test",
+    "type": "TXT",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "p124.test",
+    "type": "CAA",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "www.p124.test",
+    "type": "CNAME",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "www.p124.test",
+    "type": "A",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "www.p124.test",
+    "type": "AAAA",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "mail.p124.test",
+    "type": "CNAME",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "mail.p124.test",
+    "type": "A",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "mail.p124.test",
+    "type": "AAAA",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "webmail.p124.test",
+    "type": "CNAME",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "webmail.p124.test",
+    "type": "A",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "webmail.p124.test",
+    "type": "AAAA",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "autodiscover.p124.test",
+    "type": "CNAME",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "autodiscover.p124.test",
+    "type": "A",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "autodiscover.p124.test",
+    "type": "AAAA",
+    "values": [],
+    "state": "unknown"
+   },
+   {
+    "name": "_dmarc.p124.test",
+    "type": "TXT",
+    "values": [],
+    "state": "unknown"
+   }
+  ],
+  "checked_at": "2026-11-05T12:15:47Z",
+  "next_check_after": 60,
+  "delegation": {
+   "state": "here",
+   "nameservers": [
+    {
+     "name": "ns1.p124.test",
+     "addresses": [
+      "192.0.3.190"
+     ],
+     "server": "this"
+    },
+    {
+     "name": "ns2.p124.test",
+     "addresses": [
+      "192.0.3.191"
+     ],
+     "server": "peer"
+    }
+   ]
+  }
+ },
+ "imported_records": [],
+ "save": {
+  "status": 200,
+  "elapsed": 0.025,
+  "body": "{\n \"checks\": [],\n \"draft\": {\n  \"customization\": {\n   \"components\": [\n    \"dovecot\",\n    \"mariadb\",\n    \"nginx\",\n    \"php-fpm\",\n    \"postfix\",\n    \"roundcube\",\n    \"rspamd\"\n   ]\n  },\n  \"database\": \"mariadb\",\n  \"dns_engine\": \"pdns\",\n  \"dns_mode\": \"local\",\n  \"dns_role\": \"primary\",\n  \"host_name\": \"host1.p124.test\",\n  \"infrastructure_dns\": {\n   \"zone\": \"p124.test\"\n  },\n  \"local_ip\": \"192.0.3.190\",\n  \"mail_hostname\": \"mail.p124.test\",\n  \"main_dns_server\": \"this\",\n  \"main_domain\": \"p124.test\",\n  \"main_site\": \"here\",\n  \"node_version\": \"\",\n  \"ns1\": \"ns1.p124.test\",\n  \"ns2\": \"ns2.p124.test\",\n  \"panel_domain\": \"frankfurt.p124.test\",\n  \"peer_ip\": \"\",\n  \"peer_ns\": \"ns2.p124.test\",\n  \"purpose\": \"custom\",\n  \"remote_dns_connection_id\": \"\",\n  \"server_count\": 2,\n  \"short_name\": \"frankfurt\"\n },\n \"guidance\": \"guided\",\n \"origin\": \"fresh\",\n \"required\": true,\n \"revision\": 8,\n \"status\": \"draft\",\n \"version\": 1\n}"
+ }
+}

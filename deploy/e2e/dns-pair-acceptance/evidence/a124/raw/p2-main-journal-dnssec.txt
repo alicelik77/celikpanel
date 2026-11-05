@@ -1,0 +1,4 @@
+2026-11-05T13:26:37+00:00 host1.p2.test useradd[30432]: new group: name=sec2_test, GID=1003
+2026-11-05T13:26:37+00:00 host1.p2.test useradd[30432]: new user: name=sec2_test, UID=1003, GID=1003, home=/var/www/celikpanel/subscriptions/3/sites/2, shell=/usr/sbin/nologin, from=none
+2026-11-05T13:26:37+00:00 host1.p2.test useradd[30432]: add 'sec2_test' to group 'celikpanel-site'
+2026-11-05T13:26:37+00:00 host1.p2.test useradd[30432]: add 'sec2_test' to shadow group 'celikpanel-site'

@@ -1,0 +1,31 @@
+== 5.0 before 12:39:16
+  -- before
+409 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+200 {"records": [{"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 24, "name": "mail.sec124.test", "ttl": 3600, "type": "A"}, {"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 23, "name": "sec124.test", "ttl": 3600, "type": "A"}, {"content": "sec124.test", "disabled": false, "domain_id": 2, "id": 20, "name": "www.sec124.test", "ttl": 3600, "type": "CNAME"}, {"content": "mail.sec124.test", "disabled": false, "domain_id": 2, "id": 19, "name": "sec124.test", "prio": 
+200 {"plan": {"blocked": false, "requires": [], "target": "redis", "together": []}}
+200 {"bundles": [{"action": "none", "action_route": "mail_profile", "addons": ["mail.protected"], "blocked_code": "dns_identity_not_ready", "category": "email", "components": ["postfix", "dovecot"], "id": "mail.core", "latest_attempt_status": "none", "missing_components": [], "name_code": "mail_core", "
+== 5.1 the Agent stopped (lab load: systemctl stop celikpanel-agent) 12:39:37
+inactive
+srw-rw----  1 root celikpanel   0 Nov  5 12:15 agent.sock
+  -- stopped
+502 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+200 {"records": [{"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 24, "name": "mail.sec124.test", "ttl": 3600, "type": "A"}, {"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 23, "name": "sec124.test", "ttl": 3600, "type": "A"}, {"content": "sec124.test", "disabled": false, "domain_id": 2, "id": 20, "name": "www.sec124.test", "ttl": 3600, "type": "CNAME"}, {"content": "mail.sec124.test", "disabled": false, "domain_id": 2, "id": 19, "name": "sec124.test", "prio": 
+200 {"plan": {"blocked": false, "requires": [], "target": "redis", "together": []}}
+200 {"bundles": [{"action": "none", "action_route": "mail_profile", "addons": ["mail.protected"], "blocked_code": "dns_identity_not_ready", "category": "email", "components": ["postfix", "dovecot"], "id": "mail.core", "latest_attempt_status": "none", "missing_components": [], "name_code": "mail_core", "
+== 5.2 the Agent started, then its socket made root:root (as a hand-started second Agent used to) 12:39:38
+srw-rw---- root:celikpanel /run/celikpanel/agent.sock
+srw-rw---- root:root /run/celikpanel/agent.sock
+  -- denied
+502 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+200 {"records": [{"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 24, "name": "mail.sec124.test", "ttl": 3600, "type": "A"}, {"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 23, "name": "sec124.test", "ttl": 3600, "type": "A"}, {"content": "sec124.test", "disabled": false, "domain_id": 2, "id": 20, "name": "www.sec124.test", "ttl": 3600, "type": "CNAME"}, {"content": "mail.sec124.test", "disabled": false, "domain_id": 2, "id": 19, "name": "sec124.test", "prio": 
+200 {"plan": {"blocked": false, "requires": [], "target": "redis", "together": []}}
+200 {"bundles": [{"action": "none", "action_route": "mail_profile", "addons": ["mail.protected"], "blocked_code": "dns_identity_not_ready", "category": "email", "components": ["postfix", "dovecot"], "id": "mail.core", "latest_attempt_status": "none", "missing_components": [], "name_code": "mail_core", "
+== 5.3 the owner runs sudo systemctl restart celikpanel-agent 12:39:47
+active
+srw-rw---- root:celikpanel /run/celikpanel/agent.sock
+  -- after
+409 {"action": "/dns-infrastructure", "code": "DNSSEC_STATUS_UNAVAILABLE", "error": "DNSSEC status could not be verified"}
+200 {"records": [{"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 24, "name": "mail.sec124.test", "ttl": 3600, "type": "A"}, {"content": "192.0.3.190", "disabled": false, "domain_id": 2, "id": 23, "name": "sec124.test", "ttl": 3600, "type": "A"}, {"content": "sec124.test", "disabled": false, "domain_id": 2, "id": 20, "name": "www.sec124.test", "ttl": 3600, "type": "CNAME"}, {"content": "mail.sec124.test", "disabled": false, "domain_id": 2, "id": 19, "name": "sec124.test", "prio": 
+200 {"plan": {"blocked": false, "requires": [], "target": "redis", "together": []}}
+200 {"bundles": [{"action": "none", "action_route": "mail_profile", "addons": ["mail.protected"], "blocked_code": "state_unverified", "category": "email", "components": ["postfix", "dovecot"], "id": "mail.core", "latest_attempt_status": "none", "missing_components": [], "name_code": "mail_core", "profil
+== R5 done 12:40:12

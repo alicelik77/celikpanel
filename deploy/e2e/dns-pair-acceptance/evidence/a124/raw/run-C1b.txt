@@ -1,0 +1,59 @@
+== C1b.0 the 123 Agent after the hand-started test (123 ignored --version and replaced the socket) 12:28:39
+release 
+agent binary /opt/celikpanel/bin/agent
+drwxr-x--- root:celikpanel inode=2262 /run/celikpanel
+srw-rw---- root:root inode=6760 /run/celikpanel/agent.sock
+--- failed self-update units
+-- the owner runs sudo systemctl restart celikpanel-agent 12:28:39
+active
+srw-rw---- root:celikpanel /run/celikpanel/agent.sock
+200 {"ready": true}
+== C1b.1 the owner presses Update again 12:29:50
+  request d6d0b84543e3c25d6eece8467af6a5e9 v0.1.0-alpha.123 -> v0.1.0-alpha.124
+  202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-05T12:29:49Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "d6d0b84543e3c25d6eece8467af6a5e9", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "4f2c60ae289ec778541a124bd1360fe91d17d94bba5dec2405a354d87afdb5fa", "archive_size": "71261616", "commit": "dd6f657527a847db70b1
+  8s 200 running None 
+  25s 
+  84s 200 running verifying 
+  101s 200 succeeded None 
+200 {"agent_commit": "dd6f657527a847db70b1b89d6c0419ae092bd9fb", "agent_matches": true, "commit": "dd6f657527a847db70b1b89d6c0419ae092bd9fb", "hostname": "host1.u123.test", "ipv4": "192.0.3.192", "schema_version": 63, "version": "v0.1.0-alpha.124"}
+== C1b.2 after the update: version, second Agent, socket, failed units 12:32:04
+release 
+agent binary /opt/celikpanel/bin/agent
+drwxr-x--- root:celikpanel inode=2262 /run/celikpanel
+srw-rw---- root:celikpanel inode=7106 /run/celikpanel/agent.sock
+--- /opt/celikpanel/bin/agent --version
+CelikPanel agent v0.1.0-alpha.124 (commit dd6f657527a847db70b1b89d6c0419ae092bd9fb)
+rc=0
+--- /opt/celikpanel/bin/agent bogus
+2026/11/05 12:32:03 Starting CelikPanel Agent...
+agent: unknown argument "bogus": nothing was started or changed
+Usage: agent            run the CelikPanel agent (started by systemd: sudo systemctl start celikpanel-agent)
+rc=2
+--- a second Agent started by hand (as root, outside systemd)
+2026/11/05 12:32:03 Starting CelikPanel Agent...
+Another CelikPanel agent is already running on this server (it holds /run/celikpanel/agent.instance.lock). This one exits without starting anything or touching its connection. To see the running agent: sudo systemctl status celikpanel-agent. To restart it: sudo systemctl restart celikpanel-agent. For the version, run: /opt/celikpanel/bin/agent --version
+rc=1
+srw-rw---- root:celikpanel inode=7106 /run/celikpanel/agent.sock
+systemd agent pid 74997 -> 74997 active=active
+agent processes: 1
+--- failed self-update units
+celikpanel-self-update-132f0a3390f155fa8af114d23519fa5e.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 132f0a3390f155fa8af114d23519fa5e
+celikpanel-self-update-69910971ca09259fa0b125dfedde0a02.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 69910971ca09259fa0b125dfedde0a02
+--- all self-update units
+celikpanel-self-update-132f0a3390f155fa8af114d23519fa5e.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 132f0a3390f155fa8af114d23519fa5e
+celikpanel-self-update-69910971ca09259fa0b125dfedde0a02.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 69910971ca09259fa0b125dfedde0a02
+--- attempt records
+drwx------ 2 root root 4096 Nov  5 12:31 .
+drwx------ 7 root root 4096 Nov  5 12:30 ..
+-rw------- 1 root root    0 Nov  5 12:21 .lock
+-rw------- 1 root root    0 Nov  5 12:22 .worker.lock
+-rw------- 1 root root 1044 Nov  5 12:23 132f0a3390f155fa8af114d23519fa5e.json
+-rw------- 1 root root  893 Nov  5 12:24 69910971ca09259fa0b125dfedde0a02.json
+-rw------- 1 root root  573 Nov  5 12:31 d6d0b84543e3c25d6eece8467af6a5e9.json
+  ['self-update', '132f0a3390f155fa8af114d23519fa5e.json'] {'request_id': '132f0a3390f155fa8af114d23519fa5e', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T12:22:15.2987006Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.124', 'reason': None, 'code': None}
+  ['self-update', '69910971ca09259fa0b125dfedde0a02.json'] {'request_id': '69910971ca09259fa0b125dfedde0a02', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T12:23:59.337338666Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.124', 'reason': None, 'code': None}
+  ['self-update', 'd6d0b84543e3c25d6eece8467af6a5e9.json'] {'request_id': 'd6d0b84543e3c25d6eece8467af6a5e9', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-05T12:29:49.873917886Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.124', 'reason': None, 'code': None}
+--- agent journal (self-update / reset / instance)
+-- panel still reaches the Agent
+200 {"plan": {"blocked": false, "requires": [], "target": "redis", "together": []}}
+== C1b done 12:32:05

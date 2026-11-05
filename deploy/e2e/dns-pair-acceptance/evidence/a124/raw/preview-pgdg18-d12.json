@@ -1,0 +1,5 @@
+{
+ "status": 200,
+ "elapsed": 5.41,
+ "body": "{\n \"distribution\": \"debian\",\n \"installs\": [\n  \"libjson-perl\",\n  \"postgresql-client-common\",\n  \"postgresql-common\",\n  \"libpq5\",\n  \"postgresql-client-18\",\n  \"postgresql-18\"\n ],\n \"notable\": [\n  {\n   \"component\": \"pgdg\",\n   \"package\": \"libpq5\",\n   \"reason\": \"vendor_shared\"\n  },\n  {\n   \"component\": \"pgdg\",\n   \"package\": \"postgresql-client-common\",\n   \"reason\": \"vendor_shared\"\n  },\n  {\n   \"component\": \"pgdg\",\n   \"package\": \"postgresql-common\",\n   \"reason\": \"vendor_shared\"\n  }\n ],\n \"refusals\": [],\n \"removes\": [],\n \"requested\": [\n  \"postgresql-18\",\n  \"libpq5=18.6-1.pgdg12+2\",\n  \"postgresql-client-common=293.pgdg12+1\",\n  \"postgresql-common=293.pgdg12+1\"\n ],\n \"state\": \"known\"\n}"
+}

@@ -1,0 +1,90 @@
+== C1.0 on 123 12:21:52
+200 {"agent_commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f", "agent_matches": true, "commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f", "hostname": "host1.u123.test", "ipv4": "192.0.3.192", "schema_version": 63, "version": "v0.1.0-alpha.123"}
+release 
+agent binary /opt/celikpanel/bin/agent
+drwxr-x--- root:celikpanel inode=2262 /run/celikpanel
+srw-rw---- root:celikpanel inode=2373 /run/celikpanel/agent.sock
+--- failed self-update units
+--- all self-update units
+--- attempt records
+--- agent journal (self-update / reset / instance)
+== C1.1 attempt with the package manager busy (dpkg lock held, lab load) 12:21:53
+Running as unit: lab-dpkg-hold.service; invocation ID: 8c49b944e94e471fa5be32799b207e12
+active
+  request ece50680832d2c66c16b42b33f3ac008 v0.1.0-alpha.123 -> v0.1.0-alpha.124
+409 {"code": "HOST_MUTATION_BUSY", "error": "This server's package manager is busy \u2014 a package task is still running on this server. Wait for it to finish, then try again.", "reason": "package_manager_active"}
+200 {"found": false, "request_id": "ece50680832d2c66c16b42b33f3ac008"}
+lock released
+--- failed self-update units
+--- all self-update units
+--- attempt records
+== C1.2 attempt the installer refuses: the owner left an unsupported key in panel.env (lab load) 12:22:15
+CELIKPANEL_LAB_ROLLBACK_PROBE=1
+  request 132f0a3390f155fa8af114d23519fa5e v0.1.0-alpha.123 -> v0.1.0-alpha.124
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-05T12:22:15Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "132f0a3390f155fa8af114d23519fa5e", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "4f2c60ae289ec778541a124bd1360fe91d17d94bba5dec2405a354d87afdb5fa", "archive_size": "71261616", "commit": "dd6f657527a847db70b1
+  8s 200 running None 
+  33s 
+  82s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove t
+200 {"agent_commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f", "agent_matches": true, "commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f", "hostname": "host1.u123.test", "ipv4": "192.0.3.192", "schema_version": 63, "version": "v0.1.0-alpha.123"}
+release 
+agent binary /opt/celikpanel/bin/agent
+drwxr-x--- root:celikpanel inode=2262 /run/celikpanel
+srw-rw---- root:celikpanel inode=6539 /run/celikpanel/agent.sock
+--- failed self-update units
+celikpanel-self-update-132f0a3390f155fa8af114d23519fa5e.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 132f0a3390f155fa8af114d23519fa5e
+--- all self-update units
+celikpanel-self-update-132f0a3390f155fa8af114d23519fa5e.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 132f0a3390f155fa8af114d23519fa5e
+--- attempt records
+drwx------ 2 root root 4096 Nov  5 12:23 .
+drwx------ 7 root root 4096 Nov  5 12:23 ..
+-rw------- 1 root root    0 Nov  5 12:21 .lock
+-rw------- 1 root root    0 Nov  5 12:22 .worker.lock
+-rw------- 1 root root 1044 Nov  5 12:23 132f0a3390f155fa8af114d23519fa5e.json
+  ['self-update', '132f0a3390f155fa8af114d23519fa5e.json'] {'request_id': '132f0a3390f155fa8af114d23519fa5e', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T12:22:15.2987006Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.124', 'reason': None, 'code': None}
+--- agent journal (self-update / reset / instance)
+== C1.3 the owner removes the line and presses Update once 12:23:39
+0
+  request 69910971ca09259fa0b125dfedde0a02 v0.1.0-alpha.123 -> v0.1.0-alpha.124
+  202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-05T12:23:59Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "69910971ca09259fa0b125dfedde0a02", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "4f2c60ae289ec778541a124bd1360fe91d17d94bba5dec2405a354d87afdb5fa", "archive_size": "71261616", "commit": "dd6f657527a847db70b1
+  8s 200 running None 
+  17s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=recovery_runtime_preflight_failed state=unchanged reason=recovery runtime preflight step=agent_ledger_check: Recovery agent check: service mutation state is not idle: privileged mutation [hidden] is active detail=
+200 {"agent_commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f", "agent_matches": true, "commit": "d7b5f1ab579985fecbad0ccdc1682760003c810f", "hostname": "host1.u123.test", "ipv4": "192.0.3.192", "schema_version": 63, "version": "v0.1.0-alpha.123"}
+== C1.4 after the update: version, second Agent, socket, failed units 12:24:38
+release 
+agent binary /opt/celikpanel/bin/agent
+drwxr-x--- root:celikpanel inode=2262 /run/celikpanel
+srw-rw---- root:celikpanel inode=6539 /run/celikpanel/agent.sock
+--- /opt/celikpanel/bin/agent --version
+2026/11/05 12:24:37 Starting CelikPanel Agent...
+2026/11/05 12:24:37 Agent listening on unix socket /run/celikpanel/agent.sock
+rc=124
+--- /opt/celikpanel/bin/agent bogus
+2026/11/05 12:24:47 Starting CelikPanel Agent...
+2026/11/05 12:24:47 Agent listening on unix socket /run/celikpanel/agent.sock
+rc=124
+--- a second Agent started by hand (as root, outside systemd)
+2026/11/05 12:24:57 Starting CelikPanel Agent...
+2026/11/05 12:24:57 Agent listening on unix socket /run/celikpanel/agent.sock
+rc=124
+srw-rw---- root:root inode=6760 /run/celikpanel/agent.sock
+systemd agent pid 56523 -> 56523 active=active
+agent processes: 1
+--- failed self-update units
+celikpanel-self-update-132f0a3390f155fa8af114d23519fa5e.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 132f0a3390f155fa8af114d23519fa5e
+celikpanel-self-update-69910971ca09259fa0b125dfedde0a02.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 69910971ca09259fa0b125dfedde0a02
+--- all self-update units
+celikpanel-self-update-132f0a3390f155fa8af114d23519fa5e.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 132f0a3390f155fa8af114d23519fa5e
+celikpanel-self-update-69910971ca09259fa0b125dfedde0a02.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 69910971ca09259fa0b125dfedde0a02
+--- attempt records
+drwx------ 2 root root 4096 Nov  5 12:24 .
+drwx------ 7 root root 4096 Nov  5 12:23 ..
+-rw------- 1 root root    0 Nov  5 12:21 .lock
+-rw------- 1 root root    0 Nov  5 12:22 .worker.lock
+-rw------- 1 root root 1044 Nov  5 12:23 132f0a3390f155fa8af114d23519fa5e.json
+-rw------- 1 root root  893 Nov  5 12:24 69910971ca09259fa0b125dfedde0a02.json
+  ['self-update', '132f0a3390f155fa8af114d23519fa5e.json'] {'request_id': '132f0a3390f155fa8af114d23519fa5e', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T12:22:15.2987006Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.124', 'reason': None, 'code': None}
+  ['self-update', '69910971ca09259fa0b125dfedde0a02.json'] {'request_id': '69910971ca09259fa0b125dfedde0a02', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T12:23:59.337338666Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.124', 'reason': None, 'code': None}
+--- agent journal (self-update / reset / instance)
+-- panel still reaches the Agent
+200 {"bundles": [{"action": "none", "action_route": "mail_profile", "addons": ["mail.protected"], "blocked_code": "dns_identity_not_ready", "category": "email", "components": ["postfix", "dovecot"], "id":
+== C1 done 12:25:19

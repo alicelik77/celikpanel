@@ -1,0 +1,287 @@
+2026-11-05T12:38:32+00:00 host1.p124.test panel[28148]: 2026/11/05 12:38:32 [audit] user 2 (admin) created user 3 (cust6, role=customer)
+2026-11-05T12:38:38+00:00 host1.p124.test useradd[47228]: new group: name=sec124_test, GID=5002
+2026-11-05T12:38:38+00:00 host1.p124.test useradd[47228]: new user: name=sec124_test, UID=5002, GID=5002, home=/var/www/celikpanel/subscriptions/3/sites/2, shell=/usr/sbin/nologin, from=none
+2026-11-05T12:38:38+00:00 host1.p124.test useradd[47228]: add 'sec124_test' to group 'celikpanel-site'
+2026-11-05T12:38:38+00:00 host1.p124.test useradd[47228]: add 'sec124_test' to shadow group 'celikpanel-site'
+2026-11-05T12:38:52+00:00 host1.p124.test postfix/postfix-script[48349]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:38:52+00:00 host1.p124.test postfix/postfix-script[48380]: the Postfix mail system is running: PID: 43421
+2026-11-05T12:38:52+00:00 host1.p124.test postfix/postfix-script[48399]: refreshing the Postfix mail system
+2026-11-05T12:38:53+00:00 host1.p124.test postfix/postfix-script[48419]: the Postfix mail system is running: PID: 43421
+2026-11-05T12:38:54+00:00 host1.p124.test agent[11052]: 2026/11/05 12:38:54 PowerDNS DNSSEC signing blocked by durable DNS engine authority: directional PowerDNS state requires V3 mutation authority
+2026-11-05T12:38:54+00:00 host1.p124.test panel[28148]: 2026/11/05 12:38:54 DNSSEC sign sec124.test: DNSSEC signing is not available yet for a PowerDNS primary/secondary pair kept in step by the V3 catalog: that DNS engine state has no DNSSEC signing authority in this release. Nothing was changed
+2026-11-05T12:38:58+00:00 host1.p124.test panel[28148]: 2026/11/05 12:38:58 dnssec secure sec124.test: DNSSEC signing is not available for this DNS pair; repair publication: DNS zone changed while its prepared V3 publication was in flight
+2026-11-05T12:39:03+00:00 host1.p124.test panel[28148]: 2026/11/05 12:39:03 [dkim-auto] sec124.test: DKIM ready (domain_created; record published in sec124.test)
+2026-11-05T12:39:04+00:00 host1.p124.test agent[11052]: 2026/11/05 12:39:04 PowerDNS DNSSEC signing blocked by durable DNS engine authority: directional PowerDNS state requires V3 mutation authority
+2026-11-05T12:39:04+00:00 host1.p124.test panel[28148]: 2026/11/05 12:39:04 DNSSEC sign sec124.test: DNSSEC signing is not available yet for a PowerDNS primary/secondary pair kept in step by the V3 catalog: that DNS engine state has no DNSSEC signing authority in this release. Nothing was changed
+2026-11-05T12:39:25+00:00 host1.p124.test agent[11052]: 2026/11/05 12:39:25 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:39:36+00:00 host1.p124.test agent[11052]: 2026/11/05 12:39:36 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:39:37+00:00 host1.p124.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:39:37+00:00 host1.p124.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:39:37+00:00 host1.p124.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:39:37+00:00 host1.p124.test systemd[1]: celikpanel-agent.service: Consumed 4min 51.113s CPU time, 818.1M memory peak.
+2026-11-05T12:39:37+00:00 host1.p124.test panel[28148]: 2026/11/05 12:39:37 DNSSEC status publisher sec124.test: read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:39:38+00:00 host1.p124.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:39:38+00:00 host1.p124.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:39:38+00:00 host1.p124.test agent[50677]: 2026/11/05 12:39:38 Starting CelikPanel Agent...
+2026-11-05T12:39:38+00:00 host1.p124.test agent[50677]: 2026/11/05 12:39:38 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:39:46+00:00 host1.p124.test panel[28148]: 2026/11/05 12:39:46 DNSSEC status publisher sec124.test: read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:39:47+00:00 host1.p124.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:39:47+00:00 host1.p124.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:39:47+00:00 host1.p124.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:39:47+00:00 host1.p124.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:39:47+00:00 host1.p124.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:39:47+00:00 host1.p124.test agent[50712]: 2026/11/05 12:39:47 Starting CelikPanel Agent...
+2026-11-05T12:39:47+00:00 host1.p124.test agent[50712]: 2026/11/05 12:39:47 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:40:07+00:00 host1.p124.test agent[50712]: 2026/11/05 12:40:07 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:40:11+00:00 host1.p124.test agent[50712]: 2026/11/05 12:40:11 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:40:16+00:00 host1.p124.test agent[50712]: 2026/11/05 12:40:16 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:40:35+00:00 host1.p124.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:40:35+00:00 host1.p124.test systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-11-05T12:40:35+00:00 host1.p124.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:40:35+00:00 host1.p124.test systemd[1]: celikpanel-panel.service: Consumed 11.621s CPU time, 183.1M memory peak.
+2026-11-05T12:40:35+00:00 host1.p124.test systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:40:35+00:00 host1.p124.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:40:35+00:00 host1.p124.test panel[51302]: 2026/11/05 12:40:35 Starting CelikPanel Backend...
+2026-11-05T12:40:35+00:00 host1.p124.test panel[51302]: 2026/11/05 12:40:35 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (gu
+2026-11-05T12:40:35+00:00 host1.p124.test panel[51302]: 2026/11/05 12:40:35 Panel startup listener active on :1923 (HTTPS; application gated)
+2026-11-05T12:40:35+00:00 host1.p124.test panel[51302]: 2026/11/05 12:40:35 Connected to Agent RPC; preparing normal management access
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52415]: Selecting UID from range 100 to 999 ...
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52415]: Selecting GID from range 100 to 999 ...
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52415]: Adding system user `postgres' (UID 110) ...
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52415]: Adding new group `postgres' (GID 113) ...
+2026-11-05T12:40:51+00:00 host1.p124.test groupadd[52420]: group added to /etc/group: name=postgres, GID=113
+2026-11-05T12:40:51+00:00 host1.p124.test groupadd[52420]: group added to /etc/gshadow: name=postgres
+2026-11-05T12:40:51+00:00 host1.p124.test groupadd[52420]: new group: name=postgres, GID=113
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52415]: Adding new user `postgres' (UID 110) with group `postgres' ...
+2026-11-05T12:40:51+00:00 host1.p124.test useradd[52425]: new user: name=postgres, UID=110, GID=113, home=/var/lib/postgresql, shell=/bin/bash, from=none
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52415]: Not creating home directory `/var/lib/postgresql' as requested.
+2026-11-05T12:40:51+00:00 host1.p124.test su[52442]: (to postgres) root on none
+2026-11-05T12:40:51+00:00 host1.p124.test su[52442]: pam_unix(su:session): session opened for user postgres(uid=110) by (uid=0)
+2026-11-05T12:40:51+00:00 host1.p124.test su[52442]: pam_unix(su:session): session closed for user postgres
+2026-11-05T12:40:51+00:00 host1.p124.test adduser[52468]: Adding user `postgres' to group `ssl-cert' ...
+2026-11-05T12:40:51+00:00 host1.p124.test usermod[52470]: add 'postgres' to group 'ssl-cert'
+2026-11-05T12:40:51+00:00 host1.p124.test usermod[52470]: add 'postgres' to shadow group 'ssl-cert'
+2026-11-05T12:41:10+00:00 host1.p124.test php8.4-pgsql[54276]: php_invoke pgsql: already enabled for PHP 8.4 cli sapi
+2026-11-05T12:41:10+00:00 host1.p124.test php8.4-pgsql[54308]: php_invoke pgsql: already enabled for PHP 8.4 fpm sapi
+2026-11-05T12:41:10+00:00 host1.p124.test php8.4-pgsql[54499]: php_invoke pdo_pgsql: already enabled for PHP 8.4 cli sapi
+2026-11-05T12:41:10+00:00 host1.p124.test php8.4-pgsql[54531]: php_invoke pdo_pgsql: already enabled for PHP 8.4 fpm sapi
+2026-11-05T12:41:14+00:00 host1.p124.test panel[51302]: 2026/11/05 12:41:14 site configuration p124.test (startup): unchanged
+2026-11-05T12:41:14+00:00 host1.p124.test panel[51302]: 2026/11/05 12:41:14 site configuration sec124.test (startup): unchanged
+2026-11-05T12:41:14+00:00 host1.p124.test panel[51302]: 2026/11/05 12:41:14 site configuration files at start: 0 written, 2 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release
+2026-11-05T12:41:19+00:00 host1.p124.test postfix/postfix-script[54982]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:41:19+00:00 host1.p124.test postfix/postfix-script[55094]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:41:19+00:00 host1.p124.test postfix/postfix-script[55125]: the Postfix mail system is running: PID: 43421
+2026-11-05T12:41:19+00:00 host1.p124.test postfix/postfix-script[55144]: refreshing the Postfix mail system
+2026-11-05T12:41:23+00:00 host1.p124.test postfix/postfix-script[55383]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:41:23+00:00 host1.p124.test panel[51302]: 2026/11/05 12:41:23 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownershi
+2026-11-05T12:41:29+00:00 host1.p124.test postfix/postfix-script[55639]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:41:30+00:00 host1.p124.test postfix/postfix-script[55669]: the Postfix mail system is running: PID: 43421
+2026-11-05T12:41:30+00:00 host1.p124.test postfix/postfix-script[55689]: refreshing the Postfix mail system
+2026-11-05T12:41:30+00:00 host1.p124.test postfix/postfix-script[55709]: the Postfix mail system is running: PID: 43421
+2026-11-05T12:41:30+00:00 host1.p124.test panel[51302]: 2026/11/05 12:41:30 milter chain: milters="inet:127.0.0.1:8891, inet:127.0.0.1:11332" maps=hash
+2026-11-05T12:41:30+00:00 host1.p124.test panel[51302]: 2026/11/05 12:41:30 Panel ready on :1923 (HTTPS)
+2026-11-05T12:41:36+00:00 host1.p124.test agent[50712]: 2026/11/05 12:41:36 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:42:06+00:00 host1.p124.test php8.3-common[57438]: php_invoke calendar: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:06+00:00 host1.p124.test php8.3-common[57470]: php_invoke calendar: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:07+00:00 host1.p124.test php8.3-common[57660]: php_invoke ctype: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:07+00:00 host1.p124.test php8.3-common[57692]: php_invoke ctype: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:07+00:00 host1.p124.test php8.3-common[57882]: php_invoke exif: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:07+00:00 host1.p124.test php8.3-common[57914]: php_invoke exif: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:08+00:00 host1.p124.test php8.3-common[58104]: php_invoke fileinfo: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:08+00:00 host1.p124.test php8.3-common[58136]: php_invoke fileinfo: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:08+00:00 host1.p124.test php8.3-common[58326]: php_invoke ffi: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:08+00:00 host1.p124.test php8.3-common[58358]: php_invoke ffi: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:09+00:00 host1.p124.test php8.3-common[58548]: php_invoke ftp: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:09+00:00 host1.p124.test php8.3-common[58580]: php_invoke ftp: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:09+00:00 host1.p124.test php8.3-common[58770]: php_invoke gettext: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:09+00:00 host1.p124.test php8.3-common[58802]: php_invoke gettext: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:10+00:00 host1.p124.test php8.3-common[59024]: php_invoke iconv: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:10+00:00 host1.p124.test php8.3-common[59214]: php_invoke pdo: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:11+00:00 host1.p124.test php8.3-common[59468]: php_invoke phar: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:12+00:00 host1.p124.test php8.3-common[59913]: php_invoke shmop: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:12+00:00 host1.p124.test php8.3-common[59945]: php_invoke shmop: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:12+00:00 host1.p124.test php8.3-common[60135]: php_invoke sockets: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:12+00:00 host1.p124.test php8.3-common[60167]: php_invoke sockets: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:12+00:00 host1.p124.test php8.3-common[60389]: php_invoke sysvmsg: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:13+00:00 host1.p124.test php8.3-common[60579]: php_invoke sysvsem: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:13+00:00 host1.p124.test php8.3-common[60611]: php_invoke sysvsem: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:13+00:00 host1.p124.test php8.3-common[60801]: php_invoke sysvshm: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:13+00:00 host1.p124.test php8.3-common[60833]: php_invoke sysvshm: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:14+00:00 host1.p124.test php8.3-common[61023]: php_invoke tokenizer: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:14+00:00 host1.p124.test php8.3-common[61055]: php_invoke tokenizer: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:14+00:00 host1.p124.test php8.3-zip[61246]: php_invoke zip: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:14+00:00 host1.p124.test php8.3-zip[61278]: php_invoke zip: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:15+00:00 host1.p124.test php8.3-mysql[61469]: php_invoke mysqlnd: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:15+00:00 host1.p124.test php8.3-mysql[61501]: php_invoke mysqlnd: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:15+00:00 host1.p124.test php8.3-mysql[61691]: php_invoke mysqli: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:15+00:00 host1.p124.test php8.3-mysql[61723]: php_invoke mysqli: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:16+00:00 host1.p124.test php8.3-mysql[61913]: php_invoke pdo_mysql: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:16+00:00 host1.p124.test php8.3-sqlite3[62136]: php_invoke sqlite3: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:16+00:00 host1.p124.test php8.3-sqlite3[62168]: php_invoke sqlite3: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:17+00:00 host1.p124.test php8.3-sqlite3[62358]: php_invoke pdo_sqlite: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:17+00:00 host1.p124.test php8.3-sqlite3[62390]: php_invoke pdo_sqlite: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:17+00:00 host1.p124.test php8.3-mbstring[62581]: php_invoke mbstring: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:17+00:00 host1.p124.test php8.3-mbstring[62613]: php_invoke mbstring: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:18+00:00 host1.p124.test php8.3-readline[62804]: php_invoke readline: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:18+00:00 host1.p124.test php8.3-readline[62836]: php_invoke readline: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:19+00:00 host1.p124.test php8.3-bcmath[63040]: php_invoke bcmath: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:19+00:00 host1.p124.test php8.3-bcmath[63072]: php_invoke bcmath: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:19+00:00 host1.p124.test php8.3-xml[63263]: php_invoke dom: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:19+00:00 host1.p124.test php8.3-xml[63295]: php_invoke dom: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:20+00:00 host1.p124.test php8.3-xml[63485]: php_invoke simplexml: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:20+00:00 host1.p124.test php8.3-xml[63517]: php_invoke simplexml: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:20+00:00 host1.p124.test php8.3-xml[63707]: php_invoke xml: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:20+00:00 host1.p124.test php8.3-xml[63739]: php_invoke xml: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:21+00:00 host1.p124.test php8.3-xml[64151]: php_invoke xmlwriter: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:21+00:00 host1.p124.test php8.3-xml[64183]: php_invoke xmlwriter: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:22+00:00 host1.p124.test php8.3-xml[64373]: php_invoke xsl: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:22+00:00 host1.p124.test php8.3-xml[64405]: php_invoke xsl: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:22+00:00 host1.p124.test php8.3-opcache[64596]: php_invoke opcache: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:23+00:00 host1.p124.test php8.3-curl[64819]: php_invoke curl: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:24+00:00 host1.p124.test php8.3-pgsql[65053]: php_invoke pgsql: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:24+00:00 host1.p124.test php8.3-pgsql[65085]: php_invoke pgsql: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:25+00:00 host1.p124.test php8.3-pgsql[65275]: php_invoke pdo_pgsql: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:25+00:00 host1.p124.test php8.3-pgsql[65307]: php_invoke pdo_pgsql: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:27+00:00 host1.p124.test php8.3-intl[65498]: php_invoke intl: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:27+00:00 host1.p124.test php8.3-intl[65530]: php_invoke intl: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:28+00:00 host1.p124.test php8.3-cli[65697]: php_invoke pdo_sqlite: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:28+00:00 host1.p124.test php8.3-cli[65730]: php_invoke ffi: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:28+00:00 host1.p124.test php8.3-cli[65763]: php_invoke zip: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:28+00:00 host1.p124.test php8.3-cli[65796]: php_invoke fileinfo: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:29+00:00 host1.p124.test php8.3-cli[65829]: php_invoke pgsql: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:29+00:00 host1.p124.test php8.3-cli[65862]: php_invoke opcache: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:31+00:00 host1.p124.test php8.3-cli[65928]: php_invoke shmop: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:35+00:00 host1.p124.test php8.3-cli[65961]: php_invoke pdo_pgsql: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:35+00:00 host1.p124.test php8.3-cli[66027]: php_invoke posix: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66093]: php_invoke ftp: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66126]: php_invoke sqlite3: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66159]: php_invoke mysqli: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66192]: php_invoke bcmath: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66225]: php_invoke calendar: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66258]: php_invoke pdo_mysql: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66291]: php_invoke sysvsem: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66357]: php_invoke exif: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66390]: php_invoke gettext: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66423]: php_invoke pdo: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66456]: php_invoke sockets: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66489]: php_invoke intl: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66522]: php_invoke mbstring: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66555]: php_invoke phar: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66588]: php_invoke sysvmsg: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66621]: php_invoke xsl: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66654]: php_invoke mysqlnd: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66687]: php_invoke dom: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66720]: php_invoke xmlwriter: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:36+00:00 host1.p124.test php8.3-cli[66753]: php_invoke xml: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-cli[66819]: php_invoke ctype: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-cli[66852]: php_invoke xmlreader: already enabled for PHP 8.3 cli sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[66983]: php_invoke iconv: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[67049]: php_invoke ffi: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[67082]: php_invoke zip: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[67115]: php_invoke fileinfo: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[67148]: php_invoke pgsql: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[67181]: php_invoke opcache: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:37+00:00 host1.p124.test php8.3-fpm[67214]: php_invoke tokenizer: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67247]: php_invoke shmop: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67280]: php_invoke pdo_pgsql: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67313]: php_invoke readline: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67346]: php_invoke posix: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67379]: php_invoke simplexml: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67412]: php_invoke ftp: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67445]: php_invoke sqlite3: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67478]: php_invoke mysqli: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67511]: php_invoke bcmath: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67544]: php_invoke calendar: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67610]: php_invoke sysvsem: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67643]: php_invoke curl: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67676]: php_invoke exif: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67709]: php_invoke gettext: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67742]: php_invoke pdo: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67775]: php_invoke sockets: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:38+00:00 host1.p124.test php8.3-fpm[67808]: php_invoke intl: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[67841]: php_invoke mbstring: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[67874]: php_invoke phar: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[67907]: php_invoke sysvmsg: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[67940]: php_invoke xsl: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[67973]: php_invoke mysqlnd: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[68006]: php_invoke dom: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[68039]: php_invoke xmlwriter: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[68072]: php_invoke xml: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[68105]: php_invoke sysvshm: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[68138]: php_invoke ctype: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:39+00:00 host1.p124.test php8.3-fpm[68171]: php_invoke xmlreader: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:42:44+00:00 host1.p124.test php8.3-gd[68469]: php_invoke gd: already enabled for PHP 8.3 fpm sapi
+2026-11-05T12:43:03+00:00 host1.p124.test agent[50712]: 2026/11/05 12:43:03 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:43:49+00:00 host1.p124.test panel[51302]: 2026/11/05 12:43:49 [panel-update] automatic update check skipped (server_busy); next try in 1 hour
+2026-11-05T12:43:57+00:00 host1.p124.test php8.4-mysql[69799]: php_invoke mysqlnd: already enabled for PHP 8.4 cli sapi
+2026-11-05T12:43:58+00:00 host1.p124.test php8.4-mysql[70021]: php_invoke mysqli: already enabled for PHP 8.4 cli sapi
+2026-11-05T12:43:58+00:00 host1.p124.test php8.4-mysql[70053]: php_invoke mysqli: already enabled for PHP 8.4 fpm sapi
+2026-11-05T12:43:58+00:00 host1.p124.test php8.4-mysql[70243]: php_invoke pdo_mysql: already enabled for PHP 8.4 cli sapi
+2026-11-05T12:43:58+00:00 host1.p124.test php8.4-mysql[70275]: php_invoke pdo_mysql: already enabled for PHP 8.4 fpm sapi
+2026-11-05T12:44:14+00:00 host1.p124.test agent[50712]: 2026/11/05 12:44:14 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:44:14+00:00 host1.p124.test panel[51302]: 2026/11/05 12:44:14 [audit] user 2 (admin) created user 4 (cust3, role=customer)
+2026-11-05T12:44:20+00:00 host1.p124.test agent[50712]: 2026/11/05 12:44:20 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:44:36+00:00 host1.p124.test agent[50712]: 2026/11/05 12:44:36 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:44:40+00:00 host1.p124.test agent[50712]: 2026/11/05 12:44:40 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:44:49+00:00 host1.p124.test adduser[71813]: Selecting UID from range 100 to 999 ...
+2026-11-05T12:44:49+00:00 host1.p124.test adduser[71813]: Selecting GID from range 100 to 999 ...
+2026-11-05T12:44:49+00:00 host1.p124.test adduser[71813]: Adding system user `redis' (UID 111) ...
+2026-11-05T12:44:49+00:00 host1.p124.test adduser[71813]: Adding new group `redis' (GID 114) ...
+2026-11-05T12:44:49+00:00 host1.p124.test groupadd[71818]: group added to /etc/group: name=redis, GID=114
+2026-11-05T12:44:49+00:00 host1.p124.test groupadd[71818]: group added to /etc/gshadow: name=redis
+2026-11-05T12:44:49+00:00 host1.p124.test groupadd[71818]: new group: name=redis, GID=114
+2026-11-05T12:44:49+00:00 host1.p124.test adduser[71813]: Adding new user `redis' (UID 111) with group `redis' ...
+2026-11-05T12:44:49+00:00 host1.p124.test useradd[71823]: new user: name=redis, UID=111, GID=114, home=/var/lib/redis, shell=/usr/sbin/nologin, from=none
+2026-11-05T12:44:49+00:00 host1.p124.test adduser[71813]: Creating home directory `/var/lib/redis' ...
+2026-11-05T12:45:06+00:00 host1.p124.test panel[51302]: 2026/11/05 12:45:06 metrics sample: database is locked (5) (SQLITE_BUSY)
+2026-11-05T12:46:04+00:00 host1.p124.test agent[50712]: 2026/11/05 12:46:04 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:46:05+00:00 host1.p124.test panel[51302]: 2026/11/05 12:46:05 [dkim-auto] p124.test: DKIM ready (first_mailbox; the record is already published)
+2026-11-05T12:48:46+00:00 host1.p124.test panel[51302]: 2026/11/05 12:48:46 [500] constraint failed: UNIQUE constraint failed: email_accounts.address (2067)
+2026-11-05T12:51:13+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:13 Getting pool config for site1 (PHP )
+2026-11-05T12:51:14+00:00 host1.p124.test panel[51302]: 2026/11/05 12:51:14 site configuration p124.test php_pool (switch): state unknown (agent_does_not_report)
+2026-11-05T12:51:14+00:00 host1.p124.test panel[51302]: 2026/11/05 12:51:14 [500] invalid PHP version ""
+2026-11-05T12:51:15+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:15 Getting pool config for site1 (PHP )
+2026-11-05T12:51:29+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:29 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:51:31+00:00 host1.p124.test panel[51302]: 2026/11/05 12:51:31 site configuration p124.test php_pool (switch): state unknown (agent_does_not_report)
+2026-11-05T12:51:31+00:00 host1.p124.test panel[51302]: 2026/11/05 12:51:31 [500] invalid PHP version ""
+2026-11-05T12:51:36+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:36 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:51:40+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:40 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:51:48+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:48 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:51:55+00:00 host1.p124.test agent[50712]: 2026/11/05 12:51:55 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:52:02+00:00 host1.p124.test agent[50712]: 2026/11/05 12:52:02 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:52:09+00:00 host1.p124.test agent[50712]: 2026/11/05 12:52:09 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:52:16+00:00 host1.p124.test agent[50712]: 2026/11/05 12:52:16 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:52:17+00:00 host1.p124.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:52:17+00:00 host1.p124.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:52:17+00:00 host1.p124.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:52:17+00:00 host1.p124.test systemd[1]: celikpanel-agent.service: Consumed 2min 18.882s CPU time, 796.5M memory peak.
+2026-11-05T12:52:17+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:17 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:52:17+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:17 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:52:17+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:17 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:52:17+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:17 install preview: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:52:18+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:18 DNSSEC status publisher sec124.test: read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:52:18+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:18 [503] read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: connection refused
+2026-11-05T12:52:18+00:00 host1.p124.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:52:18+00:00 host1.p124.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:52:18+00:00 host1.p124.test agent[73812]: 2026/11/05 12:52:18 Starting CelikPanel Agent...
+2026-11-05T12:52:18+00:00 host1.p124.test agent[73812]: 2026/11/05 12:52:18 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:52:27+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:27 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:52:27+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:27 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:52:28+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:28 [503] cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:52:28+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:28 install preview: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:52:28+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:28 DNSSEC status publisher sec124.test: read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:52:28+00:00 host1.p124.test panel[51302]: 2026/11/05 12:52:28 [503] read DNS backend readiness: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:52:29+00:00 host1.p124.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:52:29+00:00 host1.p124.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:52:29+00:00 host1.p124.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:52:29+00:00 host1.p124.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:52:29+00:00 host1.p124.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:52:29+00:00 host1.p124.test agent[73843]: 2026/11/05 12:52:29 Starting CelikPanel Agent...
+2026-11-05T12:52:29+00:00 host1.p124.test agent[73843]: 2026/11/05 12:52:29 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:52:46+00:00 host1.p124.test agent[73843]: 2026/11/05 12:52:46 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:52:50+00:00 host1.p124.test agent[73843]: 2026/11/05 12:52:50 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:52:58+00:00 host1.p124.test agent[73843]: 2026/11/05 12:52:58 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:53:04+00:00 host1.p124.test agent[73843]: 2026/11/05 12:53:04 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:53:12+00:00 host1.p124.test agent[73843]: 2026/11/05 12:53:12 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:53:19+00:00 host1.p124.test agent[73843]: 2026/11/05 12:53:19 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable
+2026-11-05T12:53:25+00:00 host1.p124.test agent[73843]: 2026/11/05 12:53:25 pdns primary pair readiness proof failed: DNS peer catalog AXFR is unavailable

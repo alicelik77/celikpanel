@@ -1,0 +1,35 @@
+== 3u.1 PHP 8.4 beside 8.3 (Sury lane from Components, then php8.4-fpm) 13:08:13
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-sury.pref", "state": "confined", "written_at": "2026-11-05T13:08:20Z", "written_by": "lane"}, "detail": "Debian/Ubuntu PHP repository 
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    notable php-common vendor_shared sury 2:93ubuntu2 -> 2:101+0~20261021.78+ubuntu24.04~1.gbp53f25f point_update None
+    installs ['libpq5', 'php-common', 'php8.4-common', 'php8.4-bcmath', 'php8.4-opcache', 'php8.4-readline', 'php8.4-cli', 'php8.4-curl', 'php8.4-fpm', 'php8.4-gd', 'php8.4-intl', 'php8.4-mbstring', 'php8.4-mysql', 'php8.4-pgsql']
+  install php-fpm:php8.4-fpm confirming ["php-common"]
+202 {"operation": {"id": "6f0d161526cf404e4898a3f78431a74d", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "7f1f49cc709a6420001beb19047460a7", "service_id": "php-fpm", "started_at": "2026-11-05T13:08:29.946773416Z", "status": "queued"}}
+  op 7f1f49cc709a6420001beb19047460a7: succeeded completed "" (13:09:31)
+200 {"operation": {"finished_at": "2026-11-05T13:09:28.908648049Z", "id": "6f0d161526cf404e4898a3f78431a74d", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "completed", "request_id": "7f1f49cc709a6420001beb19047460a7", "result": {"installed": true, "success": true}, "service_id": "php-fpm", "started_at": "2026-11-05T13:08:29.946773416Z", "status": "succeeded"}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4", "8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3u.2 phpMyAdmin on PHP 8.4 (not the distribution's 8.3) 13:09:33
+  plan 200 target phpmyadmin together [] blocked False
+    requires {"component": "mariadb", "need": "mariadb", "state": "installed"}
+    requires {"component": "nginx", "need": "web-server", "state": "installed"}
+    requires {"component": "php-fpm", "need": "php-fpm", "state": "installed"}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['dbconfig-common', 'dbconfig-mysql', 'libjs-bootstrap5', 'libjs-jquery-metadata', 'libjs-jquery-mousewheel', 'libjs-jquery-tablesorter', 'libjs-jquery-ui', 'libjs-jquery-timepicker', 'libjs-underscore', 'libjs-sphinxdoc', 'php-composer-ca-bundle', 'php-fig-http-message-util', 'php-getallheaders', 'php-google-recaptcha']
+  body {"service_id": "phpmyadmin", "check_installs": true, "confirmed_installs": [], "request_id": "72b993e8e4fe6e221f68fc502f4d144e", "php_version": "8.4"}
+202 {"operation": {"id": "396128cf737571c394bc791fedd3fbcf", "kind": "service_install", "phase": "queued", "request_id": "72b993e8e4fe6e221f68fc502f4d144e", "service_id": "phpmyadmin", "started_at": "2026-11-05T13:09:37.874340386Z", "status": "queued"}}
+  op 72b993e8e4fe6e221f68fc502f4d144e: succeeded completed "" (13:10:19)
+200 {"operation": {"finished_at": "2026-11-05T13:10:11.978900301Z", "id": "396128cf737571c394bc791fedd3fbcf", "kind": "service_install", "phase": "completed", "request_id": "72b993e8e4fe6e221f68fc502f4d144e", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phpmyadmin", "version": "8.4"}, "success": true}, "service_id": "phpmyadmin", "started_at": "2026-11-05T13:09:37.874340386Z", "status": "succeeded"}}
+== 3u.3 a customer PHP site on 8.4 13:10:19
+200 {"id": 3, "rights": "unlimited", "success": true}
+php84.test id=2
+200 {"message": "PHP version updated", "status": "success"}
+200 {"available_versions": ["8.4", "8.3"], "domain_id": 2, "domain_name": "php84.test", "php_version": "8.4", "pool_config": {"group": "php84_test", "listen": "/var/run/php/php8.4-fpm-site2.sock", "listen_group": "www-data", "listen_mode": "0660", "listen_owner": "www-data", "name": "site2", "pm": "dyna
+== 3u.4 remove PHP 8.4: refused, naming phpMyAdmin and the site 13:10:43
+  impact 200 together [] stops [] withdraws []
+    blocker {"count": 1, "items": [{"link": "/domains/php84.test", "name": "php84.test (cust3u)"}], "kind": "php_sites"}
+    blocker {"count": 1, "items": [{"link": "/components/phpmyadmin", "name": "phpMyAdmin"}], "kind": "php_tools"}
+409 {"code": "RUNTIME_IN_USE", "details": ["php84.test (cust3u)", "phpMyAdmin"], "error": "2 thing(s) use version 8.4 \u2014 move or remove them first.", "plan": {"blockers": [{"count": 1, "items": [{"link": "/domains/php84.test", "name": "php84.test (cust3u)"}], "kind": "php_sites"}, {"count": 1, "items": [{"link": "/components/phpmyadmin", "name": "phpMyAdmin"}], "kind": "php_tools"}], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4", "8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== R3u24 done 13:10:52

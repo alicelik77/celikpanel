@@ -1,0 +1,12 @@
+p124.test id=1
+== 3.4b the site p124.test on PHP 8.3 12:51:12
+200 {"available_versions": ["8.4", "8.3"], "domain_id": 1, "domain_name": "p124.test", "php_version": "", "pool_name": "site1"}
+500 {"code": "INTERNAL", "error": "internal server error"}
+200 {"available_versions": ["8.4", "8.3"], "domain_id": 1, "domain_name": "p124.test", "php_version": "", "pool_name": "site1"}
+== 3.5b remove PHP 8.3: refused, naming phpMyAdmin and the site 12:51:16
+  impact 200 together [] stops [] withdraws []
+409 {"code": "REMOVAL_TOOLS_BOUND", "details": ["phpMyAdmin"], "error": "phpMyAdmin run on PHP 8.3; move them to another PHP version first or keep this version; nothing was changed"}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4", "8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+-- the site back on 8.4
+500 {"code": "INTERNAL", "error": "internal server error"}
+== R3b done 12:51:31

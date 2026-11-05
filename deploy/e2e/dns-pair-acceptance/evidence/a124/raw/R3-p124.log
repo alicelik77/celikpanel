@@ -1,0 +1,95 @@
+== 3.0 components 12:40:12
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.1 phpPgAdmin: the plan lists PostgreSQL installed together 12:40:16
+  plan 200 target phppgadmin together ['postgresql'] blocked False
+    requires {"component": "postgresql", "need": "postgresql", "state": "together"}
+    requires {"component": "nginx", "need": "web-server", "state": "installed"}
+    requires {"component": "php-fpm", "need": "php-fpm", "state": "installed"}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['libjson-perl', 'postgresql-client-common', 'libio-pty-perl', 'libipc-run-perl', 'postgresql-common-dev', 'postgresql-common', 'libz3-4', 'libllvm19', 'libphp-adodb', 'libpq5', 'php8.4-pgsql', 'php-pgsql', 'phppgadmin', 'postgresql-client-17']
+  body {"service_id": "phppgadmin", "check_installs": true, "confirmed_installs": [], "request_id": "7acfda83e20933606a71c6d75058808d", "install_together": ["postgresql"]}
+202 {"operation": {"id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "package_name": "postgresql", "phase": "queued", "request_id": "7acfda83e20933606a71c6d75058808d", "service_id": "phppgadmin", "started_at": "2026-11-05T12:40:22.068105081Z", "status": "queued"}}
+  operation id=0c64d95473ff3cf337522dcad18df434
+-- reload: a new page reads the active operation; the tab's marker reads by request id 12:40:26
+  read 200 {"id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "service_id": "phppgadmin", "package_name": "postgresql", "status": "running", "phase": "installing:postgresql", "request_id": "7acfda83e20933606a71c6d75058808d", "result": null, "error": null}
+  read 200 {"id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "service_id": "phppgadmin", "package_name": "postgresql", "status": "running", "phase": "installing:postgresql", "request_id": "7acfda83e20933606a71c6d75058808d", "result": null, "error": null}
+  read 200 {"id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "service_id": "phppgadmin", "package_name": "postgresql", "status": "running", "phase": "installing:postgresql", "request_id": "7acfda83e20933606a71c6d75058808d", "result": null, "error": null}
+-- panel restart in the middle (as the owner would: systemctl restart celikpanel-panel) 12:40:34
+active
+  panel answers again 12:41:32
+-- after the restart: new page and tab marker 12:41:32
+  read 200 {"operation": null}
+  read 200 {"id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "service_id": "phppgadmin", "package_name": "postgresql", "status": "succeeded", "phase": "completed", "request_id": "7acfda83e20933606a71c6d75058808d", "result": {"installed": true, "installed_together": ["postgresql"], "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true, "target": "phppgadmin", "together": ["postgresql"]}, "error": null}
+  12:41:32  read 200 {"id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "service_id": "phppgadmin", "package_name": "postgresql", "status": "succeeded", "phase": "completed", "request_id": "7acfda83e20933606a71c6d75058808d", "result": {"installed": true, "installed_together": ["postgresql"], "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true, "target": "phppgadmin", "together": ["postgresql"]}, "error": null}
+200 {"operation": {"finished_at": "2026-11-05T12:41:14.408610873Z", "id": "0c64d95473ff3cf337522dcad18df434", "kind": "service_install_together", "package_name": "postgresql", "phase": "completed", "request_id": "7acfda83e20933606a71c6d75058808d", "result": {"installed": true, "installed_together": ["postgresql"], "php_tool_proof": {"proved": true, "tool": "phppgadmin", "version": "8.4"}, "success": true, "target": "phppgadmin", "together": ["postgresql"]}, "service_id": "phppgadmin", "started_at": "2026-11-05T12:40:22.068105081Z", "status": "succeeded"}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "nginx", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "postgresql", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "mariadb", "is_installed": true, "status": "active (running)", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": false, "status": "not_installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phppgadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+Ver Cluster Port Status Owner    Data directory              Log file
+17  main    5432 online postgres /var/lib/postgresql/17/main /var/log/postgresql/postgresql-17-main.log
+active
+== 3.2 PHP 8.3 beside 8.4 (Sury lane from Components, then php8.3-fpm) 12:41:37
+  lane read ready True steps 3 error None
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-sury.pref", "state": "confined", "written_at": "2026-11-05T12:41:41Z", "written_by": "lane"}, "detail": "Debian/Ubuntu PHP repository \u2014 every maintained version, side by side.", "enabled": true, "enabled_at": "2026-11-05T12:41:41Z", "id": "sury", "key": {"created_at": "2019-03-18T10:14:55Z", "expires_at": "2028-02-04T11:00:03Z"
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    notable php-common vendor_shared sury 2:96 -> 2:101+0~20261021.78+debian13~1.gbp53f25f point_update None
+    installs ['fonts-dejavu-mono', 'fonts-dejavu-core', 'fontconfig-config', 'libabsl20240722', 'libaom3', 'libdav1d7', 'libgav1-1', 'librav1e0.7', 'libsvtav1enc2', 'libjpeg62-turbo', 'libyuv0', 'libavif16', 'libde265-0', 'libdeflate0']
+  install php-fpm:php8.3-fpm confirming ["php-common"]
+202 {"operation": {"id": "0eceb03bba4f501a73bb1096d0987e55", "kind": "service_install", "package_name": "php8.3-fpm", "phase": "queued", "request_id": "124d4b2edb1dabc20e73897a4705d113", "service_id": "php-fpm", "started_at": "2026-11-05T12:41:46.885045758Z", "status": "queued"}}
+  op 124d4b2edb1dabc20e73897a4705d113: succeeded completed "" (12:42:59)
+200 {"operation": {"finished_at": "2026-11-05T12:42:51.565281397Z", "id": "0eceb03bba4f501a73bb1096d0987e55", "kind": "service_install", "package_name": "php8.3-fpm", "phase": "completed", "request_id": "124d4b2edb1dabc20e73897a4705d113", "result": {"installed": true, "success": true}, "service_id": "php-fpm", "started_at": "2026-11-05T12:41:46.885045758Z", "status": "succeeded"}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4", "8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== 3.3 phpMyAdmin on PHP 8.3 (not the distribution's 8.4) 12:43:04
+  plan 200 target phpmyadmin together [] blocked False
+    requires {"component": "mariadb", "need": "mariadb", "state": "installed"}
+    requires {"component": "nginx", "need": "web-server", "state": "installed"}
+    requires {"component": "php-fpm", "need": "php-fpm", "state": "installed"}
+  preview 200 state known lists_refreshed None reason_code None reason None refusals []
+    installs ['dbconfig-common', 'dbconfig-mysql', 'libjs-codemirror', 'libjs-jquery-metadata', 'libjs-jquery-mousewheel', 'libjs-jquery-tablesorter', 'libjs-jquery-ui', 'libjs-jquery-timepicker', 'libjs-underscore', 'libjs-sphinxdoc', 'php-composer-ca-bundle', 'php-fig-http-message-util', 'php-getallheaders', 'php-google-recaptcha']
+  body {"service_id": "phpmyadmin", "check_installs": true, "confirmed_installs": [], "request_id": "89c3434e13b05ff9f50340ec987a93cc", "php_version": "8.3"}
+202 {"operation": {"id": "3a10588dc2c9f5ef247ad7463daaa547", "kind": "service_install", "phase": "queued", "request_id": "89c3434e13b05ff9f50340ec987a93cc", "service_id": "phpmyadmin", "started_at": "2026-11-05T12:43:08.120614042Z", "status": "queued"}}
+  op 89c3434e13b05ff9f50340ec987a93cc: succeeded completed "" (12:44:09)
+200 {"operation": {"finished_at": "2026-11-05T12:44:08.194809831Z", "id": "3a10588dc2c9f5ef247ad7463daaa547", "kind": "service_install", "phase": "completed", "request_id": "89c3434e13b05ff9f50340ec987a93cc", "result": {"installed": true, "php_tool_proof": {"proved": true, "tool": "phpmyadmin", "version": "8.3"}, "success": true}, "service_id": "phpmyadmin", "started_at": "2026-11-05T12:43:08.120614042Z", "status": "succeeded"}}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4", "8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+  comp {"id": "phpmyadmin", "is_installed": true, "status": "installed", "versions": [], "needs_missing": null, "requires": null, "install_blocked_by": null}
+            fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+            fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm-site2.sock;
+/etc/php/8.3/fpm/pool.d/:
+www.conf
+
+/etc/php/8.4/fpm/pool.d/:
+site2.conf
+www.conf
+== 3.4 a site on PHP 8.3 12:44:14
+200 {"id": 4, "rights": "unlimited", "success": true}
+php83.test id=ERR 409 {
+ "action": "/dns-infrastructure",
+ "code": "DNS_SERVER_REQUIRED",
+ "error": "the zones are served, but new changes wait until the backup DNS server confirms it holds the same zone list",
+ "reason": "pair_pending",
+ "vars": {
+  "engine": "pdns",
+  "peer": "ns2.p124.test"
+ }
+}
+404 404 page not found
+
+404 404 page not found
+
+== 3.5 remove PHP 8.3: refused, naming phpMyAdmin and the site 12:44:21
+  impact 200 together [] stops [] withdraws []
+200 {"all_versions": false, "bundles": [], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "php_sites", "names": []}, "mail_filter_rewired": false, "package": "php8.3-fpm", "package_family": "apt", "packages": ["php8.3-fpm"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "php-fpm", "setup_required": false, "simulation": {"bound_tools": ["phpmyadmin"], "collateral": [], "default_runtime": false, "refuses": true, "remove": ["php8.3-fpm", "php8.3-cli", "php8.3-common", "php8.3-opcache", "php8.3-mysql", "php8.3-pgsql", "php8.3-sqlite3", "php8.3-mbstring", "php8.3-xml", "php8.3-curl", "php8.3-gd", "php8.3-zip", "php8.3-intl", "php8.3-bcmath", "fontconfig-config", "fonts-dejavu-core", "fonts-dejavu-mono", "libabsl20240722", "libaom3", "libavif16", "libdav1d7", "libde265-0", "libdeflate0", "libfontconfig1", "libgav1-1", "libgd3", "libgomp1", "libheif-plugin-dav1d", "libheif-plugin-libde265", "libheif1", "libimagequant0", "libjbig0", "libjpeg62-turbo", "liblerc4", "librav1e0.7", "libsharpyuv0", "libsvtav1enc2", "libtiff6", "libwebp7", "libx11-6", "libx11-data", "libxau6", "libxcb1", "libxdmcp6", "libxpm4", "libyuv0", "php8.3-readline"], "state": "checked", "traces": [], "traces_state": "checked"}, "version": "8.3"}
+409 {"code": "REMOVAL_TOOLS_BOUND", "details": ["phpMyAdmin"], "error": "phpMyAdmin run on PHP 8.3; move them to another PHP version first or keep this version; nothing was changed"}
+  comp {"id": "php-fpm", "is_installed": true, "status": "active (running)", "versions": ["8.4", "8.3"], "needs_missing": null, "requires": null, "install_blocked_by": null}
+== R3 done 12:44:36

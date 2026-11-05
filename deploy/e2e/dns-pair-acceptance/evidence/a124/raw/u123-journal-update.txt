@@ -1,0 +1,104 @@
+2026-11-05T12:21:16+00:00 host1.u123.test agent[12170]: 2026/11/05 12:21:16 hosting root: created /var/www/celikpanel at 0755 0:0
+2026-11-05T12:21:16+00:00 host1.u123.test groupadd[41794]: group added to /etc/group: name=celikpanel-site, GID=986
+2026-11-05T12:21:16+00:00 host1.u123.test groupadd[41794]: group added to /etc/gshadow: name=celikpanel-site
+2026-11-05T12:21:16+00:00 host1.u123.test groupadd[41794]: new group: name=celikpanel-site, GID=986
+2026-11-05T12:21:16+00:00 host1.u123.test useradd[41798]: new group: name=u123_test, GID=5001
+2026-11-05T12:21:16+00:00 host1.u123.test useradd[41798]: new user: name=u123_test, UID=5001, GID=5001, home=/var/www/celikpanel/subscriptions/2/sites/1, shell=/usr/sbin/nologin, from=none
+2026-11-05T12:21:16+00:00 host1.u123.test useradd[41798]: add 'u123_test' to group 'celikpanel-site'
+2026-11-05T12:21:16+00:00 host1.u123.test useradd[41798]: add 'u123_test' to shadow group 'celikpanel-site'
+2026-11-05T12:21:22+00:00 host1.u123.test panel[16722]: 2026/11/05 12:21:22 site configuration u123.test (change): unchanged
+2026-11-05T12:21:25+00:00 host1.u123.test agent[12170]: 2026/11/05 12:21:25 nginx default HTTPS server /etc/nginx/conf.d/celikpanel-default-https.conf: written
+2026-11-05T12:21:25+00:00 host1.u123.test panel[16722]: 2026/11/05 12:21:25 site configuration u123.test (change): written
+2026-11-05T12:21:42+00:00 host1.u123.test panel[16722]: 2026/11/05 12:21:42 [dkim-auto] u123.test: DKIM ready (domain_created; the record is already published)
+2026-11-05T12:21:53+00:00 host1.u123.test panel[16722]: 2026/11/05 12:21:53 [panel-update] agent refused start: global service mutation state is not idle: the host package manager is active
+2026-11-05T12:22:44+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Sent signal SIGSTOP to main process 16722 (panel) on client request.
+2026-11-05T12:22:44+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Sent signal SIGSTOP to main process 12170 (agent) on client request.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Sent signal SIGKILL to main process 16722 (panel) on client request.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Killed unit cgroup with SIGKILL on client request.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Main process exited, code=killed, status=9/KILL
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Consumed 4.856s CPU time, 100.1M memory peak.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:22:45+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Consumed 3min 19.092s CPU time, 813.4M memory peak.
+2026-11-05T12:23:28+00:00 host1.u123.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:23:28+00:00 host1.u123.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:23:29+00:00 host1.u123.test agent[56523]: 2026/11/05 12:23:29 Starting CelikPanel Agent...
+2026-11-05T12:23:29+00:00 host1.u123.test agent[56523]: 2026/11/05 12:23:29 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:23:29+00:00 host1.u123.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:23:29+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:29 Starting CelikPanel Backend...
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (gu
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 Panel startup listener active on :1923 (HTTPS; application gated)
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 Connected to Agent RPC; preparing normal management access
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 site configuration u123.test (startup): unchanged
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 site configuration files at start: 0 written, 1 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be don
+2026-11-05T12:23:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:23:30 Panel ready on :1923 (HTTPS)
+2026-11-05T12:24:03+00:00 host1.u123.test postfix/postfix-script[58113]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:24:04+00:00 host1.u123.test postfix/postfix-script[58306]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:24:04+00:00 host1.u123.test postfix/postfix-script[58552]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:24:05+00:00 host1.u123.test postfix/postfix-script[58634]: refreshing the Postfix mail system
+2026-11-05T12:24:05+00:00 host1.u123.test postfix/postfix-script[58844]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:24:14+00:00 host1.u123.test postfix/postfix-script[61650]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:24:15+00:00 host1.u123.test postfix/postfix-script[61680]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:24:15+00:00 host1.u123.test postfix/postfix-script[61700]: refreshing the Postfix mail system
+2026-11-05T12:24:15+00:00 host1.u123.test postfix/postfix-script[61764]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:24:15+00:00 host1.u123.test panel[56639]: 2026/11/05 12:24:15 startup mail work, attempt 1 of 20: mail certificate publication completed (mail SNI from 0 active secure-mail certificates); mail filter wiring completed (milters="inet:127.0.0.1:8891, inet:127.0.0.1:11332" maps=hash)
+2026-11-05T12:25:25+00:00 host1.u123.test panel[56639]: 2026/11/05 12:25:25 [panel-update] automatic update check skipped (update_active); next try in 1 hour
+2026-11-05T12:28:30+00:00 host1.u123.test panel[56639]: 2026/11/05 12:28:30 [traffic] collect traffic: cannot reach agent socket: dial unix /run/celikpanel/agent.sock: connect: permission denied
+2026-11-05T12:28:39+00:00 host1.u123.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:28:39+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:28:39+00:00 host1.u123.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:28:39+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Consumed 5.401s CPU time, 33.8M memory peak.
+2026-11-05T12:28:39+00:00 host1.u123.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:28:39+00:00 host1.u123.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:28:39+00:00 host1.u123.test agent[62400]: 2026/11/05 12:28:39 Starting CelikPanel Agent...
+2026-11-05T12:28:39+00:00 host1.u123.test agent[62400]: 2026/11/05 12:28:39 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:30:12+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Sent signal SIGSTOP to main process 56639 (panel) on client request.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Sent signal SIGSTOP to main process 62400 (agent) on client request.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Sent signal SIGKILL to main process 56639 (panel) on client request.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Killed unit cgroup with SIGKILL on client request.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Main process exited, code=killed, status=9/KILL
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-panel.service: Consumed 1.457s CPU time, 153.2M memory peak.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-05T12:30:13+00:00 host1.u123.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:31:11+00:00 host1.u123.test systemd[1]: Starting celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-05T12:31:11+00:00 host1.u123.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-05T12:31:11+00:00 host1.u123.test agent[74997]: 2026/11/05 12:31:11 Starting CelikPanel Agent...
+2026-11-05T12:31:11+00:00 host1.u123.test agent[74997]: 2026/11/05 12:31:11 Agent listening on unix socket /run/celikpanel/agent.sock
+2026-11-05T12:31:12+00:00 host1.u123.test systemd[1]: Starting celikpanel-panel.service - CelikPanel web panel...
+2026-11-05T12:31:12+00:00 host1.u123.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 Starting CelikPanel Backend...
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 ACCEPTANCE FIXTURE — NOT FOR PRODUCTION: this panel was built with the acceptance_license test tag; it never contacts the license service and accepts only the acceptance fixture license on a disposable acceptance guest (gu
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 Panel startup listener active on :1923 (HTTPS; application gated)
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 Connected to Agent RPC; preparing normal management access
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 site configuration u123.test (startup): unchanged
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 site configuration files at start: 0 written, 1 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be don
+2026-11-05T12:31:13+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:13 Panel ready on :1923 (HTTPS)
+2026-11-05T12:31:47+00:00 host1.u123.test postfix/postfix-script[77041]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:31:48+00:00 host1.u123.test postfix/postfix-script[77152]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:31:48+00:00 host1.u123.test postfix/postfix-script[77182]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:31:48+00:00 host1.u123.test postfix/postfix-script[77221]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:31:52+00:00 host1.u123.test postfix/postfix-script[77439]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:31:58+00:00 host1.u123.test postfix/postfix-script[77698]: warning: not owned by root: /var/spool/postfix/etc/resolv.conf
+2026-11-05T12:31:58+00:00 host1.u123.test postfix/postfix-script[77729]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:31:59+00:00 host1.u123.test postfix/postfix-script[77749]: refreshing the Postfix mail system
+2026-11-05T12:31:59+00:00 host1.u123.test postfix/postfix-script[77768]: the Postfix mail system is running: PID: 39483
+2026-11-05T12:31:59+00:00 host1.u123.test panel[75251]: 2026/11/05 12:31:59 startup mail work, attempt 1 of 20: mail certificate publication completed (mail SNI from 0 active secure-mail certificates); mail filter wiring completed (milters="inet:127.0.0.1:8891, inet:127.0.0.1:11332" maps=hash)
+2026-11-05T12:32:45+00:00 host1.u123.test panel[75251]: 2026/11/05 12:32:45 [panel-update] automatic update check: this panel runs the latest signed release

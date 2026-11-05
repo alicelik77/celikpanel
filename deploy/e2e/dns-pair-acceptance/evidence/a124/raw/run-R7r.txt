@@ -1,0 +1,44 @@
+== 7.0 the main site p124.test (new domains wait for the stopped backup DNS server) and a mailbox to receive 12:48:45
+p124.test id=1
+500 {"code": "INTERNAL", "error": "internal server error"}
+docroot: /var/www/celikpanel/subscriptions/2/sites/1/public_html
+== 7.1 report before 12:48:46
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+== 7.2 the site sends with PHP mail() and with SMTP to localhost:25 without a password 12:48:46
+docroot /var/www/celikpanel/subscriptions/2/sites/1/public_html owner p124_test
+--- 1. PHP mail() from the site (FPM as p124_test)
+<html>
+<head><title>403 Forbidden</title></head>
+<body>
+<center><h1>403 Forbidden</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+--- 2. SMTP to 127.0.0.1:25 without a password
+  250 accepted
+queue: 0
+postconf: static:anyone;permit_mynetworks permit_sasl_authenticated defer_unauth_destination;127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128;
+2026-11-05T12:48:47+00:00 host1.p124.test postfix/smtpd[72821]: A2FDC22D3A: client=localhost[127.0.0.1]
+2026-11-05T12:48:48+00:00 host1.p124.test postfix/qmgr[55694]: A2FDC22D3A: from=<contact@p124.test>, size=393, nrcpt=1 (queue active)
+== 7.3 the Postfix page's 30-day list 12:48:59
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+== 7.4 Create a sending mailbox (as the notice's button does) 12:51:00
+200 {"id": 2, "success": true}
+200 {"imap": {"host": "mail.p124.test", "port": 993, "security": "SSL/TLS"}, "mail_host": "mail.p124.test", "pop3": {"host": "mail.p124.test", "port": 995, "security": "SSL/TLS"}, "smtp": {"auth_required": true, "host": "mail.p124.test", "port": 587, "security": "STARTTLS"}, "username_is_full_email": true, "webmail_available": false, "webmail_url": ""}
+  report 200 state none reason None window_days 30 covered_since 2026-11-05T12:46:06Z
+== 7.5 authenticated submission 587 with noreply@p124.test 12:51:02
+ starttls 220
+ auth 235
+ send 250 accepted
+2026-11-05T12:51:03+00:00 host1.p124.test postfix/submission/smtpd[73081]: 3EE4C21345: client=localhost[127.0.0.1], sasl_method=PLAIN, sasl_username=noreply@p124.test
+== 7.6 nothing blocked; delivered messages 12:51:09
+static:anyone;permit_mynetworks permit_sasl_authenticated defer_unauth_destination;
+3
+0
+== R7 done 12:51:11

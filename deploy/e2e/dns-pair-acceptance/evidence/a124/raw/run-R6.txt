@@ -1,0 +1,34 @@
+== 6.0 a customer and a domain on the pair 12:38:29
+200 {"id": 3, "rights": "unlimited", "success": true}
+sec124.test id=2
+  @192.0.3.190 SOA ns1.p124.test. hostmaster.sec124.test. 2026110501 10800 3600 604800 3600 | DNSKEY []
+  @192.0.3.191 SOA ns1.p124.test. hostmaster.sec124.test. 2026110501 10800 3600 604800 3600 | DNSKEY []
+  This is a Master zone
+  Last SOA serial number we notified: 0 != 2026110501 (serial in the database)
+  Zone is not actively secured
+  Metadata items: None
+  No keys for zone 'sec124.test'.
+  Zone                          Type Act Pub Size    Algorithm       ID   Location    Keytag
+  ------------------------------------------------------------------------------------------
+== 6.1 the DNS tab's read (GET /dnssec) as the admin and as the customer 12:38:49
+200 {"dane_automation": {"enabled": false, "reason": "automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release"}, "ds": null, "secured": false, "signing": {"available": false, "message": "Signing this zone has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair.", "reason": "DNSSEC_PAIR_UNSUPPORTED"}}
+200 {"dane_automation": {"enabled": false, "reason": "automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release"}, "ds": null, "secured": false, "signing": {"available": false, "message": "Signing this zone has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair.", "reason": "DNSSEC_PAIR_UNSUPPORTED"}}
+== 6.2 sign called anyway (POST /dnssec) 12:38:51
+409 {"code": "DNSSEC_PAIR_UNSUPPORTED", "error": "Signing this zone has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair."}
+409 {"code": "DNSSEC_PAIR_UNSUPPORTED", "error": "Signing this zone has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair."}
+== 6.3 nothing changed in the zone 12:39:09
+  @192.0.3.190 SOA ns1.p124.test. hostmaster.sec124.test. 2026110504 10800 3600 604800 3600 | DNSKEY []
+  @192.0.3.191 SOA ns1.p124.test. hostmaster.sec124.test. 2026110504 10800 3600 604800 3600 | DNSKEY []
+  This is a Master zone
+  Last SOA serial number we notified: 2026110504 == 2026110504 (serial in the database)
+  Zone is not actively secured
+  Metadata items: None
+  No keys for zone 'sec124.test'.
+  Zone                          Type Act Pub Size    Algorithm       ID   Location    Keytag
+  ------------------------------------------------------------------------------------------
+  2026/11/05 12:38:54 PowerDNS DNSSEC signing blocked by durable DNS engine authority: directional PowerDNS state requires V3 mutation authority
+  2026/11/05 12:38:54 DNSSEC sign sec124.test: DNSSEC signing is not available yet for a PowerDNS primary/secondary pair kept in step by the V3 catalog: that DNS engine state has no DNSSEC signing authority in this release. Nothing was changed
+  2026/11/05 12:38:58 dnssec secure sec124.test: DNSSEC signing is not available for this DNS pair; repair publication: DNS zone changed while its prepared V3 publication was in flight
+  2026/11/05 12:39:04 PowerDNS DNSSEC signing blocked by durable DNS engine authority: directional PowerDNS state requires V3 mutation authority
+  2026/11/05 12:39:04 DNSSEC sign sec124.test: DNSSEC signing is not available yet for a PowerDNS primary/secondary pair kept in step by the V3 catalog: that DNS engine state has no DNSSEC signing authority in this release. Nothing was changed
+== R6 done 12:39:15

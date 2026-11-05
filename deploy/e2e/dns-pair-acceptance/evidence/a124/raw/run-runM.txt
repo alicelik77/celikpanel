@@ -1,0 +1,2 @@
+{"node":"backup","state":"stopped","deleted":true} backup stopped 12:39:16
+runM done 12:48:18
