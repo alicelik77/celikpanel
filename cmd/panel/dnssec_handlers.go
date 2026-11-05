@@ -244,6 +244,21 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 			writeServerError(w, fmt.Errorf("verify DNSSEC publisher: %w", err))
 			return
 		}
+		// alpha.124 lab (PowerDNS main + backup): the refusal came only from
+		// SecureDNSZoneV2, after the publication snapshot below had already
+		// advanced the zone's SOA serial, and the refused path republished
+		// it, so each refused click changed the serial and notified the
+		// backup. The read-only status says in advance that this pair cannot
+		// sign; then nothing is prepared or published. An older Agent (or a
+		// status that cannot be read) says nothing and the path is as before.
+		var gate dnssecAgentResponse
+		if err := p.callAgentContext(
+			r.Context(), "Agent.DNSSECStatus",
+			&transport.DNSSECRequest{Zone: domain}, &gate,
+		); err == nil && gate.SigningUnsupported == transport.DNSSECSigningPairUnsupported {
+			writeDNSSECSignRefused(w, errDNSSECPairUnsupported)
+			return
+		}
 		plan, err := p.prepareDNSZoneSyncV3PlanReconciledLocked(
 			r.Context(), domain, false, publisher,
 		)

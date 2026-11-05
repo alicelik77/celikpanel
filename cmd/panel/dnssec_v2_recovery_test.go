@@ -290,7 +290,9 @@ func TestDNSSECV2ResponseLossWithExactSucceededReceiptPublishesAndRecoversDS(t *
 	statusCalls := agent.dnssecStatusCalls
 	syncCalls := len(agent.syncRequests)
 	agent.mu.Unlock()
-	if secureCalls != 1 || statusCalls != 1 || syncCalls != 1 {
+	// One status read before signing (the pair gate, alpha.124) and one to
+	// recover the DS after the lost answer.
+	if secureCalls != 1 || statusCalls != 2 || syncCalls != 1 {
 		t.Fatalf("response-loss secure/status/sync=%d/%d/%d",
 			secureCalls, statusCalls, syncCalls)
 	}
