@@ -65,8 +65,10 @@ func (f *fakeMainCF) run(name string, args ...string) ([]byte, error) {
 func withPasswordlessRecord(t *testing.T) string {
 	t.Helper()
 	saved := passwordlessRecordPath
+	savedAccounts := cronSiteAccounts
 	passwordlessRecordPath = filepath.Join(t.TempDir(), "private", "mail-passwordless.json")
-	t.Cleanup(func() { passwordlessRecordPath = saved })
+	cronSiteAccounts = func() ([]string, error) { return nil, nil }
+	t.Cleanup(func() { passwordlessRecordPath, cronSiteAccounts = saved, savedAccounts })
 	return passwordlessRecordPath
 }
 

@@ -56,8 +56,11 @@ teslim aracı bırakır.
 panelin yazdığı site crontab'ı `MAILTO=""` ile başlar: site cron çıktısı artık
 postalanmaz ve panel onu başka bir yerde de kaydetmez (çıktısı gereken görev onu bir
 dosyaya yazar). `MAILTO`'yu zaten ayarlayan crontab sahibinindir ve olduğu gibi kalır;
-root'un crontab'ı hiç değişmez. Var olan site crontab'ı satırı, panelin onun bir
-görevini ilk değiştirişinde alır.
+root'un crontab'ı hiç değişmez. Görev taşıyan var olan site crontab'ları satırı bir
+kez, `sendmail` komutunu kapatan adımda alır (önce/sonra sürümleri Postfix
+değişikliğinin yanına kaydedilir; okunamayan crontab bırakılır ve sonraki başlangıçta
+yeniden denenir). Kendi `MAILTO`'su olan sahip crontab'ları korunur ve adımın notunda
+adlandırılır.
 
 **İki aşama.** 1. aşama (alpha.124) sunucuda hiçbir şeyi değiştirmez: Postfix
 sayfası parolasız postanın bir sonraki sürümde kapanacağını söyler ve son 30 günde
