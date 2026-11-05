@@ -78,8 +78,11 @@ var inventoryCommand = func(ctx context.Context, executable string, args ...stri
 	return serviceMutationCommand(ctx, executable, args...).Output()
 }
 
-// inventoryEntry is one cached reading.
+// inventoryEntry is one cached reading. A lifetime entry (the host platform)
+// is kept until its fingerprint changes or a read fails: neither the TTL nor a
+// mutation's invalidation drops it.
 type inventoryEntry[T any] struct {
+	lifetime    bool
 	mu          sync.Mutex
 	valid       bool
 	key         string
@@ -101,8 +104,8 @@ func (e *inventoryEntry[T]) get(key, fingerprint string, read func() (T, error))
 	defer e.mu.Unlock()
 	generation := inventoryGeneration.Load()
 	now := inventoryClock()
-	if e.valid && e.key == key && e.fingerprint == fingerprint && e.generation == generation &&
-		now.Sub(e.at) >= 0 && now.Sub(e.at) < inventoryTTL {
+	if e.valid && e.key == key && e.fingerprint == fingerprint &&
+		(e.lifetime || (e.generation == generation && now.Sub(e.at) >= 0 && now.Sub(e.at) < inventoryTTL)) {
 		return e.value, nil
 	}
 	value, err := read()
@@ -124,7 +127,9 @@ func (e *inventoryEntry[T]) reset() {
 // ---------------------------------------------------------------------------
 // Host platform
 
-var hostProfileCache inventoryEntry[hostplatform.Profile]
+// The platform is detected once per agent lifetime and again after a failed
+// read, a reboot (boot_id) or a change of /etc/os-release (its fingerprint).
+var hostProfileCache = inventoryEntry[hostplatform.Profile]{lifetime: true}
 
 // readHostProfile is the host platform for read-only inventory RPCs. Host
 // mutations keep detecting live (detectHostPlatform), so readiness still

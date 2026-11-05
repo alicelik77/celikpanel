@@ -265,6 +265,32 @@ func TestInventoryCacheServesOnlyAnUnchangedHost(t *testing.T) {
 	}
 }
 
+func TestHostProfileIsKeptForTheAgentLifetime(t *testing.T) {
+	calls := 0
+	read := func() (int, error) { calls++; return calls, nil }
+	entry := inventoryEntry[int]{lifetime: true}
+	old, oldClock := inventoryCacheEnabled.Load(), inventoryClock
+	inventoryCacheEnabled.Store(true)
+	now := time.Unix(1_800_000_000, 0)
+	inventoryClock = func() time.Time { return now }
+	t.Cleanup(func() { inventoryCacheEnabled.Store(old); inventoryClock = oldClock })
+	entry.get("profile", "boot1", read)
+	now = now.Add(time.Hour)
+	invalidateHostInventory()
+	if v, _ := entry.get("profile", "boot1", read); v != 1 {
+		t.Fatal("the platform was detected again without a reason")
+	}
+	if v, _ := entry.get("profile", "boot2", read); v != 2 {
+		t.Fatal("a reboot or an os-release change did not detect again")
+	}
+	if _, err := entry.get("profile", "boot3", func() (int, error) { return 0, errors.New("still starting") }); err == nil {
+		t.Fatal("a failed detection was hidden")
+	}
+	if v, _ := entry.get("profile", "boot3", read); v != 3 {
+		t.Fatal("a failed detection was kept")
+	}
+}
+
 func TestStrictProbeResolvesEveryPresentUnitWithOneCall(t *testing.T) {
 	calls := stubInventory(t, func(args []string) ([]byte, error) {
 		switch args[0] {
