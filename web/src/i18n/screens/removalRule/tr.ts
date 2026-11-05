@@ -12,6 +12,7 @@ export const trRemovalRuleScreens: Record<RemovalRuleScreenKey, string> = {
     'rmrule.kind.component': '{name} buna ihtiyaç duyuyor ve kendisi de kullanılıyor; bu yüzden birlikte kaldırılmaz.',
     'rmrule.kind.sites': '{count} site bununla sunuluyor. Siteyi kendi sayfasında kaldırın ya da yalnız DNS yapın.',
     'rmrule.kind.apache_sites': '{count} site Apache üzerinde çalışıyor. Her birini kendi sayfasında nginx’e taşıyın ya da kaldırın.',
+    'rmrule.kind.php_tools': 'Üzerinde {count} PHP aracı da çalışıyor. Her birini açıp Yönet penceresinden başka bir PHP sürümüne taşıyın.',
     'rmrule.kind.php_sites': '{count} site bunun üzerinde çalışıyor. Her siteyi açıp PHP sürümünü değiştirin.',
     'rmrule.kind.node_sites': '{count} site bunun üzerinde çalışıyor. Her siteyi açıp Node.js sürümünü değiştirin.',
     'rmrule.kind.node_service_apps': '{count} uygulama bunun üzerinde çalışıyor (örneğin n8n). Önce uygulamayı sitesinin sayfasında kaldırın.',

@@ -10936,3 +10936,48 @@ remove-together operation and the security emergency read the same plan.
   with **Install … first** for each; a seat lists the components that fill it.
 
 Schema unchanged; no migration. Lab checks pending (D-025).
+
+### Installing a component: what it needs, installed together (D-045, alpha.124)
+
+The install window asks the mirror question, "what does this component need?", answered
+by the same map (`cmd/panel/component_install_together.go`, `GET
+/api/v1/service/install-plan`), at component level; no package names.
+
+- **Installed / together / missing.** Each requirement says its state: installed (with
+  its version), installed together with it first at the distribution's version, or
+  missing and not installable from this window.
+- **Unmet prerequisite.** A requirement that cannot be installed here turns Install off;
+  the window says which, why and what next before anything else: mail engines come with
+  the mail setup (Email card on Components), a component not offered on this system,
+  another component holding the same role (remove it first), or a runtime installed from
+  its own row. Who acts: the administrator. Nothing was changed.
+- **Unknown.** A plan that cannot be read says so with Retry; Install stays off until the
+  answer is in. A requirement whose state was never observed is "not known yet" with a
+  scan as the next step.
+- **Install together.** Confirming installs the missing requirements first, then the
+  component, as one durable operation (`service_install_together`, 202, one Agent lease,
+  qualifier = the sorted members). A list that is not the plan's is refused
+  (`INSTALL_PLAN_CHANGED`, 409, with the new plan); a missing requirement that cannot be
+  installed refuses (`INSTALL_REQUIREMENT_UNAVAILABLE`). Closing the page does not stop
+  it; the global operation lock follows it, says the component being installed now, that
+  nobody needs to act and that it goes on by itself, and re-attaches after a reload or a
+  panel restart. A browser marker never starts one.
+- **Failure.** A failed step keeps what was installed before it; the message names those
+  ("Installed before this step and kept: …") and the step's own guidance follows. Next:
+  read the step's reason, fix it, press Install again; the plan then lists only what is
+  still missing.
+- **Resume.** After a panel restart the same run resumes: the plan is read again with a
+  fresh scan, what is already installed is skipped, and a requirement nobody confirmed
+  stops the run (`install_plan_changed`) with nothing more installed.
+- **PHP tools.** phpMyAdmin, phpPgAdmin and Roundcube run on the installed PHP-FPM version
+  chosen in the window (the distribution's own when installed, otherwise the newest);
+  the proof never moves a chosen version. If Roundcube cannot be moved to the chosen
+  version, it stays installed on the version it had and the finished install says so,
+  with the Manage window as the next step.
+- **Repository change.** The only package-level confirmation left is a repository's
+  version replacing the distribution's (for example libpq5 from PostgreSQL (PGDG) on
+  Debian 12): the repository is named plainly, never "vendor".
+- **PHP version removal.** A version that sites use is refused (`RUNTIME_IN_USE`) and the
+  refusal also names the PHP tools on it, each linked to its own page to move it.
+
+Schema unchanged; no migration. Lab checks pending (D-025).

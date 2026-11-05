@@ -252,6 +252,13 @@ const screenPartBudgets = {
   // had little headroom left. Set with at least 25% headroom from its Turkish
   // file: 6.12 / 2.19 KiB.
   removalRule: kib(8, 3),
+  // v0.1.0-alpha.124: installing at component level - the install window's
+  // requirements and repository change, the install-together operation, and
+  // the notes a finished install says, which left the shell catalogue when
+  // the operation provider began fetching them only when an operation ends
+  // (critical boot path). A new part, set with at least 25% headroom from its
+  // Turkish file.
+  componentInstall: kib(12, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

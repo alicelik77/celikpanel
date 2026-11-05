@@ -13,6 +13,8 @@ export const enLifecycleScreens = {
     // ---- alpha.108 slice d ----
     // Versions offered to customers (D-038 §14).
     'life.offer.title': 'Offered to customers',
+    'life.audit.pending.waiting': "{count} audit entries are waiting to be saved: CelikPanel's own database was busy when they were recorded. They are kept and saved by themselves, in order and with their own time, as soon as the database is free. Nobody needs to act.",
+    'life.audit.pending.stalled': "{count} audit entries have not been saved for more than ten minutes because CelikPanel's own database keeps refusing them. They are kept, not lost, and tried again by themselves. You, the owner: run sudo systemctl restart celikpanel-panel on this server (it restarts only the panel; websites, mail and DNS keep running); they are saved after the start. If this stays, sudo journalctl -u celikpanel-panel -n 100 shows the reason.",
     'life.offer.intro': 'Customers choose a {name} version for their sites among the ones offered here. Hiding a version changes no site: a site already on it keeps it and keeps running, and its owner sees a note. As the administrator you can always choose any installed version.',
     'life.offer.toggle': 'Offer {name} {version} to customers',
     'life.offer.offered': 'Offered',

@@ -65,7 +65,7 @@ export function removalPlanRefused(plan: RemovalPlan | null, keepTogether = fals
 // The components of the together list (settings are said, not removed).
 export const togetherComponents = (plan: RemovalPlan | null) => (plan?.together ?? []).filter((item) => !item.startsWith('setting:'));
 
-const BLOCKER_KINDS = new Set(['component', 'sites', 'apache_sites', 'php_sites', 'node_sites', 'node_service_apps', 'python_apps', 'databases',
+const BLOCKER_KINDS = new Set(['component', 'sites', 'apache_sites', 'php_sites', 'php_tools', 'node_sites', 'node_service_apps', 'python_apps', 'databases',
     'mail_addresses', 'dns_zones', 'certificates', 'panel_firewall', 'panel_firewall_unknown', 'vpn_peers', 'malware_quarantine']);
 const STOP_KINDS = new Set(['webmail', 'spam_filtering', 'ban_protection', 'malware_scans', 'ftp', 'monitoring', 'unknown_use', 'toolchain', 'database_tool']);
 

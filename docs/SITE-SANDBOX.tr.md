@@ -144,7 +144,13 @@ uygulanmayacak bir ayar hiç yazılmaz.
 | SocketBind | 249 + BPF | BPF varsa | BPF varsa | BPF varsa | BPF varsa | BPF varsa |
 | IPAddressDeny | 235 + BPF | BPF varsa | BPF varsa | BPF varsa | BPF varsa | BPF varsa |
 | PrivatePIDs, ProtectControlGroups=strict | 257 | — | — | — | var | var |
-| SMTP çıkış engeli | nft `socket cgroupv2` + cgroup v2 | ölçülecek (nft 1.0.2) | var (beklenen) | var (beklenen) | var (beklenen) | var (beklenen) |
+| SMTP çıkış engeli | nft `socket cgroupv2` + cgroup v2 | yoklama tabloyu kabul etti (nft 1.0.2, alpha.123 laboratuvarı) | var (beklenen) | var (beklenen) | var (beklenen) | var (beklenen) |
+
+Ubuntu 22.04 ile Ubuntu 24.04 aynı davranır (sahibin kararı, 5 Kasım 2026). İkisi de alpha.123
+laboratuvarında tek eksikle (`bpf_missing`; systemd 249 ve 255 BPF desteği olmadan derlenmiş) **azaltılmış**
+ölçüldü; yüklenen programlar, Python uygulamaları ve hizmet uygulamaları ikisinde de aynı ayarları, aynı
+kanıtı ve aynı sunumu alır; yalnız dağıtımın Python sürümü farklıdır (3.10 ve 3.12). Debian 12 de
+azaltılmış, Debian 13 tamdır. Kodda dağıtıma bağlı bir ayrım yoktur: düzey ölçülen yeteneklerden gelir.
 
 Ajanın salt okuyan yoklaması (`SandboxCapsV1`) dört şeye bakar: systemd sürümü ve BPF desteği,
 cgroup v2 ve nft'nin çıkış tablosunu `--check` ile kabul edip etmediği. `--check` hiçbir şeyi

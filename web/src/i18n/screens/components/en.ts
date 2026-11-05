@@ -316,7 +316,7 @@ export const enComponentsScreens = {
     'services.installPreview.next.agent_unreachable': 'Nothing needs to be done now: press Retry in a minute. If it keeps failing, the server agent may need a restart.',
     'services.installPreview.next.invalid_request': 'Next: close this window and choose the version again.',
     'services.installPreview.next.other': 'Next: press Retry. If it repeats, the install itself stops before changing anything and shows the package manager’s message.',
-    'services.installPreview.nothingElse': 'The package manager installs only what is listed here and the packages they depend on; none is another PHP, Apache, another component or a database server.',
+    'services.installPreview.nothingElse': 'Nothing else needs your consent: the package manager brings only what this component needs; none is another PHP, Apache, another component or a database server.',
     // alpha.109 (owner: “with several packages it can’t be understood”): a grouped list, one package a line.
     'services.installPreview.heading': 'This install will also:',
     'services.installPreview.selectedUnknown': 'the version you chose',
@@ -327,7 +327,7 @@ export const enComponentsScreens = {
     'services.installPreview.whyMany': 'Why: {selected} is only in the {repo} repository and needs that repository’s version of these packages.',
     'services.installPreview.afterOne': 'Afterwards: this package’s updates come from the {repo} repository, not from {distro}.',
     'services.installPreview.afterMany': 'Afterwards: these packages’ updates come from the {repo} repository, not from {distro}.',
-    'services.installPreview.additionalTitle': 'Additional packages',
+    'services.installPreview.additionalTitle': 'It also brings',
     'services.installPreview.note.new_php_version': 'It is installed in addition to any PHP already here and is updated with the system.',
     'services.installPreview.note.apache': 'CelikPanel serves through Nginx; Apache may try to use port 80.',
     'services.installPreview.note.upgrade': 'The operating system’s own update would bring the same versions.',
@@ -613,6 +613,10 @@ export const enComponentsScreens = {
     'services.version.versionsChecking': 'Reading which PHP versions are installed…',
     'services.version.versionsUnknown': 'The installed PHP versions could not be read now, so where the tools could move is not known. Nothing was changed.',
     'services.version.removalUnknown': 'Whether PHP {version} was removed is not known: the answer did not arrive. The list reads the versions again; check it before trying again.',
+    // alpha.124: the operation's own state could not be saved yet because
+    // CelikPanel's own database is held by another task.
+    'services.operation.phase.panel_busy': "Waiting: CelikPanel's own database is busy with another task, so this operation cannot save its progress just now. The work on the server is not affected. It saves by itself as soon as the database is free; nothing is started twice. Nobody needs to act.",
+    'services.operation.phase.panel_stayed_busy': "CelikPanel's own database stayed busy for about ten minutes, so this operation's progress could not be saved. Nothing is guessed: the operation is checked again when the panel starts. You, the owner: run sudo systemctl restart celikpanel-panel on this server (it restarts only the panel; websites, mail and DNS keep running). If it happens again, sudo journalctl -u celikpanel-panel -n 100 shows what kept the database busy.",
 } as const;
 
 export type ComponentsScreenKey = keyof typeof enComponentsScreens;

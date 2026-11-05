@@ -483,9 +483,7 @@ func (p *Panel) requestServerSetupPeerHostRecord(ctx context.Context, plan serve
 }
 
 func (p *Panel) auditSetupPeerHostRecord(ctx context.Context, action string) {
-	if _, err := p.db.GetDB().ExecContext(ctx, `INSERT INTO audit_logs (action, resource_type) VALUES (?, 'server_setup')`, action); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
+	p.recordAudit(auditRecord{Action: action, ResourceType: "server_setup"})
 }
 
 // serverSetupPeerHostRecordContext is the additive execution context field the

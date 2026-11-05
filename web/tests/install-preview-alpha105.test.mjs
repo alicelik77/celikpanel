@@ -86,7 +86,10 @@ test('every new sentence exists in English and Turkish', () => {
 
 test('the component install dialogue reads the same simulation and sends what was confirmed; the server checks it again', () => {
   const list = source('components/ServiceList.tsx');
-  assert.match(list, /installPreviewURL\(\[\{ id: service\.id, \.\.\.\(selectedPkg \? \{ package: selectedPkg \} : \{\}\) \}\]\)/);
+  // alpha.124: the requirements installed together are part of the same check.
+  assert.match(list, /\.\.\.together\.map\(\(id\) => \(\{ id \}\)\),/);
+  assert.match(list, /id: service\.id,\s*\.\.\.\(selectedPkg \? \{ package: selectedPkg \} : \{\}\),/);
+  assert.match(list, /const previewURL = plan \? installPreviewURL\(previewSteps\) : null;/);
   assert.match(list, /checkInstalls: true, confirmInstalls: confirmed/);
   assert.match(source('components/ComponentOperation.tsx'), /check_installs: true, confirmed_installs: request\.confirmInstalls \?\? \[\]/);
 });
@@ -106,10 +109,14 @@ test('every install confirmation reads the simulation and ties its tick to the a
 });
 
 test('an install result says a fallback with its reason and a refusal with its packages', () => {
+  // alpha.124: said by the notes fetched when the operation ends.
   const operation = source('components/ComponentOperation.tsx');
-  assert.match(operation, /decodePHPToolProof\(next\.result\)/);
-  assert.match(operation, /decodeNotableRefusal\(next\.result\)/);
-  assert.match(operation, /t\('services\.phpToolProof\.moved'/);
+  assert.match(operation, /notes\.refusalDetails\(next\.result,/);
+  assert.match(operation, /notes\.installedNotes\(\{ result: next\.result,/);
+  const notes = source('lib/componentOperationNotes.ts');
+  assert.match(notes, /decodePHPToolProof\(result\)/);
+  assert.match(notes, /decodeNotableRefusal\(result\)/);
+  assert.match(notes, /'services\.phpToolProof\.moved'/);
 });
 
 test('Continue after PHP-FPM was installed keeps the PHP version chosen for the bundle', () => {

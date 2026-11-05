@@ -179,7 +179,14 @@ directive is left out.
 | SocketBindAllow/Deny | 249 + BPF | if BPF | if BPF | if BPF | if BPF | if BPF |
 | IPAddressDeny | 235 + BPF | if BPF | if BPF | if BPF | if BPF | if BPF |
 | PrivatePIDs, ProtectControlGroups=strict | 257 | — | — | — | yes | yes |
-| SMTP egress block | nft `socket cgroupv2` + cgroup v2 | to be measured (nft 1.0.2) | yes (expected) | yes (expected) | yes (expected) | yes (expected) |
+| SMTP egress block | nft `socket cgroupv2` + cgroup v2 | probe accepted the table (nft 1.0.2, alpha.123 lab) | yes (expected) | yes (expected) | yes (expected) | yes (expected) |
+
+Ubuntu 22.04 and Ubuntu 24.04 are treated the same (owner decision, 2026-11-05). Both measured
+**reduced** in the alpha.123 lab with the single gap `bpf_missing` (systemd 249 and 255 are built
+without BPF), so programs, Python apps and service apps get the same directives, the same proof and
+the same offering on both; only the distribution Python differs (3.10 and 3.12). Debian 12 is also
+reduced; Debian 13 is full. Nothing in the code is keyed to the distribution: the level comes from the
+measured capabilities (`TestUbuntu2204SandboxIsTheSameAsUbuntu2404`).
 
 The Agent's read-only probe (`SandboxCapsV1`) collects four facts. It asks
 `systemctl --version` for the systemd version and `+BPF_FRAMEWORK`. It checks

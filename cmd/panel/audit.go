@@ -3,9 +3,9 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // The audit trail: who did what, from where, when. The audit_logs table has
@@ -21,7 +21,8 @@ import (
 // başarısız kılmamalı; ama başarısızlık günlüğe düşer ki bozuk iz görünsün.
 
 // audit records an action performed by the current caller (resolved from the
-// session). resourceID 0 is stored as NULL.
+// session). resourceID 0 is stored as NULL. The row is never dropped: a
+// database that does not take it now gets it later (audit_durable.go).
 // audit, geçerli çağıran tarafından yapılan bir eylemi kaydeder. resourceID 0
 // NULL saklanır.
 func (p *Panel) audit(r *http.Request, action, resourceType string, resourceID int) {
@@ -95,32 +96,23 @@ func (p *Panel) auditAsDetailed(r *http.Request, userID int, action, resourceTyp
 }
 
 func (p *Panel) writeAuditRow(r *http.Request, userID, actingAs int, action, resourceType string, resourceID int, details map[string]any) {
-	var uid any
-	if userID > 0 {
-		uid = userID
-	}
-	var acting any
-	if actingAs > 0 {
-		acting = actingAs
-	}
-	var rid any
-	if resourceID > 0 {
-		rid = resourceID
-	}
-	var rtype any
-	if resourceType != "" {
-		rtype = resourceType
-	}
 	ua := r.UserAgent()
 	if len(ua) > 300 {
 		ua = ua[:300]
 	}
-	if _, err := p.db.GetDB().ExecContext(r.Context(), `
-		INSERT INTO audit_logs (user_id, action, resource_type, resource_id, ip_address, user_agent, details, acting_as)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		uid, action, rtype, rid, clientIP(r), ua, auditDetailsJSON(details), acting); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
+	p.recordAudit(auditRecord{
+		UserID: userID, ActingAs: actingAs, Action: action, ResourceType: resourceType,
+		ResourceID: resourceID, IP: clientIP(r), UserAgent: ua, Details: auditDetailsText(details),
+	})
+}
+
+// auditDetailsText is auditDetailsJSON as the text a pending row keeps ("" =
+// NULL).
+func auditDetailsText(details map[string]any) string {
+	if text, ok := auditDetailsJSON(details).(string); ok {
+		return text
 	}
+	return ""
 }
 
 type auditEntry struct {
@@ -198,5 +190,11 @@ func (p *Panel) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]any{"entries": entries})
+	// Rows recorded but not saved yet are said, never left out silently
+	// (audit_durable.go); "pending" is absent when there are none.
+	response := map[string]any{"entries": entries}
+	if pending := p.auditPendingSummary(time.Now()); pending != nil {
+		response["pending"] = pending
+	}
+	json.NewEncoder(w).Encode(response)
 }

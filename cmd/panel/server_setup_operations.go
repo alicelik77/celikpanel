@@ -1344,6 +1344,9 @@ func (p *Panel) handleServerSetupOperation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	response := p.serverSetupOperationResponse(r.Context(), execution)
+	if response != nil {
+		overlayServerSetupPanelBusy(response.serverSetupExecution)
+	}
 	if response != nil && execution.Status == "succeeded" {
 		// An unreadable setup state leaves the flag out: the page then
 		// reads the setup itself, as it did before the flag existed.
@@ -1380,8 +1383,14 @@ func (p *Panel) persistServerSetupExecution(ctx context.Context, execution serve
 	}
 	result, err := p.db.GetDB().ExecContext(ctx, `UPDATE server_setup_executions SET status=?,execution_json=?,updated_at=? WHERE id=? AND status IN ('running','waiting')`, execution.Status, string(encoded), time.Now().UTC().Format(time.RFC3339Nano), execution.ID)
 	if err != nil {
+		if panelDatabaseBusy(err) {
+			// The run's state could not be saved: the reads show the wait
+			// from memory until a save succeeds (alpha.123 lab, 60 s lock).
+			notePanelBusy(panelBusyKeySetup(execution.ID), false)
+		}
 		return err
 	}
+	clearPanelBusy(panelBusyKeySetup(execution.ID))
 	affected, err := result.RowsAffected()
 	if err != nil {
 		return err
@@ -1418,10 +1427,18 @@ func (p *Panel) launchServerSetupExecution() {
 		// until the next panel start (alpha.123 lab).
 		busyPasses := 0
 		retryBusy := func(err error) bool {
-			if !panelDatabaseBusy(err) || busyPasses >= serverSetupRunnerBusyPasses {
+			if !panelDatabaseBusy(err) {
+				return false
+			}
+			if busyPasses >= serverSetupRunnerBusyPasses {
+				// The run stays saved as running and resumes at the next
+				// panel start; until then the screen says so, with the
+				// owner's next action, instead of "running".
+				notePanelBusy(panelBusyKeySetup(lastID), true)
 				return false
 			}
 			busyPasses++
+			notePanelBusy(panelBusyKeySetup(lastID), false)
 			p.sleepServerSetupRunner(serverSetupPanelBusyDelay(busyPasses))
 			return true
 		}

@@ -387,3 +387,66 @@ func ValidateComponentRules() error {
 	}
 	return nil
 }
+
+// Install together (alpha.124, D-045 follow-up). When a component's
+// requirement is missing and can be installed here on its own, the install
+// installs it first, in the same durable operation (service_install_together:
+// one Agent lease, target = the component, qualifier = the canonical member
+// list). Only these components are installed together: plain distribution
+// components with nothing of their own to choose at that moment. Mail engines
+// go through the mail setup (they need its host name), DNS engines through
+// their workflow and runtimes through their version list; a missing
+// requirement of that kind is said, not installed.
+// Birlikte kurulum: eksik ve burada tek başına kurulabilen gereksinim, aynı
+// kalıcı işlemde önce kurulur.
+var installTogetherMembers = map[string]bool{
+	"nginx":      true,
+	"php-fpm":    true,
+	"mariadb":    true,
+	"postgresql": true,
+	"nftables":   true,
+}
+
+// InstallableTogether reports whether id may be installed as another
+// component's requirement in an install-together operation.
+func InstallableTogether(id string) bool {
+	return installTogetherMembers[id]
+}
+
+// InstallTogetherQualifier is the canonical member list (the lease's
+// qualifier): sorted, unique, comma separated.
+func InstallTogetherQualifier(members []string) string {
+	return RemoveTogetherQualifier(members)
+}
+
+// ParseInstallTogetherQualifier is the inverse for one target: a canonical
+// list of at most eight members, each installable together, none the target,
+// and each required by the target or by another member (directly). The
+// Agent asks this before it accepts a step of an install-together lease.
+func ParseInstallTogetherQualifier(target, qualifier string) ([]string, error) {
+	if qualifier == "" {
+		return nil, fmt.Errorf("empty install-together list")
+	}
+	if GetManagedServiceByID(target) == nil {
+		return nil, fmt.Errorf("unknown install-together target %s", target)
+	}
+	members := strings.Split(qualifier, ",")
+	if len(members) > 8 || InstallTogetherQualifier(members) != qualifier {
+		return nil, fmt.Errorf("install-together list is not canonical")
+	}
+	for _, member := range members {
+		if member == target || GetManagedServiceByID(member) == nil || !InstallableTogether(member) {
+			return nil, fmt.Errorf("%s is not installed together with another component", member)
+		}
+		needed := RuleRequires(target, member)
+		for _, other := range members {
+			if other != member && RuleRequires(other, member) {
+				needed = true
+			}
+		}
+		if !needed {
+			return nil, fmt.Errorf("%s is not a requirement of %s", member, target)
+		}
+	}
+	return members, nil
+}

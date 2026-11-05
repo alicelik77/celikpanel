@@ -382,11 +382,7 @@ func (p *Panel) pruneBackups(ctx context.Context, d backupDomain, retention int)
 }
 
 func (p *Panel) auditBackupSystem(ctx context.Context, action string, domainID int) {
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (action, resource_type, resource_id)
-		VALUES (?, 'domain', ?)`, action, domainID); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
+	p.recordAudit(auditRecord{Action: action, ResourceType: "domain", ResourceID: domainID})
 }
 
 // handleBackupSchedule handles GET/PUT/DELETE for a domain's backup schedule.

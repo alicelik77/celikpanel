@@ -3,7 +3,7 @@ import { AlertTriangle, Loader2 as LoaderCircle, WifiOff, X } from 'lucide-react
 import { useI18n } from '../i18n';
 import type { ApiError } from '../lib/apiError';
 import { operationError, type ComponentOperation, type InteractionBlockView } from './ComponentOperation';
-import { componentOperationGuidance, componentOperationPhaseKey, removalOperationPhase, REMOVE_TOGETHER_KIND } from '../lib/componentOperationGuidance';
+import { componentOperationGuidance, componentOperationPhaseKey, INSTALL_TOGETHER_KIND, removalOperationPhase, REMOVE_TOGETHER_KIND } from '../lib/componentOperationGuidance';
 import { Button, ErrorBanner, KeepWords } from './ui';
 
 type OperationOverlayProps = {
@@ -88,17 +88,24 @@ export default function OperationOverlay(props: OperationOverlayProps | FailureO
     // acts and how it resumes, never the install wording.
     const removal = !view && operation?.kind === REMOVE_TOGETHER_KIND ? operation : null;
     const together = removal?.package_name ? removal.package_name.split(',').join(', ') : '';
+    // alpha.124: install-together says the component it is installing now
+    // and what was installed first.
+    const installing = !view && operation?.kind === INSTALL_TOGETHER_KIND ? operation : null;
     if (!view && !guidance.statusKey && operation) {
         if (removal) {
             const step = removalOperationPhase(removal.phase);
             statusText = t(step.key, { name: step.name });
+        } else if (installing && installing.phase.startsWith('installing:')) {
+            statusText = t('services.operation.phase.installingStep', { name: installing.phase.slice(11) });
         } else if (!submitting) {
             statusText = t(componentOperationPhaseKey(operation.phase));
         }
     }
     const hint = view?.hint ?? (removal && guidance.hintKey === 'services.operation.backgroundHint'
         ? t('services.operation.removeHint', { name: removal.service_id, together: together || '—' })
-        : t(guidance.hintKey));
+        : installing?.package_name && guidance.hintKey === 'services.operation.backgroundHint'
+            ? t('services.operation.installTogetherHint', { together: installing.package_name.split(',').join(', ') })
+            : t(guidance.hintKey));
     const operationID = view?.operationID || operation?.id;
     const busy = view?.busy ?? (!disconnected && !knownFailure);
     const severity = view?.severity ?? (knownFailure ? 'error' : 'warning');

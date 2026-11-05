@@ -19,6 +19,63 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 > kayıtlar saat tarihini kullanır; D-029 dışında 10, 11 veya 12 Ekim 2026 tarihli bir
 > kayıt gerçektir.
 
+## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
+
+*2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · iki aşamada uygulanır: 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124'te, 2. aşama (kapatma) alpha.125 için planlı*
+
+**Neden.** Dağıtımın Postfix'i, sunucuda çalışan her şeyin parolasız olarak bütün
+İnternet'e posta göndermesine iki yoldan izin verir: sunucunun kendi 25 numaralı
+bağlantı noktasına SMTP (loopback `mynetworks` içindedir ve `permit_mynetworks`
+aktarıma izin verir) ve PHP `mail()`, cron ve betiklerin kullandığı `sendmail`
+komutu (`postdrop` → `pickup`). Ele geçirilmiş bir site sunucunun adıyla istenmeyen
+posta gönderir ve sunucunun adresi engel listelerine girer.
+
+**Karar.** Siteler postayı yalnız bir posta kutusunun kullanıcı adı ve parolasıyla,
+gönderim hizmetinden (587 STARTTLS ya da 465 TLS) gönderir. İki parolasız yol, her
+site, PHP sürümü ve havuz için birden, iki yerel Postfix ayarıyla kapanır (2. aşama,
+alpha.125; alpha.124'te henüz kapanmaz):
+
+- `authorized_submit_users = root, vmail`: `sendmail` komutu ve `postdrop` başka
+  her Unix hesabını reddeder (posta günlüğünde "User x(uid) is not allowed to
+  submit mail"; PHP `mail()` false döndürür). root cron, otomatik güncellemeler,
+  fail2ban ve diğer sistem bildirimleri için gönderebilir; `vmail` Dovecot'un
+  Sieve "ofis dışında" yanıtları için. CelikPanel'in kendi hesap postasını Agent
+  root olarak `sendmail`'e verir.
+- `permit_mynetworks`'süz `smtpd_relay_restrictions`: sunucunun kendisinden SMTP
+  bu sunucudaki posta kutularına teslim etmeye devam eder (İnternet'teki her
+  sunucunun yapabildiği gibi), başka yere aktarım SASL ister ("Relay access
+  denied"). `mynetworks` ve `smtpd_recipient_restrictions` değişmez.
+
+PHP düzeyinde `sendmail_path` değişikliği kullanılmadı: her PHP sürümünün yoluna
+panel kaldırılınca geride kalan bir CelikPanel yardımcısı gerektirirdi ve Postfix
+listesinin kapatmadığı hiçbir şeyi kapatmaz. Roundcube zaten 587'den kullanıcının
+parolasıyla gönderir; posta kutusu %90 uyarısını `sendmail` değil Dovecot'un kendi
+teslim aracı bırakır.
+
+**İki aşama.** 1. aşama (alpha.124) sunucuda hiçbir şeyi değiştirmez: Postfix
+sayfası parolasız postanın bir sonraki sürümde kapanacağını söyler ve son 30 günde
+onu kullanan siteleri Postfix'in kendi günlüğünden okuyarak listeler (`pickup` uid
+satırları sitenin sistem kullanıcısına; başka yere aktarılan parolasız loopback
+SMTP gönderenin alan adına göre eşlenir). Her siteye tek düğme: "Gönderim posta
+kutusu oluştur"; `noreply@<alan adı>` kutusunu oluşturur ve sunucu, bağlantı
+noktası, kullanıcı adı ve parolayı bir kez gösterir. 2. aşama (alpha.125) güncel-
+lemeden sonraki ilk panel başlangıcında (Agent'ın posta süzgeci adımı) doğrulanmış
+bir Postfix yeniden yüklemesiyle kapatır; Postfix değişikliği almazsa önceki
+değerler geri yazılır ve hata gösterilir.
+
+**Sahibin bağımsızlığı (D-022).** Panel kaldırılınca da çalışan sıradan `main.cf`
+ayarları. CelikPanel bir ayarı yalnız Postfix'in varsayılanını ya da kendi yazdığı
+değeri taşıdıkça değiştirir (önce/sonra kaydı
+`/var/lib/celikpanel-agent-private/mail-passwordless.json`); sahibin koyduğu değer
+korunur ve yanında CelikPanel'in biçimiyle gösterilir.
+
+**Dayanıklılık (D-025).** Etkilenen ilke: yerel hizmet sahipliği ve sahip
+değişikliğinin saptanması; şema değişikliği yok. Kurtarma: başarısız denetim ya da
+yeniden yüklemede iki ayar geri alınır, kaydedilir ve sonraki başlangıçta yeniden
+denenir. Kanıt: 1. aşama (alpha.124) için günlük okuma ve sitelere eşleme Go testleri;
+2. aşama (alpha.125) için plan, geri alma ve sahip değerleri Go testleri ile
+Debian 13 laboratuvar denetimi.
+
 ## D-045 · Bileşen bağımlılık kuralı: Linux'un paket kuralı bileşen düzeyinde; kaldırma neyin ona ihtiyaç duyduğunu sorar
 
 *2026-11-04 (sahibin kararı) · D-038 2. maddeyi ("kullanılan hiçbir şey kaldırılmaz") ve D-042'yi (sunumlar) her bileşene uygular; alpha.123'te uygulandı, laboratuvar denemesi bekliyor*
@@ -66,10 +123,44 @@ kaldırma adımından önce aynı bağımlıları gösterir. Agent, bir hizmet u
 **Kurulum.** Aynı harita gereksinimleri ve çakışmaları denetler. Eksik gereksinim
 "Önce … kurulsun" olarak sunulur; çakışma gerekçesiyle reddedilir.
 
-**İddia edilmeyen.** Python uygulamalarının sürümleri, PostgreSQL'in ana sürüm
-başına kaldırılması, tek bir "birlikte kur" işlemi ve kurulum penceresinde alt düzey
-paket adlarının gizlenmesi sonraki işlerdir. Sürüm hâlâ laboratuvar turunu bekler
-(D-025).
+**Kurulum, alpha.124 (sahip, 4 Kasım 2026: "bir bileşen kurmak istediğimizde
+bağımlılıklar listelenir; sürümler seçilebilir ya da değiştirilemez olarak
+listelenir; sonra kur denir kurulur" ve "postgresql-server yüklerken
+postgresql-common'ı da yükleyeceğini bilmek beni ilgilendirmiyor").** Kurulum
+penceresi aynanın sorusunu sorar: *bu bileşene ne gerekir?* Her gereksinim
+bileşen düzeyinde yanıtlanır (`GET /api/v1/service/install-plan`): kurulu
+(sürümüyle), önce onunla birlikte kurulacak ya da eksik ve bu pencereden
+kurulamaz; nedeni ve nerede yapıldığıyla (posta motorları posta kurulumuyla
+gelir; bu sistemde sunulmayan bileşen; aynı görevi üstlenen başka bileşen;
+çalışma ortamları ve DNS motorları kendi yerinden). Eksik ve kurulamayan bir
+gereksinim varken Kur kapalıdır ve pencere kimin ne yapacağını söyler.
+- **Birlikte kurulum** sunucuda tek kalıcı işlemdir (`service_install_together`):
+  niteleyicisi üye listesi olan tek Agent kirası (`core.ParseInstallTogetherQualifier`:
+  hedefin gerektirdiği düz dağıtım bileşenleri: Nginx, PHP-FPM, MariaDB,
+  PostgreSQL, nftables); her adımdan önce ve kaldığı yerden sürerken taze
+  taramayla plan yeniden okunur, zaten kurulu üye atlanır, kimsenin onaylamadığı
+  bir üye işlemi durdurur, her kurulum olağan kurulumdur (ön denetim, Agent,
+  yapılandırma, tarama). Bir hata önceki kurulumları yerinde bırakır ve mesajı
+  onları adlandırır. Genel işlem kilidi onu izler, yeniden yüklemeden ya da
+  yeniden başlatmadan sonra ona bağlanır; tarayıcı işareti asla işlem başlatmaz.
+- **Sürümler.** Birlikte kurulan gereksinim dağıtımın sürümüyle gelir
+  (değiştirilemez); başka sürüm o bileşenin kendi kurulumudur. phpMyAdmin,
+  phpPgAdmin ve Roundcube hangi kurulu PHP-FPM sürümüyle çalışacaklarını burada
+  seçer (kuruluysa dağıtımınki, değilse en yenisi); sahibin seçtiği sürüm
+  kanıtlamanın yedek denemesiyle asla değiştirilmez.
+- **Paketler.** Kurulum penceresi paket adı söylemez. Kurulumun getirdiği başka
+  şeyler bileşen düzeyinde söylenir (başka bir PHP, Apache, başka bir bileşen,
+  bir veritabanı sunucusu, "kurulu N sistem paketi güncellenir"); adlar onaylanan
+  ve sunucuda denetlenen listede kalır. Tek istisna sahibin onay verdiği depo
+  değişikliğidir: paketlerini ve depoyu açıkça adlandırır ("PostgreSQL (PGDG)",
+  asla "üretici"; Agent artık yeni kurduğu ortak paketin deposunu da adlandırır).
+- **PHP sürümleri.** Sitelerin hâlâ kullandığı bir sürüm reddedilir ve ret
+  üzerindeki PHP araçlarını da, her birinin kendi sayfasına bağlantısıyla,
+  adlandırır; yalnız araçlar asla reddetmez (kaldırmayla birlikte taşınırlar).
+
+**İddia edilmeyen.** Python uygulamalarının sürümleri ve PostgreSQL'in ana sürüm
+başına kaldırılması sonraki işlerdir; hazır paketler hâlâ tarayıcıdan sırayla
+kurulur. alpha.123 ve alpha.124 hâlâ laboratuvar turunu bekler (D-025).
 
 ---
 

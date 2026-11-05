@@ -18,7 +18,7 @@ Başka bir sayfa Fail2ban, ClamAV, vsftpd, Python, Node.js ya da WireGuard gibi 
 
 ## Kurmak ve kaldırmak {#install}
 
-**Kur**, hiçbir şey değişmeden önce neyin kurulacağını gösterir. Önce başka bir bileşene ihtiyaç duyan bileşen, örneğin MariaDB olmadan phpMyAdmin, eksik her parça için **Önce … kurulsun** düğmesi olan bir pencere açar.
+**Kur**, hiçbir şey değişmeden önce bileşenin neye ihtiyaç duyduğunu **Gerekenler** altında gösterir: her gereksinim **Kurulu**, önce onunla birlikte kurulacak ya da nedeni ve nerede yapıldığıyla eksik (örneğin posta motorları posta kurulumuyla gelir). Burada kurulabilen eksikler, örneğin phpMyAdmin için MariaDB ve Nginx, aynı işlemde önce kurulur; bir adım başarısız olursa ondan önce kurulanlar kalır. phpMyAdmin, phpPgAdmin ve Roundcube hangi kurulu PHP sürümüyle çalışacaklarını burada seçer. Paket adları listelenmez; pencere yalnız bir depo değişikliği için onayınızı ister ve depoyu adlandırır (örneğin PostgreSQL (PGDG)).
 
 **Kaldır** tek bir soru sorar: bu bileşene ne ihtiyaç duyuyor? Pencere üç bölümde yanıtlar:
 

@@ -18,6 +18,7 @@ export const enRemovalRuleScreens = {
     'rmrule.kind.component': '{name} needs it and is used itself, so it is not removed together.',
     'rmrule.kind.sites': '{count} site(s) are served by it. Remove a site, or make it DNS only, on its page.',
     'rmrule.kind.apache_sites': '{count} site(s) run on Apache. Move each to nginx on its page, or remove it.',
+    'rmrule.kind.php_tools': '{count} PHP tool(s) run on it as well. Open each and move it to another PHP version in its Manage window.',
     'rmrule.kind.php_sites': '{count} site(s) run on it. Open each site and change its PHP version.',
     'rmrule.kind.node_sites': '{count} site(s) run on it. Open each site and change its Node.js version.',
     'rmrule.kind.node_service_apps': '{count} app(s) run on it (n8n, for example). Remove the app on its site’s page first.',

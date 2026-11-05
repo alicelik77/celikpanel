@@ -63,12 +63,15 @@ type strictDNSRPCAgent struct {
 	secureDNSCalls      int
 	dnssecStatusCalls   int
 	dnssecStatusError   string
-	cancelCalls         int
-	readinessCalls      int
-	readinessReady      bool
-	readinessDetail     string
-	readinessError      error
-	publisher           transport.DNSEngine
+	// dnssecSigningUnsupported is what DNSSECStatus says about signing
+	// (alpha.124); empty like an older Agent.
+	dnssecSigningUnsupported string
+	cancelCalls              int
+	readinessCalls           int
+	readinessReady           bool
+	readinessDetail          string
+	readinessError           error
+	publisher                transport.DNSEngine
 }
 
 func (a *strictDNSRPCAgent) Version(
@@ -374,6 +377,7 @@ func (a *strictDNSRPCAgent) DNSSECStatus(
 	}
 	resp.Secured = true
 	resp.DS = []string{"12345 13 2 AABBCC"}
+	resp.SigningUnsupported = a.dnssecSigningUnsupported
 	return nil
 }
 

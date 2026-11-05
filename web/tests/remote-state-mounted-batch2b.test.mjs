@@ -61,6 +61,8 @@ const stub = dataModule(`
   export const MailAutoresponderDialog = () => null;
   // alpha.107: the repository card has its own mounted tests.
   export const RepoCard = () => null;
+  // alpha.124: the passwordless mail notice on the Postfix page reads its own address; not under test here.
+  export const PasswordlessMailNotice = () => null;
   // alpha.108: the PostgreSQL clusters card has its own mounted tests.
   export const PostgreSQLClustersCard = () => null;
   // What components/ComponentOperation.tsx imports and never calls here: only

@@ -211,7 +211,10 @@ test('the scan is dated by the age the server reports, with the earlier rule as 
 test('an unreachable Agent is named on the card in EN and TR', () => {
   const httperr = readFileSync(new URL('../../cmd/panel/httperr.go', import.meta.url), 'utf8');
   assert.match(httperr, /errCodeAgentUnreachable = "AGENT_UNREACHABLE"/);
-  assert.match(httperr, /writeCodedError\(w, http\.StatusServiceUnavailable, errCodeAgentUnreachable, agentUnreachableMessage, ""\)/);
+  // alpha.124: the same 503 AGENT_UNREACHABLE, now with its reason
+  // (not_running or socket_denied, Frankfurt 2026-11-05).
+  assert.match(httperr, /apiErrorBody\{Error: message, Code: errCodeAgentUnreachable, Reason: reason\}/);
+  assert.match(httperr, /message := agentUnreachableMessage/);
   for (const [catalogue, words] of [
     [en, ['not reachable', 'nothing was changed', 'server owner', 'sudo systemctl status celikpanel-agent', 'try again']],
     [tr, ['ulaşılamıyor', 'hiçbir şey değiştirilmedi', 'Sunucunun sahibi', 'sudo systemctl status celikpanel-agent', 'yeniden deneyin']],

@@ -19,6 +19,63 @@ Code decisions live in git; this file is for strategy. Newest first.
 > D-029. Entries written after this note use the clock date; a dated entry from 10, 11 or
 > 12 October 2026 other than D-029 is genuine.
 
+## D-046 · No mail without a password: sites send only through authenticated submission
+
+*2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · implemented in two phases: phase 1 (read-only report and sending mailboxes) in alpha.124, phase 2 (closing) planned for alpha.125*
+
+**Why.** A stock Postfix lets anything running on the server send mail to the
+whole Internet without a password, two ways: SMTP to port 25 on the server
+itself (loopback is in `mynetworks`, and `permit_mynetworks` allows relaying)
+and the `sendmail` command, which PHP `mail()`, cron and scripts use
+(`postdrop` → `pickup`). A hacked site then sends spam in the server's name and
+the whole server's address ends up on block lists.
+
+**Decision.** Sites send mail only with a mailbox's user name and password,
+through submission (587 STARTTLS or 465 TLS). Both passwordless ways are closed
+(phase 2, alpha.125 — not yet in alpha.124) with two native Postfix settings,
+for every site, PHP version and pool at once:
+
+- `authorized_submit_users = root, vmail`: the `sendmail` command and `postdrop`
+  refuse every other Unix account ("User x(uid) is not allowed to submit mail",
+  in the mail log; PHP `mail()` returns false). root keeps it for cron,
+  unattended-upgrades, fail2ban and every other system notice; `vmail` keeps it
+  for Dovecot's Sieve out-of-office replies. CelikPanel's own account mail is
+  handed to `sendmail` by the Agent as root.
+- `smtpd_relay_restrictions` without `permit_mynetworks`: SMTP from the server
+  itself may still deliver into this server's own mailboxes (what any server on
+  the Internet may do) but relaying elsewhere needs SASL ("Relay access denied").
+  `mynetworks` and `smtpd_recipient_restrictions` are not changed.
+
+A PHP-level `sendmail_path` override was not used: it would need a CelikPanel
+helper on every PHP version's path that stays behind if the panel is removed,
+and it closes nothing the Postfix list does not close. Roundcube already sends
+through 587 with the user's password; the mailbox 90% warning is delivered by
+Dovecot's own delivery agent, not by `sendmail`.
+
+**Two phases.** Phase 1 (alpha.124) changes nothing on the server: the Postfix
+page says that mail without a password closes in the next release and lists the
+sites that used it in the last 30 days, read from Postfix's own log (`pickup`
+uid lines mapped to the site's system user; unauthenticated loopback SMTP
+relayed elsewhere, mapped by the sender's domain). Each site gets one button,
+"Create a sending mailbox", which makes `noreply@<domain>` and shows the server,
+port, user name and the password once. Phase 2 (alpha.125) closes it on the
+first panel start after the update (the Agent's mail filter step), with a
+verified Postfix reload; if Postfix does not take the change the earlier values
+are written back and the failure is shown.
+
+**Owner independence (D-022).** Ordinary `main.cf` settings that keep working
+with the panel removed. CelikPanel changes a setting only while it holds
+Postfix's default or the value CelikPanel itself wrote (its before/after record
+in `/var/lib/celikpanel-agent-private/mail-passwordless.json`); a value the
+owner set is kept and shown with CelikPanel's form beside it.
+
+**Resilience (D-025).** Affected invariant: native service ownership and
+owner-change detection; no schema change. Recovery: rollback of the two
+settings on a failed check or reload, recorded and retried at the next start.
+Evidence: phase 1 (alpha.124): Go tests of the log reading and the placing on
+sites. Phase 2 (alpha.125): Go tests of the plan, the rollback and the owner's
+values, and a lab check on Debian 13.
+
 ## D-045 · Component dependency rule: Linux's package rule at component level; removal asks what requires it
 
 *2026-11-04 (owner's decision) · Applies D-038 point 2 ("nothing in use is removed") and D-042 (offerings) to every component; implemented in alpha.123, lab trial pending*
@@ -67,9 +124,47 @@ to delete a Node.js version a service app runs on.
 **Install.** The same map checks requirements and conflicts. A missing
 requirement is offered as "Install … first"; a conflict refuses with its reason.
 
-**Not claimed.** Python apps' versions, per-major PostgreSQL removal, a single
-"install together" operation and hiding low-level package names in the install
-window are later work. The release still needs its lab round (D-025).
+**Install, alpha.124 (owner, 4 November 2026: "when we install a component its
+dependencies are listed; versions are listed as choosable or fixed; then
+Install installs it", and "knowing that installing postgresql-server also
+installs postgresql-common does not concern me").** The install window asks
+the mirror question, *what does this component need?*, and answers per
+requirement at component level (`GET /api/v1/service/install-plan`):
+installed (with its version), installed together with it first, or missing
+and not installable from this window, with the reason and where it is done
+(mail engines come with the mail setup; a component not offered on this
+system; another component holding the same role; runtimes and DNS engines
+from their own place). Install is off while one is missing and not
+installable, and the window says who acts and what next.
+- **Install together** runs on the server as one durable operation
+  (`service_install_together`): one Agent lease whose qualifier is the member
+  list (`core.ParseInstallTogetherQualifier`: plain distribution components
+  the target requires - Nginx, PHP-FPM, MariaDB, PostgreSQL, nftables), the
+  plan read again with a fresh scan before any step and on resume, a member
+  already installed skipped, a member nobody confirmed refusing the run, every
+  install the ordinary one (preflight, Agent, configuration, scan). A failure
+  leaves the earlier installs in place and its message names them. The global
+  operation lock follows it and re-attaches after a reload or restart; a
+  browser marker never starts one.
+- **Versions.** A requirement installed together comes at the distribution's
+  version (fixed); choosing another version is that component's own install.
+  phpMyAdmin, phpPgAdmin and Roundcube choose here the installed PHP-FPM
+  version they run on (the distribution's own when installed, otherwise the
+  newest); a version the owner chose is never moved by the proof's fallback.
+- **Packages.** The install window names no package. What else an install
+  brings is said by component (another PHP, Apache, another component, a
+  database server, "N installed system packages updated"); the names stay in
+  what is confirmed and checked on the server. The one exception is a
+  repository change the owner consents to, which names its packages and the
+  repository plainly ("PostgreSQL (PGDG)", never "vendor": the Agent now
+  names the repository of a shared package it installs fresh).
+- **PHP versions.** A version that sites still use is refused, and the refusal
+  names the PHP tools on it too, each linked to its own page; tools alone
+  never refuse (they move with the removal).
+
+**Not claimed.** Python apps' versions and per-major PostgreSQL removal are
+later work; ready bundles still install in a row from the browser. alpha.123
+and alpha.124 still need their lab round (D-025).
 
 ---
 

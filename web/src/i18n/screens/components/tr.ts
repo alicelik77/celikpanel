@@ -306,7 +306,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.installPreview.next.agent_unreachable': 'Şimdilik bir şey yapmanız gerekmiyor: bir dakika sonra Tekrar dene’ye basın. Sürerse sunucudaki yardımcının yeniden başlatılması gerekebilir.',
     'services.installPreview.next.invalid_request': 'Sonraki adım: bu pencereyi kapatıp sürümü yeniden seçin.',
     'services.installPreview.next.other': 'Sonraki adım: Tekrar dene’ye basın. Yinelenirse kurulumun kendisi hiçbir şeyi değiştirmeden durur ve paket yöneticisinin iletisini gösterir.',
-    'services.installPreview.nothingElse': 'Paket yöneticisi yalnız burada listelenenleri ve onların bağlı olduğu paketleri kurar; hiçbiri başka bir PHP, Apache, başka bir bileşen ya da veritabanı sunucusu değildir.',
+    'services.installPreview.nothingElse': 'Onayınızı gerektiren başka bir şey yok: paket yöneticisi yalnız bu bileşenin ihtiyaç duyduklarını getirir; hiçbiri başka bir PHP, Apache, başka bir bileşen ya da veritabanı sunucusu değildir.',
     // alpha.109 (sahip: “birkaç paketle hiç anlaşılmıyor”): gruplu liste, her satırda bir paket.
     'services.installPreview.heading': 'Bu kurulum, {selected} yanında şunları da yapacak:',
     'services.installPreview.selectedUnknown': 'seçtiğiniz sürüm',
@@ -317,7 +317,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.installPreview.whyMany': 'Neden: {selected} yalnız {repo} deposunda var ve bu paketlerin o depodaki sürümlerine ihtiyaç duyuyor.',
     'services.installPreview.afterOne': 'Sonrası: Bu paketin güncellemeleri artık {distroFrom} değil {repo} deposundan gelir.',
     'services.installPreview.afterMany': 'Sonrası: Bu paketlerin güncellemeleri artık {distroFrom} değil {repo} deposundan gelir.',
-    'services.installPreview.additionalTitle': 'Ek olarak kurulacak paketler',
+    'services.installPreview.additionalTitle': 'Bununla birlikte gelenler',
     'services.installPreview.note.new_php_version': 'Burada zaten olan PHP’ye ek olarak kurulur ve sistemle birlikte güncellenir.',
     'services.installPreview.note.apache': 'CelikPanel Nginx ile sunar; Apache 80 numaralı bağlantı noktasını kullanmaya çalışabilir.',
     'services.installPreview.note.upgrade': 'İşletim sisteminin kendi güncellemesi de aynı sürümleri getirirdi.',
@@ -595,4 +595,6 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.version.versionsChecking': 'Kurulu PHP sürümleri okunuyor…',
     'services.version.versionsUnknown': 'Kurulu PHP sürümleri şu an okunamadı; araçların nereye taşınabileceği bilinmiyor. Hiçbir şey değiştirilmedi.',
     'services.version.removalUnknown': 'PHP {version} sürümünün kaldırılıp kaldırılmadığı bilinmiyor: yanıt gelmedi. Liste sürümleri yeniden okur; yeniden denemeden önce ona bakın.',
+    'services.operation.phase.panel_busy': "Bekleniyor: CelikPanel'in kendi veritabanı başka bir işle meşgul; bu işlem ilerlemesini şu an kaydedemiyor. Sunucudaki iş bundan etkilenmez. Veritabanı boşalınca kendiliğinden kaydeder; hiçbir şey iki kez başlatılmaz. Kimsenin bir şey yapması gerekmiyor.",
+    'services.operation.phase.panel_stayed_busy': "CelikPanel'in kendi veritabanı yaklaşık on dakika boyunca meşgul kaldı; bu işlemin ilerlemesi kaydedilemedi. Hiçbir sonuç tahmin edilmez: işlem panel açılırken yeniden denetlenir. Siz, sunucu sahibi: bu sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın (yalnız paneli yeniden başlatır; siteler, e-posta ve DNS çalışmaya devam eder). Yeniden olursa sudo journalctl -u celikpanel-panel -n 100 veritabanını neyin meşgul ettiğini gösterir.",
 };

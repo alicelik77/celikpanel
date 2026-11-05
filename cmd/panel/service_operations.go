@@ -56,6 +56,11 @@ type serviceInstallRequest struct {
 	PHPVersion        string   `json:"php_version,omitempty"`
 	CheckInstalls     bool     `json:"check_installs,omitempty"`
 	ConfirmedInstalls []string `json:"confirmed_installs,omitempty"`
+	// InstallTogether (alpha.124, D-045 follow-up): the missing requirements
+	// the owner confirmed to install first, as the install plan lists them.
+	// It must equal the plan's list; the install then runs on the server as
+	// one durable operation (service_install_together).
+	InstallTogether []string `json:"install_together,omitempty"`
 	// AcceptedPointUpdates is set only by a reviewed server setup step (never
 	// from a request body): the exact "package=version" distribution point
 	// updates its review listed and its confirmation covered.
@@ -67,8 +72,9 @@ const maxConfirmedInstalls = 64
 // validServiceInstallChoices checks the alpha.105 fields of an install.
 func validServiceInstallChoices(req serviceInstallRequest) string {
 	if req.PHPVersion != "" {
-		if req.ServiceID != "phpmyadmin" && req.ServiceID != "phppgadmin" {
-			return "php_version is chosen only for phpMyAdmin and phpPgAdmin"
+		// alpha.124: Roundcube's PHP version is chosen at its install too.
+		if req.ServiceID != "phpmyadmin" && req.ServiceID != "phppgadmin" && req.ServiceID != "roundcube" {
+			return "php_version is chosen only for phpMyAdmin, phpPgAdmin and Roundcube"
 		}
 		if !phpToolVersionPattern.MatchString(req.PHPVersion) {
 			return "invalid php_version"
@@ -145,6 +151,9 @@ type serviceOperation struct {
 // adımı olarak listeliyorsa SetupChild'ı ayarlar. Arama başarısız olursa false
 // kalır; işlem sıradan sayılır.
 func (p *Panel) markServerSetupChild(ctx context.Context, op serviceOperation) serviceOperation {
+	// A state the runner could not save yet is shown from memory (it is
+	// presentation only: the saved row keeps its real phase).
+	op = overlayServiceOperationPanelBusy(op)
 	if !validServiceOperationID(op.RequestID) {
 		return op
 	}
@@ -246,6 +255,12 @@ func (p *Panel) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !requireAdministratorForComponent(w, r, req.ServiceID) {
+		return
+	}
+	// alpha.124 (D-045 follow-up): missing requirements confirmed in the
+	// install window are installed first, in one durable operation.
+	if len(req.InstallTogether) > 0 {
+		p.startInstallTogether(w, r, req)
 		return
 	}
 	existing, found, err := p.idempotentServiceOperation(
@@ -626,7 +641,8 @@ func parseMailTLSChildPhase(phase string) (mailTLSChildIdentity, bool) {
 func serviceOperationNeedsFirewallSync(op serviceOperation) bool {
 	return op.Kind == serviceOperationKindInstall ||
 		op.Kind == serviceOperationKindMailProfileInstall ||
-		op.Kind == serviceOperationKindRemoveTogether
+		op.Kind == serviceOperationKindRemoveTogether ||
+		op.Kind == serviceOperationKindInstallTogether
 }
 
 func serviceOperationFirewallPhase(op serviceOperation) string {
@@ -1111,13 +1127,30 @@ func runServiceOperationRunner(
 	return runner(ctx, advance)
 }
 
+// execServiceOperationState writes one change of an operation's own state.
+// A busy panel database is asked again with a bounded backoff, and the
+// reads show the operation waiting meanwhile, instead of the write being
+// dropped or a succeeded operation being recorded as failed because its
+// result could not be saved under someone else's lock (alpha.123 lab).
+// Every write is a compare-and-set on the row's status, so a retry never
+// applies twice.
+func (p *Panel) execServiceOperationState(ctx context.Context, id, query string, args ...any) (sql.Result, error) {
+	var result sql.Result
+	err := retryPanelBusyWrite(ctx, panelBusyKeyOperation(id), func(attempt context.Context) error {
+		var execErr error
+		result, execErr = p.db.GetDB().ExecContext(attempt, query, args...)
+		return execErr
+	})
+	return result, err
+}
+
 func (p *Panel) forceFailActiveServiceOperation(
 	ctx context.Context,
 	id, phase string,
 	failure *serviceOperationFailure,
 ) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	update, err := p.db.GetDB().ExecContext(ctx, `
+	update, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase=?, result_json='{"success":false}',
 		    error_code=?, error_message=?, finished_at=?, updated_at=?
@@ -1140,7 +1173,7 @@ func (p *Panel) forceFailActiveServiceOperation(
 
 func (p *Panel) markServiceOperationRunning(ctx context.Context, id, phase string) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := p.db.GetDB().ExecContext(ctx, `
+	result, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase=?, updated_at=?
 		WHERE id=? AND status=?`,
@@ -1161,7 +1194,7 @@ func (p *Panel) markServiceOperationRunning(ctx context.Context, id, phase strin
 
 func (p *Panel) updateServiceOperationPhase(ctx context.Context, id, phase string) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := p.db.GetDB().ExecContext(ctx, `
+	result, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations SET phase=?, updated_at=?
 		WHERE id=? AND status=?`,
 		phase, now, id, serviceOperationRunning,
@@ -1200,7 +1233,7 @@ func (p *Panel) finishServiceOperationSucceeded(
 		return err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	update, err := p.db.GetDB().ExecContext(ctx, `
+	update, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase='completed', result_json=?,
 		    error_code=NULL, error_message=NULL,
@@ -1232,7 +1265,7 @@ func (p *Panel) finishServiceOperationFailed(
 		return err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	update, err := p.db.GetDB().ExecContext(ctx, `
+	update, err := p.execServiceOperationState(ctx, id, `
 		UPDATE service_operations
 		SET status=?, phase=?, result_json=?, error_code=?, error_message=?,
 		    finished_at=?, updated_at=?
@@ -2369,6 +2402,17 @@ func (p *Panel) resumeInterruptedServiceOperationLocked(op serviceOperation) err
 			successAudit = "webmail.address.remove.recovered:" + op.PackageName
 			failureAudit = "webmail.address.remove.recovered.failed:" + op.PackageName
 		}
+	case serviceOperationKindInstallTogether:
+		// alpha.124: the plan is read again first and a requirement already
+		// installed is skipped, so the same run resumes; an install the
+		// Agent finished is idempotent.
+		resumed, err := p.installTogetherRunner(op)
+		if err != nil {
+			return fmt.Errorf("interrupted install-together operation: %w", err)
+		}
+		runner = resumed
+		successAudit = "service.install.together.recovered:" + op.ServiceID + pkgSuffix(op.PackageName)
+		failureAudit = "service.install.together.recovered.failed:" + op.ServiceID + pkgSuffix(op.PackageName)
 	case serviceOperationKindRemoveTogether:
 		// alpha.123 (D-045): every step is idempotent and the plan is
 		// checked again first, so the same run resumes.
@@ -2434,16 +2478,10 @@ func (p *Panel) resumeInterruptedServiceOperation(op serviceOperation) error {
 func (p *Panel) auditServiceOperation(ctx context.Context, actor serviceOperationActor, action string) {
 	// alpha.107 (D-038 §16): the operation's details, when the caller gave
 	// them (withAuditDetails).
-	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO audit_logs (
-			user_id, action, resource_type, resource_id, ip_address, user_agent, details
-		) VALUES (?, ?, 'service', NULL, ?, ?, ?)`,
-		nullablePositiveInt(actor.UserID), action,
-		nullableNonEmpty(actor.IP), nullableNonEmpty(actor.UserAgent),
-		auditDetailsJSON(auditDetailsFrom(ctx)),
-	); err != nil {
-		log.Printf("audit write failed (%s): %v", action, err)
-	}
+	p.recordAudit(auditRecord{
+		UserID: actor.UserID, Action: action, ResourceType: "service",
+		IP: actor.IP, UserAgent: actor.UserAgent, Details: auditDetailsText(auditDetailsFrom(ctx)),
+	})
 	if p.serviceOperationAudited != nil {
 		p.serviceOperationAudited(action)
 	}

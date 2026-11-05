@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -51,6 +53,12 @@ type linuxSystemUpdateBackend struct {
 	now            func() time.Time
 	writeFault     func(string) error
 	observe        func(*systemUpdateState, string, string, string)
+	// resetFailedUnit clears systemd's failed mark of one finished
+	// attempt's own transient unit (alpha.124); nil does nothing.
+	resetFailedUnit func(context.Context, string) error
+	// clearedAfter is the successful attempt whose resolved units this
+	// process already cleared from Status, so a status poll clears once.
+	clearedAfter string
 }
 
 type systemUpdateIdleLease interface{ Close() error }
@@ -174,6 +182,7 @@ func newLinuxSystemUpdateBackend() *linuxSystemUpdateBackend {
 	}
 	backend.launch = backend.launchWorker
 	backend.unitState = backend.probeWorkerUnit
+	backend.resetFailedUnit = backend.resetFailedWorkerUnit
 	backend.installedBuild = inspectInstalledSystemUpdateBuild
 	backend.finalProof = proveSystemUpdateRecoveryFinalState
 	backend.runInstaller = runSystemUpdateInstaller
@@ -824,6 +833,7 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 		return nil, err
 	}
 	active := 0
+	var others []*systemUpdateState
 	for _, entry := range entries {
 		if entry.Name() == ".lock" || entry.Name() == ".worker.lock" {
 			continue
@@ -838,6 +848,9 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 		if candidate.active() {
 			active++
 		}
+		if candidate.RequestID != requestID {
+			others = append(others, candidate)
+		}
 	}
 	if active > 1 {
 		return nil, errors.New("multiple active system update requests are ambiguous")
@@ -851,7 +864,33 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 	} else if state.Status == systemUpdateSucceeded {
 		backend.observePreviouslySucceeded(ctx, state)
 	}
+	if err == nil {
+		backend.clearAfterSuccessLocked(ctx, state, others)
+	}
 	return state, err
+}
+
+// clearAfterSuccessLocked clears the resolved attempts' units once this
+// attempt is known to have succeeded (alpha.124 lab, 123 -> 124 update): the
+// start-time Reconcile runs while the attempt that restarted the Agent is
+// still active and returns before clearing, so the earlier failed units
+// stayed under systemctl --failed after a successful update. The status the
+// update screen reads after the restart is the first point where this
+// process sees the success; it clears once per successful attempt and only
+// when no other attempt is active (the same rule as Reconcile).
+func (backend *linuxSystemUpdateBackend) clearAfterSuccessLocked(ctx context.Context, state *systemUpdateState, others []*systemUpdateState) {
+	if state == nil || state.Status != systemUpdateSucceeded || backend.clearedAfter == state.RequestID {
+		return
+	}
+	finished := []*systemUpdateState{state}
+	for _, other := range others {
+		if other.active() {
+			return
+		}
+		finished = append(finished, other)
+	}
+	backend.clearedAfter = state.RequestID
+	backend.clearFinishedWorkerUnits(ctx, finished)
 }
 
 func (backend *linuxSystemUpdateBackend) Reconcile(ctx context.Context) error {
@@ -900,15 +939,82 @@ func (backend *linuxSystemUpdateBackend) Reconcile(ctx context.Context) error {
 		_, err := backend.reconcileStateLocked(ctx, active[0])
 		return err
 	}
+	finished := append([]*systemUpdateState(nil), succeeded...)
 	for _, state := range failed {
-		if _, err := backend.reconcileStateLocked(ctx, state); err != nil {
+		reconciled, err := backend.reconcileStateLocked(ctx, state)
+		if err != nil {
 			return err
 		}
+		finished = append(finished, reconciled)
 	}
 	for _, state := range succeeded {
 		backend.observePreviouslySucceeded(ctx, state)
 	}
+	backend.clearFinishedWorkerUnits(ctx, finished)
 	return nil
+}
+
+// clearFinishedWorkerUnits removes systemd's failed mark from the transient
+// units of finished self-update attempts (alpha.124; both real servers
+// listed celikpanel-self-update-<id>.service under systemctl --failed after
+// an attempt that stopped before changing anything or that failed and was
+// later retried successfully).
+//
+// Only when no attempt is active (Reconcile returns before this otherwise),
+// and only the units of attempts that a later successful update resolved:
+// the successful attempt itself and every earlier failed one. A failed
+// attempt with no later success is unresolved and keeps its unit as it is
+// (its OnFailure recovery may still need it). The unit names come from this
+// Agent's own attempt records, never from a listing, so no other unit is
+// touched. Each attempt's record under the state root is kept: it is the
+// evidence, and the journal keeps the unit's log.
+func (backend *linuxSystemUpdateBackend) clearFinishedWorkerUnits(ctx context.Context, states []*systemUpdateState) {
+	if backend.resetFailedUnit == nil {
+		return
+	}
+	for _, requestID := range systemUpdateResolvedAttempts(states) {
+		if err := backend.resetFailedUnit(ctx, requestID); err != nil {
+			log.Printf("self-update: the finished attempt %s keeps its failed unit mark: %s", requestID, sanitizedSystemUpdateError(err))
+		}
+	}
+}
+
+// systemUpdateResolvedAttempts is the request ids whose units may be cleared:
+// the latest successful attempt and every attempt created before it (each
+// succeeded or failed; none is active when this is asked).
+func systemUpdateResolvedAttempts(states []*systemUpdateState) []string {
+	var latest time.Time
+	found := false
+	for _, state := range states {
+		if state == nil || state.Status != systemUpdateSucceeded {
+			continue
+		}
+		created, err := time.Parse(time.RFC3339Nano, state.CreatedAt)
+		if err != nil {
+			continue
+		}
+		if !found || created.After(latest) {
+			latest, found = created, true
+		}
+	}
+	if !found {
+		return nil
+	}
+	var ids []string
+	for _, state := range states {
+		if state == nil || state.active() || !systemUpdateRequestRE.MatchString(state.RequestID) {
+			continue
+		}
+		created, err := time.Parse(time.RFC3339Nano, state.CreatedAt)
+		if err != nil || created.After(latest) {
+			continue
+		}
+		if state.Status == systemUpdateSucceeded || state.Status == systemUpdateFailed {
+			ids = append(ids, state.RequestID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
 }
 
 // Startup reconciliation must not provision update trust/state on a host that
