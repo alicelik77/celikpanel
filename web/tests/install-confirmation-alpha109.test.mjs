@@ -17,8 +17,10 @@ import { en as enShell } from '../src/i18n/en.ts';
 import { tr as trShell } from '../src/i18n/tr.ts';
 import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
 import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
+import { enComponentInstallScreens } from '../src/i18n/screens/componentInstall/en.ts';
+import { trComponentInstallScreens } from '../src/i18n/screens/componentInstall/tr.ts';
 
-const words = { en: { ...enShell, ...enComponentsScreens }, tr: { ...trShell, ...trComponentsScreens } };
+const words = { en: { ...enShell, ...enComponentsScreens, ...enComponentInstallScreens }, tr: { ...trShell, ...trComponentsScreens, ...trComponentInstallScreens } };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 const sayIn = (locale) => (key, vars) => (words[locale][key] !== undefined ? fill(words[locale][key], vars) : key);
 globalThis.confirmLocale = 'tr';
@@ -33,9 +35,10 @@ const shared = sharedLayer(stub);
 const preview = await import(installPreviewLibURL);
 const { InstallPreviewNotes, installPreviewGate, installPreviewAckKey } = await import(shared.compile('components/InstallPreviewNotes.tsx'));
 
-const operationSource = readFileSync(new URL('../src/components/ComponentOperation.tsx', import.meta.url), 'utf8');
-const refusalSlice = operationSource.slice(operationSource.indexOf('export interface RefusedNotable'), operationSource.indexOf('export function decodeMailHostnameIdentity'));
-const refusal = await import(dataModule(ts.transpileModule(refusalSlice, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText));
+// alpha.124: a refused install's lines are said by the notes the operation
+// provider fetches when an operation ends (lib/componentOperationNotes.ts).
+const notesSource = readFileSync(new URL('../src/lib/componentOperationNotes.ts', import.meta.url), 'utf8');
+const refusal = await import(dataModule(ts.transpileModule(notesSource, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 } }).outputText));
 
 const SHARED = { package: 'php-common', reason: 'vendor_shared', component: 'sury', from: '2:93ubuntu2', to: '2:101+0~20261021.78+ubuntu24.04~1.gbp53f25f' };
 const known = (notable, distribution = 'ubuntu') => ({
@@ -164,7 +167,10 @@ test('a refused install lists what it would have brought, grouped, in the same w
     'php-common (2:93 → 2:101): dağıtımın sürümü yerine Sury PHP deposunun sürümü',
     'Apache web sunucusu:', '– apache2', '– libapache2-mod-php8.4',
   ]);
-  assert.match(operationSource, /t\('services\.installRefused\.notable'\),\s*\.\.\.notableRefusalLines\(notable,/);
+  assert.deepEqual(refusal.refusalDetails({ notable_installs: [SHARED] }, sayIn('en'), 'en'), [
+    words.en['services.installRefused.notable'],
+    'php-common (2:93 → 2:101): the Sury PHP repository’s version instead of the distribution’s',
+  ]);
 });
 
 test('every new sentence exists in English and Turkish', () => {

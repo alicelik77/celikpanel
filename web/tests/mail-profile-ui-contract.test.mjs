@@ -116,7 +116,11 @@ test('profile success needs fresh complete state and full operation evidence', (
   assert.match(proof, /result\.submission_configured !== true/);
   assert.doesNotMatch(proof, /profile\.warning/);
   assert.match(operationSource, /verifiedProfileResult\?\.fallbackOnly/);
-  assert.match(operationSource, /showToast\('warning', t\('services\.mailProfiles\.fallbackWarning'/);
+  // alpha.124: the warning is said by the notes fetched when the operation
+  // ends, in place of the plain "installed".
+  const notesSource = readFileSync(new URL('../src/lib/componentOperationNotes.ts', import.meta.url), 'utf8');
+  assert.match(notesSource, /fallbackOnly \? said\(t, 'services\.mailProfiles\.fallbackWarning'/);
+  assert.match(operationSource, /installedNotes\(\{ result: next\.result, name: installedName, fallbackOnly,/);
   // A step of a server setup run never raises the warning: the setup issues
   // the mail host certificate after this install and verifies mail TLS itself.
   assert.match(operationSource, /verifiedProfileResult\?\.fallbackOnly && next\.setup_child !== true/);
