@@ -185,6 +185,15 @@ func readMemory() (used, total uint64) {
 // pencerede meşgul CPU'yu ölçer. Tek bir istek, doğru bir anlık değer için
 // ~200ms'yi karşılayabilir.
 func sampleCPUPercent() float64 {
+	// alpha.126: the running sampler already reads /proc/stat every second;
+	// its latest one-second value is used instead of sleeping in every
+	// request. Without a fresh value (no sampler, a test) the short window
+	// below is measured as before.
+	// alpha.126: örnekleyicinin son bir saniyelik değeri kullanılır; taze
+	// değer yoksa aşağıdaki kısa pencere eskisi gibi ölçülür.
+	if value, ok := currentLiveCPU().live(time.Now(), 3*time.Second); ok {
+		return value
+	}
 	idle1, total1, ok1 := readCPUTimes()
 	if !ok1 {
 		return 0

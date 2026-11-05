@@ -96,6 +96,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/managed-services":      gateAdmin,
 	"/api/v1/managed-services/scan": gateAdmin,
 	"/api/v1/metrics/history":       gateAdmin,
+	"/api/v1/metrics/problems":      gateAdmin,
 	"/api/v1/my/subscription":       gateAccount, // own subscriptions only
 	"/api/v1/nginx/global":          gateAdmin,
 	"/api/v1/nginx/ratelimits":      gateAdmin,
