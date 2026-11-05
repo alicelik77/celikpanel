@@ -7,6 +7,100 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 umask 077
 
+# Idle fast path (alpha.126; D-025 P0.2/P0.3). The native timer starts this
+# runner about every 30 seconds. With nothing pending, the full path below
+# verifies the selected recovery kit (several SHA-256 passes over ~45 MB, two
+# Go and two bash starts) only to reach the same exit 0 as its "nothing
+# pending" branch. Skip that work, using bash builtins only, when every
+# condition below holds:
+#   * a plain timer/boot run: no arguments, not the kit entry, root, and no
+#     test switch other than the isolated contract root;
+#   * the full path verified this boot, for this exact selected kit, less than
+#     an hour ago (a stamp under /run that only the full path writes; /run is
+#     empty after every boot, so each boot starts with a full verification);
+#   * the release transaction root is absent, or holds exactly one regular
+#     transaction.lock (no marker, no other name, no symbolic link);
+#   * no runtime promotion is unfinished: recovery-promotions/v1/current is
+#     absent, or holds exactly the committed intent.json and committed.json.
+# Anything else, including unreadable or unexpected entries, falls through to
+# the unchanged full path below (toward recovery, never away from it). The fast
+# path never writes, never takes the lock and never starts a child.
+# Boşta hızlı yol: bekleyen işlem yoksa ve tam doğrulama bu açılışta, bu kit için
+# son bir saat içinde yapıldıysa yalnız bash yerleşikleriyle çıkılır; başka her
+# durum değişmeyen tam yola düşer.
+release_recovery_idle_fast_path() {
+    local arguments=$1 testing=${CELIKPANEL_RELEASE_RECOVERY_TESTING:-0}
+    local prefix= stamp_root stamp boot now format stamp_boot stamp_uptime
+    local stamp_selection extra selection header line selected=none
+    local transaction promotion entry
+    local -a entries=()
+    [[ $arguments -eq 0 && -z ${CELIKPANEL_RECOVERY_RUNTIME_ROOT:-} && $EUID -eq 0 ]] ||
+        return 1
+    case "$testing" in
+        0|'') ;;
+        1)
+            prefix=${CELIKPANEL_RELEASE_RECOVERY_TEST_ROOT:-}
+            [[ $prefix == /?* && $prefix != */ && $prefix != *'/../'* &&
+               $prefix != */.. && $prefix != *'/./'* && -d $prefix && ! -L $prefix ]] ||
+                return 1
+            ;;
+        *) return 1 ;;
+    esac
+
+    stamp_root=$prefix/run/celikpanel-release-recovery
+    stamp=$stamp_root/idle-verified
+    [[ -d $stamp_root && ! -L $stamp_root && -O $stamp_root &&
+       -f $stamp && ! -L $stamp && -O $stamp ]] || return 1
+    read -r boot < /proc/sys/kernel/random/boot_id || return 1
+    read -r now extra < /proc/uptime || return 1
+    now=${now%%.*}
+    extra=
+    read -r format stamp_boot stamp_uptime stamp_selection extra < "$stamp" || return 1
+    [[ $format == celikpanel-release-recovery-idle-v1 && -z $extra &&
+       $boot =~ ^[0-9a-f-]{36}$ && $stamp_boot == "$boot" &&
+       $now =~ ^[0-9]{1,12}$ && $stamp_uptime =~ ^[0-9]{1,12}$ ]] || return 1
+    (( 10#$now >= 10#$stamp_uptime && 10#$now - 10#$stamp_uptime < 3600 )) || return 1
+
+    selection=$prefix/var/lib/celikpanel-release-state/recovery-runtime.v1
+    if [[ -e $selection || -L $selection ]]; then
+        [[ -f $selection && ! -L $selection ]] || return 1
+        { read -r header && read -r line; } < "$selection" || return 1
+        [[ $header == format=celikpanel-recovery-selection-v1 &&
+           $line =~ ^runtime=[0-9a-f]{64}$ ]] || return 1
+        selected=${line#runtime=}
+    fi
+    [[ $stamp_selection == "$selected" ]] || return 1
+
+    shopt -s nullglob dotglob
+    transaction=$prefix/var/lib/celikpanel-release-transaction
+    if [[ -e $transaction || -L $transaction ]]; then
+        [[ -d $transaction && ! -L $transaction ]] || return 1
+        entries=("$transaction"/*)
+        [[ ${#entries[@]} -eq 1 && ${entries[0]} == "$transaction/transaction.lock" &&
+           -f ${entries[0]} && ! -L ${entries[0]} ]] || return 1
+    fi
+    promotion=$prefix/var/lib/celikpanel-release-state/recovery-promotions/v1/current
+    if [[ -e $promotion || -L $promotion ]]; then
+        # A committed promotion stays in "current" until the next promotion
+        # archives it, and the full path reports it as not pending. A receipt
+        # temporary, a missing receipt or any other name is unfinished.
+        [[ -d $promotion && ! -L $promotion ]] || return 1
+        entries=("$promotion"/*)
+        [[ ${#entries[@]} -eq 2 ]] || return 1
+        for entry in committed.json intent.json; do
+            [[ ${entries[0]} == "$promotion/$entry" || ${entries[1]} == "$promotion/$entry" ]] ||
+                return 1
+            [[ -f $promotion/$entry && ! -L $promotion/$entry ]] || return 1
+        done
+    fi
+    return 0
+}
+if release_recovery_idle_fast_path "$#"; then
+    exit 0
+fi
+shopt -u nullglob dotglob
+unset -f release_recovery_idle_fast_path
+
 TRANSACTION_ROOT=/var/lib/celikpanel-release-transaction
 RELEASES_ROOT=/var/backups/celikpanel/releases
 SNAPSHOT_ROOT=/var/backups/celikpanel/update-snapshots
@@ -132,6 +226,51 @@ readonly PATH TRANSACTION_ROOT RELEASES_ROOT SNAPSHOT_ROOT TRUST_ANCHOR \
 die() {
     echo "!! $*" >&2
     exit 1
+}
+
+# Called only where the full path has just verified "nothing pending" for a
+# plain timer/boot run. It records this boot, the uptime and the selected kit
+# that the Go launcher verified before this entry ran, so the idle fast path
+# above can skip the next runs for up to an hour. Writing is best effort: a
+# missing or unwritable stamp only means the next run is a full one again. A
+# full verification that fails writes nothing, so every following run stays a
+# full, failing one (the unit stays failed) until the cause is fixed.
+# Tam yol "bekleyen işlem yok" sonucunu doğruladığında /run altına damga yazar;
+# başarısız doğrulama damga yazmaz, birim her çalışmada başarısız kalır.
+record_idle_verification() {
+    local root=$TEST_ROOT/run/celikpanel-release-recovery selection selected=none
+    local boot now header line tmp
+    [[ $VERIFY_FINAL_STATE == 0 && -z $OWNER_RETRY_SNAPSHOT && $EUID -eq 0 ]] || return 0
+    selection=$TEST_ROOT/var/lib/celikpanel-release-state/recovery-runtime.v1
+    if [[ -e $selection || -L $selection ]]; then
+        [[ -f $selection && ! -L $selection ]] || return 0
+        { read -r header && read -r line; } < "$selection" 2>/dev/null || return 0
+        [[ $header == format=celikpanel-recovery-selection-v1 &&
+           $line =~ ^runtime=[0-9a-f]{64}$ ]] || return 0
+        selected=${line#runtime=}
+    fi
+    # The kit entry stamps only the kit that the launcher verified and executed.
+    # Historical runners without a kit stamp only a state without a selection.
+    if [[ -n $RECOVERY_CODE_ROOT ]]; then
+        [[ ${RECOVERY_CODE_ROOT##*/} == "$selected" ]] || return 0
+    elif [[ -z $TEST_ROOT && $selected != none ]]; then
+        return 0
+    fi
+    read -r boot < /proc/sys/kernel/random/boot_id 2>/dev/null || return 0
+    read -r now _ < /proc/uptime 2>/dev/null || return 0
+    now=${now%%.*}
+    [[ $boot =~ ^[0-9a-f-]{36}$ && $now =~ ^[0-9]{1,12}$ ]] || return 0
+    if [[ ! -e $root && ! -L $root ]]; then
+        mkdir -m 0700 -- "$root" 2>/dev/null || return 0
+    fi
+    [[ -d $root && ! -L $root && -O $root ]] || return 0
+    tmp=$root/.idle-verified.$BASHPID
+    if ! printf '%s %s %s %s\n' celikpanel-release-recovery-idle-v1 \
+            "$boot" "$now" "$selected" 2>/dev/null >"$tmp" ||
+       ! mv -fT -- "$tmp" "$root/idle-verified" 2>/dev/null; then
+        rm -f -- "$tmp" 2>/dev/null || true
+    fi
+    return 0
 }
 
 validate_trusted_directory_chain() {
@@ -843,6 +982,7 @@ if [[ ! -e $TRANSACTION_ROOT && ! -L $TRANSACTION_ROOT ]]; then
     [[ -z $OWNER_RETRY_SNAPSHOT ]] || die 'owner retry requires an existing pending transaction'
     [[ $VERIFY_FINAL_STATE == 0 ]] ||
         die 'final-state proof requires the exact persistent transaction root and lock'
+    record_idle_verification
     exit 0
 fi
 validate_transaction_root_and_lock
@@ -886,6 +1026,8 @@ if [[ $TRANSACTION_PHASE == none ]]; then
         classify_transaction
         [[ $TRANSACTION_PHASE == none ]] || die 'a transaction marker appeared during final proof'
     fi
+    # Still under the exact lock, so no promotion can change the selection.
+    record_idle_verification
     release_transaction_lock
     exit 0
 fi

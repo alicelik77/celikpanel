@@ -829,5 +829,243 @@ if [[ -d ${FI_RUNTIME}.authorization-discard ]]; then
         fail 'fresh authorization removal left a discard artifact'
 fi
 
+# alpha.126 idle fast path (D-025 P0.2/P0.3). Only a full verification of
+# "nothing pending" writes the /run stamp, and only the exact idle states with
+# a fresh stamp skip the full path. Every marker combination, unexpected entry,
+# unfinished promotion, stale or foreign stamp and every argument tuple must
+# still reach the full path. The discriminator: the lock gets unsafe metadata,
+# so the full path always fails while the fast path exits 0 without writing.
+# Boşta hızlı yol: yalnız tam boş durumlar ve taze damga tam yolu atlar.
+IDLE_STAMP_ROOT=${TEST_ROOT:?}/run/celikpanel-release-recovery
+IDLE_STAMP=$IDLE_STAMP_ROOT/idle-verified
+IDLE_STATE=$TEST_ROOT/var/lib/celikpanel-release-state
+IDLE_SELECTION=$IDLE_STATE/recovery-runtime.v1
+IDLE_PROMOTIONS=$IDLE_STATE/recovery-promotions
+IDLE_PROMOTION=$IDLE_PROMOTIONS/v1/current
+IDLE_LOCK=${TRANSACTION_ROOT:?}/transaction.lock
+IDLE_BOOT=$(cat /proc/sys/kernel/random/boot_id)
+IDLE_KIT=$(printf 'd%.0s' {1..64})
+run_idle() {
+    CELIKPANEL_RELEASE_RECOVERY_TESTING=1 \
+    CELIKPANEL_RELEASE_RECOVERY_TEST_ROOT="$TEST_ROOT" /bin/bash "$RUNNER" "$@"
+}
+idle_uptime() { local now _; read -r now _ </proc/uptime; printf '%s\n' "${now%%.*}"; }
+write_idle_stamp() { # [uptime-offset] [selection] [extra]
+    local offset=${1:-0} selection=${2:-none}
+    printf 'celikpanel-release-recovery-idle-v1 %s %s %s%s\n' "$IDLE_BOOT" \
+        "$(( $(idle_uptime) + offset ))" "$selection" "${3:-}" >"$IDLE_STAMP"
+    chmod 0600 "$IDLE_STAMP"
+}
+[[ $(find "$TRANSACTION_ROOT" -mindepth 1 -printf '%f\n') == transaction.lock ]] ||
+    fail 'idle fast-path fixture does not start from the canonical idle root'
+[[ ! -e $TEST_ROOT/run ]] || fail 'earlier cases unexpectedly created the stamp parent'
+install -d -m 0755 "$TEST_ROOT/run"
+
+# 1. Without a stamp the full path runs and records this boot and no selection.
+run_idle >"$TEST_ROOT/idle-first.log" 2>&1 || fail 'first idle run failed'
+[[ -d $IDLE_STAMP_ROOT && ! -L $IDLE_STAMP_ROOT &&
+   $(stat -c '%u:%g:%a' "$IDLE_STAMP_ROOT") == 0:0:700 &&
+   $(stat -c '%u:%g:%a:%h' "$IDLE_STAMP") == 0:0:600:1 ]] ||
+    fail 'full idle verification did not write a private stamp'
+read -r stamp_format stamp_boot stamp_uptime stamp_selection stamp_extra <"$IDLE_STAMP"
+[[ $stamp_format == celikpanel-release-recovery-idle-v1 && $stamp_boot == "$IDLE_BOOT" &&
+   $stamp_selection == none && -z $stamp_extra &&
+   $(( $(idle_uptime) - stamp_uptime )) -ge 0 && $(( $(idle_uptime) - stamp_uptime )) -le 5 ]] ||
+    fail 'idle stamp does not bind this boot, the current uptime and no selection'
+[[ -z $(find "$IDLE_STAMP_ROOT" -mindepth 1 ! -name idle-verified -print -quit) ]] ||
+    fail 'idle stamp left a temporary file'
+
+# 2. A failing full verification and the read-only modes never write a stamp.
+rm -f -- "${IDLE_STAMP:?}"
+chmod 0644 "$IDLE_LOCK"
+expect_failure idle-unsafe-lock-no-stamp run_idle
+[[ ! -e $IDLE_STAMP ]] || fail 'failed full verification wrote an idle stamp'
+chmod 0600 "$IDLE_LOCK"
+run_final_proof >/dev/null 2>&1 || fail 'final proof failed on the idle fixture'
+[[ ! -e $IDLE_STAMP ]] || fail 'final-state proof wrote an idle stamp'
+
+# 3. Exact idle states with a fresh stamp exit 0 without the full path: the
+# unsafe lock would fail it, and the older stamp stays byte-identical.
+chmod 0644 "$IDLE_LOCK"
+assert_fast() {
+    local label=$1 before
+    write_idle_stamp -20 "${2:-none}"
+    before=$(cat "$IDLE_STAMP")
+    run_idle >"$TEST_ROOT/$label.log" 2>&1 || fail "$label did not take the idle fast path"
+    [[ ! -s $TEST_ROOT/$label.log && $(cat "$IDLE_STAMP") == "$before" ]] ||
+        fail "$label wrote output or a stamp on the fast path"
+}
+assert_full() {
+    local label=$1
+    shift
+    expect_failure "$label" "$@"
+    grep -F 'release transaction lock metadata is unsafe' "$TEST_ROOT/$label.stderr" >/dev/null ||
+        [[ ${IDLE_EXPECT_OTHER_FAILURE:-0} == 1 ]] ||
+        fail "$label failed before the full path's lock check"
+}
+assert_fast idle-fast-lock-only
+install -d -m 0700 "$IDLE_PROMOTIONS" "$IDLE_PROMOTIONS/v1" "$IDLE_PROMOTION"
+printf '{}\n' >"$IDLE_PROMOTION/intent.json"
+printf '{}\n' >"$IDLE_PROMOTION/committed.json"
+chmod 0600 "$IDLE_PROMOTION/intent.json" "$IDLE_PROMOTION/committed.json"
+assert_fast idle-fast-committed-promotion
+printf 'format=celikpanel-recovery-selection-v1\nruntime=%s\n' "$IDLE_KIT" >"$IDLE_SELECTION"
+chmod 0600 "$IDLE_SELECTION"
+assert_fast idle-fast-selected-kit "$IDLE_KIT"
+# The same check runs with no PATH at all, so it uses bash builtins only.
+(
+    eval "$(extract_function_source "$RUNNER" release_recovery_idle_fast_path)"
+    write_idle_stamp -20 "$IDLE_KIT"
+    PATH=/nonexistent
+    CELIKPANEL_RELEASE_RECOVERY_TESTING=1 CELIKPANEL_RELEASE_RECOVERY_TEST_ROOT=$TEST_ROOT \
+        release_recovery_idle_fast_path 0
+) || fail 'idle fast path needs an external command'
+
+# 4. The selection must be the one the stamp was written for.
+write_idle_stamp -20 none
+assert_full idle-full-selection-changed run_idle
+rm -f -- "${IDLE_SELECTION:?}"
+write_idle_stamp -20 "$IDLE_KIT"
+assert_full idle-full-selection-removed run_idle
+ln -s "$IDLE_STAMP" "$IDLE_SELECTION"
+write_idle_stamp -20 none
+IDLE_EXPECT_OTHER_FAILURE=1 assert_full idle-full-selection-symlink run_idle
+rm -f -- "${IDLE_SELECTION:?}"
+
+# 5. Missing, stale, future, foreign, malformed or unsafe stamps.
+rm -f -- "${IDLE_STAMP:?}"
+assert_full idle-full-no-stamp run_idle
+for stamp_case in stale future foreign-boot extra-field bad-format no-newline; do
+    case $stamp_case in
+        stale) write_idle_stamp -3601 ;;
+        future) write_idle_stamp 120 ;;
+        foreign-boot)
+            printf 'celikpanel-release-recovery-idle-v1 %s %s none\n' \
+                00000000-0000-0000-0000-000000000000 "$(idle_uptime)" >"$IDLE_STAMP" ;;
+        extra-field) write_idle_stamp -20 none ' extra' ;;
+        bad-format)
+            printf 'celikpanel-release-recovery-idle-v0 %s %s none\n' \
+                "$IDLE_BOOT" "$(idle_uptime)" >"$IDLE_STAMP" ;;
+        no-newline)
+            printf 'celikpanel-release-recovery-idle-v1 %s %s none' \
+                "$IDLE_BOOT" "$(idle_uptime)" >"$IDLE_STAMP" ;;
+    esac
+    assert_full "idle-full-stamp-$stamp_case" run_idle
+done
+write_idle_stamp -20
+mv -- "$IDLE_STAMP" "$IDLE_STAMP_ROOT/real"
+ln -s real "$IDLE_STAMP"
+assert_full idle-full-stamp-symlink run_idle
+rm -f -- "${IDLE_STAMP:?}"
+mv -- "$IDLE_STAMP_ROOT/real" "$IDLE_STAMP"
+mv -- "$IDLE_STAMP_ROOT" "$TEST_ROOT/run/real-stamp-root"
+ln -s real-stamp-root "$IDLE_STAMP_ROOT"
+assert_full idle-full-stamp-root-symlink run_idle
+rm -f -- "${IDLE_STAMP_ROOT:?}"
+mv -- "$TEST_ROOT/run/real-stamp-root" "$IDLE_STAMP_ROOT"
+
+# 6. Every marker combination and every unexpected transaction entry.
+idle_markers=(quiesce.pending active completion.pending scheduler-restore.pending)
+for mask in $(seq 1 15); do
+    for bit in 0 1 2 3; do
+        if (( mask & (1 << bit) )); then
+            printf 'fixture\n' >"$TRANSACTION_ROOT/${idle_markers[bit]}"
+            chmod 0600 "$TRANSACTION_ROOT/${idle_markers[bit]}"
+        fi
+    done
+    write_idle_stamp -20
+    assert_full "idle-full-markers-$mask" run_idle
+    for marker_name in "${idle_markers[@]}"; do
+        rm -f -- "${TRANSACTION_ROOT:?}/${marker_name:?}"
+    done
+done
+for entry_name in unexpected .hidden active.tmp 'name with space'; do
+    printf 'fixture\n' >"$TRANSACTION_ROOT/$entry_name"
+    write_idle_stamp -20
+    assert_full "idle-full-entry-${entry_name// /-}" run_idle
+    rm -f -- "${TRANSACTION_ROOT:?}/${entry_name:?}"
+done
+install -d -m 0700 "$TRANSACTION_ROOT/subdir"
+write_idle_stamp -20
+assert_full idle-full-entry-directory run_idle
+rmdir -- "$TRANSACTION_ROOT/subdir"
+ln -s transaction.lock "$TRANSACTION_ROOT/active"
+write_idle_stamp -20
+assert_full idle-full-marker-symlink run_idle
+rm -f -- "${TRANSACTION_ROOT:?}/active"
+mv -- "$IDLE_LOCK" "$TEST_ROOT/lock.saved"
+for lock_case in missing symlink directory; do
+    case $lock_case in
+        missing) ;;
+        symlink) ln -s ../../../lock.saved "$IDLE_LOCK" ;;
+        directory) install -d -m 0700 "$IDLE_LOCK" ;;
+    esac
+    write_idle_stamp -20
+    IDLE_EXPECT_OTHER_FAILURE=1 assert_full "idle-full-lock-$lock_case" run_idle
+    rm -rf -- "${IDLE_LOCK:?}"
+done
+mv -- "$TEST_ROOT/lock.saved" "$IDLE_LOCK"
+mv -- "$TRANSACTION_ROOT" "$TEST_ROOT/transaction.saved"
+ln -s ../../transaction.saved "$TRANSACTION_ROOT"
+write_idle_stamp -20
+IDLE_EXPECT_OTHER_FAILURE=1 assert_full idle-full-root-symlink run_idle
+rm -f -- "${TRANSACTION_ROOT:?}"
+printf 'fixture\n' >"$TRANSACTION_ROOT"
+write_idle_stamp -20
+IDLE_EXPECT_OTHER_FAILURE=1 assert_full idle-full-root-file run_idle
+rm -f -- "${TRANSACTION_ROOT:?}"
+mv -- "$TEST_ROOT/transaction.saved" "$TRANSACTION_ROOT"
+
+# 7. Unfinished, unsafe or unknown promotion state.
+for promotion_case in intent-only committed-only receipt-temporary unknown-name \
+    intent-symlink current-symlink current-file; do
+    rm -rf -- "${IDLE_PROMOTION:?}" "${IDLE_PROMOTIONS:?}/v1/real"
+    install -d -m 0700 "$IDLE_PROMOTION"
+    printf '{}\n' >"$IDLE_PROMOTION/intent.json"
+    printf '{}\n' >"$IDLE_PROMOTION/committed.json"
+    case $promotion_case in
+        intent-only) rm -f -- "${IDLE_PROMOTION:?}/committed.json" ;;
+        committed-only) rm -f -- "${IDLE_PROMOTION:?}/intent.json" ;;
+        receipt-temporary) printf '{}\n' >"$IDLE_PROMOTION/.committed-$(printf '0%.0s' {1..32})" ;;
+        unknown-name) printf '{}\n' >"$IDLE_PROMOTION/stage" ;;
+        intent-symlink)
+            mv -- "$IDLE_PROMOTION/intent.json" "$IDLE_STATE/intent.saved"
+            ln -s ../../../intent.saved "$IDLE_PROMOTION/intent.json" ;;
+        current-symlink)
+            mv -- "$IDLE_PROMOTION" "$IDLE_PROMOTIONS/v1/real"
+            ln -s real "$IDLE_PROMOTION" ;;
+        current-file)
+            rm -rf -- "${IDLE_PROMOTION:?}"
+            printf '{}\n' >"$IDLE_PROMOTION" ;;
+    esac
+    write_idle_stamp -20
+    assert_full "idle-full-promotion-$promotion_case" run_idle
+    rm -f -- "${IDLE_STATE:?}/intent.saved"
+done
+rm -rf -- "${IDLE_PROMOTIONS:?}"
+assert_fast idle-fast-no-promotion
+
+# 8. Owner retry, final proof and the kit entry never take the fast path.
+write_idle_stamp -20
+IDLE_EXPECT_OTHER_FAILURE=1 assert_full idle-full-owner-retry run_idle --owner-retry --snapshot "$SNAPSHOT"
+write_idle_stamp -20
+IDLE_EXPECT_OTHER_FAILURE=1 assert_full idle-full-final-proof run_final_proof
+write_idle_stamp -20
+IDLE_EXPECT_OTHER_FAILURE=1 assert_full idle-full-kit-entry env \
+    CELIKPANEL_RECOVERY_RUNTIME_ROOT="/usr/libexec/celikpanel/recovery-runtimes/v1/$IDLE_KIT" \
+    CELIKPANEL_RELEASE_RECOVERY_TESTING=1 CELIKPANEL_RELEASE_RECOVERY_TEST_ROOT="$TEST_ROOT" \
+    /bin/bash "$RUNNER"
+grep -F 'independent recovery entry is not the selected installed kit' \
+    "$TEST_ROOT/idle-full-kit-entry.stderr" >/dev/null || fail 'kit entry did not reach its own entry check'
+
+# 9. Back to a safe lock: the full path refreshes the stamp after a stale one.
+chmod 0600 "$IDLE_LOCK"
+write_idle_stamp -4000
+run_idle >/dev/null 2>&1 || fail 'idle full verification failed after the fast-path cases'
+read -r _ _ stamp_uptime _ <"$IDLE_STAMP"
+(( $(idle_uptime) - stamp_uptime <= 5 )) || fail 'full verification did not refresh a stale stamp'
+rm -rf -- "${TEST_ROOT:?}/run"
+printf 'PASS: idle fast path only for exact idle states with a fresh full verification\n'
+
 bash "$REPO_ROOT/deploy/test-release-recovery-rollback-handoff.sh"
 printf 'release recovery unit/foundation/final-proof contract: PASS\n'
