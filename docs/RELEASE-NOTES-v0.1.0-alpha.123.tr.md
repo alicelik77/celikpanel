@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.123.md)
 
+> **Yayımlandı**, 5 Kasım 2026 (UTC): sürüm commit'i `d7b5f1ab5`, GitHub ön sürümü 07:19:47Z, indirme portalı yaklaşık 07:50Z (dış denetim 27/27).
+
 Bir bileşenin neye ihtiyaç duyduğu için tek kural, önce kaldırmaya
 uygulandı; ayrıca Debian 12 ve Ubuntu 22.04'te kurulum düzeltmeleri.
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
