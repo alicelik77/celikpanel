@@ -798,6 +798,10 @@ func main() {
 		sqliteAdmin: sqliteAdmin,
 	}
 
+	// The read-only host inventory is cached from here on (inventory_cache.go).
+	// Salt-okur envanter bundan sonra önbelleklidir.
+	inventoryCacheEnabled.Store(true)
+
 	// Register RPC
 	if err := rpc.Register(agent); err != nil {
 		log.Fatalf(`failed to register agent RPC service: %v`, err)

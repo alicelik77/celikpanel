@@ -441,7 +441,10 @@ export function ServiceShell({
             }
             const note = readServiceActionNote(answer);
             if (note) setActionOutcome(note);
-            await new Promise((res) => setTimeout(res, 1500));
+            // The answer comes after systemd finished the start or stop and
+            // the server refreshed the component record, so the state is read
+            // at once (alpha.125: no fixed 1.5-second wait).
+            // Yanıt, işlem bitip kayıt tazelendikten sonra gelir; durum hemen okunur.
             await load();
             announceComponentsChanged();
         } finally {

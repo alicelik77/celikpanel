@@ -25,11 +25,13 @@ import (
 // WireGuard: wg-quick@wg0 şablon unit'i ancak bir config varken başlar, bu
 // yüzden yalnız "çalışan unit" taraması onu sürekli "kurulu değil" sanardı.
 func (a *Agent) InstalledServiceIDs(_ *transport.Empty, reply *[]string) error {
-	profile, err := verifiedHostProfileForAnyFamily()
+	profile, err := readHostProfile()
 	if err != nil {
 		return fmt.Errorf("strict service discovery: host platform is not verified: %w", err)
 	}
-	ids, err := discoverInstalledServiceIDsStrict(hostStrictServiceStateProbe{profile: profile}, string(profile.PackageManager))
+	// The shared inventory (alpha.125): narrowed unit-file listing, one
+	// batched canonical-name read, the scan's one package query.
+	ids, err := discoverInstalledServiceIDsStrict(newStrictServiceStateProbe(profile), string(profile.PackageManager))
 	if err != nil {
 		return err
 	}
@@ -175,11 +177,11 @@ func (hostStrictServiceStateProbe) RoundcubeInstalled() (bool, error) {
 // karşılığıdır. Yoklama hataları eksik bir "kurulu değil" cevabına çevrilmez,
 // panele geri döndürülür.
 func (a *Agent) InstalledServiceIDsStrict(_ *transport.Empty, reply *[]string) error {
-	profile, err := verifiedHostProfileForAnyFamily()
+	profile, err := readHostProfile()
 	if err != nil {
 		return err
 	}
-	ids, err := discoverInstalledServiceIDsStrict(hostStrictServiceStateProbe{profile: profile}, string(profile.PackageManager))
+	ids, err := discoverInstalledServiceIDsStrict(newStrictServiceStateProbe(profile), string(profile.PackageManager))
 	if err != nil {
 		return err
 	}

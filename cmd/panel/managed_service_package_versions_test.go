@@ -318,10 +318,10 @@ func TestPageScanReadsPackageVersionsOutsideTheMutationLease(t *testing.T) {
 	f.agent.packageVersions = &transport.InstalledPackageVersionsResponse{Family: "apt", State: transport.PackageVersionsRead,
 		Components: []transport.ComponentPackageVersions{{ServiceID: "nginx", Packages: []transport.InstalledPackageVersion{{Package: "nginx", Version: "1.26.3-3"}}}}}
 	f.agent.packageVersionsHook = func() {
-		if f.panel.serviceMutationMu.TryLock() {
-			f.panel.serviceMutationMu.Unlock()
-			leaseFree = true
-		}
+		// Taking the lease here would be a change racing the scan, whose
+		// reading is then not stored (alpha.125); looking is enough.
+		_, held := f.panel.serviceMutationMu.Generation()
+		leaseFree = !held
 	}
 	f.agent.mu.Unlock()
 	recorder := httptest.NewRecorder()

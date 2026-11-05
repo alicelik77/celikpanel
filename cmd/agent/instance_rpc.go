@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,15 +65,21 @@ func (a *Agent) ListServiceInstances(req *ServiceInstancesRequest, resp *Service
 // konuştuğunu hiç öğrenmez.
 func phpInstances() []core.ServiceInstance {
 	out := []core.ServiceInstance{}
-	for _, u := range unitsMatching(`^php[0-9]+\.[0-9]+-fpm$`) {
+	// The unit files from the shared inventory and every unit's state with
+	// one batched, live systemctl show (alpha.125).
+	// Birim dosyaları paylaşılan envanterden, durumlar tek canlı sorguyla.
+	ctx := context.Background()
+	units := inventoryUnitsMatching(ctx, phpFPMUnitPattern)
+	statuses := unitStatusLines(ctx, units)
+	for _, u := range units {
 		v := strings.TrimSuffix(strings.TrimPrefix(u, "php"), "-fpm")
-		inst := core.ServiceInstance{Version: v, Unit: u, Managed: true, Status: unitStatusLine(u)}
+		inst := core.ServiceInstance{Version: v, Unit: u, Managed: true, Status: statuses[u]}
 		if p := "/etc/php/" + v; dirExists(p) {
 			inst.Path = p
 		}
 		out = append(out, inst)
 	}
-	if len(out) == 0 && unitExists("php-fpm") {
+	if len(out) == 0 && inventoryUnitFileExists(ctx, "php-fpm") {
 		inst := core.ServiceInstance{
 			Version: phpBinaryVersion(),
 			Unit:    "php-fpm",

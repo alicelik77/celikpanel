@@ -197,29 +197,12 @@ func TestSitePoolOnTheVersionedLayoutIsUnchanged(t *testing.T) {
 	}
 }
 
-// What `mariadbd --version` prints, and what a client prints. Only the server
-// program's own line is a server version (11 Oct 2026; measured on Ubuntu
-// 24.04: the client's "15.1" was shown as the version of a 10.11.14 server).
+// The running server's version comes from its own mark, never a client's
+// line or a column name. (alpha.125: the Agent no longer starts
+// `mariadbd --version`; the version shown before the server answers is the
+// package database's.)
 func TestMariaDBVersionComesFromTheServerNeverTheClient(t *testing.T) {
-	// Pairs of what was printed and the version it holds. A list, not a map
-	// literal: the lines are long, and how a formatter aligns such a literal
-	// differs between Go releases.
 	deprecated := "mysql: Deprecated program name. It will be removed in a future release, use '/usr/bin/mariadb' instead\n"
-	for _, c := range [][2]string{
-		{"mariadbd  Ver 10.11.14-MariaDB-0ubuntu0.24.04.1 for debian-linux-gnu on x86_64 (Ubuntu 24.04)\n", "10.11.14"},
-		{"/usr/sbin/mariadbd  Ver 11.8.6-MariaDB-0+deb13u1 for debian-linux-gnu on x86_64 (from Debian)\n", "11.8.6"},
-		{"mariadbd  Ver 12.0.2-MariaDB for Linux on x86_64 (Arch Linux)\n", "12.0.2"},
-		{"mysqld  Ver 8.0.39-0ubuntu0.24.04.2 for Linux on x86_64 ((Ubuntu))\n", "8.0.39"},
-		{"mariadb  Ver 15.1 Distrib 10.11.14-MariaDB, for debian-linux-gnu (x86_64) using  EditLine wrapper\n", ""},
-		{"mariadb from 11.8.6-MariaDB, client 15.2 for debian-linux-gnu (x86_64) using  EditLine wrapper\n", ""},
-		{deprecated, ""},
-		{"", ""},
-	} {
-		if got := mariaDBServerProgramVersion(c[0]); got != c[1] {
-			t.Fatalf("%q: version %q, want %q", c[0], got, c[1])
-		}
-	}
-
 	// The running server's answer is found by its own mark, whatever else the
 	// client prints. On Arch the client first says its name is deprecated,
 	// and the column name was recorded as the version.

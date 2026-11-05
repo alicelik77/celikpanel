@@ -643,7 +643,9 @@ test('Dashboard: a hidden page checks nothing; it checks once when it is shown',
     for (let i = 0; i < 3; i += 1) await settle();
     assert.equal(scans(), 0, `a hidden page checked: ${requests.join(', ')}`);
     assert.ok(text().includes('dashboard.systemServicesNotRecent'), text().slice(0, 400));
-    assert.equal(page.listeners.size, 1, 'the page does not listen for being shown');
+    // alpha.125: the live stats and the readiness re-read pause while the tab
+    // is hidden as well, each with its own listener.
+    assert.ok(page.listeners.size >= 1, 'the page does not listen for being shown');
     await page.show();
     await settle();
     assert.equal(scans(), 1, `expected one check once shown: ${requests.join(', ')}`);

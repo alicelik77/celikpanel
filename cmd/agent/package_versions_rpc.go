@@ -53,7 +53,7 @@ var (
 	packageVersionQuery     = func(ctx context.Context, executable string, args ...string) ([]byte, error) {
 		return runPackageVersionCommand(ctx, packageVersionOutputLimit, executable, args...)
 	}
-	packageVersionHostProfile = verifiedHostProfileForAnyFamily
+	packageVersionHostProfile = readHostProfile
 )
 
 // InstalledPackageVersionsV1 reports the installed package versions of the
@@ -74,20 +74,17 @@ func readInstalledPackageVersions(parent context.Context) transport.InstalledPac
 	}
 	family := string(profile.PackageManager)
 	answer.Family = family
-	var executable string
-	var args []string
+	var tool string
 	switch family {
 	case "apt":
-		executable, err = executableForProfile(profile, family, "dpkg-query")
-		args = dpkgVersionQueryArgs()
+		tool = "dpkg-query"
 	case "pacman":
-		executable, err = executableForProfile(profile, family, "pacman")
-		args = pacmanVersionQueryArgs()
+		tool = "pacman"
 	default:
 		answer.State = transport.PackageVersionsUnsupported
 		return answer
 	}
-	if err != nil {
+	if _, err := executableForProfile(profile, family, tool); err != nil {
 		answer.State = transport.PackageVersionsFailed
 		answer.Error = "the package database tool is not verified"
 		return answer
@@ -102,15 +99,16 @@ func readInstalledPackageVersions(parent context.Context) transport.InstalledPac
 		answer.State = transport.PackageVersionsBusy
 		return answer
 	}
-	ctx, cancel := context.WithTimeout(parent, packageVersionQueryTimeout)
-	defer cancel()
-	output, err := packageVersionQuery(ctx, executable, args...)
+	// The one package database query of the scan, shared with strict
+	// discovery and the repository package identity (inventory_cache.go).
+	// Taramanın tek paket veritabanı sorgusu, diğer okumalarla paylaşılır.
+	inventory, err := readPackageInventory(parent, profile)
 	if err != nil {
 		answer.State = transport.PackageVersionsFailed
 		switch {
 		case errors.Is(err, errPackageVersionOutputTooLarge):
 			answer.Error = errPackageVersionOutputTooLarge.Error()
-		case errors.Is(ctx.Err(), context.DeadlineExceeded):
+		case errors.Is(err, errPackageInventoryTimeout):
 			answer.Error = "the package database did not answer in time"
 		default:
 			answer.Error = "the package database query failed"
@@ -119,20 +117,13 @@ func readInstalledPackageVersions(parent context.Context) transport.InstalledPac
 	}
 	var installed map[string][]string
 	if family == "apt" {
-		installed = parseDpkgVersions(string(output))
+		installed = parseDpkgVersions(inventory.versionsText())
 	} else {
-		installed = parsePacmanVersions(string(output))
+		installed = parsePacmanVersions(inventory.pacman)
 	}
 	answer.State = transport.PackageVersionsRead
 	answer.Components = componentPackageVersions(installed, family)
 	return answer
-}
-
-// dpkgVersionQueryArgs lists every package with its state and version. One
-// query for the whole catalogue: naming packages would make dpkg-query fail
-// for each absent one.
-func dpkgVersionQueryArgs() []string {
-	return []string{"-W", "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"}
 }
 
 // pacmanVersionQueryArgs lists every installed package and its version from

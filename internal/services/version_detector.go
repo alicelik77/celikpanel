@@ -1,7 +1,6 @@
 package services
 
 import (
-	"os/exec"
 	"regexp"
 	"strings"
 )
@@ -71,47 +70,14 @@ func (vd *VersionDetector) detectSpecialCases(serviceName string) string {
 			}
 		}
 
-	case strings.Contains(serviceName, "mariadb") || strings.Contains(serviceName, "mysql"):
-		// The server program is asked, never the client (11 Oct 2026).
-		// `mariadb --version` is the client's line: on Ubuntu 24.04 it reads
-		// "mariadb  Ver 15.1 Distrib 10.11.14-MariaDB", and "15.1", the
-		// client's own version, was shown as the server's. What the server
-		// program does not answer is "unknown" here; the Panel then asks the
-		// running server (MariaDBDriver.ServerVersion).
-		// Sunucu programina sorulur, istemciye asla.
-		for _, program := range []string{"mariadbd", "/usr/sbin/mariadbd", "mysqld", "/usr/sbin/mysqld"} {
-			output, err := exec.Command(program, "--version").CombinedOutput()
-			if err != nil {
-				continue
-			}
-			if version := mariaDBServerProgramVersion(string(output)); version != "" {
-				return version
-			}
-		}
-		return "unknown"
-
-	case strings.Contains(serviceName, "postfix"):
-		cmd := exec.Command("postconf", "-d", "mail_version")
-		if output, err := cmd.CombinedOutput(); err == nil {
-			parts := strings.Split(string(output), "=")
-			if len(parts) == 2 {
-				return strings.TrimSpace(parts[1])
-			}
-		}
+		// MariaDB and Postfix are no longer asked (`mariadbd --version`,
+		// `postconf -d mail_version`, alpha.125): their package version is the
+		// same release and is already read once per scan from the package
+		// database, which the Agent fills in for every "unknown" here. The
+		// server program's version line was never the client's either way.
+		// MariaDB ve Postfix'e artık sorulmaz; sürümleri paket veritabanından
+		// doldurulur.
 	}
 
-	return ""
-}
-
-var mariaDBServerProgramLine = regexp.MustCompile(`(?m)^\S*(?:mariadbd|mysqld)\s+Ver\s+(\d+\.\d+\.\d+)`)
-
-// mariaDBServerProgramVersion reads the version from what `mariadbd --version`
-// (or `mysqld --version`) prints: "mariadbd  Ver 10.11.14-MariaDB-... for
-// debian-linux-gnu on x86_64 (...)". Only a line that starts with the server
-// program's name counts, so a client's "Ver 15.1 Distrib ..." never does.
-func mariaDBServerProgramVersion(output string) string {
-	if match := mariaDBServerProgramLine.FindStringSubmatch(output); match != nil {
-		return match[1]
-	}
 	return ""
 }
