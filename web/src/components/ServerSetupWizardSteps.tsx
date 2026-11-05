@@ -151,6 +151,7 @@ export function SetupNamesStep({ draft, mail, web, mainDomain, ip, ownDNS, joine
 
 const engineReason: Record<string, TranslationKey> = {
     server_setup_pdns_main_untested_system: 'setup.v2.engine.untested',
+    server_setup_pdns_untested_system: 'setup.v2.engine.untestedSystem',
     server_setup_pdns_main_untested_version: 'setup.v2.engine.untestedVersion',
     server_setup_pdns_main_not_debian_archive: 'setup.v2.engine.notDebianArchive',
     server_setup_pdns_main_not_official_repository: 'setup.v2.engine.notOfficialRepository',
@@ -412,7 +413,7 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
         } finally { inFlight.current = false; setBusy(false); }
     }
     const refused = (value: SetupConnectAnswer) => {
-        const known = ['server_setup_join_code_wrong', 'server_setup_join_code_used', 'server_setup_join_code_expired', 'server_setup_join_code_exhausted', 'server_setup_join_code_unavailable', 'server_setup_join_source_mismatch', 'server_setup_join_not_waiting', 'server_setup_join_rate_limited', 'server_setup_join_same_server', 'server_setup_join_address_not_public', 'server_setup_join_certificate_unavailable', 'server_setup_peer_version_incompatible'];
+        const known = ['server_setup_join_code_wrong', 'server_setup_join_code_used', 'server_setup_join_code_expired', 'server_setup_join_code_exhausted', 'server_setup_join_code_unavailable', 'server_setup_join_source_mismatch', 'server_setup_join_not_waiting', 'server_setup_join_rate_limited', 'server_setup_join_same_server', 'server_setup_join_pdns_untested_system', 'server_setup_join_address_not_public', 'server_setup_join_certificate_unavailable', 'server_setup_peer_version_incompatible'];
         return known.includes(value.code || '') ? t(`setup.v5.join.refused.${value.code}` as TranslationKey, { left: value.attempts_left ?? 0 }) : t('setup.v5.join.refused.other', { code: value.code || '' });
     };
     const message = answer?.state === 'ok' ? answer.setup ? '' : t('setup.v5.join.draftRetry')

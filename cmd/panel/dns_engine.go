@@ -1454,6 +1454,25 @@ func pdnsArchSetupOnlyBlocker(
 	return "pdns_arch_setup_only"
 }
 
+// pdnsUntestedSystemBlocker refuses installing PowerDNS (a first install, a
+// switch to it or a reinstall) on a system whose PowerDNS package is not
+// certified (pdnsSystemCertified), before any token: the packages would
+// arrive and the install would fail at the unit identity check.
+func pdnsUntestedSystemBlocker(
+	host core.ManagedServiceHostProfile,
+	snapshot dnsEngineSnapshot,
+	target transport.DNSEngine,
+) string {
+	if target != transport.DNSEnginePowerDNS || pdnsSystemCertified(host) {
+		return ""
+	}
+	switch dnsEngineAction(snapshot, target) {
+	case "install", "switch", dnsEngineActionReinstall:
+		return "pdns_untested_system"
+	}
+	return ""
+}
+
 // pdnsPairedPrimaryBlocker is the Panel's one policy for a PowerDNS install or
 // switch on a paired primary. applies reports whether the transition is one;
 // code is its blocker, or "" when it is offered.
@@ -2003,6 +2022,9 @@ func (p *Panel) makeDNSEnginePreview(
 		snapshot, request.TargetEngine, source, request.ExpectedRevision,
 	)
 	if code := pdnsArchSetupOnlyBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
+		blockers = addDNSEngineBlocker(blockers, code)
+	}
+	if code := pdnsUntestedSystemBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
 		blockers = addDNSEngineBlocker(blockers, code)
 	}
 	if operationBusy {
@@ -2930,7 +2952,7 @@ func (p *Panel) persistDNSEngineSwitch(
 			"DNS engine action does not match its durable mode",
 		)
 	}
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return persistedDNSEngineSwitch{}, err
 	}
@@ -3126,7 +3148,7 @@ func (p *Panel) finalizeDNSEngineSwitchSuccess(
 	ctx context.Context,
 	persisted persistedDNSEngineSwitch,
 ) error {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}
@@ -3333,7 +3355,7 @@ func (p *Panel) rollbackDNSEngineSwitch(
 	ctx context.Context,
 	persisted persistedDNSEngineSwitch,
 ) error {
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}
@@ -3448,7 +3470,7 @@ func (p *Panel) rollbackVerifiedSourceEmptyDNSEngineSwitch(
 	if err := validateSourceEmptyDNSEngineReconcileScope(persisted); err != nil {
 		return err
 	}
-	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	tx, err := beginDNSWriteTx(ctx, p.db.GetDB())
 	if err != nil {
 		return err
 	}
@@ -4039,6 +4061,9 @@ func (p *Panel) writeUnknownDNSEnginePreviewConflict(
 		if code := pdnsArchSetupOnlyBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
 			blockers = addDNSEngineBlocker(blockers, code)
 		}
+		if code := pdnsUntestedSystemBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
+			blockers = addDNSEngineBlocker(blockers, code)
+		}
 		if len(blockers) != 0 {
 			codes := make([]string, 0, len(blockers))
 			for _, blocker := range blockers {
@@ -4181,6 +4206,9 @@ func (p *Panel) handleDNSEngineSwitch(
 		request.ExpectedRevision,
 	)
 	if code := pdnsArchSetupOnlyBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
+		blockers = addDNSEngineBlocker(blockers, code)
+	}
+	if code := pdnsUntestedSystemBlocker(p.managedServiceHostProfile(), snapshot, request.TargetEngine); code != "" {
 		blockers = addDNSEngineBlocker(blockers, code)
 	}
 	if len(blockers) != 0 {

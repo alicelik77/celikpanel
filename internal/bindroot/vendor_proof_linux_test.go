@@ -46,7 +46,7 @@ func TestCertifiedVendorContractRejectsMismatchedHost(t *testing.T) {
 }
 
 func TestVendorPackageOwnershipIsExact(t *testing.T) {
-	for _, path := range []string{"/usr/lib/systemd/system/named.service", "/etc/default/named"} {
+	for _, path := range []string{"/usr/lib/systemd/system/named.service", "/lib/systemd/system/named.service", "/etc/default/named"} {
 		if err := VerifyAPTVendorOwner(path, []byte("bind9: "+path+"\n"), nil); err != nil {
 			t.Fatal(err)
 		}
@@ -120,5 +120,56 @@ func TestInspectVendorRejectsFileReplacementBetweenReads(t *testing.T) {
 	}
 	if _, err := InspectInstalledVendor(context.Background(), hostplatform.Profile{}); err == nil {
 		t.Fatal("unsupported installed host profile accepted")
+	}
+}
+
+// Debian 12 and Ubuntu 22.04 packages record the unit as /lib/systemd/system/
+// named.service; dpkg-query -S does not map /usr/lib to it (lab evidence
+// lab-images-d12-u2204-20261104, raw/bind-unit-identity-d12.txt).
+func TestAPTVendorPackageOwnershipAcceptsMergedUsrLibName(t *testing.T) {
+	const usrUnit = "/usr/lib/systemd/system/named.service"
+	const libUnit = "/lib/systemd/system/named.service"
+	const environment = "/etc/default/named"
+	lookupFrom := func(owned map[string]string) APTVendorOwnerLookup {
+		return func(_ context.Context, path string) ([]byte, error) {
+			output, ok := owned[path]
+			if !ok {
+				return []byte("dpkg-query: no path found matching pattern " + path + "\n"), errors.New("exit status 1")
+			}
+			return []byte(output), nil
+		}
+	}
+	debian13 := lookupFrom(map[string]string{
+		usrUnit: "bind9: " + usrUnit + "\n", environment: "bind9: " + environment + "\n",
+	})
+	debian12 := lookupFrom(map[string]string{
+		libUnit: "bind9: " + libUnit + "\n", environment: "bind9: " + environment + "\n",
+	})
+	for _, alias := range []bool{false, true} {
+		if err := VerifyAPTVendorPackageOwnership(context.Background(), debian13, alias); err != nil {
+			t.Fatalf("Debian 13 ownership refused (alias=%v): %v", alias, err)
+		}
+	}
+	if err := VerifyAPTVendorPackageOwnership(context.Background(), debian12, true); err != nil {
+		t.Fatalf("Debian 12 ownership refused on a merged-/usr host: %v", err)
+	}
+	if err := VerifyAPTVendorPackageOwnership(context.Background(), debian12, false); err == nil {
+		t.Fatal("Debian 12 /lib ownership accepted where /lib is not the merged-/usr alias")
+	}
+	for name, owned := range map[string]map[string]string{
+		"foreign /lib owner": {libUnit: "evil: " + libUnit + "\n", environment: "bind9: " + environment + "\n"},
+		"no unit owner":      {environment: "bind9: " + environment + "\n"},
+		"no environment":     {libUnit: "bind9: " + libUnit + "\n"},
+		"foreign environment": {
+			libUnit: "bind9: " + libUnit + "\n", environment: "evil: " + environment + "\n",
+		},
+		"two owners": {libUnit: "bind9, evil: " + libUnit + "\n", environment: "bind9: " + environment + "\n"},
+	} {
+		if err := VerifyAPTVendorPackageOwnership(context.Background(), lookupFrom(owned), true); err == nil {
+			t.Fatalf("%s accepted", name)
+		}
+	}
+	if err := VerifyAPTVendorPackageOwnership(context.Background(), nil, true); err == nil {
+		t.Fatal("missing lookup accepted")
 	}
 }

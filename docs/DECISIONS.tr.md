@@ -3539,7 +3539,10 @@ yolunu değiştiremez. Kullanılabilir ipucu yoksa veya ipuçları çelişiyorsa
 olarak bir eksiksiz güvenilir araç zinciri bulunmalıdır. APT sabit `apt-get` +
 `apt-cache` + `dpkg-query`, pacman sabit `pacman`, DNF ise sabit `dnf` + `rpm`
 takımıdır. Sabit `systemctl` ile `timeout`; root sahipli ve yazılamaz
-`/run/systemd` zinciri; doğrudan `/run/systemd/private` Unix soketi ve zaman
+`/run/systemd` zinciri; root:root sahipli doğrudan `/run/systemd/private` Unix
+soketi (yalnız sahibi yazabilir ya da Ubuntu 22.04'teki gibi v252 öncesi
+systemd'nin oluşturduğu düz 0777; root olmayan her istemciyi systemd kendisi
+reddeder) ve zaman
 sınırlandırılmış `systemctl is-system-running` çağrısıyla `running` veya
 `degraded` kanıtı her durumda zorunludur. Var olan her aday aracın kendisi,
 hedefi ve dizin zinciri root sahipli, yazılamaz, sabit-yol sözleşmesini

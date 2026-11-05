@@ -694,6 +694,55 @@ func serverSetupPDNSMainSystemTested(host core.ManagedServiceHostProfile) bool {
 	return debian13 || arch
 }
 
+// pdnsSystemCertified reports whether this system's own PowerDNS package
+// installs a service unit the Agent certifies (internal/pdnsvendor: Debian
+// 13 and Ubuntu 24.04, and Arch's extra/powerdns). Debian 12 (4.7) and
+// Ubuntu 22.04 (4.5) ship other units, so a PowerDNS install there fails at
+// the unit identity check after its packages arrive (alpha.123 lab). One rule
+// for every PowerDNS install: the setup catalogue and review (main and
+// backup), the setup DNS step, the join by code and Server -> DNS.
+// PowerDNS yalniz birim dosyasi sertifikali sistemlerde kurulur.
+func pdnsSystemCertified(host core.ManagedServiceHostProfile) bool {
+	switch {
+	case host.DistroID == "debian" && host.VersionID == "13":
+	case host.DistroID == "ubuntu" && host.VersionID == "24.04":
+	case host.DistroID == "arch" && host.PackageFamily == "pacman":
+	default:
+		return false
+	}
+	return true
+}
+
+const serverSetupPDNSUntestedSystemCode = "server_setup_pdns_untested_system"
+
+// serverSetupPDNSSystemBlocker is the system rule for PowerDNS in a setup
+// role ("main" or "backup"): a system whose PowerDNS is not certified at all
+// is refused for both roles (use BIND there); a certified one that was not
+// measured as the main server is refused for the main role only.
+func serverSetupPDNSSystemBlocker(host core.ManagedServiceHostProfile, role string) string {
+	if !pdnsSystemCertified(host) {
+		return serverSetupPDNSUntestedSystemCode
+	}
+	if role == "main" && !serverSetupPDNSMainSystemTested(host) {
+		return "server_setup_pdns_main_untested_system"
+	}
+	return ""
+}
+
+// setupPDNSSystemBlocker applies serverSetupPDNSSystemBlocker to a draft:
+// its DNS role decides the setup role (one server keeping its own DNS is a
+// main server).
+func setupPDNSSystemBlocker(draft serverSetupDraft, host core.ManagedServiceHostProfile) string {
+	if transport.DNSEngine(draft.DNSEngine) != transport.DNSEnginePowerDNS {
+		return ""
+	}
+	role := "backup"
+	if draft.DNSRole != transport.DNSPairRoleSecondary {
+		role = "main"
+	}
+	return serverSetupPDNSSystemBlocker(host, role)
+}
+
 // serverSetupPDNSMainCandidateBlocker applies the Agent's own rules to the
 // PowerDNS build this server would install, so the wizard offers PowerDNS as
 // the main DNS server only when the DNS step will accept it: Debian's archive
@@ -762,14 +811,22 @@ func serverSetupDNSEngineChoices(inputs serverSetupCatalogInputs) []serverSetupD
 				choice.Offered, choice.Reason = false, serverSetupDNSInstalledDiffersCode
 			case inputs.DNSState.ActiveEngine != "" && inputs.DNSState.ActiveEngine != engine:
 				choice.Offered, choice.Reason = false, "server_setup_existing_dns_requires_migration"
-			case role == "main" && engine == transport.DNSEnginePowerDNS && inputs.DNSState.ActiveEngine == "":
-				code, _ := pdnsPairedPrimaryBlocker(dnsEngineSnapshot{Topology: transport.DNSTopologyPaired, PairRole: transport.DNSPairRolePrimary, EngineEpoch: inputs.DNSState.EngineEpoch}, engine, "install")
-				if code != "" {
+			case engine == transport.DNSEnginePowerDNS && inputs.DNSState.ActiveEngine == "":
+				// Main and backup are refused on the same data by the same
+				// system rule (alpha.123 lab: the backup role was offered on
+				// Debian 12 and Ubuntu 22.04, where PowerDNS is untested).
+				gate := ""
+				if role == "main" {
+					gate, _ = pdnsPairedPrimaryBlocker(dnsEngineSnapshot{Topology: transport.DNSTopologyPaired, PairRole: transport.DNSPairRolePrimary, EngineEpoch: inputs.DNSState.EngineEpoch}, engine, "install")
+				}
+				if gate != "" {
+					choice.Offered, choice.Reason = false, gate
+				} else if code := serverSetupPDNSSystemBlocker(inputs.Host, role); code != "" {
 					choice.Offered, choice.Reason = false, code
-				} else if !serverSetupPDNSMainSystemTested(inputs.Host) {
-					choice.Offered, choice.Reason = false, "server_setup_pdns_main_untested_system"
-				} else if code := serverSetupPDNSMainCandidateBlockerFor(inputs.Host.PackageFamily, inputs.PDNSCandidate); code != "" {
-					choice.Offered, choice.Reason = false, code
+				} else if role == "main" {
+					if code := serverSetupPDNSMainCandidateBlockerFor(inputs.Host.PackageFamily, inputs.PDNSCandidate); code != "" {
+						choice.Offered, choice.Reason = false, code
+					}
 				}
 			}
 			choices = append(choices, choice)

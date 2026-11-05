@@ -180,6 +180,7 @@ const knownBlockerKeys = {
     pdns_primary_switch_paused: 'dnsEngine.blocker.pdnsPrimarySwitchPaused',
     bind_source_pdns_switch_unsupported: 'dnsEngine.blocker.bindSourcePdnsSwitchUnsupported',
     pdns_arch_setup_only: 'dnsEngine.blocker.pdnsArchSetupOnly',
+    pdns_untested_system: 'dnsEngine.blocker.pdnsUntestedSystem',
     dnssec_unsupported: 'dnsEngine.blocker.dnssec',
     pending_zone_sync: 'dnsEngine.blocker.pendingZones',
     operation_running: 'dnsEngine.blocker.operationRunning',

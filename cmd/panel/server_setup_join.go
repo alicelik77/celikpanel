@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/secrets"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -693,6 +694,29 @@ func serverSetupRequestSourceIP(r *http.Request) (netip.Addr, bool) {
 
 var serverSetupOSPattern = regexp.MustCompile(`^[A-Za-z0-9 ._()+-]{0,64}$`)
 
+// serverSetupJoinPDNSUntested: a local-DNS setup that uses PowerDNS and a
+// second server whose system (serverSetupHostOS: "<distro> <version>") is
+// not certified for PowerDNS (pdnsSystemCertified). The main-role rule stays
+// with the second server's own review, which knows its full platform.
+func serverSetupJoinPDNSUntested(draft serverSetupDraft, system string) bool {
+	if draft.DNSMode != setupDNSModeLocal || transport.DNSEngine(draft.DNSEngine) != transport.DNSEnginePowerDNS {
+		return false
+	}
+	fields := strings.Fields(strings.ToLower(system))
+	if len(fields) == 0 {
+		// Not reported: the second server's own review applies the rule.
+		return false
+	}
+	host := core.ManagedServiceHostProfile{DistroID: fields[0]}
+	if len(fields) > 1 {
+		host.VersionID = fields[1]
+	}
+	if host.DistroID == "arch" {
+		host.PackageFamily = "pacman"
+	}
+	return !pdnsSystemCertified(host)
+}
+
 func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	source, ok := p.serverSetupJoinSourceIP(r)
 	if !ok || !p.setupLink.limiter.allow(serverSetupJoinSourceKey(source), time.Now()) {
@@ -795,6 +819,12 @@ func (p *Panel) handleServerSetupJoin(w http.ResponseWriter, r *http.Request) {
 	}
 	if request.DeclaredIPv4 == plan.Draft.LocalIP {
 		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_join_same_server", "The second server must be a different server from the first.", nil)
+		return
+	}
+	if serverSetupJoinPDNSUntested(plan.Draft, request.OS) {
+		// The second server would install PowerDNS where it is untested
+		// (alpha.123 lab): refused before the code is used, with the fix.
+		writeServerSetupJoinRefusal(w, http.StatusConflict, "server_setup_join_pdns_untested_system", "This setup uses PowerDNS for DNS, and PowerDNS has not been tested on the second server's system, so it cannot join. Nothing was changed and the code is still valid. On the first server choose Review a revised plan and select BIND for DNS, or join from a Debian 13 or Ubuntu 24.04 server.", nil)
 		return
 	}
 	if _, err := p.serverSetupPanelCertificate(); err != nil {

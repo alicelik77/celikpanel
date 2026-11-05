@@ -120,6 +120,47 @@ func parseExecStart(value string) (string, string, error) {
 	return executable, fields["argv[]"], nil
 }
 
+// VendorUnitDir is where every certified package installs its systemd units.
+const VendorUnitDir = "/usr/lib/systemd/system/"
+
+// SplitUsrVendorUnitDir is the name Debian 12 and Ubuntu 22.04 packages record
+// for the same directory. Those releases ship packages built before the
+// usrmerge path move, so dpkg owns /lib/systemd/system/<unit>, and their
+// systemd (built with rootprefix=/) searches /lib/systemd/system before
+// /usr/lib/systemd/system and reports FragmentPath under /lib. On a
+// merged-/usr host /lib is the symlink usr/lib, so both names are one file.
+const SplitUsrVendorUnitDir = "/lib/systemd/system/"
+
+// libIsUsrLibAlias reports whether this host's /lib is the root-owned
+// merged-/usr symlink to usr/lib. Tests replace it.
+var libIsUsrLibAlias = hostLibIsUsrLibAlias
+
+// LibIsUsrLibAlias reports whether /lib is the root-owned merged-/usr alias of
+// /usr/lib, which makes /lib/systemd/system/<unit> and
+// /usr/lib/systemd/system/<unit> the same file.
+func LibIsUsrLibAlias() bool {
+	return libIsUsrLibAlias()
+}
+
+// IsAPTVendorUnitFragment accepts the APT vendor unit file of unit under its
+// /usr/lib name, or under the /lib name only when /lib is the merged-/usr
+// alias. On a host where /lib is a separate directory the /lib file is not
+// the /usr/lib file whose bytes and package ownership are proven, so it is
+// refused. Nothing else (drop-ins, command, names) is relaxed by this.
+func IsAPTVendorUnitFragment(fragment, unit string) bool {
+	if unit == "" || strings.ContainsAny(unit, "/\x00") {
+		return false
+	}
+	switch fragment {
+	case VendorUnitDir + unit:
+		return true
+	case SplitUsrVendorUnitDir + unit:
+		return libIsUsrLibAlias()
+	default:
+		return false
+	}
+}
+
 func ValidateAPTBINDVendorNamedIdentity(
 	named Identity,
 	aliasEnabled bool,
@@ -130,7 +171,7 @@ func ValidateAPTBINDVendorNamedIdentity(
 	}
 	if named.ID != "named.service" ||
 		!reflect.DeepEqual(named.Names, expectedNames) ||
-		named.FragmentPath != "/usr/lib/systemd/system/named.service" ||
+		!IsAPTVendorUnitFragment(named.FragmentPath, "named.service") ||
 		len(named.DropInPaths) != 0 || named.SourcePath != "" ||
 		named.Transient != "no" || named.ExecStartPath != "/usr/sbin/named" ||
 		named.ExecStartArgv != "/usr/sbin/named -f $OPTIONS" {

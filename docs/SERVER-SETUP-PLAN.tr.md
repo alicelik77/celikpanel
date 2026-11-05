@@ -103,6 +103,35 @@ kanıtlanmış sayılmadan önce yeni bir hedefli VM koşusu gerekir.
   komutlar) ya da `server_setup_agent_not_answering` (Agent hiç yanıt vermedi;
   `sudo systemctl status celikpanel-agent`) ile düşer. Her açılış ayrı bir
   dönemdir: başka her sonuç öncekini bitirir.
+- **Meşgul panel veritabanı her adım için bir beklemedir (alpha.123 lab).**
+  Yeni bir Ubuntu 22.04'te DNS adımı 19 saniye sonra "database is locked
+  (SQLITE_BUSY)" ile düştü ve doğrulanmış `server_setup_dns_failed` gösterdi;
+  oysa hiçbir şey değişmemişti (bind9 kurulmadı, Agent'ta DNS işlemi yoktu).
+  Panelin kendi DNS yazma işlemi ERTELENMİŞ başlıyordu (önce okur, sonra
+  yazar); ilk yazması başka bir panel yazıcısına denk geldi ve SQLite 5
+  saniyelik bekleme süresini kullanmadan hemen yanıt verdi. DNS işlemleri artık
+  yazma kilidini ilk ifadeleriyle alır (`beginDNSWriteTx`); panelin kendi
+  veritabanından kalan her meşgul/kilitli yanıt (sürücünün hata türü, asla
+  Agent'ın metni) adımı `server_setup_panel_busy` olarak bekletir: kimse bir
+  şey yapmaz, aynı adım kayıtlı istek kimliğiyle 2, 4, 8, 16, sonra 20 saniye
+  arayla yeniden sorulur; ikinci bir Agent değişikliği başlamaz. Yaklaşık on
+  dakika üst üste meşgul kalırsa adım `server_setup_panel_stayed_busy` ile durur
+  (paneli yeniden başlatın, sonra Düzeltilmiş planı inceleyin); DNS
+  yönlendirmesi asla gösterilmez. Çalıştırıcının kendi kaydı meşgul veritabanına
+  denk gelirse de sınırlı olarak yeniden dener, panel yeniden başlayana dek
+  durmaz.
+- **PowerDNS yalnız paketi sertifikalı sistemlerde, her rolde.** PowerDNS
+  Debian 12 (4.7) ve Ubuntu 22.04'te (4.5) ana DNS sunucusu olarak
+  reddediliyor, ama birim dosyası Agent'ın sertifikaladığı dosya olmadığı
+  hâlde yedek olarak sunuluyordu. Tek bir kural (`pdnsSystemCertified`:
+  Debian 13, Ubuntu 24.04, Arch) artık orada iki rolü de katalogda ve
+  incelemede `server_setup_pdns_untested_system` ("DNS için BIND kullanın")
+  ile reddeder; Ubuntu 24.04'te ana rol `server_setup_pdns_main_untested_system`
+  olarak kalır. Aynı kural böyle bir sistemden PowerDNS kurulumuna kodla
+  katılmayı (`server_setup_join_pdns_untested_system`, kod geçerli kalır),
+  Sunucu → DNS'te PowerDNS kurma, geçiş ya da yeniden kurmayı
+  (`pdns_untested_system`) ve kuraldan önce incelenmiş bir planın DNS adımını
+  da reddeder. Bileşenler DNS yazılımı kurmaz (değişmedi).
 - **Sunucudaki başka bir değişiklik başlatmayı tutar, çalışma bekler.**
   Bileşenler'den bir kurulum sürerken başlatılan çalışmanın ilk bileşenini
   Agent kabulde reddetti (`HOST_MUTATION_BUSY`) ve çalışma düştü. Başlatma

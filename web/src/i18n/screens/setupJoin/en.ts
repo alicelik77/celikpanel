@@ -42,6 +42,7 @@ export const enSetupJoinScreens = {
     "setup.v5.join.refused.server_setup_join_source_mismatch": "The request did not come from this server's own address. Join from this server directly, without a proxy.",
     "setup.v5.join.refused.server_setup_join_not_waiting": "The first server's setup is not waiting for a server to join, or it changed since the code was made. Create a new code there.",
     "setup.v5.join.refused.server_setup_join_rate_limited": "Too many tries in a short time. Wait a minute, then try again.",
+    "setup.v5.join.refused.server_setup_join_pdns_untested_system": "This setup uses PowerDNS for DNS, and PowerDNS has not been tested on this server's system, so it cannot join. Nothing was changed and the code is still valid. On the first server choose Review a revised plan and select BIND for DNS, or join from a Debian 13 or Ubuntu 24.04 server.",
     "setup.v5.join.refused.server_setup_join_same_server": "This is the first server itself. Join from the server that should join.",
     "setup.v5.join.refused.server_setup_join_certificate_unavailable": "The first server does not serve a valid certificate of its own on its IP address, so it cannot be paired by code. Its owner restores that certificate and restarts its panel; then join again.",
     "setup.v5.join.refused.server_setup_join_address_not_public": "This server's address is not a public server address, so it cannot join.",

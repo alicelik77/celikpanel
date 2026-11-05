@@ -903,9 +903,20 @@ validate_systemd_runtime() {
         || die "systemd private socket is not owned by the trusted principal"
     [[ "$links" == 1 ]] \
         || die "systemd private socket must have exactly one hard link"
+    # systemd authenticates every peer of this socket itself: bus_on_connection()
+    # calls bus_check_peercred(), which drops any SO_PEERCRED uid other than 0
+    # (src/core/dbus.c, src/shared/bus-util.c; unchanged from v249 to v257).
+    # The socket mode decides only who may knock, never who is served. systemd
+    # before v252 binds it under PID 1's umask 0, so Ubuntu 22.04 (v249) shows
+    # 0777; v252 and later bind it under umask 0077 (0700). Replacing it needs
+    # write access to /run/systemd, which the directory chain above requires to
+    # be root-owned and not group/other writable; the root:root owner and the
+    # single link are checked just above. So accept exactly two shapes: no
+    # group/other write bit, or the plain pre-v252 0777. Any other writable
+    # mode (0770, 01777, ...) is not what systemd creates and stays refused.
     permissions=$((8#$mode))
-    (( (permissions & 0022) == 0 )) \
-        || die "systemd private socket is group/other writable"
+    (( (permissions & 0022) == 0 || permissions == 8#777 )) \
+        || die "systemd private socket is group/other writable (mode $mode) and is not systemd's pre-v252 0777"
 
     readiness=$(LC_ALL=C SYSTEMD_COLORS=0 SYSTEMD_PAGER= \
         "$TIMEOUT_BIN" --signal=KILL --kill-after=1s 3s \

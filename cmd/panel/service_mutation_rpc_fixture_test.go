@@ -22,7 +22,7 @@ func (f *verifiedAPTAgentRPCFixture) HostPlatform(
 		*response = *f.hostPlatformResponse
 		return nil
 	}
-	*response = debianPolicyTestIdentity()
+	*response = pdnsCertifiedPolicyTestIdentity()
 	return nil
 }
 

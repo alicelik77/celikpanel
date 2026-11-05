@@ -567,6 +567,15 @@ func debianPolicyTestIdentity() transport.HostPlatformResponse {
 	}
 }
 
+// pdnsCertifiedPolicyTestIdentity is Debian 13, a system whose PowerDNS
+// package the Agent certifies (pdnsSystemCertified): the default of the DNS
+// and mutation fakes, so PowerDNS paths stay reachable in their tests.
+func pdnsCertifiedPolicyTestIdentity() transport.HostPlatformResponse {
+	identity := debianPolicyTestIdentity()
+	identity.VersionID = "13"
+	return identity
+}
+
 func archPolicyTestIdentity() transport.HostPlatformResponse {
 	return transport.HostPlatformResponse{
 		DistroFamily: "arch", PackageManager: "pacman", ServiceManager: "systemd",

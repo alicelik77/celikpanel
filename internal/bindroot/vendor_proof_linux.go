@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/dnsunitidentity"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"golang.org/x/sys/unix"
 )
@@ -18,13 +19,21 @@ type VendorFilesIdentity struct {
 	Environment FileIdentity
 }
 
-// VerifyAPTVendorOwner accepts only the two certified bind9-owned vendor files.
+const (
+	aptVendorUnitPath         = dnsunitidentity.VendorUnitDir + "named.service"
+	aptSplitUsrVendorUnitPath = dnsunitidentity.SplitUsrVendorUnitDir + "named.service"
+	aptVendorEnvironmentPath  = "/etc/default/named"
+)
+
+// VerifyAPTVendorOwner accepts only the certified bind9-owned vendor files:
+// the unit under the name dpkg records for it (/usr/lib on Debian 13 and
+// Ubuntu 24.04, /lib on Debian 12 and Ubuntu 22.04) and its environment file.
 func VerifyAPTVendorOwner(path string, output []byte, commandErr error) error {
 	if commandErr != nil {
 		return fmt.Errorf("verify BIND vendor package ownership for %s: %w", path, commandErr)
 	}
 	switch path {
-	case "/usr/lib/systemd/system/named.service", "/etc/default/named":
+	case aptVendorUnitPath, aptSplitUsrVendorUnitPath, aptVendorEnvironmentPath:
 		if string(output) != "bind9: "+path+"\n" {
 			return fmt.Errorf("%s is not owned by the exact bind9 package", path)
 		}
@@ -32,6 +41,38 @@ func VerifyAPTVendorOwner(path string, output []byte, commandErr error) error {
 	default:
 		return errors.New("unsupported APT BIND vendor file")
 	}
+}
+
+// APTVendorOwnerLookup runs dpkg-query -S for one path.
+type APTVendorOwnerLookup func(context.Context, string) ([]byte, error)
+
+// VerifyAPTVendorPackageOwnership proves that the bind9 package owns the
+// vendor unit and /etc/default/named. The unit is asked for under its /usr/lib
+// name first. Packages built before the usrmerge path move (Debian 12, Ubuntu
+// 22.04) record it as /lib/systemd/system/named.service, which dpkg does not
+// map to /usr/lib; that name is asked for only when libIsUsrLibAlias proves
+// /lib is the merged-/usr symlink, so the dpkg-owned file is the same file
+// whose bytes are proven at /usr/lib and that systemd loads.
+func VerifyAPTVendorPackageOwnership(
+	ctx context.Context,
+	lookup APTVendorOwnerLookup,
+	libIsUsrLibAlias bool,
+) error {
+	if ctx == nil || lookup == nil {
+		return errors.New("invalid APT BIND vendor package ownership proof")
+	}
+	output, err := lookup(ctx, aptVendorUnitPath)
+	if unitErr := VerifyAPTVendorOwner(aptVendorUnitPath, output, err); unitErr != nil {
+		if !libIsUsrLibAlias {
+			return unitErr
+		}
+		output, err = lookup(ctx, aptSplitUsrVendorUnitPath)
+		if splitErr := VerifyAPTVendorOwner(aptSplitUsrVendorUnitPath, output, err); splitErr != nil {
+			return fmt.Errorf("%v; under the merged-/usr name: %w", unitErr, splitErr)
+		}
+	}
+	output, err = lookup(ctx, aptVendorEnvironmentPath)
+	return VerifyAPTVendorOwner(aptVendorEnvironmentPath, output, err)
 }
 
 func VerifyPacmanVendorOwner(path string, output []byte, commandErr error) error {
@@ -47,11 +88,11 @@ func VerifyPacmanVendorOwner(path string, output []byte, commandErr error) error
 func proveInstalledVendorPackage(ctx context.Context, profile hostplatform.Profile) error {
 	switch profile.PackageManager {
 	case hostplatform.PackageManagerAPT:
-		for _, path := range []string{"/usr/lib/systemd/system/named.service", "/etc/default/named"} {
-			output, err := runTrusted(ctx, []string{"/usr/bin/dpkg-query", "/usr/sbin/dpkg-query"}, "-S", "--", path)
-			if err := VerifyAPTVendorOwner(path, output, err); err != nil {
-				return err
-			}
+		lookup := func(lookupCtx context.Context, path string) ([]byte, error) {
+			return runTrusted(lookupCtx, []string{"/usr/bin/dpkg-query", "/usr/sbin/dpkg-query"}, "-S", "--", path)
+		}
+		if err := VerifyAPTVendorPackageOwnership(ctx, lookup, dnsunitidentity.LibIsUsrLibAlias()); err != nil {
+			return err
 		}
 	case hostplatform.PackageManagerPacman:
 		const path = "/usr/lib/systemd/system/named.service"
