@@ -32,7 +32,8 @@ the whole server's address ends up on block lists.
 
 **Decision.** Sites send mail only with a mailbox's user name and password,
 through submission (587 STARTTLS or 465 TLS). Both passwordless ways are closed
-with two native Postfix settings, for every site, PHP version and pool at once:
+(phase 2, alpha.125 — not yet in alpha.124) with two native Postfix settings,
+for every site, PHP version and pool at once:
 
 - `authorized_submit_users = root, vmail`: the `sendmail` command and `postdrop`
   refuse every other Unix account ("User x(uid) is not allowed to submit mail",
@@ -71,8 +72,9 @@ owner set is kept and shown with CelikPanel's form beside it.
 **Resilience (D-025).** Affected invariant: native service ownership and
 owner-change detection; no schema change. Recovery: rollback of the two
 settings on a failed check or reload, recorded and retried at the next start.
-Evidence: Go tests of the log reading, the plan, the rollback and the owner's
-values; phase 2 lab check on Debian 13.
+Evidence: phase 1 (alpha.124): Go tests of the log reading and the placing on
+sites. Phase 2 (alpha.125): Go tests of the plan, the rollback and the owner's
+values, and a lab check on Debian 13.
 
 ## D-045 · Component dependency rule: Linux's package rule at component level; removal asks what requires it
 

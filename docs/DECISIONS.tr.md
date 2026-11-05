@@ -32,7 +32,8 @@ posta gönderir ve sunucunun adresi engel listelerine girer.
 
 **Karar.** Siteler postayı yalnız bir posta kutusunun kullanıcı adı ve parolasıyla,
 gönderim hizmetinden (587 STARTTLS ya da 465 TLS) gönderir. İki parolasız yol, her
-site, PHP sürümü ve havuz için birden, iki yerel Postfix ayarıyla kapanır:
+site, PHP sürümü ve havuz için birden, iki yerel Postfix ayarıyla kapanır (2. aşama,
+alpha.125; alpha.124'te henüz kapanmaz):
 
 - `authorized_submit_users = root, vmail`: `sendmail` komutu ve `postdrop` başka
   her Unix hesabını reddeder (posta günlüğünde "User x(uid) is not allowed to
@@ -71,8 +72,9 @@ korunur ve yanında CelikPanel'in biçimiyle gösterilir.
 **Dayanıklılık (D-025).** Etkilenen ilke: yerel hizmet sahipliği ve sahip
 değişikliğinin saptanması; şema değişikliği yok. Kurtarma: başarısız denetim ya da
 yeniden yüklemede iki ayar geri alınır, kaydedilir ve sonraki başlangıçta yeniden
-denenir. Kanıt: günlük okuma, plan, geri alma ve sahip değerleri için Go testleri;
-2. aşama için Debian 13 laboratuvar denetimi.
+denenir. Kanıt: 1. aşama (alpha.124) için günlük okuma ve sitelere eşleme Go testleri;
+2. aşama (alpha.125) için plan, geri alma ve sahip değerleri Go testleri ile
+Debian 13 laboratuvar denetimi.
 
 ## D-045 · Bileşen bağımlılık kuralı: Linux'un paket kuralı bileşen düzeyinde; kaldırma neyin ona ihtiyaç duyduğunu sorar
 
