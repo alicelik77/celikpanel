@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.124.tr.md)
 
+> **Published** on 2026-11-05 (UTC): release commit `8f782e664`, GitHub pre-release at 15:14:59Z, download portal at about 15:58Z (public check 27/27).
+
 Installing a component now works at component level and installs what it
 needs in the same operation; audit entries are never lost while the panel's
 database is busy; only one Agent can ever run. **Only the owner updates

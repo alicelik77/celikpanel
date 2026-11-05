@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.124.md)
 
+> **Yayımlandı**, 5 Kasım 2026 (UTC): sürüm commit'i `8f782e664`, GitHub ön sürümü 15:14:59Z, indirme portalı yaklaşık 15:58Z (dış denetim 27/27).
+
 Bileşen kurulumu artık bileşen düzeyinde ve bileşenin ihtiyaç duyduklarını
 aynı işlemde kuruyor; panelin veritabanı meşgulken denetim kayıtları
 kaybolmuyor; aynı anda yalnız bir Agent çalışabiliyor. **Kurulu panelleri
