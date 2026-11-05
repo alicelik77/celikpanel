@@ -111,3 +111,76 @@ func TestSystemUpdateResetFailedWorkerUnitTouchesOnlyItsOwnFailedUnit(t *testing
 		t.Fatal("a name that is not an attempt id was accepted")
 	}
 }
+
+// alpha.124 lab (123 -> 124 on Debian 13): the new Agent started while the
+// attempt that restarted it was still active, so the start-time Reconcile
+// cleared nothing and the two earlier failed units stayed under systemctl
+// --failed after the update succeeded. The status read after the attempt
+// ends clears them, once.
+func TestSystemUpdateStatusClearsResolvedUnitsOnceAfterTheSuccess(t *testing.T) {
+	root := linuxSystemUpdateTestRoot(t)
+	at := func(id, status, created string) *systemUpdateState {
+		state := linuxSystemUpdateTestState(strings.Repeat(id, 32))
+		state.Status, state.CreatedAt, state.UpdatedAt = status, created, created
+		if status == systemUpdateFailed {
+			state.Error = "installer stopped"
+		}
+		if err := writeSystemUpdateState(root, state, nil); err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+	refused := at("1", systemUpdateFailed, "2026-11-05T12:22:15Z")
+	raced := at("2", systemUpdateFailed, "2026-11-05T12:23:59Z")
+	update := at("3", systemUpdateRunning, "2026-11-05T12:29:49Z")
+
+	backend := newLinuxSystemUpdateBackend()
+	backend.stateRoot = root
+	backend.floorPath = filepath.Join(root, "missing-floor")
+	backend.now = func() time.Time { return time.Date(2026, 11, 5, 12, 31, 11, 0, time.UTC) }
+	backend.installedBuild = func(context.Context) (string, string, error) { return "v1.2.2", strings.Repeat("c", 40), nil }
+	backend.unitState = func(context.Context, string) (systemUpdateUnitState, error) { return systemUpdateUnitActive, nil }
+	backend.observe = nil
+	var cleared []string
+	backend.resetFailedUnit = func(_ context.Context, id string) error { cleared = append(cleared, id); return nil }
+
+	// The new Agent starts while the worker still runs: nothing is cleared.
+	if err := backend.Reconcile(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := backend.Status(context.Background(), update.RequestID); err != nil {
+		t.Fatal(err)
+	}
+	if len(cleared) != 0 {
+		t.Fatalf("cleared %v while the update was active", cleared)
+	}
+
+	// The worker records the success; the update screen reads the status.
+	done := *update
+	done.Status = systemUpdateSucceeded
+	if err := writeSystemUpdateState(root, &done, nil); err != nil {
+		t.Fatal(err)
+	}
+	backend.unitState = func(context.Context, string) (systemUpdateUnitState, error) { return systemUpdateUnitInactive, nil }
+	state, err := backend.Status(context.Background(), update.RequestID)
+	if err != nil || state.Status != systemUpdateSucceeded {
+		t.Fatalf("status %v %v", state, err)
+	}
+	want := []string{refused.RequestID, raced.RequestID, update.RequestID}
+	if !reflect.DeepEqual(cleared, want) {
+		t.Fatalf("cleared %v, want %v", cleared, want)
+	}
+	// A later poll of the same success clears nothing again.
+	cleared = nil
+	if _, err := backend.Status(context.Background(), update.RequestID); err != nil {
+		t.Fatal(err)
+	}
+	if len(cleared) != 0 {
+		t.Fatalf("a second status read cleared again: %v", cleared)
+	}
+	for _, s := range []*systemUpdateState{refused, raced, update} {
+		if _, err := readSystemUpdateState(root, s.RequestID); err != nil {
+			t.Fatalf("the attempt's record %s is gone: %v", s.RequestID, err)
+		}
+	}
+}

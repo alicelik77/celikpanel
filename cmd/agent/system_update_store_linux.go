@@ -56,6 +56,9 @@ type linuxSystemUpdateBackend struct {
 	// resetFailedUnit clears systemd's failed mark of one finished
 	// attempt's own transient unit (alpha.124); nil does nothing.
 	resetFailedUnit func(context.Context, string) error
+	// clearedAfter is the successful attempt whose resolved units this
+	// process already cleared from Status, so a status poll clears once.
+	clearedAfter string
 }
 
 type systemUpdateIdleLease interface{ Close() error }
@@ -830,6 +833,7 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 		return nil, err
 	}
 	active := 0
+	var others []*systemUpdateState
 	for _, entry := range entries {
 		if entry.Name() == ".lock" || entry.Name() == ".worker.lock" {
 			continue
@@ -844,6 +848,9 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 		if candidate.active() {
 			active++
 		}
+		if candidate.RequestID != requestID {
+			others = append(others, candidate)
+		}
 	}
 	if active > 1 {
 		return nil, errors.New("multiple active system update requests are ambiguous")
@@ -857,7 +864,33 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 	} else if state.Status == systemUpdateSucceeded {
 		backend.observePreviouslySucceeded(ctx, state)
 	}
+	if err == nil {
+		backend.clearAfterSuccessLocked(ctx, state, others)
+	}
 	return state, err
+}
+
+// clearAfterSuccessLocked clears the resolved attempts' units once this
+// attempt is known to have succeeded (alpha.124 lab, 123 -> 124 update): the
+// start-time Reconcile runs while the attempt that restarted the Agent is
+// still active and returns before clearing, so the earlier failed units
+// stayed under systemctl --failed after a successful update. The status the
+// update screen reads after the restart is the first point where this
+// process sees the success; it clears once per successful attempt and only
+// when no other attempt is active (the same rule as Reconcile).
+func (backend *linuxSystemUpdateBackend) clearAfterSuccessLocked(ctx context.Context, state *systemUpdateState, others []*systemUpdateState) {
+	if state == nil || state.Status != systemUpdateSucceeded || backend.clearedAfter == state.RequestID {
+		return
+	}
+	finished := []*systemUpdateState{state}
+	for _, other := range others {
+		if other.active() {
+			return
+		}
+		finished = append(finished, other)
+	}
+	backend.clearedAfter = state.RequestID
+	backend.clearFinishedWorkerUnits(ctx, finished)
 }
 
 func (backend *linuxSystemUpdateBackend) Reconcile(ctx context.Context) error {
