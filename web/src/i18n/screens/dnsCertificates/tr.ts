@@ -253,14 +253,15 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'ssl.renewalGuide.lineage_missing.action': 'Sertifikayı burada yeniden alın.',
     'dnssec.on': 'İmzalı',
     'dnssec.sign': 'Bölgeyi imzala',
-	'dnssec.signed': 'Zone imzalandı. Eşli modda DS kaydını, iki yetkili sunucu da aynı imzalı zone’u sunduktan sonra kayıt firmanıza girin.',
-	'dnssec.dsHint': 'DS kaydını henüz yayımlamadıysanız önce iki yetkili ad sunucusunun aynı DNSKEY/RRSIG verisini sunduğunu doğrulayın. Sonra bu değerleri kayıt firmanıza girin; çoğu firma dört alanı ayrı ayrı ister. Erken veya yanlış DS, DNSSEC doğrulayan ziyaretçiler için alan adını erişilemez yapar.',
+    'dnssec.signed': "Bölge imzalandı. Sırada: iki DNS sunucunuzun da imzalı yanıt verdiğini bekleyin, sonra aşağıdaki kaydı alan adını aldığınız firmaya ekleyin. Bu adımı en son yapın.",
+    'dnssec.dsHint': "Bu değerleri alan adını aldığınız firmaya ekleyin (çoğu firma dört alanı ayrı ayrı ister). Bunu yalnız iki DNS sunucunuz da imzalı yanıt verdikten sonra yapın: yanlış ya da erken eklenen kayıt, imzaları denetleyen ziyaretçiler için alan adını erişilemez yapar.",
     'dnssec.keyTag': 'Key Tag (Anahtar Etiketi)',
     'dnssec.algorithm': 'Algorithm (Algoritma)',
     'dnssec.digestType': 'Digest Type (Özet Tipi)',
     'dnssec.digest': 'Digest (Özet)',
     'dnssec.rawRecord': 'Tam kayıt',
-	'dnssec.offHint': 'Önce DNS çifti ve delegasyon kararlı olmalıdır. Ardından zone’u imzalayın, iki sunucudaki imzalı yanıtı doğrulayın ve kayıtçıdaki DS’yi en son ekleyin.',
+    'dnssec.offHint': "Güvenli sıra: 1. bölgeyi burada imzalayın, 2. iki DNS sunucunuzun da imzalı yanıt verdiğini denetleyin, 3. en son, imza kaydını alan adını aldığınız firmaya ekleyin.",
+    'dnssec.pairUnsupported': "Bölge imzalama bu DNS sunucu ikilisinde (PowerDNS ana + yedek sunucu) henüz denenmedi; bu yüzden kapalı. Bir şey yapmanız gerekmiyor.",
     // No negative UI unless known (9 Oct 2026): the checking line and the
     // could-not-check sentence of each screen that reads through lib/remote.ts.
     'dns.checkingServer': 'Bu sunucunun DNS durumu kontrol ediliyor…',

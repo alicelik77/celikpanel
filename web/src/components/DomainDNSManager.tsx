@@ -65,6 +65,8 @@ const decodeRecords = (raw: unknown) => decodeListIn<DNSRecord>(raw, 'records');
 interface Signing {
     secured: boolean;
     ds: string[];
+    /** alpha.124: signing is closed on this DNS pair (the server says why). */
+    pairUnsupported: boolean;
 }
 
 function decodeSigning(raw: unknown): Signing {
@@ -73,7 +75,12 @@ function decodeSigning(raw: unknown): Signing {
     if (typeof body.secured !== 'boolean') throw new Error('field');
     const ds = body.ds ?? [];
     if (!Array.isArray(ds) || ds.some((item) => typeof item !== 'string')) throw new Error('list');
-    return { secured: body.secured, ds: ds as string[] };
+    // An older panel sends no "signing": nothing is known in advance.
+    const signingGate = body.signing;
+    const pairUnsupported = !!signingGate && typeof signingGate === 'object' &&
+        (signingGate as Record<string, unknown>).available === false &&
+        (signingGate as Record<string, unknown>).reason === 'DNSSEC_PAIR_UNSUPPORTED';
+    return { secured: body.secured, ds: ds as string[], pairUnsupported };
 }
 
 const recordTypes = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'];
@@ -768,13 +775,18 @@ function DNSSECSection({ domainId, readOnly = false }: { domainId: number; domai
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm text-fg-muted">{t('dnssec.offHint')}</p>
                         {!readOnly && (
-                            <Button
-                                variant="primary"
-                                disabled={busy || answer.holding || signing.remote.state !== 'known' || signing.reading}
-                                onClick={sign}
-                            >
-                                {t('dnssec.sign')}
-                            </Button>
+                            <div className="flex flex-col items-end gap-1">
+                                <Button
+                                    variant="primary"
+                                    disabled={busy || answer.holding || signing.remote.state !== 'known' || signing.reading || shown.value.pairUnsupported}
+                                    onClick={sign}
+                                >
+                                    {t('dnssec.sign')}
+                                </Button>
+                                {shown.value.pairUnsupported && (
+                                    <p className="max-w-sm text-right text-xs text-fg-muted" data-dnssec-closed="">{t('dnssec.pairUnsupported')}</p>
+                                )}
+                            </div>
                         )}
                     </div>
                 )}

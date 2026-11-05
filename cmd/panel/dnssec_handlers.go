@@ -75,6 +75,44 @@ func dnssecResultError(resp dnssecAgentResponse, signing bool) string {
 	return ""
 }
 
+// The DNS pair whose signing this release does not offer yet (alpha.124,
+// Frankfurt 2026-11-05: PowerDNS main with a secondary kept in step by the V3
+// catalog). The Agent refuses it with nothing changed; the Panel says it
+// before the click (signing.available false) and, should the Agent still
+// refuse, as this typed 409 instead of an internal error (D-024: verified
+// refusal, nothing changed, who acts, next action).
+const errCodeDNSSECPairUnsupported = transport.DNSSECSigningPairUnsupported
+
+const dnssecPairUnsupportedMessage = "Signing this zone has not been tried yet on this DNS server pair " +
+	"(PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: " +
+	"the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair."
+
+var errDNSSECPairUnsupported = errors.New("DNSSEC signing is not available for this DNS pair")
+
+// dnssecSigningGate is what the DNSSEC status says about the sign button.
+type dnssecSigningGate struct {
+	Available bool   `json:"available"`
+	Reason    string `json:"reason,omitempty"`
+	Message   string `json:"message,omitempty"`
+}
+
+func dnssecSigningGateFor(resp dnssecAgentResponse) dnssecSigningGate {
+	if resp.SigningUnsupported == transport.DNSSECSigningPairUnsupported {
+		return dnssecSigningGate{Reason: errCodeDNSSECPairUnsupported, Message: dnssecPairUnsupportedMessage}
+	}
+	return dnssecSigningGate{Available: true}
+}
+
+// writeDNSSECSignRefused answers a refused signing: the typed pair refusal,
+// or the shared Agent error path.
+func writeDNSSECSignRefused(w http.ResponseWriter, err error) {
+	if errors.Is(err, errDNSSECPairUnsupported) {
+		writeCodedError(w, http.StatusConflict, errCodeDNSSECPairUnsupported, dnssecPairUnsupportedMessage, "")
+		return
+	}
+	writeAgentError(w, err, "DNSSEC")
+}
+
 func writeDNSSECEngineUnsupported(w http.ResponseWriter) {
 	writeCodedError(
 		w, http.StatusConflict, errCodeDNSSECEngineUnsupported,
@@ -152,6 +190,7 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 			"secured":         resp.Secured,
 			"ds":              resp.DS,
 			"dane_automation": currentDANEAutomationState(),
+			"signing":         dnssecSigningGateFor(resp),
 		})
 
 	case http.MethodPost:
@@ -244,6 +283,9 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 					return err
 				}
 				logDNSSECDetail(domain, "sign", resp.Error)
+				if resp.ErrorCode == transport.DNSSECSigningPairUnsupported {
+					return errDNSSECPairUnsupported
+				}
 				if problem := dnssecResultError(resp, true); problem != "" {
 					return errors.New(problem)
 				}
@@ -275,7 +317,7 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 				writeServerError(w, fmt.Errorf("release unstarted DNSSEC publication: %w", recordErr))
 				return
 			}
-			writeAgentError(w, secureErr, "DNSSEC")
+			writeDNSSECSignRefused(w, secureErr)
 			return
 		}
 
@@ -289,7 +331,7 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 			if publishErr != nil {
 				log.Printf("dnssec secure %s: %v; repair publication: %v", domain, secureErr, publishErr)
 			}
-			writeAgentError(w, secureErr, "DNSSEC")
+			writeDNSSECSignRefused(w, secureErr)
 			return
 		}
 		if problem := dnssecResultError(resp, true); problem != "" {

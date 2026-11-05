@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -92,6 +93,11 @@ func (a *Agent) SecureDNSZoneV2(
 		ctx, true, true,
 	); err != nil {
 		log.Printf("PowerDNS DNSSEC signing blocked by durable DNS engine authority: %v", err)
+		if errors.Is(err, errDirectionalPowerDNSNeedsV3) {
+			resp.ErrorCode = transport.DNSSECSigningPairUnsupported
+			resp.Error = dnssecPairUnsupportedText
+			return nil
+		}
 		resp.Error = "DNSSEC signing is blocked because PowerDNS is not the active DNS engine"
 		return nil
 	}
@@ -228,8 +234,17 @@ func (a *Agent) DNSSECStatus(req *DNSSECRequest, resp *DNSSECStatusResponse) err
 	}
 	resp.Secured = secured
 	resp.DS = ds
+	// Whether signing would be refused as things are (read only): the
+	// Panel keeps the button closed with its reason (alpha.124).
+	if errors.Is(legacyPowerDNSMutationAuthorityCheck(false), errDirectionalPowerDNSNeedsV3) {
+		resp.SigningUnsupported = transport.DNSSECSigningPairUnsupported
+	}
 	return nil
 }
+
+// dnssecPairUnsupportedText is the real reason of that refusal (it used to
+// say PowerDNS was not the active engine, which was false).
+const dnssecPairUnsupportedText = "DNSSEC signing is not available yet for a PowerDNS primary/secondary pair kept in step by the V3 catalog: that DNS engine state has no DNSSEC signing authority in this release. Nothing was changed"
 
 // localDNSZoneKind reads the zone's local PowerDNS role without modifying the
 // database. A SLAVE/SECONDARY receives its data from another server and must

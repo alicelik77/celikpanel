@@ -505,7 +505,21 @@ type DNSSECStatusResponse struct {
 	Secured bool     `json:"secured"`
 	DS      []string `json:"ds,omitempty"`
 	Error   string   `json:"error,omitempty"`
+	// ErrorCode (alpha.124, additive) types a refusal the Panel says in
+	// plain words: DNSSECSigningPairUnsupported.
+	ErrorCode string `json:"error_code,omitempty"`
+	// SigningUnsupported (alpha.124, additive) is set by DNSSECStatus when
+	// signing would be refused on this server as it is now (the same code),
+	// so the Panel can keep the button closed with its reason before the
+	// click. Empty from an older Agent: nothing is known in advance.
+	SigningUnsupported string `json:"signing_unsupported,omitempty"`
 }
+
+// DNSSECSigningPairUnsupported (alpha.124, Frankfurt 2026-11-05): PowerDNS
+// is the active engine, but in a primary/secondary pair kept in step by the
+// V3 catalog; this release has no DNSSEC mutation authority for that state
+// (signing there has not been through a lab round yet). Nothing is changed.
+const DNSSECSigningPairUnsupported = "DNSSEC_PAIR_UNSUPPORTED"
 
 type SecureDNSZoneV2Response = DNSSECStatusResponse
 

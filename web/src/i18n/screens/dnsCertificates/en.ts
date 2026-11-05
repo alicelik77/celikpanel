@@ -261,14 +261,15 @@ export const enDnsCertificatesScreens = {
     'ssl.renewalGuide.lineage_missing.action': 'Reissue the certificate here.',
     'dnssec.on': 'Signed',
     'dnssec.sign': 'Sign the zone',
-	'dnssec.signed': 'Zone signed. In paired mode, enter the registrar DS only after both authoritative servers serve the same signed zone.',
-	'dnssec.dsHint': 'If no DS is published yet, first verify that both authoritative nameservers serve the same DNSKEY and RRSIG data. Then enter these values at the registrar; most registrars ask for the four fields separately. A premature or incorrect DS makes the domain unreachable to DNSSEC-validating visitors.',
+    'dnssec.signed': "The zone is signed. Next: wait until both of your DNS servers answer with the signed zone, then add the record below at the company where you registered the domain. Do that step last.",
+    'dnssec.dsHint': "Add these values at the company where you registered the domain (most ask for the four fields separately). Do it only after both of your DNS servers answer with the signed zone: a wrong or early entry makes the domain unreachable for visitors whose resolvers check signatures.",
     'dnssec.keyTag': 'Key Tag',
     'dnssec.algorithm': 'Algorithm',
     'dnssec.digestType': 'Digest Type',
     'dnssec.digest': 'Digest',
     'dnssec.rawRecord': 'Full record',
-	'dnssec.offHint': 'First make the DNS pair and delegation stable. Then sign the zone, verify signed answers on both servers, and add the registrar DS last.',
+    'dnssec.offHint': "Safe order: 1. sign the zone here, 2. check that both of your DNS servers answer signed, 3. last, add the signing record at the company where you registered the domain.",
+    'dnssec.pairUnsupported': "Signing has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off. Nothing needs to be done.",
     // No negative UI unless known (9 Oct 2026): the checking line and the
     // could-not-check sentence of each screen that reads through lib/remote.ts.
     'dns.checkingServer': 'Checking this server’s DNS…',
