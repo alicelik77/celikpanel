@@ -213,7 +213,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
-		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1
+		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -358,8 +358,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServiceMutationStatus":    agentRPCMutationTimeout,
 	"Agent.AddCronJob":               agentRPCMutationTimeout,
 	"Agent.AddMailAccount":           agentRPCMutationTimeout,
-	"Agent.ApplyFirewallV2":          agentRPCMutationTimeout,
-	"Agent.ApplyVhost":               agentRPCMutationTimeout,
+	// One sendmail run, bounded at 30 s by the Agent (passwordless mail closed).
+	"Agent.SendAccountMailV1": agentRPCMutationTimeout,
+	"Agent.ApplyFirewallV2":   agentRPCMutationTimeout,
+	"Agent.ApplyVhost":        agentRPCMutationTimeout,
 	// One nginx -T, at most one file write, nginx -t and one reload.
 	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,

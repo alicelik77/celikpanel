@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AlertTriangle, Copy, KeyRound, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Copy, KeyRound, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
+import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, Dialog } from './ui';
 import { showToast } from './Toast';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -48,6 +49,18 @@ interface PasswordlessView {
     incomplete?: boolean;
     sites: PasswordlessSite[];
     others: PasswordlessOther[];
+    // Phase 2 (alpha.125): what the server refuses now.
+    enforcement?: PasswordlessEnforcement;
+}
+
+interface PasswordlessEnforcement {
+    state: 'closed' | 'open' | 'owner' | 'failed' | 'no_postfix';
+    submit_users?: string;
+    relay_restrictions?: string;
+    expected_submit_users?: string;
+    expected_relay_restrictions?: string;
+    changed_at?: string;
+    detail?: string;
 }
 
 function decodePasswordless(raw: unknown): PasswordlessView {
@@ -64,6 +77,16 @@ function newMailboxPassword(): string {
     crypto.getRandomValues(bytes);
     return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_');
 }
+
+// What the server does now, in one sentence each (phase 2), or the
+// announcement while it is still coming.
+const titles: Record<'coming' | 'closed' | 'open' | 'owner' | 'failed', TranslationKey> = {
+    coming: 'pwmail.coming.title',
+    closed: 'pwmail.closed.title',
+    open: 'pwmail.open.title',
+    owner: 'pwmail.owner.title',
+    failed: 'pwmail.failed.title',
+};
 
 const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : '');
 
@@ -124,21 +147,41 @@ export function PasswordlessMailNotice() {
     const view = remote.value;
     const windowStart = Date.now() - view.window_days * 86_400_000;
     const shortLog = view.covered_since && new Date(view.covered_since).getTime() > windowStart + 86_400_000;
+    // Phase 2 says what the server does now; an Agent without it (phase 1)
+    // or a server without Postfix keeps the announcement.
+    const enforcement = view.enforcement;
+    const mode = enforcement && enforcement.state !== 'no_postfix' ? enforcement.state : 'coming';
+    const closedQuiet = mode === 'closed' && view.state === 'none';
 
     return (
-        <Box>
-            <p className="font-medium">{t('pwmail.title')}</p>
-            <p className="mt-1">{t('pwmail.why')}</p>
+        <Box quiet={closedQuiet}>
+            <p className="font-medium">{t(titles[mode])}</p>
+            {!closedQuiet && <p className="mt-1">{t(mode === 'closed' ? 'pwmail.closed.why' : 'pwmail.why')}</p>}
+            {(mode === 'owner' || mode === 'failed') && enforcement && (
+                <div className="mt-2">
+                    <p>{t(mode === 'owner' ? 'pwmail.owner.todo' : 'pwmail.failed.todo')}</p>
+                    {mode === 'owner' ? (
+                        <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+                            <dt className="text-fg-muted">authorized_submit_users</dt>
+                            <dd className="break-all">{t('pwmail.owner.value', { now: enforcement.submit_users ?? '', want: enforcement.expected_submit_users ?? '' })}</dd>
+                            <dt className="text-fg-muted">smtpd_relay_restrictions</dt>
+                            <dd className="break-all">{t('pwmail.owner.value', { now: enforcement.relay_restrictions ?? '', want: enforcement.expected_relay_restrictions || t('pwmail.owner.noMynetworks') })}</dd>
+                        </dl>
+                    ) : (
+                        enforcement.detail && <p className="mt-1 text-xs break-words">{t('pwmail.failed.said', { detail: enforcement.detail })}</p>
+                    )}
+                </div>
+            )}
             {view.state === 'unknown' && (
                 <>
                     <p className="mt-2">{t('pwmail.unread', { reason: view.reason ?? '' })}</p>
                     <Retry onClick={() => void report.retry()} loading={report.reading} />
                 </>
             )}
-            {view.state === 'none' && <p className="mt-2">{t('pwmail.none', { days: view.window_days })}</p>}
+            {view.state === 'none' && <p className={closedQuiet ? '' : 'mt-2'}>{t(mode === 'closed' ? 'pwmail.closed.none' : 'pwmail.none', { days: view.window_days })}</p>}
             {view.state === 'found' && (
                 <>
-                    <p className="mt-2">{t('pwmail.found', { days: view.window_days })}</p>
+                    <p className="mt-2">{t(mode === 'closed' ? 'pwmail.closed.found' : 'pwmail.found', { days: view.window_days })}</p>
                     <ul className="mt-2 divide-y divide-border rounded-lg border border-border bg-surface text-fg">
                         {view.sites.map((site) => (
                             <li key={site.domain_id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -188,7 +231,16 @@ export function PasswordlessMailNotice() {
     );
 }
 
-function Box({ children }: { children: React.ReactNode }) {
+// quiet: closed and nobody tried, so nothing needs anyone's attention.
+function Box({ children, quiet = false }: { children: React.ReactNode; quiet?: boolean }) {
+    if (quiet) {
+        return (
+            <div role="status" className="mb-4 flex gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-fg-muted">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                <div className="min-w-0 flex-1">{children}</div>
+            </div>
+        );
+    }
     return (
         <div role="status" className="mb-4 flex gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-fg">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />

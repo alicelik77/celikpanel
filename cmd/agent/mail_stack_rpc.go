@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -330,15 +331,30 @@ func wireMailFilters(ctx context.Context, resp *WireMailFiltersResponse) error {
 	chrootNote := reconcileSubmissionChroot(func(name string, args ...string) ([]byte, error) {
 		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
 	})
+	// Passwordless mail is closed here (owner decision of 4 Nov 2026,
+	// mail_passwordless_enforce.go): on the first Panel start after the update
+	// that brings it, with its own verified reload and rollback. Its outcome
+	// is a note, like the repairs above; the report on the Postfix page reads
+	// the same state (Agent.PasswordlessMailReportV1).
+	// Parolasız posta burada kapanır; sonucu bir nottur.
+	passwordlessNote, passwordlessErr := reconcilePasswordlessMail(func(name string, args ...string) ([]byte, error) {
+		return serviceMutationCommand(ctx, name, args...).CombinedOutput()
+	}, func() error {
+		_, err := applyPostfixVerified(mailServiceLeaseRunner(ctx), mailServiceReload)
+		return err
+	}, time.Now())
+	if passwordlessErr != nil {
+		passwordlessNote = passwordlessErr.Error()
+	}
 	milterNote, err := applyMilterChain(ctx)
 	if err != nil {
 		resp.Error = err.Error()
-		resp.Detail = joinNotes(dovecotNote, chrootNote, milterNote)
+		resp.Detail = joinNotes(dovecotNote, chrootNote, passwordlessNote, milterNote)
 		return nil
 	}
 	resp.Wired = true
 	resp.Detail = joinNotes(fmt.Sprintf("milters=%q maps=%s", postconfValue("smtpd_milters"), postfixMapTypeContext(ctx)),
-		dovecotNote, chrootNote, milterNote)
+		dovecotNote, chrootNote, passwordlessNote, milterNote)
 	return nil
 }
 

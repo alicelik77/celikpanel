@@ -18,17 +18,24 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // Account mail (v0.1.0-alpha.114, P6): the messages the panel itself sends to
 // a person about their account - a password reset link, an invitation, an
 // address confirmation and a notice that the address changed.
 //
-// The panel has no mail system of its own and adds no outside dependency. It
-// hands each message to the server's own mail system over SMTP on the
-// loopback address (127.0.0.1:25), which Postfix accepts from the server
-// itself (permit_mynetworks). The panel process runs with NoNewPrivileges,
-// so the setgid sendmail binary is not an option. Nothing is configured,
+// The panel has no mail system of its own and adds no outside dependency.
+// Until alpha.125 it handed each message to the server's own mail system over
+// SMTP on the loopback address (127.0.0.1:25) without a password, which
+// Postfix relayed only because loopback was in permit_mynetworks. That is the
+// passwordless path the owner closed for every sender on 4 Nov 2026
+// (mail_passwordless_handlers.go), so the panel now asks the Agent to hand the
+// message to Postfix's own sendmail command as root (Agent.SendAccountMailV1;
+// authorized_submit_users keeps root). The panel process runs with
+// NoNewPrivileges, so it cannot run the setgid sendmail itself. Whether a mail
+// system is there is still read by one EHLO on 127.0.0.1:25, which sends
+// nothing. Nothing is configured,
 // started or changed on the mail system: when no mail system answers there,
 // or the panel has no public address for its links, or no sender domain is
 // known, the feature says so (accountMailStatus.Reason) and the screens give
@@ -54,7 +61,7 @@ const (
 	accountMailStatusTTL = time.Minute
 )
 
-// accountMailRelayAddress is the only place a message is handed to.
+// accountMailRelayAddress is where the probe asks whether a mail system answers.
 var accountMailRelayAddress = "127.0.0.1:25"
 
 // Replaced by tests only. Production reads the active panel certificate's
@@ -63,7 +70,9 @@ var accountMailRelayAddress = "127.0.0.1:25"
 var (
 	accountLinkPanelHost = panelCertificateHostname
 	accountMailProbe     = probeLocalSMTP
-	accountMailSend      = sendLocalSMTP
+	// accountMailSend is nil in production: the Agent hands the message over
+	// (sendAccountMailViaAgent). Tests set it.
+	accountMailSend      func(ctx context.Context, from, to string, message []byte) error
 	accountMailStatusNow = time.Now
 )
 
@@ -200,34 +209,18 @@ func dialLocalSMTP(ctx context.Context) (*smtp.Client, net.Conn, error) {
 	return client, conn, nil
 }
 
-// sendLocalSMTP hands one message to the loopback mail system.
-func sendLocalSMTP(ctx context.Context, from, to string, message []byte) error {
-	client, conn, err := dialLocalSMTP(ctx)
-	if err != nil {
+// sendAccountMailViaAgent hands one message to Postfix's sendmail command,
+// run by the Agent as root.
+func (p *Panel) sendAccountMailViaAgent(ctx context.Context, from, to string, message []byte) error {
+	var resp transport.SendAccountMailResponse
+	if err := p.callAgentContext(ctx, "Agent.SendAccountMailV1",
+		&transport.SendAccountMailRequest{From: from, To: to, Message: message}, &resp); err != nil {
 		return err
 	}
-	defer conn.Close()
-	defer client.Close()
-	if err := client.Hello("localhost"); err != nil {
-		return err
+	if !resp.Sent {
+		return fmt.Errorf("account mail was not handed over: %s", resp.Error)
 	}
-	if err := client.Mail(from); err != nil {
-		return err
-	}
-	if err := client.Rcpt(to); err != nil {
-		return err
-	}
-	writer, err := client.Data()
-	if err != nil {
-		return err
-	}
-	if _, err := writer.Write(message); err != nil {
-		return err
-	}
-	if err := writer.Close(); err != nil {
-		return err
-	}
-	return client.Quit()
+	return nil
 }
 
 // accountMailKind names one of the four messages.
@@ -404,7 +397,11 @@ func (p *Panel) sendAccountMail(ctx context.Context, setup accountMailSetup, to 
 	}
 	sendCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if err := accountMailSend(sendCtx, setup.from, to, message); err != nil {
+	send := accountMailSend
+	if send == nil {
+		send = p.sendAccountMailViaAgent
+	}
+	if err := send(sendCtx, setup.from, to, message); err != nil {
 		resetAccountMailCache()
 		return err
 	}

@@ -21,7 +21,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-046 · No mail without a password: sites send only through authenticated submission
 
-*2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · implemented in two phases: phase 1 (read-only report and sending mailboxes) in alpha.124, phase 2 (closing) planned for alpha.125*
+*2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · phase 1 (read-only report and sending mailboxes) for alpha.124, phase 2 (closing) for alpha.125; lab check of phase 2 recorded on lab/alpha114-acceptance (a125-mail)*
 
 **Why.** A stock Postfix lets anything running on the server send mail to the
 whole Internet without a password, two ways: SMTP to port 25 on the server

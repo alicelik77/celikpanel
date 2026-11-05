@@ -21,7 +21,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
 
-*2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · iki aşamada uygulanır: 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124'te, 2. aşama (kapatma) alpha.125 için planlı*
+*2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124, 2. aşama (kapatma) alpha.125; 2. aşamanın laboratuvar denetimi lab/alpha114-acceptance dalında (a125-mail)*
 
 **Neden.** Dağıtımın Postfix'i, sunucuda çalışan her şeyin parolasız olarak bütün
 İnternet'e posta göndermesine iki yoldan izin verir: sunucunun kendi 25 numaralı

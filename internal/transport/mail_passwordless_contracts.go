@@ -32,6 +32,8 @@ type PasswordlessMailReportResponse struct {
 	// LoopbackSenders: mail sent over SMTP from this server to port 25
 	// without a password and relayed to another server, per envelope sender.
 	LoopbackSenders []PasswordlessLoopbackSender `json:"loopback_senders"`
+	// Enforcement is what the server allows now (phase 2, alpha.125).
+	Enforcement *PasswordlessMailEnforcement `json:"enforcement,omitempty"`
 	// Error: why the log could not be read (Read false).
 	Error string `json:"error,omitempty"`
 }
@@ -59,4 +61,41 @@ type PasswordlessLoopbackSender struct {
 	Messages int    `json:"messages"`
 	Refused  int    `json:"refused,omitempty"`
 	Last     string `json:"last,omitempty"`
+}
+
+// PasswordlessMailEnforcement is the state of the two Postfix settings that
+// close passwordless mail (phase 2, alpha.125).
+// İki Postfix ayarının durumu (2. aşama).
+type PasswordlessMailEnforcement struct {
+	// State: "closed" (both settings closed), "open" (not changed yet: the
+	// panel changes them on its next start), "owner" (the server owner set one
+	// of them otherwise; kept), "failed" (the change was tried and rolled
+	// back; Detail says why), "no_postfix".
+	State string `json:"state"`
+	// SubmitUsers / RelayRestrictions: the values in effect now.
+	SubmitUsers       string `json:"submit_users,omitempty"`
+	RelayRestrictions string `json:"relay_restrictions,omitempty"`
+	// Expected*: CelikPanel's form, shown beside an owner's difference.
+	ExpectedSubmitUsers       string `json:"expected_submit_users,omitempty"`
+	ExpectedRelayRestrictions string `json:"expected_relay_restrictions,omitempty"`
+	// ChangedAt: when CelikPanel closed it (RFC 3339), from its record.
+	ChangedAt string `json:"changed_at,omitempty"`
+	Detail    string `json:"detail,omitempty"`
+}
+
+// SendAccountMailRequest hands one of the panel's own account messages
+// (password reset, invitation, notices) to Postfix through the sendmail
+// command, run by the Agent as root (phase 2): the panel no longer relays
+// through port 25 without a password. Message is the whole RFC 5322 text.
+type SendAccountMailRequest struct {
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Message []byte `json:"message"`
+}
+
+// SendAccountMailResponse: Sent is true once Postfix accepted the message
+// ("handed over", not "delivered").
+type SendAccountMailResponse struct {
+	Sent  bool   `json:"sent"`
+	Error string `json:"error,omitempty"`
 }

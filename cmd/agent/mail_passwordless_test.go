@@ -96,8 +96,11 @@ func TestPasswordlessScanEmptyLogIsReadNotUnknown(t *testing.T) {
 }
 
 func TestPasswordlessReportUnreadableLogIsUnknown(t *testing.T) {
-	saved := passwordlessReadJournal
-	t.Cleanup(func() { passwordlessReadJournal = saved })
+	saved, savedEnforcement := passwordlessReadJournal, passwordlessEnforcementNow
+	t.Cleanup(func() { passwordlessReadJournal, passwordlessEnforcementNow = saved, savedEnforcement })
+	passwordlessEnforcementNow = func() *transport.PasswordlessMailEnforcement {
+		return &transport.PasswordlessMailEnforcement{State: passwordlessStateOpen}
+	}
 	passwordlessReadJournal = func(context.Context) (*passwordlessScan, error) {
 		return nil, errors.New("journalctl: No journal files were found.")
 	}
@@ -105,7 +108,8 @@ func TestPasswordlessReportUnreadableLogIsUnknown(t *testing.T) {
 	if err := (&Agent{}).PasswordlessMailReportV1(&transport.Empty{}, &resp); err != nil {
 		t.Fatal(err)
 	}
-	if resp.Read || !strings.Contains(resp.Error, "could not be read") || resp.LocalSenders == nil {
+	if resp.Read || !strings.Contains(resp.Error, "could not be read") || resp.LocalSenders == nil ||
+		resp.Enforcement == nil || resp.Enforcement.State != passwordlessStateOpen {
 		t.Fatalf("%+v", resp)
 	}
 }

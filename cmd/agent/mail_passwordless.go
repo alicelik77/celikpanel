@@ -389,15 +389,18 @@ func (a *Agent) PasswordlessMailReportV1(_ *transport.Empty, resp *transport.Pas
 	*resp = transport.PasswordlessMailReportResponse{
 		LocalSenders: []transport.PasswordlessLocalSender{}, LoopbackSenders: []transport.PasswordlessLoopbackSender{},
 	}
+	enforcement := passwordlessEnforcementNow()
 	ctx, cancel := context.WithTimeout(context.Background(), passwordlessReadTimeout)
 	defer cancel()
 	scan, err := passwordlessReadJournal(ctx)
 	if err != nil {
 		resp.Error = "Postfix's log could not be read: " + boundedNativeDetail(err.Error())
+		resp.Enforcement = enforcement
 		return nil
 	}
 	*resp = scan.result()
 	resp.Source = "journal"
+	resp.Enforcement = enforcement
 	for i := range resp.LocalSenders {
 		entry := &resp.LocalSenders[i]
 		if account, err := user.LookupId(strconv.Itoa(entry.UID)); err == nil {
@@ -406,4 +409,13 @@ func (a *Agent) PasswordlessMailReportV1(_ *transport.Empty, resp *transport.Pas
 		entry.System = passwordlessSystemUser(entry.UID, entry.User)
 	}
 	return nil
+}
+
+// passwordlessEnforcementNow is replaced by tests.
+var passwordlessEnforcementNow = func() *transport.PasswordlessMailEnforcement {
+	return passwordlessEnforcement(func(name string, args ...string) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return exec.CommandContext(ctx, name, args...).CombinedOutput()
+	})
 }
