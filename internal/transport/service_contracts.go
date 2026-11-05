@@ -796,3 +796,19 @@ type NodePatchesResponse struct {
 	CheckedAt string      `json:"checked_at,omitempty"`
 	Error     string      `json:"error,omitempty"`
 }
+
+// ServiceCandidateVersionsRequest asks the distribution's install candidate of
+// several catalogue services at once (alpha.125): one `apt-cache policy` for
+// all of them instead of one process each. IDs are catalogue ids only.
+// Birden çok katalog servisinin kurulum adayını tek sorguda ister.
+type ServiceCandidateVersionsRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// ServiceCandidateVersionsResponse holds, per requested id, either the
+// cleaned candidate version or why there is none. An id is in exactly one of
+// the two maps.
+type ServiceCandidateVersionsResponse struct {
+	Versions map[string]string `json:"versions"`
+	Errors   map[string]string `json:"errors"`
+}

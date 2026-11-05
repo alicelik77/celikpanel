@@ -505,17 +505,40 @@ func (p *Panel) readServerSetupCatalogInputs(ctx context.Context) serverSetupCat
 	// within one bounded budget; what is not read stays unknown.
 	candidates, cancel := context.WithTimeout(ctx, 6*time.Second)
 	defer cancel()
+	var candidateIDs []string
 	for index := range core.ManagedServices {
 		service := &core.ManagedServices[index]
 		role := serverSetupComponentWizardRole(service)
-		if (role != "choice" && role != "dns") || slices.Contains(inputs.InstalledIDs, service.ID) || len(service.Packages[inputs.Host.PackageFamily]) == 0 || candidates.Err() != nil {
+		if (role != "choice" && role != "dns") || slices.Contains(inputs.InstalledIDs, service.ID) || len(service.Packages[inputs.Host.PackageFamily]) == 0 {
 			continue
 		}
-		var version string
-		if err := p.callAgentContext(candidates, "Agent.ServiceCandidateVersion", &transport.InstallServiceRequest{ID: service.ID}, &version); err == nil {
-			if short := upstreamPackageVersion(panelPackageVersion(version)); short != "" {
-				inputs.CandidateVersions[service.ID] = short
+		candidateIDs = append(candidateIDs, service.ID)
+	}
+	// One Agent call and one `apt-cache policy` for every candidate
+	// (alpha.125); an Agent that does not know the call yet is asked one
+	// service at a time, as before.
+	// Tüm adaylar için tek çağrı; çağrıyı bilmeyen Agent'a tek tek sorulur.
+	var batch transport.ServiceCandidateVersionsResponse
+	batchErr := errors.New("no candidates")
+	if len(candidateIDs) > 0 {
+		batchErr = p.callAgentContext(candidates, "Agent.ServiceCandidateVersions", &transport.ServiceCandidateVersionsRequest{IDs: candidateIDs}, &batch)
+	}
+	for _, id := range candidateIDs {
+		version, ok := batch.Versions[id]
+		if batchErr != nil {
+			if candidates.Err() != nil || !agentRPCMethodUnavailable(batchErr, "Agent.ServiceCandidateVersions") {
+				break
 			}
+			if err := p.callAgentContext(candidates, "Agent.ServiceCandidateVersion", &transport.InstallServiceRequest{ID: id}, &version); err != nil {
+				continue
+			}
+			ok = true
+		}
+		if !ok {
+			continue
+		}
+		if short := upstreamPackageVersion(panelPackageVersion(version)); short != "" {
+			inputs.CandidateVersions[id] = short
 		}
 	}
 	for index := range core.ManagedServices {

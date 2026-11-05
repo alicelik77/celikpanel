@@ -39,7 +39,7 @@ func (a *Agent) InstalledRepoPackages(req *InstalledRepoPackagesRequest, resp *I
 		resp.Error = "missing request"
 		return nil
 	}
-	profile, err := verifiedHostProfileForAnyFamily()
+	profile, err := readHostProfile()
 	if err != nil {
 		resp.Error = fmt.Sprintf("detect host platform: %v", err)
 		return nil
@@ -62,6 +62,23 @@ func (a *Agent) InstalledRepoPackages(req *InstalledRepoPackagesRequest, resp *I
 	}
 	if err != nil {
 		resp.Error = err.Error()
+		return nil
+	}
+	if family == "apt" {
+		// The scan's one package query (inventory_cache.go), read through
+		// the same rule as before.
+		// Taramanın tek paket sorgusu, aynı kuralla okunur.
+		pattern, err := regexp.Compile(service.Repo.PackagePattern)
+		if err != nil {
+			resp.Error = "invalid catalogue package pattern"
+			return nil
+		}
+		inventory, err := readPackageInventory(context.Background(), profile)
+		if err != nil {
+			resp.Error = fmt.Sprintf("dpkg-query failed: %v", err)
+			return nil
+		}
+		resp.Packages = installedPackagesMatchingPattern(inventory.abbrevText(), pattern)
 		return nil
 	}
 	packages, err := installedRepoPackagesForServiceWithFamilyExecutable(context.Background(), service, family, executable)

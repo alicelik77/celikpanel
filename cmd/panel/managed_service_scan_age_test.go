@@ -186,26 +186,29 @@ func TestManagedServicesScanNamesUnreachableAgentAtAdmission(t *testing.T) {
 	requireAgentUnreachableAnswer(t, recorder)
 }
 
-// unreachableAfterAdmissionAgent answers the admission check and then makes
-// every later connection fail as a stopped Agent does.
-type unreachableAfterAdmissionAgent struct {
+// unreachableAfterFirstReadAgent answers the scan's first read (the package
+// versions) and then makes every later connection fail as a stopped Agent
+// does. Since alpha.125 the scan reads before its admission check, which is
+// now only the storing step.
+type unreachableAfterFirstReadAgent struct {
 	*serviceStateAtomicAgent
 	down *atomic.Bool
 }
 
-func (a unreachableAfterAdmissionAgent) ServiceMutationStatus(
-	req *ServiceOperationMutationStatusRequest,
-	out *ServiceOperationMutationResponse,
+func (a unreachableAfterFirstReadAgent) InstalledPackageVersionsV1(
+	_ *transport.Empty,
+	out *transport.InstalledPackageVersionsResponse,
 ) error {
 	a.down.Store(true)
-	return a.serviceStateAtomicAgent.ServiceMutationStatus(req, out)
+	*out = transport.InstalledPackageVersionsResponse{Family: "apt", State: transport.PackageVersionsRead}
+	return nil
 }
 
 func TestManagedServicesScanNamesUnreachableAgentDuringScan(t *testing.T) {
 	panel, agent, _, userID := newServiceStateAtomicPanel(t)
 	down := &atomic.Bool{}
 	server := rpc.NewServer()
-	if err := server.RegisterName("Agent", unreachableAfterAdmissionAgent{agent, down}); err != nil {
+	if err := server.RegisterName("Agent", unreachableAfterFirstReadAgent{agent, down}); err != nil {
 		t.Fatal(err)
 	}
 	panel.agentClient = transport.NewReconnectingClientWithContextConnector(nil,
@@ -226,7 +229,7 @@ func TestManagedServicesScanNamesUnreachableAgentDuringScan(t *testing.T) {
 		http.MethodPost, "/api/v1/managed-services/scan", "", userID,
 	))
 	if !down.Load() {
-		t.Fatal("the admission check never reached the agent")
+		t.Fatal("the first read never reached the agent")
 	}
 	requireAgentUnreachableAnswer(t, recorder)
 	if agent.getServicesCalls.Load() != 0 {

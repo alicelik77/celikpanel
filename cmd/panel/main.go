@@ -174,7 +174,7 @@ type Panel struct {
 	// every remaining synchronous component mutation. TryLock makes competing
 	// requests fail fast instead of racing between an active-operation check
 	// and the actual machine change.
-	serviceMutationMu sync.Mutex
+	serviceMutationMu mutationLease
 	serverSetupMu     sync.Mutex
 	serverSetupProbe  func(context.Context, serverSetupDraft) ([]serverSetupCheck, error)
 	// serverSetupInstallPreview replaces the Agent's read-only install
