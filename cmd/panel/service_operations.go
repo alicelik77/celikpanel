@@ -2551,7 +2551,9 @@ func (p *Panel) runNodeInstall(
 	if err != nil {
 		return result, nodeInstallFailure(err)
 	}
-	if err := p.preflightManagedServiceInstall(ctx, "node", ""); err != nil {
+	if err := preflightWhilePanelBusy(ctx, func() error {
+		return p.preflightManagedServiceInstall(ctx, "node", "")
+	}); err != nil {
 		return result, nodeInstallFailure(err)
 	}
 	// D-043: a withdrawn Node.js version is not installed.

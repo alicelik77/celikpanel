@@ -272,3 +272,46 @@ func TestPowerDNSInstallPathsShareTheSystemRule(t *testing.T) {
 		t.Fatalf("the DNS step's refusal: %+v", failure)
 	}
 }
+
+// alpha.123 lab (Ubuntu 24.04): setup step 02 failed "service install
+// preflight scan: database is locked" while another panel writer held the
+// lock. The preflight is asked again while the Panel's own database answers
+// busy (nothing reached the Agent yet), bounded; other answers return at once.
+func TestInstallPreflightWaitsWhileThePanelDatabaseIsBusy(t *testing.T) {
+	p := newDNSPanelForTest(t)
+	busy := fmt.Errorf("service install preflight scan: %w", panelBusyErrorForTest(t, p.db.GetDB()))
+	var pauses []time.Duration
+	previous := serviceInstallPreflightPause
+	serviceInstallPreflightPause = func(_ context.Context, d time.Duration) error { pauses = append(pauses, d); return nil }
+	t.Cleanup(func() { serviceInstallPreflightPause = previous })
+
+	calls := 0
+	err := preflightWhilePanelBusy(context.Background(), func() error {
+		calls++
+		if calls < 3 {
+			return busy
+		}
+		return nil
+	})
+	if err != nil || calls != 3 || !slices.Equal(pauses, []time.Duration{2 * time.Second, 4 * time.Second}) {
+		t.Fatalf("busy then ready: err=%v calls=%d pauses=%v", err, calls, pauses)
+	}
+
+	calls, pauses = 0, nil
+	refusal := errors.New("Fail2ban requires nftables; install the missing component first")
+	if err := preflightWhilePanelBusy(context.Background(), func() error { calls++; return refusal }); err != refusal || calls != 1 || len(pauses) != 0 {
+		t.Fatalf("a real refusal was retried: err=%v calls=%d", err, calls)
+	}
+	// Text that merely mentions SQLITE_BUSY (an Agent's answer) is not retried.
+	text := errors.New("service install preflight scan: database is locked (5) (SQLITE_BUSY)")
+	calls = 0
+	if err := preflightWhilePanelBusy(context.Background(), func() error { calls++; return text }); err != text || calls != 1 {
+		t.Fatalf("an Agent's text was taken for the panel database: calls=%d", calls)
+	}
+
+	calls, pauses = 0, nil
+	if err := preflightWhilePanelBusy(context.Background(), func() error { calls++; return busy }); !panelDatabaseBusy(err) ||
+		calls != serviceInstallPreflightBusyAttempts || len(pauses) != serviceInstallPreflightBusyAttempts-1 {
+		t.Fatalf("bound: err=%v calls=%d pauses=%d", err, calls, len(pauses))
+	}
+}

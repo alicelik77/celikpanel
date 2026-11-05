@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -107,4 +108,43 @@ func (p *Panel) preflightManagedServiceRepository(
 		}
 	}
 	return nil
+}
+
+// serviceInstallPreflightBusyAttempts bounds how often the install preflight
+// is asked again while the Panel's own database answers busy (2+4+8+16 s, then
+// 20 s each: about two minutes).
+var serviceInstallPreflightBusyAttempts = 9
+
+// serviceInstallPreflightPause waits between those attempts; tests replace it.
+var serviceInstallPreflightPause = func(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+	}
+	return nil
+}
+
+// preflightWhilePanelBusy runs an install preflight and asks it again while
+// the Panel's own database answers busy (alpha.123 lab, Ubuntu 24.04: setup
+// step 02 failed "service install preflight scan: database is locked" while
+// another panel writer held the lock). The preflight's scan records what it
+// read in the Panel's database; nothing has reached the Agent yet, so asking
+// again changes nothing on the server. Any other answer, or a database that
+// stays busy past the bound, is returned as before.
+// Panelin kendi veritabanı meşgulse kurulum ön denetimi yeniden sorulur;
+// sunucuda henüz hiçbir şey değişmemiştir.
+func preflightWhilePanelBusy(ctx context.Context, preflight func() error) error {
+	for attempt := 1; ; attempt++ {
+		err := preflight()
+		if err == nil || !panelDatabaseBusy(err) || attempt >= serviceInstallPreflightBusyAttempts {
+			return err
+		}
+		log.Printf("service install preflight: the panel database was busy; asked again (%d): %v", attempt, err)
+		if waitErr := serviceInstallPreflightPause(ctx, serverSetupPanelBusyDelay(attempt)); waitErr != nil {
+			return err
+		}
+	}
 }

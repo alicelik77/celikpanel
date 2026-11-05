@@ -41,7 +41,9 @@ func (p *Panel) runServiceInstall(
 	if err != nil {
 		return result, serviceInstallFailure(err)
 	}
-	if err := p.preflightManagedServiceInstall(ctx, req.ServiceID, req.Package); err != nil {
+	if err := preflightWhilePanelBusy(ctx, func() error {
+		return p.preflightManagedServiceInstall(ctx, req.ServiceID, req.Package)
+	}); err != nil {
 		return result, serviceInstallFailure(err)
 	}
 	// D-043: a withdrawn version or engine is not installed.
