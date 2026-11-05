@@ -37,6 +37,10 @@ type serverSetupInfrastructureDNSRecord struct {
 	// the old MX when mail moves now); the exact stored rows, so an owner's
 	// change in between makes the plan stale instead of being overwritten.
 	Replaces []serverSetupInfrastructureDNSReplaced `json:"replaces,omitempty"`
+	// Host (alpha.124) marks this machine's own name record: written like
+	// the setup's other server addresses, but left out when the owner's
+	// zone already has something else at that name.
+	Host bool `json:"host,omitempty"`
 }
 
 type serverSetupInfrastructureDNSReplaced struct {
@@ -359,6 +363,22 @@ func serverSetupInfrastructureDNSDesired(d serverSetupDraft) ([]serverSetupInfra
 			return nil, err
 		}
 	}
+	// The machine's own name (alpha.124): its A record when the name lies
+	// strictly inside this zone and is not already one of the names above.
+	// Host marks it: an owner's different record for that name is kept and
+	// this one is left out (serverSetupWithoutOwnersHostName), never
+	// overwritten.
+	if host := d.HostName; host != "" && host != zone && serverSetupDNSNameWithin(host, zone) && d.LocalIP != "" {
+		present := false
+		for _, r := range records {
+			present = present || r.Name == host
+		}
+		if !present && host != d.InfrastructureDNS.PeerMailHostname {
+			if canon, err := hostname.CanonicalFQDN(host); err == nil && canon == host {
+				records = append(records, serverSetupInfrastructureDNSRecord{Name: host, Type: "A", Content: d.LocalIP, TTL: 300, Action: "add", Host: true})
+			}
+		}
+	}
 	own := map[string]bool{zone: false}
 	for _, r := range records {
 		if r.Type == "A" {
@@ -421,11 +441,39 @@ func serverSetupOnePerName(record serverSetupInfrastructureDNSRecord, zone strin
 	return ""
 }
 
+// serverSetupWithoutOwnersHostName leaves the machine's own name record out
+// when the zone already has something else at that name (a different address,
+// an alias, a delegation): that is the owner's, it is kept, and the
+// dashboard's host name check says what it finds.
+func serverSetupWithoutOwnersHostName(desired []serverSetupInfrastructureDNSRecord, s serverSetupInfrastructureDNSSnapshot) []serverSetupInfrastructureDNSRecord {
+	kept := desired[:0]
+	for _, want := range desired {
+		if want.Host {
+			owners := false
+			for _, got := range s.Records {
+				name := canonicalDNSName(got.Name)
+				if got.Type == "NS" && name != s.Zone && serverSetupDNSNameWithin(want.Name, name) {
+					owners = true
+				}
+				if name == want.Name && (got.Type == "CNAME" || got.Type == "DNAME" || (got.Type == "A" && (got.Content != want.Content || got.Disabled != 0))) {
+					owners = true
+				}
+			}
+			if owners {
+				continue
+			}
+		}
+		kept = append(kept, want)
+	}
+	return kept
+}
+
 func buildServerSetupInfrastructureDNSAgainstSnapshot(d serverSetupDraft, s serverSetupInfrastructureDNSSnapshot) (*serverSetupInfrastructureDNSPlan, error) {
 	desired, err := serverSetupInfrastructureDNSDesired(d)
 	if err != nil || desired == nil {
 		return nil, err
 	}
+	desired = serverSetupWithoutOwnersHostName(desired, s)
 	role := d.DNSRole
 	if serverSetupStandaloneDNS(d) {
 		role = transport.DNSTopologyStandalone
