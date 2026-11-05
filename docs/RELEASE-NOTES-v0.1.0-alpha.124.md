@@ -31,7 +31,8 @@ installed panels, from the panel's own update screen.**
   no longer says "vendor").
 - Removing a PHP version that sites use is refused as before, and the refusal
   now also names phpMyAdmin, phpPgAdmin or Roundcube when they run on it, each
-  with a link to its page.
+  with a link to its page. A PHP version that only one of these tools runs on
+  is refused too: choose another PHP version on the tool's page first.
 
 ## Panel database busy
 
@@ -101,8 +102,31 @@ and restarting the Agent.
 
 ## Lab results
 
-Lab round pending. This section will be updated with its results before
-publication.
+Four fresh installs through the owner's install command (Debian 12, Debian
+13 with PowerDNS, Ubuntu 22.04 and Ubuntu 24.04 with BIND) and an update from
+alpha.123 through the panel's own update screen. All seven checks pass:
+
+- Update from alpha.123: succeeds on one press; `agent --version` prints the
+  version and exits; a second Agent started by hand stops at once and the
+  running Agent's socket keeps its owner.
+- Setup adds the machine's own name: `host1.<zone>` resolves on all four
+  systems; a joined backup server's name gets no record.
+- Component window: phpPgAdmin installs PostgreSQL with it as one operation and
+  survives a page reload and a panel restart; phpMyAdmin runs on the chosen
+  PHP; removing that PHP names phpMyAdmin and the site; PostgreSQL 18 on
+  Debian 12 names the PGDG repository.
+- Panel database held for about 30 seconds: the screen shows the wait, the
+  install finishes after release, and no history row is lost.
+- Agent stopped or its socket refusing: 503 with the sentence that says what
+  to do; it recovers after a restart.
+- DNSSEC on the PowerDNS pair: refused, and the zone's serial does not move.
+- Mail without a password: the sending site is listed; the sending mailbox
+  works on port 587; nothing is blocked.
+
+The round found two defects, fixed before publication: failed self-update
+marks stayed visible after a successful update (now cleared once the success
+is read), and a refused DNSSEC request moved the zone's serial (now refused
+before the zone is touched).
 
 ## Known limits
 
@@ -118,9 +142,14 @@ publication.
   usage records for Redis, Valkey and Memcached; removing a single
   PostgreSQL major version.
 - AAAA (IPv6) for the machine's own name is not added in setup.
+- Seen in the lab, to be fixed in alpha.125: pressing **Update** right after
+  a rollback can fail once with nothing changed (pressing it again works);
+  creating a mailbox that already exists answers with an internal error
+  instead of "already exists"; changing PHP on a static main site answers
+  with an internal error.
 
 ## Evidence
 
 No schema change and no migration. Release sequence 123 → 124.
 Go tests (whole module) and web tests pass, the web bundles stay within their
-budgets. The lab round is pending.
+budgets. Lab evidence is kept on the lab branch (`evidence/a124`).

@@ -29,7 +29,9 @@ yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   "üretici" yazmıyor).
 - Sitelerin kullandığı bir PHP sürümünü kaldırma eskisi gibi reddedilir; ret
   artık o sürümle çalışan phpMyAdmin, phpPgAdmin ya da Roundcube'u da kendi
-  sayfasının bağlantısıyla adıyla söyler.
+  sayfasının bağlantısıyla adıyla söyler. Yalnız bu araçlardan birinin
+  çalıştığı PHP sürümü de reddedilir: önce aracın sayfasından başka bir PHP
+  sürümü seçin.
 
 ## Panel veritabanı meşgul
 
@@ -97,8 +99,31 @@ durdurulup Agent yeniden başlatılarak düzeldi.
 
 ## Laboratuvar sonuçları
 
-Laboratuvar turu bekliyor. Bu bölüm yayımlanmadan önce sonuçlarıyla
-güncellenecek.
+Sahibin kurulum komutuyla dört temiz kurulum (Debian 12, PowerDNS ile
+Debian 13, BIND ile Ubuntu 22.04 ve Ubuntu 24.04) ve alpha.123'ten panelin
+kendi güncelleme ekranıyla güncelleme. Yedi denetimin hepsi geçti:
+
+- alpha.123'ten güncelleme: tek basışta başarılı; `agent --version` sürümü
+  yazıp çıkar; elle başlatılan ikinci Agent hemen durur ve çalışan Agent'ın
+  soketinin sahibi değişmez.
+- Kurulum makinenin kendi adını ekler: `host1.<bölge>` dört sistemde de
+  çözülür; katılan yedek sunucunun adına kayıt eklenmez.
+- Bileşen penceresi: phpPgAdmin, PostgreSQL'i tek işlemde birlikte kurar,
+  sayfa yenileme ve panel yeniden başlatmadan sonra işleme yeniden bağlanır;
+  phpMyAdmin seçilen PHP ile çalışır; o PHP'yi kaldırma phpMyAdmin'i ve siteyi
+  adıyla söyler; Debian 12'de PostgreSQL 18, PGDG deposunu adıyla gösterir.
+- Panel veritabanı yaklaşık 30 saniye tutuldu: ekran beklemeyi gösterir,
+  kurulum bırakılınca biter, geçmiş kaydı kaybolmaz.
+- Agent durmuş ya da soketi reddediyor: ne yapılacağını söyleyen cümleyle
+  503; yeniden başlatınca düzelir.
+- PowerDNS çiftinde DNSSEC: reddedilir ve bölgenin seri numarası değişmez.
+- Parolasız posta: gönderen site listelenir; gönderim kutusu 587 numaralı
+  bağlantı noktasında çalışır; hiçbir şey engellenmez.
+
+Tur iki hata buldu, ikisi de yayımlanmadan önce düzeltildi: başarılı
+güncellemeden sonra eski başarısız güncelleme işaretleri görünür kalıyordu
+(artık başarı okununca bir kez temizlenir) ve reddedilen DNSSEC isteği
+bölgenin seri numarasını değiştiriyordu (artık bölgeye dokunmadan reddedilir).
 
 ## Bilinen sınırlar
 
@@ -113,9 +138,13 @@ güncellenecek.
   kuralları; Redis, Valkey ve Memcached için kullanım kayıtları; tek bir
   PostgreSQL ana sürümünü kaldırma.
 - Makinenin kendi adı için AAAA (IPv6) kaydı kurulumda eklenmez.
+- Laboratuvarda görüldü, alpha.125'te düzeltilecek: geri almadan hemen sonra
+  **Güncelle**'ye basmak bir kez hiçbir şey değiştirmeden başarısız olabilir
+  (ikinci basış çalışır); zaten var olan bir posta kutusunu oluşturmak "zaten
+  var" yerine iç hata verir; statik ana sitede PHP değiştirmek iç hata verir.
 
 ## Kanıt
 
 Şema değişmedi, geçiş yok. Sürüm sırası 123 → 124.
 Go testleri (bütün modül) ve web testleri geçiyor; web paketleri bütçeleri
-içinde. Laboratuvar turu bekliyor.
+içinde. Laboratuvar kanıtı laboratuvar dalında (`evidence/a124`) tutuluyor.
