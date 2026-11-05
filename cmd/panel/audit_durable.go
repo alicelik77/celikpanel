@@ -142,8 +142,8 @@ type auditPendingEntry struct {
 	Attempts     int    `json:"attempts"`
 	// Replay: read back from the pending file after a start; it may have
 	// been written just before the stop (not saved in the file).
-	Replay bool `json:"-"`
-	LastError    string `json:"last_error,omitempty"`
+	Replay    bool   `json:"-"`
+	LastError string `json:"last_error,omitempty"`
 }
 
 type auditPendingFile struct {

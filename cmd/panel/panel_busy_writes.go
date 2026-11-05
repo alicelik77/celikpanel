@@ -43,7 +43,7 @@ type panelBusyWait struct {
 // ("setup:<execution id>", "op:<service operation id>").
 var panelBusyWaits sync.Map
 
-func panelBusyKeySetup(executionID string) string { return "setup:" + executionID }
+func panelBusyKeySetup(executionID string) string     { return "setup:" + executionID }
 func panelBusyKeyOperation(operationID string) string { return "op:" + operationID }
 
 // notePanelBusy records that the write of key met the panel database busy.

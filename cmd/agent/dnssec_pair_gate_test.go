@@ -45,7 +45,9 @@ func TestDNSSECStatusSaysInAdvanceThatThePairCannotBeSigned(t *testing.T) {
 	oldLookPath, oldCommand := dnssecLookPath, dnssecCommand
 	legacyPowerDNSDurableAuthorityCheck = func(bool) error { return nil }
 	dnssecLookPath = func(string) (string, error) { return "pdnsutil", nil }
-	dnssecCommand = func(string, ...string) ([]byte, error) { return []byte("This is a Master zone\nZone is not actively secured\n"), nil }
+	dnssecCommand = func(string, ...string) ([]byte, error) {
+		return []byte("This is a Master zone\nZone is not actively secured\n"), nil
+	}
 	t.Cleanup(func() {
 		legacyPowerDNSDurableAuthorityCheck, legacyPowerDNSMutationAuthorityCheck = oldDurable, oldMutation
 		dnssecLookPath, dnssecCommand = oldLookPath, oldCommand
