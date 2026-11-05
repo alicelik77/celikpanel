@@ -197,7 +197,5 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.PHP_TOOL_NOT_INSTALLED': 'Bu araç kurulu değil.',
     'err.PHP_TOOL_UNSUPPORTED': 'Bir araç için PHP sürümü seçmek Debian ve Ubuntu sunucularında kullanılabilir.',
     'err.PHP_TOOL_BIND_FAILED': 'PHP sürümü değişikliği tamamlanmadı.',
-    'err.AGENT_UNREACHABLE.socket_denied': "Panelin CelikPanel Agent bağlantısını (/run/celikpanel/agent.sock) açmasına izin verilmiyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Bu, bağlantının izinleri değiştiğinde olur; örneğin systemd dışında elle bir agent başlatıldığında. Sunucunun sahibi sunucuda sudo systemctl restart celikpanel-agent komutunu çalıştırır: yalnız Agent'ı yeniden başlatır ve bağlantıya olağan izinlerini geri verir; siteler, e-posta ve DNS çalışmaya devam eder. Sonra yeniden deneyin.",
-    'err.AGENT_UNREACHABLE.not_running': 'Bu sunucudaki CelikPanel Agent çalışmıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi onu sudo systemctl start celikpanel-agent ile başlatır (durmaya devam ederse sudo journalctl -u celikpanel-agent nedenini gösterir). Agent çalışınca yeniden deneyin.',
     'err.DNSSEC_PAIR_UNSUPPORTED': "Bölge imzalama bu DNS sunucu ikilisinde (PowerDNS ana + yedek sunucu) henüz denenmedi; bu yüzden bu sürümde kapalı. Hiçbir şey değiştirilmedi: bölge eskisi gibi imzasız yanıt vermeye devam ediyor. Kimsenin bir şey yapması gerekmiyor; bu ikili için denendiğinde imzalama burada sunulacak.",
 };

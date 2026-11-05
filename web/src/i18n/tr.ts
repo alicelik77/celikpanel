@@ -169,7 +169,7 @@ export const tr: Record<ShellKey, string> = {
     'err.ADMIN_ONLY': 'Bu işlem yönetici yetkisi gerektirir.',
     'err.ACCOUNT_SUSPENDED': 'Bu hesap askıya alınmış.',
     'err.INTERNAL': 'Sunucuda bir iç hata oluştu. Yeniden deneyin; sürerse panel günlüklerine bakın.',
-    'err.AGENT_UNREACHABLE': 'Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi Agent’ı sunucuda sudo systemctl status celikpanel-agent komutuyla denetler (günlüğü: sudo journalctl -u celikpanel-agent); durmuşsa sudo systemctl start celikpanel-agent ile başlatır. Agent çalışınca yeniden deneyin.',
+    'err.AGENT_UNREACHABLE': 'Bu sunucudaki CelikPanel Agent’ına ulaşılamıyor; bu yüzden istek yapılmadı ve hiçbir şey değiştirilmedi. Sunucunun sahibi onu sudo systemctl status celikpanel-agent ile denetler, sudo systemctl restart celikpanel-agent ile yeniden başlatır (yalnız Agent). Sonra yeniden deneyin.',
     'err.PLATFORM_CAPABILITY_UNAVAILABLE': 'Bu işlem bağlı sunucu platformunda kullanılamıyor.',
     'err.PLATFORM_IDENTITY_UNAVAILABLE': 'Bağlı sunucunun platform kimliği doğrulanamadı. Yeniden deneyin; sürerse agent bağlantısını kontrol edin.',
     // Zamanlanmış görevler sunucunun yerel cron'unu gerektirir (upd1, 1 Eki

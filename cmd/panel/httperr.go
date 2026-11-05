@@ -521,11 +521,12 @@ func classifyStableAgentError(err error) (agentRPCPlatformErrorClassification, b
 // (D-024). The screens show their own translation (err.AGENT_UNREACHABLE).
 // agentUnreachableMessage, AGENT_UNREACHABLE cümlesidir: neden, hiçbir şeyin
 // değişmediği, kimin ne yapacağı ve işin nasıl süreceği (D-024).
-const agentUnreachableMessage = "The CelikPanel Agent on this server is not reachable, " +
+const agentUnreachableMessage = "The CelikPanel Agent on this server is not running, " +
 	"so this request was not carried out and nothing was changed. " +
 	"The server owner checks the Agent on the server with sudo systemctl status celikpanel-agent " +
-	"(its log: sudo journalctl -u celikpanel-agent) and, if it is stopped, starts it with " +
-	"sudo systemctl start celikpanel-agent. Once the Agent is running, try again."
+	"(its log: sudo journalctl -u celikpanel-agent) and starts it with " +
+	"sudo systemctl restart celikpanel-agent (only the Agent restarts; websites, mail and DNS keep running). " +
+	"Once the Agent is running, try again."
 
 // agentUnreachable reports whether err is the Panel failing to open the
 // Agent's local Unix socket at all: the socket file is missing (ENOENT) or

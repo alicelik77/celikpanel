@@ -329,8 +329,8 @@ func TestAgentUnreachableTellsARefusedSocketFromAMissingAgent(t *testing.T) {
 	}{
 		{refusedAgentDial(syscall.EACCES), agentUnreachableReasonSocketDenied, "sudo systemctl restart celikpanel-agent"},
 		{refusedAgentDial(syscall.EPERM), agentUnreachableReasonSocketDenied, "sudo systemctl restart celikpanel-agent"},
-		{refusedAgentDial(syscall.ENOENT), agentUnreachableReasonNotRunning, "sudo systemctl start celikpanel-agent"},
-		{refusedAgentDial(syscall.ECONNREFUSED), agentUnreachableReasonNotRunning, "sudo systemctl start celikpanel-agent"},
+		{refusedAgentDial(syscall.ENOENT), agentUnreachableReasonNotRunning, "sudo systemctl status celikpanel-agent"},
+		{refusedAgentDial(syscall.ECONNREFUSED), agentUnreachableReasonNotRunning, "sudo systemctl status celikpanel-agent"},
 	} {
 		recorder := httptest.NewRecorder()
 		writeServerError(recorder, tc.err)

@@ -206,9 +206,6 @@ export const enErrorsScreens = {
     'err.PHP_TOOL_NOT_INSTALLED': 'This tool is not installed.',
     'err.PHP_TOOL_UNSUPPORTED': 'Choosing a PHP version for a tool is available on Debian and Ubuntu servers.',
     'err.PHP_TOOL_BIND_FAILED': 'The PHP version change did not complete.',
-    // alpha.124: why the Agent could not be reached (Frankfurt, 2026-11-05).
-    'err.AGENT_UNREACHABLE.socket_denied': "The panel is not allowed to open the CelikPanel Agent's connection (/run/celikpanel/agent.sock), so this request was not carried out and nothing was changed. This happens when the connection's permissions were changed, for example by an agent started by hand outside systemd. The server owner runs sudo systemctl restart celikpanel-agent on the server: it restarts only the Agent and gives the connection back its normal permissions; websites, mail and DNS keep running. Then try again.",
-    'err.AGENT_UNREACHABLE.not_running': 'The CelikPanel Agent on this server is not running, so this request was not carried out and nothing was changed. The server owner starts it with sudo systemctl start celikpanel-agent (if it keeps stopping, sudo journalctl -u celikpanel-agent shows why). Once the Agent is running, try again.',
     'err.DNSSEC_PAIR_UNSUPPORTED': "Signing this zone has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off in this release. Nothing was changed: the zone keeps answering as before, unsigned. Nobody needs to act; signing will be offered here once it has been tested for this pair.",
 } as const;
 

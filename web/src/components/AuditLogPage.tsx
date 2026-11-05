@@ -66,7 +66,7 @@ export function AuditLogPage() {
                 {(shown) => (<>
                 {shown.value.pending && (
                     <p role="status" className="mb-4 rounded-lg border border-warning-mark/60 bg-warning-mark/20 px-3 py-2.5 text-sm text-fg">
-                        {t(shown.value.pending.stalled ? 'audit.pending.stalled' : 'audit.pending.waiting', { count: shown.value.pending.count })}
+                        {t(shown.value.pending.stalled ? 'life.audit.pending.stalled' : 'life.audit.pending.waiting', { count: shown.value.pending.count })}
                     </p>
                 )}
                 {shown.value.entries.length === 0 ? (

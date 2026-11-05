@@ -6,6 +6,8 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     // ---- alpha.108 slice d ----
     // Müşterilere sunulan sürümler (D-038 §14).
     'life.offer.title': 'Müşterilere sunulan',
+    'life.audit.pending.waiting': "{count} denetim kaydı kaydedilmeyi bekliyor: kaydedildikleri anda CelikPanel'in kendi veritabanı meşguldü. Kayıtlar saklanıyor; veritabanı boşalınca sırasıyla ve kendi saatleriyle kendiliğinden yazılır. Kimsenin bir şey yapması gerekmiyor.",
+    'life.audit.pending.stalled': "{count} denetim kaydı on dakikadan uzun süredir yazılamadı; CelikPanel'in kendi veritabanı onları almıyor. Kayıtlar kaybolmadı, saklanıyor ve kendiliğinden yeniden deneniyor. Siz, sunucu sahibi: bu sunucuda sudo systemctl restart celikpanel-panel komutunu çalıştırın (yalnız paneli yeniden başlatır; siteler, e-posta ve DNS çalışmaya devam eder); kayıtlar açılıştan sonra yazılır. Bu uyarı kalırsa sudo journalctl -u celikpanel-panel -n 100 nedenini gösterir.",
     'life.offer.intro': 'Müşteriler siteleri için {name} sürümünü burada sunulanlar arasından seçer. Bir sürümü gizlemek hiçbir siteyi değiştirmez: o sürümdeki site onu korur ve çalışmayı sürdürür, sahibi bir not görür. Yönetici olarak siz kurulu her sürümü her zaman seçebilirsiniz.',
     'life.offer.toggle': '{name} {version} müşterilere sunulsun',
     'life.offer.offered': 'Sunuluyor',

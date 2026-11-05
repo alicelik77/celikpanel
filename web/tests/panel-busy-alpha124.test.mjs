@@ -10,8 +10,8 @@ import test from 'node:test';
 import { componentOperationPhaseKey } from '../src/lib/componentOperationGuidance.ts';
 import { enComponentsScreens } from '../src/i18n/screens/components/en.ts';
 import { trComponentsScreens } from '../src/i18n/screens/components/tr.ts';
-import { enDashboardScreens } from '../src/i18n/screens/dashboard/en.ts';
-import { trDashboardScreens } from '../src/i18n/screens/dashboard/tr.ts';
+import { enLifecycleScreens } from '../src/i18n/screens/lifecycle/en.ts';
+import { trLifecycleScreens } from '../src/i18n/screens/lifecycle/tr.ts';
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 
@@ -29,9 +29,9 @@ test('a running operation that cannot save its progress is said as a wait', () =
 });
 
 test('the audit log says the rows that wait to be saved', () => {
-    for (const catalog of [enDashboardScreens, trDashboardScreens]) {
-        assert.match(catalog['audit.pending.waiting'], /\{count\}/);
-        assert.match(catalog['audit.pending.stalled'], /\{count\}.*sudo systemctl restart celikpanel-panel/s);
+    for (const catalog of [enLifecycleScreens, trLifecycleScreens]) {
+        assert.match(catalog['life.audit.pending.waiting'], /\{count\}/);
+        assert.match(catalog['life.audit.pending.stalled'], /\{count\}.*sudo systemctl restart celikpanel-panel/s);
     }
     const page = source('components/AuditLogPage.tsx');
     assert.match(page, /audit_rows_waiting/);
