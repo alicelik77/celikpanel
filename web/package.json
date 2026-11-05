@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build-guide.mjs --check && tsc && vite build && node scripts/build-recovery-worker.mjs && node scripts/check-bundle-budget.mjs",
+    "build": "node scripts/build-guide.mjs --check && tsc && vite build && node scripts/build-recovery-worker.mjs && node scripts/check-bundle-budget.mjs && node scripts/precompress.mjs",
     "design": "npx --yes impeccable detect src",
     "design:live": "npx --yes impeccable detect http://localhost:4173 --viewport 1440x900",
     "guide": "node scripts/build-guide.mjs",

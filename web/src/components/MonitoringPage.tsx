@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { startVisibleReads } from '../lib/visibleReads';
 import { Activity } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { PageHeader } from './PageHeader';
@@ -48,8 +49,9 @@ export function MonitoringPage() {
     const refresh = history.retry;
 
     useEffect(() => {
-        const timer = setInterval(() => void refresh(), REFRESH_MS);
-        return () => clearInterval(timer);
+        // alpha.125: no refetch while the tab is hidden; one when shown again.
+        // Gizli sekmede yeniden okuma yok; görününce bir kez okur.
+        return startVisibleReads(refresh, REFRESH_MS, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) });
     }, [refresh]);
 
     const pct = (used: number, total: number) => (total > 0 ? (used / total) * 100 : 0);

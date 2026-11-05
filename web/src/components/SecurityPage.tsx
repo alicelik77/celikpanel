@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { startVisibleReads } from '../lib/visibleReads';
 import { ShieldAlert, ShieldCheck, ShieldOff, ShieldQuestion } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { Link, useLocation } from '../router';
@@ -91,11 +92,10 @@ function useHostMutationReadiness(): { readiness: HostMutationReadiness | null; 
     }, []);
     useEffect(() => {
         alive.current = true;
-        void reread();
-        const timer = window.setInterval(() => void reread(), READINESS_POLL_MS);
+        const stop = startVisibleReads(reread, READINESS_POLL_MS, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }, { immediate: true });
         return () => {
             alive.current = false;
-            window.clearInterval(timer);
+            stop();
         };
     }, [reread]);
     return { readiness, reread };

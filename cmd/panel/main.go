@@ -1163,7 +1163,9 @@ func main() {
 	)))
 	startupGate := newPanelHTTPStartupGate(applicationHandler)
 	panel.startupGate = startupGate
-	handler := securityHeaders(panel.secureCookies, startupGate)
+	// JSON reads above 1 KiB are gzip-compressed for a client that accepts
+	// it, never a response that may carry a secret (compression.go).
+	handler := securityHeaders(panel.secureCookies, compressJSONResponses(startupGate))
 	addr := listenAddr()
 	server := newPanelHTTPServer(addr, handler)
 	tlsOn, certPath, keyPath, err := tlsSettings()
