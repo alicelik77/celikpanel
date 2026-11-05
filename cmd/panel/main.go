@@ -225,6 +225,10 @@ type Panel struct {
 	updateDiscovery   *panelUpdateDiscoveryScheduler
 	updateDiscoveryMu sync.Mutex
 	updateAdmittedAt  atomic.Int64
+	// The request id of that admitted start, read by the deferred startup
+	// mail work so it waits while the Agent reports the update queued or
+	// running (a124 lab, startup_deferred_mail.go). Nil when none.
+	updateAdmittedRequest atomic.Pointer[string]
 	// A completed check's result kept in memory while an update or another
 	// change held the server; written on the next idle pass. Guarded by
 	// updateDiscoveryMu.

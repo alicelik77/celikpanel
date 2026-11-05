@@ -27,6 +27,7 @@ SH
 chmod 0755 "$TEST_ROOT/probe"
 eval "$(extract update.sh run_update_idle_probe)"
 eval "$(extract update.sh update_agent_refusal_is_transient)"
+eval "$(extract update.sh run_update_probe_waiting)"
 eval "$(extract update.sh run_update_agent_idle_probe_waiting)"
 eval "$(grep -E '^UPDATE_AGENT_IDLE_(WAIT|POLL)_SECONDS=' "$ROOT/update.sh")"
 [[ $UPDATE_AGENT_IDLE_WAIT_SECONDS == 60 && $UPDATE_AGENT_IDLE_POLL_SECONDS == 3 ]] \
