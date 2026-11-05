@@ -123,11 +123,7 @@ func TestPrecompressedAssetsAreServedToGzipClients(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := []byte("export const x = '" + strings.Repeat("panel ", 500) + "';\n")
-	var packed bytes.Buffer
-	gz := gzip.NewWriter(&packed)
-	_, _ = gz.Write(source)
-	_ = gz.Close()
-	for name, data := range map[string][]byte{"assets/app-1.js": source, "assets/app-1.js.gz": packed.Bytes(), "index.html": []byte("<!doctype html>")} {
+	for name, data := range map[string][]byte{"assets/app-1.js": source, "assets/small.js": []byte("export {};\n"), "index.html": []byte("<!doctype html>")} {
 		if err := os.WriteFile(filepath.Join(root, name), data, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -156,13 +152,35 @@ func TestPrecompressedAssetsAreServedToGzipClients(t *testing.T) {
 	if w.Header().Get("Content-Encoding") != "" || !bytes.Equal(w.Body.Bytes(), source) {
 		t.Fatalf("identity client: %v", w.Header())
 	}
-	// A link in place of the stored copy is not followed.
-	if err := os.Remove(filepath.Join(root, "assets", "app-1.js.gz")); err != nil {
+	// The copy is made once and is the same bytes on the next request.
+	first := get("gzip").Body.Bytes()
+	if again := get("gzip").Body.Bytes(); !bytes.Equal(first, again) {
+		t.Fatal("the compressed copy changed between requests")
+	}
+	// A replaced file is compressed again, not served from the old copy.
+	changed := []byte("export const y = '" + strings.Repeat("other ", 600) + "';\n")
+	if err := os.WriteFile(filepath.Join(root, "assets", "app-1.js"), changed, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(root, "index.html"), filepath.Join(root, "assets", "app-1.js.gz")); err == nil {
-		if w = get("gzip"); w.Header().Get("Content-Encoding") != "" || !bytes.Equal(w.Body.Bytes(), source) {
-			t.Fatal("a symbolic link was served as the compressed asset")
+	if w = get("gzip"); !bytes.Equal(gunzip(t, w.Body.Bytes()), changed) {
+		t.Fatal("a replaced asset was served from its old compressed copy")
+	}
+	// A small file is served as it is.
+	r := httptest.NewRequest(http.MethodGet, "/assets/small.js", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	if w.Header().Get("Content-Encoding") != "" || w.Body.String() != "export {};\n" {
+		t.Fatalf("small asset: %v %q", w.Header(), w.Body.String())
+	}
+	// A link in place of an asset is never compressed.
+	if err := os.Symlink(filepath.Join(root, "assets", "app-1.js"), filepath.Join(root, "assets", "link.js")); err == nil {
+		r = httptest.NewRequest(http.MethodGet, "/assets/link.js", nil)
+		r.Header.Set("Accept-Encoding", "gzip")
+		w = httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Header().Get("Content-Encoding") != "" {
+			t.Fatal("a symbolic link was compressed")
 		}
 	}
 }

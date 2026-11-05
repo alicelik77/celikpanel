@@ -69,3 +69,9 @@ test('every new sentence exists in both languages with the same placeholders', (
     }
   }
 });
+
+test('the PHP pool form shows a coded refusal (a site without PHP) in its own words', () => {
+  const source = readFileSync(new URL('../src/components/DomainPHPSettings.tsx', import.meta.url), 'utf8');
+  const save = source.slice(source.indexOf('/php/pool`'));
+  assert.match(save, /if \(!res\.ok\) \{\s*showToast\('error', apiErrorText\(await readApiError\(res\), t, 'php\.poolFailed'\)\);/);
+});

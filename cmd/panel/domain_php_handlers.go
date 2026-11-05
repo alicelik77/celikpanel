@@ -379,12 +379,23 @@ func (p *Panel) handleDomainPHPPool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get site info
-	var phpVersion string
+	var phpVersion, projectType, domainName string
 	var siteID int
-	query := `SELECT id, php_version FROM sites WHERE domain_id = ? LIMIT 1`
-	err = p.db.GetDB().QueryRowContext(context.Background(), query, domainID).Scan(&siteID, &phpVersion)
+	query := `SELECT s.id, COALESCE(s.php_version, ''), COALESCE(s.project_type, 'php'), d.name
+		FROM sites s JOIN domains d ON d.id = s.domain_id WHERE s.domain_id = ? LIMIT 1`
+	err = p.db.GetDB().QueryRowContext(context.Background(), query, domainID).Scan(&siteID, &phpVersion, &projectType, &domainName)
 	if err != nil {
 		http.Error(w, "Site not found for domain", http.StatusNotFound)
+		return
+	}
+	// Only a PHP site has a pool. A static, Node.js, proxy, forwarding or
+	// DNS-only site has none: reading it asked the Agent for the pool of an
+	// empty PHP version and answered 500. The same typed refusal as the PHP
+	// version change (SITE_HAS_NO_PHP), for reading and saving; nothing is
+	// asked of the Agent and nothing is changed.
+	// Yalnız PHP sitesinin havuzu vardır; diğerleri aynı 409 ile reddedilir.
+	if projectType != "php" {
+		writeSiteHasNoPHP(w, domainName, projectType)
 		return
 	}
 

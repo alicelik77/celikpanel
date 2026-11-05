@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"compress/gzip"
 	"mime"
 	"net/http"
@@ -9,13 +10,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Compression (v0.1.0-alpha.125, "faster panel" P3). At 170 ms RTT the cold
 // load moved 375 KB of uncompressed boot assets and every lazy screen chunk
 // went over the wire raw; the bundle budget already assumed gzip. Static
-// assets are compressed once, at build time (web/scripts/precompress.mjs),
-// and served as stored; JSON reads above 1 KiB are compressed per response
+// assets are compressed once per file in memory (below) and served from
+// there; JSON reads above 1 KiB are compressed per response
 // with the standard library. Brotli would need a third-party module, so it is
 // not used.
 //
@@ -26,7 +28,7 @@ import (
 // join codes, licences, account and VPN data, raw configuration files) or a
 // machine-to-machine path. When unsure, a path is left uncompressed.
 //
-// Sıkıştırma: durağan dosyalar derlemede bir kez sıkıştırılır ve öyle sunulur;
+// Sıkıştırma: durağan dosyalar ilk istekte bir kez sıkıştırılıp bellekte tutulur;
 // 1 KiB üzeri JSON okumaları standart kütüphaneyle sıkıştırılır. Gizli bilgi
 // taşıyabilecek hiçbir yanıt sıkıştırılmaz (BREACH).
 
@@ -62,35 +64,99 @@ func acceptsGzip(r *http.Request) bool {
 	return accepted
 }
 
-// servePrecompressed serves the build-time .gz sibling of a static file to a
-// client that accepts gzip. It reports whether it answered; the caller serves
-// the file itself otherwise. The sibling must be a regular file (never a
-// link), as the installed web tree is.
+// Static assets are compressed by the Panel itself, once per file, the first
+// time a client that accepts gzip asks for it, and kept in memory for the
+// process lifetime (keyed by path, size and modification time, so a replaced
+// file is compressed again). The release therefore carries no .gz copies: a
+// build-time copy made by Node's zlib can differ between CPUs (its deflate
+// takes SIMD paths), which would make the release archive depend on the
+// build host. Go's compress/gzip writes the same bytes on every host, and
+// nothing compressed is written to disk at all.
+//
+// Durağan dosyalar ilk istekte Panel tarafından bir kez sıkıştırılır ve
+// bellekte tutulur; sürüm arşivinde .gz kopyası yoktur, bu yüzden arşiv
+// derleme makinesine bağlı değildir.
+
+const (
+	staticCompressMinBytes = 1024
+	staticCompressMaxBytes = 16 << 20
+)
+
+// staticCompressible are the text assets worth compressing; images and fonts
+// are already compressed.
+var staticCompressible = map[string]bool{
+	".js": true, ".mjs": true, ".css": true, ".html": true, ".svg": true,
+	".json": true, ".txt": true, ".webmanifest": true,
+}
+
+type compressedAsset struct {
+	size    int64
+	modTime time.Time
+	data    []byte // nil: compressing saves too little, serve the file
+}
+
+var compressedAssets sync.Map // file path -> *compressedAsset
+
+func compressedAssetFor(filePath string, info os.FileInfo) *compressedAsset {
+	if cached, ok := compressedAssets.Load(filePath); ok {
+		asset := cached.(*compressedAsset)
+		if asset.size == info.Size() && asset.modTime.Equal(info.ModTime()) {
+			return asset
+		}
+	}
+	source, err := os.ReadFile(filePath)
+	if err != nil || int64(len(source)) != info.Size() {
+		return nil
+	}
+	asset := &compressedAsset{size: info.Size(), modTime: info.ModTime()}
+	var packed bytes.Buffer
+	writer, err := gzip.NewWriterLevel(&packed, gzip.BestCompression)
+	if err != nil {
+		return nil
+	}
+	if _, err := writer.Write(source); err != nil || writer.Close() != nil {
+		return nil
+	}
+	// A copy that saves less than a tenth is not worth it.
+	if packed.Len()*10 <= len(source)*9 {
+		asset.data = packed.Bytes()
+	}
+	compressedAssets.Store(filePath, asset)
+	return asset
+}
+
+// servePrecompressed serves a gzip copy of a static text file to a client
+// that accepts gzip. It reports whether it answered; the caller serves the
+// file itself otherwise. Only a regular file (never a link) is compressed,
+// as the installed web tree holds.
 func servePrecompressed(w http.ResponseWriter, r *http.Request, filePath string) bool {
-	if strings.HasSuffix(filePath, ".gz") || (r.Method != http.MethodGet && r.Method != http.MethodHead) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return false
 	}
-	info, err := os.Lstat(filePath + ".gz")
-	if err != nil || !info.Mode().IsRegular() {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	if !staticCompressible[ext] {
+		return false
+	}
+	info, err := os.Lstat(filePath)
+	if err != nil || !info.Mode().IsRegular() || info.Size() < staticCompressMinBytes || info.Size() > staticCompressMaxBytes {
 		return false
 	}
 	w.Header().Add("Vary", "Accept-Encoding")
 	if !acceptsGzip(r) {
 		return false
 	}
-	file, err := os.Open(filePath + ".gz")
-	if err != nil {
+	contentType := mime.TypeByExtension(ext)
+	if contentType == "" {
 		return false
 	}
-	defer file.Close()
-	contentType := mime.TypeByExtension(filepath.Ext(filePath))
-	if contentType == "" {
+	asset := compressedAssetFor(filePath, info)
+	if asset == nil || asset.data == nil {
 		return false
 	}
 	header := w.Header()
 	header.Set("Content-Type", contentType)
 	header.Set("Content-Encoding", "gzip")
-	http.ServeContent(w, r, "", info.ModTime(), file)
+	http.ServeContent(w, r, "", asset.modTime, bytes.NewReader(asset.data))
 	return true
 }
 

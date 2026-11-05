@@ -4,7 +4,7 @@ import test from 'node:test';
 
 // alpha.125 "faster panel": the Components check runs in the background
 // without freezing the page, a start/stop reads the state at once, polls
-// pause in a hidden tab, and the build stores gzip copies of the assets.
+// pause in a hidden tab, and the Panel gzips the assets itself (not the build).
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const serviceList = read('../src/components/ServiceList.tsx');
 const serviceShell = read('../src/components/ServiceShell.tsx');
@@ -41,11 +41,13 @@ test('timed reads pause while the tab is hidden', () => {
   assert.doesNotMatch(dashboard, /setInterval\(loadStats, 5000\)|setInterval\(load, 5000\)/);
 });
 
-test('the build stores reproducible gzip copies after the bundle budget', () => {
+test('the build stores no gzip copies: the Panel compresses assets itself, the same on every host', () => {
+  // Node's zlib may pick different matches on different CPUs, so build-time
+  // .gz copies would make the release archive depend on the build host.
   const pkg = JSON.parse(read('../package.json'));
-  assert.match(pkg.scripts.build, /node scripts\/check-bundle-budget\.mjs && node scripts\/precompress\.mjs"?$/);
-  const script = read('../scripts/precompress.mjs');
-  assert.match(script, /level: constants\.Z_BEST_COMPRESSION/);
-  assert.match(script, /packed\[9\] = 255/);
-  assert.match(script, /if \(entry\.name\.startsWith\('\.'\)\) continue/);
+  assert.match(pkg.scripts.build, /node scripts\/check-bundle-budget\.mjs"?$/);
+  assert.doesNotMatch(pkg.scripts.build, /precompress/);
+  const compression = read('../../cmd/panel/compression.go');
+  assert.match(compression, /gzip\.NewWriterLevel\(&packed, gzip\.BestCompression\)/);
+  assert.match(compression, /var compressedAssets sync\.Map/);
 });
