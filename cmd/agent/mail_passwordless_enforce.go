@@ -93,6 +93,10 @@ type passwordlessRecord struct {
 	RelayAfter   string               `json:"relay_after,omitempty"`
 	FailedAt     string               `json:"failed_at,omitempty"`
 	Failure      string               `json:"failure,omitempty"`
+	// Existing site crontabs given MAILTO="" once (cron_mailto_reconcile.go).
+	CronMailtoAt      string                   `json:"cron_mailto_at,omitempty"`
+	CronMailtoChanged []passwordlessCronChange `json:"cron_mailto_changed,omitempty"`
+	CronMailtoKept    []string                 `json:"cron_mailto_kept,omitempty"`
 }
 
 // passwordlessPlan is what a reconcile writes (an empty write leaves the
@@ -300,7 +304,7 @@ func reconcilePasswordlessMail(run postconfRunner, apply func() error, now time.
 	plan := planPasswordlessClose(submit, relay, record)
 	ownerNote := passwordlessOwnerNote(plan, submit, relay)
 	if plan.writeSubmit == "" && plan.writeRelay == "" {
-		return ownerNote, nil
+		return joinNotes(ownerNote, passwordlessCronStep(record, now)), nil
 	}
 
 	next := passwordlessRecord{}
@@ -363,7 +367,8 @@ func reconcilePasswordlessMail(run postconfRunner, apply func() error, now time.
 		return joinNotes("mail without a password is closed, but CelikPanel's record of it could not be written ("+
 			boundedNativeDetail(err.Error())+")", ownerNote), nil
 	}
-	return joinNotes(fmt.Sprintf("mail without a password is closed (%s)", passwordlessChangeSummary(plan)), ownerNote), nil
+	return joinNotes(fmt.Sprintf("mail without a password is closed (%s)", passwordlessChangeSummary(plan)), ownerNote,
+		passwordlessCronStep(&next, now)), nil
 }
 
 func passwordlessChangeSummary(plan passwordlessPlan) string {

@@ -57,8 +57,10 @@ user, which is now refused for site users. A site crontab the panel writes there
 starts with `MAILTO=""`: site cron output is no longer mailed, and the panel does not
 record it elsewhere either (a job that needs its output writes it to a file). A
 crontab that already sets `MAILTO` is the owner's and is left as it is; root's
-crontab is never changed. An existing site crontab gets the line at the panel's next
-change to one of its jobs.
+crontab is never changed. Existing site crontabs with a job get the line once, in the
+same step that closes the `sendmail` command (before/after versions recorded beside the
+Postfix change; a crontab that cannot be read is left and retried at the next start).
+Owners' crontabs with their own `MAILTO` are kept and named in the step's note.
 
 **Two phases.** Phase 1 (alpha.124) changes nothing on the server: the Postfix
 page says that mail without a password closes in the next release and lists the
