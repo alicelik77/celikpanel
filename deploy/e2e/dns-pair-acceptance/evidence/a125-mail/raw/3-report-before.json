@@ -1,0 +1,41 @@
+{
+  "read": true,
+  "source": "journal",
+  "covered_since": "2026-11-05T10:25:13Z",
+  "local_senders": [
+    {
+      "uid": 0,
+      "user": "root",
+      "system": true,
+      "messages": 2,
+      "last": "2026-11-05T10:25:38Z"
+    },
+    {
+      "uid": 5000,
+      "user": "vmail",
+      "system": true,
+      "messages": 2,
+      "last": "2026-11-05T10:25:39Z"
+    },
+    {
+      "uid": 5001,
+      "user": "shop_test",
+      "messages": 2,
+      "last": "2026-11-05T10:25:34Z"
+    }
+  ],
+  "loopback_senders": [
+    {
+      "sender": "contact@shop.test",
+      "messages": 2,
+      "last": "2026-11-05T10:25:34Z"
+    }
+  ],
+  "enforcement": {
+    "state": "open",
+    "submit_users": "static:anyone",
+    "relay_restrictions": "permit_mynetworks permit_sasl_authenticated defer_unauth_destination",
+    "expected_submit_users": "root, vmail",
+    "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination"
+  }
+}

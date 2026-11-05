@@ -1,0 +1,10 @@
+note: mail without a password is closed (authorized_submit_users = root, vmail; smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination)
+error: <nil>
+{
+  "state": "closed",
+  "submit_users": "root, vmail",
+  "relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+  "expected_submit_users": "root, vmail",
+  "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+  "changed_at": "2026-11-05T10:25:50Z"
+}

@@ -1,0 +1,24 @@
+=== after 2026-11-05T10:26:01Z
+postconf: authorized_submit_users = root, vmail;smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination;
+--- 1. site PHP mail() as shop_test (php-cli; FPM uses the same sendmail_path)
+  sendmail: fatal: User shop_test(5001) is not allowed to submit mail
+  bool(false)
+--- 2. site SMTP to 127.0.0.1:25 without a password, to another server
+  <-  250 2.1.0 Ok
+  <** 454 4.7.1 <relay@outside.test>: Relay access denied
+  <-  221 2.0.0 Bye
+--- 2b. SMTP to 127.0.0.1:25 without a password, into this server's own mailbox
+  <-  250 2.0.0 Ok: queued as 854CD20F4A
+  <-  221 2.0.0 Bye
+--- 3. authenticated submission 587 (STARTTLS) with the mailbox password
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 306BE20F4A
+--- 4. system notice as root (cron, unattended-upgrades, fail2ban use this path)
+  exit 0
+--- 5. mailbox owner vmail (Dovecot Sieve out-of-office replies use this path)
+  exit 0
+--- outside sink received 3 new message(s):
+  Subject: after vmail reply
+  Subject: after root notice
+  Subject: after 587
+--- owner@shop.test maildir: 3 message(s)

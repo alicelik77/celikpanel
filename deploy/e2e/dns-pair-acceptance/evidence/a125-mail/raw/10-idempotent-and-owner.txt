@@ -1,0 +1,24 @@
+=== second start: nothing to change
+note: 
+error: <nil>
+{
+  "state": "closed",
+  "submit_users": "root, vmail",
+  "relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+  "expected_submit_users": "root, vmail",
+  "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+  "changed_at": "2026-11-05T10:25:50Z"
+}
+=== the owner opens the sendmail command again (authorized_submit_users = static:anyone)
+note: mail without a password: Postfix settings changed by the server owner were kept as they are (authorized_submit_users = static:anyone (CelikPanel's form: root, vmail)). Sites may still be able to send mail without a password through what they allow; the server owner sets CelikPanel's form in /etc/postfix/main.cf (postconf -e) and reloads Postfix, or keeps the own setting deliberately
+error: <nil>
+{
+  "state": "owner",
+  "submit_users": "static:anyone",
+  "relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+  "expected_submit_users": "root, vmail",
+  "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+  "changed_at": "2026-11-05T10:25:50Z",
+  "detail": "mail without a password: Postfix settings changed by the server owner were kept as they are (authorized_submit_users = static:anyone (CelikPanel's form: root, vmail)). Sites may still be able to send mail without a password through what they allow; the server owner sets CelikPanel's form in /etc/postfix/main.cf (postconf -e) and reloads Postfix, or keeps the own setting deliberately"
+}
+authorized_submit_users = static:anyone

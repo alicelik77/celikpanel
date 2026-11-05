@@ -1,0 +1,25 @@
+=== before 2026-11-05T10:25:33Z
+postconf: authorized_submit_users = static:anyone;smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination;
+--- 1. site PHP mail() as shop_test (php-cli; FPM uses the same sendmail_path)
+  bool(true)
+--- 2. site SMTP to 127.0.0.1:25 without a password, to another server
+  <-  250 2.1.5 Ok
+  <-  250 2.0.0 Ok: queued as 1DFF220F25
+  <-  221 2.0.0 Bye
+--- 2b. SMTP to 127.0.0.1:25 without a password, into this server's own mailbox
+  <-  250 2.0.0 Ok: queued as 3595C20F25
+  <-  221 2.0.0 Bye
+--- 3. authenticated submission 587 (STARTTLS) with the mailbox password
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 19CBF20F25
+--- 4. system notice as root (cron, unattended-upgrades, fail2ban use this path)
+  exit 0
+--- 5. mailbox owner vmail (Dovecot Sieve out-of-office replies use this path)
+  exit 0
+--- outside sink received 5 new message(s):
+  Subject: before vmail reply
+  Subject: before root notice
+  Subject: before 587
+  Subject: before smtp25
+  Subject: before php mail
+--- owner@shop.test maildir: 2 message(s)

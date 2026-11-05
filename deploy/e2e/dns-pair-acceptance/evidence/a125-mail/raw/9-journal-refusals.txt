@@ -1,0 +1,2 @@
+2026-11-05T10:26:01+00:00 mx.lab.test postfix/sendmail[8907]: fatal: User shop_test(5001) is not allowed to submit mail
+2026-11-05T10:26:01+00:00 mx.lab.test postfix/smtpd[8912]: NOQUEUE: reject: RCPT from localhost[127.0.0.1]: 454 4.7.1 <relay@outside.test>: Relay access denied; from=<contact@shop.test> to=<relay@outside.test> proto=ESMTP helo=<mx.lab.test>

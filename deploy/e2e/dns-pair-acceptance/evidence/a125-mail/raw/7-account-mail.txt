@@ -1,0 +1,3 @@
+=== panel account mail through Agent.SendAccountMailV1 (root sendmail)
+sent=true error=""
+sink files with the account mail: 1
