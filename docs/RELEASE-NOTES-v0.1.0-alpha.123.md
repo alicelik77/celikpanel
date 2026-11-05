@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.123.tr.md)
 
+> **Published** on 2026-11-05 (UTC): release commit `d7b5f1ab5`, GitHub pre-release at 07:19:47Z, download portal at about 07:50Z (public check 27/27).
+
 One rule for what a component needs, applied to removal first, and fixes for
 installing on Debian 12 and Ubuntu 22.04. **Only the owner updates installed
 panels, from the panel's own update screen.**
