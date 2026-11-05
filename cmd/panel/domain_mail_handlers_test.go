@@ -631,3 +631,50 @@ func TestPostfixQueueActionRequiresPositiveAgentConfirmation(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }
+
+// a124 lab: creating a mailbox that already exists answered 500 (the UNIQUE
+// constraint). It is a typed 409 with the next step, before the Agent is asked.
+func TestAddEmailAccountThatAlreadyExistsIsATypedConflict(t *testing.T) {
+	agent := &mailMutationPanelAgent{addApplied: true}
+	panel, domainID := newMailMutationPanel(t, agent)
+	if _, err := panel.db.GetDB().Exec(`INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb)
+		VALUES (?, 'user@example.com', 'managed-by-agent', 100)`, domainID); err != nil {
+		t.Fatal(err)
+	}
+	for _, address := range []string{"user", "user@example.com", "USER@example.com"} {
+		request := httptest.NewRequest(http.MethodPost, "/mail/accounts",
+			strings.NewReader(`{"address":"`+address+`","password":"long-enough","quota_mb":100}`))
+		response := httptest.NewRecorder()
+		panel.handleAddEmailAccount(response, request, domainID)
+		if response.Code != http.StatusConflict {
+			t.Fatalf("%s: status = %d, body = %s", address, response.Code, response.Body.String())
+		}
+		var body apiErrorBody
+		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Code != errCodeMailAccountExists || body.Vars["address"] != "user@example.com" ||
+			!strings.Contains(body.Error, "already exists") || !strings.Contains(body.Error, "nothing was changed") {
+			t.Fatalf("%s: answer = %+v", address, body)
+		}
+	}
+	if calls := agent.addCallCount(); calls != 0 {
+		t.Fatalf("agent add calls = %d, want 0", calls)
+	}
+	var count int
+	if err := panel.db.GetDB().QueryRow("SELECT COUNT(*) FROM email_accounts").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("account count = %d, want the one that existed", count)
+	}
+	// The write-time guard recognizes the real driver's constraint error.
+	_, err := panel.db.GetDB().Exec(`INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb)
+		VALUES (?, 'user@example.com', 'x', 1)`, domainID)
+	if !isEmailAccountAddressTaken(err) {
+		t.Fatalf("duplicate insert error not recognized: %v", err)
+	}
+	if isEmailAccountAddressTaken(errors.New("database is locked")) {
+		t.Fatal("an unrelated error was taken for a duplicate")
+	}
+}

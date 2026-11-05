@@ -456,5 +456,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'pwmail.set.passwordKept': 'Yeniden gösterilmez. Kaybolursa alan adının E-posta sayfasından yenisini belirleyin.',
     'pwmail.set.once': 'Parolayı şimdi kopyalayın: yalnız bu kez gösterilir ve panelde saklanmaz.',
     'pwmail.set.done': 'Tamam',
+    // alpha.125 (a124 lab): var olan posta kutusunu yeniden oluşturmak 500'dü.
+    'err.MAIL_ACCOUNT_EXISTS': '{address} posta kutusu zaten var; bu yüzden hiçbir şey değiştirilmedi. Var olan posta kutusunu kullanın (parolası bilinmiyorsa listedeki anahtar düğmesiyle yeni parola verin) ya da başka bir ad seçin.',
     // --- end of set1 corrections ---
 };

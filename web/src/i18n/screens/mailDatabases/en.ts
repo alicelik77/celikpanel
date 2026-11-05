@@ -463,6 +463,8 @@ export const enMailDatabasesScreens = {
     'pwmail.set.passwordKept': 'Not shown again. If it is lost, set a new one on the domain’s Email page.',
     'pwmail.set.once': 'Copy the password now: it is shown only this once and is not stored in the panel.',
     'pwmail.set.done': 'Done',
+    // alpha.125 (a124 lab): creating a mailbox that already exists was a 500.
+    'err.MAIL_ACCOUNT_EXISTS': 'The mailbox {address} already exists, so nothing was changed. Use the existing mailbox (if its password is not known, set a new one with the key button in the list), or choose another name.',
     // --- end of set1 corrections ---
 } as const;
 
