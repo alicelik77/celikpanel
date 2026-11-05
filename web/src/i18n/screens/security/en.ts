@@ -1,5 +1,5 @@
-// SCREEN catalogue part "security": Security audit, firewall, Fail2ban, VPN and monitoring.
-// Key prefixes kept here: securityAudit., firewall., f2b., vpn., monitoring.,
+// SCREEN catalogue part "security": Security audit, firewall, Fail2ban and VPN (monitoring moved to its own part in alpha.126).
+// Key prefixes kept here: securityAudit., firewall., f2b., vpn.,
 // securityPage. (the Security page, v0.1.0-alpha.98)
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived. A new key
@@ -95,15 +95,6 @@ export const enSecurityScreens = {
     'securityAudit.code.tlsKeyMatch': 'The certificate and private key match.',
     'securityAudit.code.tlsKeyMismatch': 'The certificate and private key do not match or the key is invalid.',
 
-    'monitoring.subtitle': 'CPU, memory, disk and load — sampled every 30 seconds, kept for 48 hours.',
-    'monitoring.cpu': 'CPU',
-    'monitoring.memory': 'Memory',
-    'monitoring.disk': 'Disk (/)',
-    'monitoring.load': 'Load (1m)',
-    'monitoring.hours': '{n}h',
-    'monitoring.empty': 'No samples yet — data starts accumulating within a few minutes.',
-    'monitoring.checking': 'Reading the recorded measurements…',
-    'monitoring.unknown': 'The recorded measurements could not be read from the server, so no charts are shown. This does not mean nothing was recorded. Nothing was changed. Try again.',
 
     'f2b.tab.jails': 'Jails',
     'f2b.tab.banned': 'Banned IPs',

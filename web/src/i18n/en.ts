@@ -68,6 +68,7 @@ import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
 import type { HostNameScreenKey } from './screens/hostName/en';
 import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
+import type { MonitoringScreenKey } from './screens/monitoring/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -567,5 +568,6 @@ export type ScreenKey =
     | RuntimeAppsScreenKey
     | HostNameScreenKey
     | RemovalRuleScreenKey
-    | ComponentInstallScreenKey;
+    | ComponentInstallScreenKey
+    | MonitoringScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

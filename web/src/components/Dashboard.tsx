@@ -4,6 +4,7 @@ import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
 import { DashboardUpdateNotice } from './PanelUpdateNotice';
 import { PendingUpdatesCard } from './PendingUpdatesCard';
+import { ProblemsNow } from './ProblemsNow';
 import { ServerHostnameNotice } from './ServerHostnameNotice';
 import { accountStart } from '../lib/startGuidance';
 import {
@@ -313,6 +314,16 @@ async function fetchHostMutationReadiness(): Promise<HostMutationReadiness> {
         return { ready: false, code: 'HOST_MUTATION_UNAVAILABLE', reason: 'state_unverified' };
     }
 }
+
+// alpha.126: "Problems now", the list Monitoring opens with (a chunk the two
+// lazily loaded screens share, never the boot path). The Dashboard leaves out
+// what its own cards already show: stopped services and certificates (Needs
+// attention) and security updates (the updates card).
+// alpha.126: "Şu anki sorunlar"; panonun kendi kartlarının gösterdikleri
+// dışarıda bırakılır.
+const DASHBOARD_SHOWS_ELSEWHERE = [
+    'service_stopped', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring', 'security_updates',
+] as const;
 
 export function Dashboard() {
     const { role } = useAuth();
@@ -979,6 +990,10 @@ function AdminDashboard() {
                 title={t('dashboard.title')}
                 subtitle={stats ? `${stats.hostname} · ${t('dashboard.uptimeFor', { time: fmtUptime(stats.uptime_seconds, t) })}` : undefined}
             />
+
+            {/* alpha.126: problems now (disk, sustained load, mail queue) at
+                the top, each with its fix; nothing when there is none. */}
+            <ProblemsNow omit={DASHBOARD_SHOWS_ELSEWHERE} quiet />
 
             {/* A newer signed release, when the Panel found one: one quiet row
                 at the top, not an attention item (D-035).

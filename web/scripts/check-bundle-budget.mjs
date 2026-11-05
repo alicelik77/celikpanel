@@ -259,6 +259,11 @@ const screenPartBudgets = {
   // (critical boot path). A new part, set with at least 25% headroom from its
   // Turkish file.
   componentInstall: kib(12, 4.5),
+  // v0.1.0-alpha.126: the Monitoring page (monitoring., moved from
+  // "security") and the "Problems now" list on Monitoring and the Dashboard
+  // (pnow.). A new part, set with at least 25% headroom from its Turkish
+  // file: 5.76 / 2.06 KiB.
+  monitoring: kib(8, 3),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
