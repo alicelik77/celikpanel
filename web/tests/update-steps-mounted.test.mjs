@@ -279,6 +279,11 @@ for (const locale of ['en', 'tr']) {
             for (const key of ['download', 'verify', 'prepare', 'restart', 'confirm']) assert.ok(text.includes(c[`panelUpdate.steps.${key}`]));
             assert.doesNotMatch(text, ALARM);
             assert.ok(!text.includes(c['panelUpdate.steps.restarting']), 'the restart sentence only on the restart step');
+            // a124 lab: the server check may wait for a server change that is
+            // still finishing; it says so, calmly, under that step only.
+            const prepareNote = renderer.root.find(node => node.props?.['data-update-prepare-note'] !== undefined);
+            assert.equal(textOf(prepareNote), c['panelUpdate.steps.prepareWaits']);
+            assert.match(c['panelUpdate.steps.prepareWaits'], locale === 'tr' ? /Bir şey yapmanız gerekmiyor/ : /Nothing needs to be done/);
         } finally { await act(async () => renderer.unmount()); }
     });
 
@@ -302,6 +307,7 @@ for (const locale of ['en', 'tr']) {
             assert.doesNotMatch(String(restartBar.props.className), /update-step-still/);
             const note = renderer.root.find(node => node.props?.['data-update-restart-note'] !== undefined);
             assert.equal(textOf(note), c['panelUpdate.steps.restarting']);
+            assert.equal(renderer.root.findAll(node => node.props?.['data-update-prepare-note'] !== undefined).length, 0);
             assert.equal(en['panelUpdate.steps.restarting'], 'The panel is restarting; this step can take a few minutes. This page reconnects by itself.');
             const text = textOf(renderer.toJSON());
             assert.doesNotMatch(text, ALARM);
@@ -438,8 +444,9 @@ for (const locale of ['en', 'tr']) {
 
 test('every step string exists in English and Turkish, and the Turkish is not the English', () => {
     const keys = Object.keys(en).filter(key => key.startsWith('panelUpdate.steps.'));
-    // 13 + retrying state, its two notes and the repeated-step line (2026-10-16).
-    assert.equal(keys.length, 17);
+    // 13 + retrying state, its two notes and the repeated-step line (2026-10-16)
+    // + the server check's wait note (alpha.125).
+    assert.equal(keys.length, 18);
     for (const key of keys) {
         assert.equal(typeof tr[key], 'string', key);
         assert.notEqual(tr[key], en[key], key);

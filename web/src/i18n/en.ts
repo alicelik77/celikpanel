@@ -228,6 +228,7 @@ export const en = {
     'panelUpdate.steps.prepare': 'Check the server before installing',
     'panelUpdate.steps.restart': 'Install the new version and restart the panel',
     'panelUpdate.steps.confirm': 'Verify the new version',
+    'panelUpdate.steps.prepareWaits': 'If another server change is still finishing, the update waits for it (up to a minute), then continues by itself. Nothing needs to be done.',
     'panelUpdate.steps.restarting': 'The panel is restarting; this step can take a few minutes. This page reconnects by itself.',
     'panelUpdate.steps.locked': 'Other pages stay locked while the update runs.',
     'panelUpdate.steps.updated': 'Updated to {version}',
