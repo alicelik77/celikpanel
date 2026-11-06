@@ -11,6 +11,13 @@ import (
 	"github.com/alicelik/celikpanel/internal/recoveryruntime"
 )
 
+// launcherFailureGuidance follows the unchanged first line, which journals and
+// lab harnesses already match. It names who acts, what to do and how it resumes.
+// Seçili kurtarma girişi doğrulanamadığında kimin ne yapacağını ve nasıl
+// devam edileceğini söyler; ilk satır değişmez.
+const launcherFailureGuidance = "No recovery step was started. If this repeats while no update is running, the server owner should leave the recovery files unchanged and run: sudo /usr/libexec/celikpanel/recovery runtime-status --lang en. The recovery timer checks again about every 30 seconds and clears this failure by itself once the selected kit verifies.\n" +
+	"Hiçbir kurtarma adımı başlatılmadı. Güncelleme çalışmıyorken bu tekrarlanırsa sunucu sahibi kurtarma dosyalarını değiştirmeden şunu çalıştırmalıdır: sudo /usr/libexec/celikpanel/recovery runtime-status --lang tr. Kurtarma zamanlayıcısı yaklaşık 30 saniyede bir yeniden denetler; seçili kit doğrulandığında bu hata kendiliğinden kalkar."
+
 // Native root or authorized sudo remains the recovery principal. The optional
 // owner view is loopback-only, temporary and read-only; it cannot dispatch work.
 func runEntry(args []string) int {
@@ -50,6 +57,7 @@ func runEntry(args []string) int {
 	if os.Geteuid() == 0 && launcherDispatchCommand(args) {
 		if err := dispatchLauncher(args); err != nil {
 			fmt.Fprintln(os.Stderr, "The selected recovery entry could not be verified. Preserve its evidence. "+err.Error())
+			fmt.Fprintln(os.Stderr, launcherFailureGuidance)
 			return exitUnavailable
 		}
 	}

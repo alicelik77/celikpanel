@@ -202,3 +202,66 @@ The subsequent [Debian AL budget acceptance](../deploy/e2e/release-recovery/DISP
 passes new-kit selection, interrupted reservations across a reboot, exhaustion and
 one supported owner retry. Publication-edge faults, browser budget guidance and
 the full P0 matrix remain open.
+
+## Idle watchdog runs and the hourly kit check (alpha.126)
+
+The native timer starts `/usr/libexec/celikpanel/release-recovery` about every
+31 seconds. Until alpha.125 every run verified the whole selected kit (several
+SHA-256 passes over ~45 MB, two Go and two bash starts) even with nothing
+pending: 0.35–1.3 s of CPU per run in the lab, about 18–58 CPU-minutes a day,
+and short bursts that the Monitoring CPU sample could catch as false spikes.
+
+**Fast path.** The runner now exits at its first lines, using bash builtins only,
+when all of these hold: it was started without arguments and is not the kit
+entry; `/var/lib/celikpanel-release-transaction` is absent or holds exactly one
+regular `transaction.lock`; `recovery-promotions/v1/current` is absent or holds
+exactly the committed `intent.json` and `committed.json` (a committed promotion
+stays there until the next promotion; the full path also reports it as not
+pending); and `/run/celikpanel-release-recovery/idle-verified` says the full path
+verified "nothing pending" in this boot, for the currently selected kit, less
+than an hour ago. Any marker, any other or unreadable entry, a symbolic link, an
+unfinished promotion, a changed selection or a missing, stale or foreign stamp
+falls through to the unchanged full path. Owner retry and final proof never use
+the fast path. The fast path writes nothing, takes no lock and starts nothing.
+
+**Integrity check.** Only the full path writes the stamp, at its verified
+"nothing pending" exits and under the release lock. `/run` is empty after every
+boot, so the first runs of each boot and at least one run an hour verify the kit
+completely. A failed verification writes no stamp, so every following run is a
+full one and fails again, and the unit stays failed. The journal keeps the
+existing first line ("The selected recovery entry could not be verified.
+Preserve its evidence.") and now adds, in English and Turkish, that no recovery
+step was started, that the server owner should leave the files unchanged and run
+`sudo /usr/libexec/celikpanel/recovery runtime-status`, and that the timer clears
+the failure by itself once the kit verifies. Kit corruption that happens between
+two full checks is found at the next one (at most an hour later, or at the next
+boot); a pending transaction never waits for that, because a marker always takes
+the full path.
+
+**Fewer repeat hashes.** When recovery really runs, the kit entry no longer
+repeats the full proof that `Resolve` has just finished, and the launcher no
+longer hashes the selected executable again between two full revalidations.
+The launcher's remaining bracketing passes and the kit's own check after `exec`
+are unchanged (the executed kit receives no proof descriptors).
+
+**Transition.** Only the runner bytes and the kit's Go binary change. The runner
+is published through the existing monotonic foundation step of `update.sh`; unit
+files, the foundation manifest format, the kit protocol and the database are
+unchanged. A rollback keeps this runner, because the foundation is never restored
+from a snapshot. A selected kit from an older release never writes the stamp, so
+its runs simply stay full.
+
+**Evidence.** `deploy/test-release-recovery-contract.sh` runs every one of the 15
+marker combinations, unexpected names, dot files, directories, lock, root and
+promotion variants, stale, future, foreign and malformed stamps, a changed
+selection, owner retry, final proof and the kit entry; each reaches the full
+path, and the idle check passes with no `PATH` at all. In a lab Debian 13 guest
+(2 vCPU with SHA extensions, shipped unit and timer, real kit) idle runs took
+349–397 ms CPU before and 11–15 ms after (1161–1291 ms → 11–12 ms with Go's SHA
+extensions disabled); a full run fell to 304–317 ms (847–866 ms). One native
+reboot with a pending `active` marker and a fresh stamp ran the full path at boot
+(7.2 s after boot, 408 ms CPU, reaching the marker's snapshot check) and on each
+timer retry; after the marker was removed the next run wrote the stamp. A corrupted
+kit byte failed every full run until the byte was restored. That trial used a
+marker without a snapshot: it proves the boot dispatch, not a completed rollback
+body. The wider P0.2/P0.3 matrix and an event-driven path unit remain open.

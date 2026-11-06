@@ -1249,9 +1249,10 @@ func (runtime *Runtime) execSelectedAt(args []string, transaction string) error 
 	if executable == nil {
 		return fail(ReasonMissing)
 	}
-	if err := executable.verifyContents(); err != nil {
-		return err
-	}
+	// The Revalidate just above hashed every pinned kit file, this executable
+	// included, and the final Revalidate below repeats that proof after the
+	// descriptor change and immediately before exec. A separate hash of the
+	// same pinned executable in between adds no boundary.
 	// Resolve may itself own FD 9 when the caller did not supply it. Preserve
 	// CLOEXEC for those descriptors. An unrelated inherited descriptor is also
 	// left unchanged; only the proven native release lock gets CLOEXEC cleared.

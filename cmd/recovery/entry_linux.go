@@ -15,9 +15,10 @@ func runSelectedRuntime(args []string) error {
 		return err
 	}
 	defer runtime.Close()
-	if err := runtime.Revalidate(); err != nil {
-		return err
-	}
+	// Resolve ends with the complete final proof (directories, inventory and
+	// every payload digest) and nothing runs between it and this point, so a
+	// second identical pass here would only hash the same pinned kit again.
+	// Resolve, son tam kanıtla biter; aynı kiti burada ikinci kez özetlemeyiz.
 	entry := filepath.Join(runtime.Root, "deploy/recovery/runtime-entry.sh")
 	// The clean environment cannot smuggle a target path, test root, alternate
 	// binary or new operation into the executor. It classifies and locks the
