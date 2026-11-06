@@ -160,6 +160,16 @@ confirmActionModule.registerConfirmHost(async (request) => {
   return true;
 });
 
+// alpha.127: the real steps of a change, read from the server while it runs
+// (lib/requestProgress.ts): the shipped module, with the shipped confirmation,
+// refusal reader and request identity.
+export const requestProgressURL = compileSource('lib/requestProgress.ts', (specifier) => (
+  specifier.endsWith('/apiError') ? apiErrorURL
+    : specifier.endsWith('/confirmAction') ? confirmActionURL
+      : specifier.endsWith('/requestIdentity') ? requestIdentityURL
+        : unexpected('lib/requestProgress.ts')(specifier)
+));
+
 // A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
 // test that mounts the screen: the compiled module, with that one import
 // pointed at `replacementURL`. Any other lazy import is left as it is.
@@ -212,6 +222,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/installPlan': installPlanURL,
     '/lib/confirmAction': confirmActionURL,
     '/lib/useRefusal': useRefusalURL,
+    '/lib/requestProgress': requestProgressURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/lib/passwordPolicy': passwordPolicyURL,

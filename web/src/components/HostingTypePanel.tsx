@@ -14,7 +14,8 @@ import { AppAccountLine } from './AppAccountLine';
 import { NodeSiteSandbox } from './NodeSiteSandbox';
 import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationReport } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -118,12 +119,16 @@ export function HostingTypePanel({ domainId, domainName }: { domainId: number; d
         const unsupported = form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version
             ? supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose')
             : '';
-        const proceed = async () => {
+        // The change runs in the locked progress window with the server's
+        // steps (alpha.127): a confirmed change in the question's own window,
+        // otherwise in one opened for it.
+        const proceed = async (report: OperationReport) => {
             setSaving(true);
             try {
-                const res = await answer.send(`/api/v1/domains/${domainId}/hosting`, {
+                const res = await sendWithSteps(report, flowSteps(t, 'hosting', ['check!', 'switch']), t, `hosting.${domainId}`,
+                    (headers) => answer.send(`/api/v1/domains/${domainId}/hosting`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...headers },
                     body: JSON.stringify(form),
                 }, {
                     // If the answer is lost and the settings read again are still
@@ -133,7 +138,7 @@ export function HostingTypePanel({ domainId, domainName }: { domainId: number; d
                     // o yeni yanıtın üzerine geri konur.
                     shows: (read) => showsHosting(before, read[0].value as HostingState, form),
                     notMade: (read) => setEdit({ from: read[0].observedAt, value: form }),
-                });
+                }));
                 if (!res) return;
                 if (!res.ok) {
                     showToast('error', apiErrorText(await readApiError(res), t));
@@ -146,11 +151,12 @@ export function HostingTypePanel({ domainId, domainName }: { domainId: number; d
                 setSaving(false);
             }
         };
+        const progressTitle = t('opstep.hosting.title', { name: domainName });
         if (!(unsupported)) {
-            await proceed();
+            await followOperation({ progressTitle, action: proceed });
             return;
         }
-        await confirmAction({ message: unsupported, action: proceed });
+        await confirmAction({ message: unsupported, progressTitle, action: proceed });
     };
 
     return (

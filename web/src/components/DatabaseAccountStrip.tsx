@@ -7,6 +7,7 @@ import { useLostAnswer } from '../lib/lostAnswer';
 import type { Remote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // R-065. CelikPanel opens an account of its own on a database engine and
 // connects as that, so the operator's own root is never touched. That is only
@@ -122,12 +123,12 @@ export function DatabaseAccountStrip({
 
     const remove = async () => {
         await confirmAction({ message: t('databases.account.confirmRemove'), confirmLabel: t('common.remove'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 setBusy(true);
                 try {
-                    const res = await fetch(`${API_BASE}/database-servers/${server.id}/admin-account`, {
-                        method: 'DELETE',
-                    });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'adminRemove', ['check!', 'remove', 'records']), t, `adminRemove.${server.id}`,
+                        (headers) => fetch(`${API_BASE}/database-servers/${server.id}/admin-account`, { method: 'DELETE', headers }));
                     if (!res.ok) throw new Error();
                     showToast('success', t('databases.account.removed'));
                     void onChanged();

@@ -207,6 +207,14 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		// a socket path. Then require the exact managed version reported by the
 		// agent; even a no-op switch to the stored version fails closed when that
 		// version is no longer discoverable.
+		// alpha.127: the progress window follows these steps
+		// (operation_steps.go); a save of the same version only records it.
+		if req.PHPVersion != phpVersion {
+			reportOperationPlan(r.Context(), "check", "pool", "save", "web_server")
+		} else {
+			reportOperationPlan(r.Context(), "check", "save")
+		}
+		reportOperationStep(r.Context(), "check")
 		if err := services.ValidatePHPVersion(req.PHPVersion); err != nil {
 			writeClientError(w, http.StatusBadRequest, "invalid PHP version")
 			return
@@ -252,6 +260,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 			site.PHPVersion = phpVersion
+			reportOperationStep(r.Context(), "pool")
 			switchReq := p.sitePoolRequest(r.Context(), site, transport.SitePoolOperationSwitch)
 			switchReq.NewPHPVersion = req.PHPVersion
 			if _, err := p.applySitePool(r.Context(), site, switchReq); err != nil {
@@ -265,6 +274,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 			// host with one unversioned PHP-FPM is not where the pool listens.
 			// Soket, Agent'ın havuzu az önce yazdığı sokettir: aynı sunucuda
 			// aynı fonksiyon.
+			reportOperationStep(r.Context(), "save")
 			newSocket := services.PHPFPMSocketPath(req.PHPVersion, poolName)
 			updateQuery := `UPDATE sites SET php_version = ?, php_fpm_socket = ?, updated_at = datetime('now') WHERE domain_id = ?`
 			_, err = p.db.GetDB().ExecContext(context.Background(), updateQuery, req.PHPVersion, newSocket, domainID)
@@ -284,6 +294,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 				// emergency leaves its maintenance list; the render below
 				// shows the site again.
 				p.noteEmergencySiteMoved(r.Context(), domainID)
+				reportOperationStep(r.Context(), "web_server")
 				if verr := p.applySiteVhost(r.Context(), domainID); verr != nil {
 					log.Printf("vhost regen after php switch (domain %d): %v", domainID, verr)
 					writeServerError(w, verr)
@@ -292,6 +303,7 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 			}
 		} else {
 			// Just update version in DB (no migration needed)
+			reportOperationStep(r.Context(), "save")
 			updateQuery := `UPDATE sites SET php_version = ?, updated_at = datetime('now') WHERE domain_id = ?`
 			_, err = p.db.GetDB().ExecContext(context.Background(), updateQuery, req.PHPVersion, domainID)
 		}

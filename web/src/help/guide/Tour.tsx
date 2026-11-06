@@ -85,7 +85,9 @@ export function Tour({ onFinish, onSkip }: { onFinish: () => void; onSkip: () =>
     }
 
     return (
-        <div className="fixed inset-0 z-[70]" data-tour-overlay="">
+        // Below the stacked question/progress window (z-60): an operation
+        // window always stays on top (alpha.127).
+        <div className="fixed inset-0 z-[55]" data-tour-overlay="">
             {target ? (
                 <div
                     aria-hidden="true"

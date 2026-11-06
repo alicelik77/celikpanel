@@ -10956,3 +10956,45 @@ yanıtlar (`cmd/panel/component_install_together.go`, `GET
   üzerindeki PHP araçlarını da, taşınacakları kendi sayfalarına bağlantıyla adlandırır.
 
 Şema değişmedi; geçiş yok. Laboratuvar denetimi bekliyor (D-025).
+
+## Süren bir değişikliğin gerçek adımları (alpha.127, 2026-11-06)
+
+Sahibin 6 Kasım 2026 kesin emri: iş sürerken sayfa kilitlenir ve bitene dek ne
+yapıldığını adım adım söyler. alpha.126 alan adı silmeye gerçek adımlarını verdi;
+diğer onaylı değişiklikler tek "Sunucuda çalışılıyor…" adımı gösteriyordu.
+alpha.127, istek kimliğiyle (D-029) çalışan değişikliğin adımları için tek ortak
+depo ekler: `cmd/panel/operation_steps.go`.
+
+- İşleyici planını ve başladığı adımı söyler (`reportOperationPlan`,
+  `reportOperationStep`). Adımlar kısa, sabit kodlardır; sözcükleri ekranındır
+  (`web/src/lib/requestProgress.ts`, `opsteps` metin parçası).
+- `GET /api/v1/operation-progress/{istek kimliği}` yalnız değişikliği gönderen
+  kişiye yanıt verir: `running` (plan, adım, başladığı an), `done` (yanıtın durum
+  kodu ve koruma sakladıysa yanıtın kendisi), `unknown` (çalıştıran süreç artık
+  yok). Yalnız belleği ve saklanan satırı okur; hiçbir şeyi başlatmaz, yinelemez
+  ya da yeniden yazmaz. Tek seferlik gizli bilgi asla döndürülmez.
+- Değişikliğin kendi yanıtı bittiği adımı taşır (`X-CelikPanel-Operation-Step`).
+  Hiçbir şey değişmeden önceki bir denetimdeki ret, eksik önkoşul olarak; diğer
+  ret, o adımdaki hata olarak gösterilir; kaybolan yanıtta adım "bilinmiyor"dur.
+- Kimlik, değişiklik sürerken sekmenin oturumunda tutulur; sayfa yenilenirse
+  kilitli pencere sunucunun adımında yeniden açılır ve nasıl bittiğini söyler.
+- Adımlar yalnız bellektedir, kanıt olarak saklanmaz: yeniden başlatmada istekle
+  birlikte gider; satır sonucu bilinmiyor diye söyler.
+
+Akışlar: sertifika isteği, yedekten geri yükleme, yedek oluşturma (artık kilitli
+pencerede), PHP sürümü değiştirme, uygulama kurulumu ve WordPress araçları (kendi
+kalıcı durumlarıyla). Kimlikle gönderilen PHP sürümü değişikliği artık korumalıdır
+(başlıksız istek eskisi gibi çalışır). İlk giriş turu, soru ya da ilerleme penceresi
+açıkken bekler ve onun altında durur.
+
+Aynı sürüm diğer onaylı değişiklikleri de sunucunun bildirdiği adımlara geçirir
+(`cmd/panel/operation_step_routes.go`, isteğe bağlı korumalı rotalar): sertifika
+yükleme ve kaldırma, posta şifrelemesi (artık kilitli pencerede), DNS kaydı ekleme
+ve silme (ekleme artık kilitli pencerede), PowerDNS onarımı, php.ini, barındırma
+türü, hizmet başlat/durdur/yeniden başlat, kötü amaçlı yazılım karantina/geri
+koyma/silme, veritabanı ve veritabanı kullanıcısı silme, CelikPanel'in veritabanı
+hesabı ve hesap silme (ekip üyesi silme sunucuda adımını bildirir; sayfası
+açılış yolunu büyütmemek için tek genel adımı korur). Kısa değişiklikler iki üç gerçek adımını
+korur; ekran tek başına adım çizmez. Bunlarda sayfa yenilenince pencere henüz
+yeniden açılmaz (değişiklik sunucuda sürer, sayfa sonucunu gösterir); alan adı
+silme kendi adım deposunu ve deletion_already_running kuralını korur.

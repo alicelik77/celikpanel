@@ -1398,6 +1398,9 @@ func (p *Panel) handlePDNSEnable(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "configure", "sync")
+	reportOperationStep(r.Context(), "check")
 	if err := p.requireActivePowerDNSPublisher(r.Context()); err != nil {
 		writeDNSEngineWorkflowRequired(w)
 		return
@@ -1424,6 +1427,7 @@ func (p *Panel) handlePDNSEnable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var resp transport.SyncDNSZoneResponse
+	reportOperationStep(r.Context(), "configure")
 	err := p.withStandaloneAgentMutation(r.Context(), "pdns_configure", "pdns", "", func(callCtx context.Context, binding agentMutationBinding) error {
 		req := transport.ServiceMutationRequest{ServiceMutationBinding: binding}
 		if err := p.callAgentContext(callCtx, "Agent.ConfigurePowerDNSSQLite", &req, &resp); err != nil {
@@ -1462,6 +1466,7 @@ func (p *Panel) handlePDNSEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reportOperationStep(r.Context(), "sync")
 	dnsPublicationMu.Lock()
 	result, err := p.syncAllZonesLocked(r.Context())
 	dnsPublicationMu.Unlock()

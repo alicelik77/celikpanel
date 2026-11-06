@@ -607,6 +607,9 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 				return
 			}
 		}
+		// alpha.127: the progress window follows these steps (operation_steps.go).
+		reportOperationPlan(r.Context(), "check", "mail_tls", "tlsa")
+		reportOperationStep(r.Context(), "check")
 		if err := p.authorizeAgentRPCContext(r.Context(), "Agent.SyncMailTLSV2"); err != nil {
 			writeAgentError(w, err, "mail TLS V2 platform preflight")
 			return
@@ -630,6 +633,7 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 			writeClientError(w, http.StatusConflict, "the domain has no active certificate — install one first")
 			return
 		}
+		reportOperationStep(r.Context(), "mail_tls")
 		if err := p.resyncMailTLSForState(r.Context(), domainID, req.SecureMail); err != nil {
 			if mutationTerminalUncertain(err) {
 				writeServerError(w, fmt.Errorf(
@@ -657,6 +661,7 @@ func (p *Panel) handleDomainSSLMail(w http.ResponseWriter, r *http.Request, doma
 		}
 		// DANE follows the toggle: publish TLSA when securing, drop when not.
 		// DANE anahtarı izler: korurken TLSA yayımla, korumuyorken düşür.
+		reportOperationStep(r.Context(), "tlsa")
 		if err := p.refreshTLSARecords(r.Context(), domainID); err != nil {
 			rollbackCtx, cancel := sslCompensationContext()
 			defer cancel()

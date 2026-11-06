@@ -17,6 +17,7 @@ import { useRefusal } from '../lib/useRefusal';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
 // Tek API yüzeyi (B1, 18 Tem): eski /api/v2 artık /api/v1 altında.
@@ -138,9 +139,11 @@ export function DatabaseManagementV2() {
 
     const handleDeleteDatabase = async (id: number, name: string) => {
         await confirmAction({ message: t('databases.confirmDeleteDb', { name }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 try {
-                    const res = await fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE' });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'dbDelete', ['check!', 'delete', 'records'], { name }), t, `dbDelete.${id}`,
+                        (headers) => fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE', headers }));
                     if (!res.ok) { refuse(await readApiError(res), 'databases.deleteDbFailed'); return; }
                     setRefusal(null);
                     showToast('success', t('databases.dbDeleted'));
@@ -156,9 +159,10 @@ export function DatabaseManagementV2() {
 
     const handleDeleteUser = async (id: number, name: string) => {
         await confirmAction({ message: t('databases.confirmDeleteUser', { name }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 try {
-                    const res = await fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE' });
+                    const res = await sendWithSteps(report, flowSteps(t, 'dbUserDelete', ['check!', 'delete', 'records'], { name }), t, `dbUserDelete.${id}`,
+                        (headers) => fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE', headers }));
                     if (!res.ok) { refuse(await readApiError(res), 'databases.deleteUserFailed'); return; }
                     setRefusal(null);
                     showToast('success', t('databases.userDeleted'));

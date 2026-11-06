@@ -571,6 +571,9 @@ func (p *Panel) publishDNSMutation(w http.ResponseWriter, ctx context.Context, d
 const dnsSavedNotPublishedMessage = "the DNS change is saved, but it could not be published or verified; check the exact DNS operation and retry the same publication"
 
 func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "save", "publish")
+	reportOperationStep(r.Context(), "check")
 	var request dnsRecordCreateRequest
 	if !decodeDNSRequest(w, r, &request) {
 		return false
@@ -636,6 +639,7 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 		return false
 	}
 
+	reportOperationStep(r.Context(), "save")
 	result, err := tx.ExecContext(r.Context(), `
 		INSERT INTO pdns_records (domain_id, name, type, content, ttl, prio)
 		VALUES (?, ?, ?, ?, ?, ?)`,
@@ -654,6 +658,7 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 		writeServerError(w, fmt.Errorf("commit DNS record: %w", err))
 		return false
 	}
+	reportOperationStep(r.Context(), "publish")
 	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
 	if !ok {
 		return false
@@ -665,6 +670,9 @@ func (p *Panel) handleAddDNSRecord(w http.ResponseWriter, r *http.Request, domai
 }
 
 func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "save", "publish")
+	reportOperationStep(r.Context(), "check")
 	recordID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil || recordID <= 0 {
 		writeClientError(w, http.StatusBadRequest, "invalid DNS record ID")
@@ -706,6 +714,7 @@ func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, do
 		writeInfrastructureDNSRecordManagedBySetup(w)
 		return false
 	}
+	reportOperationStep(r.Context(), "save")
 	result, err := tx.ExecContext(r.Context(),
 		`DELETE FROM pdns_records WHERE id = ? AND domain_id = ?`, recordID, zoneID)
 	if err != nil {
@@ -725,6 +734,7 @@ func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, fmt.Errorf("commit DNS record deletion: %w", err))
 		return false
 	}
+	reportOperationStep(r.Context(), "publish")
 	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
 	if !ok {
 		return false
@@ -736,6 +746,9 @@ func (p *Panel) handleDeleteDNSRecord(w http.ResponseWriter, r *http.Request, do
 }
 
 func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, domainName string) bool {
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "save", "publish")
+	reportOperationStep(r.Context(), "check")
 	var request dnsRecordUpdateRequest
 	if !decodeDNSRequest(w, r, &request) {
 		return false
@@ -792,6 +805,7 @@ func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, do
 		writeClientError(w, http.StatusBadRequest, err.Error())
 		return false
 	}
+	reportOperationStep(r.Context(), "save")
 	result, err := tx.ExecContext(r.Context(), `
 		UPDATE pdns_records
 		SET content = ?, ttl = ?, prio = ?, disabled = ?
@@ -815,6 +829,7 @@ func (p *Panel) handleUpdateDNSRecord(w http.ResponseWriter, r *http.Request, do
 		writeServerError(w, fmt.Errorf("commit DNS record update: %w", err))
 		return false
 	}
+	reportOperationStep(r.Context(), "publish")
 	publication, ok := p.publishDNSMutation(w, r.Context(), domainName)
 	if !ok {
 		return false

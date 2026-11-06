@@ -279,6 +279,14 @@ const screenPartBudgets = {
   // administrator's move under Components → Node.js and the site's install
   // step. A new part, set with at least 25% headroom from its Turkish file.
   nodeSandbox: kib(12, 4.5),
+  // v0.1.0-alpha.127: the real steps of the progress window - certificate,
+  // backup restore and creation, PHP version, application install and
+  // WordPress tools (opstep.), and the other confirmed changes' steps
+  // (certificate upload/removal, mail encryption, DNS records, PowerDNS
+  // repair, php.ini, hosting type, services, malware, database and account
+  // deletion). A new part, set with at least 25% headroom from its Turkish
+  // file: 6.3 / 1.92 KiB.
+  opsteps: kib(8.5, 2.6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

@@ -11,7 +11,8 @@ import { useNavigate } from '../router';
 import { countText, decodeListIn, invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import type { TranslationKey } from '../i18n/en';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationReport } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 interface DNSRecord {
     id: number;
@@ -265,6 +266,14 @@ export function DomainDNSManager({
     const addRecord = async () => {
         if (!canChange || !recordsKnown || records.remote.state !== 'known') return;
         setMutatingRecord(true);
+        // A record change runs in the locked progress window with the server's
+        // steps: check, save, publish to the DNS servers (alpha.127).
+        await followOperation({ progressTitle: t('opstep.dns.saveTitle', { name: domainName }), action: (report) => addRecordIn(report) });
+        setMutatingRecord(false);
+    };
+
+    const addRecordIn = async (report: OperationReport) => {
+        if (records.remote.state !== 'known') return;
         try {
             // If the answer is lost, the records that are read again decide
             // what the form does: a new row that is this record closes and
@@ -276,9 +285,9 @@ export function DomainDNSManager({
             const sent = { name: newName, type: newType, content: newContent, ttl: newTTL, prio: newPrio };
             const before = records.remote.value;
             const form = typed.current;
-            const res = await answer.send(`${api}/records`, {
+            const res = await sendWithSteps(report, dnsSteps(), t, `dns.${domainName}`, (headers) => answer.send(`${api}/records`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...headers },
                 body: JSON.stringify(sent),
             }, {
                 shows: (read) => (read.length === 2 ? showsNewRecord(before, read[1].value as DNSRecord[], sent, domainName) : null),
@@ -287,7 +296,7 @@ export function DomainDNSManager({
                     setShowAddForm(false);
                     setNewContent('');
                 },
-            });
+            }));
             if (!res) return;
             if (!res.ok) {
                 await refused(res, 'dns.recordAddFailed');
@@ -304,13 +313,17 @@ export function DomainDNSManager({
         }
     };
 
+    const dnsSteps = () => flowSteps(t, 'dns', ['check!', 'save', 'publish']);
+
     const deleteRecord = async (id: number) => {
         if (!canChange || !recordsKnown) return;
         await confirmAction({ message: t('dns.confirmDelete'), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            progressTitle: t('opstep.dns.deleteTitle', { name: domainName }),
+            action: async (report) => {
                 setMutatingRecord(true);
                 try {
-                    const res = await answer.send(`${api}/records?id=${id}`, { method: 'DELETE' });
+                    const res = await sendWithSteps(report, dnsSteps(), t, `dns.${domainName}`,
+                        (headers) => answer.send(`${api}/records?id=${id}`, { method: 'DELETE', headers }));
                     if (!res) return;
                     if (!res.ok) {
                         await refused(res, 'dns.recordDeleteFailed');

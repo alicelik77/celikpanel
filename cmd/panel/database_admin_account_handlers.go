@@ -273,6 +273,9 @@ func (p *Panel) handleRevealDatabaseAdminAccountPassword(w http.ResponseWriter, 
 //
 // handleRemoveDatabaseAdminAccount, panelin hesabini motordan kaldirir.
 func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.Request) {
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "remove", "records")
+	reportOperationStep(r.Context(), "check")
 	server, ok := p.loadDatabaseServerForAdminAccount(w, r)
 	if !ok {
 		return
@@ -293,6 +296,7 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 	}
 
 	var resp transport.RemoveDatabaseAdminAccountResponse
+	reportOperationStep(r.Context(), "remove")
 	if err := p.callAgentContext(r.Context(), "Agent.RemoveDatabaseAdminAccount",
 		&transport.RemoveDatabaseAdminAccountRequest{Engine: server.TypeName, Port: databaseAdminAccountPort(server)},
 		&resp); err != nil {
@@ -307,6 +311,7 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 	server.AdminUsername = ""
 	server.AdminPasswordEncrypted = ""
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
+	reportOperationStep(r.Context(), "records")
 	if err := serverRepo.Update(r.Context(), server); err != nil {
 		writeServerError(w, err)
 		return

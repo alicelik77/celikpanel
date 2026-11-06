@@ -1743,6 +1743,8 @@ func main() {
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
 	http.HandleFunc(malwarePath, panel.handleMalware)
+	// alpha.127: the live step of a change this person sent (read only).
+	http.HandleFunc(operationProgressPath, panel.handleOperationProgress)
 
 	// System SQLite maintenance is a fixed-ID, administrator-only surface.
 	// Sistem SQLite bakımı, sabit kimlikli ve yalnız yöneticiye açık bir yüzeydir.
@@ -2057,6 +2059,9 @@ func (p *Panel) handleServiceAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "action", "refresh")
+	reportOperationStep(r.Context(), "check")
 	var req struct {
 		ServiceName string `json:"service_name"`
 		Name        string `json:"name"`   // Support 'name' from frontend
@@ -2095,6 +2100,7 @@ func (p *Panel) handleServiceAction(w http.ResponseWriter, r *http.Request) {
 	}
 	defer release()
 	var reply transport.ServiceActionResult
+	reportOperationStep(r.Context(), "action")
 	err := p.withStandaloneAgentMutation(r.Context(), "service_"+req.Action, serviceName, "", func(callCtx context.Context, binding agentMutationBinding) error {
 		request := transport.ServiceMutationActionRequest{
 			ServiceMutationBinding: binding,
@@ -2152,6 +2158,7 @@ func (p *Panel) handleServiceAction(w http.ResponseWriter, r *http.Request) {
 	// Eylem gerçek durumu değiştirdi; önbellekteki tarama bayatladı. Burada
 	// tazele — bir bilinçli eylem, bir tarama — sayfalar kendi başına
 	// yoklama yapmadan önbellekten yüklenmeye devam etsin.
+	reportOperationStep(r.Context(), "refresh")
 	if _, err := p.scanManagedServices(r.Context()); err != nil {
 		log.Printf("service scan after %s %s: %v", req.Action, serviceName, err)
 		p.audit(r, "service."+req.Action+".refresh.failed:"+serviceName+" — "+auditReason(err.Error()), "service", 0)

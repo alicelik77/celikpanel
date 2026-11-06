@@ -817,6 +817,9 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 // handleDeleteDatabase deletes a database
 func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(ctx, "check", "delete", "records")
+	reportOperationStep(ctx, "check")
 	// Extract ID from path
 	databaseID, err := getIDFromPath(r.URL.Path)
 	if err != nil {
@@ -851,12 +854,14 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete from server
+	reportOperationStep(ctx, "delete")
 	if err := driver.DeleteDatabase(database.Name); err != nil {
 		writeDatabaseEngineError(w, server, err)
 		return
 	}
 
 	// Delete from PostgreSQL (cascade deletes grants)
+	reportOperationStep(ctx, "records")
 	if err := dbRepo.Delete(ctx, databaseID); err != nil {
 		writeServerError(w, err)
 		return
@@ -1079,6 +1084,9 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 // handleDeleteDatabaseUser deletes a database user
 func (p *Panel) handleDeleteDatabaseV2User(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(ctx, "check", "delete", "records")
+	reportOperationStep(ctx, "check")
 	// Extract ID from path
 	userID, err := getIDFromPath(r.URL.Path)
 	if err != nil {
@@ -1125,12 +1133,14 @@ func (p *Panel) handleDeleteDatabaseV2User(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Delete from server
+	reportOperationStep(ctx, "delete")
 	if err := driver.DeleteUser(user.Username); err != nil {
 		writeDatabaseEngineError(w, server, err)
 		return
 	}
 
 	// Delete from PostgreSQL
+	reportOperationStep(ctx, "records")
 	if err := userRepo.Delete(ctx, userID); err != nil {
 		writeServerError(w, err)
 		return

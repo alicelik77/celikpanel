@@ -485,6 +485,10 @@ func (p *Panel) handleUpdateUser(w http.ResponseWriter, r *http.Request, target 
 }
 
 func (p *Panel) handleDeleteUser(w http.ResponseWriter, r *http.Request, target *core.User) {
+	// alpha.127: one real step - the account is checked for what it still
+	// owns and removed in one transaction (operation_steps.go).
+	reportOperationPlan(r.Context(), "delete")
+	reportOperationStep(r.Context(), "delete")
 	dependencies, deleted, err := p.deleteUserWhenEmpty(r.Context(), target.ID)
 	if err != nil {
 		writeServerError(w, err)

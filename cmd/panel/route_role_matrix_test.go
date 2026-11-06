@@ -268,6 +268,10 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/wordpress/": gateTenant,
 	"/api/v1/malware/":   gateTenant,
 
+	// alpha.127: the live step of a change; only its sender reads it (the
+	// request identity row's actor).
+	"/api/v1/operation-progress/": gateTenant,
+
 	// alpha.118: remote backup destinations are account routes (additional
 	// users never); the handlers check the backups and
 	// remote_backup_destinations rights and keep every-site schedules

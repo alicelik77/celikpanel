@@ -415,6 +415,9 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "delete", "records")
+	reportOperationStep(r.Context(), "check")
 	// Extract domain ID and database ID from URL
 	// /api/v1/domains/:domain_id/databases/:db_id
 	domainID, err := extractDomainID(r.URL.Path, "/api/v1/domains/", "/databases/")
@@ -480,6 +483,7 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		agentReq.Port = serverPort
 	}
 
+	reportOperationStep(r.Context(), "delete")
 	err = p.callAgent("Agent.DeleteDatabase", agentReq, &agentResp)
 	if err == nil && agentResp.Refusal != nil {
 		// alpha.127: the cluster this database lives on does not run (its
@@ -502,6 +506,7 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 
 	// Deleting the database cascades its grants.
 	// Veritabanını silmek yetkilerini de beraberinde siler.
+	reportOperationStep(r.Context(), "records")
 	_, err = tx.ExecContext(ctx, "DELETE FROM databases_v2 WHERE id = ?", dbID)
 	if err != nil {
 		http.Error(w, "Failed to remove database record", http.StatusInternalServerError)

@@ -11018,3 +11018,58 @@ by the same map (`cmd/panel/component_install_together.go`, `GET
   refusal also names the PHP tools on it, each linked to its own page to move it.
 
 Schema unchanged; no migration. Lab checks pending (D-025).
+
+## The real steps of a running change (alpha.127, 2026-11-06)
+
+The owner's firm order of 6 Nov 2026: while work runs, the page is locked and
+says, step by step, what is being done, until it ends. alpha.126 gave domain
+deletion its real steps; every other confirmed change showed one "Working on the
+server…" step. alpha.127 adds one shared store for the steps of a change that
+runs under its request identity (D-029), `cmd/panel/operation_steps.go`:
+
+- The handler names its plan and the step it is starting
+  (`reportOperationPlan`, `reportOperationStep`). Steps are short stable codes;
+  the screen owns their words (`web/src/lib/requestProgress.ts`, copy part
+  `opsteps`).
+- `GET /api/v1/operation-progress/{request id}` answers only the person who sent
+  the change: `running` with the plan, the step and when it began; `done` with the
+  answer's status and, when the guard kept it, the answer; `unknown` when the
+  process that ran it is gone. It reads memory and the stored row only: it never
+  starts, retries or rewrites anything. A one-time secret is never returned.
+- The change's own answer carries the step it ended at
+  (`X-CelikPanel-Operation-Step`). A refusal at a check that runs before anything
+  is changed is shown as an unmet prerequisite; any other refusal as a failure
+  at its step; a lost answer leaves the step "not known".
+- The identity is kept in the tab's session while the change runs, so a reload
+  reopens the locked window at the server's step and says how it ended.
+- The steps are memory only, never saved evidence: a restart drops them with the
+  request, and the row then says the outcome is unknown.
+
+Flows: certificate request (check, the names point here, the web server is
+prepared for the check, asking the authority and proving control, checking the
+new certificate, installing it, reloading the web server, mail TLS), backup
+restore (disk limit, reading and checking the backup, restoring, finishing),
+backup creation (now in the locked window too), PHP version change (check,
+moving the pool, saving, the web server), application install and WordPress
+tools (their own durable status). A PHP version change sent with an identity is
+now guarded (a request without the header runs as before). The first-login tour
+waits while a question or progress window is open and sits below it.
+
+The same release puts the other confirmed changes on their server-reported
+steps too (`cmd/panel/operation_step_routes.go`, optional guarded routes): a
+certificate upload (validate, install, reload, mail) or removal (detach, reload,
+mail), mail encryption (check, mail TLS, TLSA records; now in the locked window),
+DNS record add and delete (check, save, publish; adding now in the locked
+window), PowerDNS repair (check, configure, publish every zone), php.ini (check,
+apply), hosting type (check, switch), service start/stop/restart (check, the
+action and its check, the state read again), malware quarantine/restore/delete
+(check, the action, record), database and database-user deletion (check,
+delete on the engine, records), CelikPanel's own database account (check,
+remove, records), and account deletion (one real step). A team member's
+removal reports its step on the server, but its page keeps the typed API call
+and the single generic step: passing the identity there would grow the boot
+path. Short
+changes keep their two or three real steps; no step is drawn by the screen
+alone. A reload does not yet reopen the window for these (the change goes on
+on the server and the page shows its result); domain deletion keeps its own
+step store and the deletion_already_running rule.
