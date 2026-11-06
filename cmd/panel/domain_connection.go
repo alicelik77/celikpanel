@@ -110,6 +110,12 @@ type connectionCheck struct {
 	// SSL/TLS screen reads it before it offers the request.
 	CertificateNames []certificateNameCheck `json:"certificate_names,omitempty"`
 	CheckedAt        string                 `json:"checked_at"`
+	// Rechecking (alpha.127): the main DNS server's readiness above is its
+	// last verified answer while one check runs again; the screen reads again
+	// shortly. Every public lookup in this answer is live.
+	// Ana DNS sunucusunun hazirligi son bilinen yanittir; ekran kisa sure
+	// sonra yeniden okur. Genel sorgular canlidir.
+	Rechecking bool `json:"rechecking,omitempty"`
 }
 
 type connectionDNSResolver interface {
@@ -128,6 +134,22 @@ type connectionResolverObservation struct {
 	IPs         []string `json:"ips"`
 	Status      string   `json:"status"`
 	SSLReady    bool     `json:"ssl_ready"`
+}
+
+// connectionLookupLimit bounds each group of public lookups of one check
+// (alpha.127); the groups run at the same time. A public resolver answers in
+// well under a second (Boston, 2026-11-06: 10–310 ms), so a resolver that has
+// not answered by then is left out rather than waited for.
+// Her genel sorgu grubunun siniri; gruplar ayni anda kosar.
+const (
+	connectionLookupLimit = 2500 * time.Millisecond
+	connectionQueryLimit  = 2 * time.Second
+)
+
+type remoteDNSAuthorityAnswer struct {
+	authority remoteDNSAuthority
+	view      displayCheckView
+	err       error
 }
 
 // A recheck must not be another question to the same stale ISP cache. Ask
@@ -193,13 +215,13 @@ func observeConnectionResolver(
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		queryCtx, cancel := context.WithTimeout(ctx, 2500*time.Millisecond)
+		queryCtx, cancel := context.WithTimeout(ctx, connectionQueryLimit)
 		defer cancel()
 		nsRecords, nsErr = source.Resolver.LookupNS(queryCtx, name)
 	}()
 	go func() {
 		defer wg.Done()
-		queryCtx, cancel := context.WithTimeout(ctx, 2500*time.Millisecond)
+		queryCtx, cancel := context.WithTimeout(ctx, connectionQueryLimit)
 		defer cancel()
 		addresses, hostErr = source.Resolver.LookupHost(queryCtx, name)
 	}()
@@ -362,17 +384,24 @@ func (p *Panel) handleDomainConnection(w http.ResponseWriter, r *http.Request, d
 		out.RequiredRecords = externalDomainDNSRecords(name, out.ServerIP, out.ServerV6)
 	}
 
+	// Every question below runs at the same time, each with its own short
+	// limit (alpha.127): the main DNS server's readiness (its last verified
+	// answer, display_checks.go), the public resolvers, the advertised
+	// nameservers and the certificate names. They used to run one after
+	// another, about 5–10 s on a joined server.
+	// Asagidaki her soru ayni anda, kendi kisa siniriyla sorulur.
+	var remoteAuthority chan remoteDNSAuthorityAnswer
 	if mode == setupDNSModeExisting {
 		connectionID, err := p.domainRemoteDNSConnectionID(r.Context(), name)
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
-		authority, err := p.remoteDNSConnectionReadiness(r.Context(), connectionID)
-		if err == nil && authority.Ready {
-			out.Nameservers = append([]string(nil), authority.Nameservers...)
-			out.NameserversUsable = true
-		}
+		remoteAuthority = make(chan remoteDNSAuthorityAnswer, 1)
+		go func() {
+			authority, view, err := p.remoteDNSConnectionReadinessForDisplay(r.Context(), connectionID)
+			remoteAuthority <- remoteDNSAuthorityAnswer{authority: authority, view: view, err: err}
+		}()
 	}
 	if ns1, ns2 := p.serverNameservers(r.Context()); mode == setupDNSModeLocal && ns1 != "" && ns2 != "" {
 		out.Nameservers = []string{ns1, ns2}
@@ -396,32 +425,6 @@ func (p *Panel) handleDomainConnection(w http.ResponseWriter, r *http.Request, d
 		}()
 	}
 
-	// Ask independent public caches. A single machine/ISP cache is not "the
-	// real world", especially immediately after a registrar change.
-	lookupCtx, cancelLookup := context.WithTimeout(r.Context(), 4*time.Second)
-	observations := observeConnectionResolvers(lookupCtx, name, publicConnectionResolvers)
-	cancelLookup()
-	if len(observations) == 0 {
-		fallbackCtx, cancelFallback := context.WithTimeout(r.Context(), 3*time.Second)
-		if fallback, ok := observeConnectionResolver(fallbackCtx, name, namedConnectionResolver{
-			Name: "System resolver (fallback)", Resolver: net.DefaultResolver,
-		}); ok {
-			observations = append(observations, fallback)
-		}
-		cancelFallback()
-	}
-	selected, enriched, propagating, known := summarizeConnectionObservations(out, observations)
-	out.ResolverObservations = enriched
-	out.PropagationPending = propagating
-	if known {
-		out.LiveNameservers = selected.Nameservers
-		out.LiveIPs = selected.IPs
-		out.Status = selected.Status
-		out.SSLReady = selected.SSLReady
-	} else {
-		out.Status = "unknown"
-	}
-
 	for _, ns := range out.Nameservers {
 		if strings.HasSuffix(ns, "."+name) {
 			out.GlueNeeded = true
@@ -435,13 +438,66 @@ func (p *Panel) handleDomainConnection(w http.ResponseWriter, r *http.Request, d
 	// veriyor mu? Vermiyorsa "buraya devredin" demek, alan adını bozan bir
 	// tavsiye olurdu. Tam da bu zone'un içindeki glue adları muaftır: devir
 	// oluşmadan çözülemezler, yani yoklukları beklenen bir durumdur, arıza değil.
+	var nameserverFacts chan []nameserverFact
+	if mode == setupDNSModeLocal && len(out.Nameservers) == 2 && !out.GlueNeeded {
+		nameserverFacts = make(chan []nameserverFact, 1)
+		hosts := append([]string(nil), out.Nameservers...)
+		go func() {
+			verifyCtx, cancelVerify := context.WithTimeout(r.Context(), connectionLookupLimit)
+			defer cancelVerify()
+			nameserverFacts <- verifyNameservers(verifyCtx, hosts, out.ServerIP, out.ServerV6)
+		}()
+	}
+
+	// Ask independent public caches. A single machine/ISP cache is not "the
+	// real world", especially immediately after a registrar change.
+	lookupCtx, cancelLookup := context.WithTimeout(r.Context(), connectionLookupLimit)
+	observations := observeConnectionResolvers(lookupCtx, name, publicConnectionResolvers)
+	cancelLookup()
+	if len(observations) == 0 {
+		fallbackCtx, cancelFallback := context.WithTimeout(r.Context(), connectionLookupLimit)
+		if fallback, ok := observeConnectionResolver(fallbackCtx, name, namedConnectionResolver{
+			Name: "System resolver (fallback)", Resolver: net.DefaultResolver,
+		}); ok {
+			observations = append(observations, fallback)
+		}
+		cancelFallback()
+	}
+
+	// The main DNS server's names are the ones to delegate to; the verdict
+	// below compares the public answers with them.
+	// Ana DNS sunucusunun adlari devredilecek adlardir.
+	if remoteAuthority != nil {
+		answer := <-remoteAuthority
+		if answer.err == nil && answer.authority.Ready {
+			out.Nameservers = append([]string(nil), answer.authority.Nameservers...)
+			out.NameserversUsable = true
+			out.Rechecking = answer.view.Rechecking
+		}
+		for _, ns := range out.Nameservers {
+			if strings.HasSuffix(ns, "."+name) {
+				out.GlueNeeded = true
+			}
+		}
+	}
+
+	selected, enriched, propagating, known := summarizeConnectionObservations(out, observations)
+	out.ResolverObservations = enriched
+	out.PropagationPending = propagating
+	if known {
+		out.LiveNameservers = selected.Nameservers
+		out.LiveIPs = selected.IPs
+		out.Status = selected.Status
+		out.SSLReady = selected.SSLReady
+	} else {
+		out.Status = "unknown"
+	}
+
 	if mode == setupDNSModeLocal && len(out.Nameservers) == 2 {
 		if out.GlueNeeded {
 			out.NameserversUsable = true
 		} else {
-			verifyCtx, cancelVerify := context.WithTimeout(r.Context(), 4*time.Second)
-			facts := verifyNameservers(verifyCtx, out.Nameservers, out.ServerIP, out.ServerV6)
-			cancelVerify()
+			facts := <-nameserverFacts
 			out.NameserverFacts = facts
 			out.NameserversUsable = nameserverPairUsable(
 				p.setting(r.Context(), settingDNSRole),
@@ -450,7 +506,6 @@ func (p *Panel) handleDomainConnection(w http.ResponseWriter, r *http.Request, d
 			)
 		}
 	}
-
 	if certificateNames != nil {
 		out.CertificateNames = <-certificateNames
 	}

@@ -60,6 +60,12 @@ func securityHeaders(secure bool, next http.Handler) http.Handler {
 // eşleşen bir Origin (ya da Referer) taşımalıdır.
 func csrfProtect(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A DNS-relevant change ends the screens' last-known DNS answers,
+		// when it begins and again when it ends (display_checks.go).
+		if requestChangesDisplayChecks(r) {
+			invalidateDisplayChecks()
+			defer invalidateDisplayChecks()
+		}
 		if remoteDNSMachineVerified(r) {
 			next.ServeHTTP(w, r)
 			return

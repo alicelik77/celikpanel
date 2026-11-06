@@ -36,7 +36,9 @@ func (p *Panel) mailDNSSECSecured(ctx context.Context, domain string) bool {
 	if err != nil || mode != setupDNSModeLocal {
 		return false
 	}
-	publisher, ready, err := p.activeDNSPublisher(ctx)
+	// A read for the health card: the pair proof's last verified answer
+	// (alpha.127, display_checks.go).
+	publisher, ready, err := p.activeDNSPublisherForDisplay(ctx)
 	if err != nil || !ready || publisher.Engine != transport.DNSEnginePowerDNS ||
 		publisher.Epoch < 1 {
 		return false
