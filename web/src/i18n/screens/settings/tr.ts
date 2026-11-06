@@ -174,7 +174,6 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'team.username': 'Kullanıcı adı',
     'team.email': 'E-posta',
     'team.password': 'Parola',
-    'team.passwordHint': 'En az 8 karakter kullanın.',
     'team.newPassword': 'Yeni parola',
     'team.newPasswordHint': 'Mevcut parolayı korumak için boş bırakın.',
     'team.status': 'Durum',

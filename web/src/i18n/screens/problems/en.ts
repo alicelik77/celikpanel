@@ -126,7 +126,7 @@ export const enProblemsScreens = {
 
     // Disabled main buttons elsewhere say why, beside them (owner feedback 2026-10-31).
     "users.create.missing": "To create the user, fill in: {fields}.",
-    "users.create.passwordRule": "Password (at least 8 characters)",
+    "users.create.passwordRule": "Password (meeting the rule under the field)",
     "mail.create.missing": "To create, fill in: {fields}.",
     "ssl.issue.needsEmail": "To issue the certificate, enter an email address above.",
     "domains.add.blockedTitle": "You can't add a domain yet",

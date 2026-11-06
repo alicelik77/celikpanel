@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/fileaccess"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -283,6 +284,13 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 		return
 	}
 	if request.Password != "" {
+		// The owner's rule first (8 characters to 128 bytes, both letter
+		// cases, a special character), as PASSWORD_WEAK; ValidatePassword is
+		// the wire check the Agent repeats.
+		if refusal := passwordpolicy.CheckField(request.Password, "file_access"); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
 		if err := fileaccess.ValidatePassword(request.Password); err != nil {
 			writeCodedError(w, http.StatusBadRequest, errCodeFileAccessInvalid, err.Error(), "")
 			return

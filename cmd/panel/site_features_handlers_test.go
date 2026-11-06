@@ -92,7 +92,7 @@ func readFeatureView(t *testing.T, p *Panel, domainID int, caller *Caller) siteF
 func TestProtectedFolderIsSavedAppliedAndNeverShowsAHash(t *testing.T) {
 	p, domainID, owner, applied := newSiteFeatureFixture(t)
 	created := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs",
-		`{"path":"/private/","realm":"Staff only","username":"alice","password":"correct-horse-battery"}`)
+		`{"path":"/private/","realm":"Staff only","username":"alice","password":"Correct-horse-battery"}`)
 	if created.Code != http.StatusOK {
 		t.Fatalf("POST status = %d; body=%s", created.Code, created.Body.String())
 	}
@@ -115,12 +115,12 @@ func TestProtectedFolderIsSavedAppliedAndNeverShowsAHash(t *testing.T) {
 
 	// A second user, a changed password, and the last user cannot go.
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs/users",
-		`{"dir_id":`+featureNum(view.Dirs[0].ID)+`,"username":"bob","password":"another-long-password"}`); r.Code != http.StatusOK {
+		`{"dir_id":`+featureNum(view.Dirs[0].ID)+`,"username":"bob","password":"Another-long-password"}`); r.Code != http.StatusOK {
 		t.Fatalf("add user status = %d; body=%s", r.Code, r.Body.String())
 	}
 	before := applied.requests[len(applied.requests)-1].ProtectedDirs[0].Users
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs/users",
-		`{"dir_id":`+featureNum(view.Dirs[0].ID)+`,"username":"alice","password":"a-brand-new-password"}`); r.Code != http.StatusOK {
+		`{"dir_id":`+featureNum(view.Dirs[0].ID)+`,"username":"alice","password":"A-brand-new-password"}`); r.Code != http.StatusOK {
 		t.Fatalf("change password status = %d; body=%s", r.Code, r.Body.String())
 	}
 	after := applied.requests[len(applied.requests)-1].ProtectedDirs[0].Users
@@ -148,7 +148,7 @@ func TestProtectedFolderIsSavedAppliedAndNeverShowsAHash(t *testing.T) {
 func TestEveryRenderOfTheSiteCarriesItsFoldersAndRedirects(t *testing.T) {
 	p, domainID, owner, _ := newSiteFeatureFixture(t)
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs",
-		`{"path":"/private","username":"alice","password":"correct-horse-battery"}`); r.Code != http.StatusOK {
+		`{"path":"/private","username":"alice","password":"Correct-horse-battery"}`); r.Code != http.StatusOK {
 		t.Fatal(r.Body.String())
 	}
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "redirects",
@@ -193,7 +193,7 @@ func TestOwnerEditedVhostKeepsTheChangeOutAndSaysSo(t *testing.T) {
 		Kind: transport.SiteFileKindNginxVhost, State: transport.SiteFileOwnerEdited, Outcome: transport.SiteFileOutcomeKept,
 	}}}
 	r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs",
-		`{"path":"/private","username":"alice","password":"correct-horse-battery"}`)
+		`{"path":"/private","username":"alice","password":"Correct-horse-battery"}`)
 	if r.Code != http.StatusConflict || featureCode(t, r) != "SITE_CONFIG_OWNER_EDITED" {
 		t.Fatalf("status %d code %q; body=%s", r.Code, featureCode(t, r), r.Body.String())
 	}
@@ -209,7 +209,7 @@ func TestPasswordFileTheOwnerChangedIsReportedWithItsNextStep(t *testing.T) {
 	p, domainID, owner, applied := newSiteFeatureFixture(t)
 	applied.script = []error{errors.New("the password file /etc/nginx/celikpanel-auth.d/x/protect-1.htpasswd is not CelikPanel's unchanged text (owner_edited); it was kept as it is and this change was not applied")}
 	r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs",
-		`{"path":"/private","username":"alice","password":"correct-horse-battery"}`)
+		`{"path":"/private","username":"alice","password":"Correct-horse-battery"}`)
 	if r.Code != http.StatusConflict || featureCode(t, r) != errCodeSiteAuthFileKept {
 		t.Fatalf("status %d code %q; body=%s", r.Code, featureCode(t, r), r.Body.String())
 	}
@@ -222,16 +222,16 @@ func TestSiteFeatureInputThatCouldBecomeNginxSyntaxNeverReachesTheAgent(t *testi
 	p, domainID, owner, applied := newSiteFeatureFixture(t)
 	bodies := map[string][]string{
 		"protected-dirs": {
-			`{"path":"/a;b","username":"alice","password":"correct-horse-battery"}`,
-			`{"path":"/a\nb","username":"alice","password":"correct-horse-battery"}`,
-			`{"path":"/a{b}","username":"alice","password":"correct-horse-battery"}`,
-			`{"path":"/ok","realm":"x\"; return 200; #","username":"alice","password":"correct-horse-battery"}`,
-			`{"path":"/ok","username":"alice:root","password":"correct-horse-battery"}`,
-			`{"path":"/ok","username":"alice\nroot","password":"correct-horse-battery"}`,
-			`{"path":"/ok","username":"alice","password":"short"}`,
-			`{"path":"/ok","username":"alice","password":"` + strings.Repeat("x", 73) + `"}`,
-			`{"path":"/","username":"alice","password":"correct-horse-battery"}`,
-			`{"path":"/.well-known","username":"alice","password":"correct-horse-battery"}`,
+			`{"path":"/a;b","username":"alice","password":"Correct-horse-battery"}`,
+			`{"path":"/a\nb","username":"alice","password":"Correct-horse-battery"}`,
+			`{"path":"/a{b}","username":"alice","password":"Correct-horse-battery"}`,
+			`{"path":"/ok","realm":"x\"; return 200; #","username":"alice","password":"Correct-horse-battery"}`,
+			`{"path":"/ok","username":"alice:root","password":"Correct-horse-battery"}`,
+			`{"path":"/ok","username":"alice\nroot","password":"Correct-horse-battery"}`,
+			// A password outside the rule is PASSWORD_WEAK, not this code:
+			// TestProtectedFolderPasswordRefusesAWeakPassword.
+			`{"path":"/","username":"alice","password":"Correct-horse-battery"}`,
+			`{"path":"/.well-known","username":"alice","password":"Correct-horse-battery"}`,
 		},
 		"redirects": {
 			`{"match":"exact","source":"/a;return 200","target":"/b","code":301}`,
@@ -261,7 +261,7 @@ func TestSiteFeatureInputThatCouldBecomeNginxSyntaxNeverReachesTheAgent(t *testi
 
 func TestSiteFeatureDuplicatesLimitsAndUnavailableTypes(t *testing.T) {
 	p, domainID, owner, _ := newSiteFeatureFixture(t)
-	add := `{"path":"/private","username":"alice","password":"correct-horse-battery"}`
+	add := `{"path":"/private","username":"alice","password":"Correct-horse-battery"}`
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs", add); r.Code != http.StatusOK {
 		t.Fatal(r.Body.String())
 	}
@@ -289,7 +289,7 @@ func TestSiteFeatureDuplicatesLimitsAndUnavailableTypes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs",
-		`{"path":"/other","username":"alice","password":"correct-horse-battery"}`); r.Code != http.StatusConflict || featureCode(t, r) != errCodeSiteFeatureUnavail {
+		`{"path":"/other","username":"alice","password":"Correct-horse-battery"}`); r.Code != http.StatusConflict || featureCode(t, r) != errCodeSiteFeatureUnavail {
 		t.Fatalf("protected folder on a proxy site: status %d code %q", r.Code, featureCode(t, r))
 	}
 	view := readFeatureView(t, p, domainID, owner)
@@ -301,7 +301,7 @@ func TestSiteFeatureDuplicatesLimitsAndUnavailableTypes(t *testing.T) {
 func TestChangingTheSiteTypeIsRefusedWhileItsFoldersWouldHaveNoHome(t *testing.T) {
 	p, domainID, owner, _ := newSiteFeatureFixture(t)
 	if r := featureRequest(p, domainID, owner, http.MethodPost, "protected-dirs",
-		`{"path":"/private","username":"alice","password":"correct-horse-battery"}`); r.Code != http.StatusOK {
+		`{"path":"/private","username":"alice","password":"Correct-horse-battery"}`); r.Code != http.StatusOK {
 		t.Fatal(r.Body.String())
 	}
 	for projectType, wantRefused := range map[string]bool{"php": false, "static": false, "node": true, "proxy": true, "forwarding": true} {
@@ -330,9 +330,9 @@ func TestSiteFeatureRoutesBelongToTheDomainsCustomerAndNoOneElse(t *testing.T) {
 	stranger := &Caller{ID: 7999, Role: roleCustomer, AccountType: core.AccountTypeAccount, CustomerID: 7999}
 	for _, call := range []struct{ method, route, body string }{
 		{http.MethodGet, "protected-dirs", ""},
-		{http.MethodPost, "protected-dirs", `{"path":"/private","username":"alice","password":"correct-horse-battery"}`},
+		{http.MethodPost, "protected-dirs", `{"path":"/private","username":"alice","password":"Correct-horse-battery"}`},
 		{http.MethodDelete, "protected-dirs?id=1", ""},
-		{http.MethodPost, "protected-dirs/users", `{"dir_id":1,"username":"bob","password":"correct-horse-battery"}`},
+		{http.MethodPost, "protected-dirs/users", `{"dir_id":1,"username":"bob","password":"Correct-horse-battery"}`},
 		{http.MethodDelete, "protected-dirs/users?id=1&user=bob", ""},
 		{http.MethodGet, "redirects", ""},
 		{http.MethodPost, "redirects", `{"match":"exact","source":"/old","target":"/new","code":301}`},
@@ -372,7 +372,7 @@ func TestAdditionalUsersNeedTheFilesCapabilityForFoldersAndRedirects(t *testing.
 		fixture.panel.handleDomainSubroute(recorder, request)
 		return recorder
 	}
-	add := `{"path":"/private","username":"alice","password":"correct-horse-battery"}`
+	add := `{"path":"/private","username":"alice","password":"Correct-horse-battery"}`
 
 	// No grant at all is indistinguishable from a domain that is not theirs.
 	if r := do(http.MethodGet, "redirects", ""); r.Code != http.StatusNotFound {
@@ -391,7 +391,7 @@ func TestAdditionalUsersNeedTheFilesCapabilityForFoldersAndRedirects(t *testing.
 	for _, call := range []struct{ method, route, body string }{
 		{http.MethodPost, "protected-dirs", add},
 		{http.MethodDelete, "protected-dirs?id=1", ""},
-		{http.MethodPost, "protected-dirs/users", `{"dir_id":1,"username":"bob","password":"correct-horse-battery"}`},
+		{http.MethodPost, "protected-dirs/users", `{"dir_id":1,"username":"bob","password":"Correct-horse-battery"}`},
 		{http.MethodDelete, "protected-dirs/users?id=1&user=bob", ""},
 		{http.MethodPost, "redirects", `{"match":"exact","source":"/old","target":"/new","code":301}`},
 		{http.MethodDelete, "redirects?id=1", ""},

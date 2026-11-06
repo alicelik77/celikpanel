@@ -27,7 +27,7 @@ export const enSiteFeaturesScreens = {
     'siteFeatures.protect.realmHint': 'Shown by the browser in the sign-in box. Optional.',
     'siteFeatures.protect.username': 'User name',
     'siteFeatures.protect.password': 'Password',
-    'siteFeatures.protect.passwordHint': '8 to 72 characters. CelikPanel keeps only a hash; nobody can read the password back.',
+    'siteFeatures.protect.passwordHint': 'CelikPanel keeps only a hash; nobody can read the password back.',
     'siteFeatures.protect.add': 'Protect folder',
     'siteFeatures.protect.adding': 'Protecting…',
     'siteFeatures.protect.users': 'Users',
@@ -75,7 +75,6 @@ export const enSiteFeaturesScreens = {
     // --- checks done before anything is sent ---
     'siteFeatures.check.path': 'The folder must start with a slash and use only letters, digits, dot, dash, underscore and tilde, for example /private.',
     'siteFeatures.check.username': 'The user name may contain only letters, digits, dot, dash and underscore.',
-    'siteFeatures.check.password': 'The password must have 8 to 72 characters.',
     'siteFeatures.check.target': 'The target must be a path starting with / or a full http:// or https:// address, without spaces, quotes, semicolons, braces or #.',
     'siteFeatures.check.source': 'The path must start with a slash and use only letters, digits, dot, dash, underscore and tilde.',
     // --- refusals ---

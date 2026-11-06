@@ -121,7 +121,7 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "setup.problem.mailEnrollUnknown.todo": "Yeniden kontrol et’i seçin. Sürerse sunucuyu yeniden başlatıp yeniden kontrol edin.",
 
     "users.create.missing": "Kullanıcıyı oluşturmak için doldurun: {fields}.",
-    "users.create.passwordRule": "Parola (en az 8 karakter)",
+    "users.create.passwordRule": "Parola (alanın altındaki kurala uygun)",
     "mail.create.missing": "Oluşturmak için doldurun: {fields}.",
     "ssl.issue.needsEmail": "Sertifikayı almak için yukarıya bir e-posta adresi girin.",
     "domains.add.blockedTitle": "Henüz alan adı eklenemiyor",

@@ -71,7 +71,8 @@ async function cleanup() {
   tree = undefined; globalThis.fetch = originalFetch; delete globalThis.emergencyTest; delete globalThis.document;
 }
 const text = () => JSON.stringify(tree.toJSON());
-const byData = (name, value) => tree.root.findAll((node) => node.props && node.props[name] === value);
+// Host elements only: PasswordInput passes its data attribute down to its <input>.
+const byData = (name, value) => tree.root.findAll((node) => typeof node.type === 'string' && node.props && node.props[name] === value);
 const click = async (node) => { await act(async () => { node.props.onClick(); await settled(); await settled(); }); };
 const type = async (node, value) => { await act(async () => { node.props.onChange({ target: { value } }); }); };
 

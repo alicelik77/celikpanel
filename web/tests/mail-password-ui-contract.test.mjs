@@ -71,16 +71,18 @@ test('mailbox password action and handler both fail closed for read-only access'
   assert.ok(detailSource.includes('readOnly={readOnly}'));
 });
 
-test('mailbox password validation enforces the backend byte contract and confirmation', () => {
-  assert.ok(mailSource.includes('new TextEncoder().encode(value).byteLength'));
+test('mailbox password validation enforces the backend rule and confirmation', () => {
+  // The owner's password rule with the mailbox window (8 characters to 1024
+  // bytes), the same table the panel checks (alpha.127, lib/passwordPolicy.ts).
+  assert.ok(mailSource.includes("const passwordInRange = passwordAcceptable(newPassword, 'mailbox');"));
   assert.ok(
     rotateSource.includes(
-      'passwordBytes < 8 || passwordBytes > 1024 || newPassword !== passwordConfirmation',
+      "if (!passwordAcceptable(newPassword, 'mailbox') || newPassword !== passwordConfirmation) return;",
     ),
   );
-  assert.equal(occurrences(dialogSource, 'type="password"'), 2);
+  assert.equal(occurrences(dialogSource, '<PasswordInput'), 2);
+  assert.equal(occurrences(dialogSource, 'field="mailbox"'), 1);
   assert.equal(occurrences(dialogSource, 'autoComplete="new-password"'), 2);
-  assert.equal(occurrences(dialogSource, 'minLength={8}'), 2);
   assert.equal(occurrences(dialogSource, 'maxLength={1024}'), 2);
   assert.ok(dialogSource.includes('noValidate'));
   const newPasswordInput = sourceBetween(dialogSource, 'value={newPassword}', '/>');
@@ -103,11 +105,9 @@ test('submitted mailbox secrets are cleared after every outcome and never echoed
   assert.ok(finallySource.includes('if (succeeded) setPasswordAccount(null);'));
 
   assert.ok(rotateSource.includes('readApiError(res)'));
-  assert.ok(
-    rotateSource.includes(
-      "apiErrorText({ ...apiError, message: '' }, t, 'mail.passwordUpdateFailed')",
-    ),
-  );
+  // The refusal is said once, inside the dialogue, without the server's words.
+  assert.ok(rotateSource.includes("setPasswordRefusal({ ...apiError, message: '' });"));
+  assert.ok(dialogSource.includes('<ErrorBanner error={passwordRefusal} sentence="mail.passwordUpdateFailed" />'));
   const toastLines = rotateSource
     .split(String.fromCharCode(10))
     .filter((line) => line.includes('showToast'));
@@ -157,7 +157,6 @@ test('mailbox password and deletion-pending messages stay in EN/TR parity', () =
     'mail.passwordDialog.account',
     'mail.passwordDialog.new',
     'mail.passwordDialog.confirm',
-    'mail.passwordDialog.requirements',
     'mail.passwordDialog.mismatch',
     'mail.passwordDialog.sessionWarning',
     'mail.passwordDialog.submit',

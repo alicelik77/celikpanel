@@ -279,7 +279,7 @@ func TestUpdateEmailPasswordPreservesOnlyPureLocalPlatformSentinels(t *testing.T
 				http.MethodPut,
 				"/mail/accounts/password",
 				strings.NewReader(fmt.Sprintf(
-					"{%cid%c:6401,%cnew_password%c:%creplacement-password%c}",
+					"{%cid%c:6401,%cnew_password%c:%cReplacement-password%c}",
 					34, 34, 34, 34, 34, 34,
 				)),
 			)
@@ -292,7 +292,7 @@ func TestUpdateEmailPasswordPreservesOnlyPureLocalPlatformSentinels(t *testing.T
 				t.Fatal(err)
 			}
 			if body.Code != test.wantCode ||
-				strings.Contains(response.Body.String(), "replacement-password") ||
+				strings.Contains(response.Body.String(), "Replacement-password") ||
 				strings.Contains(strings.ToLower(response.Body.String()), "user@example.com") {
 				t.Fatalf("body=%+v", body)
 			}

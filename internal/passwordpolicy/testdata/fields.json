@@ -1,0 +1,8 @@
+{
+  "account": { "min": 8, "max": 1024 },
+  "mailbox": { "min": 8, "max": 1024 },
+  "database_user": { "min": 12, "max": 128 },
+  "file_access": { "min": 8, "max": 128 },
+  "site_protect": { "min": 8, "max": 72 },
+  "service_app_owner": { "min": 12, "max": 128 }
+}

@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { REQUEST_ID_HEADER, answerWasLost, newRequestId } from '../lib/requestIdentity';
 import { Button, Dialog, ErrorBanner, Spinner, inputClass } from './ui';
+import { PasswordInput } from './PasswordInput';
 
 export const OWN_EMAIL_URL = '/api/v1/auth/email';
 
@@ -177,14 +178,13 @@ export function ChangeEmailModal({
                 </label>
                 <label className="block">
                     <span className="mb-1 block text-sm font-medium text-fg">{t('account.email.password')}</span>
-                    <input
-                        type="password"
+                    <PasswordInput
                         name="current-password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={setPassword}
                         autoComplete="current-password"
                         disabled={saving}
-                        className={`${inputClass} max-sm:min-h-11`}
+                        className="max-sm:min-h-11"
                     />
                     <span className="mt-1 block text-xs text-fg-muted">{t('account.email.passwordHint')}</span>
                 </label>

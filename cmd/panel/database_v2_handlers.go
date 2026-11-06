@@ -562,6 +562,14 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database_name is required", http.StatusBadRequest)
 		return
 	}
+	// A new user's password, when sent, meets the owner's rule; an empty one
+	// is made up below and meets it too.
+	if req.UserID == 0 && req.NewUsername != "" && req.NewPassword != "" {
+		if refusal := checkDatabaseUserPassword(req.NewPassword); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
+	}
 
 	// Get server info
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
@@ -963,6 +971,12 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 	if req.Username == "" {
 		http.Error(w, "username is required", http.StatusBadRequest)
 		return
+	}
+	if req.Password != "" {
+		if refusal := checkDatabaseUserPassword(req.Password); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
 	}
 
 	// Get server info

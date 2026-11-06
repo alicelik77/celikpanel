@@ -21,7 +21,7 @@ import (
 // (9703) runs 22.11.0. The server side is a fake that behaves like the
 // Agent's compare-and-set calls and records what it was asked.
 
-const emergencyTestPassword = "correct horse battery"
+const emergencyTestPassword = "Correct horse battery"
 
 type fakeEmergencyNative struct {
 	mu        sync.Mutex

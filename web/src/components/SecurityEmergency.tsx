@@ -21,6 +21,7 @@ import { Button, Dialog, ErrorBanner } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
 import { useLocation } from '../router';
+import { PasswordInput } from './PasswordInput';
 import {
     SECURITY_EMERGENCIES_URL, EMERGENCY_ANCHOR, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor,
     type EmergencyComponent, type EmergencyDetail, type EmergencySite,
@@ -368,7 +369,7 @@ function ConfirmDialog({ detail, step, onClose, onDone }: { detail: EmergencyDet
                 )}
                 <label className="block">
                     <span className="text-fg-muted">{t('emg.confirm.password')}</span>
-                    <input type="password" autoComplete="current-password" className="mt-1 block w-full rounded-md border border-border bg-surface px-2 py-1.5" value={password} onChange={(ev) => setPassword(ev.target.value)} data-emergency-confirm-password="" />
+                    <PasswordInput autoComplete="current-password" value={password} onChange={setPassword} data-emergency-confirm-password="" />
                 </label>
                 <ErrorBanner error={error} />
             </div>

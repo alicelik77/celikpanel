@@ -173,6 +173,9 @@ export function replaceLazyImport(moduleURL, specifier, replacementURL) {
   return dataModule(replaced);
 }
 
+// alpha.127: the owner's password rule, read by every password field and form.
+export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
@@ -209,6 +212,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/useRefusal': useRefusalURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
+    '/lib/passwordPolicy': passwordPolicyURL,
     '/ui': uiURL,
     ...extra,
   };
@@ -216,6 +220,15 @@ export function sharedLayer(stubURL, extra = {}) {
     for (const [suffix, url] of Object.entries(table)) if (specifier.endsWith(suffix)) return url;
     return stubURL;
   };
+  // alpha.127: every password field is the shipped PasswordInput with the
+  // shipped rule. Its icons come from its own small stub, so a test's stub
+  // need not list them.
+  if (!extra['/PasswordInput']) {
+    const icons = dataModule(['Check', 'Copy', 'Eye', 'EyeOff', 'Wand2'].map((name) => `export const ${name} = () => null;`).join(' '));
+    table['/PasswordInput'] = compileSource('components/PasswordInput.tsx', (specifier) => (
+      specifier === 'lucide-react' ? icons : resolve(specifier)
+    ));
+  }
   // The firewall box left ServiceList.tsx for its own module in alpha.98; a
   // screen that mounted it inside the Components page still gets the real one.
   if (!extra['/FirewallPanel']) table['/FirewallPanel'] = compileSource('components/FirewallPanel.tsx', resolve);

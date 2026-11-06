@@ -384,19 +384,19 @@ func TestSentDatabasePasswordIsNotEchoedAndItsAnswerIsReplayed(t *testing.T) {
 	path := fmt.Sprintf("/api/v1/database-servers/%d/databases", dbSecurityServer)
 	caller := &Caller{ID: dbSecurityOwnerID, Role: roleCustomer}
 
-	sent := `{"database_name":"shop","new_username":"shopper","new_password":"the-owner-chose-this-one"}`
+	sent := `{"database_name":"shop","new_username":"shopper","new_password":"The-owner-chose-this-one"}`
 	id := requestIdentityTestID(24577)
 	first := httptest.NewRecorder()
 	handler.ServeHTTP(first, requestIdentityTestRequest(path, sent, id, caller))
-	if first.Code != http.StatusOK || strings.Contains(first.Body.String(), "the-owner-chose-this-one") ||
+	if first.Code != http.StatusOK || strings.Contains(first.Body.String(), "The-owner-chose-this-one") ||
 		!strings.Contains(first.Body.String(), `"password_set":true`) || strings.Contains(first.Body.String(), `"password":`) {
 		t.Fatalf("first answer: %d %s", first.Code, first.Body.String())
 	}
-	if driver.createdPassword != "the-owner-chose-this-one" {
+	if driver.createdPassword != "The-owner-chose-this-one" {
 		t.Fatalf("the engine was not given the owner's password: %+v", driver)
 	}
 	row := readRequestIdentityRow(t, fixture.sql, id)
-	if row.retained != 1 || strings.Contains(string(row.body), "the-owner-chose-this-one") {
+	if row.retained != 1 || strings.Contains(string(row.body), "The-owner-chose-this-one") {
 		t.Fatalf("stored row: %+v", row)
 	}
 	replay := httptest.NewRecorder()

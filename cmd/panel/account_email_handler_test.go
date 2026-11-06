@@ -236,7 +236,7 @@ func TestOwnEmailAndPasswordChangeShareOneReauthenticationLimit(t *testing.T) {
 	before := f.emailOf(t, id)
 	// One wrong guess on the password change...
 	passwordGuess := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(
-		`{"current_password":"guess 1","new_password":"attacker supplied password"}`))
+		`{"current_password":"guess 1","new_password":"Attacker supplied password"}`))
 	passwordGuess = passwordGuess.WithContext(context.WithValue(passwordGuess.Context(), callerKey, &Caller{ID: id, Role: roleReseller}))
 	guessed := httptest.NewRecorder()
 	f.panel.handleChangeOwnPassword(guessed, passwordGuess)
@@ -349,7 +349,7 @@ func TestOwnEmailChangeNeverOverwritesAChangeMadeElsewhere(t *testing.T) {
 func TestOwnEmailHandlerRunsOnlyBehindTheGuard(t *testing.T) {
 	panel, _, user := newTOTPSecurityPanel(t)
 	request := httptest.NewRequest(http.MethodPut, ownEmailPath,
-		strings.NewReader(ownEmailBody("unguarded@example.test", "correct horse battery staple")))
+		strings.NewReader(ownEmailBody("unguarded@example.test", "Correct horse battery staple")))
 	request = request.WithContext(context.WithValue(request.Context(), callerKey, &Caller{ID: user.ID, Role: roleCustomer}))
 	recorder := httptest.NewRecorder()
 	panel.handleChangeOwnEmail(recorder, request)

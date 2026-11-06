@@ -17,11 +17,16 @@ import (
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"golang.org/x/term"
 )
 
-const minimumAdminPasswordBytes = 8
+// The administrator's password meets the same rule as every panel account's
+// (checkAccountPassword, 6 Nov 2026): at least 8 characters, an uppercase and
+// a lowercase letter and a special character. The refusal names the rule,
+// never the value.
+// Yoneticinin parolasi her panel hesabinin kuralina uyar.
 
 // The administrator's email is the contact the panel hands to the
 // certificate authority when the first setup requests the panel's HTTPS
@@ -208,9 +213,11 @@ func parseAdminCredentialsJSON(content []byte) (adminCredentials, error) {
 func validateAdminCredentials(credentials adminCredentials) error {
 	if strings.TrimSpace(credentials.username) != credentials.username ||
 		strings.TrimSpace(credentials.email) != credentials.email ||
-		credentials.username == "" || credentials.email == "" ||
-		len(credentials.password) < minimumAdminPasswordBytes {
+		credentials.username == "" || credentials.email == "" {
 		return errors.New("admin credentials are invalid")
+	}
+	if refusal := checkAccountPassword(credentials.password); refusal != nil {
+		return fmt.Errorf("admin credentials are invalid: %s", refusal.Error())
 	}
 	if err := auth.ValidateUsername(credentials.username); err != nil {
 		return errors.New("admin credentials are invalid")
@@ -335,13 +342,17 @@ func promptLine(reader *bufio.Reader, out io.Writer, prompt string) (string, err
 }
 
 func readAndConfirmPassword(read passwordValueReader, out io.Writer) (string, error) {
+	// The rule is said before the first question, so a weak password is not
+	// the first thing the person learns it from.
+	account := passwordpolicy.Fields["account"]
+	fmt.Fprintln(out, passwordpolicy.RuleSentence(account.MinChars, "en")+" / "+passwordpolicy.RuleSentence(account.MinChars, "tr"))
 	for {
 		first, err := read("Admin password / Yönetici parolası: ")
 		if err != nil {
 			return "", fmt.Errorf("failed to read password: %w", err)
 		}
-		if len(first) < minimumAdminPasswordBytes {
-			fmt.Fprintln(out, "Password must be at least 8 characters. Please try again. / Parola en az 8 karakter olmalı. Lütfen yeniden deneyin.")
+		if refusal := checkAccountPassword(first); refusal != nil {
+			fmt.Fprintf(out, "%s Please try again. / %s Lütfen yeniden deneyin.\n", refusal.Error(), refusal.MessageTR())
 			continue
 		}
 

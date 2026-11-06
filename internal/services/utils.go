@@ -1,39 +1,24 @@
 package services
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 )
 
-// GeneratePassword generates a secure random password
+// GeneratePassword draws a password of length characters (16 below 8) with
+// crypto/rand that meets the owner's password rule: an uppercase and a
+// lowercase letter and one of -_., which no shell, URL or config file reads
+// specially. It used to append "!" to a base64 draw, which neither guaranteed
+// both letter cases nor stayed shell-safe.
+// GeneratePassword, sahibin kuralina uyan bir parola cizer.
 func GeneratePassword(length int) (string, error) {
 	if length < 8 {
 		length = 16
 	}
-
-	// Generate random bytes
-	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-
-	// Convert to base64 and clean up
-	password := base64.URLEncoding.EncodeToString(bytes)
-	password = strings.ReplaceAll(password, "-", "")
-	password = strings.ReplaceAll(password, "_", "")
-
-	// Truncate to desired length
-	if len(password) > length {
-		password = password[:length]
-	}
-
-	// Ensure it has at least one special char
-	password = password + "!@#"[:1]
-
-	return password, nil
+	return passwordpolicy.Generate(length)
 }
 
 // updateOrAddSetting updates or adds a setting in config content

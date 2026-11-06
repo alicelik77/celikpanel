@@ -14,6 +14,7 @@ import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -1031,11 +1032,9 @@ export function DomainSSLSettings({
                                         <input value={eabKid} onChange={(e) => setEabKid(e.target.value)} className={inputClass} autoComplete="off" />
                                     </Field>
                                     <Field label={t('ssl.eabHmac')}>
-                                        <input
-                                            type="password"
+                                        <PasswordInput
                                             value={eabHmac}
-                                            onChange={(e) => setEabHmac(e.target.value)}
-                                            className={inputClass}
+                                            onChange={setEabHmac}
                                             autoComplete="new-password"
                                         />
                                     </Field>

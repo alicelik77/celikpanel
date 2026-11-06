@@ -129,7 +129,6 @@ export const enMailDatabasesScreens = {
     'mail.passwordDialog.account': 'Mailbox',
     'mail.passwordDialog.new': 'New password',
     'mail.passwordDialog.confirm': 'Confirm new password',
-    'mail.passwordDialog.requirements': 'Use 8 to 1024 UTF-8 bytes.',
     'mail.passwordDialog.mismatch': 'The passwords do not match.',
     'mail.passwordDialog.sessionWarning': 'Existing mail client sessions may remain connected until they reconnect. The new password is required for future sign-ins.',
     'mail.passwordDialog.submit': 'Change password',

@@ -122,7 +122,6 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.passwordDialog.account': 'Posta kutusu',
     'mail.passwordDialog.new': 'Yeni parola',
     'mail.passwordDialog.confirm': 'Yeni parolayı doğrula',
-    'mail.passwordDialog.requirements': '8 ile 1024 UTF-8 byte arasında kullanın.',
     'mail.passwordDialog.mismatch': 'Parolalar eşleşmiyor.',
     'mail.passwordDialog.sessionWarning': 'Mevcut posta istemcisi oturumları yeniden bağlanana kadar açık kalabilir. Sonraki oturum açmalarda yeni parola gerekir.',
     'mail.passwordDialog.submit': 'Parolayı değiştir',

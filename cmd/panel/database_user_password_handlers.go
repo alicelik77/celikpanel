@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"unicode"
 
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -24,18 +24,18 @@ import (
 //
 // Veritabanı kullanıcısına yeni parola: gönderilen ya da bir kez gösterilen.
 
+// DATABASE_PASSWORD_INVALID now means only that the engine side refused the
+// change; a password that breaks the rule is PASSWORD_WEAK (6 Nov 2026).
+// DATABASE_PASSWORD_INVALID artik yalniz motor tarafinin reddidir.
 const errCodeDatabasePasswordInvalid = "DATABASE_PASSWORD_INVALID"
 
-func validDatabaseUserPassword(password string) bool {
-	if len(password) < transport.MinDatabaseUserPasswordBytes || len(password) > transport.MaxDatabaseUserPasswordBytes {
-		return false
-	}
-	for _, r := range password {
-		if r == unicode.ReplacementChar || unicode.IsControl(r) {
-			return false
-		}
-	}
-	return true
+// checkDatabaseUserPassword applies the owner's password rule to a database
+// user's new password: 12 to 128 bytes (transport's wire bounds, which the
+// Agent repeats), an uppercase and a lowercase letter and a special character.
+// checkDatabaseUserPassword, veritabani kullanicisinin yeni parolasina kurali
+// uygular.
+func checkDatabaseUserPassword(password string) *passwordpolicy.Error {
+	return passwordpolicy.CheckField(password, "database_user")
 }
 
 // requestIdentityDatabaseUserPasswordDigest leaves the password out of the
@@ -56,10 +56,11 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 		return
 	}
 	minted := request.Password == ""
-	if !minted && !validDatabaseUserPassword(request.Password) {
-		writeCodedError(w, http.StatusBadRequest, errCodeDatabasePasswordInvalid,
-			"the password must be 12 to 128 characters of printable text on one line; nothing was changed", "")
-		return
+	if !minted {
+		if refusal := checkDatabaseUserPassword(request.Password); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
 	}
 	user, err := repositories.NewPostgresDatabaseUserRepository(p.db.GetDB()).GetByID(ctx, userID)
 	if err != nil {

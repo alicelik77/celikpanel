@@ -264,6 +264,10 @@ const screenPartBudgets = {
   // (pnow.). A new part, set with at least 25% headroom from its Turkish
   // file: 5.76 / 2.06 KiB.
   monitoring: kib(8, 3),
+  // v0.1.0-alpha.127: the shared password field (pw.) and the server's
+  // PASSWORD_WEAK refusal. Its own part so the file-access and errors parts
+  // keep their headroom. Set with at least 25% headroom from its Turkish file.
+  passwords: kib(4, 2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

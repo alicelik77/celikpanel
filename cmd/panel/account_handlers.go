@@ -14,6 +14,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 )
 
 // Account management: the layer that makes the role hierarchy usable.
@@ -26,7 +27,15 @@ import (
 // (parent_id = bayi). Görünürlük her yerde, authz katmanının kaynaklar için
 // zaten uyguladığı sahiplik kurallarını yeniden kullanır.
 
-const minPasswordLen = 8
+// checkAccountPassword applies the owner's password rule to a panel
+// account's new password (create, change, reset or invitation link, team
+// member, admin CLI): 8 characters to 1024 bytes, an uppercase and a
+// lowercase letter and a special character. A sign-in or a "current
+// password" is never checked against it.
+// checkAccountPassword, panel hesabinin yeni parolasina kurali uygular.
+func checkAccountPassword(password string) *passwordpolicy.Error {
+	return passwordpolicy.CheckField(password, "account")
+}
 
 type userResponse struct {
 	ID            int    `json:"id"`
@@ -345,9 +354,13 @@ func (p *Panel) handleCreateUser(w http.ResponseWriter, r *http.Request, c *Call
 		writeUsernameError(w, err)
 		return
 	}
-	if len(req.Password) < minPasswordLen {
-		writeClientError(w, http.StatusBadRequest, "password must be at least 8 characters")
-		return
+	// An invited account's password is the unusable one made above; the
+	// person chooses theirs by the link, where the rule applies.
+	if !req.Invite {
+		if refusal := checkAccountPassword(req.Password); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
 	}
 	if !strings.Contains(req.Email, "@") {
 		writeClientError(w, http.StatusBadRequest, "valid email required")
@@ -418,8 +431,8 @@ func (p *Panel) handleUpdateUser(w http.ResponseWriter, r *http.Request, target 
 		target.Email = *req.Email
 	}
 	if req.Password != nil {
-		if len(*req.Password) < minPasswordLen {
-			writeClientError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		if refusal := checkAccountPassword(*req.Password); refusal != nil {
+			writePasswordRefusal(w, refusal)
 			return
 		}
 		hash, err := auth.HashPassword(*req.Password)
@@ -759,8 +772,9 @@ func (p *Panel) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request) 
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if len(req.NewPassword) < minPasswordLen {
-		writeClientError(w, http.StatusBadRequest, "password must be at least 8 characters")
+	// Only the new password meets the rule; the current one is only proved.
+	if refusal := checkAccountPassword(req.NewPassword); refusal != nil {
+		writePasswordRefusal(w, refusal)
 		return
 	}
 

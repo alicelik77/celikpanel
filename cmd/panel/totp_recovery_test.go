@@ -22,7 +22,7 @@ func withCaller(request *http.Request, userID int) *http.Request {
 	}))
 }
 
-const recoveryTestPassword = `correct horse battery staple`
+const recoveryTestPassword = `Correct horse battery staple`
 
 var recoveryCodeShape = regexp.MustCompile(`^[A-HJ-NP-Z2-9]{4}(-[A-HJ-NP-Z2-9]{4}){3}$`)
 

@@ -8,6 +8,8 @@ import { Button, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 // The site's file access (alpha.117): FTP over TLS, SFTP and, when the plan
 // gives the command line, a jailed SSH. The account is the site's own system
@@ -231,12 +233,12 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                 const dirty = current !== null && (wantEnabled !== current.enabled || wantSSH !== current.ssh
                     || body.password !== '' || body.add_keys.length > 0 || removeKeys.length > 0);
                 const canChange = settled && !busy && current !== null && view.subscriptionStatus === 'active' && view.rights.fileAccess;
+                // A typed password must meet the rule; the field names what
+                // is still needed and the review stays off until then.
+                const passwordWeak = body.password !== '' && !passwordAcceptable(body.password, 'file_access');
 
                 const send = async (method: 'POST' | 'PUT') => {
-                    if (body.password && (body.password.length < 8 || body.password.length > 128)) {
-                        setProblem(t('fileAccess.check.password'));
-                        return;
-                    }
+                    if (passwordWeak) return;
                     setProblem('');
                     setBusy(true);
                     try {
@@ -387,13 +389,12 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                                         )}
                                         <label className="block space-y-1 text-sm font-medium text-fg">
                                             <span>{t(current.password === 'set' ? 'fileAccess.passwordReset' : 'fileAccess.passwordSet')}</span>
-                                            <input
-                                                type="password"
+                                            <PasswordInput
+                                                field="file_access"
                                                 value={password}
-                                                autoComplete="new-password"
+                                                maxLength={128}
                                                 disabled={!canChange}
-                                                onChange={(e) => { setPassword(e.target.value); setPreview(null); }}
-                                                className={inputClass}
+                                                onChange={(value) => { setPassword(value); setPreview(null); }}
                                             />
                                             <span className="block text-xs font-normal text-fg-muted">
                                                 {t(current.password === 'set' ? 'fileAccess.passwordIsSet' : 'fileAccess.passwordNone')}
@@ -461,11 +462,11 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                                 )}
                                 <div className="flex flex-wrap gap-2">
                                     {!preview ? (
-                                        <Button variant="primary" icon={ShieldCheck} loading={busy} disabled={!dirty || !settled} onClick={() => void send('POST')}>
+                                        <Button variant="primary" icon={ShieldCheck} loading={busy} disabled={!dirty || !settled || passwordWeak} onClick={() => void send('POST')}>
                                             {t('fileAccess.review')}
                                         </Button>
                                     ) : (
-                                        <Button variant="primary" icon={ShieldCheck} loading={busy} disabled={!dirty || !settled || preview.refusal !== ''} onClick={() => void send('PUT')}>
+                                        <Button variant="primary" icon={ShieldCheck} loading={busy} disabled={!dirty || !settled || passwordWeak || preview.refusal !== ''} onClick={() => void send('PUT')}>
                                             {t('fileAccess.apply')}
                                         </Button>
                                     )}

@@ -273,19 +273,26 @@ func TestRecoveryResetLifecycle(t *testing.T) {
 		t.Fatalf("link check: %d %s", res.Code, res.Body)
 	}
 	// The same token is not an invitation.
-	res = f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "brand new secret"}))
+	res = f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "Brand new secret"}))
 	if res.Code != http.StatusGone {
 		t.Fatalf("reset token accepted as invitation: %d", res.Code)
 	}
 	res = f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "short"}))
-	if res.Code != http.StatusBadRequest || !strings.Contains(res.Body.String(), errCodeAccountPasswordShort) {
+	if res.Code != http.StatusBadRequest || !strings.Contains(res.Body.String(), `"code":"PASSWORD_WEAK"`) ||
+		!strings.Contains(res.Body.String(), `"reason":"too_short"`) {
 		t.Fatalf("short password: %d %s", res.Code, res.Body)
 	}
+	// A long enough password without an uppercase letter is refused too, and
+	// the link stays usable.
 	res = f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "brand new secret"}))
+	if res.Code != http.StatusBadRequest || !strings.Contains(res.Body.String(), `"reason":"needs_upper"`) {
+		t.Fatalf("weak password: %d %s", res.Code, res.Body)
+	}
+	res = f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "Brand new secret"}))
 	if res.Code != http.StatusOK {
 		t.Fatalf("reset: %d %s", res.Code, res.Body)
 	}
-	if !f.passwordIs(t, authzMatrixCustomerID, "brand new secret") {
+	if !f.passwordIs(t, authzMatrixCustomerID, "Brand new secret") {
 		t.Fatal("password not set")
 	}
 	if got := f.sessionCount(t, authzMatrixCustomerID); got != 0 {
@@ -295,7 +302,7 @@ func TestRecoveryResetLifecycle(t *testing.T) {
 		t.Fatal("another account's session was dropped")
 	}
 	// Single use.
-	res = f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "another secret 2"}))
+	res = f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "Another secret 2"}))
 	if res.Code != http.StatusGone || !strings.Contains(res.Body.String(), errCodeAccountLinkInvalid) {
 		t.Fatalf("second use: %d %s", res.Code, res.Body)
 	}
@@ -312,7 +319,7 @@ func TestRecoveryResetLinkExpiresAndFollowsTheAccount(t *testing.T) {
 		return recoveryToken(t, f.waitMail(t), "/account-link/reset")
 	}
 	reset := func(token string) int {
-		return f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "brand new secret"})).Code
+		return f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "Brand new secret"})).Code
 	}
 
 	// Expired after 30 minutes.
@@ -457,18 +464,18 @@ func TestInvitationByResellerIsAcceptedOnce(t *testing.T) {
 		t.Fatalf("additional user list: %d", res.Code)
 	}
 
-	res = f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "my own password"}))
+	res = f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "My own password"}))
 	if res.Code != http.StatusOK {
 		t.Fatalf("accept: %d %s", res.Code, res.Body)
 	}
-	if !f.passwordIs(t, created.ID, "my own password") {
+	if !f.passwordIs(t, created.ID, "My own password") {
 		t.Fatal("password not set")
 	}
 	var verified *string
 	if err := f.panel.db.GetDB().QueryRow(`SELECT email_verified_at FROM users WHERE id = ?`, created.ID).Scan(&verified); err != nil || verified == nil {
 		t.Fatalf("address not confirmed by an emailed invitation: %v", err)
 	}
-	res = f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "my own password 2"}))
+	res = f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "My own password 2"}))
 	if res.Code != http.StatusGone {
 		t.Fatalf("second accept: %d", res.Code)
 	}
@@ -519,7 +526,7 @@ func TestInvitationWithoutMailResendAndRevoke(t *testing.T) {
 	if res.Code != http.StatusNoContent {
 		t.Fatalf("revoke: %d %s", res.Code, res.Body)
 	}
-	if code := f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": second, "new_password": "my own password"})).Code; code != http.StatusGone {
+	if code := f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": second, "new_password": "My own password"})).Code; code != http.StatusGone {
 		t.Fatalf("revoked link: %d", code)
 	}
 	if f.auditCount(t, "account.invitation.revoked", created.ID) != 1 {
@@ -549,7 +556,7 @@ func TestEmailVerificationEnablesReset(t *testing.T) {
 	}
 	token := recoveryToken(t, f.waitMail(t), "/account-link/verify")
 	// A verification token is not a reset token.
-	if code := f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "brand new secret"})).Code; code != http.StatusGone {
+	if code := f.do(t, http.MethodPost, recoveryResetPath, "", recoveryBody(map[string]string{"token": token, "new_password": "Brand new secret"})).Code; code != http.StatusGone {
 		t.Fatalf("verify token used for reset: %d", code)
 	}
 	res = f.do(t, http.MethodPost, recoveryVerifyEmailPath, "", recoveryBody(map[string]string{"token": token}))
