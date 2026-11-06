@@ -2,7 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.127.md)
 
-Alan adı sayfası artık yavaş DNS ve posta denetimlerini beklemiyor: son
+Onaylanan her değişiklik artık çalışırken sunucunun gerçek adımlarını
+gösteriyor. Alan adı sayfası yavaş DNS ve posta denetimlerini beklemiyor: son
 doğrulanmış yanıtı hemen gösterip arkada yeniden denetliyor. PostgreSQL
 veritabanı değişiklikleri yalnız çalışan bir kümeye gidiyor; kaldırılmış bir
 sürümün saklanan kümesi yeni veritabanlarını artık bozmuyor. Her parola alanı
@@ -13,6 +14,34 @@ düzeltmenin kendisini veriyor, diğer herkese kimin işlem yapacağını söyl�
 denetimleri ve ani yükte en yoğun süreçleri kazanıyor. Node.js siteleri site
 korumasına katılıyor. **Kurulu panelleri yalnız sahibi, panelin kendi
 güncelleme ekranından günceller.**
+
+## Onaylanan her değişiklik gerçek adımlarını gösteriyor
+
+alpha.126 gerçek adımları yalnız alan adı silmede gösteriyordu. Artık ilerleme
+penceresi diğer onaylanan değişikliklerde de sunucunun kendi adımlarını
+izliyor.
+
+- **Sertifikalar:** Let's Encrypt isteği (denetimler, DNS denetimi,
+  doğrulamanın hazırlanması, sertifika otoritesi, doğrulama, kurulum, yeniden
+  yükleme, posta), sertifika yükleme ve kaldırma.
+- **Yedekler:** geri yükleme (denetim, inceleme, geri yükleme, bitiş) ve
+  artık kilitli pencerede çalışan yedek alma.
+- **PHP sürümü, php.ini ve barındırma türü** değişiklikleri; **uygulama
+  kurulumu** ve **WordPress araçları** kendi kayıtlı durumlarını izler.
+- **Posta şifrelemesi, DNS kayıtları** (ekleme, değiştirme, silme),
+  **PowerDNS onarımı**, **hizmet başlatma/durdurma/yeniden başlatma**,
+  **zararlı yazılım** karantinası, geri getirme ve silme ve **veritabanı,
+  veritabanı kullanıcısı ve hesap silme**.
+- **Başarısız adım işaretlenir** ve olduğu gibi söylenir: reddeden bir
+  denetim karşılanacak bir önkoşuldur (kimin işlem yapacağı ve sonraki
+  adımla), kaybolan yanıt "bilinmiyor"dur, hiçbir zaman "başarısız" değil.
+- **Sayfa yenilense de pencere kalır.** Sertifika isteği, yedek, PHP sürümü
+  değişikliği, uygulama kurulumu ya da WordPress aracı sırasında sayfa
+  yenilenirse pencere sunucunun o anki adımında yeniden açılır ve nasıl
+  bittiğini söyler. Adımı sormak yalnız okur: hiçbir değişikliği başlatmaz ya
+  da tekrarlamaz.
+- İlk girişteki tanıtım turu artık bir soru ya da ilerleme penceresi açıkken
+  bekliyor.
 
 ## Alan adı sayfası hemen yanıt veriyor
 
@@ -161,6 +190,14 @@ _Laboratuvar turundan sonra doldurulacak._
 
 ## Bilinen sınırlar
 
+- **İlerleme adımları:** ekip üyesi kaldırma hâlâ tek bir genel adım
+  gösteriyor. Bu sürümün ikinci turunda adım kazanan değişiklikler (sertifika
+  yükleme ve kaldırma, posta şifrelemesi, DNS kayıtları, PowerDNS onarımı,
+  php.ini, barındırma türü, hizmetler, zararlı yazılım, silmeler) sayfa
+  yenilenince pencerelerini yeniden açmıyor. Alan adı silme, ortak kayıt
+  yerine alpha.126'daki kendi adım kaydını kullanmayı sürdürüyor. Panel
+  yeniden başlarsa o sırada çalışan değişikliğin adımları kaybolur ve sonucu
+  "bilinmiyor" olur.
 - **Alan adı sayfası:** yavaş bir denetimin yanıtı, sayfa yeniden
   denetlemeden önce en çok 30 saniye kadar eski olabilir; gösterilen zaman ne
   kadar eski olduğunu söyler.

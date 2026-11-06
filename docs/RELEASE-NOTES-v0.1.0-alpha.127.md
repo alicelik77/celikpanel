@@ -2,7 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.127.tr.md)
 
-The domain page no longer waits for slow DNS and mail checks: it shows the
+Every confirmed change now shows the server's real steps while it runs. The
+domain page no longer waits for slow DNS and mail checks: it shows the
 last verified answer at once and checks again behind the screen. PostgreSQL
 database changes go only to a cluster that runs, so a removed version's kept
 cluster no longer breaks new databases. Every password field shares one
@@ -12,6 +13,31 @@ and tell everyone else who acts. Monitoring gains alerts (in the panel and by
 email), service health, website checks and the busiest processes at a
 spike. Node.js sites join the site sandbox. **Only the owner updates
 installed panels, from the panel's own update screen.**
+
+## Every confirmed change shows its real steps
+
+alpha.126 showed real steps only for domain deletion. Now the progress
+window follows the server's own steps for the other confirmed changes too.
+
+- **Certificates:** the Let's Encrypt request (checks, DNS check, preparing
+  the validation, the certificate authority, verifying, installing,
+  reloading, mail), certificate upload and removal.
+- **Backups:** restoring (check, inspect, restore, finish) and creating a
+  backup, which now also runs in the locked window.
+- **PHP version, php.ini and hosting type** changes; **application install**
+  and the **WordPress tools** follow their own saved status.
+- **Mail encryption, DNS records** (add, change, delete), **PowerDNS
+  repair**, **service start/stop/restart**, **malware** quarantine, restore
+  and delete, and **database, database user and account deletion**.
+- **A failed step is marked** and said as what it is: a check that refused
+  is a prerequisite to meet (with who acts and the next step), a lost answer
+  is "not known", never "failed".
+- **Reload keeps the window.** After a reload during a certificate request,
+  backup, PHP version change, application install or WordPress tool, the
+  window opens again at the server's current step and says how it ended.
+  Checking the step only reads: it never starts or repeats a change.
+- The first-login tour now waits while a question or progress window is
+  open.
 
 ## The domain page answers at once
 
@@ -157,6 +183,13 @@ _To be filled in after the lab round._
 
 ## Known limits
 
+- **Progress steps:** removing a team member still shows one general step.
+  The changes that gained steps in this release's second round (certificate
+  upload and removal, mail encryption, DNS records, PowerDNS repair,
+  php.ini, hosting type, services, malware, deletions) do not reopen their
+  window after a page reload. Domain deletion keeps its own step record
+  from alpha.126 rather than the shared one. After a panel restart the steps
+  of a change that was running are gone and its result is "not known".
 - **Domain page:** a slow check's answer can be up to about 30 seconds old
   before the page checks again; the time shown says how old it is.
 - **PostgreSQL:** a database in a cluster that is neither the running default
