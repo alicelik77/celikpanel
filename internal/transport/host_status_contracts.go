@@ -74,6 +74,11 @@ const (
 type SiteUsageRequest struct {
 	SiteHome string `json:"site_home"`
 	Domain   string `json:"domain"`
+	// DiskOnly (alpha.127): measure the disk only. This month's traffic is
+	// the panel's collected number (traffic_daily, alpha.118), so the access
+	// log is not read again; a disk that could not be measured is an Error,
+	// never 0.
+	DiskOnly bool `json:"disk_only,omitempty"`
 }
 
 type SiteUsageResponse struct {

@@ -165,6 +165,7 @@ export const enMailDatabasesScreens = {
     'db.selectConfigFile': 'Configuration file',
     'db.fileNotFound': '{file} not found.',
     'mail.health.title': 'Deliverability health',
+    'mail.health.rechecking': 'Last checked at {time}. Checking again now; nothing for you to do.',
     'mail.health.mx': 'Inbound mail (MX)',
     'mail.health.ptr': 'Reverse DNS (PTR)',
     'mail.health.helo': 'Server hostname (HELO)',

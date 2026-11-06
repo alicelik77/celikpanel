@@ -66,6 +66,10 @@ func csrfProtect(next http.Handler) http.Handler {
 			invalidateDisplayChecks()
 			defer invalidateDisplayChecks()
 		}
+		if requestIsDisplayChange(r) {
+			noteDisplayChange()
+			defer noteDisplayChange()
+		}
 		if remoteDNSMachineVerified(r) {
 			next.ServeHTTP(w, r)
 			return

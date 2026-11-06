@@ -178,3 +178,71 @@ func TestRequestChangesDisplayChecks(t *testing.T) {
 		}
 	}
 }
+
+func TestDisplayCheckShowsEarlierAnswerAfterAChangeWhenAllowed(t *testing.T) {
+	displayCheckTestClock(t)
+	var changes atomic.Uint64
+	c := displayCheck[int]{changes: &changes, staleOnChange: true}
+	var reads atomic.Int32
+	release := make(chan struct{})
+	read := func(context.Context) (int, error) {
+		n := int(reads.Add(1))
+		if n > 1 {
+			<-release
+		}
+		return n, nil
+	}
+	_, _, _ = c.get(context.Background(), "k", read)
+	changes.Add(1)
+	value, view, err := c.get(context.Background(), "k", read)
+	if err != nil || value != 1 || !view.Rechecking {
+		t.Fatalf("read after a change = %d %+v %v, want the earlier answer marked rechecking", value, view, err)
+	}
+	close(release)
+}
+
+func TestDisplayCheckNeverShowsAnOlderAnswerWhenKeepIsNegative(t *testing.T) {
+	now := displayCheckTestClock(t)
+	c := displayCheck[int]{keep: -1}
+	var reads atomic.Int32
+	read := func(context.Context) (int, error) { return int(reads.Add(1)), nil }
+	_, _, _ = c.get(context.Background(), "k", read)
+	now.advance(displayCheckFresh + time.Second)
+	if value, view, err := c.get(context.Background(), "k", read); err != nil || value != 2 || view.Rechecking {
+		t.Fatalf("read = %d %+v %v, want a waited, new check", value, view, err)
+	}
+}
+
+func TestDisplayCheckKeepsANotReadyAnswerShorter(t *testing.T) {
+	now := displayCheckTestClock(t)
+	var d displayChecks
+	c := &d.ready().remote
+	var reads atomic.Int32
+	read := func(context.Context) (remoteDNSAuthority, error) {
+		reads.Add(1)
+		return remoteDNSAuthority{Ready: false}, nil
+	}
+	_, _, _ = c.get(context.Background(), "k", read)
+	now.advance(remoteNotReadyFresh + time.Second)
+	if _, view, _ := c.get(context.Background(), "k", read); !view.Rechecking {
+		t.Fatalf("a not-ready answer older than %s must be checked again, got %+v", remoteNotReadyFresh, view)
+	}
+}
+
+func TestRemoteDNSVerifiedNotReady(t *testing.T) {
+	for _, tc := range []struct {
+		err  error
+		want bool
+	}{
+		{errRemoteDNSNotReady, true},
+		{&remoteDNSHTTPError{StatusCode: 409, Code: "REMOTE_DNS_AUTHORITY_NOT_READY"}, true},
+		{&remoteDNSHTTPError{StatusCode: 503}, false},
+		{&remoteDNSExchangeError{}, false},
+		{errors.New("timeout"), false},
+		{nil, false},
+	} {
+		if got := remoteDNSVerifiedNotReady(tc.err); got != tc.want {
+			t.Errorf("%v = %v, want %v", tc.err, got, tc.want)
+		}
+	}
+}

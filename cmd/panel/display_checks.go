@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -58,12 +59,30 @@ var (
 	// shown while it is checked again; older answers are read before showing.
 	displayCheckKeep = 24 * time.Hour
 	// displayCheckLimit bounds one check that runs behind the screen.
-	displayCheckLimit = 30 * time.Second
+	displayCheckLimit = 45 * time.Second
 	displayCheckClock = time.Now
 )
 
+// displayChangesGeneration moves on every change made through the panel
+// (alpha.127): screens of site content (mail health, applications, the
+// host's sandbox level) then show their last answer as being checked again.
+var displayChangesGeneration atomic.Uint64
+
 func invalidateDisplayChecks() {
 	displayChecksGeneration.Add(1)
+}
+
+func noteDisplayChange() {
+	displayChangesGeneration.Add(1)
+}
+
+// requestIsDisplayChange: any change, not the joined server's status read.
+func requestIsDisplayChange(r *http.Request) bool {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return false
+	}
+	return r.URL.Path != "/api/v1/dns/remote/receiver/status"
 }
 
 // The changes after which a screen must not see an earlier DNS answer: DNS,
@@ -113,10 +132,45 @@ type displayCheckEntry[T any] struct {
 	flight     *displayCheckFlight[T]
 }
 
-// displayCheck keeps one last-known answer per key.
+// displayCheck keeps one last-known answer per key. The zero value is the
+// DNS policy: fresh for displayCheckFresh, shown while rechecked for
+// displayCheckKeep, and read again (waited for) after a DNS-relevant change.
 type displayCheck[T any] struct {
 	mu      sync.Mutex
 	entries map[string]*displayCheckEntry[T]
+
+	// freshFor, when set, decides how long one answer is fresh (a verified
+	// "not ready" is kept shorter than "ready").
+	freshFor func(T) time.Duration
+	// keep: how old an answer may be and still be shown while rechecked;
+	// 0 = displayCheckKeep, negative = never shown once no longer fresh.
+	keep time.Duration
+	// changes is the generation this answer depends on; nil = DNS changes.
+	changes *atomic.Uint64
+	// staleOnChange: after a change the earlier answer is shown as being
+	// checked again instead of waited for.
+	staleOnChange bool
+}
+
+func (c *displayCheck[T]) generation() uint64 {
+	if c.changes != nil {
+		return c.changes.Load()
+	}
+	return displayChecksGeneration.Load()
+}
+
+func (c *displayCheck[T]) fresh(value T) time.Duration {
+	if c.freshFor != nil {
+		return c.freshFor(value)
+	}
+	return displayCheckFresh
+}
+
+func (c *displayCheck[T]) keepFor() time.Duration {
+	if c.keep == 0 {
+		return displayCheckKeep
+	}
+	return c.keep
 }
 
 // displayCheckView is what a screen is told about the answer it got.
@@ -142,7 +196,7 @@ func (c *displayCheck[T]) get(
 	}
 	entry := c.entries[key]
 	if entry == nil {
-		if len(c.entries) >= 32 {
+		if len(c.entries) >= 256 {
 			// Keys follow durable identities; a long-lived process does not
 			// keep every identity it ever saw.
 			c.entries = make(map[string]*displayCheckEntry[T])
@@ -150,16 +204,18 @@ func (c *displayCheck[T]) get(
 		entry = &displayCheckEntry[T]{}
 		c.entries[key] = entry
 	}
-	generation := displayChecksGeneration.Load()
+	generation := c.generation()
 	now := displayCheckClock()
-	usable := entry.known && entry.generation == generation && !entry.at.After(now)
-	if usable && now.Sub(entry.at) < displayCheckFresh {
+	known := entry.known && !entry.at.After(now)
+	current := known && entry.generation == generation
+	if current && now.Sub(entry.at) < c.fresh(entry.value) {
 		value, at := entry.value, entry.at
 		c.mu.Unlock()
 		return value, displayCheckView{CheckedAt: at}, nil
 	}
 	flight := c.startLocked(entry, generation, read)
-	if usable && now.Sub(entry.at) < displayCheckKeep {
+	showable := current || (known && c.staleOnChange)
+	if showable && now.Sub(entry.at) < c.keepFor() {
 		value, at := entry.value, entry.at
 		c.mu.Unlock()
 		return value, displayCheckView{CheckedAt: at, Rechecking: true}, nil
@@ -199,7 +255,7 @@ func (c *displayCheck[T]) startLocked(
 		}
 		// A failed check keeps nothing: the earlier answer stays what it was
 		// (last known, with its own time), and the next read checks again.
-		if err == nil && generation == displayChecksGeneration.Load() &&
+		if err == nil && generation == c.generation() &&
 			(!entry.known || generation >= entry.generation) {
 			entry.known, entry.value, entry.at, entry.generation = true, value, at, generation
 		}
@@ -209,10 +265,36 @@ func (c *displayCheck[T]) startLocked(
 	return flight
 }
 
-// displayChecks holds the screens' last-known DNS answers of one panel.
+// displayChecks holds the screens' last-known answers of one panel.
 type displayChecks struct {
+	once    sync.Once
 	backend displayCheck[dnsBackendRuntimeView]
 	remote  displayCheck[remoteDNSAuthority]
+	// Site content: shown as being checked again after any panel change.
+	mailHealth displayCheck[mailHealthReport]
+	sandbox    displayCheck[transport.SandboxCapsResponse]
+	// An application's prerequisites gate its Install button: used while
+	// fresh, never shown once older (keep < 0), read again after a change.
+	appPrereq displayCheck[transport.AppPrerequisitesResponse]
+}
+
+// remoteNotReadyFresh: a main DNS server that answered "not ready" is asked
+// again sooner, so its recovery shows within one reread of the screen.
+var remoteNotReadyFresh = 10 * time.Second
+
+func (d *displayChecks) ready() *displayChecks {
+	d.once.Do(func() {
+		d.remote.freshFor = func(a remoteDNSAuthority) time.Duration {
+			if !a.Ready {
+				return remoteNotReadyFresh
+			}
+			return displayCheckFresh
+		}
+		d.mailHealth.changes, d.mailHealth.staleOnChange = &displayChangesGeneration, true
+		d.sandbox.changes, d.sandbox.staleOnChange = &displayChangesGeneration, true
+		d.appPrereq.changes, d.appPrereq.keep = &displayChangesGeneration, -1
+	})
+	return d
 }
 
 type dnsBackendRuntimeView struct {
@@ -231,7 +313,7 @@ func (p *Panel) dnsPublisherStatusForDisplay(ctx context.Context) (dnsPublisherS
 	if state.ActiveEngine == "" || state.CurrentSwitchID != "" {
 		return classifyDNSPublisher(state, nil, false), displayCheckView{CheckedAt: displayCheckClock()}, nil
 	}
-	runtime, view, err := p.displayChecks.backend.get(ctx, fmt.Sprintf("%+v", state),
+	runtime, view, err := p.displayChecks.ready().backend.get(ctx, fmt.Sprintf("%+v", state),
 		func(ctx context.Context) (dnsBackendRuntimeView, error) {
 			runtimes, port53Conflict, _, err := p.readDNSBackendRuntime(ctx)
 			return dnsBackendRuntimeView{runtimes: runtimes, port53Conflict: port53Conflict}, err
@@ -262,10 +344,31 @@ func (p *Panel) remoteDNSConnectionReadinessForDisplay(ctx context.Context, id s
 	if c.Status != "ready" || !remoteDNSValidSecret(c.credential) {
 		return remoteDNSAuthority{}, displayCheckView{}, errRemoteDNSNotReady
 	}
-	return p.displayChecks.remote.get(ctx, c.ID+"|"+c.Endpoint,
+	authority, view, err := p.displayChecks.ready().remote.get(ctx, c.ID+"|"+c.Endpoint,
 		func(ctx context.Context) (remoteDNSAuthority, error) {
-			return p.remoteDNSConnectionReadiness(ctx, id)
+			authority, err := p.remoteDNSConnectionReadiness(ctx, id)
+			if remoteDNSVerifiedNotReady(err) {
+				// The main DNS server answered: not ready. That is an
+				// answer, kept briefly; a failure to ask is not.
+				return remoteDNSAuthority{}, nil
+			}
+			return authority, err
 		})
+	if err == nil && !authority.Ready {
+		err = errRemoteDNSNotReady
+	}
+	return authority, view, err
+}
+
+// remoteDNSVerifiedNotReady: the main DNS server itself answered that it is
+// not ready (its typed refusal, or an answer that is not a ready authority).
+func remoteDNSVerifiedNotReady(err error) bool {
+	if errors.Is(err, errRemoteDNSNotReady) {
+		return true
+	}
+	var refusal *remoteDNSHTTPError
+	return errors.As(err, &refusal) && refusal.StatusCode == http.StatusConflict &&
+		refusal.Code == "REMOTE_DNS_AUTHORITY_NOT_READY"
 }
 
 // olderDisplayCheck combines two answers: the older time, rechecking if

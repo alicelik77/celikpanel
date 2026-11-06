@@ -20,7 +20,7 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner, StatusDot } from './ui';
 import { useAuth } from '../auth/AuthContext';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
-import { decodeList, lastKnown, useRemote } from '../lib/remote';
+import { decodeList, lastKnown, useRemote, useRereadWhileRechecking } from '../lib/remote';
 import {
     hasAnyDomainAccess,
     hasDomainAccess,
@@ -119,11 +119,13 @@ interface DomainUsage {
     bandwidth: number;
     /** alpha.118 (D-044): whether this month's traffic is counted. */
     traffic_state?: string;
+    /** alpha.127: the disk is the last measurement; a new one runs behind the page. */
+    rechecking?: boolean;
 }
 function decodeUsage(raw: unknown): DomainUsage {
-    const body = raw as { disk_usage?: unknown; bandwidth?: unknown; traffic_state?: unknown } | null;
+    const body = raw as { disk_usage?: unknown; bandwidth?: unknown; traffic_state?: unknown; rechecking?: unknown } | null;
     if (!body || typeof body.disk_usage !== 'number' || typeof body.bandwidth !== 'number') throw new Error('shape');
-    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth, traffic_state: typeof body.traffic_state === 'string' ? body.traffic_state : undefined };
+    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth, traffic_state: typeof body.traffic_state === 'string' ? body.traffic_state : undefined, rechecking: body.rechecking === true };
 }
 
 // What became of looking this domain up in the list the server gave.
@@ -284,6 +286,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         || Boolean(domain?.access && hasDomainAccess(domain.access, 'statistics'));
     const usage = useRemote(domainLoaded && canViewStatistics ? `/api/v1/domains/${domainId}/usage` : null, decodeUsage);
     const measured = domainLoaded && canViewStatistics && usage.remote.state === 'known' ? usage.remote.value : null;
+    useRereadWhileRechecking(measured?.rechecking === true, usage.remote.state === 'known' ? usage.remote.observedAt : undefined, () => void usage.retry());
 
     // The certificate line of the strip under the title reads the certificate
     // itself, at the address and with the decoder the overview card and the

@@ -92,6 +92,8 @@ type Panel struct {
 	startupGate   *panelHTTPStartupGate
 	// Screens' last-known DNS proofs (alpha.127, display_checks.go).
 	displayChecks displayChecks
+	// Site disk measurements run once per site (alpha.127, domain_usage_handlers.go).
+	siteDiskMeasurements siteDiskMeasurements
 	// listenerControl is the running HTTP server's listener set; a panel
 	// port change adds and retires listeners through it (panel_port.go).
 	listenerControl panelListenerControl

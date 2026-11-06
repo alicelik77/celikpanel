@@ -118,13 +118,12 @@ func verifyDNSPrimaryPairReadyAuthorityAt(
 		return dnsPeerAXFRAuthority{},
 			dnsPeerBehind("DNS peer catalog SOA serial differs from the primary")
 	}
-	for index, member := range members {
-		localSerial, localErr := exactDNSZoneSerialAtWithProbe(
-			proofCtx, evidence.LocalIP, member, soa,
-		)
-		peerSerial, peerErr := exactDNSZoneSerialAtWithProbe(
-			proofCtx, evidence.PeerIP, member, soa,
-		)
+	memberSerials := probeDNSMemberSerials(
+		proofCtx, []string{evidence.LocalIP, evidence.PeerIP}, members, soa,
+	)
+	for index := range members {
+		localSerial, localErr := memberSerials[index][0].serial, memberSerials[index][0].err
+		peerSerial, peerErr := memberSerials[index][1].serial, memberSerials[index][1].err
 		expectedSerial := evidence.MemberSerials[index]
 		if localErr != nil || localSerial != expectedSerial {
 			return dnsPeerAXFRAuthority{},
@@ -179,13 +178,12 @@ func verifyDNSLegacyPrimaryPairReadyAuthorityAt(
 		return dnsPeerAXFRAuthority{},
 			dnsPeerBehind(`legacy DNS peer catalog SOA differs from durable evidence`)
 	}
-	for index, member := range members {
-		localSerial, localErr := exactDNSZoneSerialAtWithProbe(
-			proofCtx, evidence.LocalIP, member, soa,
-		)
-		peerSerial, peerErr := exactDNSZoneSerialAtWithProbe(
-			proofCtx, evidence.PeerIP, member, soa,
-		)
+	memberSerials := probeDNSMemberSerials(
+		proofCtx, []string{evidence.LocalIP, evidence.PeerIP}, members, soa,
+	)
+	for index := range members {
+		localSerial, localErr := memberSerials[index][0].serial, memberSerials[index][0].err
+		peerSerial, peerErr := memberSerials[index][1].serial, memberSerials[index][1].err
 		expectedSerial := evidence.MemberSerials[index]
 		if localErr != nil || localSerial != expectedSerial {
 			return dnsPeerAXFRAuthority{},

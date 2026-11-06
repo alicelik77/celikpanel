@@ -158,6 +158,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'db.selectConfigFile': 'Yapılandırma dosyası',
     'db.fileNotFound': '{file} bulunamadı.',
     'mail.health.title': 'Teslim edilebilirlik sağlığı',
+    'mail.health.rechecking': 'Son kontrol: {time}. Şimdi yeniden kontrol ediliyor; bir şey yapmanız gerekmiyor.',
     'mail.health.mx': 'Gelen posta (MX)',
     'mail.health.ptr': 'Ters DNS (PTR)',
     'mail.health.helo': 'Sunucu adı (HELO)',

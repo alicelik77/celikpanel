@@ -147,6 +147,8 @@ export interface RuntimeAppsView {
     app: RuntimeApp | null;
     operation: RuntimeOperation | null;
     port_range: [number, number];
+    /** alpha.127: the host's sandbox level is the last verified one; read again shortly. */
+    rechecking?: boolean;
 }
 
 export interface RuntimeAdminKind {

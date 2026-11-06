@@ -3,9 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -53,6 +57,26 @@ func (p *Panel) mailDNSSECSecured(ctx context.Context, domain string) bool {
 	return status.Secured
 }
 
+// mailHealthReport is one deliverability check, as the card shows it.
+type mailHealthReport struct {
+	ServerIP   string
+	Myhostname string
+	Overall    string
+	Checks     []healthCheck
+}
+
+// mailHealthAgentError: the Agent's server facts could not be read; the card
+// says it could not check (writeAgentError), as before.
+type mailHealthAgentError struct{ err error }
+
+func (e *mailHealthAgentError) Error() string { return e.err.Error() }
+func (e *mailHealthAgentError) Unwrap() error { return e.err }
+
+// handleMailHealth answers the card at once with the last verified check
+// while one check runs again (alpha.127, display_checks.go); the card then
+// reads again. The questions of one check run at the same time.
+// Kart son dogrulanmis yaniti hemen alir; tek bir kontrol arkada yeniden
+// kosar. Bir kontroldeki sorular ayni anda sorulur.
 func (p *Panel) handleMailHealth(w http.ResponseWriter, r *http.Request, domainID int) {
 	w.Header().Set("Content-Type", "application/json")
 	ctx := r.Context()
@@ -67,23 +91,95 @@ func (p *Panel) handleMailHealth(w http.ResponseWriter, r *http.Request, domainI
 		writeServerError(w, err)
 		return
 	}
+	report, view, err := p.displayChecks.ready().mailHealth.get(ctx, fmt.Sprintf("%d|%s|%s", domainID, domain, mode),
+		func(ctx context.Context) (mailHealthReport, error) {
+			return p.mailHealthReport(ctx, domainID, domain, mode)
+		})
+	var agentErr *mailHealthAgentError
+	if errors.As(err, &agentErr) {
+		writeAgentError(w, agentErr.err, "mail health")
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{
+		"domain": domain, "server_ip": report.ServerIP, "myhostname": report.Myhostname,
+		"expected_ptr": strings.ToLower(report.Myhostname),
+		"overall":      report.Overall, "checks": report.Checks,
+		"checked_at": view.CheckedAt.UTC().Format(time.RFC3339),
+		"rechecking": view.Rechecking,
+	})
+}
+
+func (p *Panel) mailHealthReport(ctx context.Context, domainID int, domain, mode string) (mailHealthReport, error) {
+	var (
+		wg        sync.WaitGroup
+		external  healthCheck
+		mh        transport.MailHealthResponse
+		agentErr  error
+		rbl       transport.CheckRBLResponse
+		rblErr    error
+		dnssecOK  bool
+		liveNames = [3][2]string{
+			{domain, "v=spf1"},
+			{dkimSelector + "._domainkey." + domain, "v=DKIM1"},
+			{"_dmarc." + domain, "v=DMARC1"},
+		}
+		live [3]string
+	)
+	run := func(f func()) {
+		wg.Add(1)
+		go func() { defer wg.Done(); f() }()
+	}
+	if mode == setupDNSModeExternal || mode == setupDNSModeExisting {
+		run(func() {
+			external = externalMailDNSHealth(ctx, domain, serverPrimaryIP(), serverPrimaryIPv6(), net.DefaultResolver)
+		})
+	}
+	// --- Server facts from the agent / Sunucu gerçekleri agent'tan
+	run(func() { agentErr = p.callAgentContext(ctx, "Agent.MailHealth", &transport.Empty{}, &mh) })
+	for i := range liveNames {
+		run(func() {
+			if v, ok := liveTXT(ctx, liveNames[i][0], liveNames[i][1]); ok {
+				live[i] = v
+			}
+		})
+	}
+	// --- Blacklists / Kara listeler
+	run(func() { rblErr = p.callAgentContext(ctx, "Agent.CheckRBL", &transport.Empty{}, &rbl) })
+	// --- DNSSEC
+	run(func() { dnssecOK = p.mailDNSSECSecured(ctx, domain) })
+
+	// --- SPF / DKIM / DMARC: what the world resolves; if the record sits
+	// in our zone but the world cannot see it yet (delegation pending), that
+	// is a warn, not a fail.
+	// SPF / DKIM / DMARC: dünyanın çözdüğü; kayıt bizim zone'daysa ama dünya
+	// henüz göremiyorsa (delegasyon bekliyor) bu fail değil warn'dur.
+	var zoneID int
+	var desiredRemote []DNSRecord
+	var desiredErr error
+	if mode == setupDNSModeLocal {
+		_ = p.db.GetDB().QueryRowContext(ctx, `SELECT id FROM pdns_domains WHERE name = ?`, domain).Scan(&zoneID)
+	} else if mode == setupDNSModeExisting {
+		desiredRemote, desiredErr = p.remoteDomainDNSRecords(ctx, domain)
+	}
+	wg.Wait()
+	if agentErr != nil {
+		return mailHealthReport{}, &mailHealthAgentError{err: agentErr}
+	}
+	if desiredErr != nil {
+		return mailHealthReport{}, desiredErr
+	}
 
 	var checks []healthCheck
 	add := func(id, status, detail string) {
 		checks = append(checks, healthCheck{ID: id, Status: status, Detail: detail})
 	}
-
 	if mode == setupDNSModeExternal || mode == setupDNSModeExisting {
-		checks = append(checks, externalMailDNSHealth(ctx, domain, serverPrimaryIP(), serverPrimaryIPv6(), net.DefaultResolver))
+		checks = append(checks, external)
 	}
-
-	// --- Server facts from the agent / Sunucu gerçekleri agent'tan
-	var mh transport.MailHealthResponse
-	if err := p.callAgent("Agent.MailHealth", &transport.Empty{}, &mh); err != nil {
-		writeAgentError(w, err, "mail health")
-		return
-	}
-
 	switch {
 	case mh.PTR == "":
 		add("ptr", "fail", mh.ServerIP)
@@ -106,46 +202,20 @@ func (p *Panel) handleMailHealth(w http.ResponseWriter, r *http.Request, domainI
 	if mh.OutboundPort25 == "unknown" {
 		checks[len(checks)-1].Status = "unknown"
 	}
-
-	// --- SPF / DKIM / DMARC: what the world resolves; if the record sits
-	// in our zone but the world cannot see it yet (delegation pending), that
-	// is a warn, not a fail.
-	// SPF / DKIM / DMARC: dünyanın çözdüğü; kayıt bizim zone'daysa ama dünya
-	// henüz göremiyorsa (delegasyon bekliyor) bu fail değil warn'dur.
-	var zoneID int
-	var desiredRemote []DNSRecord
-	if mode == setupDNSModeLocal {
-		_ = p.db.GetDB().QueryRowContext(ctx, `SELECT id FROM pdns_domains WHERE name = ?`, domain).Scan(&zoneID)
-	} else if mode == setupDNSModeExisting {
-		var err error
-		desiredRemote, err = p.remoteDomainDNSRecords(ctx, domain)
-		if err != nil {
-			writeServerError(w, err)
-			return
-		}
-	}
-	checkTXT := func(id, name, prefix string) {
-		if v, ok := liveTXT(ctx, name, prefix); ok && v != "" {
+	for i, id := range []string{"spf", "dkim", "dmarc"} {
+		name, prefix := liveNames[i][0], liveNames[i][1]
+		switch {
+		case live[i] != "":
 			add(id, "ok", "")
-			return
-		}
-		if remoteMailDesiredTXT(desiredRemote, name, prefix) != "" {
+		case remoteMailDesiredTXT(desiredRemote, name, prefix) != "":
 			add(id, "warn", "pending")
-			return
-		}
-		if zoneID > 0 && strings.HasPrefix(p.zoneTXT(ctx, zoneID, name), prefix) {
+		case zoneID > 0 && strings.HasPrefix(p.zoneTXT(ctx, zoneID, name), prefix):
 			add(id, "warn", "pending")
-			return
+		default:
+			add(id, "fail", "")
 		}
-		add(id, "fail", "")
 	}
-	checkTXT("spf", domain, "v=spf1")
-	checkTXT("dkim", dkimSelector+"._domainkey."+domain, "v=DKIM1")
-	checkTXT("dmarc", "_dmarc."+domain, "v=DMARC1")
-
-	// --- Blacklists / Kara listeler
-	var rbl transport.CheckRBLResponse
-	if p.callAgent("Agent.CheckRBL", &transport.Empty{}, &rbl) == nil && rbl.Error == "" && len(rbl.Results) > 0 {
+	if rblErr == nil && rbl.Error == "" && len(rbl.Results) > 0 {
 		listed := 0
 		for _, res := range rbl.Results {
 			if res.Listed {
@@ -171,9 +241,7 @@ func (p *Panel) handleMailHealth(w http.ResponseWriter, r *http.Request, domainI
 	} else {
 		add("mailcert", "warn", "")
 	}
-
-	// --- DNSSEC
-	if p.mailDNSSECSecured(ctx, domain) {
+	if dnssecOK {
 		add("dnssec", "ok", "")
 	} else {
 		add("dnssec", "warn", "")
@@ -190,10 +258,5 @@ func (p *Panel) handleMailHealth(w http.ResponseWriter, r *http.Request, domainI
 			overall = "warn"
 		}
 	}
-
-	json.NewEncoder(w).Encode(map[string]any{
-		"domain": domain, "server_ip": mh.ServerIP, "myhostname": mh.Myhostname,
-		"expected_ptr": strings.ToLower(mh.Myhostname),
-		"overall":      overall, "checks": checks,
-	})
+	return mailHealthReport{ServerIP: mh.ServerIP, Myhostname: mh.Myhostname, Overall: overall, Checks: checks}, nil
 }

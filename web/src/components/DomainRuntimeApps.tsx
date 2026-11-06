@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, ErrorBanner, Field, RemoteGate, inputClass } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
-import { LOADING, invalidate, lastKnown, readRemote, useRefreshEvery, type Remote, type RemoteHandle } from '../lib/remote';
+import { LOADING, invalidate, lastKnown, readRemote, useRefreshEvery, useRereadWhileRechecking, type Remote, type RemoteHandle } from '../lib/remote';
 import { newOperationID } from '../lib/serviceApps';
 import {
     RUNTIME_DETAIL_REASONS,
@@ -131,6 +131,8 @@ export function DomainRuntimeApps({ domainId }: { domainId: number; domainName: 
         }
         return next;
     }, [base]);
+    const shownView = lastKnown(remote);
+    useRereadWhileRechecking(shownView?.value.rechecking === true, shownView?.observedAt, () => void load(false));
 
     useEffect(() => {
         void load(true);
