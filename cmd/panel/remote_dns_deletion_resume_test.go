@@ -101,6 +101,41 @@ func TestJoinedServerDeletionFinishesItselfOnceTheMainConfirmsTheRemoval(t *test
 		t.Fatalf("status while the main server confirms: %d %+v", code, body)
 	}
 
+	// 6 Nov 2026 (alpha.125): the owner pressed delete again while the main
+	// server confirmed. The press answers "already being deleted" and runs
+	// nothing again: no site cleanup, no re-sent removal.
+	agent.callsMu.Lock()
+	siteCalls := agent.deleteSiteCalls
+	agent.callsMu.Unlock()
+	publications := receiverPublications
+	for press := 0; press < 3; press++ {
+		again := deleteDomainForSagaTest(t, f.origin, id)
+		var repeated map[string]string
+		if again.Code != http.StatusAccepted || json.Unmarshal(again.Body.Bytes(), &repeated) != nil ||
+			repeated["status"] != domainDeletionPendingStatus || repeated["stage"] != "dns_cleanup" ||
+			repeated["reason"] != domainDeletionAlreadyRunningReason || repeated["domain"] != domain {
+			t.Fatalf("repeated press %d: %d %s", press, again.Code, again.Body.String())
+		}
+	}
+	agent.callsMu.Lock()
+	siteCallsAfter := agent.deleteSiteCalls
+	agent.callsMu.Unlock()
+	if siteCallsAfter != siteCalls || receiverPublications != publications {
+		t.Fatalf("a repeated press started work again: site cleanups %d->%d, removals sent %d->%d",
+			siteCalls, siteCallsAfter, publications, receiverPublications)
+	}
+	if _, body := readDeletionStatusForTest(t, f.origin, id); body.Reason != remoteDNSDeletionConfirmingReason {
+		t.Fatalf("status after repeated presses: %+v", body)
+	}
+	// A press while a deletion request of the same domain is still running.
+	end := f.origin.deletionsRunning.begin(id)
+	if running := deleteDomainForSagaTest(t, f.origin, id); running.Code != http.StatusAccepted ||
+		!strings.Contains(running.Body.String(), domainDeletionAlreadyRunningReason) {
+		end()
+		t.Fatalf("press during a running deletion: %d %s", running.Code, running.Body.String())
+	}
+	end()
+
 	// A deletion stuck before this fix has no DNS stage record and no
 	// in-memory history: the saved removal itself is the evidence.
 	f.origin.clearRemoteDNSDeletionStage(ctx, id)

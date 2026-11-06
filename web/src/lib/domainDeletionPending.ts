@@ -109,6 +109,9 @@ const ownDeletionReasons = new Set([
     'deletion_incomplete',
     'deletion_state_changing',
     'deletion_marker_inconsistent',
+    // A delete press while this domain is already being deleted: nothing new
+    // was started (6 Nov 2026).
+    'deletion_already_running',
 ]);
 
 // Reasons whose next step CelikPanel takes by itself: the page reads again
@@ -120,6 +123,7 @@ const automaticDeletionReasons = new Set([
     'remote_dns_main_unreachable',
     'remote_dns_removed_finishing',
     'deletion_state_changing',
+    'deletion_already_running',
 ]);
 
 export function domainDeletionReasonAutomatic(reason: string): boolean {

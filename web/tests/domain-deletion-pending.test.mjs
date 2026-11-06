@@ -339,6 +339,7 @@ test('a joined server deletion and the former unknown states read as typed reaso
     deletion_incomplete: ['incomplete', false],
     deletion_state_changing: ['dns_cleanup', true],
     deletion_marker_inconsistent: ['marker_check', false],
+    deletion_already_running: ['dns_cleanup', true],
   };
   for (const [reason, [stage, automatic]] of Object.entries(own)) {
     assert.deepEqual(await readSavedDomainDeletionState(response(200, {
@@ -354,6 +355,12 @@ test('a joined server deletion and the former unknown states read as typed reaso
   assert.deepEqual(await readDomainDeletionOutcome(response(202, {
     status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming',
   })), { state: 'pending', reason: 'remote_dns_removal_confirming' });
+  // A repeated press while the domain is already being deleted (6 Nov 2026).
+  assert.deepEqual(await readDomainDeletionOutcome(response(202, {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'deletion_already_running',
+  })), { state: 'pending', reason: 'deletion_already_running' });
+  assert.match(enScreens['domains.deletionReason.deletion_already_running'], /^This domain is already being deleted\. Nobody needs to do anything/);
+  assert.match(trScreens['domains.deletionReason.deletion_already_running'], /zaten siliniyor.*Kimsenin bir şey yapması gerekmiyor/);
   // Waiting states say nobody acts; the others name who acts.
   assert.match(enScreens['domains.deletionReason.remote_dns_removal_confirming'], /^The main DNS server .*Nobody needs to do anything/);
   assert.match(trScreens['domains.deletionReason.remote_dns_removal_confirming'], /Kimsenin bir şey yapması gerekmiyor/);

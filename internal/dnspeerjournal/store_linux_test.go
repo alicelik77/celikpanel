@@ -16,6 +16,7 @@ import (
 )
 
 const testNow int64 = 1_800_000_000
+
 // fixtureMembers is the catalog member set of every fixture request.
 var fixtureMembers = []string{"other.example.test"}
 

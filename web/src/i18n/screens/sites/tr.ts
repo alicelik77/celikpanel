@@ -117,6 +117,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.deletionReason.remote_dns_removed_finishing': 'Ana DNS sunucusu bu alan adının DNS\'ten kaldırıldığını doğruladı. Bu sunucu silmenin kalanını kendiliğinden bitirir; kimsenin bir şey yapması gerekmiyor. Bu ileti on dakikadan uzun kalırsa bitirmek için alan adını yeniden silin.',
     'domains.deletionReason.deletion_incomplete': 'Bu silme işlemi bitmeden durdu; örneğin panel bu sırada yeniden başladı. Hiçbir şey kaybolmadı ve kendiliğinden başka bir şey olmayacak. Bitirmek için alan adını yeniden silin; tamamlanmış adımlar atlanır.',
     'domains.deletionReason.deletion_state_changing': 'Bu silme işlemi şu anda yürütülüyor, bu yüzden kayıtlı durumu okunurken değişti. Kimsenin bir şey yapması gerekmiyor; bu sayfa kendiliğinden yeniden denetler.',
+    'domains.deletionReason.deletion_already_running': 'Bu alan adı zaten siliniyor. Kimsenin bir şey yapması gerekmiyor: silme kendiliğinden sürer ve bu sayfa kendiliğinden güncellenir.',
     'domains.deletionReason.deletion_marker_inconsistent': 'Bu alan adının kayıtlı silme işlemi ile alan adının kendi kayıtlı durumu uyuşmuyor, bu yüzden CelikPanel onu kendiliğinden sürdürmüyor. Bu denetim hiçbir şeyi kaldırmadı ve alan adının hizmetleri çalışmaya devam ediyor. Sunucu yöneticisi, alan adını yeniden silmeden önce bu alan adının adıyla CelikPanel desteğine başvurur.',
     'domains.deletionWaiting': '{name} için silme işlemi bekliyor',
     'domains.retryDeletion': 'Bu silme işlemini yeniden dene',

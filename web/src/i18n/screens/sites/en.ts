@@ -121,6 +121,7 @@ export const enSitesScreens = {
     'domains.deletionReason.remote_dns_removed_finishing': 'The main DNS server confirmed that this domain is removed from DNS. This server finishes the rest of the deletion by itself; nobody needs to do anything. If this message stays for more than ten minutes, delete the domain again to finish it.',
     'domains.deletionReason.deletion_incomplete': 'This deletion stopped before it finished, for example because the panel restarted during it. Nothing is lost and nothing more happens by itself. Delete the domain again to finish it; the steps already done are skipped.',
     'domains.deletionReason.deletion_state_changing': 'This deletion is being worked on right now, so its saved state changed while it was read. Nobody needs to do anything; this page checks again by itself.',
+    'domains.deletionReason.deletion_already_running': 'This domain is already being deleted. Nobody needs to do anything: the deletion continues by itself and this page updates by itself.',
     'domains.deletionReason.deletion_marker_inconsistent': 'The saved deletion of this domain and the domain\'s own saved state disagree, so CelikPanel does not continue it by itself. Nothing was removed by this check and the domain\'s services keep running. The server administrator contacts CelikPanel support with this domain\'s name before deleting it again.',
     'domains.deletionWaiting': 'Deletion of {name} is waiting',
     'domains.retryDeletion': 'Retry this deletion',

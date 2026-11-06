@@ -6,7 +6,7 @@ import "github.com/alicelik/celikpanel/internal/dnspeerproof"
 
 type VerifyCurrent func() error
 
-func Read() (RecordV1, error)                                             { return RecordV1{}, StateError{Unknown} }
+func Read() (RecordV1, error) { return RecordV1{}, StateError{Unknown} }
 func Publish(dnspeerproof.RequestV1, []string, string, uint64, VerifyCurrent) error {
 	return StateError{Unknown}
 }

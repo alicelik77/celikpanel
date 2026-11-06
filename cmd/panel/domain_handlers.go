@@ -719,6 +719,14 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid domain ID", http.StatusBadRequest)
 		return
 	}
+	// Another press while this domain's deletion request is still running:
+	// answered at once, nothing is started (domain_deletion_already_running.go).
+	if p.deletionsRunning.isRunning(domainID) {
+		var name string
+		_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT name FROM domains WHERE id = ?`, domainID).Scan(&name)
+		writeDomainDeletionAlreadyRunning(w, name)
+		return
+	}
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
 	ctx, cancel := sslDurableContext(r.Context())
@@ -729,6 +737,15 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	domain, err := domainRepo.GetByID(ctx, domainID)
 	if err != nil {
 		http.Error(w, "domain not found", http.StatusNotFound)
+		return
+	}
+	// A joined server's deletion that waits only for the main DNS server
+	// continues by itself; a press repeats nothing.
+	if continues, name, err := p.domainDeletionContinuesByItself(ctx, domainID); err != nil {
+		writeServerError(w, err)
+		return
+	} else if continues {
+		writeDomainDeletionAlreadyRunning(w, name)
 		return
 	}
 	// alpha.118: an AI or automation app on the domain is removed first.
