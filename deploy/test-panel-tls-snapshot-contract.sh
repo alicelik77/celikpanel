@@ -166,11 +166,17 @@ systemctl() {
             esac
             ;;
         is-enabled)
-            case "${*: -1}" in certbot.timer) printf '%s\n' "$TIMER_ENABLED" ;; *) printf 'not-found\n'; return 1 ;; esac
+            # LEGACY_IS_ENABLED=1: systemd before 253 (Debian 12, Ubuntu 22.04)
+            # prints nothing for a unit that does not exist and exits 1.
+            case "${*: -1}" in
+                certbot.timer) printf '%s\n' "$TIMER_ENABLED" ;;
+                *) [[ ${LEGACY_IS_ENABLED:-0} == 1 ]] || printf 'not-found\n'; return 1 ;;
+            esac
             ;;
         is-active)
             case "${*: -1}" in
                 certbot.timer) printf '%s\n' "$TIMER_ACTIVE" ;;
+                certbot-renew.timer) printf '%s\n' "${RENEW_ACTIVE:-inactive}"; return 3 ;;
                 certbot-renew.timer|certbot.service|certbot-renew.service) printf 'inactive\n'; return 3 ;;
                 *) return 4 ;;
             esac
@@ -304,6 +310,28 @@ for fault in mode owner group hardlink empty oversize symlink unknown; do
     rm -f -- "$RECEIPT_PATH" "$TEST_ROOT/receipt-hardlink" "$TLS_DIR/$ISSUE_VERSION/receipt-extra.json"
     cp -a -- "$RECEIPT_SAVED" "$RECEIPT_PATH"
 done
+
+# a125 lab (Debian 12, systemd 252): a missing certbot-renew.timer reads as
+# not-found from LoadState although is-enabled prints nothing.
+LEGACY_LEDGER=$TEST_ROOT/legacy-service-states.tsv
+cp -- "$LEDGER" "$LEGACY_LEDGER"; chmod 0600 "$LEGACY_LEDGER"
+LEGACY_IS_ENABLED=1
+panel_tls_capture_scheduler_states_to_service_ledger "$LEGACY_LEDGER" \
+    || fail 'scheduler ledger capture failed on systemd before 253'
+LEGACY_IS_ENABLED=0
+[[ $(wc -l <"$LEGACY_LEDGER") -eq 5 ]] || fail 'legacy scheduler ledger is not canonical five rows'
+grep -Fxq "$(printf 'certbot-renew.timer\tnot-found\tinactive')" "$LEGACY_LEDGER" \
+    || fail 'legacy scheduler ledger did not record the missing timer as not-found'
+# A refused second row writes nothing: the ledger keeps the three rows the
+# recovery guard accepts (four rows left the panel down with recovery refused).
+REFUSED_LEDGER=$TEST_ROOT/refused-service-states.tsv
+cp -- "$LEDGER" "$REFUSED_LEDGER"; chmod 0600 "$REFUSED_LEDGER"
+RENEW_ACTIVE=activating
+expect_tls_failure_with_stderr 'an unstable second scheduler row was accepted' \
+    panel_tls_capture_scheduler_states_to_service_ledger "$REFUSED_LEDGER"
+RENEW_ACTIVE=inactive
+cmp -s -- "$LEDGER" "$REFUSED_LEDGER" || fail 'a refused scheduler capture changed the three-row ledger'
+rm -f -- "$LEGACY_LEDGER" "$REFUSED_LEDGER"
 
 panel_tls_capture_scheduler_states_to_service_ledger "$LEDGER" \
     || fail 'scheduler ledger capture failed'
