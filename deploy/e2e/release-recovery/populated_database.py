@@ -80,6 +80,9 @@ MIGRATIONS = {
     # alpha.126: 64 monitoring history (one table, one NULL column on the old
     # metrics_samples; no old row changed).
     64: 'a19cc57ae4b5751df9c5cc17bb8544e653ebe09d2aa79927c75013618aa901ac',
+    # alpha.127: 65 monitoring alerts (three tables, four NULL columns on the
+    # old metrics_samples; no old row changed).
+    65: 'c53809ccd606d926bb5606f92dee61795538f73cce6f98c866fbdd2bef3dad30',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -108,6 +111,7 @@ SCHEMAS = {
     62: '82aca65218fe743294243dd697f9f4beb88adc766a5e62d5aa018883377a8372',
     63: '6ab9906b1962dab71e216bdba1c031d341fe6fdecb48beba10f6964b9b9cfd2b',
     64: '9593e3e87d93bab3a90f312e5341c84042858a74b156a09b7b2539c599e476e6',
+    65: '084d65e602b0ce0efb6f61b621fa36112be8f400339e6b668cbeebeec08ba0a0',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -144,6 +148,7 @@ NEW_TABLES_61 = NEW_TABLES_60 | {'service_app_offerings', 'service_app_installs'
 NEW_TABLES_62 = NEW_TABLES_61 | {'user_guide_state'}
 NEW_TABLES_63 = NEW_TABLES_62 | {'runtime_offerings', 'runtime_apps', 'runtime_app_operations'}
 NEW_TABLES_64 = NEW_TABLES_63 | {'metrics_rollups'}
+NEW_TABLES_65 = NEW_TABLES_64 | {'metrics_process_snapshots', 'monitoring_alerts', 'site_uptime'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -152,14 +157,16 @@ ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
                  48: {'sessions': ('impersonator_id',), 'audit_logs': ('acting_as',)},
                  49: {'users': ('email_verified_at',)},
                  52: {'subscriptions': ('starts_at', 'ends_at', 'suspend_reason', 'suspended_at')},
-                 64: {'metrics_samples': ('cpu_peak',)}}
+                 64: {'metrics_samples': ('cpu_peak',)},
+                 65: {'metrics_samples': ('net_rx', 'net_tx', 'disk_read', 'disk_write')}}
 # The tables each pinned schema after the baseline adds to the 55 of schema38.
 # A schema that is not a key here is the baseline itself.
 NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46,
               47: NEW_TABLES_47, 48: NEW_TABLES_48, 49: NEW_TABLES_49, 50: NEW_TABLES_50, 51: NEW_TABLES_51,
               52: NEW_TABLES_52, 53: NEW_TABLES_53, 54: NEW_TABLES_54, 55: NEW_TABLES_55,
               56: NEW_TABLES_56, 57: NEW_TABLES_57, 58: NEW_TABLES_58, 59: NEW_TABLES_59, 60: NEW_TABLES_60,
-              61: NEW_TABLES_61, 62: NEW_TABLES_62, 63: NEW_TABLES_63, 64: NEW_TABLES_64}
+              61: NEW_TABLES_61, 62: NEW_TABLES_62, 63: NEW_TABLES_63, 64: NEW_TABLES_64,
+              65: NEW_TABLES_65}
 # Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
 # value is only inside the sealed row digest, so a reset row is accepted only
 # when its digest is reproduced with one of these old values (NULL in 001's
@@ -318,7 +325,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38 or schema42 through schema64 is supported')
+        raise Refused('only exact schema38 or schema42 through schema65 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')

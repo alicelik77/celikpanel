@@ -1585,6 +1585,13 @@ func main() {
 	http.HandleFunc("/api/v1/metrics/history", panel.handleMetricsHistory)
 	// alpha.126: "Problems now" (Monitoring and Dashboard), a read only.
 	http.HandleFunc("/api/v1/metrics/problems", panel.handleMonitoringProblems)
+	// alpha.127: per-service health, site checks and alerts (administrator,
+	// through the /api/v1/metrics/ prefix). The reads serve stored results.
+	http.HandleFunc("/api/v1/metrics/services", panel.handleMonitoringServices)
+	http.HandleFunc("/api/v1/metrics/sites", panel.handleMonitoringSites)
+	http.HandleFunc("/api/v1/metrics/alerts", panel.handleMonitoringAlerts)
+	http.HandleFunc("/api/v1/metrics/alerts/settings", panel.handleMonitoringAlertSettings)
+	http.HandleFunc("/api/v1/metrics/alerts/seen", panel.handleMonitoringAlertsSeen)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()

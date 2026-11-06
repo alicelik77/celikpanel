@@ -187,12 +187,36 @@ func (p *Panel) startMetricsSampler() {
 		if idle, total, ok := readCPUTimes(); ok {
 			sampler.observe(cpuTimes{idle, total}, time.Now())
 		}
+		// alpha.127: network and disk counters, read with each sample.
+		io, ioAt := readIOCounters(), time.Now()
+		snapshots := &processSnapshotter{}
 		// The first maintenance runs at start: it rolls up what an older
 		// release left before the corrected prune removes it.
 		p.maintainMetrics(context.Background(), time.Now())
 		nextSample := time.Now().Add(metricsInterval)
 		nextMaintain := time.Now().Add(metricsMaintainEvery)
+		// alpha.127: the service reading and the alert check every minute,
+		// the site checks every five minutes; each in its own goroutine
+		// that never overlaps itself, so the one-second tick is never held.
+		nextMinute := time.Now().Add(15 * time.Second)
+		nextSites := time.Now().Add(time.Minute)
 		for now := range ticker.C {
+			if reason, value, at, processes, ok := snapshots.finish(vcpuCount()); ok {
+				if err := insertProcessSnapshot(context.Background(), p.db.GetDB(), at, reason, value, processes); err != nil {
+					log.Printf("metrics process snapshot: %v", err)
+				}
+			}
+			if !now.Before(nextMinute) {
+				nextMinute = now.Add(time.Minute)
+				monitoringMinuteFlight.run(func() {
+					p.refreshServiceHealth(context.Background(), time.Now())
+					p.evaluateMonitoringAlerts(context.Background(), time.Now())
+				})
+			}
+			if !now.Before(nextSites) {
+				nextSites = now.Add(siteCheckEvery)
+				siteCheckFlight.run(func() { p.checkSites(context.Background(), time.Now()) })
+			}
 			idle, total, ok := readCPUTimes()
 			if !ok {
 				continue
@@ -204,8 +228,12 @@ func (p *Panel) startMetricsSampler() {
 			}
 			nextSample = now.Add(metricsInterval)
 			average, peak, ok := sampler.closeInterval(current)
+			nextIO, nextIOAt := readIOCounters(), time.Now()
+			rates := computeIORates(io, nextIO, nextIOAt.Sub(ioAt).Seconds())
+			io, ioAt = nextIO, nextIOAt
 			if ok {
-				p.writeMetricsSample(context.Background(), now, average, peak)
+				memPercent := p.writeMetricsSample(context.Background(), now, average, peak, rates)
+				snapshots.consider(now, average, memPercent)
 			}
 			if !now.Before(nextMaintain) {
 				nextMaintain = now.Add(metricsMaintainEvery)
@@ -215,7 +243,9 @@ func (p *Panel) startMetricsSampler() {
 	}()
 }
 
-func (p *Panel) writeMetricsSample(ctx context.Context, at time.Time, cpu float64, cpuPeak *float64) {
+// writeMetricsSample stores one sample and returns its memory use in
+// percent (for the spike snapshot).
+func (p *Panel) writeMetricsSample(ctx context.Context, at time.Time, cpu float64, cpuPeak *float64, rates ioRates) float64 {
 	memUsed, memTotal := readMemory()
 	diskUsed, diskTotal := readDisk("/")
 	load1 := 0.0
@@ -226,9 +256,14 @@ func (p *Panel) writeMetricsSample(ctx context.Context, at time.Time, cpu float6
 		at: at, cpu: cpu, cpuPeak: cpuPeak,
 		memUsed: int64(memUsed), memTotal: int64(memTotal),
 		diskUsed: int64(diskUsed), diskTotal: int64(diskTotal), load1: load1,
+		io: rates,
 	}); err != nil {
 		log.Printf("metrics sample: %v", err)
 	}
+	if memTotal == 0 {
+		return 0
+	}
+	return float64(memUsed) / float64(memTotal) * 100
 }
 
 type metricsRow struct {
@@ -238,17 +273,23 @@ type metricsRow struct {
 	memUsed, memTotal   int64
 	diskUsed, diskTotal int64
 	load1               float64
+	io                  ioRates
+}
+
+func nullableFloat(v *float64) any {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 
 func insertMetricsSample(ctx context.Context, db *sql.DB, row metricsRow) error {
-	var peak any
-	if row.cpuPeak != nil {
-		peak = *row.cpuPeak
-	}
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO metrics_samples (ts, cpu, cpu_peak, mem_used, mem_total, disk_used, disk_total, load1)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		metricsTime(row.at), row.cpu, peak, row.memUsed, row.memTotal, row.diskUsed, row.diskTotal, row.load1)
+		INSERT INTO metrics_samples (ts, cpu, cpu_peak, mem_used, mem_total, disk_used, disk_total, load1,
+			net_rx, net_tx, disk_read, disk_write)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		metricsTime(row.at), row.cpu, nullableFloat(row.cpuPeak), row.memUsed, row.memTotal, row.diskUsed, row.diskTotal, row.load1,
+		nullableFloat(row.io.netRx), nullableFloat(row.io.netTx), nullableFloat(row.io.diskRead), nullableFloat(row.io.diskWrite))
 	return err
 }
 
@@ -309,8 +350,17 @@ func pruneMetrics(ctx context.Context, db *sql.DB, now time.Time) error {
 		metricsFiveMinute, metricsTime(now.Add(-metricsFiveMinuteRetention))); err != nil {
 		return err
 	}
-	_, err := db.ExecContext(ctx, `DELETE FROM metrics_rollups WHERE resolution = ? AND bucket < ?`,
-		metricsHour, metricsTime(now.Add(-metricsHourRetention)))
+	if _, err := db.ExecContext(ctx, `DELETE FROM metrics_rollups WHERE resolution = ? AND bucket < ?`,
+		metricsHour, metricsTime(now.Add(-metricsHourRetention))); err != nil {
+		return err
+	}
+	// alpha.127: spike snapshots and resolved alerts are kept 30 days too.
+	if _, err := db.ExecContext(ctx, `DELETE FROM metrics_process_snapshots WHERE ts < ?`,
+		metricsTime(now.Add(-snapshotRetained))); err != nil {
+		return err
+	}
+	_, err := db.ExecContext(ctx, `DELETE FROM monitoring_alerts WHERE state = 'resolved' AND resolved_at < ?`,
+		metricsTime(now.Add(-snapshotRetained)))
 	return err
 }
 
@@ -382,6 +432,12 @@ type metricsPoint struct {
 	DiskTotal  int64    `json:"disk_total"`
 	Load1      float64  `json:"load1"`
 	Load1Max   float64  `json:"load1_max"`
+	// alpha.127, the latest sample only: bytes per second over its 30
+	// seconds; absent when not measured.
+	NetRx     *float64 `json:"net_rx,omitempty"`
+	NetTx     *float64 `json:"net_tx,omitempty"`
+	DiskRead  *float64 `json:"disk_read,omitempty"`
+	DiskWrite *float64 `json:"disk_write,omitempty"`
 }
 
 // metricsInput is one source row: a raw sample (weight 1) or a rollup
@@ -528,11 +584,20 @@ func readMetricsHistory(ctx context.Context, db *sql.DB, rng metricsRange, now t
 // metricsLatest is the newest raw sample: the cards' current values.
 func readMetricsLatest(ctx context.Context, db *sql.DB) (*metricsPoint, error) {
 	var point metricsPoint
-	var peak sql.NullFloat64
+	var peak, netRx, netTx, diskRead, diskWrite sql.NullFloat64
 	err := db.QueryRowContext(ctx, `
-		SELECT ts, cpu, cpu_peak, mem_used, mem_total, disk_used, disk_total, load1
+		SELECT ts, cpu, cpu_peak, mem_used, mem_total, disk_used, disk_total, load1, net_rx, net_tx, disk_read, disk_write
 		FROM metrics_samples ORDER BY ts DESC LIMIT 1`).Scan(
-		&point.TS, &point.CPU, &peak, &point.MemUsed, &point.MemTotal, &point.DiskUsed, &point.DiskTotal, &point.Load1)
+		&point.TS, &point.CPU, &peak, &point.MemUsed, &point.MemTotal, &point.DiskUsed, &point.DiskTotal, &point.Load1,
+		&netRx, &netTx, &diskRead, &diskWrite)
+	optional := func(v sql.NullFloat64) *float64 {
+		if !v.Valid {
+			return nil
+		}
+		value := v.Float64
+		return &value
+	}
+	point.NetRx, point.NetTx, point.DiskRead, point.DiskWrite = optional(netRx), optional(netTx), optional(diskRead), optional(diskWrite)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -581,13 +646,20 @@ func (p *Panel) handleMetricsHistory(w http.ResponseWriter, r *http.Request) {
 	for _, candidate := range metricsRanges {
 		keys = append(keys, candidate.Key)
 	}
+	// alpha.127: the busiest processes captured at spikes inside the range.
+	snapshots, err := readProcessSnapshots(r.Context(), p.db.GetDB(), now.Add(-rng.Duration), 20)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
 	json.NewEncoder(w).Encode(map[string]any{
-		"range":          rng.Key,
-		"ranges":         keys,
-		"step_seconds":   metricsStep(rng),
-		"sample_seconds": int(metricsInterval / time.Second),
-		"vcpus":          vcpuCount(),
-		"samples":        points,
-		"latest":         latest,
+		"process_snapshots": snapshots,
+		"range":             rng.Key,
+		"ranges":            keys,
+		"step_seconds":      metricsStep(rng),
+		"sample_seconds":    int(metricsInterval / time.Second),
+		"vcpus":             vcpuCount(),
+		"samples":           points,
+		"latest":            latest,
 	})
 }

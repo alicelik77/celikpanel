@@ -97,6 +97,14 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/managed-services/scan": gateAdmin,
 	"/api/v1/metrics/history":       gateAdmin,
 	"/api/v1/metrics/problems":      gateAdmin,
+
+	// alpha.127: monitoring stage 2 and 3 (admin through the /api/v1/metrics/ prefix).
+	"/api/v1/metrics/services":        gateAdmin,
+	"/api/v1/metrics/sites":           gateAdmin,
+	"/api/v1/metrics/alerts":          gateAdmin,
+	"/api/v1/metrics/alerts/settings": gateAdmin,
+	"/api/v1/metrics/alerts/seen":     gateAdmin,
+
 	"/api/v1/my/subscription":       gateAccount, // own subscriptions only
 	"/api/v1/nginx/global":          gateAdmin,
 	"/api/v1/nginx/ratelimits":      gateAdmin,

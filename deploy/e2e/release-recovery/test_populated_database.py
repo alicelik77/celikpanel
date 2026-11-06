@@ -448,15 +448,17 @@ class PopulatedDatabaseTests(unittest.TestCase):
         with self.assertRaises(p.Refused):
             self.verify(result, 57)
 
-    def test_actual_39_through_64_migrations_add_tables_and_change_no_other_old_row(self):
+    def test_actual_39_through_65_migrations_add_tables_and_change_no_other_old_row(self):
         # alpha.118: 58 application catalog operations, 59 WordPress tools and
         # malware scans, 60 remote backups, 61 service apps; all additive.
         # alpha.119: 62 the first-login tour's state (one table, one trigger),
         # 63 runtime apps (three tables).
         # alpha.126: 64 monitoring history (one table, one NULL column on the
         # old metrics_samples, which every old row keeps NULL).
-        self.assertEqual(len(self.sql), 64, 'a migration after 64 needs its own pin before a candidate carries it')
-        counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114, 63: 117, 64: 118}
+        # alpha.127: 65 monitoring alerts (three tables, four NULL columns on
+        # the old metrics_samples).
+        self.assertEqual(len(self.sql), 65, 'a migration after 65 needs its own pin before a candidate carries it')
+        counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114, 63: 117, 64: 118, 65: 121}
         for version, tables in counts.items():
             with self.subTest(version=version):
                 self.setUp()
@@ -470,8 +472,10 @@ class PopulatedDatabaseTests(unittest.TestCase):
                 expected_columns = dict(p.added_columns(56))
                 if version >= 64:
                     expected_columns['metrics_samples'] = ('cpu_peak',)
+                if version >= 65:
+                    expected_columns['metrics_samples'] += ('net_rx', 'net_tx', 'disk_read', 'disk_write')
                 self.assertEqual(p.added_columns(version), expected_columns)
-        for version in (65, '64', True):
+        for version in (66, '65', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

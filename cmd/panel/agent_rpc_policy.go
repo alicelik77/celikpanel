@@ -150,6 +150,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
+		Agent.ServiceHealthV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -308,6 +309,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServiceInstallPreviewV1":       agentRPCNetworkReadTimeout,
 	"Agent.PHPToolBindingsV1":             agentRPCQuickReadTimeout,
 	"Agent.PostfixQueue":                  agentRPCQuickReadTimeout,
+	"Agent.ServiceHealthV1":               agentRPCQuickReadTimeout,
 	"Agent.RepoStatus":                    agentRPCDeploymentTimeout,
 	"Agent.SiteUsage":                     agentRPCQuickReadTimeout,
 	"Agent.Version":                       agentRPCQuickReadTimeout,
