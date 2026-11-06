@@ -119,8 +119,17 @@ const TRAFFIC_FIX: Record<string, TranslationKey> = {
     format_file_kept: 'usage.status.trafficFix.format_file_kept',
     log_unreadable: 'usage.status.trafficFix.log_unreadable',
 };
-// The reasons whose fix is on the site's own Web server file tab.
+// The reasons whose fix is on the site's own Configuration file tab.
 const SITE_FIXES = new Set(['vhost_kept', 'include_missing']);
+
+// A named site's step: by the Agent's code when it is one the screen knows,
+// else by who acts (the server's reason): changed_by_owner is the owner's
+// change to the site's file, not_written_yet is CelikPanel's part not in place.
+// Adı verilen sitenin adımı: bilinen Agent koduna, yoksa kimin yapacağına göre.
+const siteFix = (site: { reason: string; detail: string }) =>
+    TRAFFIC_FIX[site.detail] ? site.detail
+        : site.reason === 'changed_by_owner' ? 'vhost_kept'
+            : site.reason === 'not_written_yet' ? 'include_missing' : site.reason;
 const SHOWN_SITES = 5;
 
 // Owner, 6 Nov 2026: "how am I supposed to understand a warning that you
@@ -135,7 +144,10 @@ function TrafficNotCounted({ status }: { status: UsageStatus }) {
     const counts = status.traffic.unknown;
     const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
     const named = status.traffic.unknown_sites;
-    const reasons = [...new Set([...named.map((site) => site.reason), ...Object.keys(counts).filter((reason) => counts[reason] > 0)])];
+    const more = Math.max(0, named.length - SHOWN_SITES) + status.traffic.unknown_sites_more;
+    // The steps: one per kind of cause, from the named sites when the server
+    // names them, else from the counts by the Agent's code.
+    const reasons = [...new Set(named.length > 0 ? named.map(siteFix) : Object.keys(counts).filter((reason) => counts[reason] > 0))];
     const minutes = status.traffic.interval_minutes;
     const openSite = (domain: string) => navigate(`/domains/${encodeURIComponent(domain)}?tab=config`);
     return (
@@ -145,14 +157,14 @@ function TrafficNotCounted({ status }: { status: UsageStatus }) {
                     {named.slice(0, SHOWN_SITES).map((site) => (
                         <li key={site.domain} className="flex flex-wrap items-center justify-between gap-2" data-usage-traffic-site={site.domain}>
                             <span className="max-w-[75ch] font-medium">{t('usage.status.trafficSite', { name: site.domain })}</span>
-                            {SITE_FIXES.has(site.reason) && (
+                            {SITE_FIXES.has(siteFix(site)) && (
                                 <Button type="button" icon={ExternalLink} className="max-sm:min-h-11" onClick={() => openSite(site.domain)}>
                                     {t('usage.status.openSite', { name: site.domain })}
                                 </Button>
                             )}
                         </li>
                     ))}
-                    {named.length > SHOWN_SITES && <li className="text-fg-muted">{t('common.andMore', { n: named.length - SHOWN_SITES })}</li>}
+                    {more > 0 && <li className="text-fg-muted" data-usage-traffic-more={more}>{t('common.andMore', { n: more })}</li>}
                 </ul>
             ) : (
                 <p className="max-w-[75ch] font-medium">{t(total === 1 ? 'usage.status.trafficUnknownOne' : 'usage.status.trafficUnknown', { n: total })}</p>

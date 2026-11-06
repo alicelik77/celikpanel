@@ -114,36 +114,42 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
         if (hosting.remote.state !== 'known' || answer.holding) return;
         const before = hosting.remote.value;
         // alpha.107 (D-038 §5): a Node.js line past its support asks first.
-        if (form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version) {
-            const unsupported = supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose');
-            if (unsupported && !(await confirmAction({ message: unsupported }))) return;
-        }
-        setSaving(true);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/hosting`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
-            }, {
-                // If the answer is lost and the settings read again are still
-                // the earlier ones, what was typed is put back over that newer
-                // answer instead of being replaced by it unseen.
-                // Yanıt yiter ve yeniden okunan ayarlar hâlâ öncekilerse, yazılan
-                // o yeni yanıtın üzerine geri konur.
-                shows: (read) => showsHosting(before, read[0].value as HostingState, form),
-                notMade: (read) => setEdit({ from: read[0].observedAt, value: form }),
-            });
-            if (!res) return;
-            if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t));
-                return;
+        const unsupported = form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version
+            ? supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose')
+            : '';
+        const proceed = async () => {
+            setSaving(true);
+            try {
+                const res = await answer.send(`/api/v1/domains/${domainId}/hosting`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(form),
+                }, {
+                    // If the answer is lost and the settings read again are still
+                    // the earlier ones, what was typed is put back over that newer
+                    // answer instead of being replaced by it unseen.
+                    // Yanıt yiter ve yeniden okunan ayarlar hâlâ öncekilerse, yazılan
+                    // o yeni yanıtın üzerine geri konur.
+                    shows: (read) => showsHosting(before, read[0].value as HostingState, form),
+                    notMade: (read) => setEdit({ from: read[0].observedAt, value: form }),
+                });
+                if (!res) return;
+                if (!res.ok) {
+                    showToast('error', apiErrorText(await readApiError(res), t));
+                    return;
+                }
+                showToast('success', t('hosting.saved'));
+                answer.settle();
+                await hosting.retry();
+            } finally {
+                setSaving(false);
             }
-            showToast('success', t('hosting.saved'));
-            answer.settle();
-            await hosting.retry();
-        } finally {
-            setSaving(false);
+        };
+        if (!(unsupported)) {
+            await proceed();
+            return;
         }
+        await confirmAction({ message: unsupported, action: proceed });
     };
 
     return (

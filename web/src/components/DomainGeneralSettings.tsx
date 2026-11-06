@@ -138,8 +138,14 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
             if (!res.ok) {
                 let apiError = await readApiError(res);
                 if (apiError.code === 'ALIAS_CERTIFICATE_REISSUE_REQUIRED') {
-                    if (!(await confirmAction({ message: t('general.aliasReissueAddConfirm', { name: alias }) }))) return;
-                    res = await request(true);
+                    // The server asks before it reissues the certificate; the
+                    // second request runs in the locked progress window.
+                    let again = null as Response | null;
+                    if (!(await confirmAction({
+                        message: t('general.aliasReissueAddConfirm', { name: alias }),
+                        action: async () => { again = await request(true); },
+                    }))) return;
+                    res = again;
                     if (!res) return;
                     if (!res.ok) apiError = await readApiError(res);
                 }
@@ -165,37 +171,44 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
 
     const handleDeleteAlias = async (alias: string) => {
         if (!settled) return;
-        if (!(await confirmAction({ message: t('general.confirmDeleteAlias', { name: alias }), confirmLabel: t('common.remove'), tone: 'danger' }))) return;
-        setChangingAlias(true);
-        try {
-            const endpoint = `/api/v1/domains/${domainId}/aliases/${encodeURIComponent(alias)}`;
-            let res = await answer.send(endpoint, { method: 'DELETE' });
-            if (!res) return;
-            if (!res.ok) {
-                let apiError = await readApiError(res);
-                if (apiError.code === 'ALIAS_CERTIFICATE_REISSUE_REQUIRED') {
-                    if (!(await confirmAction({ message: t('general.aliasReissueDeleteConfirm', { name: alias }) }))) return;
-                    res = await answer.send(`${endpoint}?confirm_certificate_reissue=true`, { method: 'DELETE' });
+        await confirmAction({ message: t('general.confirmDeleteAlias', { name: alias }), confirmLabel: t('common.remove'), tone: 'danger',
+            action: async () => {
+                setChangingAlias(true);
+                try {
+                    const endpoint = `/api/v1/domains/${domainId}/aliases/${encodeURIComponent(alias)}`;
+                    let res = await answer.send(endpoint, { method: 'DELETE' });
                     if (!res) return;
-                    if (!res.ok) apiError = await readApiError(res);
-                }
-                if (!res.ok) {
-                    showToast('error', apiErrorText(apiError, t));
-                    if (apiError.code === 'ALIAS_CERTIFICATE_ACTIVATION_PENDING') {
-                        await general.retry();
+                    if (!res.ok) {
+                        let apiError = await readApiError(res);
+                        if (apiError.code === 'ALIAS_CERTIFICATE_REISSUE_REQUIRED') {
+                            let again = null as Response | null;
+                            if (!(await confirmAction({
+                                message: t('general.aliasReissueDeleteConfirm', { name: alias }),
+                                action: async () => { again = await answer.send(`${endpoint}?confirm_certificate_reissue=true`, { method: 'DELETE' }); },
+                            }))) return;
+                            res = again;
+                            if (!res) return;
+                            if (!res.ok) apiError = await readApiError(res);
+                        }
+                        if (!res.ok) {
+                            showToast('error', apiErrorText(apiError, t));
+                            if (apiError.code === 'ALIAS_CERTIFICATE_ACTIVATION_PENDING') {
+                                await general.retry();
+                            }
+                            return;
+                        }
                     }
-                    return;
+                    showToast('success', t('general.aliasDeleted', { name: alias }));
+                    if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
+                    const notRunAddress = await aliasValidationNotRunAddress(res);
+                    if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
+                    answer.settle();
+                    await general.retry();
+                } finally {
+                    setChangingAlias(false);
                 }
-            }
-            showToast('success', t('general.aliasDeleted', { name: alias }));
-            if (await issuedWaitingForOwner(res)) showToast('warning', t('ssl.issuedWaitingForOwner'));
-            const notRunAddress = await aliasValidationNotRunAddress(res);
-            if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
-            answer.settle();
-            await general.retry();
-        } finally {
-            setChangingAlias(false);
-        }
+            },
+        });
     };
 
     return (

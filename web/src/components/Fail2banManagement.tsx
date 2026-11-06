@@ -62,26 +62,29 @@ export function Fail2banManagement({ onBack }: Fail2banManagementProps) {
     const [unbanning, setUnbanning] = useState('');
 
     const unban = async (ip: string, jail: string) => {
-        if (!(await confirmAction({ message: t('f2b.confirmUnban', { ip, jail }) }))) return;
-        setUnbanning(`${jail}/${ip}`);
-        try {
-            const r = await fetch('/api/v1/fail2ban/banned', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip, jail }),
-            });
-            if (!r.ok) throw new Error();
-            showToast('success', t('f2b.unbanned'));
-        } catch {
-            showToast('error', t('common.error'));
-        } finally {
-            setUnbanning('');
-            // Whatever the answer was, the lists are read again: they are what
-            // says whether the address is still banned.
-            // Yanıt ne olursa olsun listeler yeniden okunur.
-            void banned.retry();
-            void jails.retry();
-        }
+        await confirmAction({ message: t('f2b.confirmUnban', { ip, jail }),
+            action: async () => {
+                setUnbanning(`${jail}/${ip}`);
+                try {
+                    const r = await fetch('/api/v1/fail2ban/banned', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ip, jail }),
+                    });
+                    if (!r.ok) throw new Error();
+                    showToast('success', t('f2b.unbanned'));
+                } catch {
+                    showToast('error', t('common.error'));
+                } finally {
+                    setUnbanning('');
+                    // Whatever the answer was, the lists are read again: they are what
+                    // says whether the address is still banned.
+                    // Yanıt ne olursa olsun listeler yeniden okunur.
+                    void banned.retry();
+                    void jails.retry();
+                }
+            },
+        });
     };
 
     return (

@@ -62,8 +62,14 @@ export function decodeUsageNotices(raw: unknown): UsageNotice[] {
 export interface UsageStatus {
     traffic: {
         last_collected?: string; error?: string; logrotate?: string; unknown: Record<string, number>; measuring: number; interval_minutes: number;
-        /** The websites not counted, by name, when the server names them (alpha.126). */
-        unknown_sites: { domain: string; reason: string }[];
+        /**
+         * The websites not counted, by name, when the server names them
+         * (alpha.126): reason is who acts, changed_by_owner or
+         * not_written_yet; detail is the Agent's code. At most 50 are named;
+         * unknown_sites_more counts the rest.
+         */
+        unknown_sites: { domain_id: number; domain: string; reason: string; detail: string }[];
+        unknown_sites_more: number;
     };
     disk: { measured: number; unknown: number; not_measured: number; low_space: boolean; interval_hours: number };
     mail_quota: { state: string; dialect?: string; detail?: string; error?: string };
@@ -80,13 +86,18 @@ export function decodeUsageStatus(raw: unknown): UsageStatus {
     // left out, and the counts above still say how many are not counted.
     const unknownSites = Array.isArray(traffic.unknown_sites)
         ? traffic.unknown_sites.flatMap((entry) => (isRecord(entry) && str(entry.domain)
-            ? [{ domain: entry.domain as string, reason: typeof entry.reason === 'string' ? entry.reason : '' }]
+            ? [{
+                domain_id: num(entry.domain_id),
+                domain: entry.domain as string,
+                reason: typeof entry.reason === 'string' ? entry.reason : '',
+                detail: typeof entry.detail === 'string' ? entry.detail : '',
+            }]
             : []))
         : [];
     return {
         traffic: {
             last_collected: str(traffic.last_collected), error: str(traffic.error), logrotate: str(traffic.logrotate),
-            unknown, measuring: num(traffic.measuring), interval_minutes: num(traffic.interval_minutes) || 5, unknown_sites: unknownSites,
+            unknown, measuring: num(traffic.measuring), interval_minutes: num(traffic.interval_minutes) || 5, unknown_sites: unknownSites, unknown_sites_more: num(traffic.unknown_sites_more),
         },
         disk: {
             measured: num(raw.disk.measured), unknown: num(raw.disk.unknown), not_measured: num(raw.disk.not_measured),

@@ -387,70 +387,73 @@ export function ServiceShell({
     const act = async (action: 'start' | 'stop' | 'restart') => {
         if (!unit || stale) return;
         const key = action === 'start' ? 'svc.confirmStart' : action === 'stop' ? 'svc.confirmStop' : 'svc.confirmRestart';
-        if (!(await confirmAction({ message: t(key, { name }) }))) return;
-        setActionOutcome(null);
-        setBusy(true);
-        try {
-            let r: Response;
-            try {
-                r = await fetch('/api/v1/service/action', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: unit, action }),
-                });
-            } catch {
-                // No answer: whether the unit was started or stopped is not
-                // known. The state is read again; nothing is sent twice. An
-                // unknown result is not a failure and is not coloured as one.
-                // Yanıt yok: birimin başlatılıp durdurulduğu bilinmiyor. Durum
-                // yeniden okunur; hiçbir şey iki kez gönderilmez. Bilinmeyen
-                // sonuç hata değildir ve hata rengiyle gösterilmez.
-                showToast('warning', t('common.resultUnknown'));
-                await load(); announceComponentsChanged();
-                return;
-            }
-            if (!r.ok) {
-                const refusal = await readApiError(r);
-                if (isServiceActionOutcome(refusal)) {
-                    // What the service showed after the action: a verified
-                    // failure or an unknown result, with the service's own
-                    // line and the command to run. It stays on the page, and
-                    // the state is read again because the action may have
-                    // changed it.
-                    // Hizmetin işlemden sonra gösterdiği: doğrulanmış hata ya
-                    // da bilinmeyen sonuç. Sayfada kalır; işlem durumu
-                    // değiştirmiş olabileceği için durum yeniden okunur.
-                    setActionOutcome(refusal);
-                    await load(); announceComponentsChanged();
-                    return;
+        await confirmAction({ message: t(key, { name }),
+            action: async () => {
+                setActionOutcome(null);
+                setBusy(true);
+                try {
+                    let r: Response;
+                    try {
+                        r = await fetch('/api/v1/service/action', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: unit, action }),
+                        });
+                    } catch {
+                        // No answer: whether the unit was started or stopped is not
+                        // known. The state is read again; nothing is sent twice. An
+                        // unknown result is not a failure and is not coloured as one.
+                        // Yanıt yok: birimin başlatılıp durdurulduğu bilinmiyor. Durum
+                        // yeniden okunur; hiçbir şey iki kez gönderilmez. Bilinmeyen
+                        // sonuç hata değildir ve hata rengiyle gösterilmez.
+                        showToast('warning', t('common.resultUnknown'));
+                        await load(); announceComponentsChanged();
+                        return;
+                    }
+                    if (!r.ok) {
+                        const refusal = await readApiError(r);
+                        if (isServiceActionOutcome(refusal)) {
+                            // What the service showed after the action: a verified
+                            // failure or an unknown result, with the service's own
+                            // line and the command to run. It stays on the page, and
+                            // the state is read again because the action may have
+                            // changed it.
+                            // Hizmetin işlemden sonra gösterdiği: doğrulanmış hata ya
+                            // da bilinmeyen sonuç. Sayfada kalır; işlem durumu
+                            // değiştirmiş olabileceği için durum yeniden okunur.
+                            setActionOutcome(refusal);
+                            await load(); announceComponentsChanged();
+                            return;
+                        }
+                        showToast('error', apiErrorText(refusal, t, 'svc.actionFailed'));
+                        return;
+                    }
+                    // A success can leave something to know (a Stop that left the
+                    // unit marked as failed): it is said under the same notice.
+                    // Başarı, bilinmesi gereken bir şey bırakabilir.
+                    let answer: unknown;
+                    try {
+                        answer = await r.json();
+                    } catch {
+                        // The answer could not be read: what the action came to is not
+                        // known. The state is read again; nothing is sent twice.
+                        showToast('warning', t('common.resultUnknown'));
+                        await load();
+                        return;
+                    }
+                    const note = readServiceActionNote(answer);
+                    if (note) setActionOutcome(note);
+                    // The answer comes after systemd finished the start or stop and
+                    // the server refreshed the component record, so the state is read
+                    // at once (alpha.125: no fixed 1.5-second wait).
+                    // Yanıt, işlem bitip kayıt tazelendikten sonra gelir; durum hemen okunur.
+                    await load();
+                    announceComponentsChanged();
+                } finally {
+                    setBusy(false);
                 }
-                showToast('error', apiErrorText(refusal, t, 'svc.actionFailed'));
-                return;
-            }
-            // A success can leave something to know (a Stop that left the
-            // unit marked as failed): it is said under the same notice.
-            // Başarı, bilinmesi gereken bir şey bırakabilir.
-            let answer: unknown;
-            try {
-                answer = await r.json();
-            } catch {
-                // The answer could not be read: what the action came to is not
-                // known. The state is read again; nothing is sent twice.
-                showToast('warning', t('common.resultUnknown'));
-                await load();
-                return;
-            }
-            const note = readServiceActionNote(answer);
-            if (note) setActionOutcome(note);
-            // The answer comes after systemd finished the start or stop and
-            // the server refreshed the component record, so the state is read
-            // at once (alpha.125: no fixed 1.5-second wait).
-            // Yanıt, işlem bitip kayıt tazelendikten sonra gelir; durum hemen okunur.
-            await load();
-            announceComponentsChanged();
-        } finally {
-            setBusy(false);
-        }
+            },
+        });
     };
 
     return (

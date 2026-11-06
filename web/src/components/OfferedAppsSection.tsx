@@ -29,18 +29,24 @@ export function OfferedAppsSection() {
 
     const change = async (app: CatalogApp, offered: boolean) => {
         if (pending) return;
-        if (offered && !(await confirmAction({ message: t('appOffer.confirm', { name: app.name, risk: app.risk }) }))) return;
-        setPending(app.id);
-        setFailure(null);
-        try {
-            const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: app.offering_id, offered });
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            if (result.kind === 'refused') setFailure(result.error);
-            invalidate('rights');
-            await catalog.retry();
-        } finally {
-            setPending(null);
+        const proceed = async () => {
+            setPending(app.id);
+            setFailure(null);
+            try {
+                const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: app.offering_id, offered });
+                if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
+                if (result.kind === 'refused') setFailure(result.error);
+                invalidate('rights');
+                await catalog.retry();
+            } finally {
+                setPending(null);
+            }
+        };
+        if (!(offered)) {
+            await proceed();
+            return;
         }
+        await confirmAction({ message: t('appOffer.confirm', { name: app.name, risk: app.risk }), action: proceed });
     };
 
     return (

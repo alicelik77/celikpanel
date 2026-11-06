@@ -163,6 +163,8 @@ test('every dialogue in the product is the shared one', () => {
     'ChangePasswordModal.tsx': 1,
     // The product's own confirmation (6 Nov 2026), answering confirmAction().
     'ConfirmHost.tsx': 1,
+    // Its progress window (owner's firm order, 6 Nov 2026), fetched when first needed.
+    'OperationProgress.tsx': 1,
     // alpha.99: the person's own email change (My account and, for an additional user, the menu).
     'ChangeEmailModal.tsx': 1,
     'DNSEngineCard.tsx': 1,

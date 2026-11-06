@@ -60,36 +60,39 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
     };
 
     const handleRepair = async () => {
-        if (!(await confirmAction({ message: t('pdns.repairConfirm'), tone: 'danger' }))) return;
-        setRepairing(true);
-        setRepairProblem(null);
-        try {
-            // /pdns/enable reconfigures the gsqlite3 backend AND re-syncs
-            // every panel zone into PowerDNS.
-            // /pdns/enable gsqlite3 arka ucunu yeniden yapılandırır VE tüm
-            // panel bölgelerini PowerDNS'e eşitler.
-            let res: Response;
-            try {
-                res = await fetch('/api/v1/pdns/enable', { method: 'POST' });
-            } catch {
-                // No answer: whether the repair ran is not known.
-                setRepairProblem({ kind: 'unknown' });
-                showToast('error', t('common.resultUnknown'));
-                invalidate('dns', 'components');
-                return;
-            }
-            if (!res.ok) {
-                const error = await readApiError(res);
-                setRepairProblem({ kind: 'refused', error });
-                showToast('error', apiErrorText(error, t, 'pdns.repairFailed'));
-                invalidate('dns', 'components');
-                return;
-            }
-            showToast('success', t('pdns.repairDone'));
-            invalidate('dns', 'components');
-        } finally {
-            setRepairing(false);
-        }
+        await confirmAction({ message: t('pdns.repairConfirm'), tone: 'danger',
+            action: async () => {
+                setRepairing(true);
+                setRepairProblem(null);
+                try {
+                    // /pdns/enable reconfigures the gsqlite3 backend AND re-syncs
+                    // every panel zone into PowerDNS.
+                    // /pdns/enable gsqlite3 arka ucunu yeniden yapılandırır VE tüm
+                    // panel bölgelerini PowerDNS'e eşitler.
+                    let res: Response;
+                    try {
+                        res = await fetch('/api/v1/pdns/enable', { method: 'POST' });
+                    } catch {
+                        // No answer: whether the repair ran is not known.
+                        setRepairProblem({ kind: 'unknown' });
+                        showToast('error', t('common.resultUnknown'));
+                        invalidate('dns', 'components');
+                        return;
+                    }
+                    if (!res.ok) {
+                        const error = await readApiError(res);
+                        setRepairProblem({ kind: 'refused', error });
+                        showToast('error', apiErrorText(error, t, 'pdns.repairFailed'));
+                        invalidate('dns', 'components');
+                        return;
+                    }
+                    showToast('success', t('pdns.repairDone'));
+                    invalidate('dns', 'components');
+                } finally {
+                    setRepairing(false);
+                }
+            },
+        });
     };
 
     const steps = [t('pdns.step.backend'), t('pdns.step.conflict'), t('pdns.step.port'), t('pdns.step.restart')];

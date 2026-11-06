@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-type ToastType = 'success' | 'error' | 'info' | 'warning';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 /**
  * Beside the sentence (owner feedback 2026-10-31): the fix, as a button that
@@ -31,7 +31,27 @@ const toastListeners: ((toast: Toast) => void)[] = [];
 const toastKey = (toast: Toast) => toast.key ?? toast.type + ': ' + toast.message;
 const onScreen = new Set<string>();
 
+// While a confirmed operation runs in the progress window, what it would say
+// in a toast is said in the window instead (components/ConfirmHost.tsx): one
+// place for the result, never the same sentence twice (owner, 6 Nov 2026).
+// The newest capture (a follow-up inside an operation) takes it.
+// Onaylanan iş ilerleme penceresinde sürerken bildirimi pencere söyler.
+export interface CapturedToast extends ToastExtra { type: ToastType; message: string }
+const captures: ((toast: CapturedToast) => void)[] = [];
+export function captureToasts(sink: (toast: CapturedToast) => void): () => void {
+    captures.push(sink);
+    return () => {
+        const at = captures.lastIndexOf(sink);
+        if (at >= 0) captures.splice(at, 1);
+    };
+}
+
 export function showToast(type: ToastType, message: string, extra?: ToastExtra) {
+    const capture = captures[captures.length - 1];
+    if (capture) {
+        capture({ type, message, ...extra });
+        return;
+    }
     const toast: Toast = {
         id: toastId++,
         type,

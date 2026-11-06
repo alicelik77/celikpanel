@@ -79,30 +79,33 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
 
     const handleSave = async () => {
         if (!config) return;
-        if (!(await confirmAction({ message: t('php.ini.applyConfirm', { version }) }))) return;
+        await confirmAction({ message: t('php.ini.applyConfirm', { version }),
+            action: async () => {
 
-        setSaving(true);
-        try {
-            const res = await fetch('/api/v1/php/extended-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    version,
-                    config
-                })
-            });
+                setSaving(true);
+                try {
+                    const res = await fetch('/api/v1/php/extended-config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version,
+                            config
+                        })
+                    });
 
-            if (res.ok) {
-                showToast('success', t('php.ini.saved', { version }));
-            } else {
-                showToast('error', apiErrorText(await readApiError(res), t, 'php.ini.saveFailed'));
-            }
-        } catch (err) {
-            console.error(err);
-            showToast('error', t('common.resultUnknown'));
-        } finally {
-            setSaving(false);
-        }
+                    if (res.ok) {
+                        showToast('success', t('php.ini.saved', { version }));
+                    } else {
+                        showToast('error', apiErrorText(await readApiError(res), t, 'php.ini.saveFailed'));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('error', t('common.resultUnknown'));
+                } finally {
+                    setSaving(false);
+                }
+            },
+        });
     };
 
     // The card the editor stands in. This component owns it (it was the

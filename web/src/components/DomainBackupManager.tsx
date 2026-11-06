@@ -186,29 +186,33 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
 
     const restoreBackup = async (backup: BackupItem) => {
         if (readOnly || !listKnown) return;
-        if (!backup.restorable || !(await confirmAction({ message: t('backup.restoreConfirm', { name: backup.name }), tone: 'danger' }))) return;
-        setRestoring(backup.name);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/backups/restore`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ backup_name: backup.name }),
-            });
-            if (!res) return;
-            const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem }>(res, 'backup.restoreFailed');
-            if (!data) return;
-            showToast('success', data.safety_backup
-                ? t('backup.restoredWithSafety', { name: data.safety_backup.name })
-                : t('backup.restored'));
-            answer.settle();
-            await loadBackups();
-            // A restore can bring databases back or replace them: the database
-            // lists and the dashboard's counter read again.
-            // Geri yükleme veritabanlarını getirebilir ya da değiştirebilir.
-            invalidate('databases');
-        } finally {
-            setRestoring(null);
-        }
+        if (!backup.restorable) return;
+        await confirmAction({ message: t('backup.restoreConfirm', { name: backup.name }), tone: 'danger',
+            action: async () => {
+                setRestoring(backup.name);
+                try {
+                    const res = await answer.send(`/api/v1/domains/${domainId}/backups/restore`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ backup_name: backup.name }),
+                    });
+                    if (!res) return;
+                    const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem }>(res, 'backup.restoreFailed');
+                    if (!data) return;
+                    showToast('success', data.safety_backup
+                        ? t('backup.restoredWithSafety', { name: data.safety_backup.name })
+                        : t('backup.restored'));
+                    answer.settle();
+                    await loadBackups();
+                    // A restore can bring databases back or replace them: the database
+                    // lists and the dashboard's counter read again.
+                    // Geri yükleme veritabanlarını getirebilir ya da değiştirebilir.
+                    invalidate('databases');
+                } finally {
+                    setRestoring(null);
+                }
+            },
+        });
     };
 
     const deleteBackup = async (name: string) => {

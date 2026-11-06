@@ -200,6 +200,7 @@ export const tr: Record<ShellKey, string> = {
     'common.cancel': 'İptal',
     'common.continue': 'Devam et',
     'common.delete': 'Sil',
+    'operation.working': 'Sunucuda çalışılıyor…',
     'rights.grantor.administrator': 'yöneticiden',
     'rights.grantor.provider': 'hizmet sağlayıcınızdan ({name})',
     'common.resultUnknownRead': 'Yanıt gelmeden bağlantı koptu; bu yüzden değişikliğin yapılıp yapılmadığı bilinmiyor. Hiçbir şey ikinci kez gönderilmedi. Burada gösterilen, saat {time} itibarıyla yeniden okundu: işlemi yinelemeden önce ona bakın.',

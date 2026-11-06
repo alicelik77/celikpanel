@@ -1,57 +1,94 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { Button, Dialog } from './ui';
 import { useI18n } from '../i18n';
-import { registerConfirmHost, type ConfirmRequest } from '../lib/confirmAction';
+import { captureToasts, type CapturedToast } from './Toast';
+import { registerConfirmHost, type ConfirmRequest, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 
-// The product's own confirmation (owner report, 6 Nov 2026): mounted once at
-// the application root, it answers every confirmAction() with the shared
-// Dialog - the question, Cancel and the action's own button. Escape and the
-// backdrop cancel, Tab stays inside, and focus goes back to the control that
-// asked. While the confirmed action runs the button is busy and nothing else
-// can close the dialogue.
+// The product's own confirmation and progress window (owner, 6 Nov 2026):
+// mounted once at the application root, it answers every confirmAction() with
+// the shared Dialog - the question, Cancel and the action's own button. Escape
+// and the backdrop cancel, Tab stays inside, and focus goes back to the control
+// that asked. A confirmed action turns the dialogue into the progress window
+// (OperationProgress, fetched when first needed): the page is locked until the
+// action ends, the steps it reports are shown with the elapsed time, and the
+// end says "Completed" or the reason, who acts and the next step.
 //
-// Ürünün kendi onay penceresi: uygulama kökünde bir kez bağlanır ve her
-// confirmAction() çağrısını paylaşılan Dialog ile yanıtlar. Escape ve arka plan
-// iptal eder, Tab pencerenin içinde kalır, odak soran denetime döner.
+// Ürünün kendi onay ve ilerleme penceresi: uygulama kökünde bir kez bağlanır.
+// Onaylanan iş pencereyi ilerleme penceresine çevirir; iş bitene dek sayfa
+// kilitlidir.
+
+const OperationProgress = lazy(() => import('./OperationProgress'));
 
 const CANCEL = 'confirm-action-cancel';
 const CONFIRM = 'confirm-action-confirm';
 
+type Request = ConfirmRequest & { follow?: boolean };
+
 interface Open {
-    request: ConfirmRequest;
+    key: number;
+    request: Request;
     answer: (ok: boolean) => void;
+    /** True while its action runs: only then may that action ask a follow-up. */
+    running: { current: boolean };
+}
+
+let nextKey = 0;
+
+// How an action that tells no result of its own ended, from what it said:
+// an error is a failure (or an unknown result when it says so), a success is
+// done (with any warning after it), a warning alone waits for someone. An
+// action that said nothing closes the window; the page shows the result.
+// Kendi sonucunu söylemeyen işin sonucu, söylediklerinden çıkarılır.
+function endFromToasts(said: CapturedToast[], unknownText: string): OperationEnd | undefined {
+    const text = (type: CapturedToast['type']) => said.filter((toast) => toast.type === type).map((toast) => toast.message).join(' ');
+    const errors = text('error');
+    if (errors) return errors === unknownText ? { state: 'unknown', reason: errors } : { state: 'failed', reason: errors };
+    const done = [text('success'), text('info'), text('warning')].filter(Boolean).join(' ');
+    if (said.some((toast) => toast.type === 'success')) return { state: 'done', message: done };
+    if (said.some((toast) => toast.type === 'warning')) return { state: 'blocked', reason: text('warning') };
+    return said.length > 0 ? { state: 'done', message: done } : undefined;
 }
 
 export function ConfirmHost() {
-    const [open, setOpen] = useState<Open | null>(null);
-    const openRef = useRef(false);
+    const [open, setOpen] = useState<Open[]>([]);
+    const openRef = useRef<Open[]>([]);
 
     useEffect(() => registerConfirmHost((request) => new Promise<boolean>((resolve) => {
-        // One question at a time: a second request while one is open is "no".
-        if (openRef.current) {
+        const top = openRef.current[openRef.current.length - 1];
+        // One question at a time: a second request while a question waits is
+        // "no". A running action may ask its own follow-up; nothing may start
+        // a second operation over a running one.
+        if (top && (!top.running.current || request.follow)) {
             resolve(false);
             return;
         }
-        openRef.current = true;
-        setOpen({
+        const entry: Open = {
+            key: nextKey++,
             request,
+            running: { current: false },
             answer: (ok) => {
-                openRef.current = false;
-                setOpen(null);
+                openRef.current = openRef.current.filter((item) => item !== entry);
+                setOpen(openRef.current);
                 resolve(ok);
             },
-        });
+        };
+        openRef.current = [...openRef.current, entry];
+        setOpen(openRef.current);
     })), []);
 
-    return open ? <ConfirmDialog {...open} /> : null;
+    return <>{open.map((entry) => <ConfirmDialog key={entry.key} request={entry.request} answer={entry.answer} running={entry.running} />)}</>;
 }
 
-function ConfirmDialog({ request, answer }: Open) {
+function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
     const { t } = useI18n();
-    const [busy, setBusy] = useState(false);
+    const [phase, setPhase] = useState<'ask' | 'run' | 'end'>(request.follow ? 'run' : 'ask');
+    const [steps, setSteps] = useState<OperationStep[] | null>(null);
+    const [end, setEnd] = useState<OperationEnd | null>(null);
+    const [startedAt, setStartedAt] = useState(() => Date.now());
     // A second press before the busy state is drawn must not run it twice.
     const answered = useRef(false);
+    const mounted = useRef(true);
     const danger = request.tone === 'danger';
 
     // Focus the safe choice for a destructive question, the action otherwise;
@@ -59,14 +96,18 @@ function ConfirmDialog({ request, answer }: Open) {
     useEffect(() => {
         const before = document.activeElement as HTMLElement | null;
         document.getElementById(danger ? CANCEL : CONFIRM)?.focus();
-        return () => before?.focus?.();
+        return () => {
+            mounted.current = false;
+            before?.focus?.();
+        };
     }, [danger]);
 
     // Tab and Shift+Tab cycle inside the dialogue.
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key !== 'Tab') return;
-            const panel = document.getElementById(CANCEL)?.closest('[role="dialog"]');
+            const panels = document.querySelectorAll('[data-confirm-host]');
+            const panel = panels[panels.length - 1];
             if (!panel) return;
             const items = [...panel.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')];
             if (items.length === 0) {
@@ -85,47 +126,103 @@ function ConfirmDialog({ request, answer }: Open) {
         return () => document.removeEventListener('keydown', onKeyDown);
     }, []);
 
-    const confirm = async () => {
-        if (answered.current) return;
-        answered.current = true;
-        if (request.action) {
-            setBusy(true);
-            try {
-                await request.action();
-            } catch (error) {
-                // The action reports its own failure on the page; the question
-                // was answered, so the dialogue closes either way.
-                console.error(error);
-            }
+    const run = async () => {
+        const action = request.action;
+        if (!action) {
+            answer(true);
+            return;
         }
-        answer(true);
+        running.current = true;
+        setStartedAt(Date.now());
+        setPhase('run');
+        // What the action would say in toasts is said here instead.
+        const said: CapturedToast[] = [];
+        const release = captureToasts((toast) => said.push(toast));
+        let result: OperationEnd | void;
+        try {
+            result = await action({ steps: (next) => { if (mounted.current) setSteps(next); } });
+        } catch (error) {
+            // The action could not tell how it ended: the result is not known.
+            console.error(error);
+            result = { state: 'unknown', reason: t('common.resultUnknown') };
+        } finally {
+            release();
+        }
+        running.current = false;
+        if (!mounted.current) return;
+        result = result ?? endFromToasts(said, t('common.resultUnknown'));
+        const fix = said.find((toast) => toast.action)?.action;
+        if (result && result.state !== 'done' && fix && !result.fix) result = { ...result, fix };
+        if (result) {
+            setEnd(result);
+            setPhase('end');
+        } else {
+            answer(true);
+        }
     };
 
-    const text = request.title ?? request.message ?? '';
-    const description = request.title === undefined ? undefined : request.message;
+    // An operation followed without a question starts at once.
+    useEffect(() => {
+        if (request.follow && !answered.current) {
+            answered.current = true;
+            void run();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    return (
+    const confirm = () => {
+        if (answered.current) return;
+        answered.current = true;
+        void run();
+    };
+    const cancel = () => {
+        if (!answered.current) answer(false);
+    };
+
+    const title = request.title ?? request.message ?? '';
+    const question = (
         <Dialog
             id="confirm-action"
             stacked
             tone={danger ? 'danger' : 'default'}
             icon={danger ? AlertTriangle : HelpCircle}
-            busy={busy}
-            onDismiss={() => { if (!answered.current) answer(false); }}
+            busy={phase !== 'ask'}
+            onDismiss={cancel}
             title={request.title === undefined
-                ? <span className="block whitespace-pre-line text-base font-normal leading-6">{text}</span>
-                : text}
-            description={description === undefined ? undefined : <span className="whitespace-pre-line">{description}</span>}
+                ? <span className="block whitespace-pre-line text-base font-normal leading-6">{title}</span>
+                : title}
+            description={request.title === undefined || request.message === undefined ? undefined : <span className="whitespace-pre-line">{request.message}</span>}
             actions={
                 <>
-                    <Button id={CANCEL} type="button" disabled={busy} onClick={() => { if (!answered.current) answer(false); }}>
-                        {t('common.cancel')}
-                    </Button>
-                    <Button id={CONFIRM} type="button" variant={danger ? 'danger' : 'primary'} loading={busy} onClick={() => void confirm()} data-confirm-action="">
-                        {request.confirmLabel ?? t('common.continue')}
+                    {!request.follow && (
+                        <Button id={CANCEL} type="button" disabled={phase !== 'ask'} onClick={cancel}>
+                            {t('common.cancel')}
+                        </Button>
+                    )}
+                    <Button id={CONFIRM} type="button" variant={danger ? 'danger' : 'primary'} loading={phase !== 'ask'} onClick={confirm} data-confirm-action="">
+                        {request.follow ? t('operation.working') : request.confirmLabel ?? t('common.continue')}
                     </Button>
                 </>
             }
         />
+    );
+
+    return (
+        <div data-confirm-host={phase}>
+            {phase === 'ask' ? question : (
+                // Until the progress window's code has arrived the question
+                // stays, busy: the page is locked either way.
+                <Suspense fallback={question}>
+                    <OperationProgress
+                        title={request.progressTitle ?? title}
+                        tone={request.tone}
+                        steps={steps}
+                        startedAt={startedAt}
+                        end={phase === 'end' ? end : null}
+                        onClose={() => answer(true)}
+                    />
+                </Suspense>
+            )}
+        </div>
     );
 }

@@ -328,11 +328,10 @@ export function SystemSQLiteManager() {
                                             <Button
                                                 icon={Gauge}
                                                 disabled={!database.available || busy !== null}
-                                                onClick={async () => {
-                                                    if (await confirmAction({ message: t('systemDb.optimizeConfirm', { name: localizedName }) })) {
-                                                        void runJSONAction({ ...database, name: localizedName }, 'optimize');
-                                                    }
-                                                }}
+                                                onClick={() => void confirmAction({
+                                                    message: t('systemDb.optimizeConfirm', { name: localizedName }),
+                                                    action: () => runJSONAction({ ...database, name: localizedName }, 'optimize'),
+                                                })}
                                             >
                                                 {databaseBusy && busy.action === 'optimize' ? t('systemDb.optimizing') : t('systemDb.optimize')}
                                             </Button>

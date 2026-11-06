@@ -353,7 +353,7 @@ function ProtectedDirCard({
                             message: t('siteFeatures.protect.removeDirConfirm', { path: dir.path }),
                             confirmLabel: t('common.remove'),
                             tone: 'danger',
-                            action: () => change('DELETE', `${base}?id=${dir.id}`, undefined, t('siteFeatures.protect.dirRemoved', { path: dir.path })),
+                            action: async () => { await change('DELETE', `${base}?id=${dir.id}`, undefined, t('siteFeatures.protect.dirRemoved', { path: dir.path })); },
                         })}
                     >
                         {t('siteFeatures.protect.removeDir')}
@@ -377,8 +377,8 @@ function ProtectedDirCard({
                                     message: t('siteFeatures.protect.removeUserConfirm', { name, path: dir.path }),
                                     confirmLabel: t('common.remove'),
                                     tone: 'danger',
-                                    action: () => change('DELETE', `${base}/users?id=${dir.id}&user=${encodeURIComponent(name)}`, undefined,
-                                        t('siteFeatures.protect.userRemoved')),
+                                    action: async () => { await change('DELETE', `${base}/users?id=${dir.id}&user=${encodeURIComponent(name)}`, undefined,
+                                        t('siteFeatures.protect.userRemoved')); },
                                 })}
                                 className="shrink-0 rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-3 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
                             >
@@ -500,8 +500,8 @@ export function DomainSiteRedirects({ domainId, readOnly = false }: PanelProps) 
                                                             message: t('siteFeatures.redirect.removeConfirm', { path: item.source }),
                                                             confirmLabel: t('common.remove'),
                                                             tone: 'danger',
-                                                            action: () => change('DELETE', `/api/v1/domains/${domainId}/redirects?id=${item.id}`, undefined,
-                                                                t('siteFeatures.redirect.removed')),
+                                                            action: async () => { await change('DELETE', `/api/v1/domains/${domainId}/redirects?id=${item.id}`, undefined,
+                                                                t('siteFeatures.redirect.removed')); },
                                                         })}
                                                         className="shrink-0 rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-3 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
                                                     >

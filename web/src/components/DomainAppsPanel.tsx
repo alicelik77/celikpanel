@@ -83,27 +83,30 @@ export function DomainAppsPanel({ domainId, domainName }: { domainId: number; do
 
     const install = async (app: DomainApp) => {
         if (answer.holding || busy || apps.remote.state !== 'known') return;
-        if (!(await confirmAction({ message: t('apps.confirmInstall', { name: app.name }) }))) return;
-        setBusy(app.id);
-        setShown(null);
-        setFailure(null);
-        try {
-            const data = await post(domainAppInstallURL(domainId), { app: app.id });
-            if (!data) return;
-            if (data.success !== true) {
-                failed({ message: typeof data.error === 'string' ? data.error : '' });
-                return;
-            }
-            showToast('success', t('apps.installed', { name: app.name }));
-            answer.settle();
-            setShown({
-                name: app.name, site_url: str(data.site_url), admin_url: str(data.admin_url) || str(data.setup_url),
-                admin_user: str(data.admin_user), admin_password: str(data.admin_password), operation_id: str(data.operation_id),
-            });
-            void apps.retry();
-        } finally {
-            setBusy(null);
-        }
+        await confirmAction({ message: t('apps.confirmInstall', { name: app.name }),
+            action: async () => {
+                setBusy(app.id);
+                setShown(null);
+                setFailure(null);
+                try {
+                    const data = await post(domainAppInstallURL(domainId), { app: app.id });
+                    if (!data) return;
+                    if (data.success !== true) {
+                        failed({ message: typeof data.error === 'string' ? data.error : '' });
+                        return;
+                    }
+                    showToast('success', t('apps.installed', { name: app.name }));
+                    answer.settle();
+                    setShown({
+                        name: app.name, site_url: str(data.site_url), admin_url: str(data.admin_url) || str(data.setup_url),
+                        admin_user: str(data.admin_user), admin_password: str(data.admin_password), operation_id: str(data.operation_id),
+                    });
+                    void apps.retry();
+                } finally {
+                    setBusy(null);
+                }
+            },
+        });
     };
 
     const retry = async (app: InstalledApp) => {

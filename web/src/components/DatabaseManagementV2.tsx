@@ -173,26 +173,29 @@ export function DatabaseManagementV2() {
     // A new password made up by the server and shown once; for a WordPress
     // CelikPanel installed the server writes it into its configuration too.
     const handleNewPassword = async (id: number, name: string) => {
-        if (!(await confirmAction({ message: t('databases.confirmNewPassword', { name }) }))) return;
-        try {
-            const res = await fetch(`${API_BASE}/database-users/${id}/password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: '{}',
-            });
-            if (!res.ok) { refuse(await readApiError(res), 'databases.newPasswordFailed'); return; }
-            const answer: unknown = await res.json();
-            const record = answer && typeof answer === 'object' ? answer as Record<string, unknown> : {};
-            setRefusal(null);
-            if (typeof record.password === 'string') setSecret({ user: name, password: record.password, renewed: true });
-            if (typeof record.app_domain === 'string' && record.app_updated === false) {
-                showToast('error', t('databases.newPasswordAppKept', { domain: record.app_domain, detail: String(record.app_detail ?? '') }));
-            }
-        } catch {
-            showToast('error', t('common.resultUnknown'));
-        } finally {
-            invalidate('databases');
-        }
+        await confirmAction({ message: t('databases.confirmNewPassword', { name }),
+            action: async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/database-users/${id}/password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: '{}',
+                    });
+                    if (!res.ok) { refuse(await readApiError(res), 'databases.newPasswordFailed'); return; }
+                    const answer: unknown = await res.json();
+                    const record = answer && typeof answer === 'object' ? answer as Record<string, unknown> : {};
+                    setRefusal(null);
+                    if (typeof record.password === 'string') setSecret({ user: name, password: record.password, renewed: true });
+                    if (typeof record.app_domain === 'string' && record.app_updated === false) {
+                        showToast('error', t('databases.newPasswordAppKept', { domain: record.app_domain, detail: String(record.app_detail ?? '') }));
+                    }
+                } catch {
+                    showToast('error', t('common.resultUnknown'));
+                } finally {
+                    invalidate('databases');
+                }
+            },
+        });
     };
 
     return (

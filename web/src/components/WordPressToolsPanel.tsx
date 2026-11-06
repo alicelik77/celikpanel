@@ -7,7 +7,7 @@ import { Button, ErrorBanner, RemoteGate } from './ui';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { useRemote, useRefreshEvery } from '../lib/remote';
 import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, type OperationReport } from '../lib/confirmAction';
 
 // WordPress tools of one site (alpha.118, docs/WORDPRESS-TOOLS.md): status,
 // verified updates with a backup first, the switch for automatic minor
@@ -111,8 +111,9 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
     const [busy, setBusy] = useState(false);
     const [failure, setFailure] = useState<ApiError | null>(null);
 
-    const start = async (path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void) => {
-        if (busy) return;
+    // Starts an update or a copy and returns whether the server accepted it.
+    const start = async (path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void): Promise<boolean> => {
+        if (busy) return false;
         setBusy(true);
         setFailure(null);
         try {
@@ -121,12 +122,45 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                 const problem = await readApiError(res);
                 setFailure(problem);
                 showToast('error', refusalText(problem, t, 'wpt.startFailed'));
-                return;
+                return false;
             }
             done?.();
             await state.retry();
+            return true;
         } finally {
             setBusy(false);
+        }
+    };
+
+    // A confirmed update or copy runs in the locked progress window until the
+    // server's operation is no longer open (owner's firm order, 6 Nov 2026):
+    // first the start, then the server's own operation, read every 4 s (reads
+    // only). How it ended stays on the page (OperationGuidance).
+    // Onaylanan güncelleme ya da kopya, sunucudaki işlem açık kaldıkça kilitli
+    // pencerede sürer; yalnız okunur.
+    const startAndFollow = async (report: OperationReport, path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void) => {
+        const since = Date.now();
+        report.steps([
+            { id: 'start', label: t('wpt.step.start'), state: 'running', since },
+            { id: 'run', label: t('wpt.step.run'), state: 'pending' },
+        ]);
+        if (!(await start(path, method, body, done))) return;
+        const running = Date.now();
+        report.steps([
+            { id: 'start', label: t('wpt.step.start'), state: 'done' },
+            { id: 'run', label: t('wpt.step.run'), state: 'running', since: running, note: t('wpt.step.runNote') },
+        ]);
+        let unknownSince: number | null = null;
+        for (;;) {
+            await new Promise((resolve) => window.setTimeout(resolve, 4000));
+            const read = await state.retry();
+            if (read.state === 'known') {
+                unknownSince = null;
+                if (!read.value.operations.some((op) => op.open)) return;
+            } else {
+                unknownSince ??= Date.now();
+                if (Date.now() - unknownSince > 60_000) return { state: 'unknown' as const, reason: t('wpt.step.unread') };
+            }
         }
     };
 
@@ -164,7 +198,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                 </div>
                                 {coreTarget && (
                                     <Button variant="primary" icon={Download} disabled={locked || value.database_linked === false}
-                                        onClick={async () => { if (await confirmAction({ message: t('wpt.confirmCore', { version: coreTarget }) })) void start('update', 'POST', { kind: 'core', core_version: coreTarget }); }}>
+                                        onClick={() => void confirmAction({ message: t('wpt.confirmCore', { version: coreTarget }), progressTitle: t('wpt.step.coreTitle', { version: coreTarget }), action: (report) => startAndFollow(report, 'update', 'POST', { kind: 'core', core_version: coreTarget }) })}>
                                         {t('wpt.updateTo', { version: coreTarget })}
                                     </Button>
                                 )}
@@ -201,7 +235,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                 )}
                                 {updatable.length > 0 && (
                                     <Button className="mt-2" variant="primary" disabled={locked || selected.length === 0}
-                                        onClick={async () => { if (await confirmAction({ message: t('wpt.confirmPlugins', { count: selected.length }) })) void start('update', 'POST', { kind: 'plugin', items: selected }, () => setSelected([])); }}>
+                                        onClick={() => void confirmAction({ message: t('wpt.confirmPlugins', { count: selected.length }), progressTitle: t('wpt.step.pluginsTitle'), action: (report) => startAndFollow(report, 'update', 'POST', { kind: 'plugin', items: selected }, () => setSelected([])) })}>
                                         {t('wpt.updateSelected', { count: selected.length })}
                                     </Button>
                                 )}
@@ -236,9 +270,9 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                             {targets.remote.state === 'known' && targets.remote.value.map((c) => <option key={c.domain_id} value={c.domain_id}>{c.domain}</option>)}
                                         </select>
                                         <Button icon={Copy} disabled={locked || target === ''}
-                                            onClick={async () => {
+                                            onClick={() => {
                                                 const name = targets.remote.state === 'known' ? targets.remote.value.find((c) => String(c.domain_id) === target)?.domain ?? '' : '';
-                                                if (await confirmAction({ message: t('wpt.clone.confirm', { target: name }), tone: 'danger' })) void start('clone', 'POST', { target_domain_id: Number(target) }, () => setTarget(''));
+                                                void confirmAction({ message: t('wpt.clone.confirm', { target: name }), tone: 'danger', progressTitle: t('wpt.step.cloneTitle', { target: name }), action: (report) => startAndFollow(report, 'clone', 'POST', { target_domain_id: Number(target) }, () => setTarget('')) });
                                             }}>
                                             {t('wpt.clone.start')}
                                         </Button>

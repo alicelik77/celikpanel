@@ -2357,45 +2357,84 @@ test('Domains: one confirmation for a bulk delete, and the rows change without a
 
 // Owner report, 6 Nov 2026: the browser's own dialogue, two identical long
 // toasts, and delete pressed again and again while the backup DNS server
-// confirmed the removal. The question names the domain; the answer "pending"
-// shows one line above the list and no toast; the row is "being deleted" and
-// no second DELETE can be sent, from the row, the selection or a re-press.
-test('Domains: a deletion the backup DNS server is confirming is one line, no toast, and never sent twice', async () => {
+// confirmed the removal; then the firm order that the page must never be free
+// while work runs. The question names the domain; the confirmed deletion is
+// followed in the locked window, step by step (the DNS step waits, and says
+// for what), by reading its saved state only, until it ends; no toast.
+test('Domains: a confirmed delete is followed step by step, by reads only, until it is done', async () => {
   const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
   const live = liveDomains({ domains: [siteRow(4, 'alicelik.com.tr')], zones: [] });
+  let statusReads = 0;
   serve({
     ...live.table,
-    '/api/v1/domains/4/deletion-status': () => Response.json(pendingBody),
+    '/api/v1/domains/4/deletion-status': () => {
+      statusReads++;
+      if (statusReads < 2) return Response.json(pendingBody);
+      live.state.domains = [];
+      return Response.json({ error: 'no such domain' }, { status: 404 });
+    },
   }, 'admin', {
     '/api/v1/domains/4': () => {
       live.state.domains = [{ ...siteRow(4, 'alicelik.com.tr'), status: 'pending' }];
       return Response.json(pendingBody, { status: 202 });
     },
   });
-  // A waiting deletion reads again by itself after 15 s; unmounting clears it.
   Object.assign(globalThis.window, { setTimeout, clearTimeout });
+  globalThis.operationSteps = [];
+  globalThis.operationEnds = [];
   const asked = [];
   try {
     await mount(Domains);
-    globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone]); return true; };
-    const deletes = () => calls.filter((call) => call.method === 'DELETE').length;
+    globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone, request.progressTitle]); return true; };
     const rowDelete = () => hostButtons().find((node) => node.props.title === 'domains.action.delete' || node.props.title === 'domains.status.beingDeleted');
     await press(rowDelete());
-    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger']], 'the question does not name the domain and what goes');
-    assert.equal(deletes(), 1);
+    await act(async () => { await settled(); await settled(); });
+    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
+    const shown = globalThis.operationSteps.map((steps) => steps.map((step) => `${step.id}=${step.state}`).join(' '));
+    assert.equal(shown[0], 'request=running finish=pending');
+    assert.ok(shown.includes('mail=done site=done dns=waiting certificates=pending finish=pending'), `the DNS step did not wait: ${shown.join(' | ')}`);
+    assert.equal(shown.at(-1), 'mail=done site=done dns=done certificates=done finish=done');
+    const waiting = globalThis.operationSteps.flat().find((step) => step.state === 'waiting');
+    assert.equal(waiting.note, 'domains.step.note.confirming', 'the waiting step does not say for what');
+    assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a toast repeated what the window says');
+    assert.ok(!has('alicelik.com.tr'), 'the deleted domain stayed in the list');
+  } finally {
+    delete globalThis.operationSteps;
+    delete globalThis.operationEnds;
+    await cleanup();
+  }
+});
+
+// After a reload the page follows the deletion that is still running in the
+// same locked window; the row says "Being deleted" and offers no second
+// delete, from the row, the selection or a re-press.
+test('Domains: a deletion still running after a reload is followed again and never sent twice', async () => {
+  const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
+  const live = liveDomains({ domains: [{ ...siteRow(4, 'alicelik.com.tr'), status: 'pending' }], zones: [] });
+  serve({ ...live.table, '/api/v1/domains/4/deletion-status': () => Response.json(pendingBody) });
+  Object.assign(globalThis.window, { setTimeout, clearTimeout });
+  globalThis.operationSteps = [];
+  const asked = [];
+  try {
+    await mount(Domains);
+    globalThis.confirm = (message) => { asked.push(message); return true; };
     await act(async () => { await settled(); await settled(); await settled(); });
-    assert.deepEqual(globalThis.currentTest.toasts, [], 'a toast repeated the line above the list');
+    assert.ok(globalThis.operationSteps.some((steps) => steps.some((step) => step.id === 'dns' && step.state === 'waiting')), 'the running deletion was not followed again');
     assert.ok(has('domains.beingDeletedLine'), 'the waiting deletion is not said in one line');
     assert.ok(!has('domains.deletionReason.remote_dns_removal_confirming'), 'the long waiting text is still shown');
     assert.ok(has('domains.status.beingDeleted'), 'the row does not say it is being deleted');
-    const again = rowDelete();
+    const again = hostButtons().find((node) => node.props.title === 'domains.status.beingDeleted');
     assert.equal(again.props.disabled, true, 'the row still offers delete');
     await press(again);
     const box = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox').at(-1);
     assert.equal(box.props.disabled, true, 'a domain being deleted can still be selected for Remove');
-    assert.equal(deletes(), 1, 'a second DELETE was sent');
-    assert.equal(asked.length, 1, 'a second question was asked');
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 0, 'a DELETE was sent');
+    assert.equal(asked.length, 0, 'a question was asked');
+    assert.deepEqual(globalThis.currentTest.toasts, []);
   } finally {
+    delete globalThis.operationSteps;
     await cleanup();
   }
 });

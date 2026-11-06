@@ -199,19 +199,25 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     };
 
     const setStatus = async (u: PanelUser, status: 'active' | 'suspended') => {
-        if (status === 'suspended' && !(await confirmAction({ message: t('users.suspendConfirm', { name: u.username }), tone: 'danger' }))) return;
-        const res = await send(`/api/v1/users/${u.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status }),
-        });
-        if (!res) return;
-        if (!res.ok) {
-            await apiError(res);
+        const proceed = async () => {
+            const res = await send(`/api/v1/users/${u.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            if (!res) return;
+            if (!res.ok) {
+                await apiError(res);
+                return;
+            }
+            showToast('success', status === 'suspended' ? t('users.suspended') : t('users.activated'));
+            load();
+        };
+        if (!(status === 'suspended')) {
+            await proceed();
             return;
         }
-        showToast('success', status === 'suspended' ? t('users.suspended') : t('users.activated'));
-        load();
+        await confirmAction({ message: t('users.suspendConfirm', { name: u.username }), tone: 'danger', action: proceed });
     };
 
     const deleteUser = async (u: PanelUser) => {

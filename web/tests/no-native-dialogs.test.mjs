@@ -61,10 +61,61 @@ test('the confirmation is mounted once at the root and asks one question at a ti
   const main = readFileSync(join(src, 'main.tsx'), 'utf8');
   assert.match(main, /<ConfirmHost \/>/);
   const host = readFileSync(join(src, 'components/ConfirmHost.tsx'), 'utf8');
-  // A second request while one is open is answered "no" at once.
-  assert.match(host, /if \(openRef\.current\) \{\s*resolve\(false\);/);
+  // A second request while a question waits is answered "no" at once; only a
+  // running action may ask its own follow-up.
+  assert.match(host, /if \(top && \(!top\.running\.current \|\| request\.follow\)\) \{\s*resolve\(false\);/);
   // The shared dialogue shape, its busy state and the shell's own words.
-  assert.match(host, /<Dialog[\s\S]*busy=\{busy\}/);
+  assert.match(host, /<Dialog[\s\S]*busy=\{phase !== 'ask'\}/);
+  // The progress window is fetched when first needed, outside the boot path.
+  assert.match(host, /lazy\(\(\) => import\('\.\/OperationProgress'\)\)/);
   assert.match(host, /t\('common\.cancel'\)/);
   assert.match(host, /t\('common\.continue'\)/);
+});
+
+// The owner's firm order (6 Nov 2026): while work runs the person never waits
+// blankly; the page is locked and the window says what is being done. So a
+// confirmation that leads to a change on the server carries that change as its
+// `action`, which the progress window runs. A question without one is allowed
+// only where nothing is sent, or where another lock already follows the work;
+// each such call is listed here with why.
+// Sunucuda değişiklik yapan her onay, işi `action` olarak taşır; ilerleme
+// penceresi onu kilitli çalıştırır. Yalnız buradaki istisnalar düz sorudur.
+const plainQuestions = {
+  // Discarding unsaved edits sends nothing.
+  'components/AddonsPage.tsx': 1,
+  'components/StoreCatalogAdmin.tsx': 2,
+  // Installing a version past its support: the install then runs under the
+  // component operation's own lock (OperationOverlay).
+  'components/ServiceList.tsx': 1,
+};
+
+function calls(text, name) {
+  const found = [];
+  let at = text.indexOf(`${name}(`);
+  while (at >= 0) {
+    if (!/[\w.$]/.test(text[at - 1] ?? '')) {
+      let depth = 0;
+      let end = at + name.length;
+      for (; end < text.length; end++) {
+        if (text[end] === '(') depth++;
+        if (text[end] === ')' && --depth === 0) break;
+      }
+      found.push(text.slice(at, end + 1));
+    }
+    at = text.indexOf(`${name}(`, at + 1);
+  }
+  return found;
+}
+
+test('every confirmation that changes something runs it in the locked progress window', () => {
+  const plain = {};
+  for (const file of sources(src)) {
+    const text = code(readFileSync(file, 'utf8'));
+    if (!/from '\.\.\/lib\/confirmAction'/.test(text)) continue;
+    const name = relative(src, file).split(/[\\/]/).join('/');
+    for (const call of calls(text, 'confirmAction')) {
+      if (!/\baction:/.test(call)) plain[name] = (plain[name] ?? 0) + 1;
+    }
+  }
+  assert.deepEqual(plain, plainQuestions, 'a confirmation without `action` sends its change outside the progress window');
 });

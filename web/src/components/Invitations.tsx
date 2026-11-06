@@ -143,25 +143,31 @@ export function useInvitationActions() {
     const [busy, setBusy] = useState<number | null>(null);
     const act = async (id: number, username: string, action: InvitationAction) => {
         if (busy !== null) return;
-        if (action === 'revoke' && !(await confirmAction({ message: t('acct.invite.revokeConfirm', { name: username }), tone: 'danger' }))) return;
-        setBusy(id);
-        try {
-            const res = action === 'revoke'
-                ? await fetch(`${INVITATIONS_URL}/${id}`, { method: 'DELETE' })
-                : await postJSON(`${INVITATIONS_URL}/${id}/resend`, { delivery: action, lang: locale });
-            if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t));
-            } else if (action === 'revoke') {
-                showToast('success', t('acct.invite.revoked'));
-            } else {
-                report(((await res.json()) as { invitation?: unknown }).invitation);
+        const proceed = async () => {
+            setBusy(id);
+            try {
+                const res = action === 'revoke'
+                    ? await fetch(`${INVITATIONS_URL}/${id}`, { method: 'DELETE' })
+                    : await postJSON(`${INVITATIONS_URL}/${id}/resend`, { delivery: action, lang: locale });
+                if (!res.ok) {
+                    showToast('error', apiErrorText(await readApiError(res), t));
+                } else if (action === 'revoke') {
+                    showToast('success', t('acct.invite.revoked'));
+                } else {
+                    report(((await res.json()) as { invitation?: unknown }).invitation);
+                }
+            } catch {
+                showToast('error', t('common.resultUnknown'));
+            } finally {
+                setBusy(null);
+                invalidate('users', 'team');
             }
-        } catch {
-            showToast('error', t('common.resultUnknown'));
-        } finally {
-            setBusy(null);
-            invalidate('users', 'team');
+        };
+        if (!(action === 'revoke')) {
+            await proceed();
+            return;
         }
+        await confirmAction({ message: t('acct.invite.revokeConfirm', { name: username }), tone: 'danger', action: proceed });
     };
     return { act, busy, dialog };
 }

@@ -142,39 +142,42 @@ export function DomainPHPSettings({
         // A version that no longer receives security fixes asks its own
         // confirmation, and the server is told it was confirmed.
         const unsupported = supportConfirmation(t, locale, support, 'php', selectedVersion, 'choose');
-        if (!(await confirmAction({ message: unsupported || t('php.changeConfirm', { from: currentVersion, to: selectedVersion }) }))) return;
-        setSaving(true);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/php`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ php_version: selectedVersion, ...(unsupported ? { confirm_unsupported: true } : {}) }),
-            }, {
-                // The settings read again name the version the domain runs. If
-                // it is the picked one, the pick is done; if not, it stays
-                // picked and the notice says it is not shown as saved.
-                // Yeniden okunan ayarlar alan adının sürümünü söyler. Seçilen
-                // sürümse seçim tamamdır; değilse seçili kalır.
-                shows: (read) => (read[0].value as PHPSettings).php_version === selectedVersion,
-                made: () => {
+        await confirmAction({ message: unsupported || t('php.changeConfirm', { from: currentVersion, to: selectedVersion }),
+            action: async () => {
+                setSaving(true);
+                try {
+                    const res = await answer.send(`/api/v1/domains/${domainId}/php`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ php_version: selectedVersion, ...(unsupported ? { confirm_unsupported: true } : {}) }),
+                    }, {
+                        // The settings read again name the version the domain runs. If
+                        // it is the picked one, the pick is done; if not, it stays
+                        // picked and the notice says it is not shown as saved.
+                        // Yeniden okunan ayarlar alan adının sürümünü söyler. Seçilen
+                        // sürümse seçim tamamdır; değilse seçili kalır.
+                        shows: (read) => (read[0].value as PHPSettings).php_version === selectedVersion,
+                        made: () => {
+                            onVersionChange(selectedVersion);
+                            setPicked(null);
+                        },
+                    });
+                    if (!res) return;
+                    if (!res.ok) {
+                        showToast('error', apiErrorText(await readApiError(res), t, 'php.changeFailed'));
+                        setPicked(null);
+                        return;
+                    }
+                    showToast('success', t('php.changed', { version: selectedVersion }));
+                    answer.settle();
                     onVersionChange(selectedVersion);
                     setPicked(null);
-                },
-            });
-            if (!res) return;
-            if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t, 'php.changeFailed'));
-                setPicked(null);
-                return;
-            }
-            showToast('success', t('php.changed', { version: selectedVersion }));
-            answer.settle();
-            onVersionChange(selectedVersion);
-            setPicked(null);
-            await settings.retry();
-        } finally {
-            setSaving(false);
-        }
+                    await settings.retry();
+                } finally {
+                    setSaving(false);
+                }
+            },
+        });
     };
 
     const handleSavePool = async (e: React.FormEvent<HTMLFormElement>) => {

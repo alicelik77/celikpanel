@@ -142,11 +142,19 @@ export const installPlanURL = compileSource('lib/installPlan.ts', unexpected('li
 // A confirmed request's action runs before the answer, as in the dialogue.
 export const confirmActionURL = compileSource('lib/confirmAction.ts', unexpected('lib/confirmAction.ts'));
 const confirmActionModule = await import(confirmActionURL);
+// The steps an action reports and how it ended are kept on
+// globalThis.operationSteps / globalThis.operationEnds for the test to read; an
+// operation followed without a question (followOperation) is not asked.
 confirmActionModule.registerConfirmHost(async (request) => {
-  const answer = globalThis.confirm;
-  if (typeof answer !== 'function') throw new Error('a confirmation was asked, and the test set no globalThis.confirm answerer');
-  if (!answer(request.message ?? request.title ?? '', request)) return false;
-  if (request.action) await request.action();
+  if (!request.follow) {
+    const answer = globalThis.confirm;
+    if (typeof answer !== 'function') throw new Error('a confirmation was asked, and the test set no globalThis.confirm answerer');
+    if (!answer(request.message ?? request.title ?? '', request)) return false;
+  }
+  if (request.action) {
+    const end = await request.action({ steps: (steps) => { (globalThis.operationSteps ??= []).push(steps); } });
+    (globalThis.operationEnds ??= []).push(end);
+  }
   return true;
 });
 

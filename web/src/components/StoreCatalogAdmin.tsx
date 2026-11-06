@@ -141,6 +141,8 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
         });
     }, [catalog, locale, query]);
 
+    // Discarding unsaved edits changes nothing on the server: a plain question.
+    // Kaydedilmemiş düzenlemeyi atmak sunucuda bir şey değiştirmez: düz soru.
     const selectOffering = async (id: string) => {
         if (id === selectedID) return;
         if (dirty && !(await confirmAction({ message: t('addons.admin.discardConfirm'), confirmLabel: t('addons.admin.discard'), tone: 'danger' }))) return;
@@ -157,54 +159,58 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
 
     const save = async () => {
         if (!draft || !original || saving || !dirty) return;
-        if (original.release_state === 'available' && draft.release_state !== 'available') {
-            const warning = original.active_entitlements > 0
-                ? t('addons.admin.lifecycleConfirmActive', { count: original.active_entitlements })
-                : t('addons.admin.lifecycleConfirm');
-            if (!(await confirmAction({ message: warning, tone: 'danger' }))) return;
-        }
-
-        setSaving(true);
-        setError(null);
-        try {
-            const payload = fromDraft(draft);
-            const response = await fetch(`/api/v1/admin/store-catalog/${encodeURIComponent(draft.id)}`, {
-                method: 'PATCH',
-                cache: 'no-store',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    category: payload.category,
-                    vendor: payload.vendor,
-                    release_state: payload.release_state,
-                    metadata: payload.metadata,
-                    component_ids: payload.component_ids,
-                    sort_order: payload.sort_order,
-                    expected_updated_at: original.updated_at,
-                    acknowledge_entitlement_impact: original.release_state === 'available' &&
-                        payload.release_state !== 'available' && original.active_entitlements > 0,
-                }),
-            });
-            if (!response.ok) {
-                const responseError = await readApiError(response);
-                if (response.status === 409) await loadCatalog(draft.id);
-                throw responseError;
+        const withdrawn = original.release_state === 'available' && draft.release_state !== 'available';
+        const warning = original.active_entitlements > 0
+            ? t('addons.admin.lifecycleConfirmActive', { count: original.active_entitlements })
+            : t('addons.admin.lifecycleConfirm');
+        const proceed = async () => {
+            setSaving(true);
+            setError(null);
+            try {
+                const payload = fromDraft(draft);
+                const response = await fetch(`/api/v1/admin/store-catalog/${encodeURIComponent(draft.id)}`, {
+                    method: 'PATCH',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        category: payload.category,
+                        vendor: payload.vendor,
+                        release_state: payload.release_state,
+                        metadata: payload.metadata,
+                        component_ids: payload.component_ids,
+                        sort_order: payload.sort_order,
+                        expected_updated_at: original.updated_at,
+                        acknowledge_entitlement_impact: original.release_state === 'available' &&
+                            payload.release_state !== 'available' && original.active_entitlements > 0,
+                    }),
+                });
+                if (!response.ok) {
+                    const responseError = await readApiError(response);
+                    if (response.status === 409) await loadCatalog(draft.id);
+                    throw responseError;
+                }
+                const body = (await response.json()) as { offering?: unknown; unchanged?: boolean };
+                const saved = normalizeOffering(body.offering);
+                if (!saved) throw new Error(t('addons.admin.invalidResponse'));
+                setCatalog((current) => current ? {
+                    ...current,
+                    offerings: current.offerings.map((item) => item.id === saved.id ? saved : item),
+                } : current);
+                setDraft(toDraft(saved));
+                showToast('success', t(body.unchanged ? 'addons.admin.noChanges' : 'addons.admin.saved'));
+            } catch (cause) {
+                const nextError = normalizeAdminError(cause, t('addons.admin.saveFailed'));
+                setError(nextError);
+                showToast('error', apiErrorText(nextError, t, 'addons.admin.saveFailed'));
+            } finally {
+                setSaving(false);
             }
-            const body = (await response.json()) as { offering?: unknown; unchanged?: boolean };
-            const saved = normalizeOffering(body.offering);
-            if (!saved) throw new Error(t('addons.admin.invalidResponse'));
-            setCatalog((current) => current ? {
-                ...current,
-                offerings: current.offerings.map((item) => item.id === saved.id ? saved : item),
-            } : current);
-            setDraft(toDraft(saved));
-            showToast('success', t(body.unchanged ? 'addons.admin.noChanges' : 'addons.admin.saved'));
-        } catch (cause) {
-            const nextError = normalizeAdminError(cause, t('addons.admin.saveFailed'));
-            setError(nextError);
-            showToast('error', apiErrorText(nextError, t, 'addons.admin.saveFailed'));
-        } finally {
-            setSaving(false);
+        };
+        if (!(withdrawn)) {
+            await proceed();
+            return;
         }
+        await confirmAction({ message: warning, tone: 'danger', action: proceed });
     };
 
     if (loading) {

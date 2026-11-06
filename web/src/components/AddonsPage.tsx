@@ -169,43 +169,50 @@ export function AddonsPage() {
         return () => controller.abort();
     }, [loadStore, selected]);
 
+    const withoutItem = (current: Set<string>, id: string) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+    };
     const runStoreAction = async (item: StoreItemView) => {
         const targetSubscriptionID = loadedSubscriptionID;
         if (targetSubscriptionID == null || selected !== targetSubscriptionID || busyItemIDs.has(item.id)) return;
         if (item.action !== 'acquire' && item.action !== 'remove') return;
-        if (item.action === 'remove' && !(await confirmAction({ message: t('addons.confirmRemove', { name: item.name }), confirmLabel: t('common.remove'), tone: 'danger' }))) return;
+        const proceed = async () => {
 
-        setBusyItemIDs((current) => new Set(current).add(item.id));
-        setActionError(null);
-        try {
-            const basePath = `/api/v1/subscriptions/${targetSubscriptionID}/entitlements`;
-            const response = item.action === 'acquire'
-                ? await fetch(basePath, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product_id: item.id }),
-                })
-                : await fetch(`${basePath}/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-            if (!response.ok) throw await readApiError(response);
-            showToast('success', t(item.action === 'acquire' ? 'addons.granted' : 'addons.revoked'));
-            invalidate('plans');
-            if (selectedRef.current === targetSubscriptionID) {
-                await loadStore(targetSubscriptionID);
+            setBusyItemIDs((current) => new Set(current).add(item.id));
+            setActionError(null);
+            try {
+                const basePath = `/api/v1/subscriptions/${targetSubscriptionID}/entitlements`;
+                const response = item.action === 'acquire'
+                    ? await fetch(basePath, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ product_id: item.id }),
+                    })
+                    : await fetch(`${basePath}/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+                if (!response.ok) throw await readApiError(response);
+                showToast('success', t(item.action === 'acquire' ? 'addons.granted' : 'addons.revoked'));
+                invalidate('plans');
+                if (selectedRef.current === targetSubscriptionID) {
+                    await loadStore(targetSubscriptionID);
+                }
+            } catch (cause) {
+                // A refused grant or revoke is not a Store that could not be read:
+                // the list stays, and the refusal stands above it (owner feedback 2026-10-31).
+                const error = cause instanceof TypeError ? { message: '' } : normalizeError(cause, '');
+                const sentence = item.action === 'acquire' ? 'addons.grantFailed' : 'addons.revokeFailed';
+                setActionError({ error, sentence });
+                showToast('error', refusalText(error, t, sentence), refusalToast(error, t));
+            } finally {
+                setBusyItemIDs((current) => withoutItem(current, item.id));
             }
-        } catch (cause) {
-            // A refused grant or revoke is not a Store that could not be read:
-            // the list stays, and the refusal stands above it (owner feedback 2026-10-31).
-            const error = cause instanceof TypeError ? { message: '' } : normalizeError(cause, '');
-            const sentence = item.action === 'acquire' ? 'addons.grantFailed' : 'addons.revokeFailed';
-            setActionError({ error, sentence });
-            showToast('error', refusalText(error, t, sentence), refusalToast(error, t));
-        } finally {
-            setBusyItemIDs((current) => {
-                const next = new Set(current);
-                next.delete(item.id);
-                return next;
-            });
+        };
+        if (!(item.action === 'remove')) {
+            await proceed();
+            return;
         }
+        await confirmAction({ message: t('addons.confirmRemove', { name: item.name }), confirmLabel: t('common.remove'), tone: 'danger', action: proceed });
     };
 
     const selectedSubscription = subscriptions.find((subscription) => subscription.id === selected) ?? null;

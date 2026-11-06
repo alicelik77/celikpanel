@@ -216,28 +216,28 @@ export function DomainDatabaseManager({
 
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
         if (readOnly || list.remote.state !== 'known' || answer.holding) return;
-        if (!(await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger' }))) {
-            return;
-        }
+        await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, {
+                        method: 'DELETE'
+                    });
 
-        try {
-            const res = await fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                setRefusal(null);
-                showToast('success', t('ddb.deleted', { name: db.name }));
-                invalidate('databases');
-            } else {
-                // The server's reason (a user that still has grants…) is kept, on the page too.
-                refuse(await readApiError(res), 'ddb.deleteFailed');
-            }
-        } catch {
-            // No answer: whether it was deleted is not known; the list is read again.
-            showToast('error', t('common.resultUnknown'));
-            invalidate('databases');
-        }
+                    if (res.ok) {
+                        setRefusal(null);
+                        showToast('success', t('ddb.deleted', { name: db.name }));
+                        invalidate('databases');
+                    } else {
+                        // The server's reason (a user that still has grants…) is kept, on the page too.
+                        refuse(await readApiError(res), 'ddb.deleteFailed');
+                    }
+                } catch {
+                    // No answer: whether it was deleted is not known; the list is read again.
+                    showToast('error', t('common.resultUnknown'));
+                    invalidate('databases');
+                }
+            },
+        });
     };
 
     return (

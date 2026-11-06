@@ -60,16 +60,27 @@ test('the same toast is never shown twice while it is on screen', () => {
 test('a website whose traffic is not counted is named, with the step and no file path in the main text', async () => {
   const usage = await import(compileSource('lib/usage.ts', (specifier) => { throw new Error(`lib/usage.ts imports ${specifier}`); }));
   const status = usage.decodeUsageStatus({
-    traffic: { unknown: { vhost_kept: 1 }, unknown_sites: [{ domain: 'example.com', reason: 'vhost_kept' }, { reason: 'x' }, 'junk'] },
+    // The shape of fix/a126-dns-delete-stuck (d91f140b1): reason is who acts,
+    // detail the Agent's code; at most 50 named, the rest counted.
+    traffic: {
+      unknown: { vhost_kept: 1 },
+      unknown_sites: [{ domain_id: 7, domain: 'example.com', reason: 'changed_by_owner', detail: 'vhost_kept' }, { reason: 'x' }, 'junk'],
+      unknown_sites_more: 3,
+    },
     disk: {}, mail_quota: { state: 'enforced' },
   });
-  assert.deepEqual(status.traffic.unknown_sites, [{ domain: 'example.com', reason: 'vhost_kept' }]);
+  assert.deepEqual(status.traffic.unknown_sites, [{ domain_id: 7, domain: 'example.com', reason: 'changed_by_owner', detail: 'vhost_kept' }]);
+  assert.equal(status.traffic.unknown_sites_more, 3);
   assert.deepEqual(usage.usageStatusProblems(status), ['traffic_unknown']);
   // Without names (an older server) the count is still said.
   assert.deepEqual(usage.decodeUsageStatus({ traffic: { unknown: { include_missing: 2 } }, disk: {}, mail_quota: { state: 'enforced' } }).traffic.unknown_sites, []);
 
   const card = read('components/UsageNotices.tsx');
   assert.match(card, /t\('usage\.status\.trafficSite', \{ name: site\.domain \}\)/);
+  // Who acts decides the step when the Agent's code is not one the screen knows.
+  assert.match(card, /site\.reason === 'changed_by_owner' \? 'vhost_kept'/);
+  assert.match(card, /site\.reason === 'not_written_yet' \? 'include_missing'/);
+  assert.match(card, /status\.traffic\.unknown_sites_more/);
   assert.match(card, /navigate\(`\/domains\/\$\{encodeURIComponent\(domain\)\}\?tab=config`\)/);
   assert.match(card, /<summary className="cursor-pointer">\{t\('common\.technicalDetails'\)\}<\/summary>/);
   const detail = read('components/DomainDetail.tsx');
