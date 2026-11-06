@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { startVisibleReads } from '../lib/visibleReads';
 // Fetched when the in-place mail setup opens, as on the DNS page (alpha.118:
 // the route's budget had 0.33 KiB left). / Posta kurulumu açılınca getirilir.
 const MailSetupDialog = lazy(() => import('./MailSetupDialog').then((module) => ({ default: module.MailSetupDialog })));
@@ -435,10 +436,33 @@ interface ServiceListProps {
 // doğrula; kurulumdan sonraki ilk ziyarette ise mutlaka tara.
 const AUTO_SCAN_MAX_AGE_SECONDS = 300;
 
+// The refusals that mean a change holds the server (or began during the
+// check): not a failed check (D-032 rule 4).
+// Bir değişikliğin sunucuyu tuttuğunu söyleyen retler; kontrol hatası değildir.
+const SCAN_HELD_CODES = new Set(['server_setup_busy', 'service_operation_busy']);
+
 // A service's optional managed vendor repository (e.g. PGDG for PostgreSQL).
 // When available+enabled, the install dialog offers a specific major version.
 // Bir servisin isteğe bağlı yönetilen vendor deposu (örn. PostgreSQL için PGDG).
 // Mevcut+etkinse, kurulum modalı belirli bir major sürüm sunar.
+
+// A row whose record did not change keeps its object (alpha.125), so a check
+// that ran in the background redraws only the rows whose state it changed.
+// Kaydı değişmeyen satır nesnesini korur; yalnız değişen satırlar yenilenir.
+function keepUnchangedRows(previous: ManagedService[], next: ManagedService[]): ManagedService[] {
+    const before = new Map(previous.map((row) => [row.id, row]));
+    let same = previous.length === next.length;
+    const merged = next.map((row, index) => {
+        const old = before.get(row.id);
+        if (old && JSON.stringify(old) === JSON.stringify(row)) {
+            if (previous[index] !== old) same = false;
+            return old;
+        }
+        same = false;
+        return row;
+    });
+    return same ? previous : merged;
+}
 
 // unknownCategories returns a card definition for every category present in
 // the data but missing from categoryOrder above, so nothing can be silently
@@ -521,6 +545,16 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     // sonraki hamlesidir; sayfa onu saklar.
     const [autoCheckFailed, setAutoCheckFailed] = useState(false);
     const [busy, setBusy] = useState<string | null>(null);
+    // alpha.125: a scan no longer holds the server's change lock, so a change
+    // can start while a scan's answer is on its way. Each change moves this
+    // count; a scan answer that started before it is not applied (the
+    // change's own refresh brings the state after it).
+    // Tarama sürerken başlayan değişiklikten önceki tarama yanıtı uygulanmaz.
+    const changeEpochRef = useRef(0);
+    const runningOperation = componentOperation.operation;
+    useEffect(() => {
+        if (busy !== null || runningOperation !== null) changeEpochRef.current += 1;
+    }, [busy, runningOperation]);
     // What a start, stop or restart ended with when it is not "done": a
     // verified failure or an unknown result, with the service's own line. It
     // stays above the list until it is closed or another action is taken.
@@ -587,7 +621,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         // yerden yayınlamak, rozetin altındaki satırlarla çelişmemesini ve
         // onlardan bir sayfa yüklemesi geride kalmamasını sağlar.
         publishComponentCensus(snapshot.services);
-        setServices(snapshot.services);
+        setServices((previous) => keepUnchangedRows(previous, snapshot.services));
         setProfiles(snapshot.profiles);
         setBundles(snapshot.bundles);
         setWebmailCleanup(snapshot.webmailCleanup);
@@ -698,11 +732,9 @@ export function ServiceList({ onManageService }: ServiceListProps) {
 
     useEffect(() => {
         void loadServices();
-        void loadHostMutationReadiness();
-        const timer = window.setInterval(() => {
-            void loadHostMutationReadiness();
-        }, 5000);
-        return () => window.clearInterval(timer);
+        // alpha.125: the readiness re-read pauses while the tab is hidden.
+        // Gizli sekmede hazırlık yeniden okunmaz.
+        return startVisibleReads(loadHostMutationReadiness, 5000, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }, { immediate: true });
     }, []);
 
     // The operation controller keeps the panel locked through its mandatory
@@ -877,6 +909,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 setAutoCheckFailed(true);
                 return failVerification(error);
             };
+            const epoch = changeEpochRef.current;
             try {
                 const scanResponse = await fetch(
                     `/api/v1/managed-services/scan?max_age_seconds=${AUTO_SCAN_MAX_AGE_SECONDS}`,
@@ -884,10 +917,17 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 );
                 if (!scanResponse.ok) {
                     const error = await readApiError(scanResponse);
+                    // A change holds the server (or began during the check):
+                    // the stored list stays on screen, nothing failed, and
+                    // the change's own refresh brings the new state (D-032
+                    // rule 4, alpha.125).
+                    // Bir değişiklik sunucuyu tutuyor: kayıtlı liste kalır.
+                    if (storedScannedAt !== null && SCAN_HELD_CODES.has(error.code ?? '')) return true;
                     showToast('error', apiErrorText(error, t, 'services.scanFailed'));
                     return failAutoCheck(error);
                 }
                 const refreshed: unknown = await scanResponse.json();
+                if (epoch !== changeEpochRef.current) return true;
                 if (!applySnapshot(refreshed, 'scan')) {
                     showToast('error', t('services.scanFailed'));
                     return failAutoCheck();
@@ -920,6 +960,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const scan = async (): Promise<boolean> => {
         setScanning(true);
         setAutoCheckFailed(false);
+        const epoch = changeEpochRef.current;
         try {
             const res = await fetch('/api/v1/managed-services/scan', {
                 method: 'POST',
@@ -936,6 +977,8 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 return false;
             }
             const data: unknown = await res.json();
+            // A change started after this check: its own refresh wins.
+            if (epoch !== changeEpochRef.current) return true;
             if (!applySnapshot(data, 'scan')) {
                 showToast('error', t('services.scanFailed'));
                 markStateUnverified({ kind: 'read', error: null });
@@ -1367,7 +1410,12 @@ export function ServiceList({ onManageService }: ServiceListProps) {
     const reqNames = (tokens?: string[]) => (tokens ?? []).map(reqLabel).join(', ');
     // alpha.123: the component whose missing requirements are shown.
     const [needsTarget, setNeedsTarget] = useState<ManagedService | null>(null);
-    const pageControlsBusy = scanning || busy !== null;
+    // alpha.125: a check in the background keeps the list usable; only the
+    // first check of a server with no stored list holds the controls, and the
+    // check buttons wait for the check they would start again.
+    // Arka plandaki kontrol listeyi kilitlemez.
+    const pageControlsBusy = busy !== null || (scanning && scannedAt === null);
+    const scanControlsBusy = scanning || busy !== null;
     const readinessMessage = hostMutationReadiness === null
         ? t('services.mutationReadiness.checking')
         : hostMutationReadiness.ready
@@ -1623,7 +1671,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             <div className="mb-4 flex flex-wrap items-center gap-3">
                 <button
                     onClick={scan}
-                    disabled={pageControlsBusy}
+                    disabled={scanControlsBusy}
                     className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50 max-sm:min-h-11"
                 >
                     <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
@@ -1715,7 +1763,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         })}</p>
                     </div>
                     <div className="ml-auto shrink-0">
-                        <Button variant="secondary" icon={RefreshCw} onClick={scan} disabled={pageControlsBusy}>
+                        <Button variant="secondary" icon={RefreshCw} onClick={scan} disabled={scanControlsBusy}>
                             {scanning ? t('services.scanning') : t('services.rescan')}
                         </Button>
                     </div>
@@ -1768,7 +1816,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                         )}
                     </div>
                     <div className="ml-auto shrink-0">
-                        <Button variant="primary" icon={ScanSearch} onClick={scan} disabled={pageControlsBusy}>
+                        <Button variant="primary" icon={ScanSearch} onClick={scan} disabled={scanControlsBusy}>
                             {scanning ? t('services.scanning') : t('services.scanNow')}
                         </Button>
                     </div>

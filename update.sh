@@ -302,10 +302,13 @@ update_agent_refusal_is_transient() {
     return 1
 }
 
-run_update_agent_idle_probe_waiting() {
-    local waited=0 status=0
+# run_update_probe_waiting CLASSIFIER PROBE...: one read; while CLASSIFIER says
+# the refusal is transient, read again every poll until the bound.
+run_update_probe_waiting() {
+    local transient=$1 waited=0 status=0
+    shift
     run_update_idle_probe "$@" 2>/dev/null && return 0
-    while update_agent_refusal_is_transient && (( waited < UPDATE_AGENT_IDLE_WAIT_SECONDS )); do
+    while "$transient" && (( waited < UPDATE_AGENT_IDLE_WAIT_SECONDS )); do
         if (( waited == 0 )); then
             echo "==> The Agent is finishing another server operation; waiting up to ${UPDATE_AGENT_IDLE_WAIT_SECONDS} s for it before the update continues (nothing needs to be done)"
             echo "==> Agent başka bir sunucu işlemini bitiriyor; güncelleme devam etmeden önce en çok ${UPDATE_AGENT_IDLE_WAIT_SECONDS} sn bekleniyor (bir şey yapmanız gerekmiyor)"
@@ -322,6 +325,34 @@ run_update_agent_idle_probe_waiting() {
     done
     [[ -z ${update_failure_detail:-} ]] || printf '%s\n' "$update_failure_detail" >&2
     return 1
+}
+
+run_update_agent_idle_probe_waiting() {
+    run_update_probe_waiting update_agent_refusal_is_transient "$@"
+}
+
+# The recovery runtime's read-only compatibility check runs first, while the
+# panel still serves, so it meets the same short Agent operations. a124 lab
+# (5 Nov 2026): pressed right after a rollback, the update was accepted at
+# 12:23:59 and the panel's deferred start-up mail work began its server change
+# at 12:24:00; this check refused (agent_ledger_check: privileged mutation ...
+# is active) with nothing changed, and only a second press worked. Only that
+# step's transient refusals (a running Agent operation, the host package
+# manager) are waited for, with the same bound and announcement as the
+# preliminary probe; every other refusal, and one still present after the
+# bound, keeps its typed unchanged report. The check only reads.
+# Kurtarma ortamının salt-okur uyumluluk denetimi panel hizmet verirken ilk
+# çalışır; yalnız Agent kaydı adımındaki geçici retler (süren Agent işlemi,
+# paket yöneticisi) aynı sınırla beklenir; diğer her ret hemen bildirilir.
+recovery_compatibility_refusal_is_transient() {
+    case "${update_failure_detail:-}" in
+        *'step=agent_ledger_check: '*) update_agent_refusal_is_transient ;;
+        *) return 1 ;;
+    esac
+}
+
+run_recovery_compatibility_waiting() {
+    run_update_probe_waiting recovery_compatibility_refusal_is_transient "$@"
 }
 
 # Reject durable reservations while the management interface is still reachable.
@@ -683,7 +714,7 @@ prepare_independent_recovery_runtime() {
         --transaction-fd 9 9<&"$RELEASE_TRANSACTION_FD" \
         || die "independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence"
     recovery_runtime_preparation_verified=1
-    run_update_idle_probe "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" verify-compatibility \
+    run_recovery_compatibility_waiting "$TRUSTED_RELEASE_ROOT/recovery-runtime/bin/recovery" verify-compatibility \
         --mode "$recovery_compatibility_mode" 9<&"$RELEASE_TRANSACTION_FD" \
         || fail_recovery_runtime_preflight compatibility
     # Ask the selected executable itself after verified enrollment/promotion.
@@ -2482,12 +2513,24 @@ read_database_migration_policy() {
     fi
 }
 
+# The checker's own reason becomes the failure detail (D-024): alpha.124 on
+# Boston reported this refusal with an empty detail, so the owner saw no cause.
+# Its output still reaches the worker log unchanged.
+# Denetleyicinin kendi nedeni hata ayrıntısı olur; çıktı işçi günlüğünde kalır.
 verify_database_publication_if_required() {
-    local snapshot=$1 policy
+    local snapshot=$1 policy output status=0 line
     policy=$(read_database_migration_policy "$snapshot") || return 1
     [[ $policy == required ]] || return 0
-    run_database_recovery_command verify-update-database --snapshot "$snapshot" \
-        || die "database publication is unverified; preserve the same operation and database evidence"
+    output=$(run_database_recovery_command verify-update-database --snapshot "$snapshot" 2>&1) || status=$?
+    [[ -z $output ]] || printf '%s\n' "$output" >&2
+    [[ $status -ne 0 ]] || return 0
+    line=$(printf '%s\n' "$output" | tr -d '\000-\010\013-\037\177' \
+        | grep -E '^Recovery database check: ' | tail -n 1 || true)
+    line=${line#Recovery database check: }
+    [[ -n $line ]] || line=$(printf '%s\n' "$output" | tr -d '\000-\010\013-\037\177' \
+        | sed '/^[[:space:]]*$/d' | tail -n 1 || true)
+    update_failure_detail="the read-only database check (exit status $status) reported: ${line:-no reason; the update worker log has its output}"
+    die "database publication is unverified; preserve the same operation and database evidence"
 }
 
 run_panel_migrations_offline() {

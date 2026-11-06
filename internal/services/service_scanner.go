@@ -41,18 +41,43 @@ func (s *ServiceScanner) ScanService(serviceName string) ([]core.ConfigFile, err
 	return unique, nil
 }
 
+// ScanServiceWithExecStart is ScanService with the unit's ExecStart lines
+// already read (one batched `systemctl show` for every unit of a scan,
+// alpha.125). The answer is the one ScanService gives for the same lines.
+// ExecStart satırları önceden okunmuş ScanService; yanıt aynıdır.
+func (s *ServiceScanner) ScanServiceWithExecStart(serviceName, execStart string) ([]core.ConfigFile, error) {
+	var configs []core.ConfigFile
+	configs = append(configs, configsFromExecStart(execStart)...)
+	configs = append(configs, s.discoverFromCommonPaths(serviceName)...)
+	seen := make(map[string]bool)
+	unique := []core.ConfigFile{}
+	for _, cfg := range configs {
+		if !seen[cfg.Path] {
+			seen[cfg.Path] = true
+			if _, err := os.Stat(cfg.Path); err == nil {
+				unique = append(unique, cfg)
+			}
+		}
+	}
+	return unique, nil
+}
+
 // discoverFromSystemctl uses systemctl show to find config paths
 func (s *ServiceScanner) discoverFromSystemctl(serviceName string) []core.ConfigFile {
-	var configs []core.ConfigFile
-
 	cmd := exec.Command("systemctl", "show", serviceName, "--property=ExecStart")
 	output, err := cmd.Output()
 	if err != nil {
-		return configs
+		return nil
 	}
+	return configsFromExecStart(string(output))
+}
 
+// configsFromExecStart reads --config / -c arguments from the ExecStart lines
+// `systemctl show -p ExecStart` prints.
+func configsFromExecStart(output string) []core.ConfigFile {
+	var configs []core.ConfigFile
 	// Parse ExecStart line to find --config or -c flags
-	execLine := strings.TrimSpace(string(output))
+	execLine := strings.TrimSpace(output)
 	if strings.Contains(execLine, "--config") || strings.Contains(execLine, "-c") {
 		fields := strings.Fields(execLine)
 		for i, field := range fields {

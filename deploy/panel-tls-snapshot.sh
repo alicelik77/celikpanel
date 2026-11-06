@@ -469,6 +469,17 @@ _panel_tls_systemctl_enabled_state() {
     else
         rc=$?
     fi
+    # systemd before 253 (Debian 12: 252, Ubuntu 22.04: 249) prints nothing for
+    # a unit that does not exist, only an error and exit 1; 253+ prints
+    # "not-found". The same fact is read from LoadState, never guessed (a125 lab:
+    # Debian 12 has certbot.timer but no certbot-renew.timer, and every update
+    # stopped at the scheduler capture with the panel already down).
+    # systemd 253 öncesi olmayan birim için hiçbir şey yazmaz; aynı bilgi
+    # LoadState'ten okunur.
+    if [[ -z $value && $rc -ne 0 ]] &&
+        [[ $(systemctl show --property=LoadState --value -- "$unit" 2>/dev/null) == not-found ]]; then
+        value=not-found
+    fi
     case "$value" in
         enabled|enabled-runtime|linked|linked-runtime|alias|static|indirect|generated|disabled|masked|masked-runtime|not-found)
             printf '%s\n' "$value"
@@ -642,14 +653,21 @@ panel_tls_capture_scheduler_states_to_service_ledger() {
     done <"$ledger"
     (( rows == 3 && timer_rows == 0 )) ||
         { _panel_tls_fail "service-state ledger must contain exactly the three CelikPanel units before scheduler capture"; return 1; }
+    # Both rows are read and validated before either is written: a refusal
+    # leaves the three-row ledger the recovery guard accepts. a125 lab: one
+    # appended row before a refusal left four rows, and release recovery then
+    # refused that ledger ("exactly three or five rows") with the panel down.
+    # İki satır da yazılmadan önce okunur ve doğrulanır; ret üç satırı korur.
+    local scheduler_rows=
     for unit in certbot.timer certbot-renew.timer; do
         load=$(_panel_tls_systemctl_load_state "$unit") || return 1
         enabled=$(_panel_tls_systemctl_enabled_state "$unit") || return 1
         active=$(_panel_tls_systemctl_active_state "$unit") || return 1
         _panel_tls_validate_unit_state_tuple scheduler "$unit" "$load" "$enabled" "$active" || return 1
-        printf '%s\t%s\t%s\n' "$unit" "$enabled" "$active" >>"$ledger" ||
-            { _panel_tls_fail "cannot append scheduler state to service-state ledger"; return 1; }
+        scheduler_rows+=$(printf '%s\t%s\t%s' "$unit" "$enabled" "$active")$'\n'
     done
+    printf '%s' "$scheduler_rows" >>"$ledger" ||
+        { _panel_tls_fail "cannot append scheduler state to service-state ledger"; return 1; }
     chmod 0600 -- "$ledger" || { _panel_tls_fail "cannot protect service-state ledger"; return 1; }
 }
 

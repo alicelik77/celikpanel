@@ -215,9 +215,22 @@ func (p *Panel) startDeferredStartupMailWork(
 
 // startupDeferredHostIdle is the existing advisory readiness read, quiet so
 // the retry keeps its own one-line-per-attempt budget.
+//
+// It also yields to an update this Panel admitted while the Agent reports it
+// queued or running. a124 lab (5 Nov 2026): the owner pressed Update right
+// after a rollback; the Agent admitted it on an idle host at 12:23:59 and
+// this retry began its server change at 12:24:00, so the updater's read-only
+// preflight refused with nothing changed and only a second press worked. The
+// update's own idle checks are the ones that must pass; this work runs at the
+// next attempt once the update ended without restarting the Panel, or at the
+// new Panel's start when it succeeded.
+// Panel'in kabul ettigi guncelleme Agent'ta sirada ya da suruyorken bu is bekler.
 func (p *Panel) startupDeferredHostIdle(ctx context.Context) bool {
 	probeCtx, cancel := context.WithTimeout(ctx, startupDeferredProbeTimeout)
 	defer cancel()
+	if p.admittedPanelUpdateInProgress(probeCtx) {
+		return false
+	}
 	return p.readHostMutationReadinessLogged(
 		probeCtx, func(string, ...any) {},
 	).Ready

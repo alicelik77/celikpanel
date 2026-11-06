@@ -175,6 +175,37 @@ func mailCompensationContext(parent context.Context) (context.Context, context.C
 	return context.WithTimeout(context.WithoutCancel(parent), mailCompensationTimeout)
 }
 
+// errCodeMailAccountExists: the mailbox asked for already exists; nothing was
+// changed. A typed 409 with the next step, never a 500 (a124 lab; D-024).
+// İstenen posta kutusu zaten var; hiçbir şey değiştirilmedi.
+const errCodeMailAccountExists = "MAIL_ACCOUNT_EXISTS"
+
+func writeMailAccountExists(w http.ResponseWriter, address string) {
+	writeCodedErrorVars(w, http.StatusConflict, errCodeMailAccountExists,
+		"the mailbox "+address+" already exists, so nothing was changed. Use the existing mailbox "+
+			"(change its password in the list if it is not known), or choose another name.",
+		"", nil, map[string]string{"address": address})
+}
+
+// emailAccountExists compares the canonical address case-insensitively, so a
+// row written before addresses were canonical still counts.
+func (p *Panel) emailAccountExists(ctx context.Context, address string) (bool, error) {
+	var count int
+	if err := p.db.GetDB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM email_accounts WHERE lower(address) = lower(?)", address,
+	).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// isEmailAccountAddressTaken recognizes the address UNIQUE constraint by its
+// text: SQLite's driver exposes no portable constraint name.
+func isEmailAccountAddressTaken(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()),
+		"unique constraint failed: email_accounts.address")
+}
+
 func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, domainID int) {
 	var request struct {
 		Address  string `json:"address"`
@@ -203,6 +234,19 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		writeClientError(w, http.StatusBadRequest, "quota is outside the allowed range")
 		return
 	}
+	// A mailbox that already exists is the person's to use, not a server
+	// fault: answered before the plan limit and the Agent are asked, nothing
+	// changed (a124 lab: it was a 500 from the UNIQUE constraint). A row
+	// written between this read and the insert is caught there.
+	exists, err := p.emailAccountExists(r.Context(), address)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if exists {
+		writeMailAccountExists(w, address)
+		return
+	}
 	if !p.enforceDomainQuota(w, r, domainID, quotaMail) {
 		return
 	}
@@ -222,7 +266,13 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		"INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb) VALUES (?, ?, ?, ?)",
 		domainID, address, "managed-by-agent", request.QuotaMB)
 	if err != nil {
-		writeServerError(w, rollbackMailTx(tx, err))
+		rollbackErr := rollbackMailTx(tx, err)
+		if rollbackErr == err && isEmailAccountAddressTaken(err) {
+			// Another path (an import) made it between the read and the write.
+			writeMailAccountExists(w, address)
+			return
+		}
+		writeServerError(w, rollbackErr)
 		return
 	}
 	newID, err := result.LastInsertId()

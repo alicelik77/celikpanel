@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"runtime"
 	"strconv"
 	"strings"
@@ -476,7 +477,50 @@ func reconcileSystemUpdatesAtStartup() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	return service.backend.Reconcile(ctx)
+	if err := service.backend.Reconcile(ctx); err != nil {
+		return err
+	}
+	if pending, ok := service.backend.(systemUpdateRecoveryFollower); ok && pending.RecoveryPromotionPending() {
+		log.Printf("self-update: a failed update attempt already has its target installed and waits for release recovery; the Agent reads it again every %s until recovery finishes", systemUpdateRecoveryFollowInterval)
+		go followSystemUpdateRecovery(service.backend, pending, time.Now().Add(systemUpdateRecoveryGrace), time.Now, time.Sleep)
+	}
+	return nil
+}
+
+// systemUpdateRecoveryFollower is the backend that can say a failed attempt
+// waits only for release recovery's final proof.
+type systemUpdateRecoveryFollower interface {
+	RecoveryPromotionPending() bool
+}
+
+var systemUpdateRecoveryFollowInterval = 15 * time.Second
+
+// followSystemUpdateRecovery re-runs the same start-time Reconcile while an
+// attempt waits for release recovery, bounded by the recovery window. It
+// only reads the attempt records and the installed release, promotes an
+// attempt whose recovery finished and clears that attempt's failed unit mark
+// (the existing rule); it never starts or repeats an update.
+// Kurtarma bekleyen girişimi kurtarma penceresi boyunca yeniden okur; güncelleme başlatmaz.
+func followSystemUpdateRecovery(backend systemUpdateBackend, pending systemUpdateRecoveryFollower, deadline time.Time, now func() time.Time, sleep func(time.Duration)) {
+	reported := false
+	for now().Before(deadline) {
+		sleep(systemUpdateRecoveryFollowInterval)
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		err := backend.Reconcile(ctx)
+		cancel()
+		if err != nil {
+			if !reported {
+				reported = true
+				log.Printf("self-update: reading the attempt that waits for release recovery failed; the Agent keeps trying: %s", sanitizedSystemUpdateError(err))
+			}
+			continue
+		}
+		if !pending.RecoveryPromotionPending() {
+			log.Printf("self-update: the attempt that waited for release recovery is reconciled")
+			return
+		}
+	}
+	log.Printf("self-update: release recovery did not finish within its window; the attempt stays failed until recovery completes and the Agent next starts")
 }
 
 func runtimeSystemUpdatePlatform() (string, string) { return runtime.GOOS, runtime.GOARCH }

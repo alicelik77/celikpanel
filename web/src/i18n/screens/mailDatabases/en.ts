@@ -431,7 +431,19 @@ export const enMailDatabasesScreens = {
     'dbconf.reloadFailed.restored_running_unknown': "The change was not kept, and the previous file is back in place. The systemd unit of {service} could not reload, with the new file and again with the previous one, and CelikPanel could not establish which settings {service} is running with now: a reload that fails part-way may already have made it read the new file. On the server, run sudo systemctl reload {unit}, correct what it reports, then reload this page.",
     // ---- alpha.124 passwordless mail (owner decision of 4 Nov 2026) ----
     'pwmail.checking': 'Checking which sites send mail without a password…',
-    'pwmail.title': 'Mail without a password will be turned off in the next CelikPanel release.',
+    'pwmail.coming.title': 'Mail without a password will be turned off in the next CelikPanel release.',
+    'pwmail.closed.title': 'Mail without a password is turned off on this server.',
+    'pwmail.closed.why': 'Sites send mail only with a mailbox’s user name and password (SMTP on port 587 or 465). PHP mail() and sending through this server without a password are refused, so a hacked site cannot send spam in your server’s name. The server’s own system mail and mailbox out-of-office replies still go out.',
+    'pwmail.closed.none': 'No site tried to send mail without a password in the last {days} days.',
+    'pwmail.closed.found': 'These sites sent or tried to send mail without a password in the last {days} days. Their mail without a password is refused now. For each one, create a sending mailbox and enter its settings in the site (for example in its SMTP plugin).',
+    'pwmail.open.title': 'Mail without a password is about to be turned off: CelikPanel does it the next time the panel starts. You don’t need to do anything.',
+    'pwmail.owner.title': 'Mail without a password may still be possible on this server: the server owner changed a mail setting that CelikPanel uses to turn it off, so CelikPanel kept the owner’s setting.',
+    'pwmail.owner.todo': 'Who acts: the server owner. To turn it off, set the value CelikPanel uses in /etc/postfix/main.cf and reload Postfix, or keep your own setting on purpose.',
+    'pwmail.owner.value': 'now: {now} · CelikPanel’s value: {want}',
+    'pwmail.owner.noMynetworks': 'the same list without permit_mynetworks',
+    'pwmail.failed.title': 'Turning off mail without a password did not work. The earlier settings were put back, so mail works as before.',
+    'pwmail.failed.todo': 'Who acts: the server owner. Run sudo postfix check on the server and correct what it reports; CelikPanel tries again the next time the panel starts.',
+    'pwmail.failed.said': 'What happened: {detail}',
     'pwmail.why': 'After that, sites on this server can send mail only with a mailbox’s user name and password (SMTP on port 587 or 465). PHP mail() and sending through this server without a password will be refused, so a hacked site cannot send spam in your server’s name. Nothing has been changed yet.',
     'pwmail.none': 'No site on this server sent mail without a password in the last {days} days, so none will be affected.',
     'pwmail.found': 'These sites sent mail without a password in the last {days} days and will be affected. For each one, create a sending mailbox, then enter its settings in the site (for example in its SMTP plugin) before the next update.',
@@ -463,6 +475,8 @@ export const enMailDatabasesScreens = {
     'pwmail.set.passwordKept': 'Not shown again. If it is lost, set a new one on the domain’s Email page.',
     'pwmail.set.once': 'Copy the password now: it is shown only this once and is not stored in the panel.',
     'pwmail.set.done': 'Done',
+    // alpha.125 (a124 lab): creating a mailbox that already exists was a 500.
+    'err.MAIL_ACCOUNT_EXISTS': 'The mailbox {address} already exists, so nothing was changed. Use the existing mailbox (if its password is not known, set a new one with the key button in the list), or choose another name.',
     // --- end of set1 corrections ---
 } as const;
 

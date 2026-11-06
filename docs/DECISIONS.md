@@ -21,7 +21,7 @@ Code decisions live in git; this file is for strategy. Newest first.
 
 ## D-046 · No mail without a password: sites send only through authenticated submission
 
-*2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · implemented in two phases: phase 1 (read-only report and sending mailboxes) in alpha.124, phase 2 (closing) planned for alpha.125*
+*2026-11-04 (owner's decision: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · phase 1 (read-only report and sending mailboxes) for alpha.124, phase 2 (closing) for alpha.125; lab check of phase 2 recorded on lab/alpha114-acceptance (a125-mail)*
 
 **Why.** A stock Postfix lets anything running on the server send mail to the
 whole Internet without a password, two ways: SMTP to port 25 on the server
@@ -51,6 +51,16 @@ helper on every PHP version's path that stays behind if the panel is removed,
 and it closes nothing the Postfix list does not close. Roundcube already sends
 through 587 with the user's password; the mailbox 90% warning is delivered by
 Dovecot's own delivery agent, not by `sendmail`.
+
+**Site cron output.** Cron mails a job's output through `sendmail` as the job's
+user, which is now refused for site users. A site crontab the panel writes therefore
+starts with `MAILTO=""`: site cron output is no longer mailed, and the panel does not
+record it elsewhere either (a job that needs its output writes it to a file). A
+crontab that already sets `MAILTO` is the owner's and is left as it is; root's
+crontab is never changed. Existing site crontabs with a job get the line once, in the
+same step that closes the `sendmail` command (before/after versions recorded beside the
+Postfix change; a crontab that cannot be read is left and retried at the next start).
+Owners' crontabs with their own `MAILTO` are kept and named in the step's note.
 
 **Two phases.** Phase 1 (alpha.124) changes nothing on the server: the Postfix
 page says that mail without a password closes in the next release and lists the

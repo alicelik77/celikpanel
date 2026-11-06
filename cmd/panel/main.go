@@ -174,7 +174,7 @@ type Panel struct {
 	// every remaining synchronous component mutation. TryLock makes competing
 	// requests fail fast instead of racing between an active-operation check
 	// and the actual machine change.
-	serviceMutationMu sync.Mutex
+	serviceMutationMu mutationLease
 	serverSetupMu     sync.Mutex
 	serverSetupProbe  func(context.Context, serverSetupDraft) ([]serverSetupCheck, error)
 	// serverSetupInstallPreview replaces the Agent's read-only install
@@ -225,6 +225,10 @@ type Panel struct {
 	updateDiscovery   *panelUpdateDiscoveryScheduler
 	updateDiscoveryMu sync.Mutex
 	updateAdmittedAt  atomic.Int64
+	// The request id of that admitted start, read by the deferred startup
+	// mail work so it waits while the Agent reports the update queued or
+	// running (a124 lab, startup_deferred_mail.go). Nil when none.
+	updateAdmittedRequest atomic.Pointer[string]
 	// A completed check's result kept in memory while an update or another
 	// change held the server; written on the next idle pass. Guarded by
 	// updateDiscoveryMu.
@@ -1163,7 +1167,9 @@ func main() {
 	)))
 	startupGate := newPanelHTTPStartupGate(applicationHandler)
 	panel.startupGate = startupGate
-	handler := securityHeaders(panel.secureCookies, startupGate)
+	// JSON reads above 1 KiB are gzip-compressed for a client that accepts
+	// it, never a response that may carry a secret (compression.go).
+	handler := securityHeaders(panel.secureCookies, compressJSONResponses(startupGate))
 	addr := listenAddr()
 	server := newPanelHTTPServer(addr, handler)
 	tlsOn, certPath, keyPath, err := tlsSettings()

@@ -95,6 +95,13 @@ export function SystemUpdateSteps({ view, compact = false }: { view: SystemUpdat
                             {step.state === 'retrying' && (
                                 <p className="mt-2 text-sm text-fg-muted" data-update-retry-note="">{retryingNote(step, t)}</p>
                             )}
+                            {/* The server check waits, bounded, for a server change that is
+                                still finishing (the panel's start-up mail work right after a
+                                rollback, a124 lab); it is said here so the wait reads as
+                                handled, not stuck (D-024). */}
+                            {step.id === 'prepare' && step.state === 'running' && (
+                                <p className="mt-2 text-sm text-fg-muted" data-update-prepare-note="">{t('panelUpdate.steps.prepareWaits')}</p>
+                            )}
                             {step.restarting && !step.still && (
                                 <p className="mt-2 text-sm text-fg-muted" data-update-restart-note="">{t('panelUpdate.steps.restarting')}</p>
                             )}

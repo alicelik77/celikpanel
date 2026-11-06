@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,6 +36,26 @@ type UpdateDomainPHPRequest struct {
 	ConfirmUnsupported bool `json:"confirm_unsupported,omitempty"`
 }
 
+// errCodeSiteHasNoPHP: the site's hosting type runs no PHP (static, Node.js,
+// proxy, forwarding, DNS only), so it has no PHP version; nothing was
+// changed. The reason is the hosting type; the action is the site's Hosting
+// page, where its type is changed (D-024).
+// Sitenin barındırma tipi PHP çalıştırmıyor; hiçbir şey değiştirilmedi.
+const errCodeSiteHasNoPHP = "SITE_HAS_NO_PHP"
+
+func writeSiteHasNoPHP(w http.ResponseWriter, domainName, projectType string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{
+		Code:   errCodeSiteHasNoPHP,
+		Reason: projectType,
+		Error: domainName + " is a " + projectType + " site, so it has no PHP version and nothing was changed. " +
+			"To run PHP on it, change its hosting type to PHP on the site's Hosting page; then choose the PHP version here.",
+		Action: "/domains/" + url.PathEscape(domainName) + "?tab=hosting",
+		Vars:   map[string]string{"domain": domainName},
+	})
+}
+
 // errCodeSupportConfirmationRequired: the chosen version no longer receives
 // security fixes and the change did not carry the person's confirmation.
 const errCodeSupportConfirmationRequired = "SUPPORT_CONFIRMATION_REQUIRED"
@@ -60,10 +81,10 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 
 	// Get site info
 	var siteID int
-	var phpVersion string
+	var phpVersion, projectType string
 	var phpFPMSocket *string
-	query := `SELECT id, php_version, php_fpm_socket FROM sites WHERE domain_id = ? LIMIT 1`
-	err = p.db.GetDB().QueryRowContext(context.Background(), query, domainID).Scan(&siteID, &phpVersion, &phpFPMSocket)
+	query := `SELECT id, COALESCE(php_version, ''), php_fpm_socket, COALESCE(project_type, 'php') FROM sites WHERE domain_id = ? LIMIT 1`
+	err = p.db.GetDB().QueryRowContext(context.Background(), query, domainID).Scan(&siteID, &phpVersion, &phpFPMSocket, &projectType)
 	if err != nil {
 		http.Error(w, "Site not found for domain", http.StatusNotFound)
 		return
@@ -170,6 +191,15 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 		var req UpdateDomainPHPRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeClientError(w, http.StatusBadRequest, "invalid request")
+			return
+		}
+		// Only a PHP site has a PHP version to change. A static site (the
+		// setup-created main site, Add Domain's default, D-013) has no pool
+		// and no version: the switch below failed as 500 `invalid PHP
+		// version ""` (a124 lab). The site's type is changed on its Hosting
+		// type page, which writes the pool (hosting_transition.go).
+		if projectType != "php" {
+			writeSiteHasNoPHP(w, domain.Name, projectType)
 			return
 		}
 
@@ -349,12 +379,23 @@ func (p *Panel) handleDomainPHPPool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get site info
-	var phpVersion string
+	var phpVersion, projectType, domainName string
 	var siteID int
-	query := `SELECT id, php_version FROM sites WHERE domain_id = ? LIMIT 1`
-	err = p.db.GetDB().QueryRowContext(context.Background(), query, domainID).Scan(&siteID, &phpVersion)
+	query := `SELECT s.id, COALESCE(s.php_version, ''), COALESCE(s.project_type, 'php'), d.name
+		FROM sites s JOIN domains d ON d.id = s.domain_id WHERE s.domain_id = ? LIMIT 1`
+	err = p.db.GetDB().QueryRowContext(context.Background(), query, domainID).Scan(&siteID, &phpVersion, &projectType, &domainName)
 	if err != nil {
 		http.Error(w, "Site not found for domain", http.StatusNotFound)
+		return
+	}
+	// Only a PHP site has a pool. A static, Node.js, proxy, forwarding or
+	// DNS-only site has none: reading it asked the Agent for the pool of an
+	// empty PHP version and answered 500. The same typed refusal as the PHP
+	// version change (SITE_HAS_NO_PHP), for reading and saving; nothing is
+	// asked of the Agent and nothing is changed.
+	// Yalnız PHP sitesinin havuzu vardır; diğerleri aynı 409 ile reddedilir.
+	if projectType != "php" {
+		writeSiteHasNoPHP(w, domainName, projectType)
 		return
 	}
 

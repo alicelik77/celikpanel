@@ -161,6 +161,9 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ address: `${user}@${domainName}`, password: pass, quota_mb: quota }),
             });
+            // A coded refusal (the mailbox already exists, a plan limit) keeps
+            // its own words and stays above the list with its fix.
+            if (!res.ok) { refuse(await readApiError(res), 'mail.createFailed'); return; }
             const data = await res.json();
             if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.accountCreated'));

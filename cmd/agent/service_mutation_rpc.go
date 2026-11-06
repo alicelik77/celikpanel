@@ -880,6 +880,10 @@ func (m *serviceMutationManager) releaseTransactionBlocksMutations() (bool, erro
 }
 
 func (m *serviceMutationManager) begin(request *ServiceMutationBeginRequest) (*ServiceMutationJob, error) {
+	// A mutation's start and end drop the cached inventory (alpha.125).
+	// Bir değişikliğin başı ve sonu önbellekteki envanteri düşürür.
+	invalidateHostInventory()
+	defer invalidateHostInventory()
 	// Generic RPCs cannot create or resume the two-lock native enrollment.
 	if request != nil && request.Kind == servicemutationledger.MailEnrollmentKind {
 		return nil, servicemutationledger.ErrMailEnrollment
@@ -1279,6 +1283,10 @@ func (m *serviceMutationManager) expire(runtime *serviceMutationRuntime) bool {
 }
 
 func (m *serviceMutationManager) finishExpired(runtime *serviceMutationRuntime) {
+	// A mutation's start and end drop the cached inventory (alpha.125).
+	// Bir değişikliğin başı ve sonu önbellekteki envanteri düşürür.
+	invalidateHostInventory()
+	defer invalidateHostInventory()
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.poisoned != nil || m.active != runtime || runtime.steps != 0 ||
@@ -1433,6 +1441,10 @@ func cloneServiceMutationJob(job *ServiceMutationJob) *ServiceMutationJob {
 func (m *serviceMutationManager) cancelJob(
 	request *ServiceMutationCancelRequest,
 ) (*ServiceMutationJob, error) {
+	// A mutation's start and end drop the cached inventory (alpha.125).
+	// Bir değişikliğin başı ve sonu önbellekteki envanteri düşürür.
+	invalidateHostInventory()
+	defer invalidateHostInventory()
 	if request == nil || !validMutationIdentity(request.RequestID) ||
 		!validMutationIdentity(request.ExpectedOwner) {
 		return nil, errors.New("invalid service mutation cancellation")
@@ -1573,6 +1585,10 @@ func (m *serviceMutationManager) cancelJob(
 func (m *serviceMutationManager) finish(
 	request *ServiceMutationFinishRequest,
 ) (*ServiceMutationJob, error) {
+	// A mutation's start and end drop the cached inventory (alpha.125).
+	// Bir değişikliğin başı ve sonu önbellekteki envanteri düşürür.
+	invalidateHostInventory()
+	defer invalidateHostInventory()
 	if request == nil || !validMutationIdentity(request.RequestID) ||
 		!validMutationIdentity(request.OwnerID) {
 		return nil, errors.New("invalid service mutation completion")

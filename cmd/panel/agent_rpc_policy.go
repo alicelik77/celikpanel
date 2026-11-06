@@ -133,7 +133,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ListSystemSQLiteDatabases Agent.MailFilterWiringState Agent.MailHealth
 		Agent.NginxInspect Agent.PanelRenewalReadiness Agent.MailHostCertificateStatus Agent.MailEnrollmentStatusV1 Agent.MailEnrollmentPreviewV1 Agent.PkgFamily
 		Agent.PostfixQueue Agent.ReadBackupChunk Agent.ReadFile
-		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion Agent.PDNSFreshPrimaryCandidateV1
+		Agent.ReadSystemSQLiteSnapshotChunk Agent.RepoPackages Agent.ServiceCandidateVersion Agent.ServiceCandidateVersions Agent.PDNSFreshPrimaryCandidateV1
 		Agent.ServiceJournal Agent.ServiceMutationReadiness Agent.ServiceRemovalPreviewV1 Agent.ServiceInstallPreviewV1 Agent.PHPToolBindingsV1 Agent.SiteUsage Agent.Version Agent.VPNStatus
 		Agent.CheckSystemUpdate Agent.SecurityAudit Agent.SystemUpdateStatus
 		Agent.OSUpdatesStatusV1 Agent.RoundcubeUpdateCheckV1 Agent.WebmailProofV1 Agent.WebmailAddressStatusV1 Agent.RestartNeedsV1
@@ -213,7 +213,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SetMailPolicy Agent.SyncMailTLSV2 Agent.StartMailEnrollmentV1 Agent.ContinueMailEnrollmentV1
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
-		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1
+		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -347,6 +347,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DNSClusterReadiness":         agentRPCNetworkReadTimeout,
 	"Agent.RepoPackages":                agentRPCNetworkReadTimeout,
 	"Agent.ServiceCandidateVersion":     agentRPCNetworkReadTimeout,
+	"Agent.ServiceCandidateVersions":    agentRPCNetworkReadTimeout,
 	"Agent.PDNSFreshPrimaryCandidateV1": agentRPCNetworkReadTimeout,
 	"Agent.ListNodeLTS":                 agentRPCNetworkReadTimeout,
 
@@ -358,8 +359,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ServiceMutationStatus":    agentRPCMutationTimeout,
 	"Agent.AddCronJob":               agentRPCMutationTimeout,
 	"Agent.AddMailAccount":           agentRPCMutationTimeout,
-	"Agent.ApplyFirewallV2":          agentRPCMutationTimeout,
-	"Agent.ApplyVhost":               agentRPCMutationTimeout,
+	// One sendmail run, bounded at 30 s by the Agent (passwordless mail closed).
+	"Agent.SendAccountMailV1": agentRPCMutationTimeout,
+	"Agent.ApplyFirewallV2":   agentRPCMutationTimeout,
+	"Agent.ApplyVhost":        agentRPCMutationTimeout,
 	// One nginx -T, at most one file write, nginx -t and one reload.
 	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,

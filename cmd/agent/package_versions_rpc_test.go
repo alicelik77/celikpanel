@@ -137,7 +137,7 @@ func TestComponentPackageVersionsMapsTheCatalogue(t *testing.T) {
 
 func TestInstalledPackageVersionsReadsWithOneFixedQuery(t *testing.T) {
 	calls := stubPackageVersionRead(t, hostplatform.PackageManagerAPT, idle, func(context.Context) ([]byte, error) {
-		return []byte("nginx\tii \t1.26.3-3+deb13u1\ncertbot\tii \t4.0.0-2\n"), nil
+		return []byte("nginx\tnginx\tii \t1.26.3-3+deb13u1\tinstall ok installed\ncertbot\tcertbot\tii \t4.0.0-2\tinstall ok installed\n"), nil
 	})
 	var answer transport.InstalledPackageVersionsResponse
 	if err := (&Agent{}).InstalledPackageVersionsV1(&transport.Empty{}, &answer); err != nil {
@@ -151,7 +151,9 @@ func TestInstalledPackageVersionsReadsWithOneFixedQuery(t *testing.T) {
 	}
 	// Exactly one query, the fixed read-only argv: no package names from the
 	// caller, no install/remove/configure verb.
-	want := []packageVersionCall{{"/usr/bin/dpkg-query", []string{"-W", "-f=${binary:Package}\t${db:Status-Abbrev}\t${Version}\n"}}}
+	// It is the shared inventory query (alpha.125): every reader of a scan
+	// uses its rows.
+	want := []packageVersionCall{{"/usr/bin/dpkg-query", []string{"-W", "-f=${binary:Package}\t${Package}\t${db:Status-Abbrev}\t${Version}\t${Status}\n"}}}
 	if !reflect.DeepEqual(*calls, want) {
 		t.Fatalf("queries = %#v, want %#v", *calls, want)
 	}

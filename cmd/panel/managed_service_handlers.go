@@ -905,19 +905,54 @@ func (p *Panel) handleManagedServicesScan(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// The installed package versions are read before the mutation lease: a
-	// read-only query that takes no lock does not hold the lease while the
-	// package database answers (alpha.97 review).
-	// Sürümler kiradan önce okunur: kilit almayan salt-okur sorgu.
-	packageVersions := p.packageVersionsForScan(r.Context())
+	// The scan only reads, so it no longer holds the mutation lease while it
+	// reads (alpha.125): a start, stop or install pressed during a scan is
+	// not refused because of it. A change that already holds the host still
+	// refuses the scan (D-032 rule 4). The lease's generation is noted here;
+	// the reading is stored only if no change began or ended while it was
+	// taken, so a reading that raced a change never replaces the record that
+	// change writes.
+	// Tarama yalnız okur; okurken değişiklik kirasını tutmaz. Okuma sırasında
+	// bir değişiklik başlayıp bittiyse okuma saklanmaz.
+	generation, held := p.serviceMutationMu.Generation()
+	if held {
+		writeServiceOperationBusy(w)
+		return
+	}
+	if active, err := p.serverSetupExecutionMutating(r.Context()); err != nil {
+		writeServerError(w, err)
+		return
+	} else if active {
+		writeCodedError(w, http.StatusConflict, "server_setup_busy", "Server setup is in progress. Follow its current operation.", "/setup")
+		return
+	}
 
+	// The installed package versions: a read-only query that takes no lock
+	// (alpha.97 review).
+	// Sürümler: kilit almayan salt-okur sorgu.
+	packageVersions := p.packageVersionsForScan(r.Context())
+	observed, err := p.observeManagedServices(r.Context(), packageVersions)
+	if err != nil {
+		// An Agent that cannot be reached is named by writeServerError
+		// (AGENT_UNREACHABLE); every other failure keeps the generic answer.
+		writeServerError(w, err)
+		return
+	}
+
+	// Storing is the one moment the scan takes the lease, with every check a
+	// change makes (beginServiceMutation), for as long as one write lasts.
+	// Saklama, kirayı yalnız tek yazım süresince alır.
 	release, busy := p.beginServiceMutation(w, r)
 	if busy {
 		return
 	}
-	defer release()
-
-	services, err := p.scanManagedServicesWithVersions(r.Context(), packageVersions)
+	if !p.serviceMutationMu.UnchangedSince(generation) {
+		release()
+		writeServiceOperationBusy(w)
+		return
+	}
+	services, err := p.persistManagedServiceObservations(r.Context(), observed)
+	release()
 	if err != nil {
 		// An Agent that cannot be reached is named by writeServerError
 		// (AGENT_UNREACHABLE); every other failure keeps the generic answer.
@@ -1051,9 +1086,29 @@ func (p *Panel) scanManagedServices(ctx context.Context) ([]ManagedServiceRespon
 // Sürümler sayfanın kendi taramasında değişiklik kirasından önce okunur;
 // işlemlerin sonundaki taze tarama onları kendi kirası içinde okur.
 func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVersions map[string]observedPackageVersions) ([]ManagedServiceResponse, error) {
+	observed, err := p.observeManagedServices(ctx, packageVersions)
+	if err != nil {
+		return nil, err
+	}
+	return p.persistManagedServiceObservations(ctx, observed)
+}
+
+// managedServiceObservation is one scan's reading of the host, before it is
+// stored.
+type managedServiceObservation struct {
+	host         core.ManagedServiceHostProfile
+	observations []serviceObservation
+	webmailReady bool
+}
+
+// observeManagedServices reads the host and nothing else: no record is
+// written. The page's own scan stores its reading only when no change began
+// while it read (handleManagedServicesScan).
+// Yalnız makineyi okur, kayıt yazmaz.
+func (p *Panel) observeManagedServices(ctx context.Context, packageVersions map[string]observedPackageVersions) (managedServiceObservation, error) {
 	var allServices []core.Service
 	if err := p.callAgentContext(ctx, "Agent.GetServices", &transport.Empty{}, &allServices); err != nil {
-		return nil, err
+		return managedServiceObservation{}, err
 	}
 	host := p.managedServiceHostProfile()
 	pkgFamily := host.PackageFamily
@@ -1062,7 +1117,7 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 	// Hangi katalog paketleri var (kurulu ama belki çalışmıyor).
 	var installedIDs []string
 	if err := p.callAgentContext(ctx, "Agent.InstalledServiceIDs", &transport.Empty{}, &installedIDs); err != nil {
-		return nil, fmt.Errorf("probe installed service ids: %w", err)
+		return managedServiceObservation{}, fmt.Errorf("probe installed service ids: %w", err)
 	}
 	installedSet := map[string]bool{}
 	for _, id := range installedIDs {
@@ -1087,10 +1142,10 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 			var packageResult installedRepoPackagesResp
 			request := installedRepoPackagesReq{ServiceID: managed.ID}
 			if err := p.callAgentContext(ctx, "Agent.InstalledRepoPackages", &request, &packageResult); err != nil {
-				return nil, fmt.Errorf("probe installed repository packages for %s: %w", managed.ID, err)
+				return managedServiceObservation{}, fmt.Errorf("probe installed repository packages for %s: %w", managed.ID, err)
 			}
 			if packageResult.Error != "" {
-				return nil, fmt.Errorf("probe installed repository packages for %s: %s", managed.ID, packageResult.Error)
+				return managedServiceObservation{}, fmt.Errorf("probe installed repository packages for %s: %s", managed.ID, packageResult.Error)
 			}
 			installedRepoPackages = append([]string(nil), packageResult.Packages...)
 		}
@@ -1184,10 +1239,10 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 			var ir transport.ServiceInstancesResponse
 			req := transport.ServiceInstancesRequest{ID: managed.ID}
 			if err := p.callAgentContext(ctx, "Agent.ListServiceInstances", &req, &ir); err != nil {
-				return nil, fmt.Errorf("probe service instances for %s: %w", managed.ID, err)
+				return managedServiceObservation{}, fmt.Errorf("probe service instances for %s: %w", managed.ID, err)
 			}
 			if ir.Error != "" {
-				return nil, fmt.Errorf("probe service instances for %s: %s", managed.ID, ir.Error)
+				return managedServiceObservation{}, fmt.Errorf("probe service instances for %s: %s", managed.ID, ir.Error)
 			}
 			instances = ir.Instances
 
@@ -1259,6 +1314,14 @@ func (p *Panel) scanManagedServicesWithVersions(ctx context.Context, packageVers
 	if installedSet["roundcube"] {
 		webmailReady = p.webmailAvailable(ctx)
 	}
+	return managedServiceObservation{host: host, observations: observations, webmailReady: webmailReady}, nil
+}
+
+// persistManagedServiceObservations stores one reading as the component
+// record and returns its catalogue view.
+// Bir okumayı bileşen kaydı olarak saklar.
+func (p *Panel) persistManagedServiceObservations(ctx context.Context, observed managedServiceObservation) ([]ManagedServiceResponse, error) {
+	observations, webmailReady, host := observed.observations, observed.webmailReady, observed.host
 	data, err := json.Marshal(scanCacheDoc{
 		Observations: observations,
 		WebmailReady: &webmailReady,

@@ -50,7 +50,7 @@ func (a *Agent) RuntimePythonV1(_ *transport.Empty, resp *transport.RuntimePytho
 }
 
 func probeRuntimePython() transport.RuntimePythonResponse {
-	profile, err := verifiedHostProfileForAnyFamily()
+	profile, err := readHostProfile() // read-only: the cached platform (alpha.125)
 	if err != nil {
 		return transport.RuntimePythonResponse{Error: err.Error()}
 	}

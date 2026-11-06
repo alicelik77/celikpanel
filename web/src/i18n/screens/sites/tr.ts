@@ -628,4 +628,8 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'php.extensions.unknown': 'PHP {version} eklentileri sunucudan okunamadı; bu yüzden listelenmiyor ve şimdilik buradan açılıp kapatılamıyor. Bu, eklenti olmadığı anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
     'php.ini.checking': 'PHP {version} için php.ini okunuyor…',
     'php.ini.unknown': 'PHP {version} için php.ini sunucudan okunamadı; bu yüzden ayarları gösterilmiyor ve şimdilik buradan değiştirilemiyor. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
+    // alpha.125 (a124 lab): PHP'si olmayan sitede PHP değiştirmek 500'dü.
+    'err.SITE_HAS_NO_PHP': '{domain} PHP çalıştırmıyor (barındırma tipi PHP değil), bu yüzden değiştirilecek bir PHP sürümü yok. Hiçbir şey değiştirilmedi. PHP çalıştırmak için sitenin Barındırma sekmesini açıp barındırma tipini PHP yapın, sonra sürümü burada seçin.',
+    'err.SITE_HAS_NO_PHP.static': '{domain} statik bir site: dosyaları olduğu gibi sunar ve PHP’si yoktur, bu yüzden değiştirilecek bir PHP sürümü yok. Hiçbir şey değiştirilmedi. PHP çalıştırmak için sitenin Barındırma sekmesini açıp barındırma tipini PHP yapın, sonra sürümü burada seçin.',
+    'err.SITE_HAS_NO_PHP.action': 'Barındırma’yı aç',
 };

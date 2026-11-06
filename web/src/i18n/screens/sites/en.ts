@@ -637,6 +637,10 @@ export const enSitesScreens = {
     'php.extensions.unknown': 'The extensions of PHP {version} could not be read from the server, so they are not listed and cannot be switched here yet. This does not mean there are none. Nothing was changed. Try again.',
     'php.ini.checking': 'Reading php.ini of PHP {version}…',
     'php.ini.unknown': 'php.ini of PHP {version} could not be read from the server, so its settings are not shown and cannot be changed here yet. Nothing was changed. Try again.',
+    // alpha.125 (a124 lab): changing PHP on a site without PHP was a 500.
+    'err.SITE_HAS_NO_PHP': '{domain} does not run PHP (its hosting type is not PHP), so it has no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Hosting tab and change its hosting type to PHP, then choose the version here.',
+    'err.SITE_HAS_NO_PHP.static': '{domain} is a static site: it serves files as they are and has no PHP, so there is no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Hosting tab and change its hosting type to PHP, then choose the version here.',
+    'err.SITE_HAS_NO_PHP.action': 'Open Hosting',
 } as const;
 
 export type SitesScreenKey = keyof typeof enSitesScreens;

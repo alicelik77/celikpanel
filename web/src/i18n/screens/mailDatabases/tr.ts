@@ -424,7 +424,19 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'dbconf.reloadFailed.restored_running_unknown': "Değişiklik tutulmadı ve önceki dosya yerine kondu. {service} hizmetinin systemd birimi yeni dosyayla da önceki dosyayla da yeniden yüklenemedi ve CelikPanel, {service} hizmetinin şu an hangi ayarlarla çalıştığını belirleyemedi: yarıda başarısız olan bir yeniden yükleme ona yeni dosyayı okutmuş olabilir. Sunucuda sudo systemctl reload {unit} komutunu çalıştırın, bildirdiğini düzeltin, sonra bu sayfayı yenileyin.",
     // ---- alpha.124 parolasız posta (sahip kararı, 4 Kas 2026) ----
     'pwmail.checking': 'Parolasız posta gönderen siteler denetleniyor…',
-    'pwmail.title': 'Parolasız posta bir sonraki CelikPanel sürümünde kapanacak.',
+    'pwmail.coming.title': 'Parolasız posta bir sonraki CelikPanel sürümünde kapanacak.',
+    'pwmail.closed.title': 'Bu sunucuda parolasız posta kapalı.',
+    'pwmail.closed.why': 'Siteler postayı yalnız bir posta kutusunun kullanıcı adı ve parolasıyla gönderir (587 ya da 465 numaralı bağlantı noktasında SMTP). PHP mail() ve bu sunucu üzerinden parolasız gönderim reddedilir; böylece ele geçirilmiş bir site sunucunuzun adıyla istenmeyen posta gönderemez. Sunucunun kendi sistem postası ve posta kutularının "ofis dışında" yanıtları gitmeye devam eder.',
+    'pwmail.closed.none': 'Son {days} günde hiçbir site parolasız posta göndermeyi denemedi.',
+    'pwmail.closed.found': 'Şu siteler son {days} günde parolasız posta gönderdi ya da göndermeyi denedi. Parolasız postaları artık reddediliyor. Her biri için bir gönderim posta kutusu oluşturun ve ayarlarını siteye girin (örneğin SMTP eklentisine).',
+    'pwmail.open.title': 'Parolasız posta kapanmak üzere: CelikPanel bunu panel bir sonraki başladığında yapar. Bir şey yapmanız gerekmiyor.',
+    'pwmail.owner.title': 'Bu sunucuda parolasız posta hâlâ mümkün olabilir: sunucu sahibi, CelikPanel’in onu kapatmak için kullandığı bir posta ayarını değiştirmiş; CelikPanel sahibin ayarını korudu.',
+    'pwmail.owner.todo': 'Kim yapar: sunucu sahibi. Kapatmak için /etc/postfix/main.cf dosyasına CelikPanel’in değerini yazıp Postfix’i yeniden yükleyin ya da kendi ayarınızı bilerek koruyun.',
+    'pwmail.owner.value': 'şu an: {now} · CelikPanel’in değeri: {want}',
+    'pwmail.owner.noMynetworks': 'permit_mynetworks olmadan aynı liste',
+    'pwmail.failed.title': 'Parolasız postayı kapatmak işe yaramadı. Önceki ayarlar geri kondu; posta eskisi gibi çalışıyor.',
+    'pwmail.failed.todo': 'Kim yapar: sunucu sahibi. Sunucuda sudo postfix check komutunu çalıştırıp bildirdiğini düzeltin; CelikPanel panel bir sonraki başladığında yeniden dener.',
+    'pwmail.failed.said': 'Ne oldu: {detail}',
     'pwmail.why': 'Ondan sonra bu sunucudaki siteler postayı yalnız bir posta kutusunun kullanıcı adı ve parolasıyla gönderebilir (587 ya da 465 numaralı bağlantı noktasında SMTP). PHP mail() ve bu sunucu üzerinden parolasız gönderim reddedilir; böylece ele geçirilmiş bir site sunucunuzun adıyla istenmeyen posta gönderemez. Henüz hiçbir şey değişmedi.',
     'pwmail.none': 'Son {days} günde bu sunucudaki hiçbir site parolasız posta göndermedi; hiçbiri etkilenmeyecek.',
     'pwmail.found': 'Şu siteler son {days} günde parolasız posta gönderdi ve etkilenecek. Her biri için bir gönderim posta kutusu oluşturun, sonra bir sonraki güncellemeden önce ayarlarını siteye girin (örneğin SMTP eklentisine).',
@@ -456,5 +468,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'pwmail.set.passwordKept': 'Yeniden gösterilmez. Kaybolursa alan adının E-posta sayfasından yenisini belirleyin.',
     'pwmail.set.once': 'Parolayı şimdi kopyalayın: yalnız bu kez gösterilir ve panelde saklanmaz.',
     'pwmail.set.done': 'Tamam',
+    // alpha.125 (a124 lab): var olan posta kutusunu yeniden oluşturmak 500'dü.
+    'err.MAIL_ACCOUNT_EXISTS': '{address} posta kutusu zaten var; bu yüzden hiçbir şey değiştirilmedi. Var olan posta kutusunu kullanın (parolası bilinmiyorsa listedeki anahtar düğmesiyle yeni parola verin) ya da başka bir ad seçin.',
     // --- end of set1 corrections ---
 };

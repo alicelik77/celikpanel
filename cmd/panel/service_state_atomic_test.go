@@ -66,6 +66,7 @@ type serviceStateAtomicAgent struct {
 	roundcubeRPCFailures    int32
 	roundcubeFailureApplies bool
 	roundcubeCallHook       func()
+	getServicesHook         func()
 	webmailConfiguredFalse  bool
 	webmailPresent          bool
 	webmailReplyError       string
@@ -92,6 +93,9 @@ func (a *serviceStateAtomicAgent) FinishServiceMutation(
 
 func (a *serviceStateAtomicAgent) GetServices(_ *transport.Empty, out *[]core.Service) error {
 	a.getServicesCalls.Add(1)
+	if a.getServicesHook != nil {
+		a.getServicesHook()
+	}
 	if a.getServicesError != nil {
 		return a.getServicesError
 	}

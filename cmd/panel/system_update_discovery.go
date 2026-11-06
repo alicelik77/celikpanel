@@ -479,6 +479,33 @@ func (p *Panel) markPanelUpdateAdmitted(now time.Time) {
 	p.updateAdmittedAt.Store(now.UnixNano())
 }
 
+// rememberAdmittedPanelUpdate notes the admitted start and its request id.
+func (p *Panel) rememberAdmittedPanelUpdate(requestID string, now time.Time) {
+	p.updateAdmittedRequest.Store(&requestID)
+	p.markPanelUpdateAdmitted(now)
+}
+
+// admittedPanelUpdateInProgress reports whether an update this Panel admitted
+// within panelUpdateActiveWindow is still queued or running by the Agent's own
+// read-only status. An unreadable status counts as in progress for this read:
+// a caller that waits for it is bounded by its own attempts. It never starts,
+// retries or abandons anything.
+func (p *Panel) admittedPanelUpdateInProgress(ctx context.Context) bool {
+	requestID := p.updateAdmittedRequest.Load()
+	if requestID == nil || *requestID == "" || !p.panelUpdateRecentlyAdmitted(panelUpdateNow()) {
+		return false
+	}
+	var reply transport.SystemUpdateStatusResponse
+	if err := p.callAgentContext(ctx, "Agent.SystemUpdateStatus",
+		&transport.SystemUpdateStatusRequest{RequestID: *requestID}, &reply); err != nil {
+		return true
+	}
+	if !reply.Found {
+		return strings.TrimSpace(reply.Error) != ""
+	}
+	return reply.Status == "queued" || reply.Status == "running"
+}
+
 func (p *Panel) panelUpdateRecentlyAdmitted(now time.Time) bool {
 	admitted := p.updateAdmittedAt.Load()
 	return admitted > 0 && now.Sub(time.Unix(0, admitted)) < panelUpdateActiveWindow

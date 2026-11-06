@@ -27,6 +27,11 @@ func frontendHandler(webRoot string) http.Handler {
 			// while index.html must be revalidated to discover those new names.
 			if strings.HasPrefix(cleanPath, "/assets/") {
 				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				// A gzip copy made once in memory (alpha.125), for a client
+				// that accepts it; the file itself otherwise.
+				if servePrecompressed(w, r, filePath) {
+					return
+				}
 			} else {
 				w.Header().Set("Cache-Control", "no-cache")
 			}
@@ -39,6 +44,9 @@ func frontendHandler(webRoot string) http.Handler {
 			return
 		}
 		w.Header().Set("Cache-Control", "no-cache")
+		if servePrecompressed(w, r, filepath.Join(webRoot, "index.html")) {
+			return
+		}
 		http.ServeFile(w, r, filepath.Join(webRoot, "index.html"))
 	})
 }

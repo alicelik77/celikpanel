@@ -803,6 +803,93 @@ func exchangePromotion(paths promotionPaths, proof *promotionProof, fd int, laun
 // promotionCheckerRetryDelay bounds the single re-read of a refused checker.
 const promotionCheckerRetryDelay = 2 * time.Second
 
+// An Agent checker refusal that only says a server change is still finishing
+// (a running Agent operation, or the host package manager: Debian's daily
+// apt-listchanges and dpkg-db-backup at midnight, an owner's apt run) is read
+// again every poll for at most the bound. update.sh waits the same way and with
+// the same bound for its own read-only checks (UPDATE_AGENT_IDLE_WAIT_SECONDS),
+// but this promotion runs the same checkers before them: a125 lab (6 Nov 2026),
+// alpha.124 -> alpha.125 pressed at 23:59:58 failed at 00:00:11 with "independent
+// recovery runtime preparation is unconfirmed" while apt-listchanges ran, and a
+// process named dpkg started when the checker ran reproduced it. Every other
+// refusal keeps the single re-read; a timed-out check is never re-run. The
+// checks only read; the release transaction lock stays held (fd 9).
+// Yalnız süren bir Agent işlemini ya da paket yöneticisini bildiren ret, sınır
+// dolana kadar aralıkla yeniden okunur; diğer retler tek yeniden okumadır.
+var (
+	promotionCheckerTransientWait = 60 * time.Second
+	promotionCheckerTransientPoll = 3 * time.Second
+	promotionCheckerTimeout       = 45 * time.Second
+	promotionSleep                = time.Sleep
+)
+
+const promotionCheckerOutputLimit = 4096
+
+// promotionCheckerRefusalTransient uses the same phrases as update.sh's
+// update_agent_refusal_is_transient.
+func promotionCheckerRefusalTransient(output []byte) bool {
+	text := string(output)
+	if i := strings.Index(text, "privileged mutation "); i >= 0 {
+		rest := text[i:]
+		if strings.Contains(rest, " is active") || strings.Contains(rest, " has active status ") {
+			return true
+		}
+	}
+	return strings.Contains(text, ": the host package manager is active") ||
+		strings.Contains(text, ": the host package manager or mutation lock is busy")
+}
+
+// promotionCheckerOutput keeps the first bytes a checker writes, up to its limit.
+type promotionCheckerOutput struct {
+	data  []byte
+	limit int
+}
+
+func (o *promotionCheckerOutput) Write(p []byte) (int, error) {
+	if room := o.limit - len(o.data); room > 0 {
+		if len(p) < room {
+			room = len(p)
+		}
+		o.data = append(o.data, p[:room]...)
+	}
+	return len(p), nil
+}
+
+// runPromotionChecker runs one read-only checker. between re-proves the target
+// and the release boundary before and after every read.
+func runPromotionChecker(between func() error, run func(context.Context) ([]byte, error)) error {
+	var waited time.Duration
+	retried := false
+	for {
+		if err := between(); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), promotionCheckerTimeout)
+		output, err := run(ctx)
+		deadline := ctx.Err()
+		cancel()
+		if err := between(); err != nil {
+			return err
+		}
+		if err == nil && deadline == nil {
+			return nil
+		}
+		if deadline != nil {
+			return fail(ReasonUnsupported)
+		}
+		if promotionCheckerRefusalTransient(output) && waited < promotionCheckerTransientWait {
+			promotionSleep(promotionCheckerTransientPoll)
+			waited += promotionCheckerTransientPoll
+			continue
+		}
+		if retried {
+			return fail(ReasonUnsupported)
+		}
+		retried = true
+		promotionSleep(promotionCheckerRetryDelay)
+	}
+}
+
 func runPromotionCompatibility(paths promotionPaths, target *Runtime, mode string, fd int, fixture func(string, string) error) error {
 	if !validPromotionMode(mode) {
 		return fail(ReasonUnsupported)
@@ -836,38 +923,29 @@ func runPromotionCompatibility(paths promotionPaths, target *Runtime, mode strin
 		for _, command := range commands {
 			// A live Panel write can invalidate the WAL-aware checker's pinned
 			// copy ("changed after pinning"). A refused read is repeated once
-			// after a bounded pause; a timed-out check is not re-run.
+			// after a bounded pause; a finishing server change is waited for
+			// (runPromotionChecker); a timed-out check is not re-run.
 			// Canlı yazım sabitlenmiş kopyayı geçersiz kılabilir: reddedilen
 			// salt-okur denetim kısa bir beklemeden sonra bir kez yinelenir.
-			for attempt := 0; ; attempt++ {
+			binary := filepath.Join(target.Root, "bin", command.binary)
+			args := command.args
+			between := func() error {
 				if err := target.Revalidate(); err != nil {
 					return err
 				}
-				if err := verifyPromotionBoundary(paths, fd); err != nil {
-					return err
-				}
-				ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-				cmd := exec.CommandContext(ctx, filepath.Join(target.Root, "bin", command.binary), command.args...)
+				return verifyPromotionBoundary(paths, fd)
+			}
+			if err := runPromotionChecker(between, func(ctx context.Context) ([]byte, error) {
+				cmd := exec.CommandContext(ctx, binary, args...)
 				cmd.Env = promotionCheckerEnvironment()
 				cmd.Dir = "/"
+				output := &promotionCheckerOutput{limit: promotionCheckerOutputLimit}
 				cmd.Stdout = io.Discard
-				cmd.Stderr = io.Discard
+				cmd.Stderr = output
 				err := cmd.Run()
-				deadline := ctx.Err()
-				cancel()
-				if err := target.Revalidate(); err != nil {
-					return err
-				}
-				if err := verifyPromotionBoundary(paths, fd); err != nil {
-					return err
-				}
-				if err == nil && deadline == nil {
-					break
-				}
-				if deadline != nil || attempt > 0 {
-					return fail(ReasonUnsupported)
-				}
-				time.Sleep(promotionCheckerRetryDelay)
+				return output.data, err
+			}); err != nil {
+				return err
 			}
 		}
 	}

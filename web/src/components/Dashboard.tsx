@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
@@ -419,12 +420,13 @@ function AdminDashboard() {
 
     useEffect(() => {
         const loadStats = () => api.getSystemStats().then(setStats).catch(() => {});
-        loadStats();
-        const timer = setInterval(loadStats, 5000);
+        // alpha.125: a hidden tab reads nothing; shown again, it reads at once.
+        // Gizli sekme okumaz; yeniden görününce hemen okur.
+        const stopStats = startVisibleReads(loadStats, 5000, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }, { immediate: true });
 
         fetch('/api/v1/audit-logs?limit=28').then((r) => (r.ok ? r.json() : null)).then((d) => setAudit(d?.entries || [])).catch(() => {});
 
-        return () => clearInterval(timer);
+        return stopStats;
     }, []);
 
     // A refused, dropped or unreadable answer is "could not be read": it is
@@ -494,11 +496,10 @@ function AdminDashboard() {
             const readiness = await fetchHostMutationReadiness();
             if (mounted) setHostMutationReadiness(readiness);
         };
-        void refresh();
-        const timer = window.setInterval(() => void refresh(), 5000);
+        const stop = startVisibleReads(refresh, 5000, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }, { immediate: true });
         return () => {
             mounted = false;
-            window.clearInterval(timer);
+            stop();
         };
     }, []);
 
@@ -1746,9 +1747,7 @@ function CustomerDashboard() {
 
     useEffect(() => {
         const load = () => api.getSystemStats().then(setStats).catch(() => {});
-        load();
-        const timer = setInterval(load, 5000);
-        return () => clearInterval(timer);
+        return startVisibleReads(load, 5000, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }, { immediate: true });
     }, []);
 
     return (

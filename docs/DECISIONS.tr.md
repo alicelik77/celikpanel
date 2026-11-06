@@ -21,7 +21,7 @@ git'te yaşar; bu dosya strateji içindir. En yeni en üstte.
 
 ## D-046 · Parolasız posta yok: siteler yalnız kimlik doğrulamalı gönderimle posta gönderir
 
-*2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · iki aşamada uygulanır: 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124'te, 2. aşama (kapatma) alpha.125 için planlı*
+*2026-11-04 (sahibin kararı: "parolasız posta kesinlikle yasak. spam sorunu olabilir.") · 1. aşama (salt okunur rapor ve gönderim posta kutuları) alpha.124, 2. aşama (kapatma) alpha.125; 2. aşamanın laboratuvar denetimi lab/alpha114-acceptance dalında (a125-mail)*
 
 **Neden.** Dağıtımın Postfix'i, sunucuda çalışan her şeyin parolasız olarak bütün
 İnternet'e posta göndermesine iki yoldan izin verir: sunucunun kendi 25 numaralı
@@ -51,6 +51,17 @@ panel kaldırılınca geride kalan bir CelikPanel yardımcısı gerektirirdi ve 
 listesinin kapatmadığı hiçbir şeyi kapatmaz. Roundcube zaten 587'den kullanıcının
 parolasıyla gönderir; posta kutusu %90 uyarısını `sendmail` değil Dovecot'un kendi
 teslim aracı bırakır.
+
+**Site cron çıktısı.** Cron bir görevin çıktısını görevin kullanıcısı olarak
+`sendmail` ile postalar; site kullanıcıları için bu artık reddedilir. Bu yüzden
+panelin yazdığı site crontab'ı `MAILTO=""` ile başlar: site cron çıktısı artık
+postalanmaz ve panel onu başka bir yerde de kaydetmez (çıktısı gereken görev onu bir
+dosyaya yazar). `MAILTO`'yu zaten ayarlayan crontab sahibinindir ve olduğu gibi kalır;
+root'un crontab'ı hiç değişmez. Görev taşıyan var olan site crontab'ları satırı bir
+kez, `sendmail` komutunu kapatan adımda alır (önce/sonra sürümleri Postfix
+değişikliğinin yanına kaydedilir; okunamayan crontab bırakılır ve sonraki başlangıçta
+yeniden denenir). Kendi `MAILTO`'su olan sahip crontab'ları korunur ve adımın notunda
+adlandırılır.
 
 **İki aşama.** 1. aşama (alpha.124) sunucuda hiçbir şeyi değiştirmez: Postfix
 sayfası parolasız postanın bir sonraki sürümde kapanacağını söyler ve son 30 günde

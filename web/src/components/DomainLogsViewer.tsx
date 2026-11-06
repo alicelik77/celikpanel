@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { startVisibleReads } from '../lib/visibleReads';
 import { AlertTriangle, Clock3, FileText, Download, Trash2, RefreshCw, Search, X } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -78,10 +79,10 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
         if (!autoRefresh) return;
         // A tick only reads, and not while the last read is still on its way.
         // Tik yalnız okur; son okuma yoldayken okumaz.
-        const interval = setInterval(() => {
+        // alpha.125: paused while the tab is hidden.
+        return startVisibleReads(() => {
             if (!reading.current) void loadLogs();
-        }, 5000);
-        return () => clearInterval(interval);
+        }, 5000, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) });
     }, [autoRefresh, domainId, logType, lines, filter, startLocal, endLocal]);
 
     useEffect(() => () => {

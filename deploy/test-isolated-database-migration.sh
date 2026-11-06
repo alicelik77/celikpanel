@@ -128,6 +128,44 @@ for name in required legacy error malformed wrong-exit unexpected-output empty; 
         *) [[ $status == 41 ]] || fail "$name policy downgraded uncertainty";;
     esac
 done
+# alpha.124 Boston: a refused publication check reached the panel with an empty
+# detail. The checker's own reason is now the detail; the output stays in the log.
+for name in reason no-reason passes; do
+    status=0
+    (
+        update_failure_detail=
+        read_database_migration_policy() { printf 'required\n'; }
+        run_database_recovery_command() {
+            [[ $# == 3 && $1 == verify-update-database && $2 == --snapshot && $3 == fixture ]] || exit 99
+            case "$name" in
+                reason)
+                    printf 'Recovery database check: the running panel kept writing its database during 20 read-only reads\n' >&2
+                    printf 'The database transition could not be verified. Preserve this operation. exit status 1\n' >&2
+                    return 1;;
+                no-reason) return 1;;
+                passes) return 0;;
+            esac
+        }
+        die() { printf 'DETAIL=%s\n' "$update_failure_detail"; printf 'DIE=%s\n' "$*"; exit 41; }
+        verify_database_publication_if_required fixture
+    ) > "$TEST_ROOT/verify-detail-$name.log" 2>&1 || status=$?
+    case "$name" in
+        reason)
+            [[ $status == 41 ]] || fail 'refused publication check did not stop the update'
+            grep -Fqx 'DETAIL=the read-only database check (exit status 1) reported: the running panel kept writing its database during 20 read-only reads' \
+                "$TEST_ROOT/verify-detail-$name.log" || { cat "$TEST_ROOT/verify-detail-$name.log"; fail 'checker reason is not the failure detail'; }
+            grep -Fqx 'DIE=database publication is unverified; preserve the same operation and database evidence' \
+                "$TEST_ROOT/verify-detail-$name.log" || fail 'publication refusal reason changed'
+            grep -Fq 'The database transition could not be verified.' "$TEST_ROOT/verify-detail-$name.log" \
+                || fail 'checker output did not reach the worker log';;
+        no-reason)
+            [[ $status == 41 ]] || fail 'silent refusal did not stop the update'
+            grep -Fqx 'DETAIL=the read-only database check (exit status 1) reported: no reason; the update worker log has its output' \
+                "$TEST_ROOT/verify-detail-$name.log" || { cat "$TEST_ROOT/verify-detail-$name.log"; fail 'silent refusal has no detail'; };;
+        passes)
+            [[ $status == 0 && ! -s "$TEST_ROOT/verify-detail-$name.log" ]] || fail 'verified publication was refused';;
+    esac
+done
 # Exercise the actual rollback dispatch; isolated evidence must skip old restore.
 sed -n '/^    database_restore_policy=$(read_database_migration_policy/,/^    restore_paired_agent_ledger$/p' "$ROOT/rollback.sh" > "$TEST_ROOT/restore.sh"
 [[ -s "$TEST_ROOT/restore.sh" ]] || fail 'production rollback dispatch missing'

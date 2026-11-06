@@ -46,6 +46,12 @@ func (m *Manager) ListServices() ([]core.Service, error) {
 		return nil, fmt.Errorf("failed to list units: %v", err)
 	}
 
+	type listedUnit struct {
+		name, activeState, subState string
+		owner                       *core.ManagedService
+		helper                      bool
+	}
+	var listed []listedUnit
 	scanner := bufio.NewScanner(bytes.NewReader(output))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -74,29 +80,45 @@ func (m *Manager) ListServices() ([]core.Service, error) {
 			}
 			helper = true
 		}
+		listed = append(listed, listedUnit{name: name, activeState: activeState, subState: subState, owner: owner, helper: helper})
+	}
 
-		serviceType := serviceTypeForService(owner)
+	// Every listed unit's ExecStart with ONE systemctl show (alpha.125): the
+	// scan used to start one process per unit. When the batched answer
+	// cannot be split per unit, each unit is asked on its own as before.
+	// Listelenen her birimin ExecStart'ı tek systemctl show ile okunur.
+	names := make([]string, 0, len(listed))
+	for _, unit := range listed {
+		names = append(names, unit.name)
+	}
+	execStarts, batched := showExecStarts(names)
 
-		// Get version
-		version := m.getServiceVersion(name, string(serviceType))
+	for _, unit := range listed {
+		serviceType := serviceTypeForService(unit.owner)
 
-		// Get config files
-		configFiles := m.getConfigFiles(name, string(serviceType))
+		// The version is read without starting any program; what is not
+		// known here is filled from the package database by the Agent.
+		version := m.getServiceVersion(unit.name, string(serviceType))
+
+		var configFiles []core.ConfigFile
+		if batched {
+			configFiles = m.getConfigFilesWithExecStart(unit.name, execStarts[unit.name])
+		} else {
+			configFiles = m.getConfigFiles(unit.name, string(serviceType))
+		}
 
 		// Determine if this is a primary service (not a helper)
-		isPrimary := m.isPrimaryService(name) && !helper
+		isPrimary := m.isPrimaryService(unit.name) && !unit.helper
 
-		s := core.Service{
-			ID:          name,
-			Name:        name,
+		services = append(services, core.Service{
+			ID:          unit.name,
+			Name:        unit.name,
 			Type:        serviceType,
-			Status:      fmt.Sprintf("%s (%s)", activeState, subState),
+			Status:      fmt.Sprintf("%s (%s)", unit.activeState, unit.subState),
 			Version:     version,
 			ConfigFiles: configFiles,
 			IsPrimary:   isPrimary,
-		}
-
-		services = append(services, s)
+		})
 	}
 
 	// Ensure we never return nil
@@ -136,6 +158,56 @@ func (m *Manager) getServiceVersion(name string, serviceType string) string {
 	detector := services.NewVersionDetector()
 	return detector.DetectVersion(name)
 }
+func (m *Manager) getConfigFilesWithExecStart(name, execStart string) []core.ConfigFile {
+	configs, err := services.NewServiceScanner().ScanServiceWithExecStart(name, execStart)
+	if err != nil || len(configs) == 0 {
+		return []core.ConfigFile{}
+	}
+	return configs
+}
+
+// showCommand runs the batched systemctl show. Variable for tests.
+var showCommand = func(args ...string) ([]byte, error) {
+	return exec.Command("systemctl", args...).Output()
+}
+
+// showExecStarts reads the ExecStart lines of every unit with one
+// `systemctl show -p Id,ExecStart u1 u2 …`. ok=false when the call failed or
+// the answer does not hold exactly one block per unit, each with its Id.
+// Her birimin ExecStart satırları tek çağrıyla okunur.
+func showExecStarts(units []string) (map[string]string, bool) {
+	if len(units) == 0 {
+		return map[string]string{}, true
+	}
+	args := []string{"show", "-p", "Id,ExecStart"}
+	for _, unit := range units {
+		args = append(args, unit+".service")
+	}
+	out, err := showCommand(args...)
+	if err != nil {
+		return nil, false
+	}
+	return splitExecStartBlocks(string(out), units)
+}
+
+// splitExecStartBlocks splits a batched answer into each unit's ExecStart
+// lines, in the order asked (ParseShowBlocks).
+func splitExecStartBlocks(output string, units []string) (map[string]string, bool) {
+	blocks, ok := ParseShowBlocks(output, len(units))
+	if !ok {
+		return nil, false
+	}
+	byUnit := make(map[string]string, len(units))
+	for i, block := range blocks {
+		var execLines []string
+		for _, value := range block["ExecStart"] {
+			execLines = append(execLines, "ExecStart="+value)
+		}
+		byUnit[units[i]] = strings.Join(execLines, "\n")
+	}
+	return byUnit, true
+}
+
 func (m *Manager) getConfigFiles(name string, serviceType string) []core.ConfigFile {
 	// Use ServiceScanner for intelligent discovery
 	scanner := services.NewServiceScanner()
