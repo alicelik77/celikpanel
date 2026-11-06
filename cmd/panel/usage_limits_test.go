@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sort"
@@ -465,5 +466,76 @@ func TestFullDiskClosesFTPSFTPAndPHPUploadsAndOpensThemAgain(t *testing.T) {
 	f.panel.runUsageRound(ctx)
 	if len(calls) != 3 || calls[2].blocked {
 		t.Fatalf("not reopened: %v", calls)
+	}
+}
+
+// 6 Nov 2026 (alpha.125, joined server): a domain whose deletion waited for
+// the main DNS server read as "1 website not counted" on the Users page.
+// A website being deleted is not measured and not counted as a problem, and
+// the status names the websites that are not counted, with who acts.
+func TestTrafficStatusNamesUnmeasuredSitesAndSkipsDomainsBeingDeleted(t *testing.T) {
+	f := newUsageFixture(t)
+	ctx := context.Background()
+	names := map[int]string{}
+	for _, id := range []int{9901, 9902} {
+		var name string
+		if err := f.panel.db.GetDB().QueryRow(`SELECT name FROM domains WHERE id = ?`, id).Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		names[id] = name
+	}
+	f.exec(t, `INSERT INTO traffic_sources (domain_id, state, reason) VALUES (9901, 'unknown', 'vhost_kept'), (9902, 'unknown', 'include_missing')`)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/usage/status", f.panel.handleUsageStatus)
+	f.handler = f.panel.requireAuth(mux)
+	read := func() usageStatusView {
+		t.Helper()
+		rec := f.as(t, 9701, http.MethodGet, "/api/v1/usage/status", "")
+		wantStatus(t, rec, http.StatusOK, "")
+		var view usageStatusView
+		if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
+			t.Fatal(err)
+		}
+		return view
+	}
+	view := read()
+	want := map[string]usageUnknownSite{
+		names[9901]: {DomainID: 9901, Domain: names[9901], Reason: usageUnknownChangedByOwner, Detail: "vhost_kept"},
+		names[9902]: {DomainID: 9902, Domain: names[9902], Reason: usageUnknownNotWrittenYet, Detail: "include_missing"},
+	}
+	if len(view.Traffic.UnknownSites) != 2 || view.Traffic.Unknown["vhost_kept"] != 1 || view.Traffic.Unknown["include_missing"] != 1 {
+		t.Fatalf("unknown sites: %+v %+v", view.Traffic.UnknownSites, view.Traffic.Unknown)
+	}
+	for _, site := range view.Traffic.UnknownSites {
+		if want[site.Domain] != site {
+			t.Fatalf("site %+v, want %+v", site, want[site.Domain])
+		}
+	}
+	// 9902's deletion is accepted and waits (for example for the main DNS
+	// server): it is neither measured nor reported.
+	f.exec(t, `INSERT INTO domain_deletion_operations (domain_id, previous_status) VALUES (9902, 'active')`)
+	view = read()
+	if len(view.Traffic.UnknownSites) != 1 || view.Traffic.UnknownSites[0].DomainID != 9901 ||
+		view.Traffic.Unknown["include_missing"] != 0 || view.Traffic.Unknown["vhost_kept"] != 1 {
+		t.Fatalf("a domain being deleted is reported: %+v %+v", view.Traffic.UnknownSites, view.Traffic.Unknown)
+	}
+	domains, err := f.panel.trafficDomains(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range domains {
+		if d.DomainID == 9902 {
+			t.Fatal("a domain being deleted is asked to be measured")
+		}
+	}
+	if err := f.panel.collectTraffic(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := f.panel.db.GetDB().QueryRow(`SELECT count(*) FROM traffic_sources WHERE domain_id = 9902`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("the deleting domain's source row stayed: %d %v", left, err)
+	}
+	if view = read(); view.Traffic.UnknownSites == nil {
+		t.Fatal("unknown_sites must be a list, never null")
 	}
 }
