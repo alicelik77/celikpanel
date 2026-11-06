@@ -109,6 +109,8 @@ type requestIdentityRoute struct {
 	// with it is guarded (alpha.127: routes guarded so the progress window
 	// can follow their steps, without refusing other clients).
 	optional bool
+	// maxBody, when set, replaces requestIdentityMaxRequestBody.
+	maxBody int64
 }
 
 // The eight routes of batch 1. Each one was harmful when it ran twice; see
@@ -581,6 +583,11 @@ func (g *requestIdentityGuard) wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		route, protected := requestIdentityRouteFor(r)
 		if !protected {
+			// alpha.127: the changes the progress window follows step by step.
+			route, protected = operationStepRouteFor(r)
+		}
+		// An optional route without the header runs as before, unguarded.
+		if !protected || (route.optional && r.Header.Get(requestIdentityHeader) == "") {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -590,10 +597,6 @@ func (g *requestIdentityGuard) wrap(next http.Handler) http.Handler {
 			return
 		}
 		id := r.Header.Get(requestIdentityHeader)
-		if id == "" && route.optional {
-			next.ServeHTTP(w, r)
-			return
-		}
 		if id == "" {
 			// A page loaded before this release cannot run these routes
 			// unprotected.
@@ -606,7 +609,11 @@ func (g *requestIdentityGuard) wrap(next http.Handler) http.Handler {
 				requestIDRequiredMessage, "", "")
 			return
 		}
-		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, requestIdentityMaxRequestBody))
+		limit := int64(requestIdentityMaxRequestBody)
+		if route.maxBody > 0 {
+			limit = route.maxBody
+		}
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 		if err != nil {
 			var tooLarge *http.MaxBytesError
 			if errors.As(err, &tooLarge) {

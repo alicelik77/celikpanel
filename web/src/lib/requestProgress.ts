@@ -306,3 +306,40 @@ export const phpVersionSteps = (t: T, version: string): StepLabel[] => [
     { id: 'save', label: t('opstep.php.save') },
     { id: 'web_server', label: t('opstep.php.web_server', { version }) },
 ];
+
+// The other flows (alpha.127, "always, for every operation"): each step's
+// words are `opstep.<flow>.<id>`, or `opstep.common.<id>` for the steps many
+// flows share. An id ending in "!" is a check that runs before anything is
+// changed. The ids are the handler's own (Go: reportOperationStep).
+// Diğer akışlar: her adımın sözcüğü opstep.<akış>.<kimlik>; "!" ile biten
+// kimlik, hiçbir şey değişmeden önceki denetimdir.
+const COMMON_STEPS = new Set(['reload', 'mail', 'records']);
+
+export function flowSteps(t: T, flow: string, ids: string[], vars: Record<string, string | number> = {}): StepLabel[] {
+    return ids.map((spec) => {
+        const id = spec.endsWith('!') ? spec.slice(0, -1) : spec;
+        const key = (COMMON_STEPS.has(id) ? `opstep.common.${id}` : `opstep.${flow}.${id}`) as TranslationKey;
+        return { id, label: t(key, vars), ...(spec.endsWith('!') ? { check: true } : {}) };
+    });
+}
+
+/**
+ * Runs one change in the window that is already open (`report`), following
+ * the server's steps: sends it with the identity the window reads and marks
+ * where it ended. Answers the change's answer, or null when none arrived.
+ */
+export async function sendWithSteps<R extends Response | null>(
+    report: OperationReport, labels: StepLabel[], t: T, key: string,
+    send: (headers: Record<string, string>) => Promise<R>,
+    context: ProgressContext = {},
+): Promise<R> {
+    const progress = followRequestProgress(report, labels, t, key, context);
+    let res: Response | null = null;
+    try {
+        const answer = await send(progress.headers);
+        res = answer;
+        return answer;
+    } finally {
+        progress.settle(res);
+    }
+}

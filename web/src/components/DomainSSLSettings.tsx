@@ -13,8 +13,8 @@ import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
-import { confirmAction } from '../lib/confirmAction';
-import { followRequestProgress, resumeRequestProgress, sslIssueSteps } from '../lib/requestProgress';
+import { confirmAction, followOperation } from '../lib/confirmAction';
+import { flowSteps, followRequestProgress, resumeRequestProgress, sendWithSteps, sslIssueSteps } from '../lib/requestProgress';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -485,7 +485,8 @@ export function DomainSSLSettings({
             return;
         }
         await confirmAction({ message: t(isReplacement ? 'ssl.replaceCertificateConfirm' : 'ssl.uploadConfirm', { name: domainName }),
-            action: async () => {
+            progressTitle: t('opstep.ssl.title', { name: domainName }),
+            action: async (report) => {
                 const targetDomainId = domainId;
                 setUploading(true);
                 try {
@@ -493,7 +494,9 @@ export function DomainSSLSettings({
                     fd.append('certificate', certFile);
                     fd.append('private_key', keyFile);
                     if (chainFile) fd.append('chain', chainFile);
-                    const res = await fetch(`/api/v1/domains/${domainId}/ssl/upload`, { method: 'POST', body: fd });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'sslUpload', ['validate!', 'install', 'reload', 'mail']), t, `sslUpload.${domainId}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/ssl/upload`, { method: 'POST', body: fd, headers }));
                     if (!res.ok) {
                         const apiError = await readApiError(res);
                         if (
@@ -575,12 +578,15 @@ export function DomainSSLSettings({
         const targetDomainId = domainId;
         secureMailMutationBusyRef.current = true;
         setSecureMailBusy(true);
+        // Runs in the locked progress window with the server's steps (alpha.127).
+        await followOperation({ progressTitle: t('opstep.mailCert.title', { name: domainName }), action: async (report) => {
         try {
-            const res = await fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secure_mail: nextSecureMail }),
-            });
+            const res = await sendWithSteps(report, flowSteps(t, 'mailCert', ['check!', 'mail_tls', 'tlsa'], { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
+                (headers) => fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...headers },
+                    body: JSON.stringify({ secure_mail: nextSecureMail }),
+                }));
             if (!res.ok) {
                 const apiError = await readApiError(res);
                 if (currentDomainIdRef.current === targetDomainId) {
@@ -598,6 +604,9 @@ export function DomainSSLSettings({
             secureMailMutationBusyRef.current = false;
             setSecureMailBusy(false);
         }
+        } });
+        secureMailMutationBusyRef.current = false;
+        setSecureMailBusy(false);
     };
 
     const handleAutoRenewChange = async (nextAutoRenew: boolean) => {
@@ -668,11 +677,12 @@ export function DomainSSLSettings({
             return;
         }
         await confirmAction({ message: t('ssl.confirmRemove', { name: domainName }), confirmLabel: t('common.remove'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 const targetDomainId = domainId;
                 setRemoving(true);
                 try {
-                    const res = await fetch(`/api/v1/domains/${domainId}/ssl`, { method: 'DELETE' });
+                    const res = await sendWithSteps(report, flowSteps(t, 'sslRemove', ['detach', 'reload', 'mail']), t, `sslRemove.${domainId}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/ssl`, { method: 'DELETE', headers }));
                     if (!res.ok) {
                         const apiError = await readApiError(res);
                         showToast('error', apiErrorText(apiError, t, 'common.error'));

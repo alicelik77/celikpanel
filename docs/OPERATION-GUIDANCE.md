@@ -11018,7 +11018,21 @@ tools (their own durable status). A PHP version change sent with an identity is
 now guarded (a request without the header runs as before). The first-login tour
 waits while a question or progress window is open and sits below it.
 
-Not yet on real steps: a certificate upload or removal, mail certificate, DNS
-record changes, PowerDNS repair, hosting type change, php.ini apply, service
-start/stop/restart, malware actions, database and account removals. They keep
-the honest single step with the elapsed time.
+The same release puts the other confirmed changes on their server-reported
+steps too (`cmd/panel/operation_step_routes.go`, optional guarded routes): a
+certificate upload (validate, install, reload, mail) or removal (detach, reload,
+mail), mail encryption (check, mail TLS, TLSA records; now in the locked window),
+DNS record add and delete (check, save, publish; adding now in the locked
+window), PowerDNS repair (check, configure, publish every zone), php.ini (check,
+apply), hosting type (check, switch), service start/stop/restart (check, the
+action and its check, the state read again), malware quarantine/restore/delete
+(check, the action, record), database and database-user deletion (check,
+delete on the engine, records), CelikPanel's own database account (check,
+remove, records), and account deletion (one real step). A team member's
+removal reports its step on the server, but its page keeps the typed API call
+and the single generic step: passing the identity there would grow the boot
+path. Short
+changes keep their two or three real steps; no step is drawn by the screen
+alone. A reload does not yet reopen the window for these (the change goes on
+on the server and the page shows its result); domain deletion keeps its own
+step store and the deletion_already_running rule.

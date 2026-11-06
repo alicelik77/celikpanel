@@ -108,6 +108,9 @@ func (p *Panel) handlePHPExtendedConfig(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if r.Method == "POST" {
+		// alpha.127: the progress window follows these steps (operation_steps.go).
+		reportOperationPlan(r.Context(), "check", "apply")
+		reportOperationStep(r.Context(), "check")
 		var req core.ExtendedPHPConfigRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeClientError(w, http.StatusBadRequest, "invalid request")
@@ -121,6 +124,7 @@ func (p *Panel) handlePHPExtendedConfig(w http.ResponseWriter, r *http.Request) 
 		}
 
 		var resp transport.Empty
+		reportOperationStep(r.Context(), "apply")
 		err := p.callAgent("Agent.UpdateExtendedPHPConfig", req, &resp)
 		if err != nil {
 			writeServerError(w, err)

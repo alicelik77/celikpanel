@@ -64,6 +64,55 @@ export const enOpstepsScreens = {
     'opstep.wp.cloning': 'Copying the site to {target}',
     'opstep.wp.restoring': 'The update did not pass its check: putting the backup back',
     'opstep.wp.finish': 'Checking the result',
+
+    'opstep.common.reload': 'Reloading the web server',
+    'opstep.common.mail': 'Updating mail encryption',
+    'opstep.common.records': 'Updating CelikPanel’s records',
+
+    'opstep.sslUpload.validate': 'Checking the certificate, its key and chain',
+    'opstep.sslUpload.install': 'Saving the certificate on the server',
+    'opstep.sslRemove.detach': 'Taking the certificate off the site',
+    'opstep.mailCert.title': 'Changing mail encryption of {name}',
+    'opstep.mailCert.check': 'Checking the certificate covers mail.{name}',
+    'opstep.mailCert.mail_tls': 'Setting mail encryption and reloading the mail servers',
+    'opstep.mailCert.tlsa': 'Updating the TLSA records in DNS',
+
+    'opstep.dns.saveTitle': 'Saving a DNS record of {name}',
+    'opstep.dns.deleteTitle': 'Deleting a DNS record of {name}',
+    'opstep.dns.check': 'Checking the record',
+    'opstep.dns.save': 'Saving the record',
+    'opstep.dns.publish': 'Publishing the zone to the DNS servers',
+    'opstep.pdns.title': 'Repairing PowerDNS',
+    'opstep.pdns.check': 'Checking that DNS is free for a repair',
+    'opstep.pdns.configure': 'Repairing PowerDNS’s configuration',
+    'opstep.pdns.sync': 'Publishing every zone again',
+
+    'opstep.phpIni.title': 'Applying php.ini for PHP {version}',
+    'opstep.phpIni.check': 'Checking the settings',
+    'opstep.phpIni.apply': 'Writing php.ini and reloading PHP {version}',
+    'opstep.hosting.title': 'Changing the hosting type of {name}',
+    'opstep.hosting.check': 'Checking the new hosting type',
+    'opstep.hosting.switch': 'Switching the site and reloading the web server',
+
+    'opstep.service.check': 'Checking the request',
+    'opstep.service.start': 'Starting {name} and checking it runs',
+    'opstep.service.stop': 'Stopping {name} and checking it stopped',
+    'opstep.service.restart': 'Restarting {name} and checking it runs',
+    'opstep.service.refresh': 'Reading the components’ state again',
+
+    'opstep.malware.check': 'Checking the finding',
+    'opstep.malware.quarantine': 'Moving the file to quarantine',
+    'opstep.malware.restore': 'Putting the file back',
+    'opstep.malware.delete': 'Deleting the quarantined file',
+    'opstep.malware.save': 'Recording the result',
+
+    'opstep.dbDelete.check': 'Checking the database',
+    'opstep.dbDelete.delete': 'Deleting {name} on the database server',
+    'opstep.dbUserDelete.check': 'Checking the database user',
+    'opstep.dbUserDelete.delete': 'Deleting the user {name} on the database server',
+    'opstep.adminRemove.check': 'Checking CelikPanel’s account',
+    'opstep.adminRemove.remove': 'Removing CelikPanel’s account from the database server',
+    'opstep.userDelete.delete': 'Checking {name} owns nothing and deleting the account',
 } as const;
 
 export type OpstepsScreenKey = keyof typeof enOpstepsScreens;

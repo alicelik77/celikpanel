@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { readRemote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { showToast } from './Toast';
 
 interface ExtendedPHPConfig {
@@ -80,18 +81,21 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
     const handleSave = async () => {
         if (!config) return;
         await confirmAction({ message: t('php.ini.applyConfirm', { version }),
-            action: async () => {
+            progressTitle: t('opstep.phpIni.title', { version }),
+            action: async (report) => {
 
                 setSaving(true);
                 try {
-                    const res = await fetch('/api/v1/php/extended-config', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            version,
-                            config
-                        })
-                    });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'phpIni', ['check!', 'apply'], { version }), t, `phpIni.${version}`,
+                        (headers) => fetch('/api/v1/php/extended-config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', ...headers },
+                            body: JSON.stringify({
+                                version,
+                                config
+                            })
+                        }));
 
                     if (res.ok) {
                         showToast('success', t('php.ini.saved', { version }));

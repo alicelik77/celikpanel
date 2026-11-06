@@ -256,6 +256,9 @@ func (p *Panel) handleTeamMemberByID(w http.ResponseWriter, r *http.Request) {
 		writeTeamMemberJSON(w, http.StatusOK, map[string]any{"team_member": member})
 
 	case http.MethodDelete:
+		// alpha.127: one real step (operation_steps.go).
+		reportOperationPlan(r.Context(), "delete")
+		reportOperationStep(r.Context(), "delete")
 		member, err := repository.Delete(r.Context(), ownerID, memberID)
 		if err != nil {
 			writeTeamMemberRepositoryError(w, err)

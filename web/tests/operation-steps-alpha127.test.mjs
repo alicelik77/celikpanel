@@ -249,3 +249,52 @@ test('the five screens follow the server steps, and the tour waits for the opera
     const overlay = /data-tour-overlay/.test(source('help/guide/Tour.tsx')) && source('help/guide/Tour.tsx').match(/fixed inset-0 z-\[(\d+)\]" data-tour-overlay/);
     assert.ok(overlay && Number(overlay[1]) < 60, 'the tour overlay sits above the stacked operation window (z-60)');
 });
+
+// "Always, for every operation": the other confirmed changes follow the
+// server's own steps too; shared steps have one set of words.
+test('flowSteps names each step by its flow, shares the common words and marks checks', () => {
+    const steps = progress.flowSteps(t, 'dns', ['check!', 'save', 'publish']);
+    assert.deepEqual(steps.map((step) => [step.id, step.label, !!step.check]), [
+        ['check', 'opstep.dns.check{}', true], ['save', 'opstep.dns.save{}', false], ['publish', 'opstep.dns.publish{}', false],
+    ]);
+    assert.deepEqual(progress.flowSteps(t, 'sslRemove', ['detach', 'reload', 'mail']).map((step) => step.label),
+        ['opstep.sslRemove.detach{}', 'opstep.common.reload{}', 'opstep.common.mail{}']);
+    const en = readFileSync(new URL('../src/i18n/screens/opsteps/en.ts', import.meta.url), 'utf8');
+    for (const [flow, ids] of Object.entries({
+        sslUpload: ['validate', 'install'], sslRemove: ['detach'], mailCert: ['check', 'mail_tls', 'tlsa'], dns: ['check', 'save', 'publish'],
+        pdns: ['check', 'configure', 'sync'], phpIni: ['check', 'apply'], hosting: ['check', 'switch'],
+        service: ['check', 'start', 'stop', 'restart', 'refresh'], malware: ['check', 'quarantine', 'restore', 'delete', 'save'],
+        dbDelete: ['check', 'delete'], dbUserDelete: ['check', 'delete'], adminRemove: ['check', 'remove'], userDelete: ['delete'],
+        common: ['reload', 'mail', 'records'],
+    })) {
+        for (const id of ids) assert.ok(en.includes(`'opstep.${flow}.${id}'`), `no words for ${flow}.${id}`);
+    }
+});
+
+test('sendWithSteps sends the identity the window reads and marks a lost answer as not known', async () => {
+    browser([{ body: { state: 'running', step: 'check' } }]);
+    const shown = [];
+    let sent;
+    await assert.rejects(progress.sendWithSteps({ steps: (steps) => shown.push(steps) }, progress.flowSteps(t, 'dns', ['check!', 'save', 'publish']), t, 'dns.x',
+        async (headers) => { sent = headers; throw new TypeError('network'); }));
+    assert.match(sent['X-CelikPanel-Request-Id'], /^[0-9a-f]{32}$/);
+    assert.deepEqual(states(shown.at(-1)), ['check=waiting', 'save=pending', 'publish=pending']);
+    const answer = await progress.sendWithSteps({ steps: (steps) => shown.push(steps) }, progress.flowSteps(t, 'dns', ['check!', 'save', 'publish']), t, 'dns.x',
+        async () => new Response('{}', { status: 409, headers: { 'X-CelikPanel-Operation-Step': 'check' } }));
+    assert.equal(answer.status, 409);
+    assert.deepEqual(states(shown.at(-1)), ['check=failed!', 'save=pending', 'publish=pending']);
+});
+
+test('the other confirmed changes follow the server steps', () => {
+    const source = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+    for (const [path, flow] of [
+        ['components/DomainSSLSettings.tsx', "'sslUpload'"], ['components/DomainSSLSettings.tsx', "'sslRemove'"], ['components/DomainSSLSettings.tsx', "'mailCert'"],
+        ['components/DomainDNSManager.tsx', "'dns'"], ['components/PowerDNSManagement.tsx', "'pdns'"], ['components/PHPExtendedConfig.tsx', "'phpIni'"],
+        ['components/HostingTypePanel.tsx', "'hosting'"], ['components/ServiceShell.tsx', "'service'"], ['components/DomainMalwareScan.tsx', "'malware'"],
+        ['components/DatabaseManagementV2.tsx', "'dbDelete'"], ['components/DatabaseManagementV2.tsx', "'dbUserDelete'"], ['components/DomainDatabaseManager.tsx', "'dbDelete'"],
+        ['components/DatabaseAccountStrip.tsx', "'adminRemove'"], ['components/UsersPage.tsx', "'userDelete'"],
+    ]) {
+        const text = source(path);
+        assert.ok(text.includes(`flowSteps(t, ${flow}`) && text.includes('sendWithSteps(report'), `${path} does not follow ${flow}`);
+    }
+});

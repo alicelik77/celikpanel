@@ -22,6 +22,7 @@ import { DeletableAccounts } from './DeletableAccounts';
 import { useSuspendedOwners } from '../lib/suspension';
 import { TransferRequestsList, TransferRowAction } from './SubscriptionTransfer';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -222,8 +223,10 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
 
     const deleteUser = async (u: PanelUser) => {
         await confirmAction({ message: t('users.deleteConfirm', { name: u.username }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
-                const res = await send(`/api/v1/users/${u.id}`, { method: 'DELETE' });
+            action: async (report) => {
+                // The server's own step (alpha.127).
+                const res = await sendWithSteps(report, flowSteps(t, 'userDelete', ['delete'], { name: u.username }), t, `userDelete.${u.id}`,
+                    (headers) => send(`/api/v1/users/${u.id}`, { method: 'DELETE', headers }));
                 if (!res) return;
                 if (!res.ok) {
                     await apiError(res);

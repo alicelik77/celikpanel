@@ -10951,7 +10951,14 @@ kalıcı durumlarıyla). Kimlikle gönderilen PHP sürümü değişikliği artı
 (başlıksız istek eskisi gibi çalışır). İlk giriş turu, soru ya da ilerleme penceresi
 açıkken bekler ve onun altında durur.
 
-Henüz gerçek adımlı olmayanlar: sertifika yükleme/kaldırma, posta sertifikası, DNS
-kaydı değişiklikleri, PowerDNS onarımı, barındırma türü değişikliği, php.ini
-uygulama, hizmet başlat/durdur/yeniden başlat, kötü amaçlı yazılım işlemleri,
-veritabanı ve hesap silmeleri. Bunlar geçen süreli dürüst tek adımı korur.
+Aynı sürüm diğer onaylı değişiklikleri de sunucunun bildirdiği adımlara geçirir
+(`cmd/panel/operation_step_routes.go`, isteğe bağlı korumalı rotalar): sertifika
+yükleme ve kaldırma, posta şifrelemesi (artık kilitli pencerede), DNS kaydı ekleme
+ve silme (ekleme artık kilitli pencerede), PowerDNS onarımı, php.ini, barındırma
+türü, hizmet başlat/durdur/yeniden başlat, kötü amaçlı yazılım karantina/geri
+koyma/silme, veritabanı ve veritabanı kullanıcısı silme, CelikPanel'in veritabanı
+hesabı ve hesap silme (ekip üyesi silme sunucuda adımını bildirir; sayfası
+açılış yolunu büyütmemek için tek genel adımı korur). Kısa değişiklikler iki üç gerçek adımını
+korur; ekran tek başına adım çizmez. Bunlarda sayfa yenilenince pencere henüz
+yeniden açılmaz (değişiklik sunucuda sürer, sayfa sonucunu gösterir); alan adı
+silme kendi adım deposunu ve deletion_already_running kuralını korur.

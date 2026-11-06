@@ -1112,6 +1112,9 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Validate certificate via agent
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(ctx, "validate", "install", "reload", "mail")
+	reportOperationStep(ctx, "validate")
 	var validateResp transport.ValidateCertResponse
 
 	validateReq := transport.ValidateCertRequest{
@@ -1199,6 +1202,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			},
 		)
 	}()
+	reportOperationStep(ctx, "install")
 	err = p.callAgentContext(ctx, "Agent.InstallCustomCertificate", installReq, &installResp)
 	if err != nil || !installResp.Success {
 		writeAgentError(w, err, installResp.Error)
@@ -1295,6 +1299,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	// Sertifika ancak nginx sunduğunda işe yarar: vhost'u yeniden üret (443
 	// bloğu eklenir) ve yeniden yükle. Bu olmadan sertifika diskte dururken
 	// site yalnız HTTP kalıyordu.
+	reportOperationStep(ctx, "reload")
 	if err := p.applyVhostForDomain(ctx, domainID); err != nil {
 		if markErr := p.markCertificatePendingDetached(
 			ctx, domainID, sslPendingActivation, true,
@@ -1311,6 +1316,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	reportOperationStep(ctx, "mail")
 	if err := p.syncCertificateDependents(ctx, domainID); err != nil {
 		if markErr := p.markCertificatePendingDetached(
 			ctx, domainID, sslPendingDependents, false,
@@ -1448,6 +1454,9 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
 	ctx := r.Context()
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(ctx, "detach", "reload", "mail")
+	reportOperationStep(ctx, "detach")
 	detach, err := p.detachCertificate(ctx, domainID)
 	if err != nil {
 		if message, guarded := hstsRemovalConflictMessage(err, "the certificate"); guarded {
@@ -1460,6 +1469,7 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 		return
 	}
 
+	reportOperationStep(ctx, "reload")
 	if err := p.applyVhostForDomain(ctx, domainID); err != nil {
 		rollbackCtx, cancel := sslCompensationContext()
 		defer cancel()
@@ -1478,6 +1488,7 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 
 	// A removed certificate must drop out of the mail SNI maps too.
 	// Kaldırılan sertifika posta SNI map'lerinden de düşmelidir.
+	reportOperationStep(ctx, "mail")
 	if err := p.syncCertificateDependents(ctx, domainID); err != nil {
 		rollbackCtx, cancel := sslCompensationContext()
 		defer cancel()

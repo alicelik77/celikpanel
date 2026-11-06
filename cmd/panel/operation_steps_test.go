@@ -272,3 +272,100 @@ func TestARefusedRestoreNamesTheStepItStoppedAt(t *testing.T) {
 		t.Fatalf("steps=%v", got)
 	}
 }
+
+// alpha.127, "always, for every operation": every change the progress window
+// follows is guarded when the page sends an identity, and only those.
+func TestOperationStepRoutesNameEveryFollowedChangeAndNothingElse(t *testing.T) {
+	followed := []struct{ method, path string }{
+		{http.MethodPost, "/api/v1/domains/3/ssl/upload"},
+		{http.MethodDelete, "/api/v1/domains/3/ssl"},
+		{http.MethodPut, "/api/v1/domains/3/ssl/mail"},
+		{http.MethodPost, "/api/v1/domains/3/dns/records"},
+		{http.MethodPut, "/api/v1/domains/3/dns/records"},
+		{http.MethodDelete, "/api/v1/domains/3/dns/records"},
+		{http.MethodPut, "/api/v1/domains/3/hosting"},
+		{http.MethodDelete, "/api/v1/domains/3/databases/9"},
+		{http.MethodPost, "/api/v1/pdns/enable"},
+		{http.MethodPost, "/api/v1/php/extended-config"},
+		{http.MethodPost, "/api/v1/service/action"},
+		{http.MethodPost, "/api/v1/malware/findings/4/quarantine"},
+		{http.MethodPost, "/api/v1/malware/findings/4/restore"},
+		{http.MethodPost, "/api/v1/malware/findings/4/delete"},
+		{http.MethodDelete, "/api/v1/databases/5"},
+		{http.MethodDelete, "/api/v1/database-users/6"},
+		{http.MethodDelete, "/api/v1/database-servers/7/admin-account"},
+		{http.MethodDelete, "/api/v1/users/8"},
+		{http.MethodDelete, "/api/v1/team-members/8"},
+	}
+	for _, item := range followed {
+		route, ok := operationStepRouteFor(httptest.NewRequest(item.method, item.path, nil))
+		if !ok || !route.optional || route.timeout <= 0 {
+			t.Fatalf("%s %s is not followed: %+v", item.method, item.path, route)
+		}
+	}
+	for _, item := range []struct{ method, path string }{
+		{http.MethodGet, "/api/v1/domains/3/ssl"},
+		{http.MethodGet, "/api/v1/domains/3/dns/records"},
+		{http.MethodGet, "/api/v1/domains/3/hosting"},
+		{http.MethodGet, "/api/v1/php/extended-config"},
+		{http.MethodPost, "/api/v1/malware/findings/4/other"},
+		{http.MethodPost, "/api/v1/malware/findings/x/delete"},
+		{http.MethodDelete, "/api/v1/users/someone"},
+		{http.MethodPut, "/api/v1/users/8"},
+		{http.MethodGet, "/api/v1/database-servers/7/admin-account"},
+		{http.MethodPost, "/api/v1/domains/3/dns/zone"},
+	} {
+		if route, ok := operationStepRouteFor(httptest.NewRequest(item.method, item.path, nil)); ok {
+			t.Fatalf("%s %s is guarded as %s", item.method, item.path, route.pattern)
+		}
+	}
+	if requestIdentityRouteSSLUpload.maxBody < maxCustomCertificateUploadBytes {
+		t.Fatal("a certificate upload larger than the default body would be refused")
+	}
+}
+
+// A DNS record change reports check, save and publish; a publish the DNS
+// server refused names the publish step.
+func TestDNSRecordChangeReportsItsSteps(t *testing.T) {
+	steps := recordOperationSteps(t)
+	p := newDNSPanelForTest(t)
+	setDNSIdentityForTest(t, p, "standalone")
+	seedStrictDNSZone(t, p, "biovision.health")
+	attachStrictDNSRPCAgent(t, p, &strictDNSRPCAgent{failZone: "biovision.health"})
+	handler := newRequestIdentityGuard(p.db.GetDB()).wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p.handleAddDNSRecord(w, r, "biovision.health")
+	}))
+	id := requestIdentityTestID(80)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, requestIdentityTestRequest("/api/v1/domains/1/dns/records",
+		`{"name":"api","type":"A","content":"192.0.2.10","ttl":300,"prio":0}`, id, requestIdentityTestAdmin()))
+	if got := steps(id); !reflect.DeepEqual(got, []string{"check", "save", "publish"}) {
+		t.Fatalf("steps=%v (status %d)", got, recorder.Code)
+	}
+	if recorder.Code < 400 || recorder.Header().Get(operationStepHeader) != "publish" {
+		t.Fatalf("refused publish: %d step=%q", recorder.Code, recorder.Header().Get(operationStepHeader))
+	}
+}
+
+// Deleting an account is one real step, reported under its identity.
+func TestAccountDeleteReportsItsStep(t *testing.T) {
+	steps := recordOperationSteps(t)
+	p := newDNSPanelForTest(t)
+	result, err := p.db.GetDB().Exec(`INSERT INTO users (username, password_hash, email, role) VALUES ('gone-owner', 'hash', 'gone@example.test', 'customer')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	userID, _ := result.LastInsertId()
+	target := accountDeleteTarget(t, p, int(userID))
+	handler := newRequestIdentityGuard(p.db.GetDB()).wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p.handleDeleteUser(w, r, target)
+	}))
+	id := requestIdentityTestID(81)
+	request := requestIdentityTestRequest(fmt.Sprintf("/api/v1/users/%d", userID), ``, id, requestIdentityTestAdmin())
+	request.Method = http.MethodDelete
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !reflect.DeepEqual(steps(id), []string{"delete"}) || recorder.Header().Get(operationStepHeader) != "delete" {
+		t.Fatalf("delete: %d steps=%v header=%q body=%s", recorder.Code, steps(id), recorder.Header().Get(operationStepHeader), recorder.Body.String())
+	}
+}

@@ -10,6 +10,7 @@ import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -217,11 +218,11 @@ export function DomainDatabaseManager({
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
         if (readOnly || list.remote.state !== 'known' || answer.holding) return;
         await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 try {
-                    const res = await fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, {
-                        method: 'DELETE'
-                    });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'dbDelete', ['check!', 'delete', 'records'], { name: db.name }), t, `dbDelete.${db.id}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, { method: 'DELETE', headers }));
 
                     if (res.ok) {
                         setRefusal(null);
