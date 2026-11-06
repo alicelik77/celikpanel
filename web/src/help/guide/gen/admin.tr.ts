@@ -151,7 +151,7 @@ const guide: GuideIndex = {
     [17,"destination","Uzak hedefler",""],
     [17,"schedules","Zamanlamalar ve geri yükleme",""],
     [17,"without-panel","CelikPanel olmadan",""],
-    [18,"","İzleme, denetim günlüğü ve bildirimler","islemci bellek disk yuk grafik denetim gunluk gecmis kim yapti bildirim uyari"],
+    [18,"","İzleme, denetim günlüğü ve bildirimler","islemci bellek disk yuk grafik denetim gunluk gecmis kim yapti bildirim uyari calisma suresi hizmetler posta"],
     [18,"monitoring","İzleme",""],
     [18,"audit","Denetim günlüğü",""],
     [18,"notices","Bildirimler",""],

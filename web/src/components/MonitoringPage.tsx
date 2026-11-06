@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Activity } from 'lucide-react';
-import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { PageHeader } from './PageHeader';
 import { RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
 import { ProblemsNow } from './ProblemsNow';
+import { AlertsSection, decodeSnapshots, useMonitoringWords, formatBytes, ServicesSection, SitesSection, SpikeNote, spikeMarks, type SpikeSnapshot } from './MonitoringDetail';
 
 // Server monitoring (operator request, 23 Jul: "we should have a monitoring
 // page"). The dashboard strip answers "how is it NOW"; this page answers
@@ -27,6 +27,15 @@ import { ProblemsNow } from './ProblemsNow';
 // ortalaması; sunucu aralık başına en çok 360 nokta (ortalama ve en yüksek)
 // gönderir; çizgi ortalama, soluk bant en yüksek değer; işlemci kartı kısa
 // tepeyi yalnız sözle söyler; aralıklar 1 saatten 30 güne.
+//
+// alpha.127 (stages 2 and 3, the same one screen): Alerts with their one
+// settings block under "Problems now"; network and disk throughput on the
+// load and disk cards; the busiest processes captured at a CPU or memory
+// spike under that chart, with a mark where it happened; the services and the
+// website checks below the charts.
+// alpha.127: "Şu anki sorunlar"ın altında uyarılar ve tek ayar bloğu; yük ve
+// disk kartlarında ağ ve disk hızı; ani yükte yakalanan en yoğun işlemler;
+// grafiklerin altında hizmetler ve site denetimleri.
 
 interface Point {
     ts: string;
@@ -40,12 +49,17 @@ interface Point {
     disk_total: number;
     load1: number;
     load1_max: number;
+    net_rx?: number;
+    net_tx?: number;
+    disk_read?: number;
+    disk_write?: number;
 }
 
 interface History {
     samples: Point[];
     latest: Point | null;
     vcpus: number;
+    snapshots: SpikeSnapshot[];
 }
 
 const RANGES = ['1h', '6h', '24h', '7d', '30d'] as const;
@@ -70,20 +84,24 @@ function decodePoint(raw: unknown): Point | null {
         disk_total: num(p.disk_total),
         load1: num(p.load1),
         load1_max: typeof p.load1_max === 'number' ? p.load1_max : num(p.load1),
+        net_rx: typeof p.net_rx === 'number' ? p.net_rx : undefined,
+        net_tx: typeof p.net_tx === 'number' ? p.net_tx : undefined,
+        disk_read: typeof p.disk_read === 'number' ? p.disk_read : undefined,
+        disk_write: typeof p.disk_write === 'number' ? p.disk_write : undefined,
     };
 }
 
 // An answer without the samples is not "no samples yet".
 // Örnekleri taşımayan yanıt "henüz örnek yok" değildir.
 function decodeHistory(raw: unknown): History {
-    const body = raw as { samples?: unknown; latest?: unknown; vcpus?: unknown } | null;
+    const body = raw as { samples?: unknown; latest?: unknown; vcpus?: unknown; process_snapshots?: unknown } | null;
     if (!body || typeof body !== 'object' || !Array.isArray(body.samples)) throw new Error('shape');
     const samples = body.samples.map(decodePoint).filter((p): p is Point => p !== null);
-    return { samples, latest: decodePoint(body.latest), vcpus: num(body.vcpus) };
+    return { samples, latest: decodePoint(body.latest), vcpus: num(body.vcpus), snapshots: decodeSnapshots(body.process_snapshots) };
 }
 
 export function MonitoringPage() {
-    const { t } = useI18n();
+    const { t } = useMonitoringWords();
     const [range, setRange] = useState<Range>('24h');
     // One address per range. The page reads again every minute; a read that
     // fails keeps the charts it had, under a notice that says when they were
@@ -112,6 +130,8 @@ export function MonitoringPage() {
             />
 
             <ProblemsNow here="/monitoring" />
+
+            <AlertsSection />
 
             <div className="mb-4 flex flex-wrap items-center gap-1" role="group" aria-label={t('nav.monitoring')}>
                 {RANGES.map((key) => (
@@ -154,6 +174,9 @@ export function MonitoringPage() {
                     const shortPeak = peaks.length > 0 ? Math.max(...peaks) : undefined;
                     const loadMax = samples.map((s) => s.load1_max);
                     const loadScale = Math.max(1, ...loadMax) * 1.15;
+                    const rate = (n?: number) => (typeof n === 'number' ? formatBytes(n) : '–');
+                    const first = samples[0].ts;
+                    const lastTs = samples[samples.length - 1].ts;
                     return (
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                             <MetricChart
@@ -169,7 +192,10 @@ export function MonitoringPage() {
                                 ]}
                                 hint={value.vcpus > 0 ? t('monitoring.cpuHint', { n: value.vcpus }) : undefined}
                                 stroke="var(--color-primary, #3b82f6)"
-                            />
+                                marks={spikeMarks(value.snapshots, 'cpu', first, lastTs)}
+                            >
+                                <SpikeNote snapshots={value.snapshots} reason="cpu" />
+                            </MetricChart>
                             <MetricChart
                                 title={t('monitoring.memory')}
                                 average={samples.map((s) => pctOf(s.mem_used, s.mem_total))}
@@ -178,13 +204,19 @@ export function MonitoringPage() {
                                 current={`${pct(pctOf(last.mem_used, last.mem_total))} · ${fmtGB(last.mem_used)} / ${fmtGB(last.mem_total)}`}
                                 footer={[t('monitoring.highest', { value: pct(Math.max(...samples.map((s) => pctOf(s.mem_used_max, s.mem_total)))) })]}
                                 stroke="#8b5cf6"
-                            />
+                                marks={spikeMarks(value.snapshots, 'memory', first, lastTs)}
+                            >
+                                <SpikeNote snapshots={value.snapshots} reason="memory" />
+                            </MetricChart>
                             <MetricChart
                                 title={t('monitoring.disk')}
                                 average={samples.map((s) => pctOf(s.disk_used, s.disk_total))}
                                 max={100}
                                 current={`${pct(pctOf(last.disk_used, last.disk_total))} · ${fmtGB(last.disk_used)} / ${fmtGB(last.disk_total)}`}
-                                footer={[t('monitoring.highest', { value: pct(Math.max(...samples.map((s) => pctOf(s.disk_used, s.disk_total)))) })]}
+                                footer={[
+                                    t('monitoring.highest', { value: pct(Math.max(...samples.map((s) => pctOf(s.disk_used, s.disk_total)))) }),
+                                    last.disk_read !== undefined || last.disk_write !== undefined ? t('mmach.diskIO', { r: rate(last.disk_read), w: rate(last.disk_write) }) : '',
+                                ]}
                                 stroke="#f59e0b"
                             />
                             <MetricChart
@@ -193,13 +225,19 @@ export function MonitoringPage() {
                                 highest={loadMax}
                                 max={loadScale}
                                 current={last.load1.toFixed(2)}
-                                footer={[t('monitoring.highest', { value: Math.max(...loadMax).toFixed(2) })]}
+                                footer={[
+                                    t('monitoring.highest', { value: Math.max(...loadMax).toFixed(2) }),
+                                    last.net_rx !== undefined || last.net_tx !== undefined ? t('mmach.net', { rx: rate(last.net_rx), tx: rate(last.net_tx) }) : '',
+                                ]}
                                 stroke="#10b981"
                             />
                         </div>
                     );
                 }}
             </RemoteGate>
+
+            <ServicesSection />
+            <SitesSection />
         </div>
     );
 }
@@ -221,6 +259,8 @@ function MetricChart({
     footer,
     hint,
     stroke,
+    marks = [],
+    children,
 }: {
     title: string;
     badge?: string;
@@ -231,6 +271,9 @@ function MetricChart({
     footer: string[];
     hint?: string;
     stroke: string;
+    /** Where a spike snapshot was taken, 0..1 along the chart. */
+    marks?: number[];
+    children?: ReactNode;
 }) {
     const W = 100;
     const H = 40;
@@ -258,11 +301,15 @@ function MetricChart({
                 {band && <path d={band} fill={stroke} opacity="0.18" />}
                 <path d={area} fill={stroke} opacity="0.12" />
                 <path d={line} fill="none" stroke={stroke} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+                {marks.map((m) => (
+                    <line key={m} x1={m * W} x2={m * W} y1={0} y2={H} stroke="currentColor" className="text-fg-subtle" strokeDasharray="1 1" strokeWidth="0.6" vectorEffect="non-scaling-stroke" data-spike-mark="" />
+                ))}
             </svg>
             <div className="mt-1 flex flex-wrap justify-between gap-x-3 text-xs text-fg-subtle">
                 {footer.filter(Boolean).map((text) => <span key={text}>{text}</span>)}
             </div>
             {hint && <p className="mt-2 text-xs leading-5 text-fg-subtle">{hint}</p>}
+            {children}
         </div>
     );
 }

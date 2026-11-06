@@ -5,7 +5,7 @@ import { ServerSetupDashboardNotice } from './ServerSetupGate';
 import { LicenseNotice } from './LicenseNotice';
 import { DashboardUpdateNotice } from './PanelUpdateNotice';
 import { PendingUpdatesCard } from './PendingUpdatesCard';
-import { ProblemsNow } from './ProblemsNow';
+import { AlertsNotice, ProblemsNow } from './ProblemsNow';
 import { ServerHostnameNotice } from './ServerHostnameNotice';
 import { accountStart } from '../lib/startGuidance';
 import {
@@ -994,6 +994,7 @@ function AdminDashboard() {
 
             {/* alpha.126: problems now (disk, sustained load, mail queue) at
                 the top, each with its fix; nothing when there is none. */}
+            <AlertsNotice />
             <ProblemsNow omit={DASHBOARD_SHOWS_ELSEWHERE} quiet />
 
             {/* A newer signed release, when the Panel found one: one quiet row
