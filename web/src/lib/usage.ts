@@ -60,7 +60,11 @@ export function decodeUsageNotices(raw: unknown): UsageNotice[] {
 
 /** The measurement state of the administrator's status answer. */
 export interface UsageStatus {
-    traffic: { last_collected?: string; error?: string; logrotate?: string; unknown: Record<string, number>; measuring: number; interval_minutes: number };
+    traffic: {
+        last_collected?: string; error?: string; logrotate?: string; unknown: Record<string, number>; measuring: number; interval_minutes: number;
+        /** The websites not counted, by name, when the server names them (alpha.126). */
+        unknown_sites: { domain: string; reason: string }[];
+    };
     disk: { measured: number; unknown: number; not_measured: number; low_space: boolean; interval_hours: number };
     mail_quota: { state: string; dialect?: string; detail?: string; error?: string };
 }
@@ -72,10 +76,17 @@ export function decodeUsageStatus(raw: unknown): UsageStatus {
     if (isRecord(traffic.unknown)) {
         for (const [reason, n] of Object.entries(traffic.unknown)) unknown[reason] = num(n);
     }
+    // The names are read when present; an entry that is not the contract is
+    // left out, and the counts above still say how many are not counted.
+    const unknownSites = Array.isArray(traffic.unknown_sites)
+        ? traffic.unknown_sites.flatMap((entry) => (isRecord(entry) && str(entry.domain)
+            ? [{ domain: entry.domain as string, reason: typeof entry.reason === 'string' ? entry.reason : '' }]
+            : []))
+        : [];
     return {
         traffic: {
             last_collected: str(traffic.last_collected), error: str(traffic.error), logrotate: str(traffic.logrotate),
-            unknown, measuring: num(traffic.measuring), interval_minutes: num(traffic.interval_minutes) || 5,
+            unknown, measuring: num(traffic.measuring), interval_minutes: num(traffic.interval_minutes) || 5, unknown_sites: unknownSites,
         },
         disk: {
             measured: num(raw.disk.measured), unknown: num(raw.disk.unknown), not_measured: num(raw.disk.not_measured),
