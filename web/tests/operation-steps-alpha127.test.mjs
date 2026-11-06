@@ -210,6 +210,8 @@ test('application install and WordPress steps follow the durable status', async 
       export const phpExtensionsInstallPath = '';
       export const SiteToolGuidance = () => null;
       export const sendSiteTool = async () => new Response('{}');
+      // alpha.127 (admin next step): WordPress tools link the administrator to PHP-FPM.
+      export const AdminInstallLink = (props) => props.fallback ?? null;
     `);
     const layer = sharedLayer(appStub);
     const apps = await import(layer.compile('components/DomainAppsPanel.tsx'));
