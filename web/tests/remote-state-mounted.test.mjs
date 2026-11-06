@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
@@ -179,16 +179,16 @@ const MonitoringPage = await load('MonitoringPage');
 const ServiceShell = await load('ServiceShell');
 const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`), '/SecurityEmergency': stub });
 const ServiceRecordLookup = await load('ServiceRecordLookup');
-const DomainDetailByName = (await import(shared.compile('components/DomainDetail.tsx', {
+// The Databases tab is lazy since alpha.127: the shipped module stands in.
+const DomainDetailByName = (await import(replaceLazyImport(shared.compile('components/DomainDetail.tsx', {
   ...own,
   '/DomainFileManager': fileManagerURL,
   '/DomainSSLSettings': sslSettingsURL,
   '/DomainConnection': shared.compile('components/DomainConnection.tsx', own),
-  '/DomainDatabaseManager': shared.compile('components/DomainDatabaseManager.tsx', own),
   '/DomainDNSManager': shared.compile('components/DomainDNSManager.tsx', own),
   '/DomainPHPSettings': shared.compile('components/DomainPHPSettings.tsx', own),
   '/HostingTypePanel': shared.compile('components/HostingTypePanel.tsx', own),
-}))).DomainDetailByName;
+}), './DomainDatabaseManager', shared.compile('components/DomainDatabaseManager.tsx', own)))).DomainDetailByName;
 
 // --- What the server answers when nothing is wrong ----------------------------
 const caps = (overrides = {}) => ({

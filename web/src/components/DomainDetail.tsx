@@ -10,7 +10,6 @@ import { DomainGeneralSettings } from './DomainGeneralSettings';
 import { DomainSSLSettings, decodeSSLData, type SSLRuntimeSummary } from './DomainSSLSettings';
 import { DomainSSLOverviewCard } from './DomainSSLOverviewCard';
 import { DomainConnection } from './DomainConnection';
-import { DomainDatabaseManager } from './DomainDatabaseManager';
 import { DomainFileManager } from './DomainFileManager';
 import { DomainMailManager } from './DomainMailManager';
 import { DomainDNSManager } from './DomainDNSManager';
@@ -59,6 +58,13 @@ const DomainBackupManager = lazy(() => import('./DomainBackupManager').then((mod
 })));
 const DomainCronManager = lazy(() => import('./DomainCronManager').then((module) => ({
     default: module.DomainCronManager,
+})));
+// The Databases tab is fetched when it is opened (alpha.127): the merged
+// alpha.127 work put the page 0.40 KiB over its size limit, and the limit is
+// not raised. The tab content already waits inside one Suspense boundary.
+// Veritabanları sekmesi açıldığında getirilir; sayfa sınırı yükseltilmez.
+const DomainDatabaseManager = lazy(() => import('./DomainDatabaseManager').then((module) => ({
+    default: module.DomainDatabaseManager,
 })));
 const DomainLogsViewer = lazy(() => import('./DomainLogsViewer').then((module) => ({
     default: module.DomainLogsViewer,
