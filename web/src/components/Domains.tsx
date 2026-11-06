@@ -4,13 +4,14 @@ import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network }
 import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
 import { KeptSiteRecords } from './KeptSiteRecords';
 import { showToast } from './Toast';
+import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { useI18n } from '../i18n';
-import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, Spinner, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { DNSCheckToolNotice } from './DNSCheckToolNotice';
-import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
+import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
@@ -89,7 +90,18 @@ interface PendingDeletion {
     message: string | null;
     // CelikPanel takes the next step by itself: the page reads again.
     automatic?: boolean;
+    // CelikPanel carries on by itself: no second delete is sent for it.
+    blocksRetry?: boolean;
+    // The whole sentence is "nothing to do": said in one line.
+    quiet?: boolean;
 }
+
+// What a pending reason means for the row and the banner.
+const pendingFlags = (reason: string) => ({
+    automatic: domainDeletionReasonAutomatic(reason),
+    blocksRetry: domainDeletionBlocksRetry(reason),
+    quiet: domainDeletionQuiet(reason),
+});
 
 const HIDDEN_INVALID_ACCESS = 'One or more domains were hidden because their access information was invalid. / Bir veya daha fazla alan adı, erişim bilgisi geçersiz olduğu için gizlendi.';
 
@@ -270,7 +282,7 @@ export function Domains() {
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail),
-                automatic: domainDeletionReasonAutomatic(saved.saved.reason),
+                ...pendingFlags(saved.saved.reason),
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
@@ -300,38 +312,254 @@ export function Domains() {
         return () => window.clearTimeout(timer);
     }, [autoRecheck, listedAt]);
 
+    // A domain is "being deleted" while its delete request is on its way, and
+    // while the server says CelikPanel carries the deletion on by itself. Its
+    // row then offers no delete, no settings and no selection, and a re-press
+    // can never send a second delete (owner report 6 Nov 2026).
+    // Silme istegi yoldayken ve sunucu silmeyi CelikPanel kendisi surdururken
+    // alan adi "siliniyor"dur; ikinci silme gonderilmez.
+    const [deleting, setDeleting] = useState<number[]>([]);
+    const inFlight = useRef(new Set<number>());
+    const beingDeleted = (id: number) =>
+        deleting.includes(id) || pendingDeletions.some((item) => item.id === id && item.blocksRetry);
+
+    // The question names the domain and what goes with it. Once confirmed the
+    // same window shows the deletion's steps, locked, until it ends: this
+    // server's part, the DNS servers' part with what it waits for, and the
+    // finish (owner's firm order, 6 Nov 2026). It only reads the deletion's
+    // saved state while it waits; it never sends a second delete.
+    // Soru alan adini ve onunla gideni soyler; onaydan sonra ayni pencere
+    // silmenin adimlarini kilitli gosterir. Beklerken yalniz okur.
     const handleDelete = async (id: number, name: string) => {
-        if (!listCurrent) return;
-        if (!confirm(t('domains.confirmDelete', { name }))) return;
-        await deleteDomain(id, name);
+        if (!listCurrent || beingDeleted(id)) return;
+        await confirmAction({
+            title: t('domains.deleteTitle', { name }),
+            message: t('domains.deleteWhat'),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+            progressTitle: t('domains.deletingTitle', { name }),
+            action: (report) => deleteAndFollow(id, name, report),
+        });
     };
 
     // One confirmation for a bulk delete, naming the count and the domains;
-    // then each is deleted in turn, each with its own outcome.
-    // Toplu silmede tek onay: sayi ve adlar; sonra her biri sirayla silinir.
-    const handleBulkDelete = async (rows: Domain[]) => {
+    // then each is deleted in turn, one step each, each with its own outcome.
+    // Toplu silmede tek onay: sayi ve adlar; sonra her biri sirayla, birer adim.
+    const handleBulkDelete = async (picked: Domain[]) => {
+        const rows = picked.filter((row) => !beingDeleted(row.id));
         if (!listCurrent || rows.length === 0) return;
-        const question = rows.length === 1
-            ? t('domains.confirmDelete', { name: rows[0].domain_name })
-            : t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') });
-        if (!confirm(question)) return;
-        for (const row of rows) await deleteDomain(row.id, row.domain_name);
+        if (rows.length === 1) {
+            await handleDelete(rows[0].id, rows[0].domain_name);
+            return;
+        }
+        await confirmAction({
+            title: t('domains.bulkDeleteTitle', { n: rows.length }),
+            message: t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') }),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+            progressTitle: t('domains.bulkDeletingTitle', { n: rows.length }),
+            action: async (report) => {
+                const steps: OperationStep[] = rows.map((row) => ({ id: String(row.id), label: row.domain_name, state: 'pending' }));
+                const show = (index: number, step: Partial<OperationStep>) => {
+                    steps[index] = { ...steps[index], ...step };
+                    report.steps([...steps]);
+                };
+                let unfinished = 0;
+                for (const [index, row] of rows.entries()) {
+                    show(index, { state: 'running', since: Date.now() });
+                    const result = await deleteDomain(row.id, row.domain_name);
+                    if (result.kind === 'done') {
+                        show(index, { state: 'done', note: result.note });
+                    } else {
+                        unfinished++;
+                        show(index, result.kind === 'pending' && domainDeletionBlocksRetry(result.reason)
+                            ? { state: 'waiting', note: t('domains.step.continuesAlone') }
+                            : { state: 'failed', note: deleteResultText(result) });
+                    }
+                }
+                return unfinished === 0 ? { state: 'done' } : { state: 'blocked', reason: t('domains.bulkUnfinished', { n: unfinished }) };
+            },
+        });
     };
 
-    const deleteDomain = async (id: number, name: string) => {
+    // A deletion still running after a reload, or one this page just learnt
+    // of, is followed in the same locked window: the page is not free while
+    // CelikPanel carries it on by itself.
+    // Yeniden yuklemeden sonra hala suren silme ayni kilitli pencerede izlenir.
+    const followed = useRef(new Set<number>());
+    // A page that is gone stops reading (its window ends with it).
+    const alive = useRef(true);
+    useEffect(() => () => { alive.current = false; }, []);
+    useEffect(() => {
+        const active = pendingDeletions.find((item) => item.blocksRetry && !followed.current.has(item.id) && !inFlight.current.has(item.id));
+        if (!active) return;
+        followed.current.add(active.id);
+        void followOperation({
+            progressTitle: t('domains.deletingTitle', { name: active.name }),
+            tone: 'danger',
+            action: (report) => followDeletion(active.id, active.name, report, Date.now()),
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingDeletions]);
+
+    type DeleteResult =
+        | { kind: 'done'; note?: string }
+        | { kind: 'pending'; reason: string; detail?: string; stage: string }
+        | { kind: 'failed'; text: string }
+        | { kind: 'unknown' };
+
+    const deleteResultText = (result: DeleteResult) =>
+        result.kind === 'failed' ? result.text
+            : result.kind === 'pending' ? pendingMessage(result.reason, result.detail)
+                : result.kind === 'unknown' ? t('common.resultUnknown') : '';
+
+    const deleteDomain = async (id: number, name: string): Promise<DeleteResult> => {
+        // Never two delete requests for one domain at a time.
+        if (inFlight.current.has(id)) return { kind: 'pending', reason: 'deletion_running', stage: 'running' };
+        inFlight.current.add(id);
+        followed.current.add(id);
+        setDeleting((current) => [...current, id]);
+        try {
+            return await sendDelete(id, name);
+        } finally {
+            inFlight.current.delete(id);
+            setDeleting((current) => current.filter((item) => item !== id));
+        }
+    };
+
+    // The steps of a deletion, in the server's order. While this server's
+    // request runs the server names no sub-step, so one step says what it is
+    // doing; once the server names the stage the deletion is at (or stopped
+    // at), each step is shown with its own state (Go: DELETE and
+    // deletion-status answer with `stage`).
+    // Silmenin adimlari sunucunun sirasiyla; sunucu asamayi bildirince her
+    // adim kendi durumuyla gosterilir.
+    const STEP_ORDER = ['mail', 'site', 'dns', 'certificates', 'finish'] as const;
+    const STAGE_STEP: Record<string, (typeof STEP_ORDER)[number]> = {
+        mail_tls_cleanup: 'mail', mail_runtime_cleanup: 'mail', site_cleanup: 'site', dns_cleanup: 'dns',
+        certificate_cleanup: 'certificates', ledger_delete: 'finish', dns_removed: 'finish',
+    };
+    const requestSteps = (name: string, since: number): OperationStep[] => [
+        { id: 'request', label: t('domains.step.request', { name }), state: 'running', since },
+        { id: 'finish', label: t('domains.step.finish'), state: 'pending' },
+    ];
+    const deletionSteps = (name: string, stage: string, reason: string, since: number, failed = false): OperationStep[] => {
+        const waitNote: Record<string, string> = {
+            remote_dns_removal_confirming: t('domains.step.note.confirming'),
+            dns_peer_catching_up: t('domains.step.note.catchingUp'),
+            remote_dns_main_unreachable: t('domains.step.note.mainUnreachable'),
+        };
+        // The joined server's DNS removal is done once the main server confirmed it.
+        const step = reason === 'remote_dns_removed_finishing' ? 'finish' : STAGE_STEP[stage];
+        if (!step) return requestSteps(name, since);
+        const at = STEP_ORDER.indexOf(step);
+        const labels = {
+            mail: t('domains.step.mail'),
+            site: t('domains.step.site'),
+            dns: t('domains.step.dns', { name }),
+            certificates: t('domains.step.certificates'),
+            finish: t('domains.step.finish'),
+        };
+        const current: OperationStep['state'] = failed ? 'failed' : waitNote[reason] ? 'waiting' : 'running';
+        return STEP_ORDER.map((id, index) => ({
+            id,
+            label: labels[id],
+            state: index < at ? 'done' : index > at ? 'pending' : current,
+            ...(index === at ? { since, note: failed ? undefined : waitNote[reason] } : {}),
+        }));
+    };
+
+    // How long the window stays locked on a deletion that waits for another
+    // server; past it, the window says the deletion continues by itself and
+    // can be closed (the row keeps saying "Being deleted").
+    const FOLLOW_LIMIT_MS = 10 * 60_000;
+
+    // How a pending answer ends the window when CelikPanel does not carry it
+    // on by itself: the step it stopped at is marked, and the reason (who
+    // acts, the next step) is said.
+    const pendingEnd = (name: string, report: OperationReport, stage: string, reason: string, detail: string | undefined, since: number): OperationEnd => {
+        report.steps(deletionSteps(name, stage, reason, since, true));
+        return { state: reason ? 'failed' : 'unknown', reason: pendingMessage(reason, detail) };
+    };
+
+    // Reads the deletion's saved state every 3 s until it ends. Reads only.
+    const followDeletion = async (id: number, name: string, report: OperationReport, startedAt: number): Promise<OperationEnd> => {
+        let last = '';
+        let stepSince = Date.now();
+        let unknownSince: number | null = null;
+        for (;;) {
+            if (!alive.current) return { state: 'blocked', reason: t('domains.step.continuesAlone') };
+            const saved = await readSavedDomainDeletionWithStage(id);
+            if (saved.state === 'gone') {
+                pendingReadEpoch.current++;
+                setPendingDeletions((current) => current.filter((item) => item.id !== id));
+                report.steps(deletionSteps(name, 'ledger_delete', '', 0).map((step) => ({ ...step, state: 'done' })));
+                changed();
+                return { state: 'done', message: t('domains.deleted', { name }) };
+            }
+            if (saved.state === 'unknown') {
+                unknownSince ??= Date.now();
+                if (Date.now() - unknownSince > 60_000) {
+                    changed();
+                    return { state: 'unknown', reason: t('domains.step.unread', { name }) };
+                }
+            } else {
+                unknownSince = null;
+                if (saved.saved === null) {
+                    // No deletion is recorded and the domain is still here.
+                    changed();
+                    return { state: 'unknown', reason: t('domains.step.stopped', { name }) };
+                }
+                const { reason, detail } = saved.saved;
+                if (`${saved.stage}/${reason}` !== last) {
+                    last = `${saved.stage}/${reason}`;
+                    stepSince = Date.now();
+                }
+                if (!domainDeletionBlocksRetry(reason)) {
+                    changed();
+                    return pendingEnd(name, report, saved.stage, reason, detail, stepSince);
+                }
+                report.steps(deletionSteps(name, saved.stage, reason, stepSince));
+                if (Date.now() - startedAt > FOLLOW_LIMIT_MS) {
+                    changed();
+                    return { state: 'blocked', reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
+                }
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 3000));
+        }
+    };
+
+    const deleteAndFollow = async (id: number, name: string, report: OperationReport): Promise<OperationEnd> => {
+        const startedAt = Date.now();
+        report.steps(requestSteps(name, startedAt));
+        const result = await deleteDomain(id, name);
+        if (result.kind === 'done') {
+            report.steps(deletionSteps(name, 'ledger_delete', '', startedAt).map((step) => ({ ...step, state: 'done' })));
+            return { state: 'done', message: result.note ?? t('domains.deleted', { name }) };
+        }
+        if (result.kind === 'failed') return { state: 'failed', reason: result.text };
+        if (result.kind === 'unknown') return { state: 'unknown', reason: t('common.resultUnknown') };
+        if (!domainDeletionBlocksRetry(result.reason)) return pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now());
+        report.steps(deletionSteps(name, result.stage, result.reason, Date.now()));
+        return followDeletion(id, name, report, startedAt);
+    };
+
+    const sendDelete = async (id: number, name: string): Promise<DeleteResult> => {
         try {
             const res = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
+            const stage = await readDomainDeletionStage(res);
             const outcome = await readDomainDeletionOutcome(res);
             if (outcome.state === 'pending') {
                 const message = pendingMessage(outcome.reason, outcome.detail);
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
-                    { id, name, message, automatic: domainDeletionReasonAutomatic(outcome.reason) },
+                    { id, name, message, ...pendingFlags(outcome.reason) },
                 ]);
-                showToast('warning', message);
+                // No toast: the window and the banner above the list say it.
+                setSelected((s) => s.filter((x) => x !== id));
                 changed();
-                return;
+                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage };
             }
             if (outcome.state === 'error') {
                 // The refusal and its fix stay at the top of the list until the
@@ -339,7 +567,7 @@ export function Domains() {
                 const apiError = await readApiError(res);
                 setDeleteRefusal(apiError);
                 showToast('error', refusalText(apiError, t, 'domains.deleteFailed'), refusalToast(apiError, t, navigate));
-                return;
+                return { kind: 'failed', text: refusalText(apiError, t, 'domains.deleteFailed') };
             }
             setDeleteRefusal(null);
             pendingReadEpoch.current++;
@@ -347,21 +575,18 @@ export function Domains() {
             // A DKIM key or table line CelikPanel did not make was kept, or
             // the key could not be removed: said, with what the owner does.
             const dkim = await readDomainDeletionDKIM(res);
-            if (dkim?.failed) {
-                showToast('warning', t('domains.deletedDKIMFailed', { name }));
-            } else if (dkim?.keptKey) {
-                showToast('warning', t('domains.deletedDKIMKept', { name, path: dkim.keptKey }));
-            } else if (dkim?.ownerLines) {
-                showToast('warning', t('domains.deletedDKIMLines', { name }));
-            } else {
-                showToast('success', t('domains.deleted', { name }));
-            }
+            const note = dkim?.failed
+                ? t('domains.deletedDKIMFailed', { name })
+                : dkim?.keptKey
+                    ? t('domains.deletedDKIMKept', { name, path: dkim.keptKey })
+                    : dkim?.ownerLines ? t('domains.deletedDKIMLines', { name }) : undefined;
             setSelected((s) => s.filter((x) => x !== id));
             changed();
+            return { kind: 'done', note };
         } catch {
             // No answer: it is not known whether the domain was deleted; the list is read again.
-            showToast('error', t('common.resultUnknown'));
             changed();
+            return { kind: 'unknown' };
         }
     };
 
@@ -421,6 +646,12 @@ export function Domains() {
                     busy={list.reading}
                 />
             ) : (
+                pending.quiet ? (
+                <p key={pending.id} role="status" className="mb-4 flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-domain-being-deleted={pending.name}>
+                    <Spinner size="xs" />
+                    {t('domains.beingDeletedLine', { name: pending.name })}
+                </p>
+            ) : (
                 <div key={pending.id} role="status" className="mb-4 rounded-lg border border-warning bg-warning/10 p-4 text-sm text-fg">
                     <p className="font-semibold">{t('domains.deletionWaiting', { name: pending.name })}</p>
                     <p className="mt-1">{pending.message}</p>
@@ -428,7 +659,7 @@ export function Domains() {
                         {t('domains.checkDeletionStatus')}
                     </Button>
                 </div>
-            )))}
+            ))))}
 
             <RemoteGate
                 remote={list.remote}
@@ -479,7 +710,7 @@ export function Domains() {
                                 <Button
                                     variant="danger"
                                     icon={Trash2}
-                                    disabled={shown.stale}
+                                    disabled={shown.stale || filtered.every((d) => !selected.includes(d.id) || beingDeleted(d.id))}
                                     onClick={() => void handleBulkDelete(filtered.filter((d) => selected.includes(d.id)))}
                                 >
                                     {t('common.remove')} ({selected.length})
@@ -524,7 +755,7 @@ export function Domains() {
                                             checked={allSelected}
                                             disabled={shown.stale}
                                             onChange={() =>
-                                                setSelected(allSelected ? [] : filtered.map((d) => d.id))
+                                                setSelected(allSelected ? [] : filtered.filter((d) => !beingDeleted(d.id)).map((d) => d.id))
                                             }
                                             className="h-4 w-4 accent-primary"
                                         />
@@ -544,7 +775,7 @@ export function Domains() {
                                             <input
                                                 type="checkbox"
                                                 checked={selected.includes(d.id)}
-                                                disabled={shown.stale}
+                                                disabled={shown.stale || beingDeleted(d.id)}
                                                 onChange={() =>
                                                     setSelected((s) =>
                                                         s.includes(d.id) ? s.filter((x) => x !== d.id) : [...s, d.id],
@@ -611,10 +842,17 @@ export function Domains() {
                                             {canView(d, 'statistics') ? `${fmtBytes(d.bandwidth)}/mo` : '—'}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="inline-flex items-center gap-1.5 text-fg-muted">
-                                                <StatusDot ok={d.status === 'active'} />
-                                                {d.status === 'active' ? t('domains.status.active') : d.status}
-                                            </span>
+                                            {beingDeleted(d.id) ? (
+                                                <span className="inline-flex items-center gap-1.5 text-fg-muted" data-domain-row-deleting="">
+                                                    <Spinner size="xs" />
+                                                    {t('domains.status.beingDeleted')}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-fg-muted">
+                                                    <StatusDot ok={d.status === 'active'} />
+                                                    {d.status === 'active' ? t('domains.status.active') : d.status}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="row-actions px-4 py-3">
                                             <div className="flex items-center justify-end gap-0.5">
@@ -629,14 +867,15 @@ export function Domains() {
                                                         navigate(`/domains/${encodeURIComponent(d.domain_name)}`)
                                                     }
                                                     title={t('domains.action.manage')}
+                                                    disabled={beingDeleted(d.id)}
                                                 >
                                                     <Settings className="h-4 w-4" />
                                                 </IconAction>
                                                 {!isTeamMember && <IconAction
                                                     onClick={() => handleDelete(d.id, d.domain_name)}
-                                                    title={t('domains.action.delete')}
+                                                    title={beingDeleted(d.id) ? t('domains.status.beingDeleted') : t('domains.action.delete')}
                                                     danger
-                                                    disabled={shown.stale}
+                                                    disabled={shown.stale || beingDeleted(d.id)}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </IconAction>}

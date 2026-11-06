@@ -9,6 +9,7 @@ import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -215,28 +216,28 @@ export function DomainDatabaseManager({
 
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
         if (readOnly || list.remote.state !== 'known' || answer.holding) return;
-        if (!confirm(t('ddb.confirmDelete', { name: db.name }))) {
-            return;
-        }
+        await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, {
+                        method: 'DELETE'
+                    });
 
-        try {
-            const res = await fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                setRefusal(null);
-                showToast('success', t('ddb.deleted', { name: db.name }));
-                invalidate('databases');
-            } else {
-                // The server's reason (a user that still has grants…) is kept, on the page too.
-                refuse(await readApiError(res), 'ddb.deleteFailed');
-            }
-        } catch {
-            // No answer: whether it was deleted is not known; the list is read again.
-            showToast('error', t('common.resultUnknown'));
-            invalidate('databases');
-        }
+                    if (res.ok) {
+                        setRefusal(null);
+                        showToast('success', t('ddb.deleted', { name: db.name }));
+                        invalidate('databases');
+                    } else {
+                        // The server's reason (a user that still has grants…) is kept, on the page too.
+                        refuse(await readApiError(res), 'ddb.deleteFailed');
+                    }
+                } catch {
+                    // No answer: whether it was deleted is not known; the list is read again.
+                    showToast('error', t('common.resultUnknown'));
+                    invalidate('databases');
+                }
+            },
+        });
     };
 
     return (

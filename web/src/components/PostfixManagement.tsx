@@ -9,6 +9,7 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
 import { PasswordlessMailNotice } from './PasswordlessMailNotice';
+import { confirmAction } from '../lib/confirmAction';
 
 interface PostfixManagementProps {
     onBack: () => void;
@@ -74,24 +75,27 @@ export function PostfixManagement({ onBack }: PostfixManagementProps) {
         if (!known) return;
         const msg =
             action === 'flush' ? t('postfix.confirmFlush') : action === 'delete_all' ? t('postfix.confirmDeleteAll') : t('postfix.confirmDelete', { id: id ?? '' });
-        if (!confirm(msg)) return;
-        setActing(true);
-        try {
-            const res = await fetch('/api/v1/postfix/queue', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, id }),
-            });
-            // The action is done only when the server says so.
-            // Eylem, ancak sunucu söylediğinde yapılmıştır.
-            if (!res.ok) showToast('error', apiErrorText(await readApiError(res), t, 'postfix.actionFailed'));
-            else showToast('success', t('postfix.done'));
-        } catch {
-            showToast('error', t('postfix.actionFailed'));
-        } finally {
-            setActing(false);
-            void queue.retry();
-        }
+        await confirmAction({ message: msg, tone: 'danger',
+            action: async () => {
+                setActing(true);
+                try {
+                    const res = await fetch('/api/v1/postfix/queue', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action, id }),
+                    });
+                    // The action is done only when the server says so.
+                    // Eylem, ancak sunucu söylediğinde yapılmıştır.
+                    if (!res.ok) showToast('error', apiErrorText(await readApiError(res), t, 'postfix.actionFailed'));
+                    else showToast('success', t('postfix.done'));
+                } catch {
+                    showToast('error', t('postfix.actionFailed'));
+                } finally {
+                    setActing(false);
+                    void queue.retry();
+                }
+            },
+        });
     };
 
     const count = (status: string) => (known ?? []).filter((item) => item.status === status).length;

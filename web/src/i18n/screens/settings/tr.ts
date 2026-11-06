@@ -225,6 +225,7 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'team.actionFailed': 'Ekip üyesi işlemi başarısız oldu.',
 
     'plans.add': 'Plan ekle',
+    'plans.deleteConfirm': '"{name}" hizmet planı silinsin mi?',
     'plans.col.name': 'Plan',
     'plans.col.domains': 'Domain',
     'plans.col.databases': 'Veritabanı',
@@ -343,6 +344,7 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'addons.admin.saved': 'Katalog öğesi kaydedildi.',
     'addons.admin.noChanges': 'Katalog öğesi zaten günceldi.',
     'addons.admin.discardConfirm': 'Kaydedilmemiş katalog değişiklikleri silinsin mi?',
+    'addons.admin.discard': 'Değişiklikleri at',
     'addons.admin.sqliteTitle': 'Tek panel SQLite veritabanı',
     'addons.admin.sqliteHint': 'Mağaza teklifleri, bileşen bağları ve abonelik hakları panel veritabanında tutulur ve bu tipli admin arayüzünden değiştirilir.',
     'addons.admin.releaseSeedHint': 'Yeni operasyonel ürünler yalnız imzalı CelikPanel sürümleriyle eklenir. Yöneticiler burada sunum bilgilerini ve bileşen bağlarını düzenleyebilir veya yayımdaki bir teklifi emekliye ayırabilir; tarayıcı çalıştırılabilir reçete oluşturamaz ya da yayımlayamaz.',

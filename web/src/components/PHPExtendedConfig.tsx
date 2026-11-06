@@ -3,6 +3,9 @@ import { Save, RefreshCw } from 'lucide-react';
 import { Checking, CouldNotCheck } from './ui';
 import { useI18n } from '../i18n';
 import { readRemote } from '../lib/remote';
+import { apiErrorText, readApiError } from '../lib/apiError';
+import { confirmAction } from '../lib/confirmAction';
+import { showToast } from './Toast';
 
 interface ExtendedPHPConfig {
     // Performance & Security
@@ -76,30 +79,33 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
 
     const handleSave = async () => {
         if (!config) return;
-        if (!confirm(`Apply changes to php.ini for PHP ${version}?`)) return;
+        await confirmAction({ message: t('php.ini.applyConfirm', { version }),
+            action: async () => {
 
-        setSaving(true);
-        try {
-            const res = await fetch('/api/v1/php/extended-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    version,
-                    config
-                })
-            });
+                setSaving(true);
+                try {
+                    const res = await fetch('/api/v1/php/extended-config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version,
+                            config
+                        })
+                    });
 
-            if (res.ok) {
-                alert('Configuration saved successfully');
-            } else {
-                alert('Failed to save configuration');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Failed to save configuration');
-        } finally {
-            setSaving(false);
-        }
+                    if (res.ok) {
+                        showToast('success', t('php.ini.saved', { version }));
+                    } else {
+                        showToast('error', apiErrorText(await readApiError(res), t, 'php.ini.saveFailed'));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('error', t('common.resultUnknown'));
+                } finally {
+                    setSaving(false);
+                }
+            },
+        });
     };
 
     // The card the editor stands in. This component owns it (it was the

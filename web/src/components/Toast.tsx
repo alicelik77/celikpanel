@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-type ToastType = 'success' | 'error' | 'info' | 'warning';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 /**
  * Beside the sentence (owner feedback 2026-10-31): the fix, as a button that
@@ -9,6 +9,10 @@ type ToastType = 'success' | 'error' | 'info' | 'warning';
  * details. The caller translates both labels.
  */
 export interface ToastExtra {
+    /** One toast per key: a second showToast with the same key (or, without
+        a key, the same kind and sentence) while the first is on screen shows
+        nothing new (owner report 6 Nov 2026: two identical toasts stacked). */
+    key?: string;
     action?: { label: string; run: () => void };
     details?: { label: string; text: string };
 }
@@ -24,8 +28,30 @@ const toastLimit = 4;
 /** Failures and warnings stay until the person closes them. */
 export const toastStays = (type: ToastType) => type === 'error' || type === 'warning';
 const toastListeners: ((toast: Toast) => void)[] = [];
+const toastKey = (toast: Toast) => toast.key ?? toast.type + ': ' + toast.message;
+const onScreen = new Set<string>();
+
+// While a confirmed operation runs in the progress window, what it would say
+// in a toast is said in the window instead (components/ConfirmHost.tsx): one
+// place for the result, never the same sentence twice (owner, 6 Nov 2026).
+// The newest capture (a follow-up inside an operation) takes it.
+// Onaylanan iş ilerleme penceresinde sürerken bildirimi pencere söyler.
+export interface CapturedToast extends ToastExtra { type: ToastType; message: string }
+const captures: ((toast: CapturedToast) => void)[] = [];
+export function captureToasts(sink: (toast: CapturedToast) => void): () => void {
+    captures.push(sink);
+    return () => {
+        const at = captures.lastIndexOf(sink);
+        if (at >= 0) captures.splice(at, 1);
+    };
+}
 
 export function showToast(type: ToastType, message: string, extra?: ToastExtra) {
+    const capture = captures[captures.length - 1];
+    if (capture) {
+        capture({ type, message, ...extra });
+        return;
+    }
     const toast: Toast = {
         id: toastId++,
         type,
@@ -45,6 +71,9 @@ export function ToastContainer() {
         // confirmation leaves by itself. At most the four newest stay.
         // Hata ve uyari kapatilana dek kalir; onay kendiliginden gider.
         const listener = (toast: Toast) => {
+            const id = toastKey(toast);
+            if (onScreen.has(id)) return;
+            onScreen.add(id);
             setToasts(prev => [...prev, toast].slice(-toastLimit));
             if (toastStays(toast.type)) return;
             setTimeout(() => {
@@ -61,6 +90,13 @@ export function ToastContainer() {
     const removeToast = (id: number) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
+
+    // What is on screen, by key, kept in step with the list (also when the
+    // newest four push an older one out).
+    useEffect(() => {
+        onScreen.clear();
+        for (const toast of toasts) onScreen.add(toastKey(toast));
+    }, [toasts]);
 
     const getIcon = (type: ToastType) => {
         switch (type) {

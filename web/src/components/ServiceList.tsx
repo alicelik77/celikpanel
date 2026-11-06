@@ -53,6 +53,7 @@ import { decodeRemovalTraces, RemovalTracesNote, type RemovalTraces } from './Re
 import { decodeRemovalPlan, InstallNeedsDialog, removalPlanRefused, RemovalPlanGroups, type RemovalPlan } from './RemovalPlan';
 import { followRemovalOperation, newRemovalRequestID, removalPhaseText } from '../lib/removalOperation';
 import { REQUEST_ID_HEADER } from '../lib/requestIdentity';
+import { confirmAction } from '../lib/confirmAction';
 import { answerBody, decodePHPToolMoveFailure, phpToolForService, readPHPTools, PHP_TOOL_SERVICE_ID, type PHPToolMoveFailure, type PHPToolsInfo, phpToolCauseText } from '../lib/phpTools';
 
 // One installed copy of a runtime (B3b): php8.3-fpm is an instance, a Node
@@ -3602,7 +3603,7 @@ function VersionDrawer({
 
     const installPackage = async (pkg: string, version: string) => {
         if (installing) return;
-        if (!confirmUnsupportedInstall(version)) return;
+        if (!(await confirmUnsupportedInstall(version))) return;
         setInstalling(pkg);
         try {
             await onInstallPackage(pkg, version);
@@ -3623,10 +3624,10 @@ function VersionDrawer({
     const supportComponent: SupportComponent | null = service.id === 'php-fpm' ? 'php' : service.id === 'node' ? 'node' : service.id === 'postgresql' ? 'postgresql' : service.id === 'mariadb' ? 'mariadb' : null;
     const { locale } = useI18n();
     const isEOL = (version: string) => supportComponent !== null && supportFor(support, supportComponent, version).status === 'unsupported';
-    const confirmUnsupportedInstall = (version: string) => {
+    const confirmUnsupportedInstall = async (version: string) => {
         if (!supportComponent) return true;
         const question = supportConfirmation(t, locale, support, supportComponent, version, 'install');
-        return !question || confirm(question);
+        return !question || confirmAction({ message: question });
     };
 
     // Named LTS options from the official index — the free-text semver box
@@ -3652,7 +3653,7 @@ function VersionDrawer({
 
     const installVersion = async (version: string) => {
         if (installing) return;
-        if (!confirmUnsupportedInstall(version)) return;
+        if (!(await confirmUnsupportedInstall(version))) return;
         setInstalling(version);
         try {
             await onInstallNode(version);

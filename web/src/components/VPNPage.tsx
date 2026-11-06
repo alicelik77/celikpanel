@@ -26,6 +26,7 @@ import { invalidate } from '../lib/remote';
 import { OnceOnlyNotice, resultNotKept } from './OnceOnlyNotice';
 import { PageHeader } from './PageHeader';
 import { HelpButton } from './HelpDrawer';
+import { confirmAction } from '../lib/confirmAction';
 
 interface VPNSyncSummary {
     in_sync: boolean;
@@ -457,17 +458,20 @@ function VPNPageBody() {
     };
 
     const removePeer = async (peer: VPNPeer) => {
-        if (!confirm(t('vpn.deleteConfirm', { name: peer.name }))) return;
-        setBusyAction(`delete-${peer.id}`);
-        try {
-            await apiJSON(`/api/v1/vpn/peers/${peer.id}`, { method: 'DELETE' });
-            showToast('success', t('vpn.peerRemoved'));
-            await load();
-        } catch (error) {
-            showToast('error', apiErrorText(asApiError(error), t));
-        } finally {
-            setBusyAction(null);
-        }
+        await confirmAction({ message: t('vpn.deleteConfirm', { name: peer.name }), confirmLabel: t('common.remove'), tone: 'danger',
+            action: async () => {
+                setBusyAction(`delete-${peer.id}`);
+                try {
+                    await apiJSON(`/api/v1/vpn/peers/${peer.id}`, { method: 'DELETE' });
+                    showToast('success', t('vpn.peerRemoved'));
+                    await load();
+                } catch (error) {
+                    showToast('error', apiErrorText(asApiError(error), t));
+                } finally {
+                    setBusyAction(null);
+                }
+            },
+        });
     };
 
     const downloadConfig = () => {

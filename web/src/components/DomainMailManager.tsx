@@ -9,6 +9,7 @@ import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, Remot
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
+import { confirmAction } from '../lib/confirmAction';
 
 interface EmailAccount {
     id: number;
@@ -200,19 +201,22 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
     const deleteAccount = async (id: number, address: string) => {
         if (readOnly) return;
-        if (!confirm(t('mail.confirmDeleteAccount', { name: address }))) return;
-        try {
-            const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) { refuse(await readApiError(res), 'mail.deleteAccountFailed'); return; }
-            setRefusal(null);
-            showToast('success', t('mail.accountDeleted'));
-            reloadAccounts();
-        } catch {
-            // No answer: whether it changed is not known; the list is read again.
-            showToast('error', t('common.resultUnknown'));
-            reloadAccounts();
-            reloadForwardings();
-        }
+        await confirmAction({ message: t('mail.confirmDeleteAccount', { name: address }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${id}`, { method: 'DELETE' });
+                    if (!res.ok) { refuse(await readApiError(res), 'mail.deleteAccountFailed'); return; }
+                    setRefusal(null);
+                    showToast('success', t('mail.accountDeleted'));
+                    reloadAccounts();
+                } catch {
+                    // No answer: whether it changed is not known; the list is read again.
+                    showToast('error', t('common.resultUnknown'));
+                    reloadAccounts();
+                    reloadForwardings();
+                }
+            },
+        });
     };
 
     const openPasswordDialog = (account: EmailAccount) => {
@@ -294,19 +298,22 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
     const deleteForwarding = async (id: number, source: string) => {
         if (readOnly) return;
-        if (!confirm(t('mail.confirmDeleteForwarder', { name: source }))) return;
-        try {
-            const res = await fetch(`/api/v1/domains/${domainId}/mail/forwardings?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) { refuse(await readApiError(res), 'mail.deleteForwarderFailed'); return; }
-            setRefusal(null);
-            showToast('success', t('mail.forwarderDeleted'));
-            reloadForwardings();
-        } catch {
-            // No answer: whether it changed is not known; the list is read again.
-            showToast('error', t('common.resultUnknown'));
-            reloadAccounts();
-            reloadForwardings();
-        }
+        await confirmAction({ message: t('mail.confirmDeleteForwarder', { name: source }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(`/api/v1/domains/${domainId}/mail/forwardings?id=${id}`, { method: 'DELETE' });
+                    if (!res.ok) { refuse(await readApiError(res), 'mail.deleteForwarderFailed'); return; }
+                    setRefusal(null);
+                    showToast('success', t('mail.forwarderDeleted'));
+                    reloadForwardings();
+                } catch {
+                    // No answer: whether it changed is not known; the list is read again.
+                    showToast('error', t('common.resultUnknown'));
+                    reloadAccounts();
+                    reloadForwardings();
+                }
+            },
+        });
     };
 
     const listed = activeTab === 'accounts' ? accountsRead.remote : forwardingsRead.remote;

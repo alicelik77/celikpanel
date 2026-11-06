@@ -13,6 +13,7 @@ import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -359,94 +360,97 @@ export function DomainSSLSettings({
                       ? 'ssl.reissueConfirm'
                       : 'ssl.issueConfirm';
         const authority = providers.find((candidate) => candidate.id === provider)?.name ?? provider;
-        if (!confirm(t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }))) return;
-        setIssuing(true);
-        setIssueFailure(null);
-        setActionRefusal(null);
-        try {
-            const res = await issueAnswer.send(`/api/v1/domains/${domainId}/ssl/letsencrypt`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email,
-                    auto_renew: autoRenew,
-                    include_mail: mailAvailable === true && includeMail,
-                    provider,
-                    eab_key_id: eabKid,
-                    eab_hmac_key: eabHmac,
-                    reissue: isReissue,
-                    ...(allowNotPointed ? { allow_not_pointed: true } : {}),
-                }),
-            });
-            // No result of its own: the notice is up and the certificate is
-            // being read again.
-            // Kendi sonucu yok: bildirim açıldı, sertifika yeniden okunuyor.
-            if (!res) return;
-            issueAnswer.settle();
-            if (!res.ok) {
-                const apiError = await readApiError(res);
-                if (
-                    apiError.code === 'ssl_activation_pending' ||
-                    apiError.code === 'ssl_dependents_pending'
-                ) {
-                    showToast(
-                        'warning',
-                        t(
-                            apiError.code === 'ssl_activation_pending'
-                                ? 'err.ssl_activation_pending'
-                                : 'ssl.dependentsPending',
-                        ),
-                    );
+        await confirmAction({ message: t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }),
+            action: async () => {
+                setIssuing(true);
+                setIssueFailure(null);
+                setActionRefusal(null);
+                try {
+                    const res = await issueAnswer.send(`/api/v1/domains/${domainId}/ssl/letsencrypt`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email,
+                            auto_renew: autoRenew,
+                            include_mail: mailAvailable === true && includeMail,
+                            provider,
+                            eab_key_id: eabKid,
+                            eab_hmac_key: eabHmac,
+                            reissue: isReissue,
+                            ...(allowNotPointed ? { allow_not_pointed: true } : {}),
+                        }),
+                    });
+                    // No result of its own: the notice is up and the certificate is
+                    // being read again.
+                    // Kendi sonucu yok: bildirim açıldı, sertifika yeniden okunuyor.
+                    if (!res) return;
+                    issueAnswer.settle();
+                    if (!res.ok) {
+                        const apiError = await readApiError(res);
+                        if (
+                            apiError.code === 'ssl_activation_pending' ||
+                            apiError.code === 'ssl_dependents_pending'
+                        ) {
+                            showToast(
+                                'warning',
+                                t(
+                                    apiError.code === 'ssl_activation_pending'
+                                        ? 'err.ssl_activation_pending'
+                                        : 'ssl.dependentsPending',
+                                ),
+                            );
+                            setShowReissue(false);
+                            await loadSSLData();
+                            return;
+                        }
+                        // The server's own check said a name does not point here
+                        // (the screen's read was older): read it again, and the
+                        // refusal below says it in words.
+                        if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void reach.retry();
+                        // What certbot's run came to is a sentence with something
+                        // to correct: it stays on the page.
+                        // certbot çalışmasının sonucu düzeltilecek bir şey taşır:
+                        // sayfada kalır.
+                        if (isCertificateIssueFailure(apiError)) {
+                            setIssueFailure(apiError);
+                            return;
+                        }
+                        // Kept on the page beside the form too (owner feedback 2026-10-31).
+                        const sentence: TranslationKey = isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed';
+                        setActionRefusal({ problem: apiError, sentence });
+                        showToast('error', refusalText(apiError, t, sentence), refusalToast(apiError, t));
+                        return;
+                    }
+                    // Issued and stored, but the site's configuration file is the
+                    // owner's and does not use it yet (D-031 step 1b).
+                    let issuedStatus = '';
+                    let notRunAddress = '';
+                    try {
+                        const issued = (await res.json()) as IssuedAnswer | null;
+                        issuedStatus = String(issued?.status ?? '');
+                        notRunAddress = validationNotRunAddress(issued);
+                    } catch {
+                        issuedStatus = '';
+                    }
+                    if (issuedStatus === 'waiting_for_owner') showToast('warning', t('ssl.issuedWaitingForOwner'));
+                    else showToast('success', t(isReissue ? 'ssl.reissued' : 'ssl.issued'));
+                    // The request went ahead without the probe (set11 cell A6).
+                    if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
                     setShowReissue(false);
+                    // The screen keeps what it showed, with its controls off, until
+                    // the server has said what the certificate is now.
                     await loadSSLData();
-                    return;
+                } catch {
+                    // The answer arrived and could not be read as one.
+                    // Yanıt geldi ama yanıt olarak okunamadı.
+                    issueAnswer.lose(undefined, 'asked');
+                } finally {
+                    setEabKid('');
+                    setEabHmac('');
+                    setIssuing(false);
                 }
-                // The server's own check said a name does not point here
-                // (the screen's read was older): read it again, and the
-                // refusal below says it in words.
-                if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void reach.retry();
-                // What certbot's run came to is a sentence with something
-                // to correct: it stays on the page.
-                // certbot çalışmasının sonucu düzeltilecek bir şey taşır:
-                // sayfada kalır.
-                if (isCertificateIssueFailure(apiError)) {
-                    setIssueFailure(apiError);
-                    return;
-                }
-                // Kept on the page beside the form too (owner feedback 2026-10-31).
-                const sentence: TranslationKey = isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed';
-                setActionRefusal({ problem: apiError, sentence });
-                showToast('error', refusalText(apiError, t, sentence), refusalToast(apiError, t));
-                return;
-            }
-            // Issued and stored, but the site's configuration file is the
-            // owner's and does not use it yet (D-031 step 1b).
-            let issuedStatus = '';
-            let notRunAddress = '';
-            try {
-                const issued = (await res.json()) as IssuedAnswer | null;
-                issuedStatus = String(issued?.status ?? '');
-                notRunAddress = validationNotRunAddress(issued);
-            } catch {
-                issuedStatus = '';
-            }
-            if (issuedStatus === 'waiting_for_owner') showToast('warning', t('ssl.issuedWaitingForOwner'));
-            else showToast('success', t(isReissue ? 'ssl.reissued' : 'ssl.issued'));
-            // The request went ahead without the probe (set11 cell A6).
-            if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
-            setShowReissue(false);
-            // The screen keeps what it showed, with its controls off, until
-            // the server has said what the certificate is now.
-            await loadSSLData();
-        } catch {
-            // The answer arrived and could not be read as one.
-            // Yanıt geldi ama yanıt olarak okunamadı.
-            issueAnswer.lose(undefined, 'asked');
-        } finally {
-            setEabKid('');
-            setEabHmac('');
-            setIssuing(false);
-        }
+            },
+        });
     };
 
     const handleUpload = async (e: React.FormEvent) => {
@@ -459,51 +463,54 @@ export function DomainSSLSettings({
             showToast('warning', t('ssl.mailStateUnknownReplacement'));
             return;
         }
-        if (!confirm(t(isReplacement ? 'ssl.replaceCertificateConfirm' : 'ssl.uploadConfirm', { name: domainName }))) return;
-        const targetDomainId = domainId;
-        setUploading(true);
-        try {
-            const fd = new FormData();
-            fd.append('certificate', certFile);
-            fd.append('private_key', keyFile);
-            if (chainFile) fd.append('chain', chainFile);
-            const res = await fetch(`/api/v1/domains/${domainId}/ssl/upload`, { method: 'POST', body: fd });
-            if (!res.ok) {
-                const apiError = await readApiError(res);
-                if (
-                    apiError.code === 'ssl_activation_pending' ||
-                    apiError.code === 'ssl_dependents_pending'
-                ) {
-                    showToast(
-                        'warning',
-                        t(
-                            apiError.code === 'ssl_activation_pending'
-                                ? 'err.ssl_activation_pending'
-                                : 'ssl.dependentsPending',
-                        ),
-                    );
+        await confirmAction({ message: t(isReplacement ? 'ssl.replaceCertificateConfirm' : 'ssl.uploadConfirm', { name: domainName }),
+            action: async () => {
+                const targetDomainId = domainId;
+                setUploading(true);
+                try {
+                    const fd = new FormData();
+                    fd.append('certificate', certFile);
+                    fd.append('private_key', keyFile);
+                    if (chainFile) fd.append('chain', chainFile);
+                    const res = await fetch(`/api/v1/domains/${domainId}/ssl/upload`, { method: 'POST', body: fd });
+                    if (!res.ok) {
+                        const apiError = await readApiError(res);
+                        if (
+                            apiError.code === 'ssl_activation_pending' ||
+                            apiError.code === 'ssl_dependents_pending'
+                        ) {
+                            showToast(
+                                'warning',
+                                t(
+                                    apiError.code === 'ssl_activation_pending'
+                                        ? 'err.ssl_activation_pending'
+                                        : 'ssl.dependentsPending',
+                                ),
+                            );
+                            setCertFile(null);
+                            setKeyFile(null);
+                            setChainFile(null);
+                            setShowReissue(false);
+                            await loadSSLData();
+                            return;
+                        }
+                        setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' });
+                        showToast('error', refusalText(apiError, t, 'ssl.uploadFailed'), refusalToast(apiError, t));
+                        return;
+                    }
+                    showToast('success', t('ssl.uploaded'));
                     setCertFile(null);
                     setKeyFile(null);
                     setChainFile(null);
                     setShowReissue(false);
                     await loadSSLData();
-                    return;
+                } catch {
+                    await resultUnknown(targetDomainId);
+                } finally {
+                    setUploading(false);
                 }
-                setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' });
-                showToast('error', refusalText(apiError, t, 'ssl.uploadFailed'), refusalToast(apiError, t));
-                return;
-            }
-            showToast('success', t('ssl.uploaded'));
-            setCertFile(null);
-            setKeyFile(null);
-            setChainFile(null);
-            setShowReissue(false);
-            await loadSSLData();
-        } catch {
-            await resultUnknown(targetDomainId);
-        } finally {
-            setUploading(false);
-        }
+            },
+        });
     };
 
     const handleUpdateSettings = async (updates: Partial<SSLSettings>) => {
@@ -639,23 +646,26 @@ export function DomainSSLSettings({
             );
             return;
         }
-        if (!confirm(t('ssl.confirmRemove', { name: domainName }))) return;
-        const targetDomainId = domainId;
-        setRemoving(true);
-        try {
-            const res = await fetch(`/api/v1/domains/${domainId}/ssl`, { method: 'DELETE' });
-            if (!res.ok) {
-                const apiError = await readApiError(res);
-                showToast('error', apiErrorText(apiError, t, 'common.error'));
-                return;
-            }
-            showToast('success', t('ssl.removed'));
-            await loadSSLData();
-        } catch {
-            await resultUnknown(targetDomainId);
-        } finally {
-            setRemoving(false);
-        }
+        await confirmAction({ message: t('ssl.confirmRemove', { name: domainName }), confirmLabel: t('common.remove'), tone: 'danger',
+            action: async () => {
+                const targetDomainId = domainId;
+                setRemoving(true);
+                try {
+                    const res = await fetch(`/api/v1/domains/${domainId}/ssl`, { method: 'DELETE' });
+                    if (!res.ok) {
+                        const apiError = await readApiError(res);
+                        showToast('error', apiErrorText(apiError, t, 'common.error'));
+                        return;
+                    }
+                    showToast('success', t('ssl.removed'));
+                    await loadSSLData();
+                } catch {
+                    await resultUnknown(targetDomainId);
+                } finally {
+                    setRemoving(false);
+                }
+            },
+        });
     };
 
     if (ssl.remote.state === 'loading') return <Checking label={t('ssl.checking')} className="py-3" />;
