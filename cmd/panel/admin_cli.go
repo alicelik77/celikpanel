@@ -17,6 +17,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/db"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"golang.org/x/term"
 )
@@ -341,6 +342,10 @@ func promptLine(reader *bufio.Reader, out io.Writer, prompt string) (string, err
 }
 
 func readAndConfirmPassword(read passwordValueReader, out io.Writer) (string, error) {
+	// The rule is said before the first question, so a weak password is not
+	// the first thing the person learns it from.
+	account := passwordpolicy.Fields["account"]
+	fmt.Fprintln(out, passwordpolicy.RuleSentence(account.MinChars, "en")+" / "+passwordpolicy.RuleSentence(account.MinChars, "tr"))
 	for {
 		first, err := read("Admin password / Yönetici parolası: ")
 		if err != nil {

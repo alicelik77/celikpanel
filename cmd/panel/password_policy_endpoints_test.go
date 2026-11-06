@@ -270,6 +270,10 @@ func TestAdminCLIRefusesAWeakPasswordAndNamesTheRule(t *testing.T) {
 		strings.Contains(out.String(), weakLowerOnly) {
 		t.Fatalf("prompt output: %q", out.String())
 	}
+	// The rule is said before the first question.
+	if !strings.HasPrefix(out.String(), "The password needs at least 8 characters") || !strings.Contains(out.String(), "Şifre en az 8 karakter") {
+		t.Fatalf("prompt output: %q", out.String())
+	}
 }
 
 func TestFileAccessPasswordRefusesAWeakPassword(t *testing.T) {

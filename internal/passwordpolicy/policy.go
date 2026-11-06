@@ -128,6 +128,18 @@ func Message(rule string, minChars, maxBytes int, lang string) string {
 	return "Password does not meet the rule."
 }
 
+// RuleSentence states the whole rule for a field whose minimum is minChars,
+// in "en" or "tr", for a prompt to say before it asks.
+func RuleSentence(minChars int, lang string) string {
+	if minChars < BaseMinChars {
+		minChars = BaseMinChars
+	}
+	if lang == "tr" {
+		return fmt.Sprintf("Şifre en az %d karakter olmalı; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.", minChars)
+	}
+	return fmt.Sprintf("The password needs at least %d characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).", minChars)
+}
+
 // Check returns nil when password meets the rule for a field whose window is
 // minChars characters to maxBytes bytes (0: no maximum), or the rules it broke.
 // A minimum below BaseMinChars is raised to it.
