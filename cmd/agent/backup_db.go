@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,10 +79,15 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 		return backupCommand{}, err
 	}
 	if database.Type == "postgresql" {
-		return backupCommand{
-			Name: "sudo",
-			Args: []string{"-u", "postgres", "pg_dump", "--no-owner", "--no-privileges", "--dbname", database.Name},
-		}, nil
+		args := []string{"-u", "postgres", "pg_dump", "--no-owner", "--no-privileges", "--dbname", database.Name}
+		port, err := pgBackupPort()
+		if err != nil {
+			return backupCommand{}, err
+		}
+		if port > 0 {
+			args = append(args, "--port", strconv.Itoa(port))
+		}
+		return backupCommand{Name: "sudo", Args: args}, nil
 	}
 	return backupCommand{
 		Name: "mysqldump",
@@ -98,10 +104,15 @@ func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand
 		return backupCommand{}, err
 	}
 	if database.Type == "postgresql" {
-		return backupCommand{
-			Name: "sudo",
-			Args: []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", database.Name},
-		}, nil
+		args := []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", database.Name}
+		port, err := pgBackupPort()
+		if err != nil {
+			return backupCommand{}, err
+		}
+		if port > 0 {
+			args = append(args, "--port", strconv.Itoa(port))
+		}
+		return backupCommand{Name: "sudo", Args: args}, nil
 	}
 	return backupCommand{
 		Name: "mysql",
@@ -227,4 +238,15 @@ func validateFullRestoreSet(expected, requested []backupspec.DatabaseIdentity) (
 		}
 	}
 	return expected, nil
+}
+
+// pgBackupPort is the cluster a PostgreSQL backup or restore talks to
+// (alpha.127). The backup's identity of a database names no cluster, so this
+// is the running cluster psql would choose without a port, never a removed
+// version's kept cluster that still claims the default port: on Boston, psql
+// without a port went to 16/main, which had no program left. Where several
+// majors run side by side, a database on a cluster other than this one is not
+// reached by name alone; that stays an open item of the backup identity.
+func pgBackupPort() (int, error) {
+	return resolvePGStatementPort(0)
 }

@@ -82,13 +82,20 @@ var postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, er
 
 // postgreSQLStatementFor is the statement runner for a request's port: the
 // default runner for 0, the port's otherwise. A port outside 1..65535 is
-// refused before anything runs.
+// refused before anything runs. alpha.127: a cluster that does not run (its
+// program removed, or stopped) is refused with its facts
+// (pgClusterRefusalError), and 0 resolves to the running cluster where the
+// clusters can be read (pg_statement_target.go).
 func postgreSQLStatementFor(port int) (func(string) ([]byte, error), error) {
+	if port < 0 || port > 65535 {
+		return nil, fmt.Errorf("invalid PostgreSQL port %d", port)
+	}
+	port, err := resolvePGStatementPort(port)
+	if err != nil {
+		return nil, err
+	}
 	if port == 0 {
 		return postgreSQLExecStatement, nil
-	}
-	if port < 1 || port > 65535 {
-		return nil, fmt.Errorf("invalid PostgreSQL port %d", port)
 	}
 	return func(statement string) ([]byte, error) { return postgreSQLExecStatementOnPort(port, statement) }, nil
 }
@@ -396,6 +403,7 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 	run, err := postgreSQLStatementFor(req.Port)
 	if err != nil {
 		resp.Error = err.Error()
+		resp.Refusal = pgClusterRefusalOf(err)
 		return nil
 	}
 
@@ -432,6 +440,7 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 	run, err := postgreSQLStatementFor(req.Port)
 	if err != nil {
 		resp.Error = err.Error()
+		resp.Refusal = pgClusterRefusalOf(err)
 		return nil
 	}
 

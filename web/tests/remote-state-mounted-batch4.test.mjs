@@ -415,7 +415,9 @@ test('a refusal the Panel itself sent is the server’s reason, not an unknown r
   try {
     await press('backup.files');
     assert.ok(!text().includes('common.resultUnknown'), 'a JSON refusal with a gateway status was treated as a lost answer');
-    assert.deepEqual(globalThis.currentTest.toasts.map(([tone]) => tone), ['error']);
+    // alpha.127: said once, in the banner above the list; no notice repeats it.
+    assert.equal(tree.root.findAll((node) => node.type === 'div' && node.props.role === 'alert').length, 1, 'the refusal is not on the page');
+    assert.deepEqual(globalThis.currentTest.toasts.map(([tone]) => tone), []);
     assert.equal(enabled(['backup.files']).length, 1, 'a refused change left the control off');
   } finally { await unmount(); }
 });
@@ -974,7 +976,9 @@ test('Backups: any other 409 on an identified route is the Panel’s own refusal
     await press('backup.restore');
     await settle();
     assert.equal(noticeState().length, 0, 'a refusal was drawn as an unknown result');
-    assert.deepEqual(globalThis.currentTest.toasts.map(([tone]) => tone), ['error']);
+    // alpha.127: said once, in the banner; no notice repeats it.
+    assert.equal(tree.root.findAll((node) => node.type === 'div' && node.props.role === 'alert').length, 1, 'the refusal is not on the page');
+    assert.deepEqual(globalThis.currentTest.toasts.map(([tone]) => tone), []);
   } finally { await unmount(); }
 });
 

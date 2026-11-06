@@ -7,6 +7,8 @@ import (
 	"log"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -37,6 +39,24 @@ func (p *Panel) ensureInstalledDBServers(ctx context.Context, subscriptionID int
 	claimed, err := reconcileInstalledDBServers(ctx, p.db.GetDB(), subscriptionID, allServices)
 	if err != nil {
 		return err
+	}
+	// alpha.127. A PostgreSQL record is born with the engine type's default
+	// port, 5432, and that is the running cluster's port only while one
+	// cluster runs there. A record just made, or one the panel has no
+	// account on yet (its account could not be opened, which a dead port
+	// causes), is set to the running cluster before an account is opened on
+	// it, when it holds nothing (postgresql_placement.go).
+	// Yeni ya da hesabı açılamamış, boş bir PostgreSQL kaydı, hesap açılmadan
+	// önce çalışan kümeye çevrilir.
+	if p.pgRecordsNeedPlacement(ctx, subscriptionID, claimed) {
+		if clusters := p.readPGClustersForPlacement(ctx); clusters.Supported {
+			changed, err := p.pgRepointEmptyRecords(ctx, subscriptionID, clusters.Clusters)
+			if err != nil {
+				log.Printf("database server autodiscovery: place PostgreSQL records on the running cluster: %v", err)
+			} else if changed && !containsString(claimed, "postgresql") {
+				claimed = append(claimed, "postgresql")
+			}
+		}
 	}
 
 	// R-057. A row this function has just inserted is the panel claiming it
@@ -230,3 +250,45 @@ func reconcileInstalledDBServers(
 	}
 	return claimed, nil
 }
+
+// pgRecordsNeedPlacement: PostgreSQL was registered on this call, or the
+// subscription has a PostgreSQL record on this machine the panel has no
+// account on yet.
+//
+// The second case is asked at most once per pgPlacementRetry for a
+// subscription: an account that cannot be opened for another reason (the
+// owner closed the local door on purpose) must not make every listing read
+// the clusters again.
+func (p *Panel) pgRecordsNeedPlacement(ctx context.Context, subscriptionID int, claimed []string) bool {
+	if containsString(claimed, "postgresql") {
+		return true
+	}
+	if last, ok := pgPlacementAsked.Load(subscriptionID); ok && time.Since(last.(time.Time)) < pgPlacementRetry {
+		return false
+	}
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT COALESCE(ds.host, '')
+		FROM database_servers ds
+		JOIN database_server_types dst ON dst.id = ds.type_id
+		WHERE ds.subscription_id = ? AND dst.name = 'postgresql'
+		  AND COALESCE(ds.status, 'active') <> 'retired'
+		  AND COALESCE(ds.admin_username, '') = ''`, subscriptionID)
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var host string
+		if rows.Scan(&host) == nil && databaseEngineIsOnThisMachine(host) {
+			pgPlacementAsked.Store(subscriptionID, time.Now())
+			return true
+		}
+	}
+	return false
+}
+
+const pgPlacementRetry = 10 * time.Minute
+
+// pgPlacementAsked: when a subscription's records were last placed because
+// one had no account.
+var pgPlacementAsked sync.Map

@@ -298,7 +298,7 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 
 	var resp transport.RemoveDatabaseAdminAccountResponse
 	if err := p.callAgentContext(r.Context(), "Agent.RemoveDatabaseAdminAccount",
-		&transport.RemoveDatabaseAdminAccountRequest{Engine: server.TypeName},
+		&transport.RemoveDatabaseAdminAccountRequest{Engine: server.TypeName, Port: databaseAdminAccountPort(server)},
 		&resp); err != nil {
 		writeServerError(w, err)
 		return
@@ -368,9 +368,11 @@ func (p *Panel) recordEngineVersion(server *core.DatabaseServer) {
 // claimed and an engine an administrator asked about end up in exactly the
 // same state.
 //
-// It skips a server that already has an account and a server on another
-// machine, and it stops at the first engine it cannot do, so the caller's log
-// line names something true rather than the last of several failures.
+// It skips a server that already has an account, a server on another
+// machine and a retired one. A server it cannot do does not stop the others
+// (alpha.127: a PostgreSQL record of a removed version's cluster kept every
+// later record of the running cluster without an account); the first failure
+// is returned, so the caller's log line names something true.
 //
 // provisionDatabaseAdminAccountsFor, autodiscovery'nin az once kaydettigi
 // motorlarda panelin hesabini acar. Yukaridaki isleyiciyle ayni istir.
@@ -378,13 +380,14 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 	ctx context.Context, subscriptionID int, engines []string,
 ) error {
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
+	var first error
 	for _, engine := range engines {
 		servers, err := serverRepo.ListByType(ctx, subscriptionID, engine)
 		if err != nil {
 			return fmt.Errorf("find the %s server that was just registered: %w", engine, err)
 		}
 		for _, server := range servers {
-			if !databaseEngineIsOnThisMachine(server.Host) {
+			if !databaseEngineIsOnThisMachine(server.Host) || server.Status == "retired" {
 				continue
 			}
 			if strings.TrimSpace(server.AdminUsername) != "" {
@@ -399,10 +402,19 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 				&transport.ProvisionDatabaseAdminAccountRequest{
 					Engine: engine, Password: password, Port: databaseAdminAccountPort(server),
 				}, &resp); err != nil {
-				return err
+				if agentUnreachableAlone(err) {
+					return err
+				}
+				if first == nil {
+					first = err
+				}
+				continue
 			}
 			if !resp.Provisioned {
-				return fmt.Errorf("%s", resp.Error)
+				if first == nil {
+					first = fmt.Errorf("%s", resp.Error)
+				}
+				continue
 			}
 			server.AdminUsername = resp.Username
 			server.AdminPasswordEncrypted = sealed
@@ -412,7 +424,7 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 			}
 		}
 	}
-	return nil
+	return first
 }
 
 // databaseAdminAccountPort is the cluster a PostgreSQL record is (alpha.108:

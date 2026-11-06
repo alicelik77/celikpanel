@@ -13,10 +13,20 @@ export const trDatabaseClustersScreens: Record<DatabaseClustersScreenKey, string
     'pgc.lost': 'Yanıt gelmedi; bu yüzden gerçekleşip gerçekleşmediği bilinmiyor. Kümeler yeniden okunuyor; hiçbir şey ikinci kez gönderilmez.',
     'pgc.firewall': 'Güvenlik duvarı değişmez: portu kendiniz açmadıkça PostgreSQL’e yalnız bu sunucudan ulaşılır.',
 
+    // alpha.127: a PostgreSQL change refused because its cluster cannot answer
+    // (any screen that creates or drops a PostgreSQL database says it).
+    'err.PG_CLUSTER_UNAVAILABLE': 'Hiçbir şey değişmedi: bu değişikliği alabilecek çalışan bir PostgreSQL yok. Sunucu yöneticisi PostgreSQL’i Bileşenler’den başlatır; sonra yeniden deneyin.',
+    'err.PG_CLUSTER_UNAVAILABLE.removed': 'Hiçbir şey değişmedi: PostgreSQL {version} bu sunucudan kaldırılmış. Verileri {data} içinde duruyor ({cluster} kümesi, port {port}) ama orada yanıt verecek bir program yok. Sonraki adım: sunucu yöneticisi Bileşenler’den bir PostgreSQL sürümü kurar (saklanan veriye ulaşmak için yine PostgreSQL {version}); sonra yeniden deneyin.',
+    'err.PG_CLUSTER_UNAVAILABLE.stopped': 'Hiçbir şey değişmedi: PostgreSQL {version} ({cluster} kümesi, port {port}) kurulu ama çalışmıyor. Sonraki adım: sunucu yöneticisi onu Bileşenler → PostgreSQL’den ya da sudo systemctl start {unit} ile başlatır; sonra yeniden deneyin.',
+    'err.PG_CLUSTER_UNAVAILABLE.none': 'Hiçbir şey değişmedi: bu sunucuda PostgreSQL kümesi yok. Sonraki adım: sunucu yöneticisi Bileşenler’den PostgreSQL kurar; sonra yeniden deneyin.',
+    'err.PG_CLUSTER_UNAVAILABLE.action': 'PostgreSQL’i aç',
+
     'pgc.cluster.name': 'PostgreSQL {version} — {cluster} kümesi',
     'pgc.cluster.online': 'Çalışıyor',
     'pgc.cluster.down': 'Çalışmıyor ({status})',
     'pgc.cluster.downHint': 'Bu sayfanın Başlat düğmesiyle ya da sudo systemctl start {unit} ile başlatın; portu ve veritabanları çalışınca okunur.',
+    'pgc.cluster.removed': 'Program kaldırılmış, veri saklanıyor',
+    'pgc.cluster.removedHint': 'PostgreSQL {version} programı bu sunucudan kaldırıldı; bu kümenin verisi {data} içinde, ayarları /etc/postgresql/{version}/{name} içinde dokunulmadan duruyor. Başlatılamaz ve port {port} ona ayrılmış kalır; bu yüzden yeni kurulan sürüm sıradaki boş portu alır. Bu veriyi yeniden kullanmak için burada PostgreSQL {version} kurun. Kendiniz silmek isterseniz, güvendiğiniz bir kopyası olduktan sonra: sudo pg_dropcluster {version} {name}. Bu, veriyi kalıcı olarak siler; CelikPanel bunu sizin yerinize asla yapmaz.',
     'pgc.cluster.port': 'Port',
     'pgc.cluster.data': 'Veri',
     'pgc.cluster.databases': 'Veritabanları',

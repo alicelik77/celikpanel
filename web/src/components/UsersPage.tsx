@@ -173,7 +173,8 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
             });
             if (!res) return;
             if (!res.ok) {
-                setCreateRefusal(await apiError(res, 'users.createFailed'));
+                // Said once, in the banner beside the form (useRefusal): no notice.
+                setCreateRefusal(await readApiError(res));
                 return;
             }
             showToast('success', t('users.created'));

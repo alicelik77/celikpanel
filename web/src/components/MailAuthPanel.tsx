@@ -6,7 +6,8 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
 import { invalidate, useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 
 interface AuthRecord {
     name: string;
@@ -159,10 +160,10 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
 
     // A refused change stays above the records until the next one succeeds
     // (owner feedback 2026-10-31).
-    const [failure, setFailure] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const { refusal: failure, setRefusal: setFailure } = useRefusal();
     const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        // Said once, in the banner (useRefusal): no notice repeats it.
         setFailure({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
     };
 
     const generateKey = async () => {
@@ -219,8 +220,7 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
                 const keys: Record<string, TranslationKey> = { REMOTE_DNS_MAIL_RECORD_CONFLICT: 'mailauth.remoteConflict', REMOTE_DNS_MAIL_ADDRESS_REQUIRED: 'mailauth.remoteAddressRequired', REMOTE_DNS_UNAVAILABLE: 'mailauth.remoteUnavailable' };
                 // The code stays under Technical details; the remote words are not shown.
                 const problem: ApiError = { message: keys[code] ? t(keys[code]) : '', ...(code ? { code } : {}) };
-                setFailure({ problem, sentence: 'mailauth.applyFailed' });
-                showToast('error', keys[code] ? t(keys[code]) : t('mailauth.applyFailed'), refusalToast(code ? { message: '', code } : null, t));
+                setFailure({ problem, sentence: 'mailauth.applyFailed' }); // said once, in the banner
                 return;
             }
             setFailure(null);

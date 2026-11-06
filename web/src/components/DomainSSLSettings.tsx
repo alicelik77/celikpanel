@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, ErrorBanner, Field, FormActions, FormSection, ResultUnknown, inputClass } from './ui';
 import type { TranslationKey } from '../i18n/en';
-import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
 import { CertificateReachNotice } from './CertificateReachNotice';
 import { certificateReachGate, decodeCertificateReach, type CertificateReachGate } from '../lib/certificateNames';
@@ -417,8 +417,7 @@ export function DomainSSLSettings({
                         }
                         // Kept on the page beside the form too (owner feedback 2026-10-31).
                         const sentence: TranslationKey = isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed';
-                        setActionRefusal({ problem: apiError, sentence });
-                        showToast('error', refusalText(apiError, t, sentence), refusalToast(apiError, t));
+                        setActionRefusal({ problem: apiError, sentence }); // said once, in the banner
                         return;
                     }
                     // Issued and stored, but the site's configuration file is the
@@ -494,8 +493,7 @@ export function DomainSSLSettings({
                             await loadSSLData();
                             return;
                         }
-                        setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' });
-                        showToast('error', refusalText(apiError, t, 'ssl.uploadFailed'), refusalToast(apiError, t));
+                        setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' }); // said once, in the banner
                         return;
                     }
                     showToast('success', t('ssl.uploaded'));

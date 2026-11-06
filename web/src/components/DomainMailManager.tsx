@@ -2,7 +2,8 @@ import { lazy, useState, useEffect, useRef } from 'react';
 import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import type { TranslationKey } from '../i18n/en';
 import { invalidate, useRemote, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
@@ -136,10 +137,10 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
     // A refused change stays above the list with its fix until the next one
     // succeeds (owner feedback 2026-10-31).
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const { refusal, setRefusal } = useRefusal();
     const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        // Said once, in the banner (useRefusal): no notice repeats it.
         setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
     };
     // A failure keeps the reason the server gave; a lost answer says nothing more.
     const failedCreate = (failure: unknown, sentence: TranslationKey) => {

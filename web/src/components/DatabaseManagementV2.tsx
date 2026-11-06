@@ -12,7 +12,8 @@ import { DatabaseAccountStrip } from './DatabaseAccountStrip';
 import { decodeList, invalidate, lastKnown, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { OnceOnlyNotice, ShownOnceSecret } from './OnceOnlyNotice';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
 import { confirmAction } from '../lib/confirmAction';
@@ -128,10 +129,10 @@ export function DatabaseManagementV2() {
     // A refused delete keeps the server's reason (a user that still has
     // grants…) on the page until the next change succeeds; a password the
     // server made up stays until it is closed (owner feedback 2026-10-31).
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const { refusal, setRefusal } = useRefusal();
     const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        // Said once, in the banner (useRefusal): no notice repeats it.
         setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
     };
     const [secret, setSecret] = useState<CreatedSecret | null>(null);
 

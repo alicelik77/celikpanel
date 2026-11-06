@@ -871,11 +871,25 @@ export function ErrorBanner({ error, className, sentence }: {
 }) {
     const { t } = useI18n();
     const navigate = useNavigate();
+    // A refusal (a banner with the screen's sentence) is said once, here
+    // (useRefusal): it brings itself into view and is announced, in place of
+    // a notice that would repeat it.
+    // Ret burada bir kez söylenir: kendini görünür kılar ve duyurulur.
+    const box = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        if (!error || !sentence) return;
+        const element = box.current;
+        if (!element || typeof element.scrollIntoView !== 'function') return;
+        const rect = element.getBoundingClientRect();
+        if (rect.top < 0 || rect.bottom > window.innerHeight) element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, [error, sentence]);
     if (!error) return null;
     const actionLabel = apiErrorActionLabel(error, t);
     const errorText = sentence ? refusalText(error, t, sentence) : apiErrorText(error, t);
     return (
         <div
+            ref={box}
+            role={sentence ? 'alert' : undefined}
             className={`rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger ${className ?? ''}`}
         >
             <div className="flex flex-wrap items-center gap-3">

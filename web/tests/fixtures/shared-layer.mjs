@@ -59,6 +59,8 @@ export const capabilitiesURL = compileSource('lib/hostingCapabilities.ts', (spec
 // Gelmeyen yanıt, kaybolan yanıt tanımını ve kimlik taşıyan rotaların listesini
 // istek kimliğiyle paylaşır: yine gönderilen modül.
 export const requestIdentityURL = compileSource('lib/requestIdentity.ts', unexpected('lib/requestIdentity.ts'));
+// alpha.127: a refusal said once, in its banner (lib/useRefusal.ts): the shipped hook.
+export const useRefusalURL = compileSource('lib/useRefusal.ts', unexpected('lib/useRefusal.ts'));
 export const lostAnswerURL = compileSource('lib/lostAnswer.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/lostAnswer.ts')(specifier)
 ));
@@ -204,6 +206,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/removalOperation': removalOperationURL,
     '/lib/installPlan': installPlanURL,
     '/lib/confirmAction': confirmActionURL,
+    '/lib/useRefusal': useRefusalURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/ui': uiURL,

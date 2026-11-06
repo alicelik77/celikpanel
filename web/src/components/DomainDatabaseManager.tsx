@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
-import type { TranslationKey } from '../i18n/en';
+import { readApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
@@ -142,11 +142,8 @@ export function DomainDatabaseManager({
 
     // A refusal stays on the page, with its fix, until the next change
     // succeeds (owner feedback 2026-10-31).
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
-    const refuse = (problem: ApiError, sentence: TranslationKey) => {
-        setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
-    };
+    // Said once, in the banner (useRefusal): no notice repeats it.
+    const { refusal, refuse, clear: clearRefusal } = useRefusal();
 
     const handleCreateDatabase = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -156,7 +153,7 @@ export function DomainDatabaseManager({
             showToast('error', t('ddb.namePasswordRequired'));
             return;
         }
-        setRefusal(null);
+        clearRefusal();
 
         setCreating(true);
         try {
@@ -224,7 +221,7 @@ export function DomainDatabaseManager({
                     });
 
                     if (res.ok) {
-                        setRefusal(null);
+                        clearRefusal();
                         showToast('success', t('ddb.deleted', { name: db.name }));
                         invalidate('databases');
                     } else {
