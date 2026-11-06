@@ -1,0 +1,125 @@
+== 4.0 Postfix settings and record after the update 00:22:08
+authorized_submit_users = root, vmail
+smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+{'changed_at': '2026-11-06T00:20:58Z', 'submit_before': {'value': 'static:anyone', 'set': False}, 'submit_after': 'root, vmail', 'relay_before': {'value': 'permit_mynetworks permit_sasl_authenticated defer_unauth_destination', 'set': True}, 'relay_after': 'permit_sasl_authenticated, defer_unauth_destination', 'cron_mailto_at': '2026-11-06T00:20:58Z', 'cron_mailto_kept': ['p5_test']}
+cron changed: [{'user': 'shop5_test', 'before_version': 'ct1-44fff424a5502929a6643b553b4fad41914fb6ce9e04aa7341196620ae5f4d9b', 'after_version': 'ct1-f855c725e9ca797f11049a6e29b8fe492b10ba7fea32a1a197230b4ef3a4a3f5'}]
+200 {"enforcement": {"changed_at": "2026-11-06T00:20:58Z", "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination", "expected_submit_users": "root, vmail", "relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination", "state": "closed", "submit_users": "root, vmail"}, "others": [], "sites": [], "state": "none", "window_days": 30}
+== 4.1 site crontabs: shop5.test (panel-written before the update) got MAILTO="" once; p5.test (owner MAILTO) kept 00:22:08
+--- crontab -u shop5_test
+    # CelikPanel: cron output of this site is not mailed (mail without a password is closed on this server)
+    MAILTO=""
+    */30 * * * * /usr/bin/php -v > /dev/null
+--- crontab -u p5_test
+    MAILTO="webmaster@p5.test"
+    15 3 * * * /bin/true
+--- root crontab MAILTO lines: 0
+-- the panel writes the owner's crontab again (adds a job): the owner's MAILTO stays
+200 {"success": true}
+-- the panel writes shop5.test's crontab again: one MAILTO only
+200 {"success": true}
+--- crontab -u shop5_test
+    # CelikPanel: cron output of this site is not mailed (mail without a password is closed on this server)
+    MAILTO=""
+    */30 * * * * /usr/bin/php -v > /dev/null
+    5 5 * * * /bin/true # a125 shop job
+--- crontab -u p5_test
+    MAILTO="webmaster@p5.test"
+    15 3 * * * /bin/true
+    45 4 * * * /bin/true # a125 second job
+--- root crontab MAILTO lines: 0
+== 4.2 a mailbox on another lab server (d5.test, Debian 12) to receive: ext5@d5.test, acct5@d5.test 00:22:09
+d5.test id=1
+  create ext5 200
+  create acct5 200
+== 4.3 the sending paths on the main server 00:22:10
+shop5.test /var/www/celikpanel/subscriptions/3/sites/2/public_html shop5_test
+postconf: authorized_submit_users = root, vmail;smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination;
+--- 1a. PHP mail() from the site (PHP-FPM pool as shop5_test)
+bool(false)
+
+--- 1b. PHP mail() as shop5_test with php-cli
+  sendmail: fatal: User shop5_test(5002) is not allowed to submit mail
+  bool(false)
+--- 1c. sendmail as shop5_test
+  sendmail: fatal: User shop5_test(5002) is not allowed to submit mail
+  exit 75
+--- 2a. SMTP 127.0.0.1:25 without a password into this server's own mailbox inbox5@p5.test
+   250 accepted
+--- 2b. SMTP 127.0.0.1:25 without a password to another server (ext5@d5.test): relay from mynetworks
+   refused ext5@d5.test 454 4.7.1 <ext5@d5.test>: Relay access denied
+--- 3a. root sendmail (system notice)
+  exit 0
+--- 3b. vmail sendmail (Sieve vacation path)
+  exit 0
+--- mail log (refusals and deliveries, last 3 min)
+2026-11-06T00:22:10+00:00 host1.p5.test postfix/sendmail[91734]: fatal: User shop5_test(5002) is not allowed to submit mail
+2026-11-06T00:22:10+00:00 host1.p5.test postfix/sendmail[91740]: fatal: User shop5_test(5002) is not allowed to submit mail
+2026-11-06T00:22:10+00:00 host1.p5.test postfix/sendmail[91744]: fatal: User shop5_test(5002) is not allowed to submit mail
+2026-11-06T00:22:11+00:00 host1.p5.test postfix/virtual[91753]: CCCDB22C38: to=<inbox5@p5.test>, relay=virtual, delay=0.6, delays=0.58/0.01/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+2026-11-06T00:22:11+00:00 host1.p5.test postfix/smtpd[91746]: NOQUEUE: reject: RCPT from localhost[127.0.0.1]: 454 4.7.1 <ext5@d5.test>: Relay access denied; from=<contact@shop5.test> to=<ext5@d5.test> proto=ESMTP helo=<localhost>
+2026-11-06T00:22:11+00:00 host1.p5.test postfix/pickup[89254]: 7750722C44: uid=0 from=<root>
+2026-11-06T00:22:11+00:00 host1.p5.test postfix/pickup[89254]: 7E78B22C38: uid=5000 from=<vmail>
+2026-11-06T00:22:12+00:00 host1.p5.test postfix/smtp[91762]: 7750722C44: to=<ext5@d5.test>, relay=mail.d5.test[192.0.3.193]:25, delay=0.9, delays=0.04/0.01/0.05/0.8, dsn=2.0.0, status=sent (250 2.0.0 Ok: queued as C131C4150E)
+2026-11-06T00:22:12+00:00 host1.p5.test postfix/smtp[91764]: 7E78B22C38: to=<ext5@d5.test>, relay=mail.d5.test[192.0.3.193]:25, delay=0.87, delays=0.03/0.01/0.04/0.79, dsn=2.0.0, status=sent (250 2.0.0 Ok: queued as BF9694150D)
+--- queue: 0 message(s)
+--- inbox5@p5.test maildir files: 1
+-- 587 with the mailbox password (noreply@shop5.test -> ext5@d5.test)
+ starttls 220
+ auth 235
+ send 250 accepted
+2026-11-06T00:22:27+00:00 host1.p5.test postfix/submission/smtpd[91843]: F00B122C44: client=localhost[127.0.0.1], sasl_method=PLAIN, sasl_username=noreply@shop5.test
+== 4.4 panel account mail (Agent.SendAccountMailV1): the customer changes their address to acct5@d5.test 00:22:33
+200 {"success": true}
+2026-11-06T00:22:11+00:00 host1.p5.test postfix/pickup[89254]: 7750722C44: uid=0 from=<root>
+2026-11-06T00:22:33+00:00 host1.p5.test postfix/pickup[89254]: A9A0322C45: uid=0 from=<no-reply@p5.test>
+2026-11-06T00:22:37+00:00 host1.p5.test postfix/pickup[89254]: E2C3E22C44: uid=0 from=<no-reply@p5.test>
+2026-11-06T00:22:38+00:00 host1.p5.test postfix/smtp[91764]: E2C3E22C44: to=<cust5@beta1-lab.test>, relay=none, delay=4.3, delays=4.3/0/0/0, dsn=5.4.4, status=bounced (Host or domain name not found. Name service error for name=beta1-lab.tes
+2026-11-06T00:22:42+00:00 host1.p5.test postfix/smtp[91762]: A9A0322C45: to=<acct5@d5.test>, relay=mail.d5.test[192.0.3.193]:25, delay=8.4, delays=4.2/0/0.01/4.1, dsn=2.0.0, status=sent (250 2.0.0 Ok: queued as 1E14F41525)
+2026-11-06T00:22:54+00:00 host1.p5.test sudo[91917]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -q -o short-iso --since -2min --no-pager | grep -E "uid=0 from=|to=<acct5@d5.test>|to=<cust5|SendAccountMail|
+== 4.5 what reached the other server (d5) 00:22:54
+-- ext5@d5.test
+      1   Subject: a124 587 authenticated
+      1   Subject: a125 root notice
+      1   Subject: a125 vmail reply
+  queue: 0
+-- acct5@d5.test
+      1   Subject: Confirm your email address for CelikPanel
+  queue: 0
+Mail queue is empty
+== 4.6 journal refusals on the main server 00:23:29
+2026-11-06T00:22:10+00:00 host1.p5.test postfix/sendmail[91734]: fatal: User shop5_test(5002) is not allowed to submit mail
+2026-11-06T00:22:10+00:00 host1.p5.test postfix/sendmail[91740]: fatal: User shop5_test(5002) is not allowed to submit mail
+2026-11-06T00:22:10+00:00 host1.p5.test postfix/sendmail[91744]: fatal: User shop5_test(5002) is not allowed to submit mail
+2026-11-06T00:22:11+00:00 host1.p5.test postfix/smtpd[91746]: NOQUEUE: reject: RCPT from localhost[127.0.0.1]: 454 4.7.1 <ext5@d5.test>: Relay access denied; from=<contact@shop5.test> to=<ext5@d5.test> proto=ESMTP helo=<localhost>
+200 {"covered_since": "2026-11-06T00:22:10Z", "enforcement": {"changed_at": "2026-11-06T00:20:58Z", "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination", "expected_submit_users": "root, vmail", "relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination", "state": "closed", "submit_users": "root, vmail"}, "others": [], "sites": [{"domain": "shop5.test", "domain_id": 2, "last": "2026-11-06T00:22:11Z", "messages": 0, "refused": 4, "sender_mailbox": "noreply@shop5.test", "ways": ["sendmail", "smtp"]}], "state": "found", "window_days": 30}
+== 5.1 a mailbox that already exists: inbox5@p5.test again 00:23:30
+409 {"code": "MAIL_ACCOUNT_EXISTS", "error": "the mailbox inbox5@p5.test already exists, so nothing was changed. Use the existing mailbox (change its password in the list if it is not known), or choose another name.", "vars": {"address": "inbox5@p5.test"}}
+== 5.2 PHP version and PHP pool of the static main site p5.test 00:23:30
+200 {"available_versions": ["8.4"], "domain_id": 1, "domain_name": "p5.test", "php_version": "", "pool_name": "site1"}
+409 {"action": "/domains/p5.test?tab=hosting", "code": "SITE_HAS_NO_PHP", "error": "p5.test is a static site, so it has no PHP version and nothing was changed. To run PHP on it, change its hosting type to PHP on the site's Hosting page; then choose the PHP version here.", "reason": "static", "vars": {"domain": "p5.test"}}
+409 {"action": "/domains/p5.test?tab=hosting", "code": "SITE_HAS_NO_PHP", "error": "p5.test is a static site, so it has no PHP version and nothing was changed. To run PHP on it, change its hosting type to PHP on the site's Hosting page; then choose the PHP version here.", "reason": "static", "vars": {"domain": "p5.test"}}
+409 {"action": "/domains/p5.test?tab=hosting", "code": "SITE_HAS_NO_PHP", "error": "p5.test is a static site, so it has no PHP version and nothing was changed. To run PHP on it, change its hosting type to PHP on the site's Hosting page; then choose the PHP version here.", "reason": "static", "vars": {"domain": "p5.test"}}
+-- the PHP site shop5.test still answers (customer)
+200 {"available_versions": ["8.4"], "domain_id": 2, "domain_name": "shop5.test", "php_version": "8.4", "pool_config": {"group": "shop5_test", "listen": "/var/run/php/php8.4-fpm-site2.sock", "listen_group": "www-data", "listen_mode": "0660", "listen_owner": "www-data", "name": "site2", "pm": "dynamic", "
+200 {"group": "shop5_test", "listen": "/var/run/php/php8.4-fpm-site2.sock", "listen_group": "www-data", "listen_mode": "0660", "listen_owner": "www-data", "name": "site2", "pm": "dynamic", "pm_max_children": 5, "pm_max_requests": 500, "pm_max_spare_servers": 3, "pm_min_spare_servers": 1, "pm_start_serve
+-- the English and Turkish sentences in the served web bundle
+dirname: missing operand
+Try 'dirname --help' for more information.
+web 
+  is a static site: it serves files                0 file(s)
+  statik bir site: dosyaları olduğu gibi         0 file(s)
+  already exists, so nothing was changed           0 file(s)
+  posta kutusu zaten var                           0 file(s)
+  the update waits for it (up to a minute)         0 file(s)
+  güncelleme onu bekler (en çok bir dakika)      0 file(s)
+== 4.7 the owner sets their own values, then restarts the panel (systemctl restart celikpanel-panel) 00:23:31
+postfix/postlog: refreshing the Postfix mail system
+restarted
+authorized_submit_users = static:anyone
+smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination
+200 {"covered_since": "2026-11-06T00:22:10Z", "enforcement": {"changed_at": "2026-11-06T00:20:58Z", "detail": "mail without a password: Postfix settings changed by the server owner were kept as they are (authorized_submit_users = static:anyone (CelikPanel's form: root, vmail); smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination (CelikPanel's form: permit_sasl_authenticated, defer_unauth_destination)). Sites may still be able to send mail without a password through what they allow; the server owner sets CelikPanel's form in /etc/postfix/main.cf (postconf -e) and reloads Postfix, or keeps the own setting deliberately", "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination", "expected_submit_users": "root, vmail", "relay_restrictions": "permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination", "state": "owner", "submit_users": "static:anyone"}, "others": [], "sites": [{"domain": "shop5.test", "domain_id": 2, "last": "2026-11-06T00:22:11Z", "messages": 0, "refused": 4, "sender_mailbox": "noreply@shop5.test", "ways": ["sendmail", "smtp"]}], "state": "found", "window_days": 30}
+2026/11/06 00:23:33 site configuration files at start: 0 written, 2 unchanged, 0 kept (owner-edited), 0 kept (foreign), 0 kept (unknown origin), 0 unreadable or unwritable, 0 missing (not recreated), 0 failed; 0 adopted from an earlier release
+2026/11/06 00:23:41 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release
+2026/11/06 00:23:47 milter chain: milters="inet:127.0.0.1:8891, inet:127.0.0.1:11332" maps=hash; mail without a password: Postfix settings changed by the server owner were kept as they are (authorized_submit_users = static:anyone (CelikPanel's form: root, vmail); smtpd_relay_restrictions = permit_my
+== post4 done 00:25:05

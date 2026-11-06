@@ -1,0 +1,440 @@
+{
+ "components": [
+  {
+   "category": "web",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "php-fpm",
+   "installed": true,
+   "installed_version": "8.3.6",
+   "name": "PHP-FPM",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "web",
+   "conflicts": [],
+   "dependencies": [
+    "nginx"
+   ],
+   "id": "node",
+   "installed": false,
+   "name": "Node.js",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "web",
+   "conflicts": [],
+   "dependencies": [
+    "nginx"
+   ],
+   "id": "python",
+   "installed": true,
+   "installed_version": "3.12.3",
+   "name": "Python",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "web",
+   "conflicts": [
+    "apache"
+   ],
+   "dependencies": [],
+   "id": "nginx",
+   "installed": true,
+   "installed_version": "1.24.0",
+   "name": "Nginx",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "web",
+   "conflicts": [
+    "nginx"
+   ],
+   "dependencies": [],
+   "id": "apache",
+   "installed": false,
+   "name": "Apache",
+   "reason": "server_setup_service_integration:apache",
+   "supported": false,
+   "wizard": "unavailable"
+  },
+  {
+   "candidate_version": "16",
+   "category": "database",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "postgresql",
+   "installed": false,
+   "name": "PostgreSQL",
+   "repo": {
+    "id": "pgdg",
+    "name": "PostgreSQL Global Development Group (PGDG)",
+    "state": "disabled"
+   },
+   "supported": true,
+   "versions": [
+    {
+     "available": true,
+     "package": "",
+     "source": "distribution",
+     "version": "16"
+    },
+    {
+     "available": false,
+     "package": "",
+     "reason": "repository_disabled",
+     "source": "vendor"
+    }
+   ],
+   "wizard": "choice"
+  },
+  {
+   "category": "database",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "mariadb",
+   "installed": true,
+   "installed_version": "10.11.14",
+   "name": "MariaDB",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "5.2.1",
+   "category": "database",
+   "conflicts": [],
+   "dependencies": [
+    "mariadb",
+    "nginx",
+    "php-fpm"
+   ],
+   "id": "phpmyadmin",
+   "installed": false,
+   "name": "phpMyAdmin",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "7.14.7",
+   "category": "database",
+   "conflicts": [],
+   "dependencies": [
+    "nginx",
+    "php-fpm",
+    "postgresql"
+   ],
+   "id": "phppgadmin",
+   "installed": false,
+   "name": "phpPgAdmin",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "3.8.6",
+   "category": "email",
+   "conflicts": [
+    "exim"
+   ],
+   "dependencies": [
+    "dovecot"
+   ],
+   "id": "postfix",
+   "installed": false,
+   "name": "Postfix",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "email",
+   "conflicts": [
+    "postfix"
+   ],
+   "dependencies": [],
+   "id": "exim",
+   "installed": false,
+   "name": "Exim",
+   "reason": "server_setup_service_integration:exim",
+   "supported": false,
+   "wizard": "unavailable"
+  },
+  {
+   "candidate_version": "3.8.1",
+   "category": "email",
+   "conflicts": [
+    "spamassassin"
+   ],
+   "dependencies": [
+    "postfix"
+   ],
+   "id": "rspamd",
+   "installed": false,
+   "name": "Rspamd",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "2.3.21",
+   "category": "email",
+   "conflicts": [],
+   "dependencies": [
+    "postfix"
+   ],
+   "id": "dovecot",
+   "installed": false,
+   "name": "Dovecot",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "email",
+   "conflicts": [],
+   "dependencies": [
+    "dovecot",
+    "nginx",
+    "php-fpm",
+    "postfix"
+   ],
+   "id": "roundcube",
+   "installed": false,
+   "name": "Roundcube",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "4.0.0",
+   "category": "email",
+   "conflicts": [
+    "rspamd"
+   ],
+   "dependencies": [
+    "postfix"
+   ],
+   "id": "spamassassin",
+   "installed": false,
+   "name": "SpamAssassin",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "1.0.20210914",
+   "category": "security",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "wireguard",
+   "installed": false,
+   "name": "WireGuard VPN",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "security",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "certbot",
+   "installed": true,
+   "installed_version": "2.9.0",
+   "name": "Let's Encrypt client (certbot)",
+   "supported": true,
+   "wizard": "required"
+  },
+  {
+   "candidate_version": "1.0.2",
+   "category": "security",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "fail2ban",
+   "installed": false,
+   "name": "Fail2ban",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "security",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "nftables",
+   "installed": true,
+   "installed_version": "1.0.9",
+   "name": "Firewall engine",
+   "supported": true,
+   "wizard": "required"
+  },
+  {
+   "candidate_version": "1.5.4",
+   "category": "security",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "clamav",
+   "installed": false,
+   "name": "ClamAV",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "dns",
+   "conflicts": [
+    "pdns"
+   ],
+   "dependencies": [],
+   "id": "bind",
+   "installed": true,
+   "installed_version": "9.18.39",
+   "name": "BIND",
+   "reason": "server_setup_component_dns_step",
+   "supported": false,
+   "wizard": "dns"
+  },
+  {
+   "candidate_version": "4.8.3",
+   "category": "dns",
+   "conflicts": [
+    "bind"
+   ],
+   "dependencies": [],
+   "id": "pdns",
+   "installed": false,
+   "name": "PowerDNS",
+   "reason": "server_setup_component_dns_step",
+   "supported": false,
+   "wizard": "dns"
+  },
+  {
+   "candidate_version": "3.0.5",
+   "category": "ftp",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "vsftpd",
+   "installed": false,
+   "name": "vsftpd",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "7.0.15",
+   "category": "cache",
+   "conflicts": [
+    "valkey"
+   ],
+   "dependencies": [],
+   "id": "redis",
+   "installed": false,
+   "name": "Redis",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "7.2.13",
+   "category": "cache",
+   "conflicts": [
+    "redis"
+   ],
+   "dependencies": [],
+   "id": "valkey",
+   "installed": false,
+   "name": "Valkey",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "candidate_version": "1.6.24",
+   "category": "cache",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "memcached",
+   "installed": false,
+   "name": "Memcached",
+   "supported": true,
+   "wizard": "choice"
+  },
+  {
+   "category": "monitoring",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "netdata",
+   "installed": false,
+   "name": "Netdata",
+   "reason": "server_setup_repository_required:netdata",
+   "supported": false,
+   "wizard": "components"
+  },
+  {
+   "category": "system",
+   "conflicts": [],
+   "dependencies": [],
+   "id": "cron",
+   "installed": true,
+   "installed_version": "3.0pl1",
+   "name": "Scheduled tasks (cron)",
+   "reason": "server_setup_component_automatic",
+   "supported": false,
+   "wizard": "automatic"
+  }
+ ],
+ "dns_engines": [
+  {
+   "active": true,
+   "id": "bind",
+   "installed_version": "9.18.39",
+   "offered": true,
+   "role": "main"
+  },
+  {
+   "active": true,
+   "id": "bind",
+   "installed_version": "9.18.39",
+   "offered": true,
+   "role": "backup"
+  },
+  {
+   "candidate_version": "4.8.3",
+   "id": "pdns",
+   "offered": false,
+   "reason": "server_setup_dns_installed_differs",
+   "role": "main"
+  },
+  {
+   "candidate_version": "4.8.3",
+   "id": "pdns",
+   "offered": false,
+   "reason": "server_setup_dns_installed_differs",
+   "role": "backup"
+  }
+ ],
+ "host": {
+  "distro_id": "ubuntu",
+  "version_id": "24.04"
+ },
+ "inventory_state": "ready",
+ "presets": {
+  "application": [
+   "nginx",
+   "node",
+   "mariadb"
+  ],
+  "custom": [],
+  "dns": [],
+  "web": [
+   "nginx",
+   "php-fpm",
+   "mariadb"
+  ],
+  "web_mail": [
+   "nginx",
+   "php-fpm",
+   "mariadb",
+   "postfix",
+   "dovecot",
+   "roundcube",
+   "rspamd"
+  ]
+ },
+ "required_components": [
+  "nftables",
+  "certbot"
+ ],
+ "version": 1
+}

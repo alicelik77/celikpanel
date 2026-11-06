@@ -1,0 +1,103 @@
+== provision 20:54:21 debian12 192.0.3.193 zone=d5.test version=v0.1.0-alpha.125 host=host1.d5.test
+_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 19.0
+}
+
+== the owner's machine name (lab load: hostnamectl + /etc/hosts) 20:54:40
+host1.d5.test
+host1.d5.test
+v0.1.0-alpha.125
+== install through get.sh in a root terminal 20:54:43
+main terminal rc 0 51.0 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.193:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.125
+license active acceptance_fixture can_use_panel True
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+CELIKPANEL_LISTEN=:1923
+host1.d5.test
+
+host {'distro_id': 'debian', 'version_id': '12'} inventory ready
+  dns_engine {"candidate_version": "9.18.49", "id": "bind", "offered": true, "role": "main"}
+  dns_engine {"candidate_version": "9.18.49", "id": "bind", "offered": true, "role": "backup"}
+  dns_engine {"candidate_version": "4.7.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_untested_system", "role": "main"}
+  dns_engine {"candidate_version": "4.7.3", "id": "pdns", "offered": false, "reason": "server_setup_pdns_untested_system", "role": "backup"}
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+== case 2: the setup DNS plan names the machine host1.d5.test 20:55:44
+  host-record hits for host1.d5.test 1
+    .draft {"customization": {"components": ["dovecot", "mariadb", "nginx", "php-fpm", "postfix", "roundcube", "rspamd"]}, "database": "mariadb", "dns_engine": "bind", "dns_mode": "local", "dns_role": "primary", "host_name": "host1.d5.test", "infrastructure_dns": {"zone": "d5.test"}, "local_ip": "192.0.3.193", "mail_dns": {"dmarc": "add", "mx": "now"}, "mail_hostname": "mail.d5.test", "main_dns_server": "thi
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:d5.test', '06-access_dns:frankfurt.d5.test', '07-panel_certificate:frankfurt.d5.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.d5.test', '13-mail_certificate:mail.d5.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:d5.test', '17-mail_enrollment:mail-renewal', '18-main_site:d5.test', '19-verify:custom'] 
+== start 20:55:47 (try 1)
+start 202 {
+ "id": "9d7d527eabac878a64292ec620178dac",
+ "panel_url": "https://frankfurt.d5.test:1923/",
+ "phase": "queued",
+ "plan_id": "fe296f2ef377c49d532e3a6c7a6ff69f",
+ "request_id": "9d7d527eabac878a64292ec620178dac",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "cef6f5ce5665bf777ab7d6027cbb02cc",
+   "request_id": "ff3c99ce5596549f7c3d8967768c1577",
+   "status": "pending",
+   "target": "local"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "9c00ed4cd905b68536d66a320ce20d83",
+   "request_id": "8ef000057201d85f41641c2ad962b8e8",
+   "s
+  host-record hits for host1.d5.test 2
+    .draft {"customization": {"components": ["dovecot", "mariadb", "nginx", "php-fpm", "postfix", "roundcube", "rspamd"]}, "database": "mariadb", "dns_engine": "bind", "dns_mode": "local", "dns_role": "primary", "host_name": "host1.d5.test", "infrastructure_dns": {"zone": "d5.test"}, "local_ip": "192.0.3.193", "mail_dns": {"dmarc": "add", "mx": "now"}, "mail_hostname": "mail.d5.test", "main_dns_server": "thi
+    .infrastructure_dns.records[7] {"action": "add", "content": "192.0.3.193", "host": true, "name": "host1.d5.test", "ttl": 300, "type": "A"}
+-- d5/main 20:55:51
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 20:56:31
+running 03-service null
+01-dns=succeeded 02-service=succeeded 03-service=running 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 20:56:51
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 20:57:31
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 20:57:52
+running 13-mail_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=running 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 20:58:12
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=running 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 21:00:33
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=running 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d5/main 21:02:13
+running 18-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=running 19-verify=pending
+-- d5/main 21:02:33
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+== end 21:02:33
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+== case 2: the setup operation's infrastructure DNS records name the machine
+  host-record hits for host1.d5.test 1
+    .context.infrastructure_dns.records[7] {"action": "add", "content": "192.0.3.193", "host": true, "name": "host1.d5.test", "ttl": 300, "type": "A"}
+== case 2: host1.d5.test resolves after setup (labnet dig @192.0.3.193) 21:02:34
+  A host1.d5.test: 192.0.3.193
+  SOA host1.d5.test: 
+  A frankfurt.d5.test: 192.0.3.193  A mail.d5.test: 192.0.3.193
+== single done 21:02:34

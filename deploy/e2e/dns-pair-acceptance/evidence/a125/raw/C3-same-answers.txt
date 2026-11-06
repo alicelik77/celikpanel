@@ -1,0 +1,10 @@
+main managed-services: differs in 1 component(s)
+    nginx: config_files=[{"is_managed": true, "path": "/etc/nginx/nginx.conf"}, {"is_managed": true, "pa -> [{"is_managed": true, "path": "/etc/nginx/nginx.conf"}, {"is_managed": true, "pa
+main scan: differs in 1 component(s)
+    nginx: config_files=[{"is_managed": true, "path": "/etc/nginx/nginx.conf"}, {"is_managed": true, "pa -> [{"is_managed": true, "path": "/etc/nginx/nginx.conf"}, {"is_managed": true, "pa
+main capabilities: identical
+main setup-components: identical
+backup managed-services: identical
+backup scan: identical
+backup capabilities: identical
+backup setup-components: identical

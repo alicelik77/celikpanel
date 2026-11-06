@@ -1,0 +1,45 @@
+== main: start again after the another change was running refusal (mail_tls_sync_host_busy) 23:46:56
+plan main again 200 can_start True blockers [] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-infrastructure_dns:p5.test', '05-access_dns:frankfurt.p5.test', '06-dns_readiness:local', '07-mail_profile:webmail', '08-mail_profile:protected-mail', '09-mail_dns:p5.test', '10-access_dns:mail.p5.test', '11-mail_certificate:mail.p5.test', '12-mail_enrollment:mail-renewal', '13-main_site:p5.test', '14-verify:custom'] 
+start-main-again 202 {
+ "id": "7f2347a20eb68f367c6278eb5368672e",
+ "panel_url": "https://frankfurt.p5.test:1923/",
+ "phase": "queued",
+ "plan_id": "a587237c322d49800b621d9badd47f11",
+ "request_id": "7f2347a20eb68f367c6278eb5368672e",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_join",
+   "kind": "peer_join",
+   "owner_id": "af02e7dedb977b80911fa3127bf60753",
+   "request_id": "fe0ad73f333371cbfc4a659050dbabdf",
+   "status": "pending",
+   "target": "second"
+  },
+  {
+   "id": "02-dns",
+   "kind": "dns",
+   "owner_id": "1ed9521dc62c0d4808a9fc29463d2de8",
+   "request_id": "b58884f5de8989e32bc3dd1c76dc2d14",
+
+-- p5/main 23:46:58
+running 03-firewall null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=running 04-infrastructure_dns=pending 05-access_dns=pending 06-dns_readiness=pending 07-mail_profile=pending 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- p5/main 23:47:18
+running 07-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=running 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- p5/main 23:48:18
+running 08-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=running 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- p5/main 23:49:19
+running 09-mail_dns null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=running 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- p5/main 23:49:39
+running 13-main_site null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-main_site=running 14-verify=pending
+-- p5/main 23:49:59
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-main_site=succeeded 14-verify=succeeded
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-main_site=succeeded 14-verify=succeeded
+== retry done 23:49:59

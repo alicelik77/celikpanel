@@ -1,0 +1,4 @@
+# lab only: the lab resolver's upstream (slirp DNS of the WSL host) returned SERVFAIL for deb.debian.org under the
+# mail servers' DNSBL load; pin the Debian mirror name in the lab resolver (labnet unbound) and keep serving expired answers.
+source /mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a125acc/kit/env.sh
+lab ssh beta1-lab labnet -- "IP=146.75.122.132; echo mirror \$IP; printf 'server:\n  serve-expired: yes\n  serve-expired-ttl: 86400\n  local-zone: \"deb.debian.org.\" transparent\n  local-data: \"deb.debian.org. 300 IN A %s\"\n  local-zone: \"debian.map.fastly.net.\" transparent\n  local-data: \"debian.map.fastly.net. 300 IN A %s\"\n' \$IP \$IP | sudo -n tee /etc/unbound/unbound.conf.d/zz-a125-lab-pin.conf; sudo -n unbound-checkconf && sudo -n systemctl restart unbound; sleep 1; dig +short @192.0.2.53 deb.debian.org A; dig +short @192.0.2.53 deb.debian.org AAAA; echo aaaa-done"

@@ -1,0 +1,18 @@
+{
+ "database_servers": [
+  "mariadb"
+ ],
+ "db_tools": [],
+ "dns_identity_ready": true,
+ "dns_management_mode": "local",
+ "dns_management_ready": true,
+ "dns_server": "pdns",
+ "dns_server_engine": "pdns",
+ "dns_server_peer": "ns2.p5.test",
+ "dns_server_state": "ready",
+ "mail_server": true,
+ "php_versions": [
+  "8.4"
+ ],
+ "web_server": "nginx"
+}

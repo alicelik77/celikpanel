@@ -1,0 +1,46 @@
+== case 2: the lab 126 label of the same candidate on the portal 00:52:59
+/root/a114-portal/site/releases/latest.txt
+/root/a114-portal/site/releases/v0.1.0-alpha.124
+/root/a114-portal/site/releases/v0.1.0-alpha.125
+v0.1.0-alpha.126
+== 2.1 an attempt the installer refuses: the owner left an unsupported key in panel.env (lab load) 00:53:00
+CELIKPANEL_LAB_ROLLBACK_PROBE=1
+  request 0819fc5b1a5953a55b4ea1b759f47728 v0.1.0-alpha.125 -> v0.1.0-alpha.126
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T00:53:01Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "0819fc5b1a5953a55b4ea1b759f47728", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "8c0ddc8800c38b6deefa970dcd4d6c6a52734a29e4167eb76474d41b1d8ba674", "archive_size": "71337818", "commit": "0c9b9d2cc9651cc777c5
+  00:53:04 +3s 200 running None  | 
+  00:53:23 +22s 
+  00:53:58 +57s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) d | 
+== 2.2 the owner removes the line; as soon as the panel answers, Update is pressed (start-up mail work running) 00:53:58
+0
+  panel answers 00:53:58
+  request e60fa862ef051473b677a905d551a52b v0.1.0-alpha.125 -> v0.1.0-alpha.126
+  pressed 00:53:59
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T00:53:58Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "e60fa862ef051473b677a905d551a52b", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "8c0ddc8800c38b6deefa970dcd4d6c6a52734a29e4167eb76474d41b1d8ba674", "archive_size": "71337818", "commit": "0c9b9d2cc9651cc777c5
+  00:54:00 +1s 200 running None  | 
+  00:54:19 +20s 
+  00:54:51 +52s 200 running verifying  | 
+  00:55:02 +63s 200 succeeded None  | 
+== after 00:55:13
+200 {"agent_commit": "0c9b9d2cc9651cc777c541cd81c9ae08a8a58fd7", "agent_matches": true, "commit": "0c9b9d2cc9651cc777c541cd81c9ae08a8a58fd7", "hostname": "host1.p5.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.126"}
+200 {"created_at": "2026-11-06T00:53:58.781515194Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T00:53:58Z", "state": "done"}, {"id": "verify", "state": "done"}, {"id": "prepare", "state": "done"}, {"finished_at": "2026-11-06T00:54:50Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-06T00:55:01Z", "id": "confirm", "started_at": "2026-11-06T00:54:50Z", "state": "done"}]}, "request_id": "e60fa862ef051473b677a905d551a52b", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "8c0ddc8800c38b6deefa970dcd4d6c6a52734a29e4167eb76474d41b1d8ba674", "archive_size": "71337818", "commit": "0c9b9d2cc9651cc777c541cd81c9ae08a8a58fd7", "os": "linux", "sequence": "126", "version": "v0.1.0-alpha.126"}, "updated_at": "2026-11-06T00:55:01.417234162Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -20min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/06 00:53:55 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 00:53:55 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/06 00:54:50 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 00:54:50 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/06 00:55:02 self-update: cleared the failed mark of celikpanel-self-update-0819fc5b1a5953a55b4ea1b759f47728.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '0780352316acde63bc6aebb37838a5e7.json'] {'request_id': '0780352316acde63bc6aebb37838a5e7', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T00:18:58.629404432Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+  ['self-update', '0819fc5b1a5953a55b4ea1b759f47728.json'] {'request_id': '0819fc5b1a5953a55b4ea1b759f47728', 'status': 'failed', 'phase': None, 'created_at': '2026-11-06T00:53:00.983905342Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.126', 'reason': None, 'code': None}
+  ['self-update', 'b1fa7cb63639d55b48bef705638c5f7a.json'] {'request_id': 'b1fa7cb63639d55b48bef705638c5f7a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T23:59:58.061958688Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+  ['self-update', 'c640c08e1d1c980e5716b095ce38326a.json'] {'request_id': 'c640c08e1d1c980e5716b095ce38326a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-06T00:06:44.226571702Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+  ['self-update', 'e60fa862ef051473b677a905d551a52b.json'] {'request_id': 'e60fa862ef051473b677a905d551a52b', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T00:53:58.781515194Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.126', 'reason': None, 'code': None}
+-- the panel's start-up mail work and the update (journal, both units)
+== case2 done 00:55:15

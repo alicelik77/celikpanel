@@ -1,0 +1,61 @@
+== versions 23:57:24
+200 {"agent_commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "agent_matches": true, "commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "hostname": "host1.p5.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.124"}
+200 {"agent_commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "agent_matches": true, "commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "hostname": "host2.p5.test", "ipv4": "192.0.3.191", "schema_version": 63, "version": "v0.1.0-alpha.124"}
+== case 3 baseline on alpha.124 (main Debian 13, backup Ubuntu 24.04) 23:57:24
+a124-main scan              elapsed [1.97, 1.758, 1.781, 1.917, 1.747] answers ['2ba407f68429', '8134564e06e2', 'a9900726e461', 'ed9068d73161', 'f3f015c25d42']
+a124-main managed-services  elapsed [0.531, 0.506, 0.561, 0.514, 0.511] answers ['a9900726e461']
+a124-main capabilities      elapsed [1.483, 2.317, 1.56, 1.44, 1.435] answers ['c23b7f1380ef']
+a124-main setup-components  elapsed [0.892, 0.841, 0.899, 0.85, 0.882] answers ['069470f9fbd3']
+a124-main controls-during-scan #1: scan (200, 1.723) reload nginx (409, 0.008, 'service_operation_busy')
+a124-main controls-during-scan #2: scan (200, 1.778) reload nginx (409, 0.008, 'service_operation_busy')
+a124-main controls-during-scan #3: scan (200, 1.779) reload nginx (409, 0.008, 'service_operation_busy')
+a124-main controls-during-scan #4: scan (200, 1.828) reload nginx (409, 0.007, 'service_operation_busy')
+a124-main controls-during-scan #5: scan (200, 1.723) reload nginx (409, 0.008, 'service_operation_busy')
+a124-main controls-during-scan #6: scan (200, 1.721) reload nginx (409, 0.008, 'service_operation_busy')
+a124-backup scan              elapsed [2.189, 2.126, 2.117, 2.073, 2.049] answers ['2915b7c5b06a', '5194a2cec6f8', '93581edef0d5', 'aafbfbbe483d', 'd73f5b13ae39']
+a124-backup managed-services  elapsed [0.549, 0.509, 0.525, 0.551, 0.535] answers ['d73f5b13ae39']
+a124-backup capabilities      elapsed [3.252, 3.294, 3.321, 3.283, 3.331] answers ['cd186e934b87']
+a124-backup setup-components  elapsed [1.296, 1.192, 1.207, 1.22, 1.189] answers ['7f1e045b476e']
+a124-backup controls-during-scan #1: scan (200, 2.086) reload nginx (409, 0.009, 'service_operation_busy')
+a124-backup controls-during-scan #2: scan (200, 2.075) reload nginx (409, 0.008, 'service_operation_busy')
+a124-backup controls-during-scan #3: scan (200, 2.141) reload nginx (409, 0.007, 'service_operation_busy')
+a124-backup controls-during-scan #4: scan (200, 2.094) reload nginx (409, 0.007, 'service_operation_busy')
+a124-backup controls-during-scan #5: scan (200, 2.072) reload nginx (409, 0.007, 'service_operation_busy')
+a124-backup controls-during-scan #6: scan (200, 2.131) reload nginx (409, 0.009, 'service_operation_busy')
+== p5/main https://192.0.3.190:1923
+  GET    /                                                          HTTP/2 200  |  | content-type: text/html; charset=utf-8 | wire 791 B
+  GET    /assets/app-Bu4_c6QW.js                                    HTTP/2 200  |  | content-type: text/javascript; charset=utf-8 | wire 276147 B
+  GET    /assets/app-B65_RJat.css                                   HTTP/2 200  |  | content-type: text/css; charset=utf-8 | wire 60025 B
+  GET    /api/v1/managed-services                                   HTTP/2 200  |  | content-type: application/json | wire 17233 B
+  POST   /api/v1/managed-services/scan                              HTTP/2 200  |  | content-type: application/json | wire 17241 B
+  GET    /api/v1/hosting/capabilities                               HTTP/2 200  |  | content-type: application/json | wire 300 B
+  GET    /api/v1/setup/components                                   HTTP/2 200  |  | content-type: application/json | wire 6229 B
+  GET    /api/v1/domains                                            HTTP/2 200  |  | content-type: application/json | wire 222 B
+-- secret-bearing answers
+  GET    /api/v1/database-servers/1/admin-account                   HTTP/2 200  |  | content-type: application/json | wire 86 B
+  GET    /api/v1/auth/me                                            HTTP/2 200  |  | content-type: application/json | wire 201 B
+== a customer PHP site that exists before the update: shop5.test 23:59:31
+200 {"id": 3, "rights": "unlimited", "success": true}
+subscription 3
+shop5.test id=2
+p5.test id=1
+200 {"available_versions": ["8.4"], "domain_id": 2, "domain_name": "shop5.test", "php_version": "8.4", "pool_config": {"group": "shop5_test", "listen": "/var/run/php/php8.4-fpm-site2.sock", "listen_group": "www-data", "listen_mode": "0660", "listen_owner": "www-data", "name": "site2", "pm": "dynamic", "
+== mailboxes: inbox5@p5.test (receives) and noreply@shop5.test (sends on 587) 23:59:54
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+== crontabs before the update: shop5.test written by the panel; p5.test written by the panel, then the owner adds MAILTO by hand 23:59:54
+shop5.test /var/www/celikpanel/subscriptions/3/sites/2/public_html shop5_test | p5.test /var/www/celikpanel/subscriptions/2/sites/1/public_html p5_test
+200 {"success": true}
+200 {"success": true}
+owner set MAILTO for p5_test
+--- crontab -u shop5_test
+    */30 * * * * /usr/bin/php -v > /dev/null
+--- crontab -u p5_test
+    MAILTO="webmaster@p5.test"
+    15 3 * * * /bin/true
+--- root crontab MAILTO lines: 0
+authorized_submit_users = static:anyone
+smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+ls: cannot access '/var/lib/celikpanel-agent-private/mail-passwordless.json': No such file or directory
+== pre done 23:59:57

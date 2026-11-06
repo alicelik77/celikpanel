@@ -1,0 +1,32 @@
+== arm the package-task load 00:18:57
+Running as unit: lab-pkgwatch.service; invocation ID: ba76cf8eed5a4b91a341bfcd0ee18ded
+active
+  request 0780352316acde63bc6aebb37838a5e7 v0.1.0-alpha.124 -> v0.1.0-alpha.125
+== press Update 00:18:59
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T00:18:58Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "stat
+  00:19:02 200 running 
+  00:19:46 
+  00:20:21 200 running 
+  00:20:31 200 succeeded 
+200 {"agent_commit": "3f58cd02cfe11767462d0be0d47cbda6c59e692f", "agent_matches": true, "commit": "3f58cd02cfe11767462d0be0d47cbda6c59e692f", "hostname": "host1.p5.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+checker seen 00:19:12.923104919
+dpkg-named process ended 00:19:32.926674451
+lab-pkgwatch.service: Deactivated successfully.
+lab-pkgwatch.service: Consumed 3.766s CPU time, 1.8M memory peak.
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/06 00:20:18 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 00:20:18 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/06 00:20:30 self-update: cleared the failed mark of celikpanel-self-update-b1fa7cb63639d55b48bef705638c5f7a.service; a later update succeeded and the attempt's record is kept
+2026/11/06 00:20:30 self-update: cleared the failed mark of celikpanel-self-update-c640c08e1d1c980e5716b095ce38326a.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '0780352316acde63bc6aebb37838a5e7.json'] {'request_id': '0780352316acde63bc6aebb37838a5e7', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T00:18:58.629404432Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+  ['self-update', 'b1fa7cb63639d55b48bef705638c5f7a.json'] {'request_id': 'b1fa7cb63639d55b48bef705638c5f7a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T23:59:58.061958688Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+  ['self-update', 'c640c08e1d1c980e5716b095ce38326a.json'] {'request_id': 'c640c08e1d1c980e5716b095ce38326a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-06T00:06:44.226571702Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+== repro done 00:20:41

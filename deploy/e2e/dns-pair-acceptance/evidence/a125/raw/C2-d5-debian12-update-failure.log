@@ -1,0 +1,27 @@
+== Debian 12 (systemd 252), update 125 (bf0a5b9ee) -> lab 126 (64c22f5de): failure and blocked recovery
+certbot.timer load=loaded enabled=enabled active=active
+certbot-renew.timer load=not-found enabled=Failed to get unit file state for certbot-renew.timer: No such file or directory active=inactive
+ii  certbot        2.1.0-4      all          automatically configure HTTPS using
+== /var/backups/celikpanel/update-snapshots/.release-snapshot.incomplete.46634.00bd1c9ba0263a98ee5381172a97a2cb/20261106T002556Z-from-unknown-to-64c22f5deb97d3dfec35e01b8a2043b73f0e20a1-00bd1c9ba0263a98ee5381172a97a2cb/service-states.tsv
+celikpanel-agent.service	enabled	active
+celikpanel-panel.service	enabled	active
+celikpanel-firewall-restore.service	enabled	inactive
+certbot.timer	enabled	active
+total 36
+drwx------  5 root root 4096 Nov  6 00:25 .
+drwxr-xr-x 45 root root 4096 Nov  6 00:25 ..
+-rw-------  1 root root  734 Nov  6 00:25 recovery-foundation.v1
+drwx------  2 root root 4096 Nov  6 00:25 recovery-observation-bindings
+drwx------  3 root root 4096 Nov  6 00:25 recovery-promotions
+-rw-------  1 root root  113 Nov  6 00:25 recovery-runtime.v1
+-rw-------  1 root root  113 Nov  5 23:50 recovery-runtime.v1.promotion-d18e52db465f430bc6f78e5272068c81
+drwx------  2 root root 4096 Nov  6 00:26 self-update
+-rw-------  1 root root   82 Nov  6 00:25 sequence.floor
+-rw-------  1 root root    0 Nov  5 23:50 update.lock
+systemd 252 (252.39-1~deb12u2)
+rc=1 stdout=[]
+bash: line 1: SIGKILL | cut -c1-400: command not found
+failed
+inactive
+celikpanel-panel.service                                        loaded failed failed CelikPanel web panel
+celikpanel-self-update-682f7fd9877b08551ba6c89f5ed35b36.service loaded failed failed /opt/celikpanel/bin/agent --self-update-worker 682f7fd9877b08551ba6c89f5ed35b36

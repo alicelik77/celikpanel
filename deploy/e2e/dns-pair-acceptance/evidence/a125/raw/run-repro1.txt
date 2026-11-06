@@ -1,0 +1,28 @@
+== arm the package-task load 00:06:43
+Running as unit: lab-pkgwatch.service; invocation ID: d473a4df64904ceba32087750fc66f8f
+active
+  request c640c08e1d1c980e5716b095ce38326a v0.1.0-alpha.124 -> v0.1.0-alpha.125
+== press Update 00:06:44
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T00:06:44Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "stat
+  00:06:47 200 running 
+  00:07:00 200 failed reviewed updater failed: exit status 1: !! independent recovery runtime preparation is unconfirmed; panel services have not been stopped; inspect the same update and retained recovery evidence
+200 {"agent_commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "agent_matches": true, "commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "hostname": "host1.p5.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.124"}
+Started lab-pkgwatch.service - [systemd-run] /usr/bin/bash -c "\nend=\$((SECONDS+280))\nwhile [ \$SECONDS -lt \$end ]; do\n  if pgrep -f '/usr/libexec/celikpanel/recovery-runtimes/v1/[0-9a-f]+/bin/(panel|agent)-checker' >/dev/null; then echo \"checker seen \$(date -u +%T.%N)\"; /root/dpkg 20; echo \"dpkg-named process ended \$(date -u +%T.%N)\"; exit 0; fi\n  sleep 0.05; done; echo 'no checker seen'".
+checker seen 00:06:54.765720564
+release 
+--- systemctl --failed (all units)
+celikpanel-release-recovery.service                             loaded failed failed CelikPanel verified release transaction recovery
+celikpanel-self-update-b1fa7cb63639d55b48bef705638c5f7a.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker b1fa7cb63639d55b48bef705638c5f7a
+celikpanel-self-update-c640c08e1d1c980e5716b095ce38326a.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker c640c08e1d1c980e5716b095ce38326a
+(end)
+--- self-update units
+celikpanel-self-update-b1fa7cb63639d55b48bef705638c5f7a.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker b1fa7cb63639d55b48bef705638c5f7a
+celikpanel-self-update-c640c08e1d1c980e5716b095ce38326a.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker c640c08e1d1c980e5716b095ce38326a
+--- 'database publication is unverified' in the journal since -6min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', 'b1fa7cb63639d55b48bef705638c5f7a.json'] {'request_id': 'b1fa7cb63639d55b48bef705638c5f7a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-05T23:59:58.061958688Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+  ['self-update', 'c640c08e1d1c980e5716b095ce38326a.json'] {'request_id': 'c640c08e1d1c980e5716b095ce38326a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-06T00:06:44.226571702Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.125', 'reason': None, 'code': None}
+== repro done 00:07:10

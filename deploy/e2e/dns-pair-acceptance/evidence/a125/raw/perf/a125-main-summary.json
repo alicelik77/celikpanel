@@ -1,0 +1,125 @@
+{
+ "label": "a125-main",
+ "reads": {
+  "scan": {
+   "elapsed_s": [
+    0.859,
+    0.704,
+    0.691,
+    0.74,
+    0.716
+   ],
+   "distinct_answers": [
+    "1fae4e3e53ff",
+    "7ab76a688238",
+    "84ed90763696",
+    "c936ce0775e6",
+    "e05caa1bdf4e"
+   ]
+  },
+  "managed-services": {
+   "elapsed_s": [
+    0.535,
+    0.799,
+    0.525,
+    0.649,
+    0.582
+   ],
+   "distinct_answers": [
+    "84ed90763696"
+   ]
+  },
+  "capabilities": {
+   "elapsed_s": [
+    0.689,
+    0.728,
+    0.679,
+    0.63,
+    0.551
+   ],
+   "distinct_answers": [
+    "c23b7f1380ef"
+   ]
+  },
+  "setup-components": {
+   "elapsed_s": [
+    0.1,
+    0.083,
+    0.097,
+    0.079,
+    0.081
+   ],
+   "distinct_answers": [
+    "069470f9fbd3"
+   ]
+  }
+ },
+ "controls_during_scan": [
+  {
+   "scan": [
+    409,
+    0.01
+   ],
+   "reload": [
+    409,
+    0.008,
+    "service_operation_busy"
+   ]
+  },
+  {
+   "scan": [
+    409,
+    0.008
+   ],
+   "reload": [
+    409,
+    0.008,
+    "service_operation_busy"
+   ]
+  },
+  {
+   "scan": [
+    409,
+    0.298
+   ],
+   "reload": [
+    200,
+    0.481,
+    ""
+   ]
+  },
+  {
+   "scan": [
+    409,
+    0.187
+   ],
+   "reload": [
+    200,
+    0.496,
+    ""
+   ]
+  },
+  {
+   "scan": [
+    409,
+    0.222
+   ],
+   "reload": [
+    200,
+    0.455,
+    ""
+   ]
+  },
+  {
+   "scan": [
+    200,
+    0.955
+   ],
+   "reload": [
+    200,
+    0.725,
+    ""
+   ]
+  }
+ ]
+}

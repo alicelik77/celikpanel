@@ -1,0 +1,180 @@
+== versions 00:20:41
+200 {"agent_commit": "3f58cd02cfe11767462d0be0d47cbda6c59e692f", "agent_matches": true, "commit": "3f58cd02cfe11767462d0be0d47cbda6c59e692f", "hostname": "host1.p5.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+200 {"agent_commit": "bf0a5b9ee5bf026d07222924e3e84c10f2aedec4", "agent_matches": true, "commit": "bf0a5b9ee5bf026d07222924e3e84c10f2aedec4", "hostname": "host2.p5.test", "ipv4": "192.0.3.191", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+a125-main scan              elapsed [0.859, 0.704, 0.691, 0.74, 0.716] answers ['1fae4e3e53ff', '7ab76a688238', '84ed90763696', 'c936ce0775e6', 'e05caa1bdf4e']
+a125-main managed-services  elapsed [0.535, 0.799, 0.525, 0.649, 0.582] answers ['84ed90763696']
+a125-main capabilities      elapsed [0.689, 0.728, 0.679, 0.63, 0.551] answers ['c23b7f1380ef']
+a125-main setup-components  elapsed [0.1, 0.083, 0.097, 0.079, 0.081] answers ['069470f9fbd3']
+a125-main controls-during-scan #1: scan (409, 0.01) reload nginx (409, 0.008, 'service_operation_busy')
+a125-main controls-during-scan #2: scan (409, 0.008) reload nginx (409, 0.008, 'service_operation_busy')
+a125-main controls-during-scan #3: scan (409, 0.298) reload nginx (200, 0.481, '')
+a125-main controls-during-scan #4: scan (409, 0.187) reload nginx (200, 0.496, '')
+a125-main controls-during-scan #5: scan (409, 0.222) reload nginx (200, 0.455, '')
+a125-main controls-during-scan #6: scan (200, 0.955) reload nginx (200, 0.725, '')
+a125-backup scan              elapsed [0.66, 0.616, 0.591, 0.58, 0.632] answers ['03125b46d78f', '24252a42e27d', '41b48dc0e547', 'f3889dfb9c51', 'fed3de53e33d']
+a125-backup managed-services  elapsed [0.508, 0.551, 0.553, 0.519, 0.545] answers ['fed3de53e33d']
+a125-backup capabilities      elapsed [1.948, 1.85, 1.9, 1.926, 1.95] answers ['cd186e934b87']
+a125-backup setup-components  elapsed [0.084, 0.065, 0.066, 0.068, 0.064] answers ['7f1e045b476e']
+a125-backup controls-during-scan #1: scan (409, 0.075) reload nginx (200, 0.293, '')
+a125-backup controls-during-scan #2: scan (200, 0.624) reload nginx (200, 0.291, '')
+a125-backup controls-during-scan #3: scan (200, 0.68) reload nginx (200, 0.312, '')
+a125-backup controls-during-scan #4: scan (200, 0.658) reload nginx (200, 0.315, '')
+a125-backup controls-during-scan #5: scan (200, 0.651) reload nginx (200, 0.295, '')
+a125-backup controls-during-scan #6: scan (200, 0.667) reload nginx (200, 0.303, '')
+== same answers? (volatile fields dropped: scan times, ages, pids, memory)
+  main managed-services: DIFFERENT
+     236c236
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     273a274,277
+     >     },
+     >     {
+     >      "is_managed": true,
+     >      "path": "/etc/nginx/sites-enabled/shop5.test.conf"
+     285c289
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     376c380
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     452c456
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     523c527
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     559c563
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     676c680
+  main scan: DIFFERENT
+     236c236
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     273a274,277
+     >     },
+     >     {
+     >      "is_managed": true,
+     >      "path": "/etc/nginx/sites-enabled/shop5.test.conf"
+     285c289
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     376c380
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     452c456
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     523c527
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     559c563
+     <    "package_version_read_at": "2026-11-05T23:57:33Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:20:45Z",
+     676c680
+  main capabilities: identical
+  main setup-components: identical
+  backup managed-services: DIFFERENT
+     250c250
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     291c291
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     382c382
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     623c623
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     668c668
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     714c714
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     925c925
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+  backup scan: DIFFERENT
+     250c250
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     291c291
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     382c382
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     623c623
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     668c668
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     714c714
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+     925c925
+     <    "package_version_read_at": "2026-11-05T23:58:29Z",
+     ---
+     >    "package_version_read_at": "2026-11-06T00:21:18Z",
+  backup capabilities: identical
+  backup setup-components: identical
+== compression (a client that accepts gzip) 00:21:52
+== p5/main https://192.0.3.190:1923
+  GET    /                                                          HTTP/2 200  |  | content-type: text/html; charset=utf-8 | wire 791 B
+  GET    /assets/app-GLVX_M78.js                                    HTTP/2 200  | content-encoding: gzip | content-type: text/javascript; charset=utf-8 | wire 84798 B
+  GET    /assets/app-B65_RJat.css                                   HTTP/2 200  | content-encoding: gzip | content-type: text/css; charset=utf-8 | wire 11800 B
+  GET    /api/v1/managed-services                                   HTTP/2 200  | content-encoding: gzip | content-type: application/json | wire 3274 B
+  POST   /api/v1/managed-services/scan                              HTTP/2 200  | content-encoding: gzip | content-type: application/json | wire 3284 B
+  GET    /api/v1/hosting/capabilities                               HTTP/2 200  |  | content-type: application/json | wire 300 B
+  GET    /api/v1/setup/components                                   HTTP/2 200  | content-encoding: gzip | content-type: application/json | wire 1270 B
+  GET    /api/v1/domains                                            HTTP/2 200  |  | content-type: application/json | wire 446 B
+-- secret-bearing answers
+  GET    /api/v1/database-servers/1/admin-account                   HTTP/2 200  |  | content-type: application/json | wire 86 B
+  GET    /api/v1/auth/me                                            HTTP/2 200  |  | content-type: application/json | wire 201 B
+== p5/backup https://192.0.3.191:1923
+  GET    /                                                          HTTP/2 200  |  | content-type: text/html; charset=utf-8 | wire 791 B
+  GET    /assets/app-GLVX_M78.js                                    HTTP/2 200  | content-encoding: gzip | content-type: text/javascript; charset=utf-8 | wire 84798 B
+  GET    /assets/app-B65_RJat.css                                   HTTP/2 200  | content-encoding: gzip | content-type: text/css; charset=utf-8 | wire 11800 B
+  GET    /api/v1/managed-services                                   HTTP/2 200  | content-encoding: gzip | content-type: application/json | wire 3094 B
+  POST   /api/v1/managed-services/scan                              HTTP/2 200  | content-encoding: gzip | content-type: application/json | wire 3104 B
+  GET    /api/v1/hosting/capabilities                               HTTP/2 200  |  | content-type: application/json | wire 305 B
+  GET    /api/v1/setup/components                                   HTTP/2 200  | content-encoding: gzip | content-type: application/json | wire 1264 B
+  GET    /api/v1/domains                                            HTTP/2 200  |  | content-type: application/json | wire 3 B
+-- secret-bearing answers
+  GET    /api/v1/database-servers/1/admin-account                   HTTP/2 200  |  | content-type: application/json | wire 86 B
+  GET    /api/v1/auth/me                                            HTTP/2 200  |  | content-type: application/json | wire 201 B
+== a package installed with apt outside the panel (the owner: apt-get install redis-server) 00:21:58
+  before: [('redis', False), ('memcached', False)]
+apt rc=0
+active
+  POST /api/v1/managed-services/scan: redis installed after 1.4 s (status active (running), versions [])
+  GET /api/v1/managed-services: redis installed after 5.0 s (status active (running), versions [])
+== post3 done 00:22:08

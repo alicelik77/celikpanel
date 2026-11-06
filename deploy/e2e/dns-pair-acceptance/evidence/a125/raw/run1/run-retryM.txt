@@ -1,0 +1,37 @@
+== main: start again after the transient package-fetch failure 21:23:59
+plan main again 200 can_start True blockers [] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-infrastructure_dns:p5.test', '05-access_dns:frankfurt.p5.test', '06-dns_readiness:local', '07-access_dns:mail.p5.test', '08-mail_certificate:mail.p5.test', '09-mail_profile:webmail', '10-mail_profile:protected-mail', '11-mail_dns:p5.test', '12-mail_enrollment:mail-renewal', '13-main_site:p5.test', '14-verify:custom'] 
+start-main-again 202 {
+ "id": "5d0ee6b766dbc61ff677d479bbf466e3",
+ "panel_url": "https://frankfurt.p5.test:1923/",
+ "phase": "queued",
+ "plan_id": "5b906882117d885438d8f8a3f82a8172",
+ "request_id": "5d0ee6b766dbc61ff677d479bbf466e3",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_join",
+   "kind": "peer_join",
+   "owner_id": "b8a5fd0f220c9cb380f6ab6d0d7d51ff",
+   "request_id": "4b57c23e1302e91783e910275a8fee18",
+   "status": "pending",
+   "target": "second"
+  },
+  {
+   "id": "02-dns",
+   "kind": "dns",
+   "owner_id": "a2a723ed3aa1cfd535fd042393fd76af",
+   "request_id": "0e7b45b765d3d3aa9142858e60954e13",
+
+-- p5/main 21:24:01
+running 03-firewall null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=running 04-infrastructure_dns=pending 05-access_dns=pending 06-dns_readiness=pending 07-access_dns=pending 08-mail_certificate=pending 09-mail_profile=pending 10-mail_profile=pending 11-mail_dns=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- p5/main 21:24:22
+running 09-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-access_dns=succeeded 08-mail_certificate=succeeded 09-mail_profile=running 10-mail_profile=pending 11-mail_dns=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- p5/main 21:26:02
+failed 09-mail_profile {"code": "service_install_failed", "component": "postfix", "detail": "E: Failed to fetch https://deb.debian.org/... Could not resolve 'debian.map.fastly.net' Could not resolve 'deb.debian.org'", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-access_dns=succeeded 08-mail_certificate=succeeded 09-mail_profile=failed 10-mail_profile=pending 11-mail_dns=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+failed 09-mail_profile {"code": "service_install_failed", "component": "postfix", "detail": "E: Failed to fetch https://deb.debian.org/... Could not resolve 'debian.map.fastly.net' Could not resolve 'deb.debian.org'", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-access_dns=succeeded 08-mail_certificate=succeeded 09-mail_profile=failed 10-mail_profile=pending 11-mail_dns=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+{"id": "09-mail_profile", "kind": "mail_profile", "operation_id": "a7cdf59cb4e62924c240c4b84a43ec7d", "owner_id": "1eace636ad16cf209ef9416f5abe48e0", "request_id": "7d4413499a21d0246fcea53e8983c2ac", "status": "failed", "target": "webmail"}
+== retry done 21:26:02

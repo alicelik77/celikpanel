@@ -1,0 +1,15 @@
+start 23:17:20
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 23:18:31
+labnet-tools-ok
+v0.1.0-alpha.125
+failed 15-mail_profile {"code": "mail_tls_sync_host_busy", "message": "The mail server was installed, but setting up its certificates could not run because another change was running on this server. Nothing else was changed. You, the owner: once the other change has finished, choose Review a revised
+succeeded complete null
+               total        used        free      shared  buff/cache   available
+Mem:           15697        6112        7889           3        1941        9585
+phaseR done 23:46:46

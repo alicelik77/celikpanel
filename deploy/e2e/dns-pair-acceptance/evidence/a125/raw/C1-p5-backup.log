@@ -1,0 +1,12 @@
+== C1 backup before 00:00:27
+200 {"agent_commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "agent_matches": true, "commit": "8f782e664b4027afc59d4bf22f3090b6385ee24e", "hostname": "host2.p5.test", "ipv4": "192.0.3.191", "schema_version": 63, "version": "v0.1.0-alpha.124"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request bff656f07ca52de54129606a95f19861 v0.1.0-alpha.124 -> v0.1.0-alpha.125
+== press Update once 00:00:28
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T00:00:28Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "bff656f07ca52de54129606a95f19861", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "cb4a7964190f211a75d477fad15e1c1814857fea6c31b1785d9b1aa268037696", "archive_size": "71334211", "commit": "bf0a5b9ee5bf026d0722
+  4s 200 running None  | 

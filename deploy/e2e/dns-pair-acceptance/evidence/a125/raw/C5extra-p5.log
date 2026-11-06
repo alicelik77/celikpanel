@@ -1,0 +1,25 @@
+== EN/TR sentences in the served web bundle 00:25:32
+web assets /opt/celikpanel/web/assets
+  is a static site: it serves files                1 file(s)
+  statik bir site: dosyaları olduğu gibi         1 file(s)
+  already exists, so nothing was changed           1 file(s)
+  posta kutusu zaten var                           1 file(s)
+  the update waits for it (up to a minute)         1 file(s)
+  güncelleme onu bekler (en çok bir dakika)      1 file(s)
+== the Postfix page report after the owner set their own values 00:25:32
+200 {
+ "changed_at": "2026-11-06T00:20:58Z",
+ "detail": "mail without a password: Postfix settings changed by the server owner were kept as they are (authorized_submit_users = static:anyone (CelikPanel's form: root, vmail); smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination (CelikPanel's form: permit_sasl_authenticated, defer_unauth_destination)). Sites may still be able to send mail without a password through what they allow; the server owner sets CelikPanel's form in /etc/postfix/main.cf (postconf -e) and reloads Postfix, or keeps the own setting deliberately",
+ "expected_relay_restrictions": "permit_sasl_authenticated, defer_unauth_destination",
+ "expected_submit_users": "root, vmail",
+ "relay_restrictions": "permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination",
+ "state": "owner",
+ "submit_users": "static:anyone"
+}
+state found
+== compression on secret-word paths with answers over 1 KiB 00:25:32
+  GET /api/v1/system-databases                 HTTP/2 200  |  | wire 1534 B
+  GET /api/v1/users                            HTTP/2 200  |  | wire 439 B
+  GET /api/v1/subscriptions                    HTTP/2 200  | content-encoding: gzip | wire 328 B
+  GET /api/v1/dkim/keys                        HTTP/2 404  |  | wire 19 B
+  GET /api/v1/domains/1/mail/accounts          HTTP/2 200  |  | wire 65 B
