@@ -149,7 +149,7 @@ func TestBackupDatabaseIdentityAndArgv(t *testing.T) {
 	}
 	wantRestore := backupCommand{
 		Name: "sudo",
-		Args: []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", "tenant_pg_data", "--command", pgRestorePrelude, "--file", "-"},
+		Args: []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", "tenant_pg_data", "--single-transaction", "--command", pgRestorePrelude, "--file", "-"},
 	}
 	if !reflect.DeepEqual(restore, wantRestore) {
 		t.Fatalf("restore argv = %#v, want %#v", restore, wantRestore)

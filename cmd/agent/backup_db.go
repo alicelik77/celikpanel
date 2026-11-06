@@ -109,7 +109,9 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 // owner owns in this database; the dump then recreates it, owned by the
 // owner as before. A database owned by a superuser is left as it was (DROP
 // OWNED BY postgres is refused by the server). Objects of other roles are
-// not touched. On a failure the caller reapplies the safety dump the same way.
+// not touched. Everything runs in one transaction, so a restore that stops
+// (for example at an object another role owns) leaves the database as it was;
+// the caller then reapplies the safety dump the same way.
 //
 // pgRestorePrelude, tabloları duran bir veritabanına geri yüklemeyi çalıştırır:
 // oturum önce veritabanının sahibi olur ve sahibin bu veritabanındaki
@@ -139,8 +141,10 @@ func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand
 		if port > 0 {
 			args = append(args, "--port", strconv.Itoa(port))
 		}
-		// The prelude runs first in the same session, then the dump from stdin.
-		args = append(args, "--command", pgRestorePrelude, "--file", "-")
+		// The prelude runs first, then the dump from stdin, all in one
+		// transaction: a restore that stops anywhere (an object of another
+		// role, a broken dump) changes nothing, the dropped objects included.
+		args = append(args, "--single-transaction", "--command", pgRestorePrelude, "--file", "-")
 		return backupCommand{Name: "sudo", Args: args}, nil
 	}
 	return backupCommand{

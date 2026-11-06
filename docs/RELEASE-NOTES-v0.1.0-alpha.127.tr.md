@@ -91,8 +91,9 @@ programı olmayan kümeye gönderiyordu.
   Önceden böyle her geri yükleme "relation already exists" hatasında
   duruyordu (güvenlik kopyasına otomatik dönüş de). Geri yükleme artık önce
   veritabanı sahibinin o veritabanındaki nesnelerini düşürür, sonra onları
-  yedekten yine aynı sahibe ait olarak kurar. Başka rollerin nesnelerine
-  dokunulmaz; sahibi süper kullanıcı olan bir veritabanı eskisi gibi geri
+  yedekten yine aynı sahibe ait olarak kurar; hepsi tek bir işlemdir:
+  tamamlanamayan bir geri yükleme (örneğin tablolardan biri başka bir role
+  aitse) hiçbir şeyi değiştirmez. Başka rollerin nesnelerine dokunulmaz; sahibi süper kullanıcı olan bir veritabanı eskisi gibi geri
   yüklenir.
 - **phpPgAdmin çalışan kümeleri izler.** Kurulduktan, başka bir PHP sürümüne
   taşındıktan ya da bir PostgreSQL sürümü kurulup kaldırıldıktan sonra sunucu

@@ -169,7 +169,7 @@ func TestAPostgreSQLBackupGoesToTheRunningCluster(t *testing.T) {
 		t.Fatalf("dump = %v %v", dump.Args, err)
 	}
 	restore, err := databaseRestoreCommand(identity)
-	if err != nil || !strings.Contains(strings.Join(restore.Args, " "), "--dbname shop --port 5433 --command ") {
+	if err != nil || !strings.Contains(strings.Join(restore.Args, " "), "--dbname shop --port 5433 --single-transaction --command ") {
 		t.Fatalf("restore = %v %v", restore.Args, err)
 	}
 	usePGStatementClusters(t, bostonLsclusters[:strings.Index(bostonLsclusters, "\n18")+1])
