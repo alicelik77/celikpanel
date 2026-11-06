@@ -1,0 +1,67 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+1
+Databases
+Users
+CelikPanel
+TR
+EN
+CU
+cust7
+Domains
+cust7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+1.8 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+FTP, SFTP and SSH
+
+Connect to this site’s files with a program such as FileZilla. You sign in as the site’s own account and see only this subscription’s folder; the rest of the server stays closed.
+
+This server accepts only SSH keys for SFTP and SSH. Add a key below; FTP still uses the password.
+
+FTP is not installed on this server, so use SFTP with the same user name and password. Your provider (the server’s administrator) installs FTP; ask them if you need it.
+
+File access (FTP and SFTP)
+FTP is always encrypted (FTP over TLS); plain FTP is not offered. SFTP uses the same user name and password and opens no command line.
+
+The command line (SSH) cannot be turned on yet: this server lacks unzip, zip, and the command line takes its tools from the server. FTP and SFTP work.
+
+Your provider (the server’s administrator) installs them; ask them. The option appears here once they are installed. If you are the administrator, sign in with that account: this tab then installs them with one press.
+
+Set a password
+
+At least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).
+
+No password yet. Set one, or add an SSH key below. CelikPanel does not store it.
+SSH keys
+
+No key yet. A key is safer than a password.
+
+Paste one public key (the .pub file), for example ssh-ed25519 AAAA… you@laptop. Never paste the private key.
+Review the change
+Cancel

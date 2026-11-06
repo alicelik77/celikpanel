@@ -1,0 +1,41 @@
+== the guard while an install step runs (Hosting tab: Install packages and build, node7n.test) 23:04:03
+200 {"build": true, "clean": true, "phase": "running", "request_id": "node-b86d2e6e4be50c0d2d2c28ef530dae85", "started_at": "2026-11-06T23:04:04Z"}
+23:04:04 sub=start cgroup=/system.slice/celikappinst-3.service in_set=1 guard=exit-code/failed
+23:04:05 sub=exited cgroup= in_set=0 guard=exit-code/failed
+23:04:14 sub=exited cgroup= in_set=0 guard=success/activating
+23:04:15 sub=exited cgroup= in_set=0 guard=exit-code/failed
+== main 127 -> lab 130 (e129b5d8a)
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+(end)
+--- 'database publication is unverified' in the journal since -5min: 0
+  4s 200 running None  | 
+  34s 
+  72s 200 running verifying  | 
+  85s 200 succeeded None  | 
+200 {"agent_commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "agent_matches": true, "commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.130"}
+(end)
+--- 'database publication is unverified' in the journal since -15min: 0
+--- installed guard script
+1:# celikpanel-render v2 sha256=724e471ea66d10e928acf044cc53d80ec432b52a377ed4f894684923ba5e7f46
+--- guard runs in the last 60 s
+2026-11-06T23:27:50+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T23:28:20+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+--- the finished step
+celikappinst-3.service loaded active exited CelikPanel Node.js install of node7n.test
+--- egress set
+system.slice/celikapp-3.service system.slice/celikapp-2.service 
+--- systemctl --failed
+celikpanel-egress-guard.service loaded failed failed CelikPanel site sandbox SMTP egress guard
+(failed end)
+== on lab 130: the guard file is written at the next sandbox write; Install packages and build again (node7n.test) 23:29:03
+200 {"build": true, "clean": true, "phase": "running", "request_id": "node-cc2a23ad433b68b5aba77983891cf06c", "started_at": "2026-11-06T23:29:05Z"}
+--- installed guard script
+1:# celikpanel-render v2 sha256=e308842502cee56abf6be79c2633b91a3de9557fb3c0c3f386970839131b1a50
+20:	[ -n "$cgroup" ] || continue
+--- guard runs in the last 60 s
+--- the finished step
+celikappinst-3.service loaded active exited CelikPanel Node.js install of node7n.test
+--- egress set
+system.slice/celikapp-3.service system.slice/celikapp-2.service 
+--- systemctl --failed
+(failed end)

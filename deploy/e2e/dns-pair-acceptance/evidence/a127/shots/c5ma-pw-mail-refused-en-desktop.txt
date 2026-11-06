@@ -1,0 +1,91 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+5
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.3
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+11 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+Webmail
+
+Webmail is installed but has no address of its own yet, so mailboxes cannot open it. Give it one on the Roundcube page, for example mail.example.com; this card then shows it.
+
+Open the webmail settings
+Accounts
+0
+Forwarding
+0
+Authentication
+Settings
+0 items
+Create address
+Password must contain a special character (not a letter or digit, e.g. - _ . !). Nothing was changed.
+Technical details
+Username
+@site7.test
+Password
+Strength: Very strong
+
+Copied
+
+A strong password is in the field. Copy it and keep it somewhere safe before you save.
+
+Quota (MB)
+Cancel
+Create
+No email accounts yet

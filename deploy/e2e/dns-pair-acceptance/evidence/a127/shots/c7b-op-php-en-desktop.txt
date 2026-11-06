@@ -1,0 +1,101 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+4
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+
+Step 1 of 6
+
+Welcome to CelikPanel
+
+This short tour shows where things are. You can skip it at any step, and take it again later from the ? menu at the top right.
+
+Skip the tour
+Next
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+3.5 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+General
+Hosting type
+Protected folders
+Redirects
+Configuration file
+PHP
+SSL/TLS
+PHP version
+PHP 8.4
+PHP 8.3
+Apply
+
+PHP 8.4 receives security fixes from Debian 13 (trixie) until Jun 30, 2030.
+
+FPM pool
+
+Pool: site4
+
+Process manager
+dynamic
+static
+ondemand
+Max children
+Start servers
+Min spare servers
+Max spare servers
+User
+Group
+Save pool

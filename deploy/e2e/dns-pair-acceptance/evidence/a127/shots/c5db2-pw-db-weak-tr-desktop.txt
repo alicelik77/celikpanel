@@ -1,0 +1,97 @@
+CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+1
+Veritabanları
+Kullanıcılar
+Mağaza
+VPN
+
+SUNUCU
+
+Bileşenler
+11
+Sunucu kurulumu
+DNS ve eş sunucular
+İzleme
+Güvenlik
+Bakım
+İçe aktar
+Denetim günlüğü
+Ayarlar
+
+SUNUCU BİLGİSİ
+
+host2.r7.test
+
+192.0.3.191
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(tam commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Alan Adları
+pg7.test
+Aktif
+Siteyi aç
+Tür
+php
+PHP sürümü
+8.3
+SSL
+Kapalı
+Disk kullanımı
+3.2 KB
+Trafik
+bu ay 8.8 KB
+Genel Bakış
+Barındırma
+DNS
+Veritabanları
+Uygulamalar
+Yapay zekâ ve otomasyon
+Programlar
+Dosyalar
+Erişim
+Gelişmiş
+Veritabanları
+
+pg7.test alan adının veritabanları
+
+Yeni veritabanı
+Veritabanı adı
+
+Tam adı pg7_test_pwweak olacak
+
+Veritabanı motoru
+PostgreSQL
+MySQL / MariaDB
+Parola
+Güç: Çok zayıf
+
+Eksik: en az 12 karakter, bir büyük harf, bir özel karakter (örneğin - _ . !).
+
+Veritabanı oluştur
+İptal
+Veritabanları
+(2)
+pg7_test_pwtest
+POSTGRESQL
+Kullanıcı:pg7_test_pwtest_user
+Oluşturulma:11/6/2026
+pg7_test_shop127
+POSTGRESQL
+Kullanıcı:pg7_test_shop127_user
+Oluşturulma:11/6/2026
+Veritabanı web araçları
+
+Veritabanlarını tarayıcıda yönetin. Araç, oturum açmış her hesap için panel üzerinden açılır ve ağa doğrudan hiç açılmaz; araca veritabanının kendi kullanıcı adı ve parolasıyla girersiniz.
+
+phpMyAdmin kur
+phpPgAdmin aç

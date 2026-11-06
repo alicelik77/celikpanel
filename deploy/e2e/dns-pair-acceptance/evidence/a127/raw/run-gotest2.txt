@@ -1,0 +1,6 @@
+--- FAIL: TestAnEnabledVendorRepositoryShowsItsMissingStepsAndCompletesThemAsConfirmed (0.00s)
+--- FAIL: TestTheLaneNeverRewritesWhatTheOwnerWrote (0.00s)
+--- FAIL: TestAMaskedOrUnreadableUpdatesTimerBlocksTheLane (0.00s)
+FAIL
+FAIL	github.com/alicelik/celikpanel/cmd/agent	54.833s
+FAIL

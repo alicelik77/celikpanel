@@ -1,0 +1,75 @@
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+(end)
+--- 'database publication is unverified' in the journal since -5min: 0
+  4s 200 running None  | 
+  25s 
+  63s 200 running verifying  | 
+  72s 200 succeeded None  | 
+200 {"agent_commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "agent_matches": true, "commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.128"}
+(end)
+--- 'database publication is unverified' in the journal since -15min: 0
+== restore the backup made on 127 (before the fix) into the non-empty database 22:33:59
+200 {"backups": [{"created_at": "2026-11-06T22:00:14.897850016Z", "database_id": 1, "name": "database-1-20261106T220015.069091683Z-dc0ddd096ef5f89b.cpbak", "origin": "pre_restore", "restorable": true, "size": 1070, "type": "database"}, {"created_at": "2026-11-06T22:00:13.195414252Z", "database_id": 1, "name": "database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak", "origin": "manual", "restorable": true, "size": 1102, "type": "database"}]}
+backup database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak
+changed-after-backup
+lab_extra postgres
+lab_rows pg7_test_shop127_user
+200 {"safety_backup": {"created_at": "2026-11-06T22:33:59.992984234Z", "database_id": 1, "name": "database-1-20261106T223400.214578969Z-b8ac4dbb1fb95272.cpbak", "origin": "pre_restore", "restorable": true, "size": 1098, "type": "database"}, "success": true}
+before-backup
+lab_extra postgres
+lab_rows pg7_test_shop127_user
+== a new backup, a change, a restore 22:34:01
+200 {"backup": {"created_at": "2026-11-06T22:34:01.105327952Z", "database_id": 1, "name": "database-1-20261106T223401.269030103Z-83aad6b3745829f2.cpbak", "origin": "manual", "restorable": true, "size": 1137, "type": "database"}, "success": true}
+UPDATE 1
+INSERT 0 1
+changed-after-second-backup
+extra-row
+500 {"code": "INTERNAL", "error": "internal server error"}
+ERROR:  relation "lab_rows" does not exist
+LINE 1: select v from lab_rows; select tablename||' '||tableowner fr...
+                      ^
+bash: line 1: restore: command not found
+bash: line 1: backup: command not found
+== c3fix done 22:34:04
+== update 128 -> 129 (lab label of 32124ee20)
+200 {"agent_commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "agent_matches": true, "commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.128"}
+(end)
+--- 'database publication is unverified' in the journal since -5min: 0
+  5s 200 running None  | 
+  25s 
+  59s 200 running verifying  | 
+  68s 200 succeeded None  | 
+200 {"agent_commit": "50910894e4f20ab6d1ba85b860c4cb6cc6ca0294", "agent_matches": true, "commit": "50910894e4f20ab6d1ba85b860c4cb6cc6ca0294", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.129"}
+(end)
+--- 'database publication is unverified' in the journal since -15min: 0
+== 1. a table of another role (lab: made by postgres) in the database and in the backup 22:49:19
+UPDATE 1
+CREATE TABLE
+200 {"backup": {"created_at": "2026-11-06T22:49:19.580406065Z", "database_id": 1, "name": "database-1-20261106T224919.744670520Z-36fb46e00229cb06.cpbak", "origin": "manual", "restorable": true, "size": 1145, "type": "database"}, "success": true}
+backup database-1-20261106T224919.744670520Z-36fb46e00229cb06.cpbak
+UPDATE 1
+500 {"code": "INTERNAL", "error": "internal server error"}
+-- after (expected: unchanged, changed-1, both tables there)
+changed-1
+lab_other postgres
+lab_rows pg7_test_shop127_user
+== 2. without the other role's table 22:49:21
+DROP TABLE
+UPDATE 1
+200 {"backup": {"created_at": "2026-11-06T22:49:22.214118712Z", "database_id": 1, "name": "database-1-20261106T224922.377778969Z-48fef4964ca4e6b1.cpbak", "origin": "manual", "restorable": true, "size": 1113, "type": "database"}, "success": true}
+backup database-1-20261106T224922.377778969Z-48fef4964ca4e6b1.cpbak
+UPDATE 1
+INSERT 0 1
+200 {"safety_backup": {"created_at": "2026-11-06T22:49:23.230527404Z", "database_id": 1, "name": "database-1-20261106T224923.389194482Z-3fc86334872fac63.cpbak", "origin": "pre_restore", "restorable": true, "size": 1061, "type": "database"}, "success": true}
+-- after (expected: before-backup-2 only, owner kept)
+before-backup-2
+lab_rows pg7_test_shop127_user
+== 3. the backup made on 127 (before any fix) 22:49:24
+backup database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak
+200 {"safety_backup": {"created_at": "2026-11-06T22:49:24.360297862Z", "database_id": 1, "name": "database-1-20261106T224924.518115970Z-39b6530a19442a14.cpbak", "origin": "pre_restore", "restorable": true, "size": 1060, "type": "database"}, "success": true}
+before-backup
+lab_rows pg7_test_shop127_user
+bash: line 1: already: command not found
+tail: invalid option -- 'a'
+Try 'tail --help' for more information.
+== c3fix2 done 22:49:25

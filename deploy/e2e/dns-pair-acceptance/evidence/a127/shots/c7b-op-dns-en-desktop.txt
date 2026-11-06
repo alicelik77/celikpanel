@@ -1,0 +1,96 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+5
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+8.8 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+DNSSEC
+
+Safe order: 1. sign the zone here, 2. check that both of your DNS servers answer signed, 3. last, add the signing record at the company where you registered the domain.
+
+Sign the zone
+
+Signing has not been tried yet on this DNS server pair (PowerDNS main server with a backup server), so it is turned off. Nothing needs to be done.
+
+11 items
+Republish DNS
+Add record
+Type	Name	Value	TTL	
+A	labrec.site7.test	192.0.2.77	3600	
+
+A	mail.site7.test	192.0.3.190	3600	
+
+A	site7.test	192.0.3.190	3600	
+
+CNAME	www.site7.test	site7.test	3600	
+
+MX	site7.test	[10]mail.site7.test	3600	
+
+NS	site7.test	ns1.r7.test	3600	
+
+NS	site7.test	ns2.r7.test	3600	
+
+SOA	site7.test	ns1.r7.test hostmaster.site7.test 2026110603 10800 3600 604800 3600	3600	
+
+TXT	_dmarc.site7.test	"v=DMARC1; p=none; rua=mailto:dmarc@site7.test"	3600	
+
+TXT	celik._domainkey.site7.test	"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtI1Dpk8vMG2G6eZ6O+tNyDzqWPfiIYFr2z9NMh5b6etLIEjEV/cbT30tC3/sANxFYQDblFMTTM4pghmgBvqNaMugf/8u71tl4nRnZsCAVuvrkaWmlVzhVKVLuhWuOo1DPPvSHPAFNfJzMeoVTQgaCTSIeSgmPRjhtik960q9RYxgHvQi09caa2cGVhXpKy2Qc" "wiIQoiGqB+Pty7MK1nswHhk/pxq/OVNEt4da1i98uUlPVnGhF1s1i1Z8IQ9s7KWAFjn046+yGhgfbFsWsukXLCX1mMrGP7pdgen0HNlm8UaSCg+HsnBBLdFFBtu2DydZz5qq22kFGZUfhtc3QqtaQIDAQAB"	3600	
+
+TXT	site7.test	"v=spf1 a mx ~all"	3600	

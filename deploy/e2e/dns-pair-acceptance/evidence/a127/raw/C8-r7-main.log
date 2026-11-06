@@ -1,0 +1,145 @@
+== services 22:16:53
+state known read_at 2026-11-06T22:16:45Z rows 7
+   {'id': 'nginx', 'unit': 'nginx', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:42:34Z', 'restarts_last_hour': 0, 'memory_bytes': 6139904, 'cpu': 0}
+   {'id': 'mariadb', 'unit': 'mariadb', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:43:53Z', 'restarts_last_hour': 0, 'memory_bytes': 129036288, 'cpu': 0}
+   {'id': 'postfix', 'unit': 'postfix', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:48:10Z', 'restarts_last_hour': 0, 'memory_bytes': 4890624, 'cpu': 0}
+   {'id': 'rspamd', 'unit': 'rspamd', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:47:47Z', 'restarts_last_hour': 0, 'memory_bytes': 402210816, 'cpu': 0.2}
+   {'id': 'dovecot', 'unit': 'dovecot', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:48:08Z', 'restarts_last_hour': 0, 'memory_bytes': 7057408, 'cpu': 0}
+   {'id': 'pdns', 'unit': 'pdns', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:44:38Z', 'restarts_last_hour': 0, 'memory_bytes': 53878784, 'cpu': 0}
+   {'id': 'cron', 'unit': 'cron', 'active_state': 'active', 'sub_state': 'running', 'active_since': '2026-11-06T21:44:23Z', 'restarts_last_hour': 0, 'memory_bytes': 376832, 'cpu': 0}
+== sites 22:16:54
+200 {"enabled": true, "every_seconds": 300, "sites": [{"checked_at": "2026-11-06T22:14:21Z", "domain": "node7.test", "http_status": 200, "response_ms": 9, "scheme": "http", "state": "up"}, {"checked_at": "2026-11-06T22:14:21Z", "domain": "node7n.test", "http_status": 200, "response_ms": 7, "scheme": "http", "state": "up"}, {"cert_days": 1825, "cert_not_after": "2031-11-06T21:48:59Z", "cert_valid": true, "checked_at": "2026-11-06T22:14:21Z", "domain": "r7.test", "http_status": 200, "response_ms": 4, "scheme": "https", "state": "up"}]}
+== alerts (before) 22:16:54
+200 {"alerts": [{"first_seen": "2026-11-06T21:59:36Z", "id": 1, "key": "security_updates", "kind": "security_updates", "last_seen": "2026-11-06T22:16:45Z", "mail_state": "not_confirmed", "opened_at": "2026-11-06T22:09:41Z", "seen": false, "severity": "warning", "state": "open", "value": 13}], "delay_choices": [5, 10, 15, 30, 60], "email": {"confirmed": 0, "mail": {"available": true}, "own_set": true, "own_verified": false}, "settings": {"delay_minutes": 10, "email": true, "site_checks": true}, "unseen": 1}
+400 {"code": "monitoring_alert_settings_invalid", "error": "These alert settings could not be read, so nothing was changed. Reload the page and choose again."}
+200 {"delay_minutes": 5, "email": true, "site_checks": true}
+== the lab mail capture: mailbox alerts@r7.test on this server 22:16:54
+r7.test id 1
+200 {"id": 1, "success": true}
+-- the administrator's address (My account) 22:16:55
+200 {"success": true}
+200 {"email_set": true, "email_verified": false, "mail": {"available": true}}
+== c8a done 22:16:55
+== the confirmation mail in the lab mail capture 22:17:29
+maildirs: /var/mail/vhosts/r7.test/alerts/new
+/var/mail/vhosts/r7.test/alerts/cur
+--- Fri, 06 Nov 2026 22:16:55 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+token found (not shown)
+410 {"code": "account_link_invalid", "error": "This link is not valid any more: it was used, replaced by a newer one, or it expired. Nothing was changed. Ask for a new link."}
+200 {"email_set": true, "email_verified": false, "mail": {"available": true}}
+  settings {'delay_minutes': 5, 'email': True, 'site_checks': True} email {'confirmed': 0, 'mail': {'available': True}, 'own_set': True, 'own_verified': False} unseen 1
+   {'id': 1, 'kind': 'security_updates', 'name': None, 'severity': 'warning', 'state': 'open', 'first_seen': '2026-11-06T21:59:36Z', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+== stop cron outside the panel (lab load) 22:17:31
+inactive
+  +31s 
+  +62s 
+  +92s 
+  +122s 
+  +152s 
+  +183s 
+  +213s 
+  +243s 
+  +273s 
+  +303s 
+  +333s service_stopped:open:not_confirmed
+  +363s service_stopped:open:not_confirmed
+  +393s service_stopped:open:not_confirmed
+  +424s service_stopped:open:not_confirmed
+  +454s service_stopped:open:not_confirmed
+  +484s service_stopped:open:not_confirmed
+  +514s service_stopped:open:not_confirmed
+  +544s service_stopped:open:not_confirmed
+  +574s service_stopped:open:not_confirmed
+  +605s service_stopped:open:not_confirmed
+== (c8b stopped by the lab after the cron alert opened: the address was not confirmed yet, the token parse was wrong) 22:27:47
+active
+200 {"alerts": [{"first_seen": "2026-11-06T22:17:45Z", "id": 2, "key": "service:cron", "kind": "service_stopped", "last_seen": "2026-11-06T22:26:51Z", "mail_state": "not_confirmed", "name": "Scheduled tasks (cron)", "opened_at": "2026-11-06T22:22:49Z", "seen": false, "severity": "critical", "state": "open", "subject": "cron", "value": 0}, {"first_seen": "2026-11-06T21:59:36Z", "id": 1, "key": "security_updates", "kind": "security_updates", "last_seen": "2026-11-06T22:26:51Z", "mail_state": "not_confirmed", "opened_at": "2026-11-06T22:09:41Z", "seen": false, "severity": "warning", "state": "open", "value": 13}], "delay_choices": [5, 10, 15, 30, 60], "email": {"confirmed": 0, "mail": {"available": true}, "own_set": true, "own_verified": false}, "settings": {"delay_minutes": 5, "email": true, "site_checks": true}, "unseen": 2}
+== ask for a new confirmation link 22:31:11
+200 {"delivery": "sent"}
+maildirs: /var/mail/vhosts/r7.test/alerts/new
+/var/mail/vhosts/r7.test/alerts/cur
+--- Fri, 06 Nov 2026 22:31:11 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+--- Fri, 06 Nov 2026 22:16:55 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+token found (not shown, 43 chars)
+200 {"success": true}
+200 {"email_set": true, "email_verified": true, "mail": {"available": true}}
+{'confirmed': 1, 'mail': {'available': True}, 'own_set': True, 'own_verified': True}
+   {'id': 2, 'kind': 'service_stopped', 'state': 'open', 'opened_at': '2026-11-06T22:22:49Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+   {'id': 1, 'kind': 'security_updates', 'state': 'open', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+== before 22:50:02
+  settings {'delay_minutes': 5, 'email': True, 'site_checks': True} email {'confirmed': 1, 'mail': {'available': True}, 'own_set': True, 'own_verified': True} unseen 2
+   {'id': 1, 'kind': 'security_updates', 'subject': None, 'severity': 'warning', 'state': 'open', 'first_seen': '2026-11-06T21:59:36Z', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+   {'id': 2, 'kind': 'service_stopped', 'subject': 'cron', 'severity': 'critical', 'state': 'resolved', 'first_seen': '2026-11-06T22:17:45Z', 'opened_at': '2026-11-06T22:22:49Z', 'resolved_at': '2026-11-06T22:37:57Z', 'mail_state': 'not_confirmed', 'mail_detail': None}
+== stop nginx outside the panel (lab load) 22:50:02
+inactive
+  +30s service_stopped/cron:resolved:not_confirmed
+  +61s service_stopped/cron:resolved:not_confirmed
+  +91s service_stopped/cron:resolved:not_confirmed
+  +121s service_stopped/cron:resolved:not_confirmed
+  +151s service_stopped/cron:resolved:not_confirmed
+  +181s service_stopped/cron:resolved:not_confirmed
+  +211s service_stopped/cron:resolved:not_confirmed
+  +241s service_stopped/cron:resolved:not_confirmed
+  +272s service_stopped/cron:resolved:not_confirmed
+  +302s service_stopped/cron:resolved:not_confirmed
+  +332s service_stopped/nginx:open:sent service_stopped/cron:resolved:not_confirmed
+  settings {'delay_minutes': 5, 'email': True, 'site_checks': True} email {'confirmed': 1, 'mail': {'available': True}, 'own_set': True, 'own_verified': True} unseen 3
+   {'id': 3, 'kind': 'service_stopped', 'subject': 'nginx', 'severity': 'critical', 'state': 'open', 'first_seen': '2026-11-06T22:50:05Z', 'opened_at': '2026-11-06T22:55:08Z', 'resolved_at': None, 'mail_state': 'sent', 'mail_detail': None}
+   {'id': 1, 'kind': 'security_updates', 'subject': None, 'severity': 'warning', 'state': 'open', 'first_seen': '2026-11-06T21:59:36Z', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+   {'id': 2, 'kind': 'service_stopped', 'subject': 'cron', 'severity': 'critical', 'state': 'resolved', 'first_seen': '2026-11-06T22:17:45Z', 'opened_at': '2026-11-06T22:22:49Z', 'resolved_at': '2026-11-06T22:37:57Z', 'mail_state': 'not_confirmed', 'mail_detail': None}
+-- site checks
+200 {"enabled": true, "every_seconds": 300, "sites": [{"checked_at": "2026-11-06T22:54:28Z", "domain": "cust7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "node7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "node7n.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "r7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "https", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "site7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}]}
+== start nginx again 22:55:34
+active
+== the alert email in the lab mail capture 22:55:34
+maildirs: /var/mail/vhosts/r7.test/alerts/new
+/var/mail/vhosts/r7.test/alerts/cur
+--- Fri, 06 Nov 2026 22:55:08 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: CelikPanel alert on frankfurt.r7.test / uyarı: The service Nginx is not running. Open Monitoring and press Start; if it stops again, its log on the componen...
+   - The service Nginx is not running. Open Monitoring and press Start; if it stops again, its log on the component page says why.
+   
+   Open Monitoring: https://frankfurt.r7.test:1923/monitoring
+   This email was sent by CelikPanel on frankfurt.r7.test because the problem lasted longer than your alert delay. While the panel is stopped no alerts are sent; an outside uptime checker covers that. Change or turn off these emails under Monitoring → Alert settings.
+   
+   - Nginx hizmeti çalışmıyor. İzleme'yi açıp Başlat'a basın; yine durursa bileşen sayfasındaki günlük nedenini söyler.
+   
+   İzleme: https://frankfurt.r7.test:1923/monitoring
+   Bu e-postayı frankfurt.r7.test üzerindeki CelikPanel, sorun uyarı gecikmenizden uzun sürdüğü için gönderdi. Panel dururken uyarı gönderilmez; bunu dış bir çalışma süresi denetleyicisi karşılar. Bu e-postaları İzleme → Uyarı ayarları'ndan değiştirin ya da
+--- Fri, 06 Nov 2026 22:31:11 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+--- Fri, 06 Nov 2026 22:16:55 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+ACB1820388: to=<alerts@r7.test>, relay=virtual, delay=4.3, delays=4.2/0.01/0/0, dsn=2.0.0, status=sent (delivered to maildir)
+== c8e done 22:56:05

@@ -1,0 +1,33 @@
+== C2 main before 23:25:39
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+celikpanel-egress-guard.service loaded failed failed CelikPanel site sandbox SMTP egress guard
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+  request 428b42b7e1c303390bb16b6475cdb5d9 v0.1.0-alpha.127 -> v0.1.0-alpha.130
+== press Update once 23:25:40
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T23:25:40Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "428b42b7e1c303390bb16b6475cdb5d9", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "1d1c9f8e381deadbcd0bf57a5891bbc801f08a075c2965a89beee215df885ccd", "archive_size": "71674773", "commit": "b25b1b717fa00b34fee5
+  4s 200 running None  | 
+  34s 
+  72s 200 running verifying  | 
+  85s 200 succeeded None  | 
+== after 23:27:16
+200 {"agent_commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "agent_matches": true, "commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-06T23:25:40.193655976Z", "found": true, "plan": {"expected_restart_seconds": 98, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T23:25:40Z", "state": "done"}, {"finished_at": "2026-11-06T23:25:45Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-06T23:25:45Z", "state": "done"}, {"finished_at": "2026-11-06T23:26:49Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-06T23:27:02Z", "id": "confirm", "started_at": "2026-11-06T23:26:49Z", "state": "done"}]}, "request_id": "428b42b7e1c303390bb16b6475cdb5d9", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "1d1c9f8e381deadbcd0bf57a5891bbc801f08a075c2965a89beee215df885ccd", "archive_size": "71674773", "commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-06T23:27:02.800058362Z"}
+release 
+--- systemctl --failed (all units)
+celikpanel-egress-guard.service loaded failed failed CelikPanel site sandbox SMTP egress guard
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/06 23:26:49 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 23:26:49 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '428b42b7e1c303390bb16b6475cdb5d9.json'] {'request_id': '428b42b7e1c303390bb16b6475cdb5d9', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T23:25:40.193655976Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+  ['self-update', '8785a3f477474b15b80f07697faaca65.json'] {'request_id': '8785a3f477474b15b80f07697faaca65', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T21:57:22.443176735Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.127', 'reason': None, 'code': None}
+== C2 main done 23:27:18

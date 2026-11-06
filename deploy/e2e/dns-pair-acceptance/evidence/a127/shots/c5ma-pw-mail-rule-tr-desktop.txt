@@ -1,0 +1,89 @@
+CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+5
+Veritabanları
+Kullanıcılar
+Mağaza
+VPN
+
+SUNUCU
+
+Bileşenler
+13
+Sunucu kurulumu
+DNS ve eş sunucular
+İzleme
+Güvenlik
+Bakım
+İçe aktar
+Denetim günlüğü
+Ayarlar
+
+SUNUCU BİLGİSİ
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(tam commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Alan Adları
+site7.test
+Aktif
+Siteyi aç
+Tür
+php
+PHP sürümü
+8.3
+SSL
+Kapalı
+Disk kullanımı
+3.2 KB
+Trafik
+bu ay 11 KB
+Genel Bakış
+Barındırma
+DNS
+E-posta
+Veritabanları
+Uygulamalar
+Yapay zekâ ve otomasyon
+Programlar
+Dosyalar
+Erişim
+Gelişmiş
+Web posta
+
+Web postası kurulu ama henüz kendi adresi yok, bu yüzden posta kutuları onu açamıyor. Roundcube sayfasında bir adres verin, örneğin mail.example.com; bu kart sonra onu gösterir.
+
+Web postası ayarlarını aç
+Hesaplar
+0
+Yönlendirme
+0
+Kimlik doğrulama
+Ayarlar
+0 öğe
+Adres oluştur
+Kullanıcı adı
+@site7.test
+Parola
+
+En az 8 karakter; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.
+
+Kota (MB)
+
+Oluşturmak için doldurun: Kullanıcı adı, Parola.
+
+İptal
+Oluştur
+Henüz e-posta hesabı yok

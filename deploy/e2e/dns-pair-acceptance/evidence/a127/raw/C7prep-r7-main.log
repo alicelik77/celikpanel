@@ -1,0 +1,11 @@
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html", "Domain": "site7.test", "DomainID": 4, "FTPPassword": "[REDACTED]", "FTPUser": "site7_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 4, "TempDomain": ""}
+site7.test id 4
+-- Sury lane 22:18:05
+200 {"plan": {"enabled": false, "name": "Sury PHP (packages.sury.org)", "origin": "deb.sury.org", "ready": true, "repo_id": "sury", "sha256": "d7bfc286577520f5e620fdd69fc6d23936f5c4536e1ac5921c9ad511b98f7112", "steps": [{"path": "/etc/apt/sources.list.d/celikpanel-sury.list", "sha256": "7c0b6d1fbd4cf778e8c0d9be348662d99383716ee7cc510469c32283c617403c", "state": "todo", "step": "repository", "text": "deb https://packages.sury.org/php/ trixie main\n# signed by the pinned OpenPGP key 15058500A0235D97F5D10063B188E2B695BD4743\n"}, {"path": "/etc/apt/preferences.d/celikpanel-sury.pref", "sha256": "43dea
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-sury.pref", "state": "confined", "written_at": "2026-11-06T22:18:09Z", "written_by": "lane"}, "detail": "Debian/Ubuntu PHP repository \u2014 every maintained version, side by side.", "enabled": true, "enabled_at": "2026-11-06T22:18:09Z", "id": "sury", "key": {"created_at": "2019-03-18T10:14:55Z", "expires_at": "2028-02-04T11:00:03Z"
+-- PHP-FPM 8.3 22:18:10
+200 {"distribution": "debian", "installs": ["fonts-dejavu-mono", "fonts-dejavu-core", "fontconfig-config", "libabsl20240722", "libaom3", "libdav1d7", "libgav1-1", "librav1e0.7", "libsvtav1enc2", "libjpeg62-turbo", "libyuv0", "libavif16", "libde265-0", "libdeflate0", "libfontconfig1", "libsharpyuv0", "libheif-plugin-libde265", "libheif-plugin-dav1d", "libheif1", "libgomp1", "libimagequant0", "libjbig0", "liblerc4", "libwebp7", "libtiff6", "libxau6", "libxdmcp6", "libxcb1", "libx11-data", "libx11-6", 
+202 {"operation": {"id": "6778f128920b6102497e6a248712606a", "kind": "service_install", "package_name": "php8.3-fpm", "phase": "queued", "request_id": "83b2874faba408a8f346275c45f766af", "service_id": "php-fpm", "started_at": "2026-11-06T22:18:30.129620022Z", "status": "queued"}}
+  op 83b2874faba408a8f346275c45f766af: succeeded completed "" (22:19:21)
+ php-fpm versions ['8.4', '8.3']
+== c7prep done 22:19:22

@@ -1,0 +1,55 @@
+== versions 22:00:08
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+pg7.test id 1
+  row {"id": "postgresql", "is_installed": true, "status": "active (running)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+200 {"databases": [{"actions": ["check"], "available": true, "id": "panel", "journal_mode": "wal", "kind": "control-plane", "modified_at": "2026-11-06T21:56:53.29Z", "mutable": true, "name": "CelikPanel", "path_hint": "panel-data / celikpanel.db", "purpose": "Panel accounts, domains, settings, and operational metadata.", "schema_version": 65, "size_bytes": 1540096, "status": "ready", "status_message": "Database is available.", "user_version": 0}, {"actions": null, "available": false, "id": "powerdns", "kind": "dns", "mutable": true, "name": "PowerDNS", "path_hint": "powerdns-data / pdns.sqlite3", "purpose": "Authoritative DNS zones served by PowerDNS.", "status": "missing", "status_message": "Database file is not present on this server.", "user_version": 0}, {"actions": null, "available": false, "id": "roundcube", "kind": "webmail", "mutable": true, "name": "Roundcube", "path_hint": "webmail-data / roundcube.sqlite3", "purpose": "Roundcube webmail application state and user preferences.", "status": "missing", "status_message": "Database file is not present on this server.", "user_version": 0}, {"actions": null, "available": false, "id": "component-catalog", "kind": "catalog", "mutable": false, "name": "Component catalog", "path_hint": "component-catalog / components-v2.db", "purpose": "Signed component and platform operation catalog.", "status": "missing", "status_message": "Database file is not present on this server.", "user_version": 0}]}
+-- create a PostgreSQL database on 127 (the Databases tab's request) 22:00:10
+200 {"id": 1, "name": "pg7_test_shop127", "status": "success", "type": "postgresql", "user": "pg7_test_shop127_user"}
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-06 22:00:10", "id": 1, "name": "pg7_test_shop127", "type": "postgresql", "user": "pg7_test_shop127_user"}], "domain_id": 1, "domain_name": "pg7.test"}
+database pg7_test_shop127 id 1
+-- placement: 5433 (18, running) vs 5432 (16, kept, no binaries)
+pg7_test_shop127
+Ver Cluster Port Status                Owner    Data directory              Log file
+16  main    5432 down,binaries_missing postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online                postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- backup + restore of the PostgreSQL database 22:00:12
+CREATE TABLE
+INSERT 0 1
+DO
+pg7_test_shop127_user
+200 {"backup": {"created_at": "2026-11-06T22:00:13.195414252Z", "database_id": 1, "name": "database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak", "origin": "manual", "restorable": true, "size": 1102, "type": "database"}, "success": true}
+200 {"backups": [{"created_at": "2026-11-06T22:00:13.195414252Z", "database_id": 1, "name": "database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak", "origin": "manual", "restorable": true, "size": 1102, "type": "database"}]}
+backup database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak
+file /var/backups/celikpanel/subscriptions/2/domains/1/database-1-20261106T220013.366988555Z-9a9b803c29f2137a.cpbak 1102
+UPDATE 1
+changed-after-backup
+500 {"code": "INTERNAL", "error": "internal server error"}
+changed-after-backup
+-- phpPgAdmin 22:00:16
+200 {"distribution": "ubuntu", "installs": ["libjs-jquery", "libphp-adodb", "php8.3-mbstring", "php-mbstring", "php8.3-pgsql", "php-pgsql", "phppgadmin"], "notable": [], "refusals": [], "removes": [], "requested": ["phppgadmin"], "state": "known"}
+202 {"operation": {"id": "a5c737409783e5d78966c73bd78a934a", "kind": "service_install", "phase": "queued", "request_id": "b8f224e91e2b9fabdd4ca24ada91717f", "service_id": "phppgadmin", "started_at": "2026-11-06T22:00:18.326836397Z", "status": "queued"}}
+  op b8f224e91e2b9fabdd4ca24ada91717f: succeeded completed "" (22:00:49)
+  row {"id": "postgresql", "is_installed": true, "status": "active (running)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+  row {"id": "phppgadmin", "is_installed": true, "status": "installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+== /etc/phppgadmin/config.inc.php
+14:	$conf['servers'][0]['desc'] = 'PostgreSQL 18 (port 5433)';
+18:	$conf['servers'][0]['host'] = 'localhost';
+21:	$conf['servers'][0]['port'] = 5433;
+39:	//$conf['servers'][1]['desc'] = 'Test Server';
+40:	//$conf['servers'][1]['host'] = '127.0.0.1';
+41:	//$conf['servers'][1]['port'] = 5432;
+== /usr/share/phppgadmin/conf/config.inc.php
+14:	$conf['servers'][0]['desc'] = 'PostgreSQL 18 (port 5433)';
+18:	$conf['servers'][0]['host'] = 'localhost';
+21:	$conf['servers'][0]['port'] = 5433;
+39:	//$conf['servers'][1]['desc'] = 'Test Server';
+40:	//$conf['servers'][1]['host'] = '127.0.0.1';
+41:	//$conf['servers'][1]['port'] = 5432;
+total 24
+drwxr-xr-x   2 root root  4096 Nov  6 22:00 .
+drwxr-xr-x 119 root root 12288 Nov  6 22:00 ..
+-rw-r--r--   1 root root  7017 Nov  6 22:00 config.inc.php
+{"category": "database", "config_files": [{"is_managed": true, "path": "/etc/postgresql/16/main/postgresql.conf"}, {"is_managed": true, "path": "/etc/postgresql/16/main/pg_hba.conf"}, {"is_managed": true, "path": "/etc/postgresql/18/main/postgresql.conf"}, {"is_managed": true, "path": "/etc/postgresql/18/main/pg_hba.conf"}], "description": "Database Server", "icon": "\ud83d\udc18", "id": "postgresql", "installed_evidence": "systemd_unit", "instances": [], "is_installed": true, "kind": "service", "name": "PostgreSQL", "package_version": "18.6-1.pgdg24.04+2", "package_version_read_at": "2026-11-06T22:00:42Z", "package_version_short": "18.6", "package_versions": [{"package": "postgresql-18", "version": "18.6-1.pgdg24.04+2"}], "packages": ["postgresql"], "repair_available": true, "repair_package": "postgresql-18", "status": "active (running)", "unit": "postgresql@18-main", "versions": []}
+{"category": "database", "config_files": [], "description": "PostgreSQL web admin tool", "icon": "\ud83d\udc18", "id": "phppgadmin", "installed_evidence": "package", "instances": [], "is_installed": true, "kind": "tool", "name": "phpPgAdmin", "package_version": "7.14.7+dfsg-1", "package_version_read_at": "2026-11-06T22:00:42Z", "package_version_short": "7.14.7", "package_versions": [{"package": "phppgadmin", "version": "7.14.7+dfsg-1"}], "packages": ["phppgadmin"], "php_binding": {"extensions_present": true, "fpm_state": "active", "installed": true, "pg_servers": {"config_path": "/etc/phppgadmin/config.inc.php", "configured": [{"online": true, "port": 5433, "version": "18"}], "owner": "panel", "running": [{"online": true, "port": 5433, "version": "18"}], "state": "aligned"}, "socket_ready": true, "source": "config", "tool": "phppgadmin", "version": "8.3", "version_installed": true}, "repair_available": true, "status": "installed", "versions": []}
+== c3post done 22:00:51

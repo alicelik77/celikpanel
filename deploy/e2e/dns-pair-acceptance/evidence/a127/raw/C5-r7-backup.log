@@ -1,0 +1,65 @@
+200 {"tour_state": "skipped", "tour_version": 1}
+/var/tmp/a127r1/t-r7/pwdb.json 1
+  shots 2 errors [{"name": "pw-db", "lang": "en", "width": "desktop", "error": "TimeoutError: Waiting for selector `input[placeholder=myapp]` failed: Waiting failed: 15000ms exceeded"}, {"name": "pw-db", "lang": "tr", "width": "desktop", "error": "TimeoutError: Waiting for selector `input[placeholder=myapp]` failed: Waiting failed: 15000ms exceeded"}] native dialogs []
+  UI DELETE 2026-11-06T22:22:21.333Z POST /api/v1/managed-services/scan?max_age_seconds=300 200 {"scanned_at":"2026-11-06T22:22:20.453350443Z","scan_age_seconds":0.67,"services":[{"id":"php-fpm","name":"PHP-FPM","description":"PHP FastCGI Process Manager","icon":"🐘","category":"web","versions":["8.3"],"status":"active (running)","is_installed":true,"installed_evidence":"systemd_unit","kind":"r
+  probe empty-field (rule up front, submit off)   reloads 1 | {"type":"password","len":0,"field":"At least 12 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).","buttons":["Generate a strong password","Show password[pressed=false]"],"submit":["Create database:disabled"]}
+  probe empty-field (rule up front, submit off)   reloads 1 | {"type":"password","len":0,"field":"En az 12 karakter; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.","buttons":["Güçlü şifre üret","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:disabled"]}
+== API: weak database password 22:23:13
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short,needs_special"}}
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short"}}
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-06 22:00:10", "id": 1, "name": "pg7_test_shop127", "type": "postgresql", "user": "pg7_test_shop127_user"}], "domain_id": 1, "domain_name": "pg7.test"}
+== c5db done 22:23:13
+200 {"tour_state": "skipped", "tour_version": 1}
+/var/tmp/a127r1/t-r7/pwdb.json 1
+  shots 10 errors [] native dialogs []
+  UI DELETE 2026-11-06T22:24:14.161Z POST /api/v1/domains/1/databases 200 {"id":2,"name":"pg7_test_pwtest","status":"success","type":"postgresql","user":"pg7_test_pwtest_user"}
+
+  UI DELETE 2026-11-06T22:24:41.019Z POST /api/v1/domains/1/databases 409 Database already exists
+
+  probe empty-field (rule up front, submit off)   reloads 0 | {"type":"password","len":0,"field":"At least 12 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).","buttons":["Generate a strong password","Show password[pressed=false]"],"submit":["Create database:disabled"]}
+  probe weak typed   reloads 0 | {"type":"password","len":3,"field":"Strength: Too weak Still needed: at least 12 characters, an uppercase letter, a special character (for example - _ . !).","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Create database:disabled"]}
+  probe generated   reloads 0 | {"type":"text","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Hide password[pressed=true]"],"submit":["Create database:enabled"]}
+  probe after eye press   reloads 0 | {"type":"password","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Create database:enabled"]}
+  probe after copy   reloads 0 | {"type":"password","len":20,"field":"Strength: Very strong Copied A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copied","Show password[pressed=false]"],"submit":["Create database:enabled"]} clipboard-status:Copied
+  probe server refusal (rewritten to Weakpass1)   reloads 0 | {"banners":[],"toasts":["Database pg7_test_pwtest created"],"weakTextCount":0}
+  probe empty-field (rule up front, submit off)   reloads 0 | {"type":"password","len":0,"field":"En az 12 karakter; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.","buttons":["Güçlü şifre üret","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:disabled"]}
+  probe weak typed   reloads 0 | {"type":"password","len":3,"field":"Güç: Çok zayıf Eksik: en az 12 karakter, bir büyük harf, bir özel karakter (örneğin - _ . !).","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:disabled"]}
+  probe generated   reloads 0 | {"type":"text","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi gizle[pressed=true]"],"submit":["Veritabanı oluştur:enabled"]}
+  probe after eye press   reloads 0 | {"type":"password","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:enabled"]}
+  probe after copy   reloads 0 | {"type":"password","len":20,"field":"Güç: Çok güçlü Kopyalandı Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyalandı","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:enabled"]} clipboard-status:Kopyalandı
+  probe server refusal (rewritten to Weakpass1)   reloads 0 | {"banners":["Veritabanı oluşturulmadı. Sunucunun yanıtı: Database already exists"],"toasts":[],"weakTextCount":0}
+== API: weak database password 22:24:48
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short,needs_special"}}
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short"}}
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-06 22:24:13", "id": 2, "name": "pg7_test_pwtest", "type": "postgresql", "user": "pg7_test_pwtest_user"}, {"created_at": "2026-11-06 22:00:10", "id": 1, "name": "pg7_test_shop127", "type": "postgresql", "user": "pg7_test_shop127_user"}], "domain_id": 1, "domain_name": "pg7.test"}
+== c5db done 22:24:48
+200 {"tour_state": "skipped", "tour_version": 1}
+/var/tmp/a127r1/t-r7/pwdb.json 1
+  shots 10 errors [] native dialogs []
+  UI DELETE None None None 
+  UI DELETE 2026-11-06T22:26:21.937Z POST /api/v1/domains/1/databases 400 {"error":"Password must be at least 12 characters.","code":"PASSWORD_WEAK","reason":"too_short","vars":{"max":"128","min":"12","rules":"too_short,needs_special"}}
+
+  UI DELETE None None None 
+  UI DELETE 2026-11-06T22:26:48.006Z POST /api/v1/domains/1/databases 400 {"error":"Password must be at least 12 characters.","code":"PASSWORD_WEAK","reason":"too_short","vars":{"max":"128","min":"12","rules":"too_short,needs_special"}}
+
+  probe empty-field (rule up front, submit off)   reloads 0 | {"type":"password","len":0,"field":"At least 12 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).","buttons":["Generate a strong password","Show password[pressed=false]"],"submit":["Create database:disabled"]}
+  probe weak typed   reloads 0 | {"type":"password","len":3,"field":"Strength: Too weak Still needed: at least 12 characters, an uppercase letter, a special character (for example - _ . !).","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Create database:disabled"]}
+  probe generated   reloads 0 | {"type":"text","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Hide password[pressed=true]"],"submit":["Create database:enabled"]}
+  probe after eye press   reloads 0 | {"type":"password","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Create database:enabled"]}
+  probe after copy   reloads 0 | {"type":"password","len":20,"field":"Strength: Very strong Copied A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copied","Show password[pressed=false]"],"submit":["Create database:enabled"]} clipboard-status:Copied
+  probe rewrite   reloads None | "/databases$"
+  probe server refusal (rewritten to Weakpass1)   reloads 0 | {"banners":["Password must be at least 12 characters. Nothing was changed. Technical details"],"toasts":[],"weakTextCount":1}
+  probe rewrite   reloads None | null
+  probe empty-field (rule up front, submit off)   reloads 0 | {"type":"password","len":0,"field":"En az 12 karakter; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.","buttons":["Güçlü şifre üret","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:disabled"]}
+  probe weak typed   reloads 0 | {"type":"password","len":3,"field":"Güç: Çok zayıf Eksik: en az 12 karakter, bir büyük harf, bir özel karakter (örneğin - _ . !).","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:disabled"]}
+  probe generated   reloads 0 | {"type":"text","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi gizle[pressed=true]"],"submit":["Veritabanı oluştur:enabled"]}
+  probe after eye press   reloads 0 | {"type":"password","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:enabled"]}
+  probe after copy   reloads 0 | {"type":"password","len":20,"field":"Güç: Çok güçlü Kopyalandı Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyalandı","Şifreyi göster[pressed=false]"],"submit":["Veritabanı oluştur:enabled"]} clipboard-status:Kopyalandı
+  probe rewrite   reloads None | "/databases$"
+  probe server refusal (rewritten to Weakpass1)   reloads 0 | {"banners":["Şifre en az 12 karakter olmalı. Hiçbir şey değiştirilmedi. Teknik ayrıntılar"],"toasts":[],"weakTextCount":1}
+  probe rewrite   reloads None | null
+== API: weak database password 22:26:55
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short,needs_special"}}
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short"}}
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-06 22:24:13", "id": 2, "name": "pg7_test_pwtest", "type": "postgresql", "user": "pg7_test_pwtest_user"}, {"created_at": "2026-11-06 22:00:10", "id": 1, "name": "pg7_test_shop127", "type": "postgresql", "user": "pg7_test_shop127_user"}], "domain_id": 1, "domain_name": "pg7.test"}
+== c5db done 22:26:55

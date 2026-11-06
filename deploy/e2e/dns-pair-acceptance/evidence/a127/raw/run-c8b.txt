@@ -1,0 +1,38 @@
+== the confirmation mail in the lab mail capture 22:17:29
+maildirs: /var/mail/vhosts/r7.test/alerts/new
+/var/mail/vhosts/r7.test/alerts/cur
+--- Fri, 06 Nov 2026 22:16:55 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+token found (not shown)
+410 {"code": "account_link_invalid", "error": "This link is not valid any more: it was used, replaced by a newer one, or it expired. Nothing was changed. Ask for a new link."}
+200 {"email_set": true, "email_verified": false, "mail": {"available": true}}
+  settings {'delay_minutes': 5, 'email': True, 'site_checks': True} email {'confirmed': 0, 'mail': {'available': True}, 'own_set': True, 'own_verified': False} unseen 1
+   {'id': 1, 'kind': 'security_updates', 'name': None, 'severity': 'warning', 'state': 'open', 'first_seen': '2026-11-06T21:59:36Z', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+== stop cron outside the panel (lab load) 22:17:31
+inactive
+  +31s 
+  +62s 
+  +92s 
+  +122s 
+  +152s 
+  +183s 
+  +213s 
+  +243s 
+  +273s 
+  +303s 
+  +333s service_stopped:open:not_confirmed
+  +363s service_stopped:open:not_confirmed
+  +393s service_stopped:open:not_confirmed
+  +424s service_stopped:open:not_confirmed
+  +454s service_stopped:open:not_confirmed
+  +484s service_stopped:open:not_confirmed
+  +514s service_stopped:open:not_confirmed
+  +544s service_stopped:open:not_confirmed
+  +574s service_stopped:open:not_confirmed
+  +605s service_stopped:open:not_confirmed

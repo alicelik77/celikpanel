@@ -1,0 +1,130 @@
+== provision 21:42:10
+c 192.0.3.194 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nsingle\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 17.9
+}
+
+host1.f7.test
+host1.f7.test
+v0.1.0-alpha.126
+stage 0 staged
+
+== A: credentials file with a weak password
+-- before:
+6e7503d79a79db4d
+ls: cannot access '/opt/celikpanel': No such file or directory ls: cannot access '/etc/celikpanel': No such file or directory ls: cannot access '/var/lib/celikpanel': No such file or directory 
+0
+debian.sources 
+requests:
+end
+
+-- exit 1 
+-- terminal (tail):
+The administrator password in CELIKPANEL_ADMIN_CREDENTIALS_FILE must contain an uppercase letter. Nothing was downloaded or changed on this server. Who acts: you. Next: put a password in the file with at least 8 characters, an uppercase letter, a lowercase letter and a special character (for example - _ . !), then run the command again (the installer passes the file to panel --admin-credentials-file=-). / CELIKPANEL_ADMIN_CREDENTIALS_FILE içindeki yönetici parolası en az bir büyük harf içermeli. Bu sunucuya hiçbir şey indirilmedi ve hiçbir şey değiştirilmedi. Kim yapar: siz. Sonraki adım: dosyaya en az 8 karakterli, büyük harf, küçük harf ve özel karakter (örneğin - _ . !) içeren bir parola yazın, sonra komutu yeniden çalıştırın (kurucu dosyayı panel --admin-credentials-file=- olarak aktarır).
+
+-- after:
+6e7503d79a79db4d
+ls: cannot access '/opt/celikpanel': No such file or directory ls: cannot access '/etc/celikpanel': No such file or directory ls: cannot access '/var/lib/celikpanel': No such file or directory 
+0
+debian.sources 
+requests:
+2026-11-06T21:42:30Z https://celikpanel.net/get.sh
+end
+
+-- packages, product dirs, units, apt sources unchanged: True
+
+== B: the terminal prompt, a weak password first
+-- prompt section:
+/11/06 21:43:49 Applied migration: 059_site_tools.sql
+2026/11/06 21:43:49 Applied migration: 060_remote_backups.sql
+2026/11/06 21:43:50 Applied migration: 061_service_apps.sql
+2026/11/06 21:43:50 Applied migration: 062_user_guide_state.sql
+2026/11/06 21:43:50 Applied migration: 063_runtime_apps.sql
+2026/11/06 21:43:50 Applied migration: 064_metrics_history.sql
+2026/11/06 21:43:50 Applied migration: 065_monitoring_alerts.sql
+2026/11/06 21:43:50 Successfully applied 65 migrations
+==> Creating the first administrator / İlk yönetici oluşturuluyor
+2026/11/06 21:43:50 Starting CelikPanel Backend...
+Admin username / Yönetici kullanıcı adı: owner
+Admin email / Yönetici e-posta: owner@beta1-lab.test
+Show password while typing? / Parola yazarken görünsün mü? [y/e = yes/evet, Enter = no/hayır]: 
+The password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / Şifre en az 8 karakter olmalı; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.
+Admin password / Yönetici parolası: 
+Password must contain an uppercase letter. Please try again. / Şifrede en az bir büyük harf olmalı. Lütfen yeniden deneyin.
+Admin password / Yönetici parolası: 
+Confirm password / Parolayı doğrula: 
+Created administrator / Yönetici oluşturuldu.
+    ✓ administrator is ready / yönetici hazır
+==> Starting the panel / Panel başlatılıyor
+    ✓ panel is running / panel çalışıyor
+==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor
+    ✓ initial panel certificate is protected / ilk panel sertifikasi korundu
+
+CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu.
+    Panel:  https://192.0.3.194:1923
+    Services / Servisler: systemctl status celikpanel-agent celikpanel-panel
+    Logs / Günlükler: journalctl -u celikpanel-panel -f
+
+-- server state when the weak password was refused:
+ celikpanel.db
+celikpanel.db-shm
+celikpanel.db-wal
+inactive
+
+-- answered [{"prompt": "Admin username", "at": 81.3, "weak": false}, {"prompt": "Admin email", "at": 81.8, "weak": false}, {"prompt": "Show password while typing", "at": 82.3, "weak": false}, {"prompt": "Admin password", "at": 82.8, "weak": true}, {"prompt": "refusal seen", "at": 83.0}, {"prompt": "Admin password", "at": 83.5, "weak": false}, {"prompt": "Confirm password", "at": 84.0, "weak": false}] rc 0 problem None
+-- tail:
+sql
+2026/11/06 21:43:49 Applied migration: 057_usage_limits.sql
+2026/11/06 21:43:49 Applied migration: 058_app_catalog_operations.sql
+2026/11/06 21:43:49 Applied migration: 059_site_tools.sql
+2026/11/06 21:43:49 Applied migration: 060_remote_backups.sql
+2026/11/06 21:43:50 Applied migration: 061_service_apps.sql
+2026/11/06 21:43:50 Applied migration: 062_user_guide_state.sql
+2026/11/06 21:43:50 Applied migration: 063_runtime_apps.sql
+2026/11/06 21:43:50 Applied migration: 064_metrics_history.sql
+2026/11/06 21:43:50 Applied migration: 065_monitoring_alerts.sql
+2026/11/06 21:43:50 Successfully applied 65 migrations
+==> Creating the first administrator / İlk yönetici oluşturuluyor
+2026/11/06 21:43:50 Starting CelikPanel Backend...
+Admin username / Yönetici kullanıcı adı: owner
+Admin email / Yönetici e-posta: owner@beta1-lab.test
+Show password while typing? / Parola yazarken görünsün mü? [y/e = yes/evet, Enter = no/hayır]: 
+The password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / Şifre en az 8 karakter olmalı; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.
+Admin password / Yönetici parolası: 
+Password must contain an uppercase letter. Please try again. / Şifrede en az bir büyük harf olmalı. Lütfen yeniden deneyin.
+Admin password / Yönetici parolası: 
+Confirm password / Parolayı doğrula: 
+Created administrator / Yönetici oluşturuldu.
+    ✓ administrator is ready / yönetici hazır
+==> Starting the panel / Panel başlatılıyor
+    ✓ panel is running / panel çalışıyor
+==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor
+    ✓ initial panel certificate is protected / ilk panel sertifikasi korundu
+
+CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu.
+    Panel:  https://192.0.3.194:1923
+    Services / Servisler: systemctl status celikpanel-agent celikpanel-panel
+    Logs / Günlükler: journalctl -u celikpanel-panel -f
+
+-- postinstall rc 0 active
+active
+enabled
+enabled
+
+-- units active
+active
+
+seconds 87.3
+login active can_use_panel True
+200 {
+ "agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8",
+ "agent_matches": true,
+ "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8",
+ "hostname": "host1.f7.test",
+ "ipv4": "192.0.3.194",
+ "schema_version": 65,
+ "version": "v0.1.0-alpha.127"
+}
+== case1 done 21:43:58

@@ -1,0 +1,48 @@
+== versions 21:52:43
+200 {"agent_commit": "14a90360cdabf5972345f93307dd988ef4d0770d", "agent_matches": true, "commit": "14a90360cdabf5972345f93307dd988ef4d0770d", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+200 {"releases": [{"name": "Lithium", "version": "26.13.0"}, {"name": "Krypton", "version": "24.22.2"}, {"name": "Jod", "version": "22.23.4"}, {"name": "Iron", "version": "20.20.2"}]}
+-- install Node.js 22.23.4 21:52:43
+202 {"operation": {"id": "7d871a9e9d60f590004d810c3facd0b6", "kind": "runtime_install", "package_name": "22.23.4", "phase": "queued", "request_id": "23462fabecd2d66d3171593787fccab1", "service_id": "node", "started_at": "2026-11-06T21:52:43.490374551Z", "status": "queued"}}
+node 22.23.4
+200 {"installed": ["22.23.4"], "system_version": ""}
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "node7.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "node7_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+node7.test id 2
+docroot /var/www/celikpanel/subscriptions/2/sites/2/public_html owner node7_test
+corepack node npm npx 
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice
+accepts
+array-flatten
+body-parser
+67
+-- switch the site to Node.js (Hosting type) 21:53:13
+200 {"app_port": 3001, "success": true}
+200 {"active": "active", "cpu_usec": 137976, "exists": true, "memory_mb": 14, "pid": 44953, "uptime": "Fri 2026-11-06 21:53:13 UTC"}
+# /etc/systemd/system/celikapp-2.service
+# celikpanel-render v2 sha256=7111967da67fdf749300a4e42fc0be2223933ae270bd746dcb402d25466ebc93
+# The application unit of this site, written by CelikPanel.
+# Your own settings go in /etc/systemd/system/celikapp-2.service.d/*.conf (systemd drop-ins); CelikPanel never writes or removes them.
+# An edit to this file is kept: CelikPanel then shows the difference and asks before writing it again.
+# Kendi ayarlarınız /etc/systemd/system/celikapp-2.service.d/*.conf içine; CelikPanel onlara dokunmaz. Bu dosyadaki bir değişiklik korunur.
+[Unit]
+Description=CelikPanel app: node7.test
+After=network.target
+
+[Service]
+User=node7_test
+WorkingDirectory=/var/www/celikpanel/subscriptions/2/sites/2/public_html
+Environment=PORT=3001
+Environment=NODE_ENV=production
+Environment=PATH=/opt/celikpanel/runtimes/node/22.23.4/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/bin/sh -c 'node server.js'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+active
+LISTEN 0      511        127.0.0.1:3001       0.0.0.0:*    users:(("node",pid=44961,fd=21))                                                     
+-- through nginx from the lab network
+lab express ok before-main pid=44961 uid=5002 node=v22.23.4
+{"uid":5002,"cwd":"/var/www/celikpanel/subscriptions/2/sites/2/public_html","port":"3001"}== c9pre done 21:53:23

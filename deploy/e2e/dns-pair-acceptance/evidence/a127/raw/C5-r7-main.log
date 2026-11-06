@@ -1,0 +1,48 @@
+/var/tmp/a127r1/t-r7/pwm.json 1
+/var/tmp/a127r1/t-r7/pwa.json 1
+  pw-mail en | empty-field (rule up front, submit off) | {"type":"password","len":0,"field":"At least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).","buttons":["Generate a strong password","Show password[pressed=false]"],"submit":["Create:disabled"]}
+  pw-mail en | weak typed | {"type":"password","len":3,"field":"Strength: Too weak Still needed: at least 8 characters, an uppercase letter, a special character (for example - _ . !).","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Create:disabled"]}
+  pw-mail en | generated | {"type":"text","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Hide password[pressed=true]"],"submit":["Create:enabled"]}
+  pw-mail en | after eye press | {"type":"password","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Create:enabled"]}
+  pw-mail en | after copy | {"type":"password","len":20,"field":"Strength: Very strong Copied A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copied","Show password[pressed=false]"],"submit":["Create:enabled"]} clipboard-status:Copied
+  pw-mail en | rewrite | "/mail/accounts$"
+ REWRITE POST /api/v1/domains/4/mail/accounts
+ API 2026-11-06T22:50:48.954Z POST /api/v1/domains/4/mail/accounts 400 {"error":"Password must contain a special character (not a letter or digit, e.g. - _ . !).","code":"PASSWORD_WEAK","reason":"needs_special","vars":{"max":"1024","min":"8","rules":"needs_special"}} 
+  pw-mail en | server refusal (rewritten to Weakpass1) | {"banners":["Password must contain a special character (not a letter or digit, e.g. - _ . !). Nothing was changed. Technical details"],"toasts":[],"weakTextCount":1}
+  pw-mail en | rewrite | null
+  pw-access en | empty-field (rule up front, submit off) | {"type":"password","len":0,"field":"At least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).","buttons":["Generate a strong password","Show password[pressed=false]"],"submit":["Review the change:enabled"]}
+  pw-access en | weak typed | {"type":"password","len":3,"field":"Strength: Too weak Still needed: at least 8 characters, an uppercase letter, a special character (for example - _ . !).","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Review the change:disabled"]}
+  pw-access en | generated | {"type":"text","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Hide password[pressed=true]"],"submit":["Review the change:enabled"]}
+  pw-access en | after eye press | {"type":"password","len":20,"field":"Strength: Very strong A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copy","Show password[pressed=false]"],"submit":["Review the change:enabled"]}
+  pw-access en | after copy | {"type":"password","len":20,"field":"Strength: Very strong Copied A strong password is in the field. Copy it and keep it somewhere safe before you save.","buttons":["Generate a strong password","Copied","Show password[pressed=false]"],"submit":["Review the change:enabled"]} clipboard-status:Copied
+  pw-access en | rewrite | "/access(/preview)?$"
+ REWRITE POST /api/v1/domains/4/access/preview
+ API 2026-11-06T22:51:11.047Z POST /api/v1/domains/4/access/preview 400 {"error":"Password must contain a special character (not a letter or digit, e.g. - _ . !).","code":"PASSWORD_WEAK","reason":"needs_special","vars":{"max":"128","min":"8","rules":"needs_special"}} 
+  pw-access en | server refusal (rewritten to Weakpass1) | {"banners":["Password must contain a special character (not a letter or digit, e.g. - _ . !). Nothing was changed."],"toasts":[],"weakTextCount":1}
+  pw-access en | rewrite | null
+  pw-mail tr | empty-field (rule up front, submit off) | {"type":"password","len":0,"field":"En az 8 karakter; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.","buttons":["Güçlü şifre üret","Şifreyi göster[pressed=false]"],"submit":["Oluştur:disabled"]}
+  pw-mail tr | weak typed | {"type":"password","len":3,"field":"Güç: Çok zayıf Eksik: en az 8 karakter, bir büyük harf, bir özel karakter (örneğin - _ . !).","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Oluştur:disabled"]}
+  pw-mail tr | generated | {"type":"text","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi gizle[pressed=true]"],"submit":["Oluştur:enabled"]}
+  pw-mail tr | after eye press | {"type":"password","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Oluştur:enabled"]}
+  pw-mail tr | after copy | {"type":"password","len":20,"field":"Güç: Çok güçlü Kopyalandı Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyalandı","Şifreyi göster[pressed=false]"],"submit":["Oluştur:enabled"]} clipboard-status:Kopyalandı
+  pw-mail tr | rewrite | "/mail/accounts$"
+ REWRITE POST /api/v1/domains/4/mail/accounts
+ API 2026-11-06T22:51:35.834Z POST /api/v1/domains/4/mail/accounts 400 {"error":"Password must contain a special character (not a letter or digit, e.g. - _ . !).","code":"PASSWORD_WEAK","reason":"needs_special","vars":{"max":"1024","min":"8","rules":"needs_special"}} 
+  pw-mail tr | server refusal (rewritten to Weakpass1) | {"banners":["Şifrede en az bir özel karakter (harf ya da rakam olmayan, örneğin - _ . !) olmalı. Hiçbir şey değiştirilmedi. Teknik ayrıntılar"],"toasts":[],"weakTextCount":1}
+  pw-mail tr | rewrite | null
+  pw-access tr | empty-field (rule up front, submit off) | {"type":"password","len":0,"field":"En az 8 karakter; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.","buttons":["Güçlü şifre üret","Şifreyi göster[pressed=false]"],"submit":["Değişikliği gözden geçir:enabled"]}
+  pw-access tr | weak typed | {"type":"password","len":3,"field":"Güç: Çok zayıf Eksik: en az 8 karakter, bir büyük harf, bir özel karakter (örneğin - _ . !).","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Değişikliği gözden geçir:disabled"]}
+  pw-access tr | generated | {"type":"text","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi gizle[pressed=true]"],"submit":["Değişikliği gözden geçir:enabled"]}
+  pw-access tr | after eye press | {"type":"password","len":20,"field":"Güç: Çok güçlü Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyala","Şifreyi göster[pressed=false]"],"submit":["Değişikliği gözden geçir:enabled"]}
+  pw-access tr | after copy | {"type":"password","len":20,"field":"Güç: Çok güçlü Kopyalandı Alanda güçlü bir şifre var. Kaydetmeden önce kopyalayıp güvenli bir yerde saklayın.","buttons":["Güçlü şifre üret","Kopyalandı","Şifreyi göster[pressed=false]"],"submit":["Değişikliği gözden geçir:enabled"]} clipboard-status:Kopyalandı
+  pw-access tr | rewrite | "/access(/preview)?$"
+ REWRITE POST /api/v1/domains/4/access/preview
+ API 2026-11-06T22:51:57.928Z POST /api/v1/domains/4/access/preview 400 {"error":"Password must contain a special character (not a letter or digit, e.g. - _ . !).","code":"PASSWORD_WEAK","reason":"needs_special","vars":{"max":"128","min":"8","rules":"needs_special"}} 
+  pw-access tr | server refusal (rewritten to Weakpass1) | {"banners":["Şifrede en az bir özel karakter (harf ya da rakam olmayan, örneğin - _ . !) olmalı. Hiçbir şey değiştirilmedi."],"toasts":[],"weakTextCount":1}
+  pw-access tr | rewrite | null
+== API: weak passwords 22:52:04
+400 {"code": "PASSWORD_WEAK", "error": "Password must contain an uppercase letter.", "reason": "needs_upper", "vars": {"max": "1024", "min": "8", "rules": "needs_upper,needs_special"}}
+400 {"code": "PASSWORD_WEAK", "error": "Password must contain a special character (not a letter or digit, e.g. - _ . !).", "reason": "needs_special", "vars": {"max": "128", "min": "8", "rules": "needs_special"}}
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 8 characters.", "reason": "too_short", "vars": {"max": "128", "min": "8", "rules": "too_short"}}
+200 {"accounts": []}
+== c5ma done 22:52:04

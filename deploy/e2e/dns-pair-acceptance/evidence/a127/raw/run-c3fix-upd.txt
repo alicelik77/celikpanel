@@ -1,0 +1,31 @@
+== C2 backup before 22:32:31
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request f92a0a5b16886b805015724cceb4c472 v0.1.0-alpha.127 -> v0.1.0-alpha.128
+== press Update once 22:32:33
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T22:32:33Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "f92a0a5b16886b805015724cceb4c472", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "606c5c7bbe4876861009bf96e824e2dc573f76d3c8202145d90f1be95052e8fd", "archive_size": "71672267", "commit": "111b45f28fb60e531097
+  4s 200 running None  | 
+  25s 
+  63s 200 running verifying  | 
+  72s 200 succeeded None  | 
+== after 22:33:57
+200 {"agent_commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "agent_matches": true, "commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.128"}
+200 {"created_at": "2026-11-06T22:32:33.444957894Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T22:32:33Z", "state": "done"}, {"finished_at": "2026-11-06T22:32:37Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-06T22:32:37Z", "state": "done"}, {"finished_at": "2026-11-06T22:33:32Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-06T22:33:44Z", "id": "confirm", "started_at": "2026-11-06T22:33:32Z", "state": "done"}]}, "request_id": "f92a0a5b16886b805015724cceb4c472", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "606c5c7bbe4876861009bf96e824e2dc573f76d3c8202145d90f1be95052e8fd", "archive_size": "71672267", "commit": "111b45f28fb60e531097ef6ba20e0d10e837ffcd", "os": "linux", "sequence": "128", "version": "v0.1.0-alpha.128"}, "updated_at": "2026-11-06T22:33:44.592178277Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/06 22:33:32 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '5e6b1eed112c11e1ede3c389ab150224.json'] {'request_id': '5e6b1eed112c11e1ede3c389ab150224', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T21:55:52.977146179Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.127', 'reason': None, 'code': None}
+  ['self-update', 'f92a0a5b16886b805015724cceb4c472.json'] {'request_id': 'f92a0a5b16886b805015724cceb4c472', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T22:32:33.444957894Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 backup done 22:33:59

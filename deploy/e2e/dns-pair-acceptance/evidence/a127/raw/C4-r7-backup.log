@@ -1,0 +1,22 @@
+== joined server (boston), pg7.test 22:20:30
+joined capabilities (Databases tab)   warm x5 s: [0.027, 0.024, 0.024, 0.025, 0.025]  keys:dns_server_state
+joined connection (Overview)          warm x5 s: [0.01, 0.013, 0.009, 0.01, 0.01]  keys:status,checked_at
+joined mail/health                    warm x5 s: [0.007, 0.008, 0.008, 0.007, 0.007]  keys:checked_at
+joined apps                           warm x5 s: [0.01, 0.01, 0.01, 0.011, 0.011]  keys:
+joined usage                          warm x5 s: [0.008, 0.007, 0.008, 0.007, 0.007]  keys:measured_at
+joined capabilities (Databases tab)   after 35 s idle x3 s: [0.101, 0.048, 0.044]
+joined connection (Overview)          after 35 s idle x3 s: [0.014, 0.012, 0.014]
+joined mail/health                    after 35 s idle x3 s: [0.01, 0.015, 0.013]
+joined apps                           after 35 s idle x3 s: [0.208, 0.016, 0.013]
+joined usage                          after 35 s idle x3 s: [0.009, 0.009, 0.012]
+== main (frankfurt), site7.test, for comparison 22:21:08
+main capabilities (Databases tab)   warm x5 s: [0.124, 0.077, 0.077, 0.058, 0.052]  keys:dns_server_state
+main connection (Overview)          warm x5 s: [0.012, 0.011, 0.014, 0.014, 0.014]  keys:status,checked_at
+main mail/health                    warm x5 s: [0.008, 0.009, 0.008, 0.007, 0.007]  keys:checked_at
+main apps                           warm x5 s: [0.01, 0.009, 0.01, 0.01, 0.01]  keys:
+main usage                          warm x5 s: [0.007, 0.007, 0.009, 0.008, 0.008]  keys:measured_at
+main capabilities (Databases tab)   after 35 s idle x3 s: [0.09, 0.035, 0.037]
+main connection (Overview)          after 35 s idle x3 s: [0.014, 0.01, 0.012]
+main mail/health                    after 35 s idle x3 s: [0.007, 0.008, 0.009]
+main apps                           after 35 s idle x3 s: [0.196, 0.012, 0.01]
+main usage                          after 35 s idle x3 s: [0.008, 0.008, 0.008]

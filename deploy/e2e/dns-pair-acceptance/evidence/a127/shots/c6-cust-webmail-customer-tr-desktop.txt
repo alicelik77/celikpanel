@@ -1,0 +1,53 @@
+CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+1
+Veritabanları
+Kullanıcılar
+CelikPanel
+TR
+EN
+CU
+cust7
+Alan Adları
+cust7.test
+Aktif
+Siteyi aç
+Tür
+php
+PHP sürümü
+8.4
+SSL
+Kapalı
+Disk kullanımı
+3.2 KB
+Trafik
+bu ay 0 B
+Genel Bakış
+Barındırma
+DNS
+E-posta
+Veritabanları
+Uygulamalar
+Yapay zekâ ve otomasyon
+Programlar
+Dosyalar
+Erişim
+Gelişmiş
+Web posta
+
+Web postası bu sunucuda henüz kullanılamıyor. Web postasının henüz kendi adresi yok. Adresi sağlayıcınız verir; gerekiyorsa ona sorun. Bu arada posta uygulamaları çalışır.
+
+Hesaplar
+0
+Yönlendirme
+0
+Kimlik doğrulama
+Ayarlar
+0 öğe
+Adres oluştur
+Henüz e-posta hesabı yok

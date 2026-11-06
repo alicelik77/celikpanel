@@ -1,0 +1,51 @@
+CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+1
+Veritabanları
+Kullanıcılar
+CelikPanel
+TR
+EN
+CU
+cust7
+Alan Adları
+cust7.test
+Aktif
+Siteyi aç
+Tür
+php
+PHP sürümü
+8.4
+SSL
+Kapalı
+Disk kullanımı
+3.2 KB
+Trafik
+bu ay 1.8 KB
+Genel Bakış
+Barındırma
+DNS
+E-posta
+Veritabanları
+Uygulamalar
+Yapay zekâ ve otomasyon
+Programlar
+Dosyalar
+Erişim
+Gelişmiş
+FTP, SFTP ve SSH
+
+Bu sitenin dosyalarına FileZilla gibi bir programla bağlanın. Sitenin kendi hesabıyla girersiniz ve yalnız bu aboneliğin klasörünü görürsünüz; sunucunun geri kalanı kapalı kalır.
+
+Bu sunucu SFTP ve SSH için yalnız SSH anahtarı kabul ediyor. Aşağıya bir anahtar ekleyin; FTP yine parolayı kullanır.
+
+Bu sunucuda FTP kurulu değil; aynı kullanıcı adı ve parolayla SFTP kullanın. FTP’yi sağlayıcınız (sunucu yöneticisi) kurar; gerekiyorsa ona sorun.
+
+Dosya erişimi (FTP ve SFTP)
+FTP her zaman şifrelidir (TLS üzerinden FTP); düz FTP sunulmaz. SFTP aynı kullanıcı adı ve parolayı kullanır, komut satırı açmaz.
+Değişikliği gözden geçir

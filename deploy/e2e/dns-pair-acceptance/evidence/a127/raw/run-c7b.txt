@@ -1,0 +1,41 @@
+200 {"tour_state": "pending", "tour_version": 1}
+200 {"tour_state": "pending", "tour_version": 1}
+== EN 22:31:03
+"desktop","p":"step-log","v":"{\"log\":[\"0.0s -  \"],\"tourDuringWindow\":0}","reloads":0},{"n":"op-ssl","l":"en","w":"desktop","p":"toasts","v":"[]","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"question","v":"probe error: TypeError: Cannot read properties of null (reading 'innerText')","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"window before confirm","v":"{\"host\":\"ask\",\"aria\":true,\"running\":false,\"close\":false,\"end\":null,\"tour\":false,\"title\":\"\",\"steps\":[]}","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"locked window (confirm pressed twice)","v":"{\"host\":null,\"aria\":false,\"running\":false,\"close\":false,\"end\":null,\"tour\":false,\"title\":\"\",\"steps\":[]}","reloads":0},{"n":"op-service","l":"en","w":"desktop","wt":"!!document.querySelector('[data-operation-close]')","ok":false,"s":301,"reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"end","v":"{\"host\":null,\"aria\":false,\"running\":false,\"close\":false,\"end\":null,\"tour\":false,\"title\":\"\",\"steps\":[]}","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"step-log","v":"{\"log\":[\"0.0s -  \",\"5.1s ask  \",\"8.4s run  \",\"8.4s run check:running action:pending refresh:pending \",\"9.9s run check:done action:done refresh:running \",\"9.9s run check:done action:done refresh:done \",\"11.2s -  \"],\"tourDuringWindow\":0}","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"toasts","v":"[]","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"question","v":"no question (window opens directly)","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"window before confirm","v":"{\"host\":\"end\",\"aria\":true,\"running\":false,\"close\":true,\"end\":\"done\",\"tour\":false,\"title\":\"\",\"steps\":[\"check:done\",\"save:done\",\"publish:done\"]}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"locked window (confirm pressed twice)","v":"{\"host\":\"end\",\"aria\":true,\"running\":false,\"close\":true,\"end\":\"done\",\"tour\":false,\"title\":\"\",\"steps\":[\"check:done\",\"save:done\",\"publish:done\"]}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","wt":"!!document.querySelector('[data-operation-close]')","ok":true,"s":0,"reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"end","v":"{\"host\":\"end\",\"aria\":true,\"running\":false,\"close\":true,\"end\":\"done\",\"tour\":false,\"title\":\"\",\"steps\":[\"check:done\",\"save:done\",\"publish:done\"]}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"step-log","v":"{\"log\":[\"0.0s -  \",\"7.9s run  \",\"7.9s run check:running save:pending publish:pending \",\"9.4s run check:done save:done publish:running \",\"11.9s run check:done save:done publish:done \",\"11.9s end check:done save:done publish:done done\"],\"tourDuringWindow\":0}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"toasts","v":"[]","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"tour after the window closed","v":"{\"tour\":false}","reloads":0}]}
+
+
+== TR 22:44:03
+  shots 7 errors [{"name": "op-service", "lang": "tr", "width": "desktop", "error": "TimeoutError: Waiting for selector `[data-operation-close]` failed: Waiting failed: 15000ms exceeded"}] native dialogs []
+  UI DELETE 2026-11-06T22:44:26.801Z POST /api/v1/managed-services/scan?max_age_seconds=300 200 {"scanned_at":"2026-11-06T22:44:25.659972334Z","scan_age_seconds":0.594,"services":[{"id":"php-fpm","name":"PHP-FPM","description":"PHP FastCGI Process Manager","icon":"🐘","category":"web","versions":["8.4","8.3"],"status":"active (running)","is_installed":true,"installed_evidence":"systemd_unit","k
+  UI DELETE 2026-11-06T22:46:36.263Z POST /api/v1/domains/4/php 200 {"message":"PHP version updated","status":"success"}
+
+  UI DELETE 2026-11-06T22:48:35.630Z POST /api/v1/service/action 200 {"success":true}
+
+  probe version picked   reloads 0 | picked 8.3
+  probe question   reloads 0 | probe error: TypeError: Cannot read properties of null (reading 'innerText')
+  probe window before confirm   reloads 0 | {"host":"ask","aria":true,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe locked window (confirm pressed twice)   reloads 0 | {"host":"end","aria":true,"running":false,"close":true,"end":"done","tour":false,"title":"","steps":["check:done","pool:done","save:done","web_server:done"]}
+  probe !!document.querySelector('[data-operation-close]') ok=True 0s reloads 0 | None
+  probe end   reloads 0 | {"host":"end","aria":true,"running":false,"close":true,"end":"done","tour":false,"title":"","steps":["check:done","pool:done","save:done","web_server:done"]}
+  probe step-log   reloads 0 | {"log":["0.0s -  ","64.4s ask  ","96.2s run  ","96.2s run check:running pool:pending save:pending web_server:pending ","96.9s run check:done pool:done save:done web_server:done ","96.9s end check:done pool:done save:done web_server:done done"],"tourDuringWindow":0}
+  probe toasts   reloads 0 | []
+  probe tour after the window closed   reloads 0 | {"tour":false}
+  probe question   reloads 0 | probe error: TypeError: Cannot read properties of null (reading 'innerText')
+  probe window before confirm   reloads 0 | {"host":"ask","aria":true,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe locked window (confirm pressed twice)   reloads 0 | {"host":null,"aria":false,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe !!document.querySelector('[data-operation-close]') ok=False 301s reloads 0 | None
+  probe end   reloads 0 | {"host":null,"aria":false,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe step-log   reloads 0 | {"log":["0.0s -  ","33.7s ask  ","65.6s run  ","65.6s run check:running action:pending refresh:pending ","67.1s run check:done action:running refresh:pending ","67.5s run check:done action:done refresh:done ","68.1s -  "],"tourDuringWindow":0}
+  probe toasts   reloads 0 | []
+200 {"tour_state": "skipped", "tour_version": 1}
+== a repeated request with the same request id (files backup, two requests 0.3 s apart) 22:54:06
+backups before: 2
+{"i": 0, "error": "'list' object has no attribute 'get'"}
+{"i": 1, "error": "'list' object has no attribute 'get'"}
+backups after: 3
+== same for a PHP version change 22:54:07
+{"i": 0, "error": "'list' object has no attribute 'get'"}
+{"i": 1, "error": "'list' object has no attribute 'get'"}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'journalctl -u celikpanel-agent --since -2min -o cat --no-pager | grep -ciE 'php.*(pool|version).*site7|site7.*php'''
+== c7 done 22:54:08

@@ -1,0 +1,122 @@
+Restore "files-20261106T223149.069825547Z-ff69e82a953712d7.cpbak"? Current data will be replaced. CelikPanel will automatically create and retain a safety backup before restoring.
+Cancel
+Continue
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+4
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+3.5 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+Backups
+Scheduled tasks
+Logs
+Malware scan
+Create a new backup
+Files backup
+Website files only
+Database backup
+Choose one linked database
+Database to back up
+No linked databases
+Create backup
+Full backup
+Website files + all 0 linked databases
+Automatic backups
+
+Back this domain up on a schedule and keep a set number of copies.
+
+How often
+Daily
+Weekly
+What to back up
+Files
+Full
+Copies to keep
+Turn on
+Existing backups
+
+files-20261106T223149.069825547Z-ff69e82a953712d7.cpbak
+
+11/7/2026, 1:31:49 AM
+2.1 KB
+Files
+Manual
+Current format
+Restorable
+Remote copies
+
+Copies of this site’s backups on storage outside this server, encrypted before they leave it.
+
+Unmet prerequisiteNo remote destination can hold this site’s backups yet.
+
+Who acts
+You
+Next
+Add a destination in Settings → Remote backups, then come back here.
+Then
+As soon as a destination is available, it appears here. Local backups keep working meanwhile.
+Open Settings → Remote backups
+Recent sends and restores
+
+Nothing sent or restored yet.
+
+How remote copies work
+
+Backups for site7.test are kept in CelikPanel's protected backup area on this server.

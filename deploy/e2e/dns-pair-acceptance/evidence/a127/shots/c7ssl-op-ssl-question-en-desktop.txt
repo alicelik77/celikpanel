@@ -1,0 +1,111 @@
+Issue a certificate for site7.test from Let's Encrypt?
+Cancel
+Continue
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+5
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+12 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+General
+Hosting type
+Protected folders
+Redirects
+Configuration file
+PHP
+SSL/TLS
+SSL/TLS
+
+No certificate
+
+No certificate installed. Get a free Let's Encrypt certificate or upload your own.
+
+SSL/TLS
+Free certificate (ACME)
+Custom certificate
+
+Free ACME certificate — pick the authority and choose whether automatic renewal is enabled.
+
+Certificate request will cover
+
+These website DNS names will be included in the ACME request.
+
+site7.test
+www.site7.test
+Certificate authority
+Let's Encrypt
+ZeroSSL
+Google Trust Services
+
+Free, 90-day certificates. The default — no account needed.
+
+Email address *
+
+Used for renewal notices and account recovery
+
+Enable automatic renewal
+Include mail.site7.test in this certificate
+Adds this exact mail DNS name as a certificate SAN. It must resolve to this server for issuance and renewal; after issuance, mail TLS can use the certificate.
+Get certificate
+HTTPS settings
+Force HTTPS
+Install a valid certificate before enabling this setting.
+Enable HSTS
+Install a valid certificate before enabling this setting.

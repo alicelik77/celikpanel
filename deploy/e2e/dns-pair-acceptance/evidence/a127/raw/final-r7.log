@@ -1,0 +1,90 @@
+== main 22:58:14
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'systemctl list-units --failed --all --no-legend --plain | cat; echo '(failed end)'''
+== backup 22:58:15
+200 {"agent_commit": "50910894e4f20ab6d1ba85b860c4cb6cc6ca0294", "agent_matches": true, "commit": "50910894e4f20ab6d1ba85b860c4cb6cc6ca0294", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.129"}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'systemctl list-units --failed --all --no-legend --plain | cat; echo '(failed end)'''
+bash: line 1: vhost: command not found
+bash: line 1: pool: command not found
+bash: line 1: 500: command not found
+== main 22:58:38
+--- systemctl --failed
+celikpanel-egress-guard.service loaded failed failed CelikPanel site sandbox SMTP egress guard
+(failed end)
+--- PHP switch refused while nginx was stopped (22:54:39-22:54:42)
+2026-11-06T22:54:40+00:00 host1.r7.test agent[59281]: 2026/11/06 22:54:40 ApplySitePool site 4 (switch): written absent /etc/php/8.4/fpm/pool.d/site4.conf
+2026-11-06T22:54:40+00:00 host1.r7.test panel[59537]: 2026/11/06 22:54:40 site configuration site7.test php_pool (switch): written
+2026-11-06T22:54:40+00:00 host1.r7.test panel[59537]: 2026/11/06 22:54:40 vhost regen after php switch (domain 4): nginx reload failed: nginx reload failed: nginx.service is not active, cannot reload.: exit status 1; rollback restored the previous vhost; nginx was not running before and was neither reloaded nor started
+2026-11-06T22:54:40+00:00 host1.r7.test panel[59537]: 2026/11/06 22:54:40 [500] nginx reload failed: nginx reload failed: nginx.service is not active, cannot reload.: exit status 1; rollback restored the previous vhost; nginx was not running before and was neither reloaded nor started
+== backup 22:58:38
+--- systemctl --failed
+(failed end)
+--- PHP switch refused while nginx was stopped (22:54:39-22:54:42)
+== main 22:59:00
+× celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard
+     Loaded: loaded (/etc/systemd/system/celikpanel-egress-guard.service; static)
+     Active: failed (Result: exit-code) since Fri 2026-11-06 22:58:38 UTC; 21s ago
+ Invocation: d10edd4268254515bf7ef0ce9ff7d93f
+TriggeredBy: ● celikpanel-egress-guard.timer
+    Process: 95302 ExecStart=/bin/sh /usr/lib/celikpanel-sandbox/egress-guard.sh (code=exited, status=1/FAILURE)
+   Main PID: 95302 (code=exited, status=1/FAILURE)
+   Mem peak: 2.3M
+        CPU: 75ms
+
+Nov 06 22:58:38 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+Nov 06 22:58:38 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+Nov 06 22:58:38 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+---
+2026-11-06T22:55:03+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:55:03+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:55:34+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:55:34+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:55:34+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:56:04+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:56:04+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:56:04+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:56:34+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:56:34+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:56:34+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:57:05+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:57:05+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:57:05+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:57:36+00:00 host1.r7.test sh[95133]: celikpanel-egress: celikappinst-3.service runs in , not /system.slice/celikappinst-3.service; it is not blocked
+2026-11-06T22:57:36+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:57:36+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:57:36+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:58:07+00:00 host1.r7.test sh[95213]: celikpanel-egress: celikappinst-3.service runs in , not /system.slice/celikappinst-3.service; it is not blocked
+2026-11-06T22:58:07+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:58:07+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:58:07+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+2026-11-06T22:58:38+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T22:58:38+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T22:58:38+00:00 host1.r7.test systemd[1]: Failed to start celikpanel-egress-guard.service - CelikPanel site sandbox SMTP egress guard.
+---
+# /etc/systemd/system/celikpanel-egress-guard.service
+# celikpanel-render v2 sha256=4e275793bc8886123f23a4a504075ff61d4e960e04dddaceaf99db0f5a868fca
+# CelikPanel site sandbox: keeps the SMTP egress block in place (docs/SITE-SANDBOX.md).
+[Unit]
+Description=CelikPanel site sandbox SMTP egress guard
+After=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/lib/celikpanel-sandbox/egress-guard.sh
+LogLevelMax=notice
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+Fri 2026-11-06 22:59:07 UTC       7s Fri 2026-11-06 22:58:37 UTC      22s ago celikpanel-egress-guard.timer     celikpanel-egress-guard.service
+== main 23:03:38
+first guard failure: 2026-11-06T22:01:36+00:00
+failures so far: 121
+2026-11-06T22:11:30+00:00 host1.r7.test sh[67298]: celikpanel-egress: celikappinst-3.service runs in , not /system.slice/celikappinst-3.service; it is not blocked
+2026-11-06T22:18:42+00:00 host1.r7.test sh[71191]: celikpanel-egress: celikappinst-3.service runs in , not /system.slice/celikappinst-3.service; it is not blocked
+2026-11-06T22:22:16+00:00 host1.r7.test sh[84084]: celikpanel-egress: celikappinst-3.service runs in , not /system.slice/celikappinst-3.service; it is not blocked
+celikappinst-3.service loaded active exited CelikPanel Node.js install of node7n.test
+
+(cgroup end)
+system.slice/celikapp-3.service system.slice/celikapp-2.service 

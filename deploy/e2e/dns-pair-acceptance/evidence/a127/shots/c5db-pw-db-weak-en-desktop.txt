@@ -1,0 +1,93 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+1
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+11
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host2.r7.test
+
+192.0.3.191
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+pg7.test
+Active
+Open site
+Type
+php
+PHP version
+8.3
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+8.8 KB this month
+Overview
+Hosting
+DNS
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+Databases
+
+The databases of pg7.test
+
+New database
+Database name
+
+Its full name will be pg7_test_pwtest
+
+Database engine
+PostgreSQL
+MySQL / MariaDB
+Password
+Strength: Too weak
+
+Still needed: at least 12 characters, an uppercase letter, a special character (for example - _ . !).
+
+Create database
+Cancel
+Databases
+(1)
+pg7_test_shop127
+POSTGRESQL
+User:pg7_test_shop127_user
+Created:11/6/2026
+Database web tools
+
+Manage databases in the browser. The tool opens through the panel for any signed-in account and is never exposed to the network directly; you sign in to it with the database’s own user name and password.
+
+Install phpMyAdmin
+Open phpPgAdmin

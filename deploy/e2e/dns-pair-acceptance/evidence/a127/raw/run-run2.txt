@@ -1,0 +1,37 @@
+v0.1.0-alpha.127
+/root/a114-portal/site/releases
+/root/a114-portal/site/releases/v0.1.0-alpha.127
+/root/a114-portal/site/releases/v0.1.0-alpha.126
+/root/a114-portal/site/releases/v0.1.0-alpha.128
+/root/a114-portal/site/releases/latest.txt
+== backup
+200 {"agent_commit": "14a90360cdabf5972345f93307dd988ef4d0770d", "agent_matches": true, "commit": "14a90360cdabf5972345f93307dd988ef4d0770d", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+--- systemctl --failed (all units)
+(end)
+--- 'database publication is unverified' in the journal since -5min: 0
+  4s 200 running None  | 
+  25s 
+  62s 200 running verifying  | 
+  75s 200 succeeded None  | 
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host2.r7.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+200 {"created_at": "2026-11-06T21:55:52.977146179Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T21:55:52Z", "state": "done"}, {"finished_at": "2026-11-06T21:55:56
+--- systemctl --failed (all units)
+(end)
+--- 'database publication is unverified' in the journal since -15min: 0
+  ['self-update', '5e6b1eed112c11e1ede3c389ab150224.json'] {'request_id': '5e6b1eed112c11e1ede3c389ab150224', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T21:55:52.977146179Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.127', 'rea
+== main
+200 {"agent_commit": "14a90360cdabf5972345f93307dd988ef4d0770d", "agent_matches": true, "commit": "14a90360cdabf5972345f93307dd988ef4d0770d", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+--- systemctl --failed (all units)
+(end)
+--- 'database publication is unverified' in the journal since -5min: 0
+  4s 200 running None  | 
+  21s 
+  59s 200 running verifying  | 
+  72s 200 succeeded None  | 
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+200 {"created_at": "2026-11-06T21:57:22.443176735Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T21:57:22Z", "state": "done"}, {"finished_at": "2026-11-06T21:57:26
+--- systemctl --failed (all units)
+(end)
+--- 'database publication is unverified' in the journal since -15min: 0
+  ['self-update', '8785a3f477474b15b80f07697faaca65.json'] {'request_id': '8785a3f477474b15b80f07697faaca65', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T21:57:22.443176735Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.127', 'rea
+run2 done 21:58:47

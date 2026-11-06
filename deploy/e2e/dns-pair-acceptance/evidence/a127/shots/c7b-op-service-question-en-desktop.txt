@@ -1,0 +1,165 @@
+Restart MariaDB?
+Cancel
+Continue
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+5
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Components
+MariaDB
+
+Running
+
+Installed version: 1:11.8.6-0+deb13u1
+
+Read from the system package database on 11/7/2026, 1:19:14 AM. At the last check the package manager was busy, so this earlier reading is shown; the next check reads it again.
+
+Help
+Start
+Stop
+Restart
+Configuration file
+/etc/mysql/mariadb.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf
+Settings in 50-server.cnf
+[mariadbd]
+31
+user
+Commented out: the default applies
+pid-file
+basedir
+datadir
+Commented out: the default applies
+tmpdir
+Commented out: the default applies
+skip-name-resolve
+Commented out: the default applies
+bind-address
+key_buffer_size
+Commented out: the default applies
+max_allowed_packet
+Commented out: the default applies
+thread_stack
+Commented out: the default applies
+thread_cache_size
+Commented out: the default applies
+myisam_recover_options
+Commented out: the default applies
+max_connections
+Commented out: the default applies
+table_cache
+Commented out: the default applies
+general_log_file
+Commented out: the default applies
+general_log
+Commented out: the default applies
+log_error
+Commented out: the default applies
+log_slow_query_file
+Commented out: the default applies
+log_slow_query_time
+Commented out: the default applies
+log_slow_verbosity
+Commented out: the default applies
+log-queries-not-using-indexes
+Commented out: the default applies
+log_slow_min_examined_row_limit
+Commented out: the default applies
+server-id
+Commented out: the default applies
+log_bin
+Commented out: the default applies
+expire_logs_days
+max_binlog_size
+Commented out: the default applies
+ssl-ca
+Commented out: the default applies
+ssl-cert
+Commented out: the default applies
+ssl-key
+Commented out: the default applies
+require-secure-transport
+Commented out: the default applies
+innodb_buffer_pool_size
+Commented out: the default applies
+
+Only the lines you change are rewritten. Comments, includes and everything this screen does not show stay in the file exactly as they are.
+
+Nothing changed yet.
+
+Discard
+Save changes
+MariaDB tips
+Use bind-address = 0.0.0.0 to allow remote connections.
+Tune innodb_buffer_pool_size (roughly 70% of RAM) for performance.
+Check the error logs if the service fails to start.
+
+MariaDB cannot run two major versions side by side from the operating system’s packages, so CelikPanel offers no second MariaDB and no move between versions; a MariaDB major change converts data in place and is not offered.
+
+Overview
+KIND
+Service (has its own daemon)
+SYSTEMD UNIT
+mariadb
+PACKAGES
+mariadb-server
+OPEN PORTS
+None — local only, nothing is exposed to the internet
+Logs
+Refresh
+2026-11-06T21:43:52+00:00 host1.r7.test systemd[1]: Starting mariadb.service - MariaDB 11.8.6 database server...
+2026-11-06T21:43:52+00:00 host1.r7.test (mariadbd)[15278]: mariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] Starting MariaDB 11.8.6-MariaDB-0+deb13u1 from Debian source revision 9bfea48ce1214cc4470f6f6f8a4e30352cef84e7 server_uid wNtq/GPR2oEIX03qw7TmMGM5VDw= as process 15278
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Number of transaction pools: 1
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Using io_uring
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Initialized memory pressure event listener
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: End of log at LSN=45482
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Opened 3 undo tablespaces
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: log sequence number 45482; transaction id 14
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] Plugin 'wsrep-provider' is disabled.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Buffer pool(s) load completed at 261106 21:43:52
+2026-11-06T21:43:53+00:00 ho

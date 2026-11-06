@@ -1,0 +1,164 @@
+MariaDB yeniden başlatılsın mı?
+İptal
+Devam et
+CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+5
+Veritabanları
+Kullanıcılar
+Mağaza
+VPN
+
+SUNUCU
+
+Bileşenler
+13
+Sunucu kurulumu
+DNS ve eş sunucular
+İzleme
+Güvenlik
+Bakım
+İçe aktar
+Denetim günlüğü
+Ayarlar
+
+SUNUCU BİLGİSİ
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(tam commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Bileşenler
+MariaDB
+
+Çalışıyor
+
+Kurulu sürüm: 1:11.8.6-0+deb13u1
+
+Sistemin paket veritabanından okundu.
+
+Yardım
+Başlat
+Durdur
+Yeniden başlat
+Yapılandırma dosyası
+/etc/mysql/mariadb.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf
+50-server.cnf içindeki ayarlar
+[mariadbd]
+31
+user
+Yorum satırı: varsayılan değer geçerli
+pid-file
+basedir
+datadir
+Yorum satırı: varsayılan değer geçerli
+tmpdir
+Yorum satırı: varsayılan değer geçerli
+skip-name-resolve
+Yorum satırı: varsayılan değer geçerli
+bind-address
+key_buffer_size
+Yorum satırı: varsayılan değer geçerli
+max_allowed_packet
+Yorum satırı: varsayılan değer geçerli
+thread_stack
+Yorum satırı: varsayılan değer geçerli
+thread_cache_size
+Yorum satırı: varsayılan değer geçerli
+myisam_recover_options
+Yorum satırı: varsayılan değer geçerli
+max_connections
+Yorum satırı: varsayılan değer geçerli
+table_cache
+Yorum satırı: varsayılan değer geçerli
+general_log_file
+Yorum satırı: varsayılan değer geçerli
+general_log
+Yorum satırı: varsayılan değer geçerli
+log_error
+Yorum satırı: varsayılan değer geçerli
+log_slow_query_file
+Yorum satırı: varsayılan değer geçerli
+log_slow_query_time
+Yorum satırı: varsayılan değer geçerli
+log_slow_verbosity
+Yorum satırı: varsayılan değer geçerli
+log-queries-not-using-indexes
+Yorum satırı: varsayılan değer geçerli
+log_slow_min_examined_row_limit
+Yorum satırı: varsayılan değer geçerli
+server-id
+Yorum satırı: varsayılan değer geçerli
+log_bin
+Yorum satırı: varsayılan değer geçerli
+expire_logs_days
+max_binlog_size
+Yorum satırı: varsayılan değer geçerli
+ssl-ca
+Yorum satırı: varsayılan değer geçerli
+ssl-cert
+Yorum satırı: varsayılan değer geçerli
+ssl-key
+Yorum satırı: varsayılan değer geçerli
+require-secure-transport
+Yorum satırı: varsayılan değer geçerli
+innodb_buffer_pool_size
+Yorum satırı: varsayılan değer geçerli
+
+Yalnız değiştirdiğiniz satırlar yeniden yazılır. Yorumlar, include satırları ve bu ekranın göstermediği her şey dosyada olduğu gibi kalır.
+
+Henüz bir şey değişmedi.
+
+Vazgeç
+Değişiklikleri kaydet
+MariaDB ipuçları
+Uzaktan bağlantılara izin vermek için bind-address = 0.0.0.0 kullanın.
+Performans için innodb_buffer_pool_size değerini ayarlayın (yaklaşık RAM'in %70'i).
+Servis başlamazsa hata günlüklerini kontrol edin.
+
+MariaDB, işletim sisteminin paketleriyle iki ana sürümü yan yana çalıştıramaz; bu yüzden CelikPanel ikinci bir MariaDB ve sürümler arası taşıma sunmaz. MariaDB ana sürüm değişikliği veriyi yerinde dönüştürür ve sunulmaz.
+
+Genel bakış
+TÜR
+Servis (kendi arka plan süreci var)
+SYSTEMD BİRİMİ
+mariadb
+PAKETLER
+mariadb-server
+AÇIK PORTLAR
+Yok — yalnız yerel, internete hiçbir şey açılmıyor
+Günlük
+Yenile
+2026-11-06T21:43:52+00:00 host1.r7.test systemd[1]: Starting mariadb.service - MariaDB 11.8.6 database server...
+2026-11-06T21:43:52+00:00 host1.r7.test (mariadbd)[15278]: mariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] Starting MariaDB 11.8.6-MariaDB-0+deb13u1 from Debian source revision 9bfea48ce1214cc4470f6f6f8a4e30352cef84e7 server_uid wNtq/GPR2oEIX03qw7TmMGM5VDw= as process 15278
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Number of transaction pools: 1
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Using io_uring
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Initialized memory pressure event listener
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Completed initialization of buffer pool
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: End of log at LSN=45482
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Opened 3 undo tablespaces
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: log sequence number 45482; transaction id 14
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] Plugin 'FEEDBACK' is disabled.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] Plugin 'wsrep-provider' is disabled.
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+2026-11-06T21:43:52+00:00 host1.r7.test mariadbd[15278]: 2026-11-06 21:43:52 0 [Note] InnoDB: Buffer pool(s)

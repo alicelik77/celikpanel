@@ -1,0 +1,51 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+1
+Databases
+Users
+CelikPanel
+TR
+EN
+CU
+cust7
+Domains
+cust7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+0 B this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+FTP, SFTP and SSH
+
+Connect to this site’s files with a program such as FileZilla. You sign in as the site’s own account and see only this subscription’s folder; the rest of the server stays closed.
+
+This server accepts only SSH keys for SFTP and SSH. Add a key below; FTP still uses the password.
+
+FTP is not installed on this server, so use SFTP with the same user name and password. Your provider (the server’s administrator) installs FTP; ask them if you need it.
+
+File access (FTP and SFTP)
+FTP is always encrypted (FTP over TLS); plain FTP is not offered. SFTP uses the same user name and password and opens no command line.
+Review the change

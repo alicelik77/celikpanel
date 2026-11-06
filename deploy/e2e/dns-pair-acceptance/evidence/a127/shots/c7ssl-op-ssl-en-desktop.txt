@@ -1,0 +1,117 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+5
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+On
+Disk usage
+3.2 KB
+Traffic
+12 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+General
+Hosting type
+Protected folders
+Redirects
+Configuration file
+PHP
+SSL/TLS
+SSL/TLS
+
+Valid
+
+Type:
+ACME
+Issuer:
+Let's Encrypt
+Trust:
+Trusted
+Expires:
+11/7/2031 (1825 days)
+Renewal:
+Renewal settings changed outside CelikPanel
+Renewed by:
+The operating system’s certbot (also while CelikPanel is stopped or removed)
+
+certbot’s renewal settings for this certificate were changed outside CelikPanel and are kept as they are. Renewal is judged from the certificate’s own dates.
+
+CelikPanel reads certbot’s state again when this page opens and every 12 hours; nothing has to be started here.
+
+Website name coverage
+
+Each managed website name is checked against the DNS names actually present in the installed certificate.
+
+site7.test
+Domain
+Secured
+www.site7.test
+Domain with the "www" prefix
+Secured
+
+DNS names present in this certificate
+
+site7.test
+www.site7.test
+Enable automatic renewal
+The operating system’s certbot renews this certificate before expiry, also while CelikPanel is stopped or removed. Switching this off writes autorenew = False into certbot’s own configuration of the certificate.
+Reissue certificate
+Unassign certificate
+HTTPS settings
+Force HTTPS
+Redirect all HTTP requests to HTTPS
+Enable HSTS
+Starts with a 5-minute safe test and keeps Force HTTPS enabled.
+Secure mail with this certificate
+Cannot enable: the installed certificate does not cover mail.site7.test. Install a certificate that includes this DNS name first.

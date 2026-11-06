@@ -1,0 +1,56 @@
+== before 22:50:02
+  settings {'delay_minutes': 5, 'email': True, 'site_checks': True} email {'confirmed': 1, 'mail': {'available': True}, 'own_set': True, 'own_verified': True} unseen 2
+   {'id': 1, 'kind': 'security_updates', 'subject': None, 'severity': 'warning', 'state': 'open', 'first_seen': '2026-11-06T21:59:36Z', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+   {'id': 2, 'kind': 'service_stopped', 'subject': 'cron', 'severity': 'critical', 'state': 'resolved', 'first_seen': '2026-11-06T22:17:45Z', 'opened_at': '2026-11-06T22:22:49Z', 'resolved_at': '2026-11-06T22:37:57Z', 'mail_state': 'not_confirmed', 'mail_detail': None}
+== stop nginx outside the panel (lab load) 22:50:02
+inactive
+  +30s service_stopped/cron:resolved:not_confirmed
+  +61s service_stopped/cron:resolved:not_confirmed
+  +91s service_stopped/cron:resolved:not_confirmed
+  +121s service_stopped/cron:resolved:not_confirmed
+  +151s service_stopped/cron:resolved:not_confirmed
+  +181s service_stopped/cron:resolved:not_confirmed
+  +211s service_stopped/cron:resolved:not_confirmed
+  +241s service_stopped/cron:resolved:not_confirmed
+  +272s service_stopped/cron:resolved:not_confirmed
+  +302s service_stopped/cron:resolved:not_confirmed
+  +332s service_stopped/nginx:open:sent service_stopped/cron:resolved:not_confirmed
+  settings {'delay_minutes': 5, 'email': True, 'site_checks': True} email {'confirmed': 1, 'mail': {'available': True}, 'own_set': True, 'own_verified': True} unseen 3
+   {'id': 3, 'kind': 'service_stopped', 'subject': 'nginx', 'severity': 'critical', 'state': 'open', 'first_seen': '2026-11-06T22:50:05Z', 'opened_at': '2026-11-06T22:55:08Z', 'resolved_at': None, 'mail_state': 'sent', 'mail_detail': None}
+   {'id': 1, 'kind': 'security_updates', 'subject': None, 'severity': 'warning', 'state': 'open', 'first_seen': '2026-11-06T21:59:36Z', 'opened_at': '2026-11-06T22:09:41Z', 'resolved_at': None, 'mail_state': 'not_confirmed', 'mail_detail': None}
+   {'id': 2, 'kind': 'service_stopped', 'subject': 'cron', 'severity': 'critical', 'state': 'resolved', 'first_seen': '2026-11-06T22:17:45Z', 'opened_at': '2026-11-06T22:22:49Z', 'resolved_at': '2026-11-06T22:37:57Z', 'mail_state': 'not_confirmed', 'mail_detail': None}
+-- site checks
+200 {"enabled": true, "every_seconds": 300, "sites": [{"checked_at": "2026-11-06T22:54:28Z", "domain": "cust7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "node7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "node7n.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "r7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "https", "state": "down"}, {"checked_at": "2026-11-06T22:54:28Z", "domain": "site7.test", "down_since": "2026-11-06T22:54:28Z", "reason": "refused", "response_ms": 0, "scheme": "http", "state": "down"}]}
+== start nginx again 22:55:34
+active
+== the alert email in the lab mail capture 22:55:34
+maildirs: /var/mail/vhosts/r7.test/alerts/new
+/var/mail/vhosts/r7.test/alerts/cur
+--- Fri, 06 Nov 2026 22:55:08 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: CelikPanel alert on frankfurt.r7.test / uyarı: The service Nginx is not running. Open Monitoring and press Start; if it stops again, its log on the componen...
+   - The service Nginx is not running. Open Monitoring and press Start; if it stops again, its log on the component page says why.
+   
+   Open Monitoring: https://frankfurt.r7.test:1923/monitoring
+   This email was sent by CelikPanel on frankfurt.r7.test because the problem lasted longer than your alert delay. While the panel is stopped no alerts are sent; an outside uptime checker covers that. Change or turn off these emails under Monitoring → Alert settings.
+   
+   - Nginx hizmeti çalışmıyor. İzleme'yi açıp Başlat'a basın; yine durursa bileşen sayfasındaki günlük nedenini söyler.
+   
+   İzleme: https://frankfurt.r7.test:1923/monitoring
+   Bu e-postayı frankfurt.r7.test üzerindeki CelikPanel, sorun uyarı gecikmenizden uzun sürdüğü için gönderdi. Panel dururken uyarı gönderilmez; bunu dış bir çalışma süresi denetleyicisi karşılar. Bu e-postaları İzleme → Uyarı ayarları'ndan değiştirin ya da
+--- Fri, 06 Nov 2026 22:31:11 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+--- Fri, 06 Nov 2026 22:16:55 +0000 | From: CelikPanel <no-reply@r7.test> | To: <alerts@r7.test> | Subject: Confirm your email address for CelikPanel
+   Confirm that this address belongs to the CelikPanel account owner on frankfurt.r7.test.
+   
+   To confirm it, open this link within 24 hours:
+   https://frankfurt.r7.test:1923/account-link/verify#t=[REDACTED]
+   
+   Once it is confirmed, you can reset your password by email if you forget it.
+   If you did not ask for this, ignore this message.
+ACB1820388: to=<alerts@r7.test>, relay=virtual, delay=4.3, delays=4.2/0.01/0/0, dsn=2.0.0, status=sent (delivered to maildir)
+== c8e done 22:56:05

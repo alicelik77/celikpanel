@@ -1,0 +1,41 @@
+{
+  "assessment": {
+    "level": "reduced",
+    "gaps": [
+      "bpf_missing"
+    ],
+    "extras": []
+  },
+  "caps": {
+    "systemd_version": 255,
+    "bpf_framework": false,
+    "cgroup_v2": true,
+    "nft_socket_cgroupv2": true
+  }
+}
+sandbox level: reduced (egress enforced: 1)
+Created symlink /etc/systemd/system/timers.target.wants/celikpanel-egress-guard.timer → /etc/systemd/system/celikpanel-egress-guard.timer.
+
+== site sandbox escape matrix (level: reduced) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: FAIL — node bind-127.0.0.1:34994: succeeded; node bind-127.0.0.1:0: succeeded; node bind-udp: succeeded
+item 11: SKIP — not run in node mode
+item 12: PASS
+item 13: PASS
+item 14: PASS — node exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item 17: SKIP — not run in node mode
+item 18: SKIP — not run in node mode
+item 19: PASS
+item 20: FAIL — install step; 10 bind-127.0.0.1:34996 ESCAPED succeeded; 10 bind-127.0.0.1:0 ESCAPED succeeded; 10 bind-udp ESCAPED succeeded
+SKIP is not a failure, but these items were not judged: 11 17 18 (each names its reason above)
+FAIL

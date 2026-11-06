@@ -1,0 +1,53 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+1
+Databases
+Users
+CelikPanel
+TR
+EN
+CU
+cust7
+Domains
+cust7.test
+Active
+Open site
+Type
+php
+PHP version
+8.4
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+0 B this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+Webmail
+
+Webmail is not available on this server yet. Webmail has no address of its own yet. Your provider sets one; ask them if you need it. Mail apps work meanwhile.
+
+Accounts
+0
+Forwarding
+0
+Authentication
+Settings
+0 items
+Create address
+No email accounts yet

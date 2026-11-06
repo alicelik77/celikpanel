@@ -1,0 +1,36 @@
+commit e129b5d8aa75ac59c7b65ae79dd65f8d39375556
+lab bump commit b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd
+bundle budget check passed
+EXIT 0
+  "commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd",
+  "sha256": "1d1c9f8e381deadbcd0bf57a5891bbc801f08a075c2965a89beee215df885ccd",
+portal130fix exit 0
+sequence=130
+version=v0.1.0-alpha.130
+commit=b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd
+/root/a114-portal/site/releases/v0.1.0-alpha.130
+/root/a114-portal/site/releases/latest.txt
+v0.1.0-alpha.130
+== main 127 -> lab 130 (e129b5d8a)
+200 {"agent_commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "agent_matches": true, "commit": "4ee915bb85f24d1c15c3eb28cebe905bf6137ee8", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+(end)
+--- 'database publication is unverified' in the journal since -5min: 0
+  4s 200 running None  | 
+  34s 
+  72s 200 running verifying  | 
+  85s 200 succeeded None  | 
+200 {"agent_commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "agent_matches": true, "commit": "b25b1b717fa00b34fee5e77f8aec3c07c9dd41dd", "hostname": "host1.r7.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.130"}
+(end)
+--- 'database publication is unverified' in the journal since -15min: 0
+--- installed guard script
+1:# celikpanel-render v2 sha256=724e471ea66d10e928acf044cc53d80ec432b52a377ed4f894684923ba5e7f46
+--- guard runs in the last 60 s
+2026-11-06T23:27:50+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+2026-11-06T23:28:20+00:00 host1.r7.test systemd[1]: celikpanel-egress-guard.service: Failed with result 'exit-code'.
+--- the finished step
+celikappinst-3.service loaded active exited CelikPanel Node.js install of node7n.test
+--- egress set
+system.slice/celikapp-3.service system.slice/celikapp-2.service 
+--- systemctl --failed
+celikpanel-egress-guard.service loaded failed failed CelikPanel site sandbox SMTP egress guard
+(failed end)

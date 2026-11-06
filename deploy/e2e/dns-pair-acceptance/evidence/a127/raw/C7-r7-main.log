@@ -1,0 +1,90 @@
+200 {"tour_state": "pending", "tour_version": 0}
+== EN 22:20:07
+200 {"tour_state": "pending", "tour_version": 1}
+200 {"tour_state": "pending", "tour_version": 1}
+== EN 22:31:03
+"desktop","p":"step-log","v":"{\"log\":[\"0.0s -  \"],\"tourDuringWindow\":0}","reloads":0},{"n":"op-ssl","l":"en","w":"desktop","p":"toasts","v":"[]","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"question","v":"probe error: TypeError: Cannot read properties of null (reading 'innerText')","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"window before confirm","v":"{\"host\":\"ask\",\"aria\":true,\"running\":false,\"close\":false,\"end\":null,\"tour\":false,\"title\":\"\",\"steps\":[]}","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"locked window (confirm pressed twice)","v":"{\"host\":null,\"aria\":false,\"running\":false,\"close\":false,\"end\":null,\"tour\":false,\"title\":\"\",\"steps\":[]}","reloads":0},{"n":"op-service","l":"en","w":"desktop","wt":"!!document.querySelector('[data-operation-close]')","ok":false,"s":301,"reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"end","v":"{\"host\":null,\"aria\":false,\"running\":false,\"close\":false,\"end\":null,\"tour\":false,\"title\":\"\",\"steps\":[]}","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"step-log","v":"{\"log\":[\"0.0s -  \",\"5.1s ask  \",\"8.4s run  \",\"8.4s run check:running action:pending refresh:pending \",\"9.9s run check:done action:done refresh:running \",\"9.9s run check:done action:done refresh:done \",\"11.2s -  \"],\"tourDuringWindow\":0}","reloads":0},{"n":"op-service","l":"en","w":"desktop","p":"toasts","v":"[]","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"question","v":"no question (window opens directly)","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"window before confirm","v":"{\"host\":\"end\",\"aria\":true,\"running\":false,\"close\":true,\"end\":\"done\",\"tour\":false,\"title\":\"\",\"steps\":[\"check:done\",\"save:done\",\"publish:done\"]}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"locked window (confirm pressed twice)","v":"{\"host\":\"end\",\"aria\":true,\"running\":false,\"close\":true,\"end\":\"done\",\"tour\":false,\"title\":\"\",\"steps\":[\"check:done\",\"save:done\",\"publish:done\"]}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","wt":"!!document.querySelector('[data-operation-close]')","ok":true,"s":0,"reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"end","v":"{\"host\":\"end\",\"aria\":true,\"running\":false,\"close\":true,\"end\":\"done\",\"tour\":false,\"title\":\"\",\"steps\":[\"check:done\",\"save:done\",\"publish:done\"]}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"step-log","v":"{\"log\":[\"0.0s -  \",\"7.9s run  \",\"7.9s run check:running save:pending publish:pending \",\"9.4s run check:done save:done publish:running \",\"11.9s run check:done save:done publish:done \",\"11.9s end check:done save:done publish:done done\"],\"tourDuringWindow\":0}","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"toasts","v":"[]","reloads":0},{"n":"op-dns","l":"en","w":"desktop","p":"tour after the window closed","v":"{\"tour\":false}","reloads":0}]}
+
+
+== TR 22:44:03
+  shots 7 errors [{"name": "op-service", "lang": "tr", "width": "desktop", "error": "TimeoutError: Waiting for selector `[data-operation-close]` failed: Waiting failed: 15000ms exceeded"}] native dialogs []
+  UI DELETE 2026-11-06T22:44:26.801Z POST /api/v1/managed-services/scan?max_age_seconds=300 200 {"scanned_at":"2026-11-06T22:44:25.659972334Z","scan_age_seconds":0.594,"services":[{"id":"php-fpm","name":"PHP-FPM","description":"PHP FastCGI Process Manager","icon":"🐘","category":"web","versions":["8.4","8.3"],"status":"active (running)","is_installed":true,"installed_evidence":"systemd_unit","k
+  UI DELETE 2026-11-06T22:46:36.263Z POST /api/v1/domains/4/php 200 {"message":"PHP version updated","status":"success"}
+
+  UI DELETE 2026-11-06T22:48:35.630Z POST /api/v1/service/action 200 {"success":true}
+
+  probe version picked   reloads 0 | picked 8.3
+  probe question   reloads 0 | probe error: TypeError: Cannot read properties of null (reading 'innerText')
+  probe window before confirm   reloads 0 | {"host":"ask","aria":true,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe locked window (confirm pressed twice)   reloads 0 | {"host":"end","aria":true,"running":false,"close":true,"end":"done","tour":false,"title":"","steps":["check:done","pool:done","save:done","web_server:done"]}
+  probe !!document.querySelector('[data-operation-close]') ok=True 0s reloads 0 | None
+  probe end   reloads 0 | {"host":"end","aria":true,"running":false,"close":true,"end":"done","tour":false,"title":"","steps":["check:done","pool:done","save:done","web_server:done"]}
+  probe step-log   reloads 0 | {"log":["0.0s -  ","64.4s ask  ","96.2s run  ","96.2s run check:running pool:pending save:pending web_server:pending ","96.9s run check:done pool:done save:done web_server:done ","96.9s end check:done pool:done save:done web_server:done done"],"tourDuringWindow":0}
+  probe toasts   reloads 0 | []
+  probe tour after the window closed   reloads 0 | {"tour":false}
+  probe question   reloads 0 | probe error: TypeError: Cannot read properties of null (reading 'innerText')
+  probe window before confirm   reloads 0 | {"host":"ask","aria":true,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe locked window (confirm pressed twice)   reloads 0 | {"host":null,"aria":false,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe !!document.querySelector('[data-operation-close]') ok=False 301s reloads 0 | None
+  probe end   reloads 0 | {"host":null,"aria":false,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+  probe step-log   reloads 0 | {"log":["0.0s -  ","33.7s ask  ","65.6s run  ","65.6s run check:running action:pending refresh:pending ","67.1s run check:done action:running refresh:pending ","67.5s run check:done action:done refresh:done ","68.1s -  "],"tourDuringWindow":0}
+  probe toasts   reloads 0 | []
+200 {"tour_state": "skipped", "tour_version": 1}
+== a repeated request with the same request id (files backup, two requests 0.3 s apart) 22:54:06
+backups before: 2
+{"i": 0, "error": "'list' object has no attribute 'get'"}
+{"i": 1, "error": "'list' object has no attribute 'get'"}
+backups after: 3
+== same for a PHP version change 22:54:07
+{"i": 0, "error": "'list' object has no attribute 'get'"}
+{"i": 1, "error": "'list' object has no attribute 'get'"}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'journalctl -u celikpanel-agent --since -2min -o cat --no-pager | grep -ciE 'php.*(pool|version).*site7|site7.*php'''
+== c7 done 22:54:08
+== (rerun with the lab tool's header read fixed) the same request id twice, 0.3 s apart: files backup 22:54:39
+manual backups before: 2
+{"i": 0, "status": 200, "s": 0.03, "body": "{\"success\":true,\"backup\":{\"name\":\"files-20261106T225439.185437398Z-f8edb94ad92a53a3.cpbak\",\"size\":2115,\"type\":\"files\",\"origin\":\"manual\",\"restorable\":true,\"created_at\":\"2026-11-06T22:54:39.181329867Z\"}}\n", "step": null}
+{"i": 1, "status": 200, "s": 0.01, "body": "{\"success\":true,\"backup\":{\"name\":\"files-20261106T225439.185437398Z-f8edb94ad92a53a3.cpbak\",\"size\":2115,\"type\":\"files\",\"origin\":\"manual\",\"restorable\":true,\"created_at\":\"2026-11-06T22:54:39.181329867Z\"}}\n", "step": null}
+manual backups after: 3
+== PHP version change, same request id twice 22:54:40
+{"i": 0, "status": 500, "s": 0.54, "body": "{\"error\":\"internal server error\",\"code\":\"INTERNAL\"}\n", "step": null}
+{"i": 1, "status": 500, "s": 0.24, "body": "{\"error\":\"internal server error\",\"code\":\"INTERNAL\"}\n", "step": null}
+2026-11-06T22:54:40+00:00 host1.r7.test agent[59281]: 2026/11/06 22:54:40 ApplySitePool site 4 (switch): written absent /etc/php/8.4/fpm/pool.d/site4.conf
+2026-11-06T22:54:40+00:00 host1.r7.test panel[59537]: 2026/11/06 22:54:40 site configuration site7.test php_pool (switch): written
+2026-11-06T22:54:40+00:00 host1.r7.test panel[59537]: 2026/11/06 22:54:40 vhost regen after php switch (domain 4): nginx reload failed: nginx reload failed: nginx.service is not active, cannot reload.: exit status 1; rollback restored the previous vhost; nginx was not running before and was neither reloaded nor started
+== site7.test after the PHP change refused while nginx was stopped (c8e load) 22:56:39
+200 {"available_versions": ["8.4", "8.3"], "domain_id": 4, "domain_name": "site7.test", "php_version": "8.4", "pool_config": {"group": "site7_test", "listen": "/var/run/php/php8.4-fpm-site4.sock", "listen_group": "www-data", "listen_mode": "0660", "listen_owner": "www-data", "name": "site4", "pm": "dynamic", "pm_max_children": 5, "pm_max_requests": 500, "pm_max_spare_servers": 3, "pm_min_spare_servers
+502
+== PHP version change, same request id twice, nginx running 22:56:39
+{"i": 0, "status": 200, "s": 0.04, "body": "{\"message\":\"PHP version updated\",\"status\":\"success\"}\n", "step": null}
+{"i": 1, "status": 200, "s": 0.01, "body": "{\"message\":\"PHP version updated\",\"status\":\"success\"}\n", "step": null}
+bash: line 1: vhost: command not found
+Could not open input file: switch
+200 {"available_versions": ["8.4", "8.3"], "domain_id": 4, "domain_name": "site7.test", "php_version": "8.4", "pool_config": {"group": "site7_test", "listen": "/var/run/php/php8.4-fpm-site4.sock", "listen_group": "www-data", "listen_mode": "0660", "listen_owner": "www-data", "name": "site4", "pm": "dyna
+502
+== SSL issue through the lab ACME CA (EN) 22:56:41
+/var/tmp/a127r1/t-r7/ssl.json 1
+  op-ssl en | question | probe error: TypeError: Cannot read properties of null (reading 'innerText')
+  op-ssl en | window before confirm | {"host":"ask","aria":true,"running":false,"close":false,"end":null,"tour":false,"title":"","steps":[]}
+ API 2026-11-06T22:57:12.277Z POST /api/v1/domains/4/ssl/letsencrypt 200 {"expires_at":"2031-11-06T22:57:10Z","status":"success"} 
+  op-ssl en | locked window (confirm pressed twice) | {"host":"end","aria":true,"running":false,"close":true,"end":"done","tour":false,"title":"","steps":["check:done","dns_check:done","prepare_validation:done","acme:done","verify:done","install:done","reload:done"]}
+  op-ssl en | waitJs ok=True 0s
+  op-ssl en | end | {"host":"end","aria":true,"running":false,"close":true,"end":"done","tour":false,"title":"","steps":["check:done","dns_check:done","prepare_validation:done","acme:done","verify:done","install:done","reload:done"]}
+  op-ssl en | step-log | {"log":["0.0s -  ","10.9s ask  ","14.1s run  ","14.1s run check:running dns_check:pending prepare_validation:pending acme:pending verify:pending install:pending reload:pending mail:pending ","15.6s run check:done dns_check:done prepare_validation:done acme:running verify:pending install:pending reload:pending ","17.1s run check:done dns_check:done prepare_validation:done acme:done verify:done install:done reload:running ","17.2s run check:done dns_check:done prepare_validation:done acme:done verify:done install:done reload:done ","17.2s end check:done dns_check:done prepare_validation:done acme:done verify:done install:done reload:done done"],"tourDuringWindow":0}
+  op-ssl en | toasts | []
+  op-ssl en | tour after the window closed | {"tour":false}
+== c7ssl done 22:57:18
+== site7.test PHP wiring 22:57:44
+/etc/nginx/sites-available/site7.test.conf
+/etc/nginx/celikpanel-managed.d/site7.test/access-log.traffic
+/etc/nginx/celikpanel-managed.d/site7.test/acme-http-01.conf
+/etc/php/8.3/fpm/pool.d/:
+/etc/php/8.4/fpm/pool.d/:
+-rw-r--r-- 1 root celikpanel   662 Nov  6 22:54 site4.conf
+srw-rw----  1 www-data www-data   0 Nov  6 22:54 php8.4-fpm-site4.sock
+active
+active
+local http 200
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+local https 000
+2026/11/06 21:42:34 [notice] 13914#13914: using inherited sockets from "5;6;"

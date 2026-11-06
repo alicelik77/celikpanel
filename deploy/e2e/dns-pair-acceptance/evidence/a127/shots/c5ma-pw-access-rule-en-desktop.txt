@@ -1,0 +1,89 @@
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+5
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+13
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host1.r7.test
+
+192.0.3.190
+
+CelikPanel · v0.1.0-alpha.127 · build 4ee915bb85f2
+(full commit 4ee915bb85f24d1c15c3eb28cebe905bf6137ee8)
+TR
+EN
+OW
+owner
+Domains
+site7.test
+Active
+Open site
+Type
+php
+PHP version
+8.3
+SSL
+Off
+Disk usage
+3.2 KB
+Traffic
+11 KB this month
+Overview
+Hosting
+DNS
+Mail
+Databases
+Applications
+AI & automation
+Programs
+Files
+Access
+Advanced
+FTP, SFTP and SSH
+
+Connect to this site’s files with a program such as FileZilla. You sign in as the site’s own account and see only this subscription’s folder; the rest of the server stays closed.
+
+This server accepts only SSH keys for SFTP and SSH. Add a key below; FTP still uses the password.
+
+FTP (vsftpd) is not installed, so only SFTP works. The button opens vsftpd’s install window; CelikPanel sets it up for FTP over TLS only. Install vsftpd
+
+Fail2ban is not installed, so repeated wrong passwords are not blocked. Installing it is recommended. Install Fail2ban
+
+File access (FTP and SFTP)
+FTP is always encrypted (FTP over TLS); plain FTP is not offered. SFTP uses the same user name and password and opens no command line.
+Command line (SSH)
+A command line closed to this subscription’s folder, with basic file tools only. Turn it on only if you need it.
+Set a password
+
+At least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !).
+
+No password yet. Set one, or add an SSH key below. CelikPanel does not store it.
+SSH keys
+
+No key yet. A key is safer than a password.
+
+Paste one public key (the .pub file), for example ssh-ed25519 AAAA… you@laptop. Never paste the private key.
+Review the change
+Cancel

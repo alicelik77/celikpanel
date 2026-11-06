@@ -1,0 +1,41 @@
+{
+  "assessment": {
+    "level": "full",
+    "gaps": [],
+    "extras": [
+      "private_pids",
+      "strict_control_groups"
+    ]
+  },
+  "caps": {
+    "systemd_version": 257,
+    "bpf_framework": true,
+    "cgroup_v2": true,
+    "nft_socket_cgroupv2": true
+  }
+}
+sandbox level: full (egress enforced: 1)
+
+== site sandbox escape matrix (level: full) ==
+item 1: PASS
+item 2: PASS
+item 3: PASS
+item 4: PASS
+item 5: PASS
+item 6: PASS
+item 7: PASS
+item 8: PASS
+item 9: PASS
+item 10: PASS
+item 11: SKIP — not run in node mode
+item 12: PASS
+item 13: PASS
+item 14: PASS — node exec skipped: the python kind runs its interpreter
+item 15: PASS
+item 16: PASS
+item 17: SKIP — not run in node mode
+item 18: SKIP — not run in node mode
+item 19: PASS
+item 20: PASS
+SKIP is not a failure, but these items were not judged: 11 17 18 (each names its reason above)
+PASS
