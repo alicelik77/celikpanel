@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.126.tr.md)
 
+> **Published** on 2026-11-06 (UTC): release commit `14a90360c`, GitHub pre-release at 16:26:12Z, download portal at about 16:31Z (public check 27/27).
+
 The panel now asks its questions in its own window and shows every confirmed
 change step by step while it runs. A domain deletion on a joined server that
 stayed "being deleted" for ever is fixed and finishes by itself after the
