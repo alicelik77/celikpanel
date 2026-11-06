@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Database, Key } from 'lucide-react';
+import { Database } from 'lucide-react';
 import { showToast } from './Toast';
-import { Button, Dialog, ResultUnknown } from './ui';
-import { readApiError, refusalText } from '../lib/apiError';
+import { Button, Dialog, ErrorBanner, ResultUnknown } from './ui';
+import { readApiError, type ApiError } from '../lib/apiError';
 import { useI18n } from '../i18n';
 import type { LostAnswerHandle } from '../lib/lostAnswer';
 import { resultNotKept } from './OnceOnlyNotice';
-import { generatedPassword, type CreatedSecret } from '../lib/generatedPassword';
+import type { CreatedSecret } from '../lib/generatedPassword';
+import { passwordAcceptable } from '../lib/passwordPolicy';
+import { PasswordInput } from './PasswordInput';
 
 interface AddDatabaseModalV2Props {
     serverId: number;
@@ -42,21 +44,19 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
             .catch(err => console.error('Failed to load domains:', err));
     }, []);
 
-    // A password from the browser's cryptographic generator, shown in the
-    // field; copying is offered, never logged.
-    const generatePassword = () => {
-        const password = generatedPassword();
-        setNewPassword(password);
-        void navigator.clipboard?.writeText(password).then(() => showToast('success', t('dbm.generatedCopied')), () => showToast('info', t('dbm.generated')));
-    };
+    // A refusal is said once, in the dialogue that stays open.
+    const [refusal, setRefusal] = useState<ApiError | null>(null);
+    // A new user's password must meet the rule before Create is offered.
+    const passwordOK = userMode !== 'new' || passwordAcceptable(newPassword, 'database_user');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         // Nothing is created while an earlier create has no result and the
         // lists have not been read again.
-        if (loading || answer.holding) return;
+        if (loading || answer.holding || !passwordOK) return;
         const name = databaseName;
         setLoading(true);
+        setRefusal(null);
 
         try {
             const body: any = {
@@ -127,7 +127,8 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                     onPasswordNotShown(name, userMode === 'new' ? newUsername : '');
                     return;
                 }
-                throw new Error(refusalText(problem, t, 'dbm.createFailed'));
+                setRefusal(problem);
+                return;
             }
 
             const data = await res.json();
@@ -164,7 +165,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                     <Button type="button" variant="secondary" onClick={onClose}>
                         {t('common.cancel')}
                     </Button>
-                    <Button type="submit" variant="primary" disabled={loading || answer.holding}>
+                    <Button type="submit" variant="primary" disabled={loading || answer.holding || !passwordOK}>
                         {loading ? t('dbm.creating') : t('dbm.createDatabase')}
                     </Button>
                 </>
@@ -172,6 +173,7 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
         >
             <div className="space-y-4">
                 <ResultUnknown answer={answer} />
+                <ErrorBanner error={refusal} sentence="dbm.createFailed" />
                 {/* Database Name */}
                 <div>
                     <label className="block text-sm font-medium text-fg-muted mb-2">
@@ -263,25 +265,14 @@ export function AddDatabaseModalV2({ serverId, serverName, onClose, onSuccess, e
                                     pattern="[a-zA-Z0-9_]+"
                                 />
                             </div>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    className="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2 text-fg focus:border-primary"
-                                    placeholder={t('dbm.password')}
-                                    required={userMode === 'new'}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={generatePassword}
-                                    className="px-4 py-2 bg-surface-3 hover:bg-surface-3 text-fg rounded-lg transition-colors"
-                                    title={t('dbm.generate')}
-                                    aria-label={t('dbm.generate')}
-                                >
-                                    <Key className="w-4 h-4" />
-                                </button>
-                            </div>
+                            <PasswordInput
+                                field="database_user"
+                                value={newPassword}
+                                onChange={setNewPassword}
+                                placeholder={t('dbm.password')}
+                                maxLength={128}
+                                required={userMode === 'new'}
+                            />
                         </div>
                     )}
                 </div>

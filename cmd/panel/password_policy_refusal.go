@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 )
@@ -13,7 +14,8 @@ import (
 // uppercase letter, no lowercase letter, no special character, or control
 // characters. Reason names the first rule broken; vars carry min and max, so
 // the screen says it in the interface language (err.PASSWORD_WEAK.<reason>).
-// Details lists every rule broken.
+// vars.rules lists every rule broken, comma-separated (not Details: the
+// screen's banner would print those tokens as evidence lines).
 //
 // errCodePasswordWeak, sahibin kuralina (6 Kas 2026) uymayan yeni parolanin
 // tek retidir. Reason ilk bozulan kurali adlandirir; vars min ve max tasir.
@@ -29,12 +31,13 @@ func writePasswordRefusal(w http.ResponseWriter, refusal *passwordpolicy.Error) 
 }
 
 func passwordRefusalBody(refusal *passwordpolicy.Error) apiErrorBody {
+	vars := refusal.Vars()
+	vars["rules"] = strings.Join(refusal.Rules, ",")
 	return apiErrorBody{
-		Error:   refusal.Error(),
-		Code:    errCodePasswordWeak,
-		Reason:  refusal.Reason(),
-		Vars:    refusal.Vars(),
-		Details: append([]string(nil), refusal.Rules...),
+		Error:  refusal.Error(),
+		Code:   errCodePasswordWeak,
+		Reason: refusal.Reason(),
+		Vars:   vars,
 	}
 }
 

@@ -43,7 +43,7 @@ func requirePasswordRefusal(t *testing.T, recorder *httptest.ResponseRecorder, r
 	if body.Vars["min"] != minChars || body.Vars["max"] != maxBytes {
 		t.Fatalf("vars = %v, want min=%s max=%s", body.Vars, minChars, maxBytes)
 	}
-	if len(body.Details) == 0 || body.Details[0] != reason || body.Error == "" {
+	if rules := strings.Split(body.Vars["rules"], ","); len(body.Details) != 0 || rules[0] != reason || body.Error == "" {
 		t.Fatalf("details/error: %+v", body)
 	}
 	if secret != "" && strings.Contains(recorder.Body.String(), secret) {
@@ -61,7 +61,7 @@ func TestPasswordRefusalIsTheCodedEnvelope(t *testing.T) {
 	requirePasswordRefusal(t, recorder, passwordpolicy.RuleNeedsUpper, "8", "1024", "abcdefgh")
 	var body apiErrorBody
 	_ = json.Unmarshal(recorder.Body.Bytes(), &body)
-	if strings.Join(body.Details, ",") != "needs_upper,needs_special" || body.Error != refusal.Error() {
+	if body.Vars["rules"] != "needs_upper,needs_special" || body.Error != refusal.Error() {
 		t.Fatalf("body = %+v", body)
 	}
 	// Carried up an error chain, it is still found and written typed.
