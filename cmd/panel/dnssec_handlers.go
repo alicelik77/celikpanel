@@ -159,7 +159,9 @@ func (p *Panel) handleDomainDNSSEC(w http.ResponseWriter, r *http.Request, domai
 	var resp dnssecAgentResponse
 	switch r.Method {
 	case http.MethodGet:
-		publisher, ready, err := p.activeDNSPublisher(r.Context())
+		// A read: the DNS pair proof is the screens' last verified answer
+		// (alpha.127, display_checks.go); the signing state is read live.
+		publisher, ready, err := p.activeDNSPublisherForDisplay(r.Context())
 		if err != nil {
 			log.Printf("DNSSEC status publisher %s: %v", domain, err)
 			writeDNSSECStatusUnavailable(w, http.StatusBadGateway)

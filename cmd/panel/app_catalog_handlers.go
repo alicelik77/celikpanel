@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
@@ -294,6 +295,7 @@ func (p *Panel) handleDomainAppCatalog(w http.ResponseWriter, r *http.Request, d
 		}
 	}
 	apps := []domainAppView{}
+	var pending []appRequirementJob
 	for _, app := range appcatalog.All() {
 		if app.Kind != appcatalog.KindPHPSite || !app.Offerable() {
 			continue
@@ -310,15 +312,44 @@ func (p *Panel) handleDomainAppCatalog(w http.ResponseWriter, r *http.Request, d
 		if layer != "" {
 			view.RefusedBy, view.Grantor = layer, e.grantor(layer)
 		} else if target.ProjectType == "php" && !occupied {
-			view.Requirements = p.appRequirements(ctx, r, e, app, target, site)
+			pending = append(pending, appRequirementJob{index: len(apps), app: app})
 		}
 		apps = append(apps, view)
 	}
+	// Each application's prerequisites are asked at the same time, at most
+	// appRequirementWorkers at once (alpha.127); they used to be asked one
+	// after another (7 Agent calls, each starting PHP).
+	// Uygulamalarin on kosullari ayni anda sorulur.
+	jobs := make(chan appRequirementJob)
+	var wg sync.WaitGroup
+	for w := 0; w < min(appRequirementWorkers, len(pending)); w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				apps[job.index].Requirements = p.appRequirements(ctx, r, e, job.app, target, site)
+			}
+		}()
+	}
+	for _, job := range pending {
+		jobs <- job
+	}
+	close(jobs)
+	wg.Wait()
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"apps": apps, "installed": installed,
 		"site": map[string]any{"php_version": site.phpVersion, "https": site.https, "project_type": target.ProjectType, "occupied": occupied,
 			"administrator": callerIsAdministrator(r)},
 	})
+}
+
+// appRequirementWorkers bounds the prerequisite reads of one catalog page
+// that run at the same time.
+const appRequirementWorkers = 4
+
+type appRequirementJob struct {
+	index int
+	app   appcatalog.App
 }
 
 type appSiteFacts struct {
@@ -362,12 +393,30 @@ func (p *Panel) appRequirements(ctx context.Context, r *http.Request, e *effecti
 		view.DiskOK = false
 		view.DiskReason = err.Error()
 	}
-	var resp transport.AppPrerequisitesResponse
-	callCtx, cancel := context.WithTimeout(ctx, 40*time.Second)
-	defer cancel()
-	err := p.callAgentContext(callCtx, "Agent.AppPrerequisitesV1", &transport.AppPrerequisitesRequest{
+	// The Agent's answer is used for 30 s and read again after any change
+	// (display_checks.go, keep < 0: never shown once older). Only an answer
+	// without error is kept.
+	request := transport.AppPrerequisitesRequest{
 		AppID: app.ID, Site: appSiteIdentity(target, target.DomainID, site.phpVersion),
-	}, &resp)
+	}
+	key := fmt.Sprintf("%s|%+v", app.ID, request.Site)
+	resp, _, err := p.displayChecks.ready().appPrereq.get(ctx, key,
+		func(ctx context.Context) (transport.AppPrerequisitesResponse, error) {
+			var resp transport.AppPrerequisitesResponse
+			callCtx, cancel := context.WithTimeout(ctx, 40*time.Second)
+			defer cancel()
+			if err := p.callAgentContext(callCtx, "Agent.AppPrerequisitesV1", &request, &resp); err != nil {
+				return resp, err
+			}
+			if resp.Error != "" {
+				return resp, &appPrereqAnswerError{resp: resp}
+			}
+			return resp, nil
+		})
+	var answerErr *appPrereqAnswerError
+	if errors.As(err, &answerErr) {
+		resp, err = answerErr.resp, nil
+	}
 	if err != nil || resp.Error != "" {
 		view.State = "unknown"
 		view.Reason, view.Detail = appPrereqFailure(app, err, resp)
@@ -397,6 +446,14 @@ func (p *Panel) appRequirements(ctx context.Context, r *http.Request, e *effecti
 	}
 	return view
 }
+
+// appPrereqAnswerError carries an Agent answer with an error out of the
+// cache, which keeps only answers without one.
+type appPrereqAnswerError struct {
+	resp transport.AppPrerequisitesResponse
+}
+
+func (e *appPrereqAnswerError) Error() string { return e.resp.Error }
 
 // appDiskRoom: the subscription's disk limit leaves room for needMB, against
 // the same total the disk limit uses (alpha.118: the measured site files,

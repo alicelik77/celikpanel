@@ -34,9 +34,10 @@ func verifyDNSSecondaryPairReadyAt(ctx context.Context, localIP, peerIP string, 
 	if localErr != nil || peerErr != nil || localSerial != catalog.Serial || peerSerial != catalog.Serial {
 		return errors.New("DNS secondary catalog is not current")
 	}
-	for _, member := range catalog.Members {
-		localSerial, localErr := exactDNSZoneSerialAtWithProbe(ctx, localIP, member, soa)
-		peerSerial, peerErr := exactDNSZoneSerialAtWithProbe(ctx, peerIP, member, soa)
+	memberSerials := probeDNSMemberSerials(ctx, []string{localIP, peerIP}, catalog.Members, soa)
+	for index := range catalog.Members {
+		localSerial, localErr := memberSerials[index][0].serial, memberSerials[index][0].err
+		peerSerial, peerErr := memberSerials[index][1].serial, memberSerials[index][1].err
 		if localErr != nil || peerErr != nil || localSerial != peerSerial {
 			return errors.New("DNS secondary is missing a current authoritative member")
 		}

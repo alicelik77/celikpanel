@@ -32,10 +32,20 @@ func (a *Agent) SiteUsage(req *SiteUsageRequest, resp *SiteUsageResponse) error 
 
 	// du -sb: one fast syscall walk done by a tool that exists everywhere.
 	// du -sb: her yerde bulunan bir araçla tek hızlı tarama.
+	measured := false
 	if out, err := exec.Command("du", "-sb", cleanHome).Output(); err == nil {
 		if fields := strings.Fields(string(out)); len(fields) > 0 {
-			resp.DiskBytes, _ = strconv.ParseInt(fields[0], 10, 64)
+			if n, parseErr := strconv.ParseInt(fields[0], 10, 64); parseErr == nil {
+				resp.DiskBytes, measured = n, true
+			}
 		}
+	}
+	if req.DiskOnly {
+		if !measured {
+			resp.DiskBytes = 0
+			resp.Error = "the site's disk use could not be measured"
+		}
+		return nil
 	}
 
 	resp.TrafficMonthBytes = monthTrafficFromLog(req.Domain)

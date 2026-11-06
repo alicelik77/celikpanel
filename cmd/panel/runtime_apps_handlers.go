@@ -288,6 +288,9 @@ type runtimeAppsDomainView struct {
 	App         *runtimeAppView      `json:"app"`
 	Operation   *runtimeAppOperation `json:"operation"`
 	PortRange   [2]int               `json:"port_range"`
+	// Rechecking (alpha.127): the host's sandbox level is its last verified
+	// answer while one check runs again; the screen reads again shortly.
+	Rechecking bool `json:"rechecking,omitempty"`
 }
 
 // serviceAppSandboxLvl is the host level as the domain screen shows it.
@@ -391,7 +394,10 @@ func (p *Panel) writeRuntimeAppsView(w http.ResponseWriter, r *http.Request, dom
 		writeServerError(w, err)
 		return
 	}
-	caps, capsErr := p.runtimeHostLevel(ctx)
+	// A read: the host's sandbox level is the last verified answer
+	// (display_checks.go); every change asks the Agent itself.
+	caps, capsView, capsErr := p.displayChecks.ready().sandbox.get(ctx, "sandbox", p.runtimeHostLevel)
+	view.Rechecking = capsErr == nil && capsView.Rechecking
 	if capsErr == nil {
 		view.Sandbox = serviceAppSandboxLvl{Known: true, Level: caps.Level, Gaps: caps.Gaps}
 		if view.Sandbox.Gaps == nil {

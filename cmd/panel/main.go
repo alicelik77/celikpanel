@@ -90,6 +90,10 @@ type Panel struct {
 	loginLimiter  *rateLimiter
 	demoMode      bool
 	startupGate   *panelHTTPStartupGate
+	// Screens' last-known DNS proofs (alpha.127, display_checks.go).
+	displayChecks displayChecks
+	// Site disk measurements run once per site (alpha.127, domain_usage_handlers.go).
+	siteDiskMeasurements siteDiskMeasurements
 	// listenerControl is the running HTTP server's listener set; a panel
 	// port change adds and retires listeners through it (panel_port.go).
 	listenerControl panelListenerControl
@@ -1853,6 +1857,11 @@ func main() {
 		protocol = "HTTPS"
 	}
 	log.Printf("Panel ready on %s (%s)", addr, protocol)
+	// alpha.127: screens read the DNS proofs through a last-known answer;
+	// the first one is read now, behind the start, so the first page opened
+	// does not wait for it. Changes keep using the live proofs.
+	displayChecksEnabled.Store(true)
+	go panel.warmDisplayChecks()
 	if err := waitPanelHTTP(runningServer); err != nil {
 		log.Fatal(err)
 	}

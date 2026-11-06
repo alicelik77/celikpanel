@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/dnswire"
@@ -166,7 +167,9 @@ func splitTXTContent(value string) string {
 // NXDOMAIN, .local adları) — "kayıt yok" ile karıştırılmadan dürüstçe
 // bildirilir.
 func liveTXT(ctx context.Context, name, prefix string) (value string, resolved bool) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	// alpha.127: the lookups of one screen run at the same time; a resolver
+	// that has not answered in 2 s is not waited for longer.
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
 	txts, err := net.DefaultResolver.LookupTXT(ctx, name)
@@ -290,14 +293,37 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 		return p.zoneTXT(ctx, zoneID, name)
 	}
 
+	// The three public lookups run beside the Agent's DKIM read (alpha.127);
+	// they used to run one after another, up to 3 s each.
+	// Uc genel sorgu Agent okumasinin yaninda ayni anda kosar.
+	dkimName := dkimSelector + "._domainkey." + domain
+	dmarcName := "_dmarc." + domain
+	type liveAnswer struct {
+		value    string
+		resolved bool
+	}
+	lookups := [3][2]string{{domain, "v=spf1"}, {dkimName, "v=DKIM1"}, {dmarcName, "v=DMARC1"}}
+	var liveAnswers [3]liveAnswer
+	var liveWG sync.WaitGroup
+	for i := range lookups {
+		liveWG.Add(1)
+		go func() {
+			defer liveWG.Done()
+			v, ok := mailAuthLiveTXT(ctx, lookups[i][0], lookups[i][1])
+			liveAnswers[i] = liveAnswer{value: v, resolved: ok}
+		}()
+	}
+
 	// DKIM key state from the agent (never creates a key on GET).
 	// DKIM anahtar durumu agent'tan (GET'te asla anahtar oluşturmaz).
 	var dkimSt transport.DKIMStatusResponse
 	if err := p.callAgentContext(ctx, "Agent.GetDKIMStatus",
 		&transport.DKIMStatusRequest{Domain: domain, Selector: dkimSelector}, &dkimSt); err != nil {
+		liveWG.Wait()
 		writeAgentError(w, err, "DKIM status")
 		return
 	}
+	liveWG.Wait()
 	st.SigningInstalled = dkimSt.SigningInstalled
 	st.DKIMSigned = dkimSt.Signed
 
@@ -307,18 +333,17 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 	if st.ZoneExists {
 		st.SPF.ZoneValue = desiredTXT(domain, "v=spf1")
 	}
-	st.SPF.DNSValue, st.SPF.Resolved = mailAuthLiveTXT(ctx, domain, "v=spf1")
+	st.SPF.DNSValue, st.SPF.Resolved = liveAnswers[0].value, liveAnswers[0].resolved
 	st.SPF.Status = deriveStatus(st.SPF.Recommended, st.SPF.ZoneValue, st.SPF.DNSValue, st.SPF.Resolved)
 
 	// DKIM
-	dkimName := dkimSelector + "._domainkey." + domain
 	st.DKIM.Name = dkimName
 	if dkimSt.HasKey {
 		st.DKIM.Recommended = dkimRecommended(dkimSt.PublicKeyB64)
 		if st.ZoneExists {
 			st.DKIM.ZoneValue = desiredTXT(dkimName, "v=DKIM1")
 		}
-		st.DKIM.DNSValue, st.DKIM.Resolved = mailAuthLiveTXT(ctx, dkimName, "v=DKIM1")
+		st.DKIM.DNSValue, st.DKIM.Resolved = liveAnswers[1].value, liveAnswers[1].resolved
 		st.DKIM.Status = deriveStatus(st.DKIM.Recommended, st.DKIM.ZoneValue, st.DKIM.DNSValue, st.DKIM.Resolved)
 		if mode == setupDNSModeLocal && st.ZoneExists {
 			values, err := p.zoneTXTValues(ctx, zoneID, dkimName)
@@ -338,13 +363,12 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 
 	// DMARC (compare only the prefix we manage; rua etc. may be customised)
 	// DMARC (yalnızca yönettiğimiz kayıt; rua vb. özelleştirilmiş olabilir)
-	dmarcName := "_dmarc." + domain
 	st.DMARC.Name = dmarcName
 	st.DMARC.Recommended = dmarcRecommended(domain, "none")
 	if st.ZoneExists {
 		st.DMARC.ZoneValue = desiredTXT(dmarcName, "v=DMARC1")
 	}
-	st.DMARC.DNSValue, st.DMARC.Resolved = mailAuthLiveTXT(ctx, dmarcName, "v=DMARC1")
+	st.DMARC.DNSValue, st.DMARC.Resolved = liveAnswers[2].value, liveAnswers[2].resolved
 	// Any valid DMARC record counts: the policy is the owner's choice.
 	// Geçerli herhangi bir DMARC kaydı sayılır: politika sahibinin seçimidir.
 	switch {
@@ -358,9 +382,24 @@ func (p *Panel) handleMailAuthStatus(w http.ResponseWriter, r *http.Request, dom
 
 	// Only a zone this server keeps is asked of this server's own DNS.
 	if mode == setupDNSModeLocal && st.ZoneExists {
-		markServedMailAuthRecord(ctx, &st.SPF, func(value string) bool { return value == st.SPF.Recommended })
-		markServedMailAuthRecord(ctx, &st.DKIM, func(value string) bool { return value == st.DKIM.Recommended })
-		markServedMailAuthRecord(ctx, &st.DMARC, func(value string) bool { return strings.HasPrefix(value, "v=DMARC1") })
+		// Each record is asked at the same time (alpha.127).
+		spfWant, dkimWant := st.SPF.Recommended, st.DKIM.Recommended
+		var servedWG sync.WaitGroup
+		for _, served := range []struct {
+			record  *mailAuthRecord
+			matches func(string) bool
+		}{
+			{&st.SPF, func(value string) bool { return value == spfWant }},
+			{&st.DKIM, func(value string) bool { return value == dkimWant }},
+			{&st.DMARC, func(value string) bool { return strings.HasPrefix(value, "v=DMARC1") }},
+		} {
+			servedWG.Add(1)
+			go func() {
+				defer servedWG.Done()
+				markServedMailAuthRecord(ctx, served.record, served.matches)
+			}()
+		}
+		servedWG.Wait()
 	}
 
 	if mode == setupDNSModeExternal || mode == setupDNSModeExisting {

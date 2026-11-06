@@ -1,4 +1,4 @@
-import { useRemote, type Remote, type RemoteHandle } from './remote';
+import { lastKnown, useRemote, useRereadWhileRechecking, type Remote, type RemoteHandle } from './remote';
 import type { TranslationKey } from '../i18n/en';
 
 // What this server can host right now: GET /api/v1/hosting/capabilities.
@@ -40,6 +40,11 @@ export interface HostingCapabilities {
     mail_server: boolean;
     database_servers: string[];
     db_tools: string[];
+    /**
+     * The DNS facts are the last verified answer while the server checks them
+     * again (alpha.127); the hook then reads again shortly.
+     */
+    rechecking?: boolean;
 }
 
 export type DNSServerState = 'none' | 'switching' | 'port53_conflict' | 'not_running' | 'engine_conflict' | 'secondary' | 'pair_pending' | 'ready' | '';
@@ -82,6 +87,7 @@ export function decodeHostingCapabilities(raw: unknown): HostingCapabilities {
         mail_server: body.mail_server,
         database_servers: strings(body.database_servers),
         db_tools: strings(body.db_tools),
+        rechecking: body.rechecking === true,
     };
 }
 
@@ -97,11 +103,14 @@ const FRESH_FOR_MS = 30_000;
 // from the handle.
 // `enabled: false` ekip üyesi içindir: sunucu geneli envanter ona ait değildir.
 export function useHostingCapabilities(options: { enabled?: boolean } = {}): RemoteHandle<HostingCapabilities> {
-    return useRemote(
+    const handle = useRemote(
         options.enabled === false ? null : HOSTING_CAPABILITIES_URL,
         decodeHostingCapabilities,
         { freshFor: FRESH_FOR_MS },
     );
+    const shown = lastKnown(handle.remote);
+    useRereadWhileRechecking(shown?.value.rechecking === true, shown?.observedAt, () => void handle.retry());
+    return handle;
 }
 
 // --- DNS readiness for adding a domain --------------------------------------

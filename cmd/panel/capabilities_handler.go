@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -52,6 +53,12 @@ type hostingCapabilities struct {
 	// ProjectTypes (alpha.117, D-042): the site types the subscription may
 	// choose; absent for the administrator, who is not narrowed.
 	ProjectTypes []string `json:"project_types,omitempty"`
+	// alpha.127: when the DNS facts above were verified, and whether they are
+	// the last verified answer while one check runs again behind the screen
+	// (display_checks.go). The screen reads again shortly when rechecking.
+	// DNS bilgilerinin dogrulandigi an; rechecking iken son bilinen yanittir.
+	DNSCheckedAt string `json:"dns_checked_at,omitempty"`
+	Rechecking   bool   `json:"rechecking,omitempty"`
 }
 
 func supportedHostingWebServer(installed []string) string {
@@ -68,6 +75,17 @@ func supportedHostingWebServer(installed []string) string {
 // hostingCaps, mevcut yetenek kümesini kurulu servislerden (agent üzerinden
 // paket varlığı) ve diskteki gerçek PHP ağaçlarından hesaplar.
 func (p *Panel) hostingCaps(ctx context.Context) (hostingCapabilities, error) {
+	return p.hostingCapsWith(ctx, false)
+}
+
+// hostingCapsForDisplay is hostingCaps for screens: the DNS proofs are the
+// last verified answers (display_checks.go). What is installed is read as
+// before (the Agent keeps its own inventory). Never used to allow a change.
+func (p *Panel) hostingCapsForDisplay(ctx context.Context) (hostingCapabilities, error) {
+	return p.hostingCapsWith(ctx, true)
+}
+
+func (p *Panel) hostingCapsWith(ctx context.Context, display bool) (hostingCapabilities, error) {
 	// Slice fields start non-nil (empty, not nil) so the JSON contract is
 	// always `[]`, never `null` — a nil Go slice marshals to `null`, and a
 	// consumer doing `arr[0]` or `arr.length` on that throws. Caught live: on
@@ -115,7 +133,13 @@ func (p *Panel) hostingCaps(ctx context.Context) (hostingCapabilities, error) {
 	}
 	caps.DNSManagementMode = mode
 	caps.DNSManagementReady = mode == setupDNSModeExternal
-	status, err := p.dnsPublisherStatus(ctx)
+	var status dnsPublisherStatusView
+	checked := displayCheckView{CheckedAt: displayCheckClock()}
+	if display {
+		status, checked, err = p.dnsPublisherStatusForDisplay(ctx)
+	} else {
+		status, err = p.dnsPublisherStatus(ctx)
+	}
 	if err != nil && mode == setupDNSModeLocal {
 		return hostingCapabilities{}, fmt.Errorf("verify active DNS publisher: %w", err)
 	}
@@ -138,8 +162,18 @@ func (p *Panel) hostingCaps(ctx context.Context) (hostingCapabilities, error) {
 	}
 
 	if mode == setupDNSModeExisting {
-		_, err := p.remoteDNSConnectionForCreation(ctx, "")
-		caps.DNSManagementReady = err == nil
+		if display {
+			ready, remoteChecked := p.defaultRemoteDNSReadyForDisplay(ctx)
+			caps.DNSManagementReady = ready
+			checked = olderDisplayCheck(checked, remoteChecked)
+		} else {
+			_, err := p.remoteDNSConnectionForCreation(ctx, "")
+			caps.DNSManagementReady = err == nil
+		}
+	}
+	if display && !checked.CheckedAt.IsZero() {
+		caps.DNSCheckedAt = checked.CheckedAt.UTC().Format(time.RFC3339)
+		caps.Rechecking = checked.Rechecking
 	}
 
 	if phpInstalled {
@@ -194,7 +228,7 @@ func (p *Panel) handleHostingCapabilities(w http.ResponseWriter, r *http.Request
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	caps, err := p.hostingCaps(r.Context())
+	caps, err := p.hostingCapsForDisplay(r.Context())
 	if err != nil {
 		writeAgentError(w, err, "hosting capabilities")
 		return

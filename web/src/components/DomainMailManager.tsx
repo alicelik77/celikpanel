@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import type { TranslationKey } from '../i18n/en';
-import { invalidate, useRemote, type Remote } from '../lib/remote';
+import { invalidate, lastKnown, useRemote, useRereadWhileRechecking, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
@@ -723,6 +723,9 @@ interface MailHealth {
     server_ip: string;
     expected_ptr: string;
     checks: { id: string; status: string; detail?: string }[];
+    /** alpha.127: when this check ran; rechecking = it runs again behind the card. */
+    checked_at?: string;
+    rechecking?: boolean;
 }
 
 function decodeMailHealth(raw: unknown): MailHealth {
@@ -739,6 +742,8 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
     // Denetimler sunucudan okunur. Okunamadıklarında kart bunu Tekrar dene ile
     // söyler; önceden kaybolurdu.
     const { remote, reading, retry } = useRemote(`/api/v1/domains/${domainId}/mail/health`, decodeMailHealth);
+    const shown = lastKnown(remote);
+    useRereadWhileRechecking(shown?.value.rechecking === true, shown?.observedAt, () => void retry());
     if (remote.state !== 'known') {
         return (
             <section className="mb-5 rounded-xl border border-border bg-surface p-5">
@@ -762,6 +767,12 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
                 <span className={`h-2.5 w-2.5 rounded-full ${tone[data.overall]}`} />
                 <h3 className="text-sm font-semibold text-fg">{t('mail.health.title')}</h3>
             </div>
+            {/* The last verified check while it runs again: said, with its time. */}
+            {data.rechecking && data.checked_at && (
+                <p role="status" className="mb-2 text-xs text-fg-muted">
+                    {t('mail.health.rechecking', { time: new Date(data.checked_at).toLocaleTimeString() })}
+                </p>
+            )}
             <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
                 {data.checks.map((c) => (
                     <div key={c.id} className="flex items-center gap-2 text-sm">
