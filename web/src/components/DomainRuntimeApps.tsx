@@ -26,6 +26,7 @@ import {
     type RuntimeOperation,
 } from '../lib/runtimeApps';
 import { RuntimeAppRisk } from './RuntimeAppRisk';
+import { PasswordInput } from './PasswordInput';
 
 // The domain's "Programs" tab (alpha.119, docs/RUNTIME-APPS.md): a program the
 // customer uploads (Go, Rust, any program for this server) or a Python web app
@@ -606,9 +607,9 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
                             <input aria-label={t('runtime.env.key')} placeholder={t('runtime.env.key')} className={inputClass + ' font-mono'} autoComplete="off" spellCheck={false}
                                 value={row.key} onChange={(e) => update(row.id, { key: e.target.value.toUpperCase() })} />
                             {row.secret ? (
-                                <input aria-label={t('runtime.env.value')} type="password" autoComplete="new-password" className={inputClass}
+                                <PasswordInput aria-label={t('runtime.env.value')} autoComplete="new-password"
                                     placeholder={keeps(row) || (row.storedSecret !== '' && row.storedSecret === row.key) ? t('runtime.env.secretReplace') : t('runtime.env.value')}
-                                    value={row.value} onChange={(e) => update(row.id, { value: e.target.value })} />
+                                    value={row.value} onChange={(value) => update(row.id, { value })} />
                             ) : (
                                 <input aria-label={t('runtime.env.value')} placeholder={t('runtime.env.value')} className={inputClass} autoComplete="off" spellCheck={false}
                                     value={row.value} onChange={(e) => update(row.id, { value: e.target.value })} />

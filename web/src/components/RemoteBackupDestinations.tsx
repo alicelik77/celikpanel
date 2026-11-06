@@ -9,6 +9,7 @@ import { readApiError, type ApiError } from '../lib/apiError';
 import { invalidate, useRemote } from '../lib/remote';
 import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { Button, Dialog, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
+import { PasswordInput } from './PasswordInput';
 import {
     REMOTE_DESTINATIONS_URL, REMOTE_DESTINATION_TEST_URL, REMOTE_POLICIES_URL, decodeDestinations, decodePolicies,
     decodeTestResult, generatePassphrase,
@@ -481,8 +482,8 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                             !creating && cfg.access_key_id ? t('rbak.form.accessKeyKeep', { masked: cfg.access_key_id }) : undefined, id('access'))}
                         <div className="sm:col-span-2">
                             {field(t('rbak.form.secretKey'),
-                                <input id={id('secret')} type="password" className={inputClass} value={secretKey} autoComplete="new-password"
-                                    spellCheck={false} disabled={busy} onChange={(event) => setSecretKey(event.target.value)} />,
+                                <PasswordInput id={id('secret')} value={secretKey} autoComplete="new-password"
+                                    spellCheck={false} disabled={busy} onChange={setSecretKey} />,
                                 !creating && destination?.hasSecret ? t('rbak.form.secretKeep') : t('rbak.form.secretHint'), id('secret'))}
                         </div>
                         <label className="flex items-start gap-3 sm:col-span-2">
@@ -523,8 +524,8 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                         <div className="sm:col-span-2">
                             {auth === 'password'
                                 ? field(t('rbak.form.password'),
-                                    <input id={id('password')} type="password" className={inputClass} value={password} autoComplete="new-password"
-                                        disabled={busy} onChange={(event) => setPassword(event.target.value)} />, undefined, id('password'))
+                                    <PasswordInput id={id('password')} value={password} autoComplete="new-password"
+                                        disabled={busy} onChange={setPassword} />, undefined, id('password'))
                                 : field(t('rbak.form.privateKey'),
                                     <textarea id={id('key')} rows={5} className={`${inputClass} font-mono text-xs`} value={privateKey}
                                         autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} disabled={busy}

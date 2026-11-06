@@ -22,6 +22,8 @@ import { DeletableAccounts } from './DeletableAccounts';
 import { useSuspendedOwners } from '../lib/suspension';
 import { TransferRequestsList, TransferRowAction } from './SubscriptionTransfer';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -125,7 +127,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     const createMissing = [
         ...(!username.trim() ? [t('users.form.username')] : []),
         ...(!email.trim() ? [t('users.form.email')] : []),
-        ...(!invite && password.length < 8 ? [t('users.create.passwordRule')] : []),
+        ...(!invite && !passwordAcceptable(password, 'account') ? [t('users.create.passwordRule')] : []),
         ...newAccountRightsMissing(newRights, t),
     ];
 
@@ -139,7 +141,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     // create form also keeps it beside its button (owner feedback 2026-10-31).
     const navigate = useNavigate();
     const [createRefusal, setCreateRefusal] = useState<ApiError | null>(null);
-    const apiError = async (res: Response, sentence: 'users.createFailed' | 'users.changeFailed' = 'users.changeFailed') => {
+    const apiError = async (res: Response, sentence: 'users.changeFailed' = 'users.changeFailed') => {
         const problem = await readApiError(res);
         showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
         return problem;
@@ -173,7 +175,8 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
             });
             if (!res) return;
             if (!res.ok) {
-                setCreateRefusal(await apiError(res, 'users.createFailed'));
+                // Said once, beside Create; not also as a toast (owner, 6 Nov 2026).
+                setCreateRefusal(await readApiError(res));
                 return;
             }
             showToast('success', t('users.created'));
@@ -291,7 +294,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.password')}</span>
-                            <input type="password" value={invite ? '' : password} disabled={invite} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+                            <PasswordInput field="account" value={invite ? '' : password} disabled={invite} onChange={setPassword} maxLength={1024} />
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.role')}</span>

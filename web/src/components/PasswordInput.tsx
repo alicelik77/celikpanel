@@ -29,7 +29,8 @@ type NativeProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' 
 
 export interface PasswordInputProps extends NativeProps {
     value: string;
-    onChange: (value: string) => void;
+    /** Absent only for a read-only field. */
+    onChange?: (value: string) => void;
     /** A new password: its field's window turns on the rule and the meter. */
     field?: PasswordField | PasswordWindow;
     /** The generator; on by default for a new password. */
@@ -84,7 +85,7 @@ export function PasswordInput({
 
     const make = () => {
         const password = generatePassword();
-        onChange(password);
+        onChange?.(password);
         onGenerated?.(password);
         setVisible(true);
         setGenerated(true);
@@ -110,7 +111,7 @@ export function PasswordInput({
                     type={visible ? 'text' : 'password'}
                     value={value}
                     onChange={(e) => {
-                        onChange(e.target.value);
+                        onChange?.(e.target.value);
                         setGenerated(false);
                         setCopied(null);
                     }}

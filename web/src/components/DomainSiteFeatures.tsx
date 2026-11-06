@@ -8,6 +8,8 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 // A domain's password-protected folders and redirects (alpha.114). Both are
 // written into the site's nginx configuration by the server; nginx checks the
@@ -174,7 +176,7 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
         const wanted = path.trim().replace(/(.)\/$/, '$1');
         if (!validPath(wanted, false)) return setProblem(t('siteFeatures.check.path'));
         if (!USERNAME_PATTERN.test(username)) return setProblem(t('siteFeatures.check.username'));
-        if (password.length < 8 || password.length > 72) return setProblem(t('siteFeatures.check.password'));
+        if (!passwordAcceptable(password, 'site_protect')) return;
         setProblem('');
         const made = await change('POST', `/api/v1/domains/${domainId}/protected-dirs`,
             { path: wanted, realm: realm.trim(), username, password }, t('siteFeatures.protect.added', { path: wanted }));
@@ -272,12 +274,11 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
                                             </label>
                                             <label className="space-y-1 text-sm font-medium text-fg">
                                                 <span>{t('siteFeatures.protect.password')}</span>
-                                                <input
-                                                    type="password"
+                                                <PasswordInput
+                                                    field="site_protect"
                                                     value={password}
-                                                    onChange={(e) => setPassword(e.target.value)}
-                                                    autoComplete="new-password"
-                                                    className={inputClass}
+                                                    onChange={setPassword}
+                                                    maxLength={72}
                                                 />
                                                 <span className="block text-xs font-normal text-fg-muted">{t('siteFeatures.protect.passwordHint')}</span>
                                             </label>
@@ -289,7 +290,7 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
                                                 variant="primary"
                                                 icon={Plus}
                                                 loading={busy}
-                                                disabled={!canChange || !path || !username || !password}
+                                                disabled={!canChange || !path || !username || !passwordAcceptable(password, 'site_protect')}
                                                 onClick={() => void addDir()}
                                             >
                                                 {busy ? t('siteFeatures.protect.adding') : t('siteFeatures.protect.add')}
@@ -327,7 +328,7 @@ function ProtectedDirCard({
 
     const saveUser = async () => {
         if (!USERNAME_PATTERN.test(username)) return setProblem(t('siteFeatures.check.username'));
-        if (password.length < 8 || password.length > 72) return setProblem(t('siteFeatures.check.password'));
+        if (!passwordAcceptable(password, 'site_protect')) return;
         setProblem('');
         const made = await change('POST', `${base}/users`, { dir_id: dir.id, username, password },
             t('siteFeatures.protect.userSaved', { path: dir.path }));
@@ -400,16 +401,15 @@ function ProtectedDirCard({
                             autoComplete="off"
                             className={inputClass}
                         />
-                        <input
-                            type="password"
+                        <PasswordInput
+                            field="site_protect"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={setPassword}
                             placeholder={t('siteFeatures.protect.password')}
                             aria-label={t('siteFeatures.protect.password')}
-                            autoComplete="new-password"
-                            className={inputClass}
+                            maxLength={72}
                         />
-                        <Button variant="secondary" disabled={disabled || !username || !password} onClick={() => void saveUser()}>
+                        <Button variant="secondary" disabled={disabled || !username || !passwordAcceptable(password, 'site_protect')} onClick={() => void saveUser()}>
                             {t('siteFeatures.protect.saveUser')}
                         </Button>
                     </div>

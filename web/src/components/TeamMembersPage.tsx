@@ -37,6 +37,8 @@ import { PageHeader } from './PageHeader';
 import { invalidate, useInvalidation } from '../lib/remote';
 import { InvitedStatus, useInvitationActions, useInvitationOutcome } from './Invitations';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 type ScopeKind = 'subscription' | 'domain';
 type PermissionChoice = TeamPermissionMode | 'none';
@@ -252,10 +254,10 @@ export function TeamMembersPage() {
                 setDraft(null);
                 setSaveRefusal(null);
             } catch (error) {
-                // The refusal also stays in the editor, beside Save (owner feedback 2026-10-31).
-                const problem = await normalizeApiError(error);
-                setSaveRefusal(problem);
-                showToast('error', refusalText(problem, t, 'team.saveFailed'), refusalToast(problem, t));
+                // The refusal stays in the editor, beside Save (owner feedback
+                // 2026-10-31), and is said there once, not also as a toast
+                // (owner, 6 Nov 2026).
+                setSaveRefusal(await normalizeApiError(error));
             } finally {
                 setBusy(null);
                 changed();
@@ -563,19 +565,22 @@ function MemberEditor({
     const { t } = useI18n();
     const isNew = draft.memberID === null;
     const inviting = isNew && draft.invite;
+    // A password that is typed must meet the rule; an existing member's may
+    // stay empty (kept). The field names what is still needed.
+    const passwordWeak = !inviting && draft.password !== '' && !passwordAcceptable(draft.password, 'account');
     const passwordValid = inviting
         ? true
         : isNew
-            ? draft.password.length >= 8
-            : draft.password.length === 0 || draft.password.length >= 8;
+            ? draft.password !== '' && !passwordWeak
+            : !passwordWeak;
     const canSave = draft.username.trim() !== '' && draft.email.trim() !== '' && passwordValid;
     // What still keeps Save off, in the form's own words (owner rule 2026-10-31).
     const missing = [
         ...(draft.username.trim() === '' ? [t('team.username')] : []),
         ...(draft.email.trim() === '' ? [t('team.email')] : []),
-        ...(isNew && !inviting && draft.password.length < 8 ? [t('acct.team.passwordRule')] : []),
+        ...(isNew && !inviting && draft.password === '' ? [t('acct.team.passwordRule')] : []),
     ];
-    const newPasswordShort = !isNew && !passwordValid;
+    const newPasswordShort = passwordWeak;
     const subscriptionResources = subscriptions.map((scope) => ({ id: scope.id, label: scope.name }));
     const domainResources = domains.map((scope) => ({ id: scope.id, label: scope.domain_name }));
 
@@ -636,18 +641,18 @@ function MemberEditor({
                                 <span className='mb-1 block text-xs text-fg-muted'>
                                     {t(isNew ? 'team.password' : 'team.newPassword')}
                                 </span>
-                                <input
-                                    type='password'
+                                <PasswordInput
+                                    field='account'
                                     value={draft.password}
-                                    onChange={(event) => onChange({ ...draft, password: event.target.value })}
-                                    className={inputClass}
-                                    autoComplete='new-password'
-                                    minLength={8}
+                                    onChange={(password) => onChange({ ...draft, password })}
+                                    maxLength={1024}
                                     required={isNew}
                                 />
-                                <span className='mt-1 block text-xs text-fg-subtle'>
-                                    {t(isNew ? 'team.passwordHint' : 'team.newPasswordHint')}
-                                </span>
+                                {!isNew && (
+                                    <span className='mt-1 block text-xs text-fg-subtle'>
+                                        {t('team.newPasswordHint')}
+                                    </span>
+                                )}
                             </label>
                         )}
                         <label>

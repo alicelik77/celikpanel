@@ -15,6 +15,8 @@ import {
     type ServiceAppOperation,
 } from '../lib/serviceApps';
 import { ServiceAppRisk } from './ServiceAppRisk';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 // The domain's "AI & automation" tab (alpha.118, docs/AI-APPS.md): the apps
 // the administrator offers, each with its risk summary; the installed app with
@@ -210,7 +212,8 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
     const [busy, setBusy] = useState(false);
     // One identity for this install: a repeat after a lost answer is the same.
     const [operationID] = useState(newOperationID);
-    const ownerOK = !app.owner_login || (/^\S+@\S+\.\S+$/.test(email) && password.length >= 12 && password.length <= 128);
+    const emailOK = /^\S+@\S+\.\S+$/.test(email);
+    const ownerOK = !app.owner_login || (emailOK && passwordAcceptable(password, 'service_app_owner'));
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -258,7 +261,7 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
                             <input id="svcapps-owner-email" type="email" autoComplete="off" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
                         </Field>
                         <Field label={t('svcapps.ownerPassword')} htmlFor="svcapps-owner-password">
-                            <input id="svcapps-owner-password" type="password" autoComplete="new-password" className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} />
+                            <PasswordInput id="svcapps-owner-password" field="service_app_owner" maxLength={128} value={password} onChange={setPassword} />
                         </Field>
                         <p className="text-xs text-fg-subtle sm:col-span-2">{t('svcapps.ownerHint')}</p>
                     </div>
@@ -268,14 +271,19 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
                         <div className="text-sm font-medium text-fg">{t('svcapps.keysTitle')}</div>
                         {(app.secrets ?? []).map((secret) => (
                             <Field key={secret.key} label={secret.label} htmlFor={'svcapps-secret-' + secret.key}>
-                                <input id={'svcapps-secret-' + secret.key} type={secret.key.endsWith('_KEY') ? 'password' : 'text'} autoComplete="off" className={inputClass}
-                                    value={secrets[secret.key] ?? ''} onChange={(e) => setSecrets((s) => ({ ...s, [secret.key]: e.target.value }))} />
+                                {secret.key.endsWith('_KEY') ? (
+                                    <PasswordInput id={'svcapps-secret-' + secret.key}
+                                        value={secrets[secret.key] ?? ''} onChange={(value) => setSecrets((s) => ({ ...s, [secret.key]: value }))} />
+                                ) : (
+                                    <input id={'svcapps-secret-' + secret.key} type="text" autoComplete="off" className={inputClass}
+                                        value={secrets[secret.key] ?? ''} onChange={(e) => setSecrets((s) => ({ ...s, [secret.key]: e.target.value }))} />
+                                )}
                             </Field>
                         ))}
                         <p className="text-xs text-fg-subtle">{t('svcapps.keyHint')}</p>
                     </div>
                 )}
-                {app.owner_login && !ownerOK && (email || password) && <p className="text-xs text-warning">{t('svcapps.check.owner')}</p>}
+                {app.owner_login && email !== '' && !emailOK && <p className="text-xs text-warning">{t('svcapps.check.owner')}</p>}
                 <label className="flex items-start gap-2 text-sm text-fg">
                     <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={confirmReplace} onChange={(e) => setConfirmReplace(e.target.checked)} />
                     {t('svcapps.confirmReplace', { domain, name: app.name })}
@@ -409,15 +417,17 @@ function KeysDialog({ app, base, onClose, after }: { app: DomainServiceAppEntry;
             onClose();
         }
     };
-    const changed = Object.values(values).some((v) => v.trim() !== '') || clear.length > 0 || password.length >= 12;
+    // A new administrator password must meet the rule; empty keeps the old one.
+    const passwordWeak = password !== '' && !passwordAcceptable(password, 'service_app_owner');
+    const changed = !passwordWeak && (Object.values(values).some((v) => v.trim() !== '') || clear.length > 0 || password !== '');
     return (
         <Dialog id="svcapps-keys" title={t('svcapps.keys')} icon={KeyRound} busy={busy} onDismiss={onClose} onSubmit={submit} noValidate
             actions={<><Button type="button" onClick={onClose} disabled={busy}>{t('common.cancel')}</Button><Button type="submit" variant="primary" loading={busy} disabled={!changed}>{t('svcapps.save')}</Button></>}>
             <div className="space-y-3">
                 {(app.secrets ?? []).map((secret) => (
                     <Field key={secret.key} label={secret.label} htmlFor={'svcapps-key-' + secret.key}>
-                        <input id={'svcapps-key-' + secret.key} type="password" autoComplete="off" className={inputClass} value={values[secret.key] ?? ''}
-                            onChange={(e) => setValues((s) => ({ ...s, [secret.key]: e.target.value }))} />
+                        <PasswordInput id={'svcapps-key-' + secret.key} value={values[secret.key] ?? ''}
+                            onChange={(value) => setValues((s) => ({ ...s, [secret.key]: value }))} />
                         <label className="mt-1 flex items-center gap-2 text-xs text-fg-muted">
                             <input type="checkbox" className="h-3.5 w-3.5 accent-primary" checked={clear.includes(secret.key)}
                                 onChange={(e) => setClear((c) => (e.target.checked ? [...c, secret.key] : c.filter((k) => k !== secret.key)))} />
@@ -427,7 +437,7 @@ function KeysDialog({ app, base, onClose, after }: { app: DomainServiceAppEntry;
                 ))}
                 {app.id === 'n8n' && (
                     <Field label={t('svcapps.newOwnerPassword')} htmlFor="svcapps-new-owner" hint={t('svcapps.ownerHint')}>
-                        <input id="svcapps-new-owner" type="password" autoComplete="new-password" className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} />
+                        <PasswordInput id="svcapps-new-owner" field="service_app_owner" maxLength={128} value={password} onChange={setPassword} />
                     </Field>
                 )}
                 <p className="text-xs text-fg-subtle">{t('svcapps.keyHint')}</p>

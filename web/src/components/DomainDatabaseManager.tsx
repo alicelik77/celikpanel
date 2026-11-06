@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 import type { TranslationKey } from '../i18n/en';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
@@ -10,6 +11,7 @@ import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -141,18 +143,19 @@ export function DomainDatabaseManager({
     const [dbPassword, setDbPassword] = useState('');
 
     // A refusal stays on the page, with its fix, until the next change
-    // succeeds (owner feedback 2026-10-31).
+    // succeeds (owner feedback 2026-10-31), said once: the banner, not also a
+    // toast (owner, 6 Nov 2026).
     const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
     const refuse = (problem: ApiError, sentence: TranslationKey) => {
         setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
     };
+    const passwordOK = passwordAcceptable(dbPassword, 'database_user');
 
     const handleCreateDatabase = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canCreate || dbType === null) return;
 
-        if (!dbName || !dbPassword) {
+        if (!dbName || !passwordOK) {
             showToast('error', t('ddb.namePasswordRequired'));
             return;
         }
@@ -326,12 +329,12 @@ export function DomainDatabaseManager({
 
                         <div>
                             <label className="block text-sm text-fg-muted mb-2">{t('ddb.password')}</label>
-                            <input
-                                type="password"
+                            <PasswordInput
+                                field="database_user"
                                 value={dbPassword}
-                                onChange={(e) => setDbPassword(e.target.value)}
+                                onChange={setDbPassword}
                                 placeholder={t('ddb.passwordPlaceholder')}
-                                className="w-full bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary"
+                                maxLength={128}
                                 required
                             />
                         </div>
@@ -339,7 +342,7 @@ export function DomainDatabaseManager({
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                disabled={creating || dbType === null || answer.holding}
+                                disabled={creating || dbType === null || answer.holding || !passwordOK}
                                 className="px-6 py-2 bg-success text-white rounded hover:bg-success disabled:opacity-50 flex items-center gap-2"
                             >
                                 <Database className="w-4 h-4" />
