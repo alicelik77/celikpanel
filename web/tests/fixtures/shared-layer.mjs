@@ -134,6 +134,30 @@ export const removalOperationURL = compileSource('lib/removalOperation.ts', unex
 // alpha.124: what a component needs, read by the install window.
 export const installPlanURL = compileSource('lib/installPlan.ts', unexpected('lib/installPlan.ts'));
 
+// 6 Nov 2026: the product's own confirmation (lib/confirmAction.ts) is the
+// shipped module. A mounted test has no ConfirmHost, so the fixture registers
+// one that answers through `globalThis.confirm(text)` - the test's own answerer,
+// a plain function the test sets; nothing here is the browser's dialogue. The
+// text it is given is the request's message, or its title when it has none.
+// A confirmed request's action runs before the answer, as in the dialogue.
+export const confirmActionURL = compileSource('lib/confirmAction.ts', unexpected('lib/confirmAction.ts'));
+const confirmActionModule = await import(confirmActionURL);
+// The steps an action reports and how it ended are kept on
+// globalThis.operationSteps / globalThis.operationEnds for the test to read; an
+// operation followed without a question (followOperation) is not asked.
+confirmActionModule.registerConfirmHost(async (request) => {
+  if (!request.follow) {
+    const answer = globalThis.confirm;
+    if (typeof answer !== 'function') throw new Error('a confirmation was asked, and the test set no globalThis.confirm answerer');
+    if (!answer(request.message ?? request.title ?? '', request)) return false;
+  }
+  if (request.action) {
+    const end = await request.action({ steps: (steps) => { (globalThis.operationSteps ??= []).push(steps); } });
+    (globalThis.operationEnds ??= []).push(end);
+  }
+  return true;
+});
+
 // A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
 // test that mounts the screen: the compiled module, with that one import
 // pointed at `replacementURL`. Any other lazy import is left as it is.
@@ -179,6 +203,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/securityEmergency': securityEmergencyURL,
     '/lib/removalOperation': removalOperationURL,
     '/lib/installPlan': installPlanURL,
+    '/lib/confirmAction': confirmActionURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/ui': uiURL,

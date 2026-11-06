@@ -36,6 +36,7 @@ import { Button, EmptyState, ErrorBanner, Spinner, StatusDot, inputClass } from 
 import { PageHeader } from './PageHeader';
 import { invalidate, useInvalidation } from '../lib/remote';
 import { InvitedStatus, useInvitationActions, useInvitationOutcome } from './Invitations';
+import { confirmAction } from '../lib/confirmAction';
 
 type ScopeKind = 'subscription' | 'domain';
 type PermissionChoice = TeamPermissionMode | 'none';
@@ -217,93 +218,96 @@ export function TeamMembersPage() {
         const existing = draft.memberID === null
             ? null
             : members.find((member) => member.id === draft.memberID) ?? null;
-        if (
-            existing?.status === 'active'
-            && draft.status === 'suspended'
-            && !window.confirm(t('team.suspendConfirm', { name: draft.username }))
-        ) {
+        const proceed = async () => {
+            setBusy('save');
+            try {
+                const access = accessFromDraft(draft, subscriptions, domains);
+                let saved: TeamMember;
+                if (draft.memberID === null) {
+                    const created = await api.createTeamMember({
+                        username: draft.username.trim(),
+                        email: draft.email.trim(),
+                        // An invitation carries no password: the member chooses it.
+                        password: draft.invite ? '' : draft.password,
+                        status: draft.status,
+                        access,
+                        ...(draft.invite ? { invite: true, lang: locale } : {}),
+                    });
+                    saved = created.member;
+                    setMembers((current) => [...current, saved].sort((a, b) => a.username.localeCompare(b.username)));
+                    showToast('success', t('team.created'));
+                    // What happened to the invitation: emailed, or a link to pass on.
+                    if (draft.invite) invitation.report(created.invitation);
+                } else {
+                    saved = await api.updateTeamMember(draft.memberID, {
+                        username: draft.username.trim(),
+                        email: draft.email.trim(),
+                        status: draft.status,
+                        access,
+                        ...(draft.password ? { password: draft.password } : {}),
+                    });
+                    setMembers((current) => current.map((member) => member.id === saved.id ? saved : member));
+                    showToast('success', t('team.updated'));
+                }
+                setDraft(null);
+                setSaveRefusal(null);
+            } catch (error) {
+                // The refusal also stays in the editor, beside Save (owner feedback 2026-10-31).
+                const problem = await normalizeApiError(error);
+                setSaveRefusal(problem);
+                showToast('error', refusalText(problem, t, 'team.saveFailed'), refusalToast(problem, t));
+            } finally {
+                setBusy(null);
+                changed();
+            }
+        };
+        if (!(existing?.status === 'active' && draft.status === 'suspended')) {
+            await proceed();
             return;
         }
-
-        setBusy('save');
-        try {
-            const access = accessFromDraft(draft, subscriptions, domains);
-            let saved: TeamMember;
-            if (draft.memberID === null) {
-                const created = await api.createTeamMember({
-                    username: draft.username.trim(),
-                    email: draft.email.trim(),
-                    // An invitation carries no password: the member chooses it.
-                    password: draft.invite ? '' : draft.password,
-                    status: draft.status,
-                    access,
-                    ...(draft.invite ? { invite: true, lang: locale } : {}),
-                });
-                saved = created.member;
-                setMembers((current) => [...current, saved].sort((a, b) => a.username.localeCompare(b.username)));
-                showToast('success', t('team.created'));
-                // What happened to the invitation: emailed, or a link to pass on.
-                if (draft.invite) invitation.report(created.invitation);
-            } else {
-                saved = await api.updateTeamMember(draft.memberID, {
-                    username: draft.username.trim(),
-                    email: draft.email.trim(),
-                    status: draft.status,
-                    access,
-                    ...(draft.password ? { password: draft.password } : {}),
-                });
-                setMembers((current) => current.map((member) => member.id === saved.id ? saved : member));
-                showToast('success', t('team.updated'));
-            }
-            setDraft(null);
-            setSaveRefusal(null);
-        } catch (error) {
-            // The refusal also stays in the editor, beside Save (owner feedback 2026-10-31).
-            const problem = await normalizeApiError(error);
-            setSaveRefusal(problem);
-            showToast('error', refusalText(problem, t, 'team.saveFailed'), refusalToast(problem, t));
-        } finally {
-            setBusy(null);
-            changed();
-        }
+        await confirmAction({ message: t('team.suspendConfirm', { name: draft.username }), tone: 'danger', action: proceed });
     };
 
     const setStatus = async (member: TeamMember, status: TeamMemberStatus) => {
-        if (
-            status === 'suspended'
-            && !window.confirm(t('team.suspendConfirm', { name: member.username }))
-        ) {
+        const proceed = async () => {
+            setBusy('member:' + member.id);
+            try {
+                const updated = await api.updateTeamMember(member.id, { status });
+                setMembers((current) => current.map((item) => item.id === member.id ? updated : item));
+                showToast('success', t(status === 'active' ? 'team.activated' : 'team.suspended'));
+            } catch (error) {
+                const problem = await normalizeApiError(error);
+                showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
+            } finally {
+                setBusy(null);
+                changed();
+            }
+        };
+        if (!(status === 'suspended')) {
+            await proceed();
             return;
         }
-        setBusy('member:' + member.id);
-        try {
-            const updated = await api.updateTeamMember(member.id, { status });
-            setMembers((current) => current.map((item) => item.id === member.id ? updated : item));
-            showToast('success', t(status === 'active' ? 'team.activated' : 'team.suspended'));
-        } catch (error) {
-            const problem = await normalizeApiError(error);
-            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
-        } finally {
-            setBusy(null);
-            changed();
-        }
+        await confirmAction({ message: t('team.suspendConfirm', { name: member.username }), tone: 'danger', action: proceed });
     };
 
     const remove = async (member: TeamMember) => {
-        if (!window.confirm(t('team.deleteConfirm', { name: member.username }))) return;
-        setBusy('member:' + member.id);
-        try {
-            await api.deleteTeamMember(member.id);
-            setMembers((current) => current.filter((item) => item.id !== member.id));
-            if (draft?.memberID === member.id) setDraft(null);
-            showToast('success', t('team.deleted'));
-        } catch (error) {
-            const problem = await normalizeApiError(error);
-            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
-        } finally {
-            setBusy(null);
-            changed();
-        }
+        await confirmAction({ message: t('team.deleteConfirm', { name: member.username }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                setBusy('member:' + member.id);
+                try {
+                    await api.deleteTeamMember(member.id);
+                    setMembers((current) => current.filter((item) => item.id !== member.id));
+                    if (draft?.memberID === member.id) setDraft(null);
+                    showToast('success', t('team.deleted'));
+                } catch (error) {
+                    const problem = await normalizeApiError(error);
+                    showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
+                } finally {
+                    setBusy(null);
+                    changed();
+                }
+            },
+        });
     };
 
     return (

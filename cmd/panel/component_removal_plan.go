@@ -366,7 +366,7 @@ func removalOfferingIDs(serviceID, version string) (exact []string, base string)
 		}
 		return nil, ""
 	}
-	if core.IsAdminOnlyComponent(serviceID) {
+	if core.IsAdminOnlyComponent(serviceID) || !customerOffering("component:"+serviceID) {
 		return nil, ""
 	}
 	return nil, "component:" + serviceID

@@ -10,6 +10,7 @@ import { useNavigate } from '../router';
 import { countText, decodeListIn, invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import type { TranslationKey } from '../i18n/en';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DNSRecord {
     id: number;
@@ -304,22 +305,25 @@ export function DomainDNSManager({
 
     const deleteRecord = async (id: number) => {
         if (!canChange || !recordsKnown) return;
-        if (!confirm(t('dns.confirmDelete'))) return;
-        setMutatingRecord(true);
-        try {
-            const res = await answer.send(`${api}/records?id=${id}`, { method: 'DELETE' });
-            if (!res) return;
-            if (!res.ok) {
-                await refused(res, 'dns.recordDeleteFailed');
-                return;
-            }
-            setRefusal(null);
-            await savedToast(res, 'dns.recordDeleted');
-            answer.settle();
-            invalidate('dns');
-        } finally {
-            setMutatingRecord(false);
-        }
+        await confirmAction({ message: t('dns.confirmDelete'), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                setMutatingRecord(true);
+                try {
+                    const res = await answer.send(`${api}/records?id=${id}`, { method: 'DELETE' });
+                    if (!res) return;
+                    if (!res.ok) {
+                        await refused(res, 'dns.recordDeleteFailed');
+                        return;
+                    }
+                    setRefusal(null);
+                    await savedToast(res, 'dns.recordDeleted');
+                    answer.settle();
+                    invalidate('dns');
+                } finally {
+                    setMutatingRecord(false);
+                }
+            },
+        });
     };
 
     if (zoneRemote.state === 'loading') return <Checking label={t('dns.checking')} />;

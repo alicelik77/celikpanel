@@ -243,8 +243,12 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // setup needs attention, the second after Add domain asked for a
     // certificate (its outcome tells the person to look here).
     // ?tab=dns ve ?tab=ssl sayfanın o bölümünü açar.
-    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : requestedTab === 'ssl' ? 'hosting' : 'overview');
-    const [activeSub, setActiveSub] = useState<Record<string, string>>(requestedTab === 'ssl' ? { hosting: 'ssl' } : {});
+    // ?tab=config opens the site's Configuration file (alpha.126: from the
+    // plan-limit card's "Open <site>"); it is a part of the hosting tab.
+    // ?tab=config sitenin Yapılandırma dosyasını açar.
+    const hostingPart = requestedTab === 'ssl' || requestedTab === 'config' ? requestedTab : null;
+    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : hostingPart ? 'hosting' : 'overview');
+    const [activeSub, setActiveSub] = useState<Record<string, string>>(hostingPart ? { hosting: hostingPart } : {});
     // The guide's "?" opens the chapter of the tab on screen (alpha.119).
     // Kılavuzun "?" düğmesi ekrandaki sekmenin bölümünü açar.
     useEffect(() => publishGuideTopic(`domain.${activeTab}`), [activeTab]);
@@ -260,9 +264,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         if (requestedTab === 'dns') setActiveTab('dns');
         // The Dashboard's mail card opens the mailboxes of a site directly.
         if (requestedTab === 'mail') setActiveTab('mail');
-        if (requestedTab === 'ssl') {
+        if (requestedTab === 'ssl' || requestedTab === 'config') {
             setActiveTab('hosting');
-            setActiveSub((current) => ({ ...current, hosting: 'ssl' }));
+            setActiveSub((current) => ({ ...current, hosting: requestedTab }));
         }
     }, [domainId, requestedTab]);
 

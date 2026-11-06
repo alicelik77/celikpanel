@@ -732,6 +732,23 @@ func TestRemovingASiteKeepsACopyOfAnEditedVhostAndTheOwnerDirectory(t *testing.T
 	}
 }
 
+// 6 Nov 2026: an empty owner include directory stayed behind after a site's
+// deletion. It goes now; one with the owner's file in it stays (above).
+func TestRemovingASiteRemovesItsEmptyOwnerDirectory(t *testing.T) {
+	h := newManagedVhostHarness(t)
+	data := managedTestData("empty.example", managedVhostPlatforms[0].socket)
+	h.apply(h.item(data, transport.SiteFileTriggerCreate))
+	if info, err := os.Lstat(OwnerIncludeDir(data.Domain)); err != nil || !info.IsDir() {
+		t.Fatalf("owner include directory was not made: %v", err)
+	}
+	if _, err := h.ng.RemoveSiteVhost(data.Domain); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(OwnerIncludeDir(data.Domain)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the empty owner include directory stayed: %v", err)
+	}
+}
+
 func TestInspectionDiffIsBoundedAndHidesCredentials(t *testing.T) {
 	h := newManagedVhostHarness(t)
 	data := managedTestData("diff.example", managedVhostPlatforms[0].socket)

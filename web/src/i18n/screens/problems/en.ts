@@ -2,12 +2,20 @@
 // (components/BlockingProblems.tsx, prefix problem.) and the setup Summary's
 // blockers in plain words (setup.problem., lib/setupProblems.ts), owner
 // feedback 2026-10-31.
+// Also the end of the progress window (operation., components/OperationProgress.tsx).
 // "problems" ekran parcasi: ortak sorun bicimi ve kurulum Ozeti'nin engelleri.
 
 export const enProblemsScreens = {
     "problem.title.one": "One thing needs fixing first",
     "problem.title.many": "{count} things need fixing first",
     "problem.todo": "What to do:",
+    // The progress window's end (components/OperationProgress.tsx, prefix operation.; owner 6 Nov 2026).
+    "operation.wait": "Please wait; this window closes or says what to do when the work ends.",
+    "operation.completed": "Completed",
+    "operation.failed": "Not completed",
+    "operation.blocked": "Waiting for someone to act",
+    "operation.unknown": "The result is not known",
+    "operation.ok": "OK",
     "problem.details": "Technical details",
     "problem.failedBecause": "{sentence}. The server said: {reason}",
     "problem.show": "Show",

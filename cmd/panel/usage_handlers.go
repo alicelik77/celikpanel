@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // Usage notices and the administrator's view of the measurements (alpha.118,
@@ -85,17 +87,54 @@ func (p *Panel) handleUsageNotices(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]bool{"seen": true})
 }
 
+// usageUnknownSite is one website whose traffic is not counted. Reason is
+// who acts: changed_by_owner (CelikPanel's traffic file or the site's vhost
+// was changed by hand on the server: the administrator decides whether to
+// keep that or let CelikPanel write its file) or not_written_yet
+// (CelikPanel's file is not in place yet: CelikPanel writes it with the
+// site's next configuration write). Detail is the Agent's reviewed code.
+type usageUnknownSite struct {
+	DomainID int    `json:"domain_id"`
+	Domain   string `json:"domain"`
+	Reason   string `json:"reason"`
+	Detail   string `json:"detail,omitempty"`
+}
+
+const (
+	usageUnknownChangedByOwner = "changed_by_owner"
+	usageUnknownNotWrittenYet  = "not_written_yet"
+	usageUnknownSitesLimit     = 50
+)
+
+// usageUnknownReason maps the Agent's reviewed code to who acts.
+func usageUnknownReason(detail string) string {
+	switch detail {
+	case transport.TrafficReasonFormatKept, transport.TrafficReasonVhostKept:
+		return usageUnknownChangedByOwner
+	default:
+		// include_missing, or a code this Panel does not know yet: the
+		// file is not (yet) in place.
+		return usageUnknownNotWrittenYet
+	}
+}
+
 // usageStatusView: whether measuring works on this server, for the
 // administrator, with the reason and the next step when it does not.
 type usageStatusView struct {
 	Traffic struct {
-		LastCollected  string         `json:"last_collected,omitempty"`
-		LastAttempt    string         `json:"last_attempt,omitempty"`
-		Error          string         `json:"error,omitempty"`
-		Logrotate      string         `json:"logrotate,omitempty"`
-		Unknown        map[string]int `json:"unknown"`
-		Measuring      int            `json:"measuring"`
-		IntervalMinute int            `json:"interval_minutes"`
+		LastCollected string         `json:"last_collected,omitempty"`
+		LastAttempt   string         `json:"last_attempt,omitempty"`
+		Error         string         `json:"error,omitempty"`
+		Logrotate     string         `json:"logrotate,omitempty"`
+		Unknown       map[string]int `json:"unknown"`
+		// UnknownSites names the websites that are not counted, so the
+		// administrator sees which ones and why (at most
+		// usageUnknownSitesLimit, by name; UnknownSitesMore says how many
+		// more there are).
+		UnknownSites     []usageUnknownSite `json:"unknown_sites"`
+		UnknownSitesMore int                `json:"unknown_sites_more,omitempty"`
+		Measuring        int                `json:"measuring"`
+		IntervalMinute   int                `json:"interval_minutes"`
 	} `json:"traffic"`
 	Disk struct {
 		Measured     int  `json:"measured"`
@@ -138,24 +177,45 @@ func (p *Panel) handleUsageStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	view.Traffic.LastCollected, view.Traffic.LastAttempt = last.String, attempt.String
 	view.Traffic.Error, view.Traffic.Logrotate = lastErr.String, logrotate.String
-	rows, err := db.QueryContext(ctx, `SELECT state, COALESCE(reason, ''), COUNT(*) FROM traffic_sources GROUP BY state, reason`)
+	// A website whose domain is being deleted is not counted as a problem:
+	// its files are removed first and its rows go when the deletion ends
+	// (6 Nov 2026: a joined server's pending deletion read as "1 website
+	// not counted" for as long as the main DNS server confirmed).
+	view.Traffic.UnknownSites = []usageUnknownSite{}
+	rows, err := db.QueryContext(ctx, `
+		SELECT ts.domain_id, COALESCE(d.name, ''), ts.state, COALESCE(ts.reason, '')
+		FROM traffic_sources ts LEFT JOIN domains d ON d.id = ts.domain_id
+		WHERE NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = ts.domain_id)
+		ORDER BY d.name, ts.domain_id`)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
 	for rows.Next() {
-		var state, reason string
-		var n int
-		if err := rows.Scan(&state, &reason, &n); err != nil {
+		var domainID int
+		var name, state, reason string
+		if err := rows.Scan(&domainID, &name, &state, &reason); err != nil {
 			rows.Close()
 			writeServerError(w, err)
 			return
 		}
-		if state == "unknown" {
-			view.Traffic.Unknown[reason] += n
-		} else {
-			view.Traffic.Measuring += n
+		if state != "unknown" {
+			view.Traffic.Measuring++
+			continue
 		}
+		view.Traffic.Unknown[reason]++
+		if len(view.Traffic.UnknownSites) >= usageUnknownSitesLimit {
+			view.Traffic.UnknownSitesMore++
+			continue
+		}
+		view.Traffic.UnknownSites = append(view.Traffic.UnknownSites, usageUnknownSite{
+			DomainID: domainID, Domain: name, Reason: usageUnknownReason(reason), Detail: reason,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		writeServerError(w, err)
+		return
 	}
 	rows.Close()
 	if err := db.QueryRowContext(ctx, `

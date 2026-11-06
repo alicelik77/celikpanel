@@ -333,7 +333,32 @@ const COMPONENT_NAMES: Record<string, string> = {
     roundcube: 'Roundcube',
     redis: 'Redis',
     memcached: 'Memcached',
+    python: 'Python',
 };
+
+// What an account can actually choose (owner report 6 Nov 2026): the server
+// lists every installed component as an offering, but only these are asked
+// for by any screen of an account - PHP and Node.js versions, the database
+// engines, Python, the free certificate authorities, the applications and
+// uploaded programs. Server internals (nginx, BIND, Postfix, Dovecot, certbot,
+// cron, nftables, Rspamd, Roundcube…) are nothing a customer chooses, so a
+// plan never shows them and a summary never counts them. A saved plan that
+// names one keeps it: the editor only hides it, and sends it back unchanged.
+// Bir hesabın gerçekten seçebildiği yazılımlar; sunucu iç bileşenleri planda
+// gösterilmez ve sayılmaz, kayıtlı plandaki hâli olduğu gibi korunur.
+const CHOOSABLE_COMPONENTS = new Set(['php-fpm', 'node', 'mariadb', 'postgresql', 'python']);
+
+export function choosableSoftware(id: string): boolean {
+    const [kind, name] = id.split(':');
+    if (kind === 'component') return CHOOSABLE_COMPONENTS.has(name);
+    if (kind === 'integration') return name === 'acme';
+    return kind === 'app' || kind === 'extension' || id === 'runtime:program';
+}
+
+/** A software item in words; uploaded programs are a phrase, not a product. */
+export function softwareLabel(id: string, t: Say): string {
+    return id === 'runtime:program' ? t('rights.software.program') : softwareName(id);
+}
 
 const ACME_NAMES: Record<string, string> = {
     letsencrypt: 'Let’s Encrypt',
@@ -372,20 +397,27 @@ export function softwareGroup(id: string): string {
 }
 
 /** A group's heading: a product name, or a word the caller translates. */
-export function softwareGroupName(group: string): { product?: string; key?: 'acme' | 'extension' | 'app' } {
+export function softwareGroupName(group: string): { product?: string; key?: 'acme' | 'extension' | 'app' | 'runtime' } {
     const [kind, name] = group.split(':');
     if (kind === 'component') return { product: COMPONENT_NAMES[name] ?? name };
     if (kind === 'integration' && name === 'acme') return { key: 'acme' };
     if (kind === 'app') return { key: 'app' };
+    if (kind === 'runtime') return { key: 'runtime' };
     return { key: 'extension' };
+}
+
+/** The translation key of a group heading that is a word. */
+export function softwareGroupKey(key: 'acme' | 'extension' | 'app' | 'runtime' | undefined): TranslationKey {
+    return key === 'acme' ? 'rights.group.acme' : key === 'app' ? 'rights.group.app' : key === 'runtime' ? 'rights.group.runtime' : 'rights.group.extension';
 }
 
 const versionParts = (id: string) => (id.split(':')[2] ?? '').split('.').map((part) => Number(part) || 0);
 
-/** Software items grouped by component, newest version first within a group. */
+/** Choosable software items grouped by component, newest version first within a group. */
 export function groupSoftware<T extends { id: string }>(items: T[]): { group: string; items: T[] }[] {
     const groups = new Map<string, T[]>();
     for (const item of items) {
+        if (!choosableSoftware(item.id)) continue;
         const group = softwareGroup(item.id);
         groups.set(group, [...(groups.get(group) ?? []), item]);
     }
@@ -420,7 +452,7 @@ export function itemLabel(item: string, t: T): string {
         const text = t(key);
         return text === key ? permission : text;
     }
-    return softwareName(item);
+    return softwareLabel(item, t);
 }
 
 /** The state as every screen names it: Unlimited, Plan: <name>, or Custom. */
@@ -603,7 +635,7 @@ export function rightsSummary(rights: { all_permissions: boolean; all_software: 
     if (!rights) return t('rights.summary.everything');
     if (rights.all_permissions && rights.all_software) return t('rights.summary.everything');
     const permissions = rights.all_permissions ? t('rights.summary.allPermissions') : t('rights.summary.permissions', { n: rights.permissions.length });
-    const software = rights.all_software ? t('rights.summary.allSoftware') : t('rights.summary.software', { n: rights.software.length });
+    const software = rights.all_software ? t('rights.summary.allSoftware') : t('rights.summary.software', { n: rights.software.filter(choosableSoftware).length });
     return `${permissions} · ${software}`;
 }
 

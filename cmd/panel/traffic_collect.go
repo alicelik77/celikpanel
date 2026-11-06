@@ -44,7 +44,10 @@ func (p *Panel) trafficCollectorOps() trafficCollector {
 }
 
 // trafficDomains lists the websites to measure and whether each shows a
-// CelikPanel page now (suspended, maintenance or traffic limit).
+// CelikPanel page now (suspended, maintenance or traffic limit). A domain
+// whose deletion is accepted is not measured: its site files are removed
+// first and its rows go when the deletion ends; until 6 Nov 2026 it was
+// reported as a website "not counted" for as long as the deletion waited.
 func (p *Panel) trafficDomains(ctx context.Context) ([]transport.TrafficDomain, error) {
 	period := trafficPeriod(usageNow())
 	rows, err := p.db.GetDB().QueryContext(ctx, `
@@ -54,6 +57,7 @@ func (p *Panel) trafficDomains(ctx context.Context) ([]transport.TrafficDomain, 
 		            ELSE 0 END
 		FROM domains d JOIN sites si ON si.domain_id = d.id
 		JOIN subscriptions s ON s.id = d.subscription_id
+		WHERE NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = d.id)
 		ORDER BY d.id`, period)
 	if err != nil {
 		return nil, err
@@ -116,7 +120,8 @@ func (p *Panel) collectTraffic(ctx context.Context) error {
 			return err
 		}
 	}
-	_, _ = db.ExecContext(ctx, `DELETE FROM traffic_sources WHERE domain_id NOT IN (SELECT domain_id FROM sites)`)
+	_, _ = db.ExecContext(ctx, `DELETE FROM traffic_sources WHERE domain_id NOT IN (SELECT domain_id FROM sites)
+		OR domain_id IN (SELECT domain_id FROM domain_deletion_operations)`)
 	return nil
 }
 

@@ -109,6 +109,9 @@ const ownDeletionReasons = new Set([
     'deletion_incomplete',
     'deletion_state_changing',
     'deletion_marker_inconsistent',
+    // A delete press while this domain is already being deleted: nothing new
+    // was started (6 Nov 2026).
+    'deletion_already_running',
 ]);
 
 // Reasons whose next step CelikPanel takes by itself: the page reads again
@@ -120,10 +123,33 @@ const automaticDeletionReasons = new Set([
     'remote_dns_main_unreachable',
     'remote_dns_removed_finishing',
     'deletion_state_changing',
+    'deletion_already_running',
 ]);
 
 export function domainDeletionReasonAutomatic(reason: string): boolean {
     return automaticDeletionReasons.has(reason);
+}
+
+// While one of these is shown the domain is "being deleted": CelikPanel is
+// carrying on by itself, so the page sends no second delete for it (owner
+// report 6 Nov 2026: pressing delete again and again). The one automatic reason
+// whose own sentence asks for "delete again" after a while
+// (remote_dns_removed_finishing) keeps its delete button.
+// Bunlardan biri gösterilirken alan adı "siliniyor"dur; sayfa ikinci bir silme
+// göndermez.
+export function domainDeletionBlocksRetry(reason: string): boolean {
+    return automaticDeletionReasons.has(reason) && reason !== 'remote_dns_removed_finishing';
+}
+
+// Reasons whose whole sentence is "nobody needs to do anything": the page
+// says it in one line ("<name> is being deleted. Nothing to do; this page
+// updates by itself."). When the automatic checks end without confirmation the
+// saved reason changes to one that names who must act, and that is shown.
+// Cümlesi "kimsenin bir şey yapması gerekmez" olan nedenler tek satırla söylenir.
+const quietDeletionReasons = new Set(['deletion_running', 'remote_dns_removal_confirming', 'deletion_state_changing', 'deletion_already_running']);
+
+export function domainDeletionQuiet(reason: string): boolean {
+    return quietDeletionReasons.has(reason);
 }
 
 function ownReason(pending: Record<string, unknown>): string {
@@ -261,14 +287,50 @@ export type SavedDomainDeletionRead =
 // readSavedDomainDeletion only reads; it never retries or starts a deletion.
 // readSavedDomainDeletion yalnız okur; silmeyi yeniden denemez ya da başlatmaz.
 export async function readSavedDomainDeletion(domainId: number): Promise<SavedDomainDeletionRead> {
+    const { stage: _stage, ...read } = await readSavedDomainDeletionWithStage(domainId);
+    return read as SavedDomainDeletionRead;
+}
+
+// The stages a deletion reports (the step it is at, or where it stopped),
+// as the server names them. Only these are shown; anything else is ''.
+// Bir silmenin bildirdiği aşamalar; yalnız bunlar gösterilir.
+const reviewedStages = new Set([
+    'running', 'mail_tls_cleanup', 'mail_runtime_cleanup', 'site_cleanup', 'dns_cleanup',
+    'certificate_cleanup', 'ledger_delete', 'dns_removed', 'incomplete', 'marker_check',
+]);
+
+/**
+ * The reviewed stage of a deletion answer (202 or a status read), or ''.
+ * While this server's request runs (stage `running`) a status read also
+ * names the step it is at now (`step`, alpha.126): that step is returned, so
+ * the progress window shows mail settings, website, DNS, certificates and
+ * finishing as they happen.
+ */
+export async function readDomainDeletionStage(response: Response): Promise<string> {
+    try {
+        const body: unknown = await response.clone().json();
+        const fields = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+        const stage = fields.stage;
+        if (stage === 'running' && typeof fields.step === 'string' && fields.step !== 'running' && reviewedStages.has(fields.step)) {
+            return fields.step;
+        }
+        return typeof stage === 'string' && reviewedStages.has(stage) ? stage : '';
+    } catch {
+        return '';
+    }
+}
+
+/** readSavedDomainDeletion with the stage the deletion is at (progress window). Reads only. */
+export async function readSavedDomainDeletionWithStage(domainId: number): Promise<SavedDomainDeletionRead & { stage: string }> {
     try {
         const response = await fetch(`/api/v1/domains/${domainId}/deletion-status`);
-        if (response.status === 204) return { state: 'known', saved: null };
-        if (response.status === 404) return { state: 'gone' };
-        if (response.status !== 200) return { state: 'unknown' };
-        return { state: 'known', saved: await readSavedDomainDeletionState(response) };
+        if (response.status === 204) return { state: 'known', saved: null, stage: '' };
+        if (response.status === 404) return { state: 'gone', stage: '' };
+        if (response.status !== 200) return { state: 'unknown', stage: '' };
+        const stage = await readDomainDeletionStage(response);
+        return { state: 'known', saved: await readSavedDomainDeletionState(response), stage };
     } catch {
-        return { state: 'unknown' };
+        return { state: 'unknown', stage: '' };
     }
 }
 

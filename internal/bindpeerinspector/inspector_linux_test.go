@@ -3,6 +3,7 @@ package bindpeerinspector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -216,8 +217,23 @@ func TestNativeControlListenerMustBelongToNamedPID(t *testing.T) {
 	ipv4 := "LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:((\"named\",pid=42,fd=31))"
 	ipv6 := "LISTEN 0 5 [::1]:953 [::]:* users:((\"named\",pid=42,fd=32))"
 	good := ipv4 + "\n" + ipv6
-	if !controlListenerMatches(good, 42) || !controlListenerMatches(ipv4, 42) {
-		t.Fatal("certified local named control listeners rejected")
+	// The joined backup of 6 Nov 2026 (Ubuntu 24.04, BIND 9.18, 2 CPUs):
+	// two sockets per loopback address, all of named's MainPID, exactly as
+	// ss -H -lnpt printed them (column padding included).
+	measured := strings.Join([]string{
+		"LISTEN 0      5      127.0.0.1:953 0.0.0.0:* users:((\"named\",pid=42,fd=53))",
+		"LISTEN 0      5      127.0.0.1:953 0.0.0.0:* users:((\"named\",pid=42,fd=52))",
+		"LISTEN 0      5          [::1]:953    [::]:* users:((\"named\",pid=42,fd=54))",
+		"LISTEN 0      5          [::1]:953    [::]:* users:((\"named\",pid=42,fd=55))",
+	}, "\n")
+	for _, ok := range []string{good, ipv4, measured, ipv4 + "\n" + strings.Replace(ipv4, "fd=31", "fd=33", 1)} {
+		if !controlListenerMatches(ok, 42) {
+			t.Fatalf("certified local named control listeners rejected: %q", ok)
+		}
+	}
+	tooMany := ipv4
+	for fd := 40; fd < 48; fd++ {
+		tooMany += "\n" + strings.Replace(ipv4, "fd=31", fmt.Sprintf("fd=%d", fd), 1)
 	}
 	for _, bad := range []string{
 		ipv6,
@@ -225,8 +241,13 @@ func TestNativeControlListenerMustBelongToNamedPID(t *testing.T) {
 		strings.Replace(good, "named", "other", 1),
 		strings.Replace(good, "127.0.0.1:953", "0.0.0.0:953", 1),
 		strings.Replace(good, "[::1]:953", "[::]:953", 1),
+		// The same socket twice is not a listing ss produces.
 		good + "\n" + ipv4,
 		ipv4 + "\n" + ipv4,
+		// A further socket of another process on the control address.
+		measured + "\n" + strings.Replace(strings.Replace(ipv4, "pid=42", "pid=43", 1), "fd=31", "fd=60", 1),
+		measured + "\n" + strings.Replace(strings.Replace(ipv4, "named", "other", 1), "fd=31", "fd=60", 1),
+		tooMany,
 		strings.Replace(good, "0 5", "00 5", 1),
 		"tcp " + good,
 	} {

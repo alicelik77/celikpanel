@@ -7,6 +7,7 @@ import type { ApiError } from '../lib/apiError';
 import { invalidate, useRemote } from '../lib/remote';
 import { OFFERED_URL, sendRights } from '../lib/rights';
 import { APP_CATALOG_URL, decodeCatalog, type CatalogApp } from '../lib/appCatalog';
+import { confirmAction } from '../lib/confirmAction';
 
 // The administrator's offered applications (alpha.118, D-042): every catalog
 // application with its version, licence, source, how its download is checked,
@@ -28,18 +29,24 @@ export function OfferedAppsSection() {
 
     const change = async (app: CatalogApp, offered: boolean) => {
         if (pending) return;
-        if (offered && !confirm(t('appOffer.confirm', { name: app.name, risk: app.risk }))) return;
-        setPending(app.id);
-        setFailure(null);
-        try {
-            const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: app.offering_id, offered });
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            if (result.kind === 'refused') setFailure(result.error);
-            invalidate('rights');
-            await catalog.retry();
-        } finally {
-            setPending(null);
+        const proceed = async () => {
+            setPending(app.id);
+            setFailure(null);
+            try {
+                const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: app.offering_id, offered });
+                if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
+                if (result.kind === 'refused') setFailure(result.error);
+                invalidate('rights');
+                await catalog.retry();
+            } finally {
+                setPending(null);
+            }
+        };
+        if (!(offered)) {
+            await proceed();
+            return;
         }
+        await confirmAction({ message: t('appOffer.confirm', { name: app.name, risk: app.risk }), action: proceed });
     };
 
     return (

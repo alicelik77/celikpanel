@@ -68,6 +68,7 @@ import type { RuntimeAppsScreenKey } from './screens/runtimeApps/en';
 import type { HostNameScreenKey } from './screens/hostName/en';
 import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
+import type { MonitoringScreenKey } from './screens/monitoring/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -381,6 +382,11 @@ export const en = {
     'common.checkAgain': 'Check again',
     'common.technicalDetails': 'Technical details',
     'common.cancel': 'Cancel',
+    // The product's own confirmation (components/ConfirmHost.tsx, 6 Nov 2026).
+    'common.continue': 'Continue',
+    'common.delete': 'Delete',
+    // The progress window of a confirmed operation (components/OperationProgress.tsx).
+    'operation.working': 'Working on the server…',
     // alpha.117 (D-042): who can open a refused right, read by lib/apiError.ts.
     'rights.grantor.administrator': 'the administrator',
     'rights.grantor.provider': 'your provider ({name})',
@@ -568,5 +574,6 @@ export type ScreenKey =
     | RuntimeAppsScreenKey
     | HostNameScreenKey
     | RemovalRuleScreenKey
-    | ComponentInstallScreenKey;
+    | ComponentInstallScreenKey
+    | MonitoringScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

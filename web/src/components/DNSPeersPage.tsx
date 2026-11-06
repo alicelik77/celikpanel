@@ -2,6 +2,7 @@ import { useI18n } from '../i18n';
 import { PageHeader } from './PageHeader';
 import { DNSServerSettings } from './DNSServerSettings';
 import { DNSOverview } from './DNSOverview';
+import { DNSCheckToolNotice } from './DNSCheckToolNotice';
 
 // Server → DNS (D-037; the new page since v0.1.0-alpha.115, owner-approved
 // draft 2026-10-26): one status sentence first, the DNS servers, the names
@@ -18,6 +19,7 @@ export function DNSPeersPage() {
         <div className="p-4 sm:p-6 md:p-8">
             <PageHeader title={t('nav.dnsPeers')} subtitle={t('dnsPeers.subtitle')} breadcrumb={[t('common.home'), t('nav.dnsPeers')]} />
             <div className="max-w-5xl">
+                <DNSCheckToolNotice className="mb-4" />
                 <DNSOverview advanced={<DNSServerSettings />} />
             </div>
         </div>

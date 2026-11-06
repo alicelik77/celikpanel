@@ -719,6 +719,14 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid domain ID", http.StatusBadRequest)
 		return
 	}
+	// Another press while this domain's deletion request is still running:
+	// answered at once, nothing is started (domain_deletion_already_running.go).
+	if p.deletionsRunning.isRunning(domainID) {
+		var name string
+		_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT name FROM domains WHERE id = ?`, domainID).Scan(&name)
+		writeDomainDeletionAlreadyRunning(w, name)
+		return
+	}
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
 	ctx, cancel := sslDurableContext(r.Context())
@@ -729,6 +737,15 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	domain, err := domainRepo.GetByID(ctx, domainID)
 	if err != nil {
 		http.Error(w, "domain not found", http.StatusNotFound)
+		return
+	}
+	// A joined server's deletion that waits only for the main DNS server
+	// continues by itself; a press repeats nothing.
+	if continues, name, err := p.domainDeletionContinuesByItself(ctx, domainID); err != nil {
+		writeServerError(w, err)
+		return
+	} else if continues {
+		writeDomainDeletionAlreadyRunning(w, name)
 		return
 	}
 	// alpha.118: an AI or automation app on the domain is removed first.
@@ -829,6 +846,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	// From the marker on, a status read of this domain says the deletion is
 	// running until this request answers (domain_deletion_running.go).
 	defer p.deletionsRunning.begin(domainID)()
+	// Each stage is recorded as it starts, so a status read during this
+	// request shows the live step (memory only; reads never change it).
+	step := func(stage string) { p.deletionsRunning.setStep(domainID, stage) }
+	step("mail_tls_cleanup")
 	p.mailMutationMu.Lock()
 	firstDeletionAttempt, err := p.markDomainDeletionPending(ctx, domainID)
 	if err != nil {
@@ -865,6 +886,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 
 	// The mail stage runs only when the panel's own records show a mail
 	// runtime for this domain on this server (domain_delete_mail_stage.go).
+	step(domainDeletionStageMailRuntime)
 	mailRan, err := p.runDomainDeletionMailStageLocked(ctx, domainID, domain.Name)
 	if err != nil {
 		p.mailMutationMu.Unlock()
@@ -910,6 +932,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	// Yalnız-DNS domain'lerin OS'ta hiçbir şeyi yok (kullanıcı, dosya, vhost
 	// yok) — agent'ın sökeceği bir şey yok; yol koruması boş docroot'u zaten
 	// haklı olarak reddederdi.
+	step("site_cleanup")
 	if hasSite && projectType != "dnsonly" {
 		siteHome, err := hostingpath.SiteHome(siteSubscriptionID, domainID)
 		if err != nil {
@@ -946,6 +969,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	step("dns_cleanup")
 	if domain.DNSManagement == setupDNSModeExisting {
 		// The site and mail are gone: from here the joined server carries the
 		// removal on the main DNS server to its end by itself, even when this
@@ -963,6 +987,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	step("certificate_cleanup")
 	if err := p.removeManagedDomainCertificates(
 		ctx,
 		domain.Name,
@@ -974,6 +999,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		)
 		return
 	}
+	step("ledger_delete")
 	if err := p.finalizeDomainDeletion(ctx, domainID); err != nil {
 		p.writeDomainDeletionPending(
 			w, r, domainID, domain.Name, "ledger_delete", err,

@@ -204,3 +204,61 @@ yeni kitin yeniden başlatmaya rağmen üç kesilmiş girişimi koruduğunu, oto
 kurtarmayı durdurduğunu ve tek açık sahip tekrarıyla aynı geri almayı tamamladığını
 kanıtlar. Yayın sınırındaki güç kaybı, tarayıcı yönlendirmesi ve kalan P0.2/P0.3
 matrisi açıktır.
+
+## Boşta denetim çalışmaları ve saatlik kit kontrolü (alpha.126)
+
+Yerel zamanlayıcı `/usr/libexec/celikpanel/release-recovery` dosyasını yaklaşık
+31 saniyede bir başlatır. alpha.125'e kadar her çalışma, bekleyen bir işlem
+olmasa bile seçili kitin tamamını doğruluyordu (yaklaşık 45 MB üzerinde birkaç
+SHA-256 geçişi, iki Go ve iki bash başlatması): denemede çalışma başına 0,35–1,3 sn
+işlemci, günde yaklaşık 18–58 işlemci-dakikası ve İzleme ekranındaki işlemci
+örneğinin sahte tepe olarak yakalayabildiği kısa yükler.
+
+**Hızlı yol.** Aşağıdakilerin hepsi doğruysa betik ilk satırlarında, yalnız bash
+yerleşik komutlarıyla çıkar: argümansız başlatılmıştır ve kit girişi değildir;
+`/var/lib/celikpanel-release-transaction` yoktur ya da içinde yalnız normal bir
+`transaction.lock` vardır; `recovery-promotions/v1/current` yoktur ya da içinde
+yalnız tamamlanmış `intent.json` ve `committed.json` vardır; ve
+`/run/celikpanel-release-recovery/idle-verified`, tam yolun bu açılışta, şu an
+seçili kit için, bir saatten kısa süre önce "bekleyen işlem yok" sonucunu
+doğruladığını gösterir. Herhangi bir işaretçi, başka ya da okunamayan bir girdi,
+sembolik bağlantı, yarım kalmış kit geçişi, değişmiş seçim ya da eksik, eski veya
+başka açılışa ait damga değişmeyen tam yola düşer. Sahibin yeniden denemesi ve
+son durum kanıtı hızlı yolu hiç kullanmaz. Hızlı yol hiçbir şey yazmaz, kilit
+almaz ve hiçbir işlem başlatmaz.
+
+**Bütünlük kontrolü.** Damgayı yalnız tam yol, doğrulanmış "bekleyen işlem yok"
+çıkışlarında ve sürüm kilidi altındayken yazar. `/run` her açılışta boşalır; bu
+yüzden her açılışın ilk çalışmaları ve saatte en az bir çalışma kiti tamamen
+doğrular. Başarısız doğrulama damga yazmaz; sonraki her çalışma yine tam olur ve
+yine başarısız olur, birim de başarısız kalır. Günlükteki ilk satır aynı kalır;
+ardından İngilizce ve Türkçe olarak hiçbir kurtarma adımının başlamadığı, sunucu
+sahibinin dosyaları değiştirmeden `sudo /usr/libexec/celikpanel/recovery
+runtime-status --lang tr` çalıştırması gerektiği ve kit doğrulandığında hatanın
+kendiliğinden kalkacağı yazılır. İki tam kontrol arasında bozulan bir kit bir
+sonrakinde (en geç bir saat sonra ya da sonraki açılışta) bulunur; bekleyen bir
+işlem bunu hiç beklemez, çünkü işaretçi her zaman tam yolu çalıştırır.
+
+**Daha az tekrar özet.** Kurtarma gerçekten çalıştığında kit girişi, az önce
+bitmiş tam kanıtı tekrarlamaz; başlatıcı da iki tam yeniden doğrulama arasında
+seçili çalıştırılabilir dosyayı bir kez daha özetlemez. Diğer kontroller değişmedi.
+
+**Geçiş.** Yalnız betiğin baytları ve kitin Go programı değişir. Betik
+`update.sh`'nin mevcut tek yönlü temel yayın adımıyla kurulur; birim dosyaları,
+temel bildirim biçimi, kit protokolü ve veritabanı değişmez. Geri alma bu betiği
+korur. Eski bir sürümün seçili kiti damga yazmaz; onun çalışmaları yalnızca tam
+kalır.
+
+**Kanıt.** Sözleşme testi 15 işaretçi birleşiminin hepsini, beklenmeyen adları,
+gizli dosyaları, dizinleri, kilit, kök ve kit geçişi türevlerini, eski, ileri
+tarihli, başka açılışa ait ve bozuk damgaları, değişmiş seçimi, sahibin yeniden
+denemesini, son durum kanıtını ve kit girişini çalıştırır; hepsi tam yola ulaşır.
+Debian 13 deneme makinesinde (2 vCPU) boşta çalışma 349–397 ms'den 11–15 ms'ye
+(SHA uzantısı kapalıyken 1161–1291 ms'den 11–12 ms'ye) indi; tam çalışma 304–317 ms
+(847–866 ms) oldu. Bekleyen `active` işaretçisi ve taze damga ile yapılan bir
+gerçek yeniden başlatmada açılışta (7,2 sn, 408 ms) ve her zamanlayıcı tekrarında
+tam yol çalıştı; işaretçi kaldırılınca sonraki çalışma damgayı yazdı. Bozulmuş bir
+kit baytı, düzeltilene kadar her tam çalışmayı başarısız kıldı. Bu deneme anlık
+görüntüsü olmayan bir işaretçi kullandı; açılışta kurtarmanın başladığını kanıtlar,
+tamamlanmış bir geri almayı değil. Geniş P0.2/P0.3 matrisi ve olaya bağlı yol
+birimi açıktır.

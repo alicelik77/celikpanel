@@ -189,12 +189,20 @@ func localCatalogListenerMatches(output string, pid uint64) bool {
 	return tcp >= 1 && tcp <= 8 && udp >= 1 && udp <= 8
 }
 
+// controlListenerMaxPerAddress bounds named's control (rndc) sockets on one
+// loopback address. BIND 9.18 on Ubuntu 24.04 opens one socket per address
+// for each worker (measured on a 2-CPU joined backup, 6 Nov 2026: two fds on
+// 127.0.0.1:953 and two on [::1]:953, all of named's MainPID); the same
+// bound as the local AXFR listeners applies.
+const controlListenerMaxPerAddress = 8
+
 func controlListenerMatches(output string, pid uint64) bool {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
-	if len(lines) < 1 || len(lines) > 2 {
+	if len(lines) < 1 || len(lines) > 2*controlListenerMaxPerAddress {
 		return false
 	}
-	var ipv4, ipv6 bool
+	var ipv4, ipv6 int
+	fds := map[string]bool{}
 	for _, line := range lines {
 		fields := strings.Fields(line)
 		// ss -H -lnpt omits the protocol column because -t already
@@ -213,23 +221,26 @@ func controlListenerMatches(output string, pid uint64) bool {
 		if err != nil || process != "named" || foundPID != pid {
 			return false
 		}
+		// One socket is one fd of the process: a repeated fd is not a
+		// listing ss produces.
+		if fds[fields[5]] {
+			return false
+		}
+		fds[fields[5]] = true
 
 		switch fields[3] {
 		case "127.0.0.1:953":
-			if ipv4 {
-				return false
-			}
-			ipv4 = true
+			ipv4++
 		case "[::1]:953":
-			if ipv6 {
-				return false
-			}
-			ipv6 = true
+			ipv6++
 		default:
 			return false
 		}
 	}
-	return ipv4
+	// Until 6 Nov 2026 a second socket on the same address was refused, so
+	// every deletion proof against such a backup stopped at
+	// listeners_unverified.
+	return ipv4 >= 1 && ipv4 <= controlListenerMaxPerAddress && ipv6 <= controlListenerMaxPerAddress
 }
 
 func readNamedStartTicks(pid uint64) (uint64, error) {

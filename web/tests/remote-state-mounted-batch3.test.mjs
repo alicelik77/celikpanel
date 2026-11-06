@@ -92,6 +92,8 @@ const stub = dataModule(`
   export const DashboardUpdateNotice = () => null;
   // alpha.114: the compact waiting-updates card has its own tests (os-updates-alpha114).
   export const PendingUpdatesCard = () => null;
+  // alpha.126: "Problems now" has its own mounted tests (remote-state-mounted).
+  export const ProblemsNow = () => null;
   // alpha.121: the host-name notice has its own tests (alpha121.test.mjs).
   export const ServerHostnameNotice = () => null;
   // alpha.114: My plan reads its own address (customers and resellers only).

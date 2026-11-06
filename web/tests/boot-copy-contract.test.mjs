@@ -106,6 +106,9 @@ const eagerModules = [
   'src/components/SkinSwitcher.tsx',
   'src/components/LanguageSwitcher.tsx',
   'src/components/Toast.tsx',
+  // The product's own confirmation (6 Nov 2026), answered at the root.
+  'src/components/ConfirmHost.tsx',
+  'src/lib/confirmAction.ts',
   'src/components/RootErrorBoundary.tsx',
   'src/components/ui.tsx',
   'src/components/ComponentOperation.tsx',

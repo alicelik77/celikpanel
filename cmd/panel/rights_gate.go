@@ -419,7 +419,11 @@ func (p *Panel) installedOfferingIDs(ctx context.Context) ([]string, error) {
 				}
 			}
 		default:
-			out = append(out, "component:"+id)
+			// Only a component an account chooses itself (a database
+			// engine); the server's own services are not plan software.
+			if customerOffering("component:" + id) {
+				out = append(out, "component:"+id)
+			}
 		}
 	}
 	var node transport.NodeVersionsResponse

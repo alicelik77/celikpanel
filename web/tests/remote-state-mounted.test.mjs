@@ -34,6 +34,8 @@ const screenFiles = [
   // My account, whose two-factor panel was a Settings section until
   // v0.1.0-alpha.98 (D-037).
   'AccountPage',
+  // alpha.126: "Problems now" on Monitoring and the Dashboard.
+  'ProblemsNow',
 ];
 const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
@@ -52,6 +54,11 @@ const stubbedComponents = [
   'AccountRightsPanel', 'NewAccountRightsSection', 'BuiltinPlanRow', 'OfferedItemsTab', 'PlanEditorGate', 'ResellerPlansTab', 'AdminRightsNotices',
   // alpha.120: the security emergency on the component pages reads its own address.
   'SecurityEmergencySection',
+  // alpha.126: Monitoring's "Problems now" reads its own address
+  // (tests/problems-now-mounted.test.mjs).
+  'ProblemsNow',
+  // alpha.126: the backup DNS check tool notice on Domains reads its own address.
+  'DNSCheckToolNotice',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -234,6 +241,7 @@ const healthy = {
   '/api/v1/domains/1/usage': json({ disk_usage: 1024, bandwidth: 2048 }),
   '/api/v1/ssl/providers': json({ providers: [{ id: 'letsencrypt', name: 'Let’s Encrypt', note: '', needs_eab: false }] }),
   '/api/v1/metrics/history': json({ samples: [1, 2, 3].map((n) => ({ ts: `2026-10-09T00:0${n}:00Z`, cpu: 10 * n, mem_used: n, mem_total: 8, disk_used: n, disk_total: 80, load1: n / 10 })) }),
+  '/api/v1/metrics/problems': json({ checked_at: '2026-10-09T00:04:00Z', problems: [], unknown: [] }),
   '/api/v1/managed-services': json({ services: [{ id: 'redis', name: 'Redis', kind: 'service', is_installed: true, status: 'active (running)', unit: 'redis-server', versions: [], ports: ['6379/tcp'], config_files: [{ path: '/etc/redis/redis.conf', is_managed: false }] }] }),
   '/api/v1/service/logs': json({ lines: ['Ready to accept connections'] }),
   '/api/v1/panel/license': json({ state: 'active', can_provision: true }),
@@ -2355,6 +2363,90 @@ test('Domains: one confirmation for a bulk delete, and the rows change without a
   }
 });
 
+// Owner report, 6 Nov 2026: the browser's own dialogue, two identical long
+// toasts, and delete pressed again and again while the backup DNS server
+// confirmed the removal; then the firm order that the page must never be free
+// while work runs. The question names the domain; the confirmed deletion is
+// followed in the locked window, step by step (the DNS step waits, and says
+// for what), by reading its saved state only, until it ends; no toast.
+test('Domains: a confirmed delete is followed step by step, by reads only, until it is done', async () => {
+  const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
+  const live = liveDomains({ domains: [siteRow(4, 'alicelik.com.tr')], zones: [] });
+  let statusReads = 0;
+  serve({
+    ...live.table,
+    '/api/v1/domains/4/deletion-status': () => {
+      statusReads++;
+      if (statusReads < 2) return Response.json(pendingBody);
+      live.state.domains = [];
+      return Response.json({ error: 'no such domain' }, { status: 404 });
+    },
+  }, 'admin', {
+    '/api/v1/domains/4': () => {
+      live.state.domains = [{ ...siteRow(4, 'alicelik.com.tr'), status: 'pending' }];
+      return Response.json(pendingBody, { status: 202 });
+    },
+  });
+  Object.assign(globalThis.window, { setTimeout, clearTimeout });
+  globalThis.operationSteps = [];
+  globalThis.operationEnds = [];
+  const asked = [];
+  try {
+    await mount(Domains);
+    globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone, request.progressTitle]); return true; };
+    const rowDelete = () => hostButtons().find((node) => node.props.title === 'domains.action.delete' || node.props.title === 'domains.status.beingDeleted');
+    await press(rowDelete());
+    await act(async () => { await settled(); await settled(); });
+    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
+    const shown = globalThis.operationSteps.map((steps) => steps.map((step) => `${step.id}=${step.state}`).join(' '));
+    assert.equal(shown[0], 'request=running finish=pending');
+    assert.ok(shown.includes('mail=done site=done dns=waiting certificates=pending finish=pending'), `the DNS step did not wait: ${shown.join(' | ')}`);
+    assert.equal(shown.at(-1), 'mail=done site=done dns=done certificates=done finish=done');
+    const waiting = globalThis.operationSteps.flat().find((step) => step.state === 'waiting');
+    assert.equal(waiting.note, 'domains.step.note.confirming', 'the waiting step does not say for what');
+    assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a toast repeated what the window says');
+    assert.ok(!has('alicelik.com.tr'), 'the deleted domain stayed in the list');
+  } finally {
+    delete globalThis.operationSteps;
+    delete globalThis.operationEnds;
+    await cleanup();
+  }
+});
+
+// After a reload the page follows the deletion that is still running in the
+// same locked window; the row says "Being deleted" and offers no second
+// delete, from the row, the selection or a re-press.
+test('Domains: a deletion still running after a reload is followed again and never sent twice', async () => {
+  const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
+  const live = liveDomains({ domains: [{ ...siteRow(4, 'alicelik.com.tr'), status: 'pending' }], zones: [] });
+  serve({ ...live.table, '/api/v1/domains/4/deletion-status': () => Response.json(pendingBody) });
+  Object.assign(globalThis.window, { setTimeout, clearTimeout });
+  globalThis.operationSteps = [];
+  const asked = [];
+  try {
+    await mount(Domains);
+    globalThis.confirm = (message) => { asked.push(message); return true; };
+    await act(async () => { await settled(); await settled(); await settled(); });
+    assert.ok(globalThis.operationSteps.some((steps) => steps.some((step) => step.id === 'dns' && step.state === 'waiting')), 'the running deletion was not followed again');
+    assert.ok(has('domains.beingDeletedLine'), 'the waiting deletion is not said in one line');
+    assert.ok(!has('domains.deletionReason.remote_dns_removal_confirming'), 'the long waiting text is still shown');
+    assert.ok(has('domains.status.beingDeleted'), 'the row does not say it is being deleted');
+    const again = hostButtons().find((node) => node.props.title === 'domains.status.beingDeleted');
+    assert.equal(again.props.disabled, true, 'the row still offers delete');
+    await press(again);
+    const box = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox').at(-1);
+    assert.equal(box.props.disabled, true, 'a domain being deleted can still be selected for Remove');
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 0, 'a DELETE was sent');
+    assert.equal(asked.length, 0, 'a question was asked');
+    assert.deepEqual(globalThis.currentTest.toasts, []);
+  } finally {
+    delete globalThis.operationSteps;
+    await cleanup();
+  }
+});
+
 test('Databases with no engine: an administrator is sent to Components; anyone else is told to ask the provider', async () => {
   for (const role of ['admin', 'customer']) {
     serve({ '/api/v1/database-servers': json([]) }, role);
@@ -2366,5 +2458,85 @@ test('Databases with no engine: an administrator is sent to Components; anyone e
     } finally {
       await cleanup();
     }
+  }
+});
+
+// alpha.126: "Problems now" (Monitoring stage 1, D-024). Each problem says
+// what is wrong and offers its one next action; Start sends one request and
+// the list reads again; what could not be checked is said, never drawn as
+// "no problem"; a list that cannot be read is not "no problem" either; the
+// Dashboard's quiet copy shows nothing unless there is a problem to act on.
+const ProblemsNowList = await load('ProblemsNow');
+const stopped = {
+  key: 'service:nginx', kind: 'service_stopped', severity: 'critical', actor: 'administrator',
+  subject: 'nginx', name: 'Nginx', unit: 'nginx', value: 0, observed_at: '2026-10-09T00:03:00Z',
+  action: { kind: 'start_service', to: '/components/nginx' },
+};
+const diskFull = {
+  key: 'disk:/', kind: 'disk_full', severity: 'warning', actor: 'server_owner', subject: '/', value: 88,
+  action: { kind: 'open', to: '/domains' },
+};
+
+test('Problems now: a stopped service is started with one request and the list reads again', async () => {
+  let polls = 0;
+  serve({
+    '/api/v1/metrics/problems': () => Response.json({ checked_at: '', problems: polls++ === 0 ? [stopped, diskFull] : [diskFull], unknown: [] }),
+  }, 'admin', { '/api/v1/service/action': () => Response.json({ success: true }) });
+  try {
+    await mount(ProblemsNowList);
+    assert.ok(has('pnow.service_stopped.title') && has('pnow.service_stopped.body') && has('pnow.disk_full.body'));
+    const [start] = buttons('pnow.service_stopped.action');
+    assert.ok(start, 'no Start beside the stopped service');
+    await press(start);
+    const posts = calls.filter((call) => call.method === 'POST');
+    assert.equal(posts.length, 1);
+    assert.deepEqual(JSON.parse(posts[0].body), { name: 'nginx', action: 'start' });
+    assert.equal(reads('/api/v1/metrics/problems'), 2, 'the list did not read again after Start');
+    assert.ok(!has('pnow.service_stopped.title'), 'the started service stayed listed');
+    assert.ok(has('pnow.disk_full.title'));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Problems now: unknown is never "no problem", and the quiet copy shows only problems', async () => {
+  serve({ '/api/v1/metrics/problems': json({ checked_at: '', problems: [], unknown: [{ source: 'mail_queue', reason: 'checking' }] }) });
+  try {
+    await mount(ProblemsNowList);
+    assert.ok(has('pnow.notChecked') && !has('pnow.none'));
+  } finally {
+    await cleanup();
+  }
+  for (const [name, answer] of Object.entries(failures).filter(([name]) => name !== 'still on its way')) {
+    serve({ '/api/v1/metrics/problems': answer });
+    try {
+      await mount(ProblemsNowList);
+      assert.ok(has('pnow.failed') && !has('pnow.none'), name);
+    } finally {
+      await cleanup();
+    }
+  }
+  serve({ '/api/v1/metrics/problems': json({ checked_at: '', problems: [], unknown: [] }) });
+  try {
+    await mount(ProblemsNowList);
+    assert.ok(has('pnow.none'));
+  } finally {
+    await cleanup();
+  }
+  for (const body of [{ problems: [], unknown: [] }, { problems: [stopped], unknown: [{ source: 'mail_queue', reason: 'checking' }] }]) {
+    serve({ '/api/v1/metrics/problems': json({ checked_at: '', ...body }) });
+    try {
+      await mount(ProblemsNowList, { quiet: true, omit: ['service_stopped'] });
+      assert.equal(tree.toJSON(), null, 'the Dashboard showed a line with nothing to act on');
+    } finally {
+      await cleanup();
+    }
+  }
+  serve({ '/api/v1/metrics/problems': json({ checked_at: '', problems: [stopped, diskFull], unknown: [] }) });
+  try {
+    await mount(ProblemsNowList, { quiet: true, omit: ['service_stopped'] });
+    assert.ok(has('pnow.disk_full.title') && !has('pnow.service_stopped.title'));
+  } finally {
+    await cleanup();
   }
 });

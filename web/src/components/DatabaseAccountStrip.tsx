@@ -6,6 +6,7 @@ import { Button, Dialog, ResultUnknown } from './ui';
 import { useLostAnswer } from '../lib/lostAnswer';
 import type { Remote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
+import { confirmAction } from '../lib/confirmAction';
 
 // R-065. CelikPanel opens an account of its own on a database engine and
 // connects as that, so the operator's own root is never touched. That is only
@@ -120,20 +121,23 @@ export function DatabaseAccountStrip({
     };
 
     const remove = async () => {
-        if (!confirm(t('databases.account.confirmRemove'))) return;
-        setBusy(true);
-        try {
-            const res = await fetch(`${API_BASE}/database-servers/${server.id}/admin-account`, {
-                method: 'DELETE',
-            });
-            if (!res.ok) throw new Error();
-            showToast('success', t('databases.account.removed'));
-            void onChanged();
-        } catch {
-            showToast('error', t('common.error'));
-        } finally {
-            setBusy(false);
-        }
+        await confirmAction({ message: t('databases.account.confirmRemove'), confirmLabel: t('common.remove'), tone: 'danger',
+            action: async () => {
+                setBusy(true);
+                try {
+                    const res = await fetch(`${API_BASE}/database-servers/${server.id}/admin-account`, {
+                        method: 'DELETE',
+                    });
+                    if (!res.ok) throw new Error();
+                    showToast('success', t('databases.account.removed'));
+                    void onChanged();
+                } catch {
+                    showToast('error', t('common.error'));
+                } finally {
+                    setBusy(false);
+                }
+            },
+        });
     };
 
     const copy = async () => {

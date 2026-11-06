@@ -10,11 +10,12 @@ import { refusalText, refusalToast } from '../lib/apiError';
 import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
 import {
     NEW_PLAN, OFFERED_URL, PERMISSION_IDS, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, limitWords, planBody, rightsSummary,
-    selectionOf, sendRights, softwareGroupName, softwareName,
+    selectionOf, sendRights, softwareGroupKey, softwareGroupName, softwareLabel,
     type EditedPlan, type PlanKind, type ResellerPlan, type RightsPreview, type RightsSelection, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
+import { confirmAction } from '../lib/confirmAction';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
 const OfferedAppsSection = lazy(() => import('./OfferedAppsSection').then((module) => ({ default: module.OfferedAppsSection })));
@@ -187,21 +188,24 @@ export function ResellerPlansTab() {
     const rows = mapRemote(plans.remote, (value) => value.plans ?? []);
 
     const remove = async (plan: ResellerPlan) => {
-        if (!confirm(t('rights.plan.deleteConfirm', { name: plan.name }))) return;
-        setBusy(true);
-        try {
-            const result = await sendRights(`${RESELLER_PLANS_URL}/${plan.id}`, 'DELETE');
-            if (result.kind === 'lost') {
-                showToast('error', t('common.resultUnknown'));
-            } else if (result.kind === 'refused') {
-                showToast('error', refusalText(result.error, t, 'plans.deleteFailed'), refusalToast(result.error, t));
-            } else {
-                showToast('success', t('plans.deleted'));
-            }
-            invalidate('rights', 'plans');
-        } finally {
-            setBusy(false);
-        }
+        await confirmAction({ message: t('rights.plan.deleteConfirm', { name: plan.name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                setBusy(true);
+                try {
+                    const result = await sendRights(`${RESELLER_PLANS_URL}/${plan.id}`, 'DELETE');
+                    if (result.kind === 'lost') {
+                        showToast('error', t('common.resultUnknown'));
+                    } else if (result.kind === 'refused') {
+                        showToast('error', refusalText(result.error, t, 'plans.deleteFailed'), refusalToast(result.error, t));
+                    } else {
+                        showToast('success', t('plans.deleted'));
+                    }
+                    invalidate('rights', 'plans');
+                } finally {
+                    setBusy(false);
+                }
+            },
+        });
     };
 
     return (
@@ -210,7 +214,8 @@ export function ResellerPlansTab() {
             <BuiltinPlanRow kind="reseller" />
             <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs text-fg-subtle">{countText(mapRemote(rows, (list) => list.length)) === '1' ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: countText(mapRemote(rows, (list) => list.length)) })}</span>
-                <Button variant="primary" icon={Plus} disabled={!known} onClick={() => setEditing({ ...NEW_PLAN, numbers: { ...NEW_PLAN.numbers, max_customers: 10 } })}>{t('plans.add')}</Button>
+                {/* Hidden while a plan form is open (owner, 6 Nov 2026). */}
+                {editing === null && <Button variant="primary" icon={Plus} disabled={!known} onClick={() => setEditing({ ...NEW_PLAN, numbers: { ...NEW_PLAN.numbers, max_customers: 10 } })} data-plan-add="">{t('plans.add')}</Button>}
             </div>
             {editing && <PlanEditorGate kind="reseller" initial={editing} grantorIsReseller={false} onClose={() => setEditing(null)} />}
             <RemoteGate remote={rows} checking={t('plans.checking')} failed={t('plans.unknown')} onRetry={() => void plans.retry()} busy={plans.reading} className="py-3">
@@ -247,7 +252,7 @@ export function ResellerPlansTab() {
                                         <td className="px-4 py-3 text-fg-muted">{plan.resellers ?? 0}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-0.5">
-                                                <IconButton disabled={!known} title={t('plans.edit')} onClick={() => setEditing(editedFromResellerPlan(plan))}><Pencil className="h-4 w-4" /></IconButton>
+                                                <IconButton disabled={!known || editing !== null} title={t('plans.edit')} onClick={() => setEditing(editedFromResellerPlan(plan))}><Pencil className="h-4 w-4" /></IconButton>
                                                 <IconButton danger disabled={!known || busy} title={t('users.delete')} onClick={() => void remove(plan)}><Trash2 className="h-4 w-4" /></IconButton>
                                             </div>
                                         </td>
@@ -275,7 +280,7 @@ function IconButton({ children, title, onClick, danger, disabled }: { children: 
 
 /** One item of the offered layer in words. */
 function offeredLabel(id: string, t: Say): string {
-    return id.startsWith('permission:') ? t(`rights.perm.${id.slice('permission:'.length)}` as TranslationKey) : softwareName(id);
+    return id.startsWith('permission:') ? t(`rights.perm.${id.slice('permission:'.length)}` as TranslationKey) : softwareLabel(id, t);
 }
 
 /**
@@ -340,7 +345,7 @@ export function OfferedItemsTab() {
                                         const heading = softwareGroupName(group);
                                         return (
                                             <div key={group}>
-                                                <p className="mb-1 text-xs font-semibold text-fg-muted">{heading.product ?? t(heading.key === 'acme' ? 'rights.group.acme' : heading.key === 'app' ? 'rights.group.app' : 'rights.group.extension')}</p>
+                                                <p className="mb-1 text-xs font-semibold text-fg-muted">{heading.product ?? t(softwareGroupKey(heading.key))}</p>
                                                 <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{items.map((item) => row(item.id, item.granted))}</ul>
                                             </div>
                                         );

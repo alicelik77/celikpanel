@@ -96,6 +96,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/managed-services":      gateAdmin,
 	"/api/v1/managed-services/scan": gateAdmin,
 	"/api/v1/metrics/history":       gateAdmin,
+	"/api/v1/metrics/problems":      gateAdmin,
 	"/api/v1/my/subscription":       gateAccount, // own subscriptions only
 	"/api/v1/nginx/global":          gateAdmin,
 	"/api/v1/nginx/ratelimits":      gateAdmin,
@@ -196,6 +197,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/dns/infrastructure-zones":         gateAdmin,
 	"/api/v1/dns/infrastructure-zones/":        gateAdmin,
 	"/api/v1/dns/overview":                     gateAdmin,
+	"/api/v1/dns/peer-inspector-tool":          gateAdmin, // 6 Nov 2026: the backup's DNS check tool (admin in handler)
 	"/api/v1/dns/server-hostname":              gateAdmin, // alpha.121: read-only, admin in handler too
 	"/api/v1/dns/remote/accept":                gateAdmin, // machine-verified peers bypass sessions
 	"/api/v1/dns/remote/clients":               gateAdmin,
