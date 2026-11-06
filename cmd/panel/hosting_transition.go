@@ -274,7 +274,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	case errors.Is(err, errHostingPortInUse):
 		writeClientError(w, http.StatusConflict, "the selected application port is already assigned")
 	case errors.Is(err, errHostingPHPMissing):
-		writeHostingPHPRefusal(w, errCodePHPRequired, "/components",
+		writeHostingPHPRefusal(w, errCodePHPRequired, adminInstallAction(r, "php-fpm"),
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
 				"The server administrator installs PHP-FPM from Components, then the site is switched to PHP again.")
 	case errors.As(err, new(*hostingPHPWithdrawnError)):

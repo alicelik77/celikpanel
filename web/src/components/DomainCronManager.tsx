@@ -11,6 +11,7 @@ import { Button, CouldNotCheck, KnownEmpty, inputClass } from './ui';
 import type { Observed } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent } from './CurrentSettings';
 import { confirmAction } from '../lib/confirmAction';
+import { AdminInstallLink } from './AdminInstallLink';
 
 interface CronJob {
     id: string;
@@ -343,7 +344,11 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                     {blocked && (
                         <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 p-3 text-sm leading-relaxed text-fg">
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                            <p className="min-w-0 max-w-[75ch] break-words">{blocked}</p>
+                            <p className="min-w-0 max-w-[75ch] break-words">
+                                {blocked}
+                                {/* alpha.127: the administrator installs cron from here. / Yönetici cron'u buradan kurar. */}
+                                {' '}<AdminInstallLink component="cron" />
+                            </p>
                         </div>
                     )}
                 </div>

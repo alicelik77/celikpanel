@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -42,6 +43,36 @@ type mailClientSetupResponse struct {
 	UsernameIsFullEmail bool               `json:"username_is_full_email"`
 	WebmailAvailable    bool               `json:"webmail_available"`
 	WebmailURL          string             `json:"webmail_url"`
+	// WebmailReason says why webmail is not available (alpha.127, D-024):
+	// not_installed (Roundcube is not on this server), no_address (it has no
+	// address of its own yet, or whether it is installed could not be read)
+	// or not_answering (it has an address but does not answer there). Empty
+	// when webmail is available. Read only: nothing is started.
+	// Web postasının neden kullanılamadığı; yalnız okunur.
+	WebmailReason string `json:"webmail_reason,omitempty"`
+}
+
+const (
+	webmailReasonNotInstalled = "not_installed"
+	webmailReasonNoAddress    = "no_address"
+	webmailReasonNotAnswering = "not_answering"
+)
+
+// webmailUnavailableReason names why webmail has no link, from the stored
+// address and the last component scan. A scan that cannot be read never
+// claims Roundcube is missing.
+func (p *Panel) webmailUnavailableReason(ctx context.Context) string {
+	if _, ok := p.webmailAddress(ctx); ok {
+		return webmailReasonNotAnswering
+	}
+	if p == nil || p.db == nil {
+		return webmailReasonNoAddress
+	}
+	installed := p.cachedInstalledSet(ctx)
+	if installed != nil && !installed[core.RoundcubeServiceID] {
+		return webmailReasonNotInstalled
+	}
+	return webmailReasonNoAddress
 }
 
 func (p *Panel) webmailAvailable(ctx context.Context) bool {
@@ -60,6 +91,10 @@ func (p *Panel) handleMailClientSetup(w http.ResponseWriter, r *http.Request, do
 	// panel's origin), while Roundcube answers.
 	webmailURL := p.webmailLink(r.Context())
 	available := webmailURL != ""
+	reason := ""
+	if !available {
+		reason = p.webmailUnavailableReason(r.Context())
+	}
 	json.NewEncoder(w).Encode(mailClientSetupResponse{
 		MailHost: host,
 		IMAP: mailClientProtocol{
@@ -78,6 +113,7 @@ func (p *Panel) handleMailClientSetup(w http.ResponseWriter, r *http.Request, do
 		UsernameIsFullEmail: true,
 		WebmailAvailable:    available,
 		WebmailURL:          webmailURL,
+		WebmailReason:       reason,
 	})
 }
 

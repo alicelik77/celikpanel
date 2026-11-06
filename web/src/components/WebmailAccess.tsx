@@ -1,6 +1,6 @@
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
-import { decodeMailSetup, mailSetupURL } from '../lib/mailSetup';
+import { decodeMailSetup, mailSetupURL, type WebmailReason } from '../lib/mailSetup';
 import { useRemote } from '../lib/remote';
 import { Link } from '../router';
 import { Checking, CouldNotCheck } from './ui';
@@ -14,8 +14,8 @@ import { Checking, CouldNotCheck } from './ui';
 // Since alpha.110 webmail opens on its own address (https://<host>/), served
 // by the server's own web server and never by the panel. Only that exact
 // address may become a link (see lib/mailSetup.ts: anything else decodes to no
-// link). When there is none, an administrator is told where to set it; anyone
-// else is told it is not available yet.
+// link). When there is none, the card says why (alpha.127): the administrator
+// gets the one action that fixes it, anyone else is told that the provider acts.
 //
 // Bir alan adının posta ekranındaki webmail kartı. Webmail'in kullanılabilir
 // olup olmadığı kiracıya özgü kurulum uç noktasından okunur ve üç şeyden
@@ -42,15 +42,8 @@ export default function WebmailAccess({ domainId }: { domainId: number }) {
                         <p className='text-xs text-fg-muted'>{t('mail.webmail.available')}</p>
                         <p className='break-all text-xs text-fg-muted'>{t('mail.webmail.signIn', { url })}</p>
                     </>
-                ) : isAdmin ? (
-                    <>
-                        <p className='text-xs text-fg-muted'>{t('mail.webmail.noAddressAdmin')}</p>
-                        <Link to='/components/roundcube' className='mt-1 inline-block text-xs font-medium text-primary underline underline-offset-2' data-webmail-set-address=''>
-                            {t('mail.webmail.setAddress')}
-                        </Link>
-                    </>
                 ) : (
-                    <p className='text-xs text-fg-muted'>{t('mail.webmail.unavailable')}</p>
+                    <WebmailMissing reason={remote.value.webmail_reason} isAdmin={isAdmin} />
                 )}
             </div>
             {url && (
@@ -59,5 +52,41 @@ export default function WebmailAccess({ domainId }: { domainId: number }) {
                 </a>
             )}
         </div>
+    );
+}
+
+// Why there is no webmail, who acts and the one next step (alpha.127, owner on
+// Boston: "Webmail is not available on this server yet" said none of these).
+// The administrator gets the action itself: install the Webmail setup (its own
+// install dialog on Components, confirmed there), give Roundcube its address,
+// or open Roundcube when it does not answer. Everyone else is told what is
+// missing and that their provider acts; mail apps keep working meanwhile.
+// Web postası neden yok, kim ne yapar: yönetici tek eylemi alır, diğerleri
+// sağlayıcısına sorar.
+const ADMIN_STEP: Record<WebmailReason, { to: string; label: 'mail.webmail.installAction' | 'mail.webmail.setAddress' | 'mail.webmail.openRoundcube' }> = {
+    not_installed: { to: '/components?bundle=mail.webmail', label: 'mail.webmail.installAction' },
+    no_address: { to: '/components/roundcube', label: 'mail.webmail.setAddress' },
+    not_answering: { to: '/components/roundcube', label: 'mail.webmail.openRoundcube' },
+};
+
+function WebmailMissing({ reason, isAdmin }: { reason: WebmailReason | null; isAdmin: boolean }) {
+    const { t } = useI18n();
+    if (!isAdmin) {
+        return (
+            <p className='text-xs text-fg-muted' data-webmail-missing={reason ?? 'unknown'}>
+                {t('mail.webmail.unavailable')} {t(reason ? `mail.webmail.tenant.${reason}` : 'mail.webmail.tenant.other')}
+            </p>
+        );
+    }
+    const step = reason ? ADMIN_STEP[reason] : { to: '/components/roundcube', label: 'mail.webmail.setAddress' as const };
+    return (
+        <>
+            <p className='text-xs text-fg-muted' data-webmail-missing={reason ?? 'unknown'}>
+                {t(reason ? `mail.webmail.admin.${reason}` : 'mail.webmail.noAddressAdmin')}
+            </p>
+            <Link to={step.to} className='mt-1 inline-flex min-h-[2.75rem] items-center text-xs font-medium text-primary underline underline-offset-2 sm:min-h-0' data-webmail-set-address='' data-webmail-action={reason ?? 'no_address'}>
+                {t(step.label)}
+            </Link>
+        </>
     );
 }

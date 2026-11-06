@@ -84,7 +84,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.ENTITLEMENT_REQUIRED': 'Bu özellik, aboneliğinizde bulunmayan bir eklenti gerektirir.',
     'err.ENTITLEMENT_REQUIRED.action': 'Eklentilere bak',
     'err.FIREWALL_ENGINE_MISSING': 'Güvenlik duvarı motoru (nftables) kurulu değil — önce Bileşenler sayfasından “Güvenlik duvarı motoru” satırını kurun.',
-    'err.FIREWALL_ENGINE_MISSING.action': 'Bileşenler sayfasına git',
+    'err.FIREWALL_ENGINE_MISSING.action': 'Güvenlik duvarı motorunu kur',
     'err.CRON_NOT_INSTALLED': 'Zamanlanmış görevler bu sunucunun cron hizmetini gerektirir ve cron kurulu değil; bu yüzden hiçbir şey değiştirilmedi. Cron’u sunucu sahibi bir kez kurar: CelikPanel’de Bileşenler sayfasını açar ve “Zamanlanmış görevler (cron)” satırını kurar. Ya da sunucuda Debian/Ubuntu’da sudo apt-get install cron, Arch’ta sudo pacman -S cronie ve ardından sudo systemctl enable --now cronie komutlarını çalıştırır. Sonra bu sayfayı yenileyip değişikliği yeniden yapın; hiçbir şey kendiliğinden yeniden denenmez.',
     'err.CRON_NOT_INSTALLED.read': 'Zamanlanmış görevler gösterilemiyor, çünkü bu sunucunun cron hizmeti kurulu değil; cron kurulana kadar hiçbir zamanlanmış görev çalışmaz. Cron’u sunucu sahibi bir kez kurar: CelikPanel’de Bileşenler sayfasını açar ve “Zamanlanmış görevler (cron)” satırını kurar. Ya da sunucuda Debian/Ubuntu’da sudo apt-get install cron, Arch’ta sudo pacman -S cronie ve ardından sudo systemctl enable --now cronie komutlarını çalıştırır. Sonra bu sayfayı yenileyin.',
     'err.CURRENT_SETTINGS_UNREADABLE': 'CelikPanel sunucuda şu an neyin ayarlı olduğunu okuyamadı; bu yüzden hiçbir şey değiştirilmedi. Sayfayı yenileyip tekrar deneyin.',

@@ -26,6 +26,7 @@ import {
     type RuntimeOperation,
 } from '../lib/runtimeApps';
 import { RuntimeAppRisk } from './RuntimeAppRisk';
+import { AdminInstallLink } from './AdminInstallLink';
 
 // The domain's "Programs" tab (alpha.119, docs/RUNTIME-APPS.md): a program the
 // customer uploads (Go, Rust, any program for this server) or a Python web app
@@ -197,12 +198,12 @@ function grantorWords(grantor: string | undefined, t: Translate): string {
 
 // What stands in the way of creating a program (no program yet), most
 // blocking first; each says who acts. null when nothing does.
-function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): { tone: Tone; text: string } | null {
+function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): { tone: Tone; text: string; install?: string } | null {
     if (!view.has_site) return { tone: 'warning', text: t('runtime.block.noSite') };
     if (view.suspended) return { tone: 'warning', text: t('runtime.block.suspended') };
     // Installed before offered: the server's own Python with its venv module.
     if (kind.kind === 'python' && !kind.python?.ready) {
-        return { tone: 'warning', text: t('runtime.python.missing', { detail: kind.python?.detail || '—' }) };
+        return { tone: 'warning', text: t('runtime.python.missing', { detail: kind.python?.detail || '—' }), install: 'python' };
     }
     if (kind.held) return { tone: 'warning', text: t('runtime.block.held') };
     if (!kind.permission_granted) return { tone: 'warning', text: t('runtime.block.notGranted', { grantor: grantorWords(kind.grantor, t) }) };
@@ -244,7 +245,7 @@ function Body({ view, base, after }: { view: RuntimeAppsView; base: string; afte
                     {states.map((code) => <StateNotice key={code} code={code} vars={vars} />)}
                 </div>
             )}
-            {blocker && <Notice tone={blocker.tone}>{blocker.text}</Notice>}
+            {blocker && <Notice tone={blocker.tone}>{blocker.text}{blocker.install && <>{' '}<AdminInstallLink component={blocker.install} /></>}</Notice>}
             {!app && !blocker && !view.certificate && <Notice tone="info">{t('runtime.block.noCertificate', { domain: view.domain })}</Notice>}
             {view.operation && <OperationLine op={view.operation} vars={vars} />}
             {!app && kinds.length > 1 && (

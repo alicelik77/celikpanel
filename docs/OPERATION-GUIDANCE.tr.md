@@ -77,6 +77,29 @@ Kurulum Özeti engelleri `lib/setupProblems.ts` içinde eşlenir; yeni bir engel
 kendi satırını ve iki katalog anahtarını (`setup.problem.<ad>.what/.todo`) ekler.
 Diğer ekranlar bu biçime taşınıyor; denetim listesi tamamlanmadı.
 
+### Kimin yapacağını okuyanın rolü belirler (2026-11-06)
+
+Boston'da sahip "bunları sunucu yöneticisi kurmalı; sağlayıcınıza yazın" ve
+"Web postası bu sunucuda henüz kullanılamıyor" yazılarını gördü. Panel kimin
+yapacağını oturum açan hesabın rolünden belirler. Yönetici nedeni ve onu
+düzelten tek eylemi görür: resmi paketleri yerinde kurmak (panelin kendi
+penceresinde onaylanır, adım adım gösterilir, ekran durumunu yeniden okur) ya
+da bileşenin Bileşenler sayfasındaki kendi kurulum penceresini açmak
+(`AdminInstallLink`, `/components?component=<id>&install=`; hazır kurulum için
+`/components?bundle=<id>`); orada onaylanmadan hiçbir şey başlamaz. Eksik
+bileşen nedeniyle verilen kodlu ret bu eylemi yalnız yöneticiye taşır
+(`adminInstallAction`). Diğer herkese neyin eksik olduğu ve sağlayıcısının,
+yani sunucu yöneticisinin yapacağı söylenir; yönetici eylemi verilmez.
+Yönetici müşteri hesabıyla giriş yaptığında müşteri cümlesi bunu da söyler.
+Kapsanan: Erişim sekmesi (komut satırı araçları, FTP, OpenSSH), web postası
+kartı (neden: kurulu değil, adresi yok, yanıt vermiyor), zamanlanmış görevler
+(cron), veritabanı web araçları, program ve yapay zekâ uygulaması çalışma
+ortamları, ClamAV imzaları ve eksik web sunucusu, PHP, MariaDB ve nftables
+retleri. Henüz kapsanmayan: yüklenen program ve yapay zekâ uygulamalarının
+bekletme, kum havuzu ve sunum notları, Bileşenler'deki PHP aracı notları,
+kurulum sihirbazının depo ve güvenlik duvarı engelleri, posta imzalama hataları
+ve güncelleme ekranlarındaki paket yöneticisi komutları. Denetim tam değildir.
+
 ## Doğruluk ve işlem kimliği
 
 Gözlenmiş hata, eksik önkoşul ve bilinmeyen sonuç birbirinden ayrılır.

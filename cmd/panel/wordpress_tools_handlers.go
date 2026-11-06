@@ -643,7 +643,7 @@ func (p *Panel) handleWordPressClone(w http.ResponseWriter, r *http.Request, dom
 	serverID, err := p.preflightAppDatabase(r.Context(), source.SubscriptionID, databaseName, databaseUser)
 	if errors.Is(err, sql.ErrNoRows) {
 		writeCodedError(w, http.StatusConflict, errCodeWordPressNoMariaDB,
-			"No MariaDB server is installed for this subscription. The administrator installs MariaDB from Components; then start the copy again.", "")
+			"No MariaDB server is installed for this subscription. The administrator installs MariaDB from Components; then start the copy again.", adminInstallAction(r, "mariadb"))
 		return
 	}
 	if errors.Is(err, errAppDatabaseExists) {

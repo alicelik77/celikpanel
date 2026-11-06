@@ -93,7 +93,7 @@ export const enErrorsScreens = {
     'err.ENTITLEMENT_REQUIRED': 'This feature requires an add-on your subscription does not include.',
     'err.ENTITLEMENT_REQUIRED.action': 'View add-ons',
     'err.FIREWALL_ENGINE_MISSING': 'The firewall engine (nftables) is not installed — install “Firewall engine” on the Components page first.',
-    'err.FIREWALL_ENGINE_MISSING.action': 'Go to Components',
+    'err.FIREWALL_ENGINE_MISSING.action': 'Install the firewall engine',
     'err.CRON_NOT_INSTALLED': 'Scheduled tasks need this server’s cron service, and it is not installed, so nothing was changed. The server owner installs it once: in CelikPanel, open Components and install “Scheduled tasks (cron)”. Or, on the server, run sudo apt-get install cron on Debian/Ubuntu, or sudo pacman -S cronie and then sudo systemctl enable --now cronie on Arch. Then refresh this page and make the change again; nothing retries by itself.',
     'err.CRON_NOT_INSTALLED.read': 'Scheduled tasks cannot be shown because this server’s cron service is not installed, and no scheduled task runs until it is. The server owner installs it once: in CelikPanel, open Components and install “Scheduled tasks (cron)”. Or, on the server, run sudo apt-get install cron on Debian/Ubuntu, or sudo pacman -S cronie and then sudo systemctl enable --now cronie on Arch. Then refresh this page.',
     'err.CURRENT_SETTINGS_UNREADABLE': 'CelikPanel could not read what is currently set on the server, so nothing was changed. Reload the page and try again.',

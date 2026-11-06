@@ -52,9 +52,12 @@ test('webmail CTA is safe, read-only accessible, and absent when unavailable', (
   assert.ok(accessSource.includes("target='_blank'"));
   assert.ok(accessSource.includes("rel='noopener noreferrer'"));
   assert.ok(accessSource.includes("t('mail.webmail.unavailable')"));
-  assert.ok(accessSource.includes("t('mail.webmail.noAddressAdmin')"), 'an administrator is told where to set the address');
+  assert.ok(accessSource.includes("'mail.webmail.noAddressAdmin'"), 'an administrator is told where to set the address');
   assert.ok(accessSource.includes("role === 'admin'"));
-  assert.ok(accessSource.includes("to='/components/roundcube'"));
+  // alpha.127: the administrator's one next step follows the reason.
+  assert.ok(accessSource.includes("not_installed: { to: '/components?bundle=mail.webmail', label: 'mail.webmail.installAction' }"));
+  assert.ok(accessSource.includes("no_address: { to: '/components/roundcube', label: 'mail.webmail.setAddress' }"));
+  assert.ok(accessSource.includes("not_answering: { to: '/components/roundcube', label: 'mail.webmail.openRoundcube' }"));
   assert.ok(!accessSource.includes('readOnly'));
 });
 

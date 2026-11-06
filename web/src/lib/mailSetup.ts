@@ -30,7 +30,15 @@ export interface MailSetup {
     // no link (alpha.110).
     // Yalnız web postasının kendi adresi (https://<ad>/) bağlantı olabilir.
     webmail: string | null;
+    // Why there is no webmail link (alpha.127): Roundcube is not installed,
+    // has no address of its own, or does not answer there. null when webmail
+    // is available or an older Panel did not say.
+    // Web postası bağlantısının neden olmadığı.
+    webmail_reason: WebmailReason | null;
 }
+
+export type WebmailReason = 'not_installed' | 'no_address' | 'not_answering';
+const WEBMAIL_REASONS: readonly string[] = ['not_installed', 'no_address', 'not_answering'];
 
 export const mailSetupURL = (domainId: number) => `/api/v1/domains/${domainId}/mail/setup`;
 
@@ -52,5 +60,7 @@ export function decodeMailSetup(raw: unknown): MailSetup {
         smtp: protocol(setup.smtp),
         username_is_full_email: setup.username_is_full_email === true,
         webmail: setup.webmail_available === true ? webmailLinkOrNull(setup.webmail_url) : null,
+        webmail_reason: typeof setup.webmail_reason === 'string' && WEBMAIL_REASONS.includes(setup.webmail_reason)
+            ? setup.webmail_reason as WebmailReason : null,
     };
 }

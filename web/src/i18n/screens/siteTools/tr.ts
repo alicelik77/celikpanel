@@ -80,6 +80,7 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'err.WORDPRESS_CLONE_TARGET_INVALID': 'Hedef olarak aynı aboneliğin boş bir sitesini seçin. Hiçbir şey değişmedi.',
     'err.WORDPRESS_DATABASE_NOT_LINKED': 'Sitenin veritabanı panelde bu alan adına bağlı değil; güvenle yedeklenemez ya da kopyalanamaz. Hiçbir şey değişmedi.',
     'err.WORDPRESS_NO_MARIADB': 'Bu abonelik için kurulu MariaDB sunucusu yok. Yönetici MariaDB’yi Bileşenler’den kurar; sonra yeniden başlatın.',
+    'err.WORDPRESS_NO_MARIADB.action': 'MariaDB’yi kur',
     'err.WORDPRESS_NOT_DETECTED': 'Bu sitede WordPress bulunamadı. Hiçbir şey değişmedi.',
     'err.WORDPRESS_NOT_PHP_SITE': 'WordPress araçları yalnız PHP sitelerinde çalışır. Hiçbir şey değişmedi.',
 
@@ -120,6 +121,7 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'mscan.prereq.MALWARE_SCANNER_UNKNOWN': 'Tarayıcının durumu şu an okunamadı.',
     'mscan.prereq.MALWARE_SCANNER_UNKNOWN.next': 'Biraz sonra yeniden okuyun; sürerse yönetici sunucu ajanını kontrol eder.',
     'mscan.prereq.resumes': 'ClamAV hazır olunca taramayı yeniden başlatın.',
+    'mscan.openClamAV': 'ClamAV’i aç',
     'mscan.signaturesAge': 'İmzalar {hours} saatlik.',
     'mscan.scan.queued': 'Sırasını bekliyor (sunucuda bir seferde bir tarama, düşük öncelikle çalışır).',
     'mscan.scan.running': '{domain} taranıyor (site {done} / {total})…',

@@ -1600,6 +1600,40 @@ export function ServiceList({ onManageService }: ServiceListProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loading, location.search, services, hostMutationReadiness]);
 
+    // ?bundle=<id> (alpha.127): another screen's "Install webmail" opens this
+    // page at that ready setup with its own install dialog, the same one its
+    // chip opens; nothing starts before the owner confirms there. A setup that
+    // is installed or cannot start yet only opens its category, whose strip
+    // says why. The link is used once and leaves the address.
+    // Başka ekranın "Web postasını kur" bağlantısı hazır kurulumun kendi
+    // penceresini açar; sahip onaylamadan hiçbir şey başlamaz.
+    const bundleLinkRef = useRef(false);
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const id = params.get('bundle');
+        if (bundleLinkRef.current || id === null || loading || hostMutationReadiness === null) return;
+        bundleLinkRef.current = true;
+        const bundle = bundles.find((candidate) => candidate.id === id);
+        if (bundle) {
+            setCollapsed((prev) => { const next = new Set(prev); next.delete(bundle.category); return next; });
+            const state = bundleChipState(bundle, bundles);
+            const startable = (state === 'available' || state === 'partial') && !mutationControlsDisabled && !componentOperation.locked
+                && (bundle.action_route !== 'mail_profile' || dnsIdentityReady);
+            if (startable) {
+                if (bundle.action_route === 'mail_profile') openMailBundle(bundle);
+                else openComponentBundle(bundle);
+            } else {
+                const nameOf = (component: string) => componentName(services.find((service) => service.id === component) ?? component, t);
+                showToast('info', t(state === 'verified' || state === 'included' ? 'services.installLinkInstalled' : 'services.installLinkBlocked', { name: bundleName(bundle, t, nameOf) }));
+                window.requestAnimationFrame?.(() => document.querySelector(`[data-bundle-strip="${bundle.category}"]`)?.scrollIntoView({ block: 'start' }));
+            }
+        }
+        params.delete('bundle');
+        const query = params.toString();
+        navigate(location.pathname + (query ? `?${query}` : '') + location.hash, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, location.search, bundles, hostMutationReadiness]);
+
     const confirmComponentAction = async (confirmed: string[] = []) => {
         const action = pendingAction;
         if (!action || hostMutationReadiness?.ready !== true || stateUnverified) return;

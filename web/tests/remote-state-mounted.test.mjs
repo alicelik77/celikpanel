@@ -75,6 +75,8 @@ const stub = dataModule(`
   const i18n = { t: (key) => key, locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => (path) => { globalThis.currentTest.navigated.push(path); };
+  // alpha.127: the administrator's install link; others see the sentence it carries.
+  export const AdminInstallLink = (props) => props.fallback ?? null;
   export const useLocation = () => ({ pathname: '/', search: '', hash: '' });
   export const useAuth = () => ({ role: globalThis.currentTest.role });
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);

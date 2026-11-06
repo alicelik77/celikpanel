@@ -8,6 +8,7 @@ import { Button, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { confirmAction, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 
 // The site's file access (alpha.117): FTP over TLS, SFTP and, when the plan
 // gives the command line, a jailed SSH. The account is the site's own system
@@ -154,7 +155,7 @@ function decodePreview(raw: unknown): Preview {
 const SHOWN_ON_PAGE = new Set(['ftp_not_installed', 'ftp_owner_config', 'ftp_self_signed', 'fail2ban_missing', 'ssh_password_auth_off']);
 const MISSING_PREFIX = 'not on this server: ';
 
-function changeWarnings(answered: Preview, t: (key: TranslationKey) => string): Array<{ key: TranslationKey; vars?: Record<string, string> }> {
+function changeWarnings(answered: Preview, t: (key: TranslationKey) => string, isAdmin: boolean): Array<{ key: TranslationKey; vars?: Record<string, string> }> {
     const out: Array<{ key: TranslationKey; vars?: Record<string, string> }> = [];
     for (const warning of answered.warnings) {
         if (SHOWN_ON_PAGE.has(warning)) continue;
@@ -162,11 +163,13 @@ function changeWarnings(answered: Preview, t: (key: TranslationKey) => string): 
             const note = answered.changes.find((c) => c.kind === 'jail' && c.detail.startsWith(MISSING_PREFIX));
             const names = note ? note.detail.slice(MISSING_PREFIX.length).trim() : '';
             if (names) {
-                out.push({ key: 'fileAccess.warn.jail_programs_missing_named', vars: { names } });
+                out.push({ key: isAdmin ? 'fileAccess.warn.jail_programs_missing_namedAdmin' : 'fileAccess.warn.jail_programs_missing_named', vars: { names } });
                 continue;
             }
         }
-        const key = `fileAccess.warn.${warning}` as TranslationKey;
+        // The administrator is told what to do; everyone else who acts (alpha.127).
+        const adminKey = `fileAccess.warn.${warning}Admin` as TranslationKey;
+        const key = isAdmin && t(adminKey) !== adminKey ? adminKey : `fileAccess.warn.${warning}` as TranslationKey;
         if (t(key) !== key) out.push({ key });
     }
     return out;
@@ -286,7 +289,7 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                             return;
                         }
                         answer.settle();
-                        setLastWarnings(changeWarnings(answered, t));
+                        setLastWarnings(changeWarnings(answered, t, isAdmin));
                         showToast('success', t(wantEnabled ? 'fileAccess.saved' : 'fileAccess.closed'));
                         reset();
                         await access.retry();
@@ -300,29 +303,55 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                 // shown; a lost answer reads the server again (D-024).
                 const tools = view.server?.jailMissing ?? [];
                 const sshBlocked = view.rights.ssh && tools.length > 0 && !current?.ssh;
+                // alpha.127 (owner's order of 6 Nov): installing runs on the
+                // server, so it is asked in the panel's own window and then
+                // shown there, locked, step by step, until it ends; the
+                // option appears without a reload because the access state is
+                // read again before the window says it is done.
+                // Kurulum panelin kendi penceresinde sorulur ve adım adım,
+                // kilitli gösterilir; seçenek sayfa yenilenmeden görünür.
                 const installTools = async () => {
+                    const packages = view.server?.jailPackages ?? [];
+                    if (packages.length === 0 || busy) return;
+                    const names = packages.join(', ');
                     setToolsProblem('');
-                    setBusy(true);
-                    try {
-                        const res = await answer.send('/api/v1/service/file-access-tools', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ packages: view.server?.jailPackages ?? [] }),
-                        });
-                        if (!res) return;
-                        if (!res.ok) {
-                            const error = await readApiError(res);
-                            setToolsProblem(error.code === 'FILE_ACCESS_TOOLS_CHANGED' ? t('fileAccess.sshTools.changed')
-                                : error.code === 'FILE_ACCESS_TOOLS_FAILED' ? t('fileAccess.sshTools.failed', { reason: error.message })
-                                    : error.code === 'FILE_ACCESS_TOOLS_UNSUPPORTED' ? error.message : apiErrorText(error, t));
-                            await access.retry();
-                            return;
-                        }
-                        answer.settle();
-                        showToast('success', t('fileAccess.sshTools.installed'));
-                        await access.retry();
-                    } finally {
-                        setBusy(false);
-                    }
+                    await confirmAction({
+                        title: t('fileAccess.sshTools.confirmTitle', { packages: names }),
+                        message: t('fileAccess.sshTools.confirmMessage', { packages: names }),
+                        confirmLabel: t('fileAccess.sshTools.install'),
+                        progressTitle: t('fileAccess.sshTools.progressTitle', { packages: names }),
+                        action: async (report): Promise<OperationEnd> => {
+                            const installing: OperationStep = { id: 'install', label: t('fileAccess.sshTools.step.install', { packages: names }), state: 'running', since: Date.now() };
+                            const checking: OperationStep = { id: 'check', label: t('fileAccess.sshTools.step.check'), state: 'pending' };
+                            report.steps([installing, checking]);
+                            setBusy(true);
+                            try {
+                                const res = await answer.send('/api/v1/service/file-access-tools', {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ packages }),
+                                });
+                                // No answer: the guard reads the server again; nothing is sent twice.
+                                if (!res) return { state: 'unknown', reason: t('common.resultUnknown') };
+                                if (!res.ok) {
+                                    const error = await readApiError(res);
+                                    const reason = error.code === 'FILE_ACCESS_TOOLS_CHANGED' ? t('fileAccess.sshTools.changed')
+                                        : error.code === 'FILE_ACCESS_TOOLS_FAILED' ? t('fileAccess.sshTools.failed', { reason: error.message })
+                                            : error.code === 'FILE_ACCESS_TOOLS_UNSUPPORTED' ? error.message : apiErrorText(error, t);
+                                    setToolsProblem(reason);
+                                    report.steps([{ ...installing, state: 'failed' }, checking]);
+                                    await access.retry();
+                                    return { state: error.code === 'FILE_ACCESS_TOOLS_CHANGED' ? 'blocked' : 'failed', reason };
+                                }
+                                answer.settle();
+                                report.steps([{ ...installing, state: 'done' }, { ...checking, state: 'running', since: Date.now() }]);
+                                await access.retry();
+                                report.steps([{ ...installing, state: 'done' }, { ...checking, state: 'done' }]);
+                                return { state: 'done', message: t('fileAccess.sshTools.installed') };
+                            } finally {
+                                setBusy(false);
+                            }
+                        },
+                    });
                 };
 
                 return (
@@ -500,7 +529,7 @@ function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean 
     else if (account && !account.homeMatches) notes.push({ tone: 'danger', key: 'fileAccess.block.accountMismatch' });
     const server = view.server;
     if (server) {
-        if (!server.sshdPresent) notes.push({ tone: 'danger', key: 'fileAccess.block.noSSHD' });
+        if (!server.sshdPresent) notes.push({ tone: 'danger', key: isAdmin ? 'fileAccess.block.noSSHDAdmin' : 'fileAccess.block.noSSHD' });
         if (server.sshDropIn === 'owner') notes.push({ tone: 'danger', key: 'fileAccess.block.sshOwner' });
         if (account?.keysFile === 'owner') notes.push({ tone: 'warning', key: 'fileAccess.block.keysOwner' });
         if (server.passwordAuthentication === 'no') notes.push({ tone: 'warning', key: 'fileAccess.block.passwordAuthOff' });
@@ -547,7 +576,7 @@ function SSHToolsNotice({ server, isAdmin, kept, busy, disabled, problem, onInst
         <div role="status" className="space-y-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-fg">
             <p>{t('fileAccess.sshTools.missing', { names })}</p>
             {kept && <p>{t('fileAccess.sshTools.kept')}</p>}
-            {server.jailUnknown.length > 0 && <p>{t('fileAccess.sshTools.unknown', { names: server.jailUnknown.join(', ') })}</p>}
+            {server.jailUnknown.length > 0 && <p>{t(isAdmin ? 'fileAccess.sshTools.unknownAdmin' : 'fileAccess.sshTools.unknown', { names: server.jailUnknown.join(', ') })}</p>}
             {isAdmin && server.jailPackages.length > 0 ? (
                 <>
                     <p>{t('fileAccess.sshTools.admin', { packages: server.jailPackages.join(', ') })}</p>

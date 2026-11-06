@@ -14,6 +14,7 @@ import {
     type ServiceAppInstall,
     type ServiceAppOperation,
 } from '../lib/serviceApps';
+import { AdminInstallLink } from './AdminInstallLink';
 import { ServiceAppRisk } from './ServiceAppRisk';
 
 // The domain's "AI & automation" tab (alpha.118, docs/AI-APPS.md): the apps
@@ -143,6 +144,15 @@ function OperationLine({ op }: { op: ServiceAppOperation }) {
     return null;
 }
 
+// alpha.127: the component the administrator installs so the app can be
+// installed here (Node.js, or Python whose package brings venv); none when
+// the app is closed for another reason.
+// Uygulamanın burada kurulabilmesi için yöneticinin kuracağı bileşen.
+function missingComponent(app: DomainServiceAppEntry): string | null {
+    if (app.deferred || app.held || !app.offered || app.available) return null;
+    return app.reason === 'runtime_missing' ? 'node' : app.reason === 'venv_missing' ? 'python' : null;
+}
+
 function closedReason(app: DomainServiceAppEntry, t: (key: TranslationKey, vars?: Record<string, string | number>) => string): string {
     if (app.deferred) return t(('svcapps.deferred.' + app.deferred) as TranslationKey);
     if (app.held) return t('svcapps.heldNote');
@@ -170,7 +180,7 @@ function Catalog({ view, onInstall }: { view: DomainServiceAppsView; onInstall: 
                             </div>
                             <Button variant="primary" disabled={blocked || why !== ''} onClick={() => onInstall(app)}>{t('svcapps.install')}</Button>
                         </div>
-                        {why && <p className="mt-2 text-sm text-warning">{why}</p>}
+                        {why && <p className="mt-2 text-sm text-warning">{why}{missingComponent(app) && <>{' '}<AdminInstallLink component={missingComponent(app)!} /></>}</p>}
                         <details className="mt-3">
                             <summary className="cursor-pointer text-sm text-primary">{t('svcapps.risk.canDo')} · {t('svcapps.risk.remains')}</summary>
                             <div className="mt-3"><ServiceAppRisk app={app} /></div>

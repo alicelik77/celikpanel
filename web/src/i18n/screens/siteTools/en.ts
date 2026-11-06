@@ -89,6 +89,7 @@ export const enSiteToolsScreens = {
     'err.WORDPRESS_CLONE_TARGET_INVALID': 'Choose an empty site of the same subscription as the target. Nothing was changed.',
     'err.WORDPRESS_DATABASE_NOT_LINKED': 'The site’s database is not linked to this domain in the panel, so it cannot be backed up or copied safely. Nothing was changed.',
     'err.WORDPRESS_NO_MARIADB': 'No MariaDB server is installed for this subscription. The administrator installs MariaDB from Components; then start again.',
+    'err.WORDPRESS_NO_MARIADB.action': 'Install MariaDB',
     'err.WORDPRESS_NOT_DETECTED': 'WordPress was not found on this site. Nothing was changed.',
     'err.WORDPRESS_NOT_PHP_SITE': 'WordPress tools work on PHP sites only. Nothing was changed.',
 
@@ -130,6 +131,7 @@ export const enSiteToolsScreens = {
     'mscan.prereq.MALWARE_SCANNER_UNKNOWN': 'The scanner’s state could not be read now.',
     'mscan.prereq.MALWARE_SCANNER_UNKNOWN.next': 'Read again in a moment; if it stays, the administrator checks the server agent.',
     'mscan.prereq.resumes': 'Start the scan again once ClamAV is ready.',
+    'mscan.openClamAV': 'Open ClamAV',
     'mscan.signaturesAge': 'Signatures are {hours} hour(s) old.',
     'mscan.scan.queued': 'Waiting for its turn (one scan runs at a time on the server, at low priority).',
     'mscan.scan.running': 'Scanning {domain} (site {done} of {total})…',

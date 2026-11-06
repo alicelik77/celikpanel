@@ -75,6 +75,29 @@ warning toasts stay until closed. Setup Summary blockers are mapped in
 (`setup.problem.<name>.what/.todo`). Other screens are being moved to the pattern;
 the audit list is not complete.
 
+### Who acts is the reader's role (2026-11-06)
+
+On Boston the owner read "the server administrator must install them; ask your
+provider" and "Webmail is not available on this server yet". The panel decides
+who acts from the signed-in role. The administrator gets the reason and one
+action that fixes it: install the official packages in place (confirmed in the
+panel's own window, then shown step by step, and the screen reads its state
+again), or open that component's own install window on Components
+(`AdminInstallLink`, `/components?component=<id>&install=`; for a ready setup,
+`/components?bundle=<id>`), where nothing starts before it is confirmed. A
+coded refusal caused by a missing component carries that action only for the
+administrator (`adminInstallAction`). Everyone else is told what is missing
+and that their provider, the server's administrator, acts; they get no
+administrator action. When an administrator signs in with a customer account,
+the customer sentence says so. Covered: the Access tab (command-line tools,
+FTP, OpenSSH), the webmail card (reason: not installed, no address, not
+answering), scheduled tasks (cron), database web tools, program and AI-app
+runtimes, ClamAV signatures, and the refusals for a missing web server, PHP,
+MariaDB and nftables. Not yet covered: the uploaded-program and AI-app
+held, sandbox and offer notices, the PHP tool notes on Components, the setup
+wizard's repository and firewall blockers, mail signing failures and the
+package-manager commands on the update screens. The audit is not complete.
+
 ## Truth and operation identity
 
 Separate an observed failure from an unmet prerequisite and an unknown result.
