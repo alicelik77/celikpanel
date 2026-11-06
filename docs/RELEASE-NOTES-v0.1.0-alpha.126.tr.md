@@ -100,7 +100,35 @@ hatanın kendiliğinden kalkacağını söyler.
 
 ## Laboratuvar sonuçları
 
-_Laboratuvar turundan sonra doldurulacak._
+Sahibinkine benzer kurulmuş bir laboratuvar sunucu çiftinde (Debian 13
+üzerinde PowerDNS ana sunucu, Ubuntu 24.04 üzerinde BIND yedek; bu BIND her
+yerel adreste iki kez dinliyor) sürüm adayından derlenerek denendi:
+
+- **alpha.125'ten kalan takılı silme güncellemeden sonra biter.** alpha.125
+  üzerinde bir alan adı silme, sahibin sunucularındaki gibi takıldı. Önce
+  yedek sunucu güncellenince DNS denetim aracı yenilendi (eski kopya ve bir
+  kayıt saklandı) ve silme, ajan yeniden başladıktan yaklaşık 32 saniye sonra
+  kendiliğinden bitti. Ters sırada yedek sunucu güncellenene kadar bekledi,
+  sonra 40 saniyede bitti. Kullanıcılar sayfasındaki trafik uyarısı kalktı.
+- **Yeni silme:** panelin kendi onay penceresi; üç tıklama tek istek
+  gönderdi; adımlar canlı göründü; 36 saniye sonra "Tamamlandı"; liste
+  sayfa yenilenmeden güncellendi. Tekrarlanan istek "silme zaten sürüyor"
+  yanıtı aldı ve tek bir silme çalıştı.
+- **Tarayıcı penceresi yok:** panelin sunduğu 347 betik dosyasının hiçbirinde
+  yok.
+- **Planlar:** alpha.125'te 14 yazılımla kaydedilmiş bir plan artık
+  seçilebilen 5 yazılımı gösteriyor. Form açıkken "Plan ekle" gizleniyor.
+- **İzleme:** 2 çekirdekli sunucuda tam dolu bir çekirdek yaklaşık %50
+  okunuyor; durdurulmuş posta hizmeti Başlat düğmesiyle görünüyor ve
+  başlatınca kayboluyor.
+- **Arka plan bekçisi:** boşta her çalışmada 4–11 ms işlemci zamanı. Bilerek
+  bozulan bir güncelleme kendiliğinden geri alındı ("Geri alma tamamlandı")
+  ve sonraki deneme başarısız hizmet bırakmadan başarılı oldu.
+- **125 → 126 güncellemesi** iki sunucuda da ilk basışta 63–72 saniyede,
+  başarısız hizmet olmadan tamamlandı.
+
+Kanıt: laboratuvar dalında `deploy/e2e/dns-pair-acceptance/evidence/a126`
+(commit `c816cb3ed`).
 
 ## Bilinen sınırlar
 
@@ -116,7 +144,13 @@ _Laboratuvar turundan sonra doldurulacak._
   DNS denetim aracını yerinde bırakır (aynı istek biçimini konuşur; eski
   program `/var/lib/celikpanel-agent-private/dns-check-tool/` altında
   saklanır).
-- Ubuntu 22.04 üzerinde güncelleme alpha.125 laboratuvarında denenmedi.
+- Ubuntu 22.04 üzerinde güncelleme alpha.125 ve alpha.126 laboratuvarlarında denenmedi.
+- alpha.125'te takılan bir silmeden kalan boş site trafiği klasörü yerinde
+  kalır (zararsızdır, içi boştur); yeni silmeler kendi klasörünü kaldırır.
+- İlk girişteki tanıtım turu ilerleme penceresinin üstünde açılabilir.
+- Posta sunucusu olmayan bir sunucuda güncellemeden sonra sistem kaydı,
+  Postfix kurulu olmadığı için posta sertifikası yayınının atlandığını
+  yazar. Hiçbir şey bozulmaz; ifade alpha.127'de sadeleşecek.
 - Önceki sınırlar sürüyor: yedek sunucusu olan PowerDNS ana sunucusunda DNSSEC
   imzalama yok; site cron çıktısı postayla gönderilmiyor ve saklanmıyor;
   kurulum makinenin kendi adı için AAAA (IPv6) kaydı eklemiyor.

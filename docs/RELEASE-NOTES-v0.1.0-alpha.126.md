@@ -97,7 +97,35 @@ it clears by itself.
 
 ## Lab results
 
-_To be filled in after the lab round._
+Tested on a pair of lab servers set up like the owner's (PowerDNS main on
+Debian 13, BIND backup on Ubuntu 24.04, whose BIND listens twice on each
+loopback address), built from the release candidate:
+
+- **Stuck deletion from alpha.125 finishes after the update.** On alpha.125
+  a domain deletion stuck exactly as on the owner's servers. Updating the
+  backup server first replaced its DNS check tool (the old copy and a record
+  kept) and the deletion finished by itself about 32 seconds after the
+  agent restarted. In the other order it stayed pending until the backup
+  server was updated, then finished in 40 seconds. The users-page traffic
+  warning disappeared.
+- **Fresh deletion:** the panel's own confirm window; three clicks sent one
+  request; live steps; "Completed" after 36 seconds; the list refreshed
+  without reloading. A repeated request got "deletion already running" and
+  only one run happened.
+- **No browser dialogs:** none in any of the 347 script files the panel
+  serves.
+- **Plans:** a plan saved on alpha.125 with 14 software items now shows the
+  5 that can be chosen. "Add plan" is hidden while the form is open.
+- **Monitoring:** one fully busy core on a 2-core server reads about 50 %;
+  a stopped mail service appears with a Start button and clears after it.
+- **Background watchdog:** 4–11 ms of processor time per idle run. A forced
+  failed update was rolled back by itself ("Rollback complete") and the next
+  attempt succeeded with no failed services.
+- **Update 125 → 126** succeeded on the first press on both servers in
+  63–72 seconds, with no failed services.
+
+Evidence: `deploy/e2e/dns-pair-acceptance/evidence/a126` on the lab branch
+(commit `c816cb3ed`).
 
 ## Known limits
 
@@ -111,7 +139,14 @@ _To be filled in after the lab round._
 - Rolling back to alpha.125 or earlier keeps the newer DNS check tool on the
   backup DNS server (it speaks the same request format; the older program is
   kept in `/var/lib/celikpanel-agent-private/dns-check-tool/`).
-- The update on Ubuntu 22.04 was not run in the alpha.125 lab.
+- The update on Ubuntu 22.04 was not run in the alpha.125 or alpha.126 lab.
+- An emptied site-traffic folder left behind by a deletion stuck on alpha.125
+  stays in place (it is harmless and holds nothing); new deletions remove
+  theirs.
+- The first-login tour can open above the progress window.
+- On a server without a mail server, the system log after an update notes
+  that publishing the mail certificate was skipped because Postfix is not
+  installed. Nothing fails; the wording will be quieter in alpha.127.
 - Earlier limits still apply: DNSSEC signing for a PowerDNS main server with
   a backup server is not implemented; site cron output is not mailed or
   kept; no AAAA (IPv6) record for the machine's own name in setup.
