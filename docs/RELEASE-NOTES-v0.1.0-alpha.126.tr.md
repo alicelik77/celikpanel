@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.126.md)
 
+> **Yayımlandı**, 6 Kasım 2026 (UTC): sürüm commit'i `14a90360c`, GitHub ön sürümü 16:26:12Z, indirme portalı yaklaşık 16:31Z (dış denetim 27/27).
+
 Panel artık sorularını kendi penceresinde soruyor ve onaylanan her değişikliği
 çalışırken adım adım gösteriyor. Bağlı bir sunucuda sonsuza dek "siliniyor"
 durumunda kalan alan adı silme sorunu düzeltildi; takılı kalan silme
