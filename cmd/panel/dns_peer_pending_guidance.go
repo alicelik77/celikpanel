@@ -87,7 +87,9 @@ func dnsPeerInspectorDetailEnglish(detail string) string {
 	case transport.DNSPeerInspectorReasonNamedUnavailable:
 		return "The secondary's inspector reported that named is not running under its standard service and configuration, or that its configuration could not be read."
 	case transport.DNSPeerInspectorReasonListenersUnverified:
-		return "The secondary's inspector reported that named's DNS or control (rndc) listeners do not match the enrolled address and loopback."
+		// 6 Nov 2026: usually an older check tool; the backup's own Agent
+		// puts the current one in place when that server is updated.
+		return "The backup DNS server's check tool could not confirm named's listeners. This is usually an older check tool: CelikPanel puts its current one in place when the backup DNS server is updated, and this deletion is checked again by itself. Nobody needs to do anything. Only if the check tool was changed by hand does the backup DNS server's DNS page show the one command to run."
 	case transport.DNSPeerInspectorReasonCatalogUnverified:
 		return "The secondary's inspector reported that named does not hold the primary's catalog zone as a subscribed secondary zone."
 	case transport.DNSPeerInspectorReasonCatalogTransferFailed:

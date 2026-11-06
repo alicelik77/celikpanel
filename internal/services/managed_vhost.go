@@ -1213,7 +1213,8 @@ func stripManagedHeaderWith(prefix string, content []byte) []byte {
 // RemoveSiteVhost removes a deleted site's vhost the way RemoveVhost always
 // did, after keeping a copy of a file that is not the Panel's unchanged text
 // beside it. The owner include directory and everything in it are left; the
-// Panel's pending file is removed.
+// directory itself goes only when it is empty (CelikPanel made it for the
+// site; nothing of the owner's is in it). The Panel's pending file is removed.
 // RemoveSiteVhost, silinen sitenin vhost'unu kaldırır; Panel'in değişmemiş
 // metni olmayan dosyanın bir kopyasını önce yanında bırakır.
 func (ng *NginxGenerator) RemoveSiteVhost(domain string) (string, error) {
@@ -1236,8 +1237,23 @@ func (ng *NginxGenerator) RemoveSiteVhost(domain string) (string, error) {
 	}
 	removeStalePending(available)
 	removePanelManagedDir(domain)
+	removeEmptyOwnerIncludeDir(domain)
 	RemoveSiteAuthFiles(domain)
 	return backup, nil
+}
+
+// removeEmptyOwnerIncludeDir removes a deleted site's owner include
+// directory only when it is an empty real directory: until 6 Nov 2026 an
+// empty /etc/nginx/celikpanel-sites.d/<domain> stayed behind after every
+// site deletion. os.Remove refuses a directory with anything in it, so an
+// owner's addition is never touched.
+func removeEmptyOwnerIncludeDir(domain string) {
+	nginxMutationMu.Lock()
+	defer nginxMutationMu.Unlock()
+	directory := OwnerIncludeDir(domain)
+	if info, err := os.Lstat(directory); err == nil && info.IsDir() {
+		_ = os.Remove(directory) // fails, and leaves it, when not empty
+	}
 }
 
 // removePanelManagedDir removes a deleted site's challenge file when it is

@@ -751,6 +751,12 @@ func main() {
 	if err := reconcileSystemUpdatesAtStartup(); err != nil {
 		log.Fatalf("Failed to reconcile system update state: %v", err)
 	}
+	// 6 Nov 2026: the backup's DNS check tool is CelikPanel's helper; this
+	// release's copy is put in place once per start, only over a shipped or
+	// missing file (dns_peer_inspector_tool_linux.go). Before the RPC
+	// service starts, so a deletion re-checked after the update already
+	// meets the new tool.
+	reconcileDNSPeerInspectorToolsAtStartup()
 
 	go runMailHostCertificateRenewalWorker()
 	// alpha.118 (D-044): read the per-site traffic logs every minute.

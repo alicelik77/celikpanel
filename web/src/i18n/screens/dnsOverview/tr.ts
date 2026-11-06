@@ -277,4 +277,5 @@ export const trDnsOverviewScreens: Record<DnsOverviewScreenKey, string> = {
     "dnsov.site.keptNext": "Kayıt düzenleyicide onları bu sunucuya ({ip}) yönlendirin ya da oldukları gibi bırakın.",
     "dnsov.site.keptThen": "Bu adlar buraya yönelince site onlarda da açılır; diğer adlar zaten açılıyor.",
     "dnsov.site.openDNS": "DNS sayfasını aç",
+    "dnsov.checkTool.ownerChanged": "Bu sunucudaki DNS denetim aracı elle değiştirilmiş; CelikPanel onu korur ve değiştirmez. Ana DNS sunucusundaki silmeler, araç yeniden CelikPanel'in olana kadar bekler. Bu sürümün denetim aracını kullanmak için sunucu yöneticisi bu sunucuda şu komutu bir kez çalıştırır:",
 };

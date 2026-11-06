@@ -1717,6 +1717,7 @@ func main() {
 	http.HandleFunc(infrastructureDNSZonesPath+"/", panel.handleInfrastructureDNSZones)
 	http.HandleFunc("/api/v1/dns/engine", panel.handleDNSEngine)
 	http.HandleFunc(dnsOverviewPath, panel.handleDNSOverview)
+	http.HandleFunc(dnsPeerInspectorToolPath, panel.handleDNSPeerInspectorTool)
 	http.HandleFunc("/api/v1/dns/engine/reconcile", panel.handleDNSEngineReconcile)
 	http.HandleFunc("/api/v1/dns/engine/switch/preview", panel.handleDNSEngineSwitchPreview)
 	http.HandleFunc("/api/v1/dns/engine/switch", panel.handleDNSEngineSwitch)

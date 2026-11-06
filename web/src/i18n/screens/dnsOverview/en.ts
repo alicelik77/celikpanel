@@ -276,6 +276,7 @@ export const enDnsOverviewScreens = {
     "dnsov.site.keptNext": "Point them to this server ({ip}) in the record editor, or keep them as they are.",
     "dnsov.site.keptThen": "The site answers on these names once they point here; the other names already do.",
     "dnsov.site.openDNS": "Open the DNS page",
+    "dnsov.checkTool.ownerChanged": "The DNS check tool on this server was changed by hand, so CelikPanel kept it and does not replace it. Deletions on the main DNS server wait until it is CelikPanel's again. To use this version's check tool, the server administrator runs this command once on this server:",
 } as const;
 
 export type DnsOverviewScreenKey = keyof typeof enDnsOverviewScreens;

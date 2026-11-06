@@ -285,8 +285,9 @@ var errDNSProducerCatalogRestampedBeforeChallenge = errors.New(
 // admitted by the rechecks of the challenge's own publication (final alpha.113
 // acceptance run 4, D7). The written challenge binds the previous serial; it
 // is not sent, no inspection was opened, and the next challenge of the same
-// operation supersedes it in the journal (pdnspeerjournal admits a higher
-// serial over the identical member set). It is the before-challenge sentinel
+// operation supersedes it in the journal (pdnspeerjournal, and since 6 Nov
+// 2026 the BIND-backup dnspeerjournal too, admit a higher serial over the
+// identical member set). It is the before-challenge sentinel
 // for the wave: the re-stamped pair is proved again first. Each occurrence
 // needs an admitted re-stamp, so dnsProducerCatalogRestampLimit bounds it.
 var errDNSProducerCatalogRestampedBeforeExchange = fmt.Errorf(
