@@ -408,6 +408,10 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	if !resp.Success || resp.Error != "" {
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, resp.Error)
+		// alpha.128: a stopped restore says how, with the engine's reason.
+		if writeRestoreFailure(w, resp) {
+			return
+		}
 		writeAgentError(w, nil, resp.Error)
 		return
 	}

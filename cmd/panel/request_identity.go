@@ -268,6 +268,10 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteSiteConfigRecreate, true
 		case "site-config-apply":
 			return requestIdentityRouteSiteConfigApply, true
+		default:
+			if route, ok := databaseToolsIdentityRoute(match.kind); ok {
+				return route, true
+			}
 		}
 	case strings.HasPrefix(path, "/api/v1/database-users/"):
 		if match, ok := matchDatabaseSubroute(r, "/api/v1/database-users/"); ok && match.kind == "user-password" {

@@ -501,6 +501,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 				return domainSubroute{}, false
 			}
 			match.kind, match.methods = "database-delete", []string{http.MethodDelete}
+		} else if kind, methods, ok := matchDatabaseToolsRoute(tail); ok {
+			// alpha.128 (G7): the tools of one database.
+			match.kind, match.methods = kind, methods
 		} else {
 			return domainSubroute{}, false
 		}
@@ -570,6 +573,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainDatabases(w, r)
 	case "database-delete":
 		p.handleDeleteDatabase(w, r)
+	case "database-tools", "database-export", "database-import", "database-import-upload", "database-copy", "database-check":
+		p.handleDatabaseTools(w, r, match.domainID, match.kind)
 	case "files":
 		p.handleDomainFiles(w, r)
 	case "files-download":
