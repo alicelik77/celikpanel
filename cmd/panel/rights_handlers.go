@@ -127,7 +127,7 @@ func applyGrantRevoke(base rightsSet, grant, revoke []string, candidates []strin
 			}
 			out.AllSoftware = false
 			for _, id := range candidates {
-				if validOfferingID(id) {
+				if customerOffering(id) {
 					out.Items[id] = true
 				}
 			}
@@ -147,7 +147,8 @@ func applyGrantRevoke(base rightsSet, grant, revoke []string, candidates []strin
 		if strings.HasPrefix(item, permissionItemHead) && out.AllPermissions {
 			continue
 		}
-		if !strings.HasPrefix(item, permissionItemHead) && out.AllSoftware {
+		if !strings.HasPrefix(item, permissionItemHead) && (out.AllSoftware || !customerOffering(item)) {
+			// A server component is not software an account chooses.
 			continue
 		}
 		out.Items[item] = true

@@ -121,6 +121,33 @@ func validOfferingID(id string) bool {
 	return true
 }
 
+// customerOfferingComponents are the components an account chooses itself
+// (6 Nov 2026): a PHP or Node.js version for a site, the server's Python
+// for an app, and a database engine. Everything else installed (nginx,
+// bind, postfix, dovecot, cron, certbot, nftables, rspamd ...) is the
+// server's own infrastructure: no account picks it, so it is never plan
+// "software". Before this, every installed component was a candidate and
+// "all software" expanded into saved plans (a reseller plan read "14
+// software").
+var customerOfferingComponents = map[string]bool{
+	"php-fpm": true, "node": true, "python": true, "mariadb": true, "postgresql": true,
+}
+
+// customerOffering: an offering id an account can actually be given. A
+// component outside customerOfferingComponents is not one. Saved rows that
+// name such a component are kept as they are and ignored when read (they
+// never granted or refused anything).
+func customerOffering(id string) bool {
+	if !validOfferingID(id) {
+		return false
+	}
+	if rest, ok := strings.CutPrefix(id, "component:"); ok {
+		component, _, _ := strings.Cut(rest, ":")
+		return customerOfferingComponents[component]
+	}
+	return true
+}
+
 // validRightsItem: "permission:<known id>" or a valid offering id.
 func validRightsItem(item string) bool {
 	if id, ok := strings.CutPrefix(item, permissionItemHead); ok {
@@ -281,6 +308,11 @@ func (pl rightsPayload) set() (rightsSet, error) {
 		if !validOfferingID(id) {
 			return s, fmt.Errorf("%w: software %q", errUnknownRightsItem, id)
 		}
+		if !customerOffering(id) {
+			// An earlier screen may send back a server component it was
+			// given; it is not software an account chooses: dropped.
+			continue
+		}
 		if !pl.AllSoftware {
 			s.Items[id] = true
 		}
@@ -320,7 +352,9 @@ func loadRightsSet(ctx context.Context, q rowQueryer, ownerKind string, ownerID 
 			return rightsSet{}, false, err
 		}
 		// An item this release does not know grants nothing (fail closed).
-		if validRightsItem(item) {
+		// A server component an earlier release wrote into a plan is not
+		// software an account chooses: ignored, the row is kept.
+		if validRightsItem(item) && (strings.HasPrefix(item, permissionItemHead) || customerOffering(item)) {
 			s.Items[item] = true
 		}
 	}

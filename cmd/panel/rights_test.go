@@ -829,3 +829,65 @@ func TestSubscriptionLifecycleReading(t *testing.T) {
 		t.Fatalf("missing subscription = %v", err)
 	}
 }
+
+// 6 Nov 2026: every installed component (nginx, bind, postfix, dovecot,
+// cron, certbot, nftables, rspamd ...) was plan "software", and "all
+// software" copied them into saved plans (a reseller plan read "14
+// software"). Only what an account chooses is software now; saved rows
+// that name a server component are kept and ignored.
+func TestPlanSoftwareIsOnlyWhatAnAccountChooses(t *testing.T) {
+	for id, want := range map[string]bool{
+		"component:php-fpm:8.3": true, "component:node:22": true, "component:python:3.12": true,
+		"component:mariadb": true, "component:postgresql": true, "component:postgresql:17": true,
+		"integration:acme:letsencrypt": true, "app:wordpress": true, "runtime:program": true,
+		"component:nginx": false, "component:bind": false, "component:postfix": false, "component:dovecot": false,
+		"component:cron": false, "component:certbot": false, "component:nftables": false, "component:rspamd": false,
+		"component:../x": false,
+	} {
+		if got := customerOffering(id); got != want {
+			t.Errorf("customerOffering(%q) = %v, want %v", id, got, want)
+		}
+	}
+	// "All software" expanded over candidates that still name server
+	// components (an older installed list) keeps only account software.
+	out, err := applyGrantRevoke(allOfferedRightsSet(), []string{"component:bind"}, []string{"component:php-fpm:8.5"},
+		[]string{"component:php-fpm:8.3", "component:php-fpm:8.5", "component:nginx", "component:postfix", "component:mariadb"}, false)
+	if err != nil || out.AllSoftware {
+		t.Fatalf("expand: %+v %v", out, err)
+	}
+	if got := out.softwareList(); strings.Join(got, ",") != "component:mariadb,component:php-fpm:8.3" {
+		t.Fatalf("expanded software = %v", got)
+	}
+	// A screen that sends a server component back: dropped, not refused.
+	set, err := rightsPayload{Software: []string{"component:nginx", "component:node:22"}}.set()
+	if err != nil || strings.Join(set.softwareList(), ",") != "component:node:22" {
+		t.Fatalf("payload = %+v %v", set, err)
+	}
+	// A plan saved by an earlier release: its rows stay, the server
+	// components are ignored when read.
+	f := newRightsFixture(t)
+	ctx := context.Background()
+	db := f.panel.db.GetDB()
+	if err := saveRightsSet(ctx, db, rightsOwnerReseller, 9702, newRightsSet(true, false, "component:php-fpm:8.3")); err != nil {
+		t.Fatal(err)
+	}
+	var setID int
+	if err := db.QueryRow(`SELECT id FROM rights_sets WHERE owner_kind = ? AND owner_id = ?`, rightsOwnerReseller, 9702).Scan(&setID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO rights_set_items (set_id, item) VALUES (?, 'component:nginx'), (?, 'component:dovecot')`, setID, setID); err != nil {
+		t.Fatal(err)
+	}
+	loaded, found, err := loadRightsSet(ctx, db, rightsOwnerReseller, 9702)
+	if err != nil || !found || strings.Join(loaded.softwareList(), ",") != "component:php-fpm:8.3" || !loaded.AllPermissions {
+		t.Fatalf("loaded = %+v %v %v", loaded, found, err)
+	}
+	var rows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM rights_set_items WHERE set_id = ?`, setID).Scan(&rows); err != nil || rows != 3 {
+		t.Fatalf("saved rows were rewritten: %d %v", rows, err)
+	}
+	// Removing a server component withdraws nothing from plans.
+	if exact, base := removalOfferingIDs("nginx", ""); len(exact) != 0 || base != "" {
+		t.Fatalf("removal of nginx names plan items: %v %q", exact, base)
+	}
+}
