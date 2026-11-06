@@ -1727,6 +1727,8 @@ func main() {
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
 	http.HandleFunc(malwarePath, panel.handleMalware)
+	// alpha.127: the live step of a change this person sent (read only).
+	http.HandleFunc(operationProgressPath, panel.handleOperationProgress)
 
 	// System SQLite maintenance is a fixed-ID, administrator-only surface.
 	// Sistem SQLite bakımı, sabit kimlikli ve yalnız yöneticiye açık bir yüzeydir.

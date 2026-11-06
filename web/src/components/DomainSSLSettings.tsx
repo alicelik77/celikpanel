@@ -14,6 +14,7 @@ import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
 import { confirmAction } from '../lib/confirmAction';
+import { followRequestProgress, resumeRequestProgress, sslIssueSteps } from '../lib/requestProgress';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -337,6 +338,21 @@ export function DomainSSLSettings({
         return loadSSLData();
     };
 
+    // A certificate request this tab sent and the page reloaded during: the
+    // locked window reopens at the server's step and says how it ended (reads only).
+    // Bu sekmenin gönderdiği ve sayfa yenilenirken süren istek yeniden izlenir.
+    useEffect(() => {
+        resumeRequestProgress({
+            key: `ssl.${domainId}`,
+            labels: (kept) => sslIssueSteps(t, domainName, kept.authority ?? provider),
+            t,
+            progressTitle: () => t('opstep.ssl.title', { name: domainName }),
+            refusedSentence: 'ssl.issueFailed',
+            ended: () => { void loadSSLData(); },
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [domainId]);
+
     // allowNotPointed: the owner states the names are behind a proxy such as
     // Cloudflare. Only the "not pointed here" check is skipped, by the server
     // too; a failure is then the certificate authority's own answer.
@@ -361,14 +377,17 @@ export function DomainSSLSettings({
                       : 'ssl.issueConfirm';
         const authority = providers.find((candidate) => candidate.id === provider)?.name ?? provider;
         await confirmAction({ message: t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }),
-            action: async () => {
+            progressTitle: t('opstep.ssl.title', { name: domainName }),
+            action: async (report) => {
                 setIssuing(true);
                 setIssueFailure(null);
                 setActionRefusal(null);
+                // The server's own steps, read while the request runs (alpha.127).
+                const progress = followRequestProgress(report, sslIssueSteps(t, domainName, authority), t, `ssl.${domainId}`, { authority });
                 try {
                     const res = await issueAnswer.send(`/api/v1/domains/${domainId}/ssl/letsencrypt`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...progress.headers },
                         body: JSON.stringify({
                             email,
                             auto_renew: autoRenew,
@@ -380,6 +399,7 @@ export function DomainSSLSettings({
                             ...(allowNotPointed ? { allow_not_pointed: true } : {}),
                         }),
                     });
+                    progress.settle(res);
                     // No result of its own: the notice is up and the certificate is
                     // being read again.
                     // Kendi sonucu yok: bildirim açıldı, sertifika yeniden okunuyor.
@@ -445,6 +465,7 @@ export function DomainSSLSettings({
                     // Yanıt geldi ama yanıt olarak okunamadı.
                     issueAnswer.lose(undefined, 'asked');
                 } finally {
+                    progress.settle(null);
                     setEabKid('');
                     setEabHmac('');
                     setIssuing(false);

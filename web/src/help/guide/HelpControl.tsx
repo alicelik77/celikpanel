@@ -37,6 +37,26 @@ function readDecision(username: string, impersonating: boolean): Promise<ReturnT
     return decision;
 }
 
+// Whether the product's own question or progress window (ConfirmHost) is
+// open. The first-login tour never opens above it or while it runs: a locked
+// operation window stays the one thing on screen, and the tour waits until
+// it has closed (alpha.127, owner's report). Watched only while a tour waits.
+// Ürünün kendi onay ya da ilerleme penceresi açık mı: tur onun üstünde ya da
+// o sürerken açılmaz, kapanmasını bekler.
+const OPERATION_WINDOW = '[data-confirm-host]';
+function useOperationWindowOpen(watch: boolean): boolean {
+    const [open, setOpen] = useState(() => typeof document !== 'undefined' && document.querySelector(OPERATION_WINDOW) !== null);
+    useEffect(() => {
+        if (!watch || typeof MutationObserver === 'undefined') return;
+        const check = () => setOpen(document.querySelector(OPERATION_WINDOW) !== null);
+        check();
+        const observer = new MutationObserver(check);
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, [watch]);
+    return watch && open;
+}
+
 export function HelpControl() {
     const { t } = useI18n();
     const { user, role } = useAuth();
@@ -47,6 +67,7 @@ export function HelpControl() {
     const box = useRef<HTMLDivElement>(null);
     const button = useRef<HTMLButtonElement>(null);
     const impersonating = Boolean(user.impersonating);
+    const operationOpen = useOperationWindowOpen(tour !== null);
 
     useEffect(() => {
         let current = true;
@@ -167,8 +188,8 @@ export function HelpControl() {
                         }}
                     />
                 )}
-                {tour === 'tour' && <Tour onFinish={() => save('completed')} onSkip={() => save('skipped')} />}
-                {tour === 'offer' && <TourOffer onTake={() => setTour('tour')} onDismiss={() => save('skipped')} />}
+                {tour === 'tour' && !operationOpen && <Tour onFinish={() => save('completed')} onSkip={() => save('skipped')} />}
+                {tour === 'offer' && !operationOpen && <TourOffer onTake={() => setTour('tour')} onDismiss={() => save('skipped')} />}
             </Suspense>
         </div>
     );

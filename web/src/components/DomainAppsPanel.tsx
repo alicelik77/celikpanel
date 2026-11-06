@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutGrid, Download, ExternalLink, Loader2, RotateCcw, Trash2, KeyRound, ChevronDown, ChevronUp } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -12,7 +12,8 @@ import {
     type DomainApp, type InstalledApp,
 } from '../lib/appCatalog';
 import type { TranslationKey } from '../i18n/en';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
+import { forget, remember, remembered } from '../lib/requestProgress';
 
 // The application catalog of one domain (alpha.118, docs/APP-CATALOG.md):
 // every application the administrator offers and this subscription may use,
@@ -46,6 +47,36 @@ const STEP_KEYS: Record<string, TranslationKey> = {
     removing: 'apps.step.removing',
 };
 
+// The install window's steps are the install's own durable status, read from
+// the list while the request runs (alpha.127): what the application needs is
+// checked first (before anything is made), then the database, the files, the
+// application's own setup (catalog applications) and the end.
+// Kurulum penceresinin adımları kurulumun kalıcı durumudur.
+type AppStepID = 'check' | 'database' | 'files' | 'setup' | 'finish';
+const APP_STATUS_STEP: Record<string, AppStepID> = {
+    reserved: 'database', database_creating: 'database', database_ready: 'files', files_installing: 'files',
+    files_ready: 'setup', setting_up: 'setup', applied: 'finish',
+};
+
+export function appInstallSteps(
+    t: ReturnType<typeof useI18n>['t'], name: string, withSetup: boolean, at: AppStepID, since: number,
+    ended: 'done' | 'failed' | 'prerequisite' | 'unknown' | null,
+): OperationStep[] {
+    const order: AppStepID[] = withSetup ? ['check', 'database', 'files', 'setup', 'finish'] : ['check', 'database', 'files', 'finish'];
+    const index = Math.max(0, order.indexOf(at));
+    return order.map((id, position) => {
+        const label = t(`opstep.app.${id}` as TranslationKey, { name });
+        if (ended === 'done' || position < index) return { id, label, state: 'done' as const };
+        if (position > index) return { id, label, state: 'pending' as const };
+        if (ended === 'failed' || ended === 'prerequisite') {
+            const prerequisite = ended === 'prerequisite' && id === 'check';
+            return { id, label, state: 'failed' as const, prerequisite, note: t(prerequisite ? 'opstep.stoppedBeforeChange' : 'opstep.stoppedHere') };
+        }
+        if (ended === 'unknown') return { id, label, state: 'waiting' as const, note: t('opstep.stepUnknown') };
+        return { id, label, state: 'running' as const, since };
+    });
+}
+
 export function DomainAppsPanel({ domainId, domainName }: { domainId: number; domainName: string }) {
     const { t } = useI18n();
     const url = domainAppsURL(domainId);
@@ -65,9 +96,14 @@ export function DomainAppsPanel({ domainId, domainName }: { domainId: number; do
         showToast('error', refusalText(problem, t, 'apps.installFailed'), refusalToast(problem, t, navigate));
     };
 
+    // The status of the last answer (the install window tells a refused check
+    // from a failure).
+    const lastStatus = useRef(0);
     const post = async (target: string, body: unknown, method = 'POST') => {
+        lastStatus.current = 0;
         const res = await answer.send(target, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!res) return null;
+        lastStatus.current = res.status;
         if (!res.ok) {
             failed(await readApiError(res));
             void apps.retry();
@@ -81,20 +117,125 @@ export function DomainAppsPanel({ domainId, domainName }: { domainId: number; do
         }
     };
 
+    // Reads the list while the install request runs and shows the step its
+    // durable status names. Reads only; stops when the request answers.
+    // Kurulum isteği sürerken liste okunur ve kalıcı durumun adımı gösterilir.
+    const sessionKey = `app.${domainId}`;
+    const watchInstall = (appId: string, name: string, withSetup: boolean, report: OperationReport, isDone: () => boolean) => {
+        const seen = { at: 'check' as AppStepID, since: Date.now() };
+        void (async () => {
+            while (!isDone()) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                if (isDone()) break;
+                const read = await apps.retry();
+                if (isDone() || read.state !== 'known') continue;
+                const row = read.value.installed.find((item) => item.app_id === appId);
+                const at = row ? APP_STATUS_STEP[row.status] : undefined;
+                if (!at || at === 'finish') continue;
+                if (at !== seen.at) {
+                    seen.at = at;
+                    seen.since = Date.now();
+                }
+                report.steps(appInstallSteps(t, name, withSetup, seen.at, seen.since, null));
+            }
+        })();
+        return seen;
+    };
+
+    // After a reload: an install this tab started that the list still shows
+    // running is followed in the locked window until it ends (reads only).
+    // Sayfa yenilenirken süren kurulum, bitene dek kilitli pencerede izlenir.
+    const followInstall = async (appId: string, name: string, withSetup: boolean, report: OperationReport): Promise<OperationEnd | void> => {
+        let at: AppStepID = 'database';
+        let since = Date.now();
+        let unknownSince: number | null = null;
+        try {
+            for (;;) {
+                const read = await apps.retry();
+                if (read.state !== 'known') {
+                    unknownSince ??= Date.now();
+                    if (Date.now() - unknownSince > 60_000) return { state: 'unknown', reason: t('opstep.unread') };
+                } else {
+                    unknownSince = null;
+                    const row = read.value.installed.find((item) => item.app_id === appId);
+                    if (!row) return { state: 'unknown', reason: t('opstep.gone') };
+                    if (row.status === 'applied') {
+                        report.steps(appInstallSteps(t, name, withSetup, 'finish', since, 'done'));
+                        return { state: 'done', message: t('apps.installed', { name }) };
+                    }
+                    const next = APP_STATUS_STEP[row.status];
+                    if (!next || !RUNNING_STATES.includes(row.status)) {
+                        report.steps(appInstallSteps(t, name, withSetup, at, since, row.status === 'needs_review' ? 'unknown' : 'failed'));
+                        const why = row.last_error ? ` ${row.last_error}` : '';
+                        return row.status === 'needs_review'
+                            ? { state: 'unknown', reason: `${t('apps.installFailed')}${why}` }
+                            : { state: 'failed', reason: `${t('apps.installFailed')}${why}` };
+                    }
+                    if (next !== at) {
+                        at = next;
+                        since = Date.now();
+                    }
+                    report.steps(appInstallSteps(t, name, withSetup, at, since, null));
+                }
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+        } finally {
+            forget(sessionKey);
+        }
+    };
+    const resumed = useRef(false);
+    useEffect(() => {
+        if (resumed.current || apps.remote.state !== 'known') return;
+        resumed.current = true;
+        const kept = remembered(sessionKey);
+        if (!kept) return;
+        const row = apps.remote.value.installed.find((item) => item.app_id === kept.id);
+        if (!row || !RUNNING_STATES.includes(row.status) || row.status === 'removing') {
+            forget(sessionKey);
+            return;
+        }
+        const name = kept.context.name ?? row.name;
+        void followOperation({
+            progressTitle: t('opstep.app.title', { name }),
+            action: (report) => followInstall(kept.id, name, kept.context.setup === '1', report),
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [apps.remote]);
+
     const install = async (app: DomainApp) => {
         if (answer.holding || busy || apps.remote.state !== 'known') return;
         await confirmAction({ message: t('apps.confirmInstall', { name: app.name }),
-            action: async () => {
+            progressTitle: t('opstep.app.title', { name: app.name }),
+            action: async (report): Promise<OperationEnd | void> => {
                 setBusy(app.id);
                 setShown(null);
                 setFailure(null);
+                // WordPress has no setup step of its own (its setup page opens after).
+                const withSetup = app.id !== 'wordpress';
+                report.steps(appInstallSteps(t, app.name, withSetup, 'check', Date.now(), null));
+                remember(sessionKey, app.id, { name: app.name, setup: withSetup ? '1' : '' });
+                let answered = false;
+                const seen = watchInstall(app.id, app.name, withSetup, report, () => answered);
+                // How the steps end once the request has answered.
+                const close = (ended: 'done' | 'failed' | 'unknown') => {
+                    answered = true;
+                    forget(sessionKey);
+                    const refusedCheck = ended === 'failed' && seen.at === 'check' && lastStatus.current >= 400 && lastStatus.current < 500;
+                    report.steps(appInstallSteps(t, app.name, withSetup, ended === 'done' ? 'finish' : seen.at, seen.since,
+                        refusedCheck ? 'prerequisite' : ended));
+                };
                 try {
                     const data = await post(domainAppInstallURL(domainId), { app: app.id });
-                    if (!data) return;
+                    if (!data) {
+                        close(lastStatus.current >= 400 ? 'failed' : 'unknown');
+                        return;
+                    }
                     if (data.success !== true) {
+                        close('failed');
                         failed({ message: typeof data.error === 'string' ? data.error : '' });
                         return;
                     }
+                    close('done');
                     showToast('success', t('apps.installed', { name: app.name }));
                     answer.settle();
                     setShown({
@@ -103,6 +244,7 @@ export function DomainAppsPanel({ domainId, domainName }: { domainId: number; do
                     });
                     void apps.retry();
                 } finally {
+                    answered = true;
                     setBusy(null);
                 }
             },

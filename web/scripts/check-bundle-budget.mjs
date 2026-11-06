@@ -264,6 +264,11 @@ const screenPartBudgets = {
   // (pnow.). A new part, set with at least 25% headroom from its Turkish
   // file: 5.76 / 2.06 KiB.
   monitoring: kib(8, 3),
+  // v0.1.0-alpha.127: the real steps of the progress window - certificate,
+  // backup restore and creation, PHP version, application install and
+  // WordPress tools (opstep.). A new part, set with at least 25% headroom
+  // from its Turkish file: 3.56 / 1.26 KiB.
+  opsteps: kib(4.75, 1.75),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

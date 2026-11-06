@@ -15,7 +15,8 @@ import { useLostAnswer } from '../lib/lostAnswer';
 import { decodeDomainDatabases } from '../lib/domainDatabases';
 import { saveDownload } from '../lib/download';
 import { decodeSiteOverview, remoteEligibleBackupName, siteRemoteURL } from '../lib/remoteBackup';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation } from '../lib/confirmAction';
+import { backupCreateSteps, backupRestoreSteps, followRequestProgress, resumeRequestProgress } from '../lib/requestProgress';
 
 // Remote copies (alpha.118): their own screen, fetched with this tab.
 // Uzak kopyalar: kendi ekranı, bu sekmeyle birlikte getirilir.
@@ -160,42 +161,75 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
         }
     };
 
+    // Creating a backup can take minutes: it runs in the locked progress
+    // window with the server's steps (alpha.127, owner's order of 6 Nov 2026).
+    // Yedek oluşturma dakikalar sürebilir: sunucunun adımlarıyla kilitli
+    // ilerleme penceresinde çalışır.
     const createBackup = async (type: BackupType) => {
-        if (readOnly || !listKnown) return;
+        if (readOnly || !listKnown || creating !== null) return;
         if (type === 'database' && !selectedDatabaseId) return;
         if (type !== 'files' && !databasesKnown) return;
         setCreating(type);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/backups`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type,
-                    ...(type === 'database' ? { database_id: Number(selectedDatabaseId) } : {}),
-                }),
-            });
-            if (!res) return;
-            if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.createFailed'))) return;
-            showToast('success', t('backup.created'));
-            answer.settle();
-            await loadBackups();
-        } finally {
-            setCreating(null);
-        }
+        await followOperation({
+            progressTitle: t('opstep.backup.title', { name: domainName }),
+            action: async (report) => {
+                const progress = followRequestProgress(report, backupCreateSteps(t), t, `backup.${domainId}`);
+                try {
+                    const res = await answer.send(`/api/v1/domains/${domainId}/backups`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...progress.headers },
+                        body: JSON.stringify({
+                            type,
+                            ...(type === 'database' ? { database_id: Number(selectedDatabaseId) } : {}),
+                        }),
+                    });
+                    progress.settle(res);
+                    if (!res) return;
+                    if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.createFailed'))) return;
+                    showToast('success', t('backup.created'));
+                    answer.settle();
+                    await loadBackups();
+                } finally {
+                    progress.settle(null);
+                    setCreating(null);
+                }
+            },
+        });
+        setCreating(null);
     };
+
+    // A backup or restore this tab started and the page reloaded during: the
+    // locked window reopens at the server's step (reads only).
+    // Sayfa yenilenirken süren yedekleme ya da geri yükleme yeniden izlenir.
+    useEffect(() => {
+        resumeRequestProgress({
+            key: `backup.${domainId}`, labels: () => backupCreateSteps(t), t,
+            progressTitle: () => t('opstep.backup.title', { name: domainName }), refusedSentence: 'backup.createFailed',
+            ended: () => { void loadBackups(); },
+        });
+        resumeRequestProgress({
+            key: `restore.${domainId}`, labels: () => backupRestoreSteps(t), t,
+            progressTitle: (kept) => t('opstep.restore.title', { name: kept.backup ?? domainName }), refusedSentence: 'backup.restoreFailed',
+            ended: () => { void loadBackups(); invalidate('databases'); },
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [domainId]);
 
     const restoreBackup = async (backup: BackupItem) => {
         if (readOnly || !listKnown) return;
         if (!backup.restorable) return;
         await confirmAction({ message: t('backup.restoreConfirm', { name: backup.name }), tone: 'danger',
-            action: async () => {
+            progressTitle: t('opstep.restore.title', { name: backup.name }),
+            action: async (report) => {
                 setRestoring(backup.name);
+                const progress = followRequestProgress(report, backupRestoreSteps(t), t, `restore.${domainId}`, { backup: backup.name });
                 try {
                     const res = await answer.send(`/api/v1/domains/${domainId}/backups/restore`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...progress.headers },
                         body: JSON.stringify({ backup_name: backup.name }),
                     });
+                    progress.settle(res);
                     if (!res) return;
                     const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem }>(res, 'backup.restoreFailed');
                     if (!data) return;
@@ -209,6 +243,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                     // Geri yükleme veritabanlarını getirebilir ya da değiştirebilir.
                     invalidate('databases');
                 } finally {
+                    progress.settle(null);
                     setRestoring(null);
                 }
             },

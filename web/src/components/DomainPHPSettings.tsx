@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -12,6 +12,7 @@ import { SupportLine, supportConfirmation } from './SupportMark';
 import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 import { confirmAction } from '../lib/confirmAction';
+import { followRequestProgress, phpVersionSteps, resumeRequestProgress } from '../lib/requestProgress';
 
 interface DomainPHPSettingsProps {
     domainId: number;
@@ -81,6 +82,7 @@ function decodePHPSettings(raw: unknown): PHPSettings {
 
 export function DomainPHPSettings({
     domainId,
+    domainName,
     currentVersion,
     onVersionChange,
     readOnly = false,
@@ -143,12 +145,15 @@ export function DomainPHPSettings({
         // confirmation, and the server is told it was confirmed.
         const unsupported = supportConfirmation(t, locale, support, 'php', selectedVersion, 'choose');
         await confirmAction({ message: unsupported || t('php.changeConfirm', { from: currentVersion, to: selectedVersion }),
-            action: async () => {
+            progressTitle: t('opstep.php.title', { name: domainName, version: selectedVersion }),
+            action: async (report) => {
                 setSaving(true);
+                // The server's own steps, read while the request runs (alpha.127).
+                const progress = followRequestProgress(report, phpVersionSteps(t, selectedVersion), t, `php.${domainId}`, { version: selectedVersion });
                 try {
                     const res = await answer.send(`/api/v1/domains/${domainId}/php`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...progress.headers },
                         body: JSON.stringify({ php_version: selectedVersion, ...(unsupported ? { confirm_unsupported: true } : {}) }),
                     }, {
                         // The settings read again name the version the domain runs. If
@@ -162,6 +167,7 @@ export function DomainPHPSettings({
                             setPicked(null);
                         },
                     });
+                    progress.settle(res);
                     if (!res) return;
                     if (!res.ok) {
                         showToast('error', apiErrorText(await readApiError(res), t, 'php.changeFailed'));
@@ -174,11 +180,24 @@ export function DomainPHPSettings({
                     setPicked(null);
                     await settings.retry();
                 } finally {
+                    progress.settle(null);
                     setSaving(false);
                 }
             },
         });
     };
+
+    // A version change this tab sent and the page reloaded during: the locked
+    // window reopens at the server's step (reads only).
+    // Sayfa yenilenirken süren sürüm değişikliği yeniden izlenir.
+    useEffect(() => {
+        resumeRequestProgress({
+            key: `php.${domainId}`, labels: (kept) => phpVersionSteps(t, kept.version ?? ''), t,
+            progressTitle: (kept) => t('opstep.php.title', { name: domainName, version: kept.version ?? '' }), refusedSentence: 'php.changeFailed',
+            ended: () => { void settings.retry(); },
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [domainId]);
 
     const handleSavePool = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();

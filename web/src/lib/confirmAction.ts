@@ -37,6 +37,11 @@ export interface OperationStep {
     since?: number;
     /** One plain sentence under the step: what it waits for, or why it stopped. */
     note?: string;
+    /**
+     * A failed check that runs before anything is changed: the operation
+     * ends as an unmet prerequisite (blocked), not as a failure (D-024).
+     */
+    prerequisite?: boolean;
 }
 
 /**

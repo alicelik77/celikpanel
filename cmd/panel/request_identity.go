@@ -105,6 +105,10 @@ type requestIdentityRoute struct {
 	// digest, when set, is what of the body is hashed into the stored
 	// request digest: a route whose body carries a password leaves it out.
 	digest func(body []byte) []byte
+	// optional: a request without the header runs as before, unguarded; one
+	// with it is guarded (alpha.127: routes guarded so the progress window
+	// can follow their steps, without refusing other clients).
+	optional bool
 }
 
 // The eight routes of batch 1. Each one was harmful when it ran twice; see
@@ -202,6 +206,15 @@ var (
 	}
 )
 
+// requestIdentityRoutePHPVersion (alpha.127): changing a site's PHP version
+// moves its pool and reloads the web server. Guarded when the page sends an
+// identity, so the change outlives a reload, is never run twice, and the
+// progress window can follow its steps (operation_steps.go).
+var requestIdentityRoutePHPVersion = requestIdentityRoute{
+	pattern: "/api/v1/domains/{id}/php", optional: true,
+	timeout: agentRPCDatabaseTimeout + agentRPCMutationTimeout + 5*time.Minute,
+}
+
 // requestIdentityRouteFor names the protected route a request would reach. It
 // uses the dispatcher's own strict matchers, so a path the guard does not
 // recognize is a path the dispatcher does not serve either.
@@ -241,6 +254,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteRemoteBackupRestore, true
 		case "ssl-letsencrypt":
 			return requestIdentityRouteLetsEncrypt, true
+		case "php":
+			return requestIdentityRoutePHPVersion, true
 		case "databases":
 			return requestIdentityRouteDomainDatabase, true
 		case "site-config-keep":
@@ -276,10 +291,14 @@ type requestIdentityContextKey struct{}
 // requestIdentityScope travels with the detached handler context.
 type requestIdentityScope struct {
 	id string
-	mu sync.Mutex
+	// actor: the only person who may read this request's steps.
+	actor int
+	mu    sync.Mutex
 	// notRetained is set by a handler whose answer turned out to carry a
 	// one-time secret.
 	notRetained bool
+	// steps: what the handler said about its progress (operation_steps.go).
+	steps operationSteps
 }
 
 // requestIdentityFromContext returns the identity of the request a handler is
@@ -331,6 +350,10 @@ type requestIdentityGuard struct {
 
 	mu       sync.Mutex
 	inFlight map[string]chan struct{}
+	// running and recent: the live and the last step of each request
+	// (operation_steps.go); memory only.
+	running map[string]*requestIdentityScope
+	recent  map[string]recentOperationSteps
 }
 
 func newRequestIdentityGuard(database *sql.DB) *requestIdentityGuard {
@@ -567,6 +590,10 @@ func (g *requestIdentityGuard) wrap(next http.Handler) http.Handler {
 			return
 		}
 		id := r.Header.Get(requestIdentityHeader)
+		if id == "" && route.optional {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if id == "" {
 			// A page loaded before this release cannot run these routes
 			// unprotected.
@@ -607,7 +634,7 @@ func (g *requestIdentityGuard) wrap(next http.Handler) http.Handler {
 			g.answerReplay(w, r, existing, done, caller.ID, route, hash)
 			return
 		}
-		g.runFirst(w, r, next, route, id, done, body)
+		g.runFirst(w, r, next, route, id, caller.ID, done, body)
 	})
 }
 
@@ -660,9 +687,10 @@ func (g *requestIdentityGuard) answerReplay(
 
 func (g *requestIdentityGuard) runFirst(
 	w http.ResponseWriter, r *http.Request, next http.Handler,
-	route requestIdentityRoute, id string, done chan struct{}, body []byte,
+	route requestIdentityRoute, id string, actor int, done chan struct{}, body []byte,
 ) {
-	scope := &requestIdentityScope{id: id}
+	scope := &requestIdentityScope{id: id, actor: actor}
+	g.trackSteps(scope)
 	// The connection cannot cancel this context: a reset must not stop the
 	// Panel between the Agent's work and the record of it.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), route.timeout)
@@ -688,6 +716,7 @@ func (g *requestIdentityGuard) runFirst(
 		panicked = false
 	}()
 
+	g.settleSteps(scope)
 	if panicked {
 		// What the handler changed before it stopped is not known.
 		g.finish(id, done, requestIdentityInterrupted, 0, false, "", nil)
@@ -712,6 +741,9 @@ func (g *requestIdentityGuard) runFirst(
 		header[name] = append([]string(nil), values...)
 	}
 	header.Set(requestIdentityHeader, id)
+	if steps := scope.currentSteps(); steps.step != "" {
+		header.Set(operationStepHeader, steps.step)
+	}
 	w.WriteHeader(code)
 	_, _ = w.Write(answer)
 }
