@@ -723,6 +723,28 @@ func (p *Panel) reconcileCertificateDependentsAtStartupWithLimit(
 		return 0, nil
 	}
 
+	// alpha.126 lab: on a server without Postfix every update ended with
+	// "mail certificate publication failed: ... postfix is not installed"
+	// although nothing had failed. The Agent's read-only answer (the same one
+	// the milter wiring uses) settles it before any server change is asked
+	// for: no mail server means no mail TLS to publish. With no secure-mail
+	// certificate that is one informational line; a secure-mail certificate
+	// on a server whose mail server is gone is an unmet prerequisite and is
+	// reported as one, never as a failed publication. A host that cannot be
+	// asked is not assumed empty: the publication runs and reports itself.
+	// Posta sunucusu olmayan makinede yayımlanacak posta TLS'i yoktur; bu bir
+	// hata değildir ve öyle yazılmaz.
+	if present, _ := p.mailFilterWiringSubject(); !present {
+		if len(domainIDs) == 0 {
+			log.Printf("certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done")
+			return 0, nil
+		}
+		return 0, fmt.Errorf(
+			"mail TLS publication skipped: no mail server (Postfix) is installed on this server, so %d secure-mail certificate(s) are not published to mail and their settings are kept; the server administrator can install mail from Components, or turn off Mail TLS on those domains' SSL pages",
+			len(domainIDs),
+		)
+	}
+
 	var reconcileErrors []error
 	if err := p.resyncMailTLS(ctx); err != nil {
 		reconcileErrors = append(

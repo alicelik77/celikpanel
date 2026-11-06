@@ -197,3 +197,53 @@ func TestStartupCertificateDependentsWaitsForMailIdentity(t *testing.T) {
 		t.Fatalf("invalid saved identity error = %v", err)
 	}
 }
+
+// alpha.126 lab: on a server without Postfix the update's startup mail work
+// logged "mail certificate publication failed ... postfix is not installed"
+// although nothing had failed. No mail server and no secure-mail certificate
+// is nothing to publish: no server change is asked for and no error is
+// returned. A secure-mail certificate without a mail server stays an unmet
+// prerequisite the owner can see, never a "failed" publication.
+func TestStartupCertificateDependentsSkipWithoutMailServer(t *testing.T) {
+	p, subscriptionID := newMailTLSIsolationFixture(t)
+	agent := &mailTLSIsolationRPCAgent{
+		certificates:     map[string]MailTLSInspectRPCResponse{},
+		mailServerAbsent: true,
+	}
+	attachMailTLSIsolationAgent(t, p, agent)
+
+	count, err := p.reconcileCertificateDependentsAtStartup(context.Background())
+	if err != nil || count != 0 {
+		t.Fatalf("startup reconcile without a mail server = %d, %v; want 0, nil", count, err)
+	}
+	agent.mu.Lock()
+	calls := len(agent.secureCalls) + len(agent.syncCalls)
+	agent.mu.Unlock()
+	if calls != 0 {
+		t.Fatalf("mail TLS publications = %d, want none without a mail server", calls)
+	}
+
+	addMailTLSIsolationDomain(
+		t, p, subscriptionID, "kept-secure.example", "/certs/kept-secure", "active", true,
+	)
+	_, err = p.reconcileCertificateDependentsAtStartup(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "skipped: no mail server (Postfix) is installed") ||
+		strings.Contains(err.Error(), "failed") || startupWorkDeferredForBusyHost(err) {
+		t.Fatalf("secure-mail certificate without a mail server error = %v", err)
+	}
+	agent.mu.Lock()
+	calls = len(agent.secureCalls) + len(agent.syncCalls)
+	agent.mu.Unlock()
+	if calls != 0 {
+		t.Fatalf("mail TLS publications = %d, want none without a mail server", calls)
+	}
+
+	// Once Postfix is installed the publication runs as before.
+	agent.mu.Lock()
+	agent.mailServerAbsent = false
+	agent.certificates["/certs/kept-secure"] = validMailTLSCertificate("kept-secure.example")
+	agent.mu.Unlock()
+	if _, err := p.reconcileCertificateDependentsAtStartup(context.Background()); err != nil {
+		t.Fatalf("startup reconcile with a mail server: %v", err)
+	}
+}

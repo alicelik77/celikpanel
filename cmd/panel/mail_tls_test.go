@@ -72,6 +72,19 @@ type mailTLSIsolationRPCAgent struct {
 	releaseSync         <-chan struct{}
 	syncStartOnce       sync.Once
 	syncHook            func(int, *transport.SyncMailTLSV2Request, *transport.SecureMailTLSResponse) (bool, error)
+	mailServerAbsent    bool
+}
+
+// MailFilterWiringState answers the Agent's read-only "is Postfix here"
+// question; a fixture says installed unless mailServerAbsent is set.
+func (a *mailTLSIsolationRPCAgent) MailFilterWiringState(
+	_ *transport.Empty,
+	resp *transport.MailFilterWiringStateResponse,
+) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	resp.MailServerInstalled = !a.mailServerAbsent
+	return nil
 }
 
 type MailTLSApplyVhostRPCRequest struct{}
