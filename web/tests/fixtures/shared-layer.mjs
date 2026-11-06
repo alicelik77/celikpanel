@@ -229,6 +229,9 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);
   if (!extra['/VendorLaneDialog']) table['/VendorLaneDialog'] = compileSource('components/VendorLaneDialog.tsx', resolve);
   if (!extra['/NodePatches']) table['/NodePatches'] = compileSource('components/NodePatches.tsx', resolve);
+  // alpha.127: Node.js sites in the site sandbox (Components card, Hosting tab line).
+  if (!extra['/NodeSandboxCard']) table['/NodeSandboxCard'] = compileSource('components/NodeSandboxCard.tsx', resolve);
+  if (!extra['/NodeSiteSandbox']) table['/NodeSiteSandbox'] = compileSource('components/NodeSiteSandbox.tsx', resolve);
   // alpha.117 (D-043): the security emergency section of a component.
   if (!extra['/SecurityEmergency']) table['/SecurityEmergency'] = compileSource('components/SecurityEmergency.tsx', resolve);
   // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.

@@ -264,6 +264,10 @@ const screenPartBudgets = {
   // (pnow.). A new part, set with at least 25% headroom from its Turkish
   // file: 5.76 / 2.06 KiB.
   monitoring: kib(8, 3),
+  // v0.1.0-alpha.127: Node.js sites in the site sandbox (nodesandbox.): the
+  // administrator's move under Components → Node.js and the site's install
+  // step. A new part, set with at least 25% headroom from its Turkish file.
+  nodeSandbox: kib(12, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

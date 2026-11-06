@@ -308,6 +308,26 @@ func matrix(appDir string, port int) {
 	} else {
 		skip(14, "exec", "the python kind runs its interpreter")
 	}
+	// 19. A Node.js site (alpha.127) sees only its own Node.js version, and
+	// cannot change it.
+	if env("PROBE_KIND", "program") == "node" {
+		own := env("PROBE_NODE_VERSION", "")
+		if entries, err := os.ReadDir("/opt/celikpanel/runtimes/node"); err == nil {
+			var others []string
+			for _, e := range entries {
+				if e.Name() != own {
+					others = append(others, e.Name())
+				}
+			}
+			report(19, "other-node-versions", len(others) > 0, "visible: "+strings.Join(others, ","))
+		} else {
+			report(19, "other-node-versions", false, err.Error())
+		}
+		_, ownErr := os.Stat("/opt/celikpanel/runtimes/node/" + own + "/bin/node")
+		report(19, "own-node-version", ownErr != nil, fmt.Sprint("own version reachable: ", ownErr == nil))
+		attempt(19, "write-runtime", os.WriteFile("/opt/celikpanel/runtimes/node/"+own+"/celik-probe-marker", []byte("x"), 0o600))
+		attempt(19, "list-toolchains", readDir("/opt/celikpanel/toolchains"))
+	}
 	// 15. Kernel keyring.
 	const sysKeyctl, keyctlGetKeyringID, keySpecUserKeyring = 250, 0, -4
 	if _, _, errno := syscall.Syscall(sysKeyctl, keyctlGetKeyringID, uintptr(keySpecUserKeyring&0xffffffff), 0); errno != 0 {
@@ -442,6 +462,10 @@ func main() {
 	}
 	matrix(appDir, port)
 	fmt.Fprintln(out, "SANDBOX-PROBE DONE")
+	if env("PROBE_ONCE", "") != "" {
+		// A step that must end (a Node.js site's install step).
+		return
+	}
 	http.HandleFunc("/smtp", func(w http.ResponseWriter, r *http.Request) {
 		out = os.Stdout
 		smtp()

@@ -2,11 +2,14 @@
 
 *alpha.119 · Kaynakta var, bileşen testlerinden geçti; WSL Debian 13 (systemd 257) üzerinde bir kez kısa deneme yapıldı. Desteklenen beş sistemde kaçış matrisi laboratuvarda bekliyor.*
 
+*alpha.127 · Node.js siteleri korumaya katıldı (§1, §6a, §7). Kaynakta var, bileşen testlerinden geçti; deneme takımının Node.js maddeleri (19, 20 ve Node.js sitesinin birimi altında matris) WSL Debian 13 (systemd 257, Node.js 22.23.4) üzerinde kısa denendi. Beş sistemde laboratuvar turu hâlâ açık.*
+
 İngilizcesi: [SITE-SANDBOX.md](SITE-SANDBOX.md).
 
 Müşterinin her programı tek bir systemd korumasında çalışır: yapay zekâ ve otomasyon uygulamaları
 (`celiksvc-<id>` ve kurulum adımı `celiksvcinst-<id>`), Python uygulamaları ve yüklenen
-programlar (`celikrt-<id>`). Her program rastgele kod sayılır. Yüklenen bir Go programı Python
+programlar (`celikrt-<id>`), alpha.127'den beri de Node.js siteleri (`celikapp-<site no>` ve
+kurulum adımı `celikappinst-<site no>`). Her program rastgele kod sayılır. Yüklenen bir Go programı Python
 başlatabilir; bu yüzden güvenlik sınırı bu korumadır, sunucuda hangi dillerin kurulu olduğu
 değildir.
 
@@ -34,6 +37,31 @@ ortamı işi de Python uygulamaları ve yüklenen programlar için bunu kullanı
 - **Python uygulamaları bundan fazlasını almaz:** temel küme ve `ProcSubset=pid`; `MemoryDenyWriteExecute` ve `NoExecPaths`/`ExecPaths` yok. Yorumlayıcı ortamındaki kendi eklenti modüllerini çalıştırır, bazı paketler çalışırken kod üretir; bu ayarlar sıradan uygulamaları bozardı. Bu yüzden bir Python uygulaması sunucunun başka programlarını (`/bin/sh` dahil) başlatabilir; neye ulaşacakları bu korumanın izin verdiğidir. Ortamının kurulumu geçici `celikrtbuild-<no>` biriminde çalışır: aynı hesap ve koruma, dinlenen port yok, PyPI için dışa bağlantı açık, posta portu engeli yerinde ([RUNTIME-APPS.tr.md §18](RUNTIME-APPS.tr.md)).
 - **Yüklenen programlar:** yazılabilir belleği çalıştıramaz. Yalnız kendi klasöründen ve paylaşılan kitaplıklardan program çalıştırabilir: `/bin/sh`, `python3` ve `ld.so /usr/bin/python3` başarısız olur. Bu ek bir derinlik katmanıdır; asıl sınır değildir.
 - **Hizmet uygulamaları:** alpha.118'deki tam `/proc` görünümünü korur. Node.js `/proc/cpuinfo` dosyasını okur ve bu görünüm n8n ile Open WebUI üzerinde henüz ölçülmedi.
+- **Node.js siteleri** (alpha.127, kod `internal/nodesite`): temel küme ve tam `/proc` görünümü
+  (hizmet uygulamaları gibi: `os.cpus()` işlemci göremese, işçi sayısını ondan hesaplayan kod hiç
+  işçi başlatmazdı; `ProtectProc=invisible` başka hesapların süreçlerini yine gizler).
+  `MemoryDenyWriteExecute` yok (V8 JavaScript'i çalışırken derler), `NoExecPaths` yok (npm proje
+  betiklerini `/bin/sh` ile çalıştırır). Ayrıca:
+  - **Tek Node.js sürümü.** `/opt/celikpanel/runtimes` boş ve salt okunur bir
+    `TemporaryFileSystem`; içine yalnız sitenin seçtiği sürüm salt okunur bağlanır. Planın izin
+    vermediği bir sürüm tam yoluyla da başlatılamaz; kaynak root'undur, barındırma ağacı dışındadır.
+  - **Kendi klasörü.** Uygulama klasörü sitenin belge köküdür (`<site evi>/public_html`) ve
+    yardımcı onu her uygulama klasörü gibi bağlar (§1a). `HOME`, `<belge kökü>/.home`'dur (npm
+    önbelleği `HOME/.npm`). `PATH` önce sürümün `bin` klasörü, sonra `/usr/bin:/bin`.
+  - **Kendi portu.** Siteye verilen port (eskisi gibi 1024–65535; Panel diğer sitelerinkiyle
+    karşılaştırır); `SocketBindAllow` yalnız onu açtırır. `PORT`, `HOST=127.0.0.1` ve
+    `NODE_ENV=production` verilir.
+  - **Başlatma komutu** müşterinin kabuk komut satırı olarak kalır ve sitenin hesabıyla, koruma
+    içinde `ExecStart=/bin/sh -c "<komut>"` olarak çalışır. Kabuk tam yazılanı alacak biçimde
+    yazılır (`%` → `%%`, `$` → `$$`, `\` ve `"` kaçışlı; satır sonu reddedilir).
+  - **Sınırlar** (bu sürümde sabit; önceden Node.js sitesinin sınırı yoktu): `MemoryMax=1536M`,
+    `CPUQuota=200%`, `TasksMax=512`; kurulum adımı `MemoryMax=2048M` alır.
+  - **Kurulum adımı** `celikappinst-<site no>` (Barındırma sekmesindeki "Paketleri kur ve
+    derle"): geçici birim; aynı koruma, port yok, npm deposu için dışa bağlantı açık, posta
+    engeli yerinde. `npm ci` (`package-lock.json` yoksa `npm install`) `--no-audit --no-fund
+    --foreground-scripts`, ardından `npm run build --if-present` ayrı komut satırları olarak
+    sürümün kendi node'uyla çalışır. Yalnız birimi zaten korumada olan sitede çalışır; çalışan
+    uygulamaya dokunmaz.
 
 **systemd 257 ve sonrasında:** program kendi ad alanında 1 numaralı süreçtir (`PrivatePIDs`) ve cgroup ağacı sıkı biçimde salt okunurdur.
 
@@ -125,6 +153,10 @@ kaldırılsa da başlar.
 | Debian 13 | 6.12 | var | var | var | 257 |
 | Arch | güncel | var | var | var | 258+ |
 
+Yardımcı üç tür uygulama klasörü kabul eder: çalışma ortamı uygulamasının `<site evi>/app`,
+hizmet uygulamasının `<site evi>/apps/<uygulama>` klasörü ve alpha.127'den beri Node.js sitesinin
+belge kökü `<site evi>/public_html`.
+
 systemd tarafı (şablon birim, `Requires=`/`After=`/`PartOf=`, `BindPaths=kaynak:hedef`,
 `RemainAfterExit=` ile `Type=oneshot`) desteklenen her sürümden eskidir. `openat2` olmayan
 çekirdekte yardımcı hiçbir şey başlatmaz (`app_folder_unreadable`); ada göre yürüyüşe asla geri
@@ -167,7 +199,10 @@ Bunların hepsi tutarsa düzey **tam**, biri tutmazsa **eksik** olur. Ekran her 
 
 Eksik düzeyde bir çalışma ortamı yalnız yönetici o eksiği kabul ederse sunulur. Hizmet
 uygulamaları düzeyler çıkmadan önce sunulmuştu. Sunucu hangi düzeyi uyguluyorsa o düzeyde
-çalışırlar ve yönetici sayfası bu düzeyi gösterir.
+çalışırlar ve yönetici sayfası bu düzeyi gösterir. Node.js siteleri de düzeylerden önce vardı ve
+aynı biçimde çalışır: sunucunun uyguladığı düzeyde; düzey ve adı konmuş eksikler Bileşenler →
+Node.js altında gösterilir. Ubuntu 22.04 ve 24.04 onlara aynı birimi verir
+(`TestNodeUbuntu2204IsUbuntu2404`).
 
 ## 3. SMTP çıkış engeli
 
@@ -196,7 +231,9 @@ kümeye ekler; `ExecStopPost=-+… egress-remove` durduktan sonra çıkarır. nf
 `celikpanel-egress-guard.timer` 30 saniyede bir çalışır. Biri `nft flush ruleset`
 çalıştırdıysa ya da `nftables.service` yeniden başlatıldıysa tabloyu yeniden yükler ve çalışan
 korumalı birimleri yeniden ekler. Bu arada engel en çok 30 saniye yok olabilir. Önceki bir
-sürümün yazdığı birim kümeye asla sessizce eklenmez.
+sürümün yazdığı birim kümeye asla sessizce eklenmez. alpha.127'den beri koruyucu `celikapp-*` ve
+`celikappinst-*` birimlerini de kapsar; önceki sürümün yazdığı Node.js birimi yardımcı satırı
+taşımadığı için dışarıda kalır.
 
 **Kapsam dışı:** 2525 numaralı port, web posta API'leri üzerinden gönderilen e-posta ve
 programın kendi genel dış trafiği. Programın dış trafiği aboneliğin trafiğine de sayılmaz.
@@ -241,6 +278,15 @@ yazar; bir durum okuması bunları asla yazmaz.
 - Birim SMTP kümesinde ve engel kuralı yüklü.
 - Birim yalnız döngü (loopback) adresinde dinliyor.
 
+**Node.js siteleri**, ajanın yaptığı her başlatmadan sonra (yeni site, ayar değişikliği, §6a'daki
+taşıma) birim çalışıp portunu dinlediğinde (en çok 20 saniye) kanıtlanır. Program `listen(port)`
+çağrısını adres vermeden yaparsa Node.js her adresi dinler. Çıkış engelini tutan sunucuda giriş
+zinciri korumalı bir sokete dışarıdan gelen her yeni bağlantıyı düşürür; bu yüzden sitenin kendi
+portundaki joker dinleyici döngü adresi sayılır (`sitesandbox.ProveNodeListening`). Başka bir
+porttaki joker ya da adı verilmiş açık bir adres `listens_elsewhere` olur. Engel yoksa joker her
+tür için olduğu gibi açıkta sayılır. Henüz kodu olmayan yeni site (çalışmıyor, dinlemiyor)
+bildirilir, reddedilmez. Zaten korumada olup kanıtı tutmayan birim durdurulur ve yayımlanmaz.
+
 Uyuşmayan ya da okunamayan her şey kodlu bir rettir. Panel uygulamayı durdurur ve yayımlamaz
 (`sandbox_proof`).
 
@@ -260,8 +306,63 @@ düğme sunar: "Yeni korumayı N uygulamaya uygula".
 - Sahibin değiştirdiği birime dokunulmaz.
 - İşlem denetim kaydına `service_app.sandbox_refresh` olarak yazılır.
 
+### 6a. Node.js siteleri (alpha.127)
+
+Node.js sitesinin birimi adını korur: `celikapp-<site no>`. Ajanın hangi metni yazacağı istekten ve
+sunucudaki dosyadan anlaşılır:
+
+- yeni site (henüz birim dosyası yok) ve zaten korumada olan birim korumayı alır;
+- önceki bir sürümün yazdığı birim (`# celikpanel-sandbox-generation` işareti yok) her sıradan
+  yazmada (ayar değişikliği, Node.js sürümü taşıma, site yapılandırma sayfası) o sürümün metnini
+  korur; asla sessizce yeniden yazılmaz. Sitenin Barındırma sekmesi "önceki bir sürümün
+  korumasında çalışıyor" der ve kimin taşıyacağını söyler;
+- hâlâ ortak web hesabıyla çalışan uygulama dışarıda kalır: koruma sitenin kendi hesabını ister,
+  önce "Sitenin kendi kullanıcısıyla çalıştır" (D-038 §6) gelir.
+
+Bileşenler → Node.js sunucunun düzeyini ve eksiklerini, korumada kaç site olduğunu gösterir ve
+tek bir işlem sunar:
+
+`POST /api/v1/runtimes/node/sandbox-refresh {request_id, expected}`
+
+- `expected` sayfada görülen sayıdır; sayı değiştiyse istek reddedilir.
+- Panel genelinde aynı anda tek taşıma; çalışırken ikinci basış reddedilir, aynı `request_id`
+  ilk yanıtı döndürür.
+- Siteler sırayla taşınır (`ApplyAppUnit`, `sandbox_move`). Çalışan uygulama korumada bir kez
+  yeniden başlar ve kanıtlanır (§5). Kanıt taşımayı çürütürse ya da önceden portunda yanıt veren
+  uygulama artık vermiyorsa ajan önceki birimi geri yazar ve uygulamayı onunla yeniden başlatır
+  (geri alma; dayanıklılık sözleşmesi ilke 4). Durdurulmuş uygulama yeni birimi alır ve durmuş
+  kalır (`no_start`).
+- Sahibin değiştirdiği birimler korunur ve listelenir, taşınmaz. Ortak web hesabındaki siteler
+  sonraki adımlarıyla listelenir.
+- Yazılan her dosya site dosyası defterine kaydedilir; işlem denetim kaydına
+  `site.node_sandbox_refresh` olarak yazılır.
+
+Kurulum adımı (§1) yalnız site korumaya girince sunulur:
+`POST /api/v1/domains/{id}/app/packages {request_id, build}` başlatır (aynı `request_id` ilk
+başlatmayı yanıtlar; biri çalışırken ikincisi reddedilir), `GET` yalnız okur ve hiçbir şey
+başlatmaz. Denetim kaydına `site.node_install` olarak yazılır.
+
 ## 7. Kaçış denemeleri
 
 Deneme takımı `deploy/e2e/sandbox-escape/` içindedir. Statik bir Go yoklaması ve bir Python
 yoklaması, korumalı birimler altında matrisin 1–18. maddelerini dener. Her deneme başarısız
 olursa takım PASS bildirir. Desteklenen beş sistemde laboratuvar turu hâlâ açıktır.
+
+**Node.js siteleri (alpha.127).** `NODE_VERSION=<sürüm>` verilirse (`/opt/celikpanel/runtimes/node`
+altında bir Node.js) takım bir Node.js sitesinin birimini ajanın kendi üreticisiyle yazar
+(`render -what node-unit`) ve Go yoklamasını sitenin kodu olarak başlatma komutuyla çalıştırır;
+1–16. maddeler Node.js profili altında değerlendirilir (14. madde SKIP: npm `/bin/sh` ister). İki
+madde eklenir:
+
+| # | Deneme | Nasıl değerlendirilir |
+|---|---|---|
+| 19 | Başka bir Node.js sürümü; çalışma ortamına yazma; araç takımları | Sitenin sürümünün yanındaki sahte bir sürüm listelenmemeli; sitenin kendi `bin/node`'u ulaşılabilir olmalı; çalışma ortamına yazma ve `/opt/celikpanel/toolchains` listesi başarısız olmalı |
+| 20 | Kurulum adımı | Üretilen kurulum bağımsız değişkenleriyle (`render -what node-install`) `systemd-run` kabul etmeli; npm, `postinstall` betiği yoklamayı bir kez çalıştıran ve `build` betiği node çalıştıran bir projeyi kurar; hiçbir deneme kaçmamalı, adım `success` ile bitmeli ve derleme dosyasını yazmış olmalı |
+
+`sudo NODE_VERSION=<s> ./run.sh node` yalnız bunları çalıştırır; `matrix` ve `quick` bunları da
+içerir. WSL Debian 13 üzerinde (systemd 257; çekirdekte nft `socket cgroupv2` yok, düzey
+`nft_cgroup_missing` ile eksik) 1–8, 10, 12–16, 19 ve 20. maddeler geçti; 9. madde adı konmuş
+eksiğin söylediği gibi başarısız oldu (o sunucuda posta engeli yok). Laboratuvar için açık
+kalanlar: beş sistem, çıkış tablosu yüklüyken joker Node.js dinleyicisine dışarıdan ulaşılamadığı
+(10. madde) ve her sistemde yöneticinin işlemiyle taşınan gerçek bir Node.js uygulaması (Express,
+Next.js).

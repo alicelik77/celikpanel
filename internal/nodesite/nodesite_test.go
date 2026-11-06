@@ -217,8 +217,8 @@ func TestInstallRunArgs(t *testing.T) {
 				t.Errorf("%s: missing %q", sys.name, want)
 			}
 		}
-		tail := args[len(args)-7:]
-		want := []string{"--", "/opt/celikpanel/runtimes/node/22.11.0/bin/node", "/opt/celikpanel/runtimes/node/22.11.0/lib/node_modules/npm/bin/npm-cli.js", "ci", "--no-audit", "--no-fund", "--loglevel=warn"}
+		tail := args[len(args)-8:]
+		want := []string{"--", "/opt/celikpanel/runtimes/node/22.11.0/bin/node", "/opt/celikpanel/runtimes/node/22.11.0/lib/node_modules/npm/bin/npm-cli.js", "ci", "--no-audit", "--no-fund", "--loglevel=warn", "--foreground-scripts"}
 		if strings.Join(tail, " ") != strings.Join(want, " ") {
 			t.Errorf("%s: command %v", sys.name, tail)
 		}
@@ -237,8 +237,8 @@ func TestInstallRunArgs(t *testing.T) {
 	p := InstallParams{SiteID: 12, Domain: "shop.example.com", User: "shop_example_com", Group: "shop_example_com",
 		AppDir: docRoot, NodeVersion: "22.11.0", Caps: systems[3].caps}
 	args, _ := InstallRunArgs(p)
-	if strings.Contains(strings.Join(args, " "), "run build") || args[len(args)-4] != "install" {
-		t.Fatalf("without a lock file and without build: %v", args[len(args)-6:])
+	if strings.Contains(strings.Join(args, " "), "run build") || args[len(args)-5] != "install" {
+		t.Fatalf("without a lock file and without build: %v", args[len(args)-7:])
 	}
 }
 

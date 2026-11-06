@@ -62,6 +62,11 @@ var nodeSiteAccountLookup = func(name, appDir string) (serviceAppAccount, error)
 // nodeSiteCaps reads the host's sandbox capabilities (a seam).
 var nodeSiteCaps = func(ctx context.Context) sitesandbox.Caps { return sandboxCaps(ctx) }
 
+// nodeSiteRuntimesBase is where the sandbox binds Node.js from; an Agent
+// whose runtimes live elsewhere (CELIKPANEL_RUNTIMES_DIR, development)
+// cannot sandbox a site. Tests point it at their folder.
+var nodeSiteRuntimesBase = sitesandbox.RuntimesBase
+
 // nodeSiteSettle bounds the wait for a started application to answer.
 var nodeSiteSettle = 20 * time.Second
 
@@ -87,12 +92,19 @@ func nodeSiteReadUnit(unitPath string) (string, bool, error) {
 // planNodeSite decides which text the request's unit gets. An error is a
 // refusal: nothing was written.
 func planNodeSite(ctx context.Context, req *AppApplyRequest, unitPath string) (nodeSitePlan, error) {
-	if systemdUserMode {
+	if systemdUserMode || filepath.Clean(runtimesBaseDir) != nodeSiteRuntimesBase {
+		// A development Agent (user units, or Node.js elsewhere than
+		// the sandbox binds it from) writes the earlier text.
 		return nodeSitePlan{reason: "development"}, nil
 	}
 	text, exists, err := nodeSiteReadUnit(unitPath)
 	if err != nil {
-		return nodeSitePlan{}, fmt.Errorf("the application unit could not be read: %v", err)
+		if req.SandboxMove {
+			return nodeSitePlan{}, fmt.Errorf("unit_unreadable: the application unit could not be read: %v", err)
+		}
+		// A link or another file in the unit's place: the D-031 rule
+		// refuses to write through it, whatever text it would be.
+		return nodeSitePlan{reason: "unit_unreadable"}, nil
 	}
 	current := exists && nodesite.Sandboxed(text)
 	switch {

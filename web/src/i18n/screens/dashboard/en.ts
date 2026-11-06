@@ -355,6 +355,8 @@ export const enDashboardScreens = {
     'dashboard.audit.action.site.php_version': 'changed the PHP version of a site ({target})',
     'dashboard.audit.action.site.hosting': 'changed how a site is hosted ({target})',
     'dashboard.audit.action.site.node_version': 'changed the Node.js version of a site ({target})',
+    'dashboard.audit.action.site.node_sandbox_refresh': 'moved Node.js sites into the site sandbox ({target})',
+    'dashboard.audit.action.site.node_install': 'installed the packages of a Node.js site ({target})',
     'dashboard.audit.action.site.app_account': 'moved a site\'s application to the site\'s own user ({target})',
     'dashboard.audit.action.site.app_account.failed': 'could not move a site\'s application to the site\'s own user ({target})',
     'dashboard.audit.action.site.node_version.failed': 'could not move a site to another Node.js version ({target})',

@@ -14,7 +14,7 @@ import (
 // for the npm registry, the mail ports still blocked), Type=oneshot. Its
 // steps are separate command lines, never a shell of CelikPanel's:
 //
-//	ExecStart      <version>/bin/node <version>/lib/node_modules/npm/bin/npm-cli.js ci|install --no-audit --no-fund
+//	ExecStart      <version>/bin/node <version>/lib/node_modules/npm/bin/npm-cli.js ci|install --no-audit --no-fund --foreground-scripts
 //	ExecStartPost  <version>/bin/node <version>/lib/node_modules/npm/bin/npm-cli.js run build --if-present   (when asked)
 //
 // npm itself runs the project's own lifecycle scripts (postinstall, build)
@@ -62,7 +62,9 @@ func InstallSteps(p InstallParams) ([][]string, error) {
 	if p.Clean {
 		install = "ci"
 	}
-	steps := [][]string{{node, npm, install, "--no-audit", "--no-fund", "--loglevel=warn"}}
+	// --foreground-scripts: the project's own install scripts write to the
+	// step's journal, so the site's owner sees what they did.
+	steps := [][]string{{node, npm, install, "--no-audit", "--no-fund", "--loglevel=warn", "--foreground-scripts"}}
 	if p.Build {
 		steps = append(steps, []string{node, npm, "run", "build", "--if-present"})
 	}

@@ -169,12 +169,12 @@ func (a *Agent) NodeSiteInstallV1(req *transport.NodeSiteInstallRequest, resp *t
 		nodeInstallRefuse(resp, transport.RuntimeAppPrerequisite, "app_folder", err.Error())
 		return nil
 	}
-	runtime, err := nodesite.RuntimeDir(req.NodeVersion)
-	if err != nil {
+	if _, err := nodesite.RuntimeDir(req.NodeVersion); err != nil {
 		nodeInstallRefuse(resp, transport.RuntimeAppVerifiedFailure, "invalid_request", err.Error())
 		return nil
 	}
-	for _, p := range []string{nodesite.NodeBinary(runtime), nodesite.NPMCLI(runtime)} {
+	installed := filepath.Join(runtimesBaseDir, "node", req.NodeVersion)
+	for _, p := range []string{nodesite.NodeBinary(installed), nodesite.NPMCLI(installed)} {
 		if _, err := os.Stat(p); err != nil {
 			nodeInstallRefuse(resp, transport.RuntimeAppPrerequisite, "node_missing",
 				"Node.js "+req.NodeVersion+" (with its npm) is not installed on this server; the administrator installs it under Components → Node.js")
