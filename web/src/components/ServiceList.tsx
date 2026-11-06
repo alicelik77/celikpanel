@@ -33,6 +33,7 @@ import { OpenWebmailLink, RoundcubeUpdateDialog, RoundcubeUpdateProgress, useRou
 import { supportFor, useSupportTable, type SupportComponent } from '../lib/supportTable';
 import { SupportBadge, supportConfirmation } from './SupportMark';
 import { NodePatches } from './NodePatches';
+import { NodeSandboxCard } from './NodeSandboxCard';
 import { SECURITY_EMERGENCIES_URL, decodeEmergencyList, emergencyPath, rowsWithOpenEmergency } from '../lib/securityEmergency';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { VendorLaneDialog } from './VendorLaneDialog';
@@ -4057,6 +4058,8 @@ function VersionDrawer({
                             <div className="mt-1.5 text-xs text-fg-subtle">{t('services.nodeInstallHint')}</div>
                             {/* alpha.107 (D-038 §9): newer patches on the installed lines. */}
                             <NodePatches installed={instances.filter((i) => i.managed).map((i) => i.version)} onInstall={(version) => installVersion(version)} />
+                            {/* alpha.127: Node.js sites in the site sandbox. */}
+                            <NodeSandboxCard />
                         </>
                     )}
                 </div>

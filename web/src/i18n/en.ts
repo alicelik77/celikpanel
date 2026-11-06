@@ -71,6 +71,7 @@ import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
 import type { MonitoringScreenKey } from './screens/monitoring/en';
 import type { PasswordsScreenKey } from './screens/passwords/en';
 import type { AdminNextScreenKey } from './screens/adminNext/en';
+import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -579,5 +580,6 @@ export type ScreenKey =
     | ComponentInstallScreenKey
     | MonitoringScreenKey
     | PasswordsScreenKey
-    | AdminNextScreenKey;
+    | AdminNextScreenKey
+    | NodeSandboxScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

@@ -32,6 +32,12 @@ func protectedBuildGateOperations() []buildGateOperation {
 			}
 			return err.Error()
 		}},
+		// alpha.127: a Node.js site's install step.
+		{name: "NodeSiteInstallV1", run: func(expected string) string {
+			var response transport.NodeSiteInstallResponse
+			_ = agent.NodeSiteInstallV1(&transport.NodeSiteInstallRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		// alpha.118: WordPress tools and the malware quarantine.
 		{name: "WordPressUpdateV1", run: func(expected string) string {
 			var response transport.WordPressUpdateResponse

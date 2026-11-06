@@ -1,7 +1,7 @@
 #!/bin/bash
 # Site sandbox escape-test kit (README.md). Runs each probe under a unit
 # rendered exactly as CelikPanel renders one and reports PASS when every
-# escape attempt of the matrix (items 1-18 in docs/SITE-SANDBOX.md) fails.
+# escape attempt of the matrix (items 1-20 in docs/SITE-SANDBOX.md) fails.
 #
 #   ./run.sh build            build bin/render, bin/goprobe and
 #                             bin/sandbox-helper (needs Go; run on the
@@ -12,7 +12,9 @@
 #
 # Lab VMs only: it creates a test account, two test sites under
 # /var/www/celikpanel/subscriptions/99000{1,2}, units celikrt-99000{1,2,3}
-# and a throwaway network namespace, and removes all of them at the end.
+# (and, with NODE_VERSION, celikapp-990004 and celikappinst-990004 and a
+# decoy /opt/celikpanel/runtimes/node/0.0.1) and a throwaway network
+# namespace, and removes all of them at the end.
 # It never runs "nft flush ruleset" and never touches inet celikpanel_fw.
 #
 # Yalniz deneme sanal makinelerinde calistirin.
@@ -27,6 +29,18 @@ OTHER=$SUBS/990002/sites/990002/secret.txt
 UNIT_GO=celikrt-990001.service
 UNIT_PY=celikrt-990002.service
 UNIT_LOAD=celikrt-990003.service
+# Node.js sites (alpha.127): the site's document root, its unit and its
+# install step, rendered by the Agent's own renderer (nodesite). They run
+# only when NODE_VERSION names a Node.js under /opt/celikpanel/runtimes/node
+# (the panel's Components -> Node.js install); otherwise items 19 and 20 are
+# SKIP.
+DOC=$HOME_DIR/public_html
+UNIT_NODE=celikapp-990004.service
+UNIT_NODE_INST=celikappinst-990004.service
+NODE_VERSION=${NODE_VERSION:-}
+NODE_DECOY=/opt/celikpanel/runtimes/node/0.0.1
+INSTALLED_DECOY=/run/celikpanel-sandbox-kit-installed-node-decoy
+PORT_NODE=34993
 PORT_GO=34990
 PORT_PY=34991
 PORT_LOAD=34992
@@ -320,7 +334,87 @@ item11_load() {
 	done
 }
 
+# Items 19 and 20: a Node.js site, as the Agent renders it (alpha.127). The
+# Go probe is the site's code: the start command runs it under /bin/sh, as a
+# customer's start command runs node. Item 19: only the site's own Node.js
+# version is visible (a decoy version beside it must not be), read-only.
+# Item 20: the install step celikappinst-<id> runs npm in the same sandbox;
+# the project's postinstall script runs the probe once, and its build script
+# runs node.
+run_node() {
+	local dir=/opt/celikpanel/runtimes/node/$NODE_VERSION before after i state result line escaped=""
+	if [ -z "$NODE_VERSION" ] || [ ! -x "$dir/bin/node" ] || [ ! -f "$dir/lib/node_modules/npm/bin/npm-cli.js" ]; then
+		for i in 19 20; do mark $i SKIP "no Node.js: set NODE_VERSION to a version under /opt/celikpanel/runtimes/node"; done
+		return
+	fi
+	mkdir -p "$DOC/bin"
+	install -m 0755 "$BIN/goprobe" "$DOC/bin/goprobe"
+	local env="PROBE_APPDIR=$DOC PROBE_KIND=node PROBE_NODE_VERSION=$NODE_VERSION PROBE_OTHER_SITE=$OTHER"
+	python3 - "$DOC/package.json" "$env PROBE_PORT=$((PORT_NODE + 2)) PROBE_ONCE=1 ./bin/goprobe" <<'PY'
+import json, sys
+json.dump({"name": "celik-sandbox-escape", "version": "1.0.0", "private": True,
+           "scripts": {"postinstall": sys.argv[2],
+                       "build": "node -e \"require('fs').writeFileSync('built.txt', process.version)\""}},
+          open(sys.argv[1], "w"))
+PY
+	chown -R "$USER_NAME:$USER_NAME" "$DOC"
+	if [ ! -e "$NODE_DECOY" ]; then
+		mkdir -p "$NODE_DECOY/bin" && cp "$dir/bin/node" "$NODE_DECOY/bin/node" && touch "$INSTALLED_DECOY"
+	fi
+	before=$(counter); before=${before:-0}
+	STARTED=$(date +%s)
+	"$BIN/render" -what node-unit -site 990004 -user "$USER_NAME" -appdir "$DOC" -port "$PORT_NODE" -version "$NODE_VERSION" \
+		-command "$env PROBE_PORT=$PORT_NODE PROBE_TARGET_PID=$(target_pid) exec $DOC/bin/goprobe" > "/etc/systemd/system/$UNIT_NODE" \
+		|| { mark 19 FAIL "node: render failed"; return; }
+	systemctl daemon-reload
+	systemctl start "$UNIT_NODE"
+	if ! wait_line "$UNIT_NODE" "SANDBOX-PROBE DONE" 120; then
+		mark 19 FAIL "node probe did not finish: $(systemctl show -p Result --value "$UNIT_NODE")"
+		journalctl -u "$UNIT_NODE" -o cat --since "@$STARTED" --no-pager | tail -20
+		return
+	fi
+	collect "$UNIT_NODE" node
+	journalctl -u "$UNIT_NODE" -o cat --since "@$STARTED" --no-pager | grep -q "^SANDBOX-PROBE 19 " || mark 19 FAIL "node: no result for item 19"
+	after=$(counter); after=${after:-0}
+	if [ "$EGRESS_OK" = 1 ]; then
+		[ $((after - before)) -ge 6 ] && mark 9 PASS || mark 9 FAIL "node: the SMTP counter moved by $((after - before)), not >= 6"
+		in_set "$UNIT_NODE" || mark 17 FAIL "node: $UNIT_NODE is not in the SMTP set"
+	fi
+	systemctl stop "$UNIT_NODE"
+	# Item 20: the install step.
+	STARTED=$(date +%s)
+	systemctl stop "$UNIT_NODE_INST" 2>/dev/null; systemctl reset-failed "$UNIT_NODE_INST" 2>/dev/null
+	mapfile -t args < <("$BIN/render" -what node-install -site 990004 -user "$USER_NAME" -appdir "$DOC" -version "$NODE_VERSION" -build)
+	[ ${#args[@]} -gt 0 ] || { mark 20 FAIL "node-install: render failed"; return; }
+	systemd-run "${args[@]}" || { mark 20 FAIL "systemd-run refused the install step's properties"; return; }
+	for i in $(seq 1 300); do
+		# --no-block: the start job may still be queued (inactive).
+		state=$(systemctl show -p ActiveState --value "$UNIT_NODE_INST")
+		case "$state" in active|failed) break ;; esac
+		sleep 1
+	done
+	result=$(systemctl show -p Result --value "$UNIT_NODE_INST")
+	if ! journalctl -u "$UNIT_NODE_INST" -o cat --since "@$STARTED" --no-pager | grep -q "SANDBOX-PROBE DONE"; then
+		mark 20 FAIL "the install step's probe did not finish ($state $result)"
+		journalctl -u "$UNIT_NODE_INST" -o cat --since "@$STARTED" --no-pager | tail -20
+		return
+	fi
+	while read -r line; do
+		# Mail ports on a host without the SMTP block are item 9's named
+		# gap (judged there), not an escape of the install step.
+		case "$line" in "SANDBOX-PROBE 9 "*) [ "$EGRESS_OK" = 1 ] || { mark 9 FAIL "install step: this host cannot hold the SMTP block"; continue; } ;; esac
+		escaped="$escaped; ${line#SANDBOX-PROBE }"
+	done < <(journalctl -u "$UNIT_NODE_INST" -o cat --since "@$STARTED" --no-pager | grep "^SANDBOX-PROBE [0-9]* [^ ]* ESCAPED")
+	[ -z "$escaped" ] && mark 20 PASS || mark 20 FAIL "install step$escaped"
+	[ "$result" = success ] && [ -f "$DOC/built.txt" ] && mark 20 PASS || mark 20 FAIL "npm install and build did not succeed in the sandbox ($state $result)"
+	systemctl stop "$UNIT_NODE_INST" 2>/dev/null; systemctl reset-failed "$UNIT_NODE_INST" 2>/dev/null
+}
+
 cleanup() {
+	for u in $UNIT_NODE $UNIT_NODE_INST; do
+		systemctl stop "$u" 2>/dev/null; systemctl reset-failed "$u" 2>/dev/null; rm -f "/etc/systemd/system/$u"
+	done
+	if [ -e "$INSTALLED_DECOY" ]; then rm -rf "$NODE_DECOY" "$INSTALLED_DECOY"; fi
 	for u in $UNIT_GO $UNIT_PY $UNIT_LOAD; do
 		systemctl stop "$u" 2>/dev/null; systemctl disable "$u" 2>/dev/null; rm -f "/etc/systemd/system/$u"
 	done
@@ -348,12 +442,12 @@ cleanup() {
 summary() {
 	local item failed=0
 	log ""; log "== site sandbox escape matrix (level: $LEVEL) =="
-	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
 		log "item $item: ${RESULT[$item]:-FAIL}${DETAIL[$item]:+ — ${DETAIL[$item]}}"
 		[ "${RESULT[$item]:-FAIL}" = FAIL ] && failed=1
 	done
 	local skipped=""
-	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+	for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
 		[ "${RESULT[$item]:-}" = SKIP ] && skipped="$skipped $item"
 	done
 	[ -n "$skipped" ] && log "SKIP is not a failure, but these items were not judged:$skipped (each names its reason above)"
@@ -374,6 +468,7 @@ case "${1:-matrix}" in
 		systemctl stop "$UNIT_PY"
 		item10_bind_any
 		item11_load
+		run_node
 		summary ;;
 	quick)
 		# The two probes only (no network namespace, no load, no table
@@ -384,7 +479,17 @@ case "${1:-matrix}" in
 		run_matrix "$UNIT_GO" program "$PORT_GO" "$APP/bin/goprobe"
 		run_matrix "$UNIT_PY" python "$PORT_PY" "/usr/bin/python3 -I $APP/src/probe.py"
 		item18
+		run_node
 		for item in 11 17; do RESULT[$item]=SKIP; DETAIL[$item]="not run in quick mode"; done
+		summary ;;
+	node)
+		# Node.js sites only: the matrix under a Node.js site's unit and
+		# items 19 and 20; 11, 17 and 18 are not run.
+		preflight
+		trap cleanup EXIT
+		setup
+		run_node
+		for item in 11 17 18; do RESULT[$item]=SKIP; DETAIL[$item]="not run in node mode"; done
 		summary ;;
 	reboot-prepare)
 		preflight; setup
@@ -403,7 +508,7 @@ case "${1:-matrix}" in
 		python3 -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:$PORT_GO/smtp',timeout=60).read()"
 		after=$(counter); after=${after:-0}
 		[ $((after - before)) -ge 6 ] && mark 17 PASS || mark 17 FAIL "after the reboot the counter moved by $((after - before))"
-		LEVEL=reboot; for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18; do RESULT[$item]=SKIP; done
+		LEVEL=reboot; for item in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18 19 20; do RESULT[$item]=SKIP; done
 		summary ;;
-	*) log "usage: $0 [build|matrix|quick|reboot-prepare|reboot-verify]"; exit 2 ;;
+	*) log "usage: $0 [build|matrix|quick|node|reboot-prepare|reboot-verify]  (NODE_VERSION=<v> for items 19 and 20)"; exit 2 ;;
 esac

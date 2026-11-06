@@ -17,11 +17,17 @@ type SandboxCaps struct {
 
 // SandboxUnit is one sandboxed unit file found on the server.
 type SandboxUnit struct {
-	InstallID int    `json:"install_id"`
-	Unit      string `json:"unit"`
+	InstallID int `json:"install_id"`
+	// Kind is "" for a service app and "node" for a Node.js site
+	// (alpha.127), whose SiteID is then set instead of InstallID.
+	Kind   string `json:"kind,omitempty"`
+	SiteID int    `json:"site_id,omitempty"`
+	Unit   string `json:"unit"`
 	// File: ours, edited (the owner changed it) or foreign.
 	File       string `json:"file"`
 	Generation int    `json:"generation"`
+	// Active is systemd's ActiveState of a Node.js site's unit (alpha.127).
+	Active string `json:"active,omitempty"`
 }
 
 // SandboxCapsResponse answers SandboxCapsV1.

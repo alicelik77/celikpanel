@@ -11,6 +11,7 @@ import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
 import { AppAccountLine } from './AppAccountLine';
+import { NodeSiteSandbox } from './NodeSiteSandbox';
 import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 import { confirmAction } from '../lib/confirmAction';
@@ -80,7 +81,7 @@ function showsHosting(before: HostingState, now: HostingState, sent: HostingStat
 const NODE_RUNTIMES_URL = '/api/v1/runtimes/node';
 const decodeNodeRuntimes = (raw: unknown) => decodeListIn<string>(raw, 'installed');
 
-export function HostingTypePanel({ domainId }: { domainId: number; domainName: string }) {
+export function HostingTypePanel({ domainId, domainName }: { domainId: number; domainName: string }) {
     const { t, locale } = useI18n();
     const [saving, setSaving] = useState(false);
 
@@ -163,6 +164,7 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
             {(shown) => (
                 <HostingForm
                     domainId={domainId}
+                    domainName={domainName}
                     saved={shown.value}
                     state={edit && edit.from === shown.observedAt ? edit.value : shown.value}
                     setState={(value) => setEdit({ from: shown.observedAt, value })}
@@ -179,6 +181,7 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
 
 function HostingForm({
     domainId,
+    domainName,
     saved,
     state,
     setState,
@@ -189,6 +192,7 @@ function HostingForm({
     onApply,
 }: {
     domainId: number;
+    domainName: string;
     /** What the server has saved; the live application panel follows this, not the draft. */
     saved: HostingState;
     state: HostingState;
@@ -378,6 +382,8 @@ function HostingForm({
             {saved.project_type === 'node' && <AppPanel domainId={domainId} />}
             {/* alpha.107 (D-038 §6): which account the application runs as. */}
             {saved.project_type === 'node' && <AppAccountLine domainId={domainId} />}
+            {/* alpha.127: the site sandbox and the install step. */}
+            {saved.project_type === 'node' && <NodeSiteSandbox domainId={domainId} domainName={domainName} />}
             {/* Installing a Node VERSION happens in one place: the Services
                 page's version drawer (B3b) — a runtime install is a server
                 decision, not a per-domain setting. This page only SELECTS

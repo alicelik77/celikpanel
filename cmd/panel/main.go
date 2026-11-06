@@ -341,6 +341,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "app/node-version":
 		// alpha.107 (D-038 §9): move a site to another Node.js patch, with proof.
 		match.kind, match.methods = "app-node-version", []string{http.MethodPost}
+	case "app/packages":
+		// alpha.127: npm install and build in the site sandbox.
+		match.kind, match.methods = "app-packages", getPost
 	case "php":
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
@@ -535,6 +538,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainAppAccount(w, r, match.domainID)
 	case "app-node-version":
 		p.handleDomainAppNodeVersion(w, r, match.domainID)
+	case "app-packages":
+		p.handleDomainAppInstall(w, r, match.domainID)
 	case "php":
 		p.handleDomainPHPSettings(w, r)
 	case "php-pool":
