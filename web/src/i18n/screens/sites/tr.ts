@@ -124,7 +124,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.checkDeletionStatus': 'Silme durumunu kontrol et',
     'domains.peerInspectorDetail.inspector_policy': 'İkincil sunucunun denetleyicisi, sahip politikasının eksik olduğunu ya da bu istekle eşleşmediğini bildirdi; ikincil sunucunun sahibi bunu dns-peer-enroll secondary-status ile denetler.',
     'domains.peerInspectorDetail.named_unavailable': 'İkincil sunucunun denetleyicisi, named\'in standart hizmeti ve yapılandırmasıyla çalışmadığını ya da yapılandırmasının okunamadığını bildirdi.',
-    'domains.peerInspectorDetail.listeners_unverified': 'İkincil sunucunun denetleyicisi, named\'in DNS veya denetim (rndc) dinleyicilerinin kayıtlı adresle ve yerel döngü adresiyle eşleşmediğini bildirdi.',
+    'domains.peerInspectorDetail.listeners_unverified': 'Yedek DNS sunucusunun denetim aracı named\'in dinleyicilerini doğrulayamadı. Bu genellikle eski bir denetim aracıdır: CelikPanel, yedek DNS sunucusu güncellendiğinde güncel aracı yerine koyar ve bu silme kendiliğinden yeniden denetlenir. Kimsenin bir şey yapması gerekmiyor. Yalnız araç elle değiştirildiyse yedek DNS sunucusunun DNS sayfası çalıştırılacak tek komutu gösterir.',
     'domains.peerInspectorDetail.catalog_unverified': 'İkincil sunucunun denetleyicisi, named\'in birincil sunucunun katalog bölgesini abone olunmuş bir ikincil bölge olarak tutmadığını bildirdi.',
     'domains.peerInspectorDetail.catalog_transfer_failed': 'İkincil sunucunun denetleyicisi, katalog bölgesinin yerel aktarımının tamamlanmadığını bildirdi.',
     'domains.peerInspectorDetail.catalog_malformed': 'İkincil sunucunun denetleyicisi, aktarılan katalog bölgesinin beklenen içerikte olmadığını bildirdi.',

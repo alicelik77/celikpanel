@@ -175,6 +175,13 @@ test('only a reviewed inspector detail of an incomplete inspection is kept, with
       status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_inspection_unknown', detail,
     })), { reason: 'dns_peer_inspection_unknown', detail });
     const key = `domains.peerInspectorDetail.${detail}`;
+    if (detail === 'listeners_unverified') {
+      // 6 Nov 2026: usually an older check tool, replaced by the backup's
+      // own update; a waiting state unless someone changed the tool by hand.
+      assert.match(enScreens[key], /check tool.*Nobody needs to do anything.*changed by hand/);
+      assert.match(trScreens[key], /denetim aracı.*Kimsenin bir şey yapması gerekmiyor.*elle değiştirildiyse/);
+      continue;
+    }
     assert.match(enScreens[key], /secondary's inspector reported/);
     assert.match(trScreens[key], /denetleyicisi/);
     assert.doesNotMatch(trScreens[key], /\?/);

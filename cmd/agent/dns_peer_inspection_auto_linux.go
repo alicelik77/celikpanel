@@ -98,14 +98,18 @@ type dnsPeerInspectionHost struct {
 	probe          func(ctx context.Context, enrollment dnspeertransport.Enrollment) dnspeertransport.ProbeResult
 	// Secondary side.
 	inspectorPresent func(engine string) bool
-	sshPorts         func() ([]int, error)
-	otherEngine      func(engine string) (string, error)
-	status           func(engine string) (dnspeerenrollowner.Status, error)
-	install          func(engine string, options dnspeerenrollowner.SecondaryOptions, resume bool) error
-	hostKey          func() (string, error)
-	readMarker       func() (dnsPeerInspectionAutoMarker, bool, error)
-	writeMarker      func(dnsPeerInspectionAutoMarker) error
-	writePublicKey   func(raw []byte) (string, error)
+	// inspectorSource is the packaged inspector a new setup installs: this
+	// release's copy (6 Nov 2026; the fresh-install copy in /opt is never
+	// updated). nil means the fresh-install copy.
+	inspectorSource func(engine string) string
+	sshPorts        func() ([]int, error)
+	otherEngine     func(engine string) (string, error)
+	status          func(engine string) (dnspeerenrollowner.Status, error)
+	install         func(engine string, options dnspeerenrollowner.SecondaryOptions, resume bool) error
+	hostKey         func() (string, error)
+	readMarker      func() (dnsPeerInspectionAutoMarker, bool, error)
+	writeMarker     func(dnsPeerInspectionAutoMarker) error
+	writePublicKey  func(raw []byte) (string, error)
 }
 
 func nativeDNSPeerInspectionHost() dnsPeerInspectionHost {
@@ -136,9 +140,10 @@ func nativeDNSPeerInspectionHost() dnsPeerInspectionHost {
 			_, err := dnspeerenrollment.ActivateOwner(dnspeerenrollment.OwnerActivation(in))
 			return err
 		},
-		probe: dnspeertransport.Probe,
+		probe:           dnspeertransport.Probe,
+		inspectorSource: func(engine string) string { return currentDNSOwnerTool(engine + "-peer-inspect") },
 		inspectorPresent: func(engine string) bool {
-			info, err := os.Lstat(dnsOwnerToolsDir + "/" + engine + "-peer-inspect")
+			info, err := os.Lstat(currentDNSOwnerTool(engine + "-peer-inspect"))
 			if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0022 != 0 || info.Mode().Perm()&0100 == 0 {
 				return false
 			}
@@ -441,8 +446,12 @@ func (h dnsPeerInspectionHost) secondary(req transport.DNSPeerInspectionSecondar
 	if err != nil {
 		return answer(transport.DNSPeerInspectionPairNotReady, "")
 	}
+	source := dnsOwnerToolsDir + "/" + pair.engine + "-peer-inspect"
+	if h.inspectorSource != nil {
+		source = h.inspectorSource(pair.engine)
+	}
 	options := dnspeerenrollowner.SecondaryOptions{PrimaryIP: pair.peerIP, PeerIP: pair.localIP, CatalogName: catalog,
-		InspectorBinaryPath: dnsOwnerToolsDir + "/" + pair.engine + "-peer-inspect"}
+		InspectorBinaryPath: source}
 	if pair.engine == string(transport.DNSEnginePowerDNS) {
 		options.CatalogAccount = pdnsPeerCatalogAccount
 	}

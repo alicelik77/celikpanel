@@ -16,3 +16,11 @@ func (a *Agent) DNSPeerInspectionSecondaryV1(_ *transport.DNSPeerInspectionSecon
 	resp.State = transport.DNSPeerInspectionNotApplicable
 	return nil
 }
+
+// The DNS check tool exists only on Linux backups.
+func (a *Agent) DNSPeerInspectorToolStatusV1(_ *transport.DNSPeerInspectorToolStatusRequest, resp *transport.DNSPeerInspectorToolStatusResponse) error {
+	resp.Tools = []transport.DNSPeerInspectorTool{}
+	return nil
+}
+
+func reconcileDNSPeerInspectorToolsAtStartup() {}

@@ -149,6 +149,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
+		Agent.DNSPeerInspectorToolStatusV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -375,6 +376,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// sshd -t, useradd and one OpenSSH reload, and one bounded SSH probe.
 	"Agent.DNSPeerInspectionPrimaryV1":    agentRPCMutationTimeout,
 	"Agent.DNSPeerInspectionSecondaryV1":  agentRPCMutationTimeout,
+	"Agent.DNSPeerInspectorToolStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.ConfigureDKIMSigning":          agentRPCMutationTimeout,
 	"Agent.ConfigurePowerDNSSQLite":       agentRPCMutationTimeout,
 	"Agent.CreateFileOrDir":               agentRPCMutationTimeout,

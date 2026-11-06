@@ -9,6 +9,7 @@ import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { DNSCheckToolNotice } from './DNSCheckToolNotice';
 import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
@@ -410,6 +411,7 @@ export function Domains() {
 
             {kept && <KeptSiteRecords domain={kept.domain} outcome={kept.outcome} onDismiss={() => setKept(null)} />}
 
+            {pendingDeletions.length > 0 && <DNSCheckToolNotice className="mb-4" />}
             {pendingDeletions.map((pending) => (pending.message === null ? (
                 <CouldNotCheck
                     key={pending.id}

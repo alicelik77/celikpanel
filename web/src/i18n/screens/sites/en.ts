@@ -128,7 +128,7 @@ export const enSitesScreens = {
     'domains.checkDeletionStatus': 'Check deletion status',
     'domains.peerInspectorDetail.inspector_policy': 'The secondary\'s inspector reported that its owner policy is missing or does not match this request; the secondary\'s owner checks it with dns-peer-enroll secondary-status.',
     'domains.peerInspectorDetail.named_unavailable': 'The secondary\'s inspector reported that named is not running under its standard service and configuration, or that its configuration could not be read.',
-    'domains.peerInspectorDetail.listeners_unverified': 'The secondary\'s inspector reported that named\'s DNS or control (rndc) listeners do not match the enrolled address and loopback.',
+    'domains.peerInspectorDetail.listeners_unverified': 'The backup DNS server\'s check tool could not confirm named\'s listeners. This is usually an older check tool: CelikPanel puts its current one in place when the backup DNS server is updated, and this deletion is checked again by itself. Nobody needs to do anything. Only if the check tool was changed by hand does the backup DNS server\'s DNS page show the one command to run.',
     'domains.peerInspectorDetail.catalog_unverified': 'The secondary\'s inspector reported that named does not hold the primary\'s catalog zone as a subscribed secondary zone.',
     'domains.peerInspectorDetail.catalog_transfer_failed': 'The secondary\'s inspector reported that the local transfer of the catalog zone did not complete.',
     'domains.peerInspectorDetail.catalog_malformed': 'The secondary\'s inspector reported that the transferred catalog zone does not have the expected content.',
