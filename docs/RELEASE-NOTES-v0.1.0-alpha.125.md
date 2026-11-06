@@ -4,8 +4,9 @@
 
 Mail without a password is now turned off: sites send mail only with a
 mailbox's user name and password. The panel is faster, an update no longer
-fails on a timing race at its last database check, and three lab findings
-from alpha.124 are fixed. **Only the owner updates installed panels, from the
+fails on a timing race at its last database check, three lab findings from
+alpha.124 are fixed, and two update faults found in this release's lab are
+fixed (one stopped every update on Debian 12). **Only the owner updates installed panels, from the
 panel's own update screen.**
 
 ## Mail without a password is turned off
@@ -75,6 +76,19 @@ nothing there needs to change.
 - The "failed" mark of a self-update attempt that release recovery finished
   after the Agent had started is now cleared too, so it no longer stays under
   `systemctl --failed`.
+- An update pressed while the server's own package work was running (for
+  example Debian's nightly package tasks just after midnight) could fail at
+  once with "independent recovery runtime preparation is unconfirmed"
+  (nothing had changed; pressing again later worked). Preparing the new
+  recovery program now waits up to a minute for that work, like the update's
+  other read-only checks.
+- On Debian 12 (and Ubuntu 22.04, which has the same older systemd) every
+  update stopped after the panel had already been stopped, while reading the
+  Certbot renewal timers, and release recovery then could not roll it back:
+  the panel stayed down. The timer that does not exist on these systems is now
+  read correctly, and a refusal at that step can no longer leave a record that
+  recovery does not accept. This fault dates from alpha.92; Debian 13 and
+  Ubuntu 24.04 were never affected.
 
 ## A faster panel
 
@@ -105,12 +119,37 @@ nothing there needs to change.
 
 ## Lab results
 
-_To be filled in after the lab round._
+Lab round on 6 November 2026 with fresh virtual servers (Debian 13 main with
+PowerDNS and mail, Ubuntu 24.04 backup DNS server, a Debian 12 server and a
+second mail server), each updated with the **Update** button:
+
+- **Update 124 → 125:** the Ubuntu backup updated on the first press. The
+  Debian main failed once because Debian's midnight package task was running
+  (the fault above); after the fix it updated on the first press, even with a
+  package task started on purpose at that moment. Old failed marks were
+  cleared; `systemctl --failed` was empty.
+- **Update right after a rollback:** pressed one second after a rollback, the
+  update waited for the start-up mail work and succeeded, with no duplicate
+  operation. On Debian 12 it found the Certbot timer fault above; after the
+  fix Debian 12 updated on the first press.
+- **Faster panel:** on the lab servers the Components check went from
+  1.8–2.2 s to 0.6–0.9 s and server setup's component answer from 0.8–1.3 s to
+  under 0.1 s, with the same results. A package installed with `apt` outside
+  the panel appeared after 1.4 s. Files and answers were compressed; answers
+  that may carry secrets were not.
+- **Mail without a password:** every item checked, including delivery with a
+  mailbox password to a second server.
+- **Clearer refusals:** both refusals came back as described, in English and
+  Turkish.
 
 ## Known limits
 
 - Site cron output is no longer mailed and the panel does not keep it
   elsewhere.
+- A Debian 12 or Ubuntu 22.04 server whose panel was already left stopped by
+  the Certbot timer fault above is not repaired by this release, because it
+  cannot reach it; its owner's recovery path is still needed. The update on
+  Ubuntu 22.04 itself was not run in the lab.
 - The update's last database check still copies the live database. Asking
   the running panel instead is a structural simplification planned for
   alpha.126.
@@ -126,4 +165,5 @@ _To be filled in after the lab round._
 
 No schema change and no migration. Release sequence 124 → 125.
 Go tests (whole module) and web tests pass, the web bundles stay within their
-budgets. Lab evidence will be kept on the lab branch.
+budgets. Lab evidence: `deploy/e2e/dns-pair-acceptance/evidence/a125` on the
+lab branch.

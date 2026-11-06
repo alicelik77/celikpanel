@@ -5,7 +5,9 @@
 Parolasız posta artık kapalı: siteler postayı yalnız bir posta kutusunun
 kullanıcı adı ve parolasıyla gönderir. Panel daha hızlı, güncelleme son
 veritabanı denetiminde bir zamanlama çakışması yüzünden artık başarısız
-olmuyor ve alpha.124 laboratuvarında bulunan üç sorun düzeltildi. **Kurulu
+olmuyor; alpha.124 laboratuvarında bulunan üç sorun ve bu sürümün
+laboratuvarında bulunan iki güncelleme hatası düzeltildi (biri Debian 12'de
+her güncellemeyi durduruyordu). **Kurulu
 panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 
 ## Parolasız posta kapatıldı
@@ -77,6 +79,18 @@ değiştirmek gerekmiyor.
 - Agent başladıktan sonra sürüm kurtarmanın tamamladığı kendini güncelleme
   denemesinin "başarısız" işareti de artık temizlenir; `systemctl --failed`
   altında kalmaz.
+- Sunucunun kendi paket işi sürerken (örneğin Debian'ın gece yarısından hemen
+  sonraki paket görevleri) basılan güncelleme "independent recovery runtime
+  preparation is unconfirmed" iletisiyle hemen başarısız olabiliyordu (hiçbir
+  şey değişmemişti; sonra yeniden basınca çalışıyordu). Yeni kurtarma
+  programının hazırlığı artık güncellemenin diğer salt-okur denetimleri gibi o
+  işi bir dakikaya kadar bekler.
+- Debian 12'de (ve aynı eski systemd'ye sahip Ubuntu 22.04'te) her güncelleme,
+  panel durdurulduktan sonra Certbot yenileme zamanlayıcılarını okurken
+  duruyordu; sürüm kurtarma da geri alamıyordu ve panel kapalı kalıyordu. Bu
+  sistemlerde olmayan zamanlayıcı artık doğru okunuyor ve bu adımdaki bir ret
+  artık kurtarmanın kabul etmediği bir kayıt bırakamıyor. Hata alpha.92'den
+  beri vardı; Debian 13 ve Ubuntu 24.04 hiç etkilenmedi.
 
 ## Daha hızlı panel
 
@@ -107,12 +121,38 @@ değiştirmek gerekmiyor.
 
 ## Laboratuvar sonuçları
 
-_Laboratuvar turundan sonra doldurulacak._
+6 Kasım 2026 laboratuvar turu, yeni kurulmuş sanal sunucularla (PowerDNS ve
+postalı Debian 13 ana sunucu, Ubuntu 24.04 yedek DNS sunucusu, bir Debian 12
+sunucu ve ikinci bir posta sunucusu); her biri **Güncelle** düğmesiyle
+güncellendi:
+
+- **124 → 125 güncellemesi:** Ubuntu yedek sunucu ilk basışta güncellendi.
+  Debian ana sunucu, Debian'ın gece yarısı paket görevi sürdüğü için bir kez
+  başarısız oldu (yukarıdaki hata); düzeltmeden sonra, o anda bilerek
+  başlatılan bir paket göreviyle bile ilk basışta güncellendi. Eski başarısız
+  işaretleri temizlendi; `systemctl --failed` boştu.
+- **Geri almadan hemen sonra güncelleme:** geri almadan bir saniye sonra
+  basılan güncelleme açılıştaki posta işini bekledi ve başarılı oldu; ikinci
+  bir işlem başlamadı. Debian 12'de yukarıdaki Certbot zamanlayıcı hatası
+  bulundu; düzeltmeden sonra Debian 12 ilk basışta güncellendi.
+- **Daha hızlı panel:** laboratuvar sunucularında Bileşenler denetimi
+  1,8–2,2 sn'den 0,6–0,9 sn'ye, sunucu kurulumunun bileşen yanıtı 0,8–1,3 sn'den
+  0,1 sn'nin altına indi; sonuçlar aynı. Panel dışında `apt` ile kurulan paket
+  1,4 sn sonra göründü. Dosyalar ve yanıtlar sıkıştırıldı; gizli bilgi
+  taşıyabilen yanıtlar sıkıştırılmadı.
+- **Parolasız posta:** her madde denetlendi; ikinci bir sunucuya posta kutusu
+  parolasıyla teslim de dahil.
+- **Daha açık retler:** iki ret de anlatıldığı gibi, İngilizce ve Türkçe
+  döndü.
 
 ## Bilinen sınırlar
 
 - Site cron çıktısı artık postayla gönderilmiyor ve panel onu başka bir yerde
   de saklamıyor.
+- Yukarıdaki Certbot zamanlayıcı hatası yüzünden paneli zaten kapalı kalmış
+  bir Debian 12 ya da Ubuntu 22.04 sunucusunu bu sürüm onaramaz, çünkü ona
+  ulaşamaz; sahibinin kurtarma yolu gerekir. Ubuntu 22.04'te güncellemenin
+  kendisi laboratuvarda denenmedi.
 - Güncellemenin son veritabanı denetimi hâlâ çalışan veritabanının bir
   kopyasını alıyor. Bunun yerine çalışan panele sormak, alpha.126 için
   planlanan yapısal bir sadeleştirmedir.
@@ -127,4 +167,5 @@ _Laboratuvar turundan sonra doldurulacak._
 
 Şema değişmedi, geçiş yok. Sürüm sırası 124 → 125.
 Go testleri (bütün modül) ve web testleri geçiyor, web paketleri sınırları
-içinde. Laboratuvar kanıtı laboratuvar dalında saklanacak.
+içinde. Laboratuvar kanıtı: laboratuvar dalında
+`deploy/e2e/dns-pair-acceptance/evidence/a125`.
