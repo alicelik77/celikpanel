@@ -9950,7 +9950,8 @@ aynı kurala göre denetler; böylece yazım hatası yönetici oluşturulurken y
   kurucu hiçbir şey kurmadan durur ve dosyaya dokunulmadığını söyler. **Kim işlem
   yapar:** kurulumu yapan kişi. **Sonraki eylem:** dosyayı düzeltmek (panelin
   kabul ettiği bir kullanıcı adı, siz@ornek.com gibi gerçek bir e-posta adresi, en
-  az 8 karakterlik bir parola). **Nasıl devam eder:** aynı kurulum komutunu yeniden
+  az 8 karakterlik, büyük harf, küçük harf ve - _ . ! gibi bir özel karakter
+  içeren bir parola). **Nasıl devam eder:** aynı kurulum komutunu yeniden
   çalıştırmak.
 - **Eski geçersiz adresi olan mevcut bir kurulum.** Güncellemede hiçbir şey
   değişmez; Sunucu kurulumu ekranının iletişim engeli ve "Hesabım’ı aç" düğmesi

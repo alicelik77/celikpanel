@@ -47,7 +47,7 @@ func TestPanelProcessPreservesHTTPSAndAuthenticationWhileAgentAbsent(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	hash, err := auth.HashPassword("local recovery process test password")
+	hash, err := auth.HashPassword("Local recovery process test password")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestPanelProcessPreservesHTTPSAndAuthenticationWhileAgentAbsent(t *testing.
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	login, err := http.NewRequest("POST", base+"/api/v1/auth/login", bytes.NewBufferString(`{"username":"recovery-admin","password":"local recovery process test password"}`))
+	login, err := http.NewRequest("POST", base+"/api/v1/auth/login", bytes.NewBufferString(`{"username":"recovery-admin","password":"Local recovery process test password"}`))
 	if err != nil {
 		t.Fatal(err)
 	}

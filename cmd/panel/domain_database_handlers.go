@@ -214,6 +214,11 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		http.Error(w, "Type must be 'mysql' or 'postgresql'", http.StatusBadRequest)
 		return
 	}
+	// The database's user gets this password: the database user rule.
+	if refusal := checkDatabaseUserPassword(req.Password); refusal != nil {
+		writePasswordRefusal(w, refusal)
+		return
+	}
 
 	ctx := r.Context()
 	pool := p.db.GetDB()

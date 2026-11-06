@@ -311,14 +311,14 @@ func TestResellerPoolAllowsAllocationAboveThePool(t *testing.T) {
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPut, "/api/v1/users/9702/pool", `{"pool":null}`), http.StatusNotFound, "")
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/9703/pool", `{"pool":null}`), http.StatusBadRequest, "")
 
-	create := `{"username":"pool-customer","email":"pool@example.test","password":"long-enough-1","role":"customer"}`
+	create := `{"username":"pool-customer","email":"pool@example.test","password":"Long-enough-1","role":"customer"}`
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", create), http.StatusConflict, errCodeResellerCustomersLimit)
 
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/9702/pool",
 		`{"pool":{"max_customers":5,"max_domains":15,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0}}`), http.StatusOK, "")
 	// alpha.117 (K2, D-042): handing out more than the pool is allowed; the
 	// pool limits real use at creation time (rights_test.go).
-	withBig := `{"username":"pool-customer","email":"pool@example.test","password":"long-enough-1","role":"customer","plan_id":` + itoa(big) + `}`
+	withBig := `{"username":"pool-customer","email":"pool@example.test","password":"Long-enough-1","role":"customer","plan_id":` + itoa(big) + `}`
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", withBig), http.StatusOK, "")
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPut, "/api/v1/users/9703/plan", `{"plan_id":`+itoa(big)+`}`), http.StatusOK, "")
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/plans",
@@ -352,7 +352,7 @@ func TestResellerSuspendsAndResumesOwnCustomer(t *testing.T) {
 func TestHandleCreateUserRoleRules(t *testing.T) {
 	f := newAccountsFixture(t)
 	body := func(name, role string) string {
-		return `{"username":"` + name + `","email":"` + name + `@example.test","password":"long-enough-1","role":"` + role + `"}`
+		return `{"username":"` + name + `","email":"` + name + `@example.test","password":"Long-enough-1","role":"` + role + `"}`
 	}
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", body("sub-reseller", "reseller")), http.StatusBadRequest, "")
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users", body("sub-admin", "admin")), http.StatusBadRequest, "")
@@ -364,9 +364,9 @@ func TestHandleCreateUserRoleRules(t *testing.T) {
 		t.Fatal("the reseller's customer is not under the reseller")
 	}
 	// A pool only from the administrator, only for a reseller.
-	withPool := `{"username":"pooled","email":"pooled@example.test","password":"long-enough-1","role":"customer","pool":{"max_customers":1}}`
+	withPool := `{"username":"pooled","email":"pooled@example.test","password":"Long-enough-1","role":"customer","pool":{"max_customers":1}}`
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPost, "/api/v1/users", withPool), http.StatusBadRequest, "")
-	reseller := `{"username":"pooled","email":"pooled@example.test","password":"long-enough-1","role":"reseller","pool":{"max_customers":2,"max_domains":10}}`
+	reseller := `{"username":"pooled","email":"pooled@example.test","password":"Long-enough-1","role":"reseller","pool":{"max_customers":2,"max_domains":10}}`
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPost, "/api/v1/users", reseller), http.StatusOK, "")
 	if n := f.count(t, `SELECT COUNT(*) FROM reseller_pools rp JOIN users u ON u.id = rp.reseller_id WHERE u.username = 'pooled' AND rp.max_customers = 2 AND rp.max_domains = 10`); n != 1 {
 		t.Fatal("the new reseller's pool was not stored")
@@ -492,14 +492,14 @@ func TestPasswordChangeDropsOtherSessions(t *testing.T) {
 	asCustomer, _ := impersonate(t, f, authzMatrixResellerID, "/api/v1/users/9703/impersonate")
 
 	wantStatus(t, f.as(t, authzMatrixCustomerID, http.MethodPost, "/api/v1/auth/password",
-		`{"current_password":"old-password-1","new_password":"new-password-1"}`), http.StatusOK, "")
+		`{"current_password":"old-password-1","new_password":"New-password-1"}`), http.StatusOK, "")
 	wantStatus(t, f.send(t, http.MethodGet, mySubscriptionPath, other, ""), http.StatusUnauthorized, "")
 	wantStatus(t, f.send(t, http.MethodGet, mySubscriptionPath, asCustomer.Value, ""), http.StatusUnauthorized, "")
 
 	// The operator's own password change ends the sessions it opened as others.
 	again, _ := impersonate(t, f, authzMatrixResellerID, "/api/v1/users/9703/impersonate")
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/auth/password",
-		`{"current_password":"old-password-1","new_password":"new-password-1"}`), http.StatusOK, "")
+		`{"current_password":"old-password-1","new_password":"New-password-1"}`), http.StatusOK, "")
 	wantStatus(t, f.send(t, http.MethodGet, mySubscriptionPath, again.Value, ""), http.StatusUnauthorized, "")
 }
 

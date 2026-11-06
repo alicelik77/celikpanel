@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -43,10 +44,9 @@ import (
 
 const (
 	maxSiteFeatureRequestBytes = 16 << 10
-	minSiteProtectPasswordLen  = 8
-	// bcrypt reads at most 72 bytes of a password; a longer one is refused
-	// instead of being silently cut.
-	maxSiteProtectPasswordLen = 72
+	// A protected folder's password: passwordpolicy.Fields["site_protect"],
+	// 8 characters to 72 bytes, because bcrypt reads at most 72 bytes of a
+	// password; a longer one is refused instead of being silently cut.
 	// A cost nginx can check at every request without stalling a worker for
 	// long: about 50 ms of one CPU.
 	siteProtectBcryptCost = 10
@@ -548,6 +548,9 @@ func siteFeatureQueryID(w http.ResponseWriter, r *http.Request, name string) (in
 }
 
 func writeSiteFeatureError(w http.ResponseWriter, err error) {
+	if writePasswordRefusalIf(w, err) {
+		return
+	}
 	var rejected *errSiteFeatureRejected
 	if errors.As(err, &rejected) {
 		writeCodedError(w, rejected.status, rejected.code, rejected.message, "")
@@ -617,13 +620,10 @@ func cloneSiteFeatureState(state siteFeatureState) siteFeatureState {
 }
 
 func hashSiteProtectPassword(password string) (string, error) {
-	if len(password) < minSiteProtectPasswordLen {
-		return "", rejectSiteFeature(http.StatusBadRequest, errCodeSiteFeatureInvalid,
-			fmt.Sprintf("the password must have at least %d characters", minSiteProtectPasswordLen))
-	}
-	if len(password) > maxSiteProtectPasswordLen {
-		return "", rejectSiteFeature(http.StatusBadRequest, errCodeSiteFeatureInvalid,
-			fmt.Sprintf("the password must have at most %d characters", maxSiteProtectPasswordLen))
+	// The owner's rule; the refusal reaches the answer as PASSWORD_WEAK
+	// (writeSiteFeatureError).
+	if refusal := passwordpolicy.CheckField(password, "site_protect"); refusal != nil {
+		return "", refusal
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), siteProtectBcryptCost)
 	if err != nil {

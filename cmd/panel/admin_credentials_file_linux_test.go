@@ -44,7 +44,7 @@ func TestValidateAdminCredentialsFileMetadata(t *testing.T) {
 }
 
 func TestReadAdminCredentialsFileContentRequiresSecureRegularFile(t *testing.T) {
-	content := []byte(`{"username":"first-admin","email":"admin@example.test","password":"secret-password"}`)
+	content := []byte(`{"username":"first-admin","email":"admin@example.test","password":"Secret-password"}`)
 	path := filepath.Join(t.TempDir(), "credentials.json")
 	if err := os.WriteFile(path, content, 0o600); err != nil {
 		t.Fatalf("write credentials: %v", err)
@@ -68,7 +68,7 @@ func TestReadAdminCredentialsFileContentRequiresSecureRegularFile(t *testing.T) 
 }
 
 func TestReadAdminCredentialsFileAcceptsBoundedPipe(t *testing.T) {
-	content := []byte(`{"username":"pipe-admin","email":"pipe@example.test","password":"strong-password"}`)
+	content := []byte(`{"username":"pipe-admin","email":"pipe@example.test","password":"Strong-password"}`)
 	reader, writer, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestReadAdminCredentialsFileAcceptsBoundedPipe(t *testing.T) {
 	}
 	if credentials.username != "pipe-admin" ||
 		credentials.email != "pipe@example.test" ||
-		credentials.password != "strong-password" {
+		credentials.password != "Strong-password" {
 		t.Fatal("credentials pipe content changed")
 	}
 }
@@ -106,7 +106,7 @@ func TestReadAdminCredentialsFileRejectsOversizePipe(t *testing.T) {
 }
 
 func TestPanelValidateAdminCredentialsCLIReadsPipeWithoutOutput(t *testing.T) {
-	content := []byte(`{"username":"cli-admin","email":"cli@example.test","password":"strong-password"}`)
+	content := []byte(`{"username":"cli-admin","email":"cli@example.test","password":"Strong-password"}`)
 	command := exec.Command(os.Args[0], "-test.run=^TestPanelValidateAdminCredentialsCLIPipeHelper$")
 	command.Env = append(os.Environ(), "CELIKPANEL_CREDENTIAL_PIPE_HELPER=1")
 	command.Stdin = bytes.NewReader(content)
@@ -114,7 +114,7 @@ func TestPanelValidateAdminCredentialsCLIReadsPipeWithoutOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validate credentials CLI from pipe: %v; output=%q", err, output)
 	}
-	if len(output) != 0 || bytes.Contains(output, []byte("strong-password")) {
+	if len(output) != 0 || bytes.Contains(output, []byte("Strong-password")) {
 		t.Fatalf("validation-only CLI emitted output: %q", output)
 	}
 }
@@ -123,7 +123,7 @@ func TestPanelValidateAdminCredentialsCLIReadsPipeWithoutOutput(t *testing.T) {
 // email the certificate request would refuse, without echoing a value.
 func TestPanelValidateAdminCredentialsCLIRefusesAnInvalidEmail(t *testing.T) {
 	for _, typo := range []string{"typo-owner", "typo-owner@", "typo-owner@localhost"} {
-		content := []byte(`{"username":"cli-admin","email":"` + typo + `","password":"strong-password"}`)
+		content := []byte(`{"username":"cli-admin","email":"` + typo + `","password":"Strong-password"}`)
 		command := exec.Command(os.Args[0], "-test.run=^TestPanelValidateAdminCredentialsCLIPipeHelper$")
 		command.Env = append(os.Environ(), "CELIKPANEL_CREDENTIAL_PIPE_HELPER=1")
 		command.Stdin = bytes.NewReader(content)
@@ -132,7 +132,7 @@ func TestPanelValidateAdminCredentialsCLIRefusesAnInvalidEmail(t *testing.T) {
 			t.Fatalf("validation-only CLI accepted %q", typo)
 		}
 		if !bytes.Contains(output, []byte("the email is not an address")) ||
-			bytes.Contains(output, []byte("typo-owner")) || bytes.Contains(output, []byte("strong-password")) {
+			bytes.Contains(output, []byte("typo-owner")) || bytes.Contains(output, []byte("Strong-password")) {
 			t.Fatalf("validation-only CLI output for %q = %q", typo, output)
 		}
 	}
@@ -152,7 +152,7 @@ func TestRunCreateAdminFromCredentialsFileRefusesInvalidEmailBeforeAnyChange(t *
 	}
 	defer reader.Close()
 	go func() {
-		_, _ = writer.Write([]byte(`{"username":"pipe-admin","email":"ali@","password":"strong-password"}`))
+		_, _ = writer.Write([]byte(`{"username":"pipe-admin","email":"ali@","password":"Strong-password"}`))
 		_ = writer.Close()
 	}()
 	var output bytes.Buffer
@@ -180,7 +180,7 @@ func TestPanelValidateAdminCredentialsCLIPipeHelper(t *testing.T) {
 func TestReadAdminCredentialsFileContentRejectsHardLink(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "credentials.json")
-	if err := os.WriteFile(path, []byte(`{"username":"first-admin","email":"admin@example.test","password":"secret-password"}`), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"username":"first-admin","email":"admin@example.test","password":"Secret-password"}`), 0o600); err != nil {
 		t.Fatalf("write credentials: %v", err)
 	}
 	if err := os.Chmod(path, 0o600); err != nil {

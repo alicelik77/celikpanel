@@ -227,7 +227,9 @@ def cmd_provision(a) -> dict:
 def cmd_install(a) -> dict:
     st = load_state(a.cell, a.node)
     dist = json.loads(DIST.read_text())
-    password = secrets.token_urlsafe(24)
+    # Both letter cases and a special character, so the panel's password
+    # rule (6 Nov 2026) admits it; token_urlsafe alone may lack '-' and '_'.
+    password = "Cp7-" + secrets.token_urlsafe(24)
     st["password"], st["username"] = password, "owner"
     save_state(a.cell, a.node, st)
     rec = Recorder(a.cell, redactor_for(st))

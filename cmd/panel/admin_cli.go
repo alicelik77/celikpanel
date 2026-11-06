@@ -21,7 +21,11 @@ import (
 	"golang.org/x/term"
 )
 
-const minimumAdminPasswordBytes = 8
+// The administrator's password meets the same rule as every panel account's
+// (checkAccountPassword, 6 Nov 2026): at least 8 characters, an uppercase and
+// a lowercase letter and a special character. The refusal names the rule,
+// never the value.
+// Yoneticinin parolasi her panel hesabinin kuralina uyar.
 
 // The administrator's email is the contact the panel hands to the
 // certificate authority when the first setup requests the panel's HTTPS
@@ -208,9 +212,11 @@ func parseAdminCredentialsJSON(content []byte) (adminCredentials, error) {
 func validateAdminCredentials(credentials adminCredentials) error {
 	if strings.TrimSpace(credentials.username) != credentials.username ||
 		strings.TrimSpace(credentials.email) != credentials.email ||
-		credentials.username == "" || credentials.email == "" ||
-		len(credentials.password) < minimumAdminPasswordBytes {
+		credentials.username == "" || credentials.email == "" {
 		return errors.New("admin credentials are invalid")
+	}
+	if refusal := checkAccountPassword(credentials.password); refusal != nil {
+		return fmt.Errorf("admin credentials are invalid: %s", refusal.Error())
 	}
 	if err := auth.ValidateUsername(credentials.username); err != nil {
 		return errors.New("admin credentials are invalid")
@@ -340,8 +346,8 @@ func readAndConfirmPassword(read passwordValueReader, out io.Writer) (string, er
 		if err != nil {
 			return "", fmt.Errorf("failed to read password: %w", err)
 		}
-		if len(first) < minimumAdminPasswordBytes {
-			fmt.Fprintln(out, "Password must be at least 8 characters. Please try again. / Parola en az 8 karakter olmalı. Lütfen yeniden deneyin.")
+		if refusal := checkAccountPassword(first); refusal != nil {
+			fmt.Fprintf(out, "%s Please try again. / %s Lütfen yeniden deneyin.\n", refusal.Error(), refusal.MessageTR())
 			continue
 		}
 

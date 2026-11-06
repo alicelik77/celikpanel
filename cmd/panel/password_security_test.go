@@ -33,7 +33,7 @@ func TestChangeOwnPasswordRevokesAllSessionsAndClearsCookies(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/password`, strings.NewReader(
-		`{"current_password":"correct horse battery staple","new_password":"new secure password"}`,
+		`{"current_password":"Correct horse battery staple","new_password":"New secure password"}`,
 	))
 	request = request.WithContext(context.WithValue(
 		request.Context(), callerKey, &Caller{ID: user.ID, Role: roleCustomer},
@@ -69,7 +69,7 @@ func TestChangeOwnPasswordRevokesAllSessionsAndClearsCookies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := auth.VerifyPassword(`new secure password`, updated.PasswordHash)
+	ok, err := auth.VerifyPassword(`New secure password`, updated.PasswordHash)
 	if err != nil || !ok {
 		t.Fatalf(`new password did not verify: ok=%v err=%v`, ok, err)
 	}
@@ -94,7 +94,7 @@ func TestManagedPasswordResetRevokesAllTargetSessions(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPut, `/api/v1/users/1`, strings.NewReader(
-		`{"password":"managed reset password"}`,
+		`{"password":"Managed reset password"}`,
 	))
 	panel.handleUpdateUser(recorder, request, user)
 	if recorder.Code != http.StatusOK {
@@ -114,7 +114,7 @@ func TestManagedPasswordResetRevokesAllTargetSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := auth.VerifyPassword(`managed reset password`, updated.PasswordHash)
+	ok, err := auth.VerifyPassword(`Managed reset password`, updated.PasswordHash)
 	if err != nil || !ok {
 		t.Fatalf(`managed reset password did not verify: ok=%v err=%v`, ok, err)
 	}
@@ -135,7 +135,7 @@ func TestChangeOwnPasswordIsRateLimitedBeforeCredentialMutation(t *testing.T) {
 
 	wrongRecorder := httptest.NewRecorder()
 	wrongRequest := callerContext(httptest.NewRequest(http.MethodPost, `/api/v1/auth/password`, strings.NewReader(
-		`{"current_password":"wrong password","new_password":"attacker supplied password"}`,
+		`{"current_password":"wrong password","new_password":"Attacker supplied password"}`,
 	)))
 	panel.handleChangeOwnPassword(wrongRecorder, wrongRequest)
 	if wrongRecorder.Code != http.StatusForbidden {
@@ -145,7 +145,7 @@ func TestChangeOwnPasswordIsRateLimitedBeforeCredentialMutation(t *testing.T) {
 
 	blockedRecorder := httptest.NewRecorder()
 	blockedRequest := callerContext(httptest.NewRequest(http.MethodPost, `/api/v1/auth/password`, strings.NewReader(
-		`{"current_password":"correct horse battery staple","new_password":"new secure password"}`,
+		`{"current_password":"Correct horse battery staple","new_password":"New secure password"}`,
 	)))
 	panel.handleChangeOwnPassword(blockedRecorder, blockedRequest)
 	if blockedRecorder.Code != http.StatusTooManyRequests {
@@ -157,7 +157,7 @@ func TestChangeOwnPasswordIsRateLimitedBeforeCredentialMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok, err := auth.VerifyPassword(`correct horse battery staple`, unchanged.PasswordHash)
+	ok, err := auth.VerifyPassword(`Correct horse battery staple`, unchanged.PasswordHash)
 	if err != nil || !ok {
 		t.Fatalf(`rate-limited password was unexpectedly mutated: ok=%v err=%v`, ok, err)
 	}

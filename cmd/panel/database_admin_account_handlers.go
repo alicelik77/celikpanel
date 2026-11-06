@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -35,7 +34,9 @@ import (
 // which an administrator is explicitly allowed to do here.
 // databaseAdminAccountAlphabet, ekrandan okunup baska bir yere yazilirken
 // birbirine karistirilabilecek karakterleri icermez.
-const databaseAdminAccountAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+// It carries -_. so the password meets the owner's rule (6 Nov 2026); none
+// of them is mistaken for another character either.
+const databaseAdminAccountAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789" + passwordpolicy.GeneratedSpecials
 
 // databaseAdminAccountPasswordLength gives about 232 bits over the alphabet
 // above. This credential is never typed by a person under time pressure and
@@ -51,16 +52,11 @@ const databaseAdminAccountPasswordLength = 40
 // generateDatabaseAdminPassword, crypto/rand'dan cizer ve tam cizemedigi bir
 // parolayi dondurmeyi reddeder.
 func generateDatabaseAdminPassword() (string, error) {
-	limit := big.NewInt(int64(len(databaseAdminAccountAlphabet)))
-	password := make([]byte, databaseAdminAccountPasswordLength)
-	for i := range password {
-		index, err := rand.Int(rand.Reader, limit)
-		if err != nil {
-			return "", fmt.Errorf("generate database admin password: %w", err)
-		}
-		password[i] = databaseAdminAccountAlphabet[index.Int64()]
+	password, err := passwordpolicy.GenerateFrom(databaseAdminAccountAlphabet, databaseAdminAccountPasswordLength)
+	if err != nil {
+		return "", fmt.Errorf("generate database admin password: %w", err)
 	}
-	return string(password), nil
+	return password, nil
 }
 
 // newSealedDatabaseAdminPassword draws a password and seals it, and refuses to

@@ -63,7 +63,7 @@ func TestPromptPasswordVisibilityAcceptsTurkishAndRetriesInvalidChoice(t *testin
 }
 
 func TestReadAndConfirmPasswordRetriesAfterMismatch(t *testing.T) {
-	answers := []string{"first-password", "different-password", "second-password", "second-password"}
+	answers := []string{"First-password", "Different-password", "Second-password", "Second-password"}
 	read := func(string) (string, error) {
 		answer := answers[0]
 		answers = answers[1:]
@@ -75,7 +75,7 @@ func TestReadAndConfirmPasswordRetriesAfterMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readAndConfirmPassword returned an error: %v", err)
 	}
-	if password != "second-password" {
+	if password != "Second-password" {
 		t.Fatalf("password = %q, want second-password", password)
 	}
 	if !strings.Contains(output.String(), "Passwords do not match") {
@@ -84,7 +84,7 @@ func TestReadAndConfirmPasswordRetriesAfterMismatch(t *testing.T) {
 }
 
 func TestReadAndConfirmPasswordRetriesShortPassword(t *testing.T) {
-	answers := []string{"short", "long-enough", "long-enough"}
+	answers := []string{"short", "Long-enough", "Long-enough"}
 	read := func(string) (string, error) {
 		answer := answers[0]
 		answers = answers[1:]
@@ -96,7 +96,7 @@ func TestReadAndConfirmPasswordRetriesShortPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readAndConfirmPassword returned an error: %v", err)
 	}
-	if password != "long-enough" {
+	if password != "Long-enough" {
 		t.Fatalf("password = %q, want long-enough", password)
 	}
 	if !strings.Contains(output.String(), "at least 8 characters") {

@@ -504,7 +504,7 @@ func newRequestIdentityRouteCases() map[string]func(t *testing.T) requestIdentit
 			base := wrap(panel)
 			c := requestIdentityRouteCase{
 				path:   fmt.Sprintf("/api/v1/domains/%d/databases", domainID),
-				body:   `{"name":"shop","type":"mysql","password":"a-long-enough-password"}`,
+				body:   `{"name":"shop","type":"mysql","password":"A-long-enough-password"}`,
 				caller: &Caller{ID: userID, Role: roleAdmin},
 				effects: func() int {
 					_, _, created := agent.counts()

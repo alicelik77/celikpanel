@@ -9988,7 +9988,9 @@ typo is caught when the administrator is created.
   the installer stops before anything is installed and says the file was left
   untouched. **Who acts:** the person installing. **Next action:** correct the
   file (a username the panel accepts, a real email address such as
-  you@example.com, a password of at least 8 characters). **How work resumes:** run
+  you@example.com, a password of at least 8 characters with an uppercase letter,
+  a lowercase letter and a special character such as - _ . !). **How work
+  resumes:** run
   the same installation command again.
 - **An existing installation with an older invalid address.** Nothing changes on
   update; the Server setup screen's contact blocker and its "Open My account"

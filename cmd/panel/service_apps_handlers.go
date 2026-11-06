@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/serviceapps"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -312,9 +313,15 @@ func decodeServiceAppBody(w http.ResponseWriter, r *http.Request, into any) bool
 	return true
 }
 
-// validOwnerPassword: 12 to 128 characters of one line.
-func validOwnerPassword(password string) bool {
-	return len(password) >= 12 && len(password) <= 128 && serviceapps.ValidSecretValue(password)
+// checkOwnerPassword: the owner's password rule for a service app's first
+// administrator (12 characters to 128 bytes, both letter cases, a special
+// character), refused as PASSWORD_WEAK; then the environment file's own
+// character check, which the rule already covers (control characters).
+func checkOwnerPassword(password string) (*passwordpolicy.Error, bool) {
+	if refusal := passwordpolicy.CheckField(password, "service_app_owner"); refusal != nil {
+		return refusal, false
+	}
+	return nil, serviceapps.ValidSecretValue(password)
 }
 
 // ownerSecretFor is what the app's environment receives for its first
@@ -467,10 +474,22 @@ func (p *Panel) handleServiceAppInstall(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	req.OwnerEmail = strings.TrimSpace(req.OwnerEmail)
-	if app.OwnerLogin && (!serviceapps.ValidEmail(req.OwnerEmail) || !validOwnerPassword(req.OwnerPassword)) {
-		writeServiceAppRefusal(w, http.StatusBadRequest, "owner_login",
-			"Enter the app administrator's e-mail address and a password of 12 to 128 characters.", nil)
-		return
+	if app.OwnerLogin {
+		if !serviceapps.ValidEmail(req.OwnerEmail) {
+			writeServiceAppRefusal(w, http.StatusBadRequest, "owner_login",
+				"Enter the app administrator's e-mail address and a password of 12 to 128 characters.", nil)
+			return
+		}
+		refusal, ok := checkOwnerPassword(req.OwnerPassword)
+		if refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
+		if !ok {
+			writeServiceAppRefusal(w, http.StatusBadRequest, "owner_login",
+				"Enter the app administrator's e-mail address and a password of 12 to 128 characters.", nil)
+			return
+		}
 	}
 	allowed := app.AllowedSecretKeys()
 	secrets := map[string]string{}
@@ -813,7 +832,12 @@ func (p *Panel) handleServiceAppSecrets(w http.ResponseWriter, r *http.Request, 
 			writeServiceAppRefusal(w, http.StatusBadRequest, "owner_in_app", "Change this app's administrator password inside the app itself.", nil)
 			return
 		}
-		if !validOwnerPassword(req.OwnerPassword) {
+		refusal, ok := checkOwnerPassword(req.OwnerPassword)
+		if refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
+		if !ok {
 			writeServiceAppRefusal(w, http.StatusBadRequest, "owner_login", "The password must be 12 to 128 characters.", nil)
 			return
 		}

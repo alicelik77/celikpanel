@@ -10,7 +10,7 @@ import (
 )
 
 func TestParseAdminCredentialsJSONStrict(t *testing.T) {
-	const password = "never-print-this-password"
+	const password = "Never-print-this-password"
 	credentials, err := parseAdminCredentialsJSON([]byte(
 		`{"username":"first-admin","email":"admin@example.test","password":"` + password + `"}`,
 	))
@@ -65,13 +65,13 @@ func TestCreateOrUpdateAdminUsesSharedValidatedPathWithoutPasswordOutput(t *test
 	}
 	t.Cleanup(database.Close)
 
-	// A valid password may be identical to the username. Success output must
-	// therefore contain no credential-derived field, not merely omit the
-	// dedicated password field.
-	const firstPassword = "first-admin"
+	// A valid password may be identical to the username (one that meets the
+	// password rule). Success output must therefore contain no
+	// credential-derived field, not merely omit the dedicated password field.
+	const firstPassword = "First-admin"
 	var output bytes.Buffer
 	if err := createOrUpdateAdmin(database, adminCredentials{
-		username: "first-admin",
+		username: "First-admin",
 		email:    "first@example.test",
 		password: firstPassword,
 	}, &output); err != nil {
@@ -81,10 +81,10 @@ func TestCreateOrUpdateAdminUsesSharedValidatedPathWithoutPasswordOutput(t *test
 		t.Fatal("create output exposed the password")
 	}
 
-	const secondPassword = "replacement-secret-password"
+	const secondPassword = "Replacement-secret-password"
 	output.Reset()
 	if err := createOrUpdateAdmin(database, adminCredentials{
-		username: "first-admin",
+		username: "First-admin",
 		email:    "updated@example.test",
 		password: secondPassword,
 	}, &output); err != nil {
@@ -99,7 +99,7 @@ func TestCreateOrUpdateAdminUsesSharedValidatedPathWithoutPasswordOutput(t *test
 	if err := database.GetDB().QueryRow(`
 		SELECT COUNT(*), email, role, password_hash
 		FROM users
-		WHERE username = 'first-admin'
+		WHERE username = 'First-admin'
 	`).Scan(&count, &email, &role, &passwordHash); err != nil {
 		t.Fatalf("read stored admin: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestCreateOrUpdateAdminRefusesAnEmailTheCertificateRequestRefuses(t *testin
 		return count
 	}
 
-	const password = "never-print-this-password"
+	const password = "Never-print-this-password"
 	for _, typo := range []string{"typo-owner", "typo-owner@", "typo-owner@localhost"} {
 		err := createOrUpdateAdmin(database, adminCredentials{
 			username: "first-admin", email: typo, password: password,
@@ -248,7 +248,7 @@ func TestCreateOrUpdateAdminRefusesAnEmailTheCertificateRequestRefuses(t *testin
 	// changes neither the address nor the password.
 	storedHash := hash
 	if err := createOrUpdateAdmin(database, adminCredentials{
-		username: "first-admin", email: "typo-owner@", password: "replacement-secret-password",
+		username: "first-admin", email: "typo-owner@", password: "Replacement-secret-password",
 	}, &bytes.Buffer{}); err == nil {
 		t.Fatal("existing administrator was updated with an invalid email")
 	}

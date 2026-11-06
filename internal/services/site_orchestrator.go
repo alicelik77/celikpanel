@@ -2,17 +2,16 @@ package services
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -485,25 +484,19 @@ func SiteUsername(domain string) string {
 }
 
 func (so *SiteOrchestrator) generatePassword() string {
-	// Credentials must come from a CSPRNG; math/rand seeded with the clock
-	// is predictable. rand.Int rejection-samples, so no charset bias.
-	// Kimlik bilgileri CSPRNG'den gelmelidir; saatle tohumlanan math/rand
-	// tahmin edilebilirdir. rand.Int reddederek örnekler, bu yüzden
-	// karakter seti önyargısı oluşmaz.
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"
-	password := make([]byte, 20)
-	max := big.NewInt(int64(len(charset)))
-	for i := range password {
-		n, err := rand.Int(rand.Reader, max)
-		if err != nil {
-			// crypto/rand failing means the OS entropy source is broken;
-			// weak credentials are worse than stopping.
-			// crypto/rand'ın çalışmaması, işletim sistemi entropi
-			// kaynağının bozulması demektir; zayıf kimlik bilgisi
-			// üretmek durmaktan daha kötüdür.
-			panic(fmt.Sprintf("crypto/rand unavailable: %v", err))
-		}
-		password[i] = charset[n.Int64()]
+	// Credentials must come from a CSPRNG; passwordpolicy.Generate draws with
+	// crypto/rand and meets the owner's password rule with -_. as its only
+	// specials, which no shell or config file reads specially.
+	// Kimlik bilgileri CSPRNG'den gelmelidir; passwordpolicy.Generate
+	// crypto/rand ile cizer ve sahibin kuralina uyar.
+	password, err := passwordpolicy.Generate(20)
+	if err != nil {
+		// crypto/rand failing means the OS entropy source is broken;
+		// weak credentials are worse than stopping.
+		// crypto/rand'ın çalışmaması, işletim sistemi entropi
+		// kaynağının bozulması demektir; zayıf kimlik bilgisi
+		// üretmek durmaktan daha kötüdür.
+		panic(fmt.Sprintf("crypto/rand unavailable: %v", err))
 	}
-	return string(password)
+	return password
 }

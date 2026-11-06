@@ -60,7 +60,7 @@ func TestFileAccessExistingSSHAccountIsNotCutOff(t *testing.T) {
 		answer: transport.ApplyFileAccessResponse{Applied: true},
 	}
 	panel := newFileAccessPanel(t, agent)
-	response := fileAccessRequest(panel, http.MethodPut, 7103, false, `{"enabled":true,"ssh":true,"password":"correct horse battery"}`)
+	response := fileAccessRequest(panel, http.MethodPut, 7103, false, `{"enabled":true,"ssh":true,"password":"Correct horse battery"}`)
 	if response.Code != http.StatusOK || len(agent.applied()) != 1 || !agent.applied()[0].SSH {
 		t.Fatalf("status=%d body=%s applies=%+v", response.Code, response.Body.String(), agent.applied())
 	}

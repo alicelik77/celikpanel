@@ -98,7 +98,7 @@ func TestListsMarkInvitedAccounts(t *testing.T) {
 
 	// Accepting the invitation removes the mark.
 	token := member.Invitation.LinkPath[len("/account-link/invitation#t="):]
-	if code := f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "my own password"})).Code; code != http.StatusOK {
+	if code := f.do(t, http.MethodPost, recoveryAcceptInvitePath, "", recoveryBody(map[string]string{"token": token, "new_password": "My own password"})).Code; code != http.StatusOK {
 		t.Fatalf("accept: %d", code)
 	}
 	if s := teamState(); s != nil {
