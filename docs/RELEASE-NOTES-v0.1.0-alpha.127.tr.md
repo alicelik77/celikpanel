@@ -199,10 +199,51 @@ söylüyor.
 
 ## Laboratuvar sonuçları
 
-_Laboratuvar turundan sonra doldurulacak._
+Sahibinkine benzer kurulmuş laboratuvar sunucularında (Debian 13 üzerinde
+PowerDNS ana, Ubuntu 24.04 üzerinde BIND yedek) ve temiz bir Debian 13
+kurulumunda sürüm adayından denendi. Turda yapılan iki düzeltmeden sonra on
+durumun hepsi geçti:
+
+- **Sahibin yazdığı biçimde temiz kurulum:** kimlik dosyasındaki zayıf
+  yönetici şifresi hiçbir şey indirilmeden, kural Türkçe ve İngilizce
+  adlandırılarak reddedildi; yazılan zayıf şifre yeniden soruldu.
+- **126 → 127 güncellemesi** her sunucuda tek basışla: 72–75 saniye,
+  başarısız hizmet yok.
+- **Boston gibi PostgreSQL** (16 kaldırılmış, 18 5433 kapısında): alpha.126
+  veritabanı oluşturamıyor; alpha.127 18 üzerinde oluşturuyor, phpPgAdmin
+  "PostgreSQL 18 (port 5433)" gösteriyor. Tabloları duran bir PostgreSQL
+  veritabanına geri yükleme hep başarısız oluyordu (bu sürümden eski); artık
+  sahibin nesneleri tek işlemde değiştiriliyor ve güvenlik kopyası çalışıyor.
+- **Alan adı sayfası okumaları** bağlı sunucuda: ısınmışken 0,01–0,03 saniye,
+  önbellek dolduktan hemen sonra en çok 0,21 saniye.
+- **Şifreler, role göre çözüm, gerçek adımlar** (PHP sürümü, yedek alma ve
+  geri yükleme, DNS kaydı, laboratuvar sertifika kuruluşundan sertifika):
+  yukarıda anlatıldığı gibi; tekrarlanan istek bir kez çalışıyor; tanıtım
+  bekliyor.
+- **İzleme:** nginx durduktan 5 dakika sonra uyarı açıldı, e-posta onaylı
+  adrese ulaştı; onaydan önce "gönderilmedi" olarak kaydedildi.
+- **Node.js:** alpha.126 sitesi yeniden yazılmadı; yöneticinin taşıması
+  çalıştı; uygulamanın kendi kapısına başka sunucudan ulaşılamadı. "Paketleri
+  kur ve derle"den sonra 30 saniyede bir başarısız olan bir koruma birimi
+  düzeltildi.
+- **Bilerek bozulan güncelleme** 27 saniyede kendiliğinden geri alındı;
+  sonraki basış başarılı oldu.
+
+Kanıt: laboratuvar dalında `deploy/e2e/dns-pair-acceptance/evidence/a127`
+(commit `6b97331e3`).
 
 ## Bilinen sınırlar
 
+- **Web sunucusu dururken PHP sürümü değiştirmek** iç hata veriyor ve site bir
+  sonraki site yazımına dek 502 kalıyor (eski davranış; alpha.128'de
+  düzeltiliyor).
+- **Reddedilen bir PostgreSQL geri yüklemesi** nedeni yerine hâlâ genel bir
+  iç hata gösteriyor.
+- **Node.js koruma birimi düzeltmesi** güncellenen sunucuya güncelleme
+  sırasında değil, bir sonraki koruma yazımında ulaşıyor.
+- Geri almadan önce alınan otomatik anlık görüntünün adı "from-unknown".
+- Ubuntu 24.04'te azaltılmış düzeyin söylediği gibi iki Node.js koruması
+  (10 ve 20) yok.
 - **İlerleme adımları:** ekip üyesi kaldırma hâlâ tek bir genel adım
   gösteriyor. Bu sürümün ikinci turunda adım kazanan değişiklikler (sertifika
   yükleme ve kaldırma, posta şifrelemesi, DNS kayıtları, PowerDNS onarımı,

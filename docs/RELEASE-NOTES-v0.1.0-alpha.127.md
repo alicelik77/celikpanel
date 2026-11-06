@@ -192,10 +192,50 @@ account. Screens now say who acts for each role.
 
 ## Lab results
 
-_To be filled in after the lab round._
+Tested on lab servers set up like the owner's (PowerDNS main on Debian 13,
+BIND backup on Ubuntu 24.04), plus a fresh Debian 13 install, from the
+release candidate. All ten cases pass after two fixes made during the round:
+
+- **Fresh install as the owner types it:** a weak admin password in the
+  credentials file is refused before anything is downloaded, naming the
+  rule in English and Turkish; a weak typed password is asked again.
+- **Update 126 → 127** pressed once on each server: 72–75 seconds, no failed
+  services.
+- **PostgreSQL like Boston** (16 removed, 18 on port 5433): alpha.126 fails
+  creating a database; alpha.127 creates it on 18, and phpPgAdmin shows
+  "PostgreSQL 18 (port 5433)". Restoring a PostgreSQL database that still
+  had its tables always failed (older than this release); it now replaces
+  the owner's objects in one transaction, and the safety copy works.
+- **Domain page reads** on the joined server: 0.01–0.03 seconds when warm,
+  at most 0.21 seconds right after the cache expires.
+- **Passwords, role-aware fixes, real steps** (PHP version, backup and
+  restore, DNS record, certificate from the lab authority): as described
+  above; a repeated request runs once; the tour waits.
+- **Monitoring:** an alert opened 5 minutes after nginx stopped and the email
+  reached the confirmed address; before confirmation it was recorded as not
+  sent.
+- **Node.js:** an alpha.126 site was not rewritten; the administrator's move
+  worked; the app's own port was unreachable from another server. A
+  sandbox guard that failed every 30 seconds after "Install packages and
+  build" was fixed.
+- **A forced failed update** rolled back by itself in 27 seconds; the next
+  press succeeded.
+
+Evidence: `deploy/e2e/dns-pair-acceptance/evidence/a127` on the lab branch
+(commit `6b97331e3`).
 
 ## Known limits
 
+- **PHP version change while the web server is stopped** answers an internal
+  error and leaves the site at 502 until the next site write (older
+  behavior; fixed in alpha.128).
+- **A refused PostgreSQL restore** still shows a general internal error
+  instead of its reason.
+- **The Node.js sandbox guard fix** reaches an updated server at its next
+  sandbox write, not during the update.
+- The automatic snapshot taken before a rollback is named "from-unknown".
+- Ubuntu 24.04 lacks two Node.js sandbox protections (items 10 and 20),
+  as its reduced level says.
 - **Progress steps:** removing a team member still shows one general step.
   The changes that gained steps in this release's second round (certificate
   upload and removal, mail encryption, DNS records, PowerDNS repair,
