@@ -151,7 +151,7 @@ const guide: GuideIndex = {
     [17,"destination","Remote destinations",""],
     [17,"schedules","Schedules and restore",""],
     [17,"without-panel","Without CelikPanel",""],
-    [18,"","Monitoring, the audit log and notices","cpu memory disk load graph audit log history did notice alert"],
+    [18,"","Monitoring, the audit log and notices","cpu memory disk load graph audit log history did notice alert uptime services email"],
     [18,"monitoring","Monitoring",""],
     [18,"audit","Audit log",""],
     [18,"notices","Notices",""],

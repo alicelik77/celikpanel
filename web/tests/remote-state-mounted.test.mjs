@@ -99,6 +99,11 @@ const stub = dataModule(`
   export const useInvitationOutcome = () => ({ report: () => {}, dialog: null });
   export const useInvitationActions = () => ({ act: async () => {}, busy: null, dialog: null });
   export const InvitedStatus = () => null;
+  // alpha.127: Monitoring's alerts, services and website checks read their own
+  // addresses (tests/monitoring-alerts-alpha127.test.mjs); the charts are under test.
+  export const AlertsSection = () => null, ServicesSection = () => null, SitesSection = () => null, SpikeNote = () => null;
+  export const useMonitoringWords = () => i18n;
+  export const decodeSnapshots = () => [], spikeMarks = () => [], formatBytes = (n) => String(n);
   ${stubbedComponents.filter((name) => !icons.has(name)).map((name) => `export const ${name} = (props) => props.children ?? null;`).join('\n')}
 `);
 const shared = sharedLayer(stub);

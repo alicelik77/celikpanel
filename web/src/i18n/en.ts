@@ -1,4 +1,6 @@
 import type { SetupDNSKey } from './setupDNS/en';
+// alpha.127: the Monitoring page's own copy, loaded with its route (monitoringAlerts.ts).
+import type { MonitoringAlertsKey } from './monitoringAlerts/en';
 // English catalog. This file is the source of truth for translation keys:
 // its shape defines the TranslationKey type, and every other locale must
 // provide the same keys.
@@ -582,4 +584,4 @@ export type ScreenKey =
     | PasswordsScreenKey
     | AdminNextScreenKey
     | NodeSandboxScreenKey;
-export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;
+export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey;

@@ -89,19 +89,29 @@ type monitoringProblemsReport struct {
 
 var problemKindOrder = map[string]int{
 	"service_stopped":            0,
-	"disk_full":                  1,
-	"certificate_expired":        2,
-	"certificate_renewal_failed": 3,
-	"certificate_expiring":       4,
-	"memory_sustained":           5,
-	"cpu_sustained":              6,
-	"mail_queue_deferred":        7,
-	"security_updates":           8,
+	"site_down":                  1,
+	"disk_full":                  2,
+	"certificate_expired":        3,
+	"certificate_renewal_failed": 4,
+	"certificate_expiring":       5,
+	"site_certificate":           6,
+	"service_restarting":         7,
+	"memory_sustained":           8,
+	"cpu_sustained":              9,
+	"mail_queue_deferred":        10,
+	"security_updates":           11,
 }
 
 // collectMonitoringProblems builds the list. Each source is independent: one
 // that cannot be read adds an Unknown entry and the others still answer.
 func (p *Panel) collectMonitoringProblems(ctx context.Context, now time.Time) monitoringProblemsReport {
+	return p.collectMonitoringProblemsFor(ctx, now, false)
+}
+
+// collectMonitoringProblemsFor: background is the once-a-minute alert check
+// (alpha.127). It asks the Agent for the waiting operating-system updates at
+// most hourly; a screen that is open keeps refreshing them every 10 minutes.
+func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time, background bool) monitoringProblemsReport {
 	report := monitoringProblemsReport{CheckedAt: metricsTime(now), Problems: []monitoringProblem{}, Unknown: []monitoringUnknown{}}
 	add := func(problems []monitoringProblem, unknown *monitoringUnknown) {
 		report.Problems = append(report.Problems, problems...)
@@ -111,13 +121,28 @@ func (p *Panel) collectMonitoringProblems(ctx context.Context, now time.Time) mo
 	}
 	db := p.db.GetDB()
 	observations, scannedAt, unknown := p.problemScanObservations(ctx)
-	add(serviceProblems(observations, p.managedServiceHostProfile(), scannedAt), unknown)
+	// alpha.127: the minute-old service reading, where there is one, is
+	// newer than the last component scan.
+	host := p.managedServiceHostProfile()
+	add(serviceProblems(overlayLiveServiceStatus(observations, now), host, scannedAt), unknown)
+	if unknown == nil {
+		if services, ok := p.monitoredServices(ctx); ok {
+			add(serviceRestartProblems(services, now), nil)
+		}
+	}
 	diskUsed, diskTotal := monitoringReadDisk("/")
 	add(diskProblems(diskUsed, diskTotal, now))
 	add(sustainedProblems(ctx, db, now))
-	add(certificateProblems(ctx, db, now))
+	certificates, certificateUnknown := certificateProblems(ctx, db, now)
+	add(certificates, certificateUnknown)
 	add(p.mailQueueProblems(observations, now))
-	add(securityUpdateProblems(monitoringSecurityUpdates(p)))
+	if background {
+		add(securityUpdateProblems(backgroundSecurityUpdates(p, now)))
+	} else {
+		add(securityUpdateProblems(monitoringSecurityUpdates(p)))
+	}
+	// alpha.127: the sites as the server itself reaches them.
+	add(siteProblems(ctx, db, now, certificates))
 	sort.SliceStable(report.Problems, func(i, j int) bool {
 		a, b := report.Problems[i], report.Problems[j]
 		if (a.Severity == "critical") != (b.Severity == "critical") {

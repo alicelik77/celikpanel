@@ -116,6 +116,25 @@ func (c *osUpdatesSummaryCache) view(p *Panel) osUpdatesSummaryView {
 	}
 }
 
+// peek is the last reading without asking the Agent again (alpha.127: the
+// background alert check between its hourly refreshes).
+func (c *osUpdatesSummaryCache) peek() osUpdatesSummaryView {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.reading == nil {
+		if c.refreshing {
+			return osUpdatesSummaryView{State: "checking"}
+		}
+		return osUpdatesSummaryView{State: "unknown"}
+	}
+	reading := *c.reading
+	reading.Pending.SecurityNames = nil
+	return osUpdatesSummaryView{
+		State: "ready", Stale: time.Since(c.at) >= osUpdatesSummaryFresh, CheckedAt: c.at.UTC().Format(time.RFC3339),
+		PackageFamily: reading.PackageFamily, Pending: &reading.Pending, Automatic: &reading.Automatic,
+	}
+}
+
 func (p *Panel) handleOSUpdatesSummary(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
