@@ -479,7 +479,13 @@ func (p *Panel) runWordPressUpdate(ctx context.Context, operationID string, targ
 	default:
 		p.setWordPressOperation(operationID, "restoring", answer.Code, detail, backupName)
 		if err := p.restoreDomainBackup(ctx, d, backupName); err != nil {
-			p.setWordPressOperation(operationID, "needs_review", errCodeWordPressRestoreFailed,
+			code := errCodeWordPressRestoreFailed
+			// alpha.127: a PostgreSQL prerequisite says which one.
+			var refusal *pgClusterRefusalError
+			if errors.As(err, &refusal) {
+				code = "WORDPRESS_RESTORE_" + pgClusterRefusalCodeSuffix(refusal.refusal.Reason)
+			}
+			p.setWordPressOperation(operationID, "needs_review", code,
 				"the update failed ("+detail+") and restoring the backup "+backupName+" failed too: "+boundedAgentDiagnostic(err.Error()), backupName)
 			p.auditBackupSystem(ctx, "wordpress.update.restore_failed", target.DomainID)
 			return
@@ -516,6 +522,10 @@ func (p *Panel) restoreDomainBackup(ctx context.Context, d backupDomain, name st
 	var resp backupspec.RestoreResponse
 	if err := p.callAgentContext(ctx, "Agent.RestoreBackup", &restoreReq, &resp); err != nil {
 		return err
+	}
+	if resp.Refusal != nil {
+		// alpha.127: a PostgreSQL prerequisite; nothing was written.
+		return &pgClusterRefusalError{refusal: transport.DatabaseClusterRefusal(*resp.Refusal)}
 	}
 	if !resp.Success || resp.Error != "" {
 		return errors.New(resp.Error)

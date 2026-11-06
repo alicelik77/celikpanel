@@ -280,6 +280,14 @@ func writeDatabaseClusterRefusal(w http.ResponseWriter, r *http.Request, refusal
 	if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
 		action = "/components/postgresql"
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: pgClusterRefusalMessage(refusal), Code: errCodePGClusterUnavailable, Reason: refusal.Reason, Action: action, Vars: vars})
+}
+
+// pgClusterRefusalMessage is the refusal's English sentence with its facts
+// (the server's own words; a screen says it from the code and reason).
+func pgClusterRefusalMessage(refusal *transport.DatabaseClusterRefusal) string {
 	message := "nothing was changed: no running PostgreSQL cluster can take this change"
 	switch refusal.Reason {
 	case "removed":
@@ -293,7 +301,32 @@ func writeDatabaseClusterRefusal(w http.ResponseWriter, r *http.Request, refusal
 	case "unplaced":
 		message = "nothing was restored: this backup was made from PostgreSQL " + refusal.BackupVersion + ", and no PostgreSQL cluster is on the port the database's record names"
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusConflict)
-	_ = json.NewEncoder(w).Encode(apiErrorBody{Error: message, Code: errCodePGClusterUnavailable, Reason: refusal.Reason, Action: action, Vars: vars})
+	if refusal.Port > 0 && refusal.Reason != "none" {
+		message += " (port " + strconv.Itoa(refusal.Port) + ")"
+	}
+	return message
 }
+
+// pgClusterRefusalCodeSuffix names a refusal's reason in a guidance code
+// (alpha.127): remote backups say PG_CLUSTER_REMOVED, the WordPress tools
+// WORDPRESS_RESTORE_PG_CLUSTER_REMOVED, each with its own sentence.
+func pgClusterRefusalCodeSuffix(reason string) string {
+	switch reason {
+	case "removed":
+		return "PG_CLUSTER_REMOVED"
+	case "stopped":
+		return "PG_CLUSTER_STOPPED"
+	case "major_mismatch":
+		return "PG_MAJOR_MISMATCH"
+	case "unplaced":
+		return "PG_CLUSTER_UNPLACED"
+	}
+	return "PG_CLUSTER_NONE"
+}
+
+// pgClusterRefusalError carries a backup refusal out of a restore helper.
+type pgClusterRefusalError struct {
+	refusal transport.DatabaseClusterRefusal
+}
+
+func (e *pgClusterRefusalError) Error() string { return pgClusterRefusalMessage(&e.refusal) }

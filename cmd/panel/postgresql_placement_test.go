@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
@@ -163,5 +164,24 @@ func TestABackupIdentityNamesThePostgreSQLRecordsPort(t *testing.T) {
 	_ = json.NewDecoder(recorder.Body).Decode(&body)
 	if recorder.Code != http.StatusConflict || body.Reason != "major_mismatch" || body.Vars["backup_version"] != "16" || body.Vars["version"] != "18" || body.Action != "" {
 		t.Fatalf("answer = %d %+v", recorder.Code, body)
+	}
+}
+
+// Remote-backup and WordPress-tools restores name the PostgreSQL
+// prerequisite (alpha.127): each reason has its own code, the administrator
+// acts, and the next step is said.
+func TestARestoreRefusalHasItsOwnGuidanceCode(t *testing.T) {
+	for reason, code := range map[string]string{"removed": "PG_CLUSTER_REMOVED", "stopped": "PG_CLUSTER_STOPPED", "none": "PG_CLUSTER_NONE",
+		"major_mismatch": "PG_MAJOR_MISMATCH", "unplaced": "PG_CLUSTER_UNPLACED"} {
+		if got := pgClusterRefusalCodeSuffix(reason); got != code {
+			t.Fatalf("%s -> %s", reason, got)
+		}
+		if remoteFailureWho(code, false) != "administrator" || remoteNextAction(code) == remoteNextAction("SOMETHING_ELSE") {
+			t.Fatalf("%s: who=%s next=%q", code, remoteFailureWho(code, false), remoteNextAction(code))
+		}
+	}
+	err := error(&pgClusterRefusalError{refusal: transport.DatabaseClusterRefusal{Reason: "major_mismatch", Version: "18", Cluster: "18/main", Port: 5433, BackupVersion: "16"}})
+	if !strings.Contains(err.Error(), "PostgreSQL 16") || !strings.Contains(err.Error(), "port 5433") {
+		t.Fatalf("message = %q", err.Error())
 	}
 }

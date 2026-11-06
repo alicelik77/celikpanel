@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
 	"github.com/alicelik/celikpanel/internal/remotebackup"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // The remote backup worker. One goroutine moves every operation, one at a
@@ -875,6 +876,12 @@ func (p *Panel) restoreLocalBackup(ctx context.Context, d backupDomain, name str
 	}
 	if resp.Error == backupspec.RestoreInProgress {
 		return remotePrerequisite("RESTORE_IN_PROGRESS", "another restore of this site is still running")
+	}
+	if resp.Refusal != nil {
+		// alpha.127: refused before anything was written; the code says
+		// which PostgreSQL prerequisite, the detail its facts.
+		refusal := transport.DatabaseClusterRefusal(*resp.Refusal)
+		return remotePrerequisite(pgClusterRefusalCodeSuffix(refusal.Reason), pgClusterRefusalMessage(&refusal))
 	}
 	if !resp.Success || resp.Error != "" {
 		return remoteVerifiedFailure("RESTORE_FAILED", auditReason(resp.Error))

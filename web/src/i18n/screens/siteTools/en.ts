@@ -91,6 +91,11 @@ export const enSiteToolsScreens = {
     'err.WORDPRESS_NO_MARIADB': 'No MariaDB server is installed for this subscription. The administrator installs MariaDB from Components; then start again.',
     'err.WORDPRESS_NOT_DETECTED': 'WordPress was not found on this site. Nothing was changed.',
     'err.WORDPRESS_NOT_PHP_SITE': 'WordPress tools work on PHP sites only. Nothing was changed.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_REMOVED': 'The update failed, and its backup was not restored: the PostgreSQL version the site’s PostgreSQL database lives on was removed from this server (its data is kept). The server administrator installs that version again from Components, then restores the backup from Backups.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_STOPPED': 'The update failed, and its backup was not restored: the site’s PostgreSQL is installed but not running. The server administrator starts it from Components, then restores the backup from Backups.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_NONE': 'The update failed, and its backup was not restored: no PostgreSQL runs on this server. The server administrator installs PostgreSQL from Components, then restores the backup from Backups.',
+    'err.WORDPRESS_RESTORE_PG_MAJOR_MISMATCH': 'The update failed, and its backup was not restored: the backup’s PostgreSQL database was made from another major version than the one it lives on now, and CelikPanel never loads one into the other on its own. The server administrator restores it by hand or installs the backup’s version beside it.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_UNPLACED': 'The update failed, and its backup was not restored: no PostgreSQL runs on the port CelikPanel’s record names for the site’s database. The server administrator updates CelikPanel’s records on the PostgreSQL page, then restores the backup from Backups.',
 
     // Malware scan
     // The audit trail's words for these actions (Dashboard > Recent activity).

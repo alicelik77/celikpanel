@@ -88,7 +88,8 @@ func remoteFailureWho(code string, serverWide bool) string {
 		}
 		return "destination_owner"
 	case "SERVER_CLOCK", "LOCAL_BACKUP_FAILED", "LOCAL_READ_FAILED", "LOCAL_IMPORT_FAILED", "LOCAL_BACKUP_UNREADABLE",
-		"PANEL_RESTARTED", "REMOTE_UNREACHABLE", "REMOTE_TIMED_OUT", "REMOTE_INTEGRITY":
+		"PANEL_RESTARTED", "REMOTE_UNREACHABLE", "REMOTE_TIMED_OUT", "REMOTE_INTEGRITY",
+		"PG_CLUSTER_REMOVED", "PG_CLUSTER_STOPPED", "PG_CLUSTER_NONE", "PG_MAJOR_MISMATCH", "PG_CLUSTER_UNPLACED":
 		return "administrator"
 	case "DISK_QUOTA", "DATABASE_GONE", "LOCAL_BACKUP_MISSING", "DESTINATION_NOT_AVAILABLE", "LEGACY_BACKUP",
 		"SUBSCRIPTION_SUSPENDED", "RESTORE_IN_PROGRESS":
@@ -123,6 +124,16 @@ func remoteNextAction(code string) string {
 		return "Free space in the subscription or ask your provider for a larger plan, then restore again."
 	case "DATABASE_GONE":
 		return "Create the database again for this site, then restore again."
+	case "PG_CLUSTER_REMOVED":
+		return "The server administrator installs that PostgreSQL version again from Components (its data was kept), then restore again. The backup is kept."
+	case "PG_CLUSTER_STOPPED":
+		return "The server administrator starts PostgreSQL from Components, then restore again. The backup is kept."
+	case "PG_CLUSTER_NONE":
+		return "The server administrator installs PostgreSQL from Components, then restore again. The backup is kept."
+	case "PG_MAJOR_MISMATCH":
+		return "The server administrator installs the backup's PostgreSQL version beside the current one to restore there, or loads the dump into the new version by hand. The backup is kept."
+	case "PG_CLUSTER_UNPLACED":
+		return "The server administrator opens the PostgreSQL page and updates CelikPanel's records to the cluster's port, then restore again. The backup is kept."
 	case "LOCAL_BACKUP_MISSING":
 		return "Make a new backup and send that one."
 	case "LEGACY_BACKUP":
