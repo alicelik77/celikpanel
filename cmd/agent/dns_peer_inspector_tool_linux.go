@@ -385,8 +385,10 @@ const (
 // is set up it puts the running release's copy in place when the installed
 // program is one CelikPanel shipped or is missing. The replaced program is
 // kept, and the replacement recorded, before the new copy is published. A
-// rollback starts the earlier release's Agent, which puts that release's
-// copy back by the same rule. An owner's own file is kept and logged with
+// rollback to alpha.126 or later starts that release's Agent, which puts its
+// copy back by the same rule. alpha.125 and earlier have no such step: after
+// a rollback to them the newer copy stays (same request format) and the
+// replaced program stays kept. An owner's own file is kept and logged with
 // the one command that would replace it.
 func (h dnsPeerInspectorToolHost) reconcile(now time.Time) []transport.DNSPeerInspectorTool {
 	var results []transport.DNSPeerInspectorTool
