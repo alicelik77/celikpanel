@@ -11,6 +11,7 @@
 // Güvenlik → Güvenlik güncellemeleri: işletim sisteminin kendi otomatik
 // güncellemeleri; kapalıysa yöneticinin komutuyla uyarı. Tek değişiklik,
 // onaylanan ayrı ek dosyadır.
+import { CopyCommand } from './CopyCommand';
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -161,6 +162,8 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
     return (
         <div className="space-y-3" data-os-updates={auto.state}>
             <LifeLine tone={autoTone} attr="automatic"><KeepWords text={autoText} /></LifeLine>
+            {/* alpha.127: the command, ready to copy; Check again reads it back. / Kopyalanmaya hazır komut. */}
+            {(auto.state === 'off' || auto.state === 'not_installed') && <CopyCommand command={command} />}
             {lastRun && <p className="pl-6 text-sm text-fg-muted" data-os-updates-last-run="">{lastRun}</p>}
             <LifeLine tone={pendingTone} attr="pending">{pendingText}</LifeLine>
             {pending.state === 'known' && (pending.security_names ?? []).length > 0 && (

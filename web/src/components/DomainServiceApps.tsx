@@ -83,6 +83,8 @@ export function DomainServiceApps({ domainId }: { domainId: number; domainName: 
                         </div>
                         {lost && <Notice tone="info">{t('svcapps.reason.agent_unreachable')}</Notice>}
                         <ErrorBanner error={failure} />
+                        {/* alpha.127: a refusal for a hold sends the administrator to where it is lifted. */}
+                        {failure?.code === 'SERVICE_APP' && failure.reason === 'held' && <AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} />}
                         <Blockers view={v} />
                         {v.operation && <OperationLine op={v.operation} />}
                         {v.install ? (
@@ -153,6 +155,16 @@ function missingComponent(app: DomainServiceAppEntry): string | null {
     return app.reason === 'runtime_missing' ? 'node' : app.reason === 'venv_missing' ? 'python' : null;
 }
 
+// alpha.127: the administrator's own sentence for an app they hold or do not
+// offer, with Catalog management where they decide; null otherwise.
+// Yöneticinin beklettiği ya da sunmadığı uygulama için kendi cümlesi.
+function adminClosed(app: DomainServiceAppEntry): TranslationKey | null {
+    if (app.deferred) return null;
+    if (app.held) return 'adminNext.svcapps.held';
+    if (!app.offered && (app.refused_by ?? 'administrator') === 'administrator') return 'adminNext.svcapps.notOffered';
+    return null;
+}
+
 function closedReason(app: DomainServiceAppEntry, t: (key: TranslationKey, vars?: Record<string, string | number>) => string): string {
     if (app.deferred) return t(('svcapps.deferred.' + app.deferred) as TranslationKey);
     if (app.held) return t('svcapps.heldNote');
@@ -180,7 +192,9 @@ function Catalog({ view, onInstall }: { view: DomainServiceAppsView; onInstall: 
                             </div>
                             <Button variant="primary" disabled={blocked || why !== ''} onClick={() => onInstall(app)}>{t('svcapps.install')}</Button>
                         </div>
-                        {why && <p className="mt-2 text-sm text-warning">{why}{missingComponent(app) && <>{' '}<AdminInstallLink component={missingComponent(app)!} /></>}</p>}
+                        {why && <p className="mt-2 text-sm text-warning">{adminClosed(app)
+                            ? <AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t(adminClosed(app)!)} fallback={why} />
+                            : <>{why}{missingComponent(app) && <>{' '}<AdminInstallLink component={missingComponent(app)!} /></>}</>}</p>}
                         <details className="mt-3">
                             <summary className="cursor-pointer text-sm text-primary">{t('svcapps.risk.canDo')} · {t('svcapps.risk.remains')}</summary>
                             <div className="mt-3"><ServiceAppRisk app={app} /></div>
@@ -348,7 +362,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                     </a>
                 )}
             </div>
-            {install.held && <Notice>{t('svcapps.heldNote')}</Notice>}
+            {install.held && <Notice><AdminInstallLink to="/addons?view=catalog" label={t('adminNext.openCatalog')} admin={t('adminNext.svcapps.held')} fallback={t('svcapps.heldNote')} /></Notice>}
             {install.needs_sandbox && <Notice tone="info">{t('svcapps.needsSandbox')}</Notice>}
             {install.update_available && !busy && (
                 <Notice tone="info">

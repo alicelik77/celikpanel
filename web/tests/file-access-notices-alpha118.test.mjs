@@ -25,7 +25,9 @@ test('missing command-line tools are named with who acts and what next, in EN an
     // alpha.127: the provider acts for everyone else; the administrator is told what to do.
     assert.match(en, /jail_programs_missing_named': '[^']*Your provider \(the server’s administrator\)[^']*ask them/);
     assert.match(tr, /jail_programs_missing_named': '[^']*sağlayıcınız \(sunucu yöneticisi\)[^']*sorun/);
-    assert.match(en, /jail_programs_missing_namedAdmin': '[^']*Install them as root[^']*save access here again/);
-    assert.match(tr, /jail_programs_missing_namedAdmin': '[^']*root olarak[^']*yeniden kaydedin/);
-    assert.match(source, /isAdmin \? 'fileAccess\.warn\.jail_programs_missing_namedAdmin' : 'fileAccess\.warn\.jail_programs_missing_named'/);
+    const adminEn = read('../src/i18n/screens/adminNext/en.ts');
+    const adminTr = read('../src/i18n/screens/adminNext/tr.ts');
+    assert.match(adminEn, /access\.jailProgramsNamed': '[^']*Install them as root[^']*save access here again/);
+    assert.match(adminTr, /access\.jailProgramsNamed': '[^']*root olarak[^']*yeniden kaydedin/);
+    assert.match(source, /isAdmin \? 'adminNext\.access\.jailProgramsNamed' : 'fileAccess\.warn\.jail_programs_missing_named'/);
 });

@@ -17,8 +17,12 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
 import { showToast } from './Toast';
+import { CopyCommand } from './CopyCommand';
 import { useRemote } from '../lib/remote';
 import { decodeLaneRead, laneURL, LANE_CODES, LANE_REASONS, ownerSourceLane, type LanePlan, type LaneStep } from '../lib/vendorLane';
+
+// What installs and turns on the operating system's automatic updates (apt).
+export const AUTOMATIC_UPDATES_COMMAND = 'sudo apt-get install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades';
 
 const STEP_TONE: Record<string, Tone> = { done: 'ok', owner: 'info', todo: 'warn', blocked: 'bad' };
 
@@ -119,6 +123,8 @@ export function VendorLaneDialog({ serviceId, component, onClose, onDone }: {
                                     <LifeLine tone={STEP_TONE[step.state] ?? 'info'} attr={`lane-${step.step}`}>
                                         <KeepWords text={laneStepText(t, step, value.plan, component)} />
                                     </LifeLine>
+                                    {/* alpha.127: the command, ready to copy. / Kopyalanmaya hazır komut. */}
+                                    {step.state === 'blocked' && step.reason === 'automatic_not_installed' && <div className="pl-6"><CopyCommand command={AUTOMATIC_UPDATES_COMMAND} /></div>}
                                     {step.state === 'todo' && step.text && (
                                         <div className="mt-1 pl-6">
                                             {step.path && <p className="break-all font-mono text-xs text-fg-subtle">{step.path}</p>}

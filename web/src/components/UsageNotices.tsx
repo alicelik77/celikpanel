@@ -1,3 +1,4 @@
+import { CopyCommand } from './CopyCommand';
 import { useState } from 'react';
 import { AlertTriangle, Check, ExternalLink } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -195,6 +196,7 @@ export function UsageStatusCard() {
     const status = read.remote.value;
     const problems = usageStatusProblems(status);
     if (problems.length === 0) return null;
+    const logrotateMissing = t('usage.status.logrotateMissing');
     const lines: string[] = problems.filter((problem) => problem !== 'traffic_unknown').map((problem) => {
         switch (problem) {
             case 'traffic_collect':
@@ -219,7 +221,13 @@ export function UsageStatusCard() {
             {problems.includes('traffic_unknown') && <div className="mt-1"><TrafficNotCounted status={status} /></div>}
             {lines.length > 0 && (
                 <ul className="mt-2 list-disc pl-5">
-                    {lines.map((line) => <li key={line} className="max-w-[75ch]">{line}</li>)}
+                    {lines.map((line) => <li key={line} className="max-w-[75ch]">{line}
+                        {/* alpha.127: the command, ready to copy, for each system. / Her sistem için kopyalanmaya hazır komut. */}
+                        {line === logrotateMissing && <>
+                            <CopyCommand label={t('adminNext.onDebian')} command="sudo apt install logrotate" />
+                            <CopyCommand label={t('adminNext.onArch')} command="sudo pacman -Syu --needed logrotate" />
+                        </>}
+                    </li>)}
                 </ul>
             )}
             <p className="mt-2 text-xs text-fg-muted">{t('usage.status.resumes')}</p>

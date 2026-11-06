@@ -14,6 +14,8 @@ import Renderer, { act } from 'react-test-renderer';
 import { compileSource, dataModule, reactURL, sharedLayer, webmailAddressLibURL } from './fixtures/shared-layer.mjs';
 import { enMailDatabasesScreens as en } from '../src/i18n/screens/mailDatabases/en.ts';
 import { trMailDatabasesScreens as tr } from '../src/i18n/screens/mailDatabases/tr.ts';
+import { enAdminNextScreens as adminEn } from '../src/i18n/screens/adminNext/en.ts';
+import { trAdminNextScreens as adminTr } from '../src/i18n/screens/adminNext/tr.ts';
 
 const stub = dataModule(`
   import React from '${reactURL}';
@@ -56,9 +58,9 @@ async function render(role, body) {
 }
 
 const ADMIN = {
-  not_installed: ['mail.webmail.admin.not_installed', 'mail.webmail.installAction', '/components?bundle=mail.webmail'],
-  no_address: ['mail.webmail.admin.no_address', 'mail.webmail.setAddress', '/components/roundcube'],
-  not_answering: ['mail.webmail.admin.not_answering', 'mail.webmail.openRoundcube', '/components/roundcube'],
+  not_installed: ['adminNext.webmail.not_installed', 'adminNext.webmail.install', '/components?bundle=mail.webmail'],
+  no_address: ['adminNext.webmail.no_address', 'mail.webmail.setAddress', '/components/roundcube'],
+  not_answering: ['adminNext.webmail.not_answering', 'adminNext.webmail.openRoundcube', '/components/roundcube'],
 };
 
 test('the administrator sees the reason and the one action that fixes it', async () => {
@@ -95,22 +97,23 @@ test('an older Panel that names no reason still says who acts', async () => {
 test('available webmail shows its address and no guidance', async () => {
   const shown = await render('admin', setup({ webmail_available: true, webmail_url: 'https://mail.example.com/' }));
   assert.ok(shown.text.includes('mail.webmail.available'));
-  assert.ok(!shown.text.includes('mail.webmail.admin.'));
+  assert.ok(!shown.text.includes('adminNext.webmail.'));
   assert.deepEqual(shown.links, ['https://mail.example.com/']);
 });
 
 test('every new sentence is in English and Turkish; the customer sentences name the provider, the administrator ones do not ask', () => {
-  const keys = Object.keys(en).filter((key) => /^mail\.webmail\.(admin|tenant)\.|^mail\.webmail\.(installAction|openRoundcube)$/.test(key));
-  assert.equal(keys.length, 9);
-  for (const key of keys) {
-    assert.ok(tr[key] && tr[key] !== en[key], key);
-  }
+  const keys = Object.keys(en).filter((key) => key.startsWith('mail.webmail.tenant.'));
+  const adminKeys = Object.keys(adminEn).filter((key) => key.startsWith('adminNext.webmail.'));
+  assert.equal(keys.length, 4);
+  assert.equal(adminKeys.length, 5);
+  for (const key of keys) assert.ok(tr[key] && tr[key] !== en[key], key);
+  for (const key of adminKeys) assert.ok(adminTr[key] && adminTr[key] !== adminEn[key], key);
   for (const reason of ['not_installed', 'no_address', 'not_answering', 'other']) {
     assert.match(en[`mail.webmail.tenant.${reason}`], /Your provider/);
     assert.match(tr[`mail.webmail.tenant.${reason}`], /sağlayıcınız/i);
   }
   for (const reason of ['not_installed', 'no_address', 'not_answering']) {
-    assert.doesNotMatch(en[`mail.webmail.admin.${reason}`], /provider|ask/i);
+    assert.doesNotMatch(adminEn[`adminNext.webmail.${reason}`], /provider|ask/i);
   }
 });
 

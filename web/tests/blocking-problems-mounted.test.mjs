@@ -293,3 +293,26 @@ test('Create user, Create mail, Issue certificate and Add domain say why they ar
         assert.ok(enScreens[key] && trScreens[key], `${key} in both languages`);
     }
 });
+
+// alpha.127: a missing firewall engine is installed from its own install
+// window on Components; the fix opens it, nothing starts here.
+test('the missing firewall engine is fixed from its own install window', async () => {
+    const { SetupPlanProblems } = await import(planProblemsURL);
+    globalThis.problemFixture = { locale: 'en', catalogue: catalogues.en, navigated: [] };
+    let tree;
+    const fixed = [];
+    try {
+        await act(async () => {
+            tree = Renderer.create(React.createElement(SetupPlanProblems, { blockers: ['firewall_engine_unavailable'], fallback: code => code, name: id => id, busy: false, onFix: fix => fixed.push(fix) }));
+        });
+        const page = textOf(tree.toJSON());
+        assert.ok(page.includes(enScreens['setup.problem.firewallEngine.todo']));
+        const button = tree.root.findByProps({ 'data-problem-fix': 'firewall_engine_unavailable' });
+        assert.equal(textOf(button), fill(enScreens['services.installTitle'], { name: enScreens['services.component.name.nftables'] }));
+        await act(async () => button.props.onClick());
+        assert.deepEqual(globalThis.problemFixture.navigated, ['/components?component=nftables&install=']);
+        assert.deepEqual(fixed, [], 'the wizard itself starts nothing');
+        assert.doesNotMatch(enScreens['setup.problem.firewallEngine.todo'], /sudo/);
+        await act(async () => tree.unmount());
+    } finally { restore(); }
+});

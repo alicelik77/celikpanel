@@ -264,6 +264,13 @@ const screenPartBudgets = {
   // (pnow.). A new part, set with at least 25% headroom from its Turkish
   // file: 5.76 / 2.06 KiB.
   monitoring: kib(8, 3),
+  // v0.1.0-alpha.127: what screens say to the server's administrator with the
+  // one next step they offer, and the command copy box (adminNext.). A new
+  // part, so that "mailDatabases", "vendorLanes" and "fileAccess", which had
+  // no headroom, are not squeezed (the administrator's sentences of
+  // "fileAccess" and "mailDatabases" moved here too); set with at least 25%
+  // headroom from its Turkish file: 4.96 / 1.78 KiB.
+  adminNext: kib(7, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

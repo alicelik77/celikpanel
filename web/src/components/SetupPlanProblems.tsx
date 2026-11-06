@@ -25,7 +25,8 @@ export function SetupPlanProblems({ blockers, fallback, name, busy, onFix }: {
     const label = (fix: SetupProblemFix) => fix.kind === 'step' ? t('setup.problem.fix.step', { step: t(`setup.step.${fix.step}` as TranslationKey) })
         : fix.kind === 'removeMail' ? t('setup.problem.fix.removeMail')
             : fix.kind === 'recheck' ? t('setup.problem.fix.recheck')
-                : t('setup.blocker.contactAction');
+                : fix.kind === 'install' ? t('services.installTitle', { name: t(`services.component.name.${fix.component}` as TranslationKey) })
+                    : t('setup.blocker.contactAction');
     const problems: BlockingProblem[] = blockers.map(code => {
         const guide = setupProblemGuide(code);
         if (!guide) return { code, what: fallback(code) };
@@ -40,7 +41,9 @@ export function SetupPlanProblems({ blockers, fallback, name, busy, onFix }: {
                 label: label(fix),
                 busy: busy && fix.kind === 'recheck',
                 disabled: busy,
-                onFix: () => fix.kind === 'account' ? navigate('/account#email') : onFix(fix),
+                onFix: () => fix.kind === 'account' ? navigate('/account#email')
+                    : fix.kind === 'install' ? navigate(`/components?component=${encodeURIComponent(fix.component)}&install=`)
+                        : onFix(fix),
             } } : {}),
         };
     });

@@ -19,7 +19,11 @@ export type SetupProblemFix =
     | { kind: 'step'; step: SetupEditorStep }
     | { kind: 'removeMail' }
     | { kind: 'recheck' }
-    | { kind: 'account' };
+    | { kind: 'account' }
+    // alpha.127: the component's own install window on Components (nothing
+    // starts there before it is confirmed); setup is read again on return.
+    // Bileşenin Bileşenler'deki kendi kurulum penceresi.
+    | { kind: 'install'; component: string };
 
 export interface SetupProblemGuide {
     /** The catalogue prefix: `${key}.what` and `${key}.todo`. */
@@ -57,7 +61,7 @@ const table: Record<string, { name: string; fix?: SetupProblemFix }> = {
     server_setup_dns_publisher_endpoint_required: { name: 'publisherEndpoint', fix: step('dnshome') },
     host_restart_required: { name: 'hostRestart', fix: recheck },
     firewall_kernel_unavailable: { name: 'firewallKernel', fix: recheck },
-    firewall_engine_unavailable: { name: 'firewallEngine', fix: recheck },
+    firewall_engine_unavailable: { name: 'firewallEngine', fix: { kind: 'install', component: 'nftables' } },
     firewall_busy: { name: 'firewallBusy', fix: recheck },
     firewall_status_unknown: { name: 'firewallUnknown', fix: recheck },
     server_setup_dns_engine_unsupported: { name: 'dnsEngineUnsupported', fix: step('dnshome') },

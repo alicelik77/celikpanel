@@ -163,13 +163,11 @@ function changeWarnings(answered: Preview, t: (key: TranslationKey) => string, i
             const note = answered.changes.find((c) => c.kind === 'jail' && c.detail.startsWith(MISSING_PREFIX));
             const names = note ? note.detail.slice(MISSING_PREFIX.length).trim() : '';
             if (names) {
-                out.push({ key: isAdmin ? 'fileAccess.warn.jail_programs_missing_namedAdmin' : 'fileAccess.warn.jail_programs_missing_named', vars: { names } });
+                out.push({ key: isAdmin ? 'adminNext.access.jailProgramsNamed' : 'fileAccess.warn.jail_programs_missing_named', vars: { names } });
                 continue;
             }
         }
-        // The administrator is told what to do; everyone else who acts (alpha.127).
-        const adminKey = `fileAccess.warn.${warning}Admin` as TranslationKey;
-        const key = isAdmin && t(adminKey) !== adminKey ? adminKey : `fileAccess.warn.${warning}` as TranslationKey;
+        const key = `fileAccess.warn.${warning}` as TranslationKey;
         if (t(key) !== key) out.push({ key });
     }
     return out;
@@ -316,13 +314,13 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                     const names = packages.join(', ');
                     setToolsProblem('');
                     await confirmAction({
-                        title: t('fileAccess.sshTools.confirmTitle', { packages: names }),
-                        message: t('fileAccess.sshTools.confirmMessage', { packages: names }),
+                        title: t('adminNext.access.confirmTitle', { packages: names }),
+                        message: t('adminNext.access.confirmMessage', { packages: names }),
                         confirmLabel: t('fileAccess.sshTools.install'),
-                        progressTitle: t('fileAccess.sshTools.progressTitle', { packages: names }),
+                        progressTitle: t('adminNext.access.progressTitle', { packages: names }),
                         action: async (report): Promise<OperationEnd> => {
-                            const installing: OperationStep = { id: 'install', label: t('fileAccess.sshTools.step.install', { packages: names }), state: 'running', since: Date.now() };
-                            const checking: OperationStep = { id: 'check', label: t('fileAccess.sshTools.step.check'), state: 'pending' };
+                            const installing: OperationStep = { id: 'install', label: t('adminNext.access.stepInstall', { packages: names }), state: 'running', since: Date.now() };
+                            const checking: OperationStep = { id: 'check', label: t('adminNext.access.stepCheck'), state: 'pending' };
                             report.steps([installing, checking]);
                             setBusy(true);
                             try {
@@ -529,7 +527,7 @@ function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean 
     else if (account && !account.homeMatches) notes.push({ tone: 'danger', key: 'fileAccess.block.accountMismatch' });
     const server = view.server;
     if (server) {
-        if (!server.sshdPresent) notes.push({ tone: 'danger', key: isAdmin ? 'fileAccess.block.noSSHDAdmin' : 'fileAccess.block.noSSHD' });
+        if (!server.sshdPresent) notes.push({ tone: 'danger', key: isAdmin ? 'adminNext.access.noSSHD' : 'fileAccess.block.noSSHD' });
         if (server.sshDropIn === 'owner') notes.push({ tone: 'danger', key: 'fileAccess.block.sshOwner' });
         if (account?.keysFile === 'owner') notes.push({ tone: 'warning', key: 'fileAccess.block.keysOwner' });
         if (server.passwordAuthentication === 'no') notes.push({ tone: 'warning', key: 'fileAccess.block.passwordAuthOff' });
@@ -576,7 +574,7 @@ function SSHToolsNotice({ server, isAdmin, kept, busy, disabled, problem, onInst
         <div role="status" className="space-y-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-fg">
             <p>{t('fileAccess.sshTools.missing', { names })}</p>
             {kept && <p>{t('fileAccess.sshTools.kept')}</p>}
-            {server.jailUnknown.length > 0 && <p>{t(isAdmin ? 'fileAccess.sshTools.unknownAdmin' : 'fileAccess.sshTools.unknown', { names: server.jailUnknown.join(', ') })}</p>}
+            {server.jailUnknown.length > 0 && <p>{t(isAdmin ? 'adminNext.access.toolsUnknown' : 'fileAccess.sshTools.unknown', { names: server.jailUnknown.join(', ') })}</p>}
             {isAdmin && server.jailPackages.length > 0 ? (
                 <>
                     <p>{t('fileAccess.sshTools.admin', { packages: server.jailPackages.join(', ') })}</p>

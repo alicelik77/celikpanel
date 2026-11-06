@@ -63,10 +63,10 @@ export default function WebmailAccess({ domainId }: { domainId: number }) {
 // missing and that their provider acts; mail apps keep working meanwhile.
 // Web postası neden yok, kim ne yapar: yönetici tek eylemi alır, diğerleri
 // sağlayıcısına sorar.
-const ADMIN_STEP: Record<WebmailReason, { to: string; label: 'mail.webmail.installAction' | 'mail.webmail.setAddress' | 'mail.webmail.openRoundcube' }> = {
-    not_installed: { to: '/components?bundle=mail.webmail', label: 'mail.webmail.installAction' },
+const ADMIN_STEP: Record<WebmailReason, { to: string; label: 'adminNext.webmail.install' | 'mail.webmail.setAddress' | 'adminNext.webmail.openRoundcube' }> = {
+    not_installed: { to: '/components?bundle=mail.webmail', label: 'adminNext.webmail.install' },
     no_address: { to: '/components/roundcube', label: 'mail.webmail.setAddress' },
-    not_answering: { to: '/components/roundcube', label: 'mail.webmail.openRoundcube' },
+    not_answering: { to: '/components/roundcube', label: 'adminNext.webmail.openRoundcube' },
 };
 
 function WebmailMissing({ reason, isAdmin }: { reason: WebmailReason | null; isAdmin: boolean }) {
@@ -82,7 +82,7 @@ function WebmailMissing({ reason, isAdmin }: { reason: WebmailReason | null; isA
     return (
         <>
             <p className='text-xs text-fg-muted' data-webmail-missing={reason ?? 'unknown'}>
-                {t(reason ? `mail.webmail.admin.${reason}` : 'mail.webmail.noAddressAdmin')}
+                {t(reason ? `adminNext.webmail.${reason}` : 'mail.webmail.noAddressAdmin')}
             </p>
             <Link to={step.to} className='mt-1 inline-flex min-h-[2.75rem] items-center text-xs font-medium text-primary underline underline-offset-2 sm:min-h-0' data-webmail-set-address='' data-webmail-action={reason ?? 'no_address'}>
                 {t(step.label)}

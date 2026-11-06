@@ -95,10 +95,18 @@ Kapsanan: Erişim sekmesi (komut satırı araçları, FTP, OpenSSH), web postas�
 kartı (neden: kurulu değil, adresi yok, yanıt vermiyor), zamanlanmış görevler
 (cron), veritabanı web araçları, program ve yapay zekâ uygulaması çalışma
 ortamları, ClamAV imzaları ve eksik web sunucusu, PHP, MariaDB ve nftables
-retleri. Henüz kapsanmayan: yüklenen program ve yapay zekâ uygulamalarının
-bekletme, kum havuzu ve sunum notları, Bileşenler'deki PHP aracı notları,
-kurulum sihirbazının depo ve güvenlik duvarı engelleri, posta imzalama hataları
-ve güncelleme ekranlarındaki paket yöneticisi komutları. Denetim tam değildir.
+retleri; bekletilen, sunulmayan, plana dahil olmayan ya da azaltılmış yalıtımdaki
+yüklenen programlar ve yapay zekâ uygulamaları (Katalog yönetimi ya da
+Kullanıcılar); PHP-FPM'i duran PHP aracı (PHP-FPM sayfası); kurulum
+sihirbazında eksik güvenlik duvarı motoru (kendi kurulum penceresi); yeniden
+başarısız olan DKIM imzalama (posta kurulumunun Onar'ı). CelikPanel'in kendi
+kurulum yolu olmayan yerlerde (işletim sisteminin otomatik güncellemeleri,
+logrotate) yönetici komutu bütün hâlde ve Kopyala düğmesiyle alır
+(`CopyCommand`); komut cümlenin içinde verilmez. Yöneticinin cümleleri `adminNext`
+ekran katalogu parçasındadır. Bekletme retleri de Katalog yönetimi bağlantısını
+taşır. Henüz kapsanmayan: biten kurulumun PHP aracı notları (Bileşenler'de bağlantısız bildirimler), WordPress
+araçlarının eksik PHP sürümü, bayi havuzu bildirimleri ve yöneticinin bir
+müşterinin Erişim sekmesinde gördüğü plan notları. Denetim tam değildir.
 
 ## Doğruluk ve işlem kimliği
 

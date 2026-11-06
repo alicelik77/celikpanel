@@ -55,7 +55,7 @@ test('every new sentence is in English and Turkish with the same placeholders', 
     const english = entries(en);
     const turkish = entries(tr);
     const keys = [...english.keys()].filter(k => k.startsWith('fileAccess.sshTools.') || k === 'err.FILE_ACCESS_REFUSED.jail_tools_missing');
-    assert.equal(keys.length, 16);
+    assert.equal(keys.length, 10);
     for (const key of keys) {
         assert.ok(turkish.has(key), key);
         const holes = s => [...s.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join();
@@ -73,7 +73,7 @@ test('installing the tools is confirmed in the panel window and shown step by st
     const install = source.slice(source.indexOf('const installTools'), source.indexOf('return (', source.indexOf('const installTools')));
     assert.match(source, /import \{ confirmAction, type OperationEnd, type OperationStep \} from '\.\.\/lib\/confirmAction';/);
     assert.match(install, /await confirmAction\(\{/);
-    assert.match(install, /progressTitle: t\('fileAccess\.sshTools\.progressTitle'/);
+    assert.match(install, /progressTitle: t\('adminNext\.access\.progressTitle'/);
     assert.match(install, /report\.steps\(\[installing, checking\]\)/);
     // A lost answer is an unknown result, never a second install.
     assert.match(install, /if \(!res\) return \{ state: 'unknown', reason: t\('common\.resultUnknown'\) \};/);
@@ -84,18 +84,18 @@ test('installing the tools is confirmed in the panel window and shown step by st
 
 test('the administrator and everyone else each get their own sentence', () => {
     const notice = source.slice(source.indexOf('function SSHToolsNotice'));
-    assert.match(notice, /isAdmin \? 'fileAccess\.sshTools\.unknownAdmin' : 'fileAccess\.sshTools\.unknown'/);
+    assert.match(notice, /isAdmin \? 'adminNext\.access\.toolsUnknown' : 'fileAccess\.sshTools\.unknown'/);
     const blockers = source.slice(source.indexOf('function AccessBlockers'), source.indexOf('function SSHToolsNotice'));
-    assert.match(blockers, /isAdmin \? 'fileAccess\.block\.noSSHDAdmin' : 'fileAccess\.block\.noSSHD'/);
+    assert.match(blockers, /isAdmin \? 'adminNext\.access\.noSSHD' : 'fileAccess\.block\.noSSHD'/);
     assert.match(blockers, /isAdmin \? \{ tone: 'info', key: 'fileAccess\.block\.ftpMissingAdmin', install: 'vsftpd' \} : \{ tone: 'info', key: 'fileAccess\.block\.ftpMissing' \}/);
-    const english = entries(en);
-    const turkish = entries(tr);
+    const english = new Map([...entries(en), ...entries(read('../src/i18n/screens/adminNext/en.ts'))]);
+    const turkish = new Map([...entries(tr), ...entries(read('../src/i18n/screens/adminNext/tr.ts'))]);
     // Everyone else is told who acts and what is missing; the administrator is never told to ask.
     for (const key of ['fileAccess.sshTools.customer', 'fileAccess.block.ftpMissing', 'fileAccess.block.noSSHD']) {
         assert.match(english.get(key), /Your provider \(the server’s administrator\)/, key);
         assert.match(turkish.get(key), /sağlayıcınız \(sunucu yöneticisi\)/i, key);
     }
-    for (const key of ['fileAccess.sshTools.admin', 'fileAccess.sshTools.unknownAdmin', 'fileAccess.block.ftpMissingAdmin', 'fileAccess.block.noSSHDAdmin']) {
+    for (const key of ['fileAccess.sshTools.admin', 'adminNext.access.toolsUnknown', 'fileAccess.block.ftpMissingAdmin', 'adminNext.access.noSSHD']) {
         assert.doesNotMatch(english.get(key), /ask|provider/i, key);
         assert.doesNotMatch(turkish.get(key), /sorun|sağlayıcı/i, key);
     }

@@ -100,7 +100,7 @@ test('the administrator installs the tools in the panel window, once, and the op
       for (let i = 0; i < 6; i++) await settled();
     });
     assert.equal(globalThis.confirmAsked.length, 1, 'asked once, in the panel window');
-    assert.ok(globalThis.confirmAsked[0].title.startsWith('fileAccess.sshTools.confirmTitle'));
+    assert.ok(globalThis.confirmAsked[0].title.startsWith('adminNext.access.confirmTitle'));
     const posts = calls.filter((call) => call.method === 'POST');
     assert.equal(posts.length, 1, 'installed once');
     assert.deepEqual(posts[0].body, { packages: ['unzip', 'zip'] });

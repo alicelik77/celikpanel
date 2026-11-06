@@ -93,10 +93,19 @@ the customer sentence says so. Covered: the Access tab (command-line tools,
 FTP, OpenSSH), the webmail card (reason: not installed, no address, not
 answering), scheduled tasks (cron), database web tools, program and AI-app
 runtimes, ClamAV signatures, and the refusals for a missing web server, PHP,
-MariaDB and nftables. Not yet covered: the uploaded-program and AI-app
-held, sandbox and offer notices, the PHP tool notes on Components, the setup
-wizard's repository and firewall blockers, mail signing failures and the
-package-manager commands on the update screens. The audit is not complete.
+MariaDB and nftables; uploaded programs and AI apps on hold, not offered, not
+in the plan or on a reduced sandbox (Catalog management or Users); a PHP tool
+whose PHP-FPM is stopped (PHP-FPM's page); the setup wizard's missing
+firewall engine (its install window); DKIM signing that fails again (the mail
+setup's Repair). Where CelikPanel has no install path of its own (the
+operating system's automatic updates, logrotate), the administrator gets the
+command whole with a Copy button (`CopyCommand`), never a command inside a
+sentence. The administrator's sentences live in the screen catalogue part
+`adminNext`. Refusals for a hold carry the Catalog management link too. Not yet
+covered: the PHP tool notes of
+a finished install (toasts on Components, without a link), the WordPress
+tools' missing PHP version, the reseller pool notices and the plan notices an
+administrator sees on a customer's Access tab. The audit is not complete.
 
 ## Truth and operation identity
 

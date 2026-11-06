@@ -62,7 +62,7 @@ export const trPlanUsageScreens: Record<PlanUsageScreenKey, string> = {
     'usage.status.openSite': '{name} sitesini aç',
     'usage.status.openDomains': 'Alan adlarını aç',
     'usage.status.trafficDetails': 'Trafik, /etc/nginx/conf.d/celikpanel-traffic.conf ve her sitenin celikpanel-managed.d klasörüyle yazılan nginx günlüklerinden sayılır. Dosyası bunları okumayan site sayılmaz.',
-    'usage.status.logrotateMissing': 'logrotate kurulu değil; /var/log/celikpanel/traffic içindeki küçük trafik günlükleri döndürülmeden büyüyor, trafik yine doğru sayılıyor. Sunucu yöneticisi işletim sisteminin logrotate paketini kurar (Debian ve Ubuntu: sudo apt install logrotate; Arch Linux: sudo pacman -Syu --needed logrotate). CelikPanel bunu bir saat içinde fark eder ve döndürmeyi kendisi kurar.',
+    'usage.status.logrotateMissing': 'logrotate kurulu değil; /var/log/celikpanel/traffic içindeki küçük trafik günlükleri döndürülmeden büyüyor, trafik yine doğru sayılıyor. İşletim sisteminin logrotate paketini aşağıdaki komutla kurun. CelikPanel bunu bir saat içinde fark eder ve döndürmeyi kendisi kurar.',
     'usage.status.logrotateKept': '/etc/logrotate.d/celikpanel-traffic dosyası CelikPanel’in değiştirilmemiş metni değil; CelikPanel ona dokunmadı. Hâlâ /var/log/celikpanel/traffic/*.log dosyalarını döndürdüğünden emin olun.',
     'usage.status.diskUnknown': '{n} abonelik ölçülemedi; bilinen son sayıları kullanılıyor. CelikPanel {hours} saat içinde yeniden ölçer.',
     'usage.status.diskLow': 'Barındırma dosya sisteminde %10’dan az boş yer var; bu yüzden diskler saatte bir ölçülüyor.',
