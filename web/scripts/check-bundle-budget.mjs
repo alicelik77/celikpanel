@@ -268,6 +268,13 @@ const screenPartBudgets = {
   // PASSWORD_WEAK refusal. Its own part so the file-access and errors parts
   // keep their headroom. Set with at least 25% headroom from its Turkish file.
   passwords: kib(4, 2),
+  // v0.1.0-alpha.127: what screens say to the server's administrator with the
+  // one next step they offer, and the command copy box (adminNext.). A new
+  // part, so that "mailDatabases", "vendorLanes" and "fileAccess", which had
+  // no headroom, are not squeezed (the administrator's sentences of
+  // "fileAccess" and "mailDatabases" moved here too); set with at least 25%
+  // headroom from its Turkish file: 6.06 / 2.11 KiB.
+  adminNext: kib(8.25, 3),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

@@ -70,6 +70,7 @@ import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
 import type { MonitoringScreenKey } from './screens/monitoring/en';
 import type { PasswordsScreenKey } from './screens/passwords/en';
+import type { AdminNextScreenKey } from './screens/adminNext/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -577,5 +578,6 @@ export type ScreenKey =
     | RemovalRuleScreenKey
     | ComponentInstallScreenKey
     | MonitoringScreenKey
-    | PasswordsScreenKey;
+    | PasswordsScreenKey
+    | AdminNextScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;

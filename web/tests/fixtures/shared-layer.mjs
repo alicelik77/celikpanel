@@ -180,6 +180,8 @@ export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
   ));
+  // alpha.127: the command copy box is the shipped one; it needs only useI18n.
+  const copyCommandURL = compileSource('components/CopyCommand.tsx', () => stubURL);
   const table = {
     '/lib/apiError': apiErrorURL,
     '/apiError': apiErrorURL,
@@ -214,6 +216,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/requestIdentity': requestIdentityURL,
     '/lib/passwordPolicy': passwordPolicyURL,
     '/ui': uiURL,
+    '/CopyCommand': copyCommandURL,
     ...extra,
   };
   const resolve = (specifier) => {

@@ -57,7 +57,7 @@ export const enOsUpdatesScreens = {
     'life.choice.result.apt_config_unreadable': 'The file was written, but apt-config could not confirm it. Check this card again. If it stays unconfirmed, the server administrator runs {command} and looks for Periodic.',
     'life.choice.failed.OWNER_EDITED': 'Nothing was changed: the file holds your own text and you did not confirm replacing it. Open the choice again and confirm after reading the text.',
     'life.choice.failed.CURRENT_CHANGED': 'Nothing was changed: {path} changed after it was shown. The card has read it again. Check the new text and choose again.',
-    'life.choice.failed.UNATTENDED_NOT_INSTALLED': 'Nothing was changed: unattended-upgrades is not installed, so automatic updates cannot run. The server administrator installs it with {command} and then chooses automatic again.',
+    'life.choice.failed.UNATTENDED_NOT_INSTALLED': 'Nothing was changed: unattended-upgrades is not installed, so automatic updates cannot run. Install it with the command below, then choose automatic again.',
     'life.choice.failed.NOT_REGULAR': 'Nothing was changed: {path} is not an ordinary file (for example a link), so CelikPanel does not replace it. Change the setting by hand on the server.',
     'life.choice.failed.other': 'Nothing was changed. {reason} You can try again; if it repeats, the server administrator sets it by hand with {command}.',
     'life.choice.unknownResult': 'The answer did not arrive, so whether the file was written is not known. Nothing is started again by itself. The card reads the system again: check the lines above before you choose again.',

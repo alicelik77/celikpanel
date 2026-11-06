@@ -624,7 +624,7 @@ func (p *Panel) handleCatalogAppInstall(w http.ResponseWriter, r *http.Request, 
 	databaseName, databaseUser, serverID, err := p.reserveAppDatabaseNames(ctx, target, app)
 	if errors.Is(err, sql.ErrNoRows) {
 		writeCodedError(w, http.StatusConflict, errCodeAppNoDatabaseServer,
-			"no MariaDB server is installed on this server, so "+app.Name+" cannot get its database. Nothing was changed. The administrator installs MariaDB in Components; then install again.", "/components")
+			"no MariaDB server is installed on this server, so "+app.Name+" cannot get its database. Nothing was changed. The administrator installs MariaDB in Components; then install again.", adminInstallAction(r, "mariadb"))
 		return
 	}
 	if err != nil {

@@ -52,6 +52,10 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
+  // alpha.127: the mail card asks who reads it (the administrator gets the mail setup).
+  export const useAuth = () => ({ role: globalThis.mailAuthRole ?? 'customer' });
+  // alpha.127: the administrator's install link; others see the sentence it carries.
+  export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   // alpha.107: the application's account line has its own mounted test.
   export const AppAccountLine = () => null, IsolationFact = () => null;

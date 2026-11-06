@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
 )
@@ -86,5 +87,49 @@ func TestMailSetupFailClosedOmitsWebmailURL(t *testing.T) {
 	}
 	if response.IMAP.Port != 993 || response.POP3.Port != 995 || response.SMTP.Port != 587 {
 		t.Fatalf("mail client settings changed: %+v", response)
+	}
+}
+
+// alpha.127 (owner, Boston): "Webmail is not available on this server yet"
+// said neither why nor who acts. The setup answer names the reason; it never
+// claims Roundcube is missing when the component scan cannot be read.
+func TestMailSetupSaysWhyWebmailIsNotAvailable(t *testing.T) {
+	panel, _, _, _ := newServiceStateAtomicPanel(t)
+	ready := false
+	panel.webmailReadinessProbe = func(context.Context) bool { return ready }
+	read := func() mailClientSetupResponse {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		panel.handleMailClientSetup(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/domains/1/mail/setup", nil), "example.test")
+		var response mailClientSetupResponse
+		if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+		return response
+	}
+	// No scan recorded: whether Roundcube is installed is not known.
+	if got := read().WebmailReason; got != webmailReasonNoAddress {
+		t.Fatalf("no scan: reason = %q, want %q", got, webmailReasonNoAddress)
+	}
+	raw, err := json.Marshal(scanCacheDoc{Observations: []serviceObservation{{ID: "postfix", IsInstalled: true, Status: "running"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := panel.db.GetDB().Exec(`INSERT INTO service_scan_cache (id, data, scanned_at) VALUES (1, ?, ?)`,
+		string(raw), time.Now().UTC().Format(time.RFC3339)); err != nil {
+		t.Fatal(err)
+	}
+	if got := read().WebmailReason; got != webmailReasonNotInstalled {
+		t.Fatalf("scan without Roundcube: reason = %q, want %q", got, webmailReasonNotInstalled)
+	}
+	if err := panel.saveWebmailAddress(context.Background(), "mail.example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if got := read().WebmailReason; got != webmailReasonNotAnswering {
+		t.Fatalf("address without an answer: reason = %q, want %q", got, webmailReasonNotAnswering)
+	}
+	ready = true
+	if response := read(); !response.WebmailAvailable || response.WebmailReason != "" {
+		t.Fatalf("available webmail: %+v", response)
 	}
 }

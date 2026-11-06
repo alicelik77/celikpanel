@@ -136,6 +136,8 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
+  // alpha.127: the administrator's install link; others see the sentence it carries.
+  export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = () => {};
   export const RuntimeAppRisk = () => null;
   let n = 0;

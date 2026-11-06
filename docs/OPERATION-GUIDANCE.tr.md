@@ -77,6 +77,41 @@ Kurulum Özeti engelleri `lib/setupProblems.ts` içinde eşlenir; yeni bir engel
 kendi satırını ve iki katalog anahtarını (`setup.problem.<ad>.what/.todo`) ekler.
 Diğer ekranlar bu biçime taşınıyor; denetim listesi tamamlanmadı.
 
+### Kimin yapacağını okuyanın rolü belirler (2026-11-06)
+
+Boston'da sahip "bunları sunucu yöneticisi kurmalı; sağlayıcınıza yazın" ve
+"Web postası bu sunucuda henüz kullanılamıyor" yazılarını gördü. Panel kimin
+yapacağını oturum açan hesabın rolünden belirler. Yönetici nedeni ve onu
+düzelten tek eylemi görür: resmi paketleri yerinde kurmak (panelin kendi
+penceresinde onaylanır, adım adım gösterilir, ekran durumunu yeniden okur) ya
+da bileşenin Bileşenler sayfasındaki kendi kurulum penceresini açmak
+(`AdminInstallLink`, `/components?component=<id>&install=`; hazır kurulum için
+`/components?bundle=<id>`); orada onaylanmadan hiçbir şey başlamaz. Eksik
+bileşen nedeniyle verilen kodlu ret bu eylemi yalnız yöneticiye taşır
+(`adminInstallAction`). Diğer herkese neyin eksik olduğu ve sağlayıcısının,
+yani sunucu yöneticisinin yapacağı söylenir; yönetici eylemi verilmez.
+Yönetici müşteri hesabıyla giriş yaptığında müşteri cümlesi bunu da söyler.
+Kapsanan: Erişim sekmesi (komut satırı araçları, FTP, OpenSSH), web postası
+kartı (neden: kurulu değil, adresi yok, yanıt vermiyor), zamanlanmış görevler
+(cron), veritabanı web araçları, program ve yapay zekâ uygulaması çalışma
+ortamları, ClamAV imzaları ve eksik web sunucusu, PHP, MariaDB ve nftables
+retleri; bekletilen, sunulmayan, plana dahil olmayan ya da azaltılmış yalıtımdaki
+yüklenen programlar ve yapay zekâ uygulamaları (Katalog yönetimi ya da
+Kullanıcılar); PHP-FPM'i duran PHP aracı (PHP-FPM sayfası); kurulum
+sihirbazında eksik güvenlik duvarı motoru (kendi kurulum penceresi); yeniden
+başarısız olan DKIM imzalama (posta kurulumunun Onar'ı). CelikPanel'in kendi
+kurulum yolu olmayan yerlerde (işletim sisteminin otomatik güncellemeleri,
+logrotate) yönetici komutu bütün hâlde ve Kopyala düğmesiyle alır
+(`CopyCommand`); komut cümlenin içinde verilmez. Yöneticinin cümleleri `adminNext`
+ekran katalogu parçasındadır. Bekletme retleri de Katalog yönetimi bağlantısını
+taşır. Kurulumdan sonraki PHP aracı notu aracın sayfasını açar (kök, router'ın
+navigate'ini işlem sağlayıcısına verir); sitenin PHP komut satırı eksik olan
+WordPress araçları PHP-FPM'e bağlanır; bayinin trafik havuzu bildirimi
+yöneticiye bayinin haklarını açar; bir müşterinin Erişim sekmesinde aboneliği
+yöneten yönetici ya da bayi o hesabın haklarını ya da sürdürme penceresini açar
+(`/users?rights=` ya da `?resume=`), hesabın kendisi sağlayıcı cümlesini okur.
+Denetim tam değildir.
+
 ## Doğruluk ve işlem kimliği
 
 Gözlenmiş hata, eksik önkoşul ve bilinmeyen sonuç birbirinden ayrılır.

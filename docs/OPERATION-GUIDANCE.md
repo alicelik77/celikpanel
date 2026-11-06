@@ -75,6 +75,41 @@ warning toasts stay until closed. Setup Summary blockers are mapped in
 (`setup.problem.<name>.what/.todo`). Other screens are being moved to the pattern;
 the audit list is not complete.
 
+### Who acts is the reader's role (2026-11-06)
+
+On Boston the owner read "the server administrator must install them; ask your
+provider" and "Webmail is not available on this server yet". The panel decides
+who acts from the signed-in role. The administrator gets the reason and one
+action that fixes it: install the official packages in place (confirmed in the
+panel's own window, then shown step by step, and the screen reads its state
+again), or open that component's own install window on Components
+(`AdminInstallLink`, `/components?component=<id>&install=`; for a ready setup,
+`/components?bundle=<id>`), where nothing starts before it is confirmed. A
+coded refusal caused by a missing component carries that action only for the
+administrator (`adminInstallAction`). Everyone else is told what is missing
+and that their provider, the server's administrator, acts; they get no
+administrator action. When an administrator signs in with a customer account,
+the customer sentence says so. Covered: the Access tab (command-line tools,
+FTP, OpenSSH), the webmail card (reason: not installed, no address, not
+answering), scheduled tasks (cron), database web tools, program and AI-app
+runtimes, ClamAV signatures, and the refusals for a missing web server, PHP,
+MariaDB and nftables; uploaded programs and AI apps on hold, not offered, not
+in the plan or on a reduced sandbox (Catalog management or Users); a PHP tool
+whose PHP-FPM is stopped (PHP-FPM's page); the setup wizard's missing
+firewall engine (its install window); DKIM signing that fails again (the mail
+setup's Repair). Where CelikPanel has no install path of its own (the
+operating system's automatic updates, logrotate), the administrator gets the
+command whole with a Copy button (`CopyCommand`), never a command inside a
+sentence. The administrator's sentences live in the screen catalogue part
+`adminNext`. Refusals for a hold carry the Catalog management link too. A PHP tool's
+note after an install opens the tool's page (the root passes the router's
+navigate to the operation provider); WordPress tools without the site's PHP
+command line link to PHP-FPM; a reseller's traffic pool notice opens the
+reseller's rights for the administrator; on a customer's Access tab, the
+administrator or reseller who manages the subscription opens that account's
+rights or its resume window (`/users?rights=` or `?resume=`), while the
+account itself keeps the provider wording. The audit is not complete.
+
 ## Truth and operation identity
 
 Separate an observed failure from an unmet prerequisite and an unknown result.

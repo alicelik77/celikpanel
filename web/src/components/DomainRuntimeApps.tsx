@@ -27,6 +27,7 @@ import {
 } from '../lib/runtimeApps';
 import { RuntimeAppRisk } from './RuntimeAppRisk';
 import { PasswordInput } from './PasswordInput';
+import { AdminInstallLink } from './AdminInstallLink';
 
 // The domain's "Programs" tab (alpha.119, docs/RUNTIME-APPS.md): a program the
 // customer uploads (Go, Rust, any program for this server) or a Python web app
@@ -67,15 +68,35 @@ const toneOf = (cls: string | undefined): Tone => (cls === 'verified_failure' ? 
 
 // The words of a state or of an operation's failure reason that is a state:
 // the reason, who acts, the next action and how work resumes.
+// alpha.127: where the administrator acts on a state that names them, and the
+// page that holds the action. Anyone else keeps the state's own words.
+// Yöneticinin bir durumda nerede işlem yaptığı.
+const CATALOG = '/addons?view=catalog';
+const ADMIN_NEXT: Record<string, { to: string; label: TranslationKey }> = {
+    held: { to: CATALOG, label: 'adminNext.openCatalog' },
+    sandbox_reduced: { to: CATALOG, label: 'adminNext.openCatalog' },
+    not_offered: { to: CATALOG, label: 'adminNext.openCatalog' },
+    suspended: { to: '/users', label: 'adminNext.openUsers' },
+    oom: { to: CATALOG, label: 'adminNext.openCatalog' },
+    wheel_unavailable: { to: CATALOG, label: 'adminNext.openCatalog' },
+};
+// States whose "who acts" names the administrator: said as "you" to them.
+const ADMIN_WHO = new Set(['administrator', 'grantor', 'youThenAdministrator']);
+
 function Guidance({ code, vars }: { code: string; vars: Record<string, string | number> }) {
     const { t } = useI18n();
     const guide = RUNTIME_STATE_GUIDANCE[code];
     if (!guide) return <p>{t('runtime.state.other', { code })}</p>;
+    const who = t(('runtime.who.' + guide.who) as TranslationKey);
+    const next = t(('runtime.state.' + code + '.next') as TranslationKey, vars);
+    const step = ADMIN_NEXT[code];
     return (
         <div className="space-y-1">
             <p>{t(('runtime.state.' + code) as TranslationKey, vars)}</p>
-            <p><span className="font-medium">{t('runtime.label.who')}</span> {t(('runtime.who.' + guide.who) as TranslationKey)}</p>
-            <p><span className="font-medium">{t('runtime.label.next')}</span> {t(('runtime.state.' + code + '.next') as TranslationKey, vars)}</p>
+            <p><span className="font-medium">{t('runtime.label.who')}</span> {ADMIN_WHO.has(guide.who) ? <AdminInstallLink admin={t('adminNext.you')} fallback={who} /> : who}</p>
+            <p><span className="font-medium">{t('runtime.label.next')}</span> {step
+                ? <AdminInstallLink to={step.to} label={t(step.label)} admin={t(('adminNext.runtime.next.' + code) as TranslationKey, vars)} fallback={next} />
+                : code === 'runtime_missing' ? <>{next} <AdminInstallLink component="python" /></> : next}</p>
             <p><span className="font-medium">{t('runtime.label.resume')}</span> {t(('runtime.state.' + code + '.resume') as TranslationKey, vars)}</p>
         </div>
     );
@@ -103,6 +124,8 @@ function Refusal({ error }: { error: ApiError | null }) {
     return (
         <div className="space-y-1">
             <ErrorBanner error={error} />
+            {/* alpha.127: a refusal for a hold sends the administrator to where it is lifted. */}
+            {error.code === 'RUNTIME_APP' && error.reason === 'held' && <AdminInstallLink to={CATALOG} label={t('adminNext.openCatalog')} />}
             {detail && <p className="text-xs text-fg-muted">{t('runtime.serverSaid', { message: error.message })}</p>}
         </div>
     );
@@ -200,24 +223,41 @@ function grantorWords(grantor: string | undefined, t: Translate): string {
 
 // What stands in the way of creating a program (no program yet), most
 // blocking first; each says who acts. null when nothing does.
-function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): { tone: Tone; text: string } | null {
+interface Blocker {
+    tone: Tone;
+    text: string;
+    install?: string;
+    /** alpha.127: the administrator's own sentence and the page that holds the action. */
+    admin?: { text: string; to: string; label: TranslationKey };
+}
+
+function blockerOf(view: RuntimeAppsView, kind: RuntimeKindView, t: Translate): Blocker | null {
     if (!view.has_site) return { tone: 'warning', text: t('runtime.block.noSite') };
     if (view.suspended) return { tone: 'warning', text: t('runtime.block.suspended') };
     // Installed before offered: the server's own Python with its venv module.
     if (kind.kind === 'python' && !kind.python?.ready) {
-        return { tone: 'warning', text: t('runtime.python.missing', { detail: kind.python?.detail || '—' }) };
+        return { tone: 'warning', text: t('runtime.python.missing', { detail: kind.python?.detail || '—' }), install: 'python' };
     }
-    if (kind.held) return { tone: 'warning', text: t('runtime.block.held') };
-    if (!kind.permission_granted) return { tone: 'warning', text: t('runtime.block.notGranted', { grantor: grantorWords(kind.grantor, t) }) };
+    if (kind.held) return { tone: 'warning', text: t('runtime.block.held'), admin: { text: t('adminNext.runtime.held'), to: CATALOG, label: 'adminNext.openCatalog' } };
+    if (!kind.permission_granted) {
+        return { tone: 'warning', text: t('runtime.block.notGranted', { grantor: grantorWords(kind.grantor, t) }), admin: { text: t('adminNext.runtime.notGranted'), to: '/users', label: 'adminNext.openUsers' } };
+    }
     if (!kind.offered) {
         const layer = kind.refused_by ?? 'administrator';
         const key = ('runtime.closed.' + layer) as TranslationKey;
         const said = t(key, { grantor: grantorWords(kind.grantor, t) });
-        return { tone: 'warning', text: said === key ? t('runtime.closed.administrator') : said };
+        const administrator = layer === 'administrator' || said === key;
+        return {
+            tone: 'warning', text: said === key ? t('runtime.closed.administrator') : said,
+            ...(administrator ? { admin: { text: t('adminNext.runtime.notOffered'), to: CATALOG, label: 'adminNext.openCatalog' as TranslationKey } } : {}),
+        };
     }
     if (!view.sandbox.known) return { tone: 'info', text: t('runtime.block.levelUnknown') };
     if (view.sandbox.level === 'reduced' && (kind.accepted_level !== 'reduced' || view.sandbox.gaps.some((gap) => !kind.accepted_gaps.includes(gap)))) {
-        return { tone: 'warning', text: t('runtime.block.sandboxReduced', { gaps: view.sandbox.gaps.join(', ') }) };
+        return {
+            tone: 'warning', text: t('runtime.block.sandboxReduced', { gaps: view.sandbox.gaps.join(', ') }),
+            admin: { text: t('adminNext.runtime.sandboxReduced', { gaps: view.sandbox.gaps.join(', ') }), to: CATALOG, label: 'adminNext.openCatalog' },
+        };
     }
     if (view.disk_full) return { tone: 'warning', text: t('runtime.block.diskFull') };
     return null;
@@ -247,7 +287,9 @@ function Body({ view, base, after }: { view: RuntimeAppsView; base: string; afte
                     {states.map((code) => <StateNotice key={code} code={code} vars={vars} />)}
                 </div>
             )}
-            {blocker && <Notice tone={blocker.tone}>{blocker.text}</Notice>}
+            {blocker && <Notice tone={blocker.tone}>{blocker.admin
+                ? <AdminInstallLink to={blocker.admin.to} label={t(blocker.admin.label)} admin={blocker.admin.text} fallback={blocker.text} />
+                : <>{blocker.text}{blocker.install && <>{' '}<AdminInstallLink component={blocker.install} /></>}</>}</Notice>}
             {!app && !blocker && !view.certificate && <Notice tone="info">{t('runtime.block.noCertificate', { domain: view.domain })}</Notice>}
             {view.operation && <OperationLine op={view.operation} vars={vars} />}
             {!app && kinds.length > 1 && (

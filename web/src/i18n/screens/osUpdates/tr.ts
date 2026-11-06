@@ -49,7 +49,7 @@ export const trOsUpdatesScreens: Record<OsUpdatesScreenKey, string> = {
     'life.choice.result.apt_config_unreadable': 'Dosya yazıldı ama apt-config bunu doğrulayamadı. Bu karta yeniden bakın. Hâlâ doğrulanmıyorsa sunucu yöneticisi {command} çalıştırır ve Periodic satırlarına bakar.',
     'life.choice.failed.OWNER_EDITED': 'Hiçbir şey değişmedi: dosya sizin kendi metninizi içeriyor ve değiştirilmesini onaylamadınız. Seçimi yeniden açın, metni okuyup onaylayın.',
     'life.choice.failed.CURRENT_CHANGED': 'Hiçbir şey değişmedi: {path} gösterildikten sonra değişti. Kart onu yeniden okudu. Yeni metne bakıp yeniden seçin.',
-    'life.choice.failed.UNATTENDED_NOT_INSTALLED': 'Hiçbir şey değişmedi: unattended-upgrades kurulu değil; bu yüzden otomatik güncelleme çalışamaz. Sunucu yöneticisi onu {command} ile kurar, sonra yeniden otomatiği seçer.',
+    'life.choice.failed.UNATTENDED_NOT_INSTALLED': 'Hiçbir şey değişmedi: unattended-upgrades kurulu değil; bu yüzden otomatik güncelleme çalışamaz. Onu aşağıdaki komutla kurun, sonra yeniden otomatiği seçin.',
     'life.choice.failed.NOT_REGULAR': 'Hiçbir şey değişmedi: {path} sıradan bir dosya değil (örneğin bir bağlantı); bu yüzden CelikPanel onu değiştirmez. Ayarı sunucuda elle değiştirin.',
     'life.choice.failed.other': 'Hiçbir şey değişmedi. {reason} Yeniden deneyebilirsiniz; tekrarlarsa sunucu yöneticisi ayarı {command} ile elle yapar.',
     'life.choice.unknownResult': 'Yanıt gelmedi; bu yüzden dosyanın yazılıp yazılmadığı bilinmiyor. Kendiliğinden hiçbir şey yeniden başlatılmaz. Kart sistemi yeniden okuyor: yeniden seçmeden önce yukarıdaki satırlara bakın.',

@@ -705,7 +705,7 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
     // Engelin duzeltmesi: ilgili adima donus, e-postayi cikarma ya da yeniden okuma.
     function fixPlanProblem(fix: SetupProblemFix) {
         if (fix.kind === 'recheck') { void refreshReview(); return; }
-        if (fix.kind === 'account') return;
+        if (fix.kind === 'account' || fix.kind === 'install') return;
         if (fix.kind === 'removeMail' && catalog) updateDraft(previous => applySetupRoles(previous, { ...setupDraftRoles(previous, catalog), mail: false }, catalog));
         const target = fix.kind === 'removeMail' ? 'roles' : fix.step;
         if (target === 'components') setComponentsOpen(true);

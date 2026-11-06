@@ -19,6 +19,8 @@ const stub = dataModule(`
   import React from '${reactURL}';
   export const useI18n = () => ({ t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' });
   export const useNavigate = () => () => true;
+  // alpha.127: the mail card asks who reads it (the administrator gets the mail setup).
+  export const useAuth = () => ({ role: globalThis.mailAuthRole ?? 'customer' });
   export const showToast = (...args) => globalThis.dkimToasts.push(args);
   ${['AlertTriangle', 'ShieldCheck', 'KeyRound', 'FileCheck2', 'Copy', 'Plus', 'Info', 'RefreshCw', 'Folder', 'File',
     'ChevronRight', 'ChevronUp', 'Trash2', 'Edit', 'Download', 'Upload', 'Save', 'X', 'FolderPlus', 'FilePlus']

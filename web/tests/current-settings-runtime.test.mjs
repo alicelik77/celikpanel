@@ -28,6 +28,8 @@ const stub = dataModule(`
   ${icons.map((name) => `export const ${name} = () => null;`).join('\n')}
   export const useI18n = () => ({ t: (key) => key });
   export const useNavigate = () => () => true;
+  // alpha.127: the administrator's install link; others see the sentence it carries.
+  export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const ServiceShell = (props) => React.createElement('main', null, props.children);
   // alpha.124: the passwordless mail notice on the Postfix page reads its own address; not under test here.

@@ -15,6 +15,7 @@ import React from '${reactURL}';
 const t=key=>key;
 export const useI18n=()=>({t,locale:'en'});
 export const useNavigate=()=>()=>true;
+export const useAuth=()=>({role:'customer'});
 export const showToast=(tone,message)=>globalThis.remoteMailToast?.(tone,message);
 export const Button=props=>React.createElement('button',props);
 export const EmptyState=props=>React.createElement('section',null,props.title,props.hint,props.action);

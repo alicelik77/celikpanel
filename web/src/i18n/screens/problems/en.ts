@@ -72,7 +72,7 @@ export const enProblemsScreens = {
     "setup.problem.firewallKernel.what": "The firewall could not be checked: the firewall cannot reach this server's kernel. Nothing was changed.",
     "setup.problem.firewallKernel.todo": "Restart the server, then choose Check again. If it stays, Technical details show what the server reported.",
     "setup.problem.firewallEngine.what": "A saved firewall rule set exists, but nftables, the program that applies it, is not installed. Nothing was changed.",
-    "setup.problem.firewallEngine.todo": "Install nftables on the server (sudo apt install nftables, or on Arch sudo pacman -S nftables), then choose Check again.",
+    "setup.problem.firewallEngine.todo": "Install nftables with the button: it opens its install window on Components. Then come back to setup and choose Check again.",
     "setup.problem.firewallBusy.what": "Another firewall change is running right now. Nothing was changed.",
     "setup.problem.firewallBusy.todo": "Wait a minute for it to finish, then choose Check again.",
     "setup.problem.firewallUnknown.what": "The firewall could not be checked. Nothing was changed.",

@@ -926,6 +926,18 @@ function restoredOperation(): ComponentOperation | null {
     };
 }
 
+// alpha.127: how an install note's link opens its page. The provider holds no
+// router; the routes below it register the router's navigate here.
+// Kurulum notunun bağlantısını açma yolu; altındaki rotalar router'ın navigate'ini kaydeder.
+let noteOpener: ((to: string) => void) | null = null;
+export function useOperationNoteOpener(navigate: (to: string) => unknown): void {
+    useEffect(() => {
+        const open = (to: string) => { navigate(to); };
+        noteOpener = open;
+        return () => { if (noteOpener === open) noteOpener = null; };
+    }, [navigate]);
+}
+
 export function ComponentOperationProvider({ children }: { children: ReactNode }) {
     const { t, locale } = useI18n();
     const [initialSession] = useState(() => ({
@@ -1892,7 +1904,9 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
                     void loadOperationNotes()
                         .then((notes) => {
                             for (const note of notes.installedNotes({ result: next.result, name: installedName, fallbackOnly, t: (key, params) => t(key as Parameters<typeof t>[0], params) })) {
-                                showToast(note.kind, note.text);
+                                const link = note.link;
+                                const open = noteOpener;
+                                showToast(note.kind, note.text, link && open ? { action: { label: link.label, run: () => open(link.to) } } : undefined);
                             }
                         })
                         .catch(() => showToast('success', t('services.installed', { name: installedName })));

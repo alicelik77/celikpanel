@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invalidate, useInvalidation } from '../lib/remote';
 import { Code2 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { useNavigate } from '../router';
 import { Button, Checking, CouldNotCheck, KeepWords, Spinner } from './ui';
 import { componentName } from '../lib/componentName';
 import { supportFor, useSupportTable } from '../lib/supportTable';
@@ -252,6 +253,8 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                                                 ? t('component.phpTool.current', { tool: name, version: state.version })
                                                 : t('component.phpTool.missingExtensions', { tool: name, version: state.version })} />
                         </p>
+                        {/* alpha.127: PHP-FPM's own page starts a version or installs another. / PHP-FPM'in kendi sayfası. */}
+                        {stopped && <PHPFPMLink />}
                         {proofFailed && (
                             <Button variant="primary" onClick={() => void check()} disabled={busy} loading={checking} className="max-sm:min-h-11" data-php-tool-check="">
                                 {checking ? t('component.phpTool.checkingAgain') : t('component.phpTool.checkAgain')}
@@ -264,7 +267,7 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                             </div>
                         )}
                         {options.length === 0 ? (
-                            <p className="text-fg-muted" data-php-tool-options="none">{t('component.phpTool.onlyOne', { tool: name })}</p>
+                            <p className="text-fg-muted" data-php-tool-options="none">{t('component.phpTool.onlyOne', { tool: name })} <PHPFPMLink /></p>
                         ) : (
                             <div className="flex flex-wrap items-center gap-2">
                                 <label className="flex items-center gap-2 text-fg">
@@ -323,5 +326,17 @@ function PGToolServersLine({ servers }: { servers: PGToolServers }) {
         <p className={`mt-2 text-xs leading-5 ${servers.state === 'aligned' ? 'text-fg-subtle' : 'text-warning'}`} data-pg-tool-servers={servers.state}>
             <KeepWords text={t(key, vars)} />
         </p>
+    );
+}
+
+// The page where PHP-FPM's versions are started and installed (alpha.127).
+// PHP-FPM sürümlerinin başlatıldığı ve kurulduğu sayfa.
+function PHPFPMLink() {
+    const { t } = useI18n();
+    const navigate = useNavigate();
+    return (
+        <button type="button" onClick={() => navigate('/components/php-fpm')} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-php-fpm-link="">
+            {t('adminNext.openPHPFPM')}
+        </button>
     );
 }

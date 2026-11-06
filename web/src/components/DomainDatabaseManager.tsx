@@ -12,6 +12,7 @@ import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type Dat
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
 import { PasswordInput } from './PasswordInput';
+import { AdminInstallLink } from './AdminInstallLink';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -63,12 +64,18 @@ function DBToolsCard({ capabilities }: { capabilities: CapabilitiesRemote }) {
                             {t('dbtools.open', { name: tl.label })}
                         </a>
                     ) : (
-                        <span
+                        // alpha.127: the administrator installs the tool from here
+                        // (its own install window); anyone else is told who does.
+                        // Yönetici aracı buradan kurar; diğerleri kimin kurduğunu okur.
+                        <AdminInstallLink
                             key={tl.id}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-fg-subtle"
-                        >
-                            {t('dbtools.install', { name: tl.label })}
-                        </span>
+                            component={tl.id}
+                            fallback={
+                                <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-fg-subtle">
+                                    {t('dbtools.install', { name: tl.label })}
+                                </span>
+                            }
+                        />
                     ),
                 )}
             </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Layers, Send, XCircle, Ban, Power } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -140,6 +140,29 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     // The refusal stays in the toast until it is closed, with its fix; the
     // create form also keeps it beside its button (owner feedback 2026-10-31).
     const navigate = useNavigate();
+
+    // ?rights=<account> / ?resume=<account> (alpha.127): a plan, pool or
+    // suspension notice elsewhere (a customer's Access tab) opens that
+    // account's rights panel, or its suspend/resume window, here. Used once
+    // and removed from the address; an account this list does not hold opens
+    // nothing.
+    // Başka ekrandaki bildirim, hesabın hak panelini ya da sürdürme penceresini açar.
+    const accountLinkRef = useRef(false);
+    useEffect(() => {
+        if (accountLinkRef.current || users.remote.state !== 'known' || typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const rights = params.get('rights');
+        const resume = params.get('resume');
+        if (rights === null && resume === null) return;
+        accountLinkRef.current = true;
+        const found = users.remote.value.find((u) => u.username === (rights ?? resume));
+        if (found && rights !== null) setPanel({ user: found });
+        else if (found) setSuspension({ kind: 'user', id: found.id, name: found.username });
+        params.delete('rights');
+        params.delete('resume');
+        const query = params.toString();
+        navigate(`${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`, { replace: true });
+    }, [users.remote, navigate]);
     const [createRefusal, setCreateRefusal] = useState<ApiError | null>(null);
     const apiError = async (res: Response, sentence: 'users.createFailed' | 'users.changeFailed' = 'users.changeFailed') => {
         const problem = await readApiError(res);
@@ -265,6 +288,10 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
             {/* After the update: accounts that became Unlimited, and pools nearly used up. */}
             {isAdmin && (
                 <AdminRightsNotices
+                    onOpenAccount={(name) => {
+                        const found = users.remote.state === 'known' ? users.remote.value.find((u) => u.username === name) : undefined;
+                        if (found) setPanel({ user: found });
+                    }}
                     onSetRights={(userId) => {
                         const found = users.remote.state === 'known' ? users.remote.value.find((u) => u.id === userId) : undefined;
                         if (found) setPanel({ user: found });

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, KeyRound, FileCheck2, Copy, Plus, Info, RefreshCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { useAuth } from '../auth/AuthContext';
+import { useNavigate } from '../router';
 import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
 import { invalidate, useRefreshEvery, useRemote } from '../lib/remote';
@@ -109,6 +111,12 @@ function decodeAuthStatus(raw: unknown): AuthStatus {
 
 export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps) {
     const { t } = useI18n();
+    // alpha.127: signing that fails twice is repaired on the mail setup; the
+    // administrator is sent there, everyone else is told their provider acts.
+    // İki kez olmayan imzalama posta kurulumunda onarılır.
+    const isAdmin = useAuth().role === 'admin';
+    const navigate = useNavigate();
+    const openMailSetup = () => navigate('/components#mail-stacks');
     const auth = useRemote(`/api/v1/domains/${domainId}/mail/auth`, decodeAuthStatus);
     const answer = useLostAnswer(() => auth.retry());
     const [busy, setBusy] = useState<string | null>(null);
@@ -182,8 +190,10 @@ export function MailAuthPanel({ domainId, readOnly = false }: MailAuthPanelProps
             const body = await res.json() as { signing?: boolean; signing_error?: string };
             if (body.signing === false) {
                 // The signer's own words are technical: under Technical details.
-                showToast('warning', t('mailauth.keySigningFailed'), body.signing_error
-                    ? { details: { label: t('problem.details'), text: body.signing_error } } : undefined);
+                showToast('warning', t(isAdmin ? 'adminNext.mail.keySigningFailed' : 'mailauth.keySigningFailed'), {
+                    ...(body.signing_error ? { details: { label: t('problem.details'), text: body.signing_error } } : {}),
+                    ...(isAdmin ? { action: { label: t('adminNext.openMailSetup'), run: openMailSetup } } : {}),
+                });
             } else {
                 setFailure(null); showToast('success', t('mailauth.keyGenerated'));
             }
@@ -296,6 +306,9 @@ function AuthRecords({
     onCopy: (value: string) => void;
 }) {
     const { t } = useI18n();
+    const isAdmin = useAuth().role === 'admin';
+    const navigate = useNavigate();
+    const openMailSetup = () => navigate('/components#mail-stacks');
     const anyUnresolved = !status.spf.resolved || !status.dmarc.resolved;
     // A record this server's DNS serves while the public lookup could not
     // read its name: the note says why and who acts, instead of "waiting".
@@ -325,7 +338,11 @@ function AuthRecords({
 
             {auto && (
                 <div className="space-y-2">
-                    <Note>{t(automaticText(auto))}</Note>
+                    <Note>{isAdmin && automaticText(auto) === 'mailauth.auto.signingFailed' ? (
+                        <>{t('adminNext.mail.autoSigningFailed')}{' '}
+                            <button type="button" onClick={openMailSetup} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-admin-step="/components#mail-stacks">{t('adminNext.openMailSetup')}</button>
+                        </>
+                    ) : t(automaticText(auto))}</Note>
                     {stopped && auto.error_line && (
                         <p className="break-all rounded-lg bg-surface-2/60 px-3 py-2 font-mono text-xs text-fg-muted">{auto.error_line}</p>
                     )}
