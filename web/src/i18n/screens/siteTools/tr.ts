@@ -82,6 +82,11 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'err.WORDPRESS_NO_MARIADB': 'Bu abonelik için kurulu MariaDB sunucusu yok. Yönetici MariaDB’yi Bileşenler’den kurar; sonra yeniden başlatın.',
     'err.WORDPRESS_NOT_DETECTED': 'Bu sitede WordPress bulunamadı. Hiçbir şey değişmedi.',
     'err.WORDPRESS_NOT_PHP_SITE': 'WordPress araçları yalnız PHP sitelerinde çalışır. Hiçbir şey değişmedi.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_REMOVED': 'Güncelleme başarısız oldu ve yedeği geri yüklenmedi: sitenin PostgreSQL veritabanının bulunduğu PostgreSQL sürümü sunucudan kaldırılmış (verisi saklanıyor). Sunucu yöneticisi o sürümü Bileşenler’den yeniden kurar, sonra yedeği Yedekler’den geri yükler.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_STOPPED': 'Güncelleme başarısız oldu ve yedeği geri yüklenmedi: sitenin PostgreSQL’i kurulu ama çalışmıyor. Sunucu yöneticisi onu Bileşenler’den başlatır, sonra yedeği Yedekler’den geri yükler.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_NONE': 'Güncelleme başarısız oldu ve yedeği geri yüklenmedi: bu sunucuda çalışan PostgreSQL yok. Sunucu yöneticisi Bileşenler’den PostgreSQL kurar, sonra yedeği Yedekler’den geri yükler.',
+    'err.WORDPRESS_RESTORE_PG_MAJOR_MISMATCH': 'Güncelleme başarısız oldu ve yedeği geri yüklenmedi: yedekteki PostgreSQL veritabanı, şu an bulunduğu ana sürümden farklı bir ana sürümle alınmış; CelikPanel birini ötekine kendiliğinden yüklemez. Sunucu yöneticisi onu elle geri yükler ya da yedeğin sürümünü yanına kurar.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_UNPLACED': 'Güncelleme başarısız oldu ve yedeği geri yüklenmedi: CelikPanel kaydının sitenin veritabanı için adlandırdığı portta çalışan PostgreSQL yok. Sunucu yöneticisi PostgreSQL sayfasında CelikPanel kayıtlarını günceller, sonra yedeği Yedekler’den geri yükler.',
 
     // Bu işlemlerin denetim izindeki sözleri (Pano > Son etkinlik).
     'dashboard.audit.action.malware.delete_quarantined': 'karantinadaki bir dosyayı kalıcı olarak sildi',

@@ -79,7 +79,7 @@ test('remote mail previews additional routing and reports preserved-record confl
         try{
             await mount(MailAuth);assert.ok(text().includes('mailauth.remoteHelp'));assert.ok(text().includes('mail.example.com'));assert.equal(calls.some(call=>call.options?.method==='POST'),false);
             const apply=tree.root.findAllByType('button').find(button=>React.Children.toArray(button.props.children).includes('mailauth.apply'));await act(async()=>apply.props.onClick());
-            assert.equal(calls.filter(call=>call.options?.method==='POST').length,1);assert.equal(messages.at(-1).message,code==='REMOTE_DNS_MAIL_RECORD_CONFLICT'?'mailauth.remoteConflict':'mailauth.remoteAddressRequired');assert.equal(messages.some(item=>item.message.includes('untrusted')),false);
+            assert.equal(calls.filter(call=>call.options?.method==='POST').length,1);const banner=tree.root.findAll(node=>node.props?.sentence==='mailauth.applyFailed'&&node.props.error);assert.equal(banner.length,1);assert.equal(banner[0].props.error.message,code==='REMOTE_DNS_MAIL_RECORD_CONFLICT'?'mailauth.remoteConflict':'mailauth.remoteAddressRequired');assert.equal(messages.filter(item=>item.tone==='error').length,0,'alpha.127: the banner says it once; no notice repeats it');assert.equal(text().includes('untrusted'),false);
         }finally{delete globalThis.remoteMailToast;await cleanup();}
     }
 });

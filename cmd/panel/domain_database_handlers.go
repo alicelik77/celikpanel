@@ -247,17 +247,29 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 
 	// alpha.108: a PostgreSQL server record is one cluster on its port; a
 	// record whose cluster was emptied and removed (status 'retired') takes
-	// no new database.
+	// no new database. alpha.127: a PostgreSQL database goes to a cluster
+	// that runs, never to one whose program was removed or that is stopped
+	// (postgresql_placement.go); with none running, nothing runs and the
+	// refusal says why.
 	var serverID, serverPort int
-	err = pool.QueryRowContext(ctx, `
-		SELECT ds.id, ds.port
-		FROM database_servers ds
-		JOIN database_server_types dst ON dst.id = ds.type_id
-		WHERE ds.subscription_id = ? AND dst.name = ?
-		  AND COALESCE(ds.status, 'active') <> 'retired'
-		ORDER BY ds.is_default DESC, ds.id
-		LIMIT 1
-	`, domain.SubscriptionID, serverTypeNameFor(req.Type)).Scan(&serverID, &serverPort)
+	if serverTypeNameFor(req.Type) == "postgresql" {
+		var refusal *transport.DatabaseClusterRefusal
+		serverID, serverPort, refusal, err = p.pgPlaceNewDatabase(ctx, domain.SubscriptionID, p.readPGClustersForPlacement(ctx))
+		if refusal != nil {
+			writeDatabaseClusterRefusal(w, r, refusal)
+			return
+		}
+	} else {
+		err = pool.QueryRowContext(ctx, `
+			SELECT ds.id, ds.port
+			FROM database_servers ds
+			JOIN database_server_types dst ON dst.id = ds.type_id
+			WHERE ds.subscription_id = ? AND dst.name = ?
+			  AND COALESCE(ds.status, 'active') <> 'retired'
+			ORDER BY ds.is_default DESC, ds.id
+			LIMIT 1
+		`, domain.SubscriptionID, serverTypeNameFor(req.Type)).Scan(&serverID, &serverPort)
+	}
 	if err == sql.ErrNoRows {
 		writeClientError(w, http.StatusServiceUnavailable,
 			fmt.Sprintf("no %s server is installed on this host", req.Type))
@@ -310,6 +322,12 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 	}
 
 	err = p.callAgent("Agent.CreateDatabase", agentReq, &agentResp)
+	if err == nil && agentResp.Refusal != nil {
+		// The Agent found the cluster unable to answer before running
+		// anything (it changed since it was read).
+		writeDatabaseClusterRefusal(w, r, agentResp.Refusal)
+		return
+	}
 	if err != nil || !agentResp.Success {
 		writeAgentError(w, err, agentResp.Error)
 		return
@@ -458,6 +476,13 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = p.callAgent("Agent.DeleteDatabase", agentReq, &agentResp)
+	if err == nil && agentResp.Refusal != nil {
+		// alpha.127: the cluster this database lives on does not run (its
+		// program removed, or stopped); nothing was dropped and the record
+		// stays.
+		writeDatabaseClusterRefusal(w, r, agentResp.Refusal)
+		return
+	}
 	if err != nil || !agentResp.Success {
 		writeAgentError(w, err, agentResp.Error)
 		return

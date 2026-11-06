@@ -7,6 +7,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import { useNavigate } from '../router';
 import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
@@ -146,7 +147,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
     // A refusal also stays above the list with its fix until the next change
     // succeeds (owner feedback 2026-10-31).
     const navigate = useNavigate();
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const { refusal, setRefusal } = useRefusal();
     const answered = async <T,>(res: Response, sentence: TranslationKey): Promise<T | null> => {
         try {
             const data = await readJSONResponse<T>(res);
@@ -154,8 +155,8 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
             return data;
         } catch (error) {
             const problem = problemOf(error) ?? { message: '' };
+            // Said once, in the banner (useRefusal): no notice repeats it.
             setRefusal({ problem, sentence });
-            showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
             return null;
         }
     };
@@ -599,7 +600,7 @@ function AutoBackupSection({
             if (!r.ok) {
                 const error = await readApiError(r);
                 if (isStaleWrite(error)) setStale(true);
-                else { setScheduleRefusal(error); showToast('error', refusalText(error, t, 'backup.auto.saveFailed'), refusalToast(error, t)); }
+                else setScheduleRefusal(error); // said once, in its banner
                 return;
             }
             const { version } = await r.json();

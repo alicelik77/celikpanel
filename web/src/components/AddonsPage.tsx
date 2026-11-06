@@ -3,7 +3,7 @@ import { Loader2, Package, RefreshCw, Settings2, ShoppingBag } from 'lucide-reac
 import { useSearchParams } from '../router';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { Button, Card, EmptyState, ErrorBanner, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
 import { invalidate } from '../lib/remote';
@@ -202,8 +202,7 @@ export function AddonsPage() {
                 // the list stays, and the refusal stands above it (owner feedback 2026-10-31).
                 const error = cause instanceof TypeError ? { message: '' } : normalizeError(cause, '');
                 const sentence = item.action === 'acquire' ? 'addons.grantFailed' : 'addons.revokeFailed';
-                setActionError({ error, sentence });
-                showToast('error', refusalText(error, t, sentence), refusalToast(error, t));
+                setActionError({ error, sentence }); // said once, in the banner (useRefusal)
             } finally {
                 setBusyItemIDs((current) => withoutItem(current, item.id));
             }

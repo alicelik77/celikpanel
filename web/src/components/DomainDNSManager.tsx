@@ -5,7 +5,8 @@ import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { dnsStateExplanation, useHostingCapabilities } from '../lib/hostingCapabilities';
 import { BlockingProblems } from './BlockingProblems';
-import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, refusalText, refusalToast } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import { useNavigate } from '../router';
 import { countText, decodeListIn, invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
@@ -213,11 +214,11 @@ export function DomainDNSManager({
     // A refused change stays on the page above the records, with its fix,
     // until the next change succeeds (owner feedback 2026-10-31).
     const navigate = useNavigate();
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const { refusal, setRefusal } = useRefusal();
     const refused = async (res: Response, fallback: TranslationKey) => {
         const problem = await readApiError(res);
+        // Said once, in the banner (useRefusal): no notice repeats it.
         setRefusal({ problem, sentence: fallback });
-        showToast('error', refusalText(problem, t, fallback), refusalToast(problem, t, navigate));
     };
     // A saved change whose publication waits for the panel database answers
     // publication "publishing": the panel publishes it by itself.
@@ -343,7 +344,6 @@ export function DomainDNSManager({
             <div>
                 <ResultUnknown answer={answer} className="mb-4" />
                 <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
-            <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
                 <KnownEmpty
                     of={zoneShown}
                     icon={Globe}

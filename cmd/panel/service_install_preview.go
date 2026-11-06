@@ -370,6 +370,7 @@ func (p *Panel) provePHPToolAfterInstall(ctx context.Context, binding transport.
 		ServiceMutationBinding: binding,
 		Tool:                   tool,
 		AllowFallback:          firstInstall,
+		AfterInstall:           true,
 	}, &proof); err != nil {
 		log.Printf("prove %s after install: %v", tool, err)
 		return

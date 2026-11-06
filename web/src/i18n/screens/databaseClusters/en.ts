@@ -20,10 +20,30 @@ export const enDatabaseClustersScreens = {
     'pgc.lost': 'The answer did not arrive, so whether it happened is not known. The clusters are read again; nothing is sent a second time.',
     'pgc.firewall': 'The firewall is not changed: PostgreSQL stays reachable only from this server unless you open the port yourself.',
 
+    // alpha.127: a PostgreSQL change refused because its cluster cannot answer
+    // (any screen that creates or drops a PostgreSQL database says it).
+    'err.PG_CLUSTER_UNAVAILABLE': 'Nothing was changed: no running PostgreSQL can take this change. The server administrator starts PostgreSQL from Components, then try again.',
+    'err.PG_CLUSTER_UNAVAILABLE.removed': 'Nothing was changed: PostgreSQL {version} was removed from this server. Its data is kept in {data} (cluster {cluster}, port {port}), but nothing can answer there. Next, the server administrator installs a PostgreSQL version from Components (PostgreSQL {version} again to reach the kept data); then try again.',
+    'err.PG_CLUSTER_UNAVAILABLE.stopped': 'Nothing was changed: PostgreSQL {version} (cluster {cluster}, port {port}) is installed but not running. Next, the server administrator starts it from Components → PostgreSQL, or with sudo systemctl start {unit}; then try again.',
+    'err.PG_CLUSTER_UNAVAILABLE.none': 'Nothing was changed: there is no PostgreSQL cluster on this server. Next, the server administrator installs PostgreSQL from Components; then try again.',
+    'err.PG_CLUSTER_UNAVAILABLE.major_mismatch': 'Nothing was restored: this backup was made from PostgreSQL {backup_version}, and the database now lives on PostgreSQL {version} (cluster {cluster}, port {port}). CelikPanel never loads one major’s dump into another without you choosing it. Next, the server administrator installs PostgreSQL {backup_version} beside it to restore there, or restores this dump into the new version by hand; the backup is kept.',
+    'err.PG_CLUSTER_UNAVAILABLE.unplaced': 'Nothing was restored: this backup was made from PostgreSQL {backup_version}, and no PostgreSQL cluster runs on port {port}, where CelikPanel’s record says the database lives. Next, the server administrator checks the PostgreSQL page and updates CelikPanel’s records to the cluster’s port; then try again. The backup is kept.',
+    'err.PG_CLUSTER_UNAVAILABLE.action': 'Open PostgreSQL',
+
+    // alpha.127: phpPgAdmin's server list against the running clusters.
+    'pga.server': 'PostgreSQL {version} on port {port}',
+    'pga.serverPort': 'port {port}',
+    'pga.servers.aligned': 'phpPgAdmin connects to {running}.',
+    'pga.servers.differs': 'phpPgAdmin names {configured}, but PostgreSQL runs as {running}. Moving phpPgAdmin to a PHP version here sets its list to the running PostgreSQL.',
+    'pga.servers.owner': 'phpPgAdmin names {configured}, but PostgreSQL runs as {running}. Its server list in {path} was edited on this server, so CelikPanel leaves it as it is: set the port there yourself (for example $conf[\'servers\'][0][\'port\'] = {first};).',
+    'pga.servers.none': 'phpPgAdmin names {configured}, but no PostgreSQL runs now; start PostgreSQL from its page, then phpPgAdmin can connect.',
+
     'pgc.cluster.name': 'PostgreSQL {version} — cluster {cluster}',
     'pgc.cluster.online': 'Running',
     'pgc.cluster.down': 'Not running ({status})',
     'pgc.cluster.downHint': 'Start it from this page’s Start, or with sudo systemctl start {unit}; its port and databases are read once it runs.',
+    'pgc.cluster.removed': 'Program removed, data kept',
+    'pgc.cluster.removedHint': 'PostgreSQL {version}’s program was removed from this server; this cluster’s data stays untouched in {data}, and its settings in /etc/postgresql/{version}/{name}. It cannot be started, and it keeps port {port} reserved, so a newly installed version takes the next free port. To use this data again, install PostgreSQL {version} here. To delete it yourself, once you have a copy you trust: sudo pg_dropcluster {version} {name}. That deletes the data permanently; CelikPanel never does it for you.',
     'pgc.cluster.port': 'Port',
     'pgc.cluster.data': 'Data',
     'pgc.cluster.databases': 'Databases',

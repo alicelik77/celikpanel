@@ -690,6 +690,31 @@ type PHPToolBinding struct {
 	// when no versioned unit applies. With SocketReady it is what may say
 	// "not running"; a failed proof alone never does.
 	FPMState string `json:"fpm_state,omitempty"`
+	// PGServers (alpha.127, phpPgAdmin only): the PostgreSQL servers its
+	// configuration names and the clusters that run; nil where it does not
+	// apply.
+	PGServers *PHPPgAdminServers `json:"pg_servers,omitempty"`
+}
+
+// PHPPgAdminServers is phpPgAdmin's server list against the running
+// PostgreSQL clusters (alpha.127). State: "aligned" (it names exactly the
+// running clusters), "differs", "none_running" or "unreadable". Owner:
+// "package" (the shipped file), "panel" (what CelikPanel wrote last) or
+// "owner" (edited on the server: CelikPanel never overwrites it).
+type PHPPgAdminServers struct {
+	State      string             `json:"state"`
+	Owner      string             `json:"owner"`
+	ConfigPath string             `json:"config_path"`
+	Configured []PHPPgAdminServer `json:"configured"`
+	Running    []PHPPgAdminServer `json:"running"`
+}
+
+// PHPPgAdminServer is one PostgreSQL server: its port, and the cluster's
+// major and whether it runs when a cluster is on that port.
+type PHPPgAdminServer struct {
+	Version string `json:"version,omitempty"`
+	Port    int    `json:"port"`
+	Online  bool   `json:"online"`
 }
 
 // PHPToolCause says why a tool move failed, in a form a screen translates
@@ -727,6 +752,9 @@ type ProvePHPToolRequest struct {
 	ServiceMutationBinding
 	Tool          string `json:"tool"`
 	AllowFallback bool   `json:"allow_fallback,omitempty"`
+	// AfterInstall (alpha.127): the proof right after an install, which may
+	// also set phpPgAdmin's server list; "Check again" changes nothing.
+	AfterInstall bool `json:"after_install,omitempty"`
 }
 
 // PHPToolAttempt is one version a proof tried and why it failed.
@@ -746,6 +774,9 @@ type ProvePHPToolResponse struct {
 	Moved    bool             `json:"moved,omitempty"`
 	Attempts []PHPToolAttempt `json:"attempts,omitempty"`
 	Error    string           `json:"error,omitempty"`
+	// Warning (alpha.127): phpPgAdmin's server list was not set to the
+	// running PostgreSQL clusters, and why (the owner edited it, ...).
+	Warning string `json:"warning,omitempty"`
 }
 
 // BindPHPToolRequest moves one tool to one installed PHP version.

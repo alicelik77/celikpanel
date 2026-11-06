@@ -3,7 +3,7 @@ import { LayoutGrid, Download, ExternalLink, Loader2, RotateCcw, Trash2, KeyRoun
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, Checking, ErrorBanner, KnownEmpty, RemoteGate, ResultUnknown } from './ui';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
 import { useNavigate } from '../router';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
@@ -55,15 +55,12 @@ export function DomainAppsPanel({ domainId, domainName }: { domainId: number; do
     const [shown, setShown] = useState<Shown | null>(null);
     const [failure, setFailure] = useState<ApiError | null>(null);
     const [removing, setRemoving] = useState<InstalledApp | null>(null);
-    const navigate = useNavigate();
     const running = apps.remote.state === 'known' && apps.remote.value.installed.some((app) => RUNNING_STATES.includes(app.status));
     // The screen moves while something runs; reading only.
     useRefreshEvery(apps, 4000, busy !== null || running);
 
-    const failed = (problem: ApiError) => {
-        setFailure(problem);
-        showToast('error', refusalText(problem, t, 'apps.installFailed'), refusalToast(problem, t, navigate));
-    };
+    // Said once, in the banner (useRefusal): no notice repeats it.
+    const failed = (problem: ApiError) => setFailure(problem);
 
     const post = async (target: string, body: unknown, method = 'POST') => {
         const res = await answer.send(target, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

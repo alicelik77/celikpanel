@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 const maxBackupRequestBody = 64 << 10
@@ -79,20 +80,31 @@ func (p *Panel) loadBackupDomain(ctx context.Context, domainID int) (backupDomai
 // server type, with domain and subscription ownership checked together.
 func (p *Panel) databaseIdentity(ctx context.Context, d backupDomain, databaseID int) (backupspec.DatabaseIdentity, error) {
 	var out backupspec.DatabaseIdentity
+	var port int
 	err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT db.id, db.name, dst.name
+		SELECT db.id, db.name, dst.name, ds.port
 		FROM databases_v2 db
 		JOIN database_servers ds ON ds.id=db.server_id
 		JOIN database_server_types dst ON dst.id=ds.type_id
 		WHERE db.id=? AND db.domain_id=? AND db.subscription_id=?
 		  AND ds.subscription_id=?`, databaseID, d.ID, d.SubscriptionID, d.SubscriptionID,
-	).Scan(&out.ID, &out.Name, &out.Type)
-	return out, err
+	).Scan(&out.ID, &out.Name, &out.Type, &port)
+	return withBackupCluster(out, port), err
+}
+
+// withBackupCluster names the PostgreSQL cluster a database's record says it
+// lives on (alpha.127): the Agent backs it up from that cluster, records its
+// major, and restores only into a running cluster of that major.
+func withBackupCluster(identity backupspec.DatabaseIdentity, port int) backupspec.DatabaseIdentity {
+	if identity.Type == "postgresql" && port > 0 && port <= 65535 {
+		identity.ClusterPort = port
+	}
+	return identity
 }
 
 func (p *Panel) domainDatabaseIdentities(ctx context.Context, d backupDomain) ([]backupspec.DatabaseIdentity, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT db.id, db.name, dst.name
+		SELECT db.id, db.name, dst.name, ds.port
 		FROM databases_v2 db
 		JOIN database_servers ds ON ds.id=db.server_id
 		JOIN database_server_types dst ON dst.id=ds.type_id
@@ -105,10 +117,11 @@ func (p *Panel) domainDatabaseIdentities(ctx context.Context, d backupDomain) ([
 	identities := make([]backupspec.DatabaseIdentity, 0)
 	for rows.Next() {
 		var identity backupspec.DatabaseIdentity
-		if err := rows.Scan(&identity.ID, &identity.Name, &identity.Type); err != nil {
+		var port int
+		if err := rows.Scan(&identity.ID, &identity.Name, &identity.Type, &port); err != nil {
 			return nil, err
 		}
-		identities = append(identities, identity)
+		identities = append(identities, withBackupCluster(identity, port))
 	}
 	return identities, rows.Err()
 }
@@ -241,6 +254,14 @@ func (p *Panel) handleCreateBackup(w http.ResponseWriter, r *http.Request, d bac
 		writeServerError(w, err)
 		return
 	}
+	if resp.Refusal != nil {
+		// alpha.127: the PostgreSQL cluster the database lives on cannot be
+		// read now; nothing was made.
+		p.auditBackupFailure(r, "create", body.Type, d.ID, resp.Error)
+		refusal := transport.DatabaseClusterRefusal(*resp.Refusal)
+		writeDatabaseClusterRefusal(w, r, &refusal)
+		return
+	}
 	if !resp.Success || resp.Error != "" {
 		p.auditBackupFailure(r, "create", body.Type, d.ID, resp.Error)
 		writeAgentError(w, nil, resp.Error)
@@ -364,6 +385,15 @@ func (p *Panel) handleRestoreBackup(w http.ResponseWriter, r *http.Request) {
 		// bir geri yüklemesi hâlâ sürüyor (D-029).
 		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, resp.Error)
 		writeCodedError(w, http.StatusConflict, errCodeBackupRestoreInProgress, backupRestoreInProgressMessage, "")
+		return
+	}
+	if resp.Refusal != nil {
+		// alpha.127: refused before the safety backup and before anything
+		// was written: the database's cluster does not run, or is another
+		// PostgreSQL major than the backup's.
+		p.auditBackupFailure(r, "restore", inspection.Backup.Type, d.ID, resp.Error)
+		refusal := transport.DatabaseClusterRefusal(*resp.Refusal)
+		writeDatabaseClusterRefusal(w, r, &refusal)
 		return
 	}
 	if !resp.Success || resp.Error != "" {

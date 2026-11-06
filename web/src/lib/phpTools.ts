@@ -32,6 +32,39 @@ export interface PHPToolState {
     /** alpha.108: the last proof failed; proof_cause says why. */
     proof_failed: boolean;
     proof_cause: PHPToolCause | null;
+    /** alpha.127, phpPgAdmin only: the PostgreSQL servers its configuration
+     *  names against the clusters that run; null when not read. */
+    pg_servers: PGToolServers | null;
+}
+
+/** alpha.127: one PostgreSQL server (its port, and the cluster's major when
+ *  a cluster is on it). */
+export interface PGToolServer { version: string; port: number; online: boolean }
+export interface PGToolServers {
+    state: 'aligned' | 'differs' | 'none_running' | 'unreadable';
+    owner: 'package' | 'panel' | 'owner';
+    config_path: string;
+    configured: PGToolServer[];
+    running: PGToolServer[];
+}
+
+function decodePGServers(value: unknown): PGToolServers | null {
+    const v = value as Record<string, unknown> | null | undefined;
+    if (!v || typeof v !== 'object' || !['aligned', 'differs', 'none_running', 'unreadable'].includes(String(v.state))
+        || !['package', 'panel', 'owner'].includes(String(v.owner)) || typeof v.config_path !== 'string'
+        || !Array.isArray(v.configured) || !Array.isArray(v.running)) return null;
+    const servers = (list: unknown[]): PGToolServer[] | null => {
+        const out: PGToolServer[] = [];
+        for (const raw of list) {
+            const s = raw as Record<string, unknown> | null;
+            if (!s || typeof s !== 'object' || typeof s.port !== 'number' || !Number.isInteger(s.port)) return null;
+            out.push({ version: typeof s.version === 'string' ? s.version : '', port: s.port, online: s.online === true });
+        }
+        return out;
+    };
+    const configured = servers(v.configured), running = servers(v.running);
+    if (!configured || !running) return null;
+    return { state: v.state as PGToolServers['state'], owner: v.owner as PGToolServers['owner'], config_path: v.config_path, configured, running };
 }
 
 /** alpha.108: a PHP tool move or check the server runs now. */
@@ -79,6 +112,7 @@ export function decodePHPTools(value: unknown): PHPToolsInfo {
             version_installed: t.version_installed, extensions_present: t.extensions_present !== false,
             socket_ready: socketReady, fpm_state: typeof t.fpm_state === 'string' ? t.fpm_state : '',
             proof_failed: proofFailed, proof_cause: proofFailed ? decodePHPToolCause(t.proof_cause) : null,
+            pg_servers: decodePGServers(t.pg_servers),
         });
     }
     const versions: PHPVersionUsage[] = [];

@@ -252,10 +252,10 @@ export function TeamMembersPage() {
                 setDraft(null);
                 setSaveRefusal(null);
             } catch (error) {
-                // The refusal also stays in the editor, beside Save (owner feedback 2026-10-31).
+                // The refusal stays in the editor, beside Save (owner feedback
+                // 2026-10-31), and is said there once (useRefusal): no notice.
                 const problem = await normalizeApiError(error);
                 setSaveRefusal(problem);
-                showToast('error', refusalText(problem, t, 'team.saveFailed'), refusalToast(problem, t));
             } finally {
                 setBusy(null);
                 changed();

@@ -91,6 +91,16 @@ function OperationGuidance({ op }: { op: WPOperation }) {
         case 'rolled_back':
             return <SiteToolGuidance tone="failure" reason={t('wpt.op.rolled_back', { detail })} who="you" next={t('wpt.op.rolledBackNext')}>{backup}</SiteToolGuidance>;
         default:
+            // alpha.127: a restore refused for a PostgreSQL prerequisite says
+            // which one (its own coded sentence, the server administrator acts),
+            // with the facts underneath; nothing of the backup was written.
+            if (op.code?.startsWith('WORDPRESS_RESTORE_PG_') && coded && coded !== `err.${op.code}`) {
+                return (
+                    <SiteToolGuidance tone="failure" reason={coded} who="administrator" next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}>
+                        {detail && <p className="text-xs text-fg-muted">{detail}</p>}
+                    </SiteToolGuidance>
+                );
+            }
             return (
                 <SiteToolGuidance tone="unknown" reason={t('wpt.op.needs_review', { detail })} who="you"
                     next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })} />

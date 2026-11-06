@@ -136,7 +136,7 @@ func backupManifestMatchesIdentity(manifest backupManifest, identity backupCreat
 		return false
 	}
 	for i, database := range identity.databases {
-		if manifest.Databases[i].Identity != database {
+		if !manifest.Databases[i].Identity.SameDatabase(database) {
 			return false
 		}
 	}
