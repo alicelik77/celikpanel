@@ -1,7 +1,8 @@
 // SCREEN catalogue part "nodeSandbox" (alpha.127): Node.js sites in the site
 // sandbox - the administrator's card under Components → Node.js (the move of
 // sites an earlier release wrote) and the site's own line and install step on
-// its Hosting tab (nodesandbox.). Each refusal says what is wrong, who acts and
+// its Hosting tab (nodesandbox.), and the audit log's sentences for its two
+// actions (dashboard.audit.action.site.node_*). Each refusal says what is wrong, who acts and
 // the next action (D-024).
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
@@ -58,6 +59,9 @@ export const enNodeSandboxScreens = {
     'nodesandbox.reason.app_folder_not_real': 'The site’s folder is a link or contains one. Put the real folder back, then install again.',
     'nodesandbox.reason.app_folder_not_owned': 'The site’s folder belongs to another account. The administrator gives it back to the site’s account, then install again.',
     'nodesandbox.reason.unknown': 'The server did not say how the install step ended ({detail}). Read the state again later; nothing was started twice.',
+    // The audit log’s sentences for this part’s two actions.
+    'dashboard.audit.action.site.node_sandbox_refresh': 'moved Node.js sites into the site sandbox ({target})',
+    'dashboard.audit.action.site.node_install': 'installed the packages of a Node.js site ({target})',
 } as const;
 
 export type NodeSandboxScreenKey = keyof typeof enNodeSandboxScreens;

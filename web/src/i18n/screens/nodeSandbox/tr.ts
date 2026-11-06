@@ -52,4 +52,7 @@ export const trNodeSandboxScreens: Record<NodeSandboxScreenKey, string> = {
     'nodesandbox.reason.app_folder_not_real': 'Sitenin klasörü bir bağlantı ya da bağlantı içeriyor. Gerçek klasörü geri koyun, sonra yeniden kurun.',
     'nodesandbox.reason.app_folder_not_owned': 'Sitenin klasörü başka bir hesaba ait. Yönetici onu sitenin hesabına geri verir, sonra yeniden kurun.',
     'nodesandbox.reason.unknown': 'Sunucu kurulum adımının nasıl bittiğini söylemedi ({detail}). Durumu sonra yeniden okuyun; hiçbir şey iki kez başlatılmadı.',
+    // The audit log’s sentences for this part’s two actions.
+    'dashboard.audit.action.site.node_sandbox_refresh': 'Node.js sitelerini site korumasına taşıdı ({target})',
+    'dashboard.audit.action.site.node_install': 'bir Node.js sitesinin paketlerini kurdu ({target})',
 };

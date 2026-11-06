@@ -336,8 +336,6 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.site.php_version': 'bir sitenin PHP sürümünü değiştirdi ({target})',
     'dashboard.audit.action.site.hosting': 'bir sitenin barındırma biçimini değiştirdi ({target})',
     'dashboard.audit.action.site.node_version': 'bir sitenin Node.js sürümünü değiştirdi ({target})',
-    'dashboard.audit.action.site.node_sandbox_refresh': 'Node.js sitelerini site korumasına taşıdı ({target})',
-    'dashboard.audit.action.site.node_install': 'bir Node.js sitesinin paketlerini kurdu ({target})',
     'dashboard.audit.action.site.app_account': 'bir sitenin uygulamasını sitenin kendi kullanıcısına taşıdı ({target})',
     'dashboard.audit.action.site.app_account.failed': 'bir sitenin uygulamasını sitenin kendi kullanıcısına taşıyamadı ({target})',
     'dashboard.audit.action.site.node_version.failed': 'bir siteyi başka bir Node.js sürümüne taşıyamadı ({target})',
