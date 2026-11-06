@@ -1,0 +1,104 @@
+== versions 12:44:01
+200 {"agent_commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "agent_matches": true, "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+200 {"agent_commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "agent_matches": true, "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "hostname": "host2.p6.test", "ipv4": "192.0.3.191", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+== backup: named's control sockets and the DNS check tool at 125 12:44:01
+release  nproc 2
+tool 87732bf8e050d70348e0ccbc3528033d4d3a432ccd4b0e8d0c728a3f659c1193 root:root 755 4956322 2026-11-06 12:39:33.026000000 +0000 /usr/local/libexec/celikpanel-bind-peer-inspect
+owner-tools b5ec221ab41b9c94 /opt/celikpanel/dns-owner-tools/README.md
+owner-tools 87732bf8e050d703 /opt/celikpanel/dns-owner-tools/bind-peer-inspect
+owner-tools 4c3c8b703e33d207 /opt/celikpanel/dns-owner-tools/dns-peer-enroll
+owner-tools 09fab8ccc97f64fa /opt/celikpanel/dns-owner-tools/pdns-peer-inspect
+--- refresh record dir
+--- named control sockets (ss)
+BIND 9.18.39-0ubuntu0.24.04.9-Ubuntu (Extended Support Version) <id:>
+LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:(("named",pid=25364,fd=48))
+LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:(("named",pid=25364,fd=49))
+LISTEN 0 5 [::1]:953 [::]:* users:(("named",pid=25364,fd=50))
+LISTEN 0 5 [::1]:953 [::]:* users:(("named",pid=25364,fd=51))
+--- site include dirs
+--- agent journal: check tool
+2026-11-06T12:39:33+00:00 host2.p6.test useradd[27566]: new user: name=celikpeer, UID=997, GID=987, home=/var/lib/bind-peer-inspector, shell=/bin/sh, from=none
+2026-11-06T12:39:33+00:00 host2.p6.test agent[11904]: 2026/11/06 12:39:33 peer inspection setup: bind inspector channel installed for primary 192.0.3.190
+release  nproc 2
+owner-tools b5ec221ab41b9c94 /opt/celikpanel/dns-owner-tools/README.md
+owner-tools 87732bf8e050d703 /opt/celikpanel/dns-owner-tools/bind-peer-inspect
+== case 4 prep: reseller res6 and two plans saved on 125 12:44:03
+200 {"id": 3, "rights": "unlimited", "success": true}
+  125 reseller catalog 200 .rights.software 23 ['app:drupal', 'app:joomla', 'app:mediawiki', 'app:n8n', 'app:nextcloud', 'app:open-webui', 'app:prestashop', 'app:wordpress', 'component:certbot', 'component:cron', 'component:dovecot', 'component:mariadb', 'component:nftables', 'component:nginx', 'component:pdns', 'component:php-fpm:8.4', 'component:postfix', 'component:roundcube', 'component:rspamd', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl', 'runtime:program']
+software ids 23 ['app:drupal', 'app:joomla', 'app:mediawiki', 'app:n8n', 'app:nextcloud', 'app:open-webui', 'app:prestashop', 'app:wordpress', 'component:certbot', 'component:cron', 'component:dovecot', 'component:mariadb', 'component:nftables', 'component:nginx', 'component:pdns', 'component:php-fpm:8.4', 'component:postfix', 'component:roundcube', 'component:rspamd', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl', 'runtime:program'] taken out: ['component:php-fpm:8.4']
+200 {"id": 1, "success": true}
+409 {"code": "RIGHTS_OUTSIDE_GRANTOR", "details": ["app:drupal", "app:joomla", "app:mediawiki", "app:n8n", "app:nextcloud", "app:open-webui", "app:prestashop", "runtime:program"], "error": "Nothing was changed: a plan cannot include these items because they are not in your own rights; ask the administrator to include them first."}
+  125 reseller plans 200 plan 1 all-software-125 all_software True software 0 []
+db /var/lib/celikpanel/celikpanel.db
+  plan 1 all_software 1 software rows 0 
+== the incident site: inc6.test on the joined server (static), zone published on the main 12:44:05
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "inc6.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "inc6_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+inc6.test id on backup: 1
+  @192.0.3.190 inc6.test SOA: ns1.p6.test. hostmaster.inc6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ] | @192.0.3.191: ns1.p6.test. hostmaster.inc6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ]
+  backup domains: [{"bandwidth": 0, "created_at": "2026-11-06T12:44:07Z", "disk_usage": 0, "domain_name": "inc6.test", "id": 1, "php_version": "", "project_type": "static", "site_config": {"state": "managed_unchanged"}, "ssl_enabled": false, "status": "active"}]
+--- site include dirs
+drwxr-xr-x  3 root celikpanel 4096 Nov  6 12:44 .
+drwxr-xr-x 10 root root       4096 Nov  6 12:44 ..
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 12:44 inc6.test
+--- inc6.test traces
+ls: cannot access '/var/www/*inc6.test*': No such file or directory
+ls: cannot access '/home/*/inc6.test': No such file or directory
+drwxr-xr-x 2 root celikpanel 4096 Nov  6 12:44 /etc/nginx/celikpanel-sites.d/inc6.test
+lrwxrwxrwx 1 root celikpanel   41 Nov  6 12:44 /etc/nginx/sites-enabled/inc6.test.conf -> /etc/nginx/sites-available/inc6.test.conf
+--- agent journal: check tool
+2026-11-06T12:39:33+00:00 host2.p6.test useradd[27566]: new user: name=celikpeer, UID=997, GID=987, home=/var/lib/bind-peer-inspector, shell=/bin/sh, from=none
+2026-11-06T12:39:33+00:00 host2.p6.test agent[11904]: 2026/11/06 12:39:33 peer inspection setup: bind inspector channel installed for primary 192.0.3.190
+== a usage round so the traffic check has measured inc6.test 12:44:36
+  usage round ran: 2026-11-06 12:44:11 -> 2026-11-06 12:49:11 (12:49:23)
+  usage 200 traffic: {"last_collected": "2026-11-06 12:49:03", "unknown": {}}
+== DELETE inc6.test on the joined server (once, as the owner presses Delete) 12:49:44
+202 {"domain": "inc6.test", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself.", "reason": "remote_dns_removal_confirming", "stage": "dns_cleanup", "status": "deletion_pending"}
+   12:49:55 +1s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+   still not ended after 420 s
+== pending? journal on both servers 12:56:59
+-- main
+2026-11-06T12:49:56+00:00 host1.p6.test agent[12177]: 2026/11/06 12:49:56 DNS peer proof for inc6.test (BIND secondary) stopped at step exchange as dns_peer_inspection_unknown:listeners_unverified: peer_inspection_unavailable
+2026-11-06T12:49:56+00:00 host1.p6.test agent[12177]: 2026/11/06 12:49:56 DNS peer proof for inc6.test (BIND secondary) step times: prepare=1.496s challenge_write=6.382s exchange=585ms; total 8.464s; outcome pending dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:49:56+00:00 host1.p6.test agent[12177]: dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:50:24+00:00 host1.p6.test agent[12177]: 2026/11/06 12:50:24 DNS peer proof for inc6.test (BIND secondary) stopped at step exchange as dns_peer_inspection_unknown:listeners_unverified: peer_inspection_unavailable
+2026-11-06T12:50:24+00:00 host1.p6.test agent[12177]: 2026/11/06 12:50:24 DNS peer proof for inc6.test (BIND secondary) step times: prepare=1.538s challenge_write=6.1s exchange=347ms; total 7.986s; outcome pending dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:50:24+00:00 host1.p6.test agent[12177]: dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:50:53+00:00 host1.p6.test agent[12177]: 2026/11/06 12:50:53 DNS peer proof for inc6.test (BIND secondary) stopped at step exchange as dns_peer_inspection_unknown:listeners_unverified: peer_inspection_unavailable
+2026-11-06T12:50:53+00:00 host1.p6.test agent[12177]: 2026/11/06 12:50:53 DNS peer proof for inc6.test (BIND secondary) step times: prepare=1.48s challenge_write=6.299s exchange=308ms; total 8.087s; outcome pending dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:50:53+00:00 host1.p6.test agent[12177]: dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:51:32+00:00 host1.p6.test agent[12177]: 2026/11/06 12:51:32 DNS peer proof for inc6.test (BIND secondary) stopped at step exchange as dns_peer_inspection_unknown:listeners_unverified: peer_inspection_unavailable
+2026-11-06T12:51:32+00:00 host1.p6.test agent[12177]: 2026/11/06 12:51:32 DNS peer proof for inc6.test (BIND secondary) step times: prepare=1.458s challenge_write=5.72s exchange=568ms; total 7.746s; outcome pending dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:51:32+00:00 host1.p6.test agent[12177]: dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:52:42+00:00 host1.p6.test agent[12177]: 2026/11/06 12:52:42 DNS peer proof for inc6.test (BIND secondary) stopped at step exchange as dns_peer_inspection_unknown:listeners_unverified: peer_inspection_unavailable
+2026-11-06T12:52:42+00:00 host1.p6.test agent[12177]: 2026/11/06 12:52:42 DNS peer proof for inc6.test (BIND secondary) step times: prepare=1.383s challenge_write=5.897s exchange=613ms; total 7.893s; outcome pending dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:52:42+00:00 host1.p6.test agent[12177]: dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:54:51+00:00 host1.p6.test agent[12177]: 2026/11/06 12:54:51 DNS peer proof for inc6.test (BIND secondary) stopped at step exchange as dns_peer_inspection_unknown:listeners_unverified: peer_inspection_unavailable
+2026-11-06T12:54:51+00:00 host1.p6.test agent[12177]: 2026/11/06 12:54:51 DNS peer proof for inc6.test (BIND secondary) step times: prepare=1.35s challenge_write=5.989s exchange=576ms; total 7.916s; outcome pending dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T12:54:51+00:00 host1.p6.test agent[12177]: dns_peer_inspection_unknown:listeners_unverified
+count peer_challenge_context_mismatch: 0  listeners_unverified: 18
+-- backup
+2026-11-06T12:49:53+00:00 host2.p6.test panel[27124]: 2026/11/06 12:49:53 domain deletion pending for inc6.test at dns_cleanup: reconcile the saved remote DNS publication before making another change
+2026-11-06T12:50:23+00:00 host2.p6.test panel[27124]: 2026/11/06 12:50:23 joined-server deletion of inc6.test: the main DNS server has not confirmed the removal yet (remote_dns_removal_confirming): reconcile the saved remote DNS publication before making another change; asked again by itself
+2026-11-06T12:50:53+00:00 host2.p6.test panel[27124]: 2026/11/06 12:50:53 joined-server deletion of inc6.test: the main DNS server has not confirmed the removal yet (remote_dns_removal_confirming): reconcile the saved remote DNS publication before making another change; asked again by itself
+2026-11-06T12:51:32+00:00 host2.p6.test panel[27124]: 2026/11/06 12:51:32 joined-server deletion of inc6.test: the main DNS server has not confirmed the removal yet (remote_dns_removal_confirming): reconcile the saved remote DNS publication before making another change; asked again by itself
+2026-11-06T12:52:41+00:00 host2.p6.test panel[27124]: 2026/11/06 12:52:41 joined-server deletion of inc6.test: the main DNS server has not confirmed the removal yet (remote_dns_removal_confirming): reconcile the saved remote DNS publication before making another change; asked again by itself
+2026-11-06T12:54:51+00:00 host2.p6.test panel[27124]: 2026/11/06 12:54:51 joined-server deletion of inc6.test: the main DNS server has not confirmed the removal yet (remote_dns_removal_confirming): reconcile the saved remote DNS publication before making another change; asked again by itself
+count peer_challenge_context_mismatch: 0  listeners_unverified: 0
+  @192.0.3.190 inc6.test SOA:  [status: REFUSED flags: qr ] | @192.0.3.191:  [status: REFUSED flags: qr ]
+== Users page traffic warning on the joined server while pending 12:57:01
+  usage round ran: 2026-11-06 12:54:11 -> 2026-11-06 12:59:11 (12:59:17)
+  usage 200 traffic: {"last_collected": "2026-11-06 12:59:03", "unknown": {"vhost_kept": 1}}
+--- site include dirs
+drwxr-xr-x  3 root celikpanel 4096 Nov  6 12:44 .
+drwxr-xr-x 10 root root       4096 Nov  6 12:44 ..
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 12:44 inc6.test
+--- inc6.test traces
+ls: cannot access '/etc/nginx/sites-enabled/*inc6.test*': No such file or directory
+ls: cannot access '/var/www/*inc6.test*': No such file or directory
+ls: cannot access '/home/*/inc6.test': No such file or directory
+drwxr-xr-x 2 root celikpanel 4096 Nov  6 12:44 /etc/nginx/celikpanel-sites.d/inc6.test
+--- agent journal: check tool
+2026-11-06T12:39:33+00:00 host2.p6.test useradd[27566]: new user: name=celikpeer, UID=997, GID=987, home=/var/lib/bind-peer-inspector, shell=/bin/sh, from=none
+2026-11-06T12:39:33+00:00 host2.p6.test agent[11904]: 2026/11/06 12:39:33 peer inspection setup: bind inspector channel installed for primary 192.0.3.190
+== c1pre done 12:59:38
+c1pre exit 0

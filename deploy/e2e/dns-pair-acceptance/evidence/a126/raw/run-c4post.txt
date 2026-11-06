@@ -1,0 +1,54 @@
+== versions 13:08:42
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+-- 125 (before the update), kept from c1pre:
+  125 reseller catalog 200 .rights.software 23 ['app:drupal', 'app:joomla', 'app:mediawiki', 'app:n8n', 'app:nextcloud', 'app:open-webui', 'app:prestashop', 'app:wordpress', 'component:certbot', 'component:cron', 'component:dovecot', 'component:mariadb', 'component:nftables', 'component:nginx', 'component:pdns', 'component:php-fpm:8.4', 'component:postfix', 'component:roundcube', 'component:rspamd', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl', 'runtime:program']
+  125 plans 200 plan 2 all-but-one-125 all_software False software 14 ['app:wordpress', 'component:certbot', 'component:cron', 'component:dovecot', 'component:mariadb', 'component:nftables', 'component:nginx', 'component:pdns', 'component:postfix', 'component:roundcube', 'component:rspamd', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl']
+  125 plans 200 plan 1 all-software-125 all_software True software 0 []
+  126 reseller catalog 200 .rights.software 14 ['app:drupal', 'app:joomla', 'app:mediawiki', 'app:n8n', 'app:nextcloud', 'app:open-webui', 'app:prestashop', 'app:wordpress', 'component:mariadb', 'component:php-fpm:8.4', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl', 'runtime:program']
+  126 plans 200 plan 2 all-but-one-125 all_software False software 5 ['app:wordpress', 'component:mariadb', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl']
+  126 plans 200 plan 1 all-software-125 all_software True software 0 []
+-- saved rows in the database (read-only, kept as they were)
+db /var/lib/celikpanel/celikpanel.db
+  plan 1 all_software 1 software rows 0 
+  plan 2 all_software 0 software rows 14 app:wordpress component:certbot component:cron component:dovecot component:mariadb component:nftables component:nginx component:pdns component:postfix component:roundcube component:rspamd integration:acme:google integration:acme:letsencrypt integration:acme:zerossl
+plan all-software-125 id 1
+== the plan still works: res6 creates customer c6plan on it; the customer creates a PHP site 13:08:43
+200 {"id": 4, "rights": "plan", "success": true}
+  customer on all-software-125 200 .rights.software 14 ['app:drupal', 'app:joomla', 'app:mediawiki', 'app:n8n', 'app:nextcloud', 'app:open-webui', 'app:prestashop', 'app:wordpress', 'component:mariadb', 'component:php-fpm:8.4', 'integration:acme:google', 'integration:acme:letsencrypt', 'integration:acme:zerossl', 'runtime:program']
+200 {"bandwidth": {"interval_minutes": 5, "measured": true}, "contact": {"email": "res6@beta1-lab.test", "kind": "reseller", "name": "res6"}, "subscriptions": [{"id": 3, "name": "all-software-125", "over_limit": [], "plan": {"id": 1, "name": "all-software-125"}, "rights": "plan", "status": "active", "usage": {"databases": 0, "databases_limit": 5, "disk": {"db_bytes": 0, "mail_bytes": 0, "state": "not_measured_yet", "uploads_applied": false, "uploads_blocked": false, "web_bytes": 0}, "disk_limit_bytes": 1073741824, "disk_used_bytes": 0, "domains": 0, "domains_limit": 5, "mail_accounts": 0, "mail_li
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a126lab/kit/as.py", line 19, in <module>
+    r = go()
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a126lab/kit/as.py", line 18, in go
+    return c.request(method, path, beta1.body_arg(body), timeout=float(os.environ.get("AS_TIMEOUT","120")), purpose="as " + cr["username"])
+                                   ~~~~~~~~~~~~~~^^^^^^
+  File "/var/tmp/a126r1/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 293, in body_arg
+    return json.loads(raw)
+           ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 81 (char 80)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); s=d.get("status"); b=d.get("body") or ""
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+== c4post done 13:08:45

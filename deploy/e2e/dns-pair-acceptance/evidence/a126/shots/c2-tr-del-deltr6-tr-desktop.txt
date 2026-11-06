@@ -1,0 +1,91 @@
+deltr6.test siliniyor
+
+Tamamlandı
+
+Tamamlandı
+
+E-posta ayarları kaldırılıyor
+
+Web sitesi kaldırılıyor
+
+deltr6.test DNS’ten kaldırılıyor
+
+Sertifikalar kaldırılıyor
+
+Silme bitiriliyor
+
+deltr6.test silindi
+
+Tamam
+CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+1
+Veritabanları
+Kullanıcılar
+Mağaza
+VPN
+
+SUNUCU
+
+Bileşenler
+8
+Sunucu kurulumu
+DNS ve eş sunucular
+İzleme
+Güvenlik
+Bakım
+İçe aktar
+Denetim günlüğü
+Ayarlar
+
+SUNUCU BİLGİSİ
+
+host2.p6.test
+
+192.0.3.191
+
+CelikPanel · v0.1.0-alpha.126 · build 7c8453e98c03
+(tam commit 7c8453e98c03f38e7a1074a527f6a2a940934f6c)
+Ana sayfa
+/
+Alan Adları
+Alan Adları
+
+Bu sunucuda barındırılan alan adlarını yönetin
+
+Alan adı ekle
+
+Adım 1 / 6
+
+CelikPanel’e hoş geldiniz
+
+Bu kısa tur neyin nerede olduğunu gösterir. İstediğiniz adımda geçebilir, daha sonra sağ üstteki ? menüsünden yeniden başlatabilirsiniz.
+
+Turu geç
+İleri
+TR
+EN
+OW
+owner
+Kendi siteleriniz
+
+20 KB · Sınırsız disk
+
+Alan adı 1 · sınır yok
+Veritabanı 0 · sınır yok
+E-posta 0 · sınır yok
+Alan adı ekle
+
+1 öğe
+
+	Alan adı	Tür	Disk kullanımı	Trafik	Durum	
+	
+api6.test
+	static	0 B	0 B/mo	
+Aktif	
+1 öğe

@@ -1,0 +1,38 @@
+== C1 main before 13:02:04
+200 {"agent_commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "agent_matches": true, "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 7f917de1c754aa7ea723f3f1d8535b58 v0.1.0-alpha.125 -> v0.1.0-alpha.126
+== press Update once 13:02:04
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T13:02:04Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "7f917de1c754aa7ea723f3f1d8535b58", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "6a7357499e634cacbc6f72a6eb47ddb91b022b2ba72203cd0b016ca770276f18", "archive_size": "71411451", "commit": "7c8453e98c03f38e7a10
+  4s 200 running None  | 
+  21s 
+  50s 503 None None  | 
+  54s 200 running verifying  | 
+  63s 200 succeeded None  | 
+== after 13:03:19
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+200 {"created_at": "2026-11-06T13:02:04.457218418Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T13:02:04Z", "state": "done"}, {"finished_at": "2026-11-06T13:02:08Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-06T13:02:08Z", "state": "done"}, {"finished_at": "2026-11-06T13:02:54Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 10, "finished_at": "2026-11-06T13:03:05Z", "id": "confirm", "started_at": "2026-11-06T13:02:54Z", "state": "done"}]}, "request_id": "7f917de1c754aa7ea723f3f1d8535b58", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "6a7357499e634cacbc6f72a6eb47ddb91b022b2ba72203cd0b016ca770276f18", "archive_size": "71411451", "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "os": "linux", "sequence": "126", "version": "v0.1.0-alpha.126"}, "updated_at": "2026-11-06T13:03:05.402736098Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/06 13:02:54 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 13:02:54 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/06 12:50:24 DNS zone V3 recovery remains pending for inc6.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again 
+2026/11/06 12:50:53 DNS zone V3 recovery remains pending for inc6.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again 
+2026/11/06 12:51:32 DNS zone V3 recovery remains pending for inc6.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again 
+2026/11/06 12:52:42 DNS zone V3 recovery remains pending for inc6.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again 
+2026/11/06 12:54:51 DNS zone V3 recovery remains pending for inc6.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again 
+2026/11/06 12:59:00 DNS zone V3 recovery remains pending for inc6.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again 
+--- attempt records
+  ['self-update', '7f917de1c754aa7ea723f3f1d8535b58.json'] {'request_id': '7f917de1c754aa7ea723f3f1d8535b58', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T13:02:04.457218418Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.126', 'reason': None, 'code': None}
+== C1 main done 13:03:20

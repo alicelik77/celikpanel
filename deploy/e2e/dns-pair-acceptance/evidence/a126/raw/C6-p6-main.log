@@ -1,0 +1,76 @@
+== versions 13:28:45
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+== 6.1 idle watchdog runs (126, nothing pending) 13:28:46
+unit ExecStart path: /usr/libexec/celikpanel/release-recovery
+{ path=/usr/libexec/celikpanel/release-recovery ; argv[]=/usr/libexec/celikpanel/release-recovery ; ignore_errors=no ; start_time=[Fri 2026-11-06 13:28:30 UTC] ; stop_time=[Fri 2026-11-06 13:28:30 UTC
+runner /usr/libexec/celikpanel/release-recovery sha 4b7dc0186b279cdb fast-path-function: 3
+timer: active next 
+stamp: celikpanel-release-recovery-idle-v1 00bd210f-025a-4d25-ab15-f8e7d0f9c3d4 2436 ef7545c248db667848da5ca699ec3268bbc51a70abc2f97f012d085cfb884cc8
+runs with a CPU line since -20min: 0
+--- other runner lines since -20min
+== 6.2 lab 127 label on the portal 13:28:46
+/root/a114-portal/site/releases/latest.txt
+/root/a114-portal/site/releases/v0.1.0-alpha.125
+v0.1.0-alpha.127
+CELIKPANEL_LAB_ROLLBACK_PROBE=1
+  request 5d74389e68bb28a04f184d38df38d3ac v0.1.0-alpha.126 -> v0.1.0-alpha.127
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T13:28:47Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "5d74389e68bb28a04f184d38df38
+  13:28:51 +3s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  13:28:54 +6s 200 running None  | download:done verify:done prepare:running restart:pending confirm:pending
+  13:29:11 +23s 
+  13:29:46 +58s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: | download:done verify:done prepare:pending restart:pending confirm:pending
+== after the refused attempt 13:29:46
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+200 {"created_at": "2026-11-06T13:28:47.900141783Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-06T13:28:47Z", "state": "done"}, {"finished_at": "2026-11-06T13:28:53Z", "id": "verify", "state": "done"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "5d74389e68bb28a04f184d38df38d3ac", "status": "failed", "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) / panel.env:5 desteklenmeyen anahtar: CELIKPANEL_LAB_ROLLBACK_PROBE (satr silin, sonra yeniden deneyin)", "target": {"arch": "amd64", "archive_sha256": "c452d237d233a5acee53566b9d48bb3d875b05520f2e83dc5f8a7dcaa73d39cd", "archive_size": "71411529", "commit": "7c150dc49b9c67785bd3d004b235daef83b95271", "os": "linux", "sequence": "127", "version": "v0.1.0-alpha.127"}, "updated_at": "2026-11-06T13:29:23.621422263Z"}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'systemctl list-units --failed --all --no-legend --plain | cat; echo '(failed end)'; journalctl --since 13:28:48 -o short-iso --no-pager | grep -iE 'rollback|rolled back|restor|recovery_required|release recovery|CELIKPANEL_UPDATE' | cut -c1-280 | tail -30''
+unit ExecStart path: /usr/libexec/celikpanel/release-recovery
+{ path=/usr/libexec/celikpanel/release-recovery ; argv[]=/usr/libexec/celikpanel/release-recovery ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+runner /usr/libexec/celikpanel/release-recovery sha 4b7dc0186b279cdb fast-path-function: 3
+timer: active next 
+stamp: celikpanel-release-recovery-idle-v1 00bd210f-025a-4d25-ab15-f8e7d0f9c3d4 2436 ef7545c248db667848da5ca699ec3268bbc51a70abc2f97f012d085cfb884cc8
+runs with a CPU line since 13:28:48: 0
+--- other runner lines since 13:28:48
+2026-11-06T13:29:24+00:00 host1.p6.test release-recovery[109053]: Recovery dispatch admitted: attempt=1 snapshot=20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1b3
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1b3
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+2026-11-06T13:29:36+00:00 host1.p6.test release-recovery[111818]: Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-agent.service' -> '/etc/systemd/system/celikpanel-agent.service'.
+2026-11-06T13:29:36+00:00 host1.p6.test release-recovery[111856]: Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-panel.service' -> '/etc/systemd/system/celikpanel-panel.service'.
+2026-11-06T13:29:37+00:00 host1.p6.test release-recovery[111894]: Created symlink '/etc/systemd/system/multi-user.target.wants/celikpanel-firewall-restore.service' -> '/etc/systemd/system/celikpanel-firewall-restore.service'.
+2026-11-06T13:29:37+00:00 host1.p6.test release-recovery[111894]: Created symlink '/etc/systemd/system/network-pre.target.requires/celikpanel-firewall-restore.service' -> '/etc/systemd/system/celikpanel-firewall-restore.service'.
+== 6.3 the owner removes the line and presses Update again 13:29:47
+0
+  request 20872767e34cdfdcf0ac9291343d02a4 v0.1.0-alpha.126 -> v0.1.0-alpha.127
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-06T13:29:48Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "20872767e34cdfdcf0ac9291343d
+  13:29:50 +2s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  13:30:11 +23s 
+  13:30:39 +51s 200 running verifying  | download:done verify:done prepare:done restart:done confirm:running
+  13:30:53 +65s 200 succeeded None  | download:done verify:done prepare:done restart:done confirm:done
+== after 13:31:04
+200 {"agent_commit": "7c150dc49b9c67785bd3d004b235daef83b95271", "agent_matches": true, "commit": "7c150dc49b9c67785bd3d004b235daef83b95271", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/06 13:29:43 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 13:29:43 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/06 13:30:38 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/06 13:30:38 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/06 13:30:52 self-update: cleared the failed mark of celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '20872767e34cdfdcf0ac9291343d02a4.json'] {'request_id': '20872767e34cdfdcf0ac9291343d02a4', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T13:29:48.084744054Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.127', 'reason': None, 'code': None}
+  ['self-update', '5d74389e68bb28a04f184d38df38d3ac.json'] {'request_id': '5d74389e68bb28a04f184d38df38d3ac', 'status': 'failed', 'phase': None, 'created_at': '2026-11-06T13:28:47.900141783Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.127', 'reason': None, 'code': None}
+  ['self-update', '7f917de1c754aa7ea723f3f1d8535b58.json'] {'request_id': '7f917de1c754aa7ea723f3f1d8535b58', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-06T13:02:04.457218418Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.126', 'reason': None, 'code': None}
+== 6.4 idle watchdog after the update settles (5 min) 13:31:05
+unit ExecStart path: /usr/libexec/celikpanel/release-recovery
+{ path=/usr/libexec/celikpanel/release-recovery ; argv[]=/usr/libexec/celikpanel/release-recovery ; ignore_errors=no ; start_time=[Fri 2026-11-06 13:35:44 UTC] ; stop_time=[Fri 2026-11-06 13:35:44 UTC
+runner /usr/libexec/celikpanel/release-recovery sha 4b7dc0186b279cdb fast-path-function: 3
+timer: active next 
+stamp: celikpanel-release-recovery-idle-v1 00bd210f-025a-4d25-ab15-f8e7d0f9c3d4 4100 dfe1d96d901e89900a2ba011445ea22140d7d5b0e1cc71fe23327161d3fb52c5
+runs with a CPU line since -5min: 0
+--- other runner lines since -5min
+== c6 done 13:36:05

@@ -1,0 +1,87 @@
+== case 4 UI: res6 opens Service plans, presses Add plan 13:27:38
+  shots 2 errors [{"name": "plans-reseller", "lang": "tr", "width": "desktop", "error": "Error: no element button,[role=tab] with text Service plans|Servis planlar\u00c4\u00b1"}] native dialogs []
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | False
+  probe row-edit-buttons-disabled   reloads 0 | [true,true]
+  probe editor-open   reloads 0 | EDITOR OPEN: Plan name
+Quantities
+
+0 means unlimited. Disk counts site files, mail and databases together.
+
+Domains
+ 
+Databases
+ 
+Mailboxes
+ 
+Disk (MB)
+ 
+Traffic per month (MB)
+Unlimited
+
+Traffic is what the websites send to their visitors in a calendar month (server time). When it is used up, only the websites show “traffic limit reached” until the 1st; mail, databases and file access keep working. It is counted every 5 minutes, so a site can go over its limit by what it sends in that time.
+
+Permissions
+
+Which jobs the account may do. What is not ticked is not shown to it.
+
+Edit DNS records
+DNSSEC
+Mail (mailboxes, forwarding, auto-reply)
+Databases
+Scheduled tasks
+File manager
+Backups
+Free certificates (Let’s Encrypt and others)
+Upload your own certificate
+Protected folders and redirects
+Proxy site type
+App installer (WordPress)
+VPN
+Additional users (team)
+File access (FTP and SFTP)
+Command line (SSH)
+Own remote backup destinations
+AI and automation apps
+Uploaded programs
+Python apps
+WordPress tools
+Malware scan results
+Software
+
+Which software and versions the account may choose. Software with nothing ticked is closed.
+
+PHP
+
+PHP 8.4
+
+MariaDB
+
+MariaDB
+
+Free certificates
+
+Google Trust Services
+Let’s Encrypt
+ZeroSSL
+
+Applications
+
+Drupal
+Joomla
+MediaWiki
+n8n
+Nextcloud
+Open WebUI
+PrestaShop
+WordPress
+
+Programs
+
+Own programs (uploaded and run by the account)
+
+To save the plan, give it a name.
+Show
+
+Cancel
+Save

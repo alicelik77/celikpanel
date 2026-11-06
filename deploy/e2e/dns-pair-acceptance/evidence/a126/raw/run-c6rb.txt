@@ -1,0 +1,61 @@
+== case 6: the refused attempt and its rollback (journal)
+--- release-recovery runner lines 13:28:45-13:29:48
+2026-11-06T13:29:01+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:24+00:00 host1.p6.test release-recovery[109053]: Recovery dispatch admitted: attempt=1 snapshot=20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1b3
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+--- systemd unit results 13:28:45-13:29:48 (failed / succeeded / deactivated)
+2026-11-06T13:28:47+00:00 host1.p6.test systemd[1]: Started celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service - [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 5d74389e68bb28a04f184d38df38d3ac.
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:10+00:00 host1.p6.test systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-06T13:29:10+00:00 host1.p6.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service: Failed with result 'exit-code'.
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service: Triggering OnFailure= dependencies.
+2026-11-06T13:29:42+00:00 host1.p6.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-06T13:29:43+00:00 host1.p6.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-06T13:29:43+00:00 host1.p6.test systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-11-06T13:29:43+00:00 host1.p6.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+--- update failure line
+2026/11/06 13:29:23 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (r
+--- per-run CPU of the watchdog (systemd CPU_USAGE_NSEC on each stop) since 13:31
+runs with CPU_USAGE_NSEC: 0 ms: []
+Result=success
+ExecMainStartTimestamp=Fri 2026-11-06 13:31:06 UTC
+CPUUsageNSec=276396000
+CPUAccounting=yes
+== case 6: the runner during the rollback
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:24+00:00 host1.p6.test release-recovery[109053]: Recovery dispatch admitted: attempt=1 snapshot=20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1b3
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Restored release source commit / Geri yüklenen sürümün kaynak commit'i: 7c8453e98c03f38e7a1074a527f6a2a940934f6c (from the restored Agent's build record / geri yüklenen Agent'ın yapı 
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Source checkout was not changed / Kaynak çalışma ağacı değiştirilmedi
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Panel: active
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Agent: active
+2026-11-06T13:29:52+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:52+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:52+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Consumed 26.220s CPU time, 108M memory peak.
+== case 6: idle watchdog runs, CPU per run (systemd CPUUsageNSec after each run) on 127 (same runner as 126)
+stamp now: celikpanel-release-recovery-idle-v1 00bd210f-025a-4d25-ab15-f8e7d0f9c3d4 4100 dfe1d96d901e89900a2ba011445ea22140d7d5b0e1cc71fe23327161d3fb52c5
+run Fri 2026-11-06 13:36:15 UTC cpu_ms 9 result success stamp_uptime 4100
+run Fri 2026-11-06 13:36:45 UTC cpu_ms 10 result success stamp_uptime 4100
+run Fri 2026-11-06 13:37:16 UTC cpu_ms 11 result success stamp_uptime 4100
+run Fri 2026-11-06 13:37:47 UTC cpu_ms 10 result success stamp_uptime 4100
+run Fri 2026-11-06 13:38:18 UTC cpu_ms 59 result success stamp_uptime 4100
+== case 6: idle watchdog runs on the joined server (126)
+stamp now: celikpanel-release-recovery-idle-v1 e24765f9-f13f-405d-a156-05347c0a55d5 2343 ef7545c248db667848da5ca699ec3268bbc51a70abc2f97f012d085cfb884cc8
+run Fri 2026-11-06 13:38:22 UTC cpu_ms 6 result success stamp_uptime 2343
+run Fri 2026-11-06 13:38:53 UTC cpu_ms 6 result success stamp_uptime 2343
+run Fri 2026-11-06 13:39:24 UTC cpu_ms 4 result success stamp_uptime 2343
+run Fri 2026-11-06 13:39:55 UTC cpu_ms 6 result success stamp_uptime 2343

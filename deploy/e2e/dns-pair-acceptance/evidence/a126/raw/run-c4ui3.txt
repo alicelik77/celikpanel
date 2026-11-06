@@ -1,0 +1,83 @@
+== case 4 UI: res6 opens Service plans, presses Add plan 13:28:15
+  shots 2 errors [] native dialogs []
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | False
+  probe row-edit-buttons-disabled   reloads 0 | []
+  probe editor-open   reloads 0 | EDITOR OPEN: Plan adı
+Sayılar
+
+0 sınırsız demektir. Disk; site dosyalarını, postayı ve veritabanlarını birlikte sayar.
+
+Alan adı
+ 
+Veritabanı
+ 
+Posta kutusu
+ 
+Disk (MB)
+ 
+Aylık trafik (MB)
+Sınırsız
+
+Trafik, web sitelerinin bir takvim ayında (sunucu saatiyle) ziyaretçilerine gönderdiğidir. Dolunca ayın 1’ine dek yalnız web siteleri “trafik sınırı doldu” gösterir; posta, veritabanları ve dosya erişimi çalışır. 5 dakikada bir sayılır; bu yüzden bir site, o sürede gönderdiği kadar sınırı aşabilir.
+
+İzinler
+
+Hesabın yapabileceği işler. İşaretli olmayan ona gösterilmez.
+
+DNS kayıtlarını düzenleme
+DNSSEC
+Posta (posta kutuları, yönlendirme, otomatik yanıt)
+Veritabanları
+Zamanlanmış görevler
+Dosya yöneticisi
+Yedekler
+Ücretsiz sertifikalar (Let’s Encrypt ve diğerleri)
+Kendi sertifikanızı yükleme
+Korumalı klasörler ve yönlendirmeler
+Vekil (proxy) site türü
+Uygulama kurucu (WordPress)
+VPN
+Ek kullanıcılar (ekip)
+Dosya erişimi (FTP ve SFTP)
+Komut satırı (SSH)
+Kendi uzak yedek hedefleri
+Yapay zekâ ve otomasyon uygulamaları
+Yüklenen programlar
+Python uygulamaları
+WordPress araçları
+Zararlı yazılım taraması sonuçları
+Yazılımlar
+
+Hesabın seçebileceği yazılımlar ve sürümler. Hiçbir şeyi işaretli olmayan yazılım kapalıdır.
+
+PHP
+
+PHP 8.4
+
+MariaDB
+
+MariaDB
+
+Ücretsiz sertifikalar
+
+Google Trust Services
+Let’s Encrypt
+ZeroSSL
+
+Uygulamalar
+
+Drupal
+Joomla
+MediaWiki
+n8n
+Nextcloud
+Open WebUI
+PrestaShop
+WordPress
+
+Programlar
+
+Kendi programları (hesabın yükleyip çalıştırdığı)
+
+Planı kaydetmek için ona bir 

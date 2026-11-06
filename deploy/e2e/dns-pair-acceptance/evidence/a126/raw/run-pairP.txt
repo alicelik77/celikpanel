@@ -1,0 +1,165 @@
+== provision 12:22:42 main=debian13 192.0.3.190 (v0.1.0-alpha.125) backup=ubuntu2404 192.0.3.191 (v0.1.0-alpha.125) zone=p6.test
+E=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 21.6
+}
+
+earch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nboston\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 31.0
+}
+
+== the owner's machine names (lab load) 12:23:13
+host1.p6.test
+host1.p6.test
+host2.p6.test
+host2.p6.test
+v0.1.0-alpha.125
+v0.1.0-alpha.125
+== install through get.sh in a root terminal 12:23:18
+main terminal rc 0 80.7 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.190:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+backup terminal rc 0 73.6 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.191:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.125
+v0.1.0-alpha.125
+== port (check 4): fresh alpha.114 1923 only; alpha.113 2083 12:24:41
+192.0.3.190:1923 open (from the lab bridge)
+192.0.3.190:2083 closed (from the lab bridge)
+192.0.3.191:1923 open (from the lab bridge)
+192.0.3.191:2083 closed (from the lab bridge)
+main CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+backup CELIKPANEL_LISTEN=:1923 | LISTEN 0 4096 *:1923 *:*  | 
+main license active acceptance_fixture can_use_panel True
+backup license active acceptance_fixture can_use_panel True
+wizard data pair-main ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+wizard data pair-backup-web ['dnshome', 'name', 'names', 'roles']
+backup dnshome {'dns_engine': 'bind'}
+guidance-main 200 
+guidance-backup 200 
+main-domain 200 
+main-count 200 
+main-name 200 
+main-roles 200 
+main-names 200 
+main-dnshome 200 
+records 0 200
+main-mail 200 
+plan main 200 can_start True blockers [] ['01-service:nginx', '02-service:certbot', '03-service:mariadb', '04-service:php-fpm', '05-service:cron', '06-peer_join:second', '07-dns:local', '08-firewall:enable_and_persist', '09-infrastructure_dns:p6.test', '10-access_dns:frankfurt.p6.test', '11-panel_certificate:frankfurt.p6.test', '12-dns_readiness:local', '13-access_dns:mail.p6.test', '14-mail_certificate:mail.p6.test', '15-mail_profile:webmail', '16-mail_profile:protected-mail', '17-mail_dns:p6.test', '18-mail_enrollment:mail-renewal', '19-main_site:p6.test', '20-verify:custom'] 
+== case 2: the setup DNS plan names the machine host1.p6.test
+  host-record hits for host1.p6.test 1
+    .draft {"customization": {"components": ["dovecot", "mariadb", "nginx", "php-fpm", "postfix", "roundcube", "rspamd"]}, "database": "mariadb", "dns_engine": "pdns", "dns_mode": "local", "dns_role": "primary", "host_name": "host1.p6.test", "infrastructure_dns": {"zone": "p6.test"}, "local_ip": "192.0.3.190", "mail_dns": {"dmarc": "add", "mx": "now"}, "mail_hostname": "mail.p6.test", "main_dns_server": "thi
+  host-record hits for host1.p6.test 1
+    .draft {"customization": {"components": ["dovecot", "mariadb", "nginx", "php-fpm", "postfix", "roundcube", "rspamd"]}, "database": "mariadb", "dns_engine": "pdns", "dns_mode": "local", "dns_role": "primary", "host_name": "host1.p6.test", "infrastructure_dns": {"zone": "p6.test"}, "local_ip": "192.0.3.190", "mail_dns": {"dmarc": "add", "mx": "now"}, "mail_hostname": "mail.p6.test", "main_dns_server": "thi
+== start main 12:24:56
+start-main 202 {
+ "id": "16c535ab52b52bc2386ee496523d15e6",
+ "panel_url": "https://frankfurt.p6.test:1923/",
+ "phase": "queued",
+ "plan_id": "cb286c3f39f88b5cc511f6f138ea1472",
+ "request_id": "16c535ab52b52bc2386ee496523d15e6",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-service",
+   "kind": "service",
+   "owner_id": "e1fa154a52dc43136733ec321add7c90",
+   "request_id": "00456a3e55d7e2802fe8fe1a5e714cfa",
+   "status": "pending",
+   "target": "nginx"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "fcc809c190aa64c45c8dff5220424c80",
+   "request_id": "7aaf2f35d61cfb40ef4746dc0492b2f0
+join-code 200 {
+ "address": "https://192.0.3.190:1923",
+ "attempts_left": 
+first server's panel port: 1923
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.p6.test:1923",
+   "dns_role": "secondary",
+   "host_name": "host2.p6.test",
+   "local_ip": "192.0.3.191",
+   "mail_hostname": "",
+   "
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.190:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.p6.test', '09-panel_certificate:boston.p6.test', '10-dns_publisher:https://frankfurt.p6.test:1923', '11-verify:custom'] 
+== start backup 12:25:10
+start-backup 202 {
+ "id": "b710452969d4ac437b5ac378090aef53",
+ "panel_url": "https://boston.p6.test:1923/",
+ "phase": "queued",
+ "plan_id": "88eef3bf4d9727584bb200253d46b79d",
+ "request_id": "b710452969d4ac437b5ac378090aef53",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_names",
+   "owner_id": "3105266792b91439c476c14f7c411d5a",
+   "request_id": "7292d91bee945dec55f7a1fd981f0689",
+   "status": "pending",
+   "target": "https://192.0.3.190:1923"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "a48c775937bc6b08a02d16baaefddc9d",
+   "request_id": "5b0416213d
+== first server's DNS page DURING the joined server's setup (check 8) 12:25:17
+12:25:22 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None)] | backup: running 02-service null
+12:26:07 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None)] | backup: running 03-service null
+12:26:31 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None)] | backup: running 04-service null
+12:27:17 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None)] | backup: running 05-service null
+12:27:42 caps=none None | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('ns2.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None), ('boston.p6.test', 'panel', 'A', 'unknown', None)] | backup: waiting primary_dns {"code": "server_setup_primary_dns_required", "mes
+12:28:07 caps=pair_pending ns2.p6.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('ns2.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None), ('boston.p6.test', 'panel', 'A', 'unknown', None)] | backup: running primary_dns {"code": "server_setup_primary_dns_required", "mes
+12:28:28 caps=ready ns2.p6.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('ns2.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None), ('boston.p6.test', 'panel', 'A', 'unknown', None)] | backup: running primary_dns {"code": "server_setup_primary_dns_required", "mes
+12:28:51 caps=ready ns2.p6.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('ns2.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None), ('boston.p6.test', 'panel', 'A', 'unknown', None)] | backup: waiting access_dns {"code": "server_setup_access_dns_required", "messa
+12:39:00 caps=ready ns2.p6.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.p6.test', 'ns', 'A', 'unknown', None), ('ns2.p6.test', 'ns', 'A', 'unknown', None), ('frankfurt.p6.test', 'panel', 'A', 'unknown', None), ('mail.p6.test', 'mail', 'A', 'unknown', None), ('boston.p6.test', 'panel', 'A', 'unknown', None)] | backup: running 09-panel_certificate null
+12:39:22 caps=ready ns2.p6.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: waiting dns_publisher {"code": "server_setup_dns_publisher_waiting", "
+12:39:44 caps=ready ns2.p6.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: succeeded complete null
+-- p6/backup 12:39:44
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- p6/main 12:39:44
+running 15-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=running 16-mail_profile=pending 17-mail_dns=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+-- p6/main 12:41:25
+running 16-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=succeeded 16-mail_profile=running 17-mail_dns=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+-- p6/main 12:42:26
+running 17-mail_dns null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=succeeded 16-mail_profile=succeeded 17-mail_dns=running 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+-- p6/main 12:42:46
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=succeeded 16-mail_profile=succeeded 17-mail_dns=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+== after both finished: the DNS page settles by itself 12:42:46
+12:42:48 caps=ready | dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+-- the joined server's DNS page
+dns_overview_ok ok who=Nobody. | [('this', 'backup', 'second', 'boston'), ('peer', 'main', 'first', 'frankfurt')] | not-ok: []
+succeeded complete null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=succeeded 16-mail_profile=succeeded 17-mail_dns=succeeded 18-mail_enrollment=succeeded 19-main_site=succeeded 20-verify=succeeded
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+main role first peer_setup ready inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-revoke (backup) and primary-revoke (main).", "state": "ready", "vars": {"backup": "192.0.3.191", "main": "192.0.3.190"}}
+backup role second peer_setup None inspection {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-owner-tools/dns-peer-enroll secondary-revoke (backup) and primary-revoke (main).", "state": "ready", "vars": {"backup": "192.0.3.191", "main": "192.0.3.190"}}
+main_site step: succeeded {"certificate": "pending", "code": "CERTIFICATE_DOMAIN_NOT_POINTED", "domain": "p6.test", "domain_id": 1, "message": "p6.test, www.p6.test does not point to this server yet, so no certificate was requested and nothing was changed. At the company where you bought the domain, set the nameservers to ns1.p6.test and ns2.p6.test (or point the A record to 192.0.3.190). Request the certificate again once the change has spread; this usually takes a few hours.", "site": "created"}
+== case 2: machine names resolve after setup 12:42:52
+  @192.0.3.190 A host1.p6.test: 192.0.3.190  A host2.p6.test:   A frankfurt.p6.test: 192.0.3.190
+  @192.0.3.191 A host1.p6.test: 192.0.3.190  A host2.p6.test:   A frankfurt.p6.test: 192.0.3.190
+== pair done 12:42:54

@@ -1,0 +1,48 @@
+== versions 13:51:24
+200 {"agent_commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "agent_matches": true, "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "hostname": "host1.p7.test", "ipv4": "192.0.3.192", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+200 {"agent_commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "agent_matches": true, "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2", "hostname": "host2.p7.test", "ipv4": "192.0.3.193", "schema_version": 63, "version": "v0.1.0-alpha.125"}
+release  nproc 2
+tool 87732bf8e050d70348e0ccbc3528033d4d3a432ccd4b0e8d0c728a3f659c1193 root:root 755 4956322 2026-11-06 13:47:01.950000000 +0000 /usr/local/libexec/celikpanel-bind-peer-inspect
+--- named control sockets (ss)
+BIND 9.18.39-0ubuntu0.24.04.9-Ubuntu (Extended Support Version) <id:>
+LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:(("named",pid=25274,fd=48))
+LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:(("named",pid=25274,fd=49))
+LISTEN 0 5 [::1]:953 [::]:* users:(("named",pid=25274,fd=51))
+LISTEN 0 5 [::1]:953 [::]:* users:(("named",pid=25274,fd=50))
+--- site include dirs
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/1/public_html", "Domain": "inc7.test", "DomainID": 1, "FTPPassword": "[REDACTED]", "FTPUser": "inc7_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 1, "TempDomain": ""}
+inc7.test id on backup: 1
+  @192.0.3.192 inc7.test SOA: ns1.p7.test. hostmaster.inc7.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ] | @192.0.3.193: ns1.p7.test. hostmaster.inc7.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ]
+== DELETE inc7.test on the joined server 13:51:55
+202 {"domain": "inc7.test", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself.", "reason": "remote_dns_removal_confirming", "stage": "dns_cleanup", "status": "deletion_pending"}
+   13:52:06 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+   still not ended after 240 s
+-- main
+2026-11-06T13:52:36+00:00 host1.p7.test agent[12171]: dns_peer_inspection_unknown:listeners_unverified
+2026-11-06T13:53:01+00:00 host1.p7.test agent[12171]: 2026/11/06 13:53:01 DNS peer proof for inc7.test (BIND secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: peer_challenge_context_mismatch
+2026-11-06T13:53:01+00:00 host1.p7.test agent[12171]: 2026/11/06 13:53:01 DNS peer proof for inc7.test (BIND secondary) step times: prepare=1.528s challenge_write=1.523s; total 3.051s; outcome pending dns_peer_journal_unknown
+2026-11-06T13:53:01+00:00 host1.p7.test agent[12171]: dns_peer_journal_unknown
+2026-11-06T13:53:25+00:00 host1.p7.test agent[12171]: 2026/11/06 13:53:25 DNS peer proof for inc7.test (BIND secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: peer_challenge_context_mismatch
+2026-11-06T13:53:25+00:00 host1.p7.test agent[12171]: 2026/11/06 13:53:25 DNS peer proof for inc7.test (BIND secondary) step times: prepare=1.686s challenge_write=1.773s; total 3.459s; outcome pending dns_peer_journal_unknown
+2026-11-06T13:53:25+00:00 host1.p7.test agent[12171]: dns_peer_journal_unknown
+2026-11-06T13:53:25+00:00 host1.p7.test panel[24900]: 2026/11/06 13:53:25 pending DNS publication inc7.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 27s
+2026-11-06T13:53:36+00:00 host1.p7.test agent[12171]: 2026/11/06 13:53:36 DNS peer proof for inc7.test (BIND secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: peer_challenge_context_mismatch
+2026-11-06T13:53:36+00:00 host1.p7.test agent[12171]: 2026/11/06 13:53:36 DNS peer proof for inc7.test (BIND secondary) step times: prepare=1.711s challenge_write=1.714s; total 3.424s; outcome pending dns_peer_journal_unknown
+2026-11-06T13:53:36+00:00 host1.p7.test agent[12171]: dns_peer_journal_unknown
+2026-11-06T13:54:00+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:00 DNS peer proof for inc7.test (BIND secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: peer_challenge_context_mismatch
+2026-11-06T13:54:00+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:00 DNS peer proof for inc7.test (BIND secondary) step times: prepare=1.521s challenge_write=1.401s; total 2.921s; outcome pending dns_peer_journal_unknown
+2026-11-06T13:54:00+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:00 DNS zone V3 recovery remains pending for inc7.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says who must act 
+2026-11-06T13:54:00+00:00 host1.p7.test agent[12171]: dns_peer_journal_unknown
+2026-11-06T13:54:00+00:00 host1.p7.test panel[24900]: 2026/11/06 13:54:00 pending DNS publication inc7.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 54s
+2026-11-06T13:54:40+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:40 DNS peer proof for inc7.test (BIND secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: peer_challenge_context_mismatch
+2026-11-06T13:54:40+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:40 DNS peer proof for inc7.test (BIND secondary) step times: prepare=1.426s challenge_write=1.407s; total 2.833s; outcome pending dns_peer_journal_unknown
+2026-11-06T13:54:40+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:40 DNS zone V3 recovery remains pending for inc7.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says who must act 
+2026-11-06T13:54:40+00:00 host1.p7.test agent[12171]: dns_peer_journal_unknown
+2026-11-06T13:54:59+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:59 DNS peer proof for inc7.test (BIND secondary) stopped at step challenge_write as dns_peer_journal_unknown: challenge publish: peer_challenge_context_mismatch
+2026-11-06T13:54:59+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:59 DNS peer proof for inc7.test (BIND secondary) step times: prepare=1.416s challenge_write=1.401s; total 2.816s; outcome pending dns_peer_journal_unknown
+2026-11-06T13:54:59+00:00 host1.p7.test agent[12171]: 2026/11/06 13:54:59 DNS zone V3 recovery remains pending for inc7.test: paired DNS deletion is not confirmed yet (check=peer_native_zone): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says who must act 
+2026-11-06T13:54:59+00:00 host1.p7.test agent[12171]: dns_peer_journal_unknown
+2026-11-06T13:54:59+00:00 host1.p7.test panel[24900]: 2026/11/06 13:54:59 pending DNS publication inc7.test still waits (reason=dns_peer_journal_unknown); next automatic re-check in 1m59s
+count peer_challenge_context_mismatch: 6  listeners_unverified: 6
+  @192.0.3.192 inc7.test SOA:  [status: REFUSED flags: qr ] | @192.0.3.193:  [status: REFUSED flags: qr ]
+== c1preB done 13:56:10

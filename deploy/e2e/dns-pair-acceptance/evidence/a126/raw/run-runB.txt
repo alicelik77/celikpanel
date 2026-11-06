@@ -1,0 +1,7 @@
+v0.1.0-alpha.125
+{"node":"main","state":"stopped","deleted":true}
+{"node":"backup","state":"stopped","deleted":true}
+succeeded complete null
+succeeded complete null
+Mem:           15697        7501        6967          20        1494        8196
+runB done 14:07:40

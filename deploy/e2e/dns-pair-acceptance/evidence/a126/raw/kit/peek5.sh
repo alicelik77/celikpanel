@@ -1,0 +1,2 @@
+source /mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a126lab/kit/env.sh
+b1 sh p6 backup "systemctl is-active named bind9 2>&1; ss -ltnp | grep -E ':953|:53 ' | sed 's/  */ /g'; ss -ltnpH 'sport = :953' | wc -l; ss -ltnH 'sport = :953' | wc -l; journalctl -u named --since -20min --no-pager -o short-iso | tail -5" --label peek | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("stdout"), d.get("stderr"))'

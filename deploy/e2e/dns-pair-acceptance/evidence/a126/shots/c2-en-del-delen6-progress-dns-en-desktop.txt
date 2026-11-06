@@ -1,0 +1,96 @@
+Deleting delen6.test
+
+Completed
+
+Completed
+
+Removing mail settings
+
+Removing the website
+
+Removing delen6.test from DNS
+
+Removing certificates
+
+Finishing the deletion
+
+Domain delen6.test deleted
+
+OK
+CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+2
+Databases
+Users
+Store
+VPN
+
+SERVER
+
+Components
+8
+Server setup
+DNS and peer servers
+Monitoring
+Security
+Maintenance
+Import
+Audit log
+Settings
+
+SERVER INFORMATION
+
+host2.p6.test
+
+192.0.3.191
+
+CelikPanel · v0.1.0-alpha.126 · build 7c8453e98c03
+(full commit 7c8453e98c03f38e7a1074a527f6a2a940934f6c)
+Home
+/
+Domains
+Domains
+
+Manage the domains hosted on this server
+
+Add domain
+
+Step 1 of 6
+
+Welcome to CelikPanel
+
+This short tour shows where things are. You can skip it at any step, and take it again later from the ? menu at the top right.
+
+Skip the tour
+Next
+TR
+EN
+OW
+owner
+Your own sites
+
+20 KB · Unlimited disk
+
+Domains 2 · no limit
+Databases 0 · no limit
+Mail 0 · no limit
+Add domain
+
+2 items
+
+	Domain name	Type	Disk usage	Traffic	Status	
+	
+api6.test
+	static	0 B	0 B/mo	
+Active	
+
+	
+deltr6.test
+	static	0 B	0 B/mo	
+Active	
+2 items

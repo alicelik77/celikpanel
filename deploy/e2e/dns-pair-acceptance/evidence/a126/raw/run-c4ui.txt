@@ -1,0 +1,102 @@
+== case 4 UI: res6 opens Service plans, presses Add plan 13:27:04
+  shots 4 errors [] native dialogs []
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | True
+  probe row-edit-buttons-disabled   reloads 0 | [false,false]
+  probe editor-text   reloads 0 | CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+1
+Databases
+Users
+Store
+CelikPanel
+Home
+/
+Users
+Users
+
+Create and manage resellers and customers
+
+Step 1 of 5
+
+Welcome to CelikPanel
+
+This short tour shows where things are. You can skip it at any step, and take it again later from the ? menu at the top right.
+
+Skip the tour
+Next
+TR
+EN
+RE
+res6
+Accounts
+Service plans
+Deletable
+
+0 means unlimited. Monthly traffic is counted for websites only; at 100% only the websites close until the 1st. Changing a plan updates every account on it.
+
+UnlimitedBuilt in
+
+Opens everything in your own rights, with no limits of its own, and takes what you are given later at once. It cannot be edited or deleted; for fewer rights, create a plan.
+
+2 items
+Add plan
+Plan	Domains	Databases	Mailboxes	Disk	Traffic per month	Rights	Subscribers	
+all-but-one-125	5	5	5	1 GB	10 GB	all permissions · 5 software	0	
+
+all-software-125	5	5	5	1 GB	10 GB	Everything offered	1	
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | True
+  probe row-edit-buttons-disabled   reloads 0 | [false,false]
+  probe editor-text   reloads 0 | CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+1
+Veritabanları
+Kullanıcılar
+Mağaza
+CelikPanel
+Ana sayfa
+/
+Kullanıcılar
+Kullanıcılar
+
+Bayi ve müşteri hesaplarını oluşturun ve yönetin
+
+Adım 1 / 5
+
+CelikPanel’e hoş geldiniz
+
+Bu kısa tur neyin nerede olduğunu gösterir. İstediğiniz adımda geçebilir, daha sonra sağ üstteki ? menüsünden yeniden başlatabilirsiniz.
+
+Turu geç
+İleri
+TR
+EN
+RE
+res6
+Hesaplar
+Servis planları
+Silinebilir
+
+0 sınırsız demektir. Aylık trafik yalnız web siteleri için sayılır; %100’de yalnız siteler ayın 1’ine kadar kapanır. Bir planı değiştirmek, o plandaki her hesabı günceller.
+
+SınırsızYerleşik
+
+Kendi haklarınızdaki her şeyi kendine ait bir sınır olmadan açar ve size sonra verilenleri hemen alır. Düzenlenemez ve silinemez; daha az hak için bir plan oluşturun.
+
+2 öğe
+Plan ekle
+Plan	Domain	Veritabanı	Posta kutusu	Disk	Aylık trafik	Haklar	Abone	
+all-but-one-125	5	5	5	1 GB	10 GB	bütün izinler · 5 yazılım	0	
+
+all-software-125	5	5	5	1 GB	10 GB	Sunulan her şey	1	

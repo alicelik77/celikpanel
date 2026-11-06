@@ -1,0 +1,223 @@
+== versions 13:13:47
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host2.p6.test", "ipv4": "192.0.3.191", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+== three static sites on the joined server 13:13:47
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "delen6.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "delen6_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 2, "TempDomain": ""}
+delen6.test id 2
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/3/public_html", "Domain": "deltr6.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "deltr6_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 3, "TempDomain": ""}
+deltr6.test id 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html", "Domain": "api6.test", "DomainID": 4, "FTPPassword": "[REDACTED]", "FTPUser": "api6_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 4, "TempDomain": ""}
+api6.test id 4
+  @192.0.3.190 delen6.test SOA: ns1.p6.test. hostmaster.delen6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ] | @192.0.3.191: ns1.p6.test. hostmaster.delen6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ]
+  @192.0.3.190 deltr6.test SOA: ns1.p6.test. hostmaster.deltr6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ] | @192.0.3.191: ns1.p6.test. hostmaster.deltr6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ]
+  @192.0.3.190 api6.test SOA: ns1.p6.test. hostmaster.api6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ] | @192.0.3.191: ns1.p6.test. hostmaster.api6.test. 2026110601 10800 3600 604800 3600 [status: NOERROR flags: qr aa ]
+--- site include dirs
+drwxr-xr-x  6 root celikpanel 4096 Nov  6 13:14 .
+drwxr-xr-x 10 root root       4096 Nov  6 12:44 ..
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 13:14 api6.test
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 13:13 delen6.test
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 13:13 deltr6.test
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 12:44 inc6.test
+--- agent journal: check tool
+== case 2 (en): Delete on the Domains page, Delete pressed twice in the panel's own window 13:14:44
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a126lab/kit/delui.py:12: SyntaxWarning: "\s" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\s"? A raw string is also an option.
+  lock = """JSON.stringify({ dialogs: document.querySelectorAll('[role=dialog],[role=alertdialog]').length, inert: [...document.querySelectorAll('[inert]')].length, running: !!document.querySelector('[data-operation-running]'), steps: [...document.querySelectorAll('[data-operation-step]')].map(e => e.dataset.operationStep + ':' + e.dataset.stepState + ' ' + e.innerText.replace(/\s+/g, ' ').slice(0, 120)) })"""
+  shots 5 errors [] native dialogs []
+  UI DELETE 2026-11-06T13:15:15.609Z /api/v1/domains/2 202 {"domain":"delen6.test","message":"The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself.","reason":"remote_dns_removal_confirming
+  probe confirm-window   reloads 0 | Delete delen6.test?
+
+Its website files, mail and DNS records are removed from this server. This cannot be undone.
+
+Cancel
+Delete
+  probe progress-locked   reloads 0 | {"dialogs":2,"inert":0,"running":true,"steps":["mail:done Removing mail settings","site:done Removing the website","dns:waiting Removing delen6.test from DNS 0:00 The main DNS server is confirming the removal with the backup DNS server.","certificates:pending Removing certificates","finish:pending Finishing the deletion"]}
+  probe [...document.querySelectorAll('[data-operation-step]')].some(e => e.dataset.step ok=False 301s reloads 0 | None
+  probe progress-dns   reloads 0 | {"dialogs":2,"inert":0,"running":false,"steps":["mail:done Removing mail settings","site:done Removing the website","dns:done Removing delen6.test from DNS","certificates:done Removing certificates","finish:done Finishing the deletion"]}
+  probe !!document.querySelector('[data-operation-close]') ok=True 0s reloads 0 | None
+  probe end-window   reloads 0 | Deleting delen6.test
+
+Completed
+
+Completed
+
+Removing mail settings
+
+Removing the website
+
+Removing delen6.test from DNS
+
+Removing certificates
+
+Finishing the deletion
+
+Domain delen6.test deleted
+
+OK
+  probe step-log   reloads 0 | ["1.3s  ","4.5s request:running finish:pending ","6.0s mail:done site:done dns:running certificates:pending finish:pending ","15.2s mail:done site:done dns:waiting certificates:pending finish:pending ","36.3s mail:done site:done dns:done certificates:done finish:done END"]
+  probe list-after   reloads 0 | row gone without reload
+--- site include dirs
+drwxr-xr-x  5 root celikpanel 4096 Nov  6 13:15 .
+drwxr-xr-x 10 root root       4096 Nov  6 12:44 ..
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 13:14 api6.test
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 13:13 deltr6.test
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 12:44 inc6.test
+--- delen6.test traces
+ls: cannot access '/etc/nginx/celikpanel-sites.d/delen6.test': No such file or directory
+ls: cannot access '/etc/nginx/sites-enabled/*delen6.test*': No such file or directory
+ls: cannot access '/var/www/*delen6.test*': No such file or directory
+ls: cannot access '/home/*/delen6.test': No such file or directory
+--- agent journal: check tool
+  @192.0.3.190 delen6.test SOA:  [status: REFUSED flags: qr ] | @192.0.3.191:  [status: REFUSED flags: qr ]
+== case 2 (tr): Delete on the Domains page, Delete pressed twice in the panel's own window 13:20:26
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a126lab/kit/delui.py:12: SyntaxWarning: "\s" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\s"? A raw string is also an option.
+  lock = """JSON.stringify({ dialogs: document.querySelectorAll('[role=dialog],[role=alertdialog]').length, inert: [...document.querySelectorAll('[inert]')].length, running: !!document.querySelector('[data-operation-running]'), steps: [...document.querySelectorAll('[data-operation-step]')].map(e => e.dataset.operationStep + ':' + e.dataset.stepState + ' ' + e.innerText.replace(/\s+/g, ' ').slice(0, 120)) })"""
+  shots 5 errors [] native dialogs []
+  UI DELETE 2026-11-06T13:20:55.715Z /api/v1/domains/3 202 {"domain":"deltr6.test","message":"The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself.","reason":"remote_dns_removal_confirming
+  probe confirm-window   reloads 0 | deltr6.test silinsin mi?
+
+Web sitesi dosyaları, e-postası ve DNS kayıtları bu sunucudan kaldırılır. Bu geri alınamaz.
+
+İptal
+Sil
+  probe progress-locked   reloads 0 | {"dialogs":2,"inert":0,"running":true,"steps":["mail:done E-posta ayarları kaldırılıyor","site:done Web sitesi kaldırılıyor","dns:waiting deltr6.test DNS’ten kaldırılıyor 0:00 Ana DNS sunucusu kaldırmayı yedek DNS sunucusuyla doğruluyor.","certificates:pending Sertifikalar kaldırılıyor","finish:pending Silme bitiriliyor"]}
+  probe [...document.querySelectorAll('[data-operation-step]')].some(e => e.dataset.step ok=False 301s reloads 0 | None
+  probe progress-dns   reloads 0 | {"dialogs":2,"inert":0,"running":false,"steps":["mail:done E-posta ayarları kaldırılıyor","site:done Web sitesi kaldırılıyor","dns:done deltr6.test DNS’ten kaldırılıyor","certificates:done Sertifikalar kaldırılıyor","finish:done Silme bitiriliyor"]}
+  probe !!document.querySelector('[data-operation-close]') ok=True 0s reloads 0 | None
+  probe end-window   reloads 0 | deltr6.test siliniyor
+
+Tamamlandı
+
+Tamamlandı
+
+E-posta ayarları kaldırılıyor
+
+Web sitesi kaldırılıyor
+
+deltr6.test DNS’ten kaldırılıyor
+
+Sertifikalar kaldırılıyor
+
+Silme bitiriliyor
+
+deltr6.test silindi
+
+Tamam
+  probe step-log   reloads 0 | ["1.3s  ","4.4s request:running finish:pending ","5.9s mail:done site:done dns:running certificates:pending finish:pending ","15.1s mail:done site:done dns:waiting certificates:pending finish:pending ","36.2s mail:done site:done dns:done certificates:done finish:done END"]
+  probe list-after   reloads 0 | row gone without reload
+--- site include dirs
+drwxr-xr-x  4 root celikpanel 4096 Nov  6 13:20 .
+drwxr-xr-x 10 root root       4096 Nov  6 12:44 ..
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 13:14 api6.test
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 12:44 inc6.test
+--- deltr6.test traces
+ls: cannot access '/etc/nginx/celikpanel-sites.d/deltr6.test': No such file or directory
+ls: cannot access '/etc/nginx/sites-enabled/*deltr6.test*': No such file or directory
+ls: cannot access '/var/www/*deltr6.test*': No such file or directory
+ls: cannot access '/home/*/deltr6.test': No such file or directory
+--- agent journal: check tool
+  @192.0.3.190 deltr6.test SOA:  [status: REFUSED flags: qr ] | @192.0.3.191:  [status: REFUSED flags: qr ]
+== case 2: a repeated DELETE through the API (two requests 0.3 s apart) 13:26:06
+api6.test id 4
+  second: 202 {"domain": "api6.test", "message": "This domain is already being deleted. Nobody needs to do anything: the deletion continues by itself and this page updates by itself.", "reason": "deletion_already_running", "stage": "dns_cleanup", "status": "deletion_pending"}
+  first: 202 {"domain": "api6.test", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself.", "reason": "remote_dns_removal_confirming", "stage": "dns_cleanup", "status": "deletion_pending"}
+  third (after the first answered): 202 {"domain": "api6.test", "message": "This domain is already being deleted. Nobody needs to do anything: the deletion continues by itself and this page updates by itself.", "reason": "deletion_already_running", "stage": "dns_cleanup", "status": "deletion_pending"}
+   13:26:17 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+   13:26:39 +22s 404 {}
+   DELETION-ENDED after 22s
+-- the delete stages the joined server ran (journal)
+bash: line 1: delete: command not found
+bash: line 1: deletion: command not found
+== case 3: the served bundle 13:26:40
+web root /opt/celikpanel/web (347 js files, 5.9M); panel port 1923
+served index == installed index: yes
+index scripts served == installed: 5 checked, 0 differ
+native dialog calls found: 0
+own confirm window present: 1 file(s); progress window: 2 file(s)
+== c2 done 13:26:41
+== case 2: what the three DELETE presses of api6.test ran on the joined server 13:26:56
+2026-11-06T13:26:05+00:00 host2.p6.test panel[43958]: 2026/11/06 13:26:05 domain deletion for api6.test: mail runtime cleanup skipped: no mail runtime for this domain on this server
+2026-11-06T13:26:05+00:00 host2.p6.test userdel[48163]: delete user 'api6_test'
+2026-11-06T13:26:05+00:00 host2.p6.test userdel[48163]: delete 'api6_test' from group 'celikpanel-site'
+2026-11-06T13:26:05+00:00 host2.p6.test userdel[48163]: removed group 'api6_test' owned by 'api6_test'
+2026-11-06T13:26:05+00:00 host2.p6.test userdel[48163]: removed shadow group 'api6_test' owned by 'api6_test'
+2026-11-06T13:26:05+00:00 host2.p6.test userdel[48163]: delete 'api6_test' from shadow group 'celikpanel-site'
+2026-11-06T13:26:09+00:00 host2.p6.test named[25364]: catz: deleting zone 'api6.test' from catalog 'catalog-c00003be.celikpanel.invalid' - success
+2026-11-06T13:26:09+00:00 host2.p6.test named[25364]: catz: catz_delzone_taskaction: zone 'api6.test' deleted
+2026-11-06T13:26:09+00:00 host2.p6.test named[25364]: client @0x76a8c401b5b8 192.0.3.190#52205 (api6.test): bad zone transfer request: 'api6.test/IN': non-authoritative zone (NOTAUTH)
+2026-11-06T13:26:16+00:00 host2.p6.test panel[43958]: 2026/11/06 13:26:16 domain deletion pending for api6.test at dns_cleanup: reconcile the saved remote DNS publication before making another change
+2026-11-06T13:26:17+00:00 host2.p6.test named[25364]: received control channel command 'zonestatus api6.test'
+2026-11-06T13:26:17+00:00 host2.p6.test named[25364]: received control channel command 'zonestatus api6.test'
+2026-11-06T13:26:18+00:00 host2.p6.test named[25364]: client @0x76a8c401b5b8 192.0.3.190#57805 (api6.test): bad zone transfer request: 'api6.test/IN': non-authoritative zone (NOTAUTH)
+2026-11-06T13:26:37+00:00 host2.p6.test panel[43958]: 2026/11/06 13:26:37 joined-server deletion of api6.test: the main DNS server confirmed the removal
+2026-11-06T13:26:37+00:00 host2.p6.test panel[43958]: 2026/11/06 13:26:37 joined-server deletion of api6.test: finished by itself after the main DNS server confirmed the removal
+2026-11-06T13:26:39+00:00 host2.p6.test sudo[48417]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash /root/g_peerlog.sh -15min api6
+2026-11-06T13:26:55+00:00 host2.p6.test sudo[48638]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/tee /root/g_api6.sh
+2026-11-06T13:26:56+00:00 host2.p6.test sudo[48688]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash /root/g_api6.sh
+userdel api6_test: 1  domain deletion pending lines: 1
+== case 2: what the three DELETE presses of api6.test ran on the joined server 13:31:29
+--- release-recovery runner lines 13:28:45-13:29:48
+2026-11-06T13:29:01+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:24+00:00 host1.p6.test release-recovery[109053]: Recovery dispatch admitted: attempt=1 snapshot=20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1b3
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+--- systemd unit results 13:28:45-13:29:48 (failed / succeeded / deactivated)
+2026-11-06T13:28:47+00:00 host1.p6.test systemd[1]: Started celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service - [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 5d74389e68bb28a04f184d38df38d3ac.
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:02+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:05+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:10+00:00 host1.p6.test systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-06T13:29:10+00:00 host1.p6.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service: Failed with result 'exit-code'.
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: celikpanel-self-update-5d74389e68bb28a04f184d38df38d3ac.service: Triggering OnFailure= dependencies.
+2026-11-06T13:29:42+00:00 host1.p6.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-06T13:29:43+00:00 host1.p6.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-06T13:29:43+00:00 host1.p6.test systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-11-06T13:29:43+00:00 host1.p6.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+--- update failure line
+2026/11/06 13:29:23 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR
+--- per-run CPU of the watchdog (systemd CPU_USAGE_NSEC on each stop) since 13:31
+runs with CPU_USAGE_NSEC: 0 ms: []
+Result=success
+ExecMainStartTimestamp=Fri 2026-11-06 13:31:06 UTC
+CPUUsageNSec=276396000
+CPUAccounting=yes
+== case 2: what the three DELETE presses of api6.test ran on the joined server 13:31:49
+2026-11-06T13:29:23+00:00 host1.p6.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-06T13:29:24+00:00 host1.p6.test release-recovery[109053]: Recovery dispatch admitted: attempt=1 snapshot=20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1b3
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261106T132907Z-from-unknown-to-7c150dc49b9c67785bd3d004b235daef83b95271-c9eec73ba70db16cd3ef0e14a499e1
+2026-11-06T13:29:27+00:00 host1.p6.test release-recovery[109436]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Restored release source commit / Geri yüklenen sürümün kaynak commit'i: 7c8453e98c03f38e7a1074a527f6a2a940934f6c (from the restored Agent's build record / geri yüklenen Agent'ın yapı 
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Source checkout was not changed / Kaynak çalışma ağacı değiştirilmedi
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Panel: active
+2026-11-06T13:29:52+00:00 host1.p6.test release-recovery[109436]:     Agent: active
+2026-11-06T13:29:52+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-06T13:29:52+00:00 host1.p6.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-06T13:29:52+00:00 host1.p6.test systemd[1]: celikpanel-release-recovery.service: Consumed 26.220s CPU time, 108M memory peak.
+== case 2: what the three DELETE presses of api6.test ran on the joined server 13:36:16
+stamp now: celikpanel-release-recovery-idle-v1 00bd210f-025a-4d25-ab15-f8e7d0f9c3d4 4100 dfe1d96d901e89900a2ba011445ea22140d7d5b0e1cc71fe23327161d3fb52c5
+run Fri 2026-11-06 13:36:15 UTC cpu_ms 9 result success stamp_uptime 4100
+run Fri 2026-11-06 13:36:45 UTC cpu_ms 10 result success stamp_uptime 4100
+run Fri 2026-11-06 13:37:16 UTC cpu_ms 11 result success stamp_uptime 4100
+run Fri 2026-11-06 13:37:47 UTC cpu_ms 10 result success stamp_uptime 4100
+run Fri 2026-11-06 13:38:18 UTC cpu_ms 59 result success stamp_uptime 4100
+== case 2: what the three DELETE presses of api6.test ran on the joined server 13:38:46
+stamp now: celikpanel-release-recovery-idle-v1 e24765f9-f13f-405d-a156-05347c0a55d5 2343 ef7545c248db667848da5ca699ec3268bbc51a70abc2f97f012d085cfb884cc8
+run Fri 2026-11-06 13:38:22 UTC cpu_ms 6 result success stamp_uptime 2343
+run Fri 2026-11-06 13:38:53 UTC cpu_ms 6 result success stamp_uptime 2343
+run Fri 2026-11-06 13:39:24 UTC cpu_ms 4 result success stamp_uptime 2343
+run Fri 2026-11-06 13:39:55 UTC cpu_ms 6 result success stamp_uptime 2343
+== case 2: what the three DELETE presses of api6.test ran on the joined server 13:40:53
+2026-11-06T12:24:28+00:00 host2.p6.test panel[12021]: 2026/11/06 12:24:28 Starting CelikPanel Backend...
+2026-11-06T12:24:29+00:00 host2.p6.test panel[12088]: 2026/11/06 12:24:29 Starting CelikPanel Backend...
+2026-11-06T12:39:03+00:00 host2.p6.test panel[27124]: 2026/11/06 12:39:03 Starting CelikPanel Backend...
+2026-11-06T13:01:24+00:00 host2.p6.test panel[43958]: 2026/11/06 13:01:24 Starting CelikPanel Backend...
+2026-11-06T13:01:54+00:00 host2.p6.test panel[43958]: 2026/11/06 13:01:54 startup mail work, attempt 1 of 20: mail certificate publication failed: publish full mail SNI snapshot: postfix is not installed; it is not retried now and runs again at the next Panel start (sudo systemctl restart celikpanel-panel); a domain whose SSL pa

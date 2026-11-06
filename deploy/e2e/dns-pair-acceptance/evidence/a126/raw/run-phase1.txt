@@ -1,0 +1,54 @@
+start 12:16:36
+{
+  "node": "labnet",
+  "state": "stopped",
+  "deleted": true
+}
+
+infra-up exit 0 12:17:25
+labnet-tools-ok
+up to date in 369ms
+puppeteer-core 23.11.1
+build done 12:22:11
+commit ed6086469583f8db5ad7061e69a70a6bb42dcdb2
+bundle budget check passed
+EXIT 0
+  "version": "v0.1.0-alpha.125"
+  "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2",
+  "sha256": "21ff0c4602683b70d45b7f4afbefea616ff8aa7436fcc3cf6d63962aa5622c64",
+  "version": "v0.1.0-alpha.125"
+commit 7c8453e98c03f38e7a1074a527f6a2a940934f6c
+bundle budget check passed
+EXIT 0
+  "version": "v0.1.0-alpha.126"
+  "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c",
+  "sha256": "6a7357499e634cacbc6f72a6eb47ddb91b022b2ba72203cd0b016ca770276f18",
+  "version": "v0.1.0-alpha.126"
+commit 7c8453e98c03f38e7a1074a527f6a2a940934f6c
+lab bump commit 7c150dc49b9c67785bd3d004b235daef83b95271
+bundle budget check passed
+EXIT 0
+  "version": "v0.1.0-alpha.127"
+  "commit": "7c150dc49b9c67785bd3d004b235daef83b95271",
+  "sha256": "c452d237d233a5acee53566b9d48bb3d875b05520f2e83dc5f8a7dcaa73d39cd",
+  "version": "v0.1.0-alpha.127"
+portal125 exit 0
+sequence=125
+version=v0.1.0-alpha.125
+commit=ed6086469583f8db5ad7061e69a70a6bb42dcdb2
+portal126 exit 0
+sequence=126
+version=v0.1.0-alpha.126
+commit=7c8453e98c03f38e7a1074a527f6a2a940934f6c
+portal127 exit 0
+sequence=127
+version=v0.1.0-alpha.127
+commit=7c150dc49b9c67785bd3d004b235daef83b95271
+8c8
+< bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
+---
+> bootstrap_release_public_key_sha256=2d9e3faa51152790a5a5f0c6608168e497e90d199c05c702b2c5d54afc365ea1
+v0.1.0-alpha.125
+               total        used        free      shared  buff/cache   available
+Mem:           15697        2158        4083          20        9721       13538
+phase1 done 12:22:19

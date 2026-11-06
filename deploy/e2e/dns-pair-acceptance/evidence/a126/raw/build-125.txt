@@ -1,0 +1,10 @@
+commit ed6086469583f8db5ad7061e69a70a6bb42dcdb2
+bundle budget check passed
+EXIT 0
+  "tree": "fc1128f93c432bcaa019a27abbf9dee30431e9fc",
+  "version": "v0.1.0-alpha.125"
+}
+BUILD-OK
+  "commit": "ed6086469583f8db5ad7061e69a70a6bb42dcdb2",
+  "sha256": "21ff0c4602683b70d45b7f4afbefea616ff8aa7436fcc3cf6d63962aa5622c64",
+  "version": "v0.1.0-alpha.125"

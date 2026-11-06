@@ -1,0 +1,272 @@
+== case 4 UI: res6 opens Service plans, presses Add plan 13:27:04
+  shots 4 errors [] native dialogs []
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | True
+  probe row-edit-buttons-disabled   reloads 0 | [false,false]
+  probe editor-text   reloads 0 | CelikPanel
+Collapse menu
+Dashboard
+
+HOSTING
+
+Domains
+1
+Databases
+Users
+Store
+CelikPanel
+Home
+/
+Users
+Users
+
+Create and manage resellers and customers
+
+Step 1 of 5
+
+Welcome to CelikPanel
+
+This short tour shows where things are. You can skip it at any step, and take it again later from the ? menu at the top right.
+
+Skip the tour
+Next
+TR
+EN
+RE
+res6
+Accounts
+Service plans
+Deletable
+
+0 means unlimited. Monthly traffic is counted for websites only; at 100% only the websites close until the 1st. Changing a plan updates every account on it.
+
+UnlimitedBuilt in
+
+Opens everything in your own rights, with no limits of its own, and takes what you are given later at once. It cannot be edited or deleted; for fewer rights, create a plan.
+
+2 items
+Add plan
+Plan	Domains	Databases	Mailboxes	Disk	Traffic per month	Rights	Subscribers	
+all-but-one-125	5	5	5	1 GB	10 GB	all permissions · 5 software	0	
+
+all-software-125	5	5	5	1 GB	10 GB	Everything offered	1	
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | True
+  probe row-edit-buttons-disabled   reloads 0 | [false,false]
+  probe editor-text   reloads 0 | CelikPanel
+Menüyü daralt
+Panel
+
+BARINDIRMA
+
+Alan Adları
+1
+Veritabanları
+Kullanıcılar
+Mağaza
+CelikPanel
+Ana sayfa
+/
+Kullanıcılar
+Kullanıcılar
+
+Bayi ve müşteri hesaplarını oluşturun ve yönetin
+
+Adım 1 / 5
+
+CelikPanel’e hoş geldiniz
+
+Bu kısa tur neyin nerede olduğunu gösterir. İstediğiniz adımda geçebilir, daha sonra sağ üstteki ? menüsünden yeniden başlatabilirsiniz.
+
+Turu geç
+İleri
+TR
+EN
+RE
+res6
+Hesaplar
+Servis planları
+Silinebilir
+
+0 sınırsız demektir. Aylık trafik yalnız web siteleri için sayılır; %100’de yalnız siteler ayın 1’ine kadar kapanır. Bir planı değiştirmek, o plandaki her hesabı günceller.
+
+SınırsızYerleşik
+
+Kendi haklarınızdaki her şeyi kendine ait bir sınır olmadan açar ve size sonra verilenleri hemen alır. Düzenlenemez ve silinemez; daha az hak için bir plan oluşturun.
+
+2 öğe
+Plan ekle
+Plan	Domain	Veritabanı	Posta kutusu	Disk	Aylık trafik	Haklar	Abone	
+all-but-one-125	5	5	5	1 GB	10 GB	bütün izinler · 5 yazılım	0	
+
+all-software-125	5	5	5	1 GB	10 GB	Sunulan her şey	1	
+== case 4 UI: res6 opens Service plans, presses Add plan 13:27:38
+  shots 2 errors [{"name": "plans-reseller", "lang": "tr", "width": "desktop", "error": "Error: no element button,[role=tab] with text Service plans|Servis planlar\u00c4\u00b1"}] native dialogs []
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | False
+  probe row-edit-buttons-disabled   reloads 0 | [true,true]
+  probe editor-open   reloads 0 | EDITOR OPEN: Plan name
+Quantities
+
+0 means unlimited. Disk counts site files, mail and databases together.
+
+Domains
+ 
+Databases
+ 
+Mailboxes
+ 
+Disk (MB)
+ 
+Traffic per month (MB)
+Unlimited
+
+Traffic is what the websites send to their visitors in a calendar month (server time). When it is used up, only the websites show “traffic limit reached” until the 1st; mail, databases and file access keep working. It is counted every 5 minutes, so a site can go over its limit by what it sends in that time.
+
+Permissions
+
+Which jobs the account may do. What is not ticked is not shown to it.
+
+Edit DNS records
+DNSSEC
+Mail (mailboxes, forwarding, auto-reply)
+Databases
+Scheduled tasks
+File manager
+Backups
+Free certificates (Let’s Encrypt and others)
+Upload your own certificate
+Protected folders and redirects
+Proxy site type
+App installer (WordPress)
+VPN
+Additional users (team)
+File access (FTP and SFTP)
+Command line (SSH)
+Own remote backup destinations
+AI and automation apps
+Uploaded programs
+Python apps
+WordPress tools
+Malware scan results
+Software
+
+Which software and versions the account may choose. Software with nothing ticked is closed.
+
+PHP
+
+PHP 8.4
+
+MariaDB
+
+MariaDB
+
+Free certificates
+
+Google Trust Services
+Let’s Encrypt
+ZeroSSL
+
+Applications
+
+Drupal
+Joomla
+MediaWiki
+n8n
+Nextcloud
+Open WebUI
+PrestaShop
+WordPress
+
+Programs
+
+Own programs (uploaded and run by the account)
+
+To save the plan, give it a name.
+Show
+
+Cancel
+Save
+== case 4 UI: res6 opens Service plans, presses Add plan 13:28:15
+  shots 2 errors [] native dialogs []
+  probe add-plan-visible-before   reloads 0 | True
+  probe add-plan-visible-while-form-open   reloads 0 | False
+  probe row-edit-buttons-disabled   reloads 0 | []
+  probe editor-open   reloads 0 | EDITOR OPEN: Plan adı
+Sayılar
+
+0 sınırsız demektir. Disk; site dosyalarını, postayı ve veritabanlarını birlikte sayar.
+
+Alan adı
+ 
+Veritabanı
+ 
+Posta kutusu
+ 
+Disk (MB)
+ 
+Aylık trafik (MB)
+Sınırsız
+
+Trafik, web sitelerinin bir takvim ayında (sunucu saatiyle) ziyaretçilerine gönderdiğidir. Dolunca ayın 1’ine dek yalnız web siteleri “trafik sınırı doldu” gösterir; posta, veritabanları ve dosya erişimi çalışır. 5 dakikada bir sayılır; bu yüzden bir site, o sürede gönderdiği kadar sınırı aşabilir.
+
+İzinler
+
+Hesabın yapabileceği işler. İşaretli olmayan ona gösterilmez.
+
+DNS kayıtlarını düzenleme
+DNSSEC
+Posta (posta kutuları, yönlendirme, otomatik yanıt)
+Veritabanları
+Zamanlanmış görevler
+Dosya yöneticisi
+Yedekler
+Ücretsiz sertifikalar (Let’s Encrypt ve diğerleri)
+Kendi sertifikanızı yükleme
+Korumalı klasörler ve yönlendirmeler
+Vekil (proxy) site türü
+Uygulama kurucu (WordPress)
+VPN
+Ek kullanıcılar (ekip)
+Dosya erişimi (FTP ve SFTP)
+Komut satırı (SSH)
+Kendi uzak yedek hedefleri
+Yapay zekâ ve otomasyon uygulamaları
+Yüklenen programlar
+Python uygulamaları
+WordPress araçları
+Zararlı yazılım taraması sonuçları
+Yazılımlar
+
+Hesabın seçebileceği yazılımlar ve sürümler. Hiçbir şeyi işaretli olmayan yazılım kapalıdır.
+
+PHP
+
+PHP 8.4
+
+MariaDB
+
+MariaDB
+
+Ücretsiz sertifikalar
+
+Google Trust Services
+Let’s Encrypt
+ZeroSSL
+
+Uygulamalar
+
+Drupal
+Joomla
+MediaWiki
+n8n
+Nextcloud
+Open WebUI
+PrestaShop
+WordPress
+
+Programlar
+
+Kendi programları (hesabın yükleyip çalıştırdığı)
+
+Planı kaydetmek için ona bir 

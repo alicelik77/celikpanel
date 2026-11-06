@@ -1,0 +1,47 @@
+== versions 13:09:46
+200 {"agent_commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "agent_matches": true, "commit": "7c8453e98c03f38e7a1074a527f6a2a940934f6c", "hostname": "host1.p6.test", "ipv4": "192.0.3.190", "schema_version": 64, "version": "v0.1.0-alpha.126"}
+== ranges (each at most 360 points) 13:09:46
+  range 1h: status 200 points 89 (<=360: True) step 30s sample 30s vcpus 2 first 2026-11-06T12:24:30Z last 2026-11-06T13:09:30Z
+  range 6h: status 200 points 46 (<=360: True) step 60s sample 30s vcpus 2 first 2026-11-06T12:24:00Z last 2026-11-06T13:09:00Z
+  range 24h: status 200 points 12 (<=360: True) step 240s sample 30s vcpus 2 first 2026-11-06T12:24:00Z last 2026-11-06T13:08:00Z
+  range 7d: status 200 points 3 (<=360: True) step 1800s sample 30s vcpus 2 first 2026-11-06T12:00:00Z last 2026-11-06T13:00:00Z
+  range 30d: status 200 points 1 (<=360: True) step 7200s sample 30s vcpus 2 first 2026-11-06T12:00:00Z last 2026-11-06T12:00:00Z
+== known load: one busy core (a shell loop) for 120 s 13:09:47
+2
+ 13:09:47 up 47 min,  1 user,  load average: 0.18, 0.20, 0.26
+Running as unit: lab-busy.service; invocation ID: 385183463e214f9cb7c433915f2d1dd7
+2026-11-06T13:09:47Z
+  load from 2026-11-06T13:09:47Z to 2026-11-06T13:11:52Z
+failed
+ 13:11:52 up 49 min,  1 user,  load average: 0.82, 0.46, 0.36
+  range 1h: status 200 points 95 (<=360: True) step 30s sample 30s vcpus 2 first 2026-11-06T12:24:30Z last 2026-11-06T13:12:30Z
+     2026-11-06T13:04:30Z cpu   0.5 cpu_peak 1.5 load1 0.19
+     2026-11-06T13:05:00Z cpu   0.6 cpu_peak 2.5 load1 0.11
+     2026-11-06T13:05:30Z cpu   0.5 cpu_peak 2.5 load1 0.07
+     2026-11-06T13:06:00Z cpu   0.5 cpu_peak 1.5 load1 0.04
+     2026-11-06T13:07:00Z cpu   0.6 cpu_peak 1.5 load1 0.02
+     2026-11-06T13:07:30Z cpu   0.5 cpu_peak 2 load1 0.01
+     2026-11-06T13:08:00Z cpu   0.5 cpu_peak 1.5 load1 0.15
+     2026-11-06T13:08:30Z cpu   0.5 cpu_peak 1.5 load1 0.09
+   * 2026-11-06T13:09:00Z cpu   8.7 cpu_peak 46.6 load1 0.30
+   * 2026-11-06T13:09:30Z cpu   7.9 cpu_peak 46.6 load1 0.24
+   * 2026-11-06T13:10:00Z cpu  26.6 cpu_peak 53 load1 0.36
+   * 2026-11-06T13:10:30Z cpu  50.5 cpu_peak 51.5 load1 0.62
+   * 2026-11-06T13:11:00Z cpu  50.5 cpu_peak 51.7 load1 0.79
+   * 2026-11-06T13:11:30Z cpu  50.4 cpu_peak 50.8 load1 0.87
+     2026-11-06T13:12:00Z cpu  20.4 cpu_peak 51.5 load1 0.72
+     2026-11-06T13:12:30Z cpu   0.5 cpu_peak 1.5 load1 0.43
+  window points 6, cpu mean 32.4 (inner 33.9), max 50.5; one busy core on 2 vCPUs = 50 %
+== problems now: baseline 13:13:08
+  problems 200 checked_at 2026-11-06T13:13:07Z count 0 unknown [{"reason": "checking", "source": "mail_queue"}, {"reason": "checking", "source": "security_updates"}]
+== the owner stops dovecot outside the panel; Rescan; problems 13:13:08
+inactive
+  scan 200 0.721
+  problems 200 checked_at 2026-11-06T13:13:09Z count 1 unknown [{"reason": "checking", "source": "security_updates"}]
+   - {"action": {"kind": "start_service", "to": "/components/dovecot"}, "actor": "administrator", "key": "service:dovecot", "kind": "service_stopped", "name": "Dovecot", "observed_at": "2026-11-06T13:13:08Z", "severity": "critical", "subject": "dovecot", "unit": "dovecot", "value": 0}
+== started again; Rescan; the problem clears 13:13:09
+active
+  scan 200 0.673
+  problems 200 checked_at 2026-11-06T13:13:10Z count 1 unknown []
+   - {"action": {"kind": "open", "to": "/security"}, "actor": "administrator", "key": "security_updates", "kind": "security_updates", "observed_at": "2026-11-06T13:13:09Z", "severity": "warning", "value": 13}
+== c5 done 13:13:11

@@ -1,0 +1,34 @@
+== inc6.test (id 1 on the joined server) before any update 12:59:54
+200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+v0.1.0-alpha.126
+== 1st update: backup 12:59:55
+sed: can't read /var/tmp/a126r1/logs/C1-p6-backup.log: No such file or directory
+  backup updated 12:59:55
+release  nproc 2
+tool 87732bf8e050d70348e0ccbc3528033d4d3a432ccd4b0e8d0c728a3f659c1193 root:root 755 4956322 2026-11-06 12:39:33.026000000 +0000 /usr/local/libexec/celikpanel-bind-peer-inspect
+owner-tools b5ec221ab41b9c94 /opt/celikpanel/dns-owner-tools/README.md
+owner-tools 87732bf8e050d703 /opt/celikpanel/dns-owner-tools/bind-peer-inspect
+owner-tools 4c3c8b703e33d207 /opt/celikpanel/dns-owner-tools/dns-peer-enroll
+owner-tools 09fab8ccc97f64fa /opt/celikpanel/dns-owner-tools/pdns-peer-inspect
+--- refresh record dir
+--- named control sockets (ss)
+BIND 9.18.39-0ubuntu0.24.04.9-Ubuntu (Extended Support Version) <id:>
+LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:(("named",pid=25364,fd=48))
+LISTEN 0 5 127.0.0.1:953 0.0.0.0:* users:(("named",pid=25364,fd=49))
+LISTEN 0 5 [::1]:953 [::]:* users:(("named",pid=25364,fd=50))
+LISTEN 0 5 [::1]:953 [::]:* users:(("named",pid=25364,fd=51))
+--- site include dirs
+drwxr-xr-x  3 root celikpanel 4096 Nov  6 12:44 .
+drwxr-xr-x 10 root root       4096 Nov  6 12:44 ..
+drwxr-xr-x  2 root celikpanel 4096 Nov  6 12:44 inc6.test
+--- inc6.test traces
+ls: cannot access '/etc/nginx/sites-enabled/*inc6.test*': No such file or directory
+ls: cannot access '/var/www/*inc6.test*': No such file or directory
+ls: cannot access '/home/*/inc6.test': No such file or directory
+drwxr-xr-x 2 root celikpanel 4096 Nov  6 12:44 /etc/nginx/celikpanel-sites.d/inc6.test
+--- agent journal: check tool
+2026-11-06T12:39:33+00:00 host2.p6.test useradd[27566]: new user: name=celikpeer, UID=997, GID=987, home=/var/lib/bind-peer-inspector, shell=/bin/sh, from=none
+2026-11-06T12:39:33+00:00 host2.p6.test agent[11904]: 2026/11/06 12:39:33 peer inspection setup: bind inspector channel installed for primary 192.0.3.190
+== watch the deletion with only backup updated (up to 7 min) 12:59:56
+   12:59:56 +0s 200 {"status": "deletion_pending", "stage": "dns_cleanup", "reason": "remote_dns_removal_confirming", "message": "The main DNS server has removed this domain and is confirming the removal with the backup DNS server. Nobody needs to do anything: this server asks again by itself and then finishes the deletion. This page updates by itself."}
+c1run exit 15

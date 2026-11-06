@@ -1,0 +1,3 @@
+# guest (root, read-only): DNS peer deletion-proof lines in the panel + agent journal since $1. Lab only.
+journalctl -u celikpanel-panel -u celikpanel-agent --no-pager -o short-iso --since "${1:--15min}" | grep -iE "peer_challenge|listeners_unverified|context_mismatch|dns_peer_journal|deletion proof|remote_dns|remote dns|proof attempt|$2" | cut -c1-330 | tail -${3:-25}
+echo "count peer_challenge_context_mismatch: $(journalctl -u celikpanel-panel -u celikpanel-agent --no-pager -o cat --since "${1:--15min}" | grep -c peer_challenge_context_mismatch)  listeners_unverified: $(journalctl -u celikpanel-panel -u celikpanel-agent --no-pager -o cat --since "${1:--15min}" | grep -c listeners_unverified)"
