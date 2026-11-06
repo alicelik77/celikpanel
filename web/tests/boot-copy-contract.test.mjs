@@ -249,8 +249,8 @@ test('a route waits for its own copy the way it waits for its own bundle', () =>
   // v0.1.0-alpha.127 the list is its own lazy module (src/i18n/screenParts.ts),
   // fetched beside the shell, so its loaders are off the critical boot path.
   const partList = read('src/i18n/screenParts.ts');
-  assert.match(i18n, /const screenPartList = \(\) => import\('\.\/screenParts'\);/);
-  assert.match(i18n, /async function loadShell\(locale: Locale\): Promise<Catalog> \{[\s\S]*?screenPartList\(\)\.catch\(/, 'the list is fetched beside the shell');
+  assert.match(i18n, /const load = import\('\.\/screenParts'\);/);
+  assert.match(i18n, /async function loadShell\(locale: Locale\): Promise<Catalog> \{[\s\S]*?void screenPartList\(\);/, 'the list is fetched beside the shell');
   assert.match(i18n, /const \{ screenParts \} = await screenPartList\(\);/);
   assert.doesNotMatch(i18n, /import\('\.\/screens\//, 'no screen-part loader on the critical boot path');
   for (const locale of ['en', 'tr']) {

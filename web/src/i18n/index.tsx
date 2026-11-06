@@ -76,10 +76,10 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 async function loadShell(locale: Locale): Promise<Catalog> {
-    // The screen-part list is fetched beside the shell; loadScreens awaits it
-    // (and reports its failure) once the shell is in.
+    // The screen-part list is fetched beside the shell; loadScreens awaits the
+    // same fetch (and reports its failure) once the shell is in.
     // Ekran parçası listesi kabukla birlikte getirilir.
-    screenPartList().catch(() => undefined);
+    void screenPartList();
     if (locale === 'tr') {
         return (await import('./tr')).tr;
     }
@@ -94,7 +94,22 @@ async function loadShell(locale: Locale): Promise<Catalog> {
 // Ekran parçaları ve yükleyicileri ./screenParts içindedir; kabuk kataloğuyla
 // birlikte tembel getirilir. Bir parçanın hatası ekran metninin tamamını
 // başarısız sayar.
-const screenPartList = () => import('./screenParts');
+// One fetch is shared by the early start and loadScreens. A failed fetch is
+// forgotten, so the next load asks again; loadScreens, which awaits the same
+// promise, reports the failure as the screen copy's.
+// Erken başlatma ile loadScreens aynı getirmeyi paylaşır; başarısız getirme
+// unutulur ve hatayı loadScreens bildirir.
+let screenPartListLoad: Promise<typeof import('./screenParts')> | null = null;
+function screenPartList(): Promise<typeof import('./screenParts')> {
+    if (screenPartListLoad === null) {
+        const load = import('./screenParts');
+        screenPartListLoad = load;
+        load.then(undefined, () => {
+            if (screenPartListLoad === load) screenPartListLoad = null;
+        });
+    }
+    return screenPartListLoad;
+}
 
 async function loadScreens(locale: Locale): Promise<Catalog> {
     const { screenParts } = await screenPartList();
