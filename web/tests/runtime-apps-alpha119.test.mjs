@@ -105,7 +105,7 @@ test('the tab, the screen part and its budget are wired', () => {
   assert.doesNotMatch(detail, /^import \{[^}]*DomainRuntimeApps[^}]*\} from/m);
   const addons = read('../src/components/AddonsPage.tsx');
   assert.match(addons, /const AdminRuntimeApps = lazy\(\(\) => import\('\.\/AdminRuntimeApps'\)/);
-  const index = read('../src/i18n/index.tsx');
+  const index = read('../src/i18n/screenParts.ts');
   assert.match(index, /import\('\.\/screens\/runtimeApps\/en'\)/);
   assert.match(index, /import\('\.\/screens\/runtimeApps\/tr'\)/);
   assert.match(read('../src/i18n/en.ts'), /\| RuntimeAppsScreenKey/);

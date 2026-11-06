@@ -39,6 +39,14 @@ async function loadProvider(heldPart) {
     const id = ++scenario;
     const imports = { ...catalogueURL };
     if (heldPart) imports[heldPart] = moduleURL(`// scenario ${id}\nawait globalThis.langPartGate;\nexport * from '${catalogueURL[heldPart]}';`);
+    // The list of screen-part loaders is its own lazy module since alpha.127;
+    // its dynamic imports are mapped the same way.
+    const partList = compile('../src/i18n/screenParts.ts')
+        .replace(/import\(['"]([^'"]+)['"]\)/g, (_m, path) => {
+            assert.ok(imports[path], `unmapped dynamic import ${path}`);
+            return `import('${imports[path]}')`;
+        });
+    imports['./screenParts'] = moduleURL(`// screen parts ${id}\n${partList}`);
     const source = compile('../src/i18n/index.tsx')
         .replace(/from ['"]([^'"]+)['"]/g, (_m, path) => {
             const target = path === 'react' ? reactURL : path === 'react/jsx-runtime' ? jsxRuntimeURL : null;

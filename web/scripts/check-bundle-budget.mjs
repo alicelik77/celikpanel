@@ -11,7 +11,7 @@
 //   part that already holds its prefix (each part's header lists its
 //   prefixes); a new prefix goes into the part of the screen that uses it.
 //   Every part is fetched in parallel and merged before any screen renders
-//   (src/i18n/index.tsx), so the choice of part never changes what a screen
+//   (src/i18n/index.tsx, the list in src/i18n/screenParts.ts), so the choice of part never changes what a screen
 //   can show.
 // - Each part has its own ceiling below (screenPartBudgets), set with at least
 //   25% headroom when the part was made (v0.1.0-alpha.97). The ceiling is not
@@ -19,14 +19,14 @@
 //   screen boundaries: move whole prefixes into a new directory with an en.ts
 //   (`export const en<Part>Screens = {…} as const`, `<Part>ScreenKey`) and a
 //   tr.ts (`Record<<Part>ScreenKey, string>`, so a missing Turkish key fails
-//   tsc), then add the part to src/i18n/index.tsx (both lists), to ScreenKey in
+//   tsc), then add the part to src/i18n/screenParts.ts (both lists), to ScreenKey in
 //   src/i18n/en.ts, to screenParts in tests/locale-catalogue.mjs and here,
 //   each with headroom of at least 25% again.
 //
 // Paket bütçesi. Ekran katalogu src/i18n/screens altında parçalara bölünür; yeni
 // anahtar, önekini tutan parçaya girer. Her parçanın kendi tavanı vardır ve
 // tavan yükseltilmez: payı biten parça ekran sınırlarından yeniden bölünür
-// (index.tsx, en.ts ScreenKey, tests/locale-catalogue.mjs ve bu dosya), her
+// (screenParts.ts, en.ts ScreenKey, tests/locale-catalogue.mjs ve bu dosya), her
 // yeni parça en az %25 payla.
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
@@ -288,6 +288,9 @@ const screenPartBudgets = {
 const namedChunkBudgets = {
   'src/i18n/en.ts': budgets.async,
   'src/i18n/tr.ts': budgets.async,
+  // The list of screen-part loaders (v0.1.0-alpha.127), fetched lazily beside
+  // the shell instead of sitting on the critical boot path.
+  'src/i18n/screenParts.ts': budgets.async,
   ...Object.fromEntries(Object.entries(screenPartBudgets).flatMap(([part, limit]) => [
     [`src/i18n/screens/${part}/en.ts`, limit],
     [`src/i18n/screens/${part}/tr.ts`, limit],

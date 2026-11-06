@@ -183,7 +183,7 @@ test('the tour and the drawer keep the keyboard, close on Escape and respect red
 });
 
 test('the guide part is registered like every screen part and budgeted', () => {
-    const index = read('../src/i18n/index.tsx');
+    const index = read('../src/i18n/screenParts.ts');
     assert.match(index, /\(\) => import\('\.\/screens\/guide\/en'\)/);
     assert.match(index, /\(\) => import\('\.\/screens\/guide\/tr'\)/);
     assert.match(read('../src/i18n/en.ts'), /\| GuideScreenKey\b/);

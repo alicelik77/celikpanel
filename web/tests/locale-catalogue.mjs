@@ -17,8 +17,8 @@ import { readFileSync } from 'node:fs';
 // parçaya dairdir; bu yüzden testler hepsini tek katalog olarak okur.
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-// Every part of the screen half, in load order. index.tsx must load each one.
-// Ekran yarısının her parçası; index.tsx her birini yüklemelidir.
+// Every part of the screen half, in load order. src/i18n/screenParts.ts must load each one.
+// Ekran yarısının her parçası; screenParts.ts her birini yüklemelidir.
 export const screenParts = [
   'setup', 'sites', 'siteConfig', 'dnsCertificates', 'components', 'componentPages',
   'mailDatabases', 'security', 'dashboard', 'settings', 'errors', 'lifecycle', 'databaseClusters', 'vendorLanes', 'webmailAddress', 'setupWizard', 'setupRegistrar', 'setupJoin', 'setupLink', 'setupInspection', 'dnsOverview', 'nginxDefaultHttps', 'dnsPublication', 'problems', 'refusals', 'accountAccess', 'siteFeatures', 'osUpdates', 'panelPort', 'setupOwner', 'setupPublishing', 'fileAccess', 'suspension', 'transfers', 'transferRotation', 'rights', 'emergency', 'planUsage', 'appCatalog', 'siteTools', 'remoteBackup', 'serviceApps', 'guide', 'runtimeApps', 'hostName', 'removalRule', 'componentInstall', 'monitoring', 'passwords', 'adminNext', 'nodeSandbox',
