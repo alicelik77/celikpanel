@@ -128,7 +128,10 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	}
 	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
 		if err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
-			return dnspeerjournal.Publish(request, enrollment.RecordSHA256, attempt, verify)
+			// The members bind the request's catalog digest; a challenge
+			// written before a PowerDNS daemon re-stamp of the same member
+			// set is superseded, not a mismatch (dnspeerjournal).
+			return dnspeerjournal.Publish(request, plan.Evidence.Members, enrollment.RecordSHA256, attempt, verify)
 		}); err != nil {
 			return err
 		}
