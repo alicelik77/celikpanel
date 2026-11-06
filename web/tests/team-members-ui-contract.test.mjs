@@ -52,5 +52,7 @@ test('password, suspension, and deletion flows preserve their safety contracts',
   assert.match(pageSource, /confirmAction\(\{ message: t\('team\.suspendConfirm'/);
   assert.match(pageSource, /confirmAction\(\{ message: t\('team\.deleteConfirm'/);
   assert.match(pageSource, /required=\{isNew\}/);
-  assert.match(pageSource, /minLength=\{8\}/);
+  // The owner's password rule (alpha.127): the field and the Save gate.
+  assert.match(pageSource, /field='account'/);
+  assert.match(pageSource, /passwordAcceptable\(draft\.password, 'account'\)/);
 });

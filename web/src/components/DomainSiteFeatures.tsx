@@ -135,8 +135,9 @@ function useSiteFeatureList(domainId: number, path: string) {
     const { t } = useI18n();
     const settled = list.remote.state === 'known' && !list.reading && !answer.holding;
 
-    // Sends one change; true when the server made it.
-    const change = async (method: 'POST' | 'DELETE', url: string, body?: unknown, done?: string): Promise<boolean> => {
+    // Sends one change; true when the server made it. A form passes `refused`
+    // so its refusal is said once, beside it, instead of as a toast.
+    const change = async (method: 'POST' | 'DELETE', url: string, body?: unknown, done?: string, refused?: (text: string) => void): Promise<boolean> => {
         setBusy(true);
         try {
             const res = await answer.send(url, {
@@ -147,7 +148,8 @@ function useSiteFeatureList(domainId: number, path: string) {
             if (!res) return false;
             if (!res.ok) {
                 const error = await readApiError(res);
-                showToast('error', refusalText(error, t));
+                if (refused) refused(refusalText(error, t));
+                else showToast('error', refusalText(error, t));
                 // The entry was gone already, or the list changed meanwhile.
                 if (res.status === 404 || res.status === 409) await list.retry();
                 return false;
@@ -179,7 +181,7 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
         if (!passwordAcceptable(password, 'site_protect')) return;
         setProblem('');
         const made = await change('POST', `/api/v1/domains/${domainId}/protected-dirs`,
-            { path: wanted, realm: realm.trim(), username, password }, t('siteFeatures.protect.added', { path: wanted }));
+            { path: wanted, realm: realm.trim(), username, password }, t('siteFeatures.protect.added', { path: wanted }), setProblem);
         if (made) {
             setPath('');
             setRealm('');
@@ -318,7 +320,7 @@ function ProtectedDirCard({
     disabled: boolean;
     readOnly: boolean;
     domainId: number;
-    change: (method: 'POST' | 'DELETE', url: string, body?: unknown, done?: string) => Promise<boolean>;
+    change: (method: 'POST' | 'DELETE', url: string, body?: unknown, done?: string, refused?: (text: string) => void) => Promise<boolean>;
 }) {
     const { t } = useI18n();
     const [username, setUsername] = useState('');
@@ -331,7 +333,7 @@ function ProtectedDirCard({
         if (!passwordAcceptable(password, 'site_protect')) return;
         setProblem('');
         const made = await change('POST', `${base}/users`, { dir_id: dir.id, username, password },
-            t('siteFeatures.protect.userSaved', { path: dir.path }));
+            t('siteFeatures.protect.userSaved', { path: dir.path }), setProblem);
         if (made) {
             setUsername('');
             setPassword('');

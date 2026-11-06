@@ -141,7 +141,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     // create form also keeps it beside its button (owner feedback 2026-10-31).
     const navigate = useNavigate();
     const [createRefusal, setCreateRefusal] = useState<ApiError | null>(null);
-    const apiError = async (res: Response, sentence: 'users.changeFailed' = 'users.changeFailed') => {
+    const apiError = async (res: Response, sentence: 'users.createFailed' | 'users.changeFailed' = 'users.changeFailed') => {
         const problem = await readApiError(res);
         showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
         return problem;
