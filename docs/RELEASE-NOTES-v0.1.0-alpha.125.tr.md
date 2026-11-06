@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.125.md)
 
+> **Yayımlandı**, 6 Kasım 2026 (UTC): sürüm commit'i `ed6086469`, GitHub ön sürümü 03:00:52Z, indirme portalı yaklaşık 03:05Z (dış denetim 27/27).
+
 Parolasız posta artık kapalı: siteler postayı yalnız bir posta kutusunun
 kullanıcı adı ve parolasıyla gönderir. Panel daha hızlı, güncelleme son
 veritabanı denetiminde bir zamanlama çakışması yüzünden artık başarısız

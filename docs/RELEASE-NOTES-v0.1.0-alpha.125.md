@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.125.tr.md)
 
+> **Published** on 2026-11-06 (UTC): release commit `ed6086469`, GitHub pre-release at 03:00:52Z, download portal at about 03:05Z (public check 27/27).
+
 Mail without a password is now turned off: sites send mail only with a
 mailbox's user name and password. The panel is faster, an update no longer
 fails on a timing race at its last database check, three lab findings from
