@@ -31,6 +31,40 @@ type DatabaseIdentity struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+	// ClusterVersion and ClusterPort name the PostgreSQL cluster the database
+	// lives on (alpha.127: majors side by side, each on its own port). The
+	// panel sends its record's port; the agent resolves the cluster at backup
+	// time and records both in the manifest, and a restore goes only to a
+	// running cluster of the same major. Empty in a backup made before
+	// alpha.127 and for MariaDB. Additive.
+	// ClusterVersion/ClusterPort veritabanının PostgreSQL kümesini adlandırır;
+	// geri yükleme yalnız aynı ana sürümün çalışan kümesine gider.
+	ClusterVersion string `json:"cluster_version,omitempty"`
+	ClusterPort    int    `json:"cluster_port,omitempty"`
+}
+
+// SameDatabase: the same database (ID, name, engine), whatever cluster each
+// side names.
+func (d DatabaseIdentity) SameDatabase(other DatabaseIdentity) bool {
+	return d.ID == other.ID && d.Name == other.Name && d.Type == other.Type
+}
+
+// ClusterRefusal says why a PostgreSQL backup or restore did not run: the
+// cluster it needs does not run (Reason "removed", "stopped", "none"), or a
+// restore would cross majors ("major_mismatch": the backup's BackupVersion,
+// the database's cluster now Version). Nothing ran. The fields match
+// transport.DatabaseClusterRefusal.
+// ClusterRefusal, PostgreSQL yedeğinin ya da geri yüklemenin neden
+// çalışmadığını söyler; hiçbir şey çalışmamıştır.
+type ClusterRefusal struct {
+	Reason         string `json:"reason"`
+	Version        string `json:"version,omitempty"`
+	Cluster        string `json:"cluster,omitempty"`
+	Port           int    `json:"port,omitempty"`
+	DataDirectory  string `json:"data_directory,omitempty"`
+	RunningVersion string `json:"running_version,omitempty"`
+	RunningPort    int    `json:"running_port,omitempty"`
+	BackupVersion  string `json:"backup_version,omitempty"`
 }
 
 // RequestScope carries immutable tenant identity. Request structs repeat these
@@ -88,6 +122,8 @@ type CreateResponse struct {
 	Success bool   `json:"success"`
 	Backup  Info   `json:"backup,omitempty"`
 	Error   string `json:"error,omitempty"`
+	// Refusal (alpha.127): a PostgreSQL cluster prerequisite, nothing ran.
+	Refusal *ClusterRefusal `json:"refusal,omitempty"`
 }
 
 type ListRequest struct {
@@ -134,6 +170,9 @@ type RestoreResponse struct {
 	Success      bool   `json:"success"`
 	SafetyBackup *Info  `json:"safety_backup,omitempty"`
 	Error        string `json:"error,omitempty"`
+	// Refusal (alpha.127): a PostgreSQL cluster prerequisite, refused before
+	// the safety backup and before anything was written.
+	Refusal *ClusterRefusal `json:"refusal,omitempty"`
 }
 
 // RestoreInProgress is the exact RestoreResponse.Error of a restore refused

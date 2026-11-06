@@ -111,6 +111,10 @@ func buildDatabasePayload(workDir string, database backupspec.DatabaseIdentity, 
 	if err != nil {
 		return err
 	}
+	// alpha.127: the PostgreSQL cluster is resolved now and recorded.
+	if database, err = resolveBackupCluster(database); err != nil {
+		return err
+	}
 	payloadName := databasePayloadName(database.ID)
 	payloadPath := filepath.Join(workDir, filepath.FromSlash(payloadName))
 	if err := mkdirPrivate(filepath.Dir(payloadPath)); err != nil {

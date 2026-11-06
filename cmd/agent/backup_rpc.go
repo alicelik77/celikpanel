@@ -56,6 +56,7 @@ func (a *Agent) CreateBackup(req *backupspec.CreateRequest, resp *backupspec.Cre
 	info, err := a.createBackup(req)
 	if err != nil {
 		resp.Error = err.Error()
+		resp.Refusal = backupClusterRefusalOf(err)
 		return nil
 	}
 	resp.Success = true
@@ -79,6 +80,7 @@ func (a *Agent) RestoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 	if err := a.restoreBackup(req, resp); err != nil {
 		resp.Error = err.Error()
 		resp.Success = false
+		resp.Refusal = backupClusterRefusalOf(err)
 	}
 	return nil
 }

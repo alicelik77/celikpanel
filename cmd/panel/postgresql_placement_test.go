@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/backupspec"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -141,5 +142,26 @@ func TestWithoutClustersTheRecordIsUsedAsItIs(t *testing.T) {
 	id, port, refusal, err := panel.pgPlaceNewDatabase(context.Background(), subscription, transport.PostgreSQLClustersResponse{})
 	if err != nil || refusal != nil || id != server || port != 5432 {
 		t.Fatalf("id=%d port=%d refusal=%+v err=%v", id, port, refusal, err)
+	}
+}
+
+// A PostgreSQL database's backup names the cluster its record says; MariaDB
+// names none.
+func TestABackupIdentityNamesThePostgreSQLRecordsPort(t *testing.T) {
+	pg := withBackupCluster(backupspec.DatabaseIdentity{ID: 1, Name: "shop", Type: "postgresql"}, 5433)
+	if pg.ClusterPort != 5433 || pg.ClusterVersion != "" {
+		t.Fatalf("postgresql = %+v", pg)
+	}
+	if maria := withBackupCluster(backupspec.DatabaseIdentity{ID: 2, Name: "blog", Type: "mariadb"}, 3306); maria.ClusterPort != 0 {
+		t.Fatalf("mariadb = %+v", maria)
+	}
+	// The backup refusal is the same refusal the database page says.
+	refusal := transport.DatabaseClusterRefusal(backupspec.ClusterRefusal{Reason: "major_mismatch", Version: "18", Cluster: "18/main", Port: 5433, BackupVersion: "16"})
+	recorder := httptest.NewRecorder()
+	writeDatabaseClusterRefusal(recorder, httptest.NewRequest(http.MethodPost, "/", nil), &refusal)
+	var body apiErrorBody
+	_ = json.NewDecoder(recorder.Body).Decode(&body)
+	if recorder.Code != http.StatusConflict || body.Reason != "major_mismatch" || body.Vars["backup_version"] != "16" || body.Vars["version"] != "18" || body.Action != "" {
+		t.Fatalf("answer = %d %+v", recorder.Code, body)
 	}
 }

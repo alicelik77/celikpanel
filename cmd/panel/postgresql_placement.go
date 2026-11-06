@@ -273,6 +273,9 @@ func writeDatabaseClusterRefusal(w http.ResponseWriter, r *http.Request, refusal
 	if refusal.RunningVersion != "" {
 		vars["running_version"], vars["running_port"] = refusal.RunningVersion, strconv.Itoa(refusal.RunningPort)
 	}
+	if refusal.BackupVersion != "" {
+		vars["backup_version"] = refusal.BackupVersion
+	}
 	action := ""
 	if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
 		action = "/components/postgresql"
@@ -285,6 +288,10 @@ func writeDatabaseClusterRefusal(w http.ResponseWriter, r *http.Request, refusal
 		message = "nothing was changed: PostgreSQL " + refusal.Version + " (cluster " + refusal.Cluster + ") is installed but not running"
 	case "none":
 		message = "nothing was changed: there is no PostgreSQL cluster on this server"
+	case "major_mismatch":
+		message = "nothing was restored: this backup was made from PostgreSQL " + refusal.BackupVersion + ", and the database's cluster " + refusal.Cluster + " is PostgreSQL " + refusal.Version
+	case "unplaced":
+		message = "nothing was restored: this backup was made from PostgreSQL " + refusal.BackupVersion + ", and no PostgreSQL cluster is on the port the database's record names"
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)

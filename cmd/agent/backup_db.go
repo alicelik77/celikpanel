@@ -46,6 +46,9 @@ func validateDatabaseIdentity(database backupspec.DatabaseIdentity) (backupspec.
 	default:
 		return backupspec.DatabaseIdentity{}, errors.New("unsupported database type")
 	}
+	if err := validDatabaseCluster(database); err != nil {
+		return backupspec.DatabaseIdentity{}, err
+	}
 	return database, nil
 }
 
@@ -80,7 +83,7 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 	}
 	if database.Type == "postgresql" {
 		args := []string{"-u", "postgres", "pg_dump", "--no-owner", "--no-privileges", "--dbname", database.Name}
-		port, err := pgBackupPort()
+		port, err := pgBackupPortFor(database)
 		if err != nil {
 			return backupCommand{}, err
 		}
@@ -105,7 +108,7 @@ func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand
 	}
 	if database.Type == "postgresql" {
 		args := []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", database.Name}
-		port, err := pgBackupPort()
+		port, err := pgBackupPortFor(database)
 		if err != nil {
 			return backupCommand{}, err
 		}
@@ -214,10 +217,12 @@ func validateRestoreDatabase(expected, requested backupspec.DatabaseIdentity) (b
 	if err != nil {
 		return backupspec.DatabaseIdentity{}, err
 	}
-	if expected != requested {
+	// alpha.127: the same database, whichever cluster each side names; the
+	// requested identity (the database's cluster now) is the one returned.
+	if !expected.SameDatabase(requested) {
 		return backupspec.DatabaseIdentity{}, errors.New("database identity mismatch")
 	}
-	return expected, nil
+	return requested, nil
 }
 
 func validateFullRestoreSet(expected, requested []backupspec.DatabaseIdentity) ([]backupspec.DatabaseIdentity, error) {
@@ -233,20 +238,19 @@ func validateFullRestoreSet(expected, requested []backupspec.DatabaseIdentity) (
 		return nil, errors.New("full restore database set mismatch")
 	}
 	for i := range expected {
-		if expected[i] != requested[i] {
+		if !expected[i].SameDatabase(requested[i]) {
 			return nil, errors.New("full restore database set mismatch")
 		}
 	}
-	return expected, nil
+	return requested, nil
 }
 
-// pgBackupPort is the cluster a PostgreSQL backup or restore talks to
-// (alpha.127). The backup's identity of a database names no cluster, so this
-// is the running cluster psql would choose without a port, never a removed
-// version's kept cluster that still claims the default port: on Boston, psql
-// without a port went to 16/main, which had no program left. Where several
-// majors run side by side, a database on a cluster other than this one is not
-// reached by name alone; that stays an open item of the backup identity.
-func pgBackupPort() (int, error) {
-	return resolvePGStatementPort(0)
+// pgBackupPortFor is the cluster a PostgreSQL backup or restore talks to
+// (alpha.127): the identity's cluster port when it names one (resolved
+// before, backup_pg_cluster.go), else the running cluster psql would choose
+// without a port, never a removed version's kept cluster that still claims
+// the default port: on Boston, psql without a port went to 16/main, which had
+// no program left.
+func pgBackupPortFor(database backupspec.DatabaseIdentity) (int, error) {
+	return resolvePGStatementPort(database.ClusterPort)
 }

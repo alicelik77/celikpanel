@@ -88,6 +88,10 @@ type DatabaseClusterRefusal struct {
 	DataDirectory  string `json:"data_directory,omitempty"`
 	RunningVersion string `json:"running_version,omitempty"`
 	RunningPort    int    `json:"running_port,omitempty"`
+	// BackupVersion: a restore refused because the backup's PostgreSQL major
+	// (this) is not the database's cluster's (Version), reason
+	// "major_mismatch".
+	BackupVersion string `json:"backup_version,omitempty"`
 }
 
 type DeleteDatabaseRequest struct {
