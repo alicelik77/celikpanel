@@ -57,6 +57,8 @@ const stubbedComponents = [
   // alpha.126: Monitoring's "Problems now" reads its own address
   // (tests/problems-now-mounted.test.mjs).
   'ProblemsNow',
+  // alpha.126: the backup DNS check tool notice on Domains reads its own address.
+  'DNSCheckToolNotice',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {

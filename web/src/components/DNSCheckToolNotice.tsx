@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n';
+import { useRemote } from '../lib/remote';
 
 // The backup DNS server's check tool (6 Nov 2026). CelikPanel puts its
 // current copy in place by itself when the server is updated; the one case
@@ -13,8 +13,11 @@ interface CheckTool {
     command?: string;
 }
 
+// The answer's contract; anything else is "unknown" (never a default).
 export function decodeCheckTools(raw: unknown): CheckTool[] {
-    if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { tools?: unknown }).tools)) return [];
+    if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { tools?: unknown }).tools)) {
+        throw new Error('peer-inspector-tool: not the contract');
+    }
     return ((raw as { tools: unknown[] }).tools).flatMap((item) => {
         if (!item || typeof item !== 'object') return [];
         const tool = item as Record<string, unknown>;
@@ -25,15 +28,11 @@ export function decodeCheckTools(raw: unknown): CheckTool[] {
 
 export function DNSCheckToolNotice({ className = '' }: { className?: string }) {
     const { t } = useI18n();
-    const [tools, setTools] = useState<CheckTool[]>([]);
-    useEffect(() => {
-        let alive = true;
-        fetch('/api/v1/dns/peer-inspector-tool')
-            .then((response) => (response.ok ? response.json() : null))
-            .then((body) => { if (alive) setTools(decodeCheckTools(body)); })
-            .catch(() => { /* not an administrator, or no answer: nothing to say here */ });
-        return () => { alive = false; };
-    }, []);
+    // Not an administrator, or no answer: this notice has nothing to say;
+    // the page's own guidance stands (the notice only adds the one command).
+    // Yönetici değil ya da yanıt yok: bu bildirim bir şey söylemez.
+    const read = useRemote('/api/v1/dns/peer-inspector-tool', decodeCheckTools);
+    const tools = read.remote.state === 'known' ? read.remote.value : [];
     const changed = tools.filter((tool) => tool.state === 'owner_changed' && tool.command);
     if (changed.length === 0) return null;
     return (
