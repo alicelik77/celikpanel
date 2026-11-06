@@ -83,6 +83,12 @@ statement to the cluster with no program.
   it runs and is the same major version; another major version is refused
   before anything is written, with the backup kept. Backups made before
   alpha.127 restore as before.
+- **Restoring a PostgreSQL database that still has its tables works.**
+  Before, every such restore stopped at "relation already exists" (and so
+  did the automatic return to the safety copy). The restore now first drops
+  what the database's owner owns in that database, then recreates it from
+  the backup, owned by the same owner. Objects of other roles are not
+  touched; a database owned by a superuser is restored as before.
 - **phpPgAdmin follows the running clusters.** After it is installed, moved
   to another PHP version, or a PostgreSQL version is installed or removed,
   its server list names every running cluster ("PostgreSQL 18 (port 5433)").

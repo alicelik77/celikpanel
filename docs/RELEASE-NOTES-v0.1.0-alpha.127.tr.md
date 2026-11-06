@@ -87,6 +87,13 @@ programı olmayan kümeye gönderiyordu.
   çalışıyorsa ve aynı ana sürümse yapılır; başka bir ana sürüm, hiçbir şey
   yazılmadan ve yedek saklanarak reddedilir. alpha.127'den önce alınmış
   yedekler eskisi gibi geri yüklenir.
+- **Tabloları duran bir PostgreSQL veritabanını geri yüklemek çalışır.**
+  Önceden böyle her geri yükleme "relation already exists" hatasında
+  duruyordu (güvenlik kopyasına otomatik dönüş de). Geri yükleme artık önce
+  veritabanı sahibinin o veritabanındaki nesnelerini düşürür, sonra onları
+  yedekten yine aynı sahibe ait olarak kurar. Başka rollerin nesnelerine
+  dokunulmaz; sahibi süper kullanıcı olan bir veritabanı eskisi gibi geri
+  yüklenir.
 - **phpPgAdmin çalışan kümeleri izler.** Kurulduktan, başka bir PHP sürümüne
   taşındıktan ya da bir PostgreSQL sürümü kurulup kaldırıldıktan sonra sunucu
   listesi çalışan her kümeyi adlandırır ("PostgreSQL 18 (port 5433)"). Sizin

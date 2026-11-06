@@ -101,6 +101,30 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 	}, nil
 }
 
+// pgRestorePrelude makes a PostgreSQL restore work on a database that still
+// holds its tables (alpha.127 lab: every restore of a non-empty database
+// stopped at "relation already exists", and so did the safety rollback). A
+// dump is plain SQL made with --no-owner and without DROP statements, so the
+// restore session first becomes the database's owner and drops what that
+// owner owns in this database; the dump then recreates it, owned by the
+// owner as before. A database owned by a superuser is left as it was (DROP
+// OWNED BY postgres is refused by the server). Objects of other roles are
+// not touched. On a failure the caller reapplies the safety dump the same way.
+//
+// pgRestorePrelude, tabloları duran bir veritabanına geri yüklemeyi çalıştırır:
+// oturum önce veritabanının sahibi olur ve sahibin bu veritabanındaki
+// nesnelerini düşürür; döküm onları yine sahibine ait olarak yeniden kurar.
+const pgRestorePrelude = `DO $celikpanel_restore$
+DECLARE
+  owner_name name := (SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = current_database());
+BEGIN
+  IF NOT (SELECT rolsuper FROM pg_roles WHERE rolname = owner_name) THEN
+    EXECUTE format('SET ROLE %I', owner_name);
+    EXECUTE 'DROP OWNED BY CURRENT_USER';
+  END IF;
+END
+$celikpanel_restore$`
+
 func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand, error) {
 	database, err := validateDatabaseIdentity(database)
 	if err != nil {
@@ -115,6 +139,8 @@ func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand
 		if port > 0 {
 			args = append(args, "--port", strconv.Itoa(port))
 		}
+		// The prelude runs first in the same session, then the dump from stdin.
+		args = append(args, "--command", pgRestorePrelude, "--file", "-")
 		return backupCommand{Name: "sudo", Args: args}, nil
 	}
 	return backupCommand{
