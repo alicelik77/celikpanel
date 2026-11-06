@@ -100,7 +100,10 @@ table inet ` + EgressTable + ` {
 // "nft flush ruleset" or restarted nftables.service), then adds the cgroup
 // of every running sandboxed unit whose helper loads the block (its
 // ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
-// /system.slice/<unit> is named in the journal and left out.
+// /system.slice/<unit> is named in the journal and left out. A finished
+// install step that stays "active (exited)" has no cgroup and is skipped
+// (alpha.127 lab: after a Node.js "Install packages and build" the guard
+// failed every 30 seconds on celikappinst-N, "runs in , not ...").
 func EgressGuardScriptText() string {
 	return `# CelikPanel site sandbox: SMTP egress guard (docs/SITE-SANDBOX.md).
 # Run by ` + EgressGuardUnit + ` every 30 seconds; works without CelikPanel.
@@ -118,6 +121,9 @@ for unit in $(systemctl list-units --type=service --state=active,activating,relo
 	esac
 	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
 	cgroup=$(systemctl show -P ControlGroup "$unit")
+	# A finished install step (RemainAfterExit, "active (exited)") has no
+	# cgroup any more: nothing runs there, so there is nothing to block.
+	[ -n "$cgroup" ] || continue
 	if [ "$cgroup" != "/system.slice/$unit" ]; then
 		echo "celikpanel-egress: $unit runs in $cgroup, not /system.slice/$unit; it is not blocked"
 		status=1

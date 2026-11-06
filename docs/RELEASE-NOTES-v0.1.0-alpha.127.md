@@ -176,6 +176,11 @@ account. Screens now say who acts for each role.
   Each moved running application is checked; one that stops answering is put
   back on its earlier setup and started again. Sites whose service file you
   edited yourself are kept and listed.
+- **The mail-block guard skips a finished install step.** After "Install
+  packages and build" the step stays "active (exited)" with no process; the
+  guard that re-adds sandboxed programs to the mail block every 30 seconds
+  no longer counts it as a failure (alpha.127 lab: the guard showed as a
+  failed unit every 30 seconds).
 
 ## Smaller fixes
 

@@ -182,6 +182,11 @@ söylüyor.
   üzere taşır. Taşınan ve çalışan her uygulama denetlenir; yanıt vermeyi
   bırakan önceki düzenine geri alınır ve yeniden başlatılır. Hizmet dosyasını
   sizin düzenlediğiniz siteler korunur ve listelenir.
+- **Posta engeli bekçisi biten kurulum adımını atlar.** "Paketleri kur ve
+  derle" bittikten sonra adım işlemsiz "active (exited)" kalır; korumadaki
+  programları 30 saniyede bir posta engeline yeniden ekleyen bekçi bunu
+  artık hata saymaz (alpha.127 laboratuvarı: bekçi 30 saniyede bir
+  başarısız birim olarak görünüyordu).
 
 ## Küçük düzeltmeler
 

@@ -183,7 +183,7 @@ func TestNodeListenProof(t *testing.T) {
 // release's celikapp unit (no egress-add line) is never added silently.
 func TestEgressGuardCoversNodeUnits(t *testing.T) {
 	script := EgressGuardScriptText()
-	for _, want := range []string{"'celikapp-*.service'", "'celikappinst-*.service'", "celikapp-[0-9]*.service|celikappinst-[0-9]*.service", "egress-add "} {
+	for _, want := range []string{"'celikapp-*.service'", "'celikappinst-*.service'", "celikapp-[0-9]*.service|celikappinst-[0-9]*.service", "egress-add ", `[ -n "$cgroup" ] || continue`} {
 		if !strings.Contains(script, want) {
 			t.Errorf("guard lacks %q", want)
 		}
