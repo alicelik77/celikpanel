@@ -249,7 +249,7 @@ func (a *Agent) SandboxCapsV1(_ *transport.Empty, resp *transport.SandboxCapsRes
 	if out, err := appUnitSystemctl(systemctlArgs("show", sitesandbox.EgressGuardTimer, "--property=ActiveState", "--value")...); err == nil {
 		resp.GuardTimer = strings.TrimSpace(string(out))
 	}
-	resp.Units = sandboxUnits()
+	resp.Units = append(sandboxUnits(), nodeSiteUnits()...)
 	return nil
 }
 

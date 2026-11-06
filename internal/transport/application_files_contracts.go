@@ -28,6 +28,15 @@ type AppApplyRequest struct {
 	// nor start it. A failed security emergency move puts the application
 	// back on its withdrawn version this way, so it never runs there.
 	KeepStopped bool `json:"keep_stopped,omitempty"`
+	// SandboxMove (alpha.127, additive): the administrator's move of a
+	// Node.js site into the site sandbox (docs/SITE-SANDBOX.md §6). Without
+	// it a unit an earlier release wrote keeps that release's text; a new
+	// site and a unit already in the sandbox get the sandbox either way.
+	SandboxMove bool `json:"sandbox_move,omitempty"`
+	// NoStart (alpha.127, additive): write the unit and reload systemd, but
+	// change nothing about whether the application runs (a stopped
+	// application moved by the administrator stays stopped).
+	NoStart bool `json:"no_start,omitempty"`
 }
 
 type AppApplyResponse struct {
@@ -36,6 +45,32 @@ type AppApplyResponse struct {
 	// File is the unit file's classification and what the operation did with
 	// it (D-031 second step). Additive: nil from an older Agent.
 	File *SiteFileResult `json:"file,omitempty"`
+	// Sandbox is what the site sandbox did (alpha.127); nil from an older
+	// Agent.
+	Sandbox *NodeSandboxResult `json:"sandbox,omitempty"`
+}
+
+// NodeSandboxResult says which protection a Node.js site's unit has after
+// ApplyAppUnit and what the proof found (alpha.127, docs/SITE-SANDBOX.md).
+type NodeSandboxResult struct {
+	// Generation is the sandbox generation of the unit now on disk (0: the
+	// earlier release's unit, outside the sandbox).
+	Generation int    `json:"generation"`
+	Level      string `json:"level,omitempty"`
+	// Reason names why the unit is not in the sandbox, or why the move was
+	// put back: shared_account, app_folder, unit_edited, a proof code, or
+	// not_running / not_listening (the application did not answer).
+	Reason string `json:"reason,omitempty"`
+	Detail string `json:"detail,omitempty"`
+	// Proof is the sandbox proof of the running unit (nil: not run, the
+	// application was not running).
+	Proof *SandboxProof `json:"proof,omitempty"`
+	// PutBack: the move was proved wrong and the earlier unit was written
+	// and started again.
+	PutBack bool `json:"put_back,omitempty"`
+	// Stopped: a unit in the sandbox failed its proof and was stopped, not
+	// published.
+	Stopped bool `json:"stopped,omitempty"`
 }
 
 type AppControlRequest struct {
@@ -50,6 +85,48 @@ type AppStatusResponse struct {
 	MemoryMB int64  `json:"memory_mb"`
 	CPUUsec  int64  `json:"cpu_usec"`
 	Uptime   string `json:"uptime"`
+	// SandboxGeneration is the sandbox generation of the unit file (0: an
+	// earlier release's unit outside the sandbox; alpha.127, additive).
+	SandboxGeneration int `json:"sandbox_generation"`
+	// UnitRead: the unit file was read, so SandboxGeneration is known.
+	UnitRead bool `json:"unit_read"`
+}
+
+// NodeSiteInstallRequest starts a Node.js site's install step (alpha.127):
+// npm ci (or npm install without a lock file), then npm run build when
+// Build. It runs as the transient unit celikappinst-<site id> in the site
+// sandbox. RequestID makes a repeat (a lost answer) return the first
+// answer; a second step while one runs is refused.
+type NodeSiteInstallRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	RequestID           string `json:"request_id"`
+	SiteID              int    `json:"site_id"`
+	Domain              string `json:"domain"`
+	WorkDir             string `json:"work_dir"`
+	RunAsUser           string `json:"run_as_user"`
+	NodeVersion         string `json:"node_version"`
+	Build               bool   `json:"build"`
+}
+
+// NodeSiteInstallStatusRequest reads a site's install step (read-only).
+type NodeSiteInstallStatusRequest struct {
+	SiteID int `json:"site_id"`
+}
+
+// NodeSiteInstallResponse is the install step's state: Phase is "" (none ran),
+// running, succeeded or failed. Class says what kind of answer a refusal
+// is (RuntimeApp* classes: verified, prerequisite, unknown).
+type NodeSiteInstallResponse struct {
+	RequestID string   `json:"request_id,omitempty"`
+	Phase     string   `json:"phase"`
+	Clean     bool     `json:"clean,omitempty"`
+	Build     bool     `json:"build,omitempty"`
+	StartedAt string   `json:"started_at,omitempty"`
+	EndedAt   string   `json:"ended_at,omitempty"`
+	Lines     []string `json:"lines,omitempty"`
+	Class     string   `json:"class,omitempty"`
+	Reason    string   `json:"reason,omitempty"`
+	Error     string   `json:"error,omitempty"`
 }
 
 type AppLogsRequest struct {

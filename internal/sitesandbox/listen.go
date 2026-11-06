@@ -65,8 +65,27 @@ func loopback(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+func wildcard(host string) bool { return host == "0.0.0.0" || host == "*" || host == "::" }
+
 // ProveListening checks the listeners against the unit's processes.
 func ProveListening(listeners []Listener, unitPIDs map[int]bool, port int) ListenProof {
+	return proveListening(listeners, unitPIDs, port, false)
+}
+
+// ProveNodeListening is ProveListening for a Node.js site (alpha.127).
+// Node.js listens on every address when a program calls listen(port)
+// without a host, and most programs do. Where the host holds the egress
+// block (wildcardBlocked), its input chain drops every new connection from
+// outside to a socket of a sandboxed unit, so a wildcard listener on the
+// site's own port is reachable only from the server itself and counts as
+// serving; a wildcard on any other port, or a listener on a named
+// non-loopback address, is still exposed. Without the block a wildcard is
+// exposed, as for every other kind.
+func ProveNodeListening(listeners []Listener, unitPIDs map[int]bool, port int, wildcardBlocked bool) ListenProof {
+	return proveListening(listeners, unitPIDs, port, wildcardBlocked)
+}
+
+func proveListening(listeners []Listener, unitPIDs map[int]bool, port int, wildcardOwnPort bool) ListenProof {
 	proof := ListenProof{}
 	for _, l := range listeners {
 		ours := false
@@ -74,6 +93,10 @@ func ProveListening(listeners []Listener, unitPIDs map[int]bool, port int) Liste
 			if unitPIDs[pid] {
 				ours = true
 			}
+		}
+		if ours && wildcardOwnPort && l.Port == port && wildcard(l.Address) {
+			proof.Serving = true
+			continue
 		}
 		if ours && !loopback(l.Address) {
 			proof.Exposed = append(proof.Exposed, net.JoinHostPort(l.Address, strconv.Itoa(l.Port)))
@@ -85,7 +108,7 @@ func ProveListening(listeners []Listener, unitPIDs map[int]bool, port int) Liste
 				proof.Squatted = true
 			}
 		}
-		if l.Port == port && !ours && len(l.PIDs) > 0 && (l.Address == "0.0.0.0" || l.Address == "*" || l.Address == "::") {
+		if l.Port == port && !ours && len(l.PIDs) > 0 && wildcard(l.Address) {
 			proof.Squatted = true
 		}
 	}

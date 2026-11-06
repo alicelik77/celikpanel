@@ -162,6 +162,16 @@ func (p *Panel) handleNodeRuntimeSub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// alpha.127: Node.js sites in the site sandbox (node_sandbox.go).
+	if rest == "sandbox" && r.Method == http.MethodGet {
+		p.handleNodeSandboxView(w, r)
+		return
+	}
+	if rest == "sandbox-refresh" && r.Method == http.MethodPost {
+		p.handleNodeSandboxMove(w, r)
+		return
+	}
+
 	if rest == "lts" && r.Method == http.MethodGet {
 		var resp transport.NodeLTSResponse
 		callCtx, cancel := context.WithTimeout(r.Context(), 25*time.Second)

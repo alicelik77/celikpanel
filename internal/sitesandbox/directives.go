@@ -171,10 +171,23 @@ func render(p Profile, c Caps, transient bool) ([]string, error) {
 	if len(p.ReadOnlyPaths) > 0 {
 		list = append(list, directive{line: "ReadOnlyPaths=" + strings.Join(p.ReadOnlyPaths, " ")})
 	}
-	// /proc shows only processes: the service apps (Node.js reads
-	// /proc/cpuinfo and /proc/meminfo for os.cpus()) keep alpha.118's view
-	// until their own measurement; every other kind gets the subset.
-	if p.Kind != KindServiceApp {
+	// One runtime only (a Node.js site, alpha.127): the runtimes tree is an
+	// empty read-only tmpfs and the chosen version is bound back in
+	// read-only, so a version the site's plan does not allow cannot be
+	// started by its full path. The source is root's (not in the hosting
+	// tree), so no link of the customer's lies on its way.
+	if p.RuntimeDir != "" {
+		list = append(list,
+			directive{line: "TemporaryFileSystem=" + RuntimesBase + ":ro"},
+			directive{line: "BindReadOnlyPaths=" + p.RuntimeDir},
+		)
+	}
+	// /proc shows only processes for Python apps and uploaded programs.
+	// The service apps and Node.js sites keep the full view: Node.js reads
+	// /proc/cpuinfo and /proc/meminfo for os.cpus() and os.totalmem(),
+	// and code that sizes worker pools from them would see zero CPUs.
+	// ProtectProc=invisible still hides every other account's processes.
+	if ProcSubsetPID(p.Kind) {
 		list = append(list, directive{line: "ProcSubset=pid", min: 247})
 	}
 	// Binding: only the program's own loopback ports; port 0, any other
@@ -221,6 +234,9 @@ func render(p Profile, c Caps, transient bool) ([]string, error) {
 	}
 	return out, nil
 }
+
+// ProcSubsetPID reports whether a kind gets ProcSubset=pid.
+func ProcSubsetPID(k Kind) bool { return k == KindPython || k == KindProgram }
 
 // checkLine refuses a rendered line systemd would expand: the only "%" is
 // CPUQuota's own unit and there is never a "$".

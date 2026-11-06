@@ -95,7 +95,7 @@ func Expected(p Profile, c Caps, unit string) map[string]Expectation {
 	}
 	if c.SystemdVersion >= 247 {
 		e["ProtectProc"] = Expectation{Value: "invisible"}
-		if p.Kind != KindServiceApp {
+		if ProcSubsetPID(p.Kind) {
 			e["ProcSubset"] = Expectation{Value: "pid"}
 		}
 	}
@@ -124,6 +124,9 @@ func Expected(p Profile, c Caps, unit string) map[string]Expectation {
 		e["ExecStopPost"] = Expectation{Value: "argv[]=" + HelperCommand(EgressRemoveArgs(p.Unit)), Contains: true}
 	}
 	e["BindPaths"] = Expectation{Value: BindSource(p.Unit) + ":" + p.AppDir, Contains: true}
+	if p.RuntimeDir != "" {
+		e["BindReadOnlyPaths"] = Expectation{Value: p.RuntimeDir, Contains: true}
+	}
 	return e
 }
 

@@ -98,8 +98,9 @@ var (
 )
 
 // PlanFor is the walk to appDir, which must be a site's runtime folder
-// (<subscriptions>/<s>/sites/<d>/app) or a service app's folder
-// (<subscriptions>/<s>/sites/<d>/apps/<app>): root owns the subscription and
+// (<subscriptions>/<s>/sites/<d>/app), a service app's folder
+// (<subscriptions>/<s>/sites/<d>/apps/<app>) or a Node.js site's document
+// root (<subscriptions>/<s>/sites/<d>/public_html, alpha.127): root owns the subscription and
 // its "sites" folder (the SFTP chroot), the site's account owns its home and
 // everything below it.
 func PlanFor(appDir string, siteUID uint32) (Plan, error) {
@@ -112,7 +113,7 @@ func PlanFor(appDir string, siteUID uint32) (Plan, error) {
 	ok := len(parts) >= 4 && idPart.MatchString(parts[0]) && parts[1] == "sites" && idPart.MatchString(parts[2])
 	switch {
 	case !ok:
-	case len(parts) == 4 && parts[3] == "app":
+	case len(parts) == 4 && (parts[3] == "app" || parts[3] == "public_html"):
 	case len(parts) == 5 && parts[3] == "apps" && appPart.MatchString(parts[4]):
 	default:
 		ok = false

@@ -34,7 +34,7 @@ var TransientPropertyMinimums = map[string]int{
 	"LockPersonality": 249, "RemoveIPC": 249, "CapabilityBoundingSet": 249,
 	"AmbientCapabilities": 249, "SystemCallArchitectures": 249, "SystemCallFilter": 249,
 	"SystemCallErrorNumber": 249, "RestrictAddressFamilies": 249, "UMask": 249,
-	"TemporaryFileSystem": 249, "BindPaths": 249, "InaccessiblePaths": 249, "ReadOnlyPaths": 249,
+	"TemporaryFileSystem": 249, "BindPaths": 249, "BindReadOnlyPaths": 249, "InaccessiblePaths": 249, "ReadOnlyPaths": 249,
 	"IPAddressDeny": 249, "LogRateLimitIntervalSec": 249, "LogRateLimitBurst": 249,
 	"MemoryMax": 249, "MemorySwapMax": 249, "CPUQuota": 249, "TasksMax": 249,
 	"LimitNOFILE": 249, "LimitCORE": 249,

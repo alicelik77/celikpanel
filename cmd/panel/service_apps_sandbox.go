@@ -61,6 +61,10 @@ func (p *Panel) serviceAppSandboxPlan(ctx context.Context) (transport.SandboxCap
 	}
 	units := map[int]transport.SandboxUnit{}
 	for _, u := range caps.Units {
+		// Node.js sites' units (alpha.127) have their own page.
+		if u.Kind != "" {
+			continue
+		}
 		units[u.InstallID] = u
 	}
 	rows, err := p.db.GetDB().QueryContext(ctx, `

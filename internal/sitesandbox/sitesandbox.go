@@ -45,7 +45,17 @@ const (
 	KindPython Kind = "python"
 	// KindProgram: an uploaded program (Go, Rust, anything executable).
 	KindProgram Kind = "program"
+	// KindNode: a Node.js site (alpha.127): the customer's start command
+	// under the Node.js version the site chose, in the site's document
+	// root, and its install step (npm install and build).
+	KindNode Kind = "node"
 )
+
+// RuntimesBase holds the Node.js versions CelikPanel installs
+// (/opt/celikpanel/runtimes/node/<version>). A unit with a RuntimeDir sees
+// only that one version of it: the tree is an empty read-only tmpfs with
+// the version bound back in read-only.
+const RuntimesBase = "/opt/celikpanel/runtimes"
 
 // Level is how much of the sandbox this host enforces.
 type Level string
@@ -82,6 +92,11 @@ type Profile struct {
 	// ReadOnlyPaths are further paths the program may read (for example the
 	// distribution's Python); never inside the hosting tree.
 	ReadOnlyPaths []string
+	// RuntimeDir is the one runtime the program may run (a Node.js
+	// version under RuntimesBase); every other version is hidden. "" for a
+	// kind that brings its own (a service app's runtime is outside the
+	// sandbox's view rule in this release).
+	RuntimeDir string
 	// Port is the loopback port the program listens on (0: it listens on
 	// nothing, such as an install step). ExtraPorts are further loopback
 	// ports (n8n's task broker).
@@ -122,10 +137,26 @@ const (
 	PortMax = 34999
 )
 
+// Node.js sites keep the port their administrator or customer chose
+// (1024–65535, checked by the Panel against every other site's); the
+// sandbox still lets the program bind only that one port.
+const (
+	NodePortMin = 1024
+	NodePortMax = 65535
+)
+
+// PortRange is the range a kind's ports must lie in.
+func PortRange(k Kind) (int, int) {
+	if k == KindNode {
+		return NodePortMin, NodePortMax
+	}
+	return PortMin, PortMax
+}
+
 // Validate checks a profile before anything is rendered.
 func (p Profile) Validate() error {
 	switch p.Kind {
-	case KindServiceApp, KindPython, KindProgram:
+	case KindServiceApp, KindPython, KindProgram, KindNode:
 	default:
 		return errors.New("unknown sandbox kind")
 	}
@@ -150,13 +181,22 @@ func (p Profile) Validate() error {
 			return fmt.Errorf("the read-only path %s is not allowed", ro)
 		}
 	}
+	if p.RuntimeDir != "" {
+		if err := CheckValue(p.RuntimeDir); err != nil {
+			return err
+		}
+		if path.Clean(p.RuntimeDir) != p.RuntimeDir || !strings.HasPrefix(p.RuntimeDir, RuntimesBase+"/") {
+			return fmt.Errorf("the runtime %s is not one CelikPanel installed", p.RuntimeDir)
+		}
+	}
+	low, high := PortRange(p.Kind)
 	ports := append([]int{p.Port}, p.ExtraPorts...)
 	seen := map[int]bool{}
 	for i, port := range ports {
 		if i == 0 && port == 0 {
 			continue
 		}
-		if port < PortMin || port > PortMax || seen[port] {
+		if port < low || port > high || seen[port] {
 			return errors.New("a sandbox port is outside the sandbox range or repeated")
 		}
 		seen[port] = true
@@ -180,9 +220,10 @@ func (p Profile) Validate() error {
 }
 
 // ValidUnitName is a sandboxed unit's name: a service app's long-running or
-// install unit, or a runtime app's unit or its build (celikrtbuild, a
-// Python app's environment build).
-var unitNamePattern = regexp.MustCompile(`^(celiksvc|celiksvcinst|celikrt|celikrtbuild)-[1-9][0-9]{0,9}\.service$`)
+// install unit, a runtime app's unit or its build (celikrtbuild, a Python
+// app's environment build), or a Node.js site's unit or its install step
+// (celikapp, celikappinst; alpha.127).
+var unitNamePattern = regexp.MustCompile(`^(celiksvc|celiksvcinst|celikrt|celikrtbuild|celikapp|celikappinst)-[1-9][0-9]{0,9}\.service$`)
 
 // ValidUnitName reports whether name (with ".service") is a sandboxed unit.
 func ValidUnitName(name string) bool { return unitNamePattern.MatchString(name) }

@@ -148,6 +148,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
+		Agent.NodeSiteInstallStatusV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
 	`),
@@ -192,6 +193,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimeAppRenderV1 Agent.RuntimeAppControlV1 Agent.RuntimeAppEnvV1 Agent.RuntimeAppRemoveV1
 		Agent.RuntimeAppBuildV1 Agent.RuntimeAppBuildAdvanceV1
 		Agent.SetRuntimeAppSuspensionV1
+		Agent.NodeSiteInstallV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -572,6 +574,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RuntimePythonV1":          agentRPCQuickReadTimeout,
 	"Agent.RuntimeVersionUsersV1":    agentRPCQuickReadTimeout,
 	"Agent.RuntimeAppBuildV1":        agentRPCMutationTimeout,
+	"Agent.NodeSiteInstallV1":        agentRPCMutationTimeout,
+	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 }
 

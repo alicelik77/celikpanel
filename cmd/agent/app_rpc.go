@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -300,13 +301,42 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 		}
 	}
 
-	result, err := services.ApplyManagedSiteFile(appUnitFile(req, dir), nil, func() error {
+	// alpha.127: which protection the unit gets (node_site_sandbox.go). A
+	// refusal writes nothing.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	file := appUnitFile(req, dir)
+	plan, err := planNodeSite(ctx, req, file.Path)
+	if err != nil {
+		resp.Error = "the application unit was not changed: " + err.Error()
+		resp.Sandbox = &transport.NodeSandboxResult{Reason: nodeSiteRefusalCode(err), Detail: err.Error()}
+		return nil
+	}
+	wasServing := false
+	if plan.sandboxed {
+		if err := nodeSitePrepare(plan); err != nil {
+			resp.Error = "the application unit was not changed: " + err.Error()
+			resp.Sandbox = &transport.NodeSandboxResult{Reason: nodeSiteRefusalCode(err), Detail: err.Error()}
+			return nil
+		}
+		file.Body = plan.body
+		if plan.move {
+			wasServing = nodeSiteServing(name+".service", req.Port)
+		}
+	}
+
+	result, err := services.ApplyManagedSiteFile(file, nil, func() error {
 		if out, err := appUnitSystemctl(systemctlArgs("daemon-reload")...); err != nil {
 			return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))
 		}
 		return nil
 	})
 	resp.File = &result
+	if plan.sandboxed {
+		resp.Sandbox = &transport.NodeSandboxResult{Generation: sitesandbox.Generation, Level: string(sitesandbox.Assess(plan.caps).Level)}
+	} else {
+		resp.Sandbox = &transport.NodeSandboxResult{Reason: plan.reason}
+	}
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
@@ -326,6 +356,10 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 	}
 	if !services.SiteFileApplied(result.Outcome) {
 		resp.Error = appUnitHeldMessage(result)
+		if plan.sandboxed {
+			// The owner's file is kept: it stays in whatever protection it has.
+			resp.Sandbox = &transport.NodeSandboxResult{Reason: "unit_edited", Detail: resp.Error}
+		}
 		return nil
 	}
 	if result.AdoptedFrom != "" || result.BackupPath != "" {
@@ -337,6 +371,11 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 		systemctlArgs("enable", name),
 		systemctlArgs("restart", name),
 	}
+	if plan.sandboxed {
+		// A sandboxed unit has a start limit (five starts in five
+		// minutes): a new start is a real new attempt.
+		steps = append([][]string{systemctlArgs("reset-failed", name)}, steps...)
+	}
 	if result.Outcome == transport.SiteFileOutcomeTaken {
 		// The owner's choice changes the file, not whether the app runs.
 		steps = [][]string{systemctlArgs("try-restart", name)}
@@ -346,13 +385,49 @@ func (a *Agent) ApplyAppUnit(req *AppApplyRequest, resp *AppApplyResponse) error
 		// run there; it stays stopped and off at boot.
 		steps = [][]string{systemctlArgs("stop", name), systemctlArgs("disable", name)}
 	}
+	if req.NoStart {
+		// alpha.127: a stopped application moved by the administrator
+		// keeps its state; only the file changed.
+		steps = nil
+	}
 	for _, args := range steps {
 		if out, err := appUnitSystemctl(args...); err != nil {
+			if args[len(args)-2] == "reset-failed" {
+				continue
+			}
 			resp.Error = fmt.Sprintf("systemctl %s: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 			return nil
 		}
 	}
 	resp.Unit = name
+	if !plan.sandboxed || req.KeepStopped || req.NoStart {
+		return nil
+	}
+	// Proof before publish (docs/SITE-SANDBOX.md section 5).
+	verdict := proveNodeSite(ctx, plan)
+	resp.Sandbox = &verdict.result
+	switch {
+	case plan.move && (verdict.failed || (wasServing && !verdict.answering)):
+		// The move is refuted: the earlier unit is written and started
+		// again, and the site keeps answering as before.
+		back, err := nodeSitePutBack(req, dir, true)
+		resp.File = &back
+		resp.Sandbox.PutBack = true
+		resp.Sandbox.Generation = 0
+		if err != nil {
+			resp.Error = "the site sandbox could not be proved (" + verdict.result.Reason + ": " + verdict.result.Detail +
+				"), and putting the earlier unit back did not complete: " + err.Error()
+			return nil
+		}
+		resp.Error = "the site sandbox could not be proved (" + verdict.result.Reason + ": " + verdict.result.Detail +
+			"); the earlier unit was put back and the application started on it again"
+	case verdict.failed:
+		// A unit in the sandbox whose proof fails is not published.
+		_, _ = appUnitSystemctl(systemctlArgs("stop", name)...)
+		resp.Sandbox.Stopped = true
+		resp.Error = "the application started, but its sandbox could not be proved (" + verdict.result.Reason + ": " +
+			verdict.result.Detail + "), so it was stopped and not published"
+	}
 	return nil
 }
 
@@ -379,7 +454,15 @@ func (a *Agent) InspectAppUnit(req *AppApplyRequest, resp *transport.InspectSite
 		resp.Error = err.Error()
 		return nil
 	}
-	resp.File, resp.Diff, resp.DiffTruncated = services.InspectManagedSiteFile(appUnitFile(req, dir))
+	file := appUnitFile(req, dir)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	// The difference is from the text ApplyAppUnit would write now: the
+	// sandbox for a site already in it, the earlier text otherwise.
+	if plan, err := planNodeSite(ctx, req, file.Path); err == nil && plan.sandboxed {
+		file.Body = plan.body
+	}
+	resp.File, resp.Diff, resp.DiffTruncated = services.InspectManagedSiteFile(file)
 	return nil
 }
 
@@ -419,6 +502,11 @@ func (a *Agent) ControlAppUnit(req *AppControlRequest, resp *AppApplyResponse) e
 	unlock := lockAppUnitMutation(req.SiteID)
 	defer unlock()
 	name := appUnitName(req.SiteID)
+	if req.Action != "stop" {
+		// A sandboxed unit stops being restarted after five starts in five
+		// minutes (alpha.127); a start pressed afterwards is a new attempt.
+		_, _ = appUnitSystemctl(systemctlArgs("reset-failed", name)...)
+	}
 	if out, err := exec.Command("systemctl", systemctlArgs(req.Action, name)...).CombinedOutput(); err != nil {
 		resp.Error = fmt.Sprintf("%v: %s", err, strings.TrimSpace(string(out)))
 		return nil
@@ -586,6 +674,7 @@ func (a *Agent) AppUnitStatus(req *AppControlRequest, resp *AppStatusResponse) e
 		resp.CPUUsec = cpu / 1000
 	}
 	resp.Uptime = props["ActiveEnterTimestamp"]
+	resp.SandboxGeneration, resp.UnitRead = nodeSiteUnitGeneration(req.SiteID)
 	return nil
 }
 
