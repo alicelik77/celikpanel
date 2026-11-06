@@ -1441,6 +1441,9 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the monitoring history (migration 64, alpha.126).
+        DROP TABLE metrics_rollups;
+        ALTER TABLE metrics_samples DROP COLUMN cpu_peak;
         -- Reverse the runtime apps (migration 63, alpha.119).
         DROP TABLE runtime_app_operations;
         DROP TABLE runtime_apps;

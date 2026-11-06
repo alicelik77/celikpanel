@@ -88,15 +88,6 @@ export const trSecurityScreens: Record<SecurityScreenKey, string> = {
     'securityAudit.code.tlsKeyMatch': 'Sertifika ile özel anahtar eşleşiyor.',
     'securityAudit.code.tlsKeyMismatch': 'Sertifika ile özel anahtar eşleşmiyor veya anahtar geçersiz.',
 
-    'monitoring.subtitle': 'İşlemci, bellek, disk ve yük — 30 saniyede bir örneklenir, 48 saat saklanır.',
-    'monitoring.cpu': 'İşlemci',
-    'monitoring.memory': 'Bellek',
-    'monitoring.disk': 'Disk (/)',
-    'monitoring.load': 'Yük (1dk)',
-    'monitoring.hours': '{n}sa',
-    'monitoring.empty': 'Henüz örnek yok — veriler birkaç dakika içinde birikmeye başlar.',
-    'monitoring.checking': 'Kaydedilen ölçümler okunuyor…',
-    'monitoring.unknown': 'Kaydedilen ölçümler sunucudan okunamadı; bu yüzden grafik gösterilmiyor. Bu, hiçbir şey kaydedilmediği anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
 
     'f2b.tab.jails': 'Hapishaneler',
     'f2b.tab.banned': 'Banlı IP\'ler',

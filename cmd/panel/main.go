@@ -1583,6 +1583,8 @@ func main() {
 	// System Stats (dashboard metrics: CPU, RAM, disk, uptime, load)
 	http.HandleFunc("/api/v1/system/stats", panel.handleSystemStats)
 	http.HandleFunc("/api/v1/metrics/history", panel.handleMetricsHistory)
+	// alpha.126: "Problems now" (Monitoring and Dashboard), a read only.
+	http.HandleFunc("/api/v1/metrics/problems", panel.handleMonitoringProblems)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()

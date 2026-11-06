@@ -34,6 +34,8 @@ const screenFiles = [
   // My account, whose two-factor panel was a Settings section until
   // v0.1.0-alpha.98 (D-037).
   'AccountPage',
+  // alpha.126: "Problems now" on Monitoring and the Dashboard.
+  'ProblemsNow',
 ];
 const icons = new Set(['AlertTriangle', 'XCircle']);
 // Children of the screens under test that are not under test themselves.
@@ -52,6 +54,9 @@ const stubbedComponents = [
   'AccountRightsPanel', 'NewAccountRightsSection', 'BuiltinPlanRow', 'OfferedItemsTab', 'PlanEditorGate', 'ResellerPlansTab', 'AdminRightsNotices',
   // alpha.120: the security emergency on the component pages reads its own address.
   'SecurityEmergencySection',
+  // alpha.126: Monitoring's "Problems now" reads its own address
+  // (tests/problems-now-mounted.test.mjs).
+  'ProblemsNow',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -234,6 +239,7 @@ const healthy = {
   '/api/v1/domains/1/usage': json({ disk_usage: 1024, bandwidth: 2048 }),
   '/api/v1/ssl/providers': json({ providers: [{ id: 'letsencrypt', name: 'Let’s Encrypt', note: '', needs_eab: false }] }),
   '/api/v1/metrics/history': json({ samples: [1, 2, 3].map((n) => ({ ts: `2026-10-09T00:0${n}:00Z`, cpu: 10 * n, mem_used: n, mem_total: 8, disk_used: n, disk_total: 80, load1: n / 10 })) }),
+  '/api/v1/metrics/problems': json({ checked_at: '2026-10-09T00:04:00Z', problems: [], unknown: [] }),
   '/api/v1/managed-services': json({ services: [{ id: 'redis', name: 'Redis', kind: 'service', is_installed: true, status: 'active (running)', unit: 'redis-server', versions: [], ports: ['6379/tcp'], config_files: [{ path: '/etc/redis/redis.conf', is_managed: false }] }] }),
   '/api/v1/service/logs': json({ lines: ['Ready to accept connections'] }),
   '/api/v1/panel/license': json({ state: 'active', can_provision: true }),
@@ -2366,5 +2372,85 @@ test('Databases with no engine: an administrator is sent to Components; anyone e
     } finally {
       await cleanup();
     }
+  }
+});
+
+// alpha.126: "Problems now" (Monitoring stage 1, D-024). Each problem says
+// what is wrong and offers its one next action; Start sends one request and
+// the list reads again; what could not be checked is said, never drawn as
+// "no problem"; a list that cannot be read is not "no problem" either; the
+// Dashboard's quiet copy shows nothing unless there is a problem to act on.
+const ProblemsNowList = await load('ProblemsNow');
+const stopped = {
+  key: 'service:nginx', kind: 'service_stopped', severity: 'critical', actor: 'administrator',
+  subject: 'nginx', name: 'Nginx', unit: 'nginx', value: 0, observed_at: '2026-10-09T00:03:00Z',
+  action: { kind: 'start_service', to: '/components/nginx' },
+};
+const diskFull = {
+  key: 'disk:/', kind: 'disk_full', severity: 'warning', actor: 'server_owner', subject: '/', value: 88,
+  action: { kind: 'open', to: '/domains' },
+};
+
+test('Problems now: a stopped service is started with one request and the list reads again', async () => {
+  let polls = 0;
+  serve({
+    '/api/v1/metrics/problems': () => Response.json({ checked_at: '', problems: polls++ === 0 ? [stopped, diskFull] : [diskFull], unknown: [] }),
+  }, 'admin', { '/api/v1/service/action': () => Response.json({ success: true }) });
+  try {
+    await mount(ProblemsNowList);
+    assert.ok(has('pnow.service_stopped.title') && has('pnow.service_stopped.body') && has('pnow.disk_full.body'));
+    const [start] = buttons('pnow.service_stopped.action');
+    assert.ok(start, 'no Start beside the stopped service');
+    await press(start);
+    const posts = calls.filter((call) => call.method === 'POST');
+    assert.equal(posts.length, 1);
+    assert.deepEqual(JSON.parse(posts[0].body), { name: 'nginx', action: 'start' });
+    assert.equal(reads('/api/v1/metrics/problems'), 2, 'the list did not read again after Start');
+    assert.ok(!has('pnow.service_stopped.title'), 'the started service stayed listed');
+    assert.ok(has('pnow.disk_full.title'));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Problems now: unknown is never "no problem", and the quiet copy shows only problems', async () => {
+  serve({ '/api/v1/metrics/problems': json({ checked_at: '', problems: [], unknown: [{ source: 'mail_queue', reason: 'checking' }] }) });
+  try {
+    await mount(ProblemsNowList);
+    assert.ok(has('pnow.notChecked') && !has('pnow.none'));
+  } finally {
+    await cleanup();
+  }
+  for (const [name, answer] of Object.entries(failures).filter(([name]) => name !== 'still on its way')) {
+    serve({ '/api/v1/metrics/problems': answer });
+    try {
+      await mount(ProblemsNowList);
+      assert.ok(has('pnow.failed') && !has('pnow.none'), name);
+    } finally {
+      await cleanup();
+    }
+  }
+  serve({ '/api/v1/metrics/problems': json({ checked_at: '', problems: [], unknown: [] }) });
+  try {
+    await mount(ProblemsNowList);
+    assert.ok(has('pnow.none'));
+  } finally {
+    await cleanup();
+  }
+  for (const body of [{ problems: [], unknown: [] }, { problems: [stopped], unknown: [{ source: 'mail_queue', reason: 'checking' }] }]) {
+    serve({ '/api/v1/metrics/problems': json({ checked_at: '', ...body }) });
+    try {
+      await mount(ProblemsNowList, { quiet: true, omit: ['service_stopped'] });
+      assert.equal(tree.toJSON(), null, 'the Dashboard showed a line with nothing to act on');
+    } finally {
+      await cleanup();
+    }
+  }
+  serve({ '/api/v1/metrics/problems': json({ checked_at: '', problems: [stopped, diskFull], unknown: [] }) });
+  try {
+    await mount(ProblemsNowList, { quiet: true, omit: ['service_stopped'] });
+    assert.ok(has('pnow.disk_full.title') && !has('pnow.service_stopped.title'));
+  } finally {
+    await cleanup();
   }
 });
