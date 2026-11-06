@@ -23,7 +23,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import type { CurrentUser } from './lib/api';
 import { navItems, canAccessPath, componentsAddress, settingsRedirect, type NavAccessContext } from './nav';
 import { Layout } from './components/Layout';
-import { ComponentOperationProvider } from './components/ComponentOperation';
+import { ComponentOperationProvider, useOperationNoteOpener } from './components/ComponentOperation';
 import { useI18n } from './i18n';
 import { Spinner } from './components/ui';
 import { sendIdentified } from './lib/requestIdentity';
@@ -389,6 +389,8 @@ function SettingsRoute() {
 }
 
 function AppRoutes() {
+  // alpha.127: an install note's link (a PHP tool's own page) opens in place.
+  useOperationNoteOpener(useNavigate());
   return (
     <Routes>
         <Route path="/setup" element={<ServerSetup />} />

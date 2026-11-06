@@ -139,6 +139,29 @@ type fileAccessView struct {
 	// StateError says why State is missing: agent_unavailable or
 	// agent_upgrade_required (unknown, not "no access").
 	StateError string `json:"state_error,omitempty"`
+	// Owner (alpha.127) is the subscription's account, named only to an
+	// administrator or reseller who manages it, so a plan or suspension
+	// notice can open that account's rights instead of "ask your provider".
+	// Abonelik sahibi; yalnız onu yöneten yöneticiye ya da bayiye söylenir.
+	Owner string `json:"owner,omitempty"`
+}
+
+// fileAccessManagedOwner names the subscription's account when the caller is
+// an administrator or reseller other than that account; "" otherwise. The
+// domain route has already proved the caller may see this subscription.
+func (p *Panel) fileAccessManagedOwner(r *http.Request, subscriptionID int) string {
+	caller := currentCaller(r)
+	if caller == nil || !(caller.hasAccountRole(roleAdmin) || caller.hasAccountRole(roleReseller)) {
+		return ""
+	}
+	var ownerID int
+	var username string
+	if err := p.db.GetDB().QueryRowContext(r.Context(),
+		`SELECT u.id, u.username FROM subscriptions s JOIN users u ON u.id = s.owner_id WHERE s.id = ?`, subscriptionID).
+		Scan(&ownerID, &username); err != nil || ownerID == caller.ID {
+		return ""
+	}
+	return username
 }
 
 func fileAccessConnectionFor(site fileAccessSite, state *transport.FileAccessStateResponse) fileAccessConnection {
@@ -204,6 +227,7 @@ func (p *Panel) handleGetFileAccess(w http.ResponseWriter, r *http.Request, site
 	}
 	view := fileAccessView{
 		Domain: site.Domain, Available: site.hasAccount(), SubscriptionStatus: site.SubscriptionStatus, Rights: rights,
+		Owner: p.fileAccessManagedOwner(r, site.SubscriptionID),
 	}
 	if view.Available {
 		if err := p.requireFileAccessAgent(r.Context()); err != nil {

@@ -101,11 +101,14 @@ setup's Repair). Where CelikPanel has no install path of its own (the
 operating system's automatic updates, logrotate), the administrator gets the
 command whole with a Copy button (`CopyCommand`), never a command inside a
 sentence. The administrator's sentences live in the screen catalogue part
-`adminNext`. Refusals for a hold carry the Catalog management link too. Not yet
-covered: the PHP tool notes of
-a finished install (toasts on Components, without a link), the WordPress
-tools' missing PHP version, the reseller pool notices and the plan notices an
-administrator sees on a customer's Access tab. The audit is not complete.
+`adminNext`. Refusals for a hold carry the Catalog management link too. A PHP tool's
+note after an install opens the tool's page (the root passes the router's
+navigate to the operation provider); WordPress tools without the site's PHP
+command line link to PHP-FPM; a reseller's traffic pool notice opens the
+reseller's rights for the administrator; on a customer's Access tab, the
+administrator or reseller who manages the subscription opens that account's
+rights or its resume window (`/users?rights=` or `?resume=`), while the
+account itself keeps the provider wording. The audit is not complete.
 
 ## Truth and operation identity
 

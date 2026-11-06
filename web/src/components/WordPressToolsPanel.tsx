@@ -7,6 +7,7 @@ import { Button, ErrorBanner, RemoteGate } from './ui';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { useRemote, useRefreshEvery } from '../lib/remote';
 import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
+import { AdminInstallLink } from './AdminInstallLink';
 import { confirmAction, type OperationReport } from '../lib/confirmAction';
 
 // WordPress tools of one site (alpha.118, docs/WORDPRESS-TOOLS.md): status,
@@ -175,7 +176,12 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                     const s = value.status;
                     if (value.project_type !== 'php') return <p className="text-sm text-fg-muted">{t('wpt.notPHP')}</p>;
                     if (s.code === 'WORDPRESS_PHP_CLI_MISSING') {
-                        return <SiteToolGuidance tone="prerequisite" reason={t('wpt.phpMissing')} who="administrator" next={t('wpt.phpMissingNext')} resumes={t('wpt.phpMissingResumes')} />;
+                        // alpha.127: the administrator opens PHP-FPM's page, where the site's version is installed again.
+                        return (
+                            <SiteToolGuidance tone="prerequisite" reason={t('wpt.phpMissing')} who="administrator" next={t('wpt.phpMissingNext')} resumes={t('wpt.phpMissingResumes')}>
+                                <AdminInstallLink to="/components/php-fpm" label={t('adminNext.openPHPFPM')} />
+                            </SiteToolGuidance>
+                        );
                     }
                     if (!s.detected) return <SiteToolGuidance tone="prerequisite" reason={t('wpt.notDetected')} who="you" next={t('wpt.notDetectedNext')} />;
                     const latest = value.operations[0];

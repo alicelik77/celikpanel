@@ -104,9 +104,13 @@ kurulum yolu olmayan yerlerde (işletim sisteminin otomatik güncellemeleri,
 logrotate) yönetici komutu bütün hâlde ve Kopyala düğmesiyle alır
 (`CopyCommand`); komut cümlenin içinde verilmez. Yöneticinin cümleleri `adminNext`
 ekran katalogu parçasındadır. Bekletme retleri de Katalog yönetimi bağlantısını
-taşır. Henüz kapsanmayan: biten kurulumun PHP aracı notları (Bileşenler'de bağlantısız bildirimler), WordPress
-araçlarının eksik PHP sürümü, bayi havuzu bildirimleri ve yöneticinin bir
-müşterinin Erişim sekmesinde gördüğü plan notları. Denetim tam değildir.
+taşır. Kurulumdan sonraki PHP aracı notu aracın sayfasını açar (kök, router'ın
+navigate'ini işlem sağlayıcısına verir); sitenin PHP komut satırı eksik olan
+WordPress araçları PHP-FPM'e bağlanır; bayinin trafik havuzu bildirimi
+yöneticiye bayinin haklarını açar; bir müşterinin Erişim sekmesinde aboneliği
+yöneten yönetici ya da bayi o hesabın haklarını ya da sürdürme penceresini açar
+(`/users?rights=` ya da `?resume=`), hesabın kendisi sağlayıcı cümlesini okur.
+Denetim tam değildir.
 
 ## Doğruluk ve işlem kimliği
 

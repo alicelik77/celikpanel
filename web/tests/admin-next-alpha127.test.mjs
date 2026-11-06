@@ -151,3 +151,44 @@ test('a refusal for a hold sends the administrator to Catalog management', () =>
   assert.match(read('components/DomainRuntimeApps.tsx'), /error\.code === 'RUNTIME_APP' && error\.reason === 'held' && <AdminInstallLink to=\{CATALOG\} label=\{t\('adminNext\.openCatalog'\)\} \/>/);
   assert.match(read('components/DomainServiceApps.tsx'), /failure\?\.code === 'SERVICE_APP' && failure\.reason === 'held' && <AdminInstallLink to="\/addons\?view=catalog" label=\{t\('adminNext\.openCatalog'\)\} \/>/);
 });
+
+test('an install note’s link opens the tool’s page in place through the root’s navigate', () => {
+  const provider = read('components/ComponentOperation.tsx');
+  assert.match(provider, /export function useOperationNoteOpener\(navigate: \(to: string\) => unknown\): void/);
+  assert.match(provider, /const open = noteOpener;/);
+  const app = read('App.tsx');
+  // The routes register the router's navigate; the authentication gate stays without navigation.
+  const routes = app.slice(app.indexOf('function AppRoutes()'), app.indexOf('function AuthGate()'));
+  assert.match(routes, /useOperationNoteOpener\(useNavigate\(\)\);/);
+  const notes = read('lib/componentOperationNotes.ts');
+  assert.match(notes, /webmail: '\/components\/roundcube', phpmyadmin: '\/components\/phpmyadmin', phppgadmin: '\/components\/phppgadmin'/);
+  assert.equal((notes.match(/link: toolLink\(t, /g) ?? []).length, 3, 'proof, version choice and other tools’ problems each carry the link');
+});
+
+test('WordPress tools without the site’s PHP command line link the administrator to PHP-FPM', () => {
+  assert.match(read('components/WordPressToolsPanel.tsx'), /reason=\{t\('wpt\.phpMissing'\)\}[\s\S]{0,200}<AdminInstallLink to="\/components\/php-fpm" label=\{t\('adminNext\.openPHPFPM'\)\} \/>/);
+});
+
+test('a reseller pool notice: the administrator raises it from the reseller’s rights; the reseller is told the administrator does', () => {
+  const usage = read('components/UsageNotices.tsx');
+  assert.match(usage, /t\(notice\.audience === 'administrator' \? 'adminNext\.pool80' : 'usage\.notice\.pool80', vars\)/);
+  assert.match(usage, /t\(notice\.audience === 'administrator' \? 'adminNext\.pool100' : 'usage\.notice\.pool100', vars\)/);
+  assert.match(usage, /onOpenAccount && notice\.audience === 'administrator' && notice\.kind\.startsWith\('pool_'\)/);
+  const rights = read('components/RightsNotices.tsx');
+  assert.match(rights, /forAdministrator && onSetRights && \([\s\S]{0,200}onSetRights\(notice\.user_id\)/);
+  assert.match(rights, /<UsageNotices onOpenAccount=\{onOpenAccount\} \/>/);
+  for (const key of ['adminNext.pool80', 'adminNext.pool100']) {
+    assert.match(en[key], /\{reseller\}’s rights/, key);
+    assert.doesNotMatch(en[key], /administrator can/, key);
+  }
+  assert.match(enScreens['usage.notice.pool80'], /administrator can raise the pool/);
+});
+
+test('the Users page opens an account’s rights or resume window from a link, once', () => {
+  const users = read('components/UsersPage.tsx');
+  assert.match(users, /const rights = params\.get\('rights'\);/);
+  assert.match(users, /if \(found && rights !== null\) setPanel\(\{ user: found \}\);\s*else if \(found\) setSuspension\(\{ kind: 'user', id: found\.id, name: found\.username \}\);/);
+  assert.match(users, /accountLinkRef\.current = true;/);
+  assert.match(users, /params\.delete\('rights'\);\s*params\.delete\('resume'\);/);
+  assert.match(users, /\{ replace: true \}/);
+});

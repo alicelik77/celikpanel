@@ -269,8 +269,8 @@ const screenPartBudgets = {
   // part, so that "mailDatabases", "vendorLanes" and "fileAccess", which had
   // no headroom, are not squeezed (the administrator's sentences of
   // "fileAccess" and "mailDatabases" moved here too); set with at least 25%
-  // headroom from its Turkish file: 4.96 / 1.78 KiB.
-  adminNext: kib(7, 2.5),
+  // headroom from its Turkish file: 6.06 / 2.11 KiB.
+  adminNext: kib(8.25, 3),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

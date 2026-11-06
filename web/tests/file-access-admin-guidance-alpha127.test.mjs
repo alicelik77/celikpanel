@@ -143,3 +143,55 @@ test('a customer is told the provider acts and is offered no administrator actio
     await cleanup();
   }
 });
+
+// alpha.127, last round: a plan or suspension notice opens the subscription
+// account's rights or its resume window for whoever manages it; the account
+// itself keeps the provider wording.
+async function mountWith(body, isAdmin) {
+  serve();
+  globalThis.fetch = (url, options = {}) => {
+    calls.push({ method: options.method || 'GET', url });
+    return Promise.resolve(Response.json(body));
+  };
+  await act(async () => {
+    tree = Renderer.create(React.createElement(DomainFileAccess, { domainId: 3, domainName: 'example.com', isAdmin }));
+    await settled();
+    await settled();
+  });
+}
+
+test('whoever manages the subscription opens its rights or resumes it; the account itself is told its provider acts', async () => {
+  const managed = { ...view([]), owner: 'aliuser', subscription_status: 'suspended', rights: { file_access: false, ssh: false } };
+  await mountWith(managed, true);
+  try {
+    assert.ok(text().includes('adminNext.access.notInPlan'));
+    assert.ok(text().includes('adminNext.access.suspended'));
+    assert.ok(!text().includes('fileAccess.block.notInPlan') && !text().includes('fileAccess.block.suspended'));
+    const links = tree.root.findAll((node) => node.type === 'button' && node.props['data-manager-link']);
+    assert.deepEqual(links.map((node) => node.props['data-manager-link']), ['/users?rights=aliuser', '/users?resume=aliuser']);
+    await act(async () => links[1].props.onClick());
+    assert.deepEqual(globalThis.accessNavigated, ['/users?resume=aliuser']);
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
+  } finally {
+    await cleanup();
+  }
+  await mountWith({ ...managed, owner: '' }, false);
+  try {
+    assert.ok(text().includes('fileAccess.block.notInPlan') && text().includes('fileAccess.block.suspended'));
+    assert.equal(tree.root.findAll((node) => node.type === 'button' && node.props['data-manager-link']).length, 0);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('a command line left out of the plan opens the account’s rights for whoever manages it', async () => {
+  await mountWith({ ...view([]), owner: 'aliuser', rights: { file_access: true, ssh: false } }, true);
+  try {
+    assert.ok(text().includes('adminNext.access.sshNotInPlan'));
+    const link = tree.root.findAll((node) => node.type === 'button' && node.props['data-manager-link'] === 'ssh')[0];
+    await act(async () => link.props.onClick());
+    assert.deepEqual(globalThis.accessNavigated, ['/users?rights=aliuser']);
+  } finally {
+    await cleanup();
+  }
+});

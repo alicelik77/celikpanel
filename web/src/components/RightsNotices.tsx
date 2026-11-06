@@ -70,7 +70,7 @@ function useAcknowledge() {
  * Unlimited with the update, with a way to set each one's rights, and
  * resellers whose pool is nearly or fully used.
  */
-export function AdminRightsNotices({ onSetRights }: { onSetRights: (userId: number) => void }) {
+export function AdminRightsNotices({ onSetRights, onOpenAccount }: { onSetRights: (userId: number) => void; onOpenAccount?: (username: string) => void }) {
     const { t } = useI18n();
     const read = useRemote(RIGHTS_NOTICES_URL, decodeNotices);
     const { busy, acknowledge } = useAcknowledge();
@@ -82,7 +82,7 @@ export function AdminRightsNotices({ onSetRights }: { onSetRights: (userId: numb
         <div className="mb-4 grid gap-3">
             {/* alpha.118 (D-044): whether measuring works, and the traffic and disk notices. */}
             <UsageStatusCard />
-            <UsageNotices />
+            <UsageNotices onOpenAccount={onOpenAccount} />
             {traffic.length > 0 && (
                 <section className="rounded-lg border border-border bg-surface p-4 text-sm leading-6 text-fg" role="status" data-rights-notice="traffic-measured">
                     <h3 className="text-base font-semibold">{t('usage.measured.title')}</h3>
@@ -113,14 +113,16 @@ export function AdminRightsNotices({ onSetRights }: { onSetRights: (userId: numb
                     )}
                 </section>
             )}
-            {pools.length > 0 && <PoolNoticeList notices={pools} forAdministrator busy={busy} acknowledge={acknowledge} />}
+            {pools.length > 0 && <PoolNoticeList notices={pools} forAdministrator busy={busy} acknowledge={acknowledge} onSetRights={onSetRights} />}
         </div>
     );
 }
 
-function PoolNoticeList({ notices, forAdministrator, busy, acknowledge }: {
+function PoolNoticeList({ notices, forAdministrator, busy, acknowledge, onSetRights }: {
     notices: RightsNotice[];
     forAdministrator: boolean;
+    /** alpha.127: the administrator opens the reseller's rights in place. */
+    onSetRights?: (userId: number) => void;
     busy: number | null;
     acknowledge: (ids: number[]) => Promise<void>;
 }) {
@@ -135,6 +137,11 @@ function PoolNoticeList({ notices, forAdministrator, busy, acknowledge }: {
                 {notices.map((notice) => (
                     <li key={notice.id} className="flex flex-wrap items-center gap-2 py-2" data-pool-notice={notice.kind}>
                         <span className="mr-auto max-w-[75ch]">{poolNoticeText(notice, t, forAdministrator)}</span>
+                        {forAdministrator && onSetRights && (
+                            <Button type="button" variant="primary" onClick={() => onSetRights(notice.user_id)} className="max-sm:min-h-11" data-open-rights={notice.user_id}>
+                                {t('adminNext.openRights', { name: notice.username })}
+                            </Button>
+                        )}
                         <Button type="button" icon={Check} onClick={() => void acknowledge([notice.id])} disabled={busy !== null} className="max-sm:min-h-11">{t('rights.notice.seen')}</Button>
                     </li>
                 ))}

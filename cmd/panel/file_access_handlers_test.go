@@ -275,3 +275,34 @@ func TestFileAccessRoutesAreOwnerOnly(t *testing.T) {
 		}
 	}
 }
+
+// alpha.127: a plan or suspension notice opens the subscription account's
+// rights for the administrator or reseller who manages it; the account
+// itself, and anyone else, is never told an owner.
+func TestFileAccessNamesTheOwnerOnlyToWhoManagesIt(t *testing.T) {
+	agent := &fileAccessPanelAgent{capabilities: []string{transport.AgentCapabilityFileAccessV1}}
+	panel := newFileAccessPanel(t, agent)
+	if _, err := panel.db.GetDB().Exec(`
+		INSERT INTO users (id, username, password_hash, email, role) VALUES (7120, 'files-customer', 'x', 'c@example.test', 'customer');
+		UPDATE subscriptions SET owner_id = 7120 WHERE id = 7102;`); err != nil {
+		t.Fatal(err)
+	}
+	owner := func(caller *Caller) string {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodGet, "/api/v1/domains/x/access", nil)
+		request = request.WithContext(context.WithValue(request.Context(), callerKey, caller))
+		response := httptest.NewRecorder()
+		panel.handleDomainFileAccess(response, request, 7103, false)
+		var view fileAccessView
+		if err := json.Unmarshal(response.Body.Bytes(), &view); err != nil {
+			t.Fatal(err)
+		}
+		return view.Owner
+	}
+	if got := owner(&Caller{ID: 7101, Role: roleAdmin, AccountType: core.AccountTypeAccount}); got != "files-customer" {
+		t.Fatalf("administrator: owner = %q", got)
+	}
+	if got := owner(&Caller{ID: 7120, Role: roleCustomer, AccountType: core.AccountTypeAccount}); got != "" {
+		t.Fatalf("the account itself: owner = %q", got)
+	}
+}

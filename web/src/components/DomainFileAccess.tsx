@@ -42,6 +42,8 @@ interface AccessView {
         passiveMax: number;
     };
     stateError: string;
+    /** alpha.127: the subscription's account, named only to whoever manages it. */
+    owner: string;
     account: null | {
         enabled: boolean;
         ssh: boolean;
@@ -97,6 +99,7 @@ function decodeAccess(raw: unknown): AccessView {
             passiveMax: num(connection.passive_max),
         },
         stateError: str(body.state_error),
+        owner: str(body.owner),
         account: account ? {
             enabled: account.enabled === true,
             ssh: account.ssh === true,
@@ -182,6 +185,7 @@ function Notice({ tone, children }: { tone: 'warning' | 'danger' | 'info'; child
 
 export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: number; domainName: string; isAdmin?: boolean }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const url = `/api/v1/domains/${domainId}/access`;
     const access = useRemote(url, decodeAccess);
     const answer = useLostAnswer(() => access.retry());
@@ -397,7 +401,8 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                                             <span>
                                                 <span className="block text-sm font-medium text-fg">{t('fileAccess.ssh')}</span>
                                                 <span className="block text-xs text-fg-subtle">
-                                                    {t(view.rights.ssh ? 'fileAccess.sshHint' : 'fileAccess.sshNotInPlan')}
+                                                    {view.rights.ssh ? t('fileAccess.sshHint') : view.owner ? t('adminNext.access.sshNotInPlan', { name: view.owner }) : t('fileAccess.sshNotInPlan')}
+                                                    {!view.rights.ssh && view.rights.fileAccess && view.owner && <>{' '}<button type="button" onClick={() => navigate(`/users?rights=${encodeURIComponent(view.owner)}`)} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-manager-link="ssh">{t('adminNext.openRights', { name: view.owner })}</button></>}
                                                 </span>
                                             </span>
                                         </label>}
@@ -516,10 +521,20 @@ function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean 
     // install (alpha.122): the administrator's link to that component's own
     // install dialog in Components; nothing starts until it is confirmed there.
     // Yöneticinin bileşenin kurulum penceresine bağlantısı.
-    const notes: Array<{ tone: 'warning' | 'danger' | 'info'; key: TranslationKey; vars?: Record<string, string | number>; install?: 'vsftpd' | 'fail2ban' }> = [];
+    const notes: Array<{ tone: 'warning' | 'danger' | 'info'; key: TranslationKey; vars?: Record<string, string | number>; install?: 'vsftpd' | 'fail2ban'; link?: { to: string; label: TranslationKey } }> = [];
+    // alpha.127: whoever manages the subscription (administrator or reseller)
+    // opens that account's rights, or resumes it; the account itself is told
+    // that its provider acts.
+    // Aboneliği yöneten, hesabın haklarını açar ya da sürdürür.
+    const owner = view.owner;
+    const rights = owner ? { to: `/users?rights=${encodeURIComponent(owner)}`, label: 'adminNext.openRights' as TranslationKey } : undefined;
     if (!view.available) notes.push({ tone: 'info', key: 'fileAccess.block.noSite' });
-    else if (!view.rights.fileAccess) notes.push({ tone: 'warning', key: 'fileAccess.block.notInPlan' });
-    if (view.available && view.subscriptionStatus !== 'active') notes.push({ tone: 'danger', key: 'fileAccess.block.suspended' });
+    else if (!view.rights.fileAccess) notes.push(owner ? { tone: 'warning', key: 'adminNext.access.notInPlan', vars: { name: owner }, link: rights } : { tone: 'warning', key: 'fileAccess.block.notInPlan' });
+    if (view.available && view.subscriptionStatus !== 'active') {
+        notes.push(owner
+            ? { tone: 'danger', key: 'adminNext.access.suspended', vars: { name: owner }, link: { to: `/users?resume=${encodeURIComponent(owner)}`, label: 'adminNext.openAccount' } }
+            : { tone: 'danger', key: 'fileAccess.block.suspended' });
+    }
     if (view.stateError === 'agent_upgrade_required') notes.push({ tone: 'warning', key: 'fileAccess.block.agentUpgrade' });
     if (view.stateError === 'agent_unavailable') notes.push({ tone: 'warning', key: 'fileAccess.block.agentUnavailable' });
     const account = view.account;
@@ -543,6 +558,11 @@ function AccessBlockers({ view, isAdmin }: { view: AccessView; isAdmin: boolean 
             {notes.map((note) => (
                 <Notice key={note.key} tone={note.tone}>
                     {t(note.key, note.vars)}
+                    {note.link && (
+                        <>{' '}<button type="button" onClick={() => navigate(note.link!.to)} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-manager-link={note.link.to}>
+                            {t(note.link.label, { name: owner })}
+                        </button></>
+                    )}
                     {note.install && (
                         <>{' '}<button type="button" onClick={() => navigate(`/components?component=${note.install}&install=`)} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-install-link={note.install}>
                             {t('services.installTitle', { name: t(`services.component.name.${note.install}`) })}
