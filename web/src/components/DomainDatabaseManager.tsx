@@ -9,6 +9,7 @@ import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -215,7 +216,7 @@ export function DomainDatabaseManager({
 
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
         if (readOnly || list.remote.state !== 'known' || answer.holding) return;
-        if (!confirm(t('ddb.confirmDelete', { name: db.name }))) {
+        if (!(await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger' }))) {
             return;
         }
 

@@ -4,12 +4,13 @@ import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network }
 import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
 import { KeptSiteRecords } from './KeptSiteRecords';
 import { showToast } from './Toast';
+import { confirmAction } from '../lib/confirmAction';
 import { useI18n } from '../i18n';
-import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, StatusDot, UsageBar } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, Spinner, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
-import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
+import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readSavedDomainDeletion } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
@@ -88,7 +89,18 @@ interface PendingDeletion {
     message: string | null;
     // CelikPanel takes the next step by itself: the page reads again.
     automatic?: boolean;
+    // CelikPanel carries on by itself: no second delete is sent for it.
+    blocksRetry?: boolean;
+    // The whole sentence is "nothing to do": said in one line.
+    quiet?: boolean;
 }
+
+// What a pending reason means for the row and the banner.
+const pendingFlags = (reason: string) => ({
+    automatic: domainDeletionReasonAutomatic(reason),
+    blocksRetry: domainDeletionBlocksRetry(reason),
+    quiet: domainDeletionQuiet(reason),
+});
 
 const HIDDEN_INVALID_ACCESS = 'One or more domains were hidden because their access information was invalid. / Bir veya daha fazla alan adı, erişim bilgisi geçersiz olduğu için gizlendi.';
 
@@ -269,7 +281,7 @@ export function Domains() {
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail),
-                automatic: domainDeletionReasonAutomatic(saved.saved.reason),
+                ...pendingFlags(saved.saved.reason),
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
@@ -299,25 +311,68 @@ export function Domains() {
         return () => window.clearTimeout(timer);
     }, [autoRecheck, listedAt]);
 
+    // A domain is "being deleted" while its delete request is on its way, and
+    // while the server says CelikPanel carries the deletion on by itself. Its
+    // row then offers no delete, no settings and no selection, and a re-press
+    // can never send a second delete (owner report 6 Nov 2026).
+    // Silme istegi yoldayken ve sunucu silmeyi CelikPanel kendisi surdururken
+    // alan adi "siliniyor"dur; ikinci silme gonderilmez.
+    const [deleting, setDeleting] = useState<number[]>([]);
+    const inFlight = useRef(new Set<number>());
+    const beingDeleted = (id: number) =>
+        deleting.includes(id) || pendingDeletions.some((item) => item.id === id && item.blocksRetry);
+
+    // The dialogue names the domain and what goes with it, and stays open with
+    // its button busy until the server has answered, so nothing else on the
+    // page can be pressed meanwhile.
+    // Pencere alan adini ve onunla gideni soyler; sunucu yanitlayana dek
+    // dugmesi mesgul acik kalir.
     const handleDelete = async (id: number, name: string) => {
-        if (!listCurrent) return;
-        if (!confirm(t('domains.confirmDelete', { name }))) return;
-        await deleteDomain(id, name);
+        if (!listCurrent || beingDeleted(id)) return;
+        await confirmAction({
+            title: t('domains.deleteTitle', { name }),
+            message: t('domains.deleteWhat'),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+            action: () => deleteDomain(id, name),
+        });
     };
 
     // One confirmation for a bulk delete, naming the count and the domains;
     // then each is deleted in turn, each with its own outcome.
     // Toplu silmede tek onay: sayi ve adlar; sonra her biri sirayla silinir.
-    const handleBulkDelete = async (rows: Domain[]) => {
+    const handleBulkDelete = async (picked: Domain[]) => {
+        const rows = picked.filter((row) => !beingDeleted(row.id));
         if (!listCurrent || rows.length === 0) return;
-        const question = rows.length === 1
-            ? t('domains.confirmDelete', { name: rows[0].domain_name })
-            : t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') });
-        if (!confirm(question)) return;
-        for (const row of rows) await deleteDomain(row.id, row.domain_name);
+        if (rows.length === 1) {
+            await handleDelete(rows[0].id, rows[0].domain_name);
+            return;
+        }
+        await confirmAction({
+            title: t('domains.bulkDeleteTitle', { n: rows.length }),
+            message: t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') }),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+            action: async () => {
+                for (const row of rows) await deleteDomain(row.id, row.domain_name);
+            },
+        });
     };
 
     const deleteDomain = async (id: number, name: string) => {
+        // Never two delete requests for one domain at a time.
+        if (inFlight.current.has(id)) return;
+        inFlight.current.add(id);
+        setDeleting((current) => [...current, id]);
+        try {
+            await sendDelete(id, name);
+        } finally {
+            inFlight.current.delete(id);
+            setDeleting((current) => current.filter((item) => item !== id));
+        }
+    };
+
+    const sendDelete = async (id: number, name: string) => {
         try {
             const res = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
             const outcome = await readDomainDeletionOutcome(res);
@@ -326,9 +381,10 @@ export function Domains() {
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
-                    { id, name, message, automatic: domainDeletionReasonAutomatic(outcome.reason) },
+                    { id, name, message, ...pendingFlags(outcome.reason) },
                 ]);
-                showToast('warning', message);
+                // No toast: the banner above the list says the same, and stays.
+                setSelected((s) => s.filter((x) => x !== id));
                 changed();
                 return;
             }
@@ -419,6 +475,12 @@ export function Domains() {
                     busy={list.reading}
                 />
             ) : (
+                pending.quiet ? (
+                <p key={pending.id} role="status" className="mb-4 flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 p-3 text-sm text-fg" data-domain-being-deleted={pending.name}>
+                    <Spinner size="xs" />
+                    {t('domains.beingDeletedLine', { name: pending.name })}
+                </p>
+            ) : (
                 <div key={pending.id} role="status" className="mb-4 rounded-lg border border-warning bg-warning/10 p-4 text-sm text-fg">
                     <p className="font-semibold">{t('domains.deletionWaiting', { name: pending.name })}</p>
                     <p className="mt-1">{pending.message}</p>
@@ -426,7 +488,7 @@ export function Domains() {
                         {t('domains.checkDeletionStatus')}
                     </Button>
                 </div>
-            )))}
+            ))))}
 
             <RemoteGate
                 remote={list.remote}
@@ -477,7 +539,7 @@ export function Domains() {
                                 <Button
                                     variant="danger"
                                     icon={Trash2}
-                                    disabled={shown.stale}
+                                    disabled={shown.stale || filtered.every((d) => !selected.includes(d.id) || beingDeleted(d.id))}
                                     onClick={() => void handleBulkDelete(filtered.filter((d) => selected.includes(d.id)))}
                                 >
                                     {t('common.remove')} ({selected.length})
@@ -522,7 +584,7 @@ export function Domains() {
                                             checked={allSelected}
                                             disabled={shown.stale}
                                             onChange={() =>
-                                                setSelected(allSelected ? [] : filtered.map((d) => d.id))
+                                                setSelected(allSelected ? [] : filtered.filter((d) => !beingDeleted(d.id)).map((d) => d.id))
                                             }
                                             className="h-4 w-4 accent-primary"
                                         />
@@ -542,7 +604,7 @@ export function Domains() {
                                             <input
                                                 type="checkbox"
                                                 checked={selected.includes(d.id)}
-                                                disabled={shown.stale}
+                                                disabled={shown.stale || beingDeleted(d.id)}
                                                 onChange={() =>
                                                     setSelected((s) =>
                                                         s.includes(d.id) ? s.filter((x) => x !== d.id) : [...s, d.id],
@@ -609,10 +671,17 @@ export function Domains() {
                                             {canView(d, 'statistics') ? `${fmtBytes(d.bandwidth)}/mo` : '—'}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="inline-flex items-center gap-1.5 text-fg-muted">
-                                                <StatusDot ok={d.status === 'active'} />
-                                                {d.status === 'active' ? t('domains.status.active') : d.status}
-                                            </span>
+                                            {beingDeleted(d.id) ? (
+                                                <span className="inline-flex items-center gap-1.5 text-fg-muted" data-domain-row-deleting="">
+                                                    <Spinner size="xs" />
+                                                    {t('domains.status.beingDeleted')}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-fg-muted">
+                                                    <StatusDot ok={d.status === 'active'} />
+                                                    {d.status === 'active' ? t('domains.status.active') : d.status}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="row-actions px-4 py-3">
                                             <div className="flex items-center justify-end gap-0.5">
@@ -627,14 +696,15 @@ export function Domains() {
                                                         navigate(`/domains/${encodeURIComponent(d.domain_name)}`)
                                                     }
                                                     title={t('domains.action.manage')}
+                                                    disabled={beingDeleted(d.id)}
                                                 >
                                                     <Settings className="h-4 w-4" />
                                                 </IconAction>
                                                 {!isTeamMember && <IconAction
                                                     onClick={() => handleDelete(d.id, d.domain_name)}
-                                                    title={t('domains.action.delete')}
+                                                    title={beingDeleted(d.id) ? t('domains.status.beingDeleted') : t('domains.action.delete')}
                                                     danger
-                                                    disabled={shown.stale}
+                                                    disabled={shown.stale || beingDeleted(d.id)}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </IconAction>}

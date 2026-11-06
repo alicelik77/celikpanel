@@ -9,6 +9,7 @@ import { invalidate } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, ErrorBanner } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { useComponentConfigFiles } from '../lib/managedServices';
+import { confirmAction } from '../lib/confirmAction';
 
 interface PowerDNSManagementProps {
     onBack: () => void;
@@ -59,7 +60,7 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
     };
 
     const handleRepair = async () => {
-        if (!confirm(t('pdns.repairConfirm'))) return;
+        if (!(await confirmAction({ message: t('pdns.repairConfirm'), tone: 'danger' }))) return;
         setRepairing(true);
         setRepairProblem(null);
         try {

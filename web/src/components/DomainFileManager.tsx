@@ -10,6 +10,7 @@ import { Button, KnownEmpty, RemoteGate, inputClass } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeListIn, useRemote } from '../lib/remote';
 import { saveDownload } from '../lib/download';
+import { confirmAction } from '../lib/confirmAction';
 
 interface FileItem {
     name: string;
@@ -180,10 +181,13 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
 
     const deleteItem = async (file: FileItem) => {
         if (readOnly || !folderKnown) return;
-        if (!confirm(t('files.deleteConfirm', { name: file.name }))) return;
-        if (!(await act(file.path, { action: 'delete' }))) return;
-        showToast('success', t('files.deleted'));
-        loadFiles();
+        await confirmAction({ message: t('files.deleteConfirm', { name: file.name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                if (!(await act(file.path, { action: 'delete' }))) return;
+                showToast('success', t('files.deleted'));
+                loadFiles();
+            },
+        });
     };
 
     // The download is read here first, so a refusal (a file renamed, moved

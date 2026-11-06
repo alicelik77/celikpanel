@@ -3,6 +3,9 @@ import { Save, RefreshCw } from 'lucide-react';
 import { Checking, CouldNotCheck } from './ui';
 import { useI18n } from '../i18n';
 import { readRemote } from '../lib/remote';
+import { apiErrorText, readApiError } from '../lib/apiError';
+import { confirmAction } from '../lib/confirmAction';
+import { showToast } from './Toast';
 
 interface ExtendedPHPConfig {
     // Performance & Security
@@ -76,7 +79,7 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
 
     const handleSave = async () => {
         if (!config) return;
-        if (!confirm(`Apply changes to php.ini for PHP ${version}?`)) return;
+        if (!(await confirmAction({ message: t('php.ini.applyConfirm', { version }) }))) return;
 
         setSaving(true);
         try {
@@ -90,13 +93,13 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
             });
 
             if (res.ok) {
-                alert('Configuration saved successfully');
+                showToast('success', t('php.ini.saved', { version }));
             } else {
-                alert('Failed to save configuration');
+                showToast('error', apiErrorText(await readApiError(res), t, 'php.ini.saveFailed'));
             }
         } catch (err) {
             console.error(err);
-            alert('Failed to save configuration');
+            showToast('error', t('common.resultUnknown'));
         } finally {
             setSaving(false);
         }

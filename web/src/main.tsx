@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import { RootErrorBoundary } from './components/RootErrorBoundary'
 import { ToastContainer } from './components/Toast'
+import { ConfirmHost } from './components/ConfirmHost'
 import { UPDATE_RELOAD_EVENT, UpdateReloadNotice } from './components/UpdateReloadNotice'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { I18nProvider } from './i18n'
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <RootErrorBoundary>
     <ThemeProvider>
       <I18nProvider>
+        <ConfirmHost />
         <ToastContainer />
         <UpdateReloadNotice />
         <App />

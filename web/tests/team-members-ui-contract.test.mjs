@@ -48,8 +48,9 @@ test('team-member access updates always send both scope arrays', () => {
 
 test('password, suspension, and deletion flows preserve their safety contracts', () => {
   assert.match(pageSource, /draft\.password \? \{ password: draft\.password \} : \{\}/);
-  assert.match(pageSource, /window\.confirm\(t\('team\.suspendConfirm'/);
-  assert.match(pageSource, /window\.confirm\(t\('team\.deleteConfirm'/);
+  // The product's own confirmation (6 Nov 2026), never the browser's.
+  assert.match(pageSource, /confirmAction\(\{ message: t\('team\.suspendConfirm'/);
+  assert.match(pageSource, /confirmAction\(\{ message: t\('team\.deleteConfirm'/);
   assert.match(pageSource, /required=\{isNew\}/);
   assert.match(pageSource, /minLength=\{8\}/);
 });

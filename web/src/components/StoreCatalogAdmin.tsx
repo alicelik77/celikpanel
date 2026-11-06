@@ -13,6 +13,7 @@ import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { showToast } from './Toast';
 import { Button, Card, EmptyState, ErrorBanner, Field, inputClass } from './ui';
+import { confirmAction } from '../lib/confirmAction';
 
 type ReleaseState = 'available' | 'coming_soon' | 'retired';
 
@@ -140,17 +141,17 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
         });
     }, [catalog, locale, query]);
 
-    const selectOffering = (id: string) => {
+    const selectOffering = async (id: string) => {
         if (id === selectedID) return;
-        if (dirty && !window.confirm(t('addons.admin.discardConfirm'))) return;
+        if (dirty && !(await confirmAction({ message: t('addons.admin.discardConfirm'), confirmLabel: t('addons.admin.discard'), tone: 'danger' }))) return;
         const offering = catalog?.offerings.find((item) => item.id === id) ?? null;
         setSelectedID(id);
         setDraft(toDraft(offering));
         setError(null);
     };
 
-    const refresh = () => {
-        if (dirty && !window.confirm(t('addons.admin.discardConfirm'))) return;
+    const refresh = async () => {
+        if (dirty && !(await confirmAction({ message: t('addons.admin.discardConfirm'), confirmLabel: t('addons.admin.discard'), tone: 'danger' }))) return;
         void loadCatalog(draft?.id);
     };
 
@@ -160,7 +161,7 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
             const warning = original.active_entitlements > 0
                 ? t('addons.admin.lifecycleConfirmActive', { count: original.active_entitlements })
                 : t('addons.admin.lifecycleConfirm');
-            if (!window.confirm(warning)) return;
+            if (!(await confirmAction({ message: warning, tone: 'danger' }))) return;
         }
 
         setSaving(true);

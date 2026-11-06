@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { showToast } from './Toast';
 import { Button, Card, EmptyState, ErrorBanner } from './ui';
+import { confirmAction } from '../lib/confirmAction';
 
 interface SystemDatabase {
     id: string;
@@ -327,8 +328,8 @@ export function SystemSQLiteManager() {
                                             <Button
                                                 icon={Gauge}
                                                 disabled={!database.available || busy !== null}
-                                                onClick={() => {
-                                                    if (window.confirm(t('systemDb.optimizeConfirm', { name: localizedName }))) {
+                                                onClick={async () => {
+                                                    if (await confirmAction({ message: t('systemDb.optimizeConfirm', { name: localizedName }) })) {
                                                         void runJSONAction({ ...database, name: localizedName }, 'optimize');
                                                     }
                                                 }}

@@ -70,6 +70,8 @@ export const enRightsScreens = {
     'rights.installedUnknown': 'The installed software could not be read just now, so only the software already named in a set is listed. Nothing was changed. Try again in a moment; if it stays, the administrator checks that the CelikPanel agent is running.',
     'rights.group.acme': 'Free certificates',
     'rights.group.extension': 'Other software',
+    'rights.group.runtime': 'Programs',
+    'rights.software.program': 'Own programs (uploaded and run by the account)',
     'rights.qty.customers': 'Customers',
     'rights.qty.domains': 'Domains',
     'rights.qty.databases': 'Databases',

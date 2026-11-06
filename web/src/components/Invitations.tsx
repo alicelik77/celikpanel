@@ -17,6 +17,7 @@ import {
 } from '../lib/accountAccess';
 import { showToast } from './Toast';
 import { Button, Dialog, inputClass } from './ui';
+import { confirmAction } from '../lib/confirmAction';
 
 // Invitations on the Users page (v0.1.0-alpha.114, P6). After an account is
 // created with "send an invitation", or an invitation is sent again, the
@@ -142,7 +143,7 @@ export function useInvitationActions() {
     const [busy, setBusy] = useState<number | null>(null);
     const act = async (id: number, username: string, action: InvitationAction) => {
         if (busy !== null) return;
-        if (action === 'revoke' && !window.confirm(t('acct.invite.revokeConfirm', { name: username }))) return;
+        if (action === 'revoke' && !(await confirmAction({ message: t('acct.invite.revokeConfirm', { name: username }), tone: 'danger' }))) return;
         setBusy(id);
         try {
             const res = action === 'revoke'

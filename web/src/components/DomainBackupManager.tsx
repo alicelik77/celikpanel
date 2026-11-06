@@ -15,6 +15,7 @@ import { useLostAnswer } from '../lib/lostAnswer';
 import { decodeDomainDatabases } from '../lib/domainDatabases';
 import { saveDownload } from '../lib/download';
 import { decodeSiteOverview, remoteEligibleBackupName, siteRemoteURL } from '../lib/remoteBackup';
+import { confirmAction } from '../lib/confirmAction';
 
 // Remote copies (alpha.118): their own screen, fetched with this tab.
 // Uzak kopyalar: kendi ekranı, bu sekmeyle birlikte getirilir.
@@ -185,7 +186,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
 
     const restoreBackup = async (backup: BackupItem) => {
         if (readOnly || !listKnown) return;
-        if (!backup.restorable || !confirm(t('backup.restoreConfirm', { name: backup.name }))) return;
+        if (!backup.restorable || !(await confirmAction({ message: t('backup.restoreConfirm', { name: backup.name }), tone: 'danger' }))) return;
         setRestoring(backup.name);
         try {
             const res = await answer.send(`/api/v1/domains/${domainId}/backups/restore`, {
@@ -212,20 +213,23 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
 
     const deleteBackup = async (name: string) => {
         if (readOnly || !listKnown) return;
-        if (!confirm(t('backup.deleteConfirm', { name }))) return;
-        setDeleting(name);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/backups?name=${encodeURIComponent(name)}`, {
-                method: 'DELETE',
-            });
-            if (!res) return;
-            if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.deleteFailed'))) return;
-            showToast('success', t('backup.deleted'));
-            answer.settle();
-            await loadBackups();
-        } finally {
-            setDeleting(null);
-        }
+        await confirmAction({ message: t('backup.deleteConfirm', { name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                setDeleting(name);
+                try {
+                    const res = await answer.send(`/api/v1/domains/${domainId}/backups?name=${encodeURIComponent(name)}`, {
+                        method: 'DELETE',
+                    });
+                    if (!res) return;
+                    if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.deleteFailed'))) return;
+                    showToast('success', t('backup.deleted'));
+                    answer.settle();
+                    await loadBackups();
+                } finally {
+                    setDeleting(null);
+                }
+            },
+        });
     };
 
     const downloadBackup = async (name: string) => {

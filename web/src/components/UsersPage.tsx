@@ -21,6 +21,7 @@ import { SuspensionDialog, type SuspensionTarget } from './SuspensionDialog';
 import { DeletableAccounts } from './DeletableAccounts';
 import { useSuspendedOwners } from '../lib/suspension';
 import { TransferRequestsList, TransferRowAction } from './SubscriptionTransfer';
+import { confirmAction } from '../lib/confirmAction';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -198,7 +199,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     };
 
     const setStatus = async (u: PanelUser, status: 'active' | 'suspended') => {
-        if (status === 'suspended' && !confirm(t('users.suspendConfirm', { name: u.username }))) return;
+        if (status === 'suspended' && !(await confirmAction({ message: t('users.suspendConfirm', { name: u.username }), tone: 'danger' }))) return;
         const res = await send(`/api/v1/users/${u.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -214,15 +215,18 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     };
 
     const deleteUser = async (u: PanelUser) => {
-        if (!confirm(t('users.deleteConfirm', { name: u.username }))) return;
-        const res = await send(`/api/v1/users/${u.id}`, { method: 'DELETE' });
-        if (!res) return;
-        if (!res.ok) {
-            await apiError(res);
-            return;
-        }
-        showToast('success', t('users.deleted'));
-        load();
+        await confirmAction({ message: t('users.deleteConfirm', { name: u.username }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                const res = await send(`/api/v1/users/${u.id}`, { method: 'DELETE' });
+                if (!res) return;
+                if (!res.ok) {
+                    await apiError(res);
+                    return;
+                }
+                showToast('success', t('users.deleted'));
+                load();
+            },
+        });
     };
 
     const impersonate = async (u: PanelUser) => {
@@ -493,18 +497,24 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
     const plansKnown = plans.remote.state === 'known' && !plans.reading;
 
     const remove = async (p: ServicePlan) => {
-        if (!confirm(`${p.name}?`)) return;
-        setSaving(true);
-        try {
-            const result = await sendRights(`/api/v1/plans/${p.id}`, 'DELETE');
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            else if (result.kind === 'refused') showToast('error', refusalText(result.error, t, 'plans.deleteFailed'), refusalToast(result.error, t));
-            else showToast('success', t('plans.deleted'));
-            // Plans show in the account list and in the plan usage too: all re-read.
-            invalidate('plans', 'rights');
-        } finally {
-            setSaving(false);
-        }
+        await confirmAction({
+            message: t('plans.deleteConfirm', { name: p.name }),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+            action: async () => {
+                setSaving(true);
+                try {
+                    const result = await sendRights(`/api/v1/plans/${p.id}`, 'DELETE');
+                    if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
+                    else if (result.kind === 'refused') showToast('error', refusalText(result.error, t, 'plans.deleteFailed'), refusalToast(result.error, t));
+                    else showToast('success', t('plans.deleted'));
+                    // Plans show in the account list and in the plan usage too: all re-read.
+                    invalidate('plans', 'rights');
+                } finally {
+                    setSaving(false);
+                }
+            },
+        });
     };
 
     const unlimited = t('plans.unlimited');
@@ -518,9 +528,14 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
             <BuiltinPlanRow kind="customer" ownField={!isAdmin} />
             <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs text-fg-subtle">{(countText(mapRemote(plans.remote, (rows) => rows.length)) === '1' ? t('common.itemsTotalOne') : t('common.itemsTotal', { n: countText(mapRemote(plans.remote, (rows) => rows.length)) }))}</span>
-                <Button variant="primary" icon={Plus} disabled={!plansKnown} onClick={() => setEditing({ ...NEW_PLAN })}>
-                    {t('plans.add')}
-                </Button>
+                {/* While a plan form is open its Save is the action; Add plan
+                    comes back when the form closes (owner, 6 Nov 2026).
+                    Plan formu açıkken eylem formun Kaydet'idir. */}
+                {editing === null && (
+                    <Button variant="primary" icon={Plus} disabled={!plansKnown} onClick={() => setEditing({ ...NEW_PLAN })} data-plan-add="">
+                        {t('plans.add')}
+                    </Button>
+                )}
             </div>
 
             {editing && <PlanEditorGate kind="customer" initial={editing} grantorIsReseller={!isAdmin} onClose={() => setEditing(null)} />}
@@ -566,7 +581,7 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
                                         <td className="px-4 py-3 text-fg-muted">{p.subscribers ?? 0}</td>
                                         <td className="px-4 py-3">
                                             {p.mine !== false && <div className="flex items-center justify-end gap-0.5">
-                                                <RowBtn disabled={!plansKnown} title={t('plans.edit')} onClick={() => setEditing(editedFromCustomerPlan(p))}>
+                                                <RowBtn disabled={!plansKnown || editing !== null} title={t('plans.edit')} onClick={() => setEditing(editedFromCustomerPlan(p))}>
                                                     <Pencil className="h-4 w-4" />
                                                 </RowBtn>
                                                 <RowBtn danger disabled={!plansKnown || saving} title={t('users.delete')} onClick={() => remove(p)}>

@@ -126,6 +126,28 @@ export function domainDeletionReasonAutomatic(reason: string): boolean {
     return automaticDeletionReasons.has(reason);
 }
 
+// While one of these is shown the domain is "being deleted": CelikPanel is
+// carrying on by itself, so the page sends no second delete for it (owner
+// report 6 Nov 2026: pressing delete again and again). The one automatic reason
+// whose own sentence asks for "delete again" after a while
+// (remote_dns_removed_finishing) keeps its delete button.
+// Bunlardan biri gösterilirken alan adı "siliniyor"dur; sayfa ikinci bir silme
+// göndermez.
+export function domainDeletionBlocksRetry(reason: string): boolean {
+    return automaticDeletionReasons.has(reason) && reason !== 'remote_dns_removed_finishing';
+}
+
+// Reasons whose whole sentence is "nobody needs to do anything": the page
+// says it in one line ("<name> is being deleted. Nothing to do; this page
+// updates by itself."). When the automatic checks end without confirmation the
+// saved reason changes to one that names who must act, and that is shown.
+// Cümlesi "kimsenin bir şey yapması gerekmez" olan nedenler tek satırla söylenir.
+const quietDeletionReasons = new Set(['deletion_running', 'remote_dns_removal_confirming', 'deletion_state_changing']);
+
+export function domainDeletionQuiet(reason: string): boolean {
+    return quietDeletionReasons.has(reason);
+}
+
 function ownReason(pending: Record<string, unknown>): string {
     return typeof pending.reason === 'string' && ownDeletionReasons.has(pending.reason) ? pending.reason : '';
 }

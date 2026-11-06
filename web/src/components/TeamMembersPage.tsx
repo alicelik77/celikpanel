@@ -36,6 +36,7 @@ import { Button, EmptyState, ErrorBanner, Spinner, StatusDot, inputClass } from 
 import { PageHeader } from './PageHeader';
 import { invalidate, useInvalidation } from '../lib/remote';
 import { InvitedStatus, useInvitationActions, useInvitationOutcome } from './Invitations';
+import { confirmAction } from '../lib/confirmAction';
 
 type ScopeKind = 'subscription' | 'domain';
 type PermissionChoice = TeamPermissionMode | 'none';
@@ -220,7 +221,7 @@ export function TeamMembersPage() {
         if (
             existing?.status === 'active'
             && draft.status === 'suspended'
-            && !window.confirm(t('team.suspendConfirm', { name: draft.username }))
+            && !(await confirmAction({ message: t('team.suspendConfirm', { name: draft.username }), tone: 'danger' }))
         ) {
             return;
         }
@@ -271,7 +272,7 @@ export function TeamMembersPage() {
     const setStatus = async (member: TeamMember, status: TeamMemberStatus) => {
         if (
             status === 'suspended'
-            && !window.confirm(t('team.suspendConfirm', { name: member.username }))
+            && !(await confirmAction({ message: t('team.suspendConfirm', { name: member.username }), tone: 'danger' }))
         ) {
             return;
         }
@@ -290,20 +291,23 @@ export function TeamMembersPage() {
     };
 
     const remove = async (member: TeamMember) => {
-        if (!window.confirm(t('team.deleteConfirm', { name: member.username }))) return;
-        setBusy('member:' + member.id);
-        try {
-            await api.deleteTeamMember(member.id);
-            setMembers((current) => current.filter((item) => item.id !== member.id));
-            if (draft?.memberID === member.id) setDraft(null);
-            showToast('success', t('team.deleted'));
-        } catch (error) {
-            const problem = await normalizeApiError(error);
-            showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
-        } finally {
-            setBusy(null);
-            changed();
-        }
+        await confirmAction({ message: t('team.deleteConfirm', { name: member.username }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                setBusy('member:' + member.id);
+                try {
+                    await api.deleteTeamMember(member.id);
+                    setMembers((current) => current.filter((item) => item.id !== member.id));
+                    if (draft?.memberID === member.id) setDraft(null);
+                    showToast('success', t('team.deleted'));
+                } catch (error) {
+                    const problem = await normalizeApiError(error);
+                    showToast('error', refusalText(problem, t, 'team.actionFailed'), refusalToast(problem, t));
+                } finally {
+                    setBusy(null);
+                    changed();
+                }
+            },
+        });
     };
 
     return (

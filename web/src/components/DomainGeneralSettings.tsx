@@ -6,6 +6,7 @@ import { Button, FormActions, FormSection, RemoteGate, ResultUnknown, ToggleRow,
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainGeneralSettingsProps {
     domainId: number;
@@ -137,7 +138,7 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
             if (!res.ok) {
                 let apiError = await readApiError(res);
                 if (apiError.code === 'ALIAS_CERTIFICATE_REISSUE_REQUIRED') {
-                    if (!confirm(t('general.aliasReissueAddConfirm', { name: alias }))) return;
+                    if (!(await confirmAction({ message: t('general.aliasReissueAddConfirm', { name: alias }) }))) return;
                     res = await request(true);
                     if (!res) return;
                     if (!res.ok) apiError = await readApiError(res);
@@ -164,7 +165,7 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
 
     const handleDeleteAlias = async (alias: string) => {
         if (!settled) return;
-        if (!confirm(t('general.confirmDeleteAlias', { name: alias }))) return;
+        if (!(await confirmAction({ message: t('general.confirmDeleteAlias', { name: alias }), confirmLabel: t('common.remove'), tone: 'danger' }))) return;
         setChangingAlias(true);
         try {
             const endpoint = `/api/v1/domains/${domainId}/aliases/${encodeURIComponent(alias)}`;
@@ -173,7 +174,7 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
             if (!res.ok) {
                 let apiError = await readApiError(res);
                 if (apiError.code === 'ALIAS_CERTIFICATE_REISSUE_REQUIRED') {
-                    if (!confirm(t('general.aliasReissueDeleteConfirm', { name: alias }))) return;
+                    if (!(await confirmAction({ message: t('general.aliasReissueDeleteConfirm', { name: alias }) }))) return;
                     res = await answer.send(`${endpoint}?confirm_certificate_reissue=true`, { method: 'DELETE' });
                     if (!res) return;
                     if (!res.ok) apiError = await readApiError(res);

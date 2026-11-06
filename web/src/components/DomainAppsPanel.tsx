@@ -12,6 +12,7 @@ import {
     type DomainApp, type InstalledApp,
 } from '../lib/appCatalog';
 import type { TranslationKey } from '../i18n/en';
+import { confirmAction } from '../lib/confirmAction';
 
 // The application catalog of one domain (alpha.118, docs/APP-CATALOG.md):
 // every application the administrator offers and this subscription may use,
@@ -82,7 +83,7 @@ export function DomainAppsPanel({ domainId, domainName }: { domainId: number; do
 
     const install = async (app: DomainApp) => {
         if (answer.holding || busy || apps.remote.state !== 'known') return;
-        if (!confirm(t('apps.confirmInstall', { name: app.name }))) return;
+        if (!(await confirmAction({ message: t('apps.confirmInstall', { name: app.name }) }))) return;
         setBusy(app.id);
         setShown(null);
         setFailure(null);

@@ -13,6 +13,7 @@ import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -359,7 +360,7 @@ export function DomainSSLSettings({
                       ? 'ssl.reissueConfirm'
                       : 'ssl.issueConfirm';
         const authority = providers.find((candidate) => candidate.id === provider)?.name ?? provider;
-        if (!confirm(t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }))) return;
+        if (!(await confirmAction({ message: t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }) }))) return;
         setIssuing(true);
         setIssueFailure(null);
         setActionRefusal(null);
@@ -459,7 +460,7 @@ export function DomainSSLSettings({
             showToast('warning', t('ssl.mailStateUnknownReplacement'));
             return;
         }
-        if (!confirm(t(isReplacement ? 'ssl.replaceCertificateConfirm' : 'ssl.uploadConfirm', { name: domainName }))) return;
+        if (!(await confirmAction({ message: t(isReplacement ? 'ssl.replaceCertificateConfirm' : 'ssl.uploadConfirm', { name: domainName }) }))) return;
         const targetDomainId = domainId;
         setUploading(true);
         try {
@@ -639,7 +640,7 @@ export function DomainSSLSettings({
             );
             return;
         }
-        if (!confirm(t('ssl.confirmRemove', { name: domainName }))) return;
+        if (!(await confirmAction({ message: t('ssl.confirmRemove', { name: domainName }), confirmLabel: t('common.remove'), tone: 'danger' }))) return;
         const targetDomainId = domainId;
         setRemoving(true);
         try {

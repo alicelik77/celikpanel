@@ -11,6 +11,7 @@ import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
 import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainPHPSettingsProps {
     domainId: number;
@@ -141,7 +142,7 @@ export function DomainPHPSettings({
         // A version that no longer receives security fixes asks its own
         // confirmation, and the server is told it was confirmed.
         const unsupported = supportConfirmation(t, locale, support, 'php', selectedVersion, 'choose');
-        if (!confirm(unsupported || t('php.changeConfirm', { from: currentVersion, to: selectedVersion }))) return;
+        if (!(await confirmAction({ message: unsupported || t('php.changeConfirm', { from: currentVersion, to: selectedVersion }) }))) return;
         setSaving(true);
         try {
             const res = await answer.send(`/api/v1/domains/${domainId}/php`, {

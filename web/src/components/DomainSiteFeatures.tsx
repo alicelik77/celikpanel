@@ -7,6 +7,7 @@ import { Button, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { confirmAction } from '../lib/confirmAction';
 
 // A domain's password-protected folders and redirects (alpha.114). Both are
 // written into the site's nginx configuration by the server; nginx checks the
@@ -348,10 +349,12 @@ function ProtectedDirCard({
                         variant="danger"
                         icon={Trash2}
                         disabled={disabled}
-                        onClick={() => {
-                            if (!confirm(t('siteFeatures.protect.removeDirConfirm', { path: dir.path }))) return;
-                            void change('DELETE', `${base}?id=${dir.id}`, undefined, t('siteFeatures.protect.dirRemoved', { path: dir.path }));
-                        }}
+                        onClick={() => void confirmAction({
+                            message: t('siteFeatures.protect.removeDirConfirm', { path: dir.path }),
+                            confirmLabel: t('common.remove'),
+                            tone: 'danger',
+                            action: () => change('DELETE', `${base}?id=${dir.id}`, undefined, t('siteFeatures.protect.dirRemoved', { path: dir.path })),
+                        })}
                     >
                         {t('siteFeatures.protect.removeDir')}
                     </Button>
@@ -370,11 +373,13 @@ function ProtectedDirCard({
                                 disabled={disabled}
                                 aria-label={t('siteFeatures.protect.removeUser', { name })}
                                 title={t('siteFeatures.protect.removeUser', { name })}
-                                onClick={() => {
-                                    if (!confirm(t('siteFeatures.protect.removeUserConfirm', { name, path: dir.path }))) return;
-                                    void change('DELETE', `${base}/users?id=${dir.id}&user=${encodeURIComponent(name)}`, undefined,
-                                        t('siteFeatures.protect.userRemoved'));
-                                }}
+                                onClick={() => void confirmAction({
+                                    message: t('siteFeatures.protect.removeUserConfirm', { name, path: dir.path }),
+                                    confirmLabel: t('common.remove'),
+                                    tone: 'danger',
+                                    action: () => change('DELETE', `${base}/users?id=${dir.id}&user=${encodeURIComponent(name)}`, undefined,
+                                        t('siteFeatures.protect.userRemoved')),
+                                })}
                                 className="shrink-0 rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-3 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 <Trash2 className="h-4 w-4" />
@@ -491,11 +496,13 @@ export function DomainSiteRedirects({ domainId, readOnly = false }: PanelProps) 
                                                         disabled={!canChange}
                                                         aria-label={t('siteFeatures.redirect.remove', { path: item.source })}
                                                         title={t('siteFeatures.redirect.remove', { path: item.source })}
-                                                        onClick={() => {
-                                                            if (!confirm(t('siteFeatures.redirect.removeConfirm', { path: item.source }))) return;
-                                                            void change('DELETE', `/api/v1/domains/${domainId}/redirects?id=${item.id}`, undefined,
-                                                                t('siteFeatures.redirect.removed'));
-                                                        }}
+                                                        onClick={() => void confirmAction({
+                                                            message: t('siteFeatures.redirect.removeConfirm', { path: item.source }),
+                                                            confirmLabel: t('common.remove'),
+                                                            tone: 'danger',
+                                                            action: () => change('DELETE', `/api/v1/domains/${domainId}/redirects?id=${item.id}`, undefined,
+                                                                t('siteFeatures.redirect.removed')),
+                                                        })}
                                                         className="shrink-0 rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-3 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
                                                     >
                                                         <Trash2 className="h-4 w-4" />

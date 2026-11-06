@@ -7,6 +7,7 @@ import { Button, ErrorBanner, RemoteGate } from './ui';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { useRemote, useRefreshEvery } from '../lib/remote';
 import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
+import { confirmAction } from '../lib/confirmAction';
 
 // WordPress tools of one site (alpha.118, docs/WORDPRESS-TOOLS.md): status,
 // verified updates with a backup first, the switch for automatic minor
@@ -163,7 +164,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                 </div>
                                 {coreTarget && (
                                     <Button variant="primary" icon={Download} disabled={locked || value.database_linked === false}
-                                        onClick={() => { if (confirm(t('wpt.confirmCore', { version: coreTarget }))) void start('update', 'POST', { kind: 'core', core_version: coreTarget }); }}>
+                                        onClick={async () => { if (await confirmAction({ message: t('wpt.confirmCore', { version: coreTarget }) })) void start('update', 'POST', { kind: 'core', core_version: coreTarget }); }}>
                                         {t('wpt.updateTo', { version: coreTarget })}
                                     </Button>
                                 )}
@@ -200,7 +201,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                 )}
                                 {updatable.length > 0 && (
                                     <Button className="mt-2" variant="primary" disabled={locked || selected.length === 0}
-                                        onClick={() => { if (confirm(t('wpt.confirmPlugins', { count: selected.length }))) void start('update', 'POST', { kind: 'plugin', items: selected }, () => setSelected([])); }}>
+                                        onClick={async () => { if (await confirmAction({ message: t('wpt.confirmPlugins', { count: selected.length }) })) void start('update', 'POST', { kind: 'plugin', items: selected }, () => setSelected([])); }}>
                                         {t('wpt.updateSelected', { count: selected.length })}
                                     </Button>
                                 )}
@@ -235,9 +236,9 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                             {targets.remote.state === 'known' && targets.remote.value.map((c) => <option key={c.domain_id} value={c.domain_id}>{c.domain}</option>)}
                                         </select>
                                         <Button icon={Copy} disabled={locked || target === ''}
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 const name = targets.remote.state === 'known' ? targets.remote.value.find((c) => String(c.domain_id) === target)?.domain ?? '' : '';
-                                                if (confirm(t('wpt.clone.confirm', { target: name }))) void start('clone', 'POST', { target_domain_id: Number(target) }, () => setTarget(''));
+                                                if (await confirmAction({ message: t('wpt.clone.confirm', { target: name }), tone: 'danger' })) void start('clone', 'POST', { target_domain_id: Number(target) }, () => setTarget(''));
                                             }}>
                                             {t('wpt.clone.start')}
                                         </Button>

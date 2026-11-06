@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { domainDeletionDetailKey, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletion, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
+import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletion, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
 import { en as enShellHalf } from '../src/i18n/en.ts';
 import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
 // The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
@@ -355,8 +355,9 @@ test('a joined server deletion and the former unknown states read as typed reaso
     status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming',
   })), { state: 'pending', reason: 'remote_dns_removal_confirming' });
   // Waiting states say nobody acts; the others name who acts.
-  assert.match(enScreens['domains.deletionReason.remote_dns_removal_confirming'], /^The main DNS server .*Nobody needs to do anything/);
-  assert.match(trScreens['domains.deletionReason.remote_dns_removal_confirming'], /Kimsenin bir şey yapması gerekmiyor/);
+  // Owner report 6 Nov 2026: one plain sentence, nobody acts.
+  assert.match(enScreens['domains.deletionReason.remote_dns_removal_confirming'], /being deleted.*Nothing to do; this page updates by itself\.$/);
+  assert.match(trScreens['domains.deletionReason.remote_dns_removal_confirming'], /siliniyor.*Yapmanız gereken bir şey yok/);
   assert.match(enScreens['domains.deletionReason.remote_dns_removal_refused'], /The server administrator/);
   assert.match(enScreens['domains.deletionReason.deletion_incomplete'], /Delete the domain again/);
   assert.match(trScreens['domains.deletionReason.deletion_incomplete'], /yeniden silin/);
@@ -378,4 +379,24 @@ test('a deleted domain status read is gone, a failed read stays unknown', async 
   } finally {
     globalThis.fetch = saved;
   }
+});
+
+// Owner report, 6 Nov 2026: delete pressed again and again while the backup DNS
+// server confirmed the removal. While CelikPanel carries a deletion on by
+// itself the domain is "being deleted" and no second delete is sent; the one
+// reason whose own sentence asks for "delete again" keeps its button. The
+// reasons whose whole sentence is "nothing to do" are said in one line.
+test('a deletion CelikPanel carries on by itself blocks a second delete; the waiting ones are one line', () => {
+  for (const reason of ['deletion_running', 'dns_peer_catching_up', 'remote_dns_removal_confirming', 'remote_dns_main_unreachable', 'deletion_state_changing']) {
+    assert.equal(domainDeletionBlocksRetry(reason), true, reason);
+  }
+  for (const reason of ['remote_dns_removed_finishing', 'deletion_incomplete', 'remote_dns_removal_refused', 'deletion_marker_inconsistent', 'dns_removal_confirmed', '']) {
+    assert.equal(domainDeletionBlocksRetry(reason), false, reason);
+  }
+  assert.deepEqual(['deletion_running', 'remote_dns_removal_confirming', 'deletion_state_changing'].filter(domainDeletionQuiet).length, 3);
+  // One that names who acts after a while is never shortened.
+  assert.equal(domainDeletionQuiet('remote_dns_main_unreachable'), false);
+  assert.equal(domainDeletionQuiet('remote_dns_removed_finishing'), false);
+  assert.match(enScreens['domains.beingDeletedLine'], /^\{name\} is being deleted\. Nothing to do; this page updates by itself\.$/);
+  assert.match(trScreens['domains.beingDeletedLine'], /^\{name\} siliniyor\./);
 });

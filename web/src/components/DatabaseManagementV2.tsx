@@ -15,6 +15,7 @@ import { OnceOnlyNotice, ShownOnceSecret } from './OnceOnlyNotice';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
+import { confirmAction } from '../lib/confirmAction';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
 // Tek API yüzeyi (B1, 18 Tem): eski /api/v2 artık /api/v1 altında.
@@ -135,38 +136,44 @@ export function DatabaseManagementV2() {
     const [secret, setSecret] = useState<CreatedSecret | null>(null);
 
     const handleDeleteDatabase = async (id: number, name: string) => {
-        if (!confirm(t('databases.confirmDeleteDb', { name }))) return;
-        try {
-            const res = await fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE' });
-            if (!res.ok) { refuse(await readApiError(res), 'databases.deleteDbFailed'); return; }
-            setRefusal(null);
-            showToast('success', t('databases.dbDeleted'));
-            invalidate('databases');
-        } catch {
-            // No answer: whether it was deleted is not known; the list is read again.
-            showToast('error', t('common.resultUnknown'));
-            invalidate('databases');
-        }
+        await confirmAction({ message: t('databases.confirmDeleteDb', { name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE' });
+                    if (!res.ok) { refuse(await readApiError(res), 'databases.deleteDbFailed'); return; }
+                    setRefusal(null);
+                    showToast('success', t('databases.dbDeleted'));
+                    invalidate('databases');
+                } catch {
+                    // No answer: whether it was deleted is not known; the list is read again.
+                    showToast('error', t('common.resultUnknown'));
+                    invalidate('databases');
+                }
+            },
+        });
     };
 
     const handleDeleteUser = async (id: number, name: string) => {
-        if (!confirm(t('databases.confirmDeleteUser', { name }))) return;
-        try {
-            const res = await fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE' });
-            if (!res.ok) { refuse(await readApiError(res), 'databases.deleteUserFailed'); return; }
-            setRefusal(null);
-            showToast('success', t('databases.userDeleted'));
-            invalidate('databases');
-        } catch {
-            showToast('error', t('common.resultUnknown'));
-            invalidate('databases');
-        }
+        await confirmAction({ message: t('databases.confirmDeleteUser', { name }), confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE' });
+                    if (!res.ok) { refuse(await readApiError(res), 'databases.deleteUserFailed'); return; }
+                    setRefusal(null);
+                    showToast('success', t('databases.userDeleted'));
+                    invalidate('databases');
+                } catch {
+                    showToast('error', t('common.resultUnknown'));
+                    invalidate('databases');
+                }
+            },
+        });
     };
 
     // A new password made up by the server and shown once; for a WordPress
     // CelikPanel installed the server writes it into its configuration too.
     const handleNewPassword = async (id: number, name: string) => {
-        if (!confirm(t('databases.confirmNewPassword', { name }))) return;
+        if (!(await confirmAction({ message: t('databases.confirmNewPassword', { name }) }))) return;
         try {
             const res = await fetch(`${API_BASE}/database-users/${id}/password`, {
                 method: 'POST',

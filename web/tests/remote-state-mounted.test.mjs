@@ -2355,6 +2355,51 @@ test('Domains: one confirmation for a bulk delete, and the rows change without a
   }
 });
 
+// Owner report, 6 Nov 2026: the browser's own dialogue, two identical long
+// toasts, and delete pressed again and again while the backup DNS server
+// confirmed the removal. The question names the domain; the answer "pending"
+// shows one line above the list and no toast; the row is "being deleted" and
+// no second DELETE can be sent, from the row, the selection or a re-press.
+test('Domains: a deletion the backup DNS server is confirming is one line, no toast, and never sent twice', async () => {
+  const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
+  const live = liveDomains({ domains: [siteRow(4, 'alicelik.com.tr')], zones: [] });
+  serve({
+    ...live.table,
+    '/api/v1/domains/4/deletion-status': () => Response.json(pendingBody),
+  }, 'admin', {
+    '/api/v1/domains/4': () => {
+      live.state.domains = [{ ...siteRow(4, 'alicelik.com.tr'), status: 'pending' }];
+      return Response.json(pendingBody, { status: 202 });
+    },
+  });
+  // A waiting deletion reads again by itself after 15 s; unmounting clears it.
+  Object.assign(globalThis.window, { setTimeout, clearTimeout });
+  const asked = [];
+  try {
+    await mount(Domains);
+    globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone]); return true; };
+    const deletes = () => calls.filter((call) => call.method === 'DELETE').length;
+    const rowDelete = () => hostButtons().find((node) => node.props.title === 'domains.action.delete' || node.props.title === 'domains.status.beingDeleted');
+    await press(rowDelete());
+    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger']], 'the question does not name the domain and what goes');
+    assert.equal(deletes(), 1);
+    await act(async () => { await settled(); await settled(); await settled(); });
+    assert.deepEqual(globalThis.currentTest.toasts, [], 'a toast repeated the line above the list');
+    assert.ok(has('domains.beingDeletedLine'), 'the waiting deletion is not said in one line');
+    assert.ok(!has('domains.deletionReason.remote_dns_removal_confirming'), 'the long waiting text is still shown');
+    assert.ok(has('domains.status.beingDeleted'), 'the row does not say it is being deleted');
+    const again = rowDelete();
+    assert.equal(again.props.disabled, true, 'the row still offers delete');
+    await press(again);
+    const box = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox').at(-1);
+    assert.equal(box.props.disabled, true, 'a domain being deleted can still be selected for Remove');
+    assert.equal(deletes(), 1, 'a second DELETE was sent');
+    assert.equal(asked.length, 1, 'a second question was asked');
+  } finally {
+    await cleanup();
+  }
+});
+
 test('Databases with no engine: an administrator is sent to Components; anyone else is told to ask the provider', async () => {
   for (const role of ['admin', 'customer']) {
     serve({ '/api/v1/database-servers': json([]) }, role);

@@ -5,6 +5,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, KnownEmpty, RemoteGate, StatusDot } from './ui';
 import { countText, decodeList, mapRemote, useRemote } from '../lib/remote';
+import { confirmAction } from '../lib/confirmAction';
 
 interface Fail2banManagementProps {
     onBack: () => void;
@@ -61,7 +62,7 @@ export function Fail2banManagement({ onBack }: Fail2banManagementProps) {
     const [unbanning, setUnbanning] = useState('');
 
     const unban = async (ip: string, jail: string) => {
-        if (!confirm(t('f2b.confirmUnban', { ip, jail }))) return;
+        if (!(await confirmAction({ message: t('f2b.confirmUnban', { ip, jail }) }))) return;
         setUnbanning(`${jail}/${ip}`);
         try {
             const r = await fetch('/api/v1/fail2ban/banned', {

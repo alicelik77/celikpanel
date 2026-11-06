@@ -10,6 +10,7 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, CouldNotCheck, KnownEmpty, inputClass } from './ui';
 import type { Observed } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent } from './CurrentSettings';
+import { confirmAction } from '../lib/confirmAction';
 
 interface CronJob {
     id: string;
@@ -194,23 +195,26 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
 
     const deleteJob = async (job: CronJob) => {
         if (readOnly) return;
-        if (!confirm(`${t('cron.deleteConfirm')}\n${job.command}`)) return;
-        try {
-            const res = await fetch(
-                `/api/v1/domains/${domainId}/cron?id=${encodeURIComponent(job.id)}&version=${encodeURIComponent(version)}`,
-                { method: 'DELETE' },
-            );
-            if (!res.ok) {
-                await refused(res);
-                return;
-            }
-            const data = await res.json();
-            if (!data.success) throw new Error();
-            showToast('success', t('cron.deleted'));
-            loadJobs();
-        } catch {
-            showToast('error', t('common.error'));
-        }
+        await confirmAction({ message: `${t('cron.deleteConfirm')}\n${job.command}`, confirmLabel: t('common.delete'), tone: 'danger',
+            action: async () => {
+                try {
+                    const res = await fetch(
+                        `/api/v1/domains/${domainId}/cron?id=${encodeURIComponent(job.id)}&version=${encodeURIComponent(version)}`,
+                        { method: 'DELETE' },
+                    );
+                    if (!res.ok) {
+                        await refused(res);
+                        return;
+                    }
+                    const data = await res.json();
+                    if (!data.success) throw new Error();
+                    showToast('success', t('cron.deleted'));
+                    loadJobs();
+                } catch {
+                    showToast('error', t('common.error'));
+                }
+            },
+        });
     };
 
     const startEdit = (job: CronJob) => {

@@ -238,6 +238,7 @@ export const enSettingsScreens = {
     'team.actionFailed': 'The team member action failed.',
 
     'plans.add': 'Add plan',
+    'plans.deleteConfirm': 'Delete the service plan "{name}"?',
     'plans.col.name': 'Plan',
     'plans.col.domains': 'Domains',
     'plans.col.databases': 'Databases',
@@ -359,6 +360,7 @@ export const enSettingsScreens = {
     'addons.admin.saved': 'Catalog item saved.',
     'addons.admin.noChanges': 'The catalog item was already up to date.',
     'addons.admin.discardConfirm': 'Discard the unsaved catalog changes?',
+    'addons.admin.discard': 'Discard changes',
     'addons.admin.sqliteTitle': 'One panel SQLite database',
     'addons.admin.sqliteHint': 'Store offerings, component bindings and subscription rights are stored in the panel database and changed through this typed admin interface.',
     'addons.admin.releaseSeedHint': 'New operational products are added only by signed CelikPanel releases. Administrators can edit presentation metadata and component bindings here, or retire an available offering; the browser cannot create or publish executable recipes.',

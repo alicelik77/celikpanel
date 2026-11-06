@@ -9,6 +9,7 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
 import { PasswordlessMailNotice } from './PasswordlessMailNotice';
+import { confirmAction } from '../lib/confirmAction';
 
 interface PostfixManagementProps {
     onBack: () => void;
@@ -74,7 +75,7 @@ export function PostfixManagement({ onBack }: PostfixManagementProps) {
         if (!known) return;
         const msg =
             action === 'flush' ? t('postfix.confirmFlush') : action === 'delete_all' ? t('postfix.confirmDeleteAll') : t('postfix.confirmDelete', { id: id ?? '' });
-        if (!confirm(msg)) return;
+        if (!(await confirmAction({ message: msg, tone: 'danger' }))) return;
         setActing(true);
         try {
             const res = await fetch('/api/v1/postfix/queue', {

@@ -9,6 +9,7 @@ import { PageHeader } from './PageHeader';
 import { invalidate } from '../lib/remote';
 import { useAuth } from '../auth/AuthContext';
 import { StoreCatalogAdmin } from './StoreCatalogAdmin';
+import { confirmAction } from '../lib/confirmAction';
 // alpha.118: offering AI and automation apps, fetched with the catalogue tab.
 const AdminServiceApps = lazy(() => import('./AdminServiceApps').then((module) => ({ default: module.AdminServiceApps })));
 // alpha.119: offering uploaded programs, fetched with the catalogue tab too.
@@ -172,7 +173,7 @@ export function AddonsPage() {
         const targetSubscriptionID = loadedSubscriptionID;
         if (targetSubscriptionID == null || selected !== targetSubscriptionID || busyItemIDs.has(item.id)) return;
         if (item.action !== 'acquire' && item.action !== 'remove') return;
-        if (item.action === 'remove' && !window.confirm(t('addons.confirmRemove', { name: item.name }))) return;
+        if (item.action === 'remove' && !(await confirmAction({ message: t('addons.confirmRemove', { name: item.name }), confirmLabel: t('common.remove'), tone: 'danger' }))) return;
 
         setBusyItemIDs((current) => new Set(current).add(item.id));
         setActionError(null);
@@ -208,9 +209,9 @@ export function AddonsPage() {
     };
 
     const selectedSubscription = subscriptions.find((subscription) => subscription.id === selected) ?? null;
-    const changeAdminView = (next: 'store' | 'catalog') => {
+    const changeAdminView = async (next: 'store' | 'catalog') => {
         if (next === adminView) return true;
-        if (adminView === 'catalog' && catalogDirty && !window.confirm(t('addons.admin.discardConfirm'))) {
+        if (adminView === 'catalog' && catalogDirty && !(await confirmAction({ message: t('addons.admin.discardConfirm'), confirmLabel: t('addons.admin.discard'), tone: 'danger' }))) {
             return false;
         }
         setAdminView(next);
@@ -220,7 +221,7 @@ export function AddonsPage() {
         setSearchParams(nextSearchParams, { replace: true });
         return true;
     };
-    const moveAdminTab = (
+    const moveAdminTab = async (
         event: KeyboardEvent<HTMLButtonElement>,
         next: 'store' | 'catalog',
     ) => {
@@ -232,7 +233,7 @@ export function AddonsPage() {
             : event.key === 'End'
                 ? 'catalog'
                 : next;
-        if (!changeAdminView(target)) return;
+        if (!(await changeAdminView(target))) return;
         window.requestAnimationFrame(() => {
             document.getElementById(`addons-${target}-tab`)?.focus();
         });
@@ -266,7 +267,7 @@ export function AddonsPage() {
                             aria-controls="addons-store-panel"
                             tabIndex={adminView === 'store' ? 0 : -1}
                             onKeyDown={(event) => moveAdminTab(event, 'catalog')}
-                            onClick={() => { changeAdminView('store'); }}
+                            onClick={() => { void changeAdminView('store'); }}
                             className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${adminView === 'store' ? 'bg-primary text-primary-fg' : 'text-fg-muted hover:bg-surface-2 hover:text-fg'}`}
                         >
                             <ShoppingBag className="h-4 w-4" />
@@ -280,7 +281,7 @@ export function AddonsPage() {
                             aria-controls="addons-catalog-panel"
                             tabIndex={adminView === 'catalog' ? 0 : -1}
                             onKeyDown={(event) => moveAdminTab(event, 'store')}
-                            onClick={() => { changeAdminView('catalog'); }}
+                            onClick={() => { void changeAdminView('catalog'); }}
                             className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${adminView === 'catalog' ? 'bg-primary text-primary-fg' : 'text-fg-muted hover:bg-surface-2 hover:text-fg'}`}
                         >
                             <Settings2 className="h-4 w-4" />

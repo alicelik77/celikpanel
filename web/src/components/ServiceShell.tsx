@@ -19,6 +19,7 @@ import { invalidate, useInvalidation, useRemote } from '../lib/remote';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { componentName } from '../lib/componentName';
+import { confirmAction } from '../lib/confirmAction';
 
 interface ManagedService {
     id: string;
@@ -386,7 +387,7 @@ export function ServiceShell({
     const act = async (action: 'start' | 'stop' | 'restart') => {
         if (!unit || stale) return;
         const key = action === 'start' ? 'svc.confirmStart' : action === 'stop' ? 'svc.confirmStop' : 'svc.confirmRestart';
-        if (!confirm(t(key, { name }))) return;
+        if (!(await confirmAction({ message: t(key, { name }) }))) return;
         setActionOutcome(null);
         setBusy(true);
         try {

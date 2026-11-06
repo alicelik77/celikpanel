@@ -381,6 +381,9 @@ export const en = {
     'common.checkAgain': 'Check again',
     'common.technicalDetails': 'Technical details',
     'common.cancel': 'Cancel',
+    // The product's own confirmation (components/ConfirmHost.tsx, 6 Nov 2026).
+    'common.continue': 'Continue',
+    'common.delete': 'Delete',
     // alpha.117 (D-042): who can open a refused right, read by lib/apiError.ts.
     'rights.grantor.administrator': 'the administrator',
     'rights.grantor.provider': 'your provider ({name})',

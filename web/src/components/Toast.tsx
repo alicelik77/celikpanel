@@ -9,6 +9,10 @@ type ToastType = 'success' | 'error' | 'info' | 'warning';
  * details. The caller translates both labels.
  */
 export interface ToastExtra {
+    /** One toast per key: a second showToast with the same key (or, without
+        a key, the same kind and sentence) while the first is on screen shows
+        nothing new (owner report 6 Nov 2026: two identical toasts stacked). */
+    key?: string;
     action?: { label: string; run: () => void };
     details?: { label: string; text: string };
 }
@@ -24,6 +28,8 @@ const toastLimit = 4;
 /** Failures and warnings stay until the person closes them. */
 export const toastStays = (type: ToastType) => type === 'error' || type === 'warning';
 const toastListeners: ((toast: Toast) => void)[] = [];
+const toastKey = (toast: Toast) => toast.key ?? toast.type + ': ' + toast.message;
+const onScreen = new Set<string>();
 
 export function showToast(type: ToastType, message: string, extra?: ToastExtra) {
     const toast: Toast = {
@@ -45,6 +51,9 @@ export function ToastContainer() {
         // confirmation leaves by itself. At most the four newest stay.
         // Hata ve uyari kapatilana dek kalir; onay kendiliginden gider.
         const listener = (toast: Toast) => {
+            const id = toastKey(toast);
+            if (onScreen.has(id)) return;
+            onScreen.add(id);
             setToasts(prev => [...prev, toast].slice(-toastLimit));
             if (toastStays(toast.type)) return;
             setTimeout(() => {
@@ -61,6 +70,13 @@ export function ToastContainer() {
     const removeToast = (id: number) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
+
+    // What is on screen, by key, kept in step with the list (also when the
+    // newest four push an older one out).
+    useEffect(() => {
+        onScreen.clear();
+        for (const toast of toasts) onScreen.add(toastKey(toast));
+    }, [toasts]);
 
     const getIcon = (type: ToastType) => {
         switch (type) {

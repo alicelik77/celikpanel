@@ -13,6 +13,7 @@ import { SupportLine, supportConfirmation } from './SupportMark';
 import { AppAccountLine } from './AppAccountLine';
 import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
+import { confirmAction } from '../lib/confirmAction';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -115,7 +116,7 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
         // alpha.107 (D-038 §5): a Node.js line past its support asks first.
         if (form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version) {
             const unsupported = supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose');
-            if (unsupported && !confirm(unsupported)) return;
+            if (unsupported && !(await confirmAction({ message: unsupported }))) return;
         }
         setSaving(true);
         try {

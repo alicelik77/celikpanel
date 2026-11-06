@@ -62,6 +62,8 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.installedUnknown': 'Kurulu yazılımlar şu anda okunamadı; yalnız bir kümede zaten adı geçen yazılımlar listelendi. Hiçbir şey değişmedi. Biraz sonra yeniden deneyin; sürerse yönetici CelikPanel ajanının çalıştığını denetler.',
     'rights.group.acme': 'Ücretsiz sertifikalar',
     'rights.group.extension': 'Diğer yazılımlar',
+    'rights.group.runtime': 'Programlar',
+    'rights.software.program': 'Kendi programları (hesabın yükleyip çalıştırdığı)',
     'rights.qty.customers': 'Müşteri',
     'rights.qty.domains': 'Alan adı',
     'rights.qty.databases': 'Veritabanı',

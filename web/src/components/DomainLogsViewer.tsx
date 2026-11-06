@@ -14,6 +14,7 @@ import { KnownEmpty, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { LOADING, countText, lastKnown, mapRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
+import { confirmAction } from '../lib/confirmAction';
 
 interface DomainLogsViewerProps {
     domainId: number;
@@ -141,16 +142,19 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
     const clearLogs = async () => {
         if (readOnly || remote.state !== 'known' || answer.holding) return;
         const typeLabel = t(logTypes.find((l) => l.value === logType)!.labelKey);
-        if (!confirm(t('logs.clearConfirm', { type: typeLabel, domain: domainName }))) return;
-        const res = await answer.send(`/api/v1/domains/${domainId}/logs/${logType}`, { method: 'DELETE' });
-        if (!res) return;
-        if (!res.ok) {
-            showToast('error', apiErrorText(await readApiError(res), t));
-            return;
-        }
-        showToast('success', t('logs.cleared'));
-        answer.settle();
-        void loadLogs();
+        await confirmAction({ message: t('logs.clearConfirm', { type: typeLabel, domain: domainName }), tone: 'danger',
+            action: async () => {
+                const res = await answer.send(`/api/v1/domains/${domainId}/logs/${logType}`, { method: 'DELETE' });
+                if (!res) return;
+                if (!res.ok) {
+                    showToast('error', apiErrorText(await readApiError(res), t));
+                    return;
+                }
+                showToast('success', t('logs.cleared'));
+                answer.settle();
+                void loadLogs();
+            },
+        });
     };
 
     const shown = lastKnown(remote);
