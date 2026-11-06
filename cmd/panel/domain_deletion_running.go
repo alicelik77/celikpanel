@@ -32,6 +32,13 @@ const domainDeletionRunningEnglish = "This deletion is running now and is checke
 type domainDeletionsRunning struct {
 	mu      sync.Mutex
 	running map[int]int
+	// steps: the stage the running request of each domain is at now
+	// (mail_tls_cleanup, mail_runtime_cleanup, site_cleanup, dns_cleanup,
+	// certificate_cleanup, ledger_delete), so a status read can show the
+	// progress window's live step (owner's order, 6 Nov 2026: every
+	// operation shows what it is doing while it does it). Memory only: it
+	// is a moment of a running request, never saved evidence.
+	steps map[int]string
 }
 
 // begin records a running deletion; the returned function ends it.
@@ -49,6 +56,7 @@ func (r *domainDeletionsRunning) begin(domainID int) func() {
 			defer r.mu.Unlock()
 			if r.running[domainID]--; r.running[domainID] <= 0 {
 				delete(r.running, domainID)
+				delete(r.steps, domainID)
 			}
 		})
 	}
@@ -59,4 +67,31 @@ func (r *domainDeletionsRunning) isRunning(domainID int) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.running[domainID] > 0
+}
+
+// setStep records the stage a running deletion request of this domain is at
+// now. Called only by that request, between its stages; a domain with no
+// running request keeps nothing.
+// Çalışan silme isteğinin şu anki aşaması; yalnız istek kendisi yazar.
+func (r *domainDeletionsRunning) setStep(domainID int, stage string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.running[domainID] <= 0 {
+		return
+	}
+	if r.steps == nil {
+		r.steps = map[int]string{}
+	}
+	r.steps[domainID] = stage
+}
+
+// step is a read of the stage the running request is at ("" when no
+// request runs or it has not reached its first stage yet).
+func (r *domainDeletionsRunning) step(domainID int) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.running[domainID] <= 0 {
+		return ""
+	}
+	return r.steps[domainID]
 }

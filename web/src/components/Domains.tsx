@@ -529,10 +529,36 @@ export function Domains() {
         }
     };
 
+    // While the delete request itself runs, the saved state is read every
+    // 1.5 s so the window shows the step the server is at now (Go: the
+    // running answer names `step`). Reads only; it never sends a change and
+    // stops as soon as the request answers.
+    // Silme istegi surerken sunucunun su anki adimi okunur; yalniz okur.
+    const watchRunningDeletion = (id: number, name: string, report: OperationReport, isDone: () => boolean) => {
+        void (async () => {
+            let last = '';
+            let since = Date.now();
+            while (alive.current && !isDone()) {
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+                if (!alive.current || isDone()) return;
+                const saved = await readSavedDomainDeletionWithStage(id);
+                if (isDone()) return;
+                if (saved.state !== 'known' || saved.saved?.reason !== 'deletion_running' || !STAGE_STEP[saved.stage]) continue;
+                if (saved.stage !== last) {
+                    last = saved.stage;
+                    since = Date.now();
+                }
+                report.steps(deletionSteps(name, saved.stage, 'deletion_running', since));
+            }
+        })();
+    };
+
     const deleteAndFollow = async (id: number, name: string, report: OperationReport): Promise<OperationEnd> => {
         const startedAt = Date.now();
         report.steps(requestSteps(name, startedAt));
-        const result = await deleteDomain(id, name);
+        let answered = false;
+        watchRunningDeletion(id, name, report, () => answered);
+        const result = await deleteDomain(id, name).finally(() => { answered = true; });
         if (result.kind === 'done') {
             report.steps(deletionSteps(name, 'ledger_delete', '', startedAt).map((step) => ({ ...step, state: 'done' })));
             return { state: 'done', message: result.note ?? t('domains.deleted', { name }) };

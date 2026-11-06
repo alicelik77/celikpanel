@@ -99,3 +99,19 @@ test('a website whose traffic is not counted is named, with the step and no file
     }
   }
 });
+
+test('while the delete request runs, the window reads the live step and stops when the request answers', () => {
+  const domains = read('components/Domains.tsx');
+  const start = domains.indexOf('const watchRunningDeletion =');
+  const end = domains.indexOf('const deleteAndFollow =');
+  assert.ok(start > 0 && end > start);
+  const watcher = domains.slice(start, end);
+  // Reads only: the saved state, never a DELETE or any other change.
+  assert.match(watcher, /readSavedDomainDeletionWithStage\(id\)/);
+  assert.doesNotMatch(watcher, /fetch\(|method:|deleteDomain|sendDelete/);
+  assert.match(watcher, /while \(alive\.current && !isDone\(\)\)/);
+  assert.match(watcher, /if \(isDone\(\)\) return;/);
+  const follow = domains.slice(end, domains.indexOf('const sendDelete ='));
+  assert.match(follow, /watchRunningDeletion\(id, name, report, \(\) => answered\);/);
+  assert.match(follow, /await deleteDomain\(id, name\)\.finally\(\(\) => \{ answered = true; \}\);/);
+});

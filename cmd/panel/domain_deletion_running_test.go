@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -71,5 +72,74 @@ func TestDomainDeletionStatusSaysRunningWhileTheRequestRuns(t *testing.T) {
 	second()
 	if p.deletionsRunning.isRunning(id) {
 		t.Fatal("still running after both requests ended")
+	}
+}
+
+// Owner's order, 6 Nov 2026: the progress window shows the step a deletion
+// is at while the request runs (mail settings, website, DNS, certificates,
+// finishing). The status read names it in `step`; it only reads, and a
+// domain whose request ended keeps nothing.
+func TestDomainDeletionStatusNamesTheLiveStepWhileTheRequestRuns(t *testing.T) {
+	p := newDNSPanelForTest(t)
+	id, _ := seedExactDeletionStatusForEngine(t, p, transport.DNSEnginePowerDNS)
+
+	// No running request: a stray step is not kept.
+	p.deletionsRunning.setStep(id, "site_cleanup")
+	if got := p.deletionsRunning.step(id); got != "" {
+		t.Fatalf("step kept without a running request: %q", got)
+	}
+
+	end := p.deletionsRunning.begin(id)
+	_, body := readDeletionStatusForTest(t, p, id)
+	if body.Stage != domainDeletionRunningStage || body.Reason != domainDeletionRunningReason || body.Step != "" {
+		t.Fatalf("before the first stage: %+v", body)
+	}
+	for _, stage := range []string{"mail_tls_cleanup", domainDeletionStageMailRuntime, "site_cleanup", "dns_cleanup", "certificate_cleanup", "ledger_delete"} {
+		p.deletionsRunning.setStep(id, stage)
+		status, body := readDeletionStatusForTest(t, p, id)
+		if status != http.StatusOK || body.Stage != domainDeletionRunningStage ||
+			body.Reason != domainDeletionRunningReason || body.Step != stage {
+			t.Fatalf("stage %s: status=%d body=%+v", stage, status, body)
+		}
+		// Reading twice changes nothing.
+		if _, again := readDeletionStatusForTest(t, p, id); again != body {
+			t.Fatalf("a second read differs: %+v vs %+v", again, body)
+		}
+	}
+	if p.deletionsRunning.step(id+1) != "" {
+		t.Fatal("another domain reports a step")
+	}
+	end()
+	if got := p.deletionsRunning.step(id); got != "" {
+		t.Fatalf("step kept after the request ended: %q", got)
+	}
+	if _, body := readDeletionStatusForTest(t, p, id); body.Step != "" {
+		t.Fatalf("ended request still names a step: %+v", body)
+	}
+}
+
+// The delete handler records each stage before it runs it, in the order the
+// progress window lists them.
+func TestDomainDeleteHandlerRecordsStagesInOrder(t *testing.T) {
+	source, err := os.ReadFile("domain_handlers.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(source)
+	pairs := [][2]string{
+		{`step("mail_tls_cleanup")`, `p.prepareDomainMailTLSRemoval(ctx, domainID)`},
+		{`step(domainDeletionStageMailRuntime)`, `p.runDomainDeletionMailStageLocked(ctx, domainID, domain.Name)`},
+		{`step("site_cleanup")`, `"Agent.DeleteSite"`},
+		{`step("dns_cleanup")`, `p.removeDomainDNSForDeletion(ctx, domain.Name, parentDomainName)`},
+		{`step("certificate_cleanup")`, `p.removeManagedDomainCertificates(`},
+		{`step("ledger_delete")`, `p.finalizeDomainDeletion(ctx, domainID)`},
+	}
+	last := 0
+	for _, pair := range pairs {
+		at, call := strings.Index(text, pair[0]), strings.Index(text, pair[1])
+		if at < 0 || call < 0 || at > call || at < last {
+			t.Fatalf("%s must be recorded before %s and after the previous stage (at=%d call=%d last=%d)", pair[0], pair[1], at, call, last)
+		}
+		last = call
 	}
 }

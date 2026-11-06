@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readSavedDomainDeletion, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
+import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionPending, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionStatus, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
 import { en as enShellHalf } from '../src/i18n/en.ts';
 import { enErrorsScreens as enErrorsPart } from '../src/i18n/screens/errors/en.ts';
 // The coded refusals only screens show are the screen part "errors" since v0.1.0-alpha.98.
@@ -413,4 +413,20 @@ test('a deletion CelikPanel carries on by itself blocks a second delete; the wai
   assert.equal(domainDeletionQuiet('remote_dns_removed_finishing'), false);
   assert.match(enScreens['domains.beingDeletedLine'], /^\{name\} is being deleted\. Nothing to do; this page updates by itself\.$/);
   assert.match(trScreens['domains.beingDeletedLine'], /^\{name\} siliniyor\./);
+});
+
+// alpha.126 (owner's order): while this server's request runs, the status
+// read names the step it is at now; the window shows that step. An unknown
+// or missing step falls back to "running"; other answers keep their stage.
+test('a running deletion names its live step; anything unreviewed is ignored', async () => {
+  for (const step of ['mail_tls_cleanup', 'mail_runtime_cleanup', 'site_cleanup', 'dns_cleanup', 'certificate_cleanup', 'ledger_delete']) {
+    const answer = response(200, { status: 'deletion_pending', stage: 'running', reason: 'deletion_running', step });
+    assert.equal(await readDomainDeletionStage(answer), step);
+    // The step never changes what the saved state means.
+    assert.deepEqual(await readSavedDomainDeletionState(answer), { reason: 'deletion_running', detail: '' });
+  }
+  assert.equal(await readDomainDeletionStage(response(200, { status: 'deletion_pending', stage: 'running', reason: 'deletion_running' })), 'running');
+  assert.equal(await readDomainDeletionStage(response(200, { status: 'deletion_pending', stage: 'running', reason: 'deletion_running', step: 'rm -rf' })), 'running');
+  // `step` counts only while the request runs.
+  assert.equal(await readDomainDeletionStage(response(200, { status: 'failed', stage: 'site_cleanup', step: 'ledger_delete' })), 'site_cleanup');
 });

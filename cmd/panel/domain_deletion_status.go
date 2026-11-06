@@ -184,6 +184,9 @@ type domainDeletionStatusResponse struct {
 	Stage  string `json:"stage"`
 	Reason string `json:"reason,omitempty"`
 	Detail string `json:"detail,omitempty"`
+	// Step: while this server's request runs (stage "running"), the stage
+	// it is at now, for the progress window's live step. Read only.
+	Step string `json:"step,omitempty"`
 	// ErrorLine is the bounded first line of a verified stage failure.
 	ErrorLine string `json:"error_line,omitempty"`
 	Message   string `json:"message"`
@@ -221,6 +224,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
 			Status: domainDeletionPendingStatus, Stage: domainDeletionRunningStage,
 			Reason:  domainDeletionRunningReason,
+			Step:    p.deletionsRunning.step(domainID),
 			Message: domainDeletionRunningEnglish,
 		})
 		return

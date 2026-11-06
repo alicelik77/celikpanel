@@ -299,11 +299,21 @@ const reviewedStages = new Set([
     'certificate_cleanup', 'ledger_delete', 'dns_removed', 'incomplete', 'marker_check',
 ]);
 
-/** The reviewed stage of a deletion answer (202 or a status read), or ''. */
+/**
+ * The reviewed stage of a deletion answer (202 or a status read), or ''.
+ * While this server's request runs (stage `running`) a status read also
+ * names the step it is at now (`step`, alpha.126): that step is returned, so
+ * the progress window shows mail settings, website, DNS, certificates and
+ * finishing as they happen.
+ */
 export async function readDomainDeletionStage(response: Response): Promise<string> {
     try {
         const body: unknown = await response.clone().json();
-        const stage = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>).stage : '';
+        const fields = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+        const stage = fields.stage;
+        if (stage === 'running' && typeof fields.step === 'string' && fields.step !== 'running' && reviewedStages.has(fields.step)) {
+            return fields.step;
+        }
         return typeof stage === 'string' && reviewedStages.has(stage) ? stage : '';
     } catch {
         return '';
