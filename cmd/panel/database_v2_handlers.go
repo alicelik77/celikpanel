@@ -824,6 +824,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 
 // handleDeleteDatabase deletes a database
 func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
+	defer kickDatabaseRemoteSync() // alpha.129: remote database access follows (review M1)
 	ctx := r.Context()
 	// alpha.127: the progress window follows these steps (operation_steps.go).
 	reportOperationPlan(ctx, "check", "delete", "records")
@@ -1097,6 +1098,7 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 
 // handleDeleteDatabaseUser deletes a database user
 func (p *Panel) handleDeleteDatabaseV2User(w http.ResponseWriter, r *http.Request) {
+	defer kickDatabaseRemoteSync() // alpha.129: remote database access follows (review M1)
 	ctx := r.Context()
 	// alpha.127: the progress window follows these steps (operation_steps.go).
 	reportOperationPlan(ctx, "check", "delete", "records")
@@ -1243,6 +1245,7 @@ func (p *Panel) handleListDatabaseGrants(w http.ResponseWriter, r *http.Request)
 
 // handleGrantDatabaseAccess grants a user access to a database
 func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request) {
+	defer kickDatabaseRemoteSync() // alpha.129: remote database access follows (review M1)
 	ctx := r.Context()
 	// Extract ID from path
 	databaseID, err := getDatabaseIDFromPath(r.URL.Path)
@@ -1367,6 +1370,7 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 
 // handleRevokeDatabaseAccess revokes a user's access to a database
 func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Request) {
+	defer kickDatabaseRemoteSync() // alpha.129: remote database access follows (review M1)
 	ctx := r.Context()
 	// Extract ID from path
 	grantID, err := getIDFromPath(r.URL.Path)

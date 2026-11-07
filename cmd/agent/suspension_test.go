@@ -568,6 +568,7 @@ type fakeDatabaseEngine struct {
 	present, locked bool
 	statements      []string
 	failOn          string
+	copyHosts       string // the answer to the remote copies' host list
 }
 
 func (engine *fakeDatabaseEngine) run(statements suspensionDatabaseStatements) func(string) ([]byte, error) {
@@ -591,7 +592,12 @@ func (engine *fakeDatabaseEngine) run(statements suspensionDatabaseStatements) f
 		case statements.unlock:
 			engine.locked = false
 		case statements.disconnect:
+		case statements.copies:
+			return []byte(engine.copyHosts), nil
 		default:
+			if strings.HasPrefix(statement, "ALTER USER 'shop_user'@'") && strings.Contains(statement, " ACCOUNT ") {
+				return nil, nil
+			}
 			return nil, fmt.Errorf("unexpected statement %q", statement)
 		}
 		return nil, nil
@@ -654,6 +660,16 @@ func TestDatabaseUserSuspensionRoundTrip(t *testing.T) {
 				statements.inspect, statements.unlock, statements.inspect,
 				statements.inspect, statements.inspect,
 			}
+			if engineName == "mysql" {
+				// alpha.129: the remote copies' hosts are read on every
+				// change, before the sessions are ended.
+				want = []string{
+					statements.inspect, statements.lock, statements.copies, statements.disconnect, statements.inspect,
+					statements.inspect, statements.copies, statements.disconnect, statements.inspect,
+					statements.inspect, statements.unlock, statements.copies, statements.inspect,
+					statements.inspect, statements.copies, statements.inspect,
+				}
+			}
 			if !reflect.DeepEqual(engine.statements, want) {
 				t.Fatalf("statements =\n%s\nwant\n%s", strings.Join(engine.statements, "\n"), strings.Join(want, "\n"))
 			}
@@ -697,5 +713,36 @@ func TestDatabaseUserSuspensionDisconnectFailureIsNotApplied(t *testing.T) {
 	}
 	if engine.statements[len(engine.statements)-2] != statements.disconnect {
 		t.Fatalf("retry did not end sessions: %v", engine.statements)
+	}
+}
+
+// alpha.129 (review M1): suspension locks every remote copy of a MariaDB
+// user with the local account, and restore unlocks them; hosts in any other
+// form are never touched, and a copy that cannot be locked fails the step.
+func TestDatabaseUserSuspensionLocksTheRemoteCopies(t *testing.T) {
+	engine := &fakeDatabaseEngine{present: true, copyHosts: "203.0.113.7\n198.51.100.0/255.255.255.0\n%\nexample.com\n"}
+	installFakeDatabaseEngine(t, "mysql", engine)
+	before := transport.DatabaseUserState{Present: true}
+	if response := setDatabaseSuspension(t, "mysql", true, before); !response.Applied {
+		t.Fatalf("suspend = %+v", response)
+	}
+	lock := "ALTER USER 'shop_user'@'203.0.113.7' ACCOUNT LOCK;\nALTER USER 'shop_user'@'198.51.100.0/255.255.255.0' ACCOUNT LOCK;"
+	if !containsString(engine.statements, lock) {
+		t.Fatalf("copies not locked: %q", engine.statements)
+	}
+	if response := setDatabaseSuspension(t, "mysql", false, before); !response.Applied {
+		t.Fatalf("restore = %+v", response)
+	}
+	if !containsString(engine.statements, strings.ReplaceAll(lock, "ACCOUNT LOCK", "ACCOUNT UNLOCK")) {
+		t.Fatalf("copies not unlocked: %q", engine.statements)
+	}
+	for _, s := range engine.statements {
+		if strings.Contains(s, "'%'") || strings.Contains(s, "example.com") {
+			t.Fatalf("a host CelikPanel does not write was touched: %q", s)
+		}
+	}
+	engine.failOn = lock
+	if response := setDatabaseSuspension(t, "mysql", true, before); response.Applied || response.Error == "" {
+		t.Fatalf("a copy that could not be locked was reported applied: %+v", response)
 	}
 }

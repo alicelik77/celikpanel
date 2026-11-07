@@ -327,12 +327,23 @@ func portSetsEqual(a, b []int) bool {
 }
 
 // kickDatabaseRemoteSync asks the background loop to apply soon.
-func (p *Panel) kickDatabaseRemoteSync() {
+func (p *Panel) kickDatabaseRemoteSync() { kickDatabaseRemoteSync() }
+
+// kickDatabaseRemoteSync is called by every change that can change which
+// rules are eligible or what a MariaDB copy must carry (review M1): a
+// suspension or its end, a plan or rights change, a grant or revoke, a
+// database or user deleted. The loop waits a moment (the caller's
+// transaction commits first) and then applies the whole set again, forced,
+// so a copy also follows a change that leaves the rule set the same.
+func kickDatabaseRemoteSync() {
 	select {
 	case databaseRemoteMemory.kick <- struct{}{}:
 	default:
 	}
 }
+
+// databaseRemoteKickDelay lets the kicking transaction commit first.
+var databaseRemoteKickDelay = 2 * time.Second
 
 // startDatabaseRemoteSync runs the apply at start, on a kick and every five
 // minutes; each run sends nothing when the eligible set did not change.
@@ -340,7 +351,7 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 	go func() {
 		ticker := time.NewTicker(databaseRemoteSyncInterval)
 		defer ticker.Stop()
-		run := func() {
+		run := func(force bool) {
 			runCtx, cancel := context.WithTimeout(ctx, agentRPCMutationTimeout+time.Minute)
 			defer cancel()
 			rows := 0
@@ -359,19 +370,24 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 					return
 				}
 			}
-			if _, _, err := p.applyDatabaseRemote(runCtx, false); err != nil && !errors.Is(err, context.Canceled) {
+			if _, _, err := p.applyDatabaseRemote(runCtx, force); err != nil && !errors.Is(err, context.Canceled) {
 				log.Printf("database remote access: apply: %v", err)
 			}
 		}
-		run()
+		run(false)
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				run()
+				run(false)
 			case <-databaseRemoteMemory.kick:
-				run()
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(databaseRemoteKickDelay):
+				}
+				run(true)
 			}
 		}
 	}()

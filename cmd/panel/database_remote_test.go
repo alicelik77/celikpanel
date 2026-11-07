@@ -380,3 +380,25 @@ func TestDatabaseRemoteRoutesAreGuarded(t *testing.T) {
 		t.Error("team members reach remote access")
 	}
 }
+
+// Review M1: a rights change asks for the remote access to be applied again.
+func TestDatabaseRemoteFollowsARightsChange(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	tx, err := p.db.GetDB().BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := saveRightsSet(context.Background(), tx, rightsOwnerSubscription, 7510, rightsSet{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-databaseRemoteMemory.kick:
+	default:
+		t.Fatal("a rights change did not ask for the remote access to be applied again")
+	}
+}
