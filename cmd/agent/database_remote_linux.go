@@ -68,7 +68,10 @@ func hostDatabaseRemotePGQuery(port int, statement string) (string, error) {
 func hostDatabaseRemoteMySQLQuery(statement string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "mysql", "--batch", "--raw", "--skip-column-names")
+	// The same client as every other Agent statement (database_rpc.go):
+	// "mariadb", so MariaDB 11+ does not put a deprecation line first on
+	// stderr, where a failure's reason is read.
+	cmd := exec.CommandContext(ctx, mysqlStatementProgram(), "--batch", "--raw", "--skip-column-names")
 	cmd.Stdin = strings.NewReader(statement + "\n")
 	stdout := &pgBuffer{limit: 1 << 20}
 	stderr := &pgBuffer{limit: 16 << 10}
