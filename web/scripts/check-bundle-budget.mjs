@@ -75,7 +75,9 @@ const screenPartBudgets = {
   siteConfig: kib(52, 9),
   settings: kib(44, 13),
   mailDatabases: kib(43, 12),
-  dashboard: kib(41, 9),
+  // alpha.128: the database tools' audit words brought Turkish to 41.51 /
+  // 8.46 KiB; screen-time only.
+  dashboard: kib(45, 9.5),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),
   // v0.1.0-alpha.98: the coded refusals only screens show moved out of the
