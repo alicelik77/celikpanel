@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.129.tr.md)
 
+> **Published** on 2026-11-07 (UTC): release commit `667dba6ba`, GitHub pre-release at 23:17:29Z, download portal at about 23:22Z (public check 27/27).
+
 Databases get the everyday work they were missing: a new password for a
 database user, extra users that only read or that read and write, a guide
 for desktop tools, and clearer cards. A site's customer can connect to their
