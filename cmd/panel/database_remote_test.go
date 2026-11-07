@@ -506,3 +506,42 @@ func TestDatabaseRemoteProbeClosesThePortWhenTheFilterIsGone(t *testing.T) {
 		t.Fatalf("not reopened once the filter is back: %v", ports)
 	}
 }
+
+// Review L3: parallel adds never pass the limit, and a user over it (rows
+// written around the panel) loses only its own rules.
+func TestDatabaseRemoteLimitIsAtomicAndPerUser(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	dbrOffer(t, p, true)
+	a := dbrCaller(dbrCustomerA, roleCustomer)
+	var wg sync.WaitGroup
+	for i := 1; i <= 14; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			dbrCall(p, a, http.MethodPost, "/api/v1/database-remote/databases/7530/rules", `{"user_id":7540,"address":"203.0.113.`+itoa(i)+`"}`)
+		}(i)
+	}
+	wg.Wait()
+	var n int
+	if err := p.db.GetDB().QueryRow(`SELECT COUNT(DISTINCT address) FROM database_remote_rules WHERE user_id = 7540`).Scan(&n); err != nil || n > 10 {
+		t.Fatalf("%d addresses after parallel adds (%v)", n, err)
+	}
+
+	// Over the limit by hand: only that user's rules are left out.
+	for i := 100; i < 103; i++ {
+		if _, err := p.db.GetDB().Exec(`INSERT INTO database_remote_rules (database_id, user_id, address) VALUES (7530, 7540, ?)`, "198.51.100."+itoa(i)+"/32"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := p.db.GetDB().Exec(`
+		INSERT INTO database_user_grants (database_id, user_id) VALUES (7530, 7542);
+		INSERT INTO database_remote_rules (database_id, user_id, address) VALUES (7530, 7542, '192.0.2.1/32');`); err != nil {
+		t.Fatal(err)
+	}
+	targets, err := p.databaseRemoteDesired(context.Background())
+	if err != nil || len(targets) != 1 || len(targets[0].Rules) != 1 || targets[0].Rules[0].User != "a_other" {
+		t.Fatalf("desired = %+v, %v", targets, err)
+	}
+}

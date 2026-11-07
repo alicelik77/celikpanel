@@ -190,11 +190,27 @@ func (p *Panel) databaseRemoteDesired(ctx context.Context) ([]transport.Database
 	}
 	out := make([]transport.DatabaseRemoteTarget, 0, len(byKey))
 	for _, target := range byKey {
-		norm, err := (dbremote.Target{Engine: target.Engine, Port: target.Port, Rules: fromTransportRemoteRules(target.Rules)}).Normalize()
+		// Each user's rules are checked on their own (review L3): a user over
+		// the address limit (rows written around the panel) loses only its
+		// own rules, never every other customer's on the same engine.
+		byUser := map[string][]dbremote.Rule{}
+		for _, r := range fromTransportRemoteRules(target.Rules) {
+			byUser[r.User] = append(byUser[r.User], r)
+		}
+		var kept []dbremote.Rule
+		for user, rules := range byUser {
+			if _, err := (dbremote.Target{Engine: target.Engine, Port: target.Port, Rules: rules}).Normalize(); err != nil {
+				log.Printf("database remote access: the rules of %s on %s:%d are left out: %v", user, target.Engine, target.Port, err)
+				continue
+			}
+			kept = append(kept, rules...)
+		}
+		norm, err := (dbremote.Target{Engine: target.Engine, Port: target.Port, Rules: kept}).Normalize()
 		if err != nil {
-			// One subscription's bad set must not close everybody else's:
-			// that target's rules are left out and the screen says so.
-			log.Printf("database remote access: %s left out: %v", target.Engine, err)
+			log.Printf("database remote access: %s:%d left out: %v", target.Engine, target.Port, err)
+			continue
+		}
+		if len(norm.Rules) == 0 {
 			continue
 		}
 		target.Rules = toTransportRemoteRules(norm.Rules)
@@ -479,14 +495,6 @@ func databaseRemoteRuleStatus(row databaseRemoteRow, reason string) (string, *tr
 		}
 	}
 	return "waiting", nil
-}
-
-// databaseRemoteCountAddresses: the distinct addresses one user already has
-// on its engine.
-func (p *Panel) databaseRemoteCountAddresses(ctx context.Context, userID int, except string) (int, error) {
-	var n int
-	err := p.db.GetDB().QueryRowContext(ctx, `SELECT COUNT(DISTINCT address) FROM database_remote_rules WHERE user_id = ? AND address <> ?`, userID, except).Scan(&n)
-	return n, err
 }
 
 // databaseRemoteDatabase is one database with its engine instance.

@@ -341,25 +341,26 @@ func (p *Panel) handleDatabaseRemoteAdd(w http.ResponseWriter, r *http.Request, 
 		writeCodedError(w, http.StatusBadRequest, errCodeDatabaseRemoteUser, "this user cannot be reached from outside: "+err.Error()+"; nothing was changed", "")
 		return
 	}
-	count, err := p.databaseRemoteCountAddresses(ctx, request.UserID, address)
-	if err != nil {
-		writeServerError(w, err)
-		return
-	}
-	if count >= dbremote.MaxAddressesPerUser {
-		writeCodedError(w, http.StatusConflict, errCodeDatabaseRemoteLimit,
-			"this user already has 10 addresses, the most one user may have. Remove one you no longer use first; nothing was changed.", "")
-		return
-	}
 	reportOperationStep(ctx, "save")
-	result, err := p.db.GetDB().ExecContext(ctx, `INSERT INTO database_remote_rules (database_id, user_id, address, created_by) VALUES (?, ?, ?, ?)`,
-		d.ID, request.UserID, address, c.ID)
+	// The limit is checked by the insert itself (review L3): one statement,
+	// so two requests at the same moment cannot both pass a count taken
+	// before either wrote.
+	result, err := p.db.GetDB().ExecContext(ctx, `
+		INSERT INTO database_remote_rules (database_id, user_id, address, created_by)
+		SELECT ?, ?, ?, ?
+		WHERE (SELECT COUNT(DISTINCT address) FROM database_remote_rules WHERE user_id = ? AND address <> ?) < ?`,
+		d.ID, request.UserID, address, c.ID, request.UserID, address, dbremote.MaxAddressesPerUser)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			writeCodedError(w, http.StatusConflict, errCodeDatabaseRemoteExists, "this address is already listed for this user and database; nothing was changed", "")
 			return
 		}
 		writeServerError(w, err)
+		return
+	}
+	if inserted, err := result.RowsAffected(); err != nil || inserted == 0 {
+		writeCodedError(w, http.StatusConflict, errCodeDatabaseRemoteLimit,
+			"this user already has 10 addresses, the most one user may have. Remove one you no longer use first; nothing was changed.", "")
 		return
 	}
 	id64, _ := result.LastInsertId()
