@@ -26,13 +26,15 @@ import (
 //
 //  1. A request carrying both a session cookie and a token is refused; a
 //     token request never falls through to the cookie path.
-//  2. Ten failed token sign-ins a minute from one address stop that address
-//     for the rest of the minute.
-//  3. The token must parse (cpk_<id>_<secret>).
-//  4. The server switch (Settings, off by default) must be on. The token's
-//     id must exist and the SHA-256 of its secret must match (constant
-//     time); it must not be revoked or expired, and the owner's credential
-//     epoch must be the one it was made under.
+//  2. The token must parse (cpk_<id>_<secret>), its id must exist and the
+//     SHA-256 of its secret must match (constant time). A token that does
+//     not verify is refused as invalid; after ten such failures a minute
+//     from one address, that address gets 429 for the rest of the minute.
+//     A token that verifies is never refused by that limit.
+//  3. It must not be revoked or expired, and the owner's credential epoch
+//     must be the one it was made under.
+//  4. The server switch (Settings, off by default) must be on; whether it
+//     is on is told only to the holder of a working token.
 //  5. 120 requests a minute per token.
 //  6. The owner must pass the same account checks as a session (active, not
 //     suspended, consistent identity); a team member never holds a token.
@@ -492,23 +494,59 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 	}
 	guards := p.apiTokenGuards()
 	address := clientIP(r)
-	if guards.failures.blocked(address) {
-		w.Header().Set("Retry-After", apiTokenRetryAfter)
-		writeCodedError(w, http.StatusTooManyRequests, errCodeAPITokenSignInLimit, apiTokenSignInLimitMessage, "")
+	// The presented token is verified first. Its secret is 256 bits, so a
+	// right token is never refused for its neighbours' mistakes: the
+	// per-address limit answers only requests whose token does not verify
+	// (one address can be a whole office behind NAT or a proxy).
+	ctx := r.Context()
+	tokenID, secret, parsed := parseAPIToken(credential)
+	var rec apiTokenRecord
+	verified := false
+	if parsed {
+		var err error
+		rec, err = p.lookupAPIToken(ctx, tokenID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			writeAuthStatusUnavailable(w)
+			return
+		}
+		found := err == nil
+		stored := apiTokenMissingHash
+		if found {
+			stored = rec.SecretSHA256
+		}
+		verified = subtle.ConstantTimeCompare([]byte(hashAPITokenSecret(secret)), []byte(stored)) == 1 && found
+	}
+	if !verified {
+		if guards.failures.blocked(address) {
+			w.Header().Set("Retry-After", apiTokenRetryAfter)
+			writeCodedError(w, http.StatusTooManyRequests, errCodeAPITokenSignInLimit, apiTokenSignInLimitMessage, "")
+			return
+		}
+		guards.failures.allow(address)
+		writeCodedError(w, http.StatusUnauthorized, errCodeAPITokenInvalid, apiTokenInvalidMessage, "")
 		return
 	}
-	fail := func(code, message string) {
+	// The token verified: its holder learns why it does not work now. These
+	// count as failed sign-ins, but never lock the address out.
+	ended := func(code, message string) {
 		guards.failures.allow(address)
 		writeCodedError(w, http.StatusUnauthorized, code, message, "")
 	}
-	// Something that is not a token at all is refused before anything is
-	// read, whether or not the remote API is on.
-	tokenID, secret, ok := parseAPIToken(credential)
-	if !ok {
-		fail(errCodeAPITokenInvalid, apiTokenInvalidMessage)
+	if rec.RevokedAt.Valid {
+		ended(errCodeAPITokenRevoked, apiTokenRevokedMessage)
 		return
 	}
-	ctx := r.Context()
+	now := apiTokenNow().Unix()
+	if now >= rec.ExpiresAt {
+		ended(errCodeAPITokenExpired, apiTokenExpiredMessage)
+		return
+	}
+	if rec.AuthEpoch != rec.UserEpoch {
+		ended(errCodeAPITokenEnded, apiTokenEndedMessage)
+		return
+	}
+	// Whether the remote API is on is told only to the holder of a working
+	// token; anyone else got the invalid-token answer above.
 	enabled, err := p.remoteAPIEnabled(ctx)
 	if err != nil {
 		writeAuthStatusUnavailable(w)
@@ -516,34 +554,6 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 	}
 	if !enabled {
 		writeCodedError(w, http.StatusForbidden, errCodeAPIDisabled, apiDisabledMessage, "")
-		return
-	}
-	rec, err := p.lookupAPIToken(ctx, tokenID)
-	found := err == nil
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		writeAuthStatusUnavailable(w)
-		return
-	}
-	stored := apiTokenMissingHash
-	if found {
-		stored = rec.SecretSHA256
-	}
-	matches := subtle.ConstantTimeCompare([]byte(hashAPITokenSecret(secret)), []byte(stored)) == 1
-	if !found || !matches {
-		fail(errCodeAPITokenInvalid, apiTokenInvalidMessage)
-		return
-	}
-	if rec.RevokedAt.Valid {
-		fail(errCodeAPITokenRevoked, apiTokenRevokedMessage)
-		return
-	}
-	now := apiTokenNow().Unix()
-	if now >= rec.ExpiresAt {
-		fail(errCodeAPITokenExpired, apiTokenExpiredMessage)
-		return
-	}
-	if rec.AuthEpoch != rec.UserEpoch {
-		fail(errCodeAPITokenEnded, apiTokenEndedMessage)
 		return
 	}
 	if !guards.calls.allow(rec.TokenID) {

@@ -558,6 +558,15 @@ func TestAPITokenStatesEndATokenAndNameTheReason(t *testing.T) {
 		t.Fatal(err)
 	}
 	expect("switch never set", f.minted["admin/read"], http.StatusForbidden, errCodeAPIDisabled)
+	// Without a working token nobody learns whether the switch is on: the
+	// answer is the invalid-token one, the same as with the switch on.
+	for name, token := range map[string]string{
+		"unknown id":   "cpk_" + strings.Repeat("b", 12) + known[16:],
+		"wrong secret": known[:17] + strings.Repeat("A", 42) + "E",
+		"malformed":    "cpk_x",
+	} {
+		expect("switch off, "+name, token, http.StatusUnauthorized, errCodeAPITokenInvalid)
+	}
 	if err := f.panel.setSetting(context.Background(), settingRemoteAPIEnabled, "1"); err != nil {
 		t.Fatal(err)
 	}
@@ -896,11 +905,26 @@ func TestAPITokenRateLimits(t *testing.T) {
 			t.Fatalf("failure %d: %d", i+1, recorder.Code)
 		}
 	}
-	recorder = send(f.minted["admin/read"], "203.0.113.9")
+	// The eleventh wrong token is refused by the limit...
+	recorder = send(wrong, "203.0.113.9")
 	if recorder.Code != http.StatusTooManyRequests || apiErrorCode(t, recorder) != errCodeAPITokenSignInLimit {
 		t.Fatalf("after ten failures: %d %s", recorder.Code, recorder.Body.String())
 	}
-	if recorder := send(f.minted["admin/read"], "203.0.113.10"); recorder.Code != http.StatusNoContent {
+	// ...but a token that verifies, from the same address (an office behind
+	// one NAT), is never locked out by its neighbours' mistakes.
+	for _, role := range []string{"admin/read", "customer/manage"} {
+		if recorder := send(f.minted[role], "203.0.113.9"); recorder.Code != http.StatusNoContent {
+			t.Fatalf("a right token %s behind the same address: %d %s", role, recorder.Code, recorder.Body.String())
+		}
+	}
+	// Twelve more wrong tokens change nothing for it.
+	for i := 0; i < 12; i++ {
+		send(wrong, "203.0.113.9")
+	}
+	if recorder := send(f.minted["admin/read"], "203.0.113.9"); recorder.Code != http.StatusNoContent {
+		t.Fatalf("a right token after more failures: %d", recorder.Code)
+	}
+	if recorder := send(wrong, "203.0.113.10"); recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("another address: %d", recorder.Code)
 	}
 }
