@@ -122,7 +122,41 @@ yavaşlatılır; bir plan izniyle verilir.
 
 ## Laboratuvar sonuçları
 
-_Laboratuvar turundan sonra doldurulacak._
+Laboratuvar bu sürümü 7 Kasım 2026'da yalnız kendi sanal makinelerinde
+denedi. Her kurulum sahibin `get.sh` komutuyla yapıldı, her güncelleme
+panelin güncelleme ekranından bir kez başlatıldı.
+
+| Denenen | Sonuç |
+|---|---|
+| Sahibinki gibi bir DNS çifti (PowerDNS ve postalı Debian 13, BIND'li ve katılmış Ubuntu 24.04), 128 → 129 | Geçti: 67 sn ve 79 sn, hiçbir hizmet çökmedi, hiçbir yerel yapılandırma dosyası değişmedi |
+| Ubuntu 22.04: 127 → 129, sıfırdan 129 kurulumu ve bilerek bozulan bir güncelleme | Geçti: güncelleme 84 sn sürdü; bozulan güncellemeden sonra otomatik geri alma 23 sn'de bitti, sonraki güncelleme başarılı oldu |
+| MariaDB ve PostgreSQL'de veritabanı kullanıcıları | Geçti: eski parola reddediliyor, yalnız okuyan kullanıcı sonradan açılan tabloları okuyor ama yazamıyor, kullanıcıyı kaldırmak veritabanını koruyor, panel dışında açılmış adlar reddediliyor |
+| WordPress veritabanına yeni parola | Geçti: WordPress yeni parolayı aldı; site yaklaşık bir saniye hata verdi |
+| Debian 13'te (MariaDB, PostgreSQL) ve Arch'ta (PostgreSQL) dışarıdan bağlanma | Aşağıdaki düzeltmelerden sonra geçti: şifreli bağlantı çalışıyor, şifresiz bağlantı ve listede olmayan adres reddediliyor, askıya alma ve plan izninin geri alınması erişimi 13 sn (MariaDB) ve 34 sn (PostgreSQL) içinde kapatıyor, beş yanlış paroladan sonra adres engellendi |
+| Posta: yeniden açılan kutunun aynı saat içinde yeniden durması | Geçti |
+| DNS'i bekleyen alan adının anahtarla silinmesi | Geçti: silme, yedek DNS sunucusu yanıt verdikten 31 sn sonra kendiliğinden bitti; ikinci basış yeni iş başlatmadı |
+
+Laboratuvar veritabanına dışarıdan bağlanmada şu hataları buldu; hepsi bu
+sürümde düzeltildi:
+
+- PostgreSQL sertifikasını okuyamadığı için yeniden başlatmadan sonra
+  açılmıyordu; sertifika klasörü artık okunabilir ve her uygulamada
+  onarılıyor.
+- MariaDB'nin yanlış parola kuralı MariaDB'nin gerçekten yazdığı hiçbir
+  satırla eşleşmiyordu, kimse engellenmiyordu; artık eşleşiyor.
+- Güncelleme önceki kural dosyasını sahip yazmış gibi koruyordu; artık
+  yenisiyle değiştiriliyor.
+- Sunucunun eklendiğini doğrulamadığı bir adres beş dakikaya kadar
+  bekliyordu; artık hemen yeniden uygulanıyor.
+
+Laboratuvar ayrıca, silme yedek DNS sunucusunu bekleyip kendiliğinden
+biterken silme durumunun "durdu, yeniden silin" dediğini buldu. Durum artık
+beklediğini ve kendiliğinden biteceğini söylüyor (otomatik test kapsıyor;
+laboratuvarda yeniden denenmedi).
+
+Denenmeyenler: dışarıdan bağlanma sunucusu olarak Ubuntu 24.04, IPv6
+kuralları. Kanıt: laboratuvar dalında
+`deploy/e2e/dns-pair-acceptance/evidence/a129/`.
 
 ## Bilinen sınırlar
 
@@ -137,8 +171,20 @@ _Laboratuvar turundan sonra doldurulacak._
   - PostgreSQL'de sahibin kendi `shared_preload_libraries` değeri asla
     yeniden yazılmıyor; yönetici `auth_delay` için girilecek değeri tam
     olarak görüyor;
-  - MariaDB günlüğünü okuyan Fail2ban kuralı otomatik testlerle denetlendi;
-    gerçek sistemlerde laboratuvar turu denetler.
+  - MariaDB, adresin adını bulabildiğinde bağlanan istemcinin adresi yerine
+    adını yazıyor (MariaDB'de ad sorgusu varsayılan olarak açık); Fail2ban
+    kuralı o istemciyi engellemiyor, o istemcinin yanlış parolaları
+    MariaDB'de yavaşlatılmıyor. PostgreSQL etkilenmiyor. Düzeltmesi alpha.130 için
+    planlandı;
+  - sunucunun açılışı hiç bitmezse (bir hizmet takılır, systemd "açılıyor"
+    durumunda kalır) CelikPanel hiçbir değişikliği uygulamıyor: geri alınan
+    plan izni açılış bitene kadar erişimi açık bırakıyor, ekran ise izni
+    geri alınmış gösteriyor;
+  - elle yazılan `nft flush ruleset` CelikPanel'in güvenlik duvarını
+    siliyor. Veritabanı süzgeci yaklaşık 15 saniyede geri geliyor (bu sırada
+    motorlar listede olmayan adresleri girişte yine reddediyor); güvenlik
+    duvarının geri kalanı sunucu bir sonraki yeniden başlatıldığında geri
+    geliyor.
 - **Veritabanı kullanıcıları:** yalnız okuyan bir PostgreSQL kullanıcısının
   neyi görüp neyi görmediği docs/DATABASE-USERS.md'de listeli. Bir
   veritabanını başka bir PostgreSQL kümesine taşımak, hedefte aynı adlı bir

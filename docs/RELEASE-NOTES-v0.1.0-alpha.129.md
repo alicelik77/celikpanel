@@ -117,7 +117,40 @@ wrong passwords are slowed down; a plan permission grants it.
 
 ## Lab results
 
-_To be filled in after the lab round._
+The lab ran this release on 7 November 2026, only in its own virtual
+machines. Each installation used the owner's `get.sh` command, and each
+update was started once from the panel's update screen.
+
+| What was tried | Result |
+|---|---|
+| A DNS pair like the owner's (Debian 13 with PowerDNS and mail, a joined Ubuntu 24.04 with BIND), 128 → 129 | Passed: 67 s and 79 s, no service failed, no native configuration file changed |
+| Ubuntu 22.04: 127 → 129, a fresh 129 install, and a forced failed update | Passed: the update took 84 s; after the forced failure the automatic rollback finished in 23 s and the next update succeeded |
+| Database users on MariaDB and PostgreSQL | Passed: the old password is refused, a read-only user reads later tables but cannot write, removing a user keeps the database, names made outside the panel are refused |
+| New password for a WordPress database | Passed: WordPress got the new password; the site answered with an error for about one second |
+| Remote access on Debian 13 (MariaDB, PostgreSQL) and Arch (PostgreSQL) | Passed after the fixes below: encrypted connections work, unencrypted ones and unlisted addresses are refused, suspension and the plan withdrawal close access within 13 s (MariaDB) and 34 s (PostgreSQL), five wrong passwords got the address banned |
+| Mail: a reopened mailbox paused again within the hour | Passed |
+| Deleting a domain with a token while its DNS waits | Passed: the deletion finished by itself 31 s after the backup DNS server answered; a second press started nothing |
+
+The lab found these faults in remote database access, all fixed in this
+release:
+
+- PostgreSQL could not read its certificate, so it did not start after the
+  restart; the certificate folder is now readable, and every apply repairs
+  it.
+- The MariaDB rule for wrong passwords matched no line MariaDB really
+  writes, so nobody was banned; it now matches.
+- An update kept the earlier rule file as if the owner had written it; it is
+  now replaced.
+- An address whose addition the server did not confirm waited up to five
+  minutes; it is now applied again at once.
+
+It also found that the deletion status said "stopped, delete it again" while
+the deletion was waiting for the backup DNS server and finished by itself.
+The status now says it is waiting and finishes by itself (an automatic test
+covers it; it was not tried again in the lab).
+
+Not tried: Ubuntu 24.04 as a remote-access server, IPv6 rules. Evidence:
+`deploy/e2e/dns-pair-acceptance/evidence/a129/` on the lab branch.
 
 ## Known limits
 
@@ -132,8 +165,19 @@ _To be filled in after the lab round._
   - an owner's own `shared_preload_libraries` in PostgreSQL is never
     rewritten; the administrator gets the exact value to set for
     `auth_delay`;
-  - the Fail2ban rule that reads MariaDB's journal is checked by automatic
-    tests; the lab round checks it on real systems.
+  - MariaDB writes a client's host name instead of its address when it can
+    look the address up (MariaDB's name lookup is on by default); the
+    Fail2ban rule then does not ban that client, so its wrong passwords are
+    not slowed down on MariaDB. PostgreSQL is not affected. A fix is planned
+    for alpha.130;
+  - if the server's start-up never finishes (a service hangs, so systemd
+    stays "starting"), CelikPanel applies no change: a withdrawn plan
+    permission leaves access open until start-up finishes, while the screen
+    already shows it withdrawn;
+  - `nft flush ruleset` typed by hand removes CelikPanel's firewall. The
+    database filter comes back within about 15 seconds (meanwhile the
+    engines still refuse unlisted addresses at sign-in); the rest of the
+    firewall comes back at the next server restart.
 - **Database users:** what a read-only PostgreSQL user can and cannot see is
   listed in docs/DATABASE-USERS.md. Moving a database to another PostgreSQL
   cluster reuses a role of the same name on the target.

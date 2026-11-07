@@ -164,10 +164,20 @@ User: as listed; Password: the database user's password; SSL mode: `require`
 - The copy's grant comparison covers database-wide grants only: table,
   column or role grants an administrator adds to a remote copy by hand are
   not removed by it (only the engine's root can add them).
-- Fail2ban's journal-line format (the prefix its systemd backend gives
-  MariaDB's entries) is verified by unit tests only so far; the lab confirms
-  it on the five systems. MariaDB must log to the journal (no `log_error`
-  file), otherwise rules wait.
+- MariaDB must log to the journal (no `log_error` file), otherwise rules
+  wait.
+- MariaDB writes the client's host name instead of its address when it can
+  resolve the address (`skip_name_resolve` is off by default); the jail then
+  bans nobody for that client (alpha.129 lab: `'_gateway'`). Wrong passwords
+  from such a client are not slowed down on MariaDB; PostgreSQL is not
+  affected. To be fixed in alpha.130.
+- While systemd is not ready (a unit hangs at start-up) the Agent refuses
+  every apply, so a withdrawn permission keeps access open until start-up
+  finishes, while the rule already shows `not_in_plan` (alpha.129 lab, D5).
+- `nft flush ruleset` typed by hand also removes the panel firewall table;
+  the database filter is restored by the guard within about 15 seconds
+  (the engines still refuse unlisted addresses at sign-in meanwhile), the
+  panel firewall only at the next boot (alpha.129 lab, D6).
 
 ## Evidence
 
@@ -187,13 +197,18 @@ failregex is tested against journal and error-log line formats of MariaDB
 guard parses (`sh -n`) and its units pass `systemd-analyze verify` (Debian 13,
 nothing loaded).
 
-Not yet run on a real system (the lab's, on Debian 12, Ubuntu 22.04 and
-Arch Linux): a listed address connects with TLS; an unlisted address is
-refused by the filter; a non-TLS connection is refused; the restart turns
-the listen address on; removing the last rule closes at once and, after the
-restart, the engine listens locally again; a password change and a user
-deletion carry to the MariaDB copies; reboot keeps the filter
-(`celikpanel-database-remote-firewall.service`), `nft flush ruleset` heals
-within 30 s; Fail2ban's systemd backend reads MariaDB's journal on each
-distribution and bans after five wrong passwords; `auth_delay` loads after
-the restart.
+Lab round of 7 November 2026 (Debian 13 MariaDB and PostgreSQL, Arch
+PostgreSQL; evidence `deploy/e2e/dns-pair-acceptance/evidence/a129/` on the
+lab branch): a listed address connects with TLS; an unlisted address times
+out at the filter; a non-TLS connection is refused; a password change
+carries to the MariaDB copies; suspension and plan withdrawal close access
+within 13 s (MariaDB) and 34 s (PostgreSQL); the last rule closes at once;
+reboot keeps the filter; the guard restores the filter 10–14 s after
+`nft flush ruleset`; Fail2ban banned an address after five wrong passwords;
+`auth_delay` waits about 1 s per wrong password. The lab found and this
+release fixes: the certificate root was 0750 (PostgreSQL could not read its
+certificate; now 0755 and healed on every apply), the first failregex
+matched no real journal line (Fail2ban strips the timestamp and keeps the
+final newline), CelikPanel's earlier filter file was kept as the owner's
+(now replaced), and an unconfirmed addition waited for the five-minute run
+(now applied again soon). Not tried: Ubuntu 24.04 as a host, IPv6 rules.
