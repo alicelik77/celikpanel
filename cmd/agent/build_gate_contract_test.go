@@ -373,6 +373,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.128: additional FTP/SFTP logins of a site.
+			name: "ApplyFTPLoginV1",
+			run: func(expected string) string {
+				var response transport.ApplyFTPLoginResponse
+				if err := agent.ApplyFTPLoginV1(&transport.ApplyFTPLoginRequest{ExpectedBuildCommit: expected}, &response); err != nil {
+					return err.Error()
+				}
+				return response.Detail
+			},
+		},
+		{
 			name: "ApplyVhosts",
 			run: func(expected string) string {
 				var response ApplyVhostsResponse

@@ -257,13 +257,26 @@ func ValidatePassword(password string) error {
 
 const entryMarker = "# celikpanel-entry "
 
-// RenderSSHDropIn renders the sshd drop-in for every account with access.
-// The entry lines are the drop-in's own record of who has access; the Agent
-// reads them back only from a file whose header verifies.
-func RenderSSHDropIn(entries []Entry) (string, error) {
+// RenderSSHDropIn renders the sshd drop-in for every account with access
+// and every additional login (alpha.128). The entry lines are the drop-in's
+// own record of who has access; the Agent reads them back only from a file
+// whose header verifies. Every caller passes the logins it read: a drop-in
+// rendered without them would drop their blocks (they would then fall into
+// the deny block below: closed, not open). Without logins the text is the
+// alpha.117 text, byte for byte.
+func RenderSSHDropIn(entries []Entry, logins []Login) (string, error) {
 	sorted, err := sortedEntries(entries)
 	if err != nil {
 		return "", err
+	}
+	sortedLogins, err := SortedLogins(logins)
+	if err != nil {
+		return "", err
+	}
+	for _, l := range sortedLogins {
+		if _, clash := FindEntry(sorted, l.Login); clash {
+			return "", fmt.Errorf("login %s has the name of a site account", l.Login)
+		}
 	}
 	var b strings.Builder
 	b.WriteString("# File access for hosting accounts (SFTP, and SSH with the ssh right).\n")
@@ -297,6 +310,15 @@ func RenderSSHDropIn(entries []Entry) (string, error) {
 		b.WriteString("\tPermitTunnel no\n")
 		b.WriteString("\tPermitUserRC no\n")
 	}
+	if len(sortedLogins) > 0 {
+		b.WriteString("\n# Additional FTP/SFTP logins: SFTP only, each closed into the jail of the\n")
+		b.WriteString("# folder its site gave it (" + LoginJailRoot + "/<login>, docs/FTP-LOGINS.md).\n")
+	}
+	for _, l := range sortedLogins {
+		names = append(names, l.Login)
+		renderLoginBlock(&b, l)
+	}
+	sort.Strings(names)
 	b.WriteString("\n# Every other hosting account: no SSH sign-in, not even a tunnel.\n")
 	if len(names) == 0 {
 		fmt.Fprintf(&b, "Match Group %s\n", SiteGroup)
@@ -314,8 +336,31 @@ func RenderSSHDropIn(entries []Entry) (string, error) {
 	return Seal("file access for hosting accounts", b.String()), nil
 }
 
-// ParseSSHDropInEntries reads the entry records of a verified drop-in body.
-func ParseSSHDropInEntries(body string) ([]Entry, error) {
+// ParseSSHDropIn reads the account and login records of a verified drop-in
+// body.
+func ParseSSHDropIn(body string) ([]Entry, []Login, error) {
+	entries, err := parseSSHDropInEntries(body)
+	if err != nil {
+		return nil, nil, err
+	}
+	var logins []Login
+	for _, line := range strings.Split(body, "\n") {
+		if !strings.HasPrefix(line, loginMarker) {
+			continue
+		}
+		l, err := parseLoginLine(line)
+		if err != nil {
+			return nil, nil, err
+		}
+		logins = append(logins, l)
+	}
+	if logins, err = SortedLogins(logins); err != nil {
+		return nil, nil, err
+	}
+	return entries, logins, nil
+}
+
+func parseSSHDropInEntries(body string) ([]Entry, error) {
 	var entries []Entry
 	for _, line := range strings.Split(body, "\n") {
 		if !strings.HasPrefix(line, entryMarker) {

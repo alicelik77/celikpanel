@@ -21,6 +21,9 @@ type VsftpdParams struct {
 	// SecureChrootDir is vsftpd's empty, root-owned directory: Debian and
 	// Ubuntu use /var/run/vsftpd/empty, Arch /usr/share/empty.
 	SecureChrootDir string
+	// Logins: the server has additional FTP logins (alpha.128), which need
+	// passwd_chroot_enable. Without them the text is the alpha.117 text.
+	Logins bool
 }
 
 // SecureChrootDirFor returns the distro's empty directory for vsftpd.
@@ -90,21 +93,40 @@ func RenderVsftpdConf(p VsftpdParams) (string, error) {
 		"idle_session_timeout=600",
 		"data_connection_timeout=120",
 	}
+	if p.Logins {
+		// An additional login's home is /run/celikpanel-ftp/<login>/./files
+		// (alpha.128): the root-owned jail is its chroot and /files its
+		// start. A site account's home has no "/./", so its local_root holds.
+		lines = append(lines, "passwd_chroot_enable=YES")
+	}
 	b.WriteString(strings.Join(lines, "\n"))
 	b.WriteString("\n")
 	return Seal("FTP over TLS (vsftpd)", b.String()), nil
 }
 
-// RenderVsftpdUserList lists the accounts vsftpd lets sign in.
-func RenderVsftpdUserList(entries []Entry) (string, error) {
+// RenderVsftpdUserList lists the accounts and additional logins (alpha.128)
+// vsftpd lets sign in.
+func RenderVsftpdUserList(entries []Entry, logins []Login) (string, error) {
 	sorted, err := sortedEntries(entries)
 	if err != nil {
 		return "", err
 	}
+	sortedLogins, err := SortedLogins(logins)
+	if err != nil {
+		return "", err
+	}
+	names := make([]string, 0, len(sorted)+len(sortedLogins))
+	for _, e := range sorted {
+		names = append(names, e.Username)
+	}
+	for _, l := range sortedLogins {
+		names = append(names, l.Login)
+	}
+	sort.Strings(names)
 	var b strings.Builder
 	b.WriteString("# Hosting accounts with file access; vsftpd refuses everyone else.\n")
-	for _, e := range sorted {
-		b.WriteString(e.Username + "\n")
+	for _, name := range names {
+		b.WriteString(name + "\n")
 	}
 	return Seal("FTP accounts", b.String()), nil
 }

@@ -48,6 +48,16 @@ var (
 	requestIdentityRouteTeamDelete     = operationStepRoute("/api/v1/team-members/{id}")
 	// alpha.128: the site's PHP values (pool, then nginx file).
 	requestIdentityRoutePHPSettings = operationStepRoute("/api/v1/domains/{id}/php/settings")
+	// alpha.128: additional FTP/SFTP logins; the stored digest leaves the
+	// password out.
+	requestIdentityRouteFTPLoginAdd = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/access/logins", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityFTPLoginDigest,
+	}
+	requestIdentityRouteFTPLogin = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/access/logins/{login}", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityFTPLoginDigest,
+	}
 )
 
 // operationStepRouteFor names the optional route a request would reach, using
@@ -124,6 +134,10 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRoutePHPSettings, true
 	case match.kind == "database-delete" && r.Method == http.MethodDelete:
 		return requestIdentityRouteDomainDBDelete, true
+	case match.kind == "ftp-logins" && r.Method == http.MethodPost:
+		return requestIdentityRouteFTPLoginAdd, true
+	case match.kind == "ftp-logins" && (r.Method == http.MethodPut || r.Method == http.MethodDelete):
+		return requestIdentityRouteFTPLogin, true
 	case match.kind == "dns" && strings.HasSuffix(path, "/records") &&
 		(r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete):
 		return requestIdentityRouteDNSRecords, true

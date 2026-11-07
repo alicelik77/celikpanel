@@ -23,6 +23,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/db"
+	"github.com/alicelik/celikpanel/internal/fileaccess"
 	"github.com/alicelik/celikpanel/internal/licensing"
 	"github.com/alicelik/celikpanel/internal/recoveryobs"
 	"github.com/alicelik/celikpanel/internal/repositories"
@@ -502,6 +503,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "file-access", []string{http.MethodGet, http.MethodPut}
 	case "access/preview":
 		match.kind, match.methods = "file-access-preview", []string{http.MethodPost}
+	case "access/logins":
+		// alpha.128: additional FTP/SFTP logins, each closed into one folder
+		// of the site. Not mapped for additional users either.
+		match.kind, match.methods = "ftp-logins", []string{http.MethodGet, http.MethodPost}
 	case "site-config":
 		match.kind, match.methods = "site-config", []string{http.MethodGet}
 	case "site-config/keep":
@@ -540,6 +545,8 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 			match.kind, match.methods = "app-operation", []string{http.MethodDelete}
 		} else if len(tail) == 3 && tail[0] == "apps" && validHexOperationID(tail[1]) && (tail[2] == "retry" || tail[2] == "credentials") {
 			match.kind, match.methods = "app-operation", []string{http.MethodPost}
+		} else if len(tail) == 3 && tail[0] == "access" && tail[1] == "logins" && fileaccess.ValidateLoginName(tail[2]) == nil {
+			match.kind, match.methods = "ftp-logins", []string{http.MethodPut, http.MethodDelete}
 		} else if len(tail) == 2 && tail[0] == "databases" {
 			if _, ok := strictPositiveID(tail[1]); !ok {
 				return domainSubroute{}, false
@@ -664,6 +671,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainFileAccess(w, r, match.domainID, false)
 	case "file-access-preview":
 		p.handleDomainFileAccess(w, r, match.domainID, true)
+	case "ftp-logins":
+		p.handleDomainFTPLogins(w, r, match.domainID)
 	case "dns":
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":

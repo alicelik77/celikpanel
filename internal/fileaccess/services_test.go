@@ -68,7 +68,7 @@ func TestVsftpdConfRequiresTLSAndChroot(t *testing.T) {
 }
 
 func TestVsftpdUserFilesAndPAM(t *testing.T) {
-	list, err := RenderVsftpdUserList([]Entry{{Username: "b_test", SubscriptionID: 1, DomainID: 2}, {Username: "a_test", SubscriptionID: 1, DomainID: 1}})
+	list, err := RenderVsftpdUserList([]Entry{{Username: "b_test", SubscriptionID: 1, DomainID: 2}, {Username: "a_test", SubscriptionID: 1, DomainID: 1}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

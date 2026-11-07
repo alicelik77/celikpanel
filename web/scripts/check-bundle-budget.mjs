@@ -301,6 +301,10 @@ const screenPartBudgets = {
   // (moved out of dashboard and mailDatabases, which were full). A new part,
   // set with at least 25% headroom from its Turkish file.
   mailWork: kib(6, 2.2),
+  // v0.1.0-alpha.128: a site's other FTP/SFTP logins, each closed into one
+  // folder (ftpLogins., err.FTP_LOGIN_, opstep.ftplogin.). A new part, set
+  // with at least 25% headroom from its Turkish file.
+  ftpLogins: kib(13, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
