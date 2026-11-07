@@ -461,23 +461,25 @@ func newRequestIdentityRouteCases() map[string]func(t *testing.T) requestIdentit
 				body:       fmt.Sprintf(`{"database_name":"shop","domain_id":%d,"user_id":%d}`, dbSecurityDomain, dbSecurityUser),
 				caller:     &Caller{ID: dbSecurityOwnerID, Role: roleCustomer},
 				effects:    func() int { return driver.createDatabaseCalls },
-				wantStatus: http.StatusOK, unguardedEffects: 3,
+				wantStatus: http.StatusOK, unguardedEffects: 1,
 				check: func(t *testing.T, _ string) {
 					if driver.deleteDatabaseCalls != 0 {
 						t.Fatalf("a compensation deleted the database %d times", driver.deleteDatabaseCalls)
 					}
 				},
-				// The engine accepts the second CREATE (MariaDB: IF NOT
-				// EXISTS), the metadata row already exists, and the replay's
-				// compensation then drops the database the first request
-				// created and recorded.
+				// Before alpha.129 the engine accepted the second CREATE
+				// (MariaDB: IF NOT EXISTS), the metadata row already existed,
+				// and each replay's compensation dropped the database the
+				// first request had created and recorded. Now the name is
+				// found recorded on this engine and the replays are refused
+				// before the engine (database_names.go): one database, kept.
 				unguardedCheck: func(t *testing.T) {
 					var recorded int
 					if err := fixture.sql.QueryRow(`SELECT COUNT(*) FROM databases_v2 WHERE name LIKE '%shop'`).Scan(&recorded); err != nil {
 						t.Fatal(err)
 					}
-					if recorded != 1 || driver.deleteDatabaseCalls != 2 {
-						t.Fatalf("recorded databases=%d, engine deletions=%d; want the recorded database deleted by each replay",
+					if recorded != 1 || driver.deleteDatabaseCalls != 0 {
+						t.Fatalf("recorded databases=%d, engine deletions=%d; want the one database kept",
 							recorded, driver.deleteDatabaseCalls)
 					}
 				},
@@ -490,11 +492,14 @@ func newRequestIdentityRouteCases() map[string]func(t *testing.T) requestIdentit
 			driver := useRecordingDatabaseDriver(t)
 			base := wrap(fixture.panel)
 			c := requestIdentityRouteCase{
-				path:       fmt.Sprintf("/api/v1/database-servers/%d/databases", dbSecurityServer),
-				body:       `{"database_name":"shop","new_username":"shopper"}`,
-				caller:     &Caller{ID: dbSecurityOwnerID, Role: roleCustomer},
-				effects:    func() int { return driver.createDatabaseCalls },
-				wantStatus: http.StatusOK, oneTime: true, secret: `"password"`, unguardedEffects: 3,
+				path:    fmt.Sprintf("/api/v1/database-servers/%d/databases", dbSecurityServer),
+				body:    `{"database_name":"shop","new_username":"shopper"}`,
+				caller:  &Caller{ID: dbSecurityOwnerID, Role: roleCustomer},
+				effects: func() int { return driver.createDatabaseCalls },
+				// alpha.129: an unguarded replay finds the name recorded
+				// and is refused before the engine; the guard still keeps
+				// the one-time password to one answer.
+				wantStatus: http.StatusOK, oneTime: true, secret: `"password"`, unguardedEffects: 1,
 			}
 			c.handler, c.unguarded, c.db = base.handler, base.unguarded, base.db
 			return c
