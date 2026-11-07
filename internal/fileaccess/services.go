@@ -24,7 +24,17 @@ type VsftpdParams struct {
 	// Logins: the server has additional FTP logins (alpha.128), which need
 	// passwd_chroot_enable. Without them the text is the alpha.117 text.
 	Logins bool
+	// NoSeccomp (alpha.128, Arch): vsftpd 3.0.5 as Arch packages it kills
+	// every TLS data connection in its seccomp sandbox (the lab saw core
+	// dumps; listings and uploads fail for every account). Debian and Ubuntu
+	// patch the filter; on Arch the sandbox is turned off so FTP over TLS
+	// works at all. vsftpd's chroot and privilege separation stay.
+	NoSeccomp bool
 }
+
+// VsftpdNeedsNoSeccomp reports the package families whose vsftpd needs
+// seccomp_sandbox=NO for TLS data connections.
+func VsftpdNeedsNoSeccomp(family string) bool { return family == "pacman" }
 
 // SecureChrootDirFor returns the distro's empty directory for vsftpd.
 func SecureChrootDirFor(family string) string {
@@ -92,6 +102,9 @@ func RenderVsftpdConf(p VsftpdParams) (string, error) {
 		"delay_failed_login=3",
 		"idle_session_timeout=600",
 		"data_connection_timeout=120",
+	}
+	if p.NoSeccomp {
+		lines = append(lines, "seccomp_sandbox=NO")
 	}
 	if p.Logins {
 		// An additional login's home is /run/celikpanel-ftp/<login>/./files

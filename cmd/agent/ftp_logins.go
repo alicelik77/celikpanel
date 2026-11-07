@@ -52,7 +52,62 @@ var (
 	ftpLoginJailMounted     = ftpLoginMountPresent
 	ftpLoginProbeFTP        = probeFTPLogin
 	ftpLoginToday           = func() int64 { return time.Now().Unix() / 86400 }
+	// ftpLoginSFTPShellRefused: sshd's PAM stack refuses the no-login shell.
+	ftpLoginSFTPShellRefused = func() bool { return pamRefusesShell("sshd", fileaccess.NoLoginShell) }
 )
+
+// pamRefusesShell reports whether a PAM service's auth stack runs
+// pam_shells while /etc/shells does not list shell (read only). Arch's
+// system-login does: an account with the no-login shell cannot sign in with
+// a password over SSH, so a login can use FTP over TLS only. CelikPanel does
+// not change the system's rule.
+func pamRefusesShell(service, shell string) bool {
+	if content, err := os.ReadFile("/etc/shells"); err == nil {
+		for _, line := range strings.Split(string(content), "\n") {
+			if strings.TrimSpace(line) == shell {
+				return false
+			}
+		}
+	}
+	return pamAuthRuns(service, "pam_shells.so", 0)
+}
+
+func pamAuthRuns(service, module string, depth int) bool {
+	if depth > 8 || service == "" || strings.ContainsAny(service, "/.") {
+		return false
+	}
+	content, err := os.ReadFile("/etc/pam.d/" + service)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 || strings.HasPrefix(fields[0], "#") {
+			continue
+		}
+		if fields[0] == "@include" && len(fields) > 1 {
+			if pamAuthRuns(fields[1], module, depth+1) {
+				return true
+			}
+			continue
+		}
+		if strings.TrimPrefix(fields[0], "-") != "auth" || len(fields) < 3 {
+			continue
+		}
+		if fields[1] == "include" || fields[1] == "substack" {
+			if pamAuthRuns(fields[2], module, depth+1) {
+				return true
+			}
+			continue
+		}
+		for _, field := range fields[2:] {
+			if field == module || strings.HasSuffix(field, "/"+module) {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func init() {
 	fileAccessCommands["useradd"] = []string{"/usr/sbin/useradd", "/usr/bin/useradd"}
@@ -522,6 +577,9 @@ func (r *ftpLoginRun) verify(login fileaccess.Login, withPassword bool) {
 		effectiveSSHDValue(string(out), "passwordauthentication") == "no" {
 		r.warn(transport.FTPLoginWarnPasswordAuthOff)
 	}
+	if ftpLoginSFTPShellRefused() {
+		r.warn(transport.FTPLoginWarnSFTPShellRefused)
+	}
 	if !ftpLoginJailMounted(login.Login) {
 		notes = append(notes, "the jail is not mounted")
 	}
@@ -725,11 +783,14 @@ func readFTPLoginsState(ctx context.Context, site transport.FTPLoginSite) transp
 		if out, err := fileAccessRun(ctx, nil, "sshd", "-T", "-C", sshdConnectionSpec(site.Username)); err == nil {
 			for _, line := range strings.Split(string(out), "\n") {
 				var port int
-				if _, err := fmt.Sscanf(strings.TrimSpace(line), "port %d", &port); err == nil && port > 0 {
+				if _, err := fmt.Sscanf(strings.ToLower(strings.TrimSpace(line)), "port %d", &port); err == nil && port > 0 {
 					resp.SSHPorts = append(resp.SSHPorts, port)
 				}
 			}
 		}
+	}
+	if resp.SSHDPresent && ftpLoginSFTPShellRefused() {
+		resp.Warnings = append(resp.Warnings, transport.FTPLoginWarnSFTPShellRefused)
 	}
 	resp.FTPInstalled = fileAccessCommandPresent("vsftpd")
 	if resp.FTPInstalled {

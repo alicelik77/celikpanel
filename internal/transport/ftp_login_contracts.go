@@ -42,6 +42,11 @@ const (
 	// The server's sshd refuses passwords for this login: SFTP does not
 	// work with a password, FTP over TLS does.
 	FTPLoginWarnPasswordAuthOff = "sftp_password_off"
+	// The server's sign-in rules for sshd refuse accounts whose shell is
+	// not in /etc/shells (pam_shells, as Arch's system-login does), and a
+	// login's shell is the no-login shell: SFTP with a password is refused
+	// by the system itself (closed, not open); FTP over TLS works.
+	FTPLoginWarnSFTPShellRefused = "sftp_shell_refused"
 	// vsftpd is not installed, or its configuration is the owner's: SFTP
 	// works, FTP does not.
 	FTPLoginWarnFTPNotInstalled = "ftp_not_installed"

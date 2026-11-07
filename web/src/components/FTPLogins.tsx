@@ -45,6 +45,8 @@ interface LoginsView {
     sshDropIn: string;
     ftpInstalled: boolean;
     ftpConfig: string;
+    /** The server's own sign-in rules refuse SFTP with a password for logins (pam_shells). */
+    sftpRefused: boolean;
     connection: { host: string; ftpPort: number; sftpPort: number; passiveMin: number; passiveMax: number };
 }
 
@@ -99,6 +101,7 @@ function decodeLogins(raw: unknown): LoginsView {
         sshDropIn: str(state?.sshd_drop_in),
         ftpInstalled: state?.ftp_installed === true,
         ftpConfig: str(state?.ftp_config),
+        sftpRefused: decodeList<unknown>(state?.warnings ?? []).includes('sftp_shell_refused'),
         connection: {
             host: str(connection.sftp_host),
             ftpPort: num(connection.ftp_port) || 21,
@@ -173,7 +176,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
             // The change is made; when its details cannot be read there are
             // no warnings to show, and the list read below says the rest.
             const answer = obj(await res.json().then((body: unknown) => body, () => ({ warnings: [] })));
-            setWarnings(decodeList<unknown>(answer.warnings ?? []).map(str).filter((w) => t(`ftpLogins.warn.${w}` as TranslationKey) !== `ftpLogins.warn.${w}`));
+            setWarnings(decodeList<unknown>(answer.warnings ?? []).map(str).filter((w) => w !== 'sftp_shell_refused' && t(`ftpLogins.warn.${w}` as TranslationKey) !== `ftpLogins.warn.${w}`));
             await logins.retry();
             showToast('success', done);
             return { state: 'done', message: done };
@@ -206,6 +209,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                 if (view.stateError === 'agent_upgrade_required') blockers.push(<Notice key="agent" tone="warning">{t('ftpLogins.block.agentUpgrade')}</Notice>);
                 if (view.stateError === 'agent_unavailable') blockers.push(<Notice key="agent" tone="warning">{t('ftpLogins.block.agentUnavailable')}</Notice>);
                 if (view.sshdPresent === false) blockers.push(<Notice key="sshd" tone="warning">{t(isAdmin ? 'ftpLogins.block.noSSHDAdmin' : 'ftpLogins.block.noSSHD')}</Notice>);
+                if (view.sftpRefused) blockers.push(<Notice key="shells" tone="info">{t('ftpLogins.warn.sftp_shell_refused')}</Notice>);
                 if (view.sshDropIn === 'owner') blockers.push(<Notice key="owner" tone="warning">{t(isAdmin ? 'ftpLogins.block.sshOwnerAdmin' : 'ftpLogins.block.sshOwner')}</Notice>);
                 const canOpen = settled && !busy && view.available && view.fileAccess && view.subscriptionStatus === 'active'
                     && view.stateError === '' && view.sshdPresent === true && view.sshDropIn !== 'owner';
@@ -386,7 +390,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                                 <p className="font-medium text-fg">{t('ftpLogins.connect')}</p>
                                 <p>{t('ftpLogins.connectHost', { host: view.connection.host })}</p>
                                 <p>{t('ftpLogins.connectUser')}</p>
-                                <p>{t('ftpLogins.connectSftp', { port: view.connection.sftpPort })}</p>
+                                {!view.sftpRefused && <p>{t('ftpLogins.connectSftp', { port: view.connection.sftpPort })}</p>}
                                 {view.ftpInstalled && view.ftpConfig === 'managed' && (
                                     <p>{t('ftpLogins.connectFtp', { port: view.connection.ftpPort, min: view.connection.passiveMin, max: view.connection.passiveMax })}</p>
                                 )}

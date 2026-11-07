@@ -720,7 +720,7 @@ func renderFileAccessVsftpd(ctx context.Context, logins bool) (string, fileacces
 	}
 	conf, err := fileaccess.RenderVsftpdConf(fileaccess.VsftpdParams{
 		CertFile: certFile, KeyFile: keyFile, SecureChrootDir: fileaccess.SecureChrootDirFor(fileAccessFamily()),
-		Logins: logins,
+		Logins: logins, NoSeccomp: fileaccess.VsftpdNeedsNoSeccomp(fileAccessFamily()),
 	})
 	return conf, state, err
 }
@@ -1130,7 +1130,7 @@ func readFileAccessState(ctx context.Context, site transport.FileAccessSite) tra
 			}
 			for _, line := range strings.Split(string(out), "\n") {
 				var port int
-				if _, err := fmt.Sscanf(strings.TrimSpace(line), "port %d", &port); err == nil && port > 0 {
+				if _, err := fmt.Sscanf(strings.ToLower(strings.TrimSpace(line)), "port %d", &port); err == nil && port > 0 {
 					server.SSHPorts = append(server.SSHPorts, port)
 				}
 			}

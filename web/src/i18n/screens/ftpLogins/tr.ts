@@ -68,6 +68,7 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'ftpLogins.block.ftpMissing': 'Bu sunucuda FTP kurulu değil, bu yüzden girişler SFTP kullanır. Gerekirse sağlayıcınız FTP’yi kurar.',
     'ftpLogins.block.ftpOwner': 'FTP (vsftpd) bu sunucuda elle yapılandırılmış, bu yüzden CelikPanel girişleri ona eklemez; girişler SFTP kullanır.',
     'ftpLogins.warn.sftp_password_off': 'Bu sunucu SFTP için yalnız anahtar kabul ediyor, girişlerin ise şifresi var: şifreli FTP ile bağlanırlar.',
+    'ftpLogins.warn.sftp_shell_refused': 'Bu sunucunun kendi giriş kuralları komut satırı olmayan hesaplara SSH’yi kapatıyor (Arch Linux’ta olduğu gibi pam_shells), bu yüzden girişler şifreli FTP ile bağlanır; şifreyle SFTP reddedilir. CelikPanel bu kuralı değiştirmez.',
     'ftpLogins.warn.ftp_not_installed': 'Bu sunucuda FTP kurulu değil; giriş SFTP kullanır.',
     'ftpLogins.warn.ftp_owner_config': 'FTP bu sunucuda elle yapılandırılmış, bu yüzden giriş ona eklenmedi; SFTP kullanır.',
     'ftpLogins.warn.ftp_rejected': 'FTP güncellenemedi; önceki FTP ayarları geri kondu ve giriş SFTP kullanır. Sunucu yöneticisi vsftpd’yi denetler.',
