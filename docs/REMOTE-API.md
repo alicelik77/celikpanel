@@ -23,7 +23,9 @@ services never depend on it, and with the panel stopped they run on.
    - a scope: **Read only** or **Read and change**;
    - an expiry: 7, 30, 90 or 365 days. A token always ends.
 
-   The token (`cpk_…`) is shown **once**. Copy it then, and store it like a
+   Making a token asks for your current password again, and for your
+   two-factor code when two-factor sign-in is on. The token (`cpk_…`) is
+   shown **once**. Copy it then, and store it like a
    password. CelikPanel keeps only its SHA-256 hash.
 
 Team members (additional users) cannot hold tokens. A token cannot be made
@@ -34,6 +36,11 @@ while signed in with "Log in as".
 Send the token in the `Authorization` header, and nothing else. The token is
 never accepted in a query string. A request that carries the panel's session
 cookie as well as a token is refused.
+
+Only a header of the form `Authorization: Bearer cpk_…` is treated as a
+token. Any other `Authorization` header is ignored by the token layer, for
+example an identity proxy's bearer ID token or a proxy's Basic sign-in in
+front of the panel. The panel then behaves as if the header were not there.
 
 ```sh
 TOKEN='cpk_abcdefghijkl_…'
@@ -92,7 +99,7 @@ A customer's token never reaches another account's domain.
 | Method | Path | What |
 |---|---|---|
 | POST | `/api/v1/domains/create` | add a domain (`{"domain":"example.com","project_type":"php"}`) |
-| DELETE | `/api/v1/domains/{id}` | delete a domain and its site |
+| DELETE | `/api/v1/domains/{id}?confirm_domain={name}` | delete a domain and its site; `confirm_domain` must be the domain's name, otherwise `400 API_TOKEN_CONFIRM_DOMAIN` and nothing is deleted |
 | POST | `/api/v1/domains/{id}/dns/records` | add a record (`name`, `type`, `content`, `ttl`, `prio`) |
 | PUT | `/api/v1/domains/{id}/dns/records` | change a record (`id`, `content`, `ttl`, `prio`, `disabled`, optional `expected_content`) |
 | DELETE | `/api/v1/domains/{id}/dns/records?id={record}` | delete a record |
@@ -108,24 +115,33 @@ A customer's token never reaches another account's domain.
 A password you send (a mailbox or a database) follows the panel's password
 rule. A token never reads a password back.
 
+**Mailbox passwords.** A Read and change token can set a mailbox's password.
+Setting a password gives access to that mailbox, so such a token is as
+powerful as access to every mailbox of the account. Every change made with a
+token is in the audit log, with the token's public id. Give scripts a Read
+only token unless they must make changes.
+
 ## Limits and refusals
 
 - 120 requests a minute per token. After that: `429 API_TOKEN_RATE_LIMITED`
   with `Retry-After: 60`.
-- 10 failed token sign-ins a minute from one address. After that, that
-  address gets `429 API_TOKEN_SIGN_IN_LIMITED` for the rest of the minute,
-  even with a right token.
+- 10 failed token sign-ins a minute from one address. After that, a request
+  from that address whose token does not verify gets
+  `429 API_TOKEN_SIGN_IN_LIMITED` for the rest of the minute. A right token
+  from the same address keeps working, for example from an office behind one
+  shared address.
 
 Every refusal is JSON `{"error": "...", "code": "..."}`. The sentence says
 what happened, who acts and what to do next:
 
 | Code | Status | Meaning |
 |---|---|---|
-| `API_DISABLED` | 403 | the administrator has not turned the remote API on |
-| `API_TOKEN_INVALID` | 401 | not a token, or no such token |
+| `API_DISABLED` | 403 | the administrator has not turned the remote API on (told only to a working token) |
+| `API_TOKEN_INVALID` | 401 | not a token, or no such token. This is also the answer when the remote API is off, so a caller without a working token cannot tell whether it is on |
 | `API_TOKEN_REVOKED` | 401 | the token was removed |
 | `API_TOKEN_EXPIRED` | 401 | the token's time is over |
-| `API_TOKEN_ENDED` | 401 | the owner's password, two-factor sign-in or account changed after the token was made |
+| `API_TOKEN_ENDED` | 401 | after the token was made, the owner's password, e-mail address or two-factor sign-in changed, or an administrator changed the account |
+| `API_TOKEN_CONFIRM_DOMAIN` | 400 | a domain deletion without the right `confirm_domain` |
 | `API_TOKEN_ROUTE_NOT_ALLOWED` | 403 | this address is not in the list above |
 | `API_TOKEN_SCOPE` | 403 | a Read only token tried a change |
 | `API_TOKEN_NOT_PERMITTED` | 403 | the plan does not include "Remote API" |
@@ -136,6 +152,11 @@ what happened, who acts and what to do next:
 ## What is recorded
 
 - Making and removing a token is recorded in the audit log.
+- So is a failed token sign-in: at most one row a minute for each token id
+  and address, with the reason (`malformed`, `unknown`, `wrong_secret`,
+  `revoked`, `expired`, `ended`). The next row counts the failures folded
+  into it. A wrong secret for a real token, and a removed, expired or ended
+  token, are recorded under the token's owner.
 - So is every change made with a token: the token's public id (`cpk_<id>`,
   never its secret), the method and the path. The rows the change itself
   writes name the token too.
@@ -145,9 +166,12 @@ what happened, who acts and what to do next:
 ## Security notes
 
 - Only `SHA-256(secret)` is stored, and it is compared in constant time.
-- A token is bound to the owner's sign-in state. A password change or reset,
-  a two-factor change or an account change ends every token of that account,
-  as it ends the account's sessions.
+- A token is bound to the owner's sign-in state. These end every token of
+  that account:
+  - a password change or reset;
+  - a change of the account's e-mail address;
+  - a two-factor change;
+  - an administrator's change of the account.
 - The panel's cross-site request protection still applies to every browser
   session. It is skipped only for a request that carries a token and no
   session cookie. Such a request is authenticated by the token or refused.

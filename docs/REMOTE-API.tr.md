@@ -24,7 +24,9 @@ panel dursa da çalışmayı sürdürürler.
    - bir kapsam: **Yalnız okuma** ya da **Okuma ve değiştirme**;
    - bir bitiş: 7, 30, 90 ya da 365 gün. Her jetonun bir sonu vardır.
 
-   Jeton (`cpk_…`) **bir kez** gösterilir. O anda kopyalayın ve bir parola
+   Jeton oluştururken geçerli parolanız yeniden sorulur. İki faktörlü giriş
+   açıksa iki faktörlü kodunuz da sorulur. Jeton (`cpk_…`) **bir kez**
+   gösterilir. O anda kopyalayın ve bir parola
    gibi saklayın. CelikPanel yalnız SHA-256 özetini tutar.
 
 Ek kullanıcılar jeton sahibi olamaz. "Farklı giriş yap" ile girilmişken
@@ -35,6 +37,11 @@ jeton oluşturulamaz.
 Jetonu yalnız `Authorization: Bearer <jeton>` başlığıyla gönderin. Jeton
 sorgu dizesinde asla kabul edilmez. Hem oturum çerezi hem jeton taşıyan
 istek reddedilir.
+
+Yalnız `Authorization: Bearer cpk_…` biçimindeki başlık jeton sayılır. Başka
+her `Authorization` başlığını jeton katmanı yok sayar. Panelin önündeki bir
+kimlik vekilinin taşıyıcı jetonu ya da bir vekilin Basic girişi buna
+örnektir. Panel o başlık hiç yokmuş gibi davranır.
 
 Örnekler ve rota listesi İngilizce sayfadadır: [REMOTE-API.md](REMOTE-API.md).
 
@@ -50,7 +57,9 @@ istek reddedilir.
 
 **Okuma ve değiştirme** jetonu bunlara ek olarak şunları yapabilir:
 
-- alan adı ekleyip silebilir;
+- alan adı ekleyip silebilir; silerken `confirm_domain` parametresi alan
+  adının kendisi olmalıdır, yoksa `400 API_TOKEN_CONFIRM_DOMAIN` döner ve
+  hiçbir şey silinmez;
 - DNS kayıtlarını ekleyip değiştirip silebilir;
 - posta kutusu ekleyip silebilir, kotasını ve parolasını değiştirebilir;
 - veritabanı ekleyip silebilir;
@@ -65,6 +74,13 @@ Başka her adres `403 API_TOKEN_ROUTE_NOT_ALLOWED` yanıtını verir. Bunlara
 - VPN, lisans, kurulum ve güncelleme;
 - her sunucu ve yönetici rotası.
 
+**Posta kutusu parolaları.** Okuma ve değiştirme jetonu bir posta kutusunun
+parolasını değiştirebilir. Parolayı değiştirmek o posta kutusuna erişim
+demektir. Bu yüzden böyle bir jeton, hesabın her posta kutusuna erişim kadar
+güçlüdür. Jetonla yapılan her değişiklik, jetonun açık kimliğiyle denetim
+kaydına yazılır. Değişiklik yapması gerekmeyen betiklere Yalnız okuma jetonu
+verin.
+
 Hesabın kendi hakları bu listenin üstünde yine geçerlidir. Bir müşterinin
 jetonu başka bir hesabın alan adına asla ulaşmaz.
 
@@ -72,13 +88,22 @@ jetonu başka bir hesabın alan adına asla ulaşmaz.
 
 - Bir jeton dakikada en çok 120 istek gönderebilir.
 - Bir adresten dakikada en çok 10 hatalı jeton girişi kabul edilir. Sonra o
-  adres dakikanın geri kalanında reddedilir.
+  adresten gelen ve jetonu doğrulanmayan istekler dakikanın geri kalanında
+  reddedilir. Aynı adresten gelen doğru jeton çalışmayı sürdürür; tek bir
+  ortak adresin arkasındaki bir ofis buna örnektir.
+- Uzak API kapalıyken çalışmayan bir jeton, geçersiz jetonla aynı yanıtı
+  alır. Böylece çalışan jetonu olmayan biri API'nin açık olup olmadığını
+  öğrenemez.
+- Başarısız jeton girişleri denetim kaydına yazılır. Her jeton kimliği ve
+  adres için dakikada en çok bir satır yazılır ve satırda neden bulunur.
 - Jeton oluşturmak, kaldırmak ve jetonla yapılan her değişiklik denetim
   kaydına yazılır. Kayıtta jetonun açık kimliği (`cpk_<id>`) bulunur, gizli
   kısmı asla.
 - Jetonun son kullanımı (zaman ve adres) Hesabım'da görünür. Dakikada en
   çok bir kez yazılır.
-- Parola sıfırlama ya da değişikliği, iki faktörlü giriş değişikliği ya da
-  hesap değişikliği o hesabın bütün jetonlarını bitirir. Hesabın oturumları
-  da aynı biçimde biter.
+- Şunlar o hesabın bütün jetonlarını bitirir:
+  - parola sıfırlama ya da değişikliği;
+  - hesabın e-posta adresinin değişmesi;
+  - iki faktörlü giriş değişikliği;
+  - yöneticinin hesabı değiştirmesi.
 - Sunucu anahtarını kapatmak her jetonu hemen durdurur.
