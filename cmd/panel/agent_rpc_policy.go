@@ -152,6 +152,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
 		Agent.ServiceHealthV1
+		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
+		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -244,6 +246,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
 		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
 		Agent.SetDatabaseUserSuspensionV1 Agent.RotateDatabaseUserPasswordV1
+		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
+		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -453,9 +457,22 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.EnableRepo":  agentRPCDeploymentTimeout,
 
 	// Database and site lifecycle operations.
-	"Agent.ApplyAppUnit":                  agentRPCDatabaseTimeout,
-	"Agent.ControlAppUnit":                agentRPCDatabaseTimeout,
-	"Agent.CreateDatabase":                agentRPCDatabaseTimeout,
+	"Agent.ApplyAppUnit":   agentRPCDatabaseTimeout,
+	"Agent.ControlAppUnit": agentRPCDatabaseTimeout,
+	"Agent.CreateDatabase": agentRPCDatabaseTimeout,
+	// alpha.128 (G7): database tools; a dump, load or check of a large
+	// database is bounded by the Agent at two hours.
+	"Agent.DatabaseToolsInfoV1":    agentRPCStandardReadTimeout,
+	"Agent.DatabaseExportReadV1":   agentRPCStandardReadTimeout,
+	"Agent.DatabaseImportUploadV1": agentRPCStandardReadTimeout,
+	"Agent.DatabaseExportV1":       agentRPCSiteLongTimeout,
+	"Agent.DatabaseImportSafetyV1": agentRPCSiteLongTimeout,
+	"Agent.DatabaseImportV1":       agentRPCSiteLongTimeout,
+	"Agent.DatabaseCopyV1":         agentRPCSiteLongTimeout,
+	"Agent.DatabaseCheckV1":        agentRPCSiteLongTimeout,
+	// alpha.128 (G24): the Agent bounds one read at 25 s and 1 GiB.
+	"Agent.SiteVisitorStatsV1":            agentRPCStandardReadTimeout,
+	"Agent.ServerIPAddressesV1":           agentRPCQuickReadTimeout,
 	"Agent.CreateSite":                    agentRPCDatabaseTimeout,
 	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
 	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,

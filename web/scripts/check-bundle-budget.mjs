@@ -75,13 +75,18 @@ const screenPartBudgets = {
   siteConfig: kib(52, 9),
   settings: kib(44, 13),
   mailDatabases: kib(43, 12),
-  dashboard: kib(41, 9),
+  // alpha.128: the database tools' audit words brought Turkish to 41.51 /
+  // 8.46 KiB; screen-time only.
+  dashboard: kib(45, 9.5),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),
   // v0.1.0-alpha.98: the coded refusals only screens show moved out of the
   // shell (the boot path had 0.25 KiB left; it is 329.16 KiB after). Set with
   // at least 25% headroom from its Turkish file: 32.40 / 8.24 KiB.
-  errors: kib(44, 11.5),
+  // alpha.128: the typed restore and database-tools refusals (err.BACKUP_
+  // RESTORE_*, err.DB_*) brought Turkish to 47.52 / 11.55 KiB; screen-time
+  // only, never on the boot path.
+  errors: kib(52, 13),
   // v0.1.0-alpha.106: each component's management page (component., svc.,
   // nginx., postfix., pdns., dovecot., mariadb., vsftpd.) moved out of
   // "components" when the Components list's removal copy used its headroom

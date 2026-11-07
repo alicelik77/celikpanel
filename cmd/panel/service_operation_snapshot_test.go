@@ -1441,6 +1441,8 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the visitor statistics (migration 69, alpha.128).
+        DROP TABLE site_visitor_stats_daily;
         -- Reverse the web server settings (migration 68, alpha.128).
         DROP TABLE git_deploy_settings;
         DROP TABLE log_retention_subscriptions;

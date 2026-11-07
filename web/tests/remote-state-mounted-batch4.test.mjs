@@ -61,6 +61,8 @@ const stub = dataModule(`
   export const AppAccountLine = () => null, IsolationFact = () => null;
   // The shared problem pattern has its own test (blocking-problems-mounted).
   export const BlockingProblems = () => null;
+  // alpha.128: the visitor statistics above the logs read their own address.
+  export const VisitorStats = () => null;
 `);
 const shared = sharedLayer(stub);
 const own = {

@@ -14,6 +14,7 @@ import { confirmAction } from '../lib/confirmAction';
 import { PasswordInput } from './PasswordInput';
 import { AdminInstallLink } from './AdminInstallLink';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
+import { DatabaseTools } from './DatabaseTools';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -454,6 +455,9 @@ export function DomainDatabaseManager({
                                             </div>
                                         )}
                                     </div>
+                                    {/* alpha.128 (G7): the tools of this database. */}
+                                    <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale}
+                                        onRefusal={(problem, sentence) => refuse(problem, sentence)} onClear={clearRefusal} />
                                 </div>
                             ))}
                         </div>

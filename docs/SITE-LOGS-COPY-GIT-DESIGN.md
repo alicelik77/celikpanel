@@ -85,7 +85,7 @@ applications, within subscriptions the caller may manage.
   account and one rename. No link is followed out of the source home;
   `.git`, `node_modules/.cache` and the home's `tmp/` are skipped.
 - **Database:** depends on G7 "copy to a new database" (database
-  workstream, migration 070): a new database and user in the target
+  workstream, migration 069): a new database and user in the target
   subscription, counted against its plan; the source is never locked.
 - **Configuration rewrite:** only for catalogue applications the Panel
   installed (WordPress `siteurl`/`home` via the WordPress tools' existing

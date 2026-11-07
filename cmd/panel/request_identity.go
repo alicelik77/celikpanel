@@ -300,6 +300,10 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteSiteCopy, true
 		case "git-key":
 			return requestIdentityRouteGitKey, true
+		default:
+			if route, ok := databaseToolsIdentityRoute(match.kind); ok {
+				return route, true
+			}
 		}
 	case strings.HasPrefix(path, "/api/v1/database-users/"):
 		if match, ok := matchDatabaseSubroute(r, "/api/v1/database-users/"); ok && match.kind == "user-password" {
