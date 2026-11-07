@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // alpha.129: the users of one domain database.
@@ -133,5 +137,122 @@ func TestDatabaseEngineLabel(t *testing.T) {
 		if engine != c.engine || major != c.major {
 			t.Errorf("%s %q = %s %q, want %s %q", c.serverType, c.version, engine, major, c.engine, c.major)
 		}
+	}
+}
+
+type fakeDatabaseAccessNative struct {
+	created, removed []transport.DatabaseAccessUserRequest
+	exists           bool
+	failRemove       bool
+}
+
+func (f *fakeDatabaseAccessNative) create(_ context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
+	if f.exists {
+		return transport.DatabaseAccessUserResponse{Exists: true, Error: "exists"}, nil
+	}
+	f.created = append(f.created, req)
+	return transport.DatabaseAccessUserResponse{Applied: true}, nil
+}
+
+func (f *fakeDatabaseAccessNative) remove(_ context.Context, req transport.DatabaseAccessUserRequest) (transport.DatabaseAccessUserResponse, error) {
+	if f.failRemove {
+		return transport.DatabaseAccessUserResponse{Error: "engine said no"}, nil
+	}
+	f.removed = append(f.removed, req)
+	return transport.DatabaseAccessUserResponse{Applied: true}, nil
+}
+
+func TestDomainDatabaseAccessUsersAddAndRemove(t *testing.T) {
+	f := newAccessUsersFixture(t)
+	native := &fakeDatabaseAccessNative{}
+	f.panel.databaseAccessNative = native
+	const path = "/api/v1/domains/9902/databases/9961/users"
+
+	for _, bad := range []string{
+		`{"name":"user","password":"Str0ng-Passw0rd!","access":"read"}`,
+		`{"name":"Bad-Name","password":"Str0ng-Passw0rd!","access":"read"}`,
+		`{"name":"reader","password":"Str0ng-Passw0rd!","access":"admin"}`,
+		`{"name":"reader","password":"weak","access":"read"}`,
+	} {
+		if got := f.call(t, authzMatrixCustomerID, http.MethodPost, path, bad); got.Code != http.StatusBadRequest {
+			t.Fatalf("%s: %d %s", bad, got.Code, got.Body.String())
+		}
+	}
+	if len(native.created) != 0 {
+		t.Fatal("a refused request reached the engine")
+	}
+
+	got := f.call(t, authzMatrixCustomerID, http.MethodPost, path, `{"name":"reader","password":"Str0ng-Passw0rd!","access":"read"}`)
+	if got.Code != http.StatusOK {
+		t.Fatalf("add: %d %s", got.Code, got.Body.String())
+	}
+	if strings.Contains(got.Body.String(), "Str0ng-Passw0rd") {
+		t.Fatal("the password was echoed")
+	}
+	if len(native.created) != 1 || native.created[0].Username != "customer_matrix_test_shop_reader" || native.created[0].Engine != "mysql" ||
+		native.created[0].Access != "read" || native.created[0].Database != "customer_matrix_test_shop" {
+		t.Fatalf("engine request %+v", native.created)
+	}
+	var userID int
+	var privileges, sealed string
+	if err := f.panel.db.GetDB().QueryRow(`SELECT u.id, g.privileges, u.password FROM database_users u JOIN database_user_grants g ON g.user_id = u.id
+		WHERE u.username = 'customer_matrix_test_shop_reader' AND g.database_id = 9961 AND u.server_id = 9921 AND u.subscription_id = 9802`).Scan(&userID, &privileges, &sealed); err != nil {
+		t.Fatal(err)
+	}
+	if plain, _ := f.box.Decrypt(sealed); privileges != "SELECT" || plain != "Str0ng-Passw0rd!" {
+		t.Fatalf("recorded %q", privileges)
+	}
+	// The same name again is refused before the engine.
+	if got := f.call(t, authzMatrixCustomerID, http.MethodPost, path, `{"name":"reader","password":"Str0ng-Passw0rd!","access":"write"}`); got.Code != http.StatusConflict ||
+		!strings.Contains(got.Body.String(), errCodeDatabaseUserExists) || len(native.created) != 1 {
+		t.Fatalf("same name: %d %s", got.Code, got.Body.String())
+	}
+	// A name the engine has already (made outside CelikPanel) changes nothing.
+	native.exists = true
+	if got := f.call(t, authzMatrixCustomerID, http.MethodPost, path, `{"name":"outside","password":"Str0ng-Passw0rd!","access":"write"}`); got.Code != http.StatusConflict {
+		t.Fatalf("engine name taken: %d %s", got.Code, got.Body.String())
+	}
+	native.exists = false
+	var count int
+	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM database_users WHERE username = 'customer_matrix_test_shop_outside'`).Scan(&count)
+	if count != 0 {
+		t.Fatal("a user the engine refused was recorded")
+	}
+
+	// The list says read only.
+	list := f.call(t, authzMatrixCustomerID, http.MethodGet, "/api/v1/domains/9902/databases", "")
+	if !strings.Contains(list.Body.String(), `"username":"customer_matrix_test_shop_reader","access":"read"`) {
+		t.Fatalf("list %s", list.Body.String())
+	}
+
+	// The user made with the database is not removed from here, nor one with
+	// access to another database.
+	if got := f.call(t, authzMatrixCustomerID, http.MethodDelete, path+"/9941", ""); got.Code != http.StatusConflict || !strings.Contains(got.Body.String(), errCodeDatabaseUserIsOwner) {
+		t.Fatalf("owner removal: %d %s", got.Code, got.Body.String())
+	}
+	if got := f.call(t, authzMatrixCustomerID, http.MethodDelete, path+"/9942", ""); got.Code != http.StatusConflict || !strings.Contains(got.Body.String(), errCodeDatabaseUserElsewhere) {
+		t.Fatalf("shared user removal: %d %s", got.Code, got.Body.String())
+	}
+	// An engine refusal keeps the record.
+	native.failRemove = true
+	if got := f.call(t, authzMatrixCustomerID, http.MethodDelete, path+"/"+strconv.Itoa(userID), ""); got.Code != http.StatusConflict || !strings.Contains(got.Body.String(), errCodeDatabaseUserEngine) {
+		t.Fatalf("engine refusal: %d %s", got.Code, got.Body.String())
+	}
+	native.failRemove = false
+	if got := f.call(t, authzMatrixCustomerID, http.MethodDelete, path+"/"+strconv.Itoa(userID), ""); got.Code != http.StatusOK {
+		t.Fatalf("remove: %d %s", got.Code, got.Body.String())
+	}
+	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM database_users WHERE id = ?`, userID).Scan(&count)
+	if count != 0 || len(native.removed) != 1 || native.removed[0].Username != "customer_matrix_test_shop_reader" {
+		t.Fatalf("after removal: %d users, engine %+v", count, native.removed)
+	}
+	// The database and its first user stay.
+	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM databases_v2 d JOIN database_user_grants g ON g.database_id = d.id WHERE d.id = 9961`).Scan(&count)
+	if count != 2 {
+		t.Fatalf("the database's other grants changed: %d", count)
+	}
+	// Another customer reaches none of it.
+	if got := f.call(t, 9708, http.MethodPost, path, `{"name":"x","password":"Str0ng-Passw0rd!","access":"read"}`); got.Code == http.StatusOK {
+		t.Fatalf("other customer: %d", got.Code)
 	}
 }

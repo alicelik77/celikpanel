@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -15,9 +16,18 @@ import (
 // database tools, so ownership, team capability, suspension and the plan's
 // databases permission are decided by the domain dispatcher first:
 //
-//	POST /api/v1/domains/{id}/databases/{db}/users/{user}/password {password}
+//	POST   /api/v1/domains/{id}/databases/{db}/users                 {name, password, access}
+//	DELETE /api/v1/domains/{id}/databases/{db}/users/{user}
+//	POST   /api/v1/domains/{id}/databases/{db}/users/{user}/password {password}
 //
-// A password change needs a grant on that database of that domain;
+// A new user reads the database ("read") or reads and writes it ("write");
+// it is named <database>_<name>, recorded as a database user with one grant
+// (privileges SELECT or ALL, the model the account page uses), and made on
+// the engine by the Agent (cmd/agent/database_access_users.go). Removing it
+// removes the user and its rights, never the database. The user made with
+// the database (the first grant) goes only with the database. There is no
+// database-user quota in the plans (docs/PLANS-AND-RIGHTS.md), so none is
+// counted. A password change needs a grant on that database of that domain;
 // the change itself is the account page's (applyDatabaseUserPassword).
 //
 // Bir alan adı veritabanının kullanıcıları; yetki alan adı yönlendiricisinde.
@@ -31,6 +41,13 @@ func matchDatabaseUsersRoute(tail []string) (string, []string, bool) {
 		return "", nil, false
 	}
 	switch {
+	case len(tail) == 3:
+		return "database-users", []string{http.MethodPost}, true
+	case len(tail) == 4:
+		if _, ok := strictPositiveID(tail[3]); !ok {
+			return "", nil, false
+		}
+		return "database-user", []string{http.MethodDelete}, true
 	case len(tail) == 5 && tail[4] == "password":
 		if _, ok := strictPositiveID(tail[3]); !ok {
 			return "", nil, false
@@ -42,9 +59,15 @@ func matchDatabaseUsersRoute(tail []string) (string, []string, bool) {
 
 func init() {
 	// D-042: changing a user is use of databases; team members manage.
+	// A new user is new use; removing one stays open (D-042: removal is
+	// never gated).
 	domainSubrouteRights["database-user-password"] = domainSubrouteRight{right: rightDatabases}
+	domainSubrouteRights["database-users"] = domainSubrouteRight{right: rightDatabases}
+	domainSubrouteRights["database-user"] = domainSubrouteRight{right: rightDatabases}
 	manage := teamMemberDomainRequirement{capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage}
 	teamMemberDomainRequirements[teamMemberRouteKey{kind: "database-user-password", method: http.MethodPost}] = manage
+	teamMemberDomainRequirements[teamMemberRouteKey{kind: "database-users", method: http.MethodPost}] = manage
+	teamMemberDomainRequirements[teamMemberRouteKey{kind: "database-user", method: http.MethodDelete}] = manage
 }
 
 // The password route's answer may carry a password CelikPanel made up, so
@@ -54,10 +77,31 @@ var requestIdentityRouteDomainDBUserPassword = requestIdentityRoute{
 	optional: true, secret: true, digest: requestIdentityDatabaseUserPasswordDigest,
 }
 
+// A new user: the stored digest leaves the password out. Removal follows
+// the steps too (operationStepRouteFor).
+var (
+	requestIdentityRouteDomainDBUserAdd = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/databases/{id}/users", timeout: agentRPCMutationTimeout + time.Minute,
+		optional: true, digest: requestIdentityDatabaseAccessUserDigest,
+	}
+	requestIdentityRouteDomainDBUserRemove = operationStepRoute("/api/v1/domains/{id}/databases/{id}/users/{id}")
+)
+
+func requestIdentityDatabaseAccessUserDigest(body []byte) []byte {
+	var req struct {
+		Name   string `json:"name"`
+		Access string `json:"access"`
+	}
+	_ = json.Unmarshal(body, &req)
+	return []byte(req.Name + ":" + req.Access)
+}
+
 func databaseUsersIdentityRoute(kind string) (requestIdentityRoute, bool) {
 	switch kind {
 	case "database-user-password":
 		return requestIdentityRouteDomainDBUserPassword, true
+	case "database-users":
+		return requestIdentityRouteDomainDBUserAdd, true
 	}
 	return requestIdentityRoute{}, false
 }
@@ -67,6 +111,10 @@ func (p *Panel) handleDatabaseUsersRoute(w http.ResponseWriter, r *http.Request,
 	switch kind {
 	case "database-user-password":
 		p.handleDomainDatabaseUserPassword(w, r, domainID)
+	case "database-users":
+		p.handleAddDatabaseAccessUser(w, r, domainID)
+	case "database-user":
+		p.handleRemoveDatabaseAccessUser(w, r, domainID)
 	default:
 		http.NotFound(w, r)
 	}

@@ -452,7 +452,7 @@ export function DomainDatabaseManager({
                                     </div>
                                     {/* alpha.129: its users, each with a new password. */}
                                     <div className="mt-3 border-t border-border pt-3">
-                                        <DatabaseUsers domainId={domainId} databaseId={db.id} users={db.users ?? []} readOnly={readOnly || shown.stale} />
+                                        <DatabaseUsers domainId={domainId} databaseId={db.id} databaseName={db.name} users={db.users ?? []} readOnly={readOnly || shown.stale} />
                                     </div>
                                     {/* alpha.128 (G7): the tools of this database. */}
                                     <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale}

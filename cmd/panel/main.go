@@ -127,6 +127,9 @@ type Panel struct {
 	// rotationNative replaces the Agent for transfer credential rotation in
 	// tests (nil in production; transfer_rotation.go).
 	rotationNative rotationNative
+	// databaseAccessNative replaces the Agent for a database's added users
+	// in tests (nil in production; database_access_users_change.go).
+	databaseAccessNative databaseAccessNative
 	// alpha.118 (D-044): trafficCollector, trafficRender, diskMeasurer and
 	// mailQuota replace the Agent in tests (nil in production);
 	// usageWorker runs the traffic, disk and mail quota work (usage_worker.go).
@@ -634,7 +637,7 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDeleteDatabase(w, r)
 	case "database-tools", "database-export", "database-import", "database-import-upload", "database-copy", "database-check":
 		p.handleDatabaseTools(w, r, match.domainID, match.kind)
-	case "database-user-password":
+	case "database-users", "database-user", "database-user-password":
 		p.handleDatabaseUsersRoute(w, r, match.domainID, match.kind)
 	case "files":
 		p.handleDomainFiles(w, r)
