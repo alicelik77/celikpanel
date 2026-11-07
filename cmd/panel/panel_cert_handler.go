@@ -211,13 +211,29 @@ func (p *Panel) handlePanelCertificateSagaPost(w http.ResponseWriter, r *http.Re
 // currentPanelCert, panelin sunduğu sertifikayı (tls dizini çifti) çözümler.
 func currentPanelCert() panelCertInfo {
 	info := panelCertInfo{}
+	cert, ok := currentPanelLeaf()
+	if !ok {
+		return info
+	}
+	info.HTTPSEnabled = true
+	info.SelfSigned = cert.Issuer.String() == cert.Subject.String()
+	info.Subject = cert.Subject.CommonName
+	info.Issuer = cert.Issuer.CommonName
+	info.DNSNames = cert.DNSNames
+	info.ExpiresAt = cert.NotAfter
+	return info
+}
+
+// currentPanelLeaf reads the certificate the panel serves (alpha.128: the
+// certificates overview reads its issuer too).
+func currentPanelLeaf() (*x509.Certificate, bool) {
 	var data []byte
 	var err error
 	explicitCertPath := os.Getenv("CELIKPANEL_TLS_CERT")
 	if explicitCertPath != "" {
 		data, err = os.ReadFile(explicitCertPath)
 		if err != nil {
-			return info
+			return nil, false
 		}
 	}
 	if explicitCertPath == "" {
@@ -232,23 +248,17 @@ func currentPanelCert() panelCertInfo {
 		}
 	}
 	if err != nil {
-		return info
+		return nil, false
 	}
 	block, _ := pem.Decode(data)
 	if block == nil {
-		return info
+		return nil, false
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return info
+		return nil, false
 	}
-	info.HTTPSEnabled = true
-	info.SelfSigned = cert.Issuer.String() == cert.Subject.String()
-	info.Subject = cert.Subject.CommonName
-	info.Issuer = cert.Issuer.CommonName
-	info.DNSNames = cert.DNSNames
-	info.ExpiresAt = cert.NotAfter
-	return info
+	return cert, true
 }
 
 func panelCertificateManagementBlocker() (code, detail string, blocked bool) {

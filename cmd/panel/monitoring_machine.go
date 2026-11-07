@@ -277,6 +277,12 @@ var processOwner = func(pid int) string {
 // topProcesses ranks by CPU over the two readings (reason cpu) or by memory
 // (reason memory) and keeps the first five.
 func topProcesses(before, after map[int]procStat, seconds float64, vcpus int, reason string) []snapshotProcess {
+	return rankProcesses(before, after, seconds, vcpus, reason, snapshotTop)
+}
+
+// rankProcesses is topProcesses keeping the first n (alpha.128: Server →
+// Maintenance lists fifteen).
+func rankProcesses(before, after map[int]procStat, seconds float64, vcpus int, reason string, n int) []snapshotProcess {
 	if vcpus < 1 {
 		vcpus = 1
 	}
@@ -299,8 +305,8 @@ func topProcesses(before, after map[int]procStat, seconds float64, vcpus int, re
 		}
 		return a.PID < b.PID
 	})
-	if len(list) > snapshotTop {
-		list = list[:snapshotTop]
+	if len(list) > n {
+		list = list[:n]
 	}
 	for i := range list {
 		list[i].User = processOwner(list[i].PID)

@@ -1697,6 +1697,14 @@ func main() {
 	http.HandleFunc(fileAccessToolsPath, panel.handleFileAccessTools)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
+	// alpha.128 ops: G29 server maintenance (administrator, handler check).
+	http.HandleFunc(serverClockPath, panel.handleServerClock)
+	http.HandleFunc(serverProcessesPath, panel.handleServerProcesses)
+	http.HandleFunc(serverRebootPath, panel.handleServerReboot)
+	// alpha.128 ops: G31 certificates overview and certificate requests.
+	http.HandleFunc(certificatesOverviewPath, panel.handleCertificatesOverview)
+	http.HandleFunc(certificateRequestsPath, panel.handleCertificateRequests)
+	http.HandleFunc(certificateRequestsPath+"/", panel.handleCertificateRequestItem)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
 	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
