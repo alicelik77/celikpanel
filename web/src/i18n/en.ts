@@ -75,6 +75,7 @@ import type { PasswordsScreenKey } from './screens/passwords/en';
 import type { AdminNextScreenKey } from './screens/adminNext/en';
 import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
 import type { OpstepsScreenKey } from './screens/opsteps/en';
+import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -585,5 +586,6 @@ export type ScreenKey =
     | PasswordsScreenKey
     | AdminNextScreenKey
     | NodeSandboxScreenKey
-    | OpstepsScreenKey;
+    | OpstepsScreenKey
+    | FtpLoginsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey;

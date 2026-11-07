@@ -287,6 +287,10 @@ const screenPartBudgets = {
   // deletion). A new part, set with at least 25% headroom from its Turkish
   // file: 6.3 / 1.92 KiB.
   opsteps: kib(8.5, 2.6),
+  // v0.1.0-alpha.128: a site's other FTP/SFTP logins, each closed into one
+  // folder (ftpLogins., err.FTP_LOGIN_, opstep.ftplogin.). A new part, set
+  // with at least 25% headroom from its Turkish file.
+  ftpLogins: kib(13, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { Suspense, lazy, useState, type ReactNode } from 'react';
 import { Download, KeyRound, Plug, ShieldCheck, Trash2 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -11,6 +11,10 @@ import { useLostAnswer } from '../lib/lostAnswer';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 import { confirmAction, type OperationEnd, type OperationStep } from '../lib/confirmAction';
+
+// alpha.128: the site's other logins, each closed into one folder; fetched
+// when the Access tab opens, in a chunk of its own.
+const FTPLogins = lazy(() => import('./FTPLogins').then((module) => ({ default: module.FTPLogins })));
 
 // The site's file access (alpha.117): FTP over TLS, SFTP and, when the plan
 // gives the command line, a jailed SSH. The account is the site's own system
@@ -508,6 +512,11 @@ export function DomainFileAccess({ domainId, isAdmin = false }: { domainId: numb
                         )}
 
                         {current?.enabled && <AccessRecipe view={view} />}
+                        {view.available && (
+                            <Suspense fallback={null}>
+                                <FTPLogins domainId={domainId} isAdmin={isAdmin} />
+                            </Suspense>
+                        )}
                     </div>
                 );
             }}
