@@ -1380,3 +1380,47 @@ func TestAPITokenCreateNeedsThePasswordAndTwoFactorCode(t *testing.T) {
 		t.Fatalf("attempt limit: %d %s", recorder.Code, recorder.Body.String())
 	}
 }
+
+// Deleting a domain with a token names the domain (confirm_domain); a
+// browser session is unchanged.
+func TestAPITokenDomainDeleteNeedsConfirmDomain(t *testing.T) {
+	f := newAPITokenFixture(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/domains/", f.panel.handleDomainSubroute)
+	handler := f.panel.requireAuth(mux)
+	// The deletion is marked as already running, so a request that passes
+	// the confirmation is answered "already running" and nothing is started.
+	release := f.panel.deletionsRunning.begin(apiTokenTestDomain)
+	defer release()
+	del := func(query, token string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, tokenRequest(http.MethodDelete, "/api/v1/domains/9902"+query, token))
+		return recorder
+	}
+	for _, query := range []string{"", "?confirm_domain=", "?confirm_domain=other.matrix.test", "?confirm_domain=customer.matrix.test&confirm_domain=customer.matrix.test", "?confirm=customer.matrix.test"} {
+		recorder := del(query, f.minted["customer/manage"])
+		if recorder.Code != http.StatusBadRequest || apiErrorCode(t, recorder) != errCodeAPITokenConfirmDomain {
+			t.Errorf("query %q: %d %s", query, recorder.Code, recorder.Body.String())
+		}
+	}
+	for _, query := range []string{"?confirm_domain=customer.matrix.test", "?confirm_domain=Customer.Matrix.Test."} {
+		if recorder := del(query, f.minted["customer/manage"]); recorder.Code != http.StatusAccepted {
+			t.Errorf("query %q: %d %s", query, recorder.Code, recorder.Body.String())
+		}
+	}
+	// Another account's domain is refused by ownership before the name is
+	// compared, so nothing is told about its name.
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, tokenRequest(http.MethodDelete, "/api/v1/domains/9903", f.minted["customer/manage"]))
+	if recorder.Code == http.StatusBadRequest || recorder.Code < 400 {
+		t.Fatalf("another account's domain: %d %s", recorder.Code, recorder.Body.String())
+	}
+	// A session confirms in the product's dialogue; the parameter is not asked.
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/domains/9902", nil)
+	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: f.tokens[authzMatrixCustomerID]})
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("a session's delete: %d %s", recorder.Code, recorder.Body.String())
+	}
+}

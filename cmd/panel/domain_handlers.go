@@ -719,6 +719,11 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid domain ID", http.StatusBadRequest)
 		return
 	}
+	// alpha.128 (G15): a deletion sent with an API token names the domain it
+	// deletes (confirm_domain); a mistyped id deletes nothing.
+	if !p.requireAPITokenDomainConfirmation(w, r, domainID) {
+		return
+	}
 	// Another press while this domain's deletion request is still running:
 	// answered at once, nothing is started (domain_deletion_already_running.go).
 	if p.deletionsRunning.isRunning(domainID) {

@@ -43,6 +43,7 @@ const (
 	errCodeAPITokenNotFound       = "API_TOKEN_NOT_FOUND"
 	errCodeAPITokenReauth         = "API_TOKEN_REAUTH"
 	errCodeAPITokenReauthLimited  = "API_TOKEN_REAUTH_LIMITED"
+	errCodeAPITokenConfirmDomain  = "API_TOKEN_CONFIRM_DOMAIN"
 )
 
 // apiTokenLifetimes are the expiries a token can be made with, in days. A
@@ -485,4 +486,45 @@ func (p *Panel) handleRemoteAPISetting(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(map[string]any{"enabled": enabled, "working_tokens": working})
+}
+
+// requireAPITokenDomainConfirmation: deleting a domain with an API token
+// needs the query parameter confirm_domain set to the domain's name (a
+// browser session confirms in the product's own dialogue instead). It runs
+// after the ownership check of the domain routes, so it tells nothing about
+// another account's domain. It writes the refusal and answers false.
+func (p *Panel) requireAPITokenDomainConfirmation(w http.ResponseWriter, r *http.Request, domainID int) bool {
+	c := currentCaller(r)
+	if c == nil || c.APIToken == nil {
+		return true
+	}
+	var name string
+	err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT name FROM domains WHERE id = ?`, domainID).Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeClientError(w, http.StatusNotFound, "domain not found")
+		return false
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return false
+	}
+	if !apiTokenDomainConfirmed(r, name) {
+		writeCodedError(w, http.StatusBadRequest, errCodeAPITokenConfirmDomain,
+			"Deleting a domain with an API token needs confirm_domain set to the domain's name, so nothing was deleted. "+
+				"Send DELETE /api/v1/domains/{id}?confirm_domain=<the domain's name> if you mean to delete it.", "")
+		return false
+	}
+	return true
+}
+
+// apiTokenDomainConfirmed: exactly one confirm_domain, equal to the name
+// (letter case and a final dot aside).
+func apiTokenDomainConfirmed(r *http.Request, name string) bool {
+	values := r.URL.Query()["confirm_domain"]
+	if len(values) != 1 {
+		return false
+	}
+	canonical := func(s string) string { return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(s)), ".") }
+	given := canonical(values[0])
+	return given != "" && given == canonical(name)
 }
