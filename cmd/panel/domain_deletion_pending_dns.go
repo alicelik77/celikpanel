@@ -60,7 +60,7 @@ const domainDeletionDNSRemovalFailedEnglish = "Removing this domain from DNS did
 
 // domainDeletionDNSFinishRetryEnglish: the removal is confirmed, but the
 // last attempt to finish the rest of the deletion did not succeed.
-const domainDeletionDNSFinishRetryEnglish = "The DNS removal of this domain is complete and verified, but the last attempt to finish the rest of the deletion (its certificates and its entry in the panel) did not succeed. This server tries again by itself, at least every 5 minutes. If this message stays for more than ten minutes, use “Retry this deletion”."
+const domainDeletionDNSFinishRetryEnglish = "The DNS removal of this domain is complete and verified, but the last attempt to finish the rest of the deletion (its certificates and its entry in the panel) did not succeed. This server tries again by itself after a growing pause (5 minutes, then 15 minutes, then an hour); if it still fails, this page names the error and who acts. “Retry this deletion” tries again now."
 
 // domainDeletionDNSWithoutLease classifies a parentless local deletion whose
 // zone has a deletion marker and a saved removal but no publication lease of
@@ -144,7 +144,10 @@ func (p *Panel) localDomainDeletionContinuesByItself(ctx context.Context, domain
 	}
 	switch {
 	case snapshot.dnsRemoved:
-		return p.remoteDNSDeletions().lastReason(domainID) != remoteDNSDeletionFinishingReason, nil
+		// Continues by itself until finishing has failed once; then a press
+		// is the person's retry (it starts the backoff again).
+		_, failed := readDomainDeletionFinishRecord(ctx, p.db.GetDB(), domainID, snapshot.domain)
+		return !failed, nil
 	case snapshot.dnsWaiting:
 		return p.dnsPendingPublicationsAutomatic(), nil
 	case snapshot.candidate || snapshot.ahead:

@@ -72,7 +72,11 @@ kimlik vekilinin taşıyıcı jetonu ya da bir vekilin Basic girişi buna
   kendiliğinden bitirir; yanıttaki `status_url` silmenin durumudur. Bu arada
   silmeyi yeniden göndermek hiçbir şey başlatmaz. Kaldırma başarısız olursa
   durum `reason: dns_removal_failed` der ve silme aynı DELETE isteğini
-  bekler;
+  bekler. Kaldırma başarılı olup silmenin bitirilmesi başarısız olmayı
+  sürdürürse sunucu 5 dakika, 15 dakika, bir saat, sonra 6 saatte bir yeniden
+  dener; üçüncü başarısızlıktan sonra durum `stage` ve `error_line` ile
+  `reason: deletion_finish_failed` der, alan adının sahibi ve yöneticiler tek
+  bir bildirim alır ve aynı DELETE denemeleri baştan başlatır;
 - DNS kayıtlarını ekleyip değiştirip silebilir;
 - posta kutusu ekleyip silebilir, kotasını ve parolasını değiştirebilir;
 - veritabanı ekleyip silebilir;

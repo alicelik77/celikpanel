@@ -415,12 +415,16 @@ func (p *Panel) reconcileLocalDNSDeletionsOnce(ctx context.Context) {
 		candidates = append(candidates, c)
 	}
 	rows.Close()
-	scheduler := p.remoteDNSDeletions()
 	for _, c := range candidates {
 		if ctx.Err() != nil {
 			return
 		}
-		if p.deletionsRunning.isRunning(c.id) || !scheduler.due(c.id) {
+		if p.deletionsRunning.isRunning(c.id) {
+			continue
+		}
+		// alpha.129: a failing finish waits 5 min, 15 min, 1 h, then 6 h
+		// (domain_deletion_finish_backoff.go), across restarts.
+		if record, present := readDomainDeletionFinishRecord(ctx, p.db.GetDB(), c.id, c.name); !domainDeletionFinishDue(record, present, domainDeletionFinishNow()) {
 			continue
 		}
 		if snapshot, err := p.readDomainDeletionStatusSnapshot(ctx, c.id); err != nil || !snapshot.dnsRemoved {
@@ -437,7 +441,6 @@ func (p *Panel) reconcileLocalDNSDeletionsOnce(ctx context.Context) {
 func (p *Panel) finishLocalDNSDeletion(ctx context.Context, domainID int, domain string) {
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
-	scheduler := p.remoteDNSDeletions()
 	if p.deletionsRunning.isRunning(domainID) {
 		return
 	}
@@ -445,12 +448,17 @@ func (p *Panel) finishLocalDNSDeletion(ctx context.Context, domainID int, domain
 	if err != nil || !snapshot.dnsRemoved || snapshot.domain != domain {
 		return
 	}
-	if err := p.finishRemoteDNSDeletion(ctx, domainID, domain); err != nil {
-		scheduler.record(domainID, remoteDNSDeletionFinishingReason)
-		log.Printf("deletion of %s: the DNS removal is confirmed; finishing the deletion did not succeed yet: %v; tried again by itself", domain, err)
+	if record, present := readDomainDeletionFinishRecord(ctx, p.db.GetDB(), domainID, domain); !domainDeletionFinishDue(record, present, domainDeletionFinishNow()) {
 		return
 	}
-	scheduler.forget(domainID)
+	if err := p.finishRemoteDNSDeletion(ctx, domainID, domain); err != nil {
+		record := p.recordDomainDeletionFinishFailure(ctx, domainID, domain, err)
+		log.Printf("deletion of %s: the DNS removal is confirmed; finishing the deletion failed (%d in a row, at %s): %v; next attempt %s",
+			domain, record.Failures, record.Stage, err, record.NextAt)
+		return
+	}
+	p.clearDomainDeletionFinish(ctx, domainID)
+	p.remoteDNSDeletions().forget(domainID)
 	log.Printf("deletion of %s: finished by itself after the backup DNS server confirmed the zone's removal", domain)
 }
 
@@ -544,10 +552,10 @@ func (p *Panel) finishRemoteDNSDeletion(ctx context.Context, domainID int, domai
 		}
 	}
 	if err := p.removeManagedDomainCertificates(ctx, domain, deleteCanonical, staged); err != nil {
-		return err
+		return &domainDeletionFinishStageError{Stage: "certificate_cleanup", Err: err}
 	}
 	if err := p.finalizeDomainDeletion(ctx, domainID); err != nil {
-		return err
+		return &domainDeletionFinishStageError{Stage: "ledger_delete", Err: err}
 	}
 	if err := p.clearDomainDeletionFailure(ctx, domainID); err != nil {
 		log.Printf("domain deletion for %s completed; %v", domain, err)

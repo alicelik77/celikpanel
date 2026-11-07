@@ -258,16 +258,10 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if snapshot.dnsRemoved {
-		message := domainDeletionDNSRemovedEnglish
-		if p.remoteDNSDeletions().lastReason(domainID) == remoteDNSDeletionFinishingReason {
-			// The last finishing attempt failed: said, not hidden (D-024).
-			message = domainDeletionDNSFinishRetryEnglish
-		}
-		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
-			Status: domainDeletionPendingStatus, Stage: domainDeletionDNSStageDone,
-			Reason:  domainDeletionDNSRemovalConfirmedReason,
-			Message: message,
-		})
+		// A failing finish is said, not hidden; from the third failure with
+		// its stage, error line and the person's retry (D-024).
+		_ = json.NewEncoder(w).Encode(domainDeletionFinishStatus(
+			readDomainDeletionFinishRecord(r.Context(), p.db.GetDB(), domainID, snapshot.domain)))
 		return
 	}
 	if snapshot.dnsFailed {

@@ -116,6 +116,9 @@ const ownDeletionReasons = new Set([
     // (published by itself afterwards), or it failed (the owner's retry).
     'dns_removal_waiting',
     'dns_removal_failed',
+    // The DNS removal is confirmed but finishing the deletion failed three
+    // times in a row: the error line and the owner's retry are shown.
+    'deletion_finish_failed',
 ]);
 
 // Reasons whose next step CelikPanel takes by itself: the page reads again
