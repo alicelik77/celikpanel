@@ -1,0 +1,223 @@
+== C.0 main 129 -> 130 07:42:49
+v0.1.0-alpha.130
+== C2 main before 07:42:50
+200 {"agent_commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "agent_matches": true, "commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.129"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 9c2a5ad19d14dcc021bad10ed1178a44 v0.1.0-alpha.129 -> v0.1.0-alpha.130
+== press Update once 07:42:51
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:42:52Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "9c2a5ad19d14dcc021bad10ed1178a44", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "beb5eb7b8b21ec63361a912e159ad6b1be7b6b05d29da51a24d03f674f80654b", "archive_size": "72569050", "commit": "df1502cbc21c5d26e3ed
+  4s 200 running None  | 
+  26s 
+  74s 200 running verifying  | 
+  87s 200 succeeded None  | 
+== after 07:44:30
+200 {"agent_commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "agent_matches": true, "commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-07T07:42:52.034190666Z", "found": true, "plan": {"expected_restart_seconds": 92, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:42:52Z", "state": "done"}, {"finished_at": "2026-11-07T07:42:56Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:42:56Z", "state": "done"}, {"finished_at": "2026-11-07T07:43:56Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 21, "finished_at": "2026-11-07T07:44:18Z", "id": "confirm", "started_at": "2026-11-07T07:43:56Z", "state": "done"}]}, "request_id": "9c2a5ad19d14dcc021bad10ed1178a44", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "beb5eb7b8b21ec63361a912e159ad6b1be7b6b05d29da51a24d03f674f80654b", "archive_size": "72569050", "commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-07T07:44:18.0561721Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:34:20 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:34:20 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/07 07:43:56 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:43:56 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '275781ad2f15433a70137e0ef2ce188c.json'] {'request_id': '275781ad2f15433a70137e0ef2ce188c', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:33:19.885455223Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+  ['self-update', '9c2a5ad19d14dcc021bad10ed1178a44.json'] {'request_id': '9c2a5ad19d14dcc021bad10ed1178a44', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:42:52.034190666Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+== C2 main done 07:44:32
+snapshot post130: 277 entries
+--- differences pre130 -> post130 (excluding systemd self-update/runtime units)
+(end)
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+(postconf -P policy lines end)
+v0.1.0-alpha.128
+== B.5' idle timeout (15 min): cust2's session unused for 15 min 07:44:33
+401  {"error":"You were signed out because this session was not used for 15 minutes. Nothing was lost on the server; sign in again to continue.","code":"SESSION_IDLE"} 
+== C.1 A1 again 07:44:34
+== A1.0 own values 384 MB / 6 processes 07:44:34
+200 {"message": "The PHP settings of cust1.r9.test were saved.", "nginx": "unchanged", "status": "saved", "timeout_owner": "", "upload_owner": ""}
+    {"field": "memory", "own": 384, "ceiling": 512, "set_by": "server", "effective": 384, "clamped": null}
+    {"field": "processes", "own": 6, "ceiling": 20, "set_by": "server", "effective": 6, "clamped": null}
+== A1.1 plan lowered to 256 MB / 4 07:44:34
+200 {"success": true}
+    {"field": "memory", "own": 384, "ceiling": 256, "set_by": "plan", "effective": 256, "clamped": true}
+    {"field": "processes", "own": 6, "ceiling": 4, "set_by": "plan", "effective": 4, "clamped": true}
+socket /var/run/php/php8.4-fpm-site3.sock
+pool file(s): /etc/php/8.4/fpm/pool.d/site3.conf
+1:; celikpanel-render v2 sha256=90d69b821ed65b9dc6a16ad834053ef88537e879eff55d6adf91396eabfe2efe
+2:; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:
+3:; CelikPanel then shows the difference and asks before writing this file again.
+4:; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+13:pm.max_children = 4
+19:; PHP settings of this site, chosen in CelikPanel. An application cannot raise the php_admin_value limits.
+20:; Bu sitenin CelikPanel'de seçilen PHP ayarları; uygulama php_admin_value sınırlarını yükseltemez.
+23:php_admin_value[memory_limit] = 256M
+24:php_admin_value[max_execution_time] = 120
+25:php_admin_value[max_input_time] = 120
+26:request_terminate_timeout = 130s
+27:php_admin_value[upload_max_filesize] = 64M
+28:php_admin_value[post_max_size] = 64M
+29:php_admin_value[max_input_vars] = 3000
+c60e82a3e4234de7
+access-log.traffic
+acme-http-01.conf
+site-settings.conf
+# celikpanel-render v2 sha256=c076f6e9e2944082cacaac20fcca14747deffc32c056ff2d6e7a02e387d4d12c
+# Site settings of cust1.r9.test, written by CelikPanel from the site's PHP settings.
+# Change them on that page. A line you change here is kept, and CelikPanel stops writing this file.
+# Sitenin ayarları; PHP ayarları sayfasında değiştirin. Burada değiştirilen satır korunur.
+client_max_body_size 64m;
+fastcgi_read_timeout 130s;
+{"php":"8.4.27","before":{"memory_limit":"256M","max_execution_time":"120","upload_max_filesize":"64M","post_max_size":"64M","max_input_vars":"3000"},"ini_set_returned":[false,false],"after":{"memory_limit":"256M","max_execution_time":"120"},"user_ini":".user.ini"}
+
+   the form sent back unchanged (384/6) is accepted:
+200 {"message": "The PHP settings of cust1.r9.test were saved.", "nginx": "unchanged", "status": "saved", "timeout_owner": "", "upload_owner": ""}
+   a new value above the limit (400) is refused:
+409 {"code": "SETTING_ABOVE_LIMIT", "details": ["php.memory_limit_mb: 400 (limit 256, set by the plan \"Basic\")"], "error": "Nothing was changed: php.memory_limit_mb is above the limit 256 set by the plan \"Basic\". Choose a value up to the limit, or ask them to raise it.", "vars": {"key": "php.memory_limit_mb", "limit": "256", "set_by": "plan", "set_by_name": "Basic", "value": "400"}}
+== A1.2 plan raised to 512 MB / 20 07:45:00
+200 {"success": true}
+    {"field": "memory", "own": 384, "ceiling": 512, "set_by": "server", "effective": 384, "clamped": null}
+    {"field": "processes", "own": 6, "ceiling": 20, "set_by": "server", "effective": 6, "clamped": null}
+socket /var/run/php/php8.4-fpm-site3.sock
+pool file(s): /etc/php/8.4/fpm/pool.d/site3.conf
+1:; celikpanel-render v2 sha256=afccf3facdd078aaa6b93df13112fe74f177c4885f89f223ef3aee47ef2174e7
+2:; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:
+3:; CelikPanel then shows the difference and asks before writing this file again.
+4:; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+13:pm.max_children = 6
+19:; PHP settings of this site, chosen in CelikPanel. An application cannot raise the php_admin_value limits.
+20:; Bu sitenin CelikPanel'de seçilen PHP ayarları; uygulama php_admin_value sınırlarını yükseltemez.
+21:php_admin_value[memory_limit] = 384M
+22:php_admin_value[max_execution_time] = 120
+23:php_admin_value[max_input_time] = 120
+24:request_terminate_timeout = 130s
+25:php_admin_value[upload_max_filesize] = 64M
+26:php_admin_value[post_max_size] = 64M
+27:php_admin_value[max_input_vars] = 3000
+db5b5e01ac143944
+access-log.traffic
+acme-http-01.conf
+site-settings.conf
+# celikpanel-render v2 sha256=c076f6e9e2944082cacaac20fcca14747deffc32c056ff2d6e7a02e387d4d12c
+# Site settings of cust1.r9.test, written by CelikPanel from the site's PHP settings.
+# Change them on that page. A line you change here is kept, and CelikPanel stops writing this file.
+# Sitenin ayarları; PHP ayarları sayfasında değiştirin. Burada değiştirilen satır korunur.
+client_max_body_size 64m;
+fastcgi_read_timeout 130s;
+{"php":"8.4.27","before":{"memory_limit":"384M","max_execution_time":"120","upload_max_filesize":"64M","post_max_size":"64M","max_input_vars":"3000"},"ini_set_returned":[false,false],"after":{"memory_limit":"384M","max_execution_time":"120"},"user_ini":".user.ini"}
+
+== c-r2a done 07:45:21
+== C.2 mail 07:45:21
+-- limit 3 (its counter starts again): 4 messages
+200 {"applied": true, "called": true, "saved": true}
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as E831222604
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 6979522604
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as A622022604
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+-- raised to 100: the next message goes at once
+200 {"applied": true, "called": true, "saved": true}
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 691A221519
+-- limit 3 again, 6 messages -> pause
+200 {"applied": true, "called": true, "saved": true}
+  <~  250 2.0.0 Ok: queued as A6B8C2054E
+  <~  250 2.0.0 Ok: queued as 2C44A2054E
+  <~  250 2.0.0 Ok: queued as A77C72054E
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg while paused:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+200 {"success": true}
+   answer after 0 s
+ msg right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+   apply {"applied_at": "2026-11-07 07:46:12", "attempted_at": "2026-11-07 07:46:12", "state": "applied", "verified_at": "2026-11-07 07:46:12"}
+== C.3 notify-only view (cust2) 08:00:45
+   cust2 {"db_bytes": 0, "mail_bytes": 0, "measured_at": "2026-11-07 07:28:44", "over_since": "2026-11-07 07:28:44", "state": "measured", "uploads_applied": true, "uploads_blocked": true, "web_bytes": 31477760}
+== C.4 SFTP again 08:00:45
+== main: site 2 login anna-up 08:00:45
+200 {"available": true, "connection": {"ftp_host": "site1.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.190", "sftp_host": "site1.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "anna-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed", "sftp_password
+uid=5002(site1_r9_test) gid=5002(site1_r9_test) groups=5002(site1_r9_test),986(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_r9_test:/run/celikpanel-ftp/anna-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/anna-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4 rw,nosuid,nodev,relatime,discard,errors=remount-ro
+-- sftp as anna-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as anna-up
+ftp://[REDACTED]@192.0.3.190
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘anna-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as anna-up
+anna-up@192.0.3.190: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+== backup: site 1 login bert-up 08:02:09
+200 {"available": true, "connection": {"ftp_host": "bsite.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.191", "sftp_host": "bsite.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "bsite.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "bert-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/bert-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed", "sftp_password
+uid=1002(bsite_r9_test) gid=1002(bsite_r9_test) groups=1002(bsite_r9_test),986(celikpanel-site)
+1002:1002:CelikPanel FTP login of bsite_r9_test:/run/celikpanel-ftp/bert-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/bert-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/1/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro,c
+-- sftp as bert-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as bert-up
+ftp://[REDACTED]@192.0.3.191
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/1/public_html/lab-up.txt': No such file or directory
+1002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘bert-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as bert-up
+bert-up@192.0.3.191: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+== r2sftp done 08:03:34
+== r2c done 08:03:34

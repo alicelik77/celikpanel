@@ -1,0 +1,118 @@
+== portal latest = 128 07:19:03
+v0.1.0-alpha.128
+db /var/lib/celikpanel/celikpanel.db migrations 65 last: [(60, '060_remote_backups.sql'), (61, '061_service_apps.sql'), (62, '062_user_guide_state.sql'), (63, '063_runtime_apps.sql'), (64, '064_metrics_history.sql'), (65, '065_monitoring_alerts.sql')]
+   setting_policy ERR no such table: setting_policy
+   mail_outgoing_settings ERR no such table: mail_outgoing_settings
+   site_web_settings ERR no such table: site_web_settings
+   api_tokens ERR no such table: api_tokens
+   site_visitor_stats_daily ERR no such table: site_visitor_stats_daily
+   no such table: mail_outgoing_settings
+db /var/lib/celikpanel/celikpanel.db migrations 65 last: [(60, '060_remote_backups.sql'), (61, '061_service_apps.sql'), (62, '062_user_guide_state.sql'), (63, '063_runtime_apps.sql'), (64, '064_metrics_history.sql'), (65, '065_monitoring_alerts.sql')]
+   setting_policy ERR no such table: setting_policy
+   mail_outgoing_settings ERR no such table: mail_outgoing_settings
+   site_web_settings ERR no such table: site_web_settings
+   api_tokens ERR no such table: api_tokens
+   site_visitor_stats_daily ERR no such table: site_visitor_stats_daily
+   no such table: mail_outgoing_settings
+== C2 backup before 07:19:04
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host2.r9.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 13f4928d9b978b192708de78379fdbca v0.1.0-alpha.127 -> v0.1.0-alpha.128
+== press Update once 07:19:05
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:19:05Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "13f4928d9b978b192708de78379fdbca", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "71e12c746075b13ac37a7bcef6ea79ce2f8410de11a6d7889d97989e4f2541d1", "archive_size": "72567042", "commit": "ef891c2907ad0328d40d
+  4s 200 running None  | 
+  25s 
+  59s 200 running verifying  | 
+  72s 200 succeeded None  | 
+== after 07:20:28
+200 {"agent_commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "agent_matches": true, "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "hostname": "host2.r9.test", "ipv4": "192.0.3.191", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+200 {"created_at": "2026-11-07T07:19:05.496585232Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:19:05Z", "state": "done"}, {"finished_at": "2026-11-07T07:19:09Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:19:09Z", "state": "done"}, {"finished_at": "2026-11-07T07:20:02Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T07:20:14Z", "id": "confirm", "started_at": "2026-11-07T07:20:02Z", "state": "done"}]}, "request_id": "13f4928d9b978b192708de78379fdbca", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "71e12c746075b13ac37a7bcef6ea79ce2f8410de11a6d7889d97989e4f2541d1", "archive_size": "72567042", "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "os": "linux", "sequence": "128", "version": "v0.1.0-alpha.128"}, "updated_at": "2026-11-07T07:20:14.030575244Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:11:55 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 07:20:02 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '13f4928d9b978b192708de78379fdbca.json'] {'request_id': '13f4928d9b978b192708de78379fdbca', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:19:05.496585232Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 backup done 07:20:29
+== C2 main before 07:20:29
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 068e8eb59ac8b8c108f270347dc1ba1d v0.1.0-alpha.127 -> v0.1.0-alpha.128
+== press Update once 07:20:30
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:20:31Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "068e8eb59ac8b8c108f270347dc1ba1d", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "71e12c746075b13ac37a7bcef6ea79ce2f8410de11a6d7889d97989e4f2541d1", "archive_size": "72567042", "commit": "ef891c2907ad0328d40d
+  5s 200 running None  | 
+  22s 
+  55s 200 running verifying  | 
+  68s 200 succeeded None  | 
+== after 07:21:49
+200 {"agent_commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "agent_matches": true, "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+200 {"created_at": "2026-11-07T07:20:31.232915383Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:20:31Z", "state": "done"}, {"finished_at": "2026-11-07T07:20:35Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:20:35Z", "state": "done"}, {"finished_at": "2026-11-07T07:21:23Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T07:21:35Z", "id": "confirm", "started_at": "2026-11-07T07:21:23Z", "state": "done"}]}, "request_id": "068e8eb59ac8b8c108f270347dc1ba1d", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "71e12c746075b13ac37a7bcef6ea79ce2f8410de11a6d7889d97989e4f2541d1", "archive_size": "72567042", "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "os": "linux", "sequence": "128", "version": "v0.1.0-alpha.128"}, "updated_at": "2026-11-07T07:21:35.28848726Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:11:45 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 07:21:23 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:21:23 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 main done 07:21:50
+== backup after 07:21:50
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 0 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(0,)]
+snapshot post128: 199 entries
+--- differences pre127 -> post128 (excluding systemd self-update/runtime units)
+(end)
+(postconf -P policy lines end)
+(failed end)
+cat: /opt/celikpanel/release.commit: No such file or directory
+active
+active
+active
+== main after 07:21:52
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 0 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(0,)]
+snapshot post128: 249 entries
+--- differences pre127 -> post128 (excluding systemd self-update/runtime units)
+(end)
+(postconf -P policy lines end)
+(failed end)
+cat: /opt/celikpanel/release.commit: No such file or directory
+active
+active
+active
+-- sites answer after the update
+  site1.r9.test: 200
+  cust1.r9.test: 200
+  bsite.r9.test: 200
+== c1upd done 07:21:54

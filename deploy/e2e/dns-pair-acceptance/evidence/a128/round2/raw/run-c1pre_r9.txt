@@ -1,0 +1,39 @@
+== versions 07:18:14
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host2.r9.test", "ipv4": "192.0.3.191", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+200 [{"bandwidth": 0, "created_at": "2026-11-07T07:17:27Z", "disk_usage": 0, "domain_name": "r9.test", "id": 1, "php_version": "", "project_type": "static", "site_config": {"state": "managed_unchanged"}, "ssl_enabled": true, "status": "active"}]
+-- admin PHP site site1.r9.test 07:18:14
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "site1.r9.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "site1_r9_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+site1 id 2
+200 {"id": 1, "success": true}
+200 {"id": 1, "name": "site1_r9_test_shop", "status": "success", "type": "mysql", "user": "site1_r9_test_shop_user"}
+-- plan Basic + customer cust1 + the customer's site 07:18:21
+200 {"id": 1, "success": true}
+plan id 1
+200 {"id": 3, "rights": "plan", "success": true}
+cust1 subscription 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/3/sites/3/public_html", "Domain": "cust1.r9.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "cust1_r9_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 3, "TempDomain": ""}
+cust1 site id 3
+-- joined server: PHP site bsite.r9.test 07:18:29
+409 {"action": "/domains/bsite.r9.test?tab=dns", "code": "DNS_PUBLICATION_PENDING", "domain": "bsite.r9.test", "domain_id": 1, "error": "the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page", "partial_success": true, "zone_exists": false}
+bsite id 1
+-- snapshot main
+snapshot pre127: 249 entries
+-- snapshot backup
+snapshot pre127: 199 entries
+/etc/nginx/celikpanel-managed.d:
+cust1.r9.test
+r9.test
+site1.r9.test
+
+/etc/nginx/sites-enabled:
+celikpanel-panel-acme-4c698407fb5d28f8038de818.conf
+celikpanel-panel-acme-924197b26ead2868a068c034.conf
+cust1.r9.test.conf
+default
+r9.test.conf
+site1.r9.test.conf
+site2.conf
+site3.conf
+www.conf
+active active active active == c1pre done 07:19:03

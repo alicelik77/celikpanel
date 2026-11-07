@@ -1,0 +1,78 @@
+== B.1 notify-only: a new customer cust2 on plan Notify (disk 20 MB, notify), its site over the limit 07:28:36
+200 {"id": 2, "success": true}
+200 {"id": 4, "rights": "plan", "success": true}
+cust2 subscription 4
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/4/sites/6/public_html", "Domain": "cust2.r9.test", "DomainID": 6, "FTPPassword": "[REDACTED]", "FTPUser": "cust2_r9_test", "PHPVersion": "8.4", "Pro
+cust2 site 6
+31M	/var/www/celikpanel/subscriptions/4/sites/6/public_html
+-- expiry in 5 days (also kicks the usage worker) 07:28:43
+200 {"lifecycle": {"ends_at": "2026-11-12T00:00:00Z", "starts_at": "2026-11-07T07:28:36Z", "status": "active"}, "success": true}
+  notices after 10 s: disk_100 expiry_soon
+  cust2 notices: disk_100 expiry_soon
+   200 items 2 monitoring None
+     {"source": "account", "id": 1, "kind": "expiry_soon", "audience": "customer", "needs_action": false, "fix_path": "/account", "usage": null, "clamp": null}
+     {"source": "usage", "id": 1, "kind": "disk_100", "audience": "customer", "needs_action": true, "fix_path": "/account", "usage": {"limit_bytes": 20971520, "owner": "cust2", "period": "2026-11-07 07:28:44", "subscription": "Notify", "used_bytes": 31477760}, "clamp": null}
+   cust2 site: 200 (notify only: still open)
+   {"id": 4, "name": "Notify", "owner": "cust2", "usage": {"databases": 0, "databases_limit": 1, "disk": {"db_bytes": 0, "mail_bytes": 0, "measured_at": "2026-11-07 07:28:44", "over_since": "2026-11-07 07:28:44", "state": "measured", "suspend_on": "2026-11-14T07:28:44Z", "uploads_applied": true, "uploads_blocked": true, "web_bytes": 31477760}, "disk_limit_bytes": 20971520, "disk_used_bytes": 31477760, "domains": 1, "dom
+-- seen round trip (expiry notice via /api/v1/notifications/{id}/seen, usage via /api/v1/usage-notices/{id}/seen)
+200 {"seen": true}
+200 {"seen": true}
+   200 items 0 monitoring None
+== B.2 administrator's notifications (usage, site_limit clamp, mail_outgoing) 07:28:54
+   200 items 6 monitoring {'open': 1, 'unseen': 1}
+     {"source": "account", "id": 2, "kind": "expiry_soon", "audience": "administrator", "needs_action": true, "fix_path": "/users?rights=cust2", "usage": null, "clamp": null}
+     {"source": "usage", "id": 2, "kind": "disk_100", "audience": "administrator", "needs_action": true, "fix_path": "/users?rights=cust2", "usage": {"limit_bytes": 20971520, "owner": "cust2", "period": "2026-11-07 07:28:44", "subscription": "Notify", "used_bytes": 31477760}, "clamp": null}
+     {"source": "site_limit", "id": 4, "kind": "site_limit_clamped", "audience": "administrator", "needs_action": false, "fix_path": "/domains/cust1.r9.test?tab=php", "usage": null, "clamp": {"domain": "cust1.r9.test", "domain_id": 3, "key": "php.memory_limit_mb", "limit": 256, "set_by": "plan", "set_by_name": "Basic", "value": 384}}
+     {"source": "site_limit", "id": 2, "kind": "site_limit_clamped", "audience": "administrator", "needs_action": false, "fix_path": "/domains/cust1.r9.test?tab=php", "usage": null, "clamp": {"domain": "cust1.r9.test", "domain_id": 3, "key": "php.max_children", "limit": 4, "set_by": "plan", "set_by_name": "Basic", "value": 6}}
+     {"source": "mail_outgoing", "id": 2, "kind": "paused", "audience": "administrator", "needs_action": true, "fix_path": "/domains/site1.r9.test?tab=mail", "usage": null, "clamp": null}
+     {"source": "mail_outgoing", "id": 1, "kind": "limit_reached", "audience": "administrator", "needs_action": false, "fix_path": "/domains/site1.r9.test?tab=mail", "usage": null, "clamp": null}
+== B.3 domain health strip 07:28:55
+   200 site1.r9.test administrator [('site', 'ok', 'up'), ('certificate', 'problem', 'none'), ('mail', 'unknown', 'not_checked'), ('disk', 'ok', 'no_limit'), ('backup', 'problem', 'none')]
+   200 cust1.r9.test administrator [('site', 'ok', 'up'), ('certificate', 'problem', 'none'), ('disk', 'ok', 'within'), ('backup', 'problem', 'none')]
+   200 cust2.r9.test administrator [('site', 'unknown', 'not_checked'), ('certificate', 'problem', 'none'), ('disk', 'problem', 'over'), ('backup', 'problem', 'none')]
+== B.4 activity log: customer and reseller 07:28:55
+  cust1 200 [('domain.delete:tokdel.r9.test', 'you'), ('api_token.call', 'you'), ('domain.create', 'you'), ('api_token.call', 'you'), ('api_token.create', 'you')]
+200 {"id": 5, "rights": "unlimited", "success": true}
+200 {"id": 6, "rights": "unlimited", "success": true}
+  res1 200 [('auth.login', 'account', 'rc1'), ('user.create', 'you', None), ('auth.login', 'you', None)]
+403 {"code": "ADMIN_ONLY", "error": "administrator access required"}
+== B.5 sessions, idle timeout, administrator address list 07:28:56
+  cust1 sessions 200 1 idle 60
+  admin sees 6 sessions of ['cust1', 'cust2', 'owner', 'rc1', 'res1']
+200 {"ended": 1}
+   cust1 with the ended session:
+401  {"error":"authentication required","code":"AUTH_REQUIRED"} 
+200 {"allowlist": [], "idle_choices": [15, 30, 60, 120, 240, 480], "idle_minutes": 60, "recovery_command": "sudo touch /etc/celikpanel/panel-access-open", "recovery_open": false, "recovery_undo": "sudo rm /etc/celikpanel/panel-access-open", "your_address": "192.0.3.2", "your_address_allowed": true}
+   my address 192.0.3.2
+409 {"code": "PANEL_ACCESS_WOULD_LOCK_OUT", "error": "Your own address (192.0.3.2) is not in the list, so saving it would sign you out and keep you out. Nothing was changed. Add your address (the screen offers it), then save."}
+200 {"allowlist": ["192.0.3.2"], "idle_choices": [15, 30, 60, 120, 240, 480], "idle_minutes": 15, "recovery_command": "sudo touch /etc/celikpanel/panel-access-open", "recovery_open": false, "recovery_undo": "sudo rm /etc/celikpanel/panel-access-open", "your_address": "192.0.3.2", "your_address_allowed":
+-- an administrator token from the lab network (unlisted)
+200 {"enabled": true, "working_tokens": "[REDACTED]"}
+201 saved 210 bytes {'content-type': 'application/json'}
+   admin token made: True 
+   token from the lab network: {"error":"Administrator sign-in is accepted only from the addresses the administrator listed, and this address is not one of them. Nothing was changed. Connect from a listed address, or, on the server
+   token from the allowed address: 200  [{"id":6,"domain_name":"cust2.r9.test","php_version":"8.4","ssl_enabled":false,"
+-- recovery file on the server (the owner's terminal)
+   token from the lab network with the file: [{"id":6,"domain_name":"cust2.r9.test","php_version":"8.4","ssl_enabled":false,"status":"active","project_type":"php","created_at":"2026-11-07T07:28:38Z","disk_usage":31460530,"bandwidth":0,"site_conf
+   recovery_open True
+   token from the lab network without the file: {"error":"Administrator sign-in is accepted only from the addresses the administrator listed, and this address is not one of them. Nothing was changed. Connect from a listed address, or, on the server
+200 {"allowlist": [], "idle_choices": [15, 30, 60, 120, 240, 480], "idle_minutes": 15, "recovery_command": "sudo touch /etc/celikpanel/panel-access-open", "recovery_open": false, "recovery_undo": "sudo rm
+-- an idle session: cust2 signs in now and is asked again after the idle time (checked at the end of the round)
+204 
+== B.6 maintenance on the main 07:29:14
+200 {"abbreviation": "UTC", "boot_id": "f793d814-0e19-47f6-9a8c-630011cba5c8", "booted_at": "2026-11-07T06:40:31Z", "max_error_ms": 16000, "now": "2026-11-07T07:29:15Z", "sync": "not_synchronised", "time_zone": "Etc/UTC", "utc_offset": "+00:00"}
+   200 read vcpus 2 top cpu [('rspamd', 0.5), ('panel', 0.5), ('systemd', 0), ('kthreadd', 0)]
+== B.7 certificate request -> lab-CA certificate -> installed on csr8.r9.test 07:29:16
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/7/public_html", "Domain": "csr8.r9.test", "DomainID": 7, "FTPPassword": "[REDACTED]", "FTPUser": "csr8_r9_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 7, "TempDomain": ""}
+csr8 id 7
+   201 1 csr8.r9.test ecdsa-p256 /var/lib/celikpanel-agent-private/certificate-requests/09f317437c970b58db193127bbeeefa3.key
+subject=CN=csr8.r9.test
+200  {"status":"success"} 
+   install again:
+409  {"error":"This request's certificate is already installed (site:csr8.r9.test). To renew a bought certificate, make a new request. Nothing was changed.","code":"CERTIFICATE_REQUEST_ALREADY_INSTALLED"} 
+subject=CN=csr8.r9.test
+issuer=CN=CelikPanel alpha.118 lab portal CA
+serial=58
+   {"kind": "site", "name": "csr8.r9.test", "source": "uploaded", "issuer": "CelikPanel alpha.118 lab portal CA", "state": "in_use", "days_left": 4}
+   requests []
+== r2b done 07:29:24

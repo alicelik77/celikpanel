@@ -1,0 +1,16 @@
+== D.1 box2 limit 3, 6 messages 08:09:10
+200 {"applied": true, "called": true, "saved": true}
+  <~  250 2.0.0 Ok: queued as AC07721519
+  <~  250 2.0.0 Ok: queued as 2C0CA21519
+  <~  250 2.0.0 Ok: queued as 680D521519
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+  box2 paused after 240 s
+ msg while paused:
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+200 {"sending_resumed": true, "success": true}
+   answer after 1 s
+ msg right after the password change:
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+== r2d done 08:14:35

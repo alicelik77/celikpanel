@@ -1,0 +1,359 @@
+== main: site 2 login anna-up 07:29:24
+200 {"available": true, "connection": {"ftp_host": "site1.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.190", "sftp_host": "site1.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "anna-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed", "sftp_password
+uid=5002(site1_r9_test) gid=5002(site1_r9_test) groups=5002(site1_r9_test),986(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_r9_test:/run/celikpanel-ftp/anna-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/anna-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4 rw,nosuid,nodev,relatime,discard,errors=remount-ro
+-- sftp as anna-up
+anna-up@192.0.3.190: Permission denied ().
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as anna-up
+ftp://anna-up:[REDACTED]@192.0.3.190
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘anna-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as anna-up
+anna-up@192.0.3.190: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+== backup: site 1 login bert-up 07:30:49
+200 {"available": true, "connection": {"ftp_host": "bsite.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.191", "sftp_host": "bsite.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "bsite.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "bert-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/bert-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed", "sftp_password
+uid=1002(bsite_r9_test) gid=1002(bsite_r9_test) groups=1002(bsite_r9_test),986(celikpanel-site)
+1002:1002:CelikPanel FTP login of bsite_r9_test:/run/celikpanel-ftp/bert-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/bert-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/1/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro,c
+-- sftp as bert-up
+bert-up@192.0.3.191: Permission denied ().
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as bert-up
+ftp://bert-up:[REDACTED]@192.0.3.191
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/1/public_html/lab-up.txt': No such file or directory
+1002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘bert-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as bert-up
+bert-up@192.0.3.191: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+== r2sftp done 07:32:14
+== main: site 2 login anna-up 08:00:45
+200 {"available": true, "connection": {"ftp_host": "site1.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.190", "sftp_host": "site1.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "anna-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed", "sftp_password
+uid=5002(site1_r9_test) gid=5002(site1_r9_test) groups=5002(site1_r9_test),986(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_r9_test:/run/celikpanel-ftp/anna-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/anna-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4 rw,nosuid,nodev,relatime,discard,errors=remount-ro
+-- sftp as anna-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as anna-up
+ftp://[REDACTED]@192.0.3.190
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘anna-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as anna-up
+anna-up@192.0.3.190: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+== backup: site 1 login bert-up 08:02:09
+200 {"available": true, "connection": {"ftp_host": "bsite.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.191", "sftp_host": "bsite.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "bsite.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "bert-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/bert-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed", "sftp_password
+uid=1002(bsite_r9_test) gid=1002(bsite_r9_test) groups=1002(bsite_r9_test),986(celikpanel-site)
+1002:1002:CelikPanel FTP login of bsite_r9_test:/run/celikpanel-ftp/bert-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/bert-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/1/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro,c
+-- sftp as bert-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as bert-up
+ftp://[REDACTED]@192.0.3.191
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/1/public_html/lab-up.txt': No such file or directory
+1002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘bert-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as bert-up
+bert-up@192.0.3.191: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+== r2sftp done 08:03:34
+== SFTP diagnosis on main 08:04:10
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "cara-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "ssh
+-- sftp as cara-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as cara-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as cara-up
+ftp://[REDACTED]@192.0.3.190
+shadow: $y$j... (len 74)
+cara-up P 2026-11-07 0 99999 7 -1
+usepam yes
+passwordauthentication no
+kbdinteractiveauthentication no
+forcecommand internal-sftp -d /files -u 0027
+chrootdirectory /run/celikpanel-ftp/cara-up
+authenticationmethods any
+1:# Managed by CelikPanel: file access for hosting accounts. sha256=f1cb10a72dc327816b6fe4c445b92ef40f252a34b34198a4624c724d6987d36a
+2:# File access for hosting accounts (SFTP, and SSH with the ssh right).
+3:# Every account below is confined to its subscription's folder; any other
+4:# hosting account in group celikpanel-site cannot sign in over SSH.
+5:# CelikPanel rewrites this file only while it is exactly as CelikPanel wrote
+6:# it. Edit it by hand and CelikPanel keeps your version and says so.
+7:
+8:# Additional FTP/SFTP logins: SFTP only, each closed into the jail of the
+9:# folder its site gave it (/run/celikpanel-ftp/<login>, docs/FTP-LOGINS.md).
+10:
+11:# celikpanel-login login=cara-up site=site1_r9_test subscription=2 domain=2 folder=/public_html readonly=0
+12:Match User cara-up
+13:	ChrootDirectory /run/celikpanel-ftp/cara-up
+14:	PubkeyAuthentication no
+15:	ForceCommand internal-sftp -d /files -u 0027
+16:	PermitTTY no
+17:	DisableForwarding yes
+18:	PermitTunnel no
+19:	PermitUserRC no
+20:
+21:# Every other hosting account: no SSH sign-in, not even a tunnel.
+22:Match Group celikpanel-site User !cara-up,*
+23:	DenyGroups celikpanel-site
+24:	DisableForwarding yes
+25:
+26:# The rest of the server's sshd configuration is not affected.
+27:Match all
+drwxr-x--- 3 root          site1_r9_test   60 Nov  7 08:04 /run/celikpanel-ftp/cara-up
+drwxr-s--- 2 site1_r9_test www-data      4096 Nov  7 07:18 /run/celikpanel-ftp/cara-up/files
+Connection closed by authenticating user cara-up 192.0.3.1 port 54618 [preauth]
+Connection closed by authenticating user cara-up 192.0.3.1 port 54634 [preauth]
+pam_unix(sshd:session): session opened for user celik(uid=1000) by celik(uid=0)
+pam_unix(sshd:session): session closed for user celik
+pam_unix(sshd:session): session opened for user celik(uid=1000) by celik(uid=0)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+UsePAM yes
+PasswordAuthentication no
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_
+passwordauthentication yes
+passwordauthentication yes
+== main: site 2 login anna-up 08:05:52
+== main: site 2 login anna-up 08:05:52
+200 {"available": true, "connection": {"ftp_host": "site1.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.190", "sftp_host": "site1.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"available": true, "connection": {"ftp_host": "site1.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.190", "sftp_host": "site1.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "anna-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed"]}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "anna-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed"]}
+uid=5002(site1_r9_test) gid=5002(site1_r9_test) groups=5002(site1_r9_test),986(celikpanel-site)
+uid=5002(site1_r9_test) gid=5002(site1_r9_test) groups=5002(site1_r9_test),986(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_r9_test:/run/celikpanel-ftp/anna-up/./files:/usr/sbin/nologin
+5002:5002:CelikPanel FTP login of site1_r9_test:/run/celikpanel-ftp/anna-up/./files:/usr/sbin/nologin
+active
+active
+/run/celikpanel-ftp/anna-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4 rw,nosuid,nodev,relatime,discard,errors=remount-ro
+/run/celikpanel-ftp/anna-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4 rw,nosuid,nodev,relatime,discard,errors=remount-ro
+-- sftp as anna-up
+-- sftp as anna-up
+sftp> pwd
+Remote working directory: /files
+sftp> ls -la /
+drwxr-x---    ? 0        5002           60 Nov  7 08:05 /.
+drwxr-x---    ? 0        5002           60 Nov  7 08:05 /..
+drwxr-s---    ? 5002     33           4096 Nov  7 07:18 /files
+sftp> put /root/lab-up.txt
+sftp> ls
+index.php    lab-up.txt   
+sftp> -cd /..
+sftp> -ls /..
+/../files  
+sftp> -get /etc/hostname /root/got-hostname
+File "/etc/hostname" not found.
+sftp> -cd /proc
+stat remote: No such file or directory
+sftp> pwd
+Remote working directory: /files
+sftp> ls -la /
+drwxr-x---    ? 0        5002           60 Nov  7 08:05 /.
+drwxr-x---    ? 0        5002           60 Nov  7 08:05 /..
+drwxr-s---    ? 5002     33           4096 Nov  7 07:18 /files
+sftp> put /root/lab-up.txt
+sftp> ls
+index.php    lab-up.txt   
+sftp> -cd /..
+sftp> -ls /..
+/../files  
+sftp> -get /etc/hostname /root/got-hostname
+File "/etc/hostname" not found.
+sftp> -cd /proc
+stat remote: No such file or directory
+   got /etc/hostname: no
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+This service allows sftp connections only.
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+This service allows sftp connections only.
+-- ftps as anna-up
+-- ftps as anna-up
+ftp://[REDACTED]@192.0.3.190
+ls: Fatal error: max-retries exceeded
+ftp://[REDACTED]@192.0.3.190
+ls: Fatal error: max-retries exceeded
+-rw------- 1 5002 33 22 Nov  7 08:05 /var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt
+-rw------- 1 5002 33 22 Nov  7 08:05 /var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt
+5002
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘anna-up’: no such user
+id: ‘anna-up’: no such user
+inactive
+inactive
+0
+0
+-- after removal:
+-- after removal:
+-- sftp as anna-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- sftp as anna-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.190' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+== backup: site 1 login bert-up 08:07:24
+== backup: site 1 login bert-up 08:07:24
+200 {"available": true, "connection": {"ftp_host": "bsite.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.191", "sftp_host": "bsite.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "bsite.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"available": true, "connection": {"ftp_host": "bsite.r9.test", "ftp_port": 21, "passive_max": "[REDACTED]", "passive_min": "[REDACTED]", "server_ip": "192.0.3.191", "sftp_host": "bsite.r9.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "bsite.r9.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "subscription_status": "active"}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "bert-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/bert-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed"]}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "bert-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/bert-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed"]}
+uid=1002(bsite_r9_test) gid=1002(bsite_r9_test) groups=1002(bsite_r9_test),986(celikpanel-site)
+uid=1002(bsite_r9_test) gid=1002(bsite_r9_test) groups=1002(bsite_r9_test),986(celikpanel-site)
+1002:1002:CelikPanel FTP login of bsite_r9_test:/run/celikpanel-ftp/bert-up/./files:/usr/sbin/nologin
+1002:1002:CelikPanel FTP login of bsite_r9_test:/run/celikpanel-ftp/bert-up/./files:/usr/sbin/nologin
+active
+active
+/run/celikpanel-ftp/bert-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/1/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro,c
+/run/celikpanel-ftp/bert-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/1/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro,c
+-- sftp as bert-up
+-- sftp as bert-up
+sftp> pwd
+Remote working directory: /files
+sftp> ls -la /
+drwxr-x---    ? root     1002           60 Nov  7 08:07 /.
+drwxr-x---    ? root     1002           60 Nov  7 08:07 /..
+drwxr-s---    ? 1002     33           4096 Nov  7 08:07 /files
+sftp> put /root/lab-up.txt
+sftp> ls
+index.php    lab-up.txt   
+sftp> -cd /..
+sftp> -ls /..
+/../files  
+sftp> -get /etc/hostname /root/got-hostname
+File "/etc/hostname" not found.
+sftp> -cd /proc
+stat remote: No such file or directory
+sftp> pwd
+Remote working directory: /files
+sftp> ls -la /
+drwxr-x---    ? root     1002           60 Nov  7 08:07 /.
+drwxr-x---    ? root     1002           60 Nov  7 08:07 /..
+drwxr-s---    ? 1002     33           4096 Nov  7 08:07 /files
+sftp> put /root/lab-up.txt
+sftp> ls
+index.php    lab-up.txt   
+sftp> -cd /..
+sftp> -ls /..
+/../files  
+sftp> -get /etc/hostname /root/got-hostname
+File "/etc/hostname" not found.
+sftp> -cd /proc
+stat remote: No such file or directory
+   got /etc/hostname: no
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+This service allows sftp connections only.
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+This service allows sftp connections only.
+-- ftps as bert-up
+-- ftps as bert-up
+ftp://[REDACTED]@192.0.3.191
+ls: Fatal error: max-retries exceeded
+ftp://[REDACTED]@192.0.3.191
+ls: Fatal error: max-retries exceeded
+-rw------- 1 1002 33 22 Nov  7 08:07 /var/www/celikpanel/subscriptions/2/sites/1/public_html/lab-up.txt
+-rw------- 1 1002 33 22 Nov  7 08:07 /var/www/celikpanel/subscriptions/2/sites/1/public_html/lab-up.txt
+1002
+1002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "warnings": ["ftp_not_installed"]}
+id: ‘bert-up’: no such user
+id: ‘bert-up’: no such user
+inactive
+inactive
+0
+0
+-- after removal:
+-- after removal:
+-- sftp as bert-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- sftp as bert-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as bert-up (must be refused)
+Warning: Permanently added '192.0.3.191' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+== r2sftp done 08:08:56
+== r2sftp done 08:08:56
+passwordauthentication no
+passwordauthentication no

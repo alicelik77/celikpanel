@@ -1,0 +1,147 @@
+v0.1.0-alpha.131
+== C2 main before 08:19:34
+200 {"agent_commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "agent_matches": true, "commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.130"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 6e6d85c26ea3d87b32ec42116e386aba v0.1.0-alpha.130 -> v0.1.0-alpha.131
+== press Update once 08:19:35
+202 {"accepted": true, "plan": {"expected_restart_seconds": 92, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T08:19:35Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "6e6d85c26ea3d87b32ec42116e386aba", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "4a639c639581e31981c85a495a7fec140da50d045bfd0e8c6fc2f4078a9005ab", "archive_size": "72568032", "commit": "efe09b2c13a29b8725b5
+  4s 200 running None  | 
+  25s 
+  54s 200 running verifying  | 
+  67s 200 succeeded None  | 
+== after 08:20:53
+200 {"agent_commit": "efe09b2c13a29b8725b5c2a5bed402536e91007a", "agent_matches": true, "commit": "efe09b2c13a29b8725b5c2a5bed402536e91007a", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.131"}
+200 {"created_at": "2026-11-07T08:19:35.734528863Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T08:19:35Z", "state": "done"}, {"finished_at": "2026-11-07T08:19:39Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T08:19:39Z", "state": "done"}, {"finished_at": "2026-11-07T08:20:29Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T08:20:41Z", "id": "confirm", "started_at": "2026-11-07T08:20:29Z", "state": "done"}]}, "request_id": "6e6d85c26ea3d87b32ec42116e386aba", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "4a639c639581e31981c85a495a7fec140da50d045bfd0e8c6fc2f4078a9005ab", "archive_size": "72568032", "commit": "efe09b2c13a29b8725b5c2a5bed402536e91007a", "os": "linux", "sequence": "131", "version": "v0.1.0-alpha.131"}, "updated_at": "2026-11-07T08:20:41.177774299Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 08:20:29 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 08:20:29 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '275781ad2f15433a70137e0ef2ce188c.json'] {'request_id': '275781ad2f15433a70137e0ef2ce188c', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:33:19.885455223Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+  ['self-update', '6e6d85c26ea3d87b32ec42116e386aba.json'] {'request_id': '6e6d85c26ea3d87b32ec42116e386aba', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T08:19:35.734528863Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.131', 'reason': None, 'code': None}
+  ['self-update', '9c2a5ad19d14dcc021bad10ed1178a44.json'] {'request_id': '9c2a5ad19d14dcc021bad10ed1178a44', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:42:52.034190666Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+== C2 main done 08:20:54
+snapshot post131: 277 entries
+--- differences pre131 -> post131 (excluding systemd self-update/runtime units)
+(end)
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+(postconf -P policy lines end)
+v0.1.0-alpha.128
+200 applied True steps ['postfwd keeps its hourly counters when it reloads (systemd drop-in)', 'postfwd took the new rules and kept its counters', 'a test message was counted and the second one refused, so the limits work']
+ExecStart=/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+/usr/sbin/postfwd --summary=600 --cache=600 --cache-rdomain-only --cache-no-size --cache=0 --keep_rates --daemon --file /etc/postfix/postfwd.cf --interface 127.0.0.1 --port 10040 --user postfw --group postfw --pidfile /var/run/postfwd.pid
+400 {"code": "PASSWORD_WEAK", "error": "Password must contain a special character (not a letter or digit, e.g. - _ . !).", "reason": "needs_special", "vars": {"max": "1024", "min": "8", "rules": "needs_sp
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; b=json.loads(json.load(sys.stdin)["body"]); l=b.get("accounts") if isinstance(b,dict) else b; print([a["id"] for a in l if a["address"]==sys.argv[1]][0])
+                                                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range
+Traceback (most recent call last):
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 308, in cmd_api
+    resp = c.request(a.method, a.path, body_arg(a.body), timeout=a.timeout, purpose=a.label)
+                                       ~~~~~~~~^^^^^^^^
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 293, in body_arg
+    return json.loads(raw)
+           ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 7 (char 6)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); s=d.get("status"); b=d.get("body") or ""
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+  *** No authentication type succeeded
+  *** No authentication type succeeded
+  *** No authentication type succeeded
+  *** No authentication type succeeded
+  *** No authentication type succeeded
+  *** No authentication type succeeded
+  box3 paused after 510 s
+ msg while paused:
+  <~  250 2.0.0 Ok: queued as 695522054E
+Traceback (most recent call last):
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 308, in cmd_api
+    resp = c.request(a.method, a.path, body_arg(a.body), timeout=a.timeout, purpose=a.label)
+                                       ~~~~~~~~^^^^^^^^
+  File "/var/tmp/a128r2/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 293, in body_arg
+    return json.loads(raw)
+           ~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 7 (char 6)
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); s=d.get("status"); b=d.get("body") or ""
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+   answer after 0 s
+ msg 1 right after the password change:
+  *** No authentication type succeeded
+ msg 2 right after the password change:
+  *** No authentication type succeeded
+(failed end)
+== r2g done 08:31:28

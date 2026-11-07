@@ -1,0 +1,29 @@
+== provision 06:40:27
+c 192.0.3.194 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nVERSION_ID=\"13\"\n6.12.105+deb13-cloud-amd64\nsingle\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 23.8
+}
+
+host1.f9.test
+host1.f9.test
+v0.1.0-alpha.127
+install exit 0
+main terminal rc 0 142.7 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.194:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.127
+login active can_use_panel True
+200 {
+ "agent_commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359",
+ "agent_matches": true,
+ "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359",
+ "hostname": "host1.f9.test",
+ "ipv4": "192.0.3.194",
+ "schema_version": 72,
+ "version": "v0.1.0-alpha.128"
+}
+(failed end)
+CELIKPANEL_LISTEN=:1923
+
+== case7 done 06:43:19

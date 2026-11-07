@@ -1,0 +1,77 @@
+== M.1 postfwd from Components 07:22:40
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "32015ae66457a7de49cee3a9fed05916", "kind": "service_install", "phase": "queued", "request_id": "f2879d2ce852ee56a72f421d02c09d51", "service_id": "postfwd", "started_at": "2026-11-07T07:22:43.170439892Z", "status": "queued"}}
+  op f2879d2ce852ee56a72f421d02c09d51: succeeded completed "" (07:23:23)
+200 {"id": 2, "success": true}
+box1 1 box2 2
+== M.2 limits on 07:23:23
+200 applied True verified True code None |  | steps ["postfwd's rules were written and checked (postfwd -C)", 'postfwd took the new rules and kept its counters', 'a test message was counted and the second one refused, so the limits work', 'Postfix asks postfwd at the end of each message on 587 and 465 (mail flows if postfwd stops)']
+3
+selftest.invalid
+drwxr-xr-x /etc/postfix/celikpanel-postfwd
+-rw-r--r-- /etc/postfix/celikpanel-postfwd/selftest.domains
+2
+== M.3 (A3) the self-test list made unreadable for postfwd (lab load): the next apply must fail and leave Postfix unwired 07:23:26
+0
+200 {"applied": false, "called": true, "code": "OUTGOING_MAIL_SELFTEST_FAILED", "saved": true}
+200 applied False verified None code OUTGOING_MAIL_SELFTEST_FAILED | postfwd answered "DUNNO" and "DUNNO" instead of passing the first test message and refusing the second; it does not count with CelikPanel's rules; the earlier postfwd files were put back. Mail keeps flowing: Postfix was not told to ask postfwd. | steps ["postfwd's rules were written and checked (postfwd -C)", 'postfwd took the new rules and kept its counters']
+0
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-ac5c5911133c@selftest.invalid, sender=<celikpanel-selftest-ac5c5911133c@selftest.invalid>, helo=<localhost>, proto=
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-ac5c5911133c@selftest.invalid, sender=<celikpanel-selftest-ac5c5911133c@selftest.invalid>, helo=<localhost>, proto=
+error: could not open file:/etc/postfix/celikpanel-postfwd/selftest.domains - Permission denied - will be ignored
+-- the list readable again (lab load), apply again
+200 applied True verified True code None |  | steps ["postfwd's rules were written and checked (postfwd -C)", 'postfwd took the new rules and kept its counters', 'a test message was counted and the second one refused, so the limits work', 'Postfix asks postfwd at the end of each message on 587 and 465 (mail flows if postfwd stops)']
+2
+domain-750.list
+mailbox-3.list
+mailbox-50.list
+selftest.domains
+subscription-1000.list
+subscription-s2.domains
+== M.4 box1 limit 3: 6 messages 07:24:04
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 4F6C622601
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 6F035215B2
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as E3243215B2
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== M.5 the pause (worker round, refusal_pause 3) 07:24:56
+  paused after 90 s: [{"address": "box1@site1.r9.test", "detail": "3 messages refused by the hourly limit in the hour from 2026-11-07 07:00 UTC", "domain": "site1.r9.test", "domain_id": 2, "id": 1, "paused_at": "2026-11-07 07:26:23", "reason": "refusals"}]
+ msg while paused:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== M.6 (A2) password change: open at once 07:26:36
+200 {"applied": true, "called": true, "saved": true}
+200 {"sending_resumed": true, "success": true}
+   answer after 1 s
+ msg 1 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 2 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 3 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+(paused hits end)
+== M.7 (A5) bulk answers 07:27:02
+200 {"applied": true, "called": false, "saved": true}
+200 {"applied": true, "called": false, "saved": true}
+   site_limit site_limit_clamped False /domains/cust1.r9.test?tab=php
+   site_limit site_limit_clamped False /domains/cust1.r9.test?tab=php
+   mail_outgoing paused True /domains/site1.r9.test?tab=mail
+   mail_outgoing limit_reached False /domains/site1.r9.test?tab=mail
+(failed end)
+== r2mail done 07:27:03

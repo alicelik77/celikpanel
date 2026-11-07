@@ -1,0 +1,62 @@
+== R.0 before 07:32:14
+   boot ce8f96e0-0925-40f0-9c80-bdfcda487c70 not_synchronised Etc/UTC
+   without a request id:
+428  {"error":"This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the Ce
+   with a request id:
+202  {"state":"restarting","delay_seconds":3,"boot_id":"ce8f96e0-0925-40f0-9c80-bdfcda487c70"} 
+   back after 29 s: boot 47ace8cc-2e8f-4bb9-8fb5-e3808ce368ca not_synchronised Etc/UTC
+(failed end)
+active active active active -- the pair: DNS answers from both servers, the main's DNS page
+  @192.0.3.190 site1.r9.test A: 192.0.3.190  SOA r9.test: ns1.r9.test. hostmaster.r9.test. 2026110709 3600 600 604800 
+  @192.0.3.191 site1.r9.test A: 192.0.3.190  SOA r9.test: ns1.r9.test. hostmaster.r9.test. 2026110709 3600 600 604800 
+dns_overview_ok ok who=Nobody. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+   peer first {"code": "ready", "message": "The deletion check between the two servers is set up: when a domain is deleted, the main DNS server confirms by itself that the backup removed it too. Nothing to do. It is native configuration on both servers; either owner can remove it with sudo /opt/celikpanel/dns-own
+== R.1 (A7) the main 128 -> lab 129 label, one press: Postfix maps not re-hashed 07:33:17
+v0.1.0-alpha.129
+== C2 main before 07:33:18
+200 {"agent_commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "agent_matches": true, "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 275781ad2f15433a70137e0ef2ce188c v0.1.0-alpha.128 -> v0.1.0-alpha.129
+== press Update once 07:33:19
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:33:19Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "275781ad2f15433a70137e0ef2ce188c", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "69291eaaa067f2f5d0e85e1c410f90d8171cba8ae0979e0667224965ced9c395", "archive_size": "72566025", "commit": "af3c4996b78bd9d701d2
+  4s 200 running None  | 
+  25s 
+  63s 200 running verifying  | 
+  76s 200 succeeded None  | 
+== after 07:34:46
+200 {"agent_commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "agent_matches": true, "commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-07T07:33:19.885455223Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:33:19Z", "state": "done"}, {"finished_at": "2026-11-07T07:33:23Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:33:23Z", "state": "done"}, {"finished_at": "2026-11-07T07:34:20Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-07T07:34:33Z", "id": "confirm", "started_at": "2026-11-07T07:34:20Z", "state": "done"}]}, "request_id": "275781ad2f15433a70137e0ef2ce188c", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "69291eaaa067f2f5d0e85e1c410f90d8171cba8ae0979e0667224965ced9c395", "archive_size": "72566025", "commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "os": "linux", "sequence": "129", "version": "v0.1.0-alpha.129"}, "updated_at": "2026-11-07T07:34:33.004892986Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:21:23 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:21:23 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/07 07:34:20 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:34:20 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '275781ad2f15433a70137e0ef2ce188c.json'] {'request_id': '275781ad2f15433a70137e0ef2ce188c', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:33:19.885455223Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+== C2 main done 07:34:47
+snapshot post129: 277 entries
+--- differences pre129 -> post129 (excluding systemd self-update/runtime units)
+(end)
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+(postconf -P policy lines end)
+(failed end)
+v0.1.0-alpha.128
+== r2reboot done 07:34:49

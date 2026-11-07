@@ -1,0 +1,98 @@
+== c8b: the journal of the refused attempt and its rollback (read-only, captured after) 06:45:56
+--- release-recovery runner lines -14min-now
+2026-11-07T06:43:05+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:43:05+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:43:05+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:43:35+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:43:36+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:43:36+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:43:46+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:43:46+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:43:46+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:44:06+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:44:07+00:00 host1.f9.test release-recovery[22900]: Recovery dispatch admitted: attempt=1 snapshot=20261107T064347Z-from-unknown-to-af3c4996b78bd9d701d229cf734b15e4deac2eb4-b237065e46bd144c5b4cb87c70be3528
+2026-11-07T06:44:10+00:00 host1.f9.test release-recovery[23282]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261107T064347Z-from-unknown-to-af3c4996b78bd9d701d229cf734b15e4deac2eb4-b237065e46bd144c5b4cb87c70be352
+2026-11-07T06:44:10+00:00 host1.f9.test release-recovery[23282]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+2026-11-07T06:44:34+00:00 host1.f9.test release-recovery[23282]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-07T06:44:34+00:00 host1.f9.test release-recovery[23282]:     Restored release source commit / Geri yüklenen sürümün kaynak commit'i: ef891c2907ad0328d40d8758edd09bd6d7b9c359 (from the restored Agent's build record / geri yüklenen Agent'ın yapı k
+2026-11-07T06:44:34+00:00 host1.f9.test release-recovery[23282]:     Source checkout was not changed / Kaynak çalışma ağacı değiştirilmedi
+2026-11-07T06:44:34+00:00 host1.f9.test release-recovery[23282]:     Panel: active
+2026-11-07T06:44:34+00:00 host1.f9.test release-recovery[23282]:     Agent: active
+2026-11-07T06:44:34+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:44:34+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:44:53+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: multiple trigger source candidates for exit status propagation (celikpanel-self-update-90a13df8a13b0c44cabb48a78f7b35f0.service, celikpanel-self-update-a2702699616033e6e84
+2026-11-07T06:44:53+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:44:54+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:44:54+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:45:24+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: multiple trigger source candidates for exit status propagation (celikpanel-self-update-a2702699616033e6e849e4d1275180aa.service, celikpanel-self-update-90a13df8a13b0c44cab
+2026-11-07T06:45:24+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:45:24+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:45:24+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:45:54+00:00 host1.f9.test systemd[1]: Starting celikpanel-release-recovery.service - CelikPanel verified release transaction recovery...
+2026-11-07T06:45:55+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:45:55+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+--- systemd unit results -14min-now (celikpanel units: failed / finished / deactivated)
+2026-11-07T06:43:14+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:43:22+00:00 host1.f9.test systemd[1]: Started celikpanel-self-update-90a13df8a13b0c44cabb48a78f7b35f0.service - [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 90a13df8a13b0c44cabb48a78f7b35f0.
+2026-11-07T06:43:36+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:43:36+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:43:46+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:43:46+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:43:50+00:00 host1.f9.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-07T06:43:50+00:00 host1.f9.test systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-07T06:43:50+00:00 host1.f9.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:43:51+00:00 host1.f9.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-07T06:43:51+00:00 host1.f9.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-07T06:43:51+00:00 host1.f9.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-07T06:44:06+00:00 host1.f9.test systemd[1]: celikpanel-self-update-90a13df8a13b0c44cabb48a78f7b35f0.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-07T06:44:06+00:00 host1.f9.test systemd[1]: celikpanel-self-update-90a13df8a13b0c44cabb48a78f7b35f0.service: Failed with result 'exit-code'.
+2026-11-07T06:44:06+00:00 host1.f9.test systemd[1]: celikpanel-self-update-90a13df8a13b0c44cabb48a78f7b35f0.service: Triggering OnFailure= dependencies.
+2026-11-07T06:44:24+00:00 host1.f9.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:44:34+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:44:34+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:44:38+00:00 host1.f9.test systemd[1]: Started celikpanel-self-update-a2702699616033e6e849e4d1275180aa.service - [systemd-run] /opt/celikpanel/bin/agent --self-update-worker a2702699616033e6e849e4d1275180aa.
+2026-11-07T06:44:54+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:44:54+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:44:57+00:00 host1.f9.test systemd[1]: Stopping celikpanel-panel.service - CelikPanel web panel...
+2026-11-07T06:44:57+00:00 host1.f9.test systemd[1]: celikpanel-panel.service: Failed with result 'signal'.
+2026-11-07T06:44:57+00:00 host1.f9.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:44:57+00:00 host1.f9.test systemd[1]: Stopping celikpanel-agent.service - CelikPanel privileged agent...
+2026-11-07T06:44:57+00:00 host1.f9.test systemd[1]: celikpanel-agent.service: Deactivated successfully.
+2026-11-07T06:44:57+00:00 host1.f9.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-07T06:45:24+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:45:24+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+2026-11-07T06:45:26+00:00 host1.f9.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-07T06:45:27+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:45:38+00:00 host1.f9.test systemd[1]: celikpanel-self-update-a2702699616033e6e849e4d1275180aa.service: Deactivated successfully.
+2026-11-07T06:45:39+00:00 host1.f9.test systemd[1]: celikpanel-self-update-a2702699616033e6e849e4d1275180aa.service: Failed to open /run/systemd/transient/celikpanel-self-update-a2702699616033e6e849e4d1275180aa.service: 
+2026-11-07T06:45:55+00:00 host1.f9.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T06:45:55+00:00 host1.f9.test systemd[1]: Finished celikpanel-release-recovery.service - CelikPanel verified release transaction recovery.
+--- update failure and rollback lines
+2026/11/07 06:44:06 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR
+Recovery dispatch admitted: attempt=1 snapshot=20261107T064347Z-from-unknown-to-af3c4996b78bd9d701d229cf734b15e4deac2eb4-b237065e46bd144c5b4cb87c70be3528
+==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261107T064347Z-from-unknown-to-af3c4996b78bd9d701d229cf734b15e4deac2eb4-b237065e46bd144c5b4cb87c70be3528
+   celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -u celikpanel-release-recovery.service --since 06:43:22 -o cat --no-pager | grep -c "Rollback complete"'
+   celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -u celikpanel-release-recovery.service --since 06:43:22 -o cat --no-pager | grep -c "Rollback complete"'
+==> Rollback complete / Geri alma tamamlandı
+   celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -u celikpanel-release-recovery.service --since 06:43:22 -o cat --no-pager | grep -c "Rollback complete"'
+--- panel answered (first panel start after the attempt)
+2026-11-07T06:43:15+00:00 host1.f9.test panel[12360]: 2026/11/07 06:43:15 Starting CelikPanel Backend...
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:44:25+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:44:25+00:00 host1.f9.test panel[26279]: 2026/11/07 06:44:25 Starting CelikPanel Backend...
+2026-11-07T06:45:27+00:00 host1.f9.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-07T06:45:27+00:00 host1.f9.test panel[39373]: 2026/11/07 06:45:27 Starting CelikPanel Backend...
+--- systemctl --failed now
+(failed end)
+release.commit bin
+dns-owner-tools
+runtimes
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units

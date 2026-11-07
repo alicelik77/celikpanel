@@ -1,0 +1,91 @@
+== start main 06:59:32
+start-main 202 {
+ "id": "2f152ced2b5c14ae964e074a7d5b0b3c",
+ "panel_url": "https://frankfurt.r9.test:1923/",
+ "phase": "queued",
+ "plan_id": "e7b910ff67cb8e5d15c7f1ef268f3826",
+ "request_id": "2f152ced2b5c14ae964e074a7d5b0b3c",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-service",
+   "kind": "service",
+   "owner_id": "18cf5823581419d9e097f3ef92ad52c8",
+   "request_id": "dc85eff03fede041f4b263a031c0804a",
+   "status": "pending",
+   "target": "nginx"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "b92bae081c6aa04b9c5d6f236f619ec7",
+   "request_id": "137cf37159aa513f6cc09459af385c08
+join-code 200 {
+ "address": "https://192.0.3.190:1923",
+ "attempts_left": 
+first server's panel port: 1923
+connect 200 {
+ "setup": {
+  "checks": [],
+  "draft": {
+   "database": "mariadb",
+   "dns_engine": "bind",
+   "dns_mode": "local",
+   "dns_publisher_endpoint": "https://frankfurt.r9.test:1923",
+   "dns_role": "secondary",
+   "host_name": "host2.r9.test",
+   "local_ip": "192.0.3.191",
+   "mail_hostname": "",
+   "
+backup-roles 200 
+backup-name 200 
+backup-names 200 
+backup-dnshome 200 
+plan backup 200 can_start True blockers [] ['01-peer_names:https://192.0.3.190:1923', '02-service:nginx', '03-service:certbot', '04-service:mariadb', '05-service:php-fpm', '06-dns:local', '07-firewall:enable_and_persist', '08-access_dns:boston.r9.test', '09-panel_certificate:boston.r9.test', '10-dns_publisher:https://frankfurt.r9.test:1923', '11-verify:custom'] 
+== start backup 06:59:47
+start-backup 202 {
+ "id": "0259940a83faa062a3755259c27854b2",
+ "panel_url": "https://boston.r9.test:1923/",
+ "phase": "queued",
+ "plan_id": "c9cd1d0e95caeb90dedacd9306588f8f",
+ "request_id": "0259940a83faa062a3755259c27854b2",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_names",
+   "kind": "peer_names",
+   "owner_id": "d9435db0917aef97532ec92d8b0e6004",
+   "request_id": "87ff1856132dc535022cca6bb9afc975",
+   "status": "pending",
+   "target": "https://192.0.3.190:1923"
+  },
+  {
+   "id": "02-service",
+   "kind": "service",
+   "owner_id": "6b369029c57b97d1664bf68a7c34eb96",
+   "request_id": "340176601a
+== first server's DNS page DURING the joined server's setup (check 8) 06:59:51
+06:59:55 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None)] | backup: running 02-service null
+07:00:20 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None)] | backup: running 03-service null
+07:00:44 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None)] | backup: running 04-service null
+07:01:09 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None)] | backup: running 05-service null
+07:01:33 caps=none None | dns_overview_join_waiting prerequisite who=You, on the second server. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', None)] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None)] | backup: waiting primary_dns {"code": "server_setup_primary_dns_required", "mes
+07:02:21 caps=pair_pending ns2.r9.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('ns2.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None), ('boston.r9.test', 'panel', 'A', 'unknown', None)] | backup: waiting primary_dns {"code": "server_setup_primary_dns_required", "mes
+07:02:42 caps=pair_pending ns2.r9.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('ns2.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None), ('boston.r9.test', 'panel', 'A', 'unknown', None)] | backup: running primary_dns {"code": "server_setup_primary_dns_required", "mes
+07:03:05 caps=pair_pending ns2.r9.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('ns2.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None), ('boston.r9.test', 'panel', 'A', 'unknown', None)] | backup: waiting access_dns {"code": "server_setup_access_dns_required", "messa
+07:03:26 caps=ready ns2.r9.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [('ns1.r9.test', 'ns', 'A', 'unknown', None), ('ns2.r9.test', 'ns', 'A', 'unknown', None), ('frankfurt.r9.test', 'panel', 'A', 'unknown', None), ('mail.r9.test', 'mail', 'A', 'unknown', None), ('boston.r9.test', 'panel', 'A', 'unknown', None)] | backup: waiting access_dns {"code": "server_setup_access_dns_required", "messa
+07:11:52 caps=ready ns2.r9.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: running 09-panel_certificate null
+07:12:14 caps=ready ns2.r9.test | dns_overview_setup_running waiting who=Follow the setup page; it says when you need to act. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: [] | backup: succeeded complete null
+-- r9/backup 07:12:14
+succeeded complete null
+01-peer_names=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-dns=succeeded 07-firewall=succeeded 08-access_dns=succeeded 09-panel_certificate=succeeded 10-dns_publisher=succeeded 11-verify=succeeded
+-- r9/main 07:12:14
+running 15-mail_profile null
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=running 16-mail_profile=pending 17-mail_dns=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+-- r9/main 07:13:35
+failed 15-mail_profile {"code": "mail_profile_install_failed", "component": "webmail", "detail": "mail TLS synchronization: durable mail_tls_sync terminal state is uncertain: agent service mutation response identity does not match the requested durable operation", "message": "The mail profile could not be installed and verified.", "step": "configure"}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=failed 16-mail_profile=pending 17-mail_dns=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+== after both finished: the DNS page settles by itself 07:13:35
+07:13:36 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+07:14:07 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []
+07:14:37 caps=ready | dns_overview_setup_not_done prerequisite who=You, in Server setup. | [('this', 'main', 'first', 'frankfurt'), ('peer', 'backup', 'second', 'boston')] | not-ok: []

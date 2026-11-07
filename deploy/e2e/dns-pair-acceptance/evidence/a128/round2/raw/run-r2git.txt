@@ -1,0 +1,34 @@
+== G.0 lab Git server 07:27:03
+active
+no git on the server
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html", "Domain": "gitx.r9.test", "DomainID": 4, "FTPPassword": "[REDACTED]", "FTPUser": "gitx_r9_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 4, "TempDomain": ""}
+gitx.r9.test id 4
+200 {"settings": {"branch": "main", "build": false, "repo_url": "https://git.lab.test/app.git"}}
+== G.1 (A4) deploy without git 07:27:14
+200 {"class": "prerequisite", "error": "git is not installed on this server; the administrator installs Git in Components (Services), then deploy again", "phase": "", "reason": "git_missing"}
+   deploy:    | 
+   component {"id": "git", "name": "Git", "kind": "tool", "category": "web", "is_installed": false, "status": "not_installed"}
+== G.2 install Git from Components 07:27:16
+200 {"distribution": "debian", "installs": ["libngtcp2-16", "libngtcp2-crypto-gnutls8", "libcurl3t64-gnutls", "liberror-perl", "git-man", "git"], "notable": [], "refusals": [], "removes": [], "requested": ["git"], "state": "known"}
+202 {"operation": {"id": "75659fd798b2f2395b8adff045f85226", "kind": "service_install", "phase": "queued", "request_id": "45be9c32083239f08f4f57e9fcab5042", "service_id": "git", "started_at": "2026-11-07T07:27:34.215964649Z", "status": "queued"}}
+  op 45be9c32083239f08f4f57e9fcab5042: succeeded completed "" (07:27:44)
+git version 2.47.3
+== G.3 HTTPS deploy 07:27:45
+200 {"phase": "running", "request_id": "git-a2eac415a33de7802b739c51fa934b90", "started_at": "2026-11-07T07:27:46Z"}
+   deploy: succeeded   | Starting celikgit-4.service - CelikPanel Git deploy of gitx.r9.test... / Finished celikgit-4.service - CelikPanel Git deploy of gitx.r9.test.
+/server.js -> 403
+<html>
+ <head><title>403 Forbidden</title></head>
+ <body>
+ <center><h1>403 Forbidden</h1></center>
+ 
+== G.4 (A6) a domain made and deleted with an API token on the pair's main 07:27:53
+200 {"enabled": true, "working_tokens": "[REDACTED]"}
+201 saved 212 bytes {'content-type': 'application/json'}
+   token made: True
+200  {"DomainID":5,"SiteID":5,"Domain":"tokdel.r9.test","TempDomain":"","DocumentRoot":"/var/www/celikpanel/subscriptions/3/sites/5/public_html","ProjectType":"static","FTPUser":"tokdel_r9_test","FTPPassword":"[REDACTED]","PHPVersion":""} 
+   tokdel id 5
+200  {"domain":"tokdel.r9.test","status":"deleted"} 
+   tokdel gone from the token's list after 10 s
+2026/11/07 07:28:11 [dkim-auto] tokdel.r9.test: DKIM ready (domain_created; saved in tokdel.r9.test; its publication completes by itself)
+== r2git done 07:28:36

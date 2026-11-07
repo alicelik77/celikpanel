@@ -1,0 +1,135 @@
+== C2 main before 07:20:29
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 068e8eb59ac8b8c108f270347dc1ba1d v0.1.0-alpha.127 -> v0.1.0-alpha.128
+== press Update once 07:20:30
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:20:31Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "068e8eb59ac8b8c108f270347dc1ba1d", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "71e12c746075b13ac37a7bcef6ea79ce2f8410de11a6d7889d97989e4f2541d1", "archive_size": "72567042", "commit": "ef891c2907ad0328d40d
+  5s 200 running None  | 
+  22s 
+  55s 200 running verifying  | 
+  68s 200 succeeded None  | 
+== after 07:21:49
+200 {"agent_commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "agent_matches": true, "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+200 {"created_at": "2026-11-07T07:20:31.232915383Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:20:31Z", "state": "done"}, {"finished_at": "2026-11-07T07:20:35Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:20:35Z", "state": "done"}, {"finished_at": "2026-11-07T07:21:23Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T07:21:35Z", "id": "confirm", "started_at": "2026-11-07T07:21:23Z", "state": "done"}]}, "request_id": "068e8eb59ac8b8c108f270347dc1ba1d", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "71e12c746075b13ac37a7bcef6ea79ce2f8410de11a6d7889d97989e4f2541d1", "archive_size": "72567042", "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "os": "linux", "sequence": "128", "version": "v0.1.0-alpha.128"}, "updated_at": "2026-11-07T07:21:35.28848726Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:11:45 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 07:21:23 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:21:23 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 main done 07:21:50
+== C2 main before 07:33:18
+200 {"agent_commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "agent_matches": true, "commit": "ef891c2907ad0328d40d8758edd09bd6d7b9c359", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 275781ad2f15433a70137e0ef2ce188c v0.1.0-alpha.128 -> v0.1.0-alpha.129
+== press Update once 07:33:19
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:33:19Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "275781ad2f15433a70137e0ef2ce188c", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "69291eaaa067f2f5d0e85e1c410f90d8171cba8ae0979e0667224965ced9c395", "archive_size": "72566025", "commit": "af3c4996b78bd9d701d2
+  4s 200 running None  | 
+  25s 
+  63s 200 running verifying  | 
+  76s 200 succeeded None  | 
+== after 07:34:46
+200 {"agent_commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "agent_matches": true, "commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-07T07:33:19.885455223Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:33:19Z", "state": "done"}, {"finished_at": "2026-11-07T07:33:23Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:33:23Z", "state": "done"}, {"finished_at": "2026-11-07T07:34:20Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-07T07:34:33Z", "id": "confirm", "started_at": "2026-11-07T07:34:20Z", "state": "done"}]}, "request_id": "275781ad2f15433a70137e0ef2ce188c", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "69291eaaa067f2f5d0e85e1c410f90d8171cba8ae0979e0667224965ced9c395", "archive_size": "72566025", "commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "os": "linux", "sequence": "129", "version": "v0.1.0-alpha.129"}, "updated_at": "2026-11-07T07:34:33.004892986Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:21:23 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:21:23 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/07 07:34:20 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:34:20 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '275781ad2f15433a70137e0ef2ce188c.json'] {'request_id': '275781ad2f15433a70137e0ef2ce188c', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:33:19.885455223Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+== C2 main done 07:34:47
+== C2 main before 07:42:50
+200 {"agent_commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "agent_matches": true, "commit": "af3c4996b78bd9d701d229cf734b15e4deac2eb4", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.129"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 9c2a5ad19d14dcc021bad10ed1178a44 v0.1.0-alpha.129 -> v0.1.0-alpha.130
+== press Update once 07:42:51
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T07:42:52Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "9c2a5ad19d14dcc021bad10ed1178a44", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "beb5eb7b8b21ec63361a912e159ad6b1be7b6b05d29da51a24d03f674f80654b", "archive_size": "72569050", "commit": "df1502cbc21c5d26e3ed
+  4s 200 running None  | 
+  26s 
+  74s 200 running verifying  | 
+  87s 200 succeeded None  | 
+== after 07:44:30
+200 {"agent_commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "agent_matches": true, "commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-07T07:42:52.034190666Z", "found": true, "plan": {"expected_restart_seconds": 92, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T07:42:52Z", "state": "done"}, {"finished_at": "2026-11-07T07:42:56Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T07:42:56Z", "state": "done"}, {"finished_at": "2026-11-07T07:43:56Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 21, "finished_at": "2026-11-07T07:44:18Z", "id": "confirm", "started_at": "2026-11-07T07:43:56Z", "state": "done"}]}, "request_id": "9c2a5ad19d14dcc021bad10ed1178a44", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "beb5eb7b8b21ec63361a912e159ad6b1be7b6b05d29da51a24d03f674f80654b", "archive_size": "72569050", "commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-07T07:44:18.0561721Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 07:34:20 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:34:20 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/07 07:43:56 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 07:43:56 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '275781ad2f15433a70137e0ef2ce188c.json'] {'request_id': '275781ad2f15433a70137e0ef2ce188c', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:33:19.885455223Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+  ['self-update', '9c2a5ad19d14dcc021bad10ed1178a44.json'] {'request_id': '9c2a5ad19d14dcc021bad10ed1178a44', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:42:52.034190666Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+== C2 main done 07:44:32
+== C2 main before 08:19:34
+200 {"agent_commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "agent_matches": true, "commit": "df1502cbc21c5d26e3edb013e11e2d714720c2fe", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.130"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 6e6d85c26ea3d87b32ec42116e386aba v0.1.0-alpha.130 -> v0.1.0-alpha.131
+== press Update once 08:19:35
+202 {"accepted": true, "plan": {"expected_restart_seconds": 92, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T08:19:35Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "6e6d85c26ea3d87b32ec42116e386aba", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "4a639c639581e31981c85a495a7fec140da50d045bfd0e8c6fc2f4078a9005ab", "archive_size": "72568032", "commit": "efe09b2c13a29b8725b5
+  4s 200 running None  | 
+  25s 
+  54s 200 running verifying  | 
+  67s 200 succeeded None  | 
+== after 08:20:53
+200 {"agent_commit": "efe09b2c13a29b8725b5c2a5bed402536e91007a", "agent_matches": true, "commit": "efe09b2c13a29b8725b5c2a5bed402536e91007a", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.131"}
+200 {"created_at": "2026-11-07T08:19:35.734528863Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T08:19:35Z", "state": "done"}, {"finished_at": "2026-11-07T08:19:39Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T08:19:39Z", "state": "done"}, {"finished_at": "2026-11-07T08:20:29Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T08:20:41Z", "id": "confirm", "started_at": "2026-11-07T08:20:29Z", "state": "done"}]}, "request_id": "6e6d85c26ea3d87b32ec42116e386aba", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "4a639c639581e31981c85a495a7fec140da50d045bfd0e8c6fc2f4078a9005ab", "archive_size": "72568032", "commit": "efe09b2c13a29b8725b5c2a5bed402536e91007a", "os": "linux", "sequence": "131", "version": "v0.1.0-alpha.131"}, "updated_at": "2026-11-07T08:20:41.177774299Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 08:20:29 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 08:20:29 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '068e8eb59ac8b8c108f270347dc1ba1d.json'] {'request_id': '068e8eb59ac8b8c108f270347dc1ba1d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:20:31.232915383Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '275781ad2f15433a70137e0ef2ce188c.json'] {'request_id': '275781ad2f15433a70137e0ef2ce188c', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:33:19.885455223Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+  ['self-update', '6e6d85c26ea3d87b32ec42116e386aba.json'] {'request_id': '6e6d85c26ea3d87b32ec42116e386aba', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T08:19:35.734528863Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.131', 'reason': None, 'code': None}
+  ['self-update', '9c2a5ad19d14dcc021bad10ed1178a44.json'] {'request_id': '9c2a5ad19d14dcc021bad10ed1178a44', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T07:42:52.034190666Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+== C2 main done 08:20:54

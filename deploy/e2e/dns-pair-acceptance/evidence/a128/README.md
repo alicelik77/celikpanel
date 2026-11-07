@@ -54,3 +54,7 @@ Topology: `r8` main Debian 13 (PowerDNS main, mail, `host1.r8.test`, 192.0.3.190
 - Postfix `.db` maps re-hashed (sources unchanged) at the 128 → 129 update.
 - Dumb-HTTP Git repositories cannot be deployed (shallow clone); smart HTTP and SSH work.
 - Lab harness: `getsh_install.py` needed a password with upper/lower/special (127 rule) — kit copy patched.
+
+## Round 2
+
+After the merge of release/alpha128 (ops, FTP logins, notices) and the fixes of the open items: [round2/README.md](round2/README.md).
