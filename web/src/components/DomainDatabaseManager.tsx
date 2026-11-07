@@ -9,7 +9,7 @@ import { passwordAcceptable } from '../lib/passwordPolicy';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
-import { databaseEngine, decodeDomainDatabases, engineLabel, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
+import { decodeDomainDatabases, databaseEngine, engineLabel, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
 import { PasswordInput } from './PasswordInput';
