@@ -161,8 +161,9 @@ applies when a password is set or changed. The generator always adds a digit. Re
 - A new site's pool is created with 5 processes; a lower plan ceiling applies at its first write.
 - Notices to the customer and reseller when a lowered ceiling clamps a site (G18).
 - G5 database connection limits: design in section 4, not wired.
-- The web form for Custom subscriptions' and Custom resellers' own ceilings and policy (the API
-  takes `ceilings`, `overuse_policy`, `notify_percent_*`, `overselling` on the rights change).
+- A Custom reseller's own ceilings have no form yet (the API takes `ceilings` on the rights
+  change); the Custom subscription form edits its ceilings, policy and notice levels, and the
+  Custom reseller form its overselling choice.
 - The browser-side password check still uses the owner's rule; the server refusal names the level.
 - Limit hints from real use (G2, alpha.131).
 

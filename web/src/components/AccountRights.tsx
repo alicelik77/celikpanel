@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Save, X } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -16,6 +16,8 @@ import {
     type ResellerRights as ResellerRightsAnswer, type RightsPreview, type RightsSelection, type RightsState, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
+// alpha.128: a Custom set's limits of site settings, a chunk of its own.
+const CustomLimitsSection = lazy(() => import('./PlanLimitsSection').then((module) => ({ default: module.CustomLimitsSection })));
 
 // An account's rights (D-042 6.1-6.3): Unlimited, bound to a plan, or Custom,
 // named on every screen. A change is shown first and then confirmed (P7): the
@@ -80,12 +82,14 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
     const [busy, setBusy] = useState(false);
     const [pending, setPending] = useState<{ preview: RightsPreview; body: string } | null>(null);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
+    // alpha.128: limits, overuse policy, overselling of a Custom set; only what was touched.
+    const [extras, setExtras] = useState<Record<string, unknown> | null>(null);
 
     const body = (): Record<string, unknown> => {
         if (mode === 'unlimited') return { state: 'unlimited' };
         if (mode === 'plan') return { state: 'plan', plan_id: planID };
         const { max_customers, ...limits } = numbers;
-        return { state: 'custom', rights: payloadOf(selection), quantities: reseller ? { ...limits, max_customers } : limits };
+        return { state: 'custom', rights: payloadOf(selection), quantities: reseller ? { ...limits, max_customers } : limits, ...(extras ?? {}) };
     };
     const bodyText = JSON.stringify(body());
     // A preview belongs to the exact values it was answered for.
@@ -165,6 +169,11 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
                     grantorIsReseller={grantorIsReseller}
                     idPrefix={idPrefix}
                 />
+            )}
+            {mode === 'custom' && (
+                <Suspense fallback={null}>
+                    <CustomLimitsSection kind={reseller ? 'reseller' : 'customer'} subscriptionId={target.current.subscription_id ?? 0} idPrefix={idPrefix} onChange={setExtras} />
+                </Suspense>
             )}
 
             {shown && <RightsPreviewBox id={`${idPrefix}-preview`} preview={shown} sentence={previewSentence(shown, t, reseller)} />}

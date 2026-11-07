@@ -34,7 +34,7 @@ const read = (path) => readFileSync(new URL('../../src/' + path, import.meta.url
 // alpha.128: sınır ekranlarının tembel parçaları testte hiçbir şey çizmez.
 const alpha128LazyParts = {
   './SitePHPLimits': ['SitePHPLimits'],
-  './PlanLimitsSection': ['PlanLimitsSection'],
+  './PlanLimitsSection': ['PlanLimitsSection', 'CustomLimitsSection'],
   './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
 };
 
