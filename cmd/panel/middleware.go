@@ -42,6 +42,14 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
+		// alpha.128 (G15): a request that carries an API token is decided by
+		// the token layer alone, before public paths and sessions; it never
+		// falls through to the cookie path below (api_token_auth.go).
+		if credential, present := apiTokenCredential(r); present {
+			p.serveAPITokenRequest(w, r, credential, next)
+			return
+		}
+
 		if isPublicPath(r) {
 			next.ServeHTTP(w, r)
 			return
@@ -68,84 +76,8 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		// Attach the caller (id + role) so handlers can enforce ownership.
-		// Suspended accounts are cut off immediately, whatever session they
-		// still hold.
-		// Çağıranı (kimlik + rol) iliştir; böylece işleyiciler sahipliği
-		// uygulayabilir. Askıya alınmış hesaplar, ellerinde hangi oturum
-		// olursa olsun anında kesilir.
-		// A failed read blocks admission without inventing an invalid session.
-		// Okuma hatası erişimi durdurur; oturumu geçersiz saymaz.
-		u, err := p.users.GetByID(r.Context(), userID)
-		if err != nil || u == nil {
-			if errors.Is(err, repositories.ErrUserNotFound) {
-				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-			} else {
-				writeAuthStatusUnavailable(w)
-			}
-			return
-		}
-		if u.Status == "suspended" {
-			writeCodedError(w, http.StatusForbidden, errCodeAccountSuspended, "account suspended", "")
-			return
-		}
-		if u.Status != "active" {
-			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-			return
-		}
-
-		identity, ok := u.EffectiveIdentity()
-		if !ok || identity.UserID != userID {
-			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-			return
-		}
-
-		accountType := u.AccountType
-		if accountType == "" {
-			accountType = core.AccountTypeAccount
-		}
-
-		// An additional-user marker is only meaningful while it points to a
-		// live, real customer account. Validate the parent through the
-		// repository on every authenticated request so a deleted, suspended or
-		// retyped parent immediately revokes the member's effective identity.
-		if accountType == core.AccountTypeAdditionalUser {
-			parent, parentErr := p.users.GetByID(r.Context(), identity.CustomerID)
-			if parentErr != nil || parent == nil {
-				if errors.Is(parentErr, repositories.ErrUserNotFound) {
-					writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-				} else {
-					writeAuthStatusUnavailable(w)
-				}
-				return
-			}
-			if parent.Status == "suspended" {
-				writeCodedError(w, http.StatusForbidden, errCodeAccountSuspended, "account suspended", "")
-				return
-			}
-			parentIdentity, parentOK := parent.EffectiveIdentity()
-			parentType := parent.AccountType
-			if parentType == "" {
-				parentType = core.AccountTypeAccount
-			}
-			if parent.Status != "active" || !parentOK ||
-				parentType != core.AccountTypeAccount ||
-				parentIdentity.UserID != identity.CustomerID ||
-				parentIdentity.CustomerID != identity.CustomerID ||
-				parentIdentity.Role != roleCustomer {
-				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
-				return
-			}
-		}
-
-		c := &Caller{
-			ID:          identity.UserID,
-			Role:        identity.Role,
-			AccountType: accountType,
-			CustomerID:  identity.CustomerID,
-		}
-		if !c.validAuthorizationIdentity() {
-			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+		c, u, ok := p.admitAccountIdentity(w, r, userID)
+		if !ok {
 			return
 		}
 		// A "Log in as" session lives only while its operator is active and
@@ -165,50 +97,156 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			c.ImpersonatorID = session.ImpersonatorID
 		}
 
-		// Additional users are tenant-scoped team members. Server-global and
-		// account-management surfaces are not inherited from a parent customer.
-		if c.isAdditionalUser() && isAdditionalUserRestrictedPath(r.URL.Path) {
-			writeCodedError(w, http.StatusForbidden, errCodeAdditionalUserScope, "resource is unavailable to additional users", "")
+		r, ok = p.admitCallerGates(w, r, c)
+		if !ok {
 			return
 		}
-
-		// A suspended subscription's owner (and its team) or a suspended
-		// reseller sees only the suspended screen (alpha.117); every other
-		// call is refused with who to contact in /auth/me.
-		// Askıya alınmış hesap yalnız askı ekranını görür.
-		if !suspendedAccountAllowedPath(r.URL.Path) && !c.hasAccountRole(roleAdmin) {
-			suspension, err := p.accountServiceSuspension(r.Context(), c)
-			if err != nil {
-				writeAuthStatusUnavailable(w)
-				return
-			}
-			if suspension != nil {
-				writeCodedError(w, http.StatusForbidden, errCodeSubscriptionSuspended,
-					"this account's subscription is suspended; contact the reseller or administrator named on the screen", "")
-				return
-			}
-		}
-
-		// Server/OS-layer endpoints are administrator-only (ROLES.md: only the
-		// admin touches services, config files, and infrastructure). Tenant
-		// data (domains) is instead ownership-filtered inside its handlers.
-		// Sunucu/OS-katmanı uç noktaları yalnızca yöneticiye açıktır (ROLES.md:
-		// servisler, config dosyaları ve altyapıya yalnızca yönetici dokunur).
-		// Kiracı verisi (domain'ler) ise kendi işleyicilerinde sahiplik
-		// süzgecinden geçer.
-		if isAdminOnlyPath(r.URL.Path) && !c.hasAccountRole(roleAdmin) {
-			writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "administrator access required", "")
-			return
-		}
-
-		// The license exception uses only this freshly validated session identity.
-		r = r.WithContext(context.WithValue(r.Context(), callerKey, c))
-		if !p.allowLicensedPanel(w, r) {
-			return
-		}
-
 		next.ServeHTTP(w, r)
 	})
+}
+
+// admitAccountIdentity reads the account a credential names and builds its
+// caller: the account must exist and be active, its stored identity must be
+// consistent, and a team member's parent customer must be live. It writes the
+// refusal and answers false otherwise. Sessions and API tokens (alpha.128)
+// share it, so a token never admits an account a session would refuse.
+//
+// admitAccountIdentity, kimlik bilgisinin adlandırdığı hesabı okur ve
+// çağıranı kurar; oturum ve API jetonu aynı denetimi paylaşır.
+func (p *Panel) admitAccountIdentity(w http.ResponseWriter, r *http.Request, userID int) (*Caller, *core.User, bool) {
+	// Attach the caller (id + role) so handlers can enforce ownership.
+	// Suspended accounts are cut off immediately, whatever session they
+	// still hold.
+	// Çağıranı (kimlik + rol) iliştir; böylece işleyiciler sahipliği
+	// uygulayabilir. Askıya alınmış hesaplar, ellerinde hangi oturum
+	// olursa olsun anında kesilir.
+	// A failed read blocks admission without inventing an invalid session.
+	// Okuma hatası erişimi durdurur; oturumu geçersiz saymaz.
+	u, err := p.users.GetByID(r.Context(), userID)
+	if err != nil || u == nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+		} else {
+			writeAuthStatusUnavailable(w)
+		}
+		return nil, nil, false
+	}
+	if u.Status == "suspended" {
+		writeCodedError(w, http.StatusForbidden, errCodeAccountSuspended, "account suspended", "")
+		return nil, nil, false
+	}
+	if u.Status != "active" {
+		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+		return nil, nil, false
+	}
+
+	identity, ok := u.EffectiveIdentity()
+	if !ok || identity.UserID != userID {
+		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+		return nil, nil, false
+	}
+
+	accountType := u.AccountType
+	if accountType == "" {
+		accountType = core.AccountTypeAccount
+	}
+
+	// An additional-user marker is only meaningful while it points to a
+	// live, real customer account. Validate the parent through the
+	// repository on every authenticated request so a deleted, suspended or
+	// retyped parent immediately revokes the member's effective identity.
+	if accountType == core.AccountTypeAdditionalUser {
+		parent, parentErr := p.users.GetByID(r.Context(), identity.CustomerID)
+		if parentErr != nil || parent == nil {
+			if errors.Is(parentErr, repositories.ErrUserNotFound) {
+				writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+			} else {
+				writeAuthStatusUnavailable(w)
+			}
+			return nil, nil, false
+		}
+		if parent.Status == "suspended" {
+			writeCodedError(w, http.StatusForbidden, errCodeAccountSuspended, "account suspended", "")
+			return nil, nil, false
+		}
+		parentIdentity, parentOK := parent.EffectiveIdentity()
+		parentType := parent.AccountType
+		if parentType == "" {
+			parentType = core.AccountTypeAccount
+		}
+		if parent.Status != "active" || !parentOK ||
+			parentType != core.AccountTypeAccount ||
+			parentIdentity.UserID != identity.CustomerID ||
+			parentIdentity.CustomerID != identity.CustomerID ||
+			parentIdentity.Role != roleCustomer {
+			writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+			return nil, nil, false
+		}
+	}
+
+	c := &Caller{
+		ID:          identity.UserID,
+		Role:        identity.Role,
+		AccountType: accountType,
+		CustomerID:  identity.CustomerID,
+	}
+	if !c.validAuthorizationIdentity() {
+		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
+		return nil, nil, false
+	}
+	return c, u, true
+}
+
+// admitCallerGates applies the gates every authenticated request passes once
+// its identity is known: team-member scope, a suspended subscription, the
+// administrator-only paths and the licence. It returns the request with the
+// caller attached. Sessions and API tokens (alpha.128) share it.
+//
+// admitCallerGates, kimliği bilinen her isteğin geçtiği kapıları uygular;
+// oturum ve API jetonu aynı kapılardan geçer.
+func (p *Panel) admitCallerGates(w http.ResponseWriter, r *http.Request, c *Caller) (*http.Request, bool) {
+	// Additional users are tenant-scoped team members. Server-global and
+	// account-management surfaces are not inherited from a parent customer.
+	if c.isAdditionalUser() && isAdditionalUserRestrictedPath(r.URL.Path) {
+		writeCodedError(w, http.StatusForbidden, errCodeAdditionalUserScope, "resource is unavailable to additional users", "")
+		return r, false
+	}
+
+	// A suspended subscription's owner (and its team) or a suspended
+	// reseller sees only the suspended screen (alpha.117); every other
+	// call is refused with who to contact in /auth/me.
+	// Askıya alınmış hesap yalnız askı ekranını görür.
+	if !suspendedAccountAllowedPath(r.URL.Path) && !c.hasAccountRole(roleAdmin) {
+		suspension, err := p.accountServiceSuspension(r.Context(), c)
+		if err != nil {
+			writeAuthStatusUnavailable(w)
+			return r, false
+		}
+		if suspension != nil {
+			writeCodedError(w, http.StatusForbidden, errCodeSubscriptionSuspended,
+				"this account's subscription is suspended; contact the reseller or administrator named on the screen", "")
+			return r, false
+		}
+	}
+
+	// Server/OS-layer endpoints are administrator-only (ROLES.md: only the
+	// admin touches services, config files, and infrastructure). Tenant
+	// data (domains) is instead ownership-filtered inside its handlers.
+	// Sunucu/OS-katmanı uç noktaları yalnızca yöneticiye açıktır (ROLES.md:
+	// servisler, config dosyaları ve altyapıya yalnızca yönetici dokunur).
+	// Kiracı verisi (domain'ler) ise kendi işleyicilerinde sahiplik
+	// süzgecinden geçer.
+	if isAdminOnlyPath(r.URL.Path) && !c.hasAccountRole(roleAdmin) {
+		writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "administrator access required", "")
+		return r, false
+	}
+
+	// The license exception uses only this freshly validated session identity.
+	r = r.WithContext(context.WithValue(r.Context(), callerKey, c))
+	if !p.allowLicensedPanel(w, r) {
+		return r, false
+	}
+	return r, true
 }
 
 // isPublicPath decides which requests skip authentication.
@@ -367,6 +405,8 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/vpn",
 		"/api/v1/runtimes",
 		"/dbtool",
+		// alpha.128 (G15): a team member never holds an API token.
+		apiTokensPath,
 	} {
 		if path == root || strings.HasPrefix(path, root+"/") {
 			return true

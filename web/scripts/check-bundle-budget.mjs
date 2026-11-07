@@ -75,8 +75,9 @@ const screenPartBudgets = {
   siteConfig: kib(52, 9),
   settings: kib(44, 13),
   mailDatabases: kib(43, 12),
-  // alpha.128: the database tools' audit words brought Turkish to 41.51 /
-  // 8.46 KiB; screen-time only.
+  // alpha.128: the database tools' audit words and the remote API's
+  // (api_token., remote_api.) brought Turkish to about 41.5 / 8.5 KiB;
+  // screen-time only. Both workstreams raised it the same way.
   dashboard: kib(45, 9.5),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),

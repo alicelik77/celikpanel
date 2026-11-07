@@ -33,6 +33,9 @@ export const PERMISSION_IDS = [
     // alpha.128: a site's PHP settings and version, additional nginx directives.
     'remote_backup_destinations', 'service_apps', 'program_apps', 'python_apps', 'php_settings', 'php_version', 'nginx_directives',
     'wordpress_tools', 'malware_scan',
+    // alpha.128 (G15): the remote API (rights_remote_api.go), usable only
+    // once the administrator turned it on for the server.
+    'remote_api',
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 

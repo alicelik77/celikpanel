@@ -1,8 +1,9 @@
 # Data and access: design notes for G16, G14, G15, G6
 
-*alpha.128 · Design notes only. Nothing in this file is shipped. They were
-written when the gap items (PLESK-GAP v3) were judged too large or too
-security-sensitive to finish safely in alpha.128. G7 (database tools) and G24
+*alpha.128 · Design notes. They were written when the gap items (PLESK-GAP
+v3) were judged too large or too security-sensitive to finish safely in
+alpha.128. G15 (remote API tokens) was then built by its own workstream and
+shipped in alpha.128; see docs/REMOTE-API.md. G7 (database tools) and G24
 (visitor statistics) shipped in the same release; see the end of this file.*
 
 Each note gives the decision, how to build it the CelikPanel way (native
@@ -135,8 +136,10 @@ render, `nginx -t`, reload, DNS, verify. On a failed `nginx -t`, roll back.
 
 ## G15. Remote API tokens
 
-**Status: design note only.** This is security-critical. It would ship only
-complete, with its tests. A partial version is not shipped.
+**Status: shipped in alpha.128, see docs/REMOTE-API.md** (its own workstream,
+migration 070 `api_tokens`, after a security review). The note below is the
+design it started from; where they differ, docs/REMOTE-API.md and the code
+are what shipped.
 
 **Design.**
 - **Token format.** The token is `cpk_<id>_<secret>`. `<id>` is 12 base32

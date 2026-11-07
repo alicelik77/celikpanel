@@ -256,6 +256,9 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteVPNPeer, true
 	case path == mailOutgoingPath:
 		return requestIdentityRouteMailOutgoing, true
+	case path == apiTokensPath:
+		// alpha.128 (G15): the answer carries the new API token once.
+		return requestIdentityRouteAPITokenCreate, true
 	case strings.HasPrefix(path, "/api/v1/domains/"):
 		match, ok := matchDomainSubroute(r)
 		if !ok {

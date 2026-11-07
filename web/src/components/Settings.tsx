@@ -18,6 +18,8 @@ const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ def
 const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => ({ default: module.PanelUpdateCard })));
 // alpha.118: server-wide remote backup destinations and every-site schedules.
 const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
+// alpha.128 (G15): the remote API server switch, in the API tokens chunk.
+const RemoteApiSwitch = lazy(() => import('./ApiTokens').then((module) => ({ default: module.RemoteApiSwitch })));
 
 // Settings holds what is chosen once and decides how the panel behaves
 // (D-037, owner 2026-10-22). The person's own account security is My account
@@ -175,6 +177,7 @@ function SettingsWorkspace({
                             <PanelCertificatePanel active={activeID === 'panel'} />
                             {activeID === 'panel' && <PanelPortCard />}
                             {activeID === 'panel' && <IPAddressesSection />}
+                            {activeID === 'panel' && <Suspense fallback={null}><RemoteApiSwitch /></Suspense>}
                         </div>
                         <div id="settings-license-panel" role="tabpanel" aria-labelledby="settings-license-tab" hidden={activeID !== 'license'}>
                             {activeID === 'license' && <Suspense fallback={<p role="status">{t('common.loading')}</p>}><LicensePanel /></Suspense>}

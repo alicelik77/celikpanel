@@ -79,6 +79,14 @@ func csrfProtect(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// alpha.128 (G15): a request with an API token and no session cookie
+		// is authenticated by the token or refused (requireAuth); a browser
+		// cannot add the header to a cross-site request without a preflight
+		// this panel never grants. Every cookie session keeps the origin check.
+		if apiTokenRequestWithoutSession(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if !sameOrigin(r) {
 			writeClientError(w, http.StatusForbidden, "cross-origin request blocked")
 			return

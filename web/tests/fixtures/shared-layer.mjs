@@ -283,8 +283,21 @@ export function sharedLayer(stubURL, extra = {}) {
   // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.
   if (!extra['/OSUpdatesChoice']) table['/OSUpdatesChoice'] = compileSource('components/OSUpdatesChoice.tsx', resolve);
   if (!extra['/ArchUpdateGuide']) table['/ArchUpdateGuide'] = compileSource('components/ArchUpdateGuide.tsx', resolve);
-  return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
+  return { uiURL, resolve, compile: (path, more = {}) => quietLazyParts(compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);
-  }) };
+  })) };
+}
+
+// alpha.128 (G15): the API tokens card (My account) and the remote API switch
+// (Settings) are their own lazy chunk. A screen mounted for another reason
+// gets a quiet stand-in for it, so its tests stay about that screen; the
+// card itself is mounted in tests/api-tokens-alpha128.test.mjs.
+// API jetonları kartı ve anahtarı kendi tembel paketidir; başka bir ekran
+// bağlanırken sessiz bir vekil alır.
+const apiTokensStandInURL = dataModule('export const ApiTokensCard = () => null; export const RemoteApiSwitch = () => null;');
+function quietLazyParts(moduleURL) {
+  const source = Buffer.from(moduleURL.slice(moduleURL.indexOf(',') + 1), 'base64').toString();
+  if (!/import\(['"]\.\/ApiTokens['"]\)/.test(source)) return moduleURL;
+  return dataModule(source.replace(/import\(['"]\.\/ApiTokens['"]\)/g, `import('${apiTokensStandInURL}')`));
 }

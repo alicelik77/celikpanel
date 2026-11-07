@@ -1650,6 +1650,11 @@ func main() {
 	http.HandleFunc("/api/v1/auth/2fa/disable", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/recovery/regenerate", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/unimpersonate", panel.handleUnimpersonate)
+	// alpha.128 (G15): the account's own remote API tokens (session only)
+	// and the administrator's server switch (docs/REMOTE-API.md).
+	http.HandleFunc(apiTokensPath, panel.handleAPITokens)
+	http.HandleFunc(apiTokensPath+"/", panel.handleAPITokenItem)
+	http.HandleFunc(remoteAPISettingPath, panel.handleRemoteAPISetting)
 
 	// Managed Services
 	http.HandleFunc("/api/v1/managed-services", panel.handleManagedServices)
