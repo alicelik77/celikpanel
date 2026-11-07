@@ -137,7 +137,7 @@ func TestWebDirectivesNeedTheOfferAndThePermission(t *testing.T) {
 	if recorder.Code != http.StatusForbidden || featureCode(t, recorder) != errCodeWebDirectivesClosed {
 		t.Fatalf("not offered: %d %s", recorder.Code, recorder.Body.String())
 	}
-	if err := p.setSetting(context.Background(), settingNginxDirectivesOffered, "1"); err != nil {
+	if err := p.saveOfferedOptInPermissions(context.Background(), map[string]bool{rightNginxDirectives: true}); err != nil {
 		t.Fatal(err)
 	}
 	// The fixture's subscription follows an "all permissions" set, so once

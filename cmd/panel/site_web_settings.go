@@ -42,7 +42,8 @@ import (
 //     settings again and never sends the save a second time.
 //
 // Additional directives: the administrator always; a reseller or customer
-// only when the administrator offered them (panel setting, off by default)
+// only when the administrator offered them (the opt-in permission offer of
+// rights_gate.go, off by default)
 // and the subscription's rights hold nginx_directives. The audit names the
 // text's SHA-256, never the text.
 //
@@ -52,8 +53,7 @@ import (
 // yönetici sunduysa ve planda nginx_directives varsa.
 
 const (
-	settingNginxDirectivesOffered = "nginx_directives_offered"
-	nginxDirectivesOfferPath      = "/api/v1/nginx/directives-offer"
+	nginxDirectivesOfferPath = "/api/v1/nginx/directives-offer"
 
 	errCodeWebSettingInvalid     = "WEB_SETTING_INVALID"
 	errCodeWebDirectivesInvalid  = "WEB_DIRECTIVES_INVALID"
@@ -189,8 +189,12 @@ type directivesAccess struct {
 	Offered *bool `json:"offered,omitempty"`
 }
 
+// nginxDirectivesOffered reads the administrator's offer from the one store
+// of opt-in permissions (rights_gate.go, admin_offered_permissions); an
+// unreadable store is "not offered".
 func (p *Panel) nginxDirectivesOffered(ctx context.Context) bool {
-	return p.setting(ctx, settingNginxDirectivesOffered) == "1"
+	offered, err := p.loadOfferedOptInPermissions(ctx)
+	return err == nil && offered[rightNginxDirectives]
 }
 
 func (p *Panel) siteDirectivesAccess(ctx context.Context, r *http.Request, domainID int) (directivesAccess, error) {
@@ -205,9 +209,6 @@ func (p *Panel) siteDirectivesAccess(ctx context.Context, r *http.Request, domai
 	if !p.nginxDirectivesOffered(ctx) {
 		return directivesAccess{Reason: "not_offered", Grantor: "the administrator"}, nil
 	}
-	if !knownPermission(rightNginxDirectivesWeb) {
-		return directivesAccess{Reason: "not_offered", Grantor: "the administrator"}, nil
-	}
 	subID, err := p.domainSubscriptionID(ctx, domainID)
 	if err != nil {
 		return directivesAccess{}, err
@@ -216,7 +217,7 @@ func (p *Panel) siteDirectivesAccess(ctx context.Context, r *http.Request, domai
 	if err != nil {
 		return directivesAccess{}, err
 	}
-	if layer := e.permissionRefusal(rightNginxDirectivesWeb); layer != "" {
+	if layer := e.permissionRefusal(rightNginxDirectives); layer != "" {
 		return directivesAccess{Reason: "not_in_plan", Grantor: e.grantor(layer)}, nil
 	}
 	return directivesAccess{MayEdit: true}, nil
@@ -626,11 +627,14 @@ func (p *Panel) handleNginxDirectivesOffer(w http.ResponseWriter, r *http.Reques
 			writeClientError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
-		value := "0"
-		if req.Offered {
-			value = "1"
+		// The same store as the Rights page's offer of opt-in permissions.
+		offered, err := p.loadOfferedOptInPermissions(r.Context())
+		if err != nil {
+			writeServerError(w, err)
+			return
 		}
-		if err := p.setSetting(r.Context(), settingNginxDirectivesOffered, value); err != nil {
+		offered[rightNginxDirectives] = req.Offered
+		if err := p.saveOfferedOptInPermissions(r.Context(), offered); err != nil {
 			writeServerError(w, err)
 			return
 		}
