@@ -19,6 +19,9 @@ import { PasswordInput } from './PasswordInput';
 // or who can grant them. Its own chunk, fetched with this page.
 // Bayi ya da müşterinin kendi uzak yedek hedefleri; ya da bu hakkı kimin verebileceği.
 const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
+// alpha.128 (G15): the account's own API tokens, in their own chunk.
+// Hesabın kendi API jetonları, kendi paketinde.
+const ApiTokensCard = lazy(() => import('./ApiTokens').then((module) => ({ default: module.ApiTokensCard })));
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -51,6 +54,9 @@ export function AccountPage() {
                 <PasswordPanel />
                 <EmailPanel />
                 <TwoFactorPanel />
+                {(role === 'admin' || role === 'reseller' || role === 'customer') && (
+                    <Suspense fallback={null}><ApiTokensCard /></Suspense>
+                )}
             </div>
         </div>
     );

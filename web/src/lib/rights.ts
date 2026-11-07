@@ -31,6 +31,9 @@ export const PERMISSION_IDS = [
     // automation apps, then the site tools (rights_site_tools.go appends them).
     // alpha.119: uploaded programs and Python apps follow the AI apps (rights_model.go).
     'remote_backup_destinations', 'service_apps', 'program_apps', 'python_apps', 'wordpress_tools', 'malware_scan',
+    // alpha.128 (G15): the remote API (rights_remote_api.go), usable only
+    // once the administrator turned it on for the server.
+    'remote_api',
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 

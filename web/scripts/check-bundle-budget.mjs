@@ -75,7 +75,10 @@ const screenPartBudgets = {
   siteConfig: kib(52, 9),
   settings: kib(44, 13),
   mailDatabases: kib(43, 12),
-  dashboard: kib(41, 9),
+  // alpha.128: the remote API's audit words (api_token., remote_api.) brought
+  // Turkish to 41.31 / 8.47 KiB; screen-time only. The database tools'
+  // workstream raised it the same way.
+  dashboard: kib(45, 9.5),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),
   // v0.1.0-alpha.98: the coded refusals only screens show moved out of the

@@ -53,6 +53,10 @@ const REASK_ROUTES = [
     // from there; each queues one operation, and a replay answers with it.
     // Uzak hedefe yedek gönderme ve oradan geri yükleme; tek işlem kuyruğa girer.
     /^\/api\/v1\/domains\/\d+\/backups\/remote\/(?:send|restore)$/,
+    // alpha.128 (G15): making an API token; the answer carries it once, and
+    // a replay never makes a second one.
+    // API jetonu oluşturmak; yanıt jetonu bir kez taşır.
+    /^\/api\/v1\/account\/api-tokens$/,
 ];
 
 // An answer that says nothing about the change: a gateway between the browser

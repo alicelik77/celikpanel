@@ -60,6 +60,16 @@ func (p *Panel) auditAs(r *http.Request, userID int, action, resourceType string
 // auditDetailed, bir eylemi neyle ilgili olduğuyla birlikte kaydeder.
 func (p *Panel) auditDetailed(r *http.Request, action, resourceType string, resourceID int, details map[string]any) {
 	uid, actingAs := auditPerson(r)
+	// alpha.128 (G15): a change made with an API token names the token (its
+	// public id, never its secret) on every row it causes.
+	if c := currentCaller(r); c != nil && c.APIToken != nil {
+		withToken := make(map[string]any, len(details)+1)
+		for key, value := range details {
+			withToken[key] = value
+		}
+		withToken["api_token"] = c.APIToken.label()
+		details = withToken
+	}
 	p.writeAuditRow(r, uid, actingAs, action, resourceType, resourceID, details)
 }
 

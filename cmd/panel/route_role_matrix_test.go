@@ -277,6 +277,12 @@ var routeRoleMatrix = map[string]string{
 	// remote_backup_destinations rights and keep every-site schedules
 	// administrator-only.
 	"/api/v1/remote-backup/": gateAccount,
+
+	// alpha.128 (G15): the account's own API tokens (team members never;
+	// a token never, api_token_auth.go) and the administrator's switch.
+	"/api/v1/account/api-tokens":  gateAccount,
+	"/api/v1/account/api-tokens/": gateAccount,
+	"/api/v1/panel/remote-api":    gateAdmin,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

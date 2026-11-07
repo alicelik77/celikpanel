@@ -91,6 +91,7 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.perm.ssh': 'Komut satırı (SSH)',
     'rights.perm.wordpress_tools': 'WordPress araçları',
     'rights.perm.malware_scan': 'Zararlı yazılım taraması sonuçları',
+    'rights.perm.remote_api': 'Uzak API (API jetonları)',
     'rights.perm.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
     'rights.perm.service_apps': 'Yapay zekâ ve otomasyon uygulamaları',
     'rights.perm.program_apps': 'Yüklenen programlar',
