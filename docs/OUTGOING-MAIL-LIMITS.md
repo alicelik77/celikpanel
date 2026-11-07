@@ -100,7 +100,17 @@ last 7 days) and at least 100 recipients, or collects 100 limit refusals. A
 mailbox without history is judged by volume only after the panel has watched
 for a day, so turning the limits on does not pause busy ordinary mailboxes.
 A new mailbox sends at most 50 per hour in its first 24 hours. The pause is in
-postfwd's `paused.list` (native); the only way out is a password change. The
+postfwd's `paused.list` (native); the only way out is a password change.
+A password change starts a fresh window (alpha.129; alpha.128 lab round 2: a
+mailbox reopened and abused again within the same hour was never paused
+again, because the whole hour of the change was skipped): the hours before
+the change are not judged again, the change's own hour counts only what was
+sent after it (that hour's counts, read from Postfix's log at the change,
+are kept as its baseline in `mailbox_outgoing.resume_base_*`, migration 074),
+and later hours count in full. postfwd's own counter of a resumed mailbox
+is reset too (`--delrate`), so its hourly limit and its refusals start
+again from the change; a second pause is told to the administrator again.
+The
 apply that lifts the pause asks postfwd about the mailbox with a request that
 counts nothing until it is answered 12 times in a row without the pause (at
 most 30 s): postfwd's prefork children take a reload one by one (alpha.128 lab:
@@ -122,13 +132,19 @@ preview phase does not apply; the report counts the refusals it makes.
 - Invariants: owner independence (native rule file, lists, drop-in and
   master.cf values keep working with the panel removed); fail-open (DUNNO);
   detect-don't-overwrite (D-031).
-- Schema: migration 067 (additive; five tables, one seeded row, triggers).
+- Schema: migration 067 (additive; five tables, one seeded row, triggers);
+  migration 074 (alpha.129, additive: two columns with a default of 0 on
+  `mailbox_outgoing`, the resume baseline).
 - Recovery: snapshot and put-back of every file; master.cf values put back on a
   failed Postfix reload; refusals recorded with their code; the worker retries
   a failed state after 30 minutes, a save retries at once.
 - Evidence: Go tests with a fake host (render, owner file kept, check refused,
   self-test failure put back, owner master.cf kept, Postfix refusal put back,
-  disable removes only CelikPanel's values), the package measurements above.
+  disable removes only CelikPanel's values; alpha.129: pause → resume → pause
+  renders the same pause rule and list and resets the mailbox's counter each
+  time; the panel pauses a resumed mailbox again within the same hour on the
+  refusals after the change only, notifies again, and keeps one limit notice
+  per hour), the package measurements above.
 - Open: an end-to-end run with a real Postfix on the five systems (install,
   limit hit, panel stopped, postfwd stopped = mail still flows) is the lab
   round; component tests alone do not establish it. A postfwd restart starts
