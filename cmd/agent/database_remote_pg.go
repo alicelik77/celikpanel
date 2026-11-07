@@ -191,10 +191,11 @@ func pgRemoteRoles(port int, rules []dbremote.Rule) ([]dbremote.Rule, []transpor
 // pgRemoteWriteHBA puts the lines into the cluster's pg_hba.conf through the
 // validated writer.
 func pgRemoteWriteHBA(path string, lines []string) error {
-	if _, ok := dbConfigTargetFor(path); !ok {
+	if target, ok := dbConfigTargetFor(path); !ok || target.kind != dbConfigHBA {
 		return fmt.Errorf("pg_hba.conf is at %s, a place CelikPanel does not edit", path)
 	}
-	current, err := secureReadConfig(path)
+	target, _ := dbConfigTargetFor(path)
+	current, metadata, err := readDNSFileForSnapshot(path)
 	if err != nil {
 		return err
 	}
@@ -209,7 +210,16 @@ func pgRemoteWriteHBA(path string, lines []string) error {
 	if reload == nil {
 		return errors.New("no PostgreSQL reload is available")
 	}
-	_, err = updateManagedConfig(path, []byte(next), configVersion(current), reload)
+	// The same validated path as the configuration editor's write of this
+	// file (updateManagedConfig): line check, lockout check, backup, atomic
+	// replace, PostgreSQL asked, reload, put back on refusal. The caller
+	// holds the editor's lock, so the file read is the file replaced.
+	pre := dnsFileSnapshot{
+		Path: path, Exists: true, Mode: uint32(metadata.Mode.Perm()),
+		OwnerKnown: metadata.OwnerKnown, UID: metadata.UID, GID: metadata.GID,
+		SHA256: digestDNSBytes(current), Data: current,
+	}
+	_, err = applyDatabaseConfigUpdate(target, pre, []byte(next), reload)
 	return err
 }
 
