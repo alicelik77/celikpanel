@@ -210,25 +210,76 @@ updates installed panels, from the panel's own update screen.**
 
 ## Lab results
 
-_To be filled in after the lab round._
+Two lab rounds were run on a joined pair: a Debian 13 main server with
+PowerDNS and mail, and an Ubuntu 24.04 joined server with BIND. A fresh
+Debian 13 server was also installed. Every server was installed with the
+owner's install command, and every update was pressed once in the panel.
+The lab used its own CA and Git server; no real server was touched.
+
+- **Update 127 → 128:** one press on each server: 68–93 seconds. No
+  service failed. The native configuration files of existing sites and
+  mail stayed byte for byte the same (450 files compared).
+- **Fresh install:** 71 seconds, no failed service.
+- **Broken update:** a forced failure was rolled back by itself to 128; the
+  next press worked.
+- **Site settings:** values above a limit are refused with the name of
+  whoever set the limit. On PHP 8.4 and 8.3, `ini_set`, `set_time_limit` and
+  `.user.ini` could not raise a limit. A 140-second script stopped at the
+  130-second limit. When a plan is lowered, the site runs at the plan's
+  limit and its own value is kept: when the plan is raised again, the own
+  value comes back.
+- **Notify only:** the full-disk and expiry notices arrived within 10
+  seconds; the site stayed up and uploads were blocked.
+- **Web settings:** error pages, caching, headers, address blocks, extra
+  nginx directives (refused ones are put back after `nginx -t`), the page
+  cache, Node.js variables and Git deployment over HTTPS and SSH.
+- **Outgoing mail with a real Postfix:** a mailbox over its limit got a
+  temporary refusal naming the limit. An unusual spike paused the mailbox
+  with a permanent refusal and notified the administrator. A password
+  change reopened sending within 6 seconds. With postfwd stopped, mail kept
+  flowing. Send-only and the own reply for unknown addresses work.
+- **Databases:** export with a one-time download, import with a safety
+  copy (a failing import is rolled back), copy, check and MariaDB repair,
+  on PostgreSQL 16 and MariaDB. Visitor statistics work.
+- **Remote API:** off by default; token creation asks for the password;
+  scopes, other accounts' domains and the off switch are enforced.
+- **Sessions and access:** the idle timeout ends a session; a panel
+  address list that would lock the administrator out is refused; the
+  recovery file opens access and removing it closes it again.
+- **Server maintenance:** the joined server restarted and was back in 29
+  seconds, with both DNS servers answering.
+- **Extra SFTP logins:** created and removed on Debian 13 and Ubuntu 24.04.
+  A login sees only its folder, uploads belong to the site, and it cannot
+  open a command line or reach `/etc`.
+- **Defects found and fixed before release (14):** every PHP page failed
+  with the page cache on; outgoing limits could not turn on on
+  Debian/Ubuntu, and once on applied no limit; MariaDB copy and repair
+  failed; a PostgreSQL import named the wrong line; a lowered plan erased
+  the site's own value; sending stayed closed for about 2 minutes after a
+  password change; a changed limit waited up to an hour; a new pause showed
+  the limit text; the postfwd self-test did not read a list; git could not
+  be installed from Components; bulk limit saves gave unclear answers;
+  unchanged Postfix maps were rebuilt at each update; a notify-only account
+  was shown a suspension date.
 
 ## Known limits
 
-- **Site settings within limits:** each supported PHP version still needs
-  lab proof that applications cannot raise a limit (through `ini_set`,
-  `.user.ini` or `set_time_limit`). The password check in the browser still
+- **Site settings within limits:** the lab proved on PHP 8.4 and 8.3 that
+  applications cannot raise a limit (through `ini_set`, `.user.ini` or
+  `set_time_limit`); other PHP versions use the same pool setting but were
+  not tried. The password check in the browser still
   uses the owner's rule. The server's answer names the stricter level.
   Limit hints from real use are planned for alpha.131.
-- **Outgoing mail limits:** not yet tested end to end with a real Postfix
-  on the five systems: install, reaching a limit, panel stopped, postfwd
-  stopped. Restarting postfwd starts the hour's count from zero.
-- **Mail:** send-only and the reply for unknown addresses were tested
-  against simulated Postfix only. A real Postfix run is part of the lab
-  round.
+- **Outgoing mail limits:** tested with a real Postfix on Debian 13 only.
+  Restarting postfwd starts the hour's count from zero. A mailbox that was
+  reopened is not paused again within the same hour; its ordinary limit
+  still applies.
 - **Website copy:** a known application's configuration is not rewritten
   yet; the copy still names the source database. PostgreSQL databases are
   not offered.
 - **Git deployment:** no releases or rollback folder and no webhook yet.
+  Repositories served over plain ("dumb") HTTP cannot be deployed; smart
+  HTTP and SSH work.
 - **FTP/SFTP logins:** where sshd accepts keys only, logins use FTP with
   TLS. On Arch, the system's own sign-in rule refuses password SFTP for
   these logins, so they use FTP over TLS. On Arch, vsftpd's extra seccomp
@@ -239,8 +290,12 @@ _To be filled in after the lab round._
   the site.
 - **Log retention:** only shortens what the system already keeps. Keeping
   logs longer needs a log folder move, which is not built.
-- The lab round on the five systems is still open for log retention,
-  copying a large site, Git deployment, web settings and database tools.
+- **Lab coverage:** the new features were tried on Debian 13 and Ubuntu
+  24.04. Debian 12, Ubuntu 22.04 and Arch Linux were covered by the
+  automatic tests only. Log retention and copying a large site were not
+  tried in the lab.
+- **Remote API:** deleting a domain with a token, when its DNS publication
+  is still pending, is unit-tested only.
 - **Not built, design notes only:**
   - **Mail autoconfiguration** (Thunderbird, Outlook): it changes the site
     template that this release also changes, and it needs certificate work.

@@ -218,26 +218,81 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 
 ## Laboratuvar sonuçları
 
-_Laboratuvar turundan sonra doldurulacak._
+Birleştirilmiş bir sunucu çiftinde iki laboratuvar turu yapıldı: PowerDNS
+ve postalı bir Debian 13 ana sunucu ile BIND'li bir Ubuntu 24.04 katılan
+sunucu. Ayrıca sıfırdan bir Debian 13 sunucu kuruldu. Her sunucu sahibin
+kurulum komutuyla kuruldu, her güncellemeye panelde bir kez basıldı.
+Laboratuvar kendi sertifika yetkilisini ve Git sunucusunu kullandı; gerçek
+hiçbir sunucuya dokunulmadı.
+
+- **127 → 128 güncellemesi:** her sunucuda tek basış, 68–93 saniye. Hiçbir
+  hizmet bozulmadı. Var olan sitelerin ve postanın sistem yapılandırma
+  dosyaları bayt bayt aynı kaldı (450 dosya karşılaştırıldı).
+- **Sıfırdan kurulum:** 71 saniye, bozulan hizmet yok.
+- **Bozuk güncelleme:** zorla bozulan bir güncelleme kendiliğinden 128'e
+  geri alındı; sonraki basış çalıştı.
+- **Site ayarları:** sınırın üstündeki değerler, sınırı kimin koyduğu
+  söylenerek reddediliyor. PHP 8.4 ve 8.3'te `ini_set`, `set_time_limit` ve
+  `.user.ini` bir sınırı yükseltemedi. 140 saniyelik bir betik 130 saniyelik
+  sınırda durdu. Plan düşürülünce site planın sınırıyla çalışıyor ve kendi
+  değeri saklanıyor: plan yeniden yükselince kendi değeri geri geliyor.
+- **Yalnız bildir:** disk dolu ve süre bitimi bildirimleri 10 saniye içinde
+  geldi; site açık kaldı, yüklemeler durdu.
+- **Web ayarları:** hata sayfaları, önbellek, başlıklar, adres engelleri, ek
+  nginx yönergeleri (reddedilenler `nginx -t` sonrası geri alınıyor), sayfa
+  önbelleği, Node.js değişkenleri ve HTTPS ile SSH üzerinden Git ile dağıtım.
+- **Gerçek Postfix ile giden posta:** sınırını aşan bir posta kutusu,
+  sınırı adıyla söyleyen geçici bir ret aldı. Olağandışı bir patlama posta
+  kutusunu kalıcı bir retle durdurdu ve yöneticiye bildirdi. Parola
+  değişikliği gönderimi 6 saniye içinde yeniden açtı. postfwd durmuşken
+  posta akmayı sürdürdü. "Yalnız gönder" ve bilinmeyen adres için kendi
+  yanıt çalışıyor.
+- **Veritabanları:** tek seferlik indirmeli dışa aktarma, güvenlik kopyalı
+  içe aktarma (başarısız içe aktarma geri alınıyor), kopyalama, denetim ve
+  MariaDB onarımı; PostgreSQL 16 ve MariaDB'de. Ziyaretçi istatistikleri
+  çalışıyor.
+- **Uzak API:** varsayılan olarak kapalı; anahtar oluşturmak parola istiyor;
+  kapsamlar, başka hesapların alan adları ve kapatma düğmesi uygulanıyor.
+- **Oturumlar ve erişim:** boşta kalma süresi oturumu bitiriyor; yöneticiyi
+  dışarıda bırakacak bir panel adres listesi reddediliyor; kurtarma dosyası
+  erişimi açıyor, silinince yeniden kapatıyor.
+- **Sunucu bakımı:** katılan sunucu yeniden başlatıldı ve 29 saniyede
+  döndü; iki DNS sunucusu da yanıt veriyordu.
+- **Ek SFTP girişleri:** Debian 13 ve Ubuntu 24.04'te oluşturuldu ve
+  silindi. Bir giriş yalnız kendi klasörünü görüyor, yüklemeler sitenin
+  oluyor, komut satırı açamıyor ve `/etc`'ye ulaşamıyor.
+- **Yayından önce bulunup düzeltilen hatalar (14):** sayfa önbelleği
+  açıkken her PHP sayfası hata veriyordu; giden posta sınırları
+  Debian/Ubuntu'da açılamıyordu, açılınca da hiçbir sınır uygulanmıyordu;
+  MariaDB kopyalama ve onarma çalışmıyordu; PostgreSQL içe aktarma yanlış
+  satırı gösteriyordu; düşürülen plan sitenin kendi değerini siliyordu;
+  parola değişikliğinden sonra gönderim yaklaşık 2 dakika kapalı kalıyordu;
+  değiştirilen bir sınır bir saate kadar bekliyordu; yeni bir durdurma
+  sınır yazısını gösteriyordu; postfwd öz denetimi bir liste okumuyordu;
+  git Bileşenler'den kurulamıyordu; toplu sınır kayıtları belirsiz yanıt
+  veriyordu; değişmeyen Postfix eşlemeleri her güncellemede yeniden
+  oluşturuluyordu; yalnız bildir hesabına askıya alma tarihi
+  gösteriliyordu.
 
 ## Bilinen sınırlar
 
-- **Sınırlar içinde site ayarları:** desteklenen her PHP sürümü için,
-  uygulamaların bir sınırı (`ini_set`, `.user.ini` ya da `set_time_limit`
-  ile) yükseltemediğinin laboratuvar kanıtı henüz yok. Tarayıcıdaki parola
+- **Sınırlar içinde site ayarları:** uygulamaların bir sınırı (`ini_set`,
+  `.user.ini` ya da `set_time_limit` ile) yükseltemediği PHP 8.4 ve 8.3'te
+  laboratuvarda kanıtlandı; diğer PHP sürümleri aynı havuz ayarını
+  kullanıyor ama denenmedi. Tarayıcıdaki parola
   denetimi hâlâ sahibin kuralını kullanıyor; sunucunun yanıtı daha sıkı
   düzeyi adıyla söylüyor. Gerçek kullanımdan sınır önerileri alpha.131 için
   planlandı.
-- **Giden posta sınırları:** beş sistemde gerçek bir Postfix ile baştan sona
-  henüz denenmedi: kurulum, bir sınıra ulaşma, panel durmuşken, postfwd
-  durmuşken. postfwd yeniden başlatılınca saatin sayımı sıfırdan başlıyor.
-- **Posta:** "yalnız gönder" ve bilinmeyen adres yanıtı yalnız benzetilmiş bir
-  Postfix'e karşı denendi; gerçek Postfix denemesi laboratuvar turunun
-  parçası.
+- **Giden posta sınırları:** gerçek Postfix ile yalnız Debian 13'te
+  denendi. postfwd yeniden başlatılınca saatin sayımı sıfırdan başlıyor.
+  Yeniden açılan bir posta kutusu aynı saat içinde tekrar durdurulmuyor;
+  olağan sınırı yine uygulanıyor.
 - **Web sitesi kopyalama:** bilinen bir uygulamanın yapılandırması henüz
   yeniden yazılmıyor; kopya hâlâ kaynak veritabanını gösteriyor. PostgreSQL
   veritabanları sunulmuyor.
 - **Git ile dağıtım:** henüz sürüm ya da geri alma klasörü ve webhook yok.
+  Düz ("dumb") HTTP ile sunulan depolar dağıtılamıyor; akıllı HTTP ve SSH
+  çalışıyor.
 - **FTP/SFTP girişleri:** sshd yalnız anahtar kabul ediyorsa girişler TLS'li
   FTP kullanıyor. Arch'ta sistemin kendi giriş kuralı bu girişler için
   parolalı SFTP'yi reddettiğinden girişler TLS'li FTP kullanıyor. Arch'ta
@@ -248,9 +303,12 @@ _Laboratuvar turundan sonra doldurulacak._
   kendi araçları onu site olarak gösteriyor.
 - **Günlük saklama:** yalnız sistemin zaten tuttuğunu kısaltıyor. Günlükleri
   daha uzun tutmak için günlük klasörünü taşımak gerekiyor; bu yapılmadı.
-- Günlük saklama, büyük bir sitenin kopyalanması, Git ile dağıtım, web
-  ayarları ve veritabanı araçları için beş sistemdeki laboratuvar turu
-  hâlâ açık.
+- **Laboratuvar kapsamı:** yeni özellikler Debian 13 ve Ubuntu 24.04'te
+  denendi. Debian 12, Ubuntu 22.04 ve Arch Linux yalnız otomatik testlerle
+  kapsandı. Günlük saklama ve büyük bir sitenin kopyalanması laboratuvarda
+  denenmedi.
+- **Uzak API:** DNS yayını hâlâ beklenen bir alan adını anahtarla silmek
+  yalnız birim testiyle denendi.
 - **Yapılmadı, yalnız tasarım notu:**
   - **Posta otomatik yapılandırması** (Thunderbird, Outlook): bu sürümün de
     değiştirdiği site şablonunu değiştiriyor ve sertifika işi gerektiriyor.
