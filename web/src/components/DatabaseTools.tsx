@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CopyPlus, Download, ShieldCheck, Upload, Wrench } from 'lucide-react';
 import type { TranslationKey } from '../i18n/en';
 import { formatSize, useDataToolsWords } from './dataToolsWords';
@@ -61,10 +61,16 @@ function decodeInfo(raw: unknown): ToolsInfo {
 const UPLOAD_CHUNK = 4 * 1024 * 1024;
 const UPLOAD_MAX = 4 * 1024 * 1024 * 1024;
 
-export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
+export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAdmin = false, webTool, afterStats }: {
     domainId: number;
     db: DatabaseToolsTarget;
     readOnly: boolean;
+    /** The administrator is shown the SSH tunnel route (alpha.129). */
+    isAdmin?: boolean;
+    /** Whether this engine's web tool is installed, when known. */
+    webTool?: 'installed' | 'missing';
+    /** Drawn under the numbers (alpha.129: the database's users). */
+    afterStats?: ReactNode;
     onRefusal: (problem: ApiError, sentence: TranslationKey) => void;
     onClear: () => void;
 }) {
@@ -80,6 +86,8 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
     const [copyPassword, setCopyPassword] = useState('');
     const [check, setCheck] = useState<null | { checked: number; problems: Array<{ table: string; message: string }>; selfRepairing: number; repair: boolean }>(null);
     const isMaria = db.type === 'mysql';
+    // The panel's own address is the server the administrator signs in to.
+    const sshHost = typeof window === 'undefined' ? '' : window.location.hostname;
 
     const refusedBy = async (res: Response, sentence: TranslationKey) => onRefusal(await readApiError(res), sentence);
     const lost = () => showToast('error', t('common.resultUnknown'));
@@ -99,7 +107,9 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
                     onClear();
                     const link = document.createElement('a');
                     link.href = `${base}/export?id=${encodeURIComponent(data.export_id)}`;
-                    link.download = data.filename ?? `${db.name}.sql.gz`;
+                    // The engine is in the name (alpha.129): two databases of
+                    // different engines may share a name.
+                    link.download = data.filename ?? `${db.name}-${isMaria ? 'mariadb' : 'postgresql'}.sql.gz`;
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
@@ -246,28 +256,60 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
 
     return (
         <div className="mt-3 space-y-3 border-t border-border pt-3 text-sm">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-fg-muted">
-                {tools.remote.state === 'loading' && <span>{t('dbt.reading')}</span>}
-                {tools.remote.state === 'unknown' && <span>{t('dbt.unread')}</span>}
-                {info && !info.known && <span>{t('dbt.unread')}</span>}
-                {info && info.known && (
-                    <>
-                        <span>{t('dbt.size')}: <span className="text-fg">{formatSize(info.sizeBytes)}</span></span>
-                        <span>{t('dbt.tables')}: <span className="text-fg">{info.tables}</span></span>
-                        <span>{t('dbt.connections')}: <span className="text-fg">{info.connections}</span></span>
-                    </>
-                )}
-            </div>
+            {/* alpha.129: size, tables and open connections as three small
+                boxes; while they are read or could not be read, one line
+                says so. */}
+            {info && info.known ? (
+                <dl className="grid grid-cols-3 gap-2" data-database-stats={db.id}>
+                    {[
+                        { label: t('dbt.size'), value: formatSize(info.sizeBytes) },
+                        { label: t('dbt.tables'), value: String(info.tables) },
+                        { label: t('dbt.connections'), value: String(info.connections) },
+                    ].map((stat) => (
+                        <div key={stat.label} className="min-w-0 rounded-lg border border-border bg-surface-2/50 px-3 py-2">
+                            <dt className="truncate text-xs text-fg-muted">{stat.label}</dt>
+                            <dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{stat.value}</dd>
+                        </div>
+                    ))}
+                </dl>
+            ) : (
+                <p className="text-fg-muted">{tools.remote.state === 'loading' ? t('dbt.reading') : t('dbt.unread')}</p>
+            )}
+            {afterStats}
             {info && (
-                <details className="text-xs text-fg-muted">
+                <details className="text-xs text-fg-muted" data-database-connection-guide={db.id}>
                     <summary className="cursor-pointer">{t('dbt.connection')}</summary>
+                    {/* alpha.129: the site's connection, then the way from
+                        the person's own computer. Databases listen on this
+                        server only; the administrator's route is an SSH
+                        tunnel, anyone else uses the web tool in the panel. */}
+                    <p className="mt-2 font-semibold text-fg">{t('dbt.fromSite')}</p>
                     <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
                         <dt>{t('dbt.host')}</dt><dd className="font-mono text-fg">{info.host}</dd>
                         <dt>{t('dbt.port')}</dt><dd className="font-mono text-fg">{info.port}</dd>
-                        <dt>{t('dbt.database')}</dt><dd className="font-mono text-fg">{db.name}</dd>
-                        <dt>{t('dbt.user')}</dt><dd className="font-mono text-fg">{info.user}</dd>
+                        <dt>{t('dbt.database')}</dt><dd className="break-all font-mono text-fg">{db.name}</dd>
+                        <dt>{t('dbt.user')}</dt><dd className="break-all font-mono text-fg">{info.user}</dd>
                     </dl>
                     <p className="mt-1">{t('dbt.passwordNote')}</p>
+                    <p className="mt-3 font-semibold text-fg">{t('dbt.fromComputer')}</p>
+                    {isAdmin ? (
+                        <>
+                            <p className="mt-1">{t('dbt.tunnelIntro')}</p>
+                            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                                <dt>{t('dbt.sshHost')}</dt><dd className="break-all font-mono text-fg">{sshHost}</dd>
+                                <dt>{t('dbt.sshPort')}</dt><dd className="font-mono text-fg">22</dd>
+                                <dt>{t('dbt.sshUser')}</dt><dd className="text-fg">{t('dbt.sshUserValue')}</dd>
+                                <dt>{t('dbt.host')}</dt><dd className="font-mono text-fg">127.0.0.1</dd>
+                                <dt>{t('dbt.port')}</dt><dd className="font-mono text-fg">{info.port}</dd>
+                                <dt>{t('dbt.database')}</dt><dd className="break-all font-mono text-fg">{db.name}</dd>
+                            </dl>
+                            <p className="mt-1">{t(isMaria ? 'dbt.tunnelToolsMaria' : 'dbt.tunnelToolsPg')}</p>
+                        </>
+                    ) : (
+                        <p className="mt-1">
+                            {t(webTool === 'installed' ? 'dbt.noRemoteUseTool' : 'dbt.noRemoteAskTool', { tool: isMaria ? 'phpMyAdmin' : 'phpPgAdmin' })}
+                        </p>
+                    )}
                 </details>
             )}
             {!readOnly && (
@@ -292,7 +334,21 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
                         <input type="checkbox" className="mt-1" checked={emptyFirst} onChange={(e) => setEmptyFirst(e.target.checked)} />
                         <span>{t('dbt.importEmpty')}{!emptyFirst && <span className="block text-xs text-fg-muted">{t('dbt.importEmptyHint')}</span>}</span>
                     </label>
-                    <Button variant="primary" icon={Upload} disabled={!file || busy} onClick={() => void runImport()}>{t('dbt.importStart')}</Button>
+                    {/* alpha.129: without a file the button is an ordinary
+                        unavailable button with the reason beside it, not the
+                        dashed outline. */}
+                    {file ? (
+                        <Button variant="primary" icon={Upload} disabled={busy} onClick={() => void runImport()}>{t('dbt.importStart')}</Button>
+                    ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button type="button" disabled aria-describedby={`import-hint-${db.id}`}
+                                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium text-fg-muted">
+                                <Upload className="h-4 w-4" aria-hidden="true" />
+                                {t('dbt.importStart')}
+                            </button>
+                            <span id={`import-hint-${db.id}`} className="text-xs text-fg-muted">{t('dbt.importChooseFirst')}</span>
+                        </div>
+                    )}
                 </div>
             )}
             {panel === 'copy' && (

@@ -488,14 +488,15 @@ func TestPGStatementsGoOnStdinWithThePort(t *testing.T) {
 	previous := postgreSQLExecStatementOnPort
 	postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, error) {
 		got = append(got, strconv.Itoa(port)+" "+statement)
-		return nil, nil
+		return freshPGNames(statement), nil
 	}
 	t.Cleanup(func() { postgreSQLExecStatementOnPort = previous })
 	var resp CreateDatabaseResponse
 	if err := (&Agent{}).CreateDatabase(CreateDatabaseRequest{Type: "postgresql", Name: "shop", User: "shop_user", Password: "pw", Port: 5433}, &resp); err != nil || !resp.Success {
 		t.Fatalf("create = %+v %v", resp, err)
 	}
-	if len(got) != 2 || !strings.HasPrefix(got[0], "5433 CREATE USER") || !strings.HasPrefix(got[1], "5433 CREATE DATABASE") {
+	if len(got) != 3 || !strings.HasPrefix(got[0], "5433 SELECT 'roles='") || !strings.HasPrefix(got[1], "5433 SET password_encryption") ||
+		!strings.HasPrefix(got[2], "5433 CREATE DATABASE") {
 		t.Fatalf("statements = %v", got)
 	}
 }

@@ -61,6 +61,9 @@ const stubbedComponents = [
   'DNSCheckToolNotice',
   // alpha.128: each database's tools read their own address (DatabaseTools).
   'DatabaseTools',
+  // alpha.129: a database's users and a user's new password are their own
+  // parts (tests/database-users-alpha129.test.mjs).
+  'DatabaseUsers', 'DatabaseUserPassword', 'EngineMark',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.

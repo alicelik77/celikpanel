@@ -27,17 +27,26 @@ func usePGStatementClusters(t *testing.T, lsclusters string) {
 	t.Cleanup(func() { pgStatementClusters = previous })
 }
 
+// freshPGNames answers the create's inspection (alpha.129): neither the role
+// nor the database exists yet.
+func freshPGNames(statement string) []byte {
+	if strings.HasPrefix(statement, "SELECT 'roles='") {
+		return []byte("roles=0\nmark=\nowner=\n")
+	}
+	return nil
+}
+
 func recordPGStatements(t *testing.T) *[]string {
 	t.Helper()
 	var got []string
 	previousPort, previousDefault := postgreSQLExecStatementOnPort, postgreSQLExecStatement
 	postgreSQLExecStatementOnPort = func(port int, statement string) ([]byte, error) {
 		got = append(got, strconv.Itoa(port)+" "+statement)
-		return nil, nil
+		return freshPGNames(statement), nil
 	}
 	postgreSQLExecStatement = func(statement string) ([]byte, error) {
 		got = append(got, "default "+statement)
-		return nil, nil
+		return freshPGNames(statement), nil
 	}
 	t.Cleanup(func() { postgreSQLExecStatementOnPort, postgreSQLExecStatement = previousPort, previousDefault })
 	return &got
@@ -79,7 +88,8 @@ func TestAStatementGoesToTheRunningClusterItNames(t *testing.T) {
 	if err := (&Agent{}).CreateDatabase(CreateDatabaseRequest{Type: "postgresql", Name: "shop", User: "shop_user", Password: "pw", Port: 5433}, &resp); err != nil || !resp.Success {
 		t.Fatalf("resp=%+v err=%v", resp, err)
 	}
-	if len(*got) != 2 || !strings.HasPrefix((*got)[0], "5433 CREATE USER") || !strings.HasPrefix((*got)[1], "5433 CREATE DATABASE") {
+	if len(*got) != 3 || !strings.HasPrefix((*got)[0], "5433 SELECT 'roles='") || !strings.Contains((*got)[1], "CREATE ROLE") ||
+		!strings.HasPrefix((*got)[1], "5433 ") || !strings.HasPrefix((*got)[2], "5433 CREATE DATABASE") {
 		t.Fatalf("statements = %v", *got)
 	}
 }

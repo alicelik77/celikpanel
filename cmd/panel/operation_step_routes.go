@@ -144,6 +144,8 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRoutePHPSettings, true
 	case match.kind == "database-delete" && r.Method == http.MethodDelete:
 		return requestIdentityRouteDomainDBDelete, true
+	case match.kind == "database-user" && r.Method == http.MethodDelete:
+		return requestIdentityRouteDomainDBUserRemove, true
 	case match.kind == "ftp-logins" && r.Method == http.MethodPost:
 		return requestIdentityRouteFTPLoginAdd, true
 	case match.kind == "ftp-logins" && (r.Method == http.MethodPut || r.Method == http.MethodDelete):

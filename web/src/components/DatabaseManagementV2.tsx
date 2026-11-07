@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useNavigate } from '../router';
 import { Database, KeyRound, Plus, Trash2, Users, Server } from 'lucide-react';
 import { showToast } from './Toast';
@@ -17,6 +17,10 @@ import { useRefusal } from '../lib/useRefusal';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
 import { confirmAction } from '../lib/confirmAction';
+// alpha.129: the new-password form is shared with the domain's Databases
+// tab; loaded when it is opened, so the entry's list of this page's parts
+// does not grow (the boot path).
+const DatabaseUserPassword = lazy(() => import('./DatabaseUserPassword').then((module) => ({ default: module.DatabaseUserPassword })));
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
@@ -175,33 +179,9 @@ export function DatabaseManagementV2() {
         });
     };
 
-    // A new password made up by the server and shown once; for a WordPress
-    // CelikPanel installed the server writes it into its configuration too.
-    const handleNewPassword = async (id: number, name: string) => {
-        await confirmAction({ message: t('databases.confirmNewPassword', { name }),
-            action: async () => {
-                try {
-                    const res = await fetch(`${API_BASE}/database-users/${id}/password`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: '{}',
-                    });
-                    if (!res.ok) { refuse(await readApiError(res), 'databases.newPasswordFailed'); return; }
-                    const answer: unknown = await res.json();
-                    const record = answer && typeof answer === 'object' ? answer as Record<string, unknown> : {};
-                    setRefusal(null);
-                    if (typeof record.password === 'string') setSecret({ user: name, password: record.password, renewed: true });
-                    if (typeof record.app_domain === 'string' && record.app_updated === false) {
-                        showToast('error', t('databases.newPasswordAppKept', { domain: record.app_domain, detail: String(record.app_detail ?? '') }));
-                    }
-                } catch {
-                    showToast('error', t('common.resultUnknown'));
-                } finally {
-                    invalidate('databases');
-                }
-            },
-        });
-    };
+    // alpha.129: a user's new password, typed or generated in the shared
+    // password field, in the progress window with the server's steps.
+    const [passwordFor, setPasswordFor] = useState<{ id: number; username: string } | null>(null);
 
     return (
         <div className="p-6 md:p-8">
@@ -313,6 +293,14 @@ export function DatabaseManagementV2() {
                 onClose={() => setSecret(null)}
             />}
             <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
+            {passwordFor && (
+                <div className="mb-4">
+                    <Suspense fallback={<p className="text-sm text-fg-muted">{t('common.loading')}</p>}>
+                        <DatabaseUserPassword key={passwordFor.id} url={`${API_BASE}/database-users/${passwordFor.id}/password`} user={passwordFor.username}
+                            onClose={() => setPasswordFor(null)} onSettled={() => invalidate('databases')} />
+                    </Suspense>
+                </div>
+            )}
 
             {selectedServer && (
                 <div className="rounded-xl border border-border-strong bg-surface">
@@ -446,7 +434,7 @@ export function DatabaseManagementV2() {
                                                 <td className="row-actions px-4 py-3 text-right">
                                                     <button
                                                         type="button"
-                                                        onClick={() => void handleNewPassword(u.id, u.username)}
+                                                        onClick={() => setPasswordFor({ id: u.id, username: u.username })}
                                                         disabled={list.stale || createAnswer.holding}
                                                         title={t('databases.newPassword', { name: u.username })}
                                                         aria-label={t('databases.newPassword', { name: u.username })}

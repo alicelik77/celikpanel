@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
@@ -48,19 +49,11 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	ctx := r.Context()
-	var request struct {
-		Password string `json:"password"`
-	}
-	if err := decodeStrictJSON(w, r, &request); err != nil {
-		writeClientError(w, http.StatusBadRequest, "invalid request body")
+	reportOperationPlan(ctx, "check", "password", "records")
+	reportOperationStep(ctx, "check")
+	password, ok := readDatabaseUserPasswordRequest(w, r)
+	if !ok {
 		return
-	}
-	minted := request.Password == ""
-	if !minted {
-		if refusal := checkDatabaseUserPassword(request.Password); refusal != nil {
-			writePasswordRefusal(w, refusal)
-			return
-		}
 	}
 	user, err := repositories.NewPostgresDatabaseUserRepository(p.db.GetDB()).GetByID(ctx, userID)
 	if err != nil {
@@ -71,6 +64,46 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 		writeClientError(w, http.StatusNotFound, "database user not found")
 		return
 	}
+	p.applyDatabaseUserPassword(w, r, user, password)
+}
+
+// readDatabaseUserPasswordRequest reads {password?} and applies the rule to
+// a sent password before anything is looked up; "" asks CelikPanel to make
+// one up.
+func readDatabaseUserPasswordRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
+	var request struct {
+		Password string `json:"password"`
+	}
+	if err := decodeStrictJSON(w, r, &request); err != nil {
+		writeClientError(w, http.StatusBadRequest, "invalid request body")
+		return "", false
+	}
+	if request.Password != "" {
+		if refusal := checkDatabaseUserPassword(request.Password); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return "", false
+		}
+	}
+	return request.Password, true
+}
+
+// applyDatabaseUserPassword is the change itself, for a password the route
+// has read and checked (readDatabaseUserPasswordRequest) and a user it has
+// resolved and authorized: the account page's
+// /api/v1/database-users/{id}/password and, alpha.129, the domain's
+// /api/v1/domains/{id}/databases/{db}/users/{user}/password (the domain
+// dispatcher decided ownership, team capability, suspension and the plan's
+// databases permission; the user holds a grant on that domain's database).
+// Steps: check, password (the engine; for a known application also its
+// configuration file), records.
+//
+// applyDatabaseUserPassword: rota kullanıcıyı çözüp yetkilendirdikten sonra
+// değişikliğin kendisi.
+func (p *Panel) applyDatabaseUserPassword(w http.ResponseWriter, r *http.Request, user *core.DatabaseUser, sent string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	ctx := r.Context()
+	minted := sent == ""
 	server, err := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB()).GetByID(ctx, user.ServerID)
 	if err != nil {
 		writeClientError(w, http.StatusNotFound, "database user not found")
@@ -80,7 +113,7 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 		writeServerError(w, errors.New("secret storage is unavailable"))
 		return
 	}
-	password := request.Password
+	password := sent
 	if minted {
 		if password, err = newRotationSecret(); err != nil {
 			writeServerError(w, err)
@@ -136,6 +169,7 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 			req.App = &transport.DatabaseUserApp{Kind: appKind, SubscriptionID: user.SubscriptionID, DomainID: appDomainID,
 				SiteUsername: services.SiteUsername(appDomain), DBName: appDB}
 		}
+		reportOperationStep(ctx, "password")
 		resp, err := p.rotationNativeOps().rotateDatabaseUser(ctx, req)
 		if err != nil {
 			release()
@@ -143,6 +177,7 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 			return
 		}
 		if resp.PasswordChanged {
+			reportOperationStep(ctx, "records")
 			if _, err := p.db.GetDB().ExecContext(ctx, `UPDATE database_users SET password = ?, updated_at = datetime('now') WHERE id = ?`, sealed, user.ID); err != nil {
 				writeServerError(w, err)
 				return
@@ -158,6 +193,7 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 		answer["sessions_ended"] = resp.SessionsEnded
 		if appDomainID > 0 {
 			answer["app_domain"] = appDomain
+			answer["app_kind"] = appKind
 			answer["app_updated"] = resp.AppUpdated
 			if !resp.AppUpdated {
 				answer["app_detail"] = resp.AppDetail
@@ -170,11 +206,13 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 			writeServerError(w, err)
 			return
 		}
+		reportOperationStep(ctx, "password")
 		if err := driver.ChangePassword(user.Username, password); err != nil {
 			release()
 			writeDatabaseEngineError(w, server, err)
 			return
 		}
+		reportOperationStep(ctx, "records")
 		if _, err := p.db.GetDB().ExecContext(ctx, `UPDATE database_users SET password = ?, updated_at = datetime('now') WHERE id = ?`, sealed, user.ID); err != nil {
 			writeServerError(w, err)
 			return

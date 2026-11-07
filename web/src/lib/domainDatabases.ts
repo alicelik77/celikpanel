@@ -8,12 +8,23 @@ import { decodeList } from './remote';
 export type DatabaseType = 'mysql' | 'postgresql';
 export type DatabaseEngine = { value: DatabaseType; label: string };
 
+/** One user of a database (alpha.129): the first is made with it ("owner"). */
+export interface DatabaseUserInfo {
+    id: number;
+    username: string;
+    access: 'owner' | 'read' | 'write';
+}
+
 export interface DatabaseInfo {
     id: number;
     name: string;
     type: string;
     user: string;
     created_at: string;
+    /** alpha.129: the engine the server runs and its major version, when known. */
+    engine?: 'mariadb' | 'mysql' | 'postgresql';
+    engine_version?: string;
+    users?: DatabaseUserInfo[];
 }
 
 export function parseAvailableDatabaseTypes(value: unknown): DatabaseEngine[] {
@@ -27,7 +38,7 @@ export function parseAvailableDatabaseTypes(value: unknown): DatabaseEngine[] {
         seen.add(item);
         parsed.push({
             value: item,
-            label: item === 'mysql' ? 'MySQL / MariaDB' : 'PostgreSQL',
+            label: item === 'mysql' ? 'MariaDB' : 'PostgreSQL',
         });
     }
     return parsed;
@@ -49,4 +60,21 @@ export function decodeDomainDatabases(raw: unknown): DomainDatabases {
         databases: decodeList<DatabaseInfo>(payload.databases),
         availableTypes: parseAvailableDatabaseTypes(payload.available_types),
     };
+}
+
+// alpha.129: the engine a card names and marks (EngineMark).
+// Kartın adlandırdığı ve işaretlediği motor.
+export type DatabaseEngineName = 'mariadb' | 'mysql' | 'postgresql';
+
+/** The engine of a database: the server's answer, else its API type. */
+export function databaseEngine(engine: string | undefined, type: string): DatabaseEngineName {
+    if (engine === 'mariadb' || engine === 'mysql' || engine === 'postgresql') return engine;
+    return type === 'postgresql' ? 'postgresql' : 'mariadb';
+}
+
+const names: Record<DatabaseEngineName, string> = { mariadb: 'MariaDB', mysql: 'MySQL', postgresql: 'PostgreSQL' };
+
+/** "MariaDB 11.8", "PostgreSQL 17", or the bare name. */
+export function engineLabel(engine: DatabaseEngineName, version?: string): string {
+    return version ? `${names[engine]} ${version}` : names[engine];
 }
