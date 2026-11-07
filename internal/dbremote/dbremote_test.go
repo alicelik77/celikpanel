@@ -294,11 +294,25 @@ func TestNFTFileAllowsOnlyListedAddresses(t *testing.T) {
 
 func TestNFTUnitRunsOnlyNft(t *testing.T) {
 	unit, err := NFTUnit("/usr/sbin/nft")
-	if err != nil || !strings.Contains(unit, "ExecStart=/usr/sbin/nft -f /etc/celikpanel/database-remote.nft\n") || !strings.Contains(unit, "Before=network-pre.target") {
+	if err != nil || !strings.Contains(unit, "ExecStart=/bin/sh /etc/celikpanel/database-remote-guard.sh\n") || !strings.Contains(unit, "Before=network-pre.target") ||
+		strings.Contains(unit, "RemainAfterExit") {
 		t.Fatalf("unit = %s, %v", unit, err)
+	}
+	guard, err := NFTGuardScript("/usr/sbin/nft")
+	if err != nil || !strings.Contains(guard, "nft=/usr/sbin/nft\n") ||
+		!strings.Contains(guard, `if ! "$nft" list chain inet celikpanel_dbremote input 2>/dev/null | grep -q ' drop'; then`) ||
+		!strings.Contains(guard, `"$nft" -f /etc/celikpanel/database-remote.nft`) {
+		t.Fatalf("guard = %s, %v", guard, err)
+	}
+	timer := NFTTimer()
+	if !strings.Contains(timer, "OnUnitActiveSec=30s\n") || !strings.Contains(timer, "Unit=celikpanel-database-remote-firewall.service\n") {
+		t.Fatalf("timer = %s", timer)
 	}
 	if _, err := NFTUnit("nft; rm -rf /"); err == nil {
 		t.Fatal("unsafe program path accepted")
+	}
+	if _, err := NFTGuardScript("/usr/sbin/nft $(x)"); err == nil {
+		t.Fatal("unsafe program path accepted in the guard")
 	}
 }
 

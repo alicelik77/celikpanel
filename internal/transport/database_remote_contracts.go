@@ -108,6 +108,9 @@ type DatabaseRemoteResponse struct {
 	NFTAvailable bool
 	// FilterPorts: the ports the address filter holds now.
 	FilterPorts []int
-	ErrorCode   string
-	Error       string
+	// FilterLoaded: nft lists the filter's chain with its drop rules now
+	// (review L2); the panel opens a port only while it is true.
+	FilterLoaded bool
+	ErrorCode    string
+	Error        string
 }

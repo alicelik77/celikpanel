@@ -30,7 +30,12 @@ import (
 // sunucuyu uygun olanlara uydurur. Uygun küme her değişiklikten sonra,
 // açılışta ve beş dakikada bir (farklıysa) gönderilir.
 
-const databaseRemoteSyncInterval = 5 * time.Minute
+// The loop probes the filter every minute (read only) and applies the rule
+// set every fifth minute when it changed (or waits for a prerequisite).
+const (
+	databaseRemoteProbeInterval = time.Minute
+	databaseRemoteApplyEvery    = 5
+)
 
 // databaseRemoteState is the panel's memory of the last apply: what was sent
 // and what the Agent answered, for the screens. Losing it (a restart) only
@@ -267,7 +272,8 @@ func databaseRemoteFilteredOpenPorts() []int {
 	m := databaseRemoteMemory
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.appliedAt.IsZero() {
+	// Review L2: and only while the filter is proven loaded.
+	if m.appliedAt.IsZero() || !m.answer.FilterLoaded {
 		return nil
 	}
 	filtered := map[int]bool{}
@@ -336,7 +342,7 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 func filterOpenPorts(answer transport.DatabaseRemoteResponse) []int {
 	filtered := map[int]bool{}
 	for _, port := range answer.FilterPorts {
-		filtered[port] = true
+		filtered[port] = answer.FilterLoaded
 	}
 	var ports []int
 	for _, t := range answer.Targets {
@@ -383,8 +389,9 @@ var databaseRemoteKickDelay = 2 * time.Second
 // minutes; each run sends nothing when the eligible set did not change.
 func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 	go func() {
-		ticker := time.NewTicker(databaseRemoteSyncInterval)
+		ticker := time.NewTicker(databaseRemoteProbeInterval)
 		defer ticker.Stop()
+		ticks := 0
 		run := func(force bool) {
 			runCtx, cancel := context.WithTimeout(ctx, agentRPCMutationTimeout+time.Minute)
 			defer cancel()
@@ -418,7 +425,11 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				run(false)
+				ticks++
+				p.probeDatabaseRemoteFilter(ctx)
+				if ticks%databaseRemoteApplyEvery == 0 {
+					run(false)
+				}
 			case <-databaseRemoteMemory.kick:
 				select {
 				case <-ctx.Done():
@@ -578,4 +589,37 @@ func databaseRemoteWaiting() bool {
 		}
 	}
 	return false
+}
+
+// probeDatabaseRemoteFilter asks the Agent (read only) whether the filter is
+// still loaded while ports are open (review L2). A flushed filter closes the
+// panel firewall's port at once and asks for an apply, which loads it again
+// (the Agent's guard timer also does within 30 seconds); a filter that is
+// back reopens the port.
+func (p *Panel) probeDatabaseRemoteFilter(ctx context.Context) {
+	m := databaseRemoteMemory
+	m.mu.Lock()
+	expected := len(m.answer.FilterPorts) > 0 && !m.appliedAt.IsZero()
+	was := m.answer.FilterLoaded
+	m.mu.Unlock()
+	if !expected {
+		return
+	}
+	probeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	status, err := databaseRemoteStatusFromAgent(p, probeCtx, transport.DatabaseRemoteStatusRequest{})
+	loaded := err == nil && status.Error == "" && status.FilterLoaded
+	if loaded == was {
+		return
+	}
+	m.mu.Lock()
+	m.answer.FilterLoaded = loaded
+	m.mu.Unlock()
+	if err := p.syncFirewall(probeCtx); err != nil {
+		log.Printf("database remote access: firewall sync after the filter probe: %v", err)
+	}
+	if !loaded {
+		log.Printf("database remote access: the address filter is not loaded; the database ports are closed until it is")
+		kickDatabaseRemoteSync()
+	}
 }

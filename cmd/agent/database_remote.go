@@ -139,13 +139,14 @@ func (a *Agent) DatabaseRemoteStatusV1(req *transport.DatabaseRemoteStatusReques
 	}
 	databaseRemoteMu.Lock()
 	defer databaseRemoteMu.Unlock()
-	_, nftErr := databaseRemoteLookPath("nft")
+	nftPath, nftErr := databaseRemoteLookPath("nft")
 	resp.NFTAvailable = nftErr == nil
 	state, err := loadDatabaseRemoteState()
 	if err != nil {
 		resp.ErrorCode, resp.Error = transport.DatabaseRemoteRecordUnreadable, err.Error()
 		return nil
 	}
+	resp.FilterLoaded = nftErr == nil && databaseRemoteFilterLoaded(nftPath)
 	for _, raw := range req.Targets {
 		target := dbremote.Target{Engine: raw.Engine, Port: raw.Port}
 		if _, err := target.Normalize(); err != nil {
@@ -322,6 +323,7 @@ func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func
 		for _, p := range ports {
 			resp.FilterPorts = append(resp.FilterPorts, p.Port)
 		}
+		resp.FilterLoaded = len(ports) > 0 // writeDatabaseRemoteFilter verified it
 		return nil
 	}
 	if err := filter(false); err != nil {

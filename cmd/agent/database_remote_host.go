@@ -46,8 +46,8 @@ var databaseRemoteRun = func(name string, args []string, stdin string) ([]byte, 
 
 // databaseRemoteFilterFiles are the filter's files; swapped by tests.
 var databaseRemoteFilterFiles = struct {
-	nftPath, unitPath string
-}{dbremote.NFTPath, dbremote.NFTUnitPath}
+	nftPath, unitPath, guardPath, timerPath string
+}{dbremote.NFTPath, dbremote.NFTUnitPath, dbremote.NFTGuardPath, dbremote.NFTTimerPath}
 
 func databaseRemoteTablePresent(nftPath string) (bool, error) {
 	out, err := databaseRemoteRun(nftPath, []string{"list", "tables"}, "")
@@ -63,9 +63,29 @@ func databaseRemoteTablePresent(nftPath string) (bool, error) {
 	return false, nil
 }
 
+// databaseRemoteFilterLoaded reads (only) whether the filter's chain is in
+// the kernel with its drop rules (review L2): the panel opens a port only
+// while this holds.
+func databaseRemoteFilterLoaded(nftPath string) bool {
+	out, err := databaseRemoteRun(nftPath, []string{"list", "chain", "inet", dbremote.NFTTable, "input"}, "")
+	return err == nil && strings.Contains(string(out), " drop")
+}
+
+// writeIfChanged writes one of the filter's files when its text differs.
+func writeIfChanged(path, text string, mode os.FileMode) (bool, error) {
+	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, []byte(text)) {
+		return false, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return false, err
+	}
+	return true, secureWriteConfig(path, []byte(text), mode)
+}
+
 // writeDatabaseRemoteFilter makes the filter hold exactly ports: the file is
-// checked by nft, written, loaded as one transaction, and its boot unit is
-// enabled. No ports removes the table, the unit and the file.
+// checked by nft, written, loaded as one transaction; its guard script, boot
+// unit and 30-second timer are written and enabled. No ports removes the
+// table, the timer, the unit, the guard and the file.
 func writeDatabaseRemoteFilter(nftPath string, ports []dbremote.NFTPort) error {
 	text, err := dbremote.NFTFile(ports)
 	if err != nil {
@@ -77,25 +97,36 @@ func writeDatabaseRemoteFilter(nftPath string, ports []dbremote.NFTPort) error {
 	}
 	files := databaseRemoteFilterFiles
 	if text == "" {
+		_, _ = databaseRemoteRun("systemctl", []string{"disable", "--now", dbremote.NFTTimerName}, "")
 		if present {
 			if out, err := databaseRemoteRun(nftPath, []string{"delete", "table", "inet", dbremote.NFTTable}, ""); err != nil {
 				return fmt.Errorf("nft delete table: %s", firstLine(string(out)))
 			}
 		}
-		if _, err := os.Stat(files.unitPath); err == nil {
-			_, _ = databaseRemoteRun("systemctl", []string{"disable", dbremote.NFTUnitName}, "")
-			if err := os.Remove(files.unitPath); err != nil {
-				return err
+		reload := false
+		for _, path := range []string{files.timerPath, files.unitPath} {
+			if _, err := os.Stat(path); err == nil {
+				if path == files.unitPath {
+					_, _ = databaseRemoteRun("systemctl", []string{"disable", dbremote.NFTUnitName}, "")
+				}
+				if err := os.Remove(path); err != nil {
+					return err
+				}
+				reload = true
 			}
+		}
+		if reload {
 			_, _ = databaseRemoteRun("systemctl", []string{"daemon-reload"}, "")
 		}
-		if err := os.Remove(files.nftPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
+		for _, path := range []string{files.guardPath, files.nftPath} {
+			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
 		}
 		return nil
 	}
 	current, readErr := os.ReadFile(files.nftPath)
-	if readErr != nil || string(current) != text || !present {
+	if readErr != nil || string(current) != text || !present || !databaseRemoteFilterLoaded(nftPath) {
 		if out, err := databaseRemoteRun(nftPath, []string{"--check", "-f", "-"}, text); err != nil {
 			return fmt.Errorf("nft refused the filter: %s", firstLine(string(out)))
 		}
@@ -109,20 +140,38 @@ func writeDatabaseRemoteFilter(nftPath string, ports []dbremote.NFTPort) error {
 			return fmt.Errorf("nft did not load the filter: %s", firstLine(string(out)))
 		}
 	}
+	guard, err := dbremote.NFTGuardScript(nftPath)
+	if err != nil {
+		return err
+	}
 	unit, err := dbremote.NFTUnit(nftPath)
 	if err != nil {
 		return err
 	}
-	if existing, err := os.ReadFile(files.unitPath); err != nil || !bytes.Equal(existing, []byte(unit)) {
-		if err := secureWriteConfig(files.unitPath, []byte(unit), 0o644); err != nil {
+	changed := false
+	for _, f := range []struct {
+		path, text string
+		mode       os.FileMode
+	}{{files.guardPath, guard, 0o700}, {files.unitPath, unit, 0o644}, {files.timerPath, dbremote.NFTTimer(), 0o644}} {
+		wrote, err := writeIfChanged(f.path, f.text, f.mode)
+		if err != nil {
 			return err
 		}
+		changed = changed || wrote
+	}
+	if changed {
 		if out, err := databaseRemoteRun("systemctl", []string{"daemon-reload"}, ""); err != nil {
 			return fmt.Errorf("systemctl daemon-reload: %s", firstLine(string(out)))
 		}
 	}
 	if out, err := databaseRemoteRun("systemctl", []string{"enable", dbremote.NFTUnitName}, ""); err != nil {
 		return fmt.Errorf("the filter is loaded but its boot unit could not be enabled: %s", firstLine(string(out)))
+	}
+	if out, err := databaseRemoteRun("systemctl", []string{"enable", "--now", dbremote.NFTTimerName}, ""); err != nil {
+		return fmt.Errorf("the filter is loaded but its guard timer could not be started: %s", firstLine(string(out)))
+	}
+	if !databaseRemoteFilterLoaded(nftPath) {
+		return errors.New("the filter was loaded but nft does not list it")
 	}
 	return nil
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,23 +187,85 @@ func TestMariaDBRemoteCopiesWaitForTheJail(t *testing.T) {
 
 // fakeFilterHost stands in for nft and systemctl and keeps the filter's
 // files in a temporary directory.
-func fakeFilterHost(t *testing.T) *[]string {
+func fakeFilterHost(t *testing.T) *fakeNFT {
 	t.Helper()
-	var calls []string
+	host := &fakeNFT{}
 	dir := t.TempDir()
 	restoreRun, restoreLook, restoreFiles, restoreState := databaseRemoteRun, databaseRemoteLookPath, databaseRemoteFilterFiles, databaseRemoteStatePath
 	databaseRemoteLookPath = func(string) (string, error) { return "/usr/sbin/nft", nil }
-	databaseRemoteRun = func(name string, args []string, _ string) ([]byte, error) {
-		calls = append(calls, name+" "+strings.Join(args, " "))
-		return nil, nil
-	}
+	databaseRemoteRun = host.run
 	databaseRemoteFilterFiles.nftPath = filepath.Join(dir, "database-remote.nft")
 	databaseRemoteFilterFiles.unitPath = filepath.Join(dir, "unit.service")
+	databaseRemoteFilterFiles.guardPath = filepath.Join(dir, "guard.sh")
+	databaseRemoteFilterFiles.timerPath = filepath.Join(dir, "unit.timer")
 	databaseRemoteStatePath = filepath.Join(dir, "database-remote.json")
 	t.Cleanup(func() {
 		databaseRemoteRun, databaseRemoteLookPath, databaseRemoteFilterFiles, databaseRemoteStatePath = restoreRun, restoreLook, restoreFiles, restoreState
 	})
-	return &calls
+	return host
+}
+
+// fakeNFT is nft and systemctl: it keeps whether the table is loaded.
+type fakeNFT struct {
+	loaded bool
+	calls  []string
+}
+
+func (h *fakeNFT) run(name string, args []string, _ string) ([]byte, error) {
+	call := name + " " + strings.Join(args, " ")
+	h.calls = append(h.calls, call)
+	switch {
+	case strings.HasSuffix(name, "nft") && len(args) == 2 && args[0] == "-f":
+		h.loaded = true
+	case strings.HasSuffix(name, "nft") && strings.HasPrefix(call, name+" delete table"):
+		h.loaded = false
+	case strings.HasSuffix(name, "nft") && strings.HasPrefix(call, name+" list tables") && h.loaded:
+		return []byte("table inet celikpanel_dbremote\n"), nil
+	case strings.HasSuffix(name, "nft") && strings.HasPrefix(call, name+" list chain"):
+		if !h.loaded {
+			return []byte("Error: No such file or directory"), errors.New("exit status 1")
+		}
+		return []byte("tcp dport 5432 drop\n"), nil
+	}
+	return nil, nil
+}
+
+// L2: the filter is loaded, verified, guarded by a timer; a flushed
+// ruleset is noticed (FilterLoaded false) and the next write loads it again.
+func TestDatabaseRemoteFilterIsGuardedAndVerified(t *testing.T) {
+	host := fakeFilterHost(t)
+	ports := []dbremote.NFTPort{{Port: 5432, V4: []netip.Prefix{netip.MustParsePrefix("203.0.113.7/32")}}}
+	if err := writeDatabaseRemoteFilter("/usr/sbin/nft", ports); err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(host.calls, "\n")
+	for _, want := range []string{"systemctl enable celikpanel-database-remote-firewall.service", "systemctl enable --now celikpanel-database-remote-firewall.timer"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing %q in\n%s", want, joined)
+		}
+	}
+	guard, err := os.ReadFile(databaseRemoteFilterFiles.guardPath)
+	if err != nil || !strings.Contains(string(guard), "list chain inet celikpanel_dbremote input") {
+		t.Fatalf("guard = %s, %v", guard, err)
+	}
+	if !databaseRemoteFilterLoaded("/usr/sbin/nft") {
+		t.Fatal("not loaded after the write")
+	}
+	host.loaded = false // nft flush ruleset
+	if databaseRemoteFilterLoaded("/usr/sbin/nft") {
+		t.Fatal("a flushed filter reads as loaded")
+	}
+	if err := writeDatabaseRemoteFilter("/usr/sbin/nft", ports); err != nil || !host.loaded {
+		t.Fatalf("not loaded again: %v", err)
+	}
+	if err := writeDatabaseRemoteFilter("/usr/sbin/nft", nil); err != nil || host.loaded {
+		t.Fatalf("not removed: %v", err)
+	}
+	for _, path := range []string{databaseRemoteFilterFiles.guardPath, databaseRemoteFilterFiles.timerPath, databaseRemoteFilterFiles.unitPath, databaseRemoteFilterFiles.nftPath} {
+		if _, err := os.Stat(path); err == nil {
+			t.Errorf("%s left behind", path)
+		}
+	}
 }
 
 // H1: an engine whose listen address the owner set, or whose record was

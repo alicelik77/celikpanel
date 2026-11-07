@@ -93,16 +93,51 @@ func NFTFile(ports []NFTPort) (string, error) {
 	return b.String(), nil
 }
 
-// NFTUnit renders the boot unit. It runs only nft, before the network comes
-// up, so the filter is in place before the engine can be reached, with or
-// without CelikPanel.
-func NFTUnit(nftProgram string) (string, error) {
-	if !filepath.IsAbs(nftProgram) || strings.ContainsAny(nftProgram, " \t\n\"'\\$`;") {
-		return "", errors.New("the nft program path must be absolute and plain")
+// The guard (alpha.129 review L2, the pattern of the site sandbox's SMTP
+// block, internal/sitesandbox/egress.go): `nft flush ruleset` or a restart of
+// nftables.service drops the table; the guard loads the file again when the
+// table or its drop rule is gone. The unit runs it at boot before the network
+// and the timer every 30 seconds, with or without CelikPanel.
+const (
+	NFTGuardPath      = "/etc/celikpanel/database-remote-guard.sh"
+	NFTTimerName      = "celikpanel-database-remote-firewall.timer"
+	NFTTimerPath      = "/etc/systemd/system/" + NFTTimerName
+	nftGuardIntervalS = "30s"
+)
+
+func plainProgram(path string) error {
+	if !filepath.IsAbs(path) || strings.ContainsAny(path, " \t\n\"'\\$`;") {
+		return errors.New("the nft program path must be absolute and plain")
+	}
+	return nil
+}
+
+// NFTGuardScript renders the guard's shell text.
+func NFTGuardScript(nftProgram string) (string, error) {
+	if err := plainProgram(nftProgram); err != nil {
+		return "", err
 	}
 	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
-		"# Loads the address filter of the database ports at boot. Removed with the\n" +
-		"# last remote access rule.\n" +
+		"# Run by " + NFTUnitName + " at boot and by " + NFTTimerName + " every\n" +
+		"# " + nftGuardIntervalS + ": loads the address filter again when it is missing. Works\n" +
+		"# without CelikPanel. Removed with the last remote access rule.\n" +
+		"set -u\n" +
+		"nft=" + nftProgram + "\n" +
+		"if ! \"$nft\" list chain inet " + NFTTable + " input 2>/dev/null | grep -q ' drop'; then\n" +
+		"\techo \"celikpanel-dbremote: the database port filter was missing; loading " + NFTPath + " again\"\n" +
+		"\t\"$nft\" -f " + NFTPath + " || { echo \"celikpanel-dbremote: nft could not load the filter\"; exit 1; }\n" +
+		"fi\n", nil
+}
+
+// NFTUnit renders the guard's unit: before the network at boot, so the
+// filter is in place before an engine can be reached, and on the timer.
+func NFTUnit(nftProgram string) (string, error) {
+	if err := plainProgram(nftProgram); err != nil {
+		return "", err
+	}
+	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
+		"# Loads the address filter of the database ports at boot and keeps it\n" +
+		"# loaded (" + NFTTimerName + "). Removed with the last remote access rule.\n" +
 		"[Unit]\n" +
 		"Description=CelikPanel remote database access filter (nftables)\n" +
 		"DefaultDependencies=no\n" +
@@ -113,9 +148,25 @@ func NFTUnit(nftProgram string) (string, error) {
 		"\n" +
 		"[Service]\n" +
 		"Type=oneshot\n" +
-		"RemainAfterExit=yes\n" +
-		"ExecStart=" + nftProgram + " -f " + NFTPath + "\n" +
+		"ExecStart=/bin/sh " + NFTGuardPath + "\n" +
 		"\n" +
 		"[Install]\n" +
 		"WantedBy=sysinit.target\n", nil
+}
+
+// NFTTimer renders the guard's timer.
+func NFTTimer() string {
+	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
+		"# Keeps the database port filter loaded. Removed with the last rule.\n" +
+		"[Unit]\n" +
+		"Description=CelikPanel remote database access filter guard\n" +
+		"\n" +
+		"[Timer]\n" +
+		"OnBootSec=" + nftGuardIntervalS + "\n" +
+		"OnUnitActiveSec=" + nftGuardIntervalS + "\n" +
+		"AccuracySec=5s\n" +
+		"Unit=" + NFTUnitName + "\n" +
+		"\n" +
+		"[Install]\n" +
+		"WantedBy=timers.target\n"
 }

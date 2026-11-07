@@ -60,6 +60,7 @@ func (r *databaseRemoteRecorder) install(t *testing.T) {
 			}
 			if !r.unfiltered[target.Port] {
 				answer.FilterPorts = append(answer.FilterPorts, target.Port)
+				answer.FilterLoaded = true
 			}
 			for _, rule := range target.Rules {
 				if code := r.refuse[rule.Address]; code != "" {
@@ -468,5 +469,40 @@ func TestDatabaseRemoteFirewallOpensOnlyFilteredPorts(t *testing.T) {
 				t.Fatalf("ports = %v, want open %v", ports, c.open)
 			}
 		})
+	}
+}
+
+// Review L2: a filter that is no longer loaded closes the port at once.
+func TestDatabaseRemoteProbeClosesThePortWhenTheFilterIsGone(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	dbrOffer(t, p, true)
+	if _, err := p.db.GetDB().Exec(`INSERT INTO database_remote_rules (database_id, user_id, address) VALUES (7530, 7540, '203.0.113.7/32')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := p.applyDatabaseRemote(context.Background(), true); err != nil {
+		t.Fatal(err)
+	}
+	if ports := p.databaseRemoteFirewallPorts(); len(ports) != 1 {
+		t.Fatalf("not open: %v", ports)
+	}
+	loaded := false
+	databaseRemoteStatusFromAgent = func(*Panel, context.Context, transport.DatabaseRemoteStatusRequest) (transport.DatabaseRemoteResponse, error) {
+		return transport.DatabaseRemoteResponse{NFTAvailable: true, FilterPorts: []int{3306}, FilterLoaded: loaded}, nil
+	}
+	p.probeDatabaseRemoteFilter(context.Background())
+	if ports := p.databaseRemoteFirewallPorts(); len(ports) != 0 {
+		t.Fatalf("open while the filter is gone: %v", ports)
+	}
+	select {
+	case <-databaseRemoteMemory.kick:
+	default:
+		t.Fatal("no apply was asked to load the filter again")
+	}
+	loaded = true
+	p.probeDatabaseRemoteFilter(context.Background())
+	if ports := p.databaseRemoteFirewallPorts(); len(ports) != 1 {
+		t.Fatalf("not reopened once the filter is back: %v", ports)
 	}
 }
