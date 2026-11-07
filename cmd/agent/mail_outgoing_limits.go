@@ -51,6 +51,16 @@ import (
 // request cache without counting them (--cache=600 in Arch's unit), so the
 // Arch drop-in starts it with --cache=0.
 //
+// postfwd 1.x (Debian, Ubuntu) is restarted, not reloaded, to take changed
+// rules: its manual says a changed rate rule needs a restart with
+// --keep_rates, and on Debian 12 and Ubuntu 22.04 (alpha.129 lab) the
+// prefork children kept the old rules after a reload, so a limit set after
+// "limits on" was not applied and a lifted pause answered 550 for minutes.
+// The counters survive the restart: the drop-in adds --save_rates (the cache
+// daemon stores them at its end and loads them at its start) in a folder the
+// drop-in's ExecStartPre gives to postfwd's own user. Postfix's DUNNO default
+// action keeps mail flowing during the restart.
+//
 // Giden posta sınırları: postfwd dağıtımın kendi deposundan gelir; CelikPanel
 // yerel kural dosyasını ve listelerini yazar, postfwd -C ile denetler,
 // sayaçları koruyarak yeniden yükletir ve öz sınamayla saydığını kanıtlar;
@@ -98,7 +108,15 @@ type outgoingLayout struct {
 	dropIn   string
 	unit     string
 	execLine string
+	// applyByRestart: postfwd 1.x takes changed rules only with a restart
+	// (the reload leaves its prefork children on the old rules).
+	applyByRestart bool
+	// preStart is the drop-in's ExecStartPre line ("" for none).
+	preStart string
 }
+
+// aptPostfwdRateDir holds postfwd 1.x's saved counters (--save_rates).
+const aptPostfwdRateDir = "/var/lib/celikpanel-postfwd"
 
 // outgoingLayoutFor is replaced by tests.
 var outgoingLayoutFor = outgoingLayoutForFamily
@@ -120,8 +138,12 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 			listDir: "/etc/postfix/celikpanel-postfwd",
 			dropIn:  "/etc/systemd/system/postfwd.service.d/celikpanel.conf",
 			unit:    "postfwd",
-			execLine: "/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --daemon --file $CONF --interface $INET --port $PORT " +
-				"--user $RUNAS --group $RUNAS --pidfile $PIDFILE",
+			execLine: "/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --save_rates " + aptPostfwdRateDir + "/rates " +
+				"--daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE",
+			applyByRestart: true,
+			// The counters are written by the cache daemon after it drops to
+			// $RUNAS (postfw), so the folder is that user's.
+			preStart: "+/usr/bin/install -d -o ${RUNAS} -g ${RUNAS} -m 0700 " + aptPostfwdRateDir,
 		}, true
 	case "pacman":
 		return outgoingLayout{
@@ -146,10 +168,19 @@ func (l outgoingLayout) dropInContent() string {
 		"# turns off the request cache, which answers a repeated request with an",
 		"# earlier decision: a lifted pause or a changed limit would wait for it,",
 		"# and repeated end-of-message requests would not be counted (--cache=0)."}
+	if l.applyByRestart {
+		lines = append(lines,
+			"# postfwd 1.x is restarted to take changed rules; it saves its counters",
+			"# at its end and loads them at its start (--save_rates).")
+	}
 	lines = append(lines,
 		"# Remove this file and run systemctl daemon-reload to return to the",
 		"# package's own start line.",
-		"[Service]", "ExecStart=", "ExecStart="+l.execLine, "")
+		"[Service]")
+	if l.preStart != "" {
+		lines = append(lines, "ExecStartPre="+l.preStart)
+	}
+	lines = append(lines, "ExecStart=", "ExecStart="+l.execLine, "")
 	return strings.Join(lines, "\n")
 }
 
@@ -1059,6 +1090,8 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 		action = []string{"enable", "--now", layout.unit}
 	case dropInChanged:
 		action = []string{"restart", layout.unit}
+	case (configChanged || filesChanged) && layout.applyByRestart:
+		action = []string{"restart", layout.unit}
 	case configChanged || filesChanged:
 		action = []string{"reload", layout.unit}
 	}
@@ -1074,7 +1107,11 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 			fail(transport.OutgoingMailServiceFailed, fmt.Errorf("postfwd did not take the rules (systemctl %s): %s", strings.Join(action, " "), boundedNativeDetail(firstNonEmpty(string(out), err.Error()))))
 			return
 		}
-		step("postfwd took the new rules and kept its counters")
+		if action[0] == "restart" && !dropInChanged {
+			step("postfwd was restarted to take the new rules (postfwd 1.x); it kept its counters, and mail flowed meanwhile")
+		} else {
+			step("postfwd took the new rules and kept its counters")
+		}
 	} else {
 		_, _ = outgoingRun(ctx, "systemctl", "enable", layout.unit)
 	}
