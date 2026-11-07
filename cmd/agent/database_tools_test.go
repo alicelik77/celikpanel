@@ -127,8 +127,16 @@ func TestLoadPGStatementsReportsTheFailingLine(t *testing.T) {
 	exec := &fakePGExec{failOn: "broken"}
 	err := loadPGStatements(context.Background(), exec, strings.NewReader("SELECT 1;\n\nSELECT broken;\n"))
 	var statement *pgLoadStatementError
-	if !errors.As(err, &statement) || statement.Line != 1 {
+	if !errors.As(err, &statement) || statement.Line != 1 || statement.EndLine != 3 {
 		t.Fatalf("err = %#v", err)
+	}
+	// The batch is named as a range, not as its first line (alpha.128 lab).
+	if got := statement.where(); got != "starting on one of lines 1–3" {
+		t.Fatalf("where = %q", got)
+	}
+	single := &pgLoadStatementError{Line: 4, EndLine: 4}
+	if got := single.where(); got != "near line 4" {
+		t.Fatalf("single where = %q", got)
 	}
 }
 

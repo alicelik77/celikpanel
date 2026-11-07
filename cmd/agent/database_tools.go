@@ -508,7 +508,7 @@ func importPostgreSQL(ctx context.Context, database backupspec.DatabaseIdentity,
 	var statement *pgLoadStatementError
 	if errors.As(loadErr, &statement) {
 		resp.Code = transport.DBImportCodeLoadFailed
-		resp.Error = boundedText(fmt.Sprintf("line %d: %s", statement.Line, pgErrorText(statement.Err)), 400)
+		resp.Error = boundedText(fmt.Sprintf("%s: %s", strings.TrimPrefix(statement.where(), "near "), pgErrorText(statement.Err)), 400)
 		return
 	}
 	resp.Code, resp.Error = transport.DBImportCodeLoadFailed, boundedText(pgErrorText(loadErr), 400)
