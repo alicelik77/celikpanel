@@ -18,8 +18,25 @@ const wordpressDatabaseOwnershipTable = "celikpanel_install_ownership"
 
 var mysqlExecStatement = runMySQLStatement
 
+// mysqlStatementProgram is the MariaDB client the Agent runs statements with.
+// Started as "mysql", MariaDB 11 and later print "mysql: Deprecated program
+// name ..." on stderr before every answer. runMySQLStatement reads stdout and
+// stderr together, so an exact read such as the ownership proof never
+// matched: on Arch (MariaDB 13) a refused website copy left its new database
+// and user behind while the panel forgot them (alpha.129 lab). "mariadb" is
+// the client's name on every supported system; "mysql" stays the fallback.
+//
+// MariaDB 11 ve sonrası "mysql" adıyla başlatıldığında stderr'e uyarı yazar;
+// birleşik çıktıda bu satır sahiplik kanıtını bozuyordu. "mariadb" kullanılır.
+var mysqlStatementProgram = func() string {
+	if path, err := exec.LookPath("mariadb"); err == nil {
+		return path
+	}
+	return "mysql"
+}
+
 func newMySQLStatementCommand(statement string) *exec.Cmd {
-	command := exec.Command("mysql", "--batch", "--skip-column-names")
+	command := exec.Command(mysqlStatementProgram(), "--batch", "--skip-column-names")
 	command.Stdin = strings.NewReader(statement + "\n")
 	return command
 }
