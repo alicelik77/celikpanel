@@ -88,10 +88,14 @@ var mariadbPlugins = map[string]bool{"mysql_native_password": true, "ed25519": t
 
 var mariadbAuthText = regexp.MustCompile(`^[A-Za-z0-9*+/=.$_-]{1,512}$`)
 
-// MariaDBCredential is the local account's plugin and stored value.
+// MariaDBCredential is what a remote copy takes from the local account:
+// the plugin and stored value, its connection limit (review L1; 0 = none)
+// and whether it is locked (suspension, review M1).
 type MariaDBCredential struct {
-	Plugin string
-	Auth   string
+	Plugin             string
+	Auth               string
+	MaxUserConnections int
+	Locked             bool
 }
 
 // Validate refuses a credential that cannot be copied safely.
@@ -101,6 +105,9 @@ func (c MariaDBCredential) Validate() error {
 	}
 	if !mariadbAuthText.MatchString(c.Auth) {
 		return errors.New("the local account has no password stored in a form CelikPanel can copy; set a new password for this user once")
+	}
+	if c.MaxUserConnections < 0 || c.MaxUserConnections > 1000000 {
+		return errors.New("the local account's connection limit is out of range")
 	}
 	return nil
 }
@@ -164,7 +171,12 @@ func mariadbIdentified(verb, user, host string, credential MariaDBCredential) (s
 	if err := credential.Validate(); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s %s IDENTIFIED VIA %s USING %s REQUIRE SSL;", verb, name, credential.Plugin, mysqlString(credential.Auth)), nil
+	lock := "ACCOUNT UNLOCK"
+	if credential.Locked {
+		lock = "ACCOUNT LOCK"
+	}
+	return fmt.Sprintf("%s %s IDENTIFIED VIA %s USING %s REQUIRE SSL WITH MAX_USER_CONNECTIONS %d %s;",
+		verb, name, credential.Plugin, mysqlString(credential.Auth), credential.MaxUserConnections, lock), nil
 }
 
 // DropMariaDBAccount removes a remote account.

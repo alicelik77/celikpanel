@@ -186,7 +186,7 @@ func TestMariaDBStatementsNeverUseWildcardsAndRequireTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if create != "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL;" {
+	if create != "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL WITH MAX_USER_CONNECTIONS 0 ACCOUNT UNLOCK;" {
 		t.Fatalf("create = %s", create)
 	}
 	for _, host := range []string{"%", "localhost", "127.0.0.1", "example.com", "10.%", "10.0.0.0/255.0.0.0", "10.0.0.0/255.255.0.255", ""} {
@@ -201,6 +201,13 @@ func TestMariaDBStatementsNeverUseWildcardsAndRequireTLS(t *testing.T) {
 		if _, err := CreateMariaDBAccount("shop_u", "203.0.113.7", bad); err == nil {
 			t.Errorf("credential %+v accepted", bad.Plugin)
 		}
+	}
+	limited, _ := AlterMariaDBAccount("shop_u", "203.0.113.7", MariaDBCredential{Plugin: "ed25519", Auth: "ZIgUREUg5PVgQ6LskhXmO+eZLS0nC8be6HPjYWR4YJY", MaxUserConnections: 15, Locked: true})
+	if !strings.HasSuffix(limited, " REQUIRE SSL WITH MAX_USER_CONNECTIONS 15 ACCOUNT LOCK;") {
+		t.Fatalf("limit and lock not copied: %s", limited)
+	}
+	if _, err := CreateMariaDBAccount("shop_u", "203.0.113.7", MariaDBCredential{Plugin: "ed25519", Auth: "x", MaxUserConnections: -1}); err == nil {
+		t.Fatal("a negative limit accepted")
 	}
 	grant, err := GrantMariaDB("SELECT, INSERT", "shop", "shop_u", "198.51.100.0/255.255.255.0")
 	if err != nil || grant != "GRANT SELECT, INSERT ON `shop`.* TO 'shop_u'@'198.51.100.0/255.255.255.0';" {

@@ -103,6 +103,8 @@ type fakeMariaDB struct {
 	accounts map[string]bool // user@host
 	grants   map[string][]string
 	executed []string
+	limit    string // the local account's max_user_connections
+	locked   string // "1" when the local account is locked
 }
 
 func (f *fakeMariaDB) query(statement string) (string, error) {
@@ -110,10 +112,10 @@ func (f *fakeMariaDB) query(statement string) (string, error) {
 	switch {
 	case strings.HasPrefix(statement, "SELECT @@bind_address"):
 		return "127.0.0.1\t0\tYES\t3306\n", nil
-	case strings.HasPrefix(statement, "SELECT plugin, authentication_string FROM mysql.user WHERE User = 'shop_u'"):
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\n", nil
-	case strings.HasPrefix(statement, "SELECT plugin, authentication_string FROM mysql.user WHERE User = 'boss'"):
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\n", nil
+	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'"):
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\n", nil
+	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'boss'"):
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t0\t0\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin"):
 		return "", nil
 	case strings.HasPrefix(statement, "SHOW GRANTS FOR 'shop_u'"):
@@ -164,7 +166,7 @@ func withFakeMariaDB(t *testing.T, f *fakeMariaDB) map[string][]byte {
 }
 
 func TestMariaDBRemoteApplyCreatesTLSAccountsAndRefusesOthers(t *testing.T) {
-	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true, "shop_u@198.51.100.9": true}}
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true, "shop_u@198.51.100.9": true}, limit: "15"}
 	files := withFakeMariaDB(t, f)
 	target, err := dbremote.Target{Engine: "mysql", Port: 3306, Rules: []dbremote.Rule{
 		{Database: "shop", User: "shop_u", Address: "203.0.113.7"},
@@ -194,7 +196,7 @@ func TestMariaDBRemoteApplyCreatesTLSAccountsAndRefusesOthers(t *testing.T) {
 		t.Fatalf("recorded accounts = %v", ts.Accounts)
 	}
 	joined := strings.Join(f.executed, "\n")
-	if !strings.Contains(joined, "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL;") ||
+	if !strings.Contains(joined, "CREATE USER 'shop_u'@'203.0.113.7' IDENTIFIED VIA mysql_native_password USING '*0123456789ABCDEF0123456789ABCDEF01234567' REQUIRE SSL WITH MAX_USER_CONNECTIONS 15 ACCOUNT UNLOCK;") ||
 		!strings.Contains(joined, "GRANT ALL PRIVILEGES ON `shop`.* TO 'shop_u'@'203.0.113.7';") {
 		t.Fatalf("statements:\n%s", joined)
 	}
@@ -312,4 +314,11 @@ func TestNormalizeDBRemoteRequestRefusesRepeatsAndBadRules(t *testing.T) {
 	if _, err := normalizeDBRemoteRequest([]transport.DatabaseRemoteTarget{{Engine: "mysql", Port: 3306, Rules: []transport.DatabaseRemoteRule{{Database: "shop", User: "shop_u", Address: "0.0.0.0/0"}}}}); err == nil {
 		t.Fatal("0.0.0.0/0 was accepted")
 	}
+}
+
+func orDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }

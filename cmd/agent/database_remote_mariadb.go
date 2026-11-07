@@ -146,7 +146,9 @@ func mariadbLocalAccount(user string) (dbremote.MariaDBCredential, dbremote.Loca
 		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, err
 	}
 	quoted := "'" + user + "'" // a checked identifier
-	out, err := databaseRemoteMySQLQuery("SELECT plugin, authentication_string FROM mysql.user WHERE User = " + quoted + " AND Host = 'localhost';")
+	out, err := databaseRemoteMySQLQuery("SELECT plugin, authentication_string, max_user_connections, " +
+		"IF(JSON_VALUE(Priv, '$.account_locked') IN ('true', '1'), 1, 0) FROM mysql.global_priv " +
+		"JOIN mysql.user USING (User, Host) WHERE User = " + quoted + " AND Host = 'localhost';")
 	if err != nil {
 		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, err
 	}
@@ -154,8 +156,15 @@ func mariadbLocalAccount(user string) (dbremote.MariaDBCredential, dbremote.Loca
 	if len(rows) != 1 {
 		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, errMariaDBUserMissing
 	}
-	plugin, auth, _ := strings.Cut(rows[0], "\t")
-	credential := dbremote.MariaDBCredential{Plugin: plugin, Auth: auth}
+	fields := strings.Split(rows[0], "\t")
+	if len(fields) != 4 {
+		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, errors.New("MariaDB's answer about the account could not be read")
+	}
+	limit, err := strconv.Atoi(fields[2])
+	if err != nil {
+		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, errors.New("MariaDB's answer about the account's connection limit could not be read")
+	}
+	credential := dbremote.MariaDBCredential{Plugin: fields[0], Auth: fields[1], MaxUserConnections: limit, Locked: fields[3] == "1"}
 	grantsOut, err := databaseRemoteMySQLQuery("SHOW GRANTS FOR " + quoted + "@'localhost';")
 	if err != nil {
 		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, err

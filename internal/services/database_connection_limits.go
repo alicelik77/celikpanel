@@ -59,6 +59,16 @@ func (d *MariaDBDriver) SetUserConnectionLimit(username string, limit int) error
 	if err := d.executeSQL(statement); err != nil {
 		return fmt.Errorf("set the connection limit of %s: %w", username, err)
 	}
+	// alpha.129 (review L1): the user's remote copies take the same limit.
+	userLiteral, err := QuoteMySQLStringLiteral(username)
+	if err != nil {
+		return err
+	}
+	if err := d.forEachRemoteCopy(userLiteral, func(account string) string {
+		return fmt.Sprintf("ALTER USER %s WITH MAX_USER_CONNECTIONS %d;", account, limit)
+	}); err != nil {
+		return fmt.Errorf("set the connection limit of %s's remote copies: %w", username, err)
+	}
 	return nil
 }
 
