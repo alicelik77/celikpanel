@@ -1052,7 +1052,8 @@ func (hostDNSEngineBackend) Sync(
 			}
 		}
 		if output, commandErr := runDNSSystemctl(applyCtx, systemctl, "reload", layout.Unit); commandErr != nil {
-			return fmt.Errorf("reload BIND: %w: %s", commandErr, firstLine(string(output)))
+			// A reload cut by the deadline did not say what BIND loaded.
+			return checkresult.IfContextEnded(applyCtx, fmt.Errorf("reload BIND: %w: %s", commandErr, firstLine(string(output))))
 		}
 		if err := verifyOnlyBINDActive(applyCtx, profile, systemctl); err != nil {
 			return err
@@ -2917,7 +2918,22 @@ func rollbackBINDActivationWithOps(
 		RestoreSource:            ops.restoreSource,
 	})
 }
+
+// verifyOnlyBINDActive asks again, with growing pauses, while the proof
+// could not finish (checkresult.Retry): on a busy server a slow dpkg-query
+// is waited out instead of becoming a rollback that stops BIND (alpha.129
+// lab, Debian 12).
 func verifyOnlyBINDActive(
+	ctx context.Context,
+	profile hostplatform.Profile,
+	systemctl string,
+) error {
+	return checkresult.Retry(ctx, checkresult.RetryWaits, func() error {
+		return verifyOnlyBINDActiveOnce(ctx, profile, systemctl)
+	})
+}
+
+func verifyOnlyBINDActiveOnce(
 	ctx context.Context,
 	profile hostplatform.Profile,
 	systemctl string,
@@ -3249,12 +3265,20 @@ func requireDNSPanelWriteAuthority(state dnsEngineStateReceipt) error {
 	return nil
 }
 
+// verifyOnlyPDNSActive: as verifyOnlyBINDActive, an unfinished proof is
+// unknown and asked again (checkresult).
 func verifyOnlyPDNSActive(ctx context.Context, systemctl string) error {
 	if ctx == nil {
 		return errors.New("verify active PowerDNS requires a context")
 	}
-	proofCtx, cancel := context.WithTimeout(ctx, dnsRuntimeInspectionTimeout)
-	defer cancel()
+	return checkresult.Retry(ctx, checkresult.RetryWaits, func() error {
+		proofCtx, cancel := context.WithTimeout(ctx, dnsRuntimeInspectionTimeout)
+		defer cancel()
+		return checkresult.IfContextEnded(proofCtx, verifyOnlyPDNSActiveOnce(proofCtx, systemctl))
+	})
+}
+
+func verifyOnlyPDNSActiveOnce(proofCtx context.Context, systemctl string) error {
 	profile, err := verifiedHostProfileForAnyFamily()
 	if err != nil {
 		return err
@@ -3692,6 +3716,10 @@ func bindUnitIdentityProofOperations(
 	}, nil
 }
 
+// verifyBINDPreEnableIdentity is the first configuration's proof before
+// BIND is enabled (alpha.121 lab: "verify BIND vendor identity before
+// enabling aliases"). A proof that could not finish is asked again with
+// growing pauses and stays unknown, never "not the vendor's BIND".
 func verifyBINDPreEnableIdentity(
 	ctx context.Context,
 	profile hostplatform.Profile,
@@ -3700,18 +3728,20 @@ func verifyBINDPreEnableIdentity(
 	if ctx == nil {
 		return errors.New("BIND pre-enable proof requires a context")
 	}
-	proofCtx, cancel := context.WithTimeout(ctx, dnsRuntimeInspectionTimeout)
-	defer cancel()
-	ops, err := bindUnitIdentityProofOperations(proofCtx, profile, systemctl)
-	if err != nil {
-		return err
-	}
-	return verifyBINDUnitIdentityWithOps(profile, bindUnitIdentityProofMode{
-		aptAliasEnabled:      false,
-		requireInactive:      true,
-		requireStopped:       true,
-		requireNamedDisabled: true,
-	}, ops)
+	return checkresult.Retry(ctx, checkresult.RetryWaits, func() error {
+		proofCtx, cancel := context.WithTimeout(ctx, dnsRuntimeInspectionTimeout)
+		defer cancel()
+		ops, err := bindUnitIdentityProofOperations(proofCtx, profile, systemctl)
+		if err != nil {
+			return checkresult.IfContextEnded(proofCtx, err)
+		}
+		return checkresult.IfContextEnded(proofCtx, verifyBINDUnitIdentityWithOps(profile, bindUnitIdentityProofMode{
+			aptAliasEnabled:      false,
+			requireInactive:      true,
+			requireStopped:       true,
+			requireNamedDisabled: true,
+		}, ops))
+	})
 }
 
 func verifyBINDPreStartIdentity(

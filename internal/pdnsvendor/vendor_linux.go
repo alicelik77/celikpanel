@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/bindroot"
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/pacmanlocal"
 	"golang.org/x/sys/unix"
@@ -37,14 +38,17 @@ func installedPackageOwner(ctx context.Context) ([]byte, error) {
 	if !ok || stat.Uid != 0 {
 		return nil, errors.New("native dpkg-query executable is not root-owned")
 	}
-	queryCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	// dpkg-query reads every package list; on a busy server 3 s was too
+	// short (alpha.129 lab, BIND's twin proof). A query cut by the deadline
+	// is unknown (checkresult), never "not the package's".
+	queryCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(queryCtx, path, "-S", "--", UnitPath)
 	cmd.Env = []string{"PATH=/usr/bin:/usr/sbin", "LC_ALL=C"}
 	output := &boundedOwnerOutput{}
 	cmd.Stdout = output
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("inspect PowerDNS package owner: %w", err)
+		return nil, checkresult.IfContextEnded(queryCtx, fmt.Errorf("inspect PowerDNS package owner: %w", err))
 	}
 	after, err := os.Lstat(path)
 	if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() {

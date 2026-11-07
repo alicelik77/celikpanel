@@ -15,6 +15,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"os"
+	"time"
 )
 
 // ErrIncomplete marks an error whose check did not finish.
@@ -39,8 +42,41 @@ func IfContextEnded(ctx context.Context, err error) error {
 	if ctx != nil && ctx.Err() != nil {
 		return Incomplete(err)
 	}
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.Is(err, os.ErrDeadlineExceeded) {
 		return Incomplete(err)
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return Incomplete(err)
+	}
+	return err
+}
+
+// RetryWaits are the pauses between the attempts of Retry: a check that
+// could not finish is asked again a few times, more slowly each time, before
+// its unknown result is returned (the server is usually just busy: installs
+// running, alpha.129 lab).
+var RetryWaits = []time.Duration{5 * time.Second, 15 * time.Second, 30 * time.Second}
+
+// Retry runs check and, while its result is an unfinished check and ctx has
+// not ended, waits the next of waits and runs it again. A finished result
+// (nil or a verified failure) is returned at once; after the last wait the
+// unknown result is returned as it is. check gets its own deadline each time
+// (callers bound one attempt, not the whole retry).
+func Retry(ctx context.Context, waits []time.Duration, check func() error) error {
+	err := check()
+	for _, wait := range waits {
+		if !Is(err) || ctx == nil || ctx.Err() != nil {
+			return err
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return err
+		case <-timer.C:
+		}
+		err = check()
 	}
 	return err
 }

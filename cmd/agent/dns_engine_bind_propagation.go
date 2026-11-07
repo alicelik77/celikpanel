@@ -283,8 +283,13 @@ func verifyRestoredBINDV3GenerationAt(
 	if err != nil {
 		return err
 	}
-	if verifyLocal == nil || verifyLocal(ctx, expected) != nil {
+	if verifyLocal == nil {
 		return errors.New("BIND rollback did not restore exact local authority")
+	}
+	if err := verifyLocal(ctx, expected); err != nil {
+		// The cause is kept: a check that could not finish stays unknown
+		// (checkresult), so the publisher keeps BIND running on it.
+		return fmt.Errorf("BIND rollback did not restore exact local authority: %w", err)
 	}
 	if current.Pairing == nil {
 		return nil

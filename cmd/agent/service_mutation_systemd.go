@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/checkresult"
 )
 
 const serviceMutationUnitWait = 8 * time.Second
@@ -82,9 +84,14 @@ func verifyServiceMutationUnitWithExecutable(ctx context.Context, systemctl, ser
 		probeCtx, cancel := context.WithTimeout(reconcileCtx, 2*time.Second)
 		if !wantActive {
 			out, err := runServiceMutationCombinedOutput(probeCtx, systemctl, "is-enabled", serviceName)
+			ended := probeCtx.Err() != nil
 			cancel()
 			if err == nil && strings.TrimSpace(string(out)) == "enabled" {
 				return nil
+			}
+			if ended {
+				// systemctl did not answer in time: unknown, not "not enabled".
+				return checkresult.Incomplete(fmt.Errorf("%s: systemctl is-enabled did not answer in time", serviceName))
 			}
 			return fmt.Errorf("%s did not become enabled", serviceName)
 		}
@@ -95,6 +102,7 @@ func verifyServiceMutationUnitWithExecutable(ctx context.Context, systemctl, ser
 			"--property=ActiveState,SubState,Result,ConditionResult",
 			"--no-pager",
 		)
+		lastUnanswered := err != nil && (probeCtx.Err() != nil || strings.TrimSpace(string(out)) == "")
 		cancel()
 		state := string(out)
 		if err == nil && strings.Contains(state, "ActiveState=active") {
@@ -105,6 +113,11 @@ func verifyServiceMutationUnitWithExecutable(ctx context.Context, systemctl, ser
 			return fmt.Errorf("%s did not become active (%s)", serviceName, firstLine(state))
 		}
 		if time.Now().After(deadline) {
+			if lastUnanswered {
+				// The last reading never came (systemctl or D-Bus timed
+				// out): the unit's state is unknown, not "inactive".
+				return checkresult.Incomplete(fmt.Errorf("%s: systemctl show did not answer in time", serviceName))
+			}
 			return fmt.Errorf("%s did not become active (%s)", serviceName, firstLine(state))
 		}
 		time.Sleep(200 * time.Millisecond)
