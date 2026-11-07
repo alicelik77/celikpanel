@@ -9,6 +9,7 @@ import { useRemote } from '../lib/remote';
 import { useAuth } from '../auth/AuthContext';
 import { Link } from '../router';
 import { Button, RemoteGate, inputClass } from './ui';
+import { PasswordInput } from './PasswordInput';
 
 // Remote API (alpha.128, G15; docs/REMOTE-API.md). Two pieces, one chunk:
 // the "API tokens" card on My account (make a token with a name, a scope and
@@ -51,6 +52,8 @@ export interface ApiTokensState {
     grantorName: string;
     maxTokens: number;
     lifetimes: number[];
+    /** Making a token asks for the two-factor code as well. */
+    twoFactor: boolean;
     tokens: ApiTokenItem[];
 }
 
@@ -84,6 +87,7 @@ export function decodeApiTokens(raw: unknown): ApiTokensState {
         grantorName: typeof raw.grantor_name === 'string' ? raw.grantor_name : '',
         maxTokens: typeof raw.max_tokens === 'number' ? raw.max_tokens : 20,
         lifetimes,
+        twoFactor: raw.two_factor === true,
         tokens,
     };
 }
@@ -126,6 +130,8 @@ async function createRefusal(res: Response, w: Words, max: number): Promise<stri
         case 'API_TOKEN_NOT_PERMITTED': return w('apitok.error.permission');
         case 'API_TOKEN_LIMIT': return w('apitok.limit', { n: max });
         case 'API_TOKEN_REQUEST_INVALID': return w('apitok.nameRequired');
+        case 'API_TOKEN_REAUTH': return w('apitok.reauthFailed');
+        case 'API_TOKEN_REAUTH_LIMITED': return w('apitok.reauthLimited');
         case 'REQUEST_COMPLETED_RESULT_NOT_RETAINED': return w('apitok.notRetained');
     }
     return error.message || w('apitok.error.generic');
@@ -138,6 +144,8 @@ export function ApiTokensCard() {
     const [name, setName] = useState('');
     const [scope, setScope] = useState<'read' | 'manage'>('read');
     const [days, setDays] = useState(90);
+    const [password, setPassword] = useState('');
+    const [code, setCode] = useState('');
     const [busy, setBusy] = useState(false);
     const [problem, setProblem] = useState('');
     const [made, setMade] = useState<{ token: string; name: string } | null>(null);
@@ -153,13 +161,17 @@ export function ApiTokensCard() {
             setProblem(w('apitok.limit', { n: state.maxTokens }));
             return;
         }
+        if (!password || (state.twoFactor && code.length !== 6)) {
+            setProblem(w(state.twoFactor ? 'apitok.reauthNeededCode' : 'apitok.reauthNeeded'));
+            return;
+        }
         setBusy(true);
         setProblem('');
         try {
             const res = await fetch(API_TOKENS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: trimmed, scope, expires_days: days }),
+                body: JSON.stringify({ name: trimmed, scope, expires_days: days, password, ...(state.twoFactor ? { code } : {}) }),
             });
             if (!res.ok) {
                 setProblem(await createRefusal(res, w, state.maxTokens));
@@ -174,6 +186,8 @@ export function ApiTokensCard() {
             setMade({ token, name: trimmed });
             setCopied(false);
             setName('');
+            setPassword('');
+            setCode('');
         } catch {
             // The answer did not arrive: whether a token was made is not known.
             setProblem(w('apitok.unknown'));
@@ -269,6 +283,25 @@ export function ApiTokensCard() {
                                             {state.lifetimes.map((n) => <option key={n} value={n}>{w('apitok.days', { n })}</option>)}
                                         </select>
                                     </label>
+                                    <label className="grid gap-1 text-sm text-fg sm:col-span-2">
+                                        {w('apitok.password')}
+                                        <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" disabled={busy} />
+                                    </label>
+                                    {state.twoFactor && (
+                                        <label className="grid gap-1 text-sm text-fg">
+                                            {w('apitok.code')}
+                                            <input
+                                                className={`${inputClass} font-mono tracking-[0.3em]`}
+                                                value={code}
+                                                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                inputMode="numeric"
+                                                autoComplete="one-time-code"
+                                                placeholder="000000"
+                                                disabled={busy}
+                                            />
+                                        </label>
+                                    )}
+                                    <p className="text-xs text-fg-muted sm:col-span-3">{w('apitok.reauthHint')}</p>
                                     <div className="sm:col-span-3">
                                         <Button type="submit" variant="primary" icon={KeyRound} loading={busy} className="max-sm:min-h-11">
                                             {busy ? w('apitok.creating') : w('apitok.create')}

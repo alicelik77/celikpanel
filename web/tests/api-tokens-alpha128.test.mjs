@@ -132,7 +132,7 @@ test('the card lists the tokens and makes one: the token is shown once, the list
   let made = false;
   const token = 'cpk_zzzzzzzzzzzz_' + 'A'.repeat(43);
   serve({ '/api/v1/account/api-tokens': () => Response.json(made ? listAnswer({ tokens: [...listAnswer().tokens, { id: 5, name: 'ci', prefix: 'cpk_zzzzzzzzzzzz', scope: 'read', state: 'active', created_at: 1, expires_at: 2 }] }) : listAnswer()) },
-    { 'POST /api/v1/account/api-tokens': (options) => { made = true; assert.deepEqual(JSON.parse(options.body), { name: 'ci', scope: 'read', expires_days: 90 }); return Response.json({ token, item: {} }, { status: 201 }); } });
+    { 'POST /api/v1/account/api-tokens': (options) => { made = true; assert.deepEqual(JSON.parse(options.body), { name: 'ci', scope: 'read', expires_days: 90, password: 'pw-now' }); return Response.json({ token, item: {} }, { status: 201 }); } });
   try {
     await mount(ApiTokensCard);
     const body = text();
@@ -145,8 +145,13 @@ test('the card lists the tokens and makes one: the token is shown once, the list
     await act2(() => form.props.onSubmit({ preventDefault() {} }));
     assert.ok(text().includes(say('apitok.nameRequired')));
     assert.equal(calls.filter((call) => call.method === 'POST').length, 0);
-    const input = tree.root.findByType('input');
+    const input = tree.root.findAllByType('input')[0];
     await act2(() => input.props.onChange({ target: { value: '  ci ' } }));
+    // Without the password nothing is sent, and the card says what it needs.
+    await act2(() => tree.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.ok(text().includes(say('apitok.reauthNeeded')));
+    assert.equal(calls.filter((call) => call.method === 'POST').length, 0);
+    await act2(() => tree.root.findAll((node) => node.props && node.props.autoComplete === 'current-password' && typeof node.props.onChange === 'function')[0].props.onChange('pw-now'));
     await act2(() => tree.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
     assert.ok(text().includes(token), 'the new token is not shown');
@@ -214,7 +219,8 @@ test('a create whose answer did not arrive is unknown, not failed, and the list 
   try {
     await mount(ApiTokensCard);
     const before = reads('/api/v1/account/api-tokens');
-    await act2(() => tree.root.findByType('input').props.onChange({ target: { value: 'x' } }));
+    await act2(() => tree.root.findAllByType('input')[0].props.onChange({ target: { value: 'x' } }));
+    await act2(() => tree.root.findAll((node) => node.props && node.props.autoComplete === 'current-password' && typeof node.props.onChange === 'function')[0].props.onChange('pw'));
     await act2(() => tree.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.ok(text().includes(say('apitok.unknown')), text());
     assert.ok(reads('/api/v1/account/api-tokens') > before);
@@ -246,6 +252,29 @@ test('the switch: turning on asks first and says what it opens; the state reads 
     };
     await act2(() => buttonsWith(say('apitok.switch.turnOff'))[0].props.onClick({}));
     assert.ok(text().includes(say('apitok.switch.off')));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('with two-factor sign-in on, the card asks for the code and sends it with the password', async () => {
+  let sent = null;
+  serve({ '/api/v1/account/api-tokens': () => Response.json(listAnswer({ two_factor: true })) },
+    { 'POST /api/v1/account/api-tokens': (options) => { sent = JSON.parse(options.body); return Response.json({ error: 'wrong', code: 'API_TOKEN_REAUTH' }, { status: 403 }); } });
+  try {
+    await mount(ApiTokensCard);
+    assert.ok(text().includes(say('apitok.code')));
+    const [nameInput] = tree.root.findAllByType('input');
+    await act2(() => nameInput.props.onChange({ target: { value: 'ci' } }));
+    await act2(() => tree.root.findAll((node) => node.props && node.props.autoComplete === 'current-password' && typeof node.props.onChange === 'function')[0].props.onChange('pw'));
+    await act2(() => tree.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.equal(sent, null, 'sent without the code');
+    assert.ok(text().includes(say('apitok.reauthNeededCode')));
+    const codeInput = tree.root.findAll((node) => node.type === 'input' && node.props.autoComplete === 'one-time-code')[0];
+    await act2(() => codeInput.props.onChange({ target: { value: '12a3456' } }));
+    await act2(() => tree.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.deepEqual(sent, { name: 'ci', scope: 'read', expires_days: 90, password: 'pw', code: '123456' });
+    assert.ok(text().includes(say('apitok.reauthFailed')), text());
   } finally {
     await cleanup();
   }

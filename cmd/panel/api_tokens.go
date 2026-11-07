@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/alicelik/celikpanel/internal/auth"
 )
 
 // The screens of the remote API (alpha.128, G15): the signed-in account's own
@@ -39,6 +41,8 @@ const (
 	errCodeAPITokenLimit          = "API_TOKEN_LIMIT"
 	errCodeAPITokenImpersonation  = "API_TOKEN_IMPERSONATION"
 	errCodeAPITokenNotFound       = "API_TOKEN_NOT_FOUND"
+	errCodeAPITokenReauth         = "API_TOKEN_REAUTH"
+	errCodeAPITokenReauthLimited  = "API_TOKEN_REAUTH_LIMITED"
 )
 
 // apiTokenLifetimes are the expiries a token can be made with, in days. A
@@ -49,7 +53,25 @@ var apiTokenLifetimes = map[int]bool{7: true, 30: true, 90: true, 365: true}
 // only its status is kept; a replay is told the result is not kept and never
 // makes a second token (D-029).
 var requestIdentityRouteAPITokenCreate = requestIdentityRoute{
-	pattern: apiTokensPath, timeout: 30 * time.Second, secret: true,
+	pattern: apiTokensPath, timeout: 30 * time.Second, secret: true, digest: requestIdentityAPITokenCreateDigest,
+}
+
+// requestIdentityAPITokenCreateDigest: what of a create body identifies the
+// request; the password and the two-factor code are left out.
+func requestIdentityAPITokenCreateDigest(body []byte) []byte {
+	var req apiTokenCreateRequest
+	if json.Unmarshal(body, &req) != nil {
+		return []byte("unreadable")
+	}
+	canonical, err := json.Marshal(struct {
+		Name        string `json:"name"`
+		Scope       string `json:"scope"`
+		ExpiresDays int    `json:"expires_days"`
+	}{req.Name, req.Scope, req.ExpiresDays})
+	if err != nil {
+		return []byte("unreadable")
+	}
+	return canonical
 }
 
 // apiTokenView is one token as a screen shows it: never the secret.
@@ -73,8 +95,10 @@ type apiTokensAnswer struct {
 	// the remote API for this account when it is refused.
 	GrantorKind string `json:"grantor_kind,omitempty"`
 	GrantorName string `json:"grantor_name,omitempty"`
-	MaxTokens   int    `json:"max_tokens"`
-	Lifetimes   []int  `json:"lifetimes"`
+	// TwoFactor: making a token asks for the two-factor code as well.
+	TwoFactor bool  `json:"two_factor"`
+	MaxTokens int   `json:"max_tokens"`
+	Lifetimes []int `json:"lifetimes"`
 	// Tokens: the account's tokens that are not removed, newest first.
 	Tokens []apiTokenView `json:"tokens"`
 }
@@ -146,11 +170,16 @@ func (p *Panel) listAPITokens(w http.ResponseWriter, r *http.Request, c *Caller)
 	if refusedBy == "" && c.ImpersonatorID > 0 {
 		refusedBy = "impersonation"
 	}
+	var totp int
+	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT COALESCE(totp_enabled, 0) FROM users WHERE id = ?`, c.ID).Scan(&totp); err != nil {
+		writeServerError(w, err)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(apiTokensAnswer{
 		ServerEnabled: enabled, CanCreate: refusedBy == "", RefusedBy: refusedBy,
-		GrantorKind: grantor.Kind, GrantorName: grantor.Name,
+		GrantorKind: grantor.Kind, GrantorName: grantor.Name, TwoFactor: totp == 1,
 		MaxTokens: apiTokenMaxPerAccount, Lifetimes: []int{7, 30, 90, 365}, Tokens: tokens,
 	})
 }
@@ -202,6 +231,11 @@ type apiTokenCreateRequest struct {
 	Name        string `json:"name"`
 	Scope       string `json:"scope"`
 	ExpiresDays int    `json:"expires_days"`
+	// Password and Code: the account's password, and its two-factor code
+	// when two-factor sign-in is on (a fresh proof, as for the e-mail and
+	// password changes).
+	Password string `json:"password"`
+	Code     string `json:"code"`
 }
 
 // validAPITokenName: 1 to 64 printable characters, no control character.
@@ -257,6 +291,28 @@ func (p *Panel) createAPIToken(w http.ResponseWriter, r *http.Request, c *Caller
 		writeCodedError(w, http.StatusForbidden, errCodeAPITokenNotPermitted, apiTokenNotPermittedMessage(grantor), "")
 		return
 	}
+	// Step-up: a lasting credential is made only after the person proves
+	// the password again (and the two-factor code when it is on). Every
+	// attempt counts in the same limiter as the password and e-mail changes.
+	if req.Password == "" {
+		writeCodedError(w, http.StatusForbidden, errCodeAPITokenReauth, apiTokenReauthMessage, "")
+		return
+	}
+	if !p.allowSensitiveAuthAttempt(r, c.ID, reauthAttemptAction) {
+		writeCodedError(w, http.StatusTooManyRequests, errCodeAPITokenReauthLimited,
+			"Too many password attempts; wait a few minutes and try again. No token was made.", "")
+		return
+	}
+	state, err := p.userAuthState(ctx, c.ID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	passwordOK, err := auth.VerifyPassword(req.Password, state.passwordHash)
+	if err != nil || !passwordOK || (state.totpEnabled && !auth.ValidateTOTP(state.totpSecret, strings.TrimSpace(req.Code))) {
+		writeCodedError(w, http.StatusForbidden, errCodeAPITokenReauth, apiTokenReauthMessage, "")
+		return
+	}
 
 	tokenID, secret, full, err := newAPIToken()
 	if err != nil {
@@ -290,8 +346,8 @@ func (p *Panel) createAPIToken(w http.ResponseWriter, r *http.Request, c *Caller
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, owner_email, created_at, expires_at)
 		SELECT id, ?, ?, ?, ?, auth_epoch, COALESCE(email, ''), ?, ?
-		FROM users WHERE id = ? AND COALESCE(NULLIF(status, ''), 'active') = 'active'`,
-		req.Name, tokenID, hashAPITokenSecret(secret), req.Scope, now, expires, c.ID)
+		FROM users WHERE id = ? AND auth_epoch = ? AND COALESCE(NULLIF(status, ''), 'active') = 'active'`,
+		req.Name, tokenID, hashAPITokenSecret(secret), req.Scope, now, expires, c.ID, state.authEpoch)
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -324,6 +380,11 @@ func (p *Panel) createAPIToken(w http.ResponseWriter, r *http.Request, c *Caller
 		},
 	})
 }
+
+// apiTokenReauthMessage: the step-up refusal (D-024: what, nothing changed,
+// what next).
+const apiTokenReauthMessage = "The password (or the two-factor code) is not correct, so no token was made. " +
+	"Enter your current password, and the code from your authenticator app if two-factor sign-in is on, then try again."
 
 // handleAPITokenItem removes one of the account's tokens.
 func (p *Panel) handleAPITokenItem(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/auth"
+	secretstore "github.com/alicelik/celikpanel/internal/secrets"
 )
 
 // Remote API tokens (alpha.128, G15). These tests drive the real
@@ -31,6 +34,9 @@ import (
 // yalnız burada bağımsız yazılmış listedeki rotalar işleyiciye ulaşır.
 
 const apiTokenTestDomain = authzMatrixCustomerDomainID // 9902, the customer's
+
+// apiTokenTestPassword is the customer's password in these tests.
+const apiTokenTestPassword = "Token-Step-Up-9!"
 
 // apiTokenExpectedRoutes: what a token reaches, by scope ("read" routes are
 // reached by both scopes, "manage" ones by a manage token only).
@@ -79,6 +85,14 @@ func newAPITokenFixture(t *testing.T) *apiTokenFixture {
 	member := seedAdditionalUserSession(t, &base)
 	f := &apiTokenFixture{authzMatrixFixture: base, memberSession: member, minted: map[string]string{}, rowIDs: map[string]int64{}}
 	if err := f.panel.setSetting(context.Background(), settingRemoteAPIEnabled, "1"); err != nil {
+		t.Fatal(err)
+	}
+	// The customer's real password: making a token asks for it again.
+	hash, err := auth.HashPassword(apiTokenTestPassword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.panel.db.GetDB().Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, hash, authzMatrixCustomerID); err != nil {
 		t.Fatal(err)
 	}
 	for role, id := range apiTokenFixtureOwners {
@@ -705,7 +719,7 @@ func TestAPITokenCreateShowsTheTokenOnceAndKeepsOnlyItsHash(t *testing.T) {
 		return recorder
 	}
 	requestID := strings.Repeat("c", 32)
-	recorder := create(f.tokens[authzMatrixCustomerID], `{"name":"deploy bot","scope":"manage","expires_days":30}`, requestID)
+	recorder := create(f.tokens[authzMatrixCustomerID], `{"name":"deploy bot","scope":"manage","expires_days":30,"password":"`+apiTokenTestPassword+`"}`, requestID)
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("create: %d %s", recorder.Code, recorder.Body.String())
 	}
@@ -723,7 +737,7 @@ func TestAPITokenCreateShowsTheTokenOnceAndKeepsOnlyItsHash(t *testing.T) {
 	}
 	// The same request again: answered from the first, no second token, and
 	// the token is not shown again.
-	again := create(f.tokens[authzMatrixCustomerID], `{"name":"deploy bot","scope":"manage","expires_days":30}`, requestID)
+	again := create(f.tokens[authzMatrixCustomerID], `{"name":"deploy bot","scope":"manage","expires_days":30,"password":"`+apiTokenTestPassword+`"}`, requestID)
 	if strings.Contains(again.Body.String(), secret) || again.Code == http.StatusCreated {
 		t.Fatalf("a replay showed the token again: %d %s", again.Code, again.Body.String())
 	}
@@ -737,6 +751,7 @@ func TestAPITokenCreateShowsTheTokenOnceAndKeepsOnlyItsHash(t *testing.T) {
 		t.Fatalf("stored hash %q, %v", storedHash, err)
 	}
 	requireSecretNowhereInDatabase(t, f.panel, secret)
+	requireSecretNowhereInDatabase(t, f.panel, apiTokenTestPassword)
 	// The list never carries it.
 	list := httptest.NewRecorder()
 	listRequest := httptest.NewRequest(http.MethodGet, apiTokensPath, nil)
@@ -944,7 +959,7 @@ func TestAPITokenAudit(t *testing.T) {
 	})
 	handler := f.panel.requireAuth(f.panel.requestIdentities.wrap(mux))
 
-	request := httptest.NewRequest(http.MethodPost, apiTokensPath, strings.NewReader(`{"name":"ci","scope":"manage","expires_days":7}`))
+	request := httptest.NewRequest(http.MethodPost, apiTokensPath, strings.NewReader(`{"name":"ci","scope":"manage","expires_days":7,"password":"`+apiTokenTestPassword+`"}`))
 	request.Header.Set(requestIdentityHeader, newTestRequestID(t))
 	request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: f.tokens[authzMatrixCustomerID]})
 	recorder := httptest.NewRecorder()
@@ -1288,5 +1303,80 @@ func TestAPITokenEndsWhenTheAccountEmailChanges(t *testing.T) {
 	// Other accounts' tokens keep working.
 	if recorder := call(f.minted["admin/read"]); recorder.Code != http.StatusNoContent {
 		t.Fatalf("another account's token: %d", recorder.Code)
+	}
+}
+
+// Making a token asks for the password again, and for the two-factor code
+// when two-factor sign-in is on. A wrong or missing proof makes nothing.
+func TestAPITokenCreateNeedsThePasswordAndTwoFactorCode(t *testing.T) {
+	f := newAPITokenFixture(t)
+	box, err := secretstore.LoadOrCreate(t.TempDir() + "/secrets.key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.panel.secrets = box
+	f.panel.requestIdentities = newRequestIdentityGuard(f.panel.db.GetDB())
+	mux := http.NewServeMux()
+	mux.HandleFunc(apiTokensPath, f.panel.handleAPITokens)
+	handler := f.panel.requireAuth(f.panel.requestIdentities.wrap(mux))
+	create := func(body string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodPost, apiTokensPath, strings.NewReader(body))
+		request.Header.Set(requestIdentityHeader, newTestRequestID(t))
+		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: f.tokens[authzMatrixCustomerID]})
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder
+	}
+	count := func() int {
+		var n int
+		if err := f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM api_tokens WHERE name = 'stepped'`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	body := func(extra string) string { return `{"name":"stepped","scope":"read","expires_days":7` + extra + `}` }
+	for name, extra := range map[string]string{"no password": "", "empty password": `,"password":""`, "wrong password": `,"password":"not-it"`} {
+		recorder := create(body(extra))
+		if recorder.Code != http.StatusForbidden || apiErrorCode(t, recorder) != errCodeAPITokenReauth || count() != 0 {
+			t.Fatalf("%s: %d %s", name, recorder.Code, recorder.Body.String())
+		}
+	}
+	if recorder := create(body(`,"password":"` + apiTokenTestPassword + `"`)); recorder.Code != http.StatusCreated || count() != 1 {
+		t.Fatalf("right password: %d %s", recorder.Code, recorder.Body.String())
+	}
+	// The screen knows whether to ask for a code.
+	list := requestWithToken(handler, http.MethodGet, apiTokensPath, f.tokens[authzMatrixCustomerID])
+	if !strings.Contains(list.Body.String(), `"two_factor":false`) {
+		t.Fatalf("list: %s", list.Body.String())
+	}
+
+	// Two-factor sign-in on. Turning it on ended the sessions of a real
+	// account; the test keeps its session and reads the state fresh.
+	_, totpSecret := enableTOTPForSecurityTest(t, f.panel, f.panel.db, authzMatrixCustomerID)
+	list = requestWithToken(handler, http.MethodGet, apiTokensPath, f.tokens[authzMatrixCustomerID])
+	if !strings.Contains(list.Body.String(), `"two_factor":true`) {
+		t.Fatalf("list with two-factor: %s", list.Body.String())
+	}
+	for name, extra := range map[string]string{
+		"password, no code":  `,"password":"` + apiTokenTestPassword + `"`,
+		"password, bad code": `,"password":"` + apiTokenTestPassword + `","code":"000000"`,
+	} {
+		recorder := create(body(extra))
+		if recorder.Code != http.StatusForbidden || apiErrorCode(t, recorder) != errCodeAPITokenReauth || count() != 1 {
+			t.Fatalf("%s: %d %s", name, recorder.Code, recorder.Body.String())
+		}
+	}
+	code := totpCodeForSecurityTest(t, totpSecret)
+	if recorder := create(body(`,"password":"` + apiTokenTestPassword + `","code":"` + code + `"`)); recorder.Code != http.StatusCreated || count() != 2 {
+		t.Fatalf("password and code: %d %s", recorder.Code, recorder.Body.String())
+	}
+	requireSecretNowhereInDatabase(t, f.panel, apiTokenTestPassword)
+	// Password attempts share the limiter of the other password proofs.
+	f.panel.loginLimiter = newRateLimiter(2, time.Minute)
+	create(body(`,"password":"wrong-1"`))
+	create(body(`,"password":"wrong-2"`))
+	if recorder := create(body(`,"password":"` + apiTokenTestPassword + `","code":"` + code + `"`)); recorder.Code != http.StatusTooManyRequests ||
+		apiErrorCode(t, recorder) != errCodeAPITokenReauthLimited || count() != 2 {
+		t.Fatalf("attempt limit: %d %s", recorder.Code, recorder.Body.String())
 	}
 }
