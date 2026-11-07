@@ -255,6 +255,21 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 	}
 	result.Problems = append(result.Problems, problems...)
 
+	// The owner's own pg_hba.conf lines decide first (review M2): one that
+	// lets a network address in means the owner manages network access, and
+	// CelikPanel opens nothing (and closes what it opened).
+	if len(candidates) > 0 {
+		current, err := databaseRemoteReadHBA(s.hbaFile)
+		if err != nil {
+			return fail(transport.DatabaseRemoteFailed, "pg_hba.conf could not be read: "+boundedText(err.Error(), 200))
+		}
+		if foreign := dbremote.ForeignHBAHostLines(string(current)); len(foreign) > 0 {
+			problem(transport.DatabaseRemoteOwnerHBA, s.hbaFile+" already lets network connections in before CelikPanel's lines (\""+
+				boundedText(foreign[0], 120)+"\"); remove or narrow that line to 127.0.0.1/32 or ::1/128, then apply again")
+			candidates = nil
+		}
+	}
+
 	// 1. The settings, TLS first (alpha.129 review L4): a hostssl line is
 	// written only once the cluster runs TLS, so the validated writer never
 	// sees a block PostgreSQL would refuse.

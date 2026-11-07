@@ -129,3 +129,94 @@ func SpliceHBA(content string, lines []string) (string, error) {
 	}
 	return strings.Join(out, "\n"), nil
 }
+
+// ForeignHBAHostLines answers the lines outside CelikPanel's block that
+// would let a network connection in before the block is read (alpha.129
+// review M2): every host, hostssl, hostnossl, hostgssenc or hostnogssenc
+// line whose address is not this server itself (127.0.0.0/8, ::1,
+// "localhost"), and every include directive, whose lines CelikPanel cannot
+// see. pg_hba.conf is read first match first, so such a line decides before
+// the block: an owner's `host all all 10.0.0.0/8 md5` would let a listed
+// 10.1.2.0/24 address in without TLS, as any role. While one exists the
+// server's owner manages network access and CelikPanel opens nothing.
+func ForeignHBAHostLines(content string) []string {
+	var foreign []string
+	inBlock := false
+	for _, raw := range strings.Split(content, "\n") {
+		line := strings.TrimSpace(raw)
+		switch {
+		case strings.HasPrefix(line, HBABeginMarker):
+			inBlock = true
+			continue
+		case strings.HasPrefix(line, HBAEndMarker):
+			inBlock = false
+			continue
+		}
+		if inBlock {
+			continue
+		}
+		if i := strings.IndexByte(line, '#'); i >= 0 {
+			line = strings.TrimSpace(line[:i])
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		kind := strings.ToLower(fields[0])
+		switch {
+		case kind == "local":
+			continue
+		case strings.HasPrefix(kind, "include"):
+			foreign = append(foreign, line)
+		case strings.HasPrefix(kind, "host"):
+			if len(fields) < 4 || !hbaLoopbackAddress(fields[3], fields[4:]) {
+				foreign = append(foreign, line)
+			}
+		default:
+			// A line PostgreSQL would refuse anyway; not a door.
+		}
+	}
+	return foreign
+}
+
+// hbaLoopbackAddress: an address field (with a separate netmask field when
+// it has no prefix length) that names only this server.
+func hbaLoopbackAddress(address string, rest []string) bool {
+	address = strings.Trim(address, `"`)
+	if strings.EqualFold(address, "localhost") {
+		return true
+	}
+	var prefix netip.Prefix
+	if strings.Contains(address, "/") {
+		parsed, err := netip.ParsePrefix(address)
+		if err != nil {
+			return false
+		}
+		prefix = parsed
+	} else {
+		addr, err := netip.ParseAddr(address)
+		if err != nil || len(rest) == 0 {
+			return false
+		}
+		mask, err := netip.ParseAddr(rest[0])
+		if err != nil || mask.BitLen() != addr.BitLen() {
+			return false
+		}
+		bits := 0
+		for _, b := range mask.AsSlice() {
+			for i := 7; i >= 0; i-- {
+				if b&(1<<i) == 0 {
+					goto done
+				}
+				bits++
+			}
+		}
+	done:
+		prefix = netip.PrefixFrom(addr, bits)
+	}
+	prefix = prefix.Masked()
+	if prefix.Addr().Is4() {
+		return prefix.Bits() >= 8 && netip.MustParsePrefix("127.0.0.0/8").Contains(prefix.Addr())
+	}
+	return prefix.Bits() == 128 && prefix.Addr() == netip.IPv6Loopback()
+}

@@ -31,6 +31,8 @@ export const enDbRemote = {
     'dbr.problem.RESTART_NEEDED.other': 'Waiting for your provider to restart {engine}. You do not need to do anything; the address works after that.',
     'dbr.problem.OWNER_LISTEN.admin': '{engine}’s network address was set on the server by hand ({detail}), so CelikPanel leaves it alone and lists no address. Remove that setting to let CelikPanel manage connections from outside.',
     'dbr.problem.OWNER_LISTEN.other': '{engine} on this server is set up by hand, so addresses cannot be listed here. Ask your provider.',
+    'dbr.problem.OWNER_HBA.admin': 'PostgreSQL already lets network connections in through a line of its own: {detail}. Until that line is removed or narrowed, CelikPanel opens nothing, so no customer can connect without encryption through it.',
+    'dbr.problem.OWNER_HBA.other': 'PostgreSQL on this server is set up by hand for network connections, so addresses cannot be opened here. Ask your provider.',
     'dbr.problem.OWNER_FILE.admin': 'A CelikPanel file was changed by hand ({detail}); CelikPanel leaves it as it is. Put it back or remove it, then press “Apply again”.',
     'dbr.problem.NFT_MISSING.admin': 'The firewall (nftables) is not installed, so the database port cannot be limited to the listed addresses. Install the firewall in Components first.',
     'dbr.problem.FIREWALL_UNCHANGED.admin': 'The address filter of the database port could not be written: {detail}.',

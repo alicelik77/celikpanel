@@ -106,3 +106,27 @@ func TestPGRemoteWritesNoLineWhileTLSIsOff(t *testing.T) {
 		t.Fatalf("lines %v, active %v, problems %+v, tls %v", f.hbaLines, result.Active, result.Problems, ts.TLS)
 	}
 }
+
+// M2: an owner's network line in pg_hba.conf means nothing is opened, and
+// what CelikPanel opened before is closed.
+func TestPGRemoteOpensNothingBehindAnOwnersNetworkLine(t *testing.T) {
+	f := &fakePGCluster{listen: "localhost", ssl: true, sslTakes: true, hbaText: "local all postgres peer\nhost all all 10.0.0.0/8 md5\n"}
+	withFakePG(t, f)
+	var ts dbremote.TargetState
+	result := (pgRemoteInstance{}).apply(shopTarget(), dbRemoteFacts{running: true}, &ts, "db.example.com")
+	if len(f.hbaLines) != 0 || len(result.Active) != 0 || ts.Listen || !problemCodes(result)[transport.DatabaseRemoteOwnerHBA] {
+		t.Fatalf("lines %v, active %v, listen %v, problems %+v", f.hbaLines, result.Active, ts.Listen, result.Problems)
+	}
+	for _, e := range f.events {
+		if e == "alter" {
+			t.Fatal("a setting was changed behind an owner's network line")
+		}
+	}
+	// Opened before the owner added the line: the listen address goes back.
+	f.events, f.listen = nil, "*"
+	ts = dbremote.TargetState{Engine: "postgresql", Port: 5432, Listen: true}
+	(pgRemoteInstance{}).apply(shopTarget(), dbRemoteFacts{running: true, listenRemote: true}, &ts, "db.example.com")
+	if ts.Listen || !ts.ListenPending || len(f.hbaLines) != 0 {
+		t.Fatalf("not closed: %+v, lines %v", ts, f.hbaLines)
+	}
+}

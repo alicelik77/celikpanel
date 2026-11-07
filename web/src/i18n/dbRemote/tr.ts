@@ -27,6 +27,8 @@ export const trDbRemote: Record<DbRemoteKey, string> = {
     'dbr.problem.RESTART_NEEDED.other': 'Sağlayıcınızın {engine} hizmetini yeniden başlatması bekleniyor. Sizin bir şey yapmanız gerekmiyor; ardından adres çalışır.',
     'dbr.problem.OWNER_LISTEN.admin': '{engine} ağ adresi sunucuda elle ayarlanmış ({detail}); CelikPanel ona dokunmaz ve adres listelemez. CelikPanel’in yönetmesi için o ayarı kaldırın.',
     'dbr.problem.OWNER_LISTEN.other': 'Bu sunucudaki {engine} elle ayarlanmış; adresler burada listelenemez. Sağlayıcınıza sorun.',
+    'dbr.problem.OWNER_HBA.admin': 'PostgreSQL ağ bağlantılarını zaten kendi satırıyla içeri alıyor: {detail}. O satır kaldırılana ya da daraltılana kadar CelikPanel hiçbir şey açmaz; böylece kimse ondan şifresiz bağlanamaz.',
+    'dbr.problem.OWNER_HBA.other': 'Bu sunucudaki PostgreSQL ağ bağlantıları için elle ayarlanmış; adresler burada açılamaz. Sağlayıcınıza sorun.',
     'dbr.problem.OWNER_FILE.admin': 'CelikPanel’in bir dosyası elle değiştirilmiş ({detail}); CelikPanel onu olduğu gibi bırakır. Geri alın ya da silin, sonra “Yeniden uygula”ya basın.',
     'dbr.problem.NFT_MISSING.admin': 'Güvenlik duvarı (nftables) kurulu değil; veritabanı portu listelenen adreslerle sınırlanamaz. Önce Bileşenler’den güvenlik duvarını kurun.',
     'dbr.problem.FIREWALL_UNCHANGED.admin': 'Veritabanı portunun adres süzgeci yazılamadı: {detail}.',

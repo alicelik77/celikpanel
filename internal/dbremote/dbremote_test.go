@@ -330,3 +330,40 @@ func TestStateRoundTripAndStrictness(t *testing.T) {
 		t.Fatal("absent record is not empty")
 	}
 }
+
+func TestForeignHBAHostLines(t *testing.T) {
+	debian := `# Database administrative login by Unix domain socket
+local   all             postgres                                peer
+local   all             all                                     peer
+host    all             all             127.0.0.1/32            scram-sha-256
+host    all             all             ::1/128                 scram-sha-256
+local   replication     all                                     peer
+host    replication     all             127.0.0.1/32            scram-sha-256
+host    replication     all             ::1/128                 scram-sha-256
+host    all             all             127.0.0.1 255.255.255.255 md5
+host    all             all             localhost               md5
+`
+	if got := ForeignHBAHostLines(debian); len(got) != 0 {
+		t.Fatalf("Debian's stock file has foreign lines: %v", got)
+	}
+	withBlock, _ := SpliceHBA(debian, []string{`hostssl "shop" "shop_u" 203.0.113.7/32 scram-sha-256`})
+	if got := ForeignHBAHostLines(withBlock); len(got) != 0 {
+		t.Fatalf("CelikPanel's own block counted: %v", got)
+	}
+	for _, line := range []string{
+		"host all all 10.0.0.0/8 md5",
+		"hostnossl all all 0.0.0.0/0 trust",
+		"hostssl all all all scram-sha-256",
+		"host all all samenet md5",
+		"host all all 10.0.0.1 255.0.0.0 md5",
+		"host all all 127.0.0.1 0.0.0.0 md5",
+		"host all all 127.0.0.0/0 md5",
+		"host all all db.example.com md5",
+		"include_dir 'hba.d'",
+		"host all all ::/0 md5",
+	} {
+		if got := ForeignHBAHostLines(debian + line + "\n"); len(got) != 1 {
+			t.Errorf("%q not recognised: %v", line, got)
+		}
+	}
+}

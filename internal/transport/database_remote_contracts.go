@@ -44,6 +44,7 @@ const (
 	DatabaseRemoteNFTMissing        = "NFT_MISSING"        // nftables is not installed
 	DatabaseRemoteEngineDown        = "ENGINE_DOWN"        // the engine does not answer
 	DatabaseRemoteOwnerListen       = "OWNER_LISTEN"       // the owner set the listen address
+	DatabaseRemoteOwnerHBA          = "OWNER_HBA"          // pg_hba.conf lets the network in before CelikPanel's block
 	DatabaseRemoteOwnerFile         = "OWNER_FILE"         // a CelikPanel file was edited by hand
 	DatabaseRemoteRestartNeeded     = "RESTART_NEEDED"     // the engine must restart for the listen address/TLS
 	DatabaseRemoteTLSMissing        = "TLS_MISSING"        // TLS could not be turned on
