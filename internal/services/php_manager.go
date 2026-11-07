@@ -65,6 +65,13 @@ type PoolData struct {
 
 // CreatePool creates and activates a PHP-FPM pool as one rollback-safe change.
 func (pm *PHPFPMManager) CreatePool(siteID int, username, phpVersion string) (string, error) {
+	return pm.CreatePoolWithin(siteID, username, phpVersion, transport.SitePHPLimits{})
+}
+
+// CreatePoolWithin is CreatePool with the site's limits (alpha.128): the
+// process count starts at the default (5) or the limit when it is lower, and
+// the pool carries the plan's limits as every later render does.
+func (pm *PHPFPMManager) CreatePoolWithin(siteID int, username, phpVersion string, limits transport.SitePHPLimits) (string, error) {
 	if err := ValidatePHPVersion(phpVersion); err != nil {
 		return "", err
 	}
@@ -82,9 +89,9 @@ func (pm *PHPFPMManager) CreatePool(siteID int, username, phpVersion string) (st
 	// not created (SiteFileHeldError).
 	managedConfigMutationMu.Lock()
 	defer managedConfigMutationMu.Unlock()
-	values := defaultPoolValues()
+	values := defaultPoolValues().withinProcesses(limits)
 	result, err := ApplyManagedSiteFile(sitePoolFile(transport.SitePoolRequest{
-		SiteID: siteID, Username: username, PHPVersion: phpVersion,
+		SiteID: siteID, Username: username, PHPVersion: phpVersion, PHPLimits: limits,
 	}, phpVersion, &values, nil, transport.SiteFileTriggerCreate),
 		func() error { return phpFPMConfigTest(phpVersion) },
 		func() error { return reloadPHPFPM(phpVersion) })

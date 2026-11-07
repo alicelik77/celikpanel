@@ -1143,6 +1143,8 @@ func main() {
 	// alpha.128 (G21): the administrator's password level, if one was set.
 	panel.loadPasswordLevel(context.Background())
 	panel.orchestrator.SetSiteServerNames(panel.managedSiteHostnames)
+	// alpha.128: a new site's pool starts within its plan's process limit.
+	panel.orchestrator.SetSitePHPLimits(panel.sitePHPLimits)
 
 	// Development demo accounts (gated behind --demo).
 	// Geliştirme demo hesapları (--demo bayrağının arkasında).

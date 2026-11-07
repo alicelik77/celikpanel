@@ -209,3 +209,32 @@ func TestSiteSettingsIncludePutsBackWhenNginxRefuses(t *testing.T) {
 		t.Fatalf("prerequisite: %+v", pre)
 	}
 }
+
+func TestNewPoolStartsWithinThePlansProcessLimit(t *testing.T) {
+	path := withPoolTree(t, "8.3", "site42", seededPool)
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	stubWebServerAccount(t, "www-data")
+	manager, err := NewPHPFPMManager()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.CreatePoolWithin(42, "celik_site42", "8.3", transport.SitePHPLimits{Known: true, Processes: 2}); err != nil {
+		t.Fatalf("create pool: %v", err)
+	}
+	content := readPoolTestFile(t, path)
+	if !strings.Contains(content, "pm.max_children = 2") || !strings.Contains(content, "pm.max_spare_servers = 2") {
+		t.Fatalf("pool not within the limit:\n%s", content)
+	}
+	// Without a limit the default stays 5 (byte-identical to earlier releases).
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.CreatePool(42, "celik_site42", "8.3"); err != nil {
+		t.Fatal(err)
+	}
+	if content := readPoolTestFile(t, path); !strings.Contains(content, "pm.max_children = 5") {
+		t.Fatalf("default pool:\n%s", content)
+	}
+}
