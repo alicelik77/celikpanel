@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { dataModule, domainDatabasesURL, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 
 const stub = dataModule(`
   import React from '${reactURL}';
@@ -55,6 +55,7 @@ async function cleanup() {
     delete globalThis.window;
 }
 const text = () => JSON.stringify(tree.toJSON());
+const words = (node) => (typeof node === 'string' ? node : (node?.children ?? []).map(words).join(' '));
 
 test('the administrator gets the SSH tunnel: SSH host, port 22, then 127.0.0.1 and the database port', async () => {
     await mount({ isAdmin: true, webTool: 'installed' });
@@ -85,4 +86,29 @@ test('a customer is told plainly that connecting from their computer is not avai
     } finally {
         await cleanup();
     }
+});
+
+test('size, tables and connections are three small boxes, and Import without a file is a plain unavailable button with its reason', async () => {
+    await mount({ isAdmin: true, webTool: 'installed' });
+    try {
+        const stats = tree.root.findAll((node) => node.type === 'dl' && node.props['data-database-stats'] === 9)[0];
+        assert.ok(stats, 'the stat boxes are drawn');
+        assert.deepEqual(stats.findAll((node) => node.type === 'dd').map((node) => node.children.join('')), ['2048 B', '12', '1']);
+        const openImport = tree.root.findAll((node) => node.type === 'button' && words(node).trim() === 'dbt.import')[0];
+        await act(async () => openImport.props.onClick());
+        const start = tree.root.findAll((node) => node.type === 'button' && words(node).includes('dbt.importStart'))[0];
+        assert.equal(start.props.disabled, true);
+        assert.ok(!String(start.props.className).includes('dashed'), start.props.className);
+        assert.ok(JSON.stringify(tree.toJSON()).includes('dbt.importChooseFirst'));
+    } finally {
+        await cleanup();
+    }
+});
+
+test('a card names the engine the server runs: MariaDB is never "MYSQL", the major version when known', async () => {
+    const { databaseEngine, engineLabel } = await import(domainDatabasesURL);
+    assert.equal(engineLabel(databaseEngine('mariadb', 'mysql'), '11.8'), 'MariaDB 11.8');
+    assert.equal(engineLabel(databaseEngine(undefined, 'mysql')), 'MariaDB', 'an answer without the engine is still MariaDB');
+    assert.equal(engineLabel(databaseEngine('mysql', 'mysql'), '8.0'), 'MySQL 8.0');
+    assert.equal(engineLabel(databaseEngine('postgresql', 'postgresql'), '17'), 'PostgreSQL 17');
 });

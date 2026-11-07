@@ -1,0 +1,40 @@
+/* A database engine's colour on its mark (alpha.129, EngineMark.tsx).
+   Space-separated RGB like the theme tokens, one value set for light and one
+   for dark; the skins inherit them (.dark[data-theme=...] is still .dark).
+   Text contrast of the mark on its tile: MariaDB 5.4:1 and PostgreSQL 5.7:1
+   on light surfaces, above 6.5:1 on dark ones.
+   Bir veritabanı motorunun işaret rengi; açık ve koyu için birer değer. */
+.engine-mark {
+    --engine-rgb: 71 85 105;
+    color: rgb(var(--engine-rgb));
+    background-color: rgb(var(--engine-rgb) / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(var(--engine-rgb) / 0.28);
+}
+
+.engine-mark[data-engine='mariadb'] {
+    --engine-rgb: 19 109 128;
+}
+
+.engine-mark[data-engine='mysql'] {
+    --engine-rgb: 2 101 140;
+}
+
+.engine-mark[data-engine='postgresql'] {
+    --engine-rgb: 51 99 145;
+}
+
+.dark .engine-mark {
+    --engine-rgb: 165 178 196;
+}
+
+.dark .engine-mark[data-engine='mariadb'] {
+    --engine-rgb: 103 200 214;
+}
+
+.dark .engine-mark[data-engine='mysql'] {
+    --engine-rgb: 110 186 222;
+}
+
+.dark .engine-mark[data-engine='postgresql'] {
+    --engine-rgb: 140 176 226;
+}

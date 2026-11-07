@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CopyPlus, Download, ShieldCheck, Upload, Wrench } from 'lucide-react';
 import type { TranslationKey } from '../i18n/en';
 import { formatSize, useDataToolsWords } from './dataToolsWords';
@@ -61,7 +61,7 @@ function decodeInfo(raw: unknown): ToolsInfo {
 const UPLOAD_CHUNK = 4 * 1024 * 1024;
 const UPLOAD_MAX = 4 * 1024 * 1024 * 1024;
 
-export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAdmin = false, webTool }: {
+export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAdmin = false, webTool, afterStats }: {
     domainId: number;
     db: DatabaseToolsTarget;
     readOnly: boolean;
@@ -69,6 +69,8 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAd
     isAdmin?: boolean;
     /** Whether this engine's web tool is installed, when known. */
     webTool?: 'installed' | 'missing';
+    /** Drawn under the numbers (alpha.129: the database's users). */
+    afterStats?: ReactNode;
     onRefusal: (problem: ApiError, sentence: TranslationKey) => void;
     onClear: () => void;
 }) {
@@ -252,18 +254,26 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAd
 
     return (
         <div className="mt-3 space-y-3 border-t border-border pt-3 text-sm">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-fg-muted">
-                {tools.remote.state === 'loading' && <span>{t('dbt.reading')}</span>}
-                {tools.remote.state === 'unknown' && <span>{t('dbt.unread')}</span>}
-                {info && !info.known && <span>{t('dbt.unread')}</span>}
-                {info && info.known && (
-                    <>
-                        <span>{t('dbt.size')}: <span className="text-fg">{formatSize(info.sizeBytes)}</span></span>
-                        <span>{t('dbt.tables')}: <span className="text-fg">{info.tables}</span></span>
-                        <span>{t('dbt.connections')}: <span className="text-fg">{info.connections}</span></span>
-                    </>
-                )}
-            </div>
+            {/* alpha.129: size, tables and open connections as three small
+                boxes; while they are read or could not be read, one line
+                says so. */}
+            {info && info.known ? (
+                <dl className="grid grid-cols-3 gap-2" data-database-stats={db.id}>
+                    {[
+                        { label: t('dbt.size'), value: formatSize(info.sizeBytes) },
+                        { label: t('dbt.tables'), value: String(info.tables) },
+                        { label: t('dbt.connections'), value: String(info.connections) },
+                    ].map((stat) => (
+                        <div key={stat.label} className="min-w-0 rounded-lg border border-border bg-surface-2/50 px-3 py-2">
+                            <dt className="truncate text-xs text-fg-muted">{stat.label}</dt>
+                            <dd className="mt-0.5 text-base font-semibold tabular-nums text-fg">{stat.value}</dd>
+                        </div>
+                    ))}
+                </dl>
+            ) : (
+                <p className="text-fg-muted">{tools.remote.state === 'loading' ? t('dbt.reading') : t('dbt.unread')}</p>
+            )}
+            {afterStats}
             {info && (
                 <details className="text-xs text-fg-muted" data-database-connection-guide={db.id}>
                     <summary className="cursor-pointer">{t('dbt.connection')}</summary>
@@ -322,7 +332,21 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAd
                         <input type="checkbox" className="mt-1" checked={emptyFirst} onChange={(e) => setEmptyFirst(e.target.checked)} />
                         <span>{t('dbt.importEmpty')}{!emptyFirst && <span className="block text-xs text-fg-muted">{t('dbt.importEmptyHint')}</span>}</span>
                     </label>
-                    <Button variant="primary" icon={Upload} disabled={!file || busy} onClick={() => void runImport()}>{t('dbt.importStart')}</Button>
+                    {/* alpha.129: without a file the button is an ordinary
+                        unavailable button with the reason beside it, not the
+                        dashed outline. */}
+                    {file ? (
+                        <Button variant="primary" icon={Upload} disabled={busy} onClick={() => void runImport()}>{t('dbt.importStart')}</Button>
+                    ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button type="button" disabled aria-describedby={`import-hint-${db.id}`}
+                                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium text-fg-muted">
+                                <Upload className="h-4 w-4" aria-hidden="true" />
+                                {t('dbt.importStart')}
+                            </button>
+                            <span id={`import-hint-${db.id}`} className="text-xs text-fg-muted">{t('dbt.importChooseFirst')}</span>
+                        </div>
+                    )}
                 </div>
             )}
             {panel === 'copy' && (

@@ -145,4 +145,6 @@ export const trDataTools: Record<DataToolsKey, string> = {
     'dbt.tunnelToolsPg': 'pgAdmin: sunucunun SSH Tunnel sekmesi. DBeaver: bağlantının SSH sekmesi. Veritabanı kullanıcısı ve parolası yukarıdakilerdir.',
     'dbt.noRemoteUseTool': 'Kendi bilgisayarınızdan bağlanmak henüz yok: veritabanı yalnız bu sunucudan bağlantı kabul eder. Paneldeki {tool} aracını açın (aşağıda Veritabanı araçları) ve yukarıdaki kullanıcı ile parolayla girin.',
     'dbt.noRemoteAskTool': 'Kendi bilgisayarınızdan bağlanmak henüz yok: veritabanı yalnız bu sunucudan bağlantı kabul eder. Tarayıcıda {tool} ile yönetilir; onu sağlayıcınız kurar.',
+    'dbt.importChooseFirst': 'Önce bir dosya seçin.',
+    'dbu.fullName': 'Tam ad:',
 };

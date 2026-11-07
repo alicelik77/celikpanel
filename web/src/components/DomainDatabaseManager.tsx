@@ -9,7 +9,7 @@ import { passwordAcceptable } from '../lib/passwordPolicy';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
-import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
+import { databaseEngine, decodeDomainDatabases, engineLabel, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
 import { PasswordInput } from './PasswordInput';
@@ -17,6 +17,7 @@ import { AdminInstallLink } from './AdminInstallLink';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { DatabaseTools } from './DatabaseTools';
 import { DatabaseUsers } from './DatabaseUsers';
+import { EngineMark } from './EngineMark';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -420,54 +421,49 @@ export function DomainDatabaseManager({
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {shown.value.databases.map((db) => (
+                            {shown.value.databases.map((db) => {
+                                const engine = databaseEngine(db.engine, db.type);
+                                return (
                                 <div
                                     key={db.id}
-                                    className="bg-surface border border-border rounded p-4 hover:border-border-strong transition-colors"
+                                    className="rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong"
+                                    data-database-card={db.id}
                                 >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Database className="w-4 h-4 text-primary" />
-                                                <h5 className="font-mono text-fg font-semibold">{db.name}</h5>
-                                                <span className={`text-xs px-2 py-0.5 rounded ${db.type === 'mysql'
-                                                        ? 'bg-primary/50 text-primary'
-                                                        : 'bg-surface-2 text-fg-muted'
-                                                    }`}>
-                                                    {db.type.toUpperCase()}
-                                                </span>
-                                            </div>
-                                            <div className="text-sm">
-                                                <span className="text-fg-muted">{t('ddb.createdAt')}</span>
-                                                <span className="ml-2 text-fg">
-                                                    {new Date(db.created_at).toLocaleDateString()}
-                                                </span>
-                                            </div>
+                                    {/* alpha.129: the engine's mark and colour, its
+                                        name from the server's engine (MariaDB is
+                                        never "MYSQL"), then the database's name. */}
+                                    <div className="flex items-start gap-3">
+                                        <EngineMark engine={engine} />
+                                        <div className="min-w-0 flex-1">
+                                            <h5 className="break-all font-mono text-base font-semibold text-fg">{db.name}</h5>
+                                            <p className="mt-0.5 text-xs text-fg-muted">
+                                                <span className="font-medium text-fg">{engineLabel(engine, db.engine_version)}</span>
+                                                <span aria-hidden="true"> · </span>
+                                                {t('ddb.createdAt')} {new Date(db.created_at).toLocaleDateString()}
+                                            </p>
                                         </div>
                                         {!readOnly && (
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleDeleteDatabase(db)}
-                                                    disabled={shown.stale}
-                                                    className="p-2 text-danger hover:bg-danger/30 rounded transition-colors disabled:pointer-events-none disabled:opacity-40"
-                                                    title={t('databases.deleteDatabase', { name: db.name })}
-                                                    aria-label={t('databases.deleteDatabase', { name: db.name })}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteDatabase(db)}
+                                                disabled={shown.stale}
+                                                className="rounded-md p-2 text-fg-subtle transition-colors hover:bg-danger/10 hover:text-danger disabled:pointer-events-none disabled:opacity-40"
+                                                title={t('databases.deleteDatabase', { name: db.name })}
+                                                aria-label={t('databases.deleteDatabase', { name: db.name })}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         )}
                                     </div>
-                                    {/* alpha.129: its users, each with a new password. */}
-                                    <div className="mt-3 border-t border-border pt-3">
-                                        <DatabaseUsers domainId={domainId} databaseId={db.id} databaseName={db.name} users={db.users ?? []} readOnly={readOnly || shown.stale} />
-                                    </div>
-                                    {/* alpha.128 (G7): the tools of this database. */}
+                                    {/* alpha.128 (G7): the tools of this database;
+                                        alpha.129: its users, each with a new
+                                        password, right under its numbers. */}
                                     <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale} isAdmin={isAdmin}
                                         webTool={webToolOf(db.type)}
-                                        onRefusal={(problem, sentence) => refuse(problem, sentence)} onClear={clearRefusal} />
+                                        onRefusal={(problem, sentence) => refuse(problem, sentence)} onClear={clearRefusal}
+                                        afterStats={<DatabaseUsers domainId={domainId} databaseId={db.id} databaseName={db.name} users={db.users ?? []} readOnly={readOnly || shown.stale} />} />
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         ))}
                     </RemoteGate>

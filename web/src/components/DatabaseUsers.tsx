@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, Trash2, UserPlus, UserRound } from 'lucide-react';
+import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { useDataToolsWords } from './dataToolsWords';
 import { invalidate } from '../lib/remote';
 import type { DatabaseUserInfo } from '../lib/domainDatabases';
@@ -96,9 +96,9 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     <button
                         type="button"
                         onClick={() => setAdding(true)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-surface-2"
                     >
-                        <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                         {t('dbu.add')}
                     </button>
                 )}
@@ -109,7 +109,6 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                 <ul className="divide-y divide-border rounded-lg border border-border">
                     {users.map((user) => (
                         <li key={user.id} className="flex flex-wrap items-center gap-2 px-3 py-2" data-database-user={user.username}>
-                            <UserRound className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
                             <span className="min-w-0 break-all font-mono text-sm text-fg">{user.username}</span>
                             <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-fg-muted">{accessLabel(user.access)}</span>
                             {!readOnly && (
@@ -150,12 +149,11 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     <p className="font-semibold text-fg">{t('dbu.addHeading', { database: databaseName })}</p>
                     <label className="block text-xs text-fg-muted">
                         {t('dbu.name')}
-                        <span className="mt-1 flex items-stretch overflow-hidden rounded-md border border-border bg-surface focus-within:border-primary">
-                            <span className="flex items-center border-r border-border bg-surface-2 px-2 font-mono text-xs text-fg-muted">{databaseName}_</span>
-                            <input type="text" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} placeholder="reader" maxLength={16}
-                                className={`${inputClass} rounded-none border-0 focus:ring-0`} autoComplete="off" />
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} placeholder="reader" maxLength={16}
+                            className={`${inputClass} mt-1`} autoComplete="off" />
+                        <span className="mt-1 block text-fg-subtle">
+                            {t('dbu.fullName')} <span className="break-all font-mono text-fg">{databaseName}_{name || '…'}</span>. {t('dbu.nameHint')}
                         </span>
-                        <span className="mt-1 block text-fg-subtle">{t('dbu.nameHint')}</span>
                     </label>
                     <fieldset className="space-y-1">
                         <legend className="text-xs text-fg-muted">{t('dbu.access')}</legend>
@@ -171,7 +169,7 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     </fieldset>
                     <PasswordInput field="database_user" value={password} onChange={setPassword} maxLength={128} autoComplete="new-password" />
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="primary" icon={UserPlus} disabled={!canAdd} onClick={() => void add()}>{t('dbu.addStart')}</Button>
+                        <Button variant="primary" icon={Plus} disabled={!canAdd} onClick={() => void add()}>{t('dbu.addStart')}</Button>
                         <Button disabled={busy} onClick={() => { setAdding(false); setName(''); setPassword(''); }}>{t('common.cancel')}</Button>
                     </div>
                 </div>

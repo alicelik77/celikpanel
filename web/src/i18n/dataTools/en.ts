@@ -149,6 +149,8 @@ export const enDataTools = {
     'dbt.tunnelToolsPg': 'pgAdmin: the SSH Tunnel tab of the server. DBeaver: the SSH tab of the connection. The database user and password are the ones above.',
     'dbt.noRemoteUseTool': 'Connecting from your computer is not available yet: the database accepts connections only from this server. Open {tool} in the panel (Database tools below) and sign in with the user and password above.',
     'dbt.noRemoteAskTool': 'Connecting from your computer is not available yet: the database accepts connections only from this server. In the browser it is managed with {tool}, which your provider installs.',
+    'dbt.importChooseFirst': 'Choose a file first.',
+    'dbu.fullName': 'Full name:',
 } as const;
 
 export type DataToolsKey = keyof typeof enDataTools;

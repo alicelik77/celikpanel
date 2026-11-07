@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useNavigate } from '../router';
 import { Database, KeyRound, Plus, Trash2, Users, Server } from 'lucide-react';
 import { showToast } from './Toast';
@@ -17,7 +17,10 @@ import { useRefusal } from '../lib/useRefusal';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
 import { confirmAction } from '../lib/confirmAction';
-import { DatabaseUserPassword } from './DatabaseUserPassword';
+// alpha.129: the new-password form is shared with the domain's Databases
+// tab; loaded when it is opened, so the entry's list of this page's parts
+// does not grow (the boot path).
+const DatabaseUserPassword = lazy(() => import('./DatabaseUserPassword').then((module) => ({ default: module.DatabaseUserPassword })));
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
@@ -292,8 +295,10 @@ export function DatabaseManagementV2() {
             <ErrorBanner className="mb-4" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
             {passwordFor && (
                 <div className="mb-4">
-                    <DatabaseUserPassword key={passwordFor.id} url={`${API_BASE}/database-users/${passwordFor.id}/password`} user={passwordFor.username}
-                        onClose={() => setPasswordFor(null)} onSettled={() => invalidate('databases')} />
+                    <Suspense fallback={<p className="text-sm text-fg-muted">{t('common.loading')}</p>}>
+                        <DatabaseUserPassword key={passwordFor.id} url={`${API_BASE}/database-users/${passwordFor.id}/password`} user={passwordFor.username}
+                            onClose={() => setPasswordFor(null)} onSettled={() => invalidate('databases')} />
+                    </Suspense>
                 </div>
             )}
 

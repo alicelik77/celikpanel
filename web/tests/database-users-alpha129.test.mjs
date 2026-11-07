@@ -19,6 +19,7 @@ const stub = dataModule(`
   export const KeyRound = () => null;
   export const Trash2 = () => null;
   export const UserPlus = () => null;
+  export const Plus = () => null;
   export const UserRound = () => null;
   const words = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => words;

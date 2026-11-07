@@ -61,3 +61,20 @@ export function decodeDomainDatabases(raw: unknown): DomainDatabases {
         availableTypes: parseAvailableDatabaseTypes(payload.available_types),
     };
 }
+
+// alpha.129: the engine a card names and marks (EngineMark).
+// Kartın adlandırdığı ve işaretlediği motor.
+export type DatabaseEngineName = 'mariadb' | 'mysql' | 'postgresql';
+
+/** The engine of a database: the server's answer, else its API type. */
+export function databaseEngine(engine: string | undefined, type: string): DatabaseEngineName {
+    if (engine === 'mariadb' || engine === 'mysql' || engine === 'postgresql') return engine;
+    return type === 'postgresql' ? 'postgresql' : 'mariadb';
+}
+
+const names: Record<DatabaseEngineName, string> = { mariadb: 'MariaDB', mysql: 'MySQL', postgresql: 'PostgreSQL' };
+
+/** "MariaDB 11.8", "PostgreSQL 17", or the bare name. */
+export function engineLabel(engine: DatabaseEngineName, version?: string): string {
+    return version ? `${names[engine]} ${version}` : names[engine];
+}
