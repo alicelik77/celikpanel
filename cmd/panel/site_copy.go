@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -252,15 +254,19 @@ func (p *Panel) handleDomainSiteCopy(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 	if !answer.Copied {
-		if created != nil && answer.CompensationSafe {
-			p.siteCopyRemoveDatabase(context.WithoutCancel(ctx), created)
+		leftover := ""
+		if created != nil && answer.CompensationSafe && !p.siteCopyRemoveDatabase(context.WithoutCancel(ctx), created) {
+			leftover = siteCopyLeftoverNote(created.Name, target.Domain)
 		}
 		if answer.Code == transport.SiteCopyTargetNotEmpty {
 			refuse(http.StatusConflict, errCodeSiteCopyNotEmpty,
-				target.Domain+" already has content in its web folder, so nothing was copied. To replace it, confirm overwriting: a backup of it is made first.")
+				target.Domain+" already has content in its web folder, so nothing was copied. To replace it, confirm overwriting: a backup of it is made first."+leftover)
 			return
 		}
 		message := "The copy failed and nothing was kept: " + boundedAgentDiagnostic(answer.Error)
+		if leftover != "" {
+			message = "The copy failed: " + boundedAgentDiagnostic(answer.Error) + "." + leftover
+		}
 		if !answer.CompensationSafe {
 			message = "The copy stopped after it began publishing: " + boundedAgentDiagnostic(answer.Error) + ". Open " + target.Domain + " to check."
 		}
@@ -396,20 +402,39 @@ func (p *Panel) siteCopyCreateDatabase(ctx context.Context, target wordpressSite
 		err = tx.Commit()
 	}
 	if err != nil {
-		p.siteCopyRemoveDatabase(context.WithoutCancel(ctx), created)
+		if !p.siteCopyRemoveDatabase(context.WithoutCancel(ctx), created) {
+			return nil, fmt.Errorf("%w; the new database %s could not be removed from MariaDB, so it stays on the server: remove it there (DROP DATABASE and DROP USER %s) or ask the administrator", err, created.Name, created.User)
+		}
 		return nil, err
 	}
 	return created, nil
 }
 
+// siteCopyLeftoverNote tells where a database the copy made, and could not
+// remove, stays (D-024: the problem and its fix together).
+func siteCopyLeftoverNote(name, target string) string {
+	return " The copy's new database " + name + " could not be removed, so it stays under " + target +
+		" → Databases; delete it there when you no longer need it (deleting it again also retries the removal)."
+}
+
 // siteCopyRemoveDatabase removes a database this operation made (the Agent
-// checks the operation's ownership proof first).
-func (p *Panel) siteCopyRemoveDatabase(ctx context.Context, created *siteCopyNewDatabase) {
+// checks the operation's ownership proof first). The panel's records go only
+// when the Agent proved the removal: a refused, failed or unanswered delete
+// leaves a database in MariaDB, and its records keep it visible on the
+// target's Databases page, where the owner can delete it (alpha.129 lab,
+// Arch: the records went and the database stayed, unseen). It reports
+// whether the database is gone.
+func (p *Panel) siteCopyRemoveDatabase(ctx context.Context, created *siteCopyNewDatabase) bool {
 	var answer transport.DeleteDatabaseResponse
-	_ = siteCopyAgent(p, ctx, "Agent.DeleteDatabase", transport.DeleteDatabaseRequest{
+	err := siteCopyAgent(p, ctx, "Agent.DeleteDatabase", transport.DeleteDatabaseRequest{
 		Type: "mysql", Name: created.Name, User: created.User, RequireUserCleanup: true,
 		RequireOwnershipProof: true, OperationID: created.Operation, CleanupToken: created.CleanupKey,
 	}, &answer)
+	if err != nil || !answer.Success || answer.Error != "" {
+		log.Printf("[site-copy] the copy database %s was not removed (%s); its records are kept so it stays visible", created.Name,
+			boundedAgentDiagnostic(firstNonEmpty(answer.Error, siteCopyErrText(err))))
+		return false
+	}
 	db := p.db.GetDB()
 	if created.DatabaseID > 0 {
 		_, _ = db.ExecContext(ctx, `DELETE FROM databases_v2 WHERE id = ?`, created.DatabaseID)
@@ -417,4 +442,12 @@ func (p *Panel) siteCopyRemoveDatabase(ctx context.Context, created *siteCopyNew
 	if created.UserID > 0 {
 		_, _ = db.ExecContext(ctx, `DELETE FROM database_users WHERE id = ?`, created.UserID)
 	}
+	return true
+}
+
+func siteCopyErrText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
