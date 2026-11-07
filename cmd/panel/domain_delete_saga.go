@@ -220,6 +220,8 @@ func (p *Panel) writeDomainDeletionPending(
 		"domain":  domain,
 		"stage":   stage,
 		"message": "Deletion is incomplete but retryable. Retry this deletion.",
+		// alpha.129: the read-only status of this deletion (a token reads it too).
+		"status_url": domainDeletionStatusURL(domainID),
 	}
 	if stage == "dns_cleanup" {
 		if reason, ok := remoteDNSDeletionReason(cause); ok {
@@ -228,12 +230,11 @@ func (p *Panel) writeDomainDeletionPending(
 			response["reason"] = reason
 			response["message"] = remoteDNSDeletionEnglish(reason)
 			p.remoteDNSDeletions().pendingAnswered(domainID, reason)
-		} else if guidance, ok := dnsPublicationGuidanceAPIError(cause); ok {
-			response["reason"] = guidance.Reason
-			response["message"] = guidance.Error
-			if guidance.Detail != "" {
-				response["detail"] = guidance.Detail
-			}
+		} else {
+			// This server's own DNS step: its guidance and, when CelikPanel
+			// completes it by itself, that the deletion then finishes by
+			// itself too (domain_deletion_pending_dns.go).
+			domainDeletionDNSPendingAnswer(response, cause)
 		}
 	}
 	var stageFailure *domainDeletionStageFailure

@@ -51,6 +51,10 @@ kimlik vekilinin taşıyıcı jetonu ya da bir vekilin Basic girişi buna
 - barındırma ayarları;
 - kullanım;
 - ziyaretçi istatistikleri;
+- bitmemiş bir silmenin durumu (`GET /api/v1/domains/{id}/deletion-status`:
+  bekleyen silme yoksa `204`, alan adı silinmişse `404`; yoksa kimin ne
+  yapacağını ve sonra ne olacağını söyleyen `message`). Yalnız okur; yeniden
+  sormak hiçbir işi tekrarlamaz;
 - DNS kayıtları;
 - posta kutuları;
 - veritabanları;
@@ -63,8 +67,16 @@ kimlik vekilinin taşıyıcı jetonu ya da bir vekilin Basic girişi buna
   hiçbir şey silinmez;
   yedek DNS sunucusu olan bir sunucuda ekleme `409 DNS_PUBLICATION_PENDING`
   (`partial_success: true`; alan adı eklenmiştir, DNS yayını kendiliğinden
-  biter), silme `202 deletion_pending` yanıtı verebilir: yedeğin onayı
-  beklenir ve sunucu silmeyi kendiliğinden bitirir;
+  biter), silme `202 deletion_pending` yanıtı verebilir (alan adının kendi
+  DNS yayını henüz bitmemişse de): yedeğin onayı beklenir ve sunucu silmeyi
+  kendiliğinden bitirir; yanıttaki `status_url` silmenin durumudur. Bu arada
+  silmeyi yeniden göndermek hiçbir şey başlatmaz. Kaldırma başarısız olursa
+  durum `reason: dns_removal_failed` der ve silme aynı DELETE isteğini
+  bekler. Kaldırma başarılı olup silmenin bitirilmesi başarısız olmayı
+  sürdürürse sunucu 5 dakika, 15 dakika, bir saat, sonra 6 saatte bir yeniden
+  dener; üçüncü başarısızlıktan sonra durum `stage` ve `error_line` ile
+  `reason: deletion_finish_failed` der, alan adının sahibi ve yöneticiler tek
+  bir bildirim alır ve aynı DELETE denemeleri baştan başlatır;
 - DNS kayıtlarını ekleyip değiştirip silebilir;
 - posta kutusu ekleyip silebilir, kotasını ve parolasını değiştirebilir;
 - veritabanı ekleyip silebilir;

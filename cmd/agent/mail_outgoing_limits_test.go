@@ -641,3 +641,53 @@ func TestApplyOutgoingMailLimitsResetsTheCountersOfChangedLimits(t *testing.T) {
 		t.Fatalf("the newly paused mailbox was not reset: %v", host.commands)
 	}
 }
+
+// alpha.128 lab, round 2: a mailbox resumed by a password change and paused
+// again within the same hour must be refused by the pause again. postfwd's
+// pause is the list and its rule only (no hour, no rate), so the third apply
+// renders the same pause rule as the first, and both the resume and the
+// second pause reset the mailbox's hourly counter.
+func TestApplyOutgoingMailLimitsPausesAResumedMailboxAgain(t *testing.T) {
+	host, layout := installFakeOutgoingHost(t)
+	paused := sampleOutgoingSpec()
+	resumed := sampleOutgoingSpec()
+	resumed.Paused = nil
+	var firstRules []byte
+	for i, spec := range []*transport.OutgoingMailLimitsSpec{paused, resumed, paused} {
+		var resp transport.OutgoingMailLimitsApplyResponse
+		if err := (&Agent{}).ApplyOutgoingMailLimitsV1(spec, &resp); err != nil || !resp.Applied || !resp.Verified {
+			t.Fatalf("apply %d: %+v %v", i, resp, err)
+		}
+		rules, err := os.ReadFile(layout.config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		list, listErr := os.ReadFile(filepath.Join(layout.listDir, "paused.list"))
+		switch i {
+		case 0:
+			firstRules = rules
+		case 1:
+			if strings.Contains(string(rules), "id=CP_PAUSED") || listErr == nil {
+				t.Fatalf("the resumed mailbox is still in the pause rule or list: %s", rules)
+			}
+		case 2:
+			if string(rules) != string(firstRules) || !strings.Contains(string(list), "bad@example.com") {
+				t.Fatalf("the second pause is not the first one's rule and list:\n%s\n%s", rules, list)
+			}
+			pausedAt := strings.Index(string(rules), "id=CP_PAUSED")
+			if pausedAt < 0 || pausedAt > strings.Index(string(rules), "id=CP_MAILBOX_") {
+				t.Fatalf("the pause rule does not come before the hourly limits:\n%s", rules)
+			}
+		}
+	}
+	resets := 0
+	for _, c := range host.commands {
+		if strings.HasSuffix(c, "--delrate sasl_username=bad@example.com") {
+			resets++
+		}
+	}
+	// First pause, resume, second pause.
+	if resets != 3 {
+		t.Fatalf("bad@'s counter was reset %d times: %v", resets, host.commands)
+	}
+}

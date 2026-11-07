@@ -262,6 +262,117 @@ func TestOutgoingWorkerPausesNoticesAndAPasswordResumes(t *testing.T) {
 	}
 }
 
+func TestOutgoingSinceResumeStartsAFreshWindow(t *testing.T) {
+	resumed := time.Date(2026, 11, 7, 14, 20, 0, 0, time.UTC)
+	hour := func(h int) time.Time { return time.Date(2026, 11, 7, h, 0, 0, 0, time.UTC) }
+	cases := []struct {
+		name             string
+		hour             time.Time
+		resumed          time.Time
+		recipients, refs int
+		wantR, wantF     int
+		wantJudge        bool
+	}{
+		{"never resumed: the whole hour", hour(14), time.Time{}, 600, 4, 600, 4, true},
+		{"the hour before the change: judged already", hour(13), resumed, 900, 9, 0, 0, false},
+		{"the change's hour: only what came after it", hour(14), resumed, 720, 7, 120, 3, true},
+		{"the change's hour, nothing new", hour(14), resumed, 600, 4, 0, 0, true},
+		{"a shorter log than the baseline counts nothing", hour(14), resumed, 10, 0, 0, 0, true},
+		{"the next hour: in full", hour(15), resumed, 150, 2, 150, 2, true},
+	}
+	for _, c := range cases {
+		r, f, judge := outgoingSinceResume(c.hour, c.recipients, c.refs, c.resumed, 600, 4)
+		if r != c.wantR || f != c.wantF || judge != c.wantJudge {
+			t.Errorf("%s: %d %d %v, want %d %d %v", c.name, r, f, judge, c.wantR, c.wantF, c.wantJudge)
+		}
+	}
+}
+
+// alpha.128 lab, round 2: a mailbox reopened by a password change was not
+// paused again within the same hour (three more refusals, no pause). The
+// change now starts a fresh window: the counts that led to the first pause
+// do not pause it again, new ones do, and the administrator hears of it
+// again; the hourly limit notice stays one per hour.
+func TestOutgoingResumedMailboxIsPausedAgainWithinTheSameHour(t *testing.T) {
+	f := newOutgoingFixture(t)
+	f.enable(t)
+	if _, err := f.db.Exec(`UPDATE mail_outgoing_settings SET refusal_pause = 3 WHERE id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	hour := time.Now().UTC().Truncate(time.Hour)
+	bucket := func(recipients, refusals int) {
+		f.activity = transport.OutgoingMailActivityResponse{Read: true, Buckets: []transport.OutgoingMailBucket{
+			{Hour: hour.Format(time.RFC3339), Address: "b@example.org", Messages: recipients, Recipients: recipients, LimitRefusals: refusals, LimitKind: "mailbox"},
+		}}
+	}
+	state := func() (pausedAt, reason, detail string) {
+		_ = f.db.QueryRow(`SELECT COALESCE(paused_at, ''), COALESCE(paused_reason, ''), COALESCE(paused_detail, '') FROM mailbox_outgoing WHERE email_account_id = 9903`).Scan(&pausedAt, &reason, &detail)
+		return
+	}
+	notices := func() map[string]int {
+		counts := map[string]int{}
+		rows, err := f.db.Query(`SELECT kind, audience FROM mail_outgoing_notices WHERE address = 'b@example.org'`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var kind, audience string
+			_ = rows.Scan(&kind, &audience)
+			counts[kind+"/"+audience]++
+		}
+		return counts
+	}
+
+	// Three messages over its limit: paused.
+	bucket(3, 3)
+	f.p.runOutgoingMailRound(ctx)
+	if pausedAt, reason, _ := state(); pausedAt == "" || reason != "refusals" {
+		t.Fatalf("first pause missing: %q %q", pausedAt, reason)
+	}
+	if n := notices(); n["paused/administrator"] != 1 || n["limit_reached/administrator"] != 1 {
+		t.Fatalf("first notices = %v", n)
+	}
+
+	// The password change reopens it; the refusals before it do not pause it again.
+	if resumed, err := f.p.resumeOutgoingAfterPassword(ctx, 9903); err != nil || !resumed {
+		t.Fatalf("resume: %v %v", resumed, err)
+	}
+	var baseRecipients, baseRefusals int
+	if err := f.db.QueryRow(`SELECT resume_base_recipients, resume_base_refusals FROM mailbox_outgoing WHERE email_account_id = 9903`).Scan(&baseRecipients, &baseRefusals); err != nil || baseRecipients != 3 || baseRefusals != 3 {
+		t.Fatalf("baseline = %d %d (%v)", baseRecipients, baseRefusals, err)
+	}
+	f.p.runOutgoingMailRound(ctx)
+	if pausedAt, _, _ := state(); pausedAt != "" {
+		t.Fatal("the refusals before the password change paused the mailbox again")
+	}
+	// Two more refusals after the change: still below three.
+	bucket(6, 5)
+	f.p.runOutgoingMailRound(ctx)
+	if pausedAt, _, _ := state(); pausedAt != "" {
+		t.Fatal("two refusals after the change paused the mailbox")
+	}
+
+	// Three refusals after the change: paused again, the administrator told again.
+	bucket(6, 6)
+	f.p.runOutgoingMailRound(ctx)
+	pausedAt, reason, detail := state()
+	if pausedAt == "" || reason != "refusals" || !strings.Contains(detail, "3 messages refused") || !strings.Contains(detail, "since the password change") {
+		t.Fatalf("not paused again: %q %q %q", pausedAt, reason, detail)
+	}
+	if last := f.applied[len(f.applied)-1]; len(last.Paused) != 1 || last.Paused[0] != "b@example.org" {
+		t.Fatalf("postfwd was not given the second pause: %+v", last)
+	}
+	n := notices()
+	if n["paused/administrator"] != 2 || n["paused/customer"] != 2 {
+		t.Fatalf("second pause notices = %v", n)
+	}
+	if n["limit_reached/administrator"] != 1 || n["limit_reached/customer"] != 1 {
+		t.Fatalf("the hourly limit notice was repeated within the hour: %v", n)
+	}
+}
+
 func TestOutgoingDomainViewAndCeiling(t *testing.T) {
 	f := newOutgoingFixture(t)
 	f.enable(t)
