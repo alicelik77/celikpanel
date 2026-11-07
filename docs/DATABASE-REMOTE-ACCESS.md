@@ -158,6 +158,16 @@ User: as listed; Password: the database user's password; SSL mode: `require`
 - The engines' units do not depend on the filter unit; the filter loads
   before the network at boot and the guard reloads it within 30 seconds.
 - MariaDB IPv6 ranges are refused (single IPv6 addresses only).
+- Withdrawing the plan permission or the administrator's offer closes access
+  at the next apply, which follows the change after coalescing (up to about
+  35 seconds), not within the request itself.
+- The copy's grant comparison covers database-wide grants only: table,
+  column or role grants an administrator adds to a remote copy by hand are
+  not removed by it (only the engine's root can add them).
+- Fail2ban's journal-line format (the prefix its systemd backend gives
+  MariaDB's entries) is verified by unit tests only so far; the lab confirms
+  it on the five systems. MariaDB must log to the journal (no `log_error`
+  file), otherwise rules wait.
 
 ## Evidence
 

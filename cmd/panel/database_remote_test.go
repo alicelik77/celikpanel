@@ -608,3 +608,41 @@ func (r *databaseRemoteRecorder) requestsCopy() []transport.DatabaseRemoteApplyR
 	defer r.mu.Unlock()
 	return append([]transport.DatabaseRemoteApplyRequest(nil), r.requests...)
 }
+
+// Re-review: the grant and revoke handlers ask for a sync only after their
+// committed change; a refused request (another customer's database or
+// grant) asks for nothing.
+func TestDatabaseRemoteRefusedGrantAndRevokeStartNoApply(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	dbrOffer(t, p, true)
+	var grantB int
+	if err := p.db.GetDB().QueryRow(`SELECT id FROM database_user_grants WHERE database_id = 7531 AND user_id = 7541`).Scan(&grantB); err != nil {
+		t.Fatal(err)
+	}
+	customerA := dbrCaller(dbrCustomerA, roleCustomer)
+	for _, c := range []struct {
+		name    string
+		method  string
+		path    string
+		body    string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"grant on another customer's database", http.MethodPost, "/api/v1/databases/7531/grants", `{"user_id":7540}`, p.handleGrantDatabaseAccess},
+		{"revoke another customer's grant", http.MethodDelete, "/api/v1/database-grants/" + itoa(grantB), "", p.handleRevokeDatabaseAccess},
+	} {
+		request := httptest.NewRequest(c.method, c.path, strings.NewReader(c.body))
+		request = request.WithContext(context.WithValue(request.Context(), callerKey, customerA))
+		response := httptest.NewRecorder()
+		c.handler(response, request)
+		if response.Code < 400 {
+			t.Fatalf("%s: answered %d", c.name, response.Code)
+		}
+		select {
+		case <-databaseRemoteMemory.kick:
+			t.Fatalf("%s: a refused request asked for an apply", c.name)
+		default:
+		}
+	}
+}
