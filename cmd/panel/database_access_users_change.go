@@ -114,11 +114,18 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	readers, writers, err := p.databaseAddedUsers(ctx, target.identity.ID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+
 	reportOperationStep(ctx, "create")
 	engine, port := databaseAccessEngine(target)
 	agentReq := transport.DatabaseAccessUserRequest{
 		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Engine: engine, Port: port,
 		Database: target.identity.Name, Username: username, Password: req.Password, Access: req.Access,
+		Readers: readers, Writers: writers,
 	}
 	resp, err := p.databaseAccessNativeOps().create(ctx, agentReq)
 	if err != nil {
@@ -165,6 +172,31 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 	p.auditDetailed(r, "database.user.add:"+username, "database_user", userID,
 		map[string]any{"database": target.identity.Name, "access": req.Access})
 	_ = json.NewEncoder(w).Encode(map[string]any{"id": userID, "username": username, "access": req.Access})
+}
+
+// databaseAddedUsers names the database's users added after the one made
+// with it: read only (SELECT) and read and write.
+func (p *Panel) databaseAddedUsers(ctx context.Context, databaseID int) (readers, writers []string, err error) {
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT u.username, COALESCE(g.privileges, 'ALL') FROM database_user_grants g JOIN database_users u ON u.id = g.user_id
+		WHERE g.database_id = ? AND g.id > (SELECT MIN(id) FROM database_user_grants WHERE database_id = ?)
+		ORDER BY g.id`, databaseID, databaseID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name, privileges string
+		if err := rows.Scan(&name, &privileges); err != nil {
+			return nil, nil, err
+		}
+		if databaseAccessOf(privileges) == "read" {
+			readers = append(readers, name)
+		} else {
+			writers = append(writers, name)
+		}
+	}
+	return readers, writers, rows.Err()
 }
 
 // recordDatabaseAccessUser writes the user and its one grant together.

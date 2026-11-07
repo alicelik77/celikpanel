@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
@@ -17,21 +18,27 @@ import (
 //
 // Read only:
 //   - MariaDB: SELECT on the database.
-//   - PostgreSQL: CONNECT, USAGE on schema public, SELECT on its tables and
-//     sequences, and the same for the tables the database's owner makes later
-//     (ALTER DEFAULT PRIVILEGES FOR ROLE owner).
+//   - PostgreSQL: CONNECT; in every schema of the database that is not the
+//     system's (pg_*, information_schema): USAGE, SELECT on its tables and
+//     sequences. Later: SELECT on the tables and sequences, and USAGE on the
+//     schemas, that the database's owner or any read-and-write user of the
+//     database makes (ALTER DEFAULT PRIVILEGES FOR ROLE each of them, in the
+//     whole database, so new schemas are covered too).
 //
 // Read and write:
 //   - MariaDB: ALL PRIVILEGES on the database, the set the user made with the
 //     database has (without GRANT OPTION).
-//   - PostgreSQL: CONNECT and TEMPORARY, USAGE and CREATE on schema public, all
-//     rights on its tables and sequences, EXECUTE on its functions, the same
-//     for the owner's later tables, and the owner keeps all rights on the
-//     tables this user makes.
+//   - PostgreSQL: CONNECT and TEMPORARY; in every such schema USAGE and
+//     CREATE, all rights on its tables and sequences, EXECUTE on its
+//     functions. Later, both ways between this user and the owner and the
+//     other read-and-write users: all rights on what each of them makes; and
+//     SELECT (USAGE on schemas) on what this user makes for every read-only
+//     user of the database.
 //
-// Never SUPERUSER, CREATEDB, CREATEROLE, REPLICATION or BYPASSRLS. Only
-// schema public is covered on PostgreSQL (the schema the panel's databases
-// use); docs/DATABASE-USERS.md says so.
+// The other users of the database come with the request (Readers, Writers)
+// and only those that exist on the engine are used. Never SUPERUSER,
+// CREATEDB, CREATEROLE, REPLICATION or BYPASSRLS. docs/DATABASE-USERS.md
+// says exactly what is covered.
 //
 // Removal: MariaDB DROP USER on every host of the name; PostgreSQL REASSIGN
 // OWNED to the database's owner (a table the user made stays, owned by the
@@ -246,8 +253,9 @@ func postgreSQLAccessFacts(run func(string) ([]byte, error), username, database 
 }
 
 // postgreSQLAccessGrants is the script that gives the rights inside the
-// database, in one transaction.
-func postgreSQLAccessGrants(database, username, owner, access string) (string, error) {
+// database, in one transaction. readers and writers are the database's
+// other access users that exist on the engine (never the owner or username).
+func postgreSQLAccessGrants(database, username, owner, access string, readers, writers []string) (string, error) {
 	db, err := services.QuotePGIdentifier(database)
 	if err != nil {
 		return "", err
@@ -256,35 +264,113 @@ func postgreSQLAccessGrants(database, username, owner, access string) (string, e
 	if err != nil {
 		return "", err
 	}
+	userLiteral, err := services.QuotePGStringLiteral(username)
+	if err != nil {
+		return "", err
+	}
 	own, err := services.QuotePGIdentifier(owner)
 	if err != nil {
 		return "", fmt.Errorf("the database's owner %q is not a name CelikPanel manages", owner)
 	}
-	lines := []string{`\connect ` + db, "BEGIN;"}
+	quoteAll := func(names []string) ([]string, error) {
+		out := make([]string, 0, len(names))
+		for _, name := range names {
+			quoted, err := services.QuotePGIdentifier(name)
+			if err != nil {
+				return nil, fmt.Errorf("invalid database user name %q", name)
+			}
+			out = append(out, quoted)
+		}
+		return out, nil
+	}
+	others, err := quoteAll(writers)
+	if err != nil {
+		return "", err
+	}
+	reading, err := quoteAll(readers)
+	if err != nil {
+		return "", err
+	}
+	// The roles whose new objects this user must reach: the owner and every
+	// read-and-write user.
+	creators := append([]string{own}, others...)
+
+	// Every non-system schema, existing objects. The role's name is a
+	// validated identifier, passed as a literal to format().
+	schemaGrants := []string{
+		"EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA %I TO %I', s, " + userLiteral + ");",
+		"EXECUTE pg_catalog.format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO %I', s, " + userLiteral + ");",
+		"EXECUTE pg_catalog.format('GRANT SELECT ON ALL SEQUENCES IN SCHEMA %I TO %I', s, " + userLiteral + ");",
+	}
+	databaseRights := "CONNECT"
+	if access == transport.DatabaseAccessWrite {
+		databaseRights = "CONNECT, TEMPORARY"
+		schemaGrants = []string{
+			"EXECUTE pg_catalog.format('GRANT USAGE, CREATE ON SCHEMA %I TO %I', s, " + userLiteral + ");",
+			"EXECUTE pg_catalog.format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO %I', s, " + userLiteral + ");",
+			"EXECUTE pg_catalog.format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO %I', s, " + userLiteral + ");",
+			"EXECUTE pg_catalog.format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO %I', s, " + userLiteral + ");",
+		}
+	}
+	lines := []string{`\connect ` + db, "BEGIN;",
+		"GRANT " + databaseRights + " ON DATABASE " + db + " TO " + user + ";",
+		"DO $celikpanel$ DECLARE s text; BEGIN FOR s IN SELECT nspname FROM pg_catalog.pg_namespace " +
+			"WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema' LOOP " + strings.Join(schemaGrants, " ") + " END LOOP; END $celikpanel$;",
+	}
+	defaults := func(creator, rights, grantee string) {
+		lines = append(lines, "ALTER DEFAULT PRIVILEGES FOR ROLE "+creator+" "+rights+" TO "+grantee+";")
+	}
 	if access == transport.DatabaseAccessRead {
-		lines = append(lines,
-			"GRANT CONNECT ON DATABASE "+db+" TO "+user+";",
-			"GRANT USAGE ON SCHEMA public TO "+user+";",
-			"GRANT SELECT ON ALL TABLES IN SCHEMA public TO "+user+";",
-			"GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO "+user+";",
-			"ALTER DEFAULT PRIVILEGES FOR ROLE "+own+" IN SCHEMA public GRANT SELECT ON TABLES TO "+user+";",
-			"ALTER DEFAULT PRIVILEGES FOR ROLE "+own+" IN SCHEMA public GRANT SELECT ON SEQUENCES TO "+user+";",
-		)
+		for _, creator := range creators {
+			defaults(creator, "GRANT SELECT ON TABLES", user)
+			defaults(creator, "GRANT SELECT ON SEQUENCES", user)
+			defaults(creator, "GRANT USAGE ON SCHEMAS", user)
+		}
 	} else {
-		lines = append(lines,
-			"GRANT CONNECT, TEMPORARY ON DATABASE "+db+" TO "+user+";",
-			"GRANT USAGE, CREATE ON SCHEMA public TO "+user+";",
-			"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "+user+";",
-			"GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "+user+";",
-			"GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO "+user+";",
-			"ALTER DEFAULT PRIVILEGES FOR ROLE "+own+" IN SCHEMA public GRANT ALL ON TABLES TO "+user+";",
-			"ALTER DEFAULT PRIVILEGES FOR ROLE "+own+" IN SCHEMA public GRANT ALL ON SEQUENCES TO "+user+";",
-			"ALTER DEFAULT PRIVILEGES FOR ROLE "+user+" IN SCHEMA public GRANT ALL ON TABLES TO "+own+";",
-			"ALTER DEFAULT PRIVILEGES FOR ROLE "+user+" IN SCHEMA public GRANT ALL ON SEQUENCES TO "+own+";",
-		)
+		for _, creator := range creators {
+			defaults(creator, "GRANT ALL ON TABLES", user)
+			defaults(creator, "GRANT ALL ON SEQUENCES", user)
+			defaults(creator, "GRANT USAGE, CREATE ON SCHEMAS", user)
+			// And what this user makes, for each of them.
+			defaults(user, "GRANT ALL ON TABLES", creator)
+			defaults(user, "GRANT ALL ON SEQUENCES", creator)
+			defaults(user, "GRANT USAGE, CREATE ON SCHEMAS", creator)
+		}
+		for _, reader := range reading {
+			defaults(user, "GRANT SELECT ON TABLES", reader)
+			defaults(user, "GRANT SELECT ON SEQUENCES", reader)
+			defaults(user, "GRANT USAGE ON SCHEMAS", reader)
+		}
 	}
 	lines = append(lines, "COMMIT;")
 	return strings.Join(lines, "\n"), nil
+}
+
+// postgreSQLExistingRoles keeps the names that exist as roles on the engine,
+// leaving out the owner and the user itself.
+func postgreSQLExistingRoles(run func(string) ([]byte, error), names []string, skip ...string) ([]string, error) {
+	var asked []string
+	for _, name := range names {
+		if services.ValidateSQLIdentifier(name) != nil || slices.Contains(skip, name) || suspensionReservedDatabaseUser(name) {
+			continue
+		}
+		literal, _ := services.QuotePGStringLiteral(name)
+		asked = append(asked, literal)
+	}
+	if len(asked) == 0 {
+		return nil, nil
+	}
+	output, err := run("SELECT 'role=' || rolname FROM pg_catalog.pg_roles WHERE rolname IN (" + strings.Join(asked, ", ") + ") ORDER BY rolname;")
+	if err != nil {
+		return nil, hostcmd.Fail("the database server could not be asked about the database's other users", output, err, databaseClientMeaning)
+	}
+	var found []string
+	for _, line := range strings.Split(string(output), "\n") {
+		if name, ok := strings.CutPrefix(strings.TrimSpace(line), "role="); ok && name != "" {
+			found = append(found, name)
+		}
+	}
+	return found, nil
 }
 
 func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport.DatabaseAccessUserRequest, resp *transport.DatabaseAccessUserResponse) {
@@ -301,7 +387,17 @@ func createPostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 		resp.Error = "database " + req.Database + " does not exist on this server; nothing was changed"
 		return
 	}
-	grants, err := postgreSQLAccessGrants(req.Database, req.Username, owner, req.Access)
+	readers, err := postgreSQLExistingRoles(run, req.Readers, owner, req.Username)
+	if err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
+		return
+	}
+	writers, err := postgreSQLExistingRoles(run, req.Writers, owner, req.Username)
+	if err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
+		return
+	}
+	grants, err := postgreSQLAccessGrants(req.Database, req.Username, owner, req.Access, readers, writers)
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
 		return

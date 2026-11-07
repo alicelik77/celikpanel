@@ -219,13 +219,15 @@ func TestDatabaseAccessUsersOnRealPostgreSQL(t *testing.T) {
 	e := requireTestEngines(t)
 	installTestEngines(t, e)
 	var res engineResult
-	cleanup := "DROP DATABASE IF EXISTS a129shop; DROP ROLE IF EXISTS a129shop_reader; DROP ROLE IF EXISTS a129shop_editor; DROP ROLE IF EXISTS a129shop_user;"
+	cleanup := "DROP DATABASE IF EXISTS a129shop; DROP ROLE IF EXISTS a129shop_reader; DROP ROLE IF EXISTS a129shop_reader2; DROP ROLE IF EXISTS a129shop_editor; DROP ROLE IF EXISTS a129shop_user;"
 	mustRun(t, "clean", e.pg("", "", "", cleanup))
 	t.Cleanup(func() { _ = e.pg("", "", "", cleanup) })
 	// As CelikPanel makes it: the user, then the database it owns.
 	mustRun(t, "setup", e.pg("", "", "", "CREATE USER a129shop_user WITH PASSWORD '"+engineOwnerPassword+"';"))
 	mustRun(t, "database", e.pg("", "", "", "CREATE DATABASE a129shop OWNER a129shop_user;"))
 	mustRun(t, "owner table", e.pg("a129shop_user", engineOwnerPassword, "a129shop", "CREATE TABLE items (id serial PRIMARY KEY, name text); INSERT INTO items (name) VALUES ('one');"))
+	// A schema of its own, with a table, before any user is added.
+	mustRun(t, "owner schema", e.pg("a129shop_user", engineOwnerPassword, "a129shop", "CREATE SCHEMA legacy; CREATE TABLE legacy.old (v int); INSERT INTO legacy.old VALUES (3);"))
 
 	base := transport.DatabaseAccessUserRequest{Engine: "postgresql", Port: 5432, Database: "a129shop"}
 	read := base
@@ -245,6 +247,15 @@ func TestDatabaseAccessUsersOnRealPostgreSQL(t *testing.T) {
 	if got := mustRun(t, "reader reads the later table", e.pg("a129shop_reader", engineReadPassword, "a129shop", "SELECT v FROM later;")); got != "7" {
 		t.Fatalf("later table read %q", got)
 	}
+	// Every non-system schema: the one that was there, and one the owner
+	// makes later.
+	if got := mustRun(t, "reader reads the existing schema", e.pg("a129shop_reader", engineReadPassword, "a129shop", "SELECT v FROM legacy.old;")); got != "3" {
+		t.Fatalf("legacy read %q", got)
+	}
+	mustRun(t, "owner later schema", e.pg("a129shop_user", engineOwnerPassword, "a129shop", "CREATE SCHEMA app; CREATE TABLE app.t1 (v int); INSERT INTO app.t1 VALUES (4);"))
+	if got := mustRun(t, "reader reads the later schema", e.pg("a129shop_reader", engineReadPassword, "a129shop", "SELECT v FROM app.t1;")); got != "4" {
+		t.Fatalf("app read %q", got)
+	}
 	if got := mustRun(t, "role flags", e.pg("", "", "", "SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls, rolpassword LIKE 'SCRAM-SHA-256$%' FROM pg_authid WHERE rolname = 'a129shop_reader';")); got != "f|t" {
 		t.Fatalf("reader role flags/verifier %q", got)
 	}
@@ -252,28 +263,57 @@ func TestDatabaseAccessUsersOnRealPostgreSQL(t *testing.T) {
 		t.Fatalf("second create: %+v", resp)
 	}
 
+	// A read-and-write user added after the reader (the panel names the
+	// database's other users): what it makes later, the reader can read and
+	// not change; the owner keeps all rights on it.
 	write := base
 	write.Username, write.Password, write.Access = "a129shop_editor", engineWritePassword, transport.DatabaseAccessWrite
+	write.Readers = []string{"a129shop_reader", "a129shop_gone"}
 	if resp := accessUser(t, true, write); !resp.Applied {
 		t.Fatalf("write user: %+v", resp)
 	}
 	mustRun(t, "editor writes", e.pg("a129shop_editor", engineWritePassword, "a129shop",
-		"INSERT INTO items (name) VALUES ('two'); CREATE TABLE notes (v int); INSERT INTO notes VALUES (1);"))
-	// The owner keeps all rights on the editor's table.
+		"INSERT INTO items (name) VALUES ('two'); INSERT INTO legacy.old VALUES (5); CREATE TABLE notes (v int); INSERT INTO notes VALUES (1); CREATE TABLE app.notes2 (v int); INSERT INTO app.notes2 VALUES (2);"))
 	if got := mustRun(t, "owner reads the editor's table", e.pg("a129shop_user", engineOwnerPassword, "a129shop", "SELECT count(*) FROM notes;")); got != "1" {
 		t.Fatalf("owner read %q", got)
 	}
+	if got := mustRun(t, "reader reads the editor's tables", e.pg("a129shop_reader", engineReadPassword, "a129shop", "SELECT (SELECT v FROM notes) + (SELECT v FROM app.notes2);")); got != "3" {
+		t.Fatalf("reader read the editor's tables %q", got)
+	}
+	mustFail(t, "reader writes the editor's table", e.pg("a129shop_reader", engineReadPassword, "a129shop", "INSERT INTO notes VALUES (9);"))
+	mustFail(t, "reader deletes from the editor's table", e.pg("a129shop_reader", engineReadPassword, "a129shop", "DELETE FROM notes;"))
+
+	// A second reader added after the editor sees the editor's existing and
+	// later tables.
+	read2 := base
+	read2.Username, read2.Password, read2.Access = "a129shop_reader2", engineReadPassword, transport.DatabaseAccessRead
+	read2.Readers, read2.Writers = []string{"a129shop_reader"}, []string{"a129shop_editor"}
+	if resp := accessUser(t, true, read2); !resp.Applied {
+		t.Fatalf("second reader: %+v", resp)
+	}
+	mustRun(t, "editor later table", e.pg("a129shop_editor", engineWritePassword, "a129shop", "CREATE TABLE notes3 (v int); INSERT INTO notes3 VALUES (6);"))
+	if got := mustRun(t, "second reader reads", e.pg("a129shop_reader2", engineReadPassword, "a129shop", "SELECT (SELECT v FROM notes) + (SELECT v FROM notes3) + (SELECT v FROM app.notes2);")); got != "9" {
+		t.Fatalf("second reader read %q", got)
+	}
+	mustFail(t, "second reader writes", e.pg("a129shop_reader2", engineReadPassword, "a129shop", "INSERT INTO notes3 VALUES (1);"))
 
 	// Removing both users leaves the database, its rows and the table the
 	// editor made (now the owner's).
-	for _, user := range []string{"a129shop_reader", "a129shop_editor"} {
+	// The editor goes first: the readers still read what it made (now the
+	// owner's).
+	for _, user := range []string{"a129shop_editor", "a129shop_reader", "a129shop_reader2"} {
 		req := base
 		req.Username = user
 		if resp := accessUser(t, false, req); !resp.Applied || resp.Absent {
 			t.Fatalf("remove %s: %+v", user, resp)
 		}
+		if user == "a129shop_editor" {
+			if got := mustRun(t, "reader after the editor left", e.pg("a129shop_reader", engineReadPassword, "a129shop", "SELECT v FROM notes3;")); got != "6" {
+				t.Fatalf("reader after the editor left %q", got)
+			}
+		}
 	}
-	if got := mustRun(t, "roles left", e.pg("", "", "", "SELECT count(*) FROM pg_roles WHERE rolname IN ('a129shop_reader', 'a129shop_editor');")); got != "0" {
+	if got := mustRun(t, "roles left", e.pg("", "", "", "SELECT count(*) FROM pg_roles WHERE rolname IN ('a129shop_reader', 'a129shop_reader2', 'a129shop_editor');")); got != "0" {
 		t.Fatalf("roles left: %s", got)
 	}
 	if got := mustRun(t, "data kept", e.pg("", "", "a129shop", "SELECT (SELECT count(*) FROM items) || ' ' || (SELECT count(*) FROM notes) || ' ' || (SELECT tableowner FROM pg_tables WHERE tablename = 'notes');")); got != "2 1 a129shop_user" {

@@ -29,18 +29,30 @@ same rules.
   grant (`SELECT` for read only, `ALL` for read and write). No schema change.
 - MariaDB: `SELECT` or `ALL PRIVILEGES` on that database only, no
   `GRANT OPTION`.
-- PostgreSQL, schema `public` only (the schema the panel's databases use):
-  - read only: `CONNECT`, `USAGE` on the schema, `SELECT` on its tables and
-    sequences, and the same for tables the database's owner makes later
-    (`ALTER DEFAULT PRIVILEGES FOR ROLE owner`);
-  - read and write: `CONNECT`, `TEMPORARY`, `USAGE` and `CREATE` on the
-    schema, all rights on its tables and sequences, `EXECUTE` on its
-    functions, the same for the owner's later tables, and the owner keeps all
-    rights on tables this user makes.
+- PostgreSQL. "Every schema" means every schema of the database except the
+  system's (`pg_*`, `information_schema`) at the moment the user is added;
+  "later" means objects made afterwards by the named roles anywhere in the
+  database, new schemas included (`ALTER DEFAULT PRIVILEGES FOR ROLE …`
+  without `IN SCHEMA`).
+  - read only: `CONNECT`; in every schema `USAGE` and `SELECT` on its tables
+    and sequences; later, `SELECT` on tables and sequences and `USAGE` on
+    schemas made by the database's owner and by every read-and-write user.
+  - read and write: `CONNECT`, `TEMPORARY`; in every schema `USAGE`, `CREATE`,
+    all rights on tables and sequences, `EXECUTE` on functions; later, all
+    rights both ways between this user and the owner and the other
+    read-and-write users, and `SELECT` (`USAGE` on schemas) on what this user
+    makes for every read-only user.
+  - Kept up to date when users are added: a new reader is given the owner's
+    and every writer's later objects; a new writer gives its later objects to
+    every reader and every other writer. When a writer is removed its objects
+    become the owner's (`REASSIGN OWNED`) and keep their grants, so readers
+    go on reading them.
+  - Not covered: objects made later by a role that is not the owner or an
+    added user (for example the owner's administrator account), objects in a
+    schema the owner makes with explicit `REVOKE`s, and schemas or objects
+    made by the owner and then given to another role. A schema made later by
+    the owner is covered; one made by another role is not.
   - Never `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION`, `BYPASSRLS`.
-  - Known limit: a table made by a read-and-write user is not readable by a
-    read-only user until the owner grants it (default privileges are set for
-    the owner's tables). Other schemas are not covered.
 - Creation is exclusive: a name the engine already has changes nothing.
   Removal takes away the user and its rights and never the database: MariaDB
   `DROP USER` on every host; PostgreSQL `REASSIGN OWNED BY` the user to the

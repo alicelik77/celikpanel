@@ -25,6 +25,11 @@ type DatabaseAccessUserRequest struct {
 	// Password and Access: creation only.
 	Password string `json:"password,omitempty"`
 	Access   string `json:"access,omitempty"`
+	// Readers and Writers: the database's other added users (creation only,
+	// PostgreSQL), so a reader sees what every writer makes and a new writer
+	// shares what it makes with them (alpha.129).
+	Readers []string `json:"readers,omitempty"`
+	Writers []string `json:"writers,omitempty"`
 }
 
 // DatabaseAccessUserResponse says what happened.

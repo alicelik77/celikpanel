@@ -193,6 +193,18 @@ func TestDomainDatabaseAccessUsersAddAndRemove(t *testing.T) {
 		native.created[0].Access != "read" || native.created[0].Database != "customer_matrix_test_shop" {
 		t.Fatalf("engine request %+v", native.created)
 	}
+	// The database's other added users go with it (wp_user reads it); the
+	// user made with the database is not one of them.
+	if got := native.created[0]; len(got.Readers) != 1 || got.Readers[0] != "wp_user" || len(got.Writers) != 0 {
+		t.Fatalf("other users %+v / %+v", got.Readers, got.Writers)
+	}
+	if got := f.call(t, authzMatrixCustomerID, http.MethodPost, path, `{"name":"editor","password":"Str0ng-Passw0rd!","access":"write"}`); got.Code != http.StatusOK {
+		t.Fatalf("writer: %d %s", got.Code, got.Body.String())
+	}
+	if got := native.created[1]; got.Access != "write" || strings.Join(got.Readers, ",") != "wp_user,customer_matrix_test_shop_reader" || len(got.Writers) != 0 {
+		t.Fatalf("writer's other users %+v / %+v", got.Readers, got.Writers)
+	}
+	native.created = native.created[:1]
 	var userID int
 	var privileges, sealed string
 	if err := f.panel.db.GetDB().QueryRow(`SELECT u.id, g.privileges, u.password FROM database_users u JOIN database_user_grants g ON g.user_id = u.id
@@ -248,7 +260,7 @@ func TestDomainDatabaseAccessUsersAddAndRemove(t *testing.T) {
 	}
 	// The database and its first user stay.
 	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM databases_v2 d JOIN database_user_grants g ON g.database_id = d.id WHERE d.id = 9961`).Scan(&count)
-	if count != 2 {
+	if count != 3 {
 		t.Fatalf("the database's other grants changed: %d", count)
 	}
 	// Another customer reaches none of it.
