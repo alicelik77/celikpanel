@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.128.tr.md)
 
+> **Published** on 2026-11-07 (UTC): release commit `818a03e36`, GitHub pre-release at 10:48:24Z, download portal at about 10:56Z (public check 27/27).
+
 Each site gets its own PHP settings, kept within limits that the server,
 the reseller and the plan set. Plans can now warn instead of closing a site
 when it goes over a limit. Outgoing mail can be limited per mailbox, domain

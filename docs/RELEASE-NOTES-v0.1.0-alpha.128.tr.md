@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.128.md)
 
+> **Yayımlandı**, 7 Kasım 2026 (UTC): sürüm commit'i `818a03e36`, GitHub ön sürümü 10:48:24Z, indirme portalı yaklaşık 10:56Z (dış denetim 27/27).
+
 Her site kendi PHP ayarlarını alıyor; bu ayarlar sunucunun, bayinin ve
 planın koyduğu sınırların içinde kalıyor. Planlar artık bir sınır aşılınca
 siteyi kapatmak yerine yalnız uyarabiliyor. Giden posta posta kutusu, alan
