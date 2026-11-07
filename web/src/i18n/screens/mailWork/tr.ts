@@ -62,4 +62,6 @@ export const trMailWorkScreens: Record<MailWorkScreenKey, string> = {
     'mailopt.preview.kept': 'Hiçbir posta kutusu, yönlendirme ya da ileti silinmez.',
     'opstep.mailOptions.save': 'Seçenekler kaydediliyor',
     'opstep.mailOptions.apply': 'Postfix haritası yazılıyor ve Postfix yeniden yükleniyor',
+    'mailpolicy.connections': 'Bir sunucunun aynı anda açabileceği bağlantı',
+    'mailpolicy.connectionsHint': 'Gönderen bir sunucunun aynı anda kaç bağlantı açık tutabileceği (Postfix\'in varsayılanı 50; 0 sınır yok demektir). Bir sunucu posta sunucusunu boğuyorsa düşürün.',
 };

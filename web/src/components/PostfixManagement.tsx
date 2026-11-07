@@ -257,6 +257,8 @@ interface MailPolicy {
     message_size_mb: number;
     dnsbl_zones: string[] | null;
     outbound_rate_limit: number;
+    /** alpha.128 (G30): connections one sending server may hold at once; absent from an older Agent. */
+    connection_limit?: number;
     // The Postfix values this policy was read from; every save carries it back.
     // Bu politikanın okunduğu Postfix değerleri; her kayıt onu geri taşır.
     version: string;
@@ -280,6 +282,7 @@ function MailPolicySection() {
     // Spam kaynağı olmaya (ele geçirilmiş müşteri hesabı) karşı koruma.
     const [rateOn, setRateOn] = useState(false);
     const [rate, setRate] = useState(30);
+    const [connections, setConnections] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
     const [stale, setStale] = useState(false);
     // The policy was written to main.cf and Postfix was not seen to take it: a
@@ -299,6 +302,7 @@ function MailPolicySection() {
         setZones(z.length > 0 ? z.join(', ') : 'zen.spamhaus.org');
         setRateOn(policy.outbound_rate_limit > 0);
         setRate(policy.outbound_rate_limit > 0 ? policy.outbound_rate_limit : 30);
+        setConnections(typeof policy.connection_limit === 'number' ? policy.connection_limit : null);
         setStale(false);
         setCurrent({ state: 'known', value: policy });
     };
@@ -331,6 +335,8 @@ function MailPolicySection() {
                         ? policy.dnsbl_zones || []
                         : dnsblOn ? zones.split(',').map((z) => z.trim()).filter(Boolean) : [],
                     outbound_rate_limit: rateOn ? rate : 0,
+                    // Sent only when the server said its value; otherwise it is left.
+                    connection_limit: connections ?? undefined,
                     version: policy.version,
                 }),
             });
@@ -468,6 +474,16 @@ function MailPolicySection() {
                             <input type="number" min={1} max={10000} value={rate}
                                 onChange={(e) => setRate(Math.max(1, Math.min(10000, parseInt(e.target.value) || 30)))}
                                 className={inputClass} />
+                        </label>
+                    )}
+
+                    {connections !== null && (
+                        <label className="mt-4 block max-w-xs text-sm">
+                            <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.connections')}</span>
+                            <input type="number" min={0} max={1000} value={connections}
+                                onChange={(e) => setConnections(Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
+                                className={inputClass} />
+                            <span className="mt-1 block text-xs text-fg-subtle">{t('mailpolicy.connectionsHint')}</span>
                         </label>
                     )}
 

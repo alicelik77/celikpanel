@@ -62,6 +62,8 @@ export const enMailWorkScreens = {
     'mailopt.preview.kept': 'No mailbox, forward or message is deleted.',
     'opstep.mailOptions.save': 'Saving the options',
     'opstep.mailOptions.apply': 'Writing Postfix\'s map and reloading Postfix',
+    'mailpolicy.connections': 'Connections one server may hold at once',
+    'mailpolicy.connectionsHint': 'Limits how many connections one sending server may keep open at the same time (Postfix\'s default is 50; 0 means no limit). Lower it if one server floods the mail server.',
 } as const;
 
 export type MailWorkScreenKey = keyof typeof enMailWorkScreens;

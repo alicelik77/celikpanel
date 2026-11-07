@@ -49,10 +49,11 @@ func (f *fakePostfix) postconf(args ...string) ([]byte, error) {
 // nobody configured: the built-in defaults.
 func stockPostfix() map[string]string {
 	return map[string]string{
-		"message_size_limit":              "10240000",
-		"smtpd_recipient_restrictions":    "",
-		"smtpd_client_message_rate_limit": "0",
-		"anvil_rate_time_unit":            "60s",
+		"message_size_limit":                  "10240000",
+		"smtpd_recipient_restrictions":        "",
+		"smtpd_client_message_rate_limit":     "0",
+		"anvil_rate_time_unit":                "60s",
+		"smtpd_client_connection_count_limit": "50",
 	}
 }
 
@@ -137,7 +138,8 @@ func TestGetMailPolicyAnswersTheServerValuesWithTheirVersion(t *testing.T) {
 	fake.values["smtpd_client_message_rate_limit"] = "40"
 
 	first := readMailPolicyForTest(t)
-	want := MailPolicy{MessageSizeMB: 9, DNSBLZones: []string{zen}, OutboundRateLimit: 40, Version: first.Version}
+	connections := 50
+	want := MailPolicy{MessageSizeMB: 9, DNSBLZones: []string{zen}, OutboundRateLimit: 40, ConnectionLimit: &connections, Version: first.Version}
 	if !reflect.DeepEqual(first, want) || !strings.HasPrefix(first.Version, "mp1-") {
 		t.Fatalf("policy = %+v, want %+v with a version", first, want)
 	}
@@ -386,5 +388,39 @@ func TestMailPolicyWithoutPostfixKeepsItsFixedAnswer(t *testing.T) {
 	_ = (&Agent{}).SetMailPolicy(&MailPolicy{Version: "mp1-x"}, &write)
 	if read.Error != mailPolicyNotInstalled || write.Error != mailPolicyNotInstalled || read.Code != "" || write.Code != "" {
 		t.Fatalf("read = %+v write = %+v", read, write)
+	}
+}
+
+// alpha.128 (G30): the connections one client may hold at once.
+func TestMailPolicyConnectionLimitIsReadWrittenAndLeftAloneWhenAbsent(t *testing.T) {
+	fake := installFakePostfix(t, stockPostfix())
+	policy := readMailPolicyForTest(t)
+	if policy.ConnectionLimit == nil || *policy.ConnectionLimit != 50 {
+		t.Fatalf("connection limit = %v", policy.ConnectionLimit)
+	}
+	// A save that does not name it leaves it.
+	request := policy
+	request.ConnectionLimit = nil
+	request.OutboundRateLimit = 30
+	var resp MailPolicyResponse
+	_ = (&Agent{}).SetMailPolicy(&request, &resp)
+	if resp.Error != "" || fake.values["smtpd_client_connection_count_limit"] != "50" {
+		t.Fatalf("resp %+v values %v", resp, fake.values)
+	}
+	fresh := readMailPolicyForTest(t)
+	twenty := 20
+	fresh.ConnectionLimit = &twenty
+	resp = MailPolicyResponse{}
+	_ = (&Agent{}).SetMailPolicy(&fresh, &resp)
+	if resp.Error != "" || fake.values["smtpd_client_connection_count_limit"] != "20" {
+		t.Fatalf("resp %+v values %v", resp, fake.values)
+	}
+	tooMany := 5000
+	fresh = readMailPolicyForTest(t)
+	fresh.ConnectionLimit = &tooMany
+	resp = MailPolicyResponse{}
+	_ = (&Agent{}).SetMailPolicy(&fresh, &resp)
+	if resp.Code != transport.MailPolicyInvalid || resp.Reason != transport.MailPolicyInvalidConnections {
+		t.Fatalf("resp = %+v", resp)
 	}
 }
