@@ -140,7 +140,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
-		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1
+		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
@@ -218,7 +218,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
-		Agent.ApplyOutgoingMailLimitsV1
+		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -343,6 +343,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.PasswordlessMailReportV1": agentRPCStandardReadTimeout,
 	// alpha.128: one bounded journal read (45 s) and a status with a
 	// self-test request to postfwd on loopback.
+	"Agent.MailDeliveryLookupV1":          agentRPCStandardReadTimeout,
 	"Agent.OutgoingMailActivityV1":        agentRPCStandardReadTimeout,
 	"Agent.OutgoingMailLimitsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
@@ -412,34 +413,36 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RenameFile":                    agentRPCMutationTimeout,
 	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
 	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
-	"Agent.TogglePHPExtension":            agentRPCMutationTimeout,
-	"Agent.UpdateConfig":                  agentRPCMutationTimeout,
-	"Agent.UpdateCronJob":                 agentRPCMutationTimeout,
-	"Agent.UpdateExtendedPHPConfig":       agentRPCMutationTimeout,
-	"Agent.UpdateMailForwarding":          agentRPCMutationTimeout,
-	"Agent.SetMailAutoresponder":          agentRPCMutationTimeout,
-	"Agent.UpdateMailPassword":            agentRPCMutationTimeout,
-	"Agent.UpdateMailQuota":               agentRPCMutationTimeout,
-	"Agent.SuspensionInspectV1":           agentRPCStandardReadTimeout,
-	"Agent.TrafficCollectV1":              agentRPCStandardReadTimeout,
-	"Agent.SubscriptionDiskUsageV1":       agentRPCDatabaseTimeout,
-	"Agent.ReconcileMailQuotaV1":          agentRPCMutationTimeout,
-	"Agent.SetFileAccessReadOnlyV1":       agentRPCMutationTimeout,
-	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
-	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
-	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,
-	"Agent.RotateDatabaseUserPasswordV1":  agentRPCMutationTimeout,
-	"Agent.EndMailSessionsV1":             agentRPCMutationTimeout,
-	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
-	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
-	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
-	"Agent.SetEmergencyAppLockV1":         agentRPCMutationTimeout,
-	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,
-	"Agent.UpdatePHPPoolConfig":           agentRPCMutationTimeout,
-	"Agent.UploadFile":                    agentRPCMutationTimeout,
-	"Agent.WriteFile":                     agentRPCMutationTimeout,
+	// alpha.128: doveadm expunge of one mailbox (the Agent bounds it at 9 min).
+	"Agent.EmptyMailboxV1":               agentRPCDatabaseTimeout,
+	"Agent.TogglePHPExtension":           agentRPCMutationTimeout,
+	"Agent.UpdateConfig":                 agentRPCMutationTimeout,
+	"Agent.UpdateCronJob":                agentRPCMutationTimeout,
+	"Agent.UpdateExtendedPHPConfig":      agentRPCMutationTimeout,
+	"Agent.UpdateMailForwarding":         agentRPCMutationTimeout,
+	"Agent.SetMailAutoresponder":         agentRPCMutationTimeout,
+	"Agent.UpdateMailPassword":           agentRPCMutationTimeout,
+	"Agent.UpdateMailQuota":              agentRPCMutationTimeout,
+	"Agent.SuspensionInspectV1":          agentRPCStandardReadTimeout,
+	"Agent.TrafficCollectV1":             agentRPCStandardReadTimeout,
+	"Agent.SubscriptionDiskUsageV1":      agentRPCDatabaseTimeout,
+	"Agent.ReconcileMailQuotaV1":         agentRPCMutationTimeout,
+	"Agent.SetFileAccessReadOnlyV1":      agentRPCMutationTimeout,
+	"Agent.SetSiteAccountSuspensionV1":   agentRPCMutationTimeout,
+	"Agent.SetMailDomainSuspensionV1":    agentRPCMutationTimeout,
+	"Agent.SetDatabaseUserSuspensionV1":  agentRPCMutationTimeout,
+	"Agent.RotateDatabaseUserPasswordV1": agentRPCMutationTimeout,
+	"Agent.EndMailSessionsV1":            agentRPCMutationTimeout,
+	"Agent.SetAppUnitSuspensionV1":       agentRPCMutationTimeout,
+	"Agent.EmergencyUnitsInspectV1":      agentRPCStandardReadTimeout,
+	"Agent.SetEmergencyUnitLockV1":       agentRPCMutationTimeout,
+	"Agent.SetEmergencyAppLockV1":        agentRPCMutationTimeout,
+	"Agent.UpdateMySQLConfig":            agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfig":              agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfiguration":       agentRPCMutationTimeout,
+	"Agent.UpdatePHPPoolConfig":          agentRPCMutationTimeout,
+	"Agent.UploadFile":                   agentRPCMutationTimeout,
+	"Agent.WriteFile":                    agentRPCMutationTimeout,
 
 	// Repository publication/removal refreshes package metadata and can be
 	// bounded by network and package-manager latency.

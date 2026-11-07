@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -258,5 +260,79 @@ func TestOutgoingNoticeMailNamesTheNextStep(t *testing.T) {
 	_, body = outgoingNoticeMail(outgoingNoticeLimit, audienceCustomer, outgoingNoticeBody{Address: "a@example.com", Limit: 500, Refused: 3, LimitKind: "domain"}, "")
 	if !strings.Contains(body, "500 recipients per hour for all mailboxes of this domain together") || !strings.Contains(body, "nothing is lost") {
 		t.Fatalf("limit mail = %s", body)
+	}
+}
+
+func outgoingRequest(method, target, body string, caller *Caller) *http.Request {
+	r := httptest.NewRequest(method, target, strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	return r.WithContext(context.WithValue(r.Context(), callerKey, caller))
+}
+
+func TestMailPlanLimitsSaveAndMailboxSizeCeiling(t *testing.T) {
+	f := newOutgoingFixture(t)
+	admin := &Caller{ID: 9601, Role: roleAdmin}
+	w := httptest.NewRecorder()
+	f.p.handleMailPlanLimits(w, outgoingRequest(http.MethodPut, mailPlanLimitsPath,
+		`{"owner_kind":"plan","owner_id":9651,"mailbox_size_mb":2048,"outgoing_mailbox":null,"outgoing_domain":900,"outgoing_subscription":null}`, admin))
+	if w.Code != http.StatusOK {
+		t.Fatalf("save: %d %s", w.Code, w.Body.String())
+	}
+	w = httptest.NewRecorder()
+	f.p.handleMailPlanLimits(w, outgoingRequest(http.MethodGet, mailPlanLimitsPath, "", admin))
+	if !strings.Contains(w.Body.String(), `"name":"Small"`) || !strings.Contains(w.Body.String(), `"mailbox_size_mb":2048`) {
+		t.Fatalf("list: %s", w.Body.String())
+	}
+	if ceiling, err := f.p.mailboxSizeCeiling(context.Background(), 9801); err != nil || ceiling != 2048 {
+		t.Fatalf("ceiling = %d %v", ceiling, err)
+	}
+	customer := &Caller{ID: 9602, Role: roleCustomer}
+	w = httptest.NewRecorder()
+	if !f.p.refuseMailboxAbovePlan(w, outgoingRequest(http.MethodPost, "/", "", customer), 9801, 4096) || w.Code != http.StatusForbidden ||
+		!strings.Contains(w.Body.String(), errCodeMailboxSizeAbovePlan) {
+		t.Fatalf("a customer went above the plan: %d %s", w.Code, w.Body.String())
+	}
+	if f.p.refuseMailboxAbovePlan(httptest.NewRecorder(), outgoingRequest(http.MethodPost, "/", "", customer), 9801, 2048) {
+		t.Fatal("a size at the plan's limit was refused")
+	}
+	if f.p.refuseMailboxAbovePlan(httptest.NewRecorder(), outgoingRequest(http.MethodPost, "/", "", admin), 9801, 4096) {
+		t.Fatal("the administrator was held to the plan")
+	}
+	// Empty values remove the row: the server's values apply again.
+	w = httptest.NewRecorder()
+	f.p.handleMailPlanLimits(w, outgoingRequest(http.MethodPut, mailPlanLimitsPath, `{"owner_kind":"plan","owner_id":9651}`, admin))
+	var n int
+	_ = f.db.QueryRow(`SELECT COUNT(*) FROM mail_plan_limits`).Scan(&n)
+	if w.Code != http.StatusOK || n != 0 {
+		t.Fatalf("clear: %d rows %d", w.Code, n)
+	}
+}
+
+func TestDomainMailOutgoingSetStaysWithinTheCeiling(t *testing.T) {
+	f := newOutgoingFixture(t)
+	f.enable(t)
+	customer := &Caller{ID: 9602, Role: roleCustomer}
+	cases := []struct {
+		body string
+		code int
+	}{
+		{`{"id":9901,"mode":"custom","per_hour":600}`, http.StatusForbidden},
+		{`{"id":9901,"mode":"unlimited","per_hour":0}`, http.StatusForbidden},
+		{`{"id":9901,"mode":"custom","per_hour":200}`, http.StatusOK},
+		{`{"id":9903,"mode":"custom","per_hour":200}`, http.StatusNotFound},
+	}
+	for _, c := range cases {
+		w := httptest.NewRecorder()
+		f.p.handleDomainMailOutgoing(w, outgoingRequest(http.MethodPut, "/api/v1/domains/9801/mail/outgoing", c.body, customer), 9801)
+		if w.Code != c.code {
+			t.Errorf("%s: %d %s", c.body, w.Code, w.Body.String())
+		}
+	}
+	var perHour int
+	if err := f.db.QueryRow(`SELECT per_hour FROM mailbox_outgoing WHERE email_account_id = 9901`).Scan(&perHour); err != nil || perHour != 200 {
+		t.Fatalf("per_hour = %d %v", perHour, err)
+	}
+	if last := f.applied[len(f.applied)-1]; last.MailboxLimits["a@example.com"] != 200 {
+		t.Fatalf("postfwd was not given the mailbox value: %v", last.MailboxLimits)
 	}
 }

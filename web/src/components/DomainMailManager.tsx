@@ -1,5 +1,5 @@
-import { lazy, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock } from 'lucide-react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { readApiError, type ApiError } from '../lib/apiError';
@@ -11,6 +11,7 @@ import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 
@@ -69,6 +70,10 @@ function decodeQuota(raw: unknown): QuotaStatus {
 // Sekmenin yanındaki sayı: liste bilinince sayı, okunurken "…", okunamayınca "–".
 const countOf = (remote: Remote<unknown[]>) => (remote.state === 'known' ? remote.value.length : remote.state === 'loading' ? '…' : '–');
 const WebmailAccess = lazy(() => import('./WebmailAccess'));
+// alpha.128: each mailbox's hourly sending limit and a security pause (own chunk).
+const OutgoingMailboxLimits = lazy(() => import('./OutgoingMailboxLimits'));
+// alpha.128 (G9): "did a message arrive?" for this domain (own chunk).
+const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
     const { t } = useI18n();
@@ -107,6 +112,17 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         setShowForm(false);
         setEditingQuota(null);
     }, [domainId, activeTab, readOnly]);
+    // alpha.128 (G20): "Add an alias" under a mailbox opens the forwarding
+    // form with the mailbox as the destination.
+    const [aliasFor, setAliasFor] = useState<string | null>(null);
+    useEffect(() => {
+        if (activeTab === 'forwarding' && aliasFor) {
+            setShowForm(true);
+            setFwdSource('');
+            setFwdDest(aliasFor);
+            setAliasFor(null);
+        }
+    }, [activeTab, aliasFor]);
 
     useEffect(() => {
         // A mailbox secret must not survive an authorization or domain context
@@ -228,6 +244,36 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         });
     };
 
+    // alpha.128 (G20): every message of one mailbox removed by Dovecot; the
+    // mailbox, its password and settings stay. Asked first, then the server's steps.
+    const emptyAccount = async (account: EmailAccount) => {
+        if (readOnly) return;
+        await confirmAction({
+            title: t('mail.empty.title', { name: account.address }),
+            message: t('mail.empty.confirm', { name: account.address }),
+            confirmLabel: t('mail.empty.confirmLabel'),
+            tone: 'danger',
+            progressTitle: t('mail.empty.progress', { name: account.address }),
+            action: async (report) => {
+                try {
+                    const res = await sendWithSteps(report, flowSteps(t, 'mailEmpty', ['check!', 'empty'], { name: account.address }), t, `mailEmpty.${account.id}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/mail/accounts/empty`, {
+                            method: 'POST',
+                            headers: { ...headers, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: account.id }),
+                        }));
+                    if (!res.ok) return { state: 'failed', reason: (await readApiError(res)).message || t('common.error') };
+                    const answer = await res.json() as { messages?: number };
+                    return { state: 'done', message: (answer.messages ?? -1) >= 0 ? t('mail.empty.doneCount', { n: answer.messages ?? 0 }) : t('mail.empty.done') };
+                } catch {
+                    return { state: 'unknown', reason: t('common.resultUnknown') };
+                } finally {
+                    invalidate('mail');
+                }
+            },
+        });
+    };
+
     const openPasswordDialog = (account: EmailAccount) => {
         if (readOnly) return;
         setPasswordAccount(account);
@@ -269,7 +315,10 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 return;
             }
             succeeded = true;
-            showToast('success', t('mail.passwordUpdated'));
+            // alpha.128: a mailbox stopped for security sends again after this change.
+            const resumed = /"sending_resumed":\s*true/.test(await res.text());
+            showToast('success', resumed ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumed')}` : t('mail.passwordUpdated'));
+            invalidate('mail');
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
             setPasswordRefusal({ message: '' });
@@ -454,6 +503,22 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                         <AtSign className="h-4 w-4 text-fg-subtle" />
                                                         {a.address}
                                                     </span>
+                                                    {/* alpha.128 (G20): the addresses that deliver here, under the mailbox. */}
+                                                    {(() => {
+                                                        const known = forwardingsRead.remote.state === 'known' ? forwardingsRead.remote.value : [];
+                                                        const aliases = known.filter((f) => f.destination.split(/[\s,]+/).includes(a.address) && f.source !== a.address);
+                                                        if (aliases.length === 0 && readOnly) return null;
+                                                        return (
+                                                            <span className="mt-0.5 block text-xs text-fg-muted" data-mail-aliases={a.address}>
+                                                                {aliases.length > 0 && <>{t('mail.aliases.label')} {aliases.map((f) => f.source).join(', ')}</>}
+                                                                {!readOnly && !stale && (
+                                                                    <button type="button" className="ml-1 rounded px-1 text-primary hover:bg-surface-2" onClick={() => { setAliasFor(a.address); setActiveTab('forwarding'); }}>
+                                                                        {t('mail.aliases.add')}
+                                                                    </button>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className="px-4 py-2.5 text-fg-muted">
                                                     {!readOnly && !stale && editingQuota === a.id ? (
@@ -535,6 +600,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             >
                                                                 <CalendarClock className="h-4 w-4" aria-hidden="true" />
                                                             </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => void emptyAccount(a)}
+                                                                disabled={stale}
+                                                                aria-label={t('mail.empty.title', { name: a.address })}
+                                                                title={t('mail.empty.title', { name: a.address })}
+                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-danger"
+                                                            >
+                                                                <Eraser className="h-4 w-4" aria-hidden="true" />
+                                                            </button>
                                                             <DeleteBtn disabled={stale} label={t('mail.deleteAccountNamed', { name: a.address })} onClick={() => deleteAccount(a.id, a.address)} />
                                                         </span>
                                                     )}
@@ -545,6 +620,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                 </tbody>
                             </table>
                         </div>
+                        <Suspense fallback={null}>
+                            <OutgoingMailboxLimits
+                                domainId={domainId}
+                                readOnly={readOnly}
+                                onChangePassword={(id, address) => openPasswordDialog(accounts.find((a) => a.id === id) ?? { id, address, quota_mb: 0 })}
+                            />
+                            <MailDeliveryLookup domainId={domainId} />
+                        </Suspense>
                         </>
                     ))}
                 </RemoteGate>

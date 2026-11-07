@@ -156,12 +156,11 @@ func (l outgoingLayout) dropInContent() string {
 var (
 	outgoingFamily   = detectPkgFamily
 	outgoingLookPath = exec.LookPath
-	outgoingRun      = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+	// The mail launcher (mail_command.go) with this file's own deadline.
+	outgoingRun = func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(ctx, outgoingCommandTimeout)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, name, args...)
-		cmd.WaitDelay = 2 * time.Second
-		return cmd.CombinedOutput()
+		return executeMailTLSCommand(ctx, name, args...)
 	}
 	outgoingReadFile = func(path string) ([]byte, error) {
 		raw, err := os.ReadFile(path)

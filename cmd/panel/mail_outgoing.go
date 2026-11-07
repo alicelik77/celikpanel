@@ -585,6 +585,7 @@ type outgoingNoticeBody struct {
 	Owner        string `json:"owner,omitempty"`
 	Reseller     string `json:"reseller,omitempty"`
 	DomainID     int    `json:"domain_id,omitempty"`
+	Domain       string `json:"domain,omitempty"`
 	Hour         string `json:"hour,omitempty"`
 	LimitKind    string `json:"limit_kind,omitempty"`
 	Limit        int    `json:"limit,omitempty"`
@@ -614,6 +615,7 @@ func (p *Panel) storeOutgoingNotice(ctx context.Context, kind, address, period s
 		return
 	}
 	body.Address, body.DomainID = address, ref.domainID
+	_ = db.QueryRowContext(ctx, `SELECT name FROM domains WHERE id = ?`, ref.domainID).Scan(&body.Domain)
 	body.Subscription, body.Owner, body.Reseller = subscriptionNoticeNames(ctx, db, ref.subscriptionID)
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -1017,6 +1019,7 @@ type outgoingPausedView struct {
 	ID       int    `json:"id"`
 	Address  string `json:"address"`
 	DomainID int    `json:"domain_id"`
+	Domain   string `json:"domain,omitempty"`
 	PausedAt string `json:"paused_at"`
 	Reason   string `json:"reason"`
 	Detail   string `json:"detail,omitempty"`
@@ -1052,15 +1055,15 @@ func (p *Panel) outgoingAdminView(ctx context.Context) (outgoingAdminView, error
 	}
 	db := p.db.GetDB()
 	rows, err := db.QueryContext(ctx, `
-		SELECT a.id, a.address, a.domain_id, mo.paused_at, COALESCE(mo.paused_reason, ''), COALESCE(mo.paused_detail, '')
-		FROM mailbox_outgoing mo JOIN email_accounts a ON a.id = mo.email_account_id
+		SELECT a.id, a.address, a.domain_id, d.name, mo.paused_at, COALESCE(mo.paused_reason, ''), COALESCE(mo.paused_detail, '')
+		FROM mailbox_outgoing mo JOIN email_accounts a ON a.id = mo.email_account_id JOIN domains d ON d.id = a.domain_id
 		WHERE mo.paused_at IS NOT NULL ORDER BY mo.paused_at DESC LIMIT 200`)
 	if err != nil {
 		return view, err
 	}
 	for rows.Next() {
 		var v outgoingPausedView
-		if err := rows.Scan(&v.ID, &v.Address, &v.DomainID, &v.PausedAt, &v.Reason, &v.Detail); err != nil {
+		if err := rows.Scan(&v.ID, &v.Address, &v.DomainID, &v.Domain, &v.PausedAt, &v.Reason, &v.Detail); err != nil {
 			rows.Close()
 			return view, err
 		}
@@ -1295,7 +1298,7 @@ func (p *Panel) outgoingDomainView(ctx context.Context, domainID int, caller *Ca
 			m.Address, weekAgo).Scan(&item.Sent7d, &item.Refused7d)
 		view.DomainUsedHour += item.UsedHour
 		if m.Paused {
-			item.Paused = &outgoingPausedView{ID: m.ID, Address: m.Address, DomainID: m.DomainID, PausedAt: m.PausedAt, Reason: m.PausedReason, Detail: m.PausedDetail}
+			item.Paused = &outgoingPausedView{ID: m.ID, Address: m.Address, DomainID: m.DomainID, Domain: m.Domain, PausedAt: m.PausedAt, Reason: m.PausedReason, Detail: m.PausedDetail}
 		}
 		view.Mailboxes = append(view.Mailboxes, item)
 	}

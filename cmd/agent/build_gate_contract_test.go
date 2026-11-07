@@ -199,6 +199,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.128 (G20): emptying a mailbox.
+			name: "EmptyMailboxV1",
+			run: func(expected string) string {
+				var response transport.EmptyMailboxResponse
+				_ = agent.EmptyMailboxV1(&transport.EmptyMailboxRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "EndMailSessionsV1",
 			run: func(expected string) string {
 				var response transport.EndMailSessionsResponse

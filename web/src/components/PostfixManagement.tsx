@@ -9,6 +9,9 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeList, useRemote } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
 import { PasswordlessMailNotice } from './PasswordlessMailNotice';
+import { OutgoingMailSettings } from './OutgoingMailSettings';
+import { OutgoingMailNotices } from './OutgoingMailNotices';
+import { MailPlanLimits } from './MailPlanLimits';
 import { confirmAction } from '../lib/confirmAction';
 
 interface PostfixManagementProps {
@@ -116,6 +119,7 @@ export function PostfixManagement({ onBack }: PostfixManagementProps) {
 
     return (
         <ServiceShell serviceId="postfix" name="Postfix" icon={Mail} onBack={onBack}>
+            <OutgoingMailNotices />
             <PasswordlessMailNotice />
             <div className="mb-4 flex items-center gap-1 border-b border-border">
                 <Tab active={activeTab === 'queue'} onClick={() => setActiveTab('queue')} icon={Mail} label={t('postfix.tab.queue')} />
@@ -212,6 +216,8 @@ export function PostfixManagement({ onBack }: PostfixManagementProps) {
                     </RemoteGate>
                 </div>
             )}
+            <OutgoingMailSettings />
+            <MailPlanLimits />
             <MailPolicySection />
         </ServiceShell>
     );

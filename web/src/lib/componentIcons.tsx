@@ -40,6 +40,7 @@ const componentIconMap: Record<string, LucideIcon> = {
     exim: Send,
     rspamd: Filter,
     spamassassin: Filter,
+    postfwd: Send,
     dovecot: Inbox,
     roundcube: MailOpen,
     wireguard: Lock,

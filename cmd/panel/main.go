@@ -403,6 +403,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail-health", []string{http.MethodGet}
 	case "mail/accounts/password":
 		match.kind, match.methods = "mail", []string{http.MethodPut}
+	case "mail/accounts/empty":
+		// alpha.128 (G20): remove every message of one mailbox.
+		match.kind, match.methods = "mail", []string{http.MethodPost}
 	case "mail/accounts":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/quota", "mail/rbl", "mail/setup", "mail/auth":
@@ -415,6 +418,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/autoresponder":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
+	case "mail/delivery":
+		// alpha.128 (G9): what happened to this domain's mail (read only).
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}
 	case "mail/outgoing":
 		// alpha.128: the domain's mailboxes, their hourly sending limits and use.
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
@@ -1747,6 +1753,7 @@ func main() {
 	http.HandleFunc(mailOutgoingReportPath, panel.handleMailOutgoing)
 	http.HandleFunc(mailOutgoingNoticesPath, panel.handleOutgoingNotices)
 	http.HandleFunc(mailOutgoingNoticesPath+"/", panel.handleOutgoingNotices)
+	http.HandleFunc(mailPlanLimitsPath, panel.handleMailPlanLimits)
 	http.HandleFunc("/api/v1/apps", panel.handleAppCatalog)
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)

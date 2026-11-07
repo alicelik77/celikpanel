@@ -60,10 +60,14 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleMailCatchAll(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):
 		p.handleMailAutoresponder(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/delivery"):
+		p.handleMailDelivery(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/outgoing"):
 		p.handleDomainMailOutgoing(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/quota"):
 		p.handleMailQuotaStatus(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/accounts/empty"):
+		p.handleEmptyMailbox(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/password"):
 		p.handleUpdateEmailPassword(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/accounts"):
@@ -127,7 +131,13 @@ func (p *Panel) handleListEmailAccounts(w http.ResponseWriter, r *http.Request, 
 		writeServerError(w, err)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"accounts": accounts})
+	// alpha.128 (G12): the plan's largest mailbox (0 = no plan limit).
+	ceiling, err := p.mailboxSizeCeiling(r.Context(), domainID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"accounts": accounts, "mailbox_size_ceiling_mb": ceiling})
 }
 
 func (p *Panel) handleListEmailForwardings(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -240,6 +250,10 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 	}
 	if request.QuotaMB <= 0 || request.QuotaMB > transport.MaxMailboxQuotaMB {
 		writeClientError(w, http.StatusBadRequest, "quota is outside the allowed range")
+		return
+	}
+	// alpha.128 (G12): within the plan's largest mailbox.
+	if p.refuseMailboxAbovePlan(w, r, domainID, request.QuotaMB) {
 		return
 	}
 	// A mailbox that already exists is the person's to use, not a server
@@ -494,6 +508,10 @@ func (p *Panel) handleUpdateEmailQuota(w http.ResponseWriter, r *http.Request, d
 	if err := decodeStrictJSON(w, r, &request); err != nil ||
 		request.ID <= 0 || request.QuotaMB <= 0 || request.QuotaMB > transport.MaxMailboxQuotaMB {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	// alpha.128 (G12): within the plan's largest mailbox.
+	if p.refuseMailboxAbovePlan(w, r, domainID, request.QuotaMB) {
 		return
 	}
 	p.mailMutationMu.Lock()

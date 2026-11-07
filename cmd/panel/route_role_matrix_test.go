@@ -50,53 +50,58 @@ const (
 // routeRoleMatrix: registered pattern → gate. The comment after a row names
 // the handler's own rule where it narrows the gate further.
 var routeRoleMatrix = map[string]string{
-	"/":                             gatePublic, // the web interface (SPA)
-	"/api/v1/admin/store-catalog":   gateAdmin,
-	"/api/v1/admin/store-catalog/":  gateAdmin,
-	"/api/v1/admin/service-apps":    gateAdmin, // alpha.118: offering AI and automation apps
-	"/api/v1/admin/service-apps/":   gateAdmin,
-	"/api/v1/admin/runtime-apps":    gateAdmin, // alpha.119: offering runtime apps
-	"/api/v1/admin/runtime-apps/":   gateAdmin,
-	"/api/v1/apps":                  gateTenant, // catalog read; install is ownership-checked
-	"/api/v1/audit-logs":            gateAdmin,
-	"/api/v1/auth/2fa/disable":      gateTenant, // own account only
-	"/api/v1/auth/2fa/enable":       gateTenant, // own account only
-	"/api/v1/auth/2fa/setup":        gateTenant, // own account only
-	"/api/v1/auth/2fa/status":       gateTenant, // own account only
-	"/api/v1/auth/demo":             gatePublic, // empty unless --demo
-	"/api/v1/auth/login":            gatePublic,
-	"/api/v1/auth/login/totp":       gatePublic,
-	"/api/v1/auth/logout":           gateTenant,
-	"/api/v1/auth/me":               gateTenant,
-	"/api/v1/auth/password":         gateTenant, // own account only
-	"/api/v1/auth/unimpersonate":    gateTenant, // only with the operator's own session cookie
-	"/api/v1/config":                gateAdmin,
-	"/api/v1/config/mysql":          gateAdmin,
-	"/api/v1/config/php":            gateAdmin,
-	"/api/v1/dashboard":             gateAdmin,
-	"/api/v1/database-grants/":      gateTenant, // ownership-checked
-	"/api/v1/database-servers":      gateTenant, // registration admin-only in handler
-	"/api/v1/database-servers/":     gateTenant, // ownership-checked
-	"/api/v1/database-users/":       gateTenant, // ownership-checked
-	"/api/v1/databases/":            gateTenant, // ownership-checked
-	"/api/v1/domains":               gateTenant, // ownership-filtered list
-	"/api/v1/domains/":              gateTenant, // single ownership chokepoint + team grants
-	"/api/v1/domains/create":        gateAccount,
-	"/api/v1/dovecot/stats":         gateAdmin,
-	"/api/v1/fail2ban/banned":       gateAdmin,
-	"/api/v1/fail2ban/config":       gateAdmin,
-	"/api/v1/fail2ban/jails":        gateAdmin,
-	"/api/v1/firewall":              gateAdmin,
-	"/api/v1/hosting/capabilities":  gateAccount,
-	"/api/v1/import/cpanel/apply":   gateAdmin,
-	"/api/v1/import/cpanel/inspect": gateAdmin,
-	"/api/v1/mail/configure":        gateAdmin,
-	"/api/v1/mail/passwordless":     gateAdmin,
-	"/api/v1/mail/policy":           gateAdmin,
-	"/api/v1/managed-services":      gateAdmin,
-	"/api/v1/managed-services/scan": gateAdmin,
-	"/api/v1/metrics/history":       gateAdmin,
-	"/api/v1/metrics/problems":      gateAdmin,
+	"/":                              gatePublic, // the web interface (SPA)
+	"/api/v1/admin/store-catalog":    gateAdmin,
+	"/api/v1/admin/store-catalog/":   gateAdmin,
+	"/api/v1/admin/service-apps":     gateAdmin, // alpha.118: offering AI and automation apps
+	"/api/v1/admin/service-apps/":    gateAdmin,
+	"/api/v1/admin/runtime-apps":     gateAdmin, // alpha.119: offering runtime apps
+	"/api/v1/admin/runtime-apps/":    gateAdmin,
+	"/api/v1/apps":                   gateTenant, // catalog read; install is ownership-checked
+	"/api/v1/audit-logs":             gateAdmin,
+	"/api/v1/auth/2fa/disable":       gateTenant, // own account only
+	"/api/v1/auth/2fa/enable":        gateTenant, // own account only
+	"/api/v1/auth/2fa/setup":         gateTenant, // own account only
+	"/api/v1/auth/2fa/status":        gateTenant, // own account only
+	"/api/v1/auth/demo":              gatePublic, // empty unless --demo
+	"/api/v1/auth/login":             gatePublic,
+	"/api/v1/auth/login/totp":        gatePublic,
+	"/api/v1/auth/logout":            gateTenant,
+	"/api/v1/auth/me":                gateTenant,
+	"/api/v1/auth/password":          gateTenant, // own account only
+	"/api/v1/auth/unimpersonate":     gateTenant, // only with the operator's own session cookie
+	"/api/v1/config":                 gateAdmin,
+	"/api/v1/config/mysql":           gateAdmin,
+	"/api/v1/config/php":             gateAdmin,
+	"/api/v1/dashboard":              gateAdmin,
+	"/api/v1/database-grants/":       gateTenant, // ownership-checked
+	"/api/v1/database-servers":       gateTenant, // registration admin-only in handler
+	"/api/v1/database-servers/":      gateTenant, // ownership-checked
+	"/api/v1/database-users/":        gateTenant, // ownership-checked
+	"/api/v1/databases/":             gateTenant, // ownership-checked
+	"/api/v1/domains":                gateTenant, // ownership-filtered list
+	"/api/v1/domains/":               gateTenant, // single ownership chokepoint + team grants
+	"/api/v1/domains/create":         gateAccount,
+	"/api/v1/dovecot/stats":          gateAdmin,
+	"/api/v1/fail2ban/banned":        gateAdmin,
+	"/api/v1/fail2ban/config":        gateAdmin,
+	"/api/v1/fail2ban/jails":         gateAdmin,
+	"/api/v1/firewall":               gateAdmin,
+	"/api/v1/hosting/capabilities":   gateAccount,
+	"/api/v1/import/cpanel/apply":    gateAdmin,
+	"/api/v1/import/cpanel/inspect":  gateAdmin,
+	"/api/v1/mail/configure":         gateAdmin,
+	"/api/v1/mail/passwordless":      gateAdmin,
+	"/api/v1/mail/outgoing":          gateAdmin,
+	"/api/v1/mail/outgoing/report":   gateAdmin,
+	"/api/v1/mail/plan-limits":       gateAdmin,
+	"/api/v1/mail-outgoing-notices":  gateTenant, // the caller's own notices
+	"/api/v1/mail-outgoing-notices/": gateTenant, // marks one of the caller's own as seen
+	"/api/v1/mail/policy":            gateAdmin,
+	"/api/v1/managed-services":       gateAdmin,
+	"/api/v1/managed-services/scan":  gateAdmin,
+	"/api/v1/metrics/history":        gateAdmin,
+	"/api/v1/metrics/problems":       gateAdmin,
 
 	// alpha.127: monitoring stage 2 and 3 (admin through the /api/v1/metrics/ prefix).
 	"/api/v1/metrics/services":        gateAdmin,
