@@ -53,7 +53,7 @@ export const enLimitsScreens = {
     'limits.php.source.plan': 'plan limit',
     'limits.php.source.nginx_file': 'web server file',
     'limits.php.serverAbove': 'The server’s own value ({server}) is above the server limit; sites that choose nothing get it, and a site can choose up to the limit.',
-    'limits.php.ownerFile': 'The web server’s limit for this is set in {file}, so CelikPanel does not write it; that value applies.',
+    'limits.php.ownerFile': 'The web server’s limit for this is set in {file}, which was changed by hand on the server; CelikPanel leaves that file as it is and its value applies to the web server.',
     'limits.php.save': 'Save PHP settings',
     'limits.php.saved': 'The PHP settings of {name} were saved.',
     'limits.php.saveFailed': 'The PHP settings could not be saved.',
@@ -134,6 +134,7 @@ export const enLimitsScreens = {
     'limits.notice.todoCustomer': 'Next step: if the site needs more, ask {who} to raise the limit; otherwise nothing is needed.',
     'limits.notice.todoProvider': 'Next step: nothing, unless the customer needs more; then raise the limit of the plan or the account.',
     'limits.notice.open': 'Open the PHP settings',
+    'limits.php.appWish': '{app} asks for {wish}; the limit is {limit} ({who}), so it gets {limit}. It keeps working (large files are uploaded in parts); ask {who} for more if it needs it.',
     'limits.php.clamped': 'This site chose {value}, above the limit {limit} ({who}); PHP runs at {limit}. Save a value within the limit, or ask {who} to raise it.',
 
     'rights.perm.php_settings': 'PHP settings of a site',

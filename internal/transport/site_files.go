@@ -478,6 +478,9 @@ type SiteSettingsIncludeResponse struct {
 	Detail       string `json:",omitempty"`
 	Restored     bool   `json:",omitempty"`
 	Error        string `json:",omitempty"`
+	// TookOverFrom (alpha.128): the application's include that gave its
+	// upload line up to the site setting (written again without it).
+	TookOverFrom string `json:",omitempty"`
 }
 
 // SitePoolValues are the process-manager settings CelikPanel renders into a

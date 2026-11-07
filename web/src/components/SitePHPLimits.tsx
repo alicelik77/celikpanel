@@ -44,6 +44,8 @@ interface LimitField {
     owner_file?: string;
     server_above_ceiling?: boolean;
     clamped?: boolean;
+    app_name?: string;
+    app_wish_mb?: number;
 }
 
 interface FreeField {
@@ -134,6 +136,9 @@ function LimitInput({ f, value, onChange, disabled, t }: { f: LimitField; value:
                 <p className="mt-1 text-xs text-fg" data-limit-clamped={f.field}>{t('limits.php.clamped', { value: unitText(t, f.unit, f.own), limit: unitText(t, f.unit, f.ceiling), who: whoText(t, f.set_by, f.set_by_name) })}</p>
             )}
             {f.server_above_ceiling && f.server !== null && <p className="mt-1 text-xs text-fg-muted">{t('limits.php.serverAbove', { server: unitText(t, f.unit, f.server) })}</p>}
+            {f.app_name && f.app_wish_mb && f.ceiling !== null && (
+                <p className="mt-1 text-xs text-fg" data-app-wish={f.field}>{t('limits.php.appWish', { app: f.app_name, wish: unitText(t, f.unit, f.app_wish_mb), limit: unitText(t, f.unit, f.ceiling), who: whoText(t, f.set_by, f.set_by_name) })}</p>
+            )}
             {f.owner_file && <p className="mt-1 text-xs text-fg-muted">{t('limits.php.ownerFile', { file: f.owner_file })}</p>}
             {!isProcesses && value !== null && !disabled && (
                 <button type="button" className="mt-1 inline-flex items-center gap-1 text-xs text-accent hover:underline" onClick={() => { setCustom(false); onChange(null); }}>

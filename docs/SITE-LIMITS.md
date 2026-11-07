@@ -95,6 +95,18 @@ reads PHP values only; a feature that wants its own count adds it to `previewLow
   `nginx_directives` (opt-in: closed for everyone, Unlimited included, until the administrator
   offers it with `PUT /api/v1/rights/offered-permissions`; the directives box itself is the web
   workstream's G3).
+- **Applications' upload size** (owner decision 3): after a catalog application is installed, a
+  site without its own upload size gets the application's size within its limit. The site
+  setting then owns `client_max_body_size`: CelikPanel's unchanged text of the application's
+  include is written again without its line (checked with nginx together with
+  `site-settings.conf`, both put back on refusal), and an update of the application leaves the line
+  out while the site setting owns it. An application's include edited by hand is kept and named on
+  the screen. An application that wants more than the limit gets the limit, and the PHP screen
+  names its wish, the limit and who can raise it.
+- **New sites:** the pool is created within the plan's process limit (5 or the limit when lower).
+- **A lowered limit that clamps a site** leaves one notice per person (customer, its reseller,
+  administrators): what changed, that the site keeps running at the new limit, who acts and the
+  next step; the site's PHP screen marks the clamped value.
 - **PHP version change with nginx stopped** (alpha.127 lab): a web server known to be stopped
   refuses the change before anything moves (`WEB_SERVER_STOPPED`, role-aware next step); a vhost
   that does not follow the new socket moves the pool and the record back
@@ -159,11 +171,6 @@ applies when a password is set or changed. The generator always adds a digit. Re
 
 - Lab evidence per supported PHP version: `ini_get` after `ini_set`, after `.user.ini` and after
   `set_time_limit()` returns the admin value; `php-fpm -t` accepts each line.
-- An application install does not yet set the site's upload default to min(app value, ceiling),
-  and the first save on an application site does not yet re-render the application's include
-  without its `client_max_body_size`: the application's line stays and is named on the screen.
-- A new site's pool is created with 5 processes; a lower plan ceiling applies at its first write.
-- Notices to the customer and reseller when a lowered ceiling clamps a site (G18).
 - G5 database connection limits: design in section 4, not wired.
 - The browser-side password check still uses the owner's rule; the server refusal names the level.
 - Limit hints from real use (G2, alpha.131).

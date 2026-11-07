@@ -47,7 +47,7 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.php.source.plan': 'plan sınırı',
     'limits.php.source.nginx_file': 'web sunucusu dosyası',
     'limits.php.serverAbove': 'Sunucunun kendi değeri ({server}) sunucu sınırının üstünde; değer seçmeyen siteler onu alır, bir site sınıra kadar seçebilir.',
-    'limits.php.ownerFile': 'Web sunucusunun bu sınırı {file} dosyasında ayarlı; CelikPanel onu yazmaz, o değer geçerlidir.',
+    'limits.php.ownerFile': 'Web sunucusunun bu sınırı, sunucuda elle değiştirilmiş {file} dosyasında ayarlı; CelikPanel o dosyaya dokunmaz ve web sunucusu için oradaki değer geçerlidir.',
     'limits.php.save': 'PHP ayarlarını kaydet',
     'limits.php.saved': '{name} PHP ayarları kaydedildi.',
     'limits.php.saveFailed': 'PHP ayarları kaydedilemedi.',
@@ -128,6 +128,7 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.notice.todoCustomer': 'Sonraki adım: site daha fazlasına ihtiyaç duyuyorsa sınırı yükseltmesini isteyin: {who}; yoksa bir şey gerekmez.',
     'limits.notice.todoProvider': 'Sonraki adım: müşteri daha fazlasına ihtiyaç duymadıkça bir şey gerekmez; duyarsa planın ya da hesabın sınırını yükseltin.',
     'limits.notice.open': 'PHP ayarlarını aç',
+    'limits.php.appWish': '{app} {wish} istiyor; sınır {limit} ({who}), bu yüzden {limit} alıyor. Çalışmaya devam eder (büyük dosyalar parça parça yüklenir); gerekirse daha fazlasını isteyin: {who}.',
     'limits.php.clamped': 'Bu site {value} seçmişti; bu, {limit} sınırının ({who}) üstünde ve PHP {limit} ile çalışıyor. Sınır içinde bir değer kaydedin ya da sınırı yükseltmesini isteyin: {who}.',
 
     'rights.perm.php_settings': 'Sitenin PHP ayarları',

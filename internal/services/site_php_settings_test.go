@@ -162,19 +162,58 @@ func TestSiteSettingsIncludeWritesChecksAndRemoves(t *testing.T) {
 	}
 }
 
-func TestSiteSettingsIncludeLeavesAnAppsUploadLineAndKeepsOwnerEdits(t *testing.T) {
+func TestSiteSettingsIncludeTakesTheUploadLineOverFromAnApp(t *testing.T) {
+	h := newManagedVhostHarness(t)
+	appBody := "# Nextcloud on settings.example\n\n# Uploads up to 512 MB / 512 MB'a kadar yükleme\nclient_max_body_size 512m;\nlocation = /x { return 404; }\n"
+	if err := h.ng.PublishAppInclude(siteSettingsDomain, "app-nextcloud.conf", appBody); err != nil {
+		t.Fatal(err)
+	}
+	appPath := filepath.Join(PanelManagedDir(siteSettingsDomain), "app-nextcloud.conf")
+	response := h.ng.ApplySiteSettingsInclude(transport.SiteSettingsIncludeRequest{Domain: siteSettingsDomain, UploadMB: 256, TimeoutS: 130})
+	if response.Outcome != transport.SiteSettingsIncludeWritten || response.UploadOwner != "" || response.TookOverFrom != appPath {
+		t.Fatalf("write: %+v", response)
+	}
+	settings, _ := os.ReadFile(response.Path)
+	app, _ := os.ReadFile(appPath)
+	if !strings.Contains(string(settings), "client_max_body_size 256m;") || strings.Contains(string(app), "client_max_body_size") ||
+		!strings.Contains(string(app), "location = /x") {
+		t.Fatalf("takeover:\nsettings:\n%s\napp:\n%s", settings, app)
+	}
+	if state := inspectSiteFile(appPath, nil, "").state; state != transport.SiteFileManagedUnchanged {
+		t.Fatalf("the app's include is not CelikPanel's unchanged text after the takeover: %s", state)
+	}
+	// The app's include written again (an update) leaves its line out while
+	// the site setting owns the upload size.
+	if err := h.ng.PublishAppInclude(siteSettingsDomain, "app-nextcloud.conf", appBody+"location = /y { return 404; }\n"); err != nil {
+		t.Fatal(err)
+	}
+	if app, _ := os.ReadFile(appPath); strings.Contains(string(app), "client_max_body_size") || !strings.Contains(string(app), "location = /y") {
+		t.Fatalf("app update brought its line back:\n%s", app)
+	}
+}
+
+func TestSiteSettingsIncludeKeepsAnOwnerEditedAppsUploadLine(t *testing.T) {
 	h := newManagedVhostHarness(t)
 	if err := h.ng.PublishAppInclude(siteSettingsDomain, "app-nextcloud.conf", "client_max_body_size 512m;\n"); err != nil {
 		t.Fatal(err)
 	}
+	appPath := filepath.Join(PanelManagedDir(siteSettingsDomain), "app-nextcloud.conf")
+	edited, _ := os.ReadFile(appPath)
+	if err := os.WriteFile(appPath, append(edited, []byte("# mine\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	response := h.ng.ApplySiteSettingsInclude(transport.SiteSettingsIncludeRequest{Domain: siteSettingsDomain, UploadMB: 64, TimeoutS: 130})
-	if response.Outcome != transport.SiteSettingsIncludeWritten || !strings.HasSuffix(response.UploadOwner, "app-nextcloud.conf") {
+	if response.Outcome != transport.SiteSettingsIncludeWritten || !strings.HasSuffix(response.UploadOwner, "app-nextcloud.conf") || response.TookOverFrom != "" {
 		t.Fatalf("write: %+v", response)
 	}
 	content, _ := os.ReadFile(response.Path)
 	if strings.Contains(string(content), "client_max_body_size") {
 		t.Fatalf("a second client_max_body_size was written:\n%s", content)
 	}
+	if app, _ := os.ReadFile(appPath); !strings.Contains(string(app), "client_max_body_size 512m;") {
+		t.Fatalf("the owner's app file was changed:\n%s", app)
+	}
+	// An owner-edited settings file is kept too.
 	if err := os.WriteFile(response.Path, append(content, []byte("# mine\n")...), 0o644); err != nil {
 		t.Fatal(err)
 	}

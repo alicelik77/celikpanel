@@ -189,6 +189,18 @@ func (ng *NginxGenerator) ApplySiteSettingsInclude(request transport.SiteSetting
 	defer nginxMutationMu.Unlock()
 	owners := siteSettingsDirectiveOwners(request.Domain)
 	uploadMB, timeoutS := request.UploadMB, request.TimeoutS
+	// alpha.128: the upload size belongs to the site setting. An
+	// application's include that is CelikPanel's unchanged text gives its
+	// line up (it is written again without it, checked with this file); an
+	// edited one keeps it, and the answer names the file.
+	var takeOver *plannedSiteFileWrite
+	if owners.uploadFile != "" && uploadMB > 0 {
+		takeOver = appIncludeTakeOver(request.Domain, owners.uploadFile)
+		if takeOver != nil {
+			response.TookOverFrom = owners.uploadFile
+			owners.uploadFile = ""
+		}
+	}
 	if owners.uploadFile != "" {
 		response.UploadOwner, uploadMB = owners.uploadFile, 0
 	}
@@ -199,12 +211,12 @@ func (ng *NginxGenerator) ApplySiteSettingsInclude(request transport.SiteSetting
 	inspected := inspectSiteFile(path, nil, "")
 	switch inspected.state {
 	case transport.SiteFileAbsent:
-		if body == "" {
+		if body == "" && takeOver == nil {
 			response.Outcome = transport.SiteSettingsIncludeUnchanged
 			return response
 		}
 	case transport.SiteFileManagedUnchanged:
-		if body != "" && bytes.Equal(inspected.content, []byte(SealManagedText(body))) {
+		if body != "" && takeOver == nil && bytes.Equal(inspected.content, []byte(SealManagedText(body))) {
 			response.Outcome = transport.SiteSettingsIncludeUnchanged
 			return response
 		}
@@ -242,6 +254,17 @@ func (ng *NginxGenerator) ApplySiteSettingsInclude(request transport.SiteSetting
 		written = []plannedSiteFileWrite{{domain: request.Domain, available: path, sealed: sealed, inspected: inspected}}
 		response.Outcome = transport.SiteSettingsIncludeWritten
 	}
+	if takeOver != nil {
+		if err := writeManagedSiteFile(takeOver.available, takeOver.sealed, takeOver.inspected); err != nil {
+			rollbackErr := restorePlannedSiteFiles(written)
+			response.Outcome = transport.SiteSettingsIncludeRefused
+			response.Restored = rollbackErr == nil
+			response.TookOverFrom = ""
+			response.Error = fmt.Sprintf("write %s without its upload line: %v", filepath.Base(takeOver.available), err)
+			return response
+		}
+		written = append(written, *takeOver)
+	}
 	if err := ng.ValidateNginx(); err != nil {
 		rollbackErr := restorePlannedSiteFiles(written)
 		response.Outcome = transport.SiteSettingsIncludeRefused
@@ -265,4 +288,60 @@ func (ng *NginxGenerator) ApplySiteSettingsInclude(request transport.SiteSetting
 		return response
 	}
 	return response
+}
+
+// appUploadLines are the two lines an application's include carries for its
+// upload size (appcatalog.App.RenderNginx).
+func withoutAppUploadLines(body string) (string, bool) {
+	lines := strings.SplitAfter(body, "\n")
+	out := make([]string, 0, len(lines))
+	removed := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "client_max_body_size ") || strings.HasPrefix(trimmed, "# Uploads up to ") {
+			removed = true
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, ""), removed
+}
+
+// appIncludeTakeOver plans the rewrite of an application's include without
+// its upload line: only for CelikPanel's unchanged text of an app-<id>.conf
+// in the site's own directory; nil keeps the file as it is. The caller holds
+// nginxMutationMu.
+func appIncludeTakeOver(domain, path string) *plannedSiteFileWrite {
+	if filepath.Dir(path) != PanelManagedDir(domain) || !appIncludeName.MatchString(filepath.Base(path)) {
+		return nil
+	}
+	inspected := inspectSiteFile(path, nil, "")
+	if inspected.state != transport.SiteFileManagedUnchanged {
+		return nil
+	}
+	_, body, ok := splitManagedHeader(inspected.content)
+	if !ok {
+		return nil
+	}
+	stripped, removed := withoutAppUploadLines(string(body))
+	if !removed {
+		return nil
+	}
+	return &plannedSiteFileWrite{domain: domain, available: path, sealed: []byte(SealManagedText(stripped)), inspected: inspected}
+}
+
+// siteSettingsOwnsUpload reports whether the site's settings file sets the
+// upload size, so an application's include is written without its own line.
+// The caller holds nginxMutationMu.
+func siteSettingsOwnsUpload(domain string) bool {
+	path, err := SiteSettingsIncludePath(domain)
+	if err != nil {
+		return false
+	}
+	content, err := readManagedConfig(path)
+	if err != nil {
+		return false
+	}
+	_, ok := nginxDirectiveValue(content, "client_max_body_size")
+	return ok
 }

@@ -83,6 +83,12 @@ func (ng *NginxGenerator) PublishAppInclude(domain, fileName, body string) error
 	}
 	nginxMutationMu.Lock()
 	defer nginxMutationMu.Unlock()
+	// alpha.128: when the site's settings own the upload size, the
+	// application's include is written without its own line (nginx refuses
+	// the directive twice).
+	if fileName != AppSetupLockFileName && siteSettingsOwnsUpload(domain) {
+		body, _ = withoutAppUploadLines(body)
+	}
 	sealed := []byte(SealManagedText(body))
 	inspected := inspectSiteFile(path, nil, "")
 	switch inspected.state {

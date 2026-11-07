@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -291,5 +292,47 @@ func TestLoweredLimitNoticesTheSitesAboveItOnce(t *testing.T) {
 	read := callPHPLimits(panel, domainID, http.MethodGet, "")
 	if !strings.Contains(read.Body.String(), `"clamped":true`) {
 		t.Fatalf("view does not mark the clamped value: %s", read.Body.String())
+	}
+}
+
+func TestAppInstallSetsTheSitesUploadWithinItsLimit(t *testing.T) {
+	panel, domainID, agent := phpLimitsFixture(t)
+	db := panel.db.GetDB()
+	var siteID, subID, typeID int
+	if err := db.QueryRow(`SELECT s.id, d.subscription_id FROM sites s JOIN domains d ON d.id = s.domain_id WHERE d.id = ?`, domainID).Scan(&siteID, &subID); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT id FROM database_server_types WHERE name = 'mariadb'`).Scan(&typeID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO database_servers (id, subscription_id, type_id, name, host, port) VALUES (9931, ?, ?, 'app-server', '127.0.0.1', 3306)`, subID, typeID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO app_catalog_operations (operation_id, app_id, app_version, domain_id, subscription_id, site_id,
+		database_server_id, database_name, database_user, cleanup_token_encrypted, status)
+		VALUES (?, 'nextcloud', '31.0.0', ?, ?, ?, 9931, 'x', 'x', 'x', 'applied')`, strings.Repeat("a", 32), domainID, subID, siteID); err != nil {
+		t.Fatal(err)
+	}
+	nextcloud, ok := appcatalog.Lookup("nextcloud")
+	if !ok || nextcloud.UploadMB <= 256 {
+		t.Skip("the catalog's Nextcloud asks no more than the server limit")
+	}
+	panel.applyAppUploadDefault(context.Background(), domainID, nextcloud)
+	if len(agent.poolRequests) != 1 || agent.poolRequests[0].PHPSettings.UploadMB != 256 {
+		t.Fatalf("pool %+v", agent.poolRequests)
+	}
+	if len(agent.nginxSent) != 1 || agent.nginxSent[0].UploadMB != 256 {
+		t.Fatalf("nginx %+v", agent.nginxSent)
+	}
+	// The screen names the application's wish and the limit.
+	read := callPHPLimits(panel, domainID, http.MethodGet, "")
+	if !strings.Contains(read.Body.String(), `"app_name":"Nextcloud"`) || !strings.Contains(read.Body.String(), `"app_wish_mb":512`) {
+		t.Fatalf("view %s", read.Body.String())
+	}
+	// A site that chose its own upload size keeps it.
+	agent.own = transport.SitePHPSettings{UploadMB: 64}
+	panel.applyAppUploadDefault(context.Background(), domainID, nextcloud)
+	if len(agent.poolRequests) != 1 {
+		t.Fatalf("the site's own value was overwritten: %+v", agent.poolRequests)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -113,6 +114,10 @@ type phpLimitField struct {
 	// Clamped (alpha.128): the site's own value is above its limit (the
 	// limit was lowered after it was chosen); PHP runs at the limit.
 	Clamped bool `json:"clamped,omitempty"`
+	// AppName and AppWishMB (upload): the catalog application on the site
+	// asks for more than the limit allows; it runs with the limit.
+	AppName   string `json:"app_name,omitempty"`
+	AppWishMB int    `json:"app_wish_mb,omitempty"`
 }
 
 // phpFreeField is one free choice of the screen.
@@ -321,6 +326,18 @@ func (p *Panel) handleDomainPHPLimits(w http.ResponseWriter, r *http.Request, do
 		}
 		view := buildPHPLimitsView(site, limits, state.AdminWorkspace, read)
 		view.Admin = admin
+		// Owner decision 3: an application that wants more than the limit
+		// gets the limit; the screen names its wish and who can raise it.
+		if live, ok := p.liveCatalogAppOnly(ctx, domainID); ok {
+			if app, ok := appcatalog.Lookup(live.AppID); ok && app.UploadMB > 0 {
+				for i := range view.Limits {
+					f := &view.Limits[i]
+					if f.Field == "upload" && f.Ceiling != nil && app.UploadMB > *f.Ceiling {
+						f.AppName, f.AppWishMB = app.Name, app.UploadMB
+					}
+				}
+			}
+		}
 		view.CanChange = admin
 		if !admin {
 			e, err := p.effectiveSubscriptionRights(ctx, subID)
@@ -384,39 +401,16 @@ func (p *Panel) handleDomainPHPLimits(w http.ResponseWriter, r *http.Request, do
 	previous := read.Own
 	previous.Processes = read.Processes
 
-	reportOperationStep(ctx, "pool")
-	poolReq := p.sitePoolRequest(ctx, site, transport.SitePoolOperationSettings)
-	poolReq.PHPSettings = settings
-	if _, err := p.applySitePool(ctx, site, poolReq); err != nil {
-		writeServerErrorFor(w, r, err)
+	written := p.writeSitePHPValues(ctx, site, settings, previous, limits, state.AdminWorkspace)
+	if written.poolErr != nil {
+		writeServerErrorFor(w, r, written.poolErr)
 		return
 	}
-
-	reportOperationStep(ctx, "web_server")
-	clamped := settings
-	if !state.AdminWorkspace {
-		lim := phpLimitsFor(limits)
-		if lim.UploadMB > 0 && clamped.UploadMB > lim.UploadMB {
-			clamped.UploadMB = lim.UploadMB
-		}
-		if lim.TimeS > 0 && clamped.TimeS > lim.TimeS {
-			clamped.TimeS = lim.TimeS
-		}
-	}
-	timeout := 0
-	if clamped.TimeS > 0 {
-		timeout = clamped.TimeS + 10
-	}
-	var nginx transport.SiteSettingsIncludeResponse
-	nginxErr := p.callAgentContext(ctx, "Agent.ApplySiteSettingsIncludeV1", &transport.SiteSettingsIncludeRequest{
-		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Domain: site.Domain, UploadMB: clamped.UploadMB, TimeoutS: timeout,
-	}, &nginx)
-	details := map[string]any{"site": site.Domain, "before": previous, "after": settings, "nginx": nginx.Outcome}
-	if nginxErr != nil || nginx.Outcome == transport.SiteSettingsIncludeRefused {
-		// Put the pool back to what it had, so PHP and nginx agree.
-		back := p.sitePoolRequest(ctx, site, transport.SitePoolOperationSettings)
-		back.PHPSettings = previous
-		_, backErr := p.applySitePool(ctx, site, back)
+	nginx, nginxErr := written.nginx, written.nginxErr
+	details := map[string]any{"site": site.Domain, "before": previous, "after": settings, "nginx": nginx.Outcome,
+		"took_over_from": nginx.TookOverFrom}
+	if written.refused {
+		backErr := written.backErr
 		details["pool_restored"] = backErr == nil
 		p.auditDetailed(r, "site.php_settings.refused:"+site.Domain, "domain", domainID, details)
 		line := nginx.Detail
@@ -438,4 +432,128 @@ func (p *Panel) handleDomainPHPLimits(w http.ResponseWriter, r *http.Request, do
 		"status": "saved", "nginx": nginx.Outcome, "upload_owner": nginx.UploadOwner, "timeout_owner": nginx.TimeoutOwner,
 		"message": fmt.Sprintf("The PHP settings of %s were saved.", site.Domain),
 	})
+}
+
+// sitePHPWrite is what writing a site's PHP values did.
+type sitePHPWrite struct {
+	poolErr  error
+	nginx    transport.SiteSettingsIncludeResponse
+	nginxErr error
+	// refused: nginx refused (or its answer was lost) and the pool was
+	// written back (backErr says whether that worked).
+	refused bool
+	backErr error
+}
+
+// writeSitePHPValues writes a site's own PHP values: the pool first, then
+// the nginx settings file. When nginx refuses, the pool is written back with
+// previous, so PHP and nginx never disagree silently. The nginx upload size
+// is the site's own (within the limit); a site without one that runs a
+// catalog application keeps the application's size within the limit, since
+// the site setting owns that line once it took it over.
+func (p *Panel) writeSitePHPValues(ctx context.Context, site siteFileSite, settings, previous transport.SitePHPSettings, limits settingLimits, adminWorkspace bool) sitePHPWrite {
+	var out sitePHPWrite
+	reportOperationStep(ctx, "pool")
+	poolReq := p.sitePoolRequest(ctx, site, transport.SitePoolOperationSettings)
+	poolReq.PHPSettings = settings
+	if _, err := p.applySitePool(ctx, site, poolReq); err != nil {
+		out.poolErr = err
+		return out
+	}
+	reportOperationStep(ctx, "web_server")
+	clamped := settings
+	lim := transport.SitePHPLimits{}
+	if !adminWorkspace {
+		lim = phpLimitsFor(limits)
+	}
+	if clamped.UploadMB == 0 {
+		if app, ok := p.liveCatalogAppUpload(ctx, site.DomainID); ok {
+			clamped.UploadMB = app
+		}
+	}
+	if lim.UploadMB > 0 && clamped.UploadMB > lim.UploadMB {
+		clamped.UploadMB = lim.UploadMB
+	}
+	if lim.TimeS > 0 && clamped.TimeS > lim.TimeS {
+		clamped.TimeS = lim.TimeS
+	}
+	timeout := 0
+	if clamped.TimeS > 0 {
+		timeout = clamped.TimeS + 10
+	}
+	out.nginxErr = p.callAgentContext(ctx, "Agent.ApplySiteSettingsIncludeV1", &transport.SiteSettingsIncludeRequest{
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Domain: site.Domain, UploadMB: clamped.UploadMB, TimeoutS: timeout,
+	}, &out.nginx)
+	if out.nginxErr != nil || out.nginx.Outcome == transport.SiteSettingsIncludeRefused {
+		out.refused = true
+		back := p.sitePoolRequest(ctx, site, transport.SitePoolOperationSettings)
+		back.PHPSettings = previous
+		_, out.backErr = p.applySitePool(ctx, site, back)
+	}
+	return out
+}
+
+// liveCatalogAppUpload is the upload size (MB) the catalog application that
+// runs on a domain asks for (0, false when none runs or it asks none).
+func (p *Panel) liveCatalogAppUpload(ctx context.Context, domainID int) (int, bool) {
+	live, ok := p.liveCatalogAppOnly(ctx, domainID)
+	if !ok {
+		return 0, false
+	}
+	app, ok := appcatalog.Lookup(live.AppID)
+	if !ok || app.UploadMB <= 0 {
+		return 0, false
+	}
+	return app.UploadMB, true
+}
+
+// applyAppUploadDefault (alpha.128, owner decision 3): after a catalog
+// application is installed, a site without an upload size of its own gets
+// the application's size within its limit, so PHP and nginx both take what
+// the application needs; the site setting takes the application's own nginx
+// line over. An application that wants more than the limit gets the limit;
+// the PHP screen names its wish and who can raise the limit. Best effort:
+// the installed application keeps working with its own line when this fails.
+func (p *Panel) applyAppUploadDefault(ctx context.Context, domainID int, app appcatalog.App) {
+	if app.UploadMB <= 0 {
+		return
+	}
+	site, err := p.loadSiteFileSite(ctx, domainID)
+	if err != nil || site.ProjectType != "php" || services.ValidatePHPVersion(site.PHPVersion) != nil {
+		return
+	}
+	read, err := p.readSitePHPSettings(ctx, site)
+	if err != nil || read.Own.UploadMB > 0 {
+		return
+	}
+	subID, err := p.domainSubscriptionID(ctx, domainID)
+	if err != nil {
+		return
+	}
+	state, err := subscriptionRightsState(ctx, p.db.GetDB(), subID)
+	if err != nil {
+		return
+	}
+	limits, err := subscriptionSettingLimits(ctx, p.db.GetDB(), subID)
+	if err != nil {
+		return
+	}
+	upload := app.UploadMB
+	if !state.AdminWorkspace {
+		upload = limits[settingPHPUploadMB].clamp(upload)
+	}
+	settings := read.Own
+	settings.UploadMB = upload
+	settings.Processes = 0
+	previous := read.Own
+	previous.Processes = read.Processes
+	written := p.writeSitePHPValues(ctx, site, settings, previous, limits, state.AdminWorkspace)
+	switch {
+	case written.poolErr != nil:
+		log.Printf("app %s on %s: the site's upload size was not set (%v); the application's own line stays", app.ID, site.Domain, written.poolErr)
+	case written.refused:
+		log.Printf("app %s on %s: nginx refused the site's upload size; the previous values were put back (%v)", app.ID, site.Domain, written.backErr)
+	default:
+		log.Printf("app %s on %s: the site's upload size is %d MB (nginx file %s, took over from %q)", app.ID, site.Domain, upload, written.nginx.Outcome, written.nginx.TookOverFrom)
+	}
 }
