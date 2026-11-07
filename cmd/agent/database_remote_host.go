@@ -198,6 +198,14 @@ var certHostName = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0
 func ensureDatabaseRemoteCertificate(engine, group, hostName string) (cert, key string, err error) {
 	dir := filepath.Join(databaseRemoteCertRoot, engine)
 	cert, key = filepath.Join(dir, "server.crt"), filepath.Join(dir, "server.key")
+	// The engines run as their own users (postgres, mysql) and must pass
+	// through the root folder to their own one. The Agent's umask (0027)
+	// made it 0750 root:celikpanel, so PostgreSQL could not read its
+	// certificate and did not start after the restart (alpha.129 lab, Arch).
+	// It is set to 0755 every time, also for a folder an earlier Agent made.
+	if err := ensureDatabaseRemoteCertRootTraversable(); err != nil {
+		return "", "", err
+	}
 	_, certErr := os.Stat(cert)
 	_, keyErr := os.Stat(key)
 	if certErr == nil && keyErr == nil {
@@ -216,9 +224,6 @@ func ensureDatabaseRemoteCertificate(engine, group, hostName string) (cert, key 
 	}
 	if !certHostName.MatchString(hostName) {
 		hostName = "localhost"
-	}
-	if err := os.MkdirAll(databaseRemoteCertRoot, 0o755); err != nil {
-		return "", "", err
 	}
 	if err := os.Mkdir(dir, 0o750); err != nil && !errors.Is(err, os.ErrExist) {
 		return "", "", err
@@ -241,6 +246,27 @@ func ensureDatabaseRemoteCertificate(engine, group, hostName string) (cert, key 
 		return "", "", fmt.Errorf("write %s: %w", cert, err)
 	}
 	return cert, key, nil
+}
+
+// ensureDatabaseRemoteCertRootTraversable makes the certificate root (made
+// here if missing) 0755 whatever the umask, so each engine's user can reach
+// its own 0750 folder below it. The root holds no secret: each engine's
+// folder and key keep their own restrictive modes.
+func ensureDatabaseRemoteCertRootTraversable() error {
+	if err := os.MkdirAll(databaseRemoteCertRoot, 0o755); err != nil {
+		return err
+	}
+	info, err := os.Lstat(databaseRemoteCertRoot)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a folder", databaseRemoteCertRoot)
+	}
+	if info.Mode().Perm() != 0o755 {
+		return os.Chmod(databaseRemoteCertRoot, 0o755)
+	}
+	return nil
 }
 
 // newDatabaseRemoteCertificate makes the PEM pair.
