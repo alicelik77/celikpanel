@@ -333,3 +333,19 @@ func TestMariaDBRemoteApplyIsIdempotent(t *testing.T) {
 		t.Fatalf("a changed limit: %q", got)
 	}
 }
+
+// Re-review LOW 1: a MariaDB that logs to a file waits (journal only).
+func TestMariaDBRemoteWaitsWhileMariaDBLogsToAFile(t *testing.T) {
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true}, logError: "/var/log/mysql/error.log"}
+	withFakeMariaDB(t, f)
+	target := dbremote.Target{Engine: "mysql", Port: 3306, Rules: []dbremote.Rule{{Database: "shop", User: "shop_u", Address: "203.0.113.7/32"}}}
+	var ts dbremote.TargetState
+	result := (mariadbRemoteInstance{}).apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	found := false
+	for _, p := range result.Problems {
+		found = found || (p.Code == transport.DatabaseRemoteNoSlowDown && strings.Contains(p.Detail, "log_error"))
+	}
+	if len(result.Active) != 0 || f.accounts["shop_u@203.0.113.7"] || !found {
+		t.Fatalf("active %v, accounts %v, problems %+v", result.Active, f.accounts, result.Problems)
+	}
+}

@@ -333,10 +333,20 @@ func IsOwnMariaDBOptionFile(content, cert, key string) bool {
 // celikpanel-mariadb-auth, so an owner's [mysqld-auth] is never changed, and
 // the filter does not depend on the syslog prefix of the distribution's
 // mysqld-auth filter (the journal names the program mariadbd, not mysqld).
-// The jail reads MariaDB's journal, or its error log file when log_error
-// names one. Remote access waits until `fail2ban-client status
-// celikpanel-mariadb-auth` answers, so wrong passwords are slowed down before
-// anybody can try one from outside.
+// Remote access waits until `fail2ban-client status celikpanel-mariadb-auth`
+// answers, so wrong passwords are slowed down before anybody can try one
+// from outside.
+//
+// The jail reads MariaDB's journal only (re-review LOW 1). The user name in
+// "Access denied for user '<name>'@'<host>'" is whatever the client sent, so
+// a name holding a newline and a forged "'@'<another address>' (using
+// password: YES)" would, in a log FILE, end a line that blames someone else.
+// In the journal the whole message is one entry; the failregex is anchored
+// at its start (the optional journal prefix, MariaDB's own timestamp and
+// "[Warning]") and at its very end (\Z, not $), and the name may hold no
+// quote and no newline, so only the address MariaDB itself appended can be
+// the one banned. A MariaDB that logs to a file (log_error) waits, with the
+// step to remove that setting.
 const (
 	MariaDBJailName   = "celikpanel-mariadb-auth"
 	MariaDBJailPath   = "/etc/fail2ban/jail.d/celikpanel-database-remote.conf"
@@ -346,37 +356,27 @@ const (
 	jailBanTime       = "1h"
 )
 
-// MariaDBFailRegex is the filter's failregex: MariaDB's (log_warnings >= 2)
-// line for a refused sign-in, wherever the line's prefix comes from (journal,
-// file, MariaDB 10.x or 11.x). <HOST> is Fail2ban's address placeholder.
-const MariaDBFailRegex = `Access denied for user '[^']*'@'<HOST>' \(using password: (?:YES|NO)\)\s*$`
+// MariaDBFailRegex is the filter's failregex (Python syntax, as Fail2ban
+// reads it): one refused sign-in (log_warnings >= 2) of MariaDB 10.x/11.x as
+// a journal entry. <HOST> is Fail2ban's address placeholder.
+const MariaDBFailRegex = `^(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\Z`
 
 // MariaDBFilter renders the filter file.
 func MariaDBFilter() string {
 	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
-		"# A refused MariaDB sign-in. Removed with the last remote access rule.\n" +
+		"# A refused MariaDB sign-in, one journal entry. Removed with the last\n" +
+		"# remote access rule.\n" +
 		"[Definition]\n" +
 		"failregex = " + MariaDBFailRegex + "\n" +
 		"ignoreregex =\n"
 }
 
-var (
-	jailUnitPattern = regexp.MustCompile(`^[a-z0-9@._-]{1,64}\.service$`)
-	jailLogPattern  = regexp.MustCompile(`^/[A-Za-z0-9._/-]{1,250}$`)
-)
+var jailUnitPattern = regexp.MustCompile(`^[a-z0-9@._-]{1,64}\.service$`)
 
-// MariaDBJail renders the jail for MariaDB's port. With logPath empty it
-// reads the unit's journal; otherwise that error log file.
-func MariaDBJail(port int, unit, logPath string) (string, error) {
+// MariaDBJail renders the jail for MariaDB's port: the unit's journal.
+func MariaDBJail(port int, unit string) (string, error) {
 	if port < 1 || port > 65535 || !jailUnitPattern.MatchString(unit) {
 		return "", errors.New("invalid MariaDB port or unit")
-	}
-	source := "backend = systemd\njournalmatch = _SYSTEMD_UNIT=" + unit + "\n"
-	if logPath != "" {
-		if !jailLogPattern.MatchString(logPath) || strings.Contains(logPath, "..") {
-			return "", errors.New("invalid MariaDB error log path")
-		}
-		source = "backend = auto\nlogpath = " + logPath + "\n"
 	}
 	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
 		"# Bans an address after repeated wrong MariaDB passwords. Removed with the\n" +
@@ -385,7 +385,8 @@ func MariaDBJail(port int, unit, logPath string) (string, error) {
 		"enabled = true\n" +
 		"filter = " + MariaDBJailName + "\n" +
 		"port = " + strconv.Itoa(port) + "\n" +
-		source +
+		"backend = systemd\n" +
+		"journalmatch = _SYSTEMD_UNIT=" + unit + "\n" +
 		"maxretry = " + strconv.Itoa(jailMaxRetry) + "\n" +
 		"findtime = " + jailFindTime + "\n" +
 		"bantime = " + jailBanTime + "\n", nil

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -511,18 +510,6 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 	return result
 }
 
-// mariadbJailLog is the error log file the jail reads, "" for the journal.
-func mariadbJailLog(s mariadbRemoteSettings) string {
-	logError := strings.TrimSpace(s.logError)
-	switch {
-	case logError == "" || logError == "stderr":
-		return ""
-	case strings.HasPrefix(logError, "/"):
-		return logError
-	}
-	return filepath.Join(s.dataDir, logError)
-}
-
 // applyJail writes or removes CelikPanel's Fail2ban filter and jail and says
 // whether the jail runs (result.SlowDown "fail2ban"), else why not.
 func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mariadbRemoteSettings, ts *dbremote.TargetState, result *transport.DatabaseRemoteTargetResult) {
@@ -531,9 +518,15 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 			result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteNoSlowDown, Detail: detail})
 		}
 	}
-	jail, err := dbremote.MariaDBJail(target.Port, mariadbRemoteUnit, mariadbJailLog(s))
+	if logError := strings.TrimSpace(s.logError); logError != "" && logError != "stderr" {
+		// Journal only (re-review LOW 1): in a log file a crafted user name
+		// can end a line that blames another address.
+		noSlowDown("MariaDB writes its log to " + logError + " (log_error); the protection against password guessing reads only the journal, where a crafted user name cannot fake a line. Remove log_error from MariaDB's settings, restart MariaDB, then apply again")
+		return
+	}
+	jail, err := dbremote.MariaDBJail(target.Port, mariadbRemoteUnit)
 	if err != nil {
-		noSlowDown("MariaDB's error log (" + s.logError + ") is at a place the jail cannot read; set log_error to a file under /var/log or remove it so MariaDB logs to the journal")
+		noSlowDown(err.Error())
 		return
 	}
 	filter := dbremote.MariaDBFilter()

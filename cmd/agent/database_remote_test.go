@@ -107,6 +107,7 @@ type fakeMariaDB struct {
 	locked   string // "1" when the local account is locked
 	haveSSL  string // @@have_ssl, "YES" by default
 	noJail   bool   // Fail2ban does not run the jail
+	logError string // @@log_error, "" (the journal) by default
 	// copies as the fake engine holds them: limit and lock, and grants
 	copyAuth   map[string]string
 	copyGrants map[string][]string
@@ -154,7 +155,7 @@ func (f *fakeMariaDB) query(statement string) (string, error) {
 	f.record(statement)
 	switch {
 	case strings.HasPrefix(statement, "SELECT @@bind_address"):
-		return "127.0.0.1\t0\t" + orDefault(f.haveSSL, "YES") + "\t3306\t\t2\t/var/lib/mysql/\n", nil
+		return "127.0.0.1\t0\t" + orDefault(f.haveSSL, "YES") + "\t3306\t" + f.logError + "\t2\t/var/lib/mysql/\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'") && fakeCopyHost(statement) == "localhost":
 		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\t\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'"):
