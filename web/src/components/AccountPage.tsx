@@ -18,6 +18,12 @@ import { PasswordInput } from './PasswordInput';
 // alpha.118 (W4): a reseller's or customer's own remote backup destinations,
 // or who can grant them. Its own chunk, fetched with this page.
 // Bayi ya da müşterinin kendi uzak yedek hedefleri; ya da bu hakkı kimin verebileceği.
+// alpha.128 ops (G18): the person's notices, their email choice and the
+// administrator's server-wide notification settings, in their own chunk.
+// Bildirimler, e-posta seçimi ve yöneticinin sunucu geneli ayarları.
+const NotificationsCenter = lazy(() => import('./Notifications').then((module) => ({ default: module.NotificationsCenter })));
+const NotificationPreferencesCard = lazy(() => import('./Notifications').then((module) => ({ default: module.NotificationPreferencesCard })));
+const NotificationSettingsCard = lazy(() => import('./Notifications').then((module) => ({ default: module.NotificationSettingsCard })));
 const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
 
 // My account: the signed-in person's own sign-in security, opened from the
@@ -39,6 +45,7 @@ export function AccountPage() {
         <div className="p-4 sm:p-6 md:p-8">
             <PageHeader title={t('nav.account')} subtitle={t('account.subtitle')} breadcrumb={[t('common.home'), t('nav.account')]} />
             <div className="grid max-w-3xl gap-5">
+                {role !== 'additional_user' && <Suspense fallback={null}><NotificationsCenter showAlerts /></Suspense>}
                 {/* My plan (alpha.114): a quota refusal's "go fix it" lands here. */}
                 {(role === 'customer' || role === 'reseller') && <MyPlanCard />}
                 {/* alpha.117: a customer asks for a transfer (D-042 K3). */}
@@ -50,6 +57,8 @@ export function AccountPage() {
                 )}
                 <PasswordPanel />
                 <EmailPanel />
+                {role !== 'additional_user' && <Suspense fallback={null}><NotificationPreferencesCard /></Suspense>}
+                {role === 'admin' && <Suspense fallback={null}><NotificationSettingsCard /></Suspense>}
                 <TwoFactorPanel />
             </div>
         </div>
