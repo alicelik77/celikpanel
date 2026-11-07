@@ -524,6 +524,11 @@ func (p *Panel) runOutgoingMailRound(ctx context.Context) {
 	if err := p.sendPendingOutgoingNotices(ctx); err != nil {
 		log.Printf("[mail-outgoing] notices: %v", err)
 	}
+	// alpha.128 (G25): the per-domain options map follows the database (a
+	// lost earlier apply, a mailbox added elsewhere); unused, nothing is sent.
+	if _, _, err := p.applyDomainMailOptions(ctx, false); err != nil {
+		log.Printf("[mail-options] apply: %v", err)
+	}
 }
 
 // ingestOutgoingActivity stores the current and the previous hour as Postfix's

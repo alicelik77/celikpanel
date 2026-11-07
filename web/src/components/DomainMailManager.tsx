@@ -75,6 +75,8 @@ const WebmailAccess = lazy(() => import('./WebmailAccess'));
 const OutgoingMailboxLimits = lazy(() => import('./OutgoingMailboxLimits'));
 // alpha.128 (G9): "did a message arrive?" for this domain (own chunk).
 const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
+// alpha.128 (G25): send only, and the reply unknown addresses get (own chunk).
+const DomainMailOptions = lazy(() => import('./DomainMailOptions'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
     const { t } = useI18n();
@@ -451,7 +453,10 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                     <MailAuthPanel domainId={domainId} readOnly={readOnly} />
                 </>
             ) : activeTab === 'settings' ? (
-                <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                <>
+                    <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                    <Suspense fallback={null}><DomainMailOptions domainId={domainId} domainName={domainName} readOnly={readOnly} /></Suspense>
+                </>
             ) : (
                 <>
             <div className="mb-3 flex min-h-[2.25rem] items-center justify-between gap-3">

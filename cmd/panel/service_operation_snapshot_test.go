@@ -1448,6 +1448,7 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
         DROP INDEX idx_mail_outgoing_notices_user;
         DROP INDEX idx_mail_outgoing_notices_one;
         DROP TABLE mail_outgoing_notices;
+        DROP TABLE domain_mail_options;
         DROP INDEX idx_mail_outgoing_hourly_hour;
         DROP TABLE mail_outgoing_hourly;
         DROP TABLE mail_plan_limits;

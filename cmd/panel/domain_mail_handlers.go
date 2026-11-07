@@ -60,6 +60,8 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleMailCatchAll(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):
 		p.handleMailAutoresponder(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/options"):
+		p.handleDomainMailOptions(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/delivery"):
 		p.handleMailDelivery(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/outgoing"):
@@ -326,6 +328,7 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 	p.requestMailQuotaReconcile()
 	// alpha.128: its first-day sending limit is held by postfwd right away.
 	p.requestOutgoingApply()
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 
@@ -497,6 +500,7 @@ func (p *Panel) handleDeleteEmailAccount(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	p.requestOutgoingApply()
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
@@ -759,6 +763,7 @@ func (p *Panel) handleAddEmailForwarding(w http.ResponseWriter, r *http.Request,
 		writeMailDomainMutationError(w, err)
 		return
 	}
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 
@@ -793,6 +798,7 @@ func (p *Panel) handleDeleteEmailForwarding(w http.ResponseWriter, r *http.Reque
 		writeMailDomainMutationError(w, err)
 		return
 	}
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 

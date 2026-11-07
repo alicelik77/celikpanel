@@ -218,7 +218,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
-		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1
+		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1 Agent.SetMailDomainOptionsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -412,6 +412,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RemoveAppUnit":                 agentRPCMutationTimeout,
 	"Agent.RenameFile":                    agentRPCMutationTimeout,
 	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
+	"Agent.SetMailDomainOptionsV1":        agentRPCMutationTimeout,
 	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
 	// alpha.128: doveadm expunge of one mailbox (the Agent bounds it at 9 min).
 	"Agent.EmptyMailboxV1":               agentRPCDatabaseTimeout,

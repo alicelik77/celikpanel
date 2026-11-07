@@ -60,6 +60,7 @@ func TestMailOutgoingMigrationSeedsChecksAndFollowsOwners(t *testing.T) {
 		`INSERT INTO mail_plan_limits (owner_kind, owner_id, outgoing_domain) VALUES ('subscription', 73, 0)`,
 		`INSERT INTO mail_outgoing_notices (user_id, audience, kind, address, subscription_id, period) VALUES (71, 'customer', 'paused', 'a@example.com', 73, 'p')`,
 		`INSERT INTO mail_outgoing_hourly (address, hour, recipients) VALUES ('a@example.com', '2026-11-07T10:00:00Z', 5)`,
+		`INSERT INTO domain_mail_options (domain_id, incoming_off, unknown_reply) VALUES (74, 0, 'No such user here')`,
 	} {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("%s: %v", stmt, err)
@@ -73,6 +74,8 @@ func TestMailOutgoingMigrationSeedsChecksAndFollowsOwners(t *testing.T) {
 		`INSERT INTO mail_plan_limits (owner_kind, owner_id) VALUES ('reseller', 1)`,
 		`INSERT INTO mail_outgoing_notices (user_id, audience, kind, address, period) VALUES (71, 'customer', 'paused', 'a@example.com', 'p')`,
 		`INSERT INTO mail_outgoing_hourly (address, hour, limit_kind) VALUES ('b@example.com', 'h', 'planet')`,
+		`UPDATE domain_mail_options SET incoming_off = 2 WHERE domain_id = 74`,
+		`UPDATE domain_mail_options SET unknown_reply = '' WHERE domain_id = 74`,
 	}
 	for _, stmt := range bad {
 		if _, err := db.Exec(stmt); err == nil {

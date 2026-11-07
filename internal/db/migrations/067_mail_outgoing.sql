@@ -34,11 +34,17 @@
 -- by the pause, and sender-address mismatches). Kept 35 days; the report and
 -- the pause read it. It never holds a message, subject or recipient address.
 --
+-- domain_mail_options (G25): a domain's mail service options. incoming_off
+-- refuses mail from other servers for the domain (send only); unknown_reply
+-- is the text refused unknown addresses get (NULL = Postfix's own). The
+-- native state is CelikPanel's recipient access map in /etc/postfix; the
+-- domain's mailboxes and mail are never touched. Deleted with the domain.
+--
 -- mail_outgoing_notices: "limit reached" (at most one per mailbox per hour
 -- and person) and "mailbox paused" notices to the customer, the reseller and
 -- every administrator; mail_state as usage_notices.
 --
--- Additive only: five new tables, one seeded row, four triggers; no existing
+-- Additive only: six new tables, one seeded row, four triggers; no existing
 -- row or value changes. The release before this one refuses a ledger that
 -- carries entry 67; going back is the pre-update snapshot restore, as for
 -- every migration. Nothing a hosted service needs is here: postfwd's rule
@@ -124,6 +130,13 @@ CREATE TABLE mail_outgoing_notices (
 );
 CREATE UNIQUE INDEX idx_mail_outgoing_notices_one ON mail_outgoing_notices(user_id, kind, address, period);
 CREATE INDEX idx_mail_outgoing_notices_user ON mail_outgoing_notices(user_id, seen_at);
+
+CREATE TABLE domain_mail_options (
+    domain_id INTEGER PRIMARY KEY REFERENCES domains(id) ON DELETE CASCADE,
+    incoming_off INTEGER NOT NULL DEFAULT 0 CHECK (incoming_off IN (0, 1)),
+    unknown_reply TEXT CHECK (unknown_reply IS NULL OR length(unknown_reply) BETWEEN 1 AND 200),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 CREATE TRIGGER mail_outgoing_notices_follow_user
 AFTER DELETE ON users

@@ -199,6 +199,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.128 (G25): per-domain mail options.
+			name: "SetMailDomainOptionsV1",
+			run: func(expected string) string {
+				var response transport.SetMailDomainOptionsResponse
+				_ = agent.SetMailDomainOptionsV1(&transport.SetMailDomainOptionsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.128 (G20): emptying a mailbox.
 			name: "EmptyMailboxV1",
 			run: func(expected string) string {

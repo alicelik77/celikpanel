@@ -418,6 +418,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/autoresponder":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
+	case "mail/options":
+		// alpha.128 (G25): send only, and the reply for unknown addresses.
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
 	case "mail/delivery":
 		// alpha.128 (G9): what happened to this domain's mail (read only).
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}

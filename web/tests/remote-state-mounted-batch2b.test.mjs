@@ -121,7 +121,8 @@ const PostfixManagement = await pick(lib('components/PostfixManagement.tsx', own
 const mailManagerText = source('components/DomainMailManager.tsx').replace("import('./WebmailAccess')", `import('${webmailURL}')`)
   // alpha.128: the sending-limits section reads its own address; not under test here.
   .replace("import('./OutgoingMailboxLimits')", "import('data:text/javascript,export default () => null')")
-  .replace("import('./MailDeliveryLookup')", "import('data:text/javascript,export default () => null')");
+  .replace("import('./MailDeliveryLookup')", "import('data:text/javascript,export default () => null')")
+  .replace("import('./DomainMailOptions')", "import('data:text/javascript,export default () => null')");
 assert.ok(mailManagerText.includes(webmailURL), 'DomainMailManager no longer loads the webmail card lazily');
 const mailManagerCompiled = ts.transpileModule(mailManagerText, {
   compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 },

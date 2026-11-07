@@ -143,6 +143,7 @@ var auditActionNames = []string{
 	"mail.autoresponder.enable",
 	"mail.configure",
 	"mail.dkim.automatic.retry",
+	"mail.domain.options",
 	"mail.outgoing.mailbox",
 	"mail.outgoing.settings",
 	"mail.plan.limits",
