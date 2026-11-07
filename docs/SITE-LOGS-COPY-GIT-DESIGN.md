@@ -16,9 +16,9 @@ safer form; the full designs below stay the target.** What shipped:
 - **G32:** HTTPS or SSH repositories, a deploy key made on the server (public
   half shown once), init/fetch/reset of one branch and an optional Node.js
   build in the site sandbox (`internal/nodesite/gitdeploy.go`). The key is
-  handed over as a systemd credential, so SSH needs systemd 250+ (Ubuntu
-  22.04 is refused with a plain message); no releases/rollback folder and
-  no webhook yet.
+  handed over as a systemd credential (LoadCredential=, systemd 247+;
+  systemd 249 accepts it for transient units, so Ubuntu 22.04 works like
+  24.04); no releases/rollback folder and no webhook yet.
 
 Open for all three: the lab round on the five systems (logrotate forms,
 backup + copy of a large site, LoadCredential inside the sandbox).

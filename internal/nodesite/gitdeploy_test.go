@@ -72,8 +72,9 @@ func TestGitDeployUnitIsSandboxedAndHandsTheKeyAsACredential(t *testing.T) {
 	if _, err := GitDeployRunArgs(p); err == nil {
 		t.Fatal("an SSH deploy without a key was accepted")
 	}
-	p.KeyFile, p.Caps = "/etc/celikpanel-runtime/gitkey-12", systems[0].caps // ubuntu 22.04, systemd 249
-	if _, err := GitDeployRunArgs(p); err == nil || !strings.Contains(err.Error(), "https://") {
+	// Ubuntu 22.04 (systemd 249) hands the key over like 24.04 does.
+	p.KeyFile, p.Caps = "/etc/celikpanel-runtime/gitkey-12", systems[0].caps
+	if args, err := GitDeployRunArgs(p); err != nil || !strings.Contains(strings.Join(args, " "), "LoadCredential=deploykey:") {
 		t.Fatalf("systemd 249: %v", err)
 	}
 	// A Node.js build follows the files.

@@ -41,9 +41,12 @@ const GitBinary = "/usr/bin/git"
 // GitKeyCredential is the credential name of the deploy key in the unit.
 const GitKeyCredential = "deploykey"
 
-// GitCredentialMinSystemd: the first systemd whose transient units take
-// LoadCredential= (lab-verify on every supported system).
-const GitCredentialMinSystemd = 250
+// GitCredentialMinSystemd: the first systemd with LoadCredential= (v247).
+// Transient units take it as well: systemd v249 (Ubuntu 22.04) already
+// accepts it as a transient property (src/core/dbus-execute.c) and
+// systemd-run --property parses it (src/shared/bus-unit-util.c), so every
+// supported system qualifies; the check only guards an older host.
+const GitCredentialMinSystemd = 247
 
 // GitDeployTimeoutSec bounds one deploy.
 const GitDeployTimeoutSec = 1800
@@ -225,9 +228,8 @@ func GitDeployRunArgs(p GitDeployParams) ([]string, error) {
 		"--property=TimeoutStartSec=" + strconv.Itoa(GitDeployTimeoutSec), "--no-block", "--quiet",
 	}
 	if p.KeyFile != "" {
-		// A transient unit takes LoadCredential= from systemd 250 on
-		// (Ubuntu 22.04 has 249): there an SSH repository is refused
-		// plainly instead of handing the key over any other way.
+		// LoadCredential= exists from systemd 247 on; an older host is
+		// refused plainly instead of handing the key over any other way.
 		if p.Caps.SystemdVersion < GitCredentialMinSystemd {
 			return nil, fmt.Errorf("an SSH repository needs systemd %d or newer to hand the deploy key to the sandbox (this server has %d); use an https:// repository", GitCredentialMinSystemd, p.Caps.SystemdVersion)
 		}
