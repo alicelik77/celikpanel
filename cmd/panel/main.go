@@ -344,6 +344,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "app/packages":
 		// alpha.127: npm install and build in the site sandbox.
 		match.kind, match.methods = "app-packages", getPost
+	case "app/env":
+		// alpha.128: the Node.js site's environment variables. Not mapped
+		// for additional users: the values are the owner's secrets.
+		match.kind, match.methods = "app-env", getPost
 	case "php":
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
@@ -622,6 +626,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainSiteFeatures(w, r, match.domainID, match.kind)
 	case "web-settings", "web-settings-directives":
 		p.handleDomainWebSettings(w, r, match.domainID, match.kind)
+	case "app-env":
+		p.handleDomainNodeEnv(w, r, match.domainID)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":

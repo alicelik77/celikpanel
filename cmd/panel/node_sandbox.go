@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/nodesite"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -338,7 +339,7 @@ func (p *Panel) handleDomainAppInstall(w http.ResponseWriter, r *http.Request, d
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
 	if r.Method == http.MethodGet {
-		resp, err := nodeSiteInstallStatusCall(p, ctx, &transport.NodeSiteInstallStatusRequest{SiteID: state.SiteID})
+		resp, err := nodeSiteInstallStatusCall(p, ctx, &transport.NodeSiteInstallStatusRequest{SiteID: state.SiteID, WorkDir: request.WorkDir})
 		if err != nil {
 			writeServerError(w, err)
 			return
@@ -349,9 +350,16 @@ func (p *Panel) handleDomainAppInstall(w http.ResponseWriter, r *http.Request, d
 	var body struct {
 		RequestID string `json:"request_id"`
 		Build     bool   `json:"build"`
+		// Script (alpha.128, G19): run only this package.json script; the
+		// Agent checks that package.json names it.
+		Script string `json:"script"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || !refreshRequestIDPattern.MatchString(body.RequestID) {
 		writeClientError(w, http.StatusBadRequest, "a request id is required")
+		return
+	}
+	if body.Script != "" && !nodesite.ValidScriptName(body.Script) {
+		writeClientError(w, http.StatusBadRequest, "the script name is not a package.json script name")
 		return
 	}
 	// D-043: npm does not run on a Node.js version a security emergency
@@ -362,6 +370,7 @@ func (p *Panel) handleDomainAppInstall(w http.ResponseWriter, r *http.Request, d
 	resp, err := nodeSiteInstallCall(p, ctx, &transport.NodeSiteInstallRequest{
 		ExpectedBuildCommit: request.ExpectedBuildCommit, RequestID: body.RequestID, SiteID: state.SiteID,
 		Domain: state.DomainName, WorkDir: request.WorkDir, RunAsUser: request.RunAsUser, NodeVersion: request.NodeVersion, Build: body.Build,
+		Script: body.Script,
 	})
 	if err != nil {
 		writeServerError(w, err)
@@ -369,7 +378,7 @@ func (p *Panel) handleDomainAppInstall(w http.ResponseWriter, r *http.Request, d
 	}
 	if resp.RequestID == body.RequestID && resp.Phase != "" {
 		p.auditDetailed(r, "site.node_install", "domain", domainID, map[string]any{
-			"site": state.DomainName, "request_id": body.RequestID, "build": body.Build, "phase": resp.Phase,
+			"site": state.DomainName, "request_id": body.RequestID, "build": body.Build, "script": body.Script, "phase": resp.Phase,
 		})
 	}
 	_ = json.NewEncoder(w).Encode(resp)

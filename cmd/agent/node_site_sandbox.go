@@ -131,6 +131,8 @@ func planNodeSite(ctx context.Context, req *AppApplyRequest, unitPath string) (n
 		SiteID: req.SiteID, Domain: strings.ToLower(strings.TrimSpace(req.Description)), User: account.Name, Group: account.Group,
 		AppDir: req.WorkDir, Port: req.Port, NodeVersion: req.NodeVersion, Command: req.Command, Caps: caps,
 		DropInDir: unitPath + ".d",
+		// alpha.128: the site's environment file, named while it exists.
+		EnvFile: nodeSiteEnvFileIfPresent(req.SiteID),
 	}
 	body, err := nodesite.RenderUnit(params)
 	if err != nil {

@@ -270,6 +270,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteSiteConfigApply, true
 		case "web-settings", "web-settings-directives":
 			return requestIdentityRouteWebSettings, true
+		case "app-env":
+			return requestIdentityRouteNodeEnv, true
 		}
 	case strings.HasPrefix(path, "/api/v1/database-users/"):
 		if match, ok := matchDatabaseSubroute(r, "/api/v1/database-users/"); ok && match.kind == "user-password" {

@@ -194,7 +194,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimeAppRenderV1 Agent.RuntimeAppControlV1 Agent.RuntimeAppEnvV1 Agent.RuntimeAppRemoveV1
 		Agent.RuntimeAppBuildV1 Agent.RuntimeAppBuildAdvanceV1
 		Agent.SetRuntimeAppSuspensionV1
-		Agent.NodeSiteInstallV1
+		Agent.NodeSiteInstallV1 Agent.NodeSiteEnvV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -577,6 +577,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RuntimeVersionUsersV1":    agentRPCQuickReadTimeout,
 	"Agent.RuntimeAppBuildV1":        agentRPCMutationTimeout,
 	"Agent.NodeSiteInstallV1":        agentRPCMutationTimeout,
+	"Agent.NodeSiteEnvV1":            agentRPCMutationTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 }

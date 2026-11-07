@@ -8,7 +8,7 @@
 // ends. A repeated press after a lost answer reuses the request id.
 //
 // Node.js sitesinin site korumasındaki yeri ve korumada paket kurulumu.
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button } from './ui';
@@ -28,6 +28,9 @@ interface InstallState {
     reason?: string;
     error?: string;
 }
+
+// alpha.128 (G19): environment variables and package scripts, fetched when shown.
+const NodeSiteTools = lazy(() => import('./NodeSiteTools').then((module) => ({ default: module.NodeSiteTools })));
 
 const SANDBOX_GENERATION = 3;
 const REASONS = new Set(['install_failed', 'install_lost', 'earlier_release', 'package_json_missing', 'package_json_not_file',
@@ -131,6 +134,7 @@ export function NodeSiteSandbox({ domainId, domainName }: { domainId: number; do
                     </Button>
                 </div>
             )}
+            {inside && <Suspense fallback={null}><NodeSiteTools domainId={domainId} domainName={domainName} /></Suspense>}
         </div>
     );
 }

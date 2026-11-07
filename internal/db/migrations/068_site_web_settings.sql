@@ -28,3 +28,17 @@ CREATE TABLE site_web_settings (
     directives_sha256 TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- node_site_env (PLESK-GAP G19): a Node.js site's environment variables as
+-- the Panel knows them. The values themselves are in one root-owned systemd
+-- EnvironmentFile on the server, which the application unit names; this row
+-- holds the public values and only the NAMES of the secrets, so a secret is
+-- never stored in the Panel or shown back.
+--   env_public       {"NAME": "value"} of the variables not marked secret
+--   env_secret_keys  ["NAME", ...] of the secrets
+CREATE TABLE node_site_env (
+    site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+    env_public TEXT NOT NULL DEFAULT '{}' CHECK (length(env_public) <= 524288),
+    env_secret_keys TEXT NOT NULL DEFAULT '[]' CHECK (length(env_secret_keys) <= 65536),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

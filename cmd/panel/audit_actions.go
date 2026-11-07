@@ -114,6 +114,7 @@ var auditActionNames = []string{
 	"domain.delete.mail_runtime_absent",
 	"domain.delete.pending",
 	"domain.general.update",
+	"domain.node.env",
 	"domain.protect.add",
 	"domain.protect.remove",
 	"domain.protect.user.add",
