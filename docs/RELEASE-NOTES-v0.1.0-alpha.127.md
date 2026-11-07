@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.127.tr.md)
 
+> **Published** on 2026-11-07 (UTC): release commit `0c7aefe86`, GitHub pre-release at 01:47:11Z, download portal at about 01:56Z (public check 27/27).
+
 Every confirmed change now shows the server's real steps while it runs. The
 domain page no longer waits for slow DNS and mail checks: it shows the
 last verified answer at once and checks again behind the screen. PostgreSQL
