@@ -110,10 +110,11 @@ func cronMinIntervalMinutes(schedule string) (int, bool) {
 }
 
 // refuseCronLimits writes the refusal for a task the site's limits do not
-// allow and reports whether it did. existing is the site's task count
-// (adding: one more is asked).
-func (p *Panel) refuseCronLimits(ctx context.Context, w http.ResponseWriter, r *http.Request, tenant transport.CronTenant, schedule string, adding bool, existing int) bool {
-	if callerIsAdministrator(r) {
+// allow and reports whether it did. Adding checks the count too (the site's
+// tasks are read only when a count limit exists); a changed task (jobID) whose
+// schedule is the one it already has is not held by a newer interval limit.
+func (p *Panel) refuseCronLimits(ctx context.Context, w http.ResponseWriter, r *http.Request, tenant transport.CronTenant, schedule, jobID string, adding bool) bool {
+	if callerIsAdministrator(r) || p.db == nil {
 		return false
 	}
 	limits, err := subscriptionSettingLimits(ctx, p.db.GetDB(), tenant.SubscriptionID)
@@ -121,14 +122,44 @@ func (p *Panel) refuseCronLimits(ctx context.Context, w http.ResponseWriter, r *
 		writeServerError(w, err)
 		return true
 	}
+	var jobs []transport.CronJob
+	jobsRead := false
+	readJobs := func() bool {
+		if jobsRead {
+			return true
+		}
+		var current transport.ListCronJobsResponse
+		if err := p.callAgentContext(ctx, "Agent.ListCronJobs", &transport.ListCronJobsRequest{CronTenant: tenant}, &current); err != nil {
+			writeCronAgentError(w, err, cronReasonRead)
+			return false
+		}
+		jobs, jobsRead = current.Jobs, true
+		return true
+	}
 	refusals := []settingRefusal{}
 	if limit := limits[settingCronMinIntervalMin]; limit.Ceiling != nil {
 		if gap, ok := cronMinIntervalMinutes(schedule); ok && gap < *limit.Ceiling {
-			refusals = append(refusals, settingRefusal{Key: settingCronMinIntervalMin, Value: gap, Limit: *limit.Ceiling, SetBy: limit.SetBy, SetByName: limit.SetByName})
+			kept := false
+			if !adding {
+				if !readJobs() {
+					return true
+				}
+				for _, job := range jobs {
+					kept = kept || (job.ID == jobID && strings.TrimSpace(job.Schedule) == strings.TrimSpace(schedule))
+				}
+			}
+			if !kept {
+				refusals = append(refusals, settingRefusal{Key: settingCronMinIntervalMin, Value: gap, Limit: *limit.Ceiling, SetBy: limit.SetBy, SetByName: limit.SetByName})
+			}
 		}
 	}
-	if limit := limits[settingCronJobs]; adding && limit.Ceiling != nil && existing+1 > *limit.Ceiling {
-		refusals = append(refusals, settingRefusal{Key: settingCronJobs, Value: existing + 1, Limit: *limit.Ceiling, SetBy: limit.SetBy, SetByName: limit.SetByName})
+	if limit := limits[settingCronJobs]; adding && limit.Ceiling != nil {
+		if !readJobs() {
+			return true
+		}
+		if len(jobs)+1 > *limit.Ceiling {
+			refusals = append(refusals, settingRefusal{Key: settingCronJobs, Value: len(jobs) + 1, Limit: *limit.Ceiling, SetBy: limit.SetBy, SetByName: limit.SetByName})
+		}
 	}
 	if len(refusals) == 0 {
 		return false

@@ -134,15 +134,8 @@ func (p *Panel) handleAddCronJob(w http.ResponseWriter, r *http.Request, tenant 
 	}
 	// alpha.128 (G5): the site's task count and the fewest minutes between
 	// two runs, within its limits.
-	if !callerIsAdministrator(r) {
-		var current transport.ListCronJobsResponse
-		if err := p.callAgentContext(r.Context(), "Agent.ListCronJobs", &transport.ListCronJobsRequest{CronTenant: tenant}, &current); err != nil {
-			writeCronAgentError(w, err, cronReasonRead)
-			return
-		}
-		if p.refuseCronLimits(r.Context(), w, r, tenant, req.Schedule, true, len(current.Jobs)) {
-			return
-		}
+	if p.refuseCronLimits(r.Context(), w, r, tenant, req.Schedule, "", true) {
+		return
 	}
 
 	var success bool
@@ -185,21 +178,8 @@ func (p *Panel) handleUpdateCronJob(w http.ResponseWriter, r *http.Request, tena
 	}
 	// alpha.128 (G5): a changed schedule keeps within the site's limit; a
 	// task whose schedule is kept is not held by a newer limit (P5).
-	if !callerIsAdministrator(r) {
-		var current transport.ListCronJobsResponse
-		if err := p.callAgentContext(r.Context(), "Agent.ListCronJobs", &transport.ListCronJobsRequest{CronTenant: tenant}, &current); err != nil {
-			writeCronAgentError(w, err, cronReasonRead)
-			return
-		}
-		changed := true
-		for _, job := range current.Jobs {
-			if job.ID == req.ID && strings.TrimSpace(job.Schedule) == strings.TrimSpace(req.Schedule) {
-				changed = false
-			}
-		}
-		if changed && p.refuseCronLimits(r.Context(), w, r, tenant, req.Schedule, false, len(current.Jobs)) {
-			return
-		}
+	if p.refuseCronLimits(r.Context(), w, r, tenant, req.Schedule, req.ID, false) {
+		return
 	}
 
 	var success bool
