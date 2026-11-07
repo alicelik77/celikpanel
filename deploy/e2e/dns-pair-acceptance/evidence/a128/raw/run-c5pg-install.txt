@@ -1,0 +1,6 @@
+== install PostgreSQL on the joined server 04:41:36
+200 {"distribution": "ubuntu", "installs": ["libjson-perl", "postgresql-client-common", "ssl-cert", "postgresql-common", "libllvm17t64", "libpq5", "postgresql-client-16", "postgresql-16", "postgresql"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql"], "state": "known"}
+202 {"operation": {"id": "200308adc782f9dd6106b2045c518611", "kind": "service_install", "phase": "queued", "request_id": "2b4e400bc5859743cd9d750b45d82e6e", "service_id": "postgresql", "started_at": "2026-11-07T04:41:43.547064862Z", "status": "queued"}}
+  op 2b4e400bc5859743cd9d750b45d82e6e: succeeded completed "" (04:42:25)
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log

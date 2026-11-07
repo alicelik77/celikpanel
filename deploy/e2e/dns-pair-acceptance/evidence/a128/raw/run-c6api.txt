@@ -1,0 +1,59 @@
+== 6.0 the server switch is off by default 04:59:51
+200 {"enabled": false, "working_tokens": "[REDACTED]"}
+200 {"can_create": false, "grantor_kind": "administrator", "lifetimes": [7, 30, 90, 365], "max_tokens": "[REDACTED]", "refused_by": "server", "server_enabled": false, "tokens": [], "two_factor": false}
+   create while off:
+403  {"error":"The remote API is turned off on this server, so the token was not accepted and nothing was changed. The administrator turns it on in Settings, Panel; the token works again once it is on.","code":"API_DISABLED"} 
+   a made-up token while off:
+401  {"error":"The API token is not valid, so the request was refused and nothing was changed. Copy the whole token (cpk_...) from where you saved it, or make a new one on My account.","code":"API_TOKEN_INVALID"} 
+== 6.1 switch on; plan permission 04:59:52
+200 {"enabled": true, "working_tokens": "[REDACTED]"}
+   plan 1 Basic {"all_permissions": true, "all_software": true, "permissions": [], "software": []}
+200 {"can_create": true, "lifetimes": [7, 30, 90, 365], "max_tokens": "[REDACTED]", "server_enabled": true, "tokens": [], "two_factor": false}
+== 6.2 step-up: no request id / no password 04:59:52
+428  {"error":"This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new v
+403  {"error":"The password (or the two-factor code) is not correct, so no token was made. Enter your current password, and the code from your authenticator app if two-factor sign-in is on, then try again.","code":"API_TOKEN_REAUTH"} 
+== 6.3 create a read token and a manage token 04:59:52
+201 saved 209 bytes {'content-type': 'application/json'}
+   token saved: True item {"id": 1, "name": "rd", "prefix": "cpk_uap6m44lxz3j", "scope": "read", "state": "active", "created_at": 1794027593, "expires_at": 1796619593}
+201 saved 211 bytes {'content-type': 'application/json'}
+   token saved: True item {"id": 2, "name": "mg", "prefix": "cpk_s3mmgw7ue4w6", "scope": "manage", "state": "active", "created_at": 1794027593, "expires_at": 1796619593}
+200 {"can_create": true, "lifetimes": [7, 30, 90, 365], "max_tokens": "[REDACTED]", "server_enabled": true, "tokens": "[REDACTED]", "two_factor": false}
+== 6.4 read scope 04:59:54
+200  [{"id":3,"domain_name":"cust1.r8.test","php_version":"8.4","ssl_enabled":false,"status":"active","project_type":"php","created_at":"2026-11-07T04:36:53Z","disk_usage":3250,"bandwidth":13425,"rights_closed":["app_installer","vpn","nginx_directives"]}] 
+200  {"records":[{"id":24,"domain_id":2,"name":"cust1.r8.test","type":"A","content":"192.0.3.190","ttl":3600,"disabled":false},{"id":25,"domain_id":2,"name":"mail.cust1.r8.test","type":"A","content":"192.0
+   read token adds a record:
+403  {"error":"This API token can only read, so this change was refused and nothing was changed. Make a token with the Manage scope on My account for changes.","code":"API_TOKEN_SCOPE"} 
+   another account's domain (admin site1):
+404  {"error":"domain not found"} 
+== 6.5 manage scope 04:59:54
+200  {"id":28,"publication":"published","success":true} 
+   not-listed routes:
+403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+   cookie + token:
+400  {"error":"This request carries both a signed-in session and an API token, so it was refused and nothing was changed. Send the token alone (Authorization: Bearer ...), without the panel's session cookie.","code":"API_TOKEN_WITH_SESSION"} 
+== 6.6 a non-cpk Authorization header from a proxy does not break sign-in 05:00:00
+200  {"username":"cust1","role":"customer","effective_role":"customer","account_type":"account","email":"cust1@lab.test","impersonating":false,"features":{"databases":true,"team_members":true,"vpn":false}}
+200  {"username":"cust1","role":"customer","effective_role":"customer","account_type":"account","email":"cust1@lab.test","impersonating":false,"features":{"databases":true,"team_members":true,"vpn":false}}
+200  {"server_enabled":true,"can_create":true,"two_factor":false,"max_tokens":20,"lifetimes":[7,30,90,365],"tokens":[{"id":2,"name":"mg","prefix":"cpk_s3mmgw7ue4w6","scope":"manage","state":"active","creat
+== 6.7 delete a domain needs confirm_domain 05:00:00
+409  {"error":"the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page","code":"DNS_PUBLICATION_PENDING","partial_success":true,"domain_id":4,"domain":"tokdel.r8.test","zone_exists":true,"action":"/domains/tokdel.r8.test?tab=dns"} 
+   tokdel id 4
+400  {"error":"Deleting a domain with an API token needs confirm_domain set to the domain's name, so nothing was deleted. Send DELETE /api/v1/domains/{id}?confirm_domain=\u003cthe domain's name\u003e if you mean to delete it.","code":"API_TOKEN_CONFIRM_DOMAIN"} 
+400  {"error":"Deleting a domain with an API token needs confirm_domain set to the domain's name, so nothing was deleted. Send DELETE /api/v1/domains/{id}?confirm_domain=\u003cthe domain's name\u003e if you mean to delete it.","code":"API_TOKEN_CONFIRM_DOMAIN"} 
+202  {"domain":"tokdel.r8.test","message":"Deletion is incomplete but retryable. Retry this deletion.","stage":"dns_cleanup","status":"deletion_pending"} 
+== 6.8 switch off: every token 401; on again 05:00:05
+200 {"enabled": false, "working_tokens": "[REDACTED]"}
+403  {"error":"The remote API is turned off on this server, so the token was not accepted and nothing was changed. The administrator turns it on in Settings, Panel; the token works again once it is on.","c
+403  {"error":"The remote API is turned off on this server, so the token was not accepted and nothing was changed. The administrator turns it on in Settings, Panel; the token works again once it is on.","c
+200 {"enabled": true, "working_tokens": "[REDACTED]"}
+200  [{"id":4,"domain_name":"tokdel.r8.test","php_version":"","ssl_enabled":false,"status":"pending","project_type":"static",
+== 6.9 audit rows 05:00:06
+    "api_token": "[REDACTED]"
+   "action": "api_token.call"
+    "api_token": "[REDACTED]"
+   "resource_type": "api_token"
+   "action": "api_token.call"
+    "api_token": "[REDACTED]"
+== c6api done 05:00:06

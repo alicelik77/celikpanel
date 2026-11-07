@@ -1,0 +1,1 @@
+swaks --server 192.0.3.190 --port 587 --from box1@site1.r8.test --to box2@site1.r8.test --timeout 20 --suppress-data -tls --auth LOGIN --auth-user box1@site1.r8.test --auth-password wrongpass --hide-send 2>&1 | tail -6

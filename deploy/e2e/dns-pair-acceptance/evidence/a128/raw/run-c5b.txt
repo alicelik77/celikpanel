@@ -1,0 +1,20 @@
+== 5b.1 plan Basic: database connections 3 05:00:12
+200 {"success": true}
+200 {"id": 2, "name": "cust1_r8_test_app", "status": "success", "type": "mysql", "user": "cust1_r8_test_app_user"}
+cust1_r8_test_app_user	3
+   admin's site1 users (no ceiling):
+site1_r8_test_shop_user	0
+   the plan's limit changes to 5 -> existing user follows
+200 {"success": true}
+cust1_r8_test_app_user	5
+== 5b.2 visitor statistics from site1's access log 05:00:32
+sent
+200 today "2026-11-07" read_failed False partial False
+   days 1 top_pages [{"count": 12, "name": "/home.html"}, {"count": 5, "name": "/"}, {"count": 3, "name": "/.well-known/acme-challenge/VJ-87LnOj9h7tP1rAIZTO7uTb1MZcTudp9ieoMMjutQ"}, {"count": 3, "name": "/.well-known/acme-challenge/sJvk0_Q6D7BtHGH_9s_Ln-9n1E8jTeEIJdgLb8u9oXA"}, {"count": 1, "name": "/nope-1"}, {"count" top_referrers [{"count": 12, "name": "ref.lab.test"}]
+   customer cust1 asks site1's statistics:
+404 {"error": "domain not found"}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'python3 -c 'import sqlite3,glob; f=[x for x in glob.glob("/var/lib/celikpanel/*.db")][0]; c=sqlite3.connect("file:"+f+"?mode=ro",uri=True); print([r[1] for r in c.execute("pragma table_info(site_visitor_stats_daily)")]); print(c.execute("select count(*) from site_visitor_stats_daily").fetchone())'''
+== 5b.3 server IP addresses (administrator, read only) 05:00:33
+200 {"addresses": [{"address": "192.0.3.190", "family": "ipv4", "interface": "lab0", "prefix": 24, "private": false}], "shared": true, "sites": 4}
+== c5b done 05:00:33

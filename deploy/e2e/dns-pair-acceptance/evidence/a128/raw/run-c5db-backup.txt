@@ -1,0 +1,42 @@
+== 5.0 a postgresql database with rows 04:42:25
+200 {"id": 1, "name": "bsite_r8_test_tools", "status": "success", "type": "postgresql", "user": "bsite_r8_test_tools_user"}
+1 bsite_r8_test_tools bsite_r8_test_tools_user
+database bsite_r8_test_tools id 1 user bsite_r8_test_tools_user
+SET
+CREATE TABLE
+INSERT 0 3
+3
+== 5.1 tools view 04:42:28
+200 {"can_repair": false, "cluster_version": "16", "connections": 0, "host": "localhost", "id": 1, "known": true, "name": "bsite_r8_test_tools", "port": 5432, "read_at": "2026-11-07T04:42:28Z", "size_bytes": 7707671, "tables": 1, "type": "postgresql", "user": "bsite_r8_test_tools_user"}
+== 5.2 export + download 04:42:28
+200 {"export_id": "873d827e48fa247dad376bc008a61bf0", "filename": "bsite_r8_test_tools-20261107-0442.sql.gz", "size": 646}
+200 saved 646 bytes {'content-disposition': 'attachment; filename=bsite_r8_test_tools-20261107-0442.sql.gz', 'content-type': 'application/gzip'}
+   lines naming lab_items in the dump: 7
+   second download:
+410  {"error":"This export file is no longer on the server (it is removed after one download, or after six hours). Nothing was changed. Make a new export.","code":"DB_EXPORT_GONE"} 
+== 5.3 import with a safety copy 04:42:29
+200  {"size":169} 
+200  {"safety_backup":"database-1-20261107T044229.191362472Z-3e449df2b57653e3.cpbak","status":"success"} 
+1|changed-by-import
+2|two
+3|three
+imported
+== 5.4 an import that fails half way rolls back 04:42:30
+200  {"size":96} 
+422  {"error":"Loading the file stopped at an error, and the database was put back as it was before. Fix the line named below in the file, then import again.","code":"DB_IMPORT_LOAD_FAILED","details":["line 1: duplicate key value violates unique constraint \"lab_items_pkey\" (Key (id)=(1) already exists.)"]} 
+1|changed-by-import
+2|two
+3|three
+   a file with a client command:
+200  {"size":16} 
+422  {"error":"The file contains a command CelikPanel does not run, so it was not loaded and the database is unchanged. Remove that line from the file, then import again.","code":"DB_IMPORT_FILE_REFUSED","details":["line 2: the file contains the psql command \\!, which CelikPanel does not run; only SQL statements are loaded"]} 
+== 5.5 copy 04:42:32
+200 {"id": 2, "name": "bsite_r8_test_copy1", "status": "success", "type": "postgresql", "user": "bsite_r8_test_copy1_user"}
+2 bsite_r8_test_copy1 bsite_r8_test_copy1_user
+1 bsite_r8_test_tools bsite_r8_test_tools_user
+3
+imported
+== 5.6 check (and repair for MariaDB) 04:42:34
+200 {"checked": 2, "problems": [], "repair": false, "self_repairing": 0}
+400 {"error": "PostgreSQL keeps its tables consistent itself; it has no repair step"}
+== c5db backup postgresql done 04:42:35

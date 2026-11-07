@@ -1,0 +1,83 @@
+== 4.0 before: Postfix wiring (limits off by default) 04:42:28
+200 settings {"domain_per_hour": 750, "enabled": false, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 100, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "detail": "postfwd is not installed", "family": "apt", "installed": false, "postfix": true, "service_active": false} 
+   paused []
+(no policy lines above = untouched)
+inactive
+== 4.1 install postfwd from Components 04:42:28
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "45feb332f79e26ff2a088ded96298ed9", "kind": "service_install", "phase": "queued", "request_id": "0cea28e248b7c091f3086649c3337f63", "service_id": "postfwd", "started_at": "2026-11-07T04:42:31.282479098Z", "status": "queued"}}
+  op 0cea28e248b7c091f3086649c3337f63: succeeded completed "" (04:43:22)
+ii  postfwd        1.35-10      all          Postfix policyd to combine complex restrictions in a ruleset
+active
+# Written by CelikPanel (outgoing mail limits).
+# It keeps postfwd's hourly counters across a reload (--keep_rates).
+# Remove this file and run systemctl daemon-reload to return to the
+# package's own start line.
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --keep_rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+(after install, before turning on)
+200 {"id": 2, "success": true}
+box1 id 1, box2 id 2
+== 4.2 turn the limits on (owner values; refusal pause after 3 refusals for the lab) 04:43:23
+200 {"called": true, "result": {"applied": false, "code": "OUTGOING_MAIL_CHECK_FAILED", "error": "postfwd refused the new rules (postfwd -C): Attempt to call undefined import method with arguments (\"1.05\") via package \"IO::Multiplex\" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26. Rule 0: id->\"CP_SELFTEST\"; action->\"rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)\"; sasl_usernam; the earlier postfwd files were put back. Mail keeps flowing: Postfix was not told to ask postfwd.", "status": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "wiring": "off"}}, "saved": true}
+200 settings {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 3, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {"attempted_at": "2026-11-07 04:43:23", "code": "OUTGOING_MAIL_CHECK_FAILED", "detail": "postfwd refused the new rules (postfwd -C): Attempt to call undefined import method with arguments (\"1.05\") via package \"IO::Multiplex\" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26. Rule 0: id->\"CP_SELFTEST\"; action->\"rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)\"; sasl_usernam; the earlier postfwd files were put back. Mail keeps flowing: Postfix was not told to ask postfwd.", "state": "failed"} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "detail": "postfwd did not answer on 127.0.0.1:10040: dial tcp 127.0.0.1:10040: connect: connection refused", "family": "apt", "installed": true, "postfix": true, "service_active": true, "wiring": "off"} 
+   paused []
+active
+active
+-- box1's own limit: 3 recipients per hour
+200 {"applied": false, "called": true, "code": "OUTGOING_MAIL_CHECK_FAILED", "saved": true}
+== 4.3 box1 sends 5 messages (one recipient each) through submission 04:43:24
+ msg 1:
+ msg 2:
+ msg 3:
+ msg 4:
+ msg 5:
+== 4.4 the panel's five-minute round: the refusals pause box1 04:44:03
+ msg after the pause:
+200 {"notices": []}
+200 {"days": 1, "senders": [], "since": "2026-11-06T04:00:00Z", "total": {"address": "", "limit_refusals": 0, "messages": 0, "mismatch_refusals": 0, "paused_refusals": 0, "recipients": 0}}
+== 4.5 password change resumes (box1's limit raised to 100 first) 04:57:21
+200 {"applied": false, "called": true, "code": "OUTGOING_MAIL_CHECK_FAILED", "saved": true}
+200 {"success": true}
+ msg after the password change:
+-- postfwd stopped (lab load): mail still flows
+inactive
+ msg with postfwd stopped:
+active
+== 4.6 empty a mailbox (box2 received the messages above) 04:58:49
+200 {"emptied": true, "messages": 1, "quota_recalculated": true}
+== 4.7 send-only domain and the reply for unknown addresses 04:58:50
+ before: unknown address from outside
+  <** 550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: User unknown in virtual mailbox table
+200 {"applied": true, "saved": true}
+ send-only: to box2 from outside
+  <** 550 5.7.1 <box2@site1.r8.test>: Recipient address rejected: This domain does not receive mail on this server
+ send-only: box2 can still send out:
+200 {"applied": true, "saved": true}
+ unknown address with own reply:
+  <** 550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: No such mailbox at site1. Please write to box2@site1.r8.test.
+ known address still receives:
+  <-  250 2.0.0 Ok: queued as B529F225C8
+200 {"applied": true, "saved": true}
+== 4.8 delivery lookup scoped to the domain 04:59:50
+200 entries 5 read True incomplete None
+   addresses domains: ['labnet.test', 'site1.r8.test']
+    {"at": "2026-11-07T04:59:47Z", "direction": "in", "from": "lab@labnet.test", "reason": "delivered to maildir", "relay": "mailbox", "status": "sent", "to": "box2@site1.r8.test"}
+    {"at": "2026-11-07T04:59:38Z", "direction": "in", "from": "lab@labnet.test", "reason": "550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: No such mailbox at site1. Please write to box2@site1.r8.test.", "statu
+    {"at": "2026-11-07T04:59:15Z", "direction": "in", "from": "lab@labnet.test", "reason": "550 5.7.1 <box2@site1.r8.test>: Recipient address rejected: This domain does not receive mail on this server", "status": "refused", 
+    {"at": "2026-11-07T04:58:58Z", "direction": "in", "from": "lab@labnet.test", "reason": "550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: User unknown in virtual mailbox table", "status": "refused", "to": "no
+    {"at": "2026-11-07T04:53:24Z", "direction": "in", "from": "lab@labnet.test", "reason": "delivered to maildir", "relay": "mailbox", "status": "sent", "to": "box2@site1.r8.test"}
+ customer cust1 asks site1's lookup:
+404 {"error": "domain not found"}
+ customer cust1 on its own domain:
+200 {"days": 1, "domain": "cust1.r8.test", "result": {"covered_since": "2026-11-07T04:35:52Z", "entries": [], "read": true}}
+== 4.9 bulk (the screen's loop): box1+box2 limit 200 04:59:50
+200 {"applied": false, "called": false, "saved": true}
+200 {"applied": false, "called": false, "saved": true}
+(failed end)
+== c4mail done 04:59:51

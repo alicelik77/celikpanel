@@ -1,0 +1,51 @@
+== second PHP version: Sury lane + PHP-FPM 8.3 05:03:27
+200 {"plan": {"enabled": false, "name": "Sury PHP (packages.sury.org)", "origin": "deb.sury.org", "ready": true, "repo_id": "sury", "sha256": "d7bfc286577520f5e620fdd69fc6d23936f5c4536e1ac5921c9ad511b98f7112", "steps": [{"path": "/etc/apt/sources.list.d/celikpanel-sury.list", "sha256": "7c0b6d1fbd4cf778
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-sury.pref", "state": "confined", "written_at": "2026-11-07T05:03:31Z", "written_by": "lane"}, "detail": "Debian/Ubuntu PHP repository 
+200 {"distribution": "debian", "installs": ["fonts-dejavu-mono", "fonts-dejavu-core", "fontconfig-config", "libabsl20240722", "libaom3", "libdav1d7", "libgav1-1", "librav1e0.7", "libsvtav1enc2", "libjpeg62-turbo", "libyuv0", "libavif16", "libde265-0", "libdeflate0", "libfontconfig1", "libsharpyuv0", "libheif-plugin-libde265", "libheif-plugin-dav1d", "libheif1", "libgomp1", "libimagequant0", "libjbig0", "liblerc4", "libwebp7", "libtiff6", "libxau6", "libxdmcp6", "libxcb1", "libx11-data", "libx11-6", 
+202 {"operation": {"id": "4a101e7c7b55a20cd4b44374bfbac4a8", "kind": "service_install", "package_name": "php8.3-fpm", "phase": "queued", "request_id": "aa5142b1154f0d88d497a471d9b80b3f", "service_id": "php-fpm", "started_at": "2026-11-07T05:03:37.180632377Z", "status": "queued"}}
+  op aa5142b1154f0d88d497a471d9b80b3f: succeeded completed "" (05:04:28)
+   version 8.4 available ['8.4', '8.3']
+   files before fa6d01b4a2e78eb4
+== nginx stopped outside the panel (lab load); change site1 to 8.3 05:04:28
+inactive
+409 {"action": "/components", "code": "WEB_SERVER_STOPPED", "error": "Nothing was changed: the web server (nginx) is stopped, so site1.r8.test cannot be moved to PHP 8.3 safely. Start it on the Services page, then choose the version again."}
+   files after  fa6d01b4a2e78eb4 (unchanged: yes)
+   version 8.4 available ['8.4', '8.3']
+active
+== with nginx running: site1 -> 8.3 and back 05:04:29
+200 {"message": "PHP version updated", "status": "success"}
+   version 8.3 available ['8.4', '8.3']
+curl: (2) no URL specified
+curl: try 'curl --help' or 'curl --manual' for more information
+== cust1.r8.test on 8.3: limits still hold 05:04:30
+200 {"message": "PHP version updated", "status": "success"}
+   version 8.3 available ['8.4', '8.3']
+socket /var/run/php/php8.3-fpm-site3.sock
+pool file(s): /etc/php/8.3/fpm/pool.d/site3.conf
+1:; celikpanel-render v2 sha256=7169ef3432f282922e4dd275b8ecfd085f50e6a2a29994e4c2cf491a1b7024c7
+2:; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:
+3:; CelikPanel then shows the difference and asks before writing this file again.
+4:; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+13:pm.max_children = 4
+19:; PHP settings of this site, chosen in CelikPanel. An application cannot raise the php_admin_value limits.
+20:; Bu sitenin CelikPanel'de seçilen PHP ayarları; uygulama php_admin_value sınırlarını yükseltemez.
+21:php_admin_value[memory_limit] = 256M
+22:php_admin_value[max_execution_time] = 120
+23:php_admin_value[max_input_time] = 120
+24:request_terminate_timeout = 130s
+25:php_admin_value[upload_max_filesize] = 64M
+26:php_admin_value[post_max_size] = 64M
+27:php_admin_value[max_input_vars] = 3000
+5dea19a200549d7d
+access-log.traffic
+acme-http-01.conf
+site-settings.conf
+# celikpanel-render v2 sha256=73740d11eccd2844caaf179d736f31f33b25cf335d195ceba005bbecdf3260f0
+# Site settings of cust1.r8.test, written by CelikPanel from the site's PHP settings.
+# Change them on that page. A line you change here is kept, and CelikPanel stops writing this file.
+# Sitenin ayarları; PHP ayarları sayfasında değiştirin. Burada değiştirilen satır korunur.
+client_max_body_size 64m;
+fastcgi_read_timeout 130s;
+{"php":"8.3.36","before":{"memory_limit":"256M","max_execution_time":"120","upload_max_filesize":"64M","post_max_size":"64M","max_input_vars":"3000"},"ini_set_returned":[false,false],"after":{"memory_limit":"256M","max_execution_time":"120"},"user_ini":".user.ini"}
+
+== c2ver done 05:04:32

@@ -1,0 +1,133 @@
+labnet addresses: 192.0.3.1 192.0.2.53 192.0.2.54 192.0.2.55 192.0.2.56 192.0.2.57 192.0.2.60 192.0.2.25 192.0.2.61 10.0.2.15 
+== 3a.0 GET 04:42:12
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"max_size": 16384, "may_edit": true, "offered": false, "set": false}, "domain_id": 2, "error_codes": [400, 401, 403, 404, 405, 410, 429, 500, 502, 503, 504], "fields_apply": true, "https_enforced": false, "index_applies": true, "may_cache": true, "node_applies": false, "page_cache_applies": true, "project_type": "php", "saved": false, "settings": {}}
+docroot /var/www/celikpanel/subscriptions/2/sites/2/public_html
+clock.php
+errors
+file.lab
+home.html
+index.php
+== 3a.1 certificate from the lab CA before any setting 04:42:12
+200 {"expires_at": "2031-11-07T04:42:14Z", "status": "success"}
+tr: missing operand after ‘n’
+Two strings must be given when translating.
+Try 'tr --help' for more information.
+
+== 3a.2 an error page whose file is missing -> refused 04:42:16
+409 {"code": "WEB_ERROR_PAGE_MISSING", "reason": null, "error": "These error pages are not in the site's folder: /errors/500.html. Upload them (File manager or SFTP) to the site's document root first; nothing was changed.", "vars": null, "details": null}
+== 3a.3 index, MIME, browser cache 7 days, header, IP deny of the lab network, custom 404 04:42:17
+200 saved {"access_list": ["192.0.3.1", "192.0.2.53", "192.0.2.54", "192.0.2.55", "192.0.2.56", "192.0.2.57", "192.0.2.60", "192.0.2.25", "192.0.2.61", "10.0.2.15"], "access_mode": "deny", "browser_cache_days": 7, "error_pages": [{"code": 404, "path": "/errors/404.html"}], "headers": [{"name": "X-Lab", "value": "a128"}], "index_files": ["home.html", "index.php"], "mime_types": [{"extensions": ["lab"], "type": "application/x-lab"}]}
+-- /  (index: home.html first)
+HTTP/1.1 200 OK Content-Type: text/html X-Lab: a128 
+<html><body>lab home.html first in the index</body></html>
+
+-- /file.lab (MIME)
+HTTP/1.1 200 OK Content-Type: application/x-lab X-Lab: a128 
+lab mime
+
+-- /missing (custom 404)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab: a128 
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>site1.r8.test</title>
+
+-- /clock.php twice (page cache)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab-Php: 1 X-Lab: a128 
+time=1794026537.8768
+
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab-Php: 1 X-Lab: a128 
+time=1794026538.8907
+
+   from the lab network (denied): 403
+== 3a.4 certificate renewal (reissue) while the lab network is denied 04:42:19
+200 {"expires_at": "2031-11-07T04:42:20Z", "status": "success"}
+tr: missing operand after ‘n’
+Two strings must be given when translating.
+Try 'tr --help' for more information.
+
+== 3a.5 page cache 5 minutes + clear 04:42:22
+200 saved {"access_list": ["192.0.3.1", "192.0.2.53", "192.0.2.54", "192.0.2.55", "192.0.2.56", "192.0.2.57", "192.0.2.60", "192.0.2.25", "192.0.2.61", "10.0.2.15"], "access_mode": "deny", "browser_cache_days": 7, "error_pages": [{"code": 404, "path": "/errors/404.html"}], "headers": [{"name": "X-Lab", "value": "a128"}], "index_files": ["home.html", "index.php"], "mime_types": [{"extensions": ["lab"], "type": "application/x-lab"}], "page_cache": true, "page_cache_minutes": 5}
+-- /  (index: home.html first)
+HTTP/1.1 200 OK Content-Type: text/html X-Lab: a128 
+<html><body>lab home.html first in the index</body></html>
+
+-- /file.lab (MIME)
+HTTP/1.1 200 OK Content-Type: application/x-lab X-Lab: a128 
+lab mime
+
+-- /missing (custom 404)
+HTTP/1.1 500 Internal Server Error Content-Type: text/html X-Lab: a128 X-Cache-Status: MISS 
+<html>
+<head><title>500 Internal Server Error</title></head>
+<body>
+<center><h1>500 Internal Server Error</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+-- /clock.php twice (page cache)
+HTTP/1.1 500 Internal Server Error Content-Type: text/html X-Lab: a128 X-Cache-Status: MISS 
+<html>
+<head><title>500 Internal Server Error</title></head>
+<body>
+<center><h1>500 Internal Server Error</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+HTTP/1.1 500 Internal Server Error Content-Type: text/html X-Lab: a128 X-Cache-Status: MISS 
+<html>
+<head><title>500 Internal Server Error</title></head>
+<body>
+<center><h1>500 Internal Server Error</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+
+200 {"cleared": true, "removed": 0}
+<html>
+<head><title>500 Internal Server Error</title></head>
+<body>
+<center><h1>500 Internal Server Error</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+== 3a.6 a directive nginx refuses -> refused, files put back 04:42:24
+   nginx tree before 67d19848c3de32ac
+400 {"code": "WEB_DIRECTIVES_INVALID", "error": "Nothing was changed: line 1: client_max_body_size is set by the field \"largest upload (PHP settings)\" on this screen; use the field instead.", "reason": "field"}
+   nginx tree after  67d19848c3de32ac (same: yes)
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+active
+   forbidden directive:
+400 {"code": "WEB_SETTINGS_NGINX_REFUSED", "error": "nginx refused this change, so the previous settings stay and the site works as before. nginx said: 2026/11/07 04:42:26 [emerg] 65457#65457: \"root\" directive is duplicate in /etc/nginx/celikpanel-managed.d/site1.r8.test/directives.site:6"}
+   good directive:
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"by_admin": true, "max_size": 16384, "may_edit": true, "offered": false, "set": true, "text": "add_header X-Lab-Directive yes always;"}, "domain_id": 2, "error_codes": [400, 401, 403, 404, 405, 410, 42
+X-Lab-Directive: yes
+X-Lab: a128
+total 24
+drwxr-xr-x 2 root celikpanel 4096 Nov  7 04:42 .
+drwxr-xr-x 5 root celikpanel 4096 Nov  7 04:36 ..
+-rw-r--r-- 1 root celikpanel  446 Nov  7 04:36 access-log.traffic
+-rw-r--r-- 1 root celikpanel  595 Nov  7 04:42 acme-http-01.conf
+-rw-r--r-- 1 root celikpanel  441 Nov  7 04:42 directives.site
+-rw-r--r-- 1 root celikpanel 1099 Nov  7 04:42 settings.site
+## /etc/nginx/celikpanel-managed.d/site1.r8.test/acme-http-01.conf
+# celikpanel-render v2 sha256=a05d001c9782d5470c42b85e2e1de60208d2a79244731db24c2d1d3e3cf866ba
+# The ACME HTTP-01 challenge location of site1.r8.test, written by CelikPanel.
+# This directory is CelikPanel's; put your own additions in /etc/nginx/celikpanel-sites.d/site1.r8.test/*.conf.
+# Doğrulama konumu; bu dizin CelikPanel'indir, kendi eklemeleriniz /etc/nginx/celikpanel-sites.d/site1.r8.test içine.
+location ^~ /.well-known/acme-challenge/ {
+    allow all;
+    root /var/lib/celikpanel-agent/acme-http-01/subscriptions/2/domains/2;
+    default_type text/plain;
+    try_files $uri =404;
+}
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+== 3a.7 access open again 04:42:27
+200 saved {"error_pages": [{"code": 404, "path": "/errors/404.html"}], "index_files": ["home.html", "index.php"]}
+   from the lab network: 200
+== c3web done 04:42:27

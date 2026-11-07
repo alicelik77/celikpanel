@@ -1,0 +1,18 @@
+== final state 05:43:01
+200 {"agent_commit": "6e2e1af46ec3ba30551fcf2880819537cce656b0", "agent_matches": true, "commit": "6e2e1af46ec3ba30551fcf2880819537cce656b0", "hostname": "host1.r8.test", "ipv4": "192.0.3.190", "schema_version": 70, "version": "v0.1.0-alpha.130"}
+(failed end)
+200 {"agent_commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "agent_matches": true, "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "hostname": "host2.r8.test", "ipv4": "192.0.3.191", "schema_version": 70, "version": "v0.1.0-alpha.129"}
+(failed end)
+   5 node8.r8.test active node
+   4 tokdel.r8.test pending static
+   3 cust1.r8.test active php
+   2 site1.r8.test active php
+   1 r8.test active static
+200 {"message": "The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). The rest of the deletion has not run yet: use \u201cRetry this deletion\u201d to finish removing the domain from this server. Nothing else is waiting.", "reason": "dns_removal_confirmed", "stage": "dns_removed", "status": "deletion_pending"}
+db /var/lib/celikpanel/celikpanel.db migrations 70 last: [(65, '065_monitoring_alerts.sql'), (66, '066_site_setting_limits.sql'), (67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql')]
+   setting_policy 12 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 2 rows
+   api_tokens 2 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(1,)]

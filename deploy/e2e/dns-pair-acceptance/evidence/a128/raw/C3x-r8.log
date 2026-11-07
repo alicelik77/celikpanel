@@ -1,0 +1,51 @@
+== versions 05:10:38
+200 {"agent_commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "agent_matches": true, "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "hostname": "host1.r8.test", "ipv4": "192.0.3.190", "schema_version": 70, "version": "v0.1.0-alpha.129"}
+== 3x.1 the 128 state: cache folders 0750 (lab load) 05:10:38
+drwxr-x--- root:celikpanel /var/cache/celikpanel
+drwxr-x--- root:celikpanel /var/cache/celikpanel/pagecache
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"
+drwxr-xr-x root:celikpanel /var/cache/celikpanel
+drwxr-xr-x root:celikpanel /var/cache/celikpanel/pagecache
+clock 1: HTTP/1.1 200 OK X-Cache-Status: EXPIRED time=1794028239.7046
+clock 2: HTTP/1.1 200 OK X-Cache-Status: HIT time=1794028239.7046
+clock with a session cookie: X-Cache-Status: BYPASS
+1
+200 {"cleared": true, "removed": 1}
+clock 1: HTTP/1.1 200 OK X-Cache-Status: MISS time=1794028241.2241
+clock 2: HTTP/1.1 200 OK X-Cache-Status: HIT time=1794028241.2241
+clock with a session cookie: X-Cache-Status: BYPASS
+1
+== 3x.2 page cache off; custom 404 for a missing PHP file 05:10:42
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"
+/nope-a128.php -> 404
+<html><body>LAB CUSTOM 404 a128</body></html> 
+== 3x.3 directives: a location with alias /etc (administrator) 05:10:42
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"by_admin": true, "max_size": 16384, "may_edit": true, "offered": false, "set": true, "text": "location /lab-etc/ { alias /etc/; }"}, "domain_id": 2, "error_codes": [400, 401, 403, 404, 405, 410, 429, 500, 502, 503, 504], "fields_apply": true, "https_enforced": false, "index_applies": true, "may_cache": true, "node_applies": false, "page_cache_applies": true, "project_type": "php", "saved": true, "settings": {"error_pages": [{"code": 404, "path": "/errors/404.html"}], "index_files": ["home.html",
+/lab-etc/hostname -> 200
+host1.r8.test 
+   a directive nginx itself refuses (unknown directive):
+400 {"code": "WEB_SETTINGS_NGINX_REFUSED", "error": "nginx refused this change, so the previous settings stay and the site works as before. nginx said: 2026/11/07 05:10:44 [emerg] 101721#101721: unknown directive \"lab_unknown_directive\" in /etc/nginx/celikpanel-managed.d/site1.r8.test/directives.site:6"}
+   nginx tree before d999136f186ce206 after 7621f139a5394418
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"by_admin": true, "ma
+== 3x.4 a reseller/customer may not edit directives (not offered) 05:10:45
+403 {"code": "WEB_DIRECTIVES_CLOSED", "error": "Additional nginx directives are not offered on this server. The administrator can offer them to resellers and customers; nothing was changed.", "reason": "not_offered"}
+== c3x done 05:10:45
+== 3y offer on 05:11:40
+200 {"offered": true}
+200 directives {"max_size": 16384, "may_edit": true, "set": false}
+-- location /x/ { alias /etc/; }
+400 {"code": "WEB_DIRECTIVES_INVALID", "error": "Nothing was changed: line 1: alias is not allowed here (it changes the server's structure or files); only the server administrator can set it.", "reason": "forbidden"}
+-- root /etc;
+400 {"code": "WEB_DIRECTIVES_INVALID", "error": "Nothing was changed: line 1: root is not allowed here (it changes the server's structure or files); only the server administrator can set it.", "reason": "forbidden"}
+-- auth_basic \"x\"; auth_basic_user_file /etc/shadow;
+400 {"code": "WEB_DIRECTIVES_INVALID", "error": "Nothing was changed: line 1: auth_basic_user_file names /etc/shadow, which is outside this site's folder /var/www/celikpanel/subscriptions/3/sites/3.", "reason": "path"}
+-- location /p/ { proxy_pass http://127.0.0.1:1923; }
+400 {"code": "WEB_DIRECTIVES_INVALID", "error": "Nothing was changed: line 1: proxy_pass is not allowed here (it sends requests to another program or server); only the server administrator can set it.", "reason": "forbidden"}
+-- add_header X-Cust-Directive yes always;
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"max_size": 16384, "may_edit": true, "set": true, "text": "add_header X-Cust-Directive yes always;"}, "domain_id": 3, "error_codes": [400, 401, 403, 404, 405, 410, 429, 500, 502, 503, 504], "fields_app
+/ -> 200
+X-Cust-Directive: yes
+<!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.ht
+200 {"offered": false}
+== c3y done 05:11:42

@@ -1,0 +1,69 @@
+== 4.0 before: Postfix wiring (limits off by default) 05:10:45
+200 settings {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 3, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {"attempted_at": "2026-11-07 04:57:22", "code": "OUTGOING_MAIL_CHECK_FAILED", "detail": "postfwd refused the new rules (postfwd -C): Attempt to call undefined import method with arguments (\"1.05\") via package \"IO::Multiplex\" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26. Rule 0: id->\"CP_SELFTEST\"; action->\"rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)\"; sasl_usernam; the earlier postfwd files were put back. Mail keeps flowing: Postfix was not told to ask postfwd.", "state": "failed"} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "off"} 
+   paused []
+(no policy lines above = untouched)
+active
+ii  postfwd        1.35-10      all          Postfix policyd to combine complex restrictions in a ruleset
+active
+box1 id 1, box2 id 2
+== 4.2 turn the limits on (owner values; refusal pause after 3 refusals for the lab) 05:10:46
+200 {"called": true, "result": {"applied": true, "changed": true, "status": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"}, "steps": ["postfwd's rules were written and checked (postfwd -C)", "postfwd took the new rules and kept its counters", "a test message was counted and the second one refused, so the limits work", "Postfix asks postfwd at the end of each message on 587 and 465 (mail flows if postfwd stops)"], "verified": true}, "saved": true}
+200 settings {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 3, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {"applied_at": "2026-11-07 05:10:51", "attempted_at": "2026-11-07 05:10:51", "state": "applied", "verified_at": "2026-11-07 05:10:51"} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"} 
+   paused []
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+active
+active
+domain-750.list
+mailbox-50.list
+subscription-1000.list
+subscription-s2.domains
+-- box1's own limit: 3 recipients per hour
+200 {"applied": true, "called": true, "saved": true}
+== 4.3 box1 sends 5 messages (one recipient each) through submission 05:10:54
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 7CF9321802
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as F1EBB21802
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 3B4D021802
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as B388321802
+ msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 39FE121802
+== 4.4 the panel's five-minute round: the refusals pause box1 05:11:36
+ msg after the pause:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as B9F5221359
+200 {"notices": []}
+200 {"days": 1, "senders": [{"address": "box1@site1.r8.test", "domain_id": 2, "limit_refusals": 0, "messages": 5, "mismatch_refusals": 0, "paused_refusals": 0, "recipients": 5}], "since": "2026-11-06T05:00:00Z", "total": {"address": "", "limit_refusals": 0, "messages": 5, "mismatch_refusals": 0, "paused_refusals": 0, "recipients": 5}}
+== 4.5 password change resumes (box1's limit raised to 100 first) 05:24:50
+200 {"applied": true, "called": true, "saved": true}
+200 {"success": true}
+ msg after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 7820421802
+-- postfwd stopped (lab load): mail still flows
+inactive
+ msg with postfwd stopped:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 23D0B21802
+active
+== 4.9 bulk (the screen's loop): box1+box2 limit 200 05:26:20
+200 {"applied": false, "called": false, "saved": true}
+200 {"applied": false, "called": false, "saved": true}
+(failed end)
+== c4mail done 05:26:21

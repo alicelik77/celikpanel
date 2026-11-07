@@ -1,0 +1,50 @@
+== portal latest = 129 (fix label 2) 05:34:10
+v0.1.0-alpha.130
+== C2 main before 05:34:12
+200 {"agent_commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "agent_matches": true, "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "hostname": "host1.r8.test", "ipv4": "192.0.3.190", "schema_version": 70, "version": "v0.1.0-alpha.129"}
+release 
+--- systemctl --failed (all units)
+celikapp-5.service loaded failed failed CelikPanel app: node8.r8.test
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+  request 4b0e44fd69d3245c97672f012de0af3a v0.1.0-alpha.129 -> v0.1.0-alpha.130
+== press Update once 05:34:13
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T05:34:13Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "4b0e44fd69d3245c97672f012de0af3a", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "1286bcd8d924ca7e525501e12436941779467dea139c925fd9fe139d0bde0a2b", "archive_size": "72285353", "commit": "6e2e1af46ec3ba30551f
+  4s 200 running None  | 
+  25s 
+  58s 200 running verifying  | 
+  67s 200 succeeded None  | 
+== after 05:35:31
+200 {"agent_commit": "6e2e1af46ec3ba30551fcf2880819537cce656b0", "agent_matches": true, "commit": "6e2e1af46ec3ba30551fcf2880819537cce656b0", "hostname": "host1.r8.test", "ipv4": "192.0.3.190", "schema_version": 70, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-07T05:34:13.258277394Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T05:34:13Z", "state": "done"}, {"finished_at": "2026-11-07T05:34:17Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T05:34:17Z", "state": "done"}, {"finished_at": "2026-11-07T05:35:07Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T05:35:19Z", "id": "confirm", "started_at": "2026-11-07T05:35:07Z", "state": "done"}]}, "request_id": "4b0e44fd69d3245c97672f012de0af3a", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "1286bcd8d924ca7e525501e12436941779467dea139c925fd9fe139d0bde0a2b", "archive_size": "72285353", "commit": "6e2e1af46ec3ba30551fcf2880819537cce656b0", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-07T05:35:19.327830016Z"}
+release 
+--- systemctl --failed (all units)
+celikapp-5.service loaded failed failed CelikPanel app: node8.r8.test
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 05:35:07 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 05:35:07 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '2796ef473a3a5857934d33babf9acf4f.json'] {'request_id': '2796ef473a3a5857934d33babf9acf4f', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T04:39:32.189151828Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '4b0e44fd69d3245c97672f012de0af3a.json'] {'request_id': '4b0e44fd69d3245c97672f012de0af3a', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T05:34:13.258277394Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+  ['self-update', '9f95e0c19355bdcfa959e1ca03cd8f07.json'] {'request_id': '9f95e0c19355bdcfa959e1ca03cd8f07', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T05:07:42.093959228Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+== C2 main done 05:35:32
+== main after 05:35:32
+snapshot post130: 393 entries
+--- differences pre130 -> post130 (excluding systemd self-update/runtime units)
+(end)
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+(postconf -P policy lines end)
+celikapp-5.service loaded failed failed CelikPanel app: node8.r8.test
+(failed end)
+== c10upd done 05:35:33

@@ -1,0 +1,85 @@
+== portal latest = 129 (fix label) 05:07:38
+v0.1.0-alpha.129
+== C2 main before 05:07:41
+200 {"agent_commit": "a48a12e3ed174b9f8fc9aece98a27d946a8a8052", "agent_matches": true, "commit": "a48a12e3ed174b9f8fc9aece98a27d946a8a8052", "hostname": "host1.r8.test", "ipv4": "192.0.3.190", "schema_version": 70, "version": "v0.1.0-alpha.128"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 9f95e0c19355bdcfa959e1ca03cd8f07 v0.1.0-alpha.128 -> v0.1.0-alpha.129
+== press Update once 05:07:41
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T05:07:42Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "9f95e0c19355bdcfa959e1ca03cd8f07", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "fe64dd2e930e4a19f5150d35e6e1e35cc1e54997ba8b7b527b561d0b17fa691f", "archive_size": "72283257", "commit": "2e1790160d051a2dbe9a
+  4s 200 running None  | 
+  25s 
+  58s 503 None None  | 
+  62s 200 running verifying  | 
+  71s 200 succeeded None  | 
+== after 05:09:04
+200 {"agent_commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "agent_matches": true, "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "hostname": "host1.r8.test", "ipv4": "192.0.3.190", "schema_version": 70, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-07T05:07:42.093959228Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T05:07:42Z", "state": "done"}, {"finished_at": "2026-11-07T05:07:46Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T05:07:46Z", "state": "done"}, {"finished_at": "2026-11-07T05:08:40Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 10, "finished_at": "2026-11-07T05:08:51Z", "id": "confirm", "started_at": "2026-11-07T05:08:40Z", "state": "done"}]}, "request_id": "9f95e0c19355bdcfa959e1ca03cd8f07", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "fe64dd2e930e4a19f5150d35e6e1e35cc1e54997ba8b7b527b561d0b17fa691f", "archive_size": "72283257", "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "os": "linux", "sequence": "129", "version": "v0.1.0-alpha.129"}, "updated_at": "2026-11-07T05:08:51.002946701Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 05:08:40 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 05:08:40 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '2796ef473a3a5857934d33babf9acf4f.json'] {'request_id': '2796ef473a3a5857934d33babf9acf4f', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T04:39:32.189151828Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '9f95e0c19355bdcfa959e1ca03cd8f07.json'] {'request_id': '9f95e0c19355bdcfa959e1ca03cd8f07', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T05:07:42.093959228Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+== C2 main done 05:09:05
+== C2 backup before 05:09:05
+200 {"agent_commit": "a48a12e3ed174b9f8fc9aece98a27d946a8a8052", "agent_matches": true, "commit": "a48a12e3ed174b9f8fc9aece98a27d946a8a8052", "hostname": "host2.r8.test", "ipv4": "192.0.3.191", "schema_version": 70, "version": "v0.1.0-alpha.128"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request feb44100badf5fadf1285e5873c03b78 v0.1.0-alpha.128 -> v0.1.0-alpha.129
+== press Update once 05:09:06
+202 {"accepted": true, "plan": {"expected_restart_seconds": 107, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T05:09:06Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "feb44100badf5fadf1285e5873c03b78", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "fe64dd2e930e4a19f5150d35e6e1e35cc1e54997ba8b7b527b561d0b17fa691f", "archive_size": "72283257", "commit": "2e1790160d051a2dbe9
+  4s 200 running None  | 
+  29s 
+  62s 200 running verifying  | 
+  75s 200 succeeded None  | 
+== after 05:10:34
+200 {"agent_commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "agent_matches": true, "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "hostname": "host2.r8.test", "ipv4": "192.0.3.191", "schema_version": 70, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-07T05:09:06.339022086Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T05:09:06Z", "state": "done"}, {"finished_at": "2026-11-07T05:09:10Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T05:09:10Z", "state": "done"}, {"finished_at": "2026-11-07T05:10:07Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T05:10:19Z", "id": "confirm", "started_at": "2026-11-07T05:10:07Z", "state": "done"}]}, "request_id": "feb44100badf5fadf1285e5873c03b78", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "fe64dd2e930e4a19f5150d35e6e1e35cc1e54997ba8b7b527b561d0b17fa691f", "archive_size": "72283257", "commit": "2e1790160d051a2dbe9ac1e1cce50f5e01d396b6", "os": "linux", "sequence": "129", "version": "v0.1.0-alpha.129"}, "updated_at": "2026-11-07T05:10:19.829401725Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 05:10:07 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '6951081d1332b296c5cee1bc01ae71bd.json'] {'request_id': '6951081d1332b296c5cee1bc01ae71bd', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T04:37:44.693698107Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', 'feb44100badf5fadf1285e5873c03b78.json'] {'request_id': 'feb44100badf5fadf1285e5873c03b78', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T05:09:06.339022086Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+== C2 backup done 05:10:35
+== main after 05:10:35
+snapshot post129: 378 entries
+--- differences pre129 -> post129 (excluding systemd self-update/runtime units)
+< 84df1682b8b1ef55 /etc/postfix/virtual.db
+> b2ee264f70ee8bc3 /etc/postfix/virtual.db
+< f9ffc5eeaa4a9b27 /etc/postfix/vmailbox.db
+> a9855c33942fb82c /etc/postfix/vmailbox.db
+< 381494b290110f34 /etc/postfix/vmailbox_domains.db
+> 3aee5fbcadd675b0 /etc/postfix/vmailbox_domains.db
+(end)
+(postconf -P policy lines end)
+(failed end)
+== backup after 05:10:37
+snapshot post129: 201 entries
+--- differences pre129 -> post129 (excluding systemd self-update/runtime units)
+(end)
+(postconf -P policy lines end)
+(failed end)
+== c9upd done 05:10:38

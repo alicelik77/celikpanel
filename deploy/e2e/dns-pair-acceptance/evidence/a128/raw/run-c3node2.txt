@@ -1,0 +1,50 @@
+== 3c.0 the owner installs git from the terminal (lab load: apt-get install git) 05:35:38
+git version 2.47.3
+== 3c.1 HTTPS deploy into the Node site 05:35:46
+200 {"settings": {"branch": "main", "build": false, "key_created_at": "2026-11-07 05:27:30", "repo_url": "https://git.lab.test/app.git"}}
+200 {"phase": "running", "request_id": "git-10329a2ed1a268b804fc04cf800aadfa", "started_at": "2026-11-07T05:35:47Z"}
+   deploy: failed deploy_failed verified_failure the deploy ended with an error; the last lines of its output are shown. The files of the last good deploy stay where git did not replace them yet; correct the problem, then deploy again | Starting celikgit-5.service - CelikPanel Git deploy of node8.r8.test... / fatal: dumb http transport does not support shallow capabilities / celikgit-5.service: Control process exited, code=exited, status=128/n/a / celikgit-5.service: Failed with result 'exit-code'. / Failed to start celikgit-5.service - CelikPanel Git deploy of node8.r8.test.
+200 {"success": true}
+   site: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+== 3c.2 package script build 05:35:59
+200 {"phase": ""}
+200 {"class": "prerequisite", "error": "nothing was started: there is no package.json in the site's folder. Upload the project (with package.json) with the file manager or SFTP, then install again", "phase": "", "reason": "package_json_missing"}
+   script:  None  | 
+200 {"success": true}
+   site: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+== 3c.3 SSH deploy with the deploy key (build on) 05:36:06
+200 {"settings": {"branch": "main", "build": true, "key_created_at": "2026-11-07 05:27:30", "repo_url": "git@git.lab.test:app.git"}}
+200 {"phase": "running", "request_id": "git-0066c5124235132a5e197391c0d405f7", "started_at": "2026-11-07T05:36:07Z"}
+   deploy: succeeded    | Warning: Permanently added 'git.lab.test' (ED25519) to the list of known hosts. / up to date in 601ms / > lab-git-app@1.0.0 build / > node -e "require('fs').writeFileSync('built.txt','built '+new Date().toISOString())" / Finished celikgit-5.service - CelikPanel Git deploy of node8.r8.test.
+200 {"success": true}
+   site: {"app":"lab-git-app","rev":"ssh-2","node_env":"production","lab_public":"a128-public","lab_secret_len":17,"built":"built 2026-11-07T05:36:09.058Z"}
+05:00:36 192.0.3.190 "GET /app.git/info/refs HTTP/1.1" 200 -
+05:26:30 192.0.3.190 "GET /app.git/info/refs HTTP/1.1" 200 -
+05:35:48 192.0.3.190 "GET /app.git/info/refs?service=git-upload-pack HTTP/1.1" 200 -
+05:35:48 192.0.3.190 "GET /app.git/HEAD HTTP/1.1" 200 -
+pam_unix(sshd:session): session opened for user git(uid=1002) by git(uid=0)
+pam_unix(sshd:session): session closed for user git
+Accepted publickey for celik from 192.0.3.2 port 56042 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+Accepted publickey for celik from 192.0.3.2 port 56052 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+Accepted publickey for celik from 192.0.3.2 port 56058 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+-rw-r--r--  1 root celikpanel 3253 Nov  7 05:27 celikapp-5.service
+unit files naming LAB_SECRET: 
+secret value in unit files: 0; in systemctl show Environment: 0
+-rw------- celikpanel:celikpanel /var/lib/celikpanel/celikpanel.db
+-rw------- celikpanel:celikpanel /var/lib/celikpanel/celikpanel.db-wal
+-rw------- celikpanel:celikpanel /var/lib/celikpanel/.release-db-migrations/ff0413cf79f7c3447ab53f517abb70db4d635d7b067a55b3d6c89229714a7463/work/celikpanel.db
+-rw------- celikpanel:celikpanel /var/lib/celikpanel/.release-db-migrations/ff0413cf79f7c3447ab53f517abb70db4d635d7b067a55b3d6c89229714a7463/authority/.build-e44990811e3707a5bd2465a90bca6d71/celikpanel.db
+(failed end)
+== c3node2 done 05:36:21

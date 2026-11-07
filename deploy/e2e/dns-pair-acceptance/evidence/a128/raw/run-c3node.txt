@@ -1,0 +1,75 @@
+== 3b.0 lab Git server 05:26:27
+active
+344085332de520cbf83210893225c27a1a81fff4	HEAD
+344085332de520cbf83210893225c27a1a81fff4	refs/heads/main
+344085332de520cbf83210893225c27a1a81fff4	refs/heads/main
+== 3b.1 Node.js runtime and a Node site 05:26:29
+202 {"operation": {"id": "431af2a99854427c87d78cae919be121", "kind": "runtime_install", "package_name": "22.23.4", "phase": "queued", "request_id": "62cde0b566d0926c3d6379efdf3eb9f7", "service_id": "node", "started_at": "2026-11-07T05:26:29.995288147Z", "status": "queued"}}
+node 22.23.4
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html", "Domain": "node8.r8.test", "DomainID": 5, "FTPPassword": "[REDACTED]", "FTPUser": "node8_r8_test", "PHPVersion": "", "ProjectType": "static", "SiteID": 5, "TempDomain": ""}
+node8.r8.test id 5
+200 {"can_build": false, "settings": {"branch": "main", "build": false, "repo_url": ""}, "status": {"phase": ""}, "status_unknown": false}
+== 3b.2 Git over HTTPS into the static site, then Node 05:26:47
+200 {"settings": {"branch": "main", "build": false, "repo_url": "https://git.lab.test/app.git"}}
+200 {"class": "prerequisite", "error": "git is not installed on this server; the administrator installs the distribution's git package, then deploy again", "phase": "", "reason": "git_missing"}
+   deploy:     | 
+200 {"app_port": 3001, "success": true}
+   site: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+== 3b.3 environment variables (one secret) 05:27:17
+200 {"keys": ["LAB_PUBLIC", "LAB_SECRET", "NODE_ENV"], "restarted": false}
+200 {"entries": [{"key": "LAB_PUBLIC", "secret": false, "value": "a128-public"}, {"key": "LAB_SECRET", "secret": "[REDACTED]"}, {"key": "NODE_ENV", "secret": false, "value": "production"}], "min_secret": "[REDACTED]"}
+   site: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+-rw-r--r--  1 root celikpanel 3253 Nov  7 05:27 celikapp-5.service
+unit files naming LAB_SECRET: 
+secret value in unit files: 0; in systemctl show Environment: 0
+-rw------- celikpanel:celikpanel /var/lib/celikpanel/celikpanel.db-wal
+== 3b.4 a package script (build) 05:27:24
+200 {"phase": ""}
+200 {"class": "prerequisite", "error": "nothing was started: there is no package.json in the site's folder. Upload the project (with package.json) with the file manager or SFTP, then install again", "phase": "", "reason": "package_json_missing"}
+   script:  None  | 
+200 {"success": true}
+   site: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+== 3b.5 Git over SSH with the generated deploy key 05:27:30
+   200 SHA256:roCKnU8C7CU+P4u5OZKQ3kGylPSknUhMmaDIn3ZRoW8 ssh-ed25519 AAAAC3NzaC1lZDI1NT
+   key again (no replace):
+409 {"code": "GIT_DEPLOY_REFUSED", "error": "No key was made: this site already has a deploy key; make a new one only to replace it.", "reason": "key_exists"}
+1
+31d3946 lab ssh-2
+200 {"settings": {"branch": "main", "build": true, "key_created_at": "2026-11-07 05:27:30", "repo_url": "git@git.lab.test:app.git"}}
+200 {"class": "prerequisite", "error": "git is not installed on this server; the administrator installs the distribution's git package, then deploy again", "phase": "", "reason": "git_missing"}
+   deploy:     | 
+200 {"success": true}
+   site: <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+05:00:36 192.0.3.190 "GET /app.git/info/refs HTTP/1.1" 200 -
+05:26:30 192.0.3.190 "GET /app.git/info/refs HTTP/1.1" 200 -
+Accepted publickey for celik from 192.0.3.2 port 38854 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+Accepted publickey for celik from 192.0.3.2 port 38866 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+Accepted publickey for celik from 192.0.3.2 port 38876 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+Accepted publickey for celik from 192.0.3.2 port 54754 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+Accepted publickey for celik from 192.0.3.2 port 54768 ssh2: ED25519 SHA256:t+vKqOqpE6yLYlSzC1FAz/1ABwdnsyaGH//IkuiK1EE
+(failed end)
+== c3node done 05:27:37

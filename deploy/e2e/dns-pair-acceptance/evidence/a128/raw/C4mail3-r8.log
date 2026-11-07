@@ -1,0 +1,103 @@
+== 4.0 before: Postfix wiring (limits off by default) 05:35:34
+200 settings {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 3, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {"applied_at": "2026-11-07 05:24:50", "attempted_at": "2026-11-07 05:24:50", "state": "applied", "verified_at": "2026-11-07 05:24:50"} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"} 
+   paused []
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+(no policy lines above = untouched)
+active
+ii  postfwd        1.35-10      all          Postfix policyd to combine complex restrictions in a ruleset
+active
+drwxr-x--- root:celikpanel /etc/postfix/celikpanel-postfwd
+box1 id 1, box2 id 2
+== 4.2 turn the limits on (owner values; refusal pause after 3 refusals for the lab) 05:35:35
+200 {"called": true, "result": {"applied": true, "status": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"}, "steps": ["a test message was counted and the second one refused, so the limits work"], "verified": true}, "saved": true}
+200 settings {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 3, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {"applied_at": "2026-11-07 05:35:35", "attempted_at": "2026-11-07 05:35:35", "state": "applied", "verified_at": "2026-11-07 05:35:35"} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"} 
+   paused []
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+active
+active
+domain-750.list
+mailbox-50.list
+subscription-1000.list
+subscription-s2.domains
+drwxr-xr-x root:celikpanel /etc/postfix/celikpanel-postfwd
+-- box1's own limit: 3 recipients per hour
+200 {"applied": true, "called": true, "saved": true}
+== 4.3 box1 sends 6 messages (one recipient each) through submission 05:35:37
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 5026222647
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as F0DB122644
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 3930822644
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== 4.4 the panel's five-minute round: the refusals pause box1 05:36:30
+  paused after 240 s: [{"address": "box1@site1.r8.test", "detail": "3 messages refused by the hourly limit in the hour from 2026-11-07 05:00 UTC", "domain": "site1.r8.test", "domain_id": 2, "id": 1, "paused_at": "2026-11-07 05:40:07", "reason": "refusals"}]
+ msg after the pause:
+  <~  235 2.7.0 Authentication successful
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+200 {"notices": [{"audience": "administrator", "body": {"address": "box1@site1.r8.test", "domain": "site1.r8.test", "domain_id": 2, "hour": "2026-11-07T05:00:00Z", "owner": "owner", "reason": "refusals", "recipients": 11, "refused": 3, "subscription": "Admin Subscription"}, "created_at": "2026-11-07 05:40:07", "id": 2, "kind": "paused"}, {"audience": "administrator", "body": {"address": "box1@site1.r8.test", "domain": "site1.r8.test", "domain_id": 2, "hour": "2026-11-07T05:00:00Z", "limit": 3, "owner": "owner", "refused": 3, "subscription": "Admin Subscription"}, "created_at": "2026-11-07 05:40:07", "id": 1, "kind": "limit_reached"}]}
+200 {"days": 1, "senders": [{"address": "box1@site1.r8.test", "domain_id": 2, "limit_refusals": 3, "messages": 11, "mismatch_refusals": 0, "paused_refusals": 0, "recipients": 11}], "since": "2026-11-06T05:00:00Z", "total": {"address": "", "limit_refusals": 3, "messages": 11, "mismatch_refusals": 0, "paused_refusals": 0, "recipients": 11}}
+== 4.5 password change resumes (box1's limit raised to 100 first) 05:40:41
+200 {"applied": true, "called": true, "saved": true}
+200 {"sending_resumed": true, "success": true}
+ msg after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+-- postfwd stopped (lab load): mail still flows
+inactive
+ msg with postfwd stopped:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 773472054F
+active
+== 4.9 bulk (the screen's loop): box1+box2 limit 200 05:42:13
+200 {"applied": false, "called": false, "saved": true}
+200 {"applied": false, "called": false, "saved": true}
+(failed end)
+== c4mail done 05:42:13
+== 4.5' after the password change: the pause list and postfwd (read-only) 05:42:31
+05:42:32
+total 24
+drwxr-xr-x 2 root celikpanel 4096 05:40:42 .
+drwxr-xr-x 5 root root       4096 05:40:42 ..
+-rw-r--r-- 1 root celikpanel   79 05:10:46 domain-750.list
+-rw-r--r-- 1 root celikpanel  103 05:40:41 mailbox-50.list
+-rw-r--r-- 1 root celikpanel   68 05:10:46 subscription-1000.list
+-rw-r--r-- 1 root celikpanel   79 05:10:46 subscription-s2.domains
+cat: /etc/postfix/celikpanel-postfwd/paused.list: No such file or directory
+Reloaded postfwd.service - Postfix firewall daemon.
+Reloading postfwd.service - Postfix firewall daemon...
+postfwd2 1.35 reloading...
+catched HUP signal - clearing request cache on next request
+catched HUP signal - reloading ruleset on next request
+Reloaded postfwd.service - Postfix firewall daemon.
+[RULES] rule=1, id=CP_PAUSED, queue=B44A82054E, client=unknown[192.0.3.1], user=box1@site1.r8.test, sender=<box1@site1.r8.test>, recipient=<box2@site1.r8.test>, helo=<labnet>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_PAUSED, action=550 5.7.1 Sen
+[STATS]    2 matches for id:  CP_PAUSED
+paused [] apply {"applied_at": "2026-11-07 05:40:44", "attempted_at": "2026-11-07 05:40:44", "state": "applied", "verified_at": "2026-11-07 05:40:44"}
+ msg now:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as F15742054F

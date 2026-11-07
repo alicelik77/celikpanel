@@ -1,0 +1,42 @@
+== 5.0 a mysql database with rows 05:26:21
+1 site1_r8_test_shop site1_r8_test_shop_user
+database site1_r8_test_shop id 1 user site1_r8_test_shop_user
+--------------
+create table lab_items(id int primary key, v varchar(40))
+--------------
+
+ERROR 1050 (42S01) at line 1: Table 'lab_items' already exists
+== 5.1 tools view 05:26:22
+200 {"can_repair": true, "connections": 0, "host": "localhost", "id": 1, "known": true, "name": "site1_r8_test_shop", "port": 3306, "read_at": "2026-11-07T05:26:22Z", "size_bytes": 32768, "tables": 2, "type": "mariadb", "user": "site1_r8_test_shop_user"}
+== 5.2 export + download 05:26:22
+200 {"export_id": "3f548916a22b40b7d6da950349381dc4", "filename": "site1_r8_test_shop-20261107-0526.sql.gz", "size": 926}
+200 saved 926 bytes {'content-disposition': 'attachment; filename=site1_r8_test_shop-20261107-0526.sql.gz', 'content-type': 'application/gzip'}
+   lines naming lab_items in the dump: 8
+   second download:
+410  {"error":"This export file is no longer on the server (it is removed after one download, or after six hours). Nothing was changed. Make a new export.","code":"DB_EXPORT_GONE"} 
+== 5.3 import with a safety copy 05:26:23
+200  {"size":169} 
+422  {"error":"Loading the file stopped at an error, and the database was put back as it was before. Fix the line named below in the file, then import again.","code":"DB_IMPORT_LOAD_FAILED","details":["-------------- CREATE TABLE lab_imported (id INT PRIMARY KEY, note VARCHAR(40)) --------------  ERROR 1050 (42S01) at line 1: Table 'lab_imported' already exists"]} 
+1	changed-by-import
+2	two
+3	three
+imported
+== 5.4 an import that fails half way rolls back 05:26:24
+200  {"size":96} 
+422  {"error":"Loading the file stopped at an error, and the database was put back as it was before. Fix the line named below in the file, then import again.","code":"DB_IMPORT_LOAD_FAILED","details":["-------------- INSERT INTO lab_items VALUES (1,\"duplicate key\") --------------  ERROR 1062 (23000) at line 2: Duplicate entry '1' for key 'PRIMARY'"]} 
+1	changed-by-import
+2	two
+3	three
+   a file with a client command:
+200  {"size":16} 
+422  {"error":"Loading the file stopped at an error, and the database was put back as it was before. Fix the line named below in the file, then import again.","code":"DB_IMPORT_LOAD_FAILED","details":["ERROR at line 2: Not allowed in the sandbox mode 1 1"]} 
+== 5.5 copy 05:26:25
+200 {"id": 3, "name": "site1_r8_test_copy1", "status": "success", "type": "mariadb", "user": "site1_r8_test_copy1_user"}
+3 site1_r8_test_copy1 site1_r8_test_copy1_user
+1 site1_r8_test_shop site1_r8_test_shop_user
+3
+imported
+== 5.6 check (and repair for MariaDB) 05:26:26
+200 {"checked": 2, "problems": [], "repair": false, "self_repairing": 0}
+200 {"checked": 2, "problems": [], "repair": true, "self_repairing": 0}
+== c5db main mysql done 05:26:27

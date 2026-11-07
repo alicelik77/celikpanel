@@ -1,0 +1,225 @@
+== 4.0 before: Postfix wiring (limits off by default) 04:42:28
+200 settings {"domain_per_hour": 750, "enabled": false, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 100, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "detail": "postfwd is not installed", "family": "apt", "installed": false, "postfix": true, "service_active": false} 
+   paused []
+(no policy lines above = untouched)
+inactive
+== 4.1 install postfwd from Components 04:42:28
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "45feb332f79e26ff2a088ded96298ed9", "kind": "service_install", "phase": "queued", "request_id": "0cea28e248b7c091f3086649c3337f63", "service_id": "postfwd", "started_at": "2026-11-07T04:42:31.282479098Z", "status": "queued"}}
+  op 0cea28e248b7c091f3086649c3337f63: succeeded completed "" (04:43:22)
+ii  postfwd        1.35-10      all          Postfix policyd to combine complex restrictions in a ruleset
+active
+# Written by CelikPanel (outgoing mail limits).
+# It keeps postfwd's hourly counters across a reload (--keep_rates).
+# Remove this file and run systemctl daemon-reload to return to the
+# package's own start line.
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --keep_rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+(after install, before turning on)
+200 {"id": 2, "success": true}
+box1 id 1, box2 id 2
+== 4.2 turn the limits on (owner values; refusal pause after 3 refusals for the lab) 04:43:23
+200 {"called": true, "result": {"applied": false, "code": "OUTGOING_MAIL_CHECK_FAILED", "error": "postfwd refused the new rules (postfwd -C): Attempt to call undefined import method with arguments (\"1.05\") via package \"IO::Multiplex\" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26. Rule 0: id->\"CP_SELFTEST\"; action->\"rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)\"; sasl_usernam; the earlier postfwd files were put back. Mail keeps flowing: Postfix was not told to ask postfwd.", "status": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "wiring": "off"}}, "saved": true}
+200 settings {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_hours": 24, "new_mailbox_per_hour": 50, "refusal_pause": 3, "spike_factor": 5, "spike_minimum": 100, "subscription_per_hour": 1000} 
+   apply {"attempted_at": "2026-11-07 04:43:23", "code": "OUTGOING_MAIL_CHECK_FAILED", "detail": "postfwd refused the new rules (postfwd -C): Attempt to call undefined import method with arguments (\"1.05\") via package \"IO::Multiplex\" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26. Rule 0: id->\"CP_SELFTEST\"; action->\"rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)\"; sasl_usernam; the earlier postfwd files were put back. Mail keeps flowing: Postfix was not told to ask postfwd.", "state": "failed"} 
+   server {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "detail": "postfwd did not answer on 127.0.0.1:10040: dial tcp 127.0.0.1:10040: connect: connection refused", "family": "apt", "installed": true, "postfix": true, "service_active": true, "wiring": "off"} 
+   paused []
+active
+active
+-- box1's own limit: 3 recipients per hour
+200 {"applied": false, "called": true, "code": "OUTGOING_MAIL_CHECK_FAILED", "saved": true}
+== 4.3 box1 sends 5 messages (one recipient each) through submission 04:43:24
+ msg 1:
+ msg 2:
+ msg 3:
+ msg 4:
+ msg 5:
+== 4.4 the panel's five-minute round: the refusals pause box1 04:44:03
+== 4.2' postfwd on Debian 13 (read-only diagnosis) 04:49:37
+--- postfwd -C on the panel's file
+exit 1
+Attempt to call undefined import method with arguments ("1.05") via package "IO::Multiplex" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26.
+
+Rule   0: id->"CP_SELFTEST"; action->"rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)"; sasl_username->"=~;^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$"; protocol_state->"==;END-OF-MESSAGE"
+Rule   1: id->"CP_DEFAULT"; action->"DUNNO"
+--- files
+-rw-r--r-- 1 root celikpanel  706 Nov  7 04:43 /etc/postfix/postfwd.cf
+
+/etc/postfix/celikpanel-postfwd/:
+total 8
+drwxr-x--- 2 root celikpanel 4096 Nov  7 04:43 .
+drwxr-xr-x 5 root root       4096 Nov  7 04:43 ..
+# Managed by CelikPanel: outgoing mail limits (recipients per hour).
+# Mail keeps flowing if postfwd stops: Postfix asks it from the submission
+# and smtps services only, with the default action DUNNO.
+# A change made here by hand is kept: CelikPanel then stops writing this file
+# and the panel says so. To hand it back, delete this file and save the
+# outgoing mail settings in the panel again.
+# celikpanel-body-sha256: 7234323d87f770cf3744dc27e6d66e582efb4364d07a35c9403f44421041e6d4
+id=CP_SELFTEST ; protocol_state==END-OF-MESSAGE ; sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/ ; action=rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)
+id=CP_DEFAULT ; action=DUNNO
+--- unit
+● postfwd.service - Postfix firewall daemon
+     Loaded: loaded (/usr/lib/systemd/system/postfwd.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/postfwd.service.d
+             └─celikpanel.conf
+     Active: active (running) since Sat 2026-11-07 04:43:13 UTC; 6min ago
+ Invocation: 0c5741c1dc8b43d48b1c39b7c29dbb4e
+    Process: 66408 ExecStart=/usr/sbin/postfwd $ARGS --keep_rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE (code=exited, status=0/SUCCESS)
+    Process: 66555 ExecReload=/usr/sbin/postfwd --file $CONF --pidfile $PIDFILE --reload (code=exited, status=0/SUCCESS)
+   Main PID: 66410 (/usr/sbin/postf)
+      Tasks: 14 (limit: 4072)
+     Memory: 50.5M (peak: 73.3M)
+        CPU: 745ms
+     CGroup: /system.slice/postfwd.service
+             ├─66410 "/usr/sbin/postfwd --summary=600 --cache=600 --cache-rdomain-only --cache-no-size --keep_rates --daemon --file /etc/postfix/postfwd.cf --interface 127.0.0.1 --port 10040 --user postfw --group postfw --pidfile /var/run/postfwd.pid"
+             ├─66411 " postfwd2::cache"
+             ├─66557 " postfwd2::policy"
+             ├─66561 " postfwd2::policy::child"
+             ├─66562 " postfwd2::policy::child"
+             ├─66563 " postfwd2::policy::child"
+             ├─66564 " postfwd2::policy::child"
+LISTEN 0      4096       127.0.0.1:10040      0.0.0.0:*    users:((" postfwd2::poli",pid=66571,fd=6),(" postfwd2::poli",pid=66570,fd=6),(" postfwd2::poli",pid=66568,fd=6),(" postfwd2::poli",pid=66567,fd=6),(" postfwd2::poli",pid=66566,fd=6),(" postfwd2::poli",pid=66565,fd=6),(" postfwd2::poli",pid=66564,fd=6),(" postfwd2::poli",pid=66563,fd=6),(" postfwd2::poli",pid=66562,fd=6),(" postfwd2::poli",pid=66561,fd=6),(" postfwd2::poli",pid=66557,fd=6))
+--- journal
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-250044a83008@selftest.invalid, sender=<celikpanel-selftest-250044a83008@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-f6a7ec05e653@selftest.invalid, sender=<celikpanel-selftest-f6a7ec05e653@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-f6a7ec05e653@selftest.invalid, sender=<celikpanel-selftest-f6a7ec05e653@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-8322471598bf@selftest.invalid, sender=<celikpanel-selftest-8322471598bf@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-8322471598bf@selftest.invalid, sender=<celikpanel-selftest-8322471598bf@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-b241f5b50223@selftest.invalid, sender=<celikpanel-selftest-b241f5b50223@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-b241f5b50223@selftest.invalid, sender=<celikpanel-selftest-b241f5b50223@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-820ed37dc4e4@selftest.invalid, sender=<celikpanel-selftest-820ed37dc4e4@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-820ed37dc4e4@selftest.invalid, sender=<celikpanel-selftest-820ed37dc4e4@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-c4bd94dccff0@selftest.invalid, sender=<celikpanel-selftest-c4bd94dccff0@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-c4bd94dccff0@selftest.invalid, sender=<celikpanel-selftest-c4bd94dccff0@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-75ce4461ed82@selftest.invalid, sender=<celikpanel-selftest-75ce4461ed82@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-75ce4461ed82@selftest.invalid, sender=<celikpanel-selftest-75ce4461ed82@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+[RULES] rule=1, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-c1eafbee4ddc@selftest.invalid, sender=<celikpanel-selftest-c1eafbee4ddc@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_SELFTEST;CP_DEFAULT, action=DUNNO
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-c1eafbee4ddc@selftest.invalid, sender=<celikpanel-selftest-c1eafbee4ddc@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, delay=0.00s, hits=CP_SELFTEST, action=450 4.7.1 Cel
+/usr/sbin/postfwd2
+This is perl 5, version 40, subversion 1 (v5.40.1) built for x86_64-linux-gnu-thread-multi
+ii  libio-multiplex-perl 1.16-3       all          object-oriented interface to select() for Perl
+ii  libnet-server-perl   2.014-1      all          extensible, general perl server engine
+== 4.2' postfwd on Debian 13 (read-only diagnosis) 04:50:01
+806:	&read_config &show_config &process_input &get_plugins
+1296:sub show_config {
+3038:import postfwd2::server qw(&read_config &show_config &process_input &get_plugins);
+3058:	"showconfig|C",
+3155:map { $postfwd_settings{syslog}{stdout} = 1 if defined $options{$_} } qw(term hup showconfig dumpcache dumpstats defaults delcache delrate);
+3189:if (defined $options{'showconfig'}) {
+3191:        show_config();
+3511:        -C, --showconfig		show postfwd2 ruleset and exit (-v allowed)
+3836:You can check your configuration with the --show_config option at the command line:
+3838:	# postfwd2 --showconfig --rule='action=DUNNO; client_address=10.1.0.0/16, file:/etc/postfwd/wl_clients, 192.168.2.1'
+3846:	# postfwd2 --showconfig --rule='action=DUNNO; client_address=10.1.0.0/16, file:/etc/postfwd/wl_clients, 192.168.2.1'
+3859:The --showconfig option illustrates the difference:
+	if ( my $socket = new IO::Socket::INET (
+		PeerAddr => $postfwd_settings{$type}{host},
+		PeerPort => $postfwd_settings{$type}{port},
+		Proto    => 'tcp',
+		Timeout  => $postfwd_settings{timeout}{$type},
+		Type     => SOCK_STREAM ) ) {
+		$socket->print("$send\n");
+		$send = $socket->getline();
+		$socket->close();
+		chomp($send);
+	} else {
+		warn("can not open socket to $postfwd_settings{$type}{host}:$postfwd_settings{$type}{port}: '$!' '$@'\n");
+		undef $send;
+valid one-rule file: exit 1
+broken file: exit 1
+Attempt to call undefined import method with arguments ("1.05") via package "IO::Multiplex" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26.
+Redundant argument in printf at /usr/sbin/postfwd2 line 301, <$fh> line 1.
+Redundant argument in printf at /usr/s
+Attempt to call undefined import method with arguments ("1.05") via package "IO::Multiplex" (Perhaps you forgot to load the package?) at /usr/share/perl5/Net/Server/Multiplex.pm line 26.
+load ok
+perl load exit 0
+== 4.2' postfwd on Debian 13 (read-only diagnosis) 04:50:16
+# init_log
+init_log ($postfwd_settings{name}."/master");
+
+# read and display configuration
+if (defined $options{'showconfig'}) {
+	read_config(1);
+        show_config();
+        exit 1;
+};
+
+# show program settings
+if (defined $options{'defaults'}) {
+	print "\n"; map { print "  %$_\n" } hash_to_list ('postfwd_settings', %postfwd_settings);
+	if (wantsdebug (qw[ all verbose ])) {
+		map { print "  %$_\n" } hash_to_list ('postfwd_commands', %postfwd_commands);
+		map { print "  %$_\n" } hash_to_list ('postfwd_patterns', %postfwd_patterns);
+ msg after the pause:
+200 {"notices": []}
+200 {"days": 1, "senders": [], "since": "2026-11-06T04:00:00Z", "total": {"address": "", "limit_refusals": 0, "messages": 0, "mismatch_refusals": 0, "paused_refusals": 0, "recipients": 0}}
+== 4.5 password change resumes (box1's limit raised to 100 first) 04:57:21
+200 {"applied": false, "called": true, "code": "OUTGOING_MAIL_CHECK_FAILED", "saved": true}
+200 {"success": true}
+ msg after the password change:
+-- postfwd stopped (lab load): mail still flows
+inactive
+ msg with postfwd stopped:
+active
+== 4.6 empty a mailbox (box2 received the messages above) 04:58:49
+200 {"emptied": true, "messages": 1, "quota_recalculated": true}
+== 4.7 send-only domain and the reply for unknown addresses 04:58:50
+ before: unknown address from outside
+  <** 550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: User unknown in virtual mailbox table
+200 {"applied": true, "saved": true}
+ send-only: to box2 from outside
+  <** 550 5.7.1 <box2@site1.r8.test>: Recipient address rejected: This domain does not receive mail on this server
+ send-only: box2 can still send out:
+200 {"applied": true, "saved": true}
+ unknown address with own reply:
+  <** 550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: No such mailbox at site1. Please write to box2@site1.r8.test.
+ known address still receives:
+  <-  250 2.0.0 Ok: queued as B529F225C8
+200 {"applied": true, "saved": true}
+== 4.8 delivery lookup scoped to the domain 04:59:50
+200 entries 5 read True incomplete None
+   addresses domains: ['labnet.test', 'site1.r8.test']
+    {"at": "2026-11-07T04:59:47Z", "direction": "in", "from": "lab@labnet.test", "reason": "delivered to maildir", "relay": "mailbox", "status": "sent", "to": "box2@site1.r8.test"}
+    {"at": "2026-11-07T04:59:38Z", "direction": "in", "from": "lab@labnet.test", "reason": "550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: No such mailbox at site1. Please write to box2@site1.r8.test.", "statu
+    {"at": "2026-11-07T04:59:15Z", "direction": "in", "from": "lab@labnet.test", "reason": "550 5.7.1 <box2@site1.r8.test>: Recipient address rejected: This domain does not receive mail on this server", "status": "refused", 
+    {"at": "2026-11-07T04:58:58Z", "direction": "in", "from": "lab@labnet.test", "reason": "550 5.1.1 <nobody@site1.r8.test>: Recipient address rejected: User unknown in virtual mailbox table", "status": "refused", "to": "no
+    {"at": "2026-11-07T04:53:24Z", "direction": "in", "from": "lab@labnet.test", "reason": "delivered to maildir", "relay": "mailbox", "status": "sent", "to": "box2@site1.r8.test"}
+ customer cust1 asks site1's lookup:
+404 {"error": "domain not found"}
+ customer cust1 on its own domain:
+200 {"days": 1, "domain": "cust1.r8.test", "result": {"covered_since": "2026-11-07T04:35:52Z", "entries": [], "read": true}}
+== 4.9 bulk (the screen's loop): box1+box2 limit 200 04:59:50
+200 {"applied": false, "called": false, "saved": true}
+200 {"applied": false, "called": false, "saved": true}
+(failed end)
+== c4mail done 04:59:51
+== 4.2' postfwd on Debian 13 (read-only diagnosis) 05:12:01
+id=CP_SELFTEST ; protocol_state==END-OF-MESSAGE ; sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/ ; action=rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)
+id=CP_MARK_s2 ; protocol_state==END-OF-MESSAGE ; sender_domain==file:/etc/postfix/celikpanel-postfwd/subscription-s2.domains ; action=set(cp_subscription=s2)
+id=CP_MAILBOX_3 ; protocol_state==END-OF-MESSAGE ; sasl_username==file:/etc/postfix/celikpanel-postfwd/mailbox-3.list ; action=rcpt(sasl_username/3/3600/450 4.7.1 This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_MAILBOX_50 ; protocol_state==END-OF-MESSAGE ; sasl_username==file:/etc/postfix/celikpanel-postfwd/mailbox-50.list ; action=rcpt(sasl_username/50/3600/450 4.7.1 This mailbox reached its sending limit of 50 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_DOMAIN_750 ; protocol_state==END-OF-MESSAGE ; sender_domain==file:/etc/postfix/celikpanel-postfwd/domain-750.list ; action=rcpt(sender_domain/750/3600/450 4.7.1 This domain reached its sending limit of 750 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_SUBSCRIPTION_1000 ; protocol_state==END-OF-MESSAGE ; cp_subscription==file:/etc/postfix/celikpanel-postfwd/subscription-1000.list ; action=rcpt(cp_subscription/1000/3600/450 4.7.1 This hosting account reached its sending limit of 1000 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_DEFAULT ; action=DUNNO
+## /etc/postfix/celikpanel-postfwd/domain-750.list
+site1.r8.test
+## /etc/postfix/celikpanel-postfwd/mailbox-3.list
+box1@site1.r8.test
+## /etc/postfix/celikpanel-postfwd/mailbox-50.list
+box2@site1.r8.test
+## /etc/postfix/celikpanel-postfwd/subscription-1000.list
+s2
+## /etc/postfix/celikpanel-postfwd/subscription-s2.domains
+site1.r8.test
+catched HUP signal - clearing request cache on next request
+Reloaded postfwd.service - Postfix firewall daemon.
+error: file:/etc/postfix/celikpanel-postfwd/subscription-1000.list not found - will be ignored
+[RULES] rule=6, id=CP_DEFAULT, queue=7CF9321802, client=unknown[192.0.3.1], user=box1@site1.r8.test, sender=<box1@site1.r8.test>, recipient=<box2@site1.r8.test>, helo=<labnet>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_DEFAULT, action=DUNNO
+[RULES] rule=6, id=CP_DEFAULT, queue=F1EBB21802, client=unknown[192.0.3.1], user=box1@site1.r8.test, sender=<box1@site1.r8.test>, recipient=<box2@site1.r8.test>, helo=<labnet>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_DEFAULT, action=DUNNO
+[RULES] rule=6, id=CP_DEFAULT, queue=3B4D021802, client=unknown[192.0.3.1], user=box1@site1.r8.test, sender=<box1@site1.r8.test>, recipient=<box2@site1.r8.test>, helo=<labnet>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_DEFAULT, action=DUNNO
+[RULES] rule=6, id=CP_DEFAULT, queue=B388321802, client=unknown[192.0.3.1], user=box1@site1.r8.test, sender=<box1@site1.r8.test>, recipient=<box2@site1.r8.test>, helo=<labnet>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_DEFAULT, action=DUNNO
+[RULES] rule=6, id=CP_DEFAULT, queue=39FE121802, client=unknown[192.0.3.1], user=box1@site1.r8.test, sender=<box1@site1.r8.test>, recipient=<box2@site1.r8.test>, helo=<labnet>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_DEFAULT, action=DUNNO
