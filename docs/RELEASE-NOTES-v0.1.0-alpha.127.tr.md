@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.127.md)
 
+> **Yayımlandı**, 7 Kasım 2026 (UTC): sürüm commit'i `0c7aefe86`, GitHub ön sürümü 01:47:11Z, indirme portalı yaklaşık 01:56Z (dış denetim 27/27).
+
 Onaylanan her değişiklik artık çalışırken sunucunun gerçek adımlarını
 gösteriyor. Alan adı sayfası yavaş DNS ve posta denetimlerini beklemiyor: son
 doğrulanmış yanıtı hemen gösterip arkada yeniden denetliyor. PostgreSQL
