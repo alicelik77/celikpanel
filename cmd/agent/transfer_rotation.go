@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -159,6 +160,13 @@ func (a *Agent) RotateDatabaseUserPasswordV1(
 		return nil
 	}
 	resp.PasswordChanged = true
+	// alpha.129: CelikPanel's remote copies of a MariaDB account
+	// (docs/DATABASE-REMOTE-ACCESS.md) follow the new password, or go.
+	if req.User.Engine == "mysql" {
+		if err := databaseRemoteFollowMariaDBUser(req.User.Username, false); err != nil {
+			log.Printf("database password change: %v", err)
+		}
+	}
 	if output, runErr := run(statements.disconnect); runErr != nil {
 		resp.Error = hostcmd.Fail("the password changed but the account's open sessions could not be ended", output, runErr, databaseClientMeaning).Error()
 		return nil
