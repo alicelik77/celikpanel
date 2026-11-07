@@ -344,6 +344,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.api_token.call': 'API jetonuyla bir değişiklik yaptı',
     'dashboard.audit.action.api_token.create': 'API jetonu oluşturdu',
     'dashboard.audit.action.api_token.revoke': 'API jetonunu kaldırdı',
+    'dashboard.audit.action.api_token.sign_in_failed': 'reddedilen bir API jetonu kullandı',
     'dashboard.audit.action.remote_api.disable': 'uzak API’yi kapattı',
     'dashboard.audit.action.remote_api.enable': 'uzak API’yi açtı',
     'dashboard.audit.action.repo.confine': '{target} paket deposunu kendi bileşeniyle sınırladı',

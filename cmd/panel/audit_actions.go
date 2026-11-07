@@ -34,6 +34,7 @@ var auditActionNames = []string{
 	"api_token.call",
 	"api_token.create",
 	"api_token.revoke",
+	"api_token.sign_in_failed",
 	"app.credentials_shown",
 	"app.install",
 	"app.install_started",

@@ -219,6 +219,10 @@ type apiTokenGuards struct {
 
 	mu       sync.Mutex
 	lastUsed map[int64]time.Time // last write of last_used_at per token row
+	// failureRows: when the last failed sign-in row was written per
+	// "token|address", and how many failures followed it unwritten.
+	failureRows    map[string]time.Time
+	failureSkipped map[string]int
 }
 
 // apiTokenGuardsByPanel keeps each Panel's limits (one in the product; a
@@ -231,6 +235,53 @@ func newAPITokenGuards() *apiTokenGuards {
 		failures: newRateLimiter(apiTokenFailuresPerMinute, time.Minute),
 		lastUsed: map[int64]time.Time{},
 	}
+}
+
+// apiTokenFailureAuditEvery: at most one audit row per token (or "not a
+// token") and address in this time; the row after it says how many were
+// folded into the one before.
+const apiTokenFailureAuditEvery = time.Minute
+
+// auditAPITokenSignInFailure records a failed token sign-in, aggregated per
+// token id and address per minute. It names the token's public id (or
+// "malformed"), never its secret. rec is nil when no token row matched.
+func (p *Panel) auditAPITokenSignInFailure(r *http.Request, guards *apiTokenGuards, tokenID string, rec *apiTokenRecord, reason string) {
+	label := "malformed"
+	if tokenID != "" {
+		label = apiTokenPrefix + tokenID
+	}
+	key := label + "|" + clientIP(r)
+	now := apiTokenNow()
+	guards.mu.Lock()
+	if guards.failureRows == nil {
+		guards.failureRows, guards.failureSkipped = map[string]time.Time{}, map[string]int{}
+	}
+	if last, ok := guards.failureRows[key]; ok && now.Sub(last) < apiTokenFailureAuditEvery {
+		guards.failureSkipped[key]++
+		guards.mu.Unlock()
+		return
+	}
+	folded := guards.failureSkipped[key]
+	if len(guards.failureRows) > 4096 {
+		for k, at := range guards.failureRows {
+			if now.Sub(at) >= apiTokenFailureAuditEvery {
+				delete(guards.failureRows, k)
+				delete(guards.failureSkipped, k)
+			}
+		}
+	}
+	guards.failureRows[key] = now
+	guards.failureSkipped[key] = 0
+	guards.mu.Unlock()
+	userID, rowID := 0, 0
+	if rec != nil {
+		userID, rowID = rec.UserID, int(rec.ID)
+	}
+	details := map[string]any{"token": label, "reason": reason}
+	if folded > 0 {
+		details["more_failures_before"] = folded
+	}
+	p.auditAsDetailed(r, userID, "api_token.sign_in_failed", "api_token", rowID, details)
 }
 
 func (p *Panel) apiTokenGuards() *apiTokenGuards {
@@ -501,7 +552,7 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 	ctx := r.Context()
 	tokenID, secret, parsed := parseAPIToken(credential)
 	var rec apiTokenRecord
-	verified := false
+	verified, found := false, false
 	if parsed {
 		var err error
 		rec, err = p.lookupAPIToken(ctx, tokenID)
@@ -509,7 +560,7 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 			writeAuthStatusUnavailable(w)
 			return
 		}
-		found := err == nil
+		found = err == nil
 		stored := apiTokenMissingHash
 		if found {
 			stored = rec.SecretSHA256
@@ -523,26 +574,37 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 			return
 		}
 		guards.failures.allow(address)
+		// The owner of a real token id sees the wrong secret in their
+		// record; an unknown id or a malformed token has no owner.
+		switch {
+		case !parsed:
+			p.auditAPITokenSignInFailure(r, guards, "", nil, "malformed")
+		case found:
+			p.auditAPITokenSignInFailure(r, guards, tokenID, &rec, "wrong_secret")
+		default:
+			p.auditAPITokenSignInFailure(r, guards, tokenID, nil, "unknown")
+		}
 		writeCodedError(w, http.StatusUnauthorized, errCodeAPITokenInvalid, apiTokenInvalidMessage, "")
 		return
 	}
 	// The token verified: its holder learns why it does not work now. These
 	// count as failed sign-ins, but never lock the address out.
-	ended := func(code, message string) {
+	ended := func(reason, code, message string) {
 		guards.failures.allow(address)
+		p.auditAPITokenSignInFailure(r, guards, rec.TokenID, &rec, reason)
 		writeCodedError(w, http.StatusUnauthorized, code, message, "")
 	}
 	if rec.RevokedAt.Valid {
-		ended(errCodeAPITokenRevoked, apiTokenRevokedMessage)
+		ended("revoked", errCodeAPITokenRevoked, apiTokenRevokedMessage)
 		return
 	}
 	now := apiTokenNow().Unix()
 	if now >= rec.ExpiresAt {
-		ended(errCodeAPITokenExpired, apiTokenExpiredMessage)
+		ended("expired", errCodeAPITokenExpired, apiTokenExpiredMessage)
 		return
 	}
 	if rec.AuthEpoch != rec.UserEpoch {
-		ended(errCodeAPITokenEnded, apiTokenEndedMessage)
+		ended("ended", errCodeAPITokenEnded, apiTokenEndedMessage)
 		return
 	}
 	// Whether the remote API is on is told only to the holder of a working

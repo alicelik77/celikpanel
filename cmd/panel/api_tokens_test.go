@@ -1169,3 +1169,68 @@ func TestAPITokenOtherBearerHeadersAreIgnored(t *testing.T) {
 		}
 	}
 }
+
+// Failed token sign-ins are audited, at most one row per token (or "not a
+// token") and address a minute; the next row says how many were folded into
+// it. No row holds a secret.
+func TestAPITokenSignInFailuresAreAuditedPerMinute(t *testing.T) {
+	f := newAPITokenFixture(t)
+	unlimitedAPITokenGuards(f.panel)
+	handler := f.panel.requireAuth((&apiTokenProbe{}).handler())
+	base := time.Now()
+	apiTokenNow = func() time.Time { return base }
+	defer func() { apiTokenNow = time.Now }()
+	send := func(token, address string) {
+		request := tokenRequest(http.MethodGet, "/api/v1/domains", token)
+		request.RemoteAddr = address + ":5000"
+		handler.ServeHTTP(httptest.NewRecorder(), request)
+	}
+	known := f.minted["customer/read"]
+	_, knownSecret, _ := parseAPIToken(known)
+	wrongSecret := known[:17] + strings.Repeat("A", 42) + "E"
+	unknownID := "cpk_" + strings.Repeat("q", 12) + known[16:]
+	send(unknownID, "198.51.100.20")
+	for i := 0; i < 5; i++ {
+		send(wrongSecret, "198.51.100.20")
+		send("cpk_garbage", "198.51.100.20")
+	}
+	send(wrongSecret, "198.51.100.21")
+	// The token is revoked: its own reason, its owner's row.
+	if _, err := f.panel.db.GetDB().Exec(`UPDATE api_tokens SET revoked_at = 1 WHERE id = ?`, f.rowIDs["customer/read"]); err != nil {
+		t.Fatal(err)
+	}
+	send(known, "198.51.100.22")
+	apiTokenNow = func() time.Time { return base.Add(61 * time.Second) }
+	send(wrongSecret, "198.51.100.20")
+
+	rows, err := f.panel.db.GetDB().Query(`SELECT COALESCE(user_id, 0), COALESCE(details, ''), COALESCE(ip_address, '') FROM audit_logs WHERE action = 'api_token.sign_in_failed' ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var user int
+		var details, ip string
+		if err := rows.Scan(&user, &details, &ip); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(details, knownSecret) || strings.Contains(details, wrongSecret[17:]) {
+			t.Errorf("a failure row holds a secret: %s", details)
+		}
+		got = append(got, fmt.Sprintf("%d %s %s", user, ip, details))
+	}
+	prefix := "cpk_" + known[4:16]
+	owner := authzMatrixCustomerID
+	want := []string{
+		`0 198.51.100.20 {"reason":"unknown","token":"cpk_qqqqqqqqqqqq"}`,
+		fmt.Sprintf(`%d 198.51.100.20 {"reason":"wrong_secret","token":"%s"}`, owner, prefix),
+		`0 198.51.100.20 {"reason":"malformed","token":"malformed"}`,
+		fmt.Sprintf(`%d 198.51.100.21 {"reason":"wrong_secret","token":"%s"}`, owner, prefix),
+		fmt.Sprintf(`%d 198.51.100.22 {"reason":"revoked","token":"%s"}`, owner, prefix),
+		fmt.Sprintf(`%d 198.51.100.20 {"more_failures_before":4,"reason":"wrong_secret","token":"%s"}`, owner, prefix),
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("failure rows:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}

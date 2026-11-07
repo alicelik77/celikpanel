@@ -363,6 +363,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.api_token.call': 'made a change with an API token',
     'dashboard.audit.action.api_token.create': 'made an API token',
     'dashboard.audit.action.api_token.revoke': 'removed an API token',
+    'dashboard.audit.action.api_token.sign_in_failed': 'used an API token that was refused',
     'dashboard.audit.action.remote_api.disable': 'turned off the remote API',
     'dashboard.audit.action.remote_api.enable': 'turned on the remote API',
     'dashboard.audit.action.repo.confine': 'confined the package repository {target} to its component',
