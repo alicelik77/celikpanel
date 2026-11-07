@@ -234,6 +234,23 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.129: a database's added users.
+			name: "CreateDatabaseAccessUserV1",
+			run: func(expected string) string {
+				var response transport.DatabaseAccessUserResponse
+				_ = agent.CreateDatabaseAccessUserV1(&transport.DatabaseAccessUserRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "RemoveDatabaseAccessUserV1",
+			run: func(expected string) string {
+				var response transport.DatabaseAccessUserResponse
+				_ = agent.RemoveDatabaseAccessUserV1(&transport.DatabaseAccessUserRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.128 (G25): per-domain mail options.
 			name: "SetMailDomainOptionsV1",
 			run: func(expected string) string {

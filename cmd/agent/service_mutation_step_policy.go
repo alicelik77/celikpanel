@@ -61,6 +61,8 @@ const (
 	serviceMutationStepProvePHPTool             serviceMutationStepMethod = "Agent.ProvePHPToolV1"
 	serviceMutationStepInstallJailTools         serviceMutationStepMethod = "Agent.InstallJailToolsV1"
 	serviceMutationStepActivatePanelCertificate serviceMutationStepMethod = "agent.panel-certificate-activation"
+	// alpha.129: remote access to databases, one job for the whole rule set.
+	serviceMutationStepApplyDatabaseRemote serviceMutationStepMethod = "Agent.ApplyDatabaseRemoteV1"
 )
 
 const (
@@ -318,6 +320,11 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// qualifier is the new port.
 		return strings.HasPrefix(claim.target, "pg-") && claim.packageName != "" && claim.action == "port" &&
 			serviceMutationJobMatches(job, "pg_cluster_port", claim.target, claim.packageName)
+
+	case serviceMutationStepApplyDatabaseRemote:
+		// alpha.129: remote access to databases; one target, no qualifier.
+		return claim.target == databaseRemoteMutationTarget && claim.packageName == "" && claim.action == "apply" &&
+			serviceMutationJobMatches(job, "database_remote", databaseRemoteMutationTarget, "")
 
 	case serviceMutationStepSetPanelListen:
 		// alpha.114: the panel's own listen port, in its own job; the

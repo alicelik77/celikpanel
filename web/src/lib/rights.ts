@@ -36,6 +36,9 @@ export const PERMISSION_IDS = [
     // alpha.128 (G15): the remote API (rights_remote_api.go), usable only
     // once the administrator turned it on for the server.
     'remote_api',
+    // alpha.129: remote access to databases (rights_database_remote.go), an
+    // opt-in permission like the nginx directives.
+    'database_remote',
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 

@@ -70,8 +70,8 @@ func TestDatabaseCopyDigestLeavesThePasswordOut(t *testing.T) {
 }
 
 func TestDatabaseExportFilename(t *testing.T) {
-	got := databaseExportFilename("example_com_shop", time.Date(2026, 11, 7, 21, 5, 0, 0, time.UTC))
-	if got != "example_com_shop-20261107-2105.sql.gz" {
+	got := databaseExportFilename("example_com_shop", "mariadb", time.Date(2026, 11, 7, 21, 5, 0, 0, time.UTC))
+	if got != "example_com_shop-mariadb-20261107-2105.sql.gz" {
 		t.Fatalf("filename = %q", got)
 	}
 }

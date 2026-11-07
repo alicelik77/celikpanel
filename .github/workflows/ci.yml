@@ -71,10 +71,12 @@ jobs:
       # use an explicit bounded package budget (race shards keep their own limits).
       - run: go test ./... -count=1 -timeout=20m
       # internal/db alone took 6m55s with -race on alpha.117 and 7m20s on
-      # alpha.118 (five more migrations); 8m timed out once. Keep every test.
+      # alpha.118 (five more migrations); 8m timed out once. It grows with
+      # every migration: 13m28s on alpha.129's first run, 15m timed out on the
+      # second (still running, not stuck). Keep every test.
       - name: Race-test security and persistence boundaries
         run: >-
-          go test -race -count=1 -timeout=15m
+          go test -race -count=1 -timeout=25m
           ./internal/auth
           ./internal/db
           ./internal/repositories
@@ -208,6 +210,8 @@ jobs:
       # Prove exact coordinator identity and crash-safe quiesce recovery.
       # Tam koordinatör kimliğini ve çökme güvenli quiesce kurtarmasını kanıtla.
       - run: bash deploy/test-update-quiesce-exit-contract.sh update.sh
+      # systemd 249 (Ubuntu 22.04) knows --kill-who=, not --kill-whom= (alpha.129 lab).
+      - run: bash deploy/test-systemd-option-portability-contract.sh
       - run: bash deploy/test-update-failure-report.sh
       # upd4 F4/F5/O8: live-probe re-read only for a concurrent write, typed
       # unchanged preflight refusal, snapshot cause, recorded renewal state.

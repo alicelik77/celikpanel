@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -83,3 +84,9 @@ func NewDatabaseDriver(config DriverConfig) (DatabaseDriver, error) {
 		return nil, fmt.Errorf("unsupported database type: %s", config.Type)
 	}
 }
+
+// ErrDatabaseNameTaken: the engine already has a database or user of that
+// name (alpha.129). Creation is exclusive: nothing was changed, and the
+// existing one is never taken over.
+// ErrDatabaseNameTaken: motorda bu adda veritabanı ya da kullanıcı zaten var.
+var ErrDatabaseNameTaken = errors.New("the name is already taken on this database server")

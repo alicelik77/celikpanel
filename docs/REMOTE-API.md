@@ -90,6 +90,7 @@ A customer's token never reaches another account's domain.
 | GET | `/api/v1/domains/{id}/hosting` | a domain's hosting settings |
 | GET | `/api/v1/domains/{id}/usage` | a domain's disk and traffic use |
 | GET | `/api/v1/domains/{id}/stats/visitors` | a site's visitor statistics |
+| GET | `/api/v1/domains/{id}/deletion-status` | a deletion that has not finished: `204` when none is waiting (or `404` once the domain is gone), otherwise `status`, `stage`, `reason` and a `message` that says who acts and what happens next. It only reads; asking again never repeats any work |
 | GET | `/api/v1/domains/{id}/dns/records` | DNS records |
 | GET | `/api/v1/domains/{id}/mail/accounts` | mailboxes |
 | GET | `/api/v1/domains/{id}/databases` | databases |
@@ -100,7 +101,7 @@ A customer's token never reaches another account's domain.
 | Method | Path | What |
 |---|---|---|
 | POST | `/api/v1/domains/create` | add a domain (`{"domain":"example.com","project_type":"php"}`). On a server with a backup DNS server the answer can be `409 DNS_PUBLICATION_PENDING` with `partial_success: true`: the domain exists and its DNS publication finishes by itself |
-| DELETE | `/api/v1/domains/{id}?confirm_domain={name}` | delete a domain and its site; `confirm_domain` must be the domain's name, otherwise `400 API_TOKEN_CONFIRM_DOMAIN` and nothing is deleted. On a server with a backup DNS server the answer can be `202 deletion_pending` (stage `dns_cleanup`): the removal waits for the backup's confirmation and the server finishes the deletion by itself; `GET /api/v1/domains` no longer lists it once it is done |
+| DELETE | `/api/v1/domains/{id}?confirm_domain={name}` | delete a domain and its site; `confirm_domain` must be the domain's name, otherwise `400 API_TOKEN_CONFIRM_DOMAIN` and nothing is deleted. On a server with a backup DNS server the answer can be `202 deletion_pending` (stage `dns_cleanup`, also when the domain's own DNS publication is still pending): the removal waits for the backup's confirmation and the server finishes the deletion by itself; the answer's `message` says so and its `status_url` is the deletion status above. Sending the deletion again meanwhile starts nothing (`reason: deletion_already_running`). If the removal fails, the status says `reason: dns_removal_failed` and the deletion waits for the same DELETE again. If the removal succeeded but finishing the deletion keeps failing, the server tries again after 5 minutes, 15 minutes, an hour, then every 6 hours; from the third failure the status says `reason: deletion_finish_failed` with the `stage` and `error_line`, the domain's owner and the administrators get one notice, and the same DELETE starts the attempts afresh |
 | POST | `/api/v1/domains/{id}/dns/records` | add a record (`name`, `type`, `content`, `ttl`, `prio`) |
 | PUT | `/api/v1/domains/{id}/dns/records` | change a record (`id`, `content`, `ttl`, `prio`, `disabled`, optional `expected_content`) |
 | DELETE | `/api/v1/domains/{id}/dns/records?id={record}` | delete a record |

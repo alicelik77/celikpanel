@@ -28,14 +28,15 @@ const domainDeletionAlreadyRunningReason = "deletion_already_running"
 
 const domainDeletionAlreadyRunningEnglish = "This domain is already being deleted. Nobody needs to do anything: the deletion continues by itself and this page updates by itself."
 
-func writeDomainDeletionAlreadyRunning(w http.ResponseWriter, domain string) {
+func writeDomainDeletionAlreadyRunning(w http.ResponseWriter, domainID int, domain string) {
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(map[string]string{
-		"status":  domainDeletionPendingStatus,
-		"domain":  domain,
-		"stage":   "dns_cleanup",
-		"reason":  domainDeletionAlreadyRunningReason,
-		"message": domainDeletionAlreadyRunningEnglish,
+		"status":     domainDeletionPendingStatus,
+		"domain":     domain,
+		"stage":      "dns_cleanup",
+		"reason":     domainDeletionAlreadyRunningReason,
+		"message":    domainDeletionAlreadyRunningEnglish,
+		"status_url": domainDeletionStatusURL(domainID),
 	})
 }
 
@@ -56,7 +57,16 @@ func (p *Panel) domainDeletionContinuesByItself(ctx context.Context, domainID in
 	if err != nil {
 		return false, "", err
 	}
-	if status != domainDeletionLedgerStatus || mode != setupDNSModeExisting {
+	if status != domainDeletionLedgerStatus {
+		return false, "", nil
+	}
+	if mode == setupDNSModeLocal {
+		// alpha.129: this server's own DNS step that CelikPanel completes by
+		// itself (domain_deletion_pending_dns.go).
+		continues, err := p.localDomainDeletionContinuesByItself(ctx, domainID)
+		return continues, name, err
+	}
+	if mode != setupDNSModeExisting {
 		return false, "", nil
 	}
 	// A refusal by the main DNS server needs a person: the press is the

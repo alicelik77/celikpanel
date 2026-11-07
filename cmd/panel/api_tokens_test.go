@@ -47,6 +47,7 @@ var apiTokenExpectedRoutes = map[string]string{
 	"GET /api/v1/domains/9902/hosting":                "read",
 	"GET /api/v1/domains/9902/usage":                  "read",
 	"GET /api/v1/domains/9902/stats/visitors":         "read",
+	"GET /api/v1/domains/9902/deletion-status":        "read",
 	"GET /api/v1/domains/9902/dns/records":            "read",
 	"POST /api/v1/domains/9902/dns/records":           "manage",
 	"PUT /api/v1/domains/9902/dns/records":            "manage",

@@ -127,6 +127,9 @@ type Panel struct {
 	// rotationNative replaces the Agent for transfer credential rotation in
 	// tests (nil in production; transfer_rotation.go).
 	rotationNative rotationNative
+	// databaseAccessNative replaces the Agent for a database's added users
+	// in tests (nil in production; database_access_users_change.go).
+	databaseAccessNative databaseAccessNative
 	// alpha.118 (D-044): trafficCollector, trafficRender, diskMeasurer and
 	// mailQuota replace the Agent in tests (nil in production);
 	// usageWorker runs the traffic, disk and mail quota work (usage_worker.go).
@@ -555,6 +558,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 				return domainSubroute{}, false
 			}
 			match.kind, match.methods = "database-delete", []string{http.MethodDelete}
+		} else if kind, methods, ok := matchDatabaseUsersRoute(tail); ok {
+			// alpha.129: the users of one database.
+			match.kind, match.methods = kind, methods
 		} else if kind, methods, ok := matchDatabaseToolsRoute(tail); ok {
 			// alpha.128 (G7): the tools of one database.
 			match.kind, match.methods = kind, methods
@@ -631,6 +637,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDeleteDatabase(w, r)
 	case "database-tools", "database-export", "database-import", "database-import-upload", "database-copy", "database-check":
 		p.handleDatabaseTools(w, r, match.domainID, match.kind)
+	case "database-users", "database-user", "database-user-password":
+		p.handleDatabaseUsersRoute(w, r, match.domainID, match.kind)
 	case "files":
 		p.handleDomainFiles(w, r)
 	case "files-download":
@@ -1921,6 +1929,8 @@ func main() {
 	})
 
 	// User/Grant deletions
+	// alpha.129: remote access to databases (docs/DATABASE-REMOTE-ACCESS.md).
+	http.HandleFunc(databaseRemotePath, panel.handleDatabaseRemote)
 	http.HandleFunc("/api/v1/database-users/", func(w http.ResponseWriter, r *http.Request) {
 		panel.handleDatabaseSubroute(w, r, "/api/v1/database-users/")
 	})
@@ -1995,6 +2005,9 @@ func main() {
 	// alpha.114: a panel port change a previous process left open ends
 	// here (a trial listener never survives a restart).
 	panel.startPanelPortReconciler(discoveryCtx)
+	// alpha.129: remote access to databases follows plans, suspensions and
+	// the server switch (database_remote.go).
+	panel.startDatabaseRemoteSync(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.

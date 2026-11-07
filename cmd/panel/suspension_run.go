@@ -451,6 +451,9 @@ func (p *Panel) setEffectState(ctx context.Context, opID string, seq int, state,
 // unfinished checkpoint. It returns when the operation finished, failed, or
 // must wait for a later automatic attempt.
 func (p *Panel) runSuspensionOperation(ctx context.Context, opID string) error {
+	// alpha.129: remote database access is applied again once the accounts
+	// are locked or restored (review M1).
+	defer kickDatabaseRemoteSync()
 	db := p.db.GetDB()
 	op, err := loadSuspensionOperation(ctx, db, opID)
 	if err != nil {

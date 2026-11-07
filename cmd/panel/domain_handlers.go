@@ -729,7 +729,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	if p.deletionsRunning.isRunning(domainID) {
 		var name string
 		_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT name FROM domains WHERE id = ?`, domainID).Scan(&name)
-		writeDomainDeletionAlreadyRunning(w, name)
+		writeDomainDeletionAlreadyRunning(w, domainID, name)
 		return
 	}
 	unlock := lockDomainSSLOperation(domainID)
@@ -750,9 +750,13 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	} else if continues {
-		writeDomainDeletionAlreadyRunning(w, name)
+		writeDomainDeletionAlreadyRunning(w, domainID, name)
 		return
 	}
+	// A person's press runs the deletion again: a kept run of finishing
+	// failures ends, so the automatic backoff starts afresh
+	// (domain_deletion_finish_backoff.go).
+	p.clearDomainDeletionFinish(ctx, domainID)
 	// alpha.118: an AI or automation app on the domain is removed first.
 	if p.refuseDomainDeleteWithServiceApp(w, r, domainID) {
 		return
@@ -999,6 +1003,10 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		deleteCanonicalLineage,
 		stagedLineages,
 	); err != nil {
+		if domain.DNSManagement == setupDNSModeLocal {
+			p.recordDomainDeletionFinishFailure(ctx, domainID, domain.Name,
+				&domainDeletionFinishStageError{Stage: "certificate_cleanup", Err: err})
+		}
 		p.writeDomainDeletionPending(
 			w, r, domainID, domain.Name, "certificate_cleanup", err,
 		)
@@ -1006,11 +1014,16 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	step("ledger_delete")
 	if err := p.finalizeDomainDeletion(ctx, domainID); err != nil {
+		if domain.DNSManagement == setupDNSModeLocal {
+			p.recordDomainDeletionFinishFailure(ctx, domainID, domain.Name,
+				&domainDeletionFinishStageError{Stage: "ledger_delete", Err: err})
+		}
 		p.writeDomainDeletionPending(
 			w, r, domainID, domain.Name, "ledger_delete", err,
 		)
 		return
 	}
+	p.clearDomainDeletionFinish(ctx, domainID)
 
 	if err := p.clearDomainDeletionFailure(ctx, domainID); err != nil {
 		log.Printf("domain deletion for %s completed; %v", domain.Name, err)

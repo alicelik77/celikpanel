@@ -83,6 +83,7 @@ func loadSubscriptionLimits(ctx context.Context, q rowQueryer, subID int) (planL
 }
 
 func writeSubscriptionLimits(ctx context.Context, tx sqlExecer, subID int, planID *int, l planLimits, traffic int) error {
+	defer kickDatabaseRemoteSync() // alpha.129: a plan change reaches remote database access
 	var plan any
 	if planID != nil {
 		plan = *planID

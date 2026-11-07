@@ -85,7 +85,7 @@ require_text 'coordinators_stopped_trap_safe' "failure cleanup does not recursiv
 require_text 'coordinator stopped state could not be proved' "failure cleanup can still overclaim a stopped state"
 require_text 'durable marker state requires operator verification' "unproved marker state is still overclaimed"
 require_text 'completion.pending was preserved and both coordinators were proved stopped' "proved fail-closed result is missing"
-require_text 'systemctl kill --kill-whom=all --signal=SIGKILL "$unit"' "failed graceful stop has no cgroup termination fallback"
+require_text 'systemctl kill --kill-who=all --signal=SIGKILL "$unit"' "failed graceful stop has no cgroup termination fallback"
 require_text 'job=$(systemctl show --property=Job --value "$unit"' "stopped proof ignores queued restart jobs"
 require_text 'authorization_closed=0' "failure cleanup does not fail closed when start authorization removal fails"
 

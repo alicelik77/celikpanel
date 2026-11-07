@@ -95,6 +95,7 @@ const dnsCheckReasons: Record<string, { key: TranslationKey; vars: string[] }> =
     dns_backup_not_serving: { key: 'setup.check.dns.backupNotServing', vars: ['ns1', 'ns2'] },
     dns_setup_changed: { key: 'setup.check.dns.setupChanged', vars: [] },
     dns_engine_not_ready: { key: 'setup.check.dns.engineNotReady', vars: [] },
+    dns_engine_stopped: { key: 'setup.check.dns.engineStopped', vars: ['engine', 'unit'] },
     dns_pair_not_ready: { key: 'setup.check.dns.pairNotReady', vars: [] },
     dns_nameservers_not_public: { key: 'setup.check.dns.nameserversNotPublic', vars: ['ns1', 'ns2'] },
 };

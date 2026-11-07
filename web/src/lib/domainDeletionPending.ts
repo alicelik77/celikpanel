@@ -112,6 +112,13 @@ const ownDeletionReasons = new Set([
     // A delete press while this domain is already being deleted: nothing new
     // was started (6 Nov 2026).
     'deletion_already_running',
+    // alpha.129: this server's removal waits for another domain's DNS change
+    // (published by itself afterwards), or it failed (the owner's retry).
+    'dns_removal_waiting',
+    'dns_removal_failed',
+    // The DNS removal is confirmed but finishing the deletion failed three
+    // times in a row: the error line and the owner's retry are shown.
+    'deletion_finish_failed',
 ]);
 
 // Reasons whose next step CelikPanel takes by itself: the page reads again
@@ -124,6 +131,7 @@ const automaticDeletionReasons = new Set([
     'remote_dns_removed_finishing',
     'deletion_state_changing',
     'deletion_already_running',
+    'dns_removal_waiting',
 ]);
 
 export function domainDeletionReasonAutomatic(reason: string): boolean {

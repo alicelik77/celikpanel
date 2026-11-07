@@ -103,6 +103,10 @@ func (d *PostgreSQLDriver) CreateDatabase(name string) error {
 
 	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s WITH ENCODING='UTF8';", ident))
 	if err != nil {
+		// 42P04 duplicate_database: the name is somebody's already.
+		if strings.Contains(err.Error(), "42P04") {
+			return fmt.Errorf("database %s: %w", name, ErrDatabaseNameTaken)
+		}
 		return fmt.Errorf("failed to create database: %w", err)
 	}
 	return nil
@@ -198,7 +202,9 @@ func (d *PostgreSQLDriver) CreateUser(username, password string) error {
 	}
 
 	if exists {
-		return nil // Idempotent
+		// alpha.129: an existing role is never taken over (it was "nil,
+		// idempotent", and the caller then granted it the new database).
+		return fmt.Errorf("database user %s: %w", username, ErrDatabaseNameTaken)
 	}
 
 	_, err = db.Exec(fmt.Sprintf("CREATE USER %s WITH PASSWORD %s;", ident, pwLiteral))

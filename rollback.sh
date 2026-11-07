@@ -1145,7 +1145,7 @@ reject_extra_service_cgroup_processes() {
 
 unfreeze_legacy_agent() {
     if [[ $legacy_agent_frozen -eq 1 ]]; then
-        systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-agent.service \
+        systemctl kill --kill-who=all --signal=SIGCONT celikpanel-agent.service \
             >/dev/null 2>&1 || return 1
         legacy_agent_frozen=0
     fi
@@ -1163,7 +1163,7 @@ terminate_frozen_legacy_agent_fail_closed() {
     [[ $legacy_agent_frozen -eq 1 ]] || return 0
 
     systemctl stop --no-block celikpanel-agent.service >/dev/null 2>&1 || true
-    systemctl kill --kill-whom=all --signal=SIGKILL celikpanel-agent.service \
+    systemctl kill --kill-who=all --signal=SIGKILL celikpanel-agent.service \
         >/dev/null 2>&1 || true
     systemctl stop --no-block celikpanel-agent.service >/dev/null 2>&1 || true
 
@@ -1199,7 +1199,7 @@ freeze_and_stop_legacy_agent() {
                 || die "cannot inspect pre-ledger agent MainPID"
             [[ "$main_pid" =~ ^[0-9]+$ && "$main_pid" -gt 1 ]] \
                 || die "pre-ledger agent has no valid MainPID"
-            systemctl kill --kill-whom=all --signal=SIGSTOP celikpanel-agent.service \
+            systemctl kill --kill-who=all --signal=SIGSTOP celikpanel-agent.service \
                 || die "pre-ledger agent could not be frozen"
             legacy_agent_frozen=1
             reject_extra_service_cgroup_processes celikpanel-agent.service "$main_pid"
@@ -1212,7 +1212,7 @@ freeze_and_stop_legacy_agent() {
                 || die "pre-ledger agent did not enter a frozen state"
             systemctl stop --no-block celikpanel-agent.service \
                 || die "pre-ledger agent stop could not be queued"
-            systemctl kill --kill-whom=all --signal=SIGKILL celikpanel-agent.service \
+            systemctl kill --kill-who=all --signal=SIGKILL celikpanel-agent.service \
                 || die "frozen pre-ledger agent could not be terminated"
             systemctl stop celikpanel-agent.service \
                 || die "pre-ledger agent could not be stopped"

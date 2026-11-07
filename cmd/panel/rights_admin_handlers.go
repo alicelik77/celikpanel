@@ -599,6 +599,11 @@ func (p *Panel) handleOfferedOptInPermissions(w http.ResponseWriter, r *http.Req
 		}
 		p.auditDetailed(r, "rights.offer_permission:"+req.Permission, "panel_settings", 0,
 			map[string]any{"permission": req.Permission, "offered": req.Offered})
+		if req.Permission == rightDatabaseRemote {
+			// alpha.129: this offer is the server switch of remote access;
+			// withdrawing it closes what is open.
+			p.kickDatabaseRemoteSync()
+		}
 	default:
 		rejectRouteMethod(w, []string{http.MethodGet, http.MethodPut})
 		return

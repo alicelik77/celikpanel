@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"github.com/alicelik/celikpanel/internal/pdnsvendor"
 	"golang.org/x/sys/unix"
@@ -81,7 +82,8 @@ func verifyExactPDNSVendorPackageOwnership(
 	}
 	output, err := lookup(ctx)
 	if err != nil {
-		return fmt.Errorf("verify PowerDNS unit package ownership: %w", err)
+		// A lookup cut by the deadline is unknown, never "not owned".
+		return checkresult.IfContextEnded(ctx, fmt.Errorf("verify PowerDNS unit package ownership: %w", err))
 	}
 	return pdnsvendor.VerifyPackageOwner(output, nil)
 }

@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/dbremote"
 )
 
 // MariaDBDriver implements DatabaseDriver for MariaDB
@@ -203,14 +205,41 @@ func mariaDBMarkedVersion(output string) string {
 	return ``
 }
 
-// CreateDatabase creates a MariaDB database
+// CreateDatabase creates a MariaDB database; a name that exists already is
+// ErrDatabaseNameTaken.
 func (d *MariaDBDriver) CreateDatabase(name string) error {
 	ident, err := QuoteMySQLIdentifier(name)
 	if err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
-	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", ident)
+	literal, err := QuoteMySQLStringLiteral(name)
+	if err != nil {
+		return fmt.Errorf("invalid database name: %w", err)
+	}
+	// alpha.129: exclusive. "IF NOT EXISTS" took over a database of the same
+	// name that was already there (another account's, or one made outside
+	// CelikPanel) and the caller then granted its new user on it.
+	if taken, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + literal + ";"); err != nil {
+		return err
+	} else if taken {
+		return fmt.Errorf("database %s: %w", name, ErrDatabaseNameTaken)
+	}
+	sql := fmt.Sprintf("CREATE DATABASE %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", ident)
 	return d.executeSQL(sql)
+}
+
+// countIsNonZero runs a statement that answers one "n=<count>" line.
+func (d *MariaDBDriver) countIsNonZero(statement string) (bool, error) {
+	output, err := d.runSQL(statement)
+	if err != nil {
+		return false, err
+	}
+	for _, line := range strings.Split(string(output), "\n") {
+		if count, ok := strings.CutPrefix(strings.TrimSpace(line), "n="); ok {
+			return count != "0", nil
+		}
+	}
+	return false, fmt.Errorf("the MariaDB answer about the name could not be read")
 }
 
 // DeleteDatabase drops a MariaDB database
@@ -244,7 +273,8 @@ func (d *MariaDBDriver) ListDatabases() ([]string, error) {
 	return databases, nil
 }
 
-// CreateUser creates a MariaDB user (localhost only)
+// CreateUser creates a MariaDB user (localhost only); a name that exists
+// already is ErrDatabaseNameTaken.
 func (d *MariaDBDriver) CreateUser(username, password string) error {
 	// The user name is a MySQL account name literal here, not a backtick
 	// identifier, so it is validated as an identifier and then quoted as a
@@ -263,7 +293,14 @@ func (d *MariaDBDriver) CreateUser(username, password string) error {
 	if err != nil {
 		return fmt.Errorf("invalid password: %w", err)
 	}
-	sql := fmt.Sprintf("CREATE USER IF NOT EXISTS %s@'localhost' IDENTIFIED BY %s;", userLiteral, pwLiteral)
+	// alpha.129: exclusive, for the same reason as CreateDatabase: an
+	// existing account of this name (on any host) is never taken over.
+	if taken, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + ";"); err != nil {
+		return err
+	} else if taken {
+		return fmt.Errorf("database user %s: %w", username, ErrDatabaseNameTaken)
+	}
+	sql := fmt.Sprintf("CREATE USER %s@'localhost' IDENTIFIED BY %s;", userLiteral, pwLiteral)
 	if err := d.executeSQL(sql); err != nil {
 		return err
 	}
@@ -281,6 +318,12 @@ func (d *MariaDBDriver) DeleteUser(username string) error {
 	}
 	sql := fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral)
 	if err := d.executeSQL(sql); err != nil {
+		return err
+	}
+	// alpha.129: the user's remote copies go with it.
+	if err := d.forEachRemoteCopy(userLiteral, func(account string) string {
+		return "DROP USER IF EXISTS " + account + ";"
+	}); err != nil {
 		return err
 	}
 	return d.executeSQL("FLUSH PRIVILEGES;")
@@ -301,6 +344,13 @@ func (d *MariaDBDriver) ChangePassword(username, newPassword string) error {
 	}
 	sql := fmt.Sprintf("ALTER USER %s@'localhost' IDENTIFIED BY %s;", userLiteral, pwLiteral)
 	if err := d.executeSQL(sql); err != nil {
+		return err
+	}
+	// alpha.129: the remote copies take the same password (their REQUIRE
+	// SSL stays), so an old password never keeps working from outside.
+	if err := d.forEachRemoteCopy(userLiteral, func(account string) string {
+		return "ALTER USER " + account + " IDENTIFIED BY " + pwLiteral + ";"
+	}); err != nil {
 		return err
 	}
 	return d.executeSQL("FLUSH PRIVILEGES;")
@@ -372,7 +422,43 @@ func (d *MariaDBDriver) RevokePrivileges(database, user string) error {
 	if err := d.executeSQL(sql); err != nil {
 		return err
 	}
+	// alpha.129: a remote copy loses every privilege (closed, never more
+	// than the local account); the next remote access change gives back
+	// what the local account still holds.
+	if err := d.forEachRemoteCopy(userLiteral, func(account string) string {
+		return "REVOKE ALL PRIVILEGES, GRANT OPTION FROM " + account + ";"
+	}); err != nil {
+		return err
+	}
 	return d.executeSQL("FLUSH PRIVILEGES;")
+}
+
+// forEachRemoteCopy runs one statement for every remote copy of a user
+// (docs/DATABASE-REMOTE-ACCESS.md): an account of the same name whose host
+// is an address or an IPv4 network, the forms CelikPanel writes. Hosts in any
+// other form (a wildcard, a name) are never touched.
+// forEachRemoteCopy, kullanıcının her uzak kopyası için bir ifade çalıştırır.
+func (d *MariaDBDriver) forEachRemoteCopy(userLiteral string, statement func(account string) string) error {
+	output, err := d.runSQL("SELECT Host FROM mysql.user WHERE User = " + userLiteral + " AND Host <> 'localhost';")
+	if err != nil {
+		return fmt.Errorf("list the remote copies: %w", err)
+	}
+	var batch []string
+	for i, line := range strings.Split(string(output), "\n") {
+		host := strings.TrimSpace(line)
+		if i == 0 || host == "" || !dbremote.IsRemoteAccountHost(host) {
+			continue // the header, or a host CelikPanel does not write
+		}
+		hostLiteral, err := QuoteMySQLStringLiteral(host)
+		if err != nil {
+			continue
+		}
+		batch = append(batch, statement(userLiteral+"@"+hostLiteral))
+	}
+	if len(batch) == 0 {
+		return nil
+	}
+	return d.executeSQL(strings.Join(batch, "\n"))
 }
 
 // executeSQL executes SQL command via mysql CLI

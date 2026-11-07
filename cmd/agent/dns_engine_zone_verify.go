@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/binddns"
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/dnswire"
 	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/mutationpayload"
@@ -470,6 +471,9 @@ func verifyDNSZoneAuthoritiesAt(
 		for _, network := range []string{"udp", "tcp"} {
 			probeCtx, cancel := context.WithTimeout(ctx, dnsProbeTimeout)
 			result, err := probe(probeCtx, network, address, zone.Domain)
+			// A probe that got no answer in time says nothing about what
+			// BIND serves: unknown, never a refusal (checkresult, D-024).
+			err = checkresult.IfContextEnded(probeCtx, err)
 			cancel()
 			if err != nil {
 				return fmt.Errorf("verify %s SOA for %s: %w", network, zone.Domain, err)

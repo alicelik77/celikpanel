@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -18,8 +19,25 @@ const wordpressDatabaseOwnershipTable = "celikpanel_install_ownership"
 
 var mysqlExecStatement = runMySQLStatement
 
+// mysqlStatementProgram is the MariaDB client the Agent runs statements with.
+// Started as "mysql", MariaDB 11 and later print "mysql: Deprecated program
+// name ..." on stderr before every answer. runMySQLStatement reads stdout and
+// stderr together, so an exact read such as the ownership proof never
+// matched: on Arch (MariaDB 13) a refused website copy left its new database
+// and user behind while the panel forgot them (alpha.129 lab). "mariadb" is
+// the client's name on every supported system; "mysql" stays the fallback.
+//
+// MariaDB 11 ve sonrası "mysql" adıyla başlatıldığında stderr'e uyarı yazar;
+// birleşik çıktıda bu satır sahiplik kanıtını bozuyordu. "mariadb" kullanılır.
+var mysqlStatementProgram = func() string {
+	if path, err := exec.LookPath("mariadb"); err == nil {
+		return path
+	}
+	return "mysql"
+}
+
 func newMySQLStatementCommand(statement string) *exec.Cmd {
-	command := exec.Command("mysql", "--batch", "--skip-column-names")
+	command := exec.Command(mysqlStatementProgram(), "--batch", "--skip-column-names")
 	command.Stdin = strings.NewReader(statement + "\n")
 	return command
 }
@@ -174,6 +192,9 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 	if _, err := mysqlExecStatement(fmt.Sprintf("CREATE DATABASE %s;", dbIdent)); err != nil {
 		if !hasOperation || !verifyMySQLOwnership(dbIdent, req.OperationID, req.CleanupToken) {
 			resp.Error = "database already exists or could not be created exclusively"
+			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
+				resp.NameTaken = "database"
+			}
 			return nil
 		}
 		// A matching marker is written only after this operation exclusively
@@ -188,6 +209,9 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		)); err != nil {
 			resp.CleanupIncomplete = !cleanupCreatedMySQLResources(dbIdent, "", false, true)
 			resp.Error = "database user already exists or could not be created exclusively"
+			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + ";") {
+				resp.NameTaken = "user"
+			}
 			return nil
 		}
 		userCreated = true
@@ -236,6 +260,22 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 	resp.Success = true
 	resp.OwnedByOperation = hasOperation
 	return nil
+}
+
+// mysqlNameExists answers a "n=<count>" question; an unreadable answer is
+// "not known to exist" (the refusal then stays the general one).
+func mysqlNameExists(statement string) bool {
+	output, err := mysqlExecStatement(statement)
+	if err != nil {
+		return false
+	}
+	count, ok := markerValue(output, "n")
+	return ok && count != "0"
+}
+
+func mysqlLiteral(value string) string {
+	literal, _ := services.QuoteMySQLStringLiteral(value)
+	return literal
 }
 
 func validWordPressCleanupToken(value string) bool {
@@ -321,6 +361,12 @@ func (a *Agent) deleteMySQLDatabase(req DeleteDatabaseRequest, resp *DeleteDatab
 			}
 		} else {
 			_, dropErr := mysqlExecStatement(fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral))
+			if dropErr == nil {
+				// alpha.129: its remote copies go with it.
+				if err := databaseRemoteFollowMariaDBUser(req.User, true); err != nil {
+					log.Printf("database deletion: %v", err)
+				}
+			}
 			if dropErr != nil && req.RequireUserCleanup {
 				resp.Success = false
 				resp.Error = "failed to drop database user"
@@ -382,7 +428,19 @@ func databaseClientMeaning(text string) string {
 	}
 }
 
-// createPostgreSQLDatabase creates a PostgreSQL database and user
+// createPostgreSQLDatabase creates a PostgreSQL database and its user,
+// exclusively (alpha.129). It used to take "role already exists" as success
+// and then made the new database owned by that role: a role of the same name
+// made outside CelikPanel (or by another account) became the owner of this
+// account's database. Now an existing role or database changes nothing and
+// the answer names it (NameTaken). A request that carries an operation's
+// ownership proof (OperationID + CleanupToken, as the MySQL path) marks the
+// role it makes with the proof's hash (COMMENT ON ROLE), so a replay of that
+// same operation resumes on its own role and never adopts another one. A role
+// this call made is dropped again when the database cannot be made.
+//
+// PostgreSQL veritabanı ve kullanıcısı artık yalnız yeni oluşturulur; var
+// olan rol ya da veritabanı devralınmaz.
 func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *CreateDatabaseResponse) error {
 	userIdent, err := services.QuotePGIdentifier(req.User)
 	if err != nil {
@@ -399,6 +457,18 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		resp.Error = fmt.Sprintf("invalid password: %v", err)
 		return nil
 	}
+	userLiteral, _ := services.QuotePGStringLiteral(req.User)
+	dbLiteral, _ := services.QuotePGStringLiteral(req.Name)
+	hasOperation := req.OperationID != "" || req.CleanupToken != ""
+	if hasOperation &&
+		(!validWordPressOperationID(req.OperationID) || !validWordPressCleanupToken(req.CleanupToken)) {
+		resp.Error = "invalid database operation ownership proof"
+		return nil
+	}
+	marker := ""
+	if hasOperation {
+		marker = "celikpanel-operation:" + wordpressDatabaseOwnershipHash(req.OperationID, req.CleanupToken)
+	}
 
 	run, err := postgreSQLStatementFor(req.Port)
 	if err != nil {
@@ -407,25 +477,65 @@ func (a *Agent) createPostgreSQLDatabase(req CreateDatabaseRequest, resp *Create
 		return nil
 	}
 
-	// Create user
-	output, err := run(
-		fmt.Sprintf("CREATE USER %s WITH PASSWORD %s;", userIdent, pwLiteral))
-	if err != nil && !strings.Contains(string(output), "already exists") {
-		resp.Success = false
-		resp.Error = hostcmd.Fail("failed to create user", output, err, databaseClientMeaning).Error()
+	output, err := run("SELECT 'roles=' || count(*) FROM pg_catalog.pg_roles WHERE rolname = " + userLiteral + ";\n" +
+		"SELECT 'mark=' || COALESCE((SELECT pg_catalog.shobj_description(oid, 'pg_authid') FROM pg_catalog.pg_roles WHERE rolname = " + userLiteral + "), '');\n" +
+		"SELECT 'owner=' || COALESCE((SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = " + dbLiteral + "), '');")
+	if err != nil {
+		resp.Error = hostcmd.Fail("the database server could not be asked about the names; nothing was changed", output, err, databaseClientMeaning).Error()
+		return nil
+	}
+	roles, okRoles := markerValue(output, "roles")
+	mark, okMark := markerValue(output, "mark")
+	owner, okOwner := markerValue(output, "owner")
+	if !okRoles || !okMark || !okOwner {
+		resp.Error = "the database server's answer about the names could not be read; nothing was changed"
+		return nil
+	}
+	// The role is this operation's own only when it carries the operation's
+	// mark; anything else is somebody else's.
+	resumed := roles != "0" && marker != "" && mark == marker
+	switch {
+	case roles != "0" && !resumed:
+		resp.NameTaken = "user"
+		resp.Error = "a database user named " + req.User + " already exists on this server; nothing was changed"
+		return nil
+	case owner != "" && !(resumed && owner == req.User):
+		resp.NameTaken = "database"
+		resp.Error = "a database named " + req.Name + " already exists on this server; nothing was changed"
 		return nil
 	}
 
-	// Create database
-	output, err = run(
-		fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbIdent, userIdent))
-	if err != nil {
-		resp.Success = false
-		resp.Error = hostcmd.Fail("failed to create database", output, err, databaseClientMeaning).Error()
-		return nil
+	roleCreated := false
+	if !resumed {
+		statement := "SET password_encryption = 'scram-sha-256';\nCREATE ROLE " + userIdent + " LOGIN PASSWORD " + pwLiteral + ";"
+		if marker != "" {
+			markLiteral, _ := services.QuotePGStringLiteral(marker)
+			statement = "SET password_encryption = 'scram-sha-256';\nBEGIN;\nCREATE ROLE " + userIdent + " LOGIN PASSWORD " + pwLiteral +
+				";\nCOMMENT ON ROLE " + userIdent + " IS " + markLiteral + ";\nCOMMIT;"
+		}
+		if _, err := run(statement); err != nil {
+			// The statement carries the password: its answer is not forwarded.
+			resp.Error = "the database server did not create the user " + req.User + "; nothing was changed"
+			return nil
+		}
+		roleCreated = true
+	}
+
+	if owner == "" {
+		output, err = run(fmt.Sprintf("CREATE DATABASE %s OWNER %s;", dbIdent, userIdent))
+		if err != nil {
+			resp.Error = hostcmd.Fail("failed to create database", output, err, databaseClientMeaning).Error()
+			if roleCreated {
+				if _, dropErr := run("DROP ROLE IF EXISTS " + userIdent + ";"); dropErr != nil {
+					resp.CleanupIncomplete = true
+				}
+			}
+			return nil
+		}
 	}
 
 	resp.Success = true
+	resp.OwnedByOperation = hasOperation
 	return nil
 }
 

@@ -105,7 +105,10 @@ func TestWordPressUserCollisionCleansOnlyDatabaseCreatedByThisCall(t *testing.T)
 	})
 	var response CreateDatabaseResponse
 	_ = (&Agent{}).createMySQLDatabase(wordpressCreateDatabaseRequest(), &response)
-	if response.Success || response.CleanupIncomplete || len(*statements) != 3 {
+	// alpha.129: a fourth, read-only statement asks whether the name is taken,
+	// so the refusal can say so.
+	if response.Success || response.CleanupIncomplete || len(*statements) != 4 ||
+		!strings.HasPrefix((*statements)[3], "SELECT CONCAT('n=', COUNT(*)) FROM mysql.user") {
 		t.Fatalf("response=%+v statements=%v", response, *statements)
 	}
 	if !strings.HasPrefix((*statements)[2], "DROP DATABASE IF EXISTS ") {

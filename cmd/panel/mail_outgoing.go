@@ -739,6 +739,28 @@ func outgoingSpikeDecision(settings outgoingSettings, recipients, refusals int, 
 	return false, "", normal
 }
 
+// outgoingSinceResume is what one stored hour counts for the pause after the
+// mailbox's last password change (resumed; zero = never resumed). An hour
+// before the change's hour was judged already (judge false). The change's
+// own hour counts only what came after the change: the hour's counts less
+// the baseline taken when the pause ended, so the messages that led to the
+// pause are not counted twice. A later hour counts in full. alpha.128
+// skipped the change's whole hour, so a mailbox reopened and abused again
+// within it was never paused again (alpha.128 lab, round 2).
+func outgoingSinceResume(hour time.Time, recipients, refusals int, resumed time.Time, baseRecipients, baseRefusals int) (int, int, bool) {
+	if resumed.IsZero() {
+		return recipients, refusals, true
+	}
+	resumeHour := resumed.UTC().Truncate(time.Hour)
+	switch {
+	case hour.Before(resumeHour):
+		return 0, 0, false
+	case hour.Equal(resumeHour):
+		return max(recipients-baseRecipients, 0), max(refusals-baseRefusals, 0), true
+	}
+	return recipients, refusals, true
+}
+
 // pauseUnusualSenders pauses a mailbox whose current or previous hour is
 // unusual (owner decision 2: sending from it is refused permanently until its
 // password changes, the administrator is told at once).
@@ -746,7 +768,8 @@ func (p *Panel) pauseUnusualSenders(ctx context.Context, settings outgoingSettin
 	db := p.db.GetDB()
 	recent := now.Truncate(time.Hour).Add(-time.Hour)
 	rows, err := db.QueryContext(ctx, `
-		SELECT h.address, h.hour, h.recipients, h.limit_refusals, a.id, COALESCE(mo.paused_at, ''), COALESCE(mo.resumed_at, '')
+		SELECT h.address, h.hour, h.recipients, h.limit_refusals, a.id, COALESCE(mo.paused_at, ''), COALESCE(mo.resumed_at, ''),
+		       COALESCE(mo.resume_base_recipients, 0), COALESCE(mo.resume_base_refusals, 0)
 		FROM mail_outgoing_hourly h
 		JOIN email_accounts a ON lower(a.address) = h.address
 		LEFT JOIN mailbox_outgoing mo ON mo.email_account_id = a.id
@@ -758,11 +781,12 @@ func (p *Panel) pauseUnusualSenders(ctx context.Context, settings outgoingSettin
 	type candidate struct {
 		address, hour, pausedAt, resumedAt string
 		recipients, refusals, id           int
+		baseRecipients, baseRefusals       int
 	}
 	var candidates []candidate
 	for rows.Next() {
 		var c candidate
-		if rows.Scan(&c.address, &c.hour, &c.recipients, &c.refusals, &c.id, &c.pausedAt, &c.resumedAt) == nil {
+		if rows.Scan(&c.address, &c.hour, &c.recipients, &c.refusals, &c.id, &c.pausedAt, &c.resumedAt, &c.baseRecipients, &c.baseRefusals) == nil {
 			candidates = append(candidates, c)
 		}
 	}
@@ -780,21 +804,28 @@ func (p *Panel) pauseUnusualSenders(ctx context.Context, settings outgoingSettin
 		if err != nil {
 			continue
 		}
-		// Hours before the last password change were judged already.
-		if resumed := parseSQLiteTime(c.resumedAt); !resumed.IsZero() && hour.Before(resumed.Truncate(time.Hour).Add(time.Hour)) {
+		// A password change starts a fresh window: the hours before it were
+		// judged already, and its own hour counts only what came after it.
+		recipients, refusals, judge := outgoingSinceResume(hour, c.recipients, c.refusals,
+			parseSQLiteTime(c.resumedAt), c.baseRecipients, c.baseRefusals)
+		if !judge {
 			continue
 		}
 		history, err := outgoingHistory(ctx, db, c.address, hour.Add(-7*24*time.Hour), hour.Add(-time.Hour))
 		if err != nil {
 			continue
 		}
-		pause, reason, normal := outgoingSpikeDecision(settings, c.recipients, c.refusals, history, observed)
+		pause, reason, normal := outgoingSpikeDecision(settings, recipients, refusals, history, observed)
 		if !pause {
 			continue
 		}
-		detail := fmt.Sprintf("%d recipients in the hour from %s (normal hour: %d)", c.recipients, hour.Format("2006-01-02 15:04 UTC"), normal)
+		since := "in the hour from " + hour.Format("2006-01-02 15:04 UTC")
+		if recipients != c.recipients || refusals != c.refusals {
+			since = "since the password change at " + parseSQLiteTime(c.resumedAt).Format("2006-01-02 15:04 UTC")
+		}
+		detail := fmt.Sprintf("%d recipients %s (normal hour: %d)", recipients, since, normal)
 		if reason == "refusals" {
-			detail = fmt.Sprintf("%d messages refused by the hourly limit in the hour from %s", c.refusals, hour.Format("2006-01-02 15:04 UTC"))
+			detail = fmt.Sprintf("%d messages refused by the hourly limit %s", refusals, since)
 		}
 		stamp := now.Format("2006-01-02 15:04:05")
 		if _, err := db.ExecContext(ctx, `
@@ -809,8 +840,10 @@ func (p *Panel) pauseUnusualSenders(ctx context.Context, settings outgoingSettin
 		paused[c.id] = true
 		log.Printf("[mail-outgoing] paused %s: %s", c.address, detail)
 		if ref, ok := outgoingAccountByAddress(ctx, db, c.address); ok {
-			p.storeOutgoingNotice(ctx, outgoingNoticePaused, c.address, stamp, ref,
-				outgoingNoticeBody{Hour: c.hour, Reason: reason, Recipients: c.recipients, Refused: c.refusals, Normal: normal}, true)
+			// Every pause is its own notice: a mailbox paused again after a
+			// password change is told again, also within the same second.
+			p.storeOutgoingNotice(ctx, outgoingNoticePaused, c.address, now.Format(time.RFC3339Nano), ref,
+				outgoingNoticeBody{Hour: c.hour, Reason: reason, Recipients: recipients, Refused: refusals, Normal: normal}, true)
 		}
 	}
 	if len(paused) > 0 {
@@ -860,10 +893,37 @@ var errOutgoingResumeUnconfirmed = errors.New("postfwd has not confirmed the res
 // resumeOutgoingAfterPasswordConfirmed also says whether postfwd still
 // answered the mailbox as paused after the apply (pending).
 func (p *Panel) resumeOutgoingAfterPasswordConfirmed(ctx context.Context, accountID int) (bool, bool, error) {
-	result, err := p.db.GetDB().ExecContext(ctx, `
+	db := p.db.GetDB()
+	var address string
+	err := db.QueryRowContext(ctx, `
+		SELECT lower(a.address) FROM mailbox_outgoing mo JOIN email_accounts a ON a.id = mo.email_account_id
+		WHERE mo.email_account_id = ? AND mo.paused_at IS NOT NULL`, accountID).Scan(&address)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	// The fresh spike window starts now: this hour's counts as Postfix's log
+	// tells them at the change are its baseline. The log is read again first
+	// so a message accepted shortly before the pause took hold is not counted
+	// after the change. Best effort: a failed read leaves the last round's
+	// counts (at most five minutes old; while the mailbox is paused, its
+	// messages are refused by the pause and add nothing to them).
+	now := time.Now().UTC()
+	if settings, _, err := p.loadOutgoingSettings(ctx); err == nil && settings.Enabled {
+		if err := p.ingestOutgoingActivity(ctx, now); err != nil {
+			log.Printf("[mail-outgoing] activity before resuming %s: %v", address, err)
+		}
+	}
+	var baseRecipients, baseRefusals int
+	_ = db.QueryRowContext(ctx, `SELECT recipients, limit_refusals FROM mail_outgoing_hourly WHERE address = ? AND hour = ?`,
+		address, now.Truncate(time.Hour).Format(time.RFC3339)).Scan(&baseRecipients, &baseRefusals)
+	result, err := db.ExecContext(ctx, `
 		UPDATE mailbox_outgoing SET paused_at = NULL, paused_reason = NULL, paused_detail = NULL,
-		       resumed_at = datetime('now'), updated_at = datetime('now')
-		WHERE email_account_id = ? AND paused_at IS NOT NULL`, accountID)
+		       resumed_at = ?, resume_base_recipients = ?, resume_base_refusals = ?, updated_at = datetime('now')
+		WHERE email_account_id = ? AND paused_at IS NOT NULL`,
+		now.Format("2006-01-02 15:04:05"), max(baseRecipients, 0), max(baseRefusals, 0), accountID)
 	if err != nil {
 		return false, false, err
 	}

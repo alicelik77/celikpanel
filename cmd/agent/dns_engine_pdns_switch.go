@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/binddns"
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
 	"github.com/alicelik/celikpanel/internal/dnsenginerecovery"
@@ -1755,9 +1756,19 @@ func switchToPDNSOnCertifiedProfile(
 			return transport.SwitchDNSEngineV1Response{}, err
 		}
 	}
-	if manifest.SourceEngine == "" && capturePDNSActive(ctx, systemctl) {
-		if err := verifyStandaloneUnsignedPowerDNS(ctx); err != nil {
-			return transport.SwitchDNSEngineV1Response{}, err
+	if manifest.SourceEngine == "" {
+		active, err := capturePDNSActive(ctx, systemctl)
+		if err != nil {
+			// The owner's PowerDNS could not be read: unknown. Starting the
+			// switch would skip the guard below and could stop it and swap
+			// its database, so nothing is started (D-024).
+			return transport.SwitchDNSEngineV1Response{}, checkresult.Incomplete(
+				fmt.Errorf("whether PowerDNS is running could not be read, so the switch was not started; nothing was changed, try again: %w", err))
+		}
+		if active {
+			if err := verifyStandaloneUnsignedPowerDNS(ctx); err != nil {
+				return transport.SwitchDNSEngineV1Response{}, err
+			}
 		}
 	}
 	service := core.GetManagedServiceByID("pdns")
@@ -2256,7 +2267,12 @@ func switchToPDNSOnCertifiedProfile(
 	}, nil
 }
 
-func capturePDNSActive(ctx context.Context, systemctl string) bool {
+// capturePDNSActive reads whether pdns.service runs; a failed reading is an
+// error (unknown), never "not running".
+func capturePDNSActive(ctx context.Context, systemctl string) (bool, error) {
 	state, err := dnsSystemdStateGuard(systemctl).inspect(ctx, "pdns.service")
-	return err == nil && state.active()
+	if err != nil {
+		return false, err
+	}
+	return state.active(), nil
 }

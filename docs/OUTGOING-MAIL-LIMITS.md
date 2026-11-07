@@ -58,6 +58,17 @@ Postfix policy protocol, package removed afterwards):
   (alpha.128 lab), so the check is the "Rule N:" lines it prints; `postconf -P` refuses a value
   with whitespace (`check_policy_service,inet:127.0.0.1:10040` is used).
 
+On Debian 12's postfwd 1.35-8 (alpha.129 lab, `raw/D4-pf135-*.log` in the
+`a128-other-systems` evidence): when "limits on" reloaded postfwd, its policy
+server failed the master's check during the reload and was respawned; after
+that, reloads did not reach the prefork children still answering, so a limit
+set afterwards was ignored (6 of 6 sent) and a lifted pause answered 550 for
+about 4 minutes on Ubuntu 22.04 (1.35-7). The manual also says a changed rate
+rule needs a restart with `--keep_rates`. A restart takes the new rules at once
+(about 0.3 s; Postfix's DUNNO default answers meanwhile), and with
+`--save_rates <file>` the counters survive it (the cache daemon stores them at
+its end and loads them at its start; without it they start from zero).
+
 On the Arch 2.03 program (run from the downloaded package with the same
 rules): with Arch's `--cache=600` identical end-of-message requests were
 answered from the request cache and not counted; with `--cache=0` they were.
@@ -68,12 +79,14 @@ answered from the request cache and not counted; with `--cache=0` they were.
   seat; never installed by a panel update). The install writes a rule file that
   only says DUNNO (Debian ships none) and a systemd drop-in
   `/etc/systemd/system/postfwd.service.d/celikpanel.conf`: Debian keeps the
-  owner's `/etc/default/postfwd` and adds `--keep_rates`; Arch adds
-  `--cache=0 --keep_rates`.
+  owner's `/etc/default/postfwd` and adds `--cache=0 --keep_rates --save_rates
+  /var/lib/celikpanel-postfwd/rates` (an `ExecStartPre` gives that folder to
+  `$RUNAS`); Arch adds `--cache=0 --keep_rates`.
 - The panel sends the whole wanted state; the Agent renders the rule file
   (marker + body digest) and lists under `/etc/postfix/celikpanel-postfwd/`
-  (Arch: `/etc/postfwd/celikpanel/`), checks them with `postfwd -C`, reloads
-  postfwd and sends two self-test requests for a name no mailbox can have (the
+  (Arch: `/etc/postfwd/celikpanel/`), checks them with `postfwd -C`, restarts
+  postfwd 1.x (Debian, Ubuntu; counters kept by `--save_rates`) or reloads
+  postfwd 2.x (Arch), and sends two self-test requests for a name no mailbox can have (the
   self-test rule reads a list too, `selftest.domains`, so a list postfwd cannot
   read fails it; the list folder is kept 0755 because postfwd runs as its own
   account and the Agent's umask is 0027 — alpha.128 lab)
@@ -100,7 +113,17 @@ last 7 days) and at least 100 recipients, or collects 100 limit refusals. A
 mailbox without history is judged by volume only after the panel has watched
 for a day, so turning the limits on does not pause busy ordinary mailboxes.
 A new mailbox sends at most 50 per hour in its first 24 hours. The pause is in
-postfwd's `paused.list` (native); the only way out is a password change. The
+postfwd's `paused.list` (native); the only way out is a password change.
+A password change starts a fresh window (alpha.129; alpha.128 lab round 2: a
+mailbox reopened and abused again within the same hour was never paused
+again, because the whole hour of the change was skipped): the hours before
+the change are not judged again, the change's own hour counts only what was
+sent after it (that hour's counts, read from Postfix's log at the change,
+are kept as its baseline in `mailbox_outgoing.resume_base_*`, migration 073),
+and later hours count in full. postfwd's own counter of a resumed mailbox
+is reset too (`--delrate`), so its hourly limit and its refusals start
+again from the change; a second pause is told to the administrator again.
+The
 apply that lifts the pause asks postfwd about the mailbox with a request that
 counts nothing until it is answered 12 times in a row without the pause (at
 most 30 s): postfwd's prefork children take a reload one by one (alpha.128 lab:
@@ -122,14 +145,20 @@ preview phase does not apply; the report counts the refusals it makes.
 - Invariants: owner independence (native rule file, lists, drop-in and
   master.cf values keep working with the panel removed); fail-open (DUNNO);
   detect-don't-overwrite (D-031).
-- Schema: migration 067 (additive; five tables, one seeded row, triggers).
+- Schema: migration 067 (additive; five tables, one seeded row, triggers);
+  migration 073 (alpha.129, additive: two columns with a default of 0 on
+  `mailbox_outgoing`, the resume baseline).
 - Recovery: snapshot and put-back of every file; master.cf values put back on a
   failed Postfix reload; refusals recorded with their code; the worker retries
   a failed state after 30 minutes, a save retries at once.
 - Evidence: Go tests with a fake host (render, owner file kept, check refused,
   self-test failure put back, owner master.cf kept, Postfix refusal put back,
-  disable removes only CelikPanel's values), the package measurements above.
+  disable removes only CelikPanel's values; alpha.129: pause → resume → pause
+  renders the same pause rule and list and resets the mailbox's counter each
+  time; the panel pauses a resumed mailbox again within the same hour on the
+  refusals after the change only, notifies again, and keeps one limit notice
+  per hour), the package measurements above.
 - Open: an end-to-end run with a real Postfix on the five systems (install,
   limit hit, panel stopped, postfwd stopped = mail still flows) is the lab
-  round; component tests alone do not establish it. A postfwd restart starts
-  the hour from zero (`--save_rates` not used).
+  round; component tests alone do not establish it. On Arch (2.x, reloaded) a
+  restart by the owner still starts the hour from zero.
