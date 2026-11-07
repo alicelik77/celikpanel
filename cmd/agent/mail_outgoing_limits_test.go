@@ -247,7 +247,7 @@ func TestRenderOutgoingConfigOrderAndTexts(t *testing.T) {
 		t.Fatalf("texts missing:\n%s", rendered.config)
 	}
 	empty := renderOutgoingConfig(layout, &transport.OutgoingMailLimitsSpec{Enabled: true})
-	if empty.rules != 2 || len(empty.lists) != 0 {
+	if empty.rules != 2 || len(empty.lists) != 1 || empty.lists["selftest.domains"] == "" {
 		t.Fatalf("an empty state writes rules for empty lists: %d %v", empty.rules, empty.lists)
 	}
 }

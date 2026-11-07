@@ -330,8 +330,12 @@ func renderOutgoingConfig(layout outgoingLayout, spec *transport.OutgoingMailLim
 		out.lists[name] = outgoingListContent(values)
 		return "file:" + layout.listDir + "/" + name
 	}
+	// The self-test reads a list like every limit rule does, so a list
+	// postfwd cannot read fails the self-test (alpha.128 lab: an unreadable
+	// list folder disabled every limit while a pattern-only self-test passed).
 	add(outgoingRule("CP_SELFTEST",
-		`sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/`,
+		"sender_domain=="+list("selftest.domains", []string{outgoingSelfTestDomain})+" ; "+
+			`sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/`,
 		"rcpt(sasl_username/1/600/450 4.7.1 "+outgoingSelfTestText+")"))
 	if len(spec.Paused) > 0 {
 		add(outgoingRule("CP_PAUSED", "sasl_username=="+list("paused.list", append([]string(nil), spec.Paused...)),
