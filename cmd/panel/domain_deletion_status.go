@@ -28,6 +28,15 @@ type domainDeletionStatusSnapshot struct {
 	// by the automatic re-check after the backup caught up; the rest of the
 	// deletion is finished by reconcileLocalDNSDeletionsOnce (alpha.128).
 	dnsRemoved bool
+	// ahead (alpha.129): the zone's exact pending publication is an earlier
+	// change of the same zone (for example its creation) that the saved
+	// removal waits for; lease, state and engine are then that publication's.
+	ahead bool
+	// dnsWaiting: the removal is saved and held behind another zone's
+	// exact publication; dnsFailed: the removal ended with an error that is
+	// not a hold (domain_deletion_pending_dns.go).
+	dnsWaiting bool
+	dnsFailed  bool
 	// remote: a joined server's deletion (the zone is on the main DNS
 	// server); remoteDNS is what its saved records say.
 	remote    bool
@@ -142,7 +151,8 @@ func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID i
 	}
 	lease, err := readDNSZoneEngineLease(ctx, tx, snapshot.domain)
 	if errors.Is(err, sql.ErrNoRows) {
-		return snapshot, nil
+		snapshot.dnsWaiting, snapshot.dnsFailed, err = domainDeletionDNSWithoutLease(ctx, tx, state)
+		return snapshot, err
 	}
 	if err != nil {
 		return snapshot, err
@@ -169,12 +179,18 @@ func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID i
 		snapshot.lease = lease
 		snapshot.state = state
 		snapshot.engine = engineState
+	} else if domainDeletionAheadLease(snapshot.domain, state, lease, engineState) {
+		snapshot.ahead = true
+		snapshot.lease = lease
+		snapshot.state = state
+		snapshot.engine = engineState
 	}
 	return snapshot, nil
 }
 
 func sameDomainDeletionStatusSnapshot(a, b domainDeletionStatusSnapshot) bool {
-	return a.marked && b.marked && a.candidate && b.candidate &&
+	return a.marked && b.marked && a.candidate == b.candidate && a.ahead == b.ahead &&
+		(a.candidate || a.ahead) &&
 		a.domain == b.domain && a.lease == b.lease &&
 		a.state == b.state && a.engine == b.engine
 }
@@ -242,11 +258,27 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if snapshot.dnsRemoved {
+		message := domainDeletionDNSRemovedEnglish
+		if p.remoteDNSDeletions().lastReason(domainID) == remoteDNSDeletionFinishingReason {
+			// The last finishing attempt failed: said, not hidden (D-024).
+			message = domainDeletionDNSFinishRetryEnglish
+		}
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
 			Status: domainDeletionPendingStatus, Stage: domainDeletionDNSStageDone,
 			Reason:  domainDeletionDNSRemovalConfirmedReason,
-			Message: domainDeletionDNSRemovedEnglish,
+			Message: message,
 		})
+		return
+	}
+	if snapshot.dnsFailed {
+		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+			Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+			Reason: domainDeletionDNSRemovalFailedReason, Message: domainDeletionDNSRemovalFailedEnglish,
+		})
+		return
+	}
+	if snapshot.dnsWaiting {
+		_ = json.NewEncoder(w).Encode(p.domainDeletionDNSWaitingStatus())
 		return
 	}
 	// No running request, no recorded failure and no DNS step waiting on
@@ -285,10 +317,50 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 				result.Reason = reason
 				result.Detail = detail
 				result.Message = message
+				if dnsPeerPendingRetriesAutomatically(dnsZoneV3PendingCodeFromJob(job)) {
+					result.Message += " " + domainDeletionFinishesByItselfEnglish
+				}
 			}
 		}
 	}
+	if snapshot.ahead {
+		result = p.domainDeletionAheadStatus(r.Context(), domainID, snapshot)
+	}
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+// domainDeletionAheadStatus answers for a removal that waits for an earlier
+// exact publication of the same zone (alpha.129; alpha.128 lab: a domain
+// deleted while its creation still waited for the backup DNS server). Read
+// only: one status read of that publication's exact Agent job.
+func (p *Panel) domainDeletionAheadStatus(ctx context.Context, domainID int, snapshot domainDeletionStatusSnapshot) domainDeletionStatusResponse {
+	statusCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	job, statusErr := p.statusAgentMutation(statusCtx, snapshot.lease.RequestID)
+	cancel()
+	if statusErr != nil || job == nil || validateAgentMutationIdentity(job, snapshot.lease.identity()) != nil {
+		return domainDeletionIncompleteStatus()
+	}
+	// Its recovery running, or a terminal result the reconciler records
+	// next: being worked on now.
+	result := domainDeletionChangingStatus()
+	if validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
+		code := dnsZoneV3PendingCodeFromJob(job)
+		if reason, detail, message, ok := dnsPeerPendingGuidance(code); ok {
+			result = domainDeletionStatusResponse{
+				Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+				Reason: reason, Detail: detail,
+				Message: "An earlier DNS change of this domain is still waiting, and its removal from DNS is published right after it. " + message,
+			}
+			if dnsPeerPendingRetriesAutomatically(code) {
+				result.Message += " " + domainDeletionFinishesByItselfEnglish
+			}
+		}
+	}
+	after, err := p.readDomainDeletionStatusSnapshot(ctx, domainID)
+	if err != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
+		return domainDeletionChangingStatus()
+	}
+	return result
 }
 
 // Typed states that replace the former "unknown"/"unknown" answer (alpha.114

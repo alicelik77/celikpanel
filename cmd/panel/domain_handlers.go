@@ -729,7 +729,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	if p.deletionsRunning.isRunning(domainID) {
 		var name string
 		_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT name FROM domains WHERE id = ?`, domainID).Scan(&name)
-		writeDomainDeletionAlreadyRunning(w, name)
+		writeDomainDeletionAlreadyRunning(w, domainID, name)
 		return
 	}
 	unlock := lockDomainSSLOperation(domainID)
@@ -750,7 +750,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	} else if continues {
-		writeDomainDeletionAlreadyRunning(w, name)
+		writeDomainDeletionAlreadyRunning(w, domainID, name)
 		return
 	}
 	// alpha.118: an AI or automation app on the domain is removed first.

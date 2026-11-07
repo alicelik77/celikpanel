@@ -315,6 +315,7 @@ var apiTokenDomainRoutes = map[string]apiTokenRoute{
 	"GET hosting":                {family: "domains"},
 	"GET usage":                  {family: "domains"},
 	"GET stats/visitors":         {family: "domains"},
+	"GET deletion-status":        {family: "domains"},
 	"GET dns/records":            {family: "dns"},
 	"POST dns/records":           {family: "dns", write: true},
 	"PUT dns/records":            {family: "dns", write: true},
