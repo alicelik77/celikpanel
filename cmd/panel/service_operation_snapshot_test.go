@@ -1441,6 +1441,18 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the outgoing mail limits (migration 67, alpha.128).
+        DROP TRIGGER mail_plan_limits_follow_subscription;
+        DROP TRIGGER mail_outgoing_notices_follow_user;
+        DROP TRIGGER mail_plan_limits_follow_plan;
+        DROP INDEX idx_mail_outgoing_notices_user;
+        DROP INDEX idx_mail_outgoing_notices_one;
+        DROP TABLE mail_outgoing_notices;
+        DROP INDEX idx_mail_outgoing_hourly_hour;
+        DROP TABLE mail_outgoing_hourly;
+        DROP TABLE mail_plan_limits;
+        DROP TABLE mailbox_outgoing;
+        DROP TABLE mail_outgoing_settings;
         -- Reverse the monitoring alerts (migration 65, alpha.127).
         DROP TABLE site_uptime;
         DROP INDEX idx_monitoring_alerts_opened;
