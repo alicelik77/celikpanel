@@ -378,11 +378,16 @@ func (p *Panel) handleLoginTOTP(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusUnauthorized, "invalid code")
 		return
 	}
+	// alpha.128 (G4): administrators only from the listed addresses.
+	if p.refuseAdministratorFromUnlistedAddress(w, r, pending.userID) {
+		return
+	}
 	token, err := p.sessions.CreateForAuthEpoch(r.Context(), pending.userID, pending.authEpoch, true)
 	if err != nil {
 		writeSignInStateError(w, err)
 		return
 	}
+	p.describeNewSession(r, token)
 	http.SetCookie(w, p.sessionCookie(token, time.Now().Add(auth.SessionDuration)))
 	if usedRecovery {
 		p.auditAs(r, pending.userID, "auth.login.2fa.recovery", "", 0)

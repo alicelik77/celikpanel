@@ -126,6 +126,10 @@ const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module)
 const DomainRuntimeApps = lazy(() => import('./DomainRuntimeApps').then((module) => ({
     default: module.DomainRuntimeApps,
 })));
+// alpha.128 ops (G22): the health strip, with its own copy, in its own chunk.
+const DomainHealthStrip = lazy(() => import('./DomainHealthStrip').then((module) => ({
+    default: module.DomainHealthStrip,
+})));
 
 interface Domain {
     id: number;
@@ -720,6 +724,28 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                         <div className="mb-4">
                             <DomainConnection domainId={domain.id} domainName={domain.domain_name} />
                         </div>
+                    )}
+
+                    {/* alpha.128 ops (G22): the health strip leads the Overview;
+                        a team member, who has no Overview, sees it on the first
+                        tab, with only the checks of its own grants.
+                        Sağlık şeridi Genel Bakış'ta; ekip üyesi ilk sekmede görür. */}
+                    {(current.id === 'overview' || (isTeamMember && current.id === tabs[0]?.id)) && (
+                        <Suspense fallback={null}>
+                            <DomainHealthStrip
+                                domainId={domain.id}
+                                showsConnection={current.id === 'overview'}
+                                hasTab={(tabId, subTab) => {
+                                    const tab = tabs.find((tb) => tb.id === tabId);
+                                    if (!tab) return false;
+                                    return !subTab || Boolean(tab.subs?.some((sub) => sub.id === subTab));
+                                }}
+                                onGo={(tabId, subTab) => {
+                                    if (subTab) setActiveSub((currentSubs) => ({ ...currentSubs, [tabId]: subTab }));
+                                    setActiveTab(tabId);
+                                }}
+                            />
+                        </Suspense>
                     )}
 
                     {/* Add domain created the site but could not publish its DNS

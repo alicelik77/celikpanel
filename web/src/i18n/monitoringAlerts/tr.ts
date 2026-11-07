@@ -17,7 +17,7 @@ export const trMonitoringAlerts: Record<MonitoringAlertsKey, string> = {
     'malert.mail.sent': 'Onaylı yöneticilere e-postayla gönderildi.',
     'malert.mail.none': 'Yalnız burada gösterildi: uyarı e-postası kapalı.',
     'malert.mail.pending': 'E-postayla gönderiliyor…',
-    'malert.mail.suppressed': 'Yeniden gönderilmedi: aynı sorun son altı saatte gönderildi ya da bu saat dört uyarı e-postası gitti.',
+    'malert.mail.suppressed': 'Gönderilmedi: aynı sorun son altı saatte gönderildi, bu saat dört uyarı e-postası gitti ya da bütün yöneticiler e-posta almamayı seçti (Hesabım → Bildirimler).',
     'malert.mail.not_confirmed': 'Gönderilmedi: henüz hiçbir yönetici e-posta adresini onaylamadı (aşağıda Uyarı ayarları).',
     'malert.mail.not_available': 'Gönderilmedi: bu sunucuda panelin postayı verebileceği bir posta sistemi yok.',
     'malert.mail.failed': 'Gönderilmedi: posta sistemi reddetti ({detail}). Yeniden denenmez; nedenini posta kuyruğu gösterir.',

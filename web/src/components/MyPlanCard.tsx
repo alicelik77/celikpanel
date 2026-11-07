@@ -7,7 +7,6 @@ import { useRemote } from '../lib/remote';
 import { MY_SUBSCRIPTION_URL, decodeMyPlan, usagePercent, type MyPlan, type MyPlanSubscription } from '../lib/myPlan';
 import { overLimitText, stateName } from '../lib/rights';
 import { ResellerPoolNotices } from './RightsNotices';
-import { UsageNotices } from './UsageNotices';
 import { formatBytes } from '../lib/usage';
 
 // alpha.128: notices of lowered site limits, a chunk of their own.
@@ -180,7 +179,9 @@ export function MyPlanCard() {
                     const contact = contactText(plan, t);
                     return (
                         <div className="grid gap-3">
-                            <UsageNotices />
+                            {/* alpha.128 (G18): the usage notices are in the one Notifications list
+                                above this card (Dashboard and My account), with the account notices.
+                                Kullanım bildirimleri artık bu kartın üstündeki tek Bildirimler listesinde. */}
                             <Suspense fallback={null}><SiteLimitNotices audience={plan.pool ? 'reseller' : 'customer'} /></Suspense>
                             {/* A reseller's pool comes first: it is what they hand out to customers.
                                 A plan of their own is only needed to host their own sites.

@@ -92,7 +92,7 @@ test('every new state says the reason, who acts and how it resumes, in both lang
 
 test('screens: My plan shows traffic, the page state, the disk countdown and the notices; the rights editor edits traffic', () => {
   const card = source('components/MyPlanCard.tsx');
-  for (const marker of ['data-my-plan-traffic=', 'data-my-plan-traffic-limited', 'data-my-plan-disk-full', 'data-my-plan-traffic-interval', '<UsageNotices />']) {
+  for (const marker of ['data-my-plan-traffic=', 'data-my-plan-traffic-limited', 'data-my-plan-disk-full', 'data-my-plan-traffic-interval']) {
     assert.ok(card.includes(marker), `My plan lacks ${marker}`);
   }
   assert.ok(!card.includes('trafficNotMeasured'), 'My plan still says traffic is not measured');

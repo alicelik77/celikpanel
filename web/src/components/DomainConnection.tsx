@@ -95,7 +95,7 @@ const connectionStatuses = ['delegated', 'delegated_mismatch', 'a_record', 'else
 // doldurmadığı listeyi `null` yazar (`status` `unknown` iken hepsini) ve onun
 // `.length`ini okumak bütün alan adı sayfasını düşürüyordu. Kartın sözü
 // olmayan bir durum tahmin edilmez; yanıt o zaman bilinmeyendir.
-function decodeConnection(raw: unknown): Connection {
+export function decodeConnection(raw: unknown): Connection {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('shape');
     const body = raw as Connection;
     if (!connectionStatuses.includes(body.status) || typeof body.server_ip !== 'string') throw new Error('field');

@@ -229,6 +229,11 @@ func (p *Panel) canTeamMemberAccessDomainSubroute(
 	if err != nil {
 		return err
 	}
+	// alpha.128 (G22): the health strip is read with any grant on the
+	// domain; its handler shows only the checks of the granted capabilities.
+	if kind == domainHealthKind && method == http.MethodGet {
+		return nil
+	}
 	requirement, mapped := teamMemberDomainRequirementFor(kind, method)
 	if !mapped {
 		return errTeamMemberCapabilityDenied

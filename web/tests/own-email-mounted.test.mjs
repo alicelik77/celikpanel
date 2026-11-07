@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { compileSource, dataModule, reactURL, requestIdentityURL, sharedLayer } from './fixtures/shared-layer.mjs';
+import { compileSource, dataModule, reactURL, replaceLazyImport, requestIdentityURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { screenParts, screenPartExport } from './locale-catalogue.mjs';
 import { en as enShell } from '../src/i18n/en.ts';
 import { tr as trShell } from '../src/i18n/tr.ts';
@@ -51,6 +51,10 @@ const stub = dataModule(`
   export const ChangePasswordModal = () => null;
   // alpha.114: My plan (customers and resellers) reads its own address.
   export const MyPlanCard = () => null;
+  // alpha.128: the notifications list and cards have their own tests (notifications-alpha128).
+  export const NotificationsCenter = () => null, NotificationPreferencesCard = () => null, NotificationSettingsCard = () => null;
+  // alpha.128 (G4): the sessions card has its own address.
+  export const OwnSessionsCard = () => null;
   // alpha.117: a customer's transfer request reads its own addresses.
   export const TransferRequestCard = () => null;
   export const useAuth = () => ({ role: 'admin' });
@@ -59,7 +63,8 @@ const stub = dataModule(`
 const shared = sharedLayer(stub, { '/lib/requestIdentity': requestIdentityURL });
 const modalURL = shared.compile('components/ChangeEmailModal.tsx');
 const { OWN_EMAIL_WAIT_MS } = await import(modalURL);
-const { AccountPage } = await import(shared.compile('components/AccountPage.tsx', { '/ChangeEmailModal': modalURL }));
+// alpha.128: the notifications list and cards (lazy) are the stub's; they have their own tests.
+const { AccountPage } = await import(replaceLazyImport(replaceLazyImport(shared.compile('components/AccountPage.tsx', { '/ChangeEmailModal': modalURL }), './Notifications', stub), './PanelSessions', stub));
 const { ErrorBanner } = await import(shared.uiURL);
 
 const settled = () => new Promise((resolve) => setImmediate(resolve));

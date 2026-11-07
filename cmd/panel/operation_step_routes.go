@@ -73,6 +73,8 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRoutePHPIni, true
 		case "/api/v1/service/action":
 			return requestIdentityRouteServiceAction, true
+		case serverRebootPath: // alpha.128 ops: G29, always with an identity
+			return requestIdentityRouteServerReboot, true
 		}
 		if rest, ok := strings.CutPrefix(path, malwarePath+"findings/"); ok {
 			segments := strings.Split(rest, "/")

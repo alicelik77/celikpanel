@@ -107,6 +107,9 @@ func (p *Panel) handleSubscriptionEndsAt(w http.ResponseWriter, r *http.Request,
 	p.auditDetailed(r, "subscription.ends_at:"+name, "subscription", subscriptionID, map[string]any{
 		"ends_at": next, "previous": nullStringValue(previous),
 	})
+	// alpha.128 (G11): the end date's notices follow in the usage worker's
+	// next round, which starts now (a moved date retires the old ones).
+	p.kickUsageWorker()
 	// A date that has passed suspends now; a later or no date lifts the cause.
 	if err := p.checkSubscriptionExpiry(ctx); err != nil {
 		writeServerError(w, err)
