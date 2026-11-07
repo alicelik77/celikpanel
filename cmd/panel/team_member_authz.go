@@ -36,13 +36,14 @@ var teamMemberDomainRequirements = map[teamMemberRouteKey]teamMemberDomainRequir
 	{kind: "site-redirects", method: http.MethodGet}:        {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
 	{kind: "site-redirects", method: http.MethodPost}:       {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
 	{kind: "site-redirects", method: http.MethodDelete}:     {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
-	// alpha.128: the site's web server settings follow the same rule; the
-	// additional nginx directives are not mapped (the subscription's owner).
-	{kind: "web-settings", method: http.MethodGet}:       {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
-	{kind: "web-settings", method: http.MethodPost}:      {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
-	{kind: "databases", method: http.MethodGet}:          {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionView},
-	{kind: "databases", method: http.MethodPost}:         {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
-	{kind: "database-delete", method: http.MethodDelete}: {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
+	{kind: "databases", method: http.MethodGet}:             {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionView},
+	{kind: "databases", method: http.MethodPost}:            {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
+	{kind: "database-delete", method: http.MethodDelete}:    {capability: core.TeamCapabilityDatabases, mode: core.TeamPermissionManage},
+
+	// alpha.128: the site's web server settings follow the site's content
+	// (Files); the additional nginx directives are not mapped (the owner).
+	{kind: "web-settings", method: http.MethodGet}:  {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionView},
+	{kind: "web-settings", method: http.MethodPost}: {capability: core.TeamCapabilityFiles, mode: core.TeamPermissionManage},
 
 	{kind: "mail", method: http.MethodGet}:        {capability: core.TeamCapabilityMail, mode: core.TeamPermissionView},
 	{kind: "mail", method: http.MethodPost}:       {capability: core.TeamCapabilityMail, mode: core.TeamPermissionManage},

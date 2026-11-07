@@ -98,6 +98,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/metrics/history":       gateAdmin,
 	"/api/v1/metrics/problems":      gateAdmin,
 
+	// alpha.128: offering additional nginx directives (admin through /api/v1/nginx/).
+	"/api/v1/nginx/directives-offer": gateAdmin,
+
 	// alpha.127: monitoring stage 2 and 3 (admin through the /api/v1/metrics/ prefix).
 	"/api/v1/metrics/services":        gateAdmin,
 	"/api/v1/metrics/sites":           gateAdmin,
@@ -105,69 +108,68 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/metrics/alerts/settings": gateAdmin,
 	"/api/v1/metrics/alerts/seen":     gateAdmin,
 
-	"/api/v1/my/subscription":        gateAccount, // own subscriptions only
-	"/api/v1/nginx/global":           gateAdmin,
-	"/api/v1/nginx/ratelimits":       gateAdmin,
-	"/api/v1/nginx/directives-offer": gateAdmin, // alpha.128
-	"/api/v1/nginx/ssl":              gateAdmin,
-	"/api/v1/panel/certificate":      gateAdmin,
-	"/api/v1/panel/version":          gateAdmin,
-	"/api/v1/pdns/enable":            gateAdmin,
-	"/api/v1/php/config":             gateAdmin,
-	"/api/v1/php/extended-config":    gateAdmin,
-	"/api/v1/php/extensions":         gateAdmin,
-	"/api/v1/php/pool-config":        gateAdmin,
-	"/api/v1/php/pools":              gateAdmin,
-	"/api/v1/plans":                  gateAccount, // admin + reseller (handler); reseller sees global + own
-	"/api/v1/plans/":                 gateAccount, // admin any plan, reseller own plans (handler)
-	"/api/v1/postfix/queue":          gateAdmin,
-	"/api/v1/postfix/summary":        gateAdmin,
-	"/api/v1/products":               gateAccount,
-	"/api/v1/reseller-plans":         gateAccount, // administrator only (handler)
-	"/api/v1/reseller-plans/":        gateAccount, // administrator only (handler)
-	"/api/v1/rights/":                gateAccount, // catalog for each account's own scope; notices admin + reseller (handler)
-	"/api/v1/repo":                   gateAdmin,
-	"/api/v1/runtimes/node":          gateAccount, // admin-only in handler
-	"/api/v1/runtimes/node/":         gateAccount, // admin-only in handler
-	"/api/v1/service/action":         gateAdmin,
-	"/api/v1/service/candidate":      gateAdmin,
-	"/api/v1/service/install":        gateAdmin,
-	"/api/v1/service/logs":           gateAdmin,
-	"/api/v1/service/operation":      gateAdmin,
-	"/api/v1/service/status":         gateAdmin,
-	"/api/v1/settings/dns-cluster":   gateTenant, // admin-only in handler
-	"/api/v1/settings/dns-setup":     gateTenant, // admin-only in handler
-	"/api/v1/settings/nameservers":   gateTenant, // admin-only in handler
-	"/api/v1/ssl/providers":          gateTenant,
-	"/api/v1/store":                  gateAccount,
-	"/api/v1/store/":                 gateAccount,
-	"/api/v1/subscriptions":          gateAccount, // ownership-filtered list
-	"/api/v1/subscriptions/":         gateAccount, // ownership-checked entitlements
-	"/api/v1/security-emergencies":   gateAdmin,   // D-043; also refused under "Log in as" (handler)
-	"/api/v1/security-emergencies/":  gateAdmin,   // D-043; steps need name + password (handler)
-	"/api/v1/security-notices":       gateTenant,  // the caller's own notices only (handler)
-	"/api/v1/security-notices/":      gateTenant,  // marks the caller's own notice seen (handler)
-	"/api/v1/usage-notices":          gateTenant,  // D-044: the caller's own notices only (handler)
-	"/api/v1/usage-notices/":         gateTenant,  // D-044: marks the caller's own notice seen (handler)
-	"/api/v1/usage/status":           gateTenant,  // D-044: administrator only (handler)
-	"/api/v1/suspensions/deletable":  gateAccount, // admin + reseller (handler); customers refused
-	"/api/v1/transfer-requests":      gateAccount, // admin all, reseller its own, customer its own (handler)
-	"/api/v1/transfer-requests/":     gateAccount, // approver decides, requester withdraws (handler)
-	"/api/v1/system-databases":       gateAdmin,
-	"/api/v1/system-databases/":      gateAdmin,
-	"/api/v1/system/check":           gateAdmin,
-	"/api/v1/system/stats":           gateAccount,
-	"/api/v1/team-members":           gateAccount, // customers manage their own team (handler)
-	"/api/v1/team-members/":          gateAccount, // customers manage their own team (handler)
-	"/api/v1/users":                  gateAccount, // admin + reseller (handler)
-	"/api/v1/users/":                 gateAccount, // admin any, reseller own customers (handler)
-	"/api/v1/vpn/peers":              gateAccount, // ownership-checked
-	"/api/v1/vpn/peers/":             gateAccount, // ownership-checked
-	"/api/v1/vpn/setup":              gateAccount, // admin-only in handler
-	"/api/v1/vpn/status":             gateAccount,
-	"/api/v1/vpn/sync":               gateAccount, // admin-only in handler
-	"/dbtool/":                       gateAccount, // engine credentials are the real gate
-	"/webmail/":                      gatePublic,  // a redirect to webmail's own address
+	"/api/v1/my/subscription":       gateAccount, // own subscriptions only
+	"/api/v1/nginx/global":          gateAdmin,
+	"/api/v1/nginx/ratelimits":      gateAdmin,
+	"/api/v1/nginx/ssl":             gateAdmin,
+	"/api/v1/panel/certificate":     gateAdmin,
+	"/api/v1/panel/version":         gateAdmin,
+	"/api/v1/pdns/enable":           gateAdmin,
+	"/api/v1/php/config":            gateAdmin,
+	"/api/v1/php/extended-config":   gateAdmin,
+	"/api/v1/php/extensions":        gateAdmin,
+	"/api/v1/php/pool-config":       gateAdmin,
+	"/api/v1/php/pools":             gateAdmin,
+	"/api/v1/plans":                 gateAccount, // admin + reseller (handler); reseller sees global + own
+	"/api/v1/plans/":                gateAccount, // admin any plan, reseller own plans (handler)
+	"/api/v1/postfix/queue":         gateAdmin,
+	"/api/v1/postfix/summary":       gateAdmin,
+	"/api/v1/products":              gateAccount,
+	"/api/v1/reseller-plans":        gateAccount, // administrator only (handler)
+	"/api/v1/reseller-plans/":       gateAccount, // administrator only (handler)
+	"/api/v1/rights/":               gateAccount, // catalog for each account's own scope; notices admin + reseller (handler)
+	"/api/v1/repo":                  gateAdmin,
+	"/api/v1/runtimes/node":         gateAccount, // admin-only in handler
+	"/api/v1/runtimes/node/":        gateAccount, // admin-only in handler
+	"/api/v1/service/action":        gateAdmin,
+	"/api/v1/service/candidate":     gateAdmin,
+	"/api/v1/service/install":       gateAdmin,
+	"/api/v1/service/logs":          gateAdmin,
+	"/api/v1/service/operation":     gateAdmin,
+	"/api/v1/service/status":        gateAdmin,
+	"/api/v1/settings/dns-cluster":  gateTenant, // admin-only in handler
+	"/api/v1/settings/dns-setup":    gateTenant, // admin-only in handler
+	"/api/v1/settings/nameservers":  gateTenant, // admin-only in handler
+	"/api/v1/ssl/providers":         gateTenant,
+	"/api/v1/store":                 gateAccount,
+	"/api/v1/store/":                gateAccount,
+	"/api/v1/subscriptions":         gateAccount, // ownership-filtered list
+	"/api/v1/subscriptions/":        gateAccount, // ownership-checked entitlements
+	"/api/v1/security-emergencies":  gateAdmin,   // D-043; also refused under "Log in as" (handler)
+	"/api/v1/security-emergencies/": gateAdmin,   // D-043; steps need name + password (handler)
+	"/api/v1/security-notices":      gateTenant,  // the caller's own notices only (handler)
+	"/api/v1/security-notices/":     gateTenant,  // marks the caller's own notice seen (handler)
+	"/api/v1/usage-notices":         gateTenant,  // D-044: the caller's own notices only (handler)
+	"/api/v1/usage-notices/":        gateTenant,  // D-044: marks the caller's own notice seen (handler)
+	"/api/v1/usage/status":          gateTenant,  // D-044: administrator only (handler)
+	"/api/v1/suspensions/deletable": gateAccount, // admin + reseller (handler); customers refused
+	"/api/v1/transfer-requests":     gateAccount, // admin all, reseller its own, customer its own (handler)
+	"/api/v1/transfer-requests/":    gateAccount, // approver decides, requester withdraws (handler)
+	"/api/v1/system-databases":      gateAdmin,
+	"/api/v1/system-databases/":     gateAdmin,
+	"/api/v1/system/check":          gateAdmin,
+	"/api/v1/system/stats":          gateAccount,
+	"/api/v1/team-members":          gateAccount, // customers manage their own team (handler)
+	"/api/v1/team-members/":         gateAccount, // customers manage their own team (handler)
+	"/api/v1/users":                 gateAccount, // admin + reseller (handler)
+	"/api/v1/users/":                gateAccount, // admin any, reseller own customers (handler)
+	"/api/v1/vpn/peers":             gateAccount, // ownership-checked
+	"/api/v1/vpn/peers/":            gateAccount, // ownership-checked
+	"/api/v1/vpn/setup":             gateAccount, // admin-only in handler
+	"/api/v1/vpn/status":            gateAccount,
+	"/api/v1/vpn/sync":              gateAccount, // admin-only in handler
+	"/dbtool/":                      gateAccount, // engine credentials are the real gate
+	"/webmail/":                     gatePublic,  // a redirect to webmail's own address
 
 	// Own account, read-only facts and handler-checked surfaces.
 	"/api/v1/auth/email":                 gateTenant, // own address only
