@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyRound, Play, Plus, Trash2 } from 'lucide-react';
 import { Button, inputClass } from './ui';
+import { PasswordInput } from './PasswordInput';
 import { readRemote, useRemote } from '../lib/remote';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport } from '../lib/confirmAction';
@@ -101,11 +102,17 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
                         await env.retry();
                         return { state: res.status === 409 ? 'blocked' : 'failed', reason: `${apiErrorText(error, asWords(t))}${error.message ? ` (${error.message})` : ''}` };
                     }
-                    const body = await res.json().catch(() => ({})) as { restarted?: boolean };
+                    // The values are saved; an unreadable answer only leaves the restart unsaid.
+                    let restarted = false;
+                    try {
+                        restarted = ((await res.json()) as { restarted?: boolean }).restarted === true;
+                    } catch {
+                        restarted = false;
+                    }
                     answer.settle();
                     setRows(null);
                     await env.retry();
-                    return { state: 'done', message: body.restarted ? t('node.env.saved') : t('node.env.savedStopped') };
+                    return { state: 'done', message: restarted ? t('node.env.saved') : t('node.env.savedStopped') };
                 } finally {
                     progress.settle(null);
                 }
@@ -124,8 +131,13 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
                 {shown.map((row, at) => (
                     <div key={at} className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <input value={row.key} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, key: e.target.value.toUpperCase() } : r))} placeholder={t('node.env.key')} aria-label={t('node.env.key')} spellCheck={false} className={`${inputClass} font-mono sm:w-64`} />
-                        <input value={row.value} type={row.secret ? 'password' : 'text'} autoComplete="new-password" onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, value: e.target.value } : r))}
-                            placeholder={row.secret && row.saved ? t('node.env.secretKept') : t('node.env.value')} aria-label={t('node.env.value')} spellCheck={false} className={`${inputClass} font-mono`} />
+                        {row.secret ? (
+                            <PasswordInput value={row.value} autoComplete="new-password" generate={false} onChange={(value) => set(shown.map((r, i) => i === at ? { ...r, value } : r))}
+                                placeholder={row.saved ? t('node.env.secretKept') : t('node.env.value')} aria-label={t('node.env.value')} className="font-mono" />
+                        ) : (
+                            <input value={row.value} type="text" autoComplete="off" onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, value: e.target.value } : r))}
+                                placeholder={t('node.env.value')} aria-label={t('node.env.value')} spellCheck={false} className={`${inputClass} font-mono`} />
+                        )}
                         <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" className="accent-primary" checked={row.secret} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, secret: e.target.checked, saved: false } : r))} />{t('node.env.secret')}</label>
                         <Button type="button" icon={Trash2} onClick={() => set(shown.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>
                     </div>
