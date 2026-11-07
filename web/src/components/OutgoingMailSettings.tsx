@@ -143,7 +143,7 @@ export function OutgoingMailSettings() {
         if (!draft) return;
         await confirmAction({
             title: t('mout.title'),
-            message: draft.enabled ? t('mout.desc') : t('mout.state.off'),
+            message: draft.enabled ? t('mout.confirmOn') : t('mout.confirmOff'),
             confirmLabel: t('mout.save'),
             progressTitle: t('mout.progressTitle'),
             action: async (report) => {

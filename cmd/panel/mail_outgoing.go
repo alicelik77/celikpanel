@@ -431,7 +431,12 @@ func (p *Panel) applyOutgoingMail(ctx context.Context, force bool) (transport.Ou
 		case hash == record.hash && record.State == "applied":
 			return transport.OutgoingMailLimitsApplyResponse{}, false, nil
 		case hash == record.attempted && record.State != "applied":
-			if at := parseSQLiteTime(record.AttemptedAt); !at.IsZero() && time.Since(at) < outgoingRetryAfterFail {
+			// A refusal that ends without anyone touching the panel (the
+			// administrator installed postfwd from Components, another mail
+			// change finished) is asked again at the next round; a failure
+			// waits 30 minutes.
+			waitsForOthers := record.Code == transport.OutgoingMailNotInstalled || record.Code == transport.OutgoingMailBusy
+			if at := parseSQLiteTime(record.AttemptedAt); !waitsForOthers && !at.IsZero() && time.Since(at) < outgoingRetryAfterFail {
 				return transport.OutgoingMailLimitsApplyResponse{}, false, nil
 			}
 		}

@@ -131,13 +131,49 @@ func TestOutgoingRefusalIsRecordedAndRetriedLater(t *testing.T) {
 	if record.State != "refused" || record.Code != transport.OutgoingMailNotInstalled || record.hash != "" {
 		t.Fatalf("record = %+v", record)
 	}
-	// The worker does not ask again at once (retry after 30 minutes)...
+	// "Not installed" ends when the administrator installs postfwd from
+	// Components: the next round asks again without a second save.
+	if _, called, _ := f.p.applyOutgoingMail(ctx, false); !called {
+		t.Fatal("a not-installed refusal was not asked again at the next round")
+	}
+	// A failure on the server waits 30 minutes before the worker retries...
+	f.answer = transport.OutgoingMailLimitsApplyResponse{Code: transport.OutgoingMailSelfTestFailed, Error: "postfwd does not count"}
+	if _, called, _ := f.p.applyOutgoingMail(ctx, true); !called {
+		t.Fatal("a forced apply was not sent")
+	}
 	if _, called, _ := f.p.applyOutgoingMail(ctx, false); called {
-		t.Fatal("a refused state was retried at once")
+		t.Fatal("a failed state was retried at once")
 	}
 	// ...but a save asks.
 	if _, called, _ := f.p.applyOutgoingMail(ctx, true); !called {
 		t.Fatal("a forced apply was not sent")
+	}
+}
+
+// Owner direction of 7 Nov 2026 (coordinator): after the update a server
+// sends exactly as before until the administrator turns the limits on.
+func TestAfterTheUpdateNothingReachesTheServerUntilTurnedOn(t *testing.T) {
+	f := newOutgoingFixture(t)
+	activityAsked := false
+	outgoingAgentActivity = func(_ *Panel, _ context.Context, _ time.Time) (transport.OutgoingMailActivityResponse, error) {
+		activityAsked = true
+		return transport.OutgoingMailActivityResponse{Read: true}, nil
+	}
+	f.p.runOutgoingMailRound(context.Background())
+	f.p.requestOutgoingApply()
+	f.p.runOutgoingMailRound(context.Background())
+	if len(f.applied) != 0 || activityAsked {
+		t.Fatalf("an update reached the server without the administrator: applied %d, activity read %v", len(f.applied), activityAsked)
+	}
+	// Turned on, then off: the off state is sent (Postfix stops asking postfwd).
+	f.enable(t)
+	f.p.runOutgoingMailRound(context.Background())
+	if _, err := f.db.Exec(`UPDATE mail_outgoing_settings SET enabled = 0 WHERE id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	f.p.runOutgoingMailRound(context.Background())
+	if n := len(f.applied); n != 2 || !f.applied[0].Enabled || f.applied[1].Enabled {
+		t.Fatalf("applied = %+v", f.applied)
 	}
 }
 
