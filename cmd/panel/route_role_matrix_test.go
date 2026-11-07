@@ -181,6 +181,11 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/server/os-release/reviewed": gateTenant, // admin-only in handler
 	"/api/v1/support-table":              gateTenant, // the dated support table, for everyone signed in
 
+	// alpha.128 ops: G29 server maintenance.
+	"/api/v1/maintenance/clock":     gateTenant, // admin-only in handler
+	"/api/v1/maintenance/processes": gateTenant, // admin-only in handler
+	"/api/v1/maintenance/reboot":    gateTenant, // admin-only in handler
+
 	// alpha.114: forgot password, invitations, address confirmation, recovery codes.
 	"/api/v1/auth/2fa/recovery/regenerate":    gateTenant,  // own account only (signed-in self)
 	"/api/v1/auth/email/verification":         gateTenant,  // own address only

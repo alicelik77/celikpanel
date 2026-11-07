@@ -169,6 +169,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
 		Agent.StartServiceMutation Agent.SetEmergencyUnitLockV1
+		Agent.ServerRebootV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
@@ -579,6 +580,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.NodeSiteInstallV1":        agentRPCMutationTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
+
+	// alpha.128 ops: server maintenance (G29 reboot).
+	"Agent.ServerRebootV1": agentRPCQuickReadTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

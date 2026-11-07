@@ -75,7 +75,10 @@ const screenPartBudgets = {
   siteConfig: kib(52, 9),
   settings: kib(44, 13),
   mailDatabases: kib(43, 12),
-  dashboard: kib(41, 9),
+  // alpha.128 ops: Recent activity's words for the new actions took the
+  // Turkish file to 41.05 / 8.41 KiB, at its ceiling; raised to keep 25%
+  // headroom (a lazy part, not on the boot path).
+  dashboard: kib(52, 11),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),
   // v0.1.0-alpha.98: the coded refusals only screens show moved out of the

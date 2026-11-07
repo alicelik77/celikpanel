@@ -214,6 +214,7 @@ var auditActionNames = []string{
 	"security.update_origins",
 	"security.update_origins.failed",
 	"server.os_release_reviewed",
+	"server.reboot",
 	"server.setup.child",
 	"server.setup.child.failed",
 	"server.setup.complete",
