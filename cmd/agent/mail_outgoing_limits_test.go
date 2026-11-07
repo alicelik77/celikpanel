@@ -357,6 +357,35 @@ func TestApplyOutgoingMailLimitsWritesChecksProvesAndWires(t *testing.T) {
 	}
 }
 
+// alpha.128 lab (Debian 13): the Agent's umask made the list folder 0750
+// root:celikpanel, postfwd (user postfw) could not read any list and no limit
+// applied. The folder is passable for postfwd after an apply, also when it
+// existed 0750 and no list changed.
+func TestApplyOutgoingMailLimitsListFolderIsReadableForPostfwd(t *testing.T) {
+	_, layout := installFakeOutgoingHost(t)
+	if err := os.MkdirAll(layout.listDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(layout.listDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for round := 0; round < 2; round++ {
+		var resp transport.OutgoingMailLimitsApplyResponse
+		if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil || !resp.Applied {
+			t.Fatalf("round %d: %+v %v", round, resp, err)
+		}
+		info, err := os.Stat(layout.listDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o755 {
+			t.Fatalf("round %d: list folder is %o, want 0755", round, info.Mode().Perm())
+		}
+		// The second round changes no list: the folder is checked anyway.
+		_ = os.Chmod(layout.listDir, 0o750)
+	}
+}
+
 // alpha.128 lab (Debian 13, postfwd 1.35-10): postfwd2 --showconfig always
 // ends with exit status 1, so the printed rules are the check; turning the
 // limits on must not fail on a valid file.

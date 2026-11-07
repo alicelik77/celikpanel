@@ -152,6 +152,27 @@ func (l outgoingLayout) dropInContent() string {
 	return strings.Join(lines, "\n")
 }
 
+// outgoingEnsureReadableDir makes dir (CelikPanel's postfwd list folder) and
+// gives it read and pass for every account (adds 0755), whatever the umask.
+// The lists hold mailbox addresses and domain names, as Postfix's own maps
+// in /etc/postfix do.
+func outgoingEnsureReadableDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s exists and is not a directory; it was left alone", dir)
+	}
+	if perm := info.Mode().Perm(); perm&0o755 != 0o755 {
+		return os.Chmod(dir, perm|0o755)
+	}
+	return nil
+}
+
 // postfwdShownRuleRe is one rule line of postfwd --showconfig ("Rule   0: ...").
 var postfwdShownRuleRe = regexp.MustCompile(`(?m)^Rule +[0-9]+:`)
 
@@ -840,7 +861,17 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 		refuse(code, detail)
 	}
 
-	// 3. Lists, then the checked rule file.
+	// 3. Lists, then the checked rule file. postfwd runs as its own account
+	// (postfw, postfwd) and reads the lists itself: their folder must be
+	// passable by it whatever the Agent's umask (0027), also when no list
+	// changes (a folder an earlier Agent made 0750 is corrected here).
+	// alpha.128 lab: the folder was 0750 root:celikpanel, every file: lookup
+	// failed ("not found - will be ignored") and no limit ever applied,
+	// while the self-test (which matches by pattern, not by list) passed.
+	if err := outgoingEnsureReadableDir(layout.listDir); err != nil {
+		fail(transport.OutgoingMailCheckFailed, fmt.Errorf("make postfwd's list folder readable for postfwd: %s", boundedNativeDetail(err.Error())))
+		return
+	}
 	for name, content := range rendered.lists {
 		path := filepath.Join(layout.listDir, name)
 		current, exists, _ := outgoingReadOptional(path)
