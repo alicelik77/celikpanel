@@ -11,7 +11,6 @@ import { DomainSSLSettings, decodeSSLData, type SSLRuntimeSummary } from './Doma
 import { DomainSSLOverviewCard } from './DomainSSLOverviewCard';
 import { DomainConnection } from './DomainConnection';
 import { DomainFileManager } from './DomainFileManager';
-import { DomainMailManager } from './DomainMailManager';
 import { DomainDNSManager } from './DomainDNSManager';
 import { HostingTypePanel } from './HostingTypePanel';
 import { useI18n } from '../i18n';
@@ -58,6 +57,12 @@ const DomainBackupManager = lazy(() => import('./DomainBackupManager').then((mod
 })));
 const DomainCronManager = lazy(() => import('./DomainCronManager').then((module) => ({
     default: module.DomainCronManager,
+})));
+// alpha.128: the mail tab with its outgoing limits, bulk actions and domain
+// options grew past the DomainDetail chunk budget; it loads with its tab.
+// The budget is not raised. Posta sekmesi kendi sekmesiyle yüklenir.
+const DomainMailManager = lazy(() => import('./DomainMailManager').then((module) => ({
+    default: module.DomainMailManager,
 })));
 // The Databases tab is fetched when it is opened (alpha.127): the merged
 // alpha.127 work put the page 0.40 KiB over its size limit, and the limit is
