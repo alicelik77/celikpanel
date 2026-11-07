@@ -702,7 +702,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		}
 		userCreated = true
 		// alpha.128 (G5): the new user's connection limit, from its limits.
-		if err := p.applyNewUserConnectionLimit(ctx, driver, subscriptionID, selectedUser.Username); err != nil {
+		if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, selectedUser.Username); err != nil {
 			writeDatabaseEngineError(w, server, databaseMutationError(
 				fmt.Errorf("set the database user's connection limit: %w", err),
 				compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, true),
@@ -1049,7 +1049,7 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 	}
 	// alpha.128 (G5): the new user's connection limit, from its limits; a
 	// user the engine did not take the limit for is removed again.
-	if err := p.applyNewUserConnectionLimit(ctx, driver, subscriptionID, username); err != nil {
+	if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, username); err != nil {
 		writeDatabaseEngineError(w, server, errors.Join(fmt.Errorf("set the database user's connection limit: %w", err), driver.DeleteUser(username)))
 		return
 	}

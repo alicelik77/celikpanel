@@ -6,8 +6,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // Connection limits of database users (alpha.128, gap G5,
@@ -32,9 +34,11 @@ func (p *Panel) dbConnectionLimit(ctx context.Context, subscriptionID int) (int,
 	return limits.ceilingValue(settingDBConnections), nil
 }
 
-// applyNewUserConnectionLimit writes the limit for a user just created; a
-// subscription without a limit writes nothing.
-func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, driver services.DatabaseDriver, subscriptionID int, username string) error {
+// applyNewUserConnectionLimit writes the limit for a user just created on
+// server through driver; a subscription without a limit writes nothing. A
+// PostgreSQL limit goes to the role's own running cluster
+// (connectionLimiterFor), never to whichever cluster answers.
+func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver, subscriptionID int, username string) error {
 	limit, err := p.dbConnectionLimit(ctx, subscriptionID)
 	if err != nil {
 		return fmt.Errorf("read the connection limit: %w", err)
@@ -42,11 +46,88 @@ func (p *Panel) applyNewUserConnectionLimit(ctx context.Context, driver services
 	if limit == 0 {
 		return nil
 	}
-	limiter, ok := driver.(services.ConnectionLimiter)
+	limiter, ok, err := p.connectionLimiterFor(ctx, server, driver, p.pgClustersOnce(ctx))
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return nil // an engine without per-user connection limits
 	}
 	return limiter.SetUserConnectionLimit(username, limit)
+}
+
+// pgClustersOnce reads this server's PostgreSQL clusters at most once, when
+// a PostgreSQL limit is first written.
+func (p *Panel) pgClustersOnce(ctx context.Context) func() transport.PostgreSQLClustersResponse {
+	var (
+		read     bool
+		clusters transport.PostgreSQLClustersResponse
+	)
+	return func() transport.PostgreSQLClustersResponse {
+		if !read {
+			clusters, read = p.readPGClustersForPlacement(ctx), true
+		}
+		return clusters
+	}
+}
+
+// connectionLimiterFor is the driver that writes a user's limit on the
+// user's own server. MariaDB: driver (or, nil, the record's own). PostgreSQL
+// on this machine follows the alpha.127 placement rule: the cluster the
+// record names (by name; by port only for a record made before schema 46)
+// when it runs, reached at that cluster's own port. A record whose cluster
+// does not run, or is not on this server, is a typed refusal and nothing is
+// written; the limit is written at the next change. Where the clusters
+// cannot be read (no postgresql-common, one PostgreSQL) or the engine is on
+// another machine, the record as it is, as every other statement.
+//
+// PostgreSQL sınırı rolün kendi çalışan kümesine gider; o küme çalışmıyorsa
+// hiçbir şey yazılmaz.
+func (p *Panel) connectionLimiterFor(ctx context.Context, server *core.DatabaseServer, driver services.DatabaseDriver, clusters func() transport.PostgreSQLClustersResponse) (services.ConnectionLimiter, bool, error) {
+	if dbDriverTypeFor(server) == "postgresql" && databaseEngineIsOnThisMachine(server.Host) {
+		if read := clusters(); read.Supported {
+			port, err := p.pgRoleClusterPort(ctx, server, read.Clusters)
+			if err != nil {
+				return nil, false, err
+			}
+			if port != server.Port || driver == nil {
+				placed := *server
+				placed.Port = port
+				placedDriver, err := p.dbDriverFor(&placed)
+				if err != nil {
+					return nil, false, err
+				}
+				driver = placedDriver
+			}
+		}
+	}
+	if driver == nil {
+		recordDriver, err := p.dbDriverFor(server)
+		if err != nil {
+			return nil, false, err
+		}
+		driver = recordDriver
+	}
+	limiter, ok := driver.(services.ConnectionLimiter)
+	return limiter, ok, nil
+}
+
+// pgRoleClusterPort is the port of the running cluster a PostgreSQL record
+// names, or the refusal that says why its roles cannot be reached.
+func (p *Panel) pgRoleClusterPort(ctx context.Context, server *core.DatabaseServer, clusters []transport.PostgreSQLCluster) (int, error) {
+	record := pgServerRecord{ID: server.ID, SubscriptionID: server.SubscriptionID, Port: server.Port, Host: server.Host}
+	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT COALESCE(cluster, '') FROM database_servers WHERE id = ?`, server.ID).Scan(&record.Cluster); err != nil {
+		return 0, fmt.Errorf("read the cluster of PostgreSQL record %d: %w", server.ID, err)
+	}
+	cluster, ok := pgClusterOfRecord(record, clusters)
+	if !ok {
+		return 0, &pgClusterRefusalError{refusal: transport.DatabaseClusterRefusal{Reason: "none", Cluster: record.Cluster, Port: record.Port}}
+	}
+	if !cluster.Online {
+		refusal := pgClusterRefusal([]pgSubscriptionRecord{{pgServerRecord: record}}, clusters)
+		return 0, &pgClusterRefusalError{refusal: *refusal}
+	}
+	return cluster.Port, nil
 }
 
 // reapplyDBConnectionLimits writes the current limit for every database
@@ -73,6 +154,7 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 	}
 	db := p.db.GetDB()
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(db)
+	clusters := p.pgClustersOnce(ctx)
 	for _, subID := range subscriptionIDs {
 		limit, err := p.dbConnectionLimit(ctx, subID)
 		if err != nil {
@@ -103,12 +185,11 @@ func (p *Panel) reapplyDBConnectionLimitsNow(ctx context.Context, subscriptionID
 				log.Printf("database connection limit of %s: server %d: %v", u.username, u.server, err)
 				continue
 			}
-			driver, err := p.dbDriverFor(server)
+			limiter, ok, err := p.connectionLimiterFor(ctx, server, nil, clusters)
 			if err != nil {
-				log.Printf("database connection limit of %s: %v", u.username, err)
+				log.Printf("database connection limit of %s stays as it was until the next change: %v", u.username, err)
 				continue
 			}
-			limiter, ok := driver.(services.ConnectionLimiter)
 			if !ok {
 				continue
 			}
