@@ -12,6 +12,7 @@ import { MailSettingsPanel } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 import { confirmAction } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
+import { runBulk, type BulkOutcome, type BulkTarget } from '../lib/bulkMailbox';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 
@@ -243,6 +244,56 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             },
         });
     };
+
+    // alpha.128 (G20): several mailboxes at once. One confirmation, one real
+    // server call and one step per mailbox; the list is read again after.
+    const [selected, setSelected] = useState<Set<number>>(() => new Set());
+    const [bulkMode, setBulkMode] = useState<'default' | 'custom' | 'unlimited'>('default');
+    const [bulkPerHour, setBulkPerHour] = useState(100);
+    const [bulkLimitOpen, setBulkLimitOpen] = useState(false);
+    useEffect(() => { setSelected(new Set()); setBulkLimitOpen(false); }, [domainId, activeTab]);
+    const toggleSelected = (id: number) => setSelected((current) => {
+        const next = new Set(current);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+    const outcomeOf = async (res: Response): Promise<BulkOutcome> => {
+        if (res.ok) return { ok: true };
+        return { ok: false, reason: (await readApiError(res)).message || t('common.error') };
+    };
+    const runBulkAction = async (accounts: EmailAccount[], title: string, message: string, label: TranslationKey, tone: 'default' | 'danger',
+        call: (account: EmailAccount) => Promise<Response>) => {
+        const targets: BulkTarget[] = accounts.filter((a) => selected.has(a.id)).map((a) => ({ id: a.id, label: a.address }));
+        if (readOnly || targets.length === 0) return;
+        await confirmAction({
+            title, message, tone, confirmLabel: title, progressTitle: title,
+            action: async (report) => {
+                const byID = new Map(accounts.map((a) => [a.id, a]));
+                const result = await runBulk(targets, async (target) => outcomeOf(await call(byID.get(target.id)!)),
+                    (steps) => report.steps(steps),
+                    { stepLabel: (target) => t(label, { name: target.label }), unknownNote: t('common.resultUnknown'), notStartedNote: t('mail.bulk.notStarted') });
+                invalidate('mail');
+                setSelected(new Set());
+                if (result.unknown !== null) return { state: 'unknown', reason: t('common.resultUnknown') };
+                if (result.refused.length > 0) return { state: 'failed', reason: t('mail.bulk.someRefused', { done: result.done.length, refused: result.refused.length }) };
+                return { state: 'done', message: t('mail.bulk.done', { n: result.done.length }) };
+            },
+        });
+    };
+    const bulkLimit = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.limitTitle', { n: selected.size }),
+        t('mail.bulk.limitConfirm', { n: selected.size }), 'mail.bulk.limitStep', 'default',
+        (account) => fetch(`/api/v1/domains/${domainId}/mail/outgoing`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: account.id, mode: bulkMode, per_hour: bulkMode === 'custom' ? bulkPerHour : 0 }),
+        }));
+    const bulkEmpty = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.emptyTitle', { n: selected.size }),
+        t('mail.bulk.emptyConfirm', { n: selected.size }), 'mail.bulk.emptyStep', 'danger',
+        (account) => fetch(`/api/v1/domains/${domainId}/mail/accounts/empty`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: account.id }),
+        }));
+    const bulkDelete = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.deleteTitle', { n: selected.size }),
+        t('mail.bulk.deleteConfirm', { n: selected.size }), 'mail.bulk.deleteStep', 'danger',
+        (account) => fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${account.id}`, { method: 'DELETE' }));
 
     // alpha.128 (G20): every message of one mailbox removed by Dovecot; the
     // mailbox, its password and settings stay. Asked first, then the server's steps.
@@ -482,10 +533,40 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             {quotaRead.remote.state === 'unknown' && (
                                 <CouldNotCheck className="mb-3" text={t('mail.quota.unknown')} onRetry={() => void quotaRead.retry()} busy={quotaRead.reading} />
                             )}
+                        {!readOnly && selected.size > 0 && (
+                            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-2/50 p-2 text-sm" data-mail-bulk={selected.size}>
+                                <span className="px-1 text-fg">{t('mail.bulk.selected', { n: selected.size })}</span>
+                                <Button type="button" disabled={stale} onClick={() => setBulkLimitOpen((open) => !open)}>{t('mail.bulk.limit')}</Button>
+                                <Button type="button" disabled={stale} onClick={() => void bulkEmpty(accounts)}>{t('mail.bulk.empty')}</Button>
+                                <Button type="button" variant="danger" disabled={stale} onClick={() => void bulkDelete(accounts)}>{t('mail.bulk.delete')}</Button>
+                                <Button type="button" onClick={() => setSelected(new Set())}>{t('mail.cancel')}</Button>
+                                {bulkLimitOpen && (
+                                    <span className="flex w-full flex-wrap items-center gap-2">
+                                        <select className={`${inputClass} w-auto`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
+                                            <option value="default">{t('mail.bulk.modeDefault')}</option>
+                                            <option value="custom">{t('mail.bulk.modeCustom')}</option>
+                                            <option value="unlimited">{t('mail.bulk.modeUnlimited')}</option>
+                                        </select>
+                                        {bulkMode === 'custom' && (
+                                            <input type="number" min={1} value={bulkPerHour} aria-label={t('mail.bulk.perHour')}
+                                                onChange={(event) => setBulkPerHour(Math.max(1, parseInt(event.target.value, 10) || 1))} className={`${inputClass} w-28`} />
+                                        )}
+                                        <Button type="button" variant="primary" onClick={() => void bulkLimit(accounts)}>{t('mail.bulk.apply')}</Button>
+                                    </span>
+                                )}
+                            </div>
+                        )}
                         <div className="overflow-x-auto rounded-lg border border-border">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-border text-left text-xs font-semibold text-fg-muted">
+                                        {!readOnly && (
+                                            <th className="w-8 py-2.5 pl-4">
+                                                <input type="checkbox" className="h-4 w-4" aria-label={t('mail.bulk.selectAll')} disabled={stale}
+                                                    checked={accounts.length > 0 && accounts.every((a) => selected.has(a.id))}
+                                                    onChange={(event) => setSelected(event.target.checked ? new Set(accounts.map((a) => a.id)) : new Set())} />
+                                            </th>
+                                        )}
                                         <th className="px-4 py-2.5">{t('mail.col.address')}</th>
                                         <th className="px-4 py-2.5">{t('mail.col.quota')}</th>
                                         <th className="w-44 px-4 py-2.5">{t('mail.col.usage')}</th>
@@ -498,6 +579,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                         const usedMB = usage?.available ? usage.used_kb / 1024 : null;
                                         return (
                                             <tr key={a.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
+                                                {!readOnly && (
+                                                    <td className="w-8 py-2.5 pl-4">
+                                                        <input type="checkbox" className="h-4 w-4" checked={selected.has(a.id)} disabled={stale}
+                                                            aria-label={t('mail.bulk.select', { name: a.address })} onChange={() => toggleSelected(a.id)} />
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-2.5">
                                                     <span className="flex items-center gap-2 font-medium text-fg">
                                                         <AtSign className="h-4 w-4 text-fg-subtle" />

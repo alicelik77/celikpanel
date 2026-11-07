@@ -67,6 +67,8 @@ const stub = dataModule(`
   export const OutgoingMailSettings = () => null;
   export const OutgoingMailNotices = () => null;
   export const MailPlanLimits = () => null;
+  // alpha.128: bulk mailbox actions run only after a confirmation; not under test here.
+  export const runBulk = async () => ({ done: [], refused: [], unknown: null, notStarted: [] });
   // alpha.108: the PostgreSQL clusters card has its own mounted tests.
   export const PostgreSQLClustersCard = () => null;
   // What components/ComponentOperation.tsx imports and never calls here: only
