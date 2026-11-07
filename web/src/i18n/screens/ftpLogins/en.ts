@@ -74,6 +74,7 @@ export const enFtpLoginsScreens = {
     'ftpLogins.block.ftpMissing': 'FTP is not installed on this server, so logins use SFTP. Your provider installs FTP if you need it.',
     'ftpLogins.block.ftpOwner': 'FTP (vsftpd) was configured by hand on this server, so CelikPanel does not add logins to it; logins use SFTP.',
     'ftpLogins.warn.sftp_password_off': 'This server accepts only keys for SFTP, and logins have passwords: they connect with FTP over TLS.',
+    'ftpLogins.warn.sftp_shell_refused': 'This server’s own sign-in rules refuse SSH for accounts without a command line (pam_shells, as on Arch Linux), so logins connect with FTP over TLS; SFTP with a password is refused. CelikPanel does not change that rule.',
     'ftpLogins.warn.ftp_not_installed': 'FTP is not installed on this server; the login uses SFTP.',
     'ftpLogins.warn.ftp_owner_config': 'FTP is configured by hand on this server, so the login was not added to it; it uses SFTP.',
     'ftpLogins.warn.ftp_rejected': 'FTP could not be updated; the previous FTP settings are back and the login uses SFTP. The server administrator checks vsftpd.',

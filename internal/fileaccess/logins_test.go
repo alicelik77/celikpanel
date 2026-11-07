@@ -189,3 +189,13 @@ func TestVsftpdListsLoginsAndChrootsThemThroughTheirHome(t *testing.T) {
 		t.Fatalf("home %s", LoginHome("anna-uploads"))
 	}
 }
+
+func TestVsftpdOnArchRunsWithoutTheSeccompSandbox(t *testing.T) {
+	params := VsftpdParams{CertFile: "/c.pem", KeyFile: "/k.pem", SecureChrootDir: "/usr/share/empty", NoSeccomp: VsftpdNeedsNoSeccomp("pacman")}
+	arch, _ := RenderVsftpdConf(params)
+	params.NoSeccomp = VsftpdNeedsNoSeccomp("apt")
+	debian, _ := RenderVsftpdConf(params)
+	if !strings.Contains(arch, "\nseccomp_sandbox=NO\n") || strings.Contains(debian, "seccomp_sandbox") {
+		t.Fatalf("seccomp: arch=%v debian=%v", strings.Contains(arch, "seccomp"), strings.Contains(debian, "seccomp"))
+	}
+}

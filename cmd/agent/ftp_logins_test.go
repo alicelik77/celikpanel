@@ -23,6 +23,9 @@ func installFTPLoginSeams(t *testing.T, host *fileAccessFakeHost) {
 		ftpLoginCheckSiteFolder, ftpLoginCheckFolder, ftpLoginEnsureHelper, ftpLoginJailMounted, ftpLoginProbeFTP, ftpLoginKillSessions, fileAccessGroupPath =
 			savedSite, savedFolder, savedHelper, savedMounted, savedProbe, savedKill, savedGroup
 	})
+	savedShells := ftpLoginSFTPShellRefused
+	t.Cleanup(func() { ftpLoginSFTPShellRefused = savedShells })
+	ftpLoginSFTPShellRefused = func() bool { return false }
 	ftpLoginCheckSiteFolder = func(string, string) error { return nil }
 	ftpLoginCheckFolder = func(sandboxbind.FTPRequest) error { return nil }
 	ftpLoginEnsureHelper = func() error { return nil }
