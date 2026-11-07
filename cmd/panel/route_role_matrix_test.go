@@ -308,6 +308,10 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/panel/sessions":           gateAdmin,
 	"/api/v1/panel/sessions/end":       gateAdmin,
 	"/api/v1/panel/access":             gateAdmin,
+	// A reseller's customers' sessions (handler: reseller only; scope:
+	// own customers and their team members).
+	"/api/v1/reseller/sessions":     gateAccount,
+	"/api/v1/reseller/sessions/end": gateAccount,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

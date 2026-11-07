@@ -287,3 +287,75 @@ func TestOwnSessionsListEndAndEndOthers(t *testing.T) {
 		t.Fatal("another account's session was ended through the own route")
 	}
 }
+
+func TestResellerSeesAndEndsOnlyTheirCustomersSessions(t *testing.T) {
+	panel, adminToken := sessionsTestPanel(t)
+	db := panel.db.GetDB()
+	ctx := context.Background()
+	for _, statement := range []string{
+		`INSERT INTO users (id, username, password_hash, email, role, status) VALUES (5001, 'res1', 'x', 'r1@example.test', 'reseller', 'active')`,
+		`INSERT INTO users (id, username, password_hash, email, role, status) VALUES (5002, 'res2', 'x', 'r2@example.test', 'reseller', 'active')`,
+		`INSERT INTO users (id, username, password_hash, email, role, status, parent_id) VALUES (5011, 'cust1', 'x', 'c1@example.test', 'customer', 'active', 5001)`,
+		`INSERT INTO users (id, username, password_hash, email, role, status, parent_id) VALUES (5021, 'cust2', 'x', 'c2@example.test', 'customer', 'active', 5002)`,
+		`INSERT INTO users (id, username, password_hash, email, role, account_type, parent_id, status) VALUES (5012, 'member1', 'x', 'm1@example.test', 'customer', 'additional_user', 5011, 'active')`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+	resellerToken, _ := panel.sessions.Create(ctx, 5001)
+	own, _ := panel.sessions.Create(ctx, 5011)
+	member, _ := panel.sessions.Create(ctx, 5012)
+	foreign, _ := panel.sessions.Create(ctx, 5021)
+	byAdmin, err := panel.sessions.CreateImpersonation(ctx, 5011, authHandlerTestUserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := func(handler http.HandlerFunc, method, path, body string, caller *Caller) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(method, path, strings.NewReader(body))
+		request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: resellerToken})
+		request = request.WithContext(context.WithValue(request.Context(), callerKey, caller))
+		recorder := httptest.NewRecorder()
+		handler(recorder, request)
+		return recorder
+	}
+	reseller := &Caller{ID: 5001, Role: roleReseller}
+	got := call(panel.handleResellerSessions, http.MethodGet, resellerSessionsPath, "", reseller)
+	var report sessionsReport
+	if err := json.Unmarshal(got.Body.Bytes(), &report); err != nil {
+		t.Fatalf("%d %s", got.Code, got.Body)
+	}
+	seen := map[string]bool{}
+	for _, session := range report.Sessions {
+		seen[session.Handle] = true
+	}
+	if len(report.Sessions) != 2 || !seen[auth.SessionHandle(own)] || !seen[auth.SessionHandle(member)] {
+		t.Fatalf("reseller scope: %s", got.Body)
+	}
+	if seen[auth.SessionHandle(foreign)] || seen[auth.SessionHandle(byAdmin)] || seen[auth.SessionHandle(adminToken)] || seen[auth.SessionHandle(resellerToken)] {
+		t.Fatal("the reseller saw a session outside their customers")
+	}
+	// Another reseller's customer cannot be ended.
+	_ = call(panel.handleResellerSessionEnd, http.MethodPost, resellerSessionEndPath, `{"handle":"`+auth.SessionHandle(foreign)+`"}`, reseller)
+	if lastSeen(t, panel, foreign) == "gone" {
+		t.Fatal("a reseller ended another reseller's customer's session")
+	}
+	_ = call(panel.handleResellerSessionEnd, http.MethodPost, resellerSessionEndPath, `{"handle":"`+auth.SessionHandle(byAdmin)+`"}`, reseller)
+	if lastSeen(t, panel, byAdmin) == "gone" {
+		t.Fatal("a reseller ended the administrator's Log in as session")
+	}
+	if got := call(panel.handleResellerSessionEnd, http.MethodPost, resellerSessionEndPath, `{"handle":"`+auth.SessionHandle(member)+`"}`, reseller); got.Code != http.StatusOK {
+		t.Fatalf("end: %d %s", got.Code, got.Body)
+	}
+	if lastSeen(t, panel, member) != "gone" {
+		t.Fatal("the customer's team member's session was not ended")
+	}
+	// A customer is refused; under "Log in as" ending is refused.
+	if got := call(panel.handleResellerSessions, http.MethodGet, resellerSessionsPath, "", &Caller{ID: 5011, Role: roleCustomer}); got.Code != http.StatusForbidden {
+		t.Fatalf("customer: %d", got.Code)
+	}
+	if got := call(panel.handleResellerSessionEnd, http.MethodPost, resellerSessionEndPath, `{"handle":"`+auth.SessionHandle(own)+`"}`,
+		&Caller{ID: 5001, Role: roleReseller, ImpersonatorID: authHandlerTestUserID}); got.Code != http.StatusConflict {
+		t.Fatalf("impersonating: %d", got.Code)
+	}
+}

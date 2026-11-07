@@ -64,7 +64,7 @@ const stubbedComponents = [
   'NotificationsCenter', 'NotificationPreferencesCard', 'NotificationSettingsCard',
   // alpha.128 (G4): the sessions and panel access cards read their own
   // addresses; My account and Security load them lazily.
-  'OwnSessionsCard', 'PanelAccessCard', 'AllSessionsCard',
+  'OwnSessionsCard', 'CustomerSessionsCard', 'PanelAccessCard', 'AllSessionsCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {

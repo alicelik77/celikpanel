@@ -29,6 +29,7 @@ const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations')
 const ActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityCard })));
 // alpha.128 ops (G4): this account's signed-in sessions, in its own chunk.
 const OwnSessionsCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.OwnSessionsCard })));
+const CustomerSessionsCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.CustomerSessionsCard })));
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -66,6 +67,7 @@ export function AccountPage() {
                 {role === 'admin' && <Suspense fallback={null}><NotificationSettingsCard /></Suspense>}
                 <TwoFactorPanel />
                 <Suspense fallback={null}><OwnSessionsCard /></Suspense>
+                {role === 'reseller' && <Suspense fallback={null}><CustomerSessionsCard /></Suspense>}
             </div>
         </div>
     );

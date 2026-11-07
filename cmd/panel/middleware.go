@@ -375,6 +375,8 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/suspensions",
 		"/api/v1/vpn",
 		"/api/v1/runtimes",
+		// alpha.128 (G4): a reseller's customers' sessions.
+		"/api/v1/reseller",
 		"/dbtool",
 	} {
 		if path == root || strings.HasPrefix(path, root+"/") {

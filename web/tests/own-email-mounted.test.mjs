@@ -54,7 +54,7 @@ const stub = dataModule(`
   // alpha.128: the notifications list and cards have their own tests (notifications-alpha128).
   export const NotificationsCenter = () => null, NotificationPreferencesCard = () => null, NotificationSettingsCard = () => null;
   // alpha.128 (G4): the sessions card has its own address.
-  export const OwnSessionsCard = () => null;
+  export const OwnSessionsCard = () => null, CustomerSessionsCard = () => null;
   // alpha.117: a customer's transfer request reads its own addresses.
   export const TransferRequestCard = () => null;
   export const useAuth = () => ({ role: 'admin' });
