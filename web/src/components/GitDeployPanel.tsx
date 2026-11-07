@@ -5,6 +5,8 @@ import { readRemote, useRemote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction, type OperationEnd, type OperationReport } from '../lib/confirmAction';
 import { useWebWords } from '../i18n/webSettings';
+import { useAuth } from '../auth/AuthContext';
+import { useNavigate } from '../router';
 import type { TranslationKey } from '../i18n/en';
 
 // Git deploy of the site (alpha.128, PLESK-GAP G32): a repository (https://
@@ -37,6 +39,10 @@ export function GitDeployPanel({ domainId, domainName }: { domainId: number; dom
     const words = t as unknown as (key: TranslationKey, values?: Record<string, string | number>) => string;
     const url = `/api/v1/domains/${domainId}/git`;
     const view = useRemote(url, decodeGit);
+    const { role } = useAuth();
+    const navigate = useNavigate();
+    // alpha.128 lab: git missing is the administrator's one click in Components.
+    const gitFix = role === 'admin' ? { label: t('git.installGit'), run: () => navigate('/components?component=git&install=') } : undefined;
     const [edit, setEdit] = useState<Settings | null>(null);
     const [publicKey, setPublicKey] = useState('');
     const [problem, setProblem] = useState('');
@@ -113,6 +119,9 @@ export function GitDeployPanel({ domainId, domainName }: { domainId: number; dom
                     if (started.reason === 'deploy_running') return follow(report, since);
                     if (!started.phase) {
                         setRequestID(newRequestID());
+                        if (started.reason === 'git_missing') {
+                            return { state: 'blocked', reason: t(role === 'admin' ? 'git.missingAdmin' : 'git.missingOther'), fix: gitFix };
+                        }
                         return { state: 'blocked', reason: started.error || t('git.failed') };
                     }
                     const end = await follow(report, since);

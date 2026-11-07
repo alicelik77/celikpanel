@@ -57,6 +57,17 @@ Kurallar:
 | Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
 |---|---|---|---|---|---|
 | 🔐 WireGuard VPN | Servis | `wireguard` | `wireguard-tools` | — | — |
+
+### Web
+
+| Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
+|---|---|---|---|---|---|
+| 🌿 Git | Araç | `git` | `git` | — | — |
+
+### Güvenlik
+
+| Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
+|---|---|---|---|---|---|
 | 🔐 Let's Encrypt client (certbot) | Araç | `certbot` | `certbot` | — | — |
 | 🚫 Fail2ban | Servis | `fail2ban` | `fail2ban` | — | Firewall engine |
 | 🧱 Firewall engine | Araç | `nftables` | `nftables` | — | — |

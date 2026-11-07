@@ -696,6 +696,28 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
             ],
         },
     },
+    'git': {
+        tr: {
+            what: 'Git, sürüm denetimi istemcisidir. CelikPanel onu sitelerin Git ile dağıtımı için kullanır: bir HTTPS ya da SSH deposundan sitenin klasörüne kodu çeker. Kendine ait bir hizmeti yoktur; yalnız dağıtım sırasında, sitenin korumalı alanında çalışır.',
+            tips: [
+                'Dağıtımın ayarları sitenin Git sekmesindedir; SSH deposu için orada bir dağıtım anahtarı oluşturulur.',
+                'Kaldırırsanız siteler çalışmaya devam eder; yalnız yeni Git dağıtımı yapılamaz.',
+            ],
+            troubleshoot: [
+                { symptom: 'Dağıtım "git kurulu değil" diyor.', fix: 'Git\'i buradan kurun, sonra dağıtımı yeniden başlatın.' },
+            ],
+        },
+        en: {
+            what: 'Git is a version control client. CelikPanel uses it for Git deployment of sites: it fetches code from an HTTPS or SSH repository into the site\'s folder. It has no service of its own; it runs only during a deployment, inside the site\'s sandbox.',
+            tips: [
+                'The deployment settings are on the site\'s Git tab; a deploy key for an SSH repository is made there.',
+                'If you remove it, sites keep running; only new Git deployments cannot run.',
+            ],
+            troubleshoot: [
+                { symptom: 'A deployment says git is not installed.', fix: 'Install Git here, then start the deployment again.' },
+            ],
+        },
+    },
     'spamassassin': {
         tr: {
             what: 'SpamAssassin, Rspamd ile aynı koltuğa oturabilen köklü bir istenmeyen posta filtresidir: Postfix\'e gelen iletileri puanlar ve çöpü posta kutularından uzak tutar. Kural setini tercih ediyorsanız ya da onu zaten iyi tanıyorsanız seçin; aksi halde daha modern olan Rspamd genelde ilk tercihtir. Aynı anda yalnızca bir spam filtresi etkin olmalı.',
