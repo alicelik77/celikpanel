@@ -83,6 +83,22 @@ const DomainSiteProtect = lazy(() => import('./DomainSiteFeatures').then((module
 const DomainSiteRedirects = lazy(() => import('./DomainSiteFeatures').then((module) => ({
     default: module.DomainSiteRedirects,
 })));
+// How long the site's logs are kept (alpha.128), beside the Logs viewer.
+const LogRetentionCard = lazy(() => import('./LogRetentionCard').then((module) => ({
+    default: module.LogRetentionCard,
+})));
+// Git deploy of the site (alpha.128), fetched when opened.
+const GitDeployPanel = lazy(() => import('./GitDeployPanel').then((module) => ({
+    default: module.GitDeployPanel,
+})));
+// Copying the website into another site (alpha.128), fetched when opened.
+const SiteCopyPanel = lazy(() => import('./SiteCopyPanel').then((module) => ({
+    default: module.SiteCopyPanel,
+})));
+// The site's web server settings (alpha.128), fetched when the sub-tab opens.
+const DomainWebSettings = lazy(() => import('./DomainWebSettings').then((module) => ({
+    default: module.DomainWebSettings,
+})));
 // The site's configuration file (D-031), for an administrator; fetched when
 // it is needed, like the panels above.
 // Sitenin yapılandırma dosyası; gerektiğinde getirilir.
@@ -420,6 +436,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('files') && open('site_protect_redirects') && projectType !== 'forwarding' ? [
             { id: 'redirects', labelKey: 'siteFeatures.redirect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteRedirects domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
         ] : []),
+        ...(canView('files') && projectType !== 'forwarding' ? [
+            { id: 'web', labelKey: 'siteFeatures.web.title', capabilities: ['files'], render: (readOnly) => <DomainWebSettings domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
+        ] : []),
         ...(role === 'admin' ? [
             { id: 'config', labelKey: 'siteConfig.tab', capabilities: ['files'], render: () => <DomainSiteConfig domainId={domain.id} domainName={domain.domain_name} onReasonEnded={rereadList} /> } satisfies SubDef,
         ] : []),
@@ -446,7 +465,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const advancedSubs: SubDef[] = [
         ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
-        ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <div className="space-y-4">{!isTeamMember && <LogRetentionCard domainId={domain.id} />}<DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /></div> } satisfies SubDef] : []),
+        ...(!isTeamMember && (projectType === 'php' || projectType === 'static' || projectType === 'node') && open('file_manager') ? [{ id: 'git', labelKey: 'siteFeatures.git.title', render: () => <GitDeployPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
+        ...(!isTeamMember && !isDnsOnly && projectType !== 'forwarding' && open('file_manager') ? [{ id: 'copy', labelKey: 'siteFeatures.copy.title', render: () => <SiteCopyPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
         ...(!isTeamMember && !isDnsOnly && (role === 'admin' || open('malware_scan')) ? [{ id: 'malware', labelKey: 'mscan.title', render: () => <DomainMalwareScan domainId={domain.id} /> } satisfies SubDef] : []),
     ];
     const tabs: TabDef[] = [

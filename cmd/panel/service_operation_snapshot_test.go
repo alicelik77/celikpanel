@@ -1441,6 +1441,12 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the web server settings (migration 68, alpha.128).
+        DROP TABLE git_deploy_settings;
+        DROP TABLE log_retention_subscriptions;
+        DROP TABLE log_retention_plans;
+        DROP TABLE node_site_env;
+        DROP TABLE site_web_settings;
         -- Reverse the outgoing mail limits (migration 67, alpha.128).
         DROP TRIGGER mail_plan_limits_follow_subscription;
         DROP TRIGGER mail_outgoing_notices_follow_user;

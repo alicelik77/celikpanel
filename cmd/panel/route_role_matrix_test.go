@@ -103,6 +103,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/metrics/history":        gateAdmin,
 	"/api/v1/metrics/problems":       gateAdmin,
 
+	// alpha.128: offering additional nginx directives (admin through /api/v1/nginx/).
+	"/api/v1/nginx/directives-offer": gateAdmin,
+
 	// alpha.127: monitoring stage 2 and 3 (admin through the /api/v1/metrics/ prefix).
 	"/api/v1/metrics/services":        gateAdmin,
 	"/api/v1/metrics/sites":           gateAdmin,

@@ -38,6 +38,41 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.NodeSiteInstallV1(&transport.NodeSiteInstallRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.128: a Node.js site's environment file.
+		{name: "NodeSiteEnvV1", run: func(expected string) string {
+			var response transport.RuntimeAppStepResponse
+			_ = agent.NodeSiteEnvV1(&transport.NodeSiteEnvRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: a site's page cache.
+		{name: "SitePageCacheClearV1", run: func(expected string) string {
+			var response transport.SitePageCacheClearResponse
+			_ = agent.SitePageCacheClearV1(&transport.SitePageCacheClearRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: site log retention.
+		{name: "SiteLogRetentionV1", run: func(expected string) string {
+			var response transport.SiteLogRetentionResponse
+			_ = agent.SiteLogRetentionV1(&transport.SiteLogRetentionRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: website copying.
+		{name: "SiteCopyV1", run: func(expected string) string {
+			var response transport.SiteCopyResponse
+			_ = agent.SiteCopyV1(&transport.SiteCopyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: Git deploy.
+		{name: "GitDeployKeyV1", run: func(expected string) string {
+			var response transport.GitDeployKeyResponse
+			_ = agent.GitDeployKeyV1(&transport.GitDeployKeyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "GitDeployV1", run: func(expected string) string {
+			var response transport.GitDeployResponse
+			_ = agent.GitDeployV1(&transport.GitDeployRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		// alpha.118: WordPress tools and the malware quarantine.
 		{name: "WordPressUpdateV1", run: func(expected string) string {
 			var response transport.WordPressUpdateResponse

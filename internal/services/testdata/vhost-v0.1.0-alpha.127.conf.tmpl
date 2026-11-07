@@ -1,0 +1,542 @@
+# Nginx vhost for {{.Domain}}
+# Written by CelikPanel. Put your own additions in {{.OwnerIncludeDir}}/*.conf;
+# CelikPanel never writes there. If you change this file, CelikPanel keeps
+# your file and asks you before it replaces it. Keep the lines that include
+# {{.PanelManagedDir}}: that directory is CelikPanel's (certificate
+# validation) and CelikPanel writes there without touching this file.
+# CelikPanel yazdı. Kendi eklemeleriniz {{.OwnerIncludeDir}}/*.conf içine;
+# CelikPanel oraya hiç yazmaz. Bu dosyayı değiştirirseniz CelikPanel
+# dosyanızı korur ve değiştirmeden önce size sorar. {{.PanelManagedDir}}
+# satırlarını koruyun: o dizin CelikPanel'indir (sertifika doğrulaması).
+# Site ID: {{.SiteID}} · Project type: {{.ProjectType}}
+
+{{- /* Password-protected folders and free-form redirects of the site
+    (alpha.114). Empty, and writing nothing, for a site that has neither, so
+    such a site's file is exactly what it was. Every value was validated by
+    PrepareSiteFeatures (internal/services/site_features.go); none is escaped
+    here because none can carry nginx syntax.
+    A protected folder is a `^~` location: it ends the search among the regular
+    expression locations, so the folder's own PHP/dotfile rules are repeated
+    inside it, under the same sign-in. The folder without its trailing slash is
+    sent to the slash first, so no address of the folder escapes the sign-in.
+    A folder redirect carries the rest of the address over from
+    $request_uri (the raw, still percent-encoded address), never from $uri:
+    $uri is decoded and would let a CR/LF into the Location header. Without
+    "keep query" the rest is the path up to the "?" and the pattern has no end
+    anchor: with an end anchor a request with a query string (/blog/post?q=1)
+    did not match and fell through to the bare target (alpha.114 lab, E5).
+    Parolalı klasörler ve serbest yönlendirmeler (alpha.114). Hiçbiri yoksa
+    hiçbir şey yazılmaz. Değerlerin hepsi doğrulanmıştır; kaçışlama yoktur çünkü
+    hiçbiri nginx sözdizimi taşıyamaz. Klasör yönlendirmesi adresin kalanını
+    $uri'den değil ham $request_uri'den taşır: $uri çözülmüştür ve Location
+    başlığına CR/LF sokabilir. */}}
+{{- define "site-features"}}
+{{- range .Redirects}}
+
+    # Redirect / Yönlendirme: {{.Source}}
+    location = {{.Source}} {
+        return {{.Code}} {{.Target}}{{if .KeepQuery}}$is_args$args{{end}};
+    }
+{{- if eq .Match "prefix"}}
+    location ^~ {{.Source}}/ {
+        if ($request_uri ~ ^{{.SourceRegex}}/(?<celikpanel_rest>{{if .KeepQuery}}.*)${{else}}[^?]*){{end}}) {
+            return {{.Code}} {{.TargetBase}}/$celikpanel_rest;
+        }
+        return {{.Code}} {{.Target}}{{if .KeepQuery}}$is_args$args{{end}};
+    }
+{{- end}}
+{{- end}}
+{{- range .ProtectedDirs}}
+
+    # Password-protected folder / Parolalı klasör: {{.Path}}
+    location = {{.Path}} {
+        return 301 {{.Path}}/$is_args$args;
+    }
+    location ^~ {{.Path}}/ {
+        auth_basic "{{.Realm}}";
+        auth_basic_user_file {{.AuthFile}};
+{{- if eq $.ProjectType "php"}}
+        try_files $uri $uri/ /index.php?$query_string;
+
+        location ~ \.php$ {
+            fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+            try_files $fastcgi_script_name =404;
+            set $path_info $fastcgi_path_info;
+            fastcgi_param PATH_INFO $path_info;
+            fastcgi_index index.php;
+            include fastcgi.conf;
+            fastcgi_pass unix:{{$.PHPSocket}};
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+        }
+{{- else}}
+        try_files $uri $uri/ =404;
+
+        location ~ \.(php|phtml|phps|php[0-9])$ {
+            deny all;
+        }
+{{- end}}
+
+        location ~ /\.(?!well-known).* {
+            deny all;
+        }
+    }
+{{- end}}
+{{- if or .Redirects .ProtectedDirs}}
+{{end}}
+{{- end}}
+
+{{- define "locations"}}{{template "site-features" .}}
+{{- if eq .ProjectType "php"}}
+    root {{.DocumentRoot}};
+    index index.php index.html index.htm;
+
+    location / {
+{{template "www-redirect" .}}
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    {{- /* The PHP hand-off is written out here (12 Oct 2026). It used to be
+        `include snippets/fastcgi-php.conf;`, a file that Debian's and Ubuntu's
+        nginx packages ship (nginx-common) and Arch's does not: there nginx
+        refused the vhost ("open() /etc/nginx/snippets/fastcgi-php.conf failed")
+        and no PHP site could be created. The six directives below are that
+        file's directives, in its order, and nothing else of it; `fastcgi.conf`
+        and `fastcgi_params` are nginx's own files and every package ships them
+        in /etc/nginx. For a site that was generated with the include, a
+        re-render is the same configuration with the include expanded
+        (TestPHPVhostIsTheDebianSnippetWrittenOut pins that). An owner who had
+        edited the package's snippet file: that file is no longer read by a
+        site's vhost.
+        PHP devri burada açık yazılır. Eskiden `include
+        snippets/fastcgi-php.conf;` idi; bu dosyayı Debian ve Ubuntu'nun nginx
+        paketleri getirir, Arch'ınki getirmez: orada nginx sanal konağı reddediyor
+        ve hiçbir PHP sitesi oluşturulamıyordu. Aşağıdaki altı yönerge o dosyanın
+        yönergeleridir, aynı sırayla. */}}
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+        try_files $fastcgi_script_name =404;
+        set $path_info $fastcgi_path_info;
+        fastcgi_param PATH_INFO $path_info;
+        fastcgi_index index.php;
+        include fastcgi.conf;
+        fastcgi_pass unix:{{.PHPSocket}};
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    {{- /* Dotfiles are denied EXCEPT .well-known. Blocking only /\.ht (the
+        old rule) left .env and .git readable over HTTP — on a PHP site that
+        is the framework's database password, APP_KEY and mail credentials in
+        plain text (Laravel/Symfony and most modern PHP apps keep .env in the
+        project root). The .well-known exception is not cosmetic: site
+        certificates are issued with `certbot --webroot`, which serves the
+        challenge from .well-known/acme-challenge — a blanket dotfile deny
+        turns every issuance and renewal into a 403.
+        Nokta dosyaları .well-known DIŞINDA reddedilir. Yalnız /\.ht engellemek
+        (eski kural) .env ve .git'i HTTP'ye açık bırakıyordu — bir PHP sitesinde
+        bu, framework'ün veritabanı parolası, APP_KEY'i ve posta bilgileri demek
+        (Laravel/Symfony ve çoğu modern PHP uygulaması .env'i proje kökünde
+        tutar). .well-known istisnası süs değil: site sertifikaları
+        `certbot --webroot` ile alınır ve doğrulama .well-known/acme-challenge
+        üzerinden sunulur — battaniye ret her alma ve yenilemeyi 403 yapar. */}}
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+{{- else if eq .ProjectType "static"}}
+    root {{.DocumentRoot}};
+    index index.html index.htm;
+
+    location / {
+{{template "www-redirect" .}}
+        try_files $uri $uri/ =404;
+    }
+
+    {{- /* A static site has no PHP handler, so without this rule nginx would
+        serve a .php file as a plain file: `.php` is not in mime.types, so it
+        falls back to `default_type application/octet-stream` and the browser
+        DOWNLOADS THE SOURCE — database credentials and all. "PHP does not run
+        here" must not mean "PHP source is published here". This is the same
+        family as the .env leak (A6): a file in the webroot handed out as
+        source. 403 rather than 404 on purpose — it tells whoever uploaded the
+        file that it exists but is not being executed, which is the actual
+        diagnosis; a 404 would read as a failed upload.
+        Statik sitenin PHP işleyicisi yoktur; bu kural olmadan nginx .php
+        dosyasını düz dosya gibi sunar: `.php` mime.types içinde yoktur, bu
+        yüzden `default_type application/octet-stream`e düşer ve tarayıcı
+        KAYNAK KODU İNDİRİR — veritabanı bilgileriyle birlikte. "Burada PHP
+        çalışmaz", "burada PHP kaynağı yayınlanır" demek olmamalı. Bu, .env
+        sızıntısıyla (A6) aynı aile: web kökündeki dosyanın kaynak olarak
+        dağıtılması. 404 değil 403 bilinçli — dosyayı yükleyene, dosyanın var
+        olduğunu ama çalıştırılmadığını söyler; asıl teşhis budur. 404 ise
+        başarısız bir yükleme gibi okunurdu. */}}
+    location ~ \.(php|phtml|phps|php[0-9])$ {
+        deny all;
+    }
+
+    {{- /* Same rule as the PHP branch: the previous blanket /\. deny also
+        blocked .well-known/acme-challenge, so a static site could not pass
+        webroot validation — its first certificate and every renewal 403'd.
+        The golden path was proven with a PHP site, which is why this stayed
+        invisible.
+        PHP dalıyla aynı kural: önceki battaniye /\. reddi
+        .well-known/acme-challenge'ı da kapatıyordu; statik site webroot
+        doğrulamasını geçemiyordu — ilk sertifikası ve her yenilemesi 403.
+        Golden path PHP sitesiyle kanıtlandığı için bu görünmez kalmıştı. */}}
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+{{- else}}
+    # Reverse proxy to the application / Uygulamaya ters vekil
+    location / {
+{{template "www-redirect" .}}
+{{- if .ProxyOrigin}}
+        # The application's address is a host name. nginx looks it up when a
+        # visitor arrives, with this server's DNS servers (/etc/resolv.conf),
+        # not when nginx starts: a name that does not resolve gives this
+        # site's visitors 502 and never stops nginx or the other sites.
+        # Uygulama adresi bir ad; nginx onu ziyaretçi geldiğinde çözer.
+        # Çözülemeyen ad yalnız bu sitede 502 verir, nginx'i durdurmaz.
+        resolver {{.ProxyResolver}};
+        set $celikpanel_upstream {{.ProxyOrigin}};
+{{- if .ProxyRewriteTo}}
+        rewrite (?s)^/(.*)$ {{.ProxyRewriteTo}} break;
+{{- end}}
+        proxy_pass $celikpanel_upstream;
+{{- else}}
+        proxy_pass {{.Upstream}};
+{{- end}}
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 60s;
+    }
+{{- end}}
+{{- end}}
+
+{{- define "www-redirect"}}
+{{- if .RedirectWWW}}
+        # A return-only nginx if is safe here. Keeping it inside the content
+        # location leaves the higher-priority ACME HTTP-01 location reachable.
+        if ($host = {{.Domain}}) {
+{{if and .ForceHTTPS (ne .SSLType "none")}}
+            return 301 https://www.{{.Domain}}$request_uri;
+{{else}}
+            return 301 $scheme://www.{{.Domain}}$request_uri;
+{{end}}
+        }
+{{- end}}
+{{- end}}
+
+{{- /* The owner's include point (D-031). Server context, in every block
+    that serves the site's content; a block that only redirects to HTTPS
+    does not read it. CelikPanel creates the directory and never writes in
+    it. nginx accepts a pattern that matches no file.
+    Sahibin ekleme noktası; sitenin içeriğini sunan her blokta. */}}
+{{- define "owner-include"}}
+    # Your additions for this site (server context) / Bu site için eklemeleriniz
+    include {{.OwnerIncludeDir}}/*.conf;
+{{- end}}
+
+{{- /* CelikPanel's own include point (D-031, step 1b). Server context, in
+    every server block of the site. The directory is the Panel's: it holds the
+    ACME HTTP-01 challenge location (acme-http-01.conf, root-owned validation
+    content only, never tenant public_html), written there instead of into
+    this file, so a certificate can be issued and renewed for a site whose
+    file the owner kept, as long as the file keeps this line.
+    CelikPanel'in kendi ekleme noktası; doğrulama konumu bu dosyaya değil o
+    dizine yazılır. */}}
+{{- /* The site's traffic log for CelikPanel's monthly traffic limit
+    (alpha.118, D-044), only in the blocks that log to the site's own
+    access log: a block that only redirects to HTTPS keeps logging where it
+    did. The file is CelikPanel's (traffic_log.go); nginx accepts a pattern
+    that matches nothing.
+    Trafik günlüğü; yalnız sitenin kendi günlüğüne yazan bloklarda. */}}
+{{- define "traffic-include"}}
+    include {{.PanelManagedDir}}/*.traffic;
+{{- end}}
+
+{{- define "panel-include"}}
+    # CelikPanel's own parts of this site (certificate validation) / CelikPanel'in parçaları
+    include {{.PanelManagedDir}}/*.conf;
+{{- end}}
+
+{{- /* The validation-only block of names such as mail.<domain>. It deliberately
+    serves only ACME HTTP-01; it never publishes the website under a mail
+    hostname. A named template, so the Agent can look for exactly this text in
+    a file the owner kept. */}}
+{{- define "acme-names-server"}}
+# Validation-only names such as mail.<domain>. This block deliberately serves
+# only ACME HTTP-01; it never publishes the website under a mail hostname.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ACMEChallengeNames}} {{.}}{{end}};
+{{template "panel-include" .}}
+
+    location / {
+        return 404;
+    }
+}
+{{- end}}
+
+{{- /* The listen lines of an HTTPS server block, in the HTTP/2 form the
+    installed nginx accepts (2026-10-30). `http2 on;` exists from nginx 1.25.1
+    (Debian 13 has 1.26); Ubuntu 24.04's 1.24 refuses it and takes the `http2`
+    parameter of listen instead. When the version cannot be read, no HTTP/2:
+    every nginx accepts that and serves HTTP/1.1.
+    HTTPS bloğunun listen satırları, kurulu nginx'in kabul ettiği HTTP/2
+    biçiminde: `http2 on;` 1.25.1'den beri vardır; Ubuntu 24.04'ün 1.24'ü onu
+    reddeder ve listen'ın `http2` parametresini kullanır. */}}
+{{- define "https-listen"}}
+{{- if eq .HTTP2 "listen"}}
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+{{- else}}
+    listen 443 ssl;
+    listen [::]:443 ssl;
+{{- end}}
+{{- if eq .HTTP2 "directive"}}
+    http2 on;
+{{- end}}
+{{- end}}
+
+{{- /* TLS policy (2026-10-30): Mozilla's "intermediate" configuration
+    (guidelines 6.0), the one meant for a general-purpose server whose visitors
+    are not known in advance. TLS 1.2 and 1.3 only; for TLS 1.2 only ECDHE
+    with AEAD ciphers (TLS 1.3 suites are OpenSSL's own, all AEAD). The client
+    chooses among them (every one is strong; a phone without AES hardware
+    picks ChaCha20). DHE suites are left out, as in Mozilla 6.0: they would
+    need a dhparam file and every client that has them also has ECDHE. Key
+    exchange groups are OpenSSL's default list: Debian 13's OpenSSL 3.5 offers
+    the post-quantum X25519MLKEM768 first, and naming it would make Ubuntu
+    24.04's OpenSSL 3.0 refuse the configuration. Session tickets off: nginx
+    never rotates their key on its own, which would void forward secrecy;
+    sessions resume from the shared cache instead. No OCSP stapling: Let's
+    Encrypt ended its OCSP service in 2025 and its certificates carry no OCSP
+    address. The same lines are in CelikPanel's default HTTPS server
+    (conf.d/celikpanel-default-https.conf), which nginx uses before it knows
+    the name a visitor asks for.
+    TLS ilkesi: Mozilla "intermediate" (6.0). Yalnız TLS 1.2 ve 1.3; TLS 1.2
+    için yalnız ECDHE ve AEAD şifreleri; seçim istemcinin. DHE yok (dhparam
+    dosyası gerektirir). Anahtar grupları OpenSSL'in varsayılanı. Oturum
+    biletleri kapalı. OCSP zımbalama yok: Let's Encrypt OCSP hizmetini 2025'te
+    bitirdi. */}}
+{{- define "tls-policy"}}
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+{{- end}}
+
+{{- define "tls-settings"}}
+    ssl_certificate {{.SSLCert}};
+    ssl_certificate_key {{.SSLKey}};
+
+    ssl_session_cache shared:SSL:10m;
+{{- template "tls-policy"}}
+{{if .HSTSEnabled}}
+    add_header Strict-Transport-Security "max-age={{.HSTSMaxAge}}" always;
+{{else}}
+    # A disabled policy must actively clear a cached HSTS decision while
+    # HTTPS is still available; omitting the header cannot undo browser state.
+    add_header Strict-Transport-Security "max-age=0" always;
+{{end}}
+{{- end}}
+
+{{- if .ACMEChallengeNames}}
+{{template "acme-names-server" .}}
+{{- end}}
+
+{{- /* A suspended subscription (alpha.117, PLANS-AND-RIGHTS 9A). Every
+    request gets the suspended page with 503 and Retry-After: no root, no PHP,
+    no proxy, no redirects and no owner include, so nothing of the customer is
+    served. The Panel's include stays: it holds only the ACME HTTP-01 location
+    (root-owned validation files, never public_html), so certificates keep
+    renewing and the site comes back with a valid one. The HTTPS block keeps
+    its certificate so https:// visitors see the page, not a TLS error.
+    Askıya alınmış abonelik: her isteğe 503 askı sayfası, müşteri içeriği yok.
+    Sertifika doğrulama konumu kalır; sertifikalar yenilenmeye devam eder. */}}
+{{- define "suspended-site"}}
+    # celikpanel-suspended: this subscription is suspended / abonelik askıda
+    add_header Retry-After 86400 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Site suspended</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site is suspended</h1><p>Bu site askıya alınmıştır.</p><p>The site owner can contact their hosting provider. / Site sahibi barındırma sağlayıcısıyla görüşebilir.</p></body></html>';
+    }
+{{- end}}
+
+{{- define "maintenance-site"}}
+    # celikpanel-maintenance: a security emergency on this site's runtime / güvenlik acil durumu
+    add_header Retry-After 3600 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Under maintenance</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site is temporarily under maintenance</h1><p>Bu site geçici olarak bakımdadır.</p><p>Please try again later. / Lütfen daha sonra yeniden deneyin.</p></body></html>';
+    }
+{{- end}}
+
+{{- /* The subscription used its monthly traffic (alpha.118, D-044): only
+    the website answers with this page; mail, databases and file access keep
+    working. It opens again by itself on the 1st of the month or when the
+    limit is raised. Suspended and Maintenance win.
+    Aylık trafik doldu: yalnız web sitesi bu sayfayı gösterir. */}}
+{{- define "traffic-limit-site"}}
+    # celikpanel-traffic-limit: the monthly traffic of this site is used up / aylık trafik doldu
+    add_header Retry-After 3600 always;
+    add_header Cache-Control "no-store" always;
+
+    location / {
+        default_type text/html;
+        charset utf-8;
+        return 503 '<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Traffic limit reached</title></head><body style="font-family:sans-serif;max-width:40em;margin:4em auto;padding:0 1em"><h1>This site has used its monthly traffic</h1><p>Bu site aylık trafik hakkını doldurdu.</p><p>The site opens again on the 1st of next month, or as soon as its owner raises the limit with the hosting provider. / Site, gelecek ayın 1. günü ya da site sahibi barındırma sağlayıcısından sınırı yükselttiğinde kendiliğinden yeniden açılır.</p></body></html>';
+    }
+{{- end}}
+
+{{- define "panel-page"}}{{if .Suspended}}{{template "suspended-site" .}}{{else if .Maintenance}}{{template "maintenance-site" .}}{{else}}{{template "traffic-limit-site" .}}{{end}}{{end}}
+
+{{- if or .Suspended .Maintenance .TrafficLimited}}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ServerNames}} {{.}}{{end}};
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+{{template "panel-page" .}}
+}
+{{- if and (ne .SSLType "none") .SSLCert}}
+
+server {
+{{template "https-listen" .}}
+    server_name{{range .ServerNames}} {{.}}{{end}};
+{{template "tls-settings" .}}
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+{{template "panel-page" .}}
+}
+{{- end}}
+{{- else if eq .ProjectType "forwarding"}}
+{{- if eq .SSLType "none"}}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ServerNames}} {{.}}{{end}};
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+
+    location / {
+{{template "www-redirect" .}}
+        return {{.ForwardCode}} {{.ForwardTo}}$request_uri;
+    }
+{{template "owner-include" .}}
+}
+{{- else}}
+# Forwarding HTTP server
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ServerNames}} {{.}}{{end}};
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+
+    location / {
+{{template "www-redirect" .}}
+{{if .ForceHTTPS}}
+        return 301 https://$host$request_uri;
+{{else}}
+        return {{.ForwardCode}} {{.ForwardTo}}$request_uri;
+{{end}}
+    }
+{{- if not .ForceHTTPS}}
+{{template "owner-include" .}}
+{{- end}}
+}
+
+# Forwarding HTTPS server
+server {
+{{template "https-listen" .}}
+    server_name{{range .ServerNames}} {{.}}{{end}};
+{{template "tls-settings" .}}
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+
+    location / {
+{{template "www-redirect" .}}
+        return {{.ForwardCode}} {{.ForwardTo}}$request_uri;
+    }
+{{template "owner-include" .}}
+}
+{{- end}}
+{{- else if eq .SSLType "none"}}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ServerNames}} {{.}}{{end}};
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+{{template "locations" .}}
+{{template "owner-include" .}}
+}
+{{- else}}
+# HTTP server
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .ServerNames}} {{.}}{{end}};
+{{template "panel-include" .}}
+{{if .ForceHTTPS}}
+    location / {
+{{template "www-redirect" .}}
+        return 301 https://$host$request_uri;
+    }
+{{else}}
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "locations" .}}
+{{template "owner-include" .}}
+{{end}}
+}
+
+# HTTPS server
+server {
+{{template "https-listen" .}}
+    server_name{{range .ServerNames}} {{.}}{{end}};
+{{template "tls-settings" .}}
+
+    access_log /var/log/nginx/{{.Domain}}-access.log;
+    error_log /var/log/nginx/{{.Domain}}-error.log;
+{{template "traffic-include" .}}
+{{template "panel-include" .}}
+{{template "locations" .}}
+{{template "owner-include" .}}
+}
+{{- end}}

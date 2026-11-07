@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -45,6 +46,7 @@ type nodeInstallRecord struct {
 	Phase     string   `json:"phase"`
 	Clean     bool     `json:"clean"`
 	Build     bool     `json:"build"`
+	Script    string   `json:"script,omitempty"`
 	StartedAt string   `json:"started_at"`
 	EndedAt   string   `json:"ended_at,omitempty"`
 	Class     string   `json:"class,omitempty"`
@@ -81,7 +83,7 @@ func writeNodeInstallRecord(siteID int, r nodeInstallRecord) error {
 }
 
 func (r nodeInstallRecord) answer(resp *transport.NodeSiteInstallResponse) {
-	resp.RequestID, resp.Phase, resp.Clean, resp.Build = r.RequestID, r.Phase, r.Clean, r.Build
+	resp.RequestID, resp.Phase, resp.Clean, resp.Build, resp.Script = r.RequestID, r.Phase, r.Clean, r.Build, r.Script
 	resp.StartedAt, resp.EndedAt, resp.Lines = r.StartedAt, r.EndedAt, r.Lines
 	resp.Class, resp.Reason, resp.Error = r.Class, r.Reason, r.Detail
 }
@@ -191,6 +193,13 @@ func (a *Agent) NodeSiteInstallV1(req *transport.NodeSiteInstallRequest, resp *t
 			"nothing was started: package.json in the site's folder is not a regular file (a link or a folder). Put the real file there, then install again")
 		return nil
 	}
+	// alpha.128 (G19): a chosen package script runs only when package.json
+	// names it; there is no free command box.
+	if req.Script != "" && !nodePackageHasScript(req.WorkDir, req.Script) {
+		nodeInstallRefuse(resp, transport.RuntimeAppPrerequisite, "script_missing",
+			"nothing was started: package.json in the site's folder has no script named "+req.Script+". Choose one of its scripts")
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	account, err := nodeSiteAccountLookup(req.RunAsUser, req.WorkDir)
@@ -202,7 +211,7 @@ func (a *Agent) NodeSiteInstallV1(req *transport.NodeSiteInstallRequest, resp *t
 	params := nodesite.InstallParams{
 		SiteID: req.SiteID, Domain: strings.ToLower(strings.TrimSpace(req.Domain)), User: account.Name, Group: account.Group,
 		AppDir: req.WorkDir, NodeVersion: req.NodeVersion, Clean: nodeInstallFileKind(req.WorkDir, "package-lock.json") == "file",
-		Build: req.Build, Caps: caps,
+		Build: req.Build && req.Script == "", Script: req.Script, Caps: caps,
 	}
 	args, err := nodesite.InstallRunArgs(params)
 	if err != nil {
@@ -224,7 +233,7 @@ func (a *Agent) NodeSiteInstallV1(req *transport.NodeSiteInstallRequest, resp *t
 		nodeInstallRefuse(resp, transport.RuntimeAppUnknown, "install_unit", err.Error())
 		return nil
 	}
-	record = nodeInstallRecord{RequestID: req.RequestID, Phase: nodesite.InstallRunning, Clean: params.Clean, Build: params.Build,
+	record = nodeInstallRecord{RequestID: req.RequestID, Phase: nodesite.InstallRunning, Clean: params.Clean, Build: params.Build, Script: params.Script,
 		StartedAt: time.Now().UTC().Format(time.RFC3339)}
 	if err := writeNodeInstallRecord(req.SiteID, record); err != nil {
 		nodeInstallRefuse(resp, transport.RuntimeAppUnknown, "install_record", err.Error())
@@ -252,7 +261,40 @@ func (a *Agent) NodeSiteInstallStatusV1(req *transport.NodeSiteInstallStatusRequ
 	record := readNodeInstallRecord(req.SiteID)
 	nodeInstallObserve(req.SiteID, &record)
 	record.answer(resp)
+	if req.WorkDir != "" && nodesite.ValidAppDir(req.WorkDir) == nil {
+		resp.Scripts = nodePackageScripts(req.WorkDir)
+	}
 	return nil
+}
+
+// nodePackageScripts lists package.json's scripts (read as root, a regular
+// file only, bounded): the names the screen offers to run.
+func nodePackageScripts(workDir string) []string {
+	if nodeInstallFileKind(workDir, "package.json") != "file" {
+		return nil
+	}
+	f, err := os.Open(filepath.Join(workDir, "package.json"))
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, 1<<20))
+	if err != nil {
+		return nil
+	}
+	return nodesite.PackageScripts(raw)
+}
+
+func nodePackageHasScript(workDir, script string) bool {
+	if !nodesite.ValidScriptName(script) {
+		return false
+	}
+	for _, name := range nodePackageScripts(workDir) {
+		if name == script {
+			return true
+		}
+	}
+	return false
 }
 
 // nodeInstallObserve completes a running record from the unit's state.

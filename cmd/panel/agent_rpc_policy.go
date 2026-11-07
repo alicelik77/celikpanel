@@ -148,7 +148,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
-		Agent.NodeSiteInstallStatusV1
+		Agent.NodeSiteInstallStatusV1 Agent.SiteLogStatusV1 Agent.GitDeployStatusV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
 		Agent.ServiceHealthV1
@@ -180,7 +180,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
 		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1 Agent.SetFileAccessReadOnlyV1
-		Agent.WordPressUpdateV1 Agent.WordPressCloneV1
+		Agent.WordPressUpdateV1 Agent.WordPressCloneV1 Agent.SiteCopyV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1 Agent.ApplySiteSettingsIncludeV1
@@ -194,7 +194,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimeAppRenderV1 Agent.RuntimeAppControlV1 Agent.RuntimeAppEnvV1 Agent.RuntimeAppRemoveV1
 		Agent.RuntimeAppBuildV1 Agent.RuntimeAppBuildAdvanceV1
 		Agent.SetRuntimeAppSuspensionV1
-		Agent.NodeSiteInstallV1
+		Agent.NodeSiteInstallV1 Agent.NodeSiteEnvV1 Agent.SitePageCacheClearV1 Agent.SiteLogRetentionV1
+		Agent.GitDeployKeyV1 Agent.GitDeployV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -544,6 +545,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
 	"Agent.WordPressUpdateV1":          agentRPCBulkImportTimeout,
 	"Agent.WordPressCloneV1":           agentRPCSiteLongTimeout,
+	"Agent.SiteCopyV1":                 agentRPCSiteLongTimeout,
 	"Agent.MalwareScannerStatusV1":     agentRPCQuickReadTimeout,
 	"Agent.MalwareScanSiteV1":          agentRPCSiteLongTimeout,
 	"Agent.MalwareQuarantineV1":        agentRPCMutationTimeout,
@@ -589,6 +591,13 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RuntimeVersionUsersV1":    agentRPCQuickReadTimeout,
 	"Agent.RuntimeAppBuildV1":        agentRPCMutationTimeout,
 	"Agent.NodeSiteInstallV1":        agentRPCMutationTimeout,
+	"Agent.NodeSiteEnvV1":            agentRPCMutationTimeout,
+	"Agent.SitePageCacheClearV1":     agentRPCMutationTimeout,
+	"Agent.SiteLogRetentionV1":       agentRPCMutationTimeout,
+	"Agent.SiteLogStatusV1":          agentRPCStandardReadTimeout,
+	"Agent.GitDeployKeyV1":           agentRPCMutationTimeout,
+	"Agent.GitDeployV1":              agentRPCMutationTimeout,
+	"Agent.GitDeployStatusV1":        agentRPCStandardReadTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 }

@@ -17,7 +17,7 @@ import (
 // alpha.114 beÅŸ gÃ¶Ã§ taÅŸÄ±r (047â€“051); hepsi eklemelidir, var olan satÄ±r deÄŸiÅŸmez.
 const (
 	panelPortChangeMigrationVersion = 47
-	newestMigrationVersion          = mailOutgoingMigrationVersion
+	newestMigrationVersion          = siteWebSettingsMigrationVersion
 )
 
 // reservedMigrationVersions (alpha.128): numbers given to workstreams of the

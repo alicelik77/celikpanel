@@ -136,6 +136,18 @@ type VhostData struct {
 	// D-044): 503 for every request, certificate validation kept. Suspended
 	// and Maintenance win.
 	TrafficLimited bool
+	// IndexFiles (alpha.128, G3) is the index line's files; "" is the
+	// project type's default (DefaultIndexFiles), the text earlier releases
+	// wrote.
+	IndexFiles string
+	// SiteInclude (alpha.128, G3): the site saved a web server setting, so
+	// its content blocks read <PanelManagedDir>/*.site. False renders the
+	// file exactly as before.
+	SiteInclude bool
+	// NodePublicRoot (alpha.128, G19): a Node.js site's public/ folder that
+	// nginx serves itself before handing an address to the application; ""
+	// sends every address to the application, as before.
+	NodePublicRoot string
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -211,6 +223,13 @@ func prepareVhostData(data VhostData) (VhostData, error) {
 		return VhostData{}, err
 	}
 	data.ProtectedDirs, data.Redirects = dirs, redirects
+	if strings.TrimSpace(data.IndexFiles) == "" {
+		data.IndexFiles = DefaultIndexFiles(data.ProjectType)
+	}
+	if data.NodePublicRoot != "" && (data.ProjectType != "node" ||
+		data.NodePublicRoot != strings.TrimSuffix(data.DocumentRoot, "/")+"/public") {
+		return VhostData{}, fmt.Errorf("the public folder must be the Node.js site's own public/ folder")
+	}
 	data.OwnerIncludeDir = OwnerIncludeDir(data.Domain)
 	data.PanelManagedDir = PanelManagedDir(data.Domain)
 	return data, nil

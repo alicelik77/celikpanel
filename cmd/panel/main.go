@@ -344,6 +344,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "app/packages":
 		// alpha.127: npm install and build in the site sandbox.
 		match.kind, match.methods = "app-packages", getPost
+	case "app/env":
+		// alpha.128: the Node.js site's environment variables. Not mapped
+		// for additional users: the values are the owner's secrets.
+		match.kind, match.methods = "app-env", getPost
 	case "php":
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
@@ -371,6 +375,20 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "ssl-settings", []string{http.MethodPost}
 	case "ssl":
 		match.kind, match.methods = "ssl", []string{http.MethodGet, http.MethodDelete}
+	case "git":
+		// alpha.128 (G32): Git deploy of the site. Not mapped for additional users.
+		match.kind, match.methods = "git", getPost
+	case "git/key":
+		match.kind, match.methods = "git-key", []string{http.MethodPost}
+	case "git/deploy":
+		match.kind, match.methods = "git-deploy", []string{http.MethodPost}
+	case "copy":
+		// alpha.128 (G8): copy this site into another site the caller manages.
+		// Not mapped for additional users.
+		match.kind, match.methods = "site-copy", getPost
+	case "logs/retention":
+		// alpha.128 (G27): how long the site's rotated logs are kept.
+		match.kind, match.methods = "logs-retention", getPost
 	case "logs/access", "logs/error", "logs/php":
 		match.kind, match.methods = "logs", []string{http.MethodGet, http.MethodDelete}
 	case "databases":
@@ -499,6 +517,14 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "redirects":
 		// alpha.114: free-form redirects of the site.
 		match.kind, match.methods = "site-redirects", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
+	case "web-settings":
+		// alpha.128: the site's web server settings (site_web_settings.go).
+		match.kind, match.methods = "web-settings", getPost
+	case "web-settings/directives":
+		match.kind, match.methods = "web-settings-directives", []string{http.MethodPost}
+	case "web-settings/cache-clear":
+		// alpha.128 (G28): empty the site's page cache.
+		match.kind, match.methods = "web-settings-cache-clear", []string{http.MethodPost}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
@@ -632,6 +658,18 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":
 		p.handleDomainSiteFeatures(w, r, match.domainID, match.kind)
+	case "web-settings", "web-settings-directives":
+		p.handleDomainWebSettings(w, r, match.domainID, match.kind)
+	case "app-env":
+		p.handleDomainNodeEnv(w, r, match.domainID)
+	case "web-settings-cache-clear":
+		p.handleDomainPageCacheClear(w, r, match.domainID)
+	case "logs-retention":
+		p.handleDomainLogRetention(w, r, match.domainID)
+	case "site-copy":
+		p.handleDomainSiteCopy(w, r, match.domainID)
+	case "git", "git-key", "git-deploy":
+		p.handleDomainGitDeploy(w, r, match.domainID, match.kind)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":
@@ -1644,6 +1682,8 @@ func main() {
 	http.HandleFunc("/api/v1/settings/dns-cluster", panel.handleDNSCluster)
 	http.HandleFunc("/api/v1/settings/dns-setup", panel.handleDNSSetup)
 	http.HandleFunc("/api/v1/nginx/ratelimits", panel.handleNginxRateLimits)
+	// alpha.128: offer additional nginx directives to resellers and customers.
+	http.HandleFunc(nginxDirectivesOfferPath, panel.handleNginxDirectivesOffer)
 
 	// Fail2ban Management
 	http.HandleFunc("/api/v1/fail2ban/jails", panel.handleFail2banJails)
@@ -1858,6 +1898,8 @@ func main() {
 	panel.startBackupScheduler()
 	// alpha.118: scheduled minor WordPress core releases and malware scans.
 	panel.startWordPressAutoUpdater()
+	// alpha.128 (G27): site log retention, every six hours.
+	panel.startSiteLogRetention()
 	panel.startMalwareScanWorker()
 	// alpha.118: remote backups; continues what a restart interrupted.
 	panel.startRemoteBackupWorker()
