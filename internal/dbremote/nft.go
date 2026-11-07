@@ -99,9 +99,11 @@ func NFTFile(ports []NFTPort) (string, error) {
 // table or its drop rule is gone. The unit runs it at boot before the network
 // and the timer every 30 seconds, with or without CelikPanel.
 const (
-	NFTGuardPath      = "/etc/celikpanel/database-remote-guard.sh"
-	NFTTimerName      = "celikpanel-database-remote-firewall.timer"
-	NFTTimerPath      = "/etc/systemd/system/" + NFTTimerName
+	NFTGuardPath = "/etc/celikpanel/database-remote-guard.sh"
+	NFTTimerName = "celikpanel-database-remote-firewall.timer"
+	NFTTimerPath = "/etc/systemd/system/" + NFTTimerName
+	// NFTLockPath is the lock the guard and the Agent share (re-review LOW 2).
+	NFTLockPath       = "/run/celikpanel-database-remote.lock"
 	nftGuardIntervalS = "30s"
 )
 
@@ -123,6 +125,11 @@ func NFTGuardScript(nftProgram string) (string, error) {
 		"# without CelikPanel. Removed with the last remote access rule.\n" +
 		"set -u\n" +
 		"nft=" + nftProgram + "\n" +
+		"# The Agent holds the same lock while it writes or removes the filter;\n" +
+		"# once the rule file is gone (closing) the guard loads nothing.\n" +
+		"exec 9>" + NFTLockPath + "\n" +
+		"flock 9 || exit 1\n" +
+		"[ -f " + NFTPath + " ] || exit 0\n" +
 		"if ! \"$nft\" list chain inet " + NFTTable + " input 2>/dev/null | grep -q ' drop'; then\n" +
 		"\techo \"celikpanel-dbremote: the database port filter was missing; loading " + NFTPath + " again\"\n" +
 		"\t\"$nft\" -f " + NFTPath + " || { echo \"celikpanel-dbremote: nft could not load the filter\"; exit 1; }\n" +

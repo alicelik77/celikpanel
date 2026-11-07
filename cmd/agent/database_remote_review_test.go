@@ -194,6 +194,14 @@ func fakeFilterHost(t *testing.T) *fakeNFT {
 	restoreRun, restoreLook, restoreFiles, restoreState := databaseRemoteRun, databaseRemoteLookPath, databaseRemoteFilterFiles, databaseRemoteStatePath
 	databaseRemoteLookPath = func(string) (string, error) { return "/usr/sbin/nft", nil }
 	databaseRemoteRun = host.run
+	restoreLock, restoreLockPath := databaseRemoteLockFilter, databaseRemoteFilterLockPath
+	databaseRemoteFilterLockPath = filepath.Join(dir, "filter.lock")
+	databaseRemoteLockFilter = func() (func(), error) {
+		host.locked = true
+		host.calls = append(host.calls, "lock")
+		return func() { host.locked = false; host.calls = append(host.calls, "unlock") }, nil
+	}
+	t.Cleanup(func() { databaseRemoteLockFilter, databaseRemoteFilterLockPath = restoreLock, restoreLockPath })
 	databaseRemoteFilterFiles.nftPath = filepath.Join(dir, "database-remote.nft")
 	databaseRemoteFilterFiles.unitPath = filepath.Join(dir, "unit.service")
 	databaseRemoteFilterFiles.guardPath = filepath.Join(dir, "guard.sh")
@@ -208,7 +216,10 @@ func fakeFilterHost(t *testing.T) *fakeNFT {
 // fakeNFT is nft and systemctl: it keeps whether the table is loaded.
 type fakeNFT struct {
 	loaded bool
+	locked bool
 	calls  []string
+	// at the table's deletion: was the rule file already gone, the lock held
+	fileGoneAtDelete, lockedAtDelete bool
 }
 
 func (h *fakeNFT) run(name string, args []string, _ string) ([]byte, error) {
@@ -219,6 +230,8 @@ func (h *fakeNFT) run(name string, args []string, _ string) ([]byte, error) {
 		h.loaded = true
 	case strings.HasSuffix(name, "nft") && strings.HasPrefix(call, name+" delete table"):
 		h.loaded = false
+		_, err := os.Stat(databaseRemoteFilterFiles.nftPath)
+		h.fileGoneAtDelete, h.lockedAtDelete = errors.Is(err, os.ErrNotExist), h.locked
 	case strings.HasSuffix(name, "nft") && strings.HasPrefix(call, name+" list tables") && h.loaded:
 		return []byte("table inet celikpanel_dbremote\n"), nil
 	case strings.HasSuffix(name, "nft") && strings.HasPrefix(call, name+" list chain"):
@@ -347,5 +360,40 @@ func TestMariaDBRemoteWaitsWhileMariaDBLogsToAFile(t *testing.T) {
 	}
 	if len(result.Active) != 0 || f.accounts["shop_u@203.0.113.7"] || !found {
 		t.Fatalf("active %v, accounts %v, problems %+v", result.Active, f.accounts, result.Problems)
+	}
+}
+
+// Re-review LOW 2: closing removes the rule file first, under the lock the
+// guard shares, so a guard run cannot load the table again in between.
+func TestDatabaseRemoteFilterClosesFileFirstUnderTheLock(t *testing.T) {
+	host := fakeFilterHost(t)
+	ports := []dbremote.NFTPort{{Port: 5432, V4: []netip.Prefix{netip.MustParsePrefix("203.0.113.7/32")}}}
+	if err := writeDatabaseRemoteFilter("/usr/sbin/nft", ports); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeDatabaseRemoteFilter("/usr/sbin/nft", nil); err != nil {
+		t.Fatal(err)
+	}
+	if !host.fileGoneAtDelete || !host.lockedAtDelete || host.locked {
+		t.Fatalf("file gone %v, locked %v at the delete; still locked %v", host.fileGoneAtDelete, host.lockedAtDelete, host.locked)
+	}
+	timer, table := -1, -1
+	for i, c := range host.calls {
+		if strings.HasPrefix(c, "systemctl disable --now") {
+			timer = i
+		}
+		if strings.Contains(c, "delete table") {
+			table = i
+		}
+	}
+	if timer < 0 || table < 0 || timer > table {
+		t.Fatalf("order: %q", host.calls)
+	}
+	guard, _ := dbremote.NFTGuardScript("/usr/sbin/nft")
+	lock := strings.Index(guard, "flock 9")
+	check := strings.Index(guard, "[ -f /etc/celikpanel/database-remote.nft ] || exit 0")
+	load := strings.Index(guard, `"$nft" -f`)
+	if lock < 0 || check < lock || load < check {
+		t.Fatalf("the guard does not lock, then look for the file, then load: %s", guard)
 	}
 }

@@ -96,7 +96,19 @@ func writeDatabaseRemoteFilter(nftPath string, ports []dbremote.NFTPort) error {
 		return err
 	}
 	files := databaseRemoteFilterFiles
+	// The guard takes the same lock (re-review LOW 2): a guard run never
+	// interleaves with a write or a removal.
+	unlock, err := databaseRemoteLockFilter()
+	if err != nil {
+		return fmt.Errorf("the filter's lock could not be taken: %w", err)
+	}
+	defer unlock()
 	if text == "" {
+		// Closing: the rule file goes first, so a guard that runs after
+		// this point loads nothing; then the timer, then the table.
+		if err := os.Remove(files.nftPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 		_, _ = databaseRemoteRun("systemctl", []string{"disable", "--now", dbremote.NFTTimerName}, "")
 		if present {
 			if out, err := databaseRemoteRun(nftPath, []string{"delete", "table", "inet", dbremote.NFTTable}, ""); err != nil {
@@ -118,10 +130,8 @@ func writeDatabaseRemoteFilter(nftPath string, ports []dbremote.NFTPort) error {
 		if reload {
 			_, _ = databaseRemoteRun("systemctl", []string{"daemon-reload"}, "")
 		}
-		for _, path := range []string{files.guardPath, files.nftPath} {
-			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return err
-			}
+		if err := os.Remove(files.guardPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
 		}
 		return nil
 	}
@@ -264,3 +274,11 @@ func newDatabaseRemoteCertificate(hostName string, now time.Time) (certPEM, keyP
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}),
 		pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), nil
 }
+
+// databaseRemoteFilterLockPath is the lock the guard script shares
+// (dbremote.NFTLockPath); swapped by tests.
+var databaseRemoteFilterLockPath = dbremote.NFTLockPath
+
+// databaseRemoteLockFilter takes that lock and answers its release. Set per
+// platform (flock on Linux); swapped by tests.
+var databaseRemoteLockFilter = func() (func(), error) { return func() {}, nil }

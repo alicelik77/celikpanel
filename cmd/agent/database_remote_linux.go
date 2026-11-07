@@ -5,10 +5,13 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // The engines' clients for remote access, on Linux: psql as the cluster's
@@ -17,6 +20,7 @@ import (
 // on standard input, never in the argument list (R-062).
 
 func init() {
+	databaseRemoteLockFilter = hostDatabaseRemoteLockFilter
 	databaseRemotePGQuery = hostDatabaseRemotePGQuery
 	databaseRemoteMySQLQuery = hostDatabaseRemoteMySQLQuery
 	databaseRemoteFail2ban.active = func() bool {
@@ -82,4 +86,21 @@ func hostDatabaseRemoteMySQLQuery(statement string) (string, error) {
 		return "", errors.New(text)
 	}
 	return stdout.String(), nil
+}
+
+// hostDatabaseRemoteLockFilter takes the filter's lock (flock, the same one
+// the guard script's `flock 9` takes).
+func hostDatabaseRemoteLockFilter() (func(), error) {
+	file, err := os.OpenFile(databaseRemoteFilterLockPath, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err := unix.Flock(int(file.Fd()), unix.LOCK_EX); err != nil {
+		file.Close()
+		return nil, err
+	}
+	return func() {
+		_ = unix.Flock(int(file.Fd()), unix.LOCK_UN)
+		file.Close()
+	}, nil
 }
