@@ -107,9 +107,12 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 	switch family {
 	case "apt":
 		// Debian's unit reads /etc/default/postfwd (CONF, INET, PORT, RUNAS,
-		// ARGS); the drop-in keeps that file the owner's and adds only
-		// --keep_rates. /usr/sbin/postfwd is the package's alternative
-		// (postfwd2, the prefork program).
+		// ARGS); the drop-in keeps that file the owner's and adds
+		// --cache=0 --keep_rates after $ARGS (the later option wins).
+		// Debian's ARGS has --cache=600: a request cache that answered a
+		// mailbox's message with the pause's 550 for minutes after its
+		// password change (alpha.128 lab). /usr/sbin/postfwd is the package's
+		// alternative (postfwd2, the prefork program).
 		return outgoingLayout{
 			family:  family,
 			program: "/usr/sbin/postfwd",
@@ -117,7 +120,7 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 			listDir: "/etc/postfix/celikpanel-postfwd",
 			dropIn:  "/etc/systemd/system/postfwd.service.d/celikpanel.conf",
 			unit:    "postfwd",
-			execLine: "/usr/sbin/postfwd $ARGS --keep_rates --daemon --file $CONF --interface $INET --port $PORT " +
+			execLine: "/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --daemon --file $CONF --interface $INET --port $PORT " +
 				"--user $RUNAS --group $RUNAS --pidfile $PIDFILE",
 		}, true
 	case "pacman":
@@ -138,13 +141,11 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 }
 
 func (l outgoingLayout) dropInContent() string {
-	lines := []string{outgoingDropInMarker, "# It keeps postfwd's hourly counters across a reload (--keep_rates)."}
-	if l.family == "pacman" {
-		lines = append(lines[:1],
-			"# It keeps postfwd's hourly counters across a reload (--keep_rates) and",
-			"# turns off the request cache, which on this postfwd answers repeated",
-			"# end-of-message requests without counting them (--cache=0).")
-	}
+	lines := []string{outgoingDropInMarker,
+		"# It keeps postfwd's hourly counters across a reload (--keep_rates) and",
+		"# turns off the request cache, which answers a repeated request with an",
+		"# earlier decision: a lifted pause or a changed limit would wait for it,",
+		"# and repeated end-of-message requests would not be counted (--cache=0)."}
 	lines = append(lines,
 		"# Remove this file and run systemctl daemon-reload to return to the",
 		"# package's own start line.",

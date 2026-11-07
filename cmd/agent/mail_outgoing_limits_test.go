@@ -535,7 +535,8 @@ func TestArchDropInTurnsOffTheRequestCache(t *testing.T) {
 	if !strings.Contains(arch.dropInContent(), "--cache=0") || !strings.Contains(arch.dropInContent(), "--keep_rates") {
 		t.Fatalf("arch drop-in = %q", arch.dropInContent())
 	}
-	if strings.Contains(debian.dropInContent(), "--cache=0") || !strings.Contains(debian.dropInContent(), "$ARGS --keep_rates") {
+	// alpha.128 lab: Debian's ARGS has --cache=600; the later --cache=0 wins.
+	if !strings.Contains(debian.dropInContent(), "$ARGS --cache=0 --keep_rates") {
 		t.Fatalf("debian drop-in = %q", debian.dropInContent())
 	}
 	for _, layout := range []outgoingLayout{arch, debian} {

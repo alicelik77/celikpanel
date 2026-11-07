@@ -25,7 +25,9 @@ Native layout:
 - Debian/Ubuntu: `/etc/default/postfwd` (CONF=/etc/postfix/postfwd.cf,
   INET=127.0.0.1, PORT=10040, RUNAS=postfw, ARGS="--summary=600 --cache=600
   --cache-rdomain-only --cache-no-size"), unit `postfwd.service` (not enabled
-  by the package), no rule file shipped, `/usr/sbin/postfwd` is an
+  by the package; CelikPanel's drop-in adds `--cache=0 --keep_rates` after `$ARGS`:
+  the request cache answered a mailbox with the pause's 550 for minutes after
+  its password change, alpha.128 lab), no rule file shipped, `/usr/sbin/postfwd` is an
   alternative pointing at `postfwd2` (the prefork program).
 - Arch: `/etc/postfwd/postfwd.cf` (packaged, `id=DEFAULT; action=DUNNO`,
   sha256 9810fac0…8662), units `postfwd.service` / `postfwd2.service` with the
