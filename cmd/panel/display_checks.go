@@ -232,6 +232,26 @@ func (c *displayCheck[T]) get(
 	return flight.result.value, displayCheckView{CheckedAt: flight.result.at}, nil
 }
 
+// peek returns the last-known answer for key without asking anything
+// (alpha.128, the domain health strip): no check is started and nothing is
+// waited for. An answer older than keepFor, or none, is not known. An answer
+// read before a change is reported with Rechecking set: it is the earlier one.
+// peek: son bilinen yanit; hicbir kontrol baslatilmaz, beklenmez.
+func (c *displayCheck[T]) peek(key string) (T, displayCheckView, bool) {
+	var zero T
+	if !displayChecksEnabled.Load() {
+		return zero, displayCheckView{}, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry := c.entries[key]
+	now := displayCheckClock()
+	if entry == nil || !entry.known || entry.at.After(now) || now.Sub(entry.at) >= c.keepFor() {
+		return zero, displayCheckView{}, false
+	}
+	return entry.value, displayCheckView{CheckedAt: entry.at, Rechecking: entry.generation != c.generation()}, true
+}
+
 // startLocked joins the check of this generation that is already running, or
 // starts one. The check does not belong to the request that started it: a
 // closed page must not cancel the answer the next page needs.

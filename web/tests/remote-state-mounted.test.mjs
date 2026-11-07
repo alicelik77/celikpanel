@@ -180,7 +180,8 @@ const ServiceShell = await load('ServiceShell');
 const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`), '/SecurityEmergency': stub });
 const ServiceRecordLookup = await load('ServiceRecordLookup');
 // The Databases tab is lazy since alpha.127: the shipped module stands in.
-const DomainDetailByName = (await import(replaceLazyImport(shared.compile('components/DomainDetail.tsx', {
+// alpha.128 (G22): the health strip has its own test (domain-health-alpha128); here it stands aside.
+const DomainDetailByName = (await import(replaceLazyImport(replaceLazyImport(shared.compile('components/DomainDetail.tsx', {
   ...own,
   '/DomainFileManager': fileManagerURL,
   '/DomainSSLSettings': sslSettingsURL,
@@ -188,7 +189,7 @@ const DomainDetailByName = (await import(replaceLazyImport(shared.compile('compo
   '/DomainDNSManager': shared.compile('components/DomainDNSManager.tsx', own),
   '/DomainPHPSettings': shared.compile('components/DomainPHPSettings.tsx', own),
   '/HostingTypePanel': shared.compile('components/HostingTypePanel.tsx', own),
-}), './DomainDatabaseManager', shared.compile('components/DomainDatabaseManager.tsx', own)))).DomainDetailByName;
+}), './DomainDatabaseManager', shared.compile('components/DomainDatabaseManager.tsx', own)), './DomainHealthStrip', dataModule(`export const DomainHealthStrip = () => null;`)))).DomainDetailByName;
 
 // --- What the server answers when nothing is wrong ----------------------------
 const caps = (overrides = {}) => ({
