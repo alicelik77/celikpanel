@@ -75,8 +75,8 @@ CREATE INDEX idx_audit_logs_acting_as ON audit_logs(acting_as, id);
 
 -- certificate_requests (G31): a certificate signing request made on this
 -- server for a certificate bought elsewhere. The private key is generated
--- and kept by the Agent in a root-only file (key_file, an absolute path under
--- the panel's own directory); it is never stored here, never sent to the
+-- and kept by the Agent in a root-only file (key_file, an absolute path in
+-- the Agent's private directory); it is never stored here, never sent to the
 -- browser and never shown again. public_key_sha256 matches the issued
 -- certificate to its key when it is uploaded. state waiting = no issued
 -- certificate yet, installed = the issued certificate was installed

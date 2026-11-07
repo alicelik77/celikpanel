@@ -53,6 +53,8 @@ const stub = dataModule(`
   export const MyPlanCard = () => null;
   // alpha.128: the notifications list and cards have their own tests (notifications-alpha128).
   export const NotificationsCenter = () => null, NotificationPreferencesCard = () => null, NotificationSettingsCard = () => null;
+  // alpha.128 (G4): the sessions card has its own address.
+  export const OwnSessionsCard = () => null;
   // alpha.117: a customer's transfer request reads its own addresses.
   export const TransferRequestCard = () => null;
   export const useAuth = () => ({ role: 'admin' });
@@ -62,7 +64,7 @@ const shared = sharedLayer(stub, { '/lib/requestIdentity': requestIdentityURL })
 const modalURL = shared.compile('components/ChangeEmailModal.tsx');
 const { OWN_EMAIL_WAIT_MS } = await import(modalURL);
 // alpha.128: the notifications list and cards (lazy) are the stub's; they have their own tests.
-const { AccountPage } = await import(replaceLazyImport(shared.compile('components/AccountPage.tsx', { '/ChangeEmailModal': modalURL }), './Notifications', stub));
+const { AccountPage } = await import(replaceLazyImport(replaceLazyImport(shared.compile('components/AccountPage.tsx', { '/ChangeEmailModal': modalURL }), './Notifications', stub), './PanelSessions', stub));
 const { ErrorBanner } = await import(shared.uiURL);
 
 const settled = () => new Promise((resolve) => setImmediate(resolve));

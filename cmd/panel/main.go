@@ -1497,6 +1497,16 @@ func main() {
 	http.HandleFunc("/api/v1/auth/login", panel.handleLogin)
 	http.HandleFunc("/api/v1/auth/logout", panel.handleLogout)
 	http.HandleFunc("/api/v1/auth/me", panel.handleMe)
+	// alpha.128 ops: G4 panel sessions, idle timeout and administrator
+	// access by address (panel_sessions.go). The own-session routes are the
+	// caller's own rows; /api/v1/panel/ is administrator-only.
+	http.HandleFunc(sessionActivityPath, panel.handleSessionActivity)
+	http.HandleFunc(ownSessionsPath, panel.handleOwnSessions)
+	http.HandleFunc(ownSessionEndPath, panel.handleOwnSessionEnd)
+	http.HandleFunc(ownSessionsEndOthers, panel.handleOwnSessionsEndOthers)
+	http.HandleFunc(allSessionsPath, panel.handleAllSessions)
+	http.HandleFunc(allSessionEndPath, panel.handleAllSessionEnd)
+	http.HandleFunc(panelAccessSettingPath, panel.handlePanelAccess)
 	http.HandleFunc(panelLicenseAccessPath, panel.handleLicenseAccess)
 	panel.registerRecoveryRoutes(http.DefaultServeMux)
 	// Password reset by email, invitations, address confirmation (alpha.114).

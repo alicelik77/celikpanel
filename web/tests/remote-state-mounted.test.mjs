@@ -62,6 +62,9 @@ const stubbedComponents = [
   // alpha.128: the notifications list and cards read their own addresses
   // (tests/notifications-alpha128.test.mjs); My account loads them lazily.
   'NotificationsCenter', 'NotificationPreferencesCard', 'NotificationSettingsCard',
+  // alpha.128 (G4): the sessions and panel access cards read their own
+  // addresses; My account and Security load them lazily.
+  'OwnSessionsCard', 'PanelAccessCard', 'AllSessionsCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -169,7 +172,7 @@ const HostingTypePanel = await load('HostingTypePanel');
 // The second batch. A screen that mounts another screen under test gets the
 // real one; everything else it mounts is the stub.
 const Settings = await load('Settings');
-const AccountPage = (await import(replaceLazyImport(shared.compile('components/AccountPage.tsx', own), './Notifications', stub))).AccountPage;
+const AccountPage = (await import(replaceLazyImport(replaceLazyImport(shared.compile('components/AccountPage.tsx', own), './Notifications', stub), './PanelSessions', stub))).AccountPage;
 const UsersPage = await load('UsersPage');
 const fileManagerURL = shared.compile('components/DomainFileManager.tsx', own);
 const DomainFileManager = (await import(fileManagerURL)).DomainFileManager;

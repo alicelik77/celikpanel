@@ -296,6 +296,18 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/notifications/":              gateTenant,
 	"/api/v1/notification-preferences":    gateTenant,
 	"/api/v1/panel/notification-settings": gateAdmin,
+
+	// alpha.128 ops: G4 sessions. The own-session routes read and end only
+	// the caller's own sessions (ending is refused under "Log in as"); every
+	// account's sessions and the panel access settings are the
+	// administrator's (/api/v1/panel/ prefix, and the handlers).
+	"/api/v1/auth/activity":            gateTenant,
+	"/api/v1/auth/sessions":            gateTenant,
+	"/api/v1/auth/sessions/end":        gateTenant,
+	"/api/v1/auth/sessions/end-others": gateTenant,
+	"/api/v1/panel/sessions":           gateAdmin,
+	"/api/v1/panel/sessions/end":       gateAdmin,
+	"/api/v1/panel/access":             gateAdmin,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

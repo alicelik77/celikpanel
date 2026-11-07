@@ -67,6 +67,11 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			}
 			return
 		}
+		// alpha.128 (G4): a session unused for the idle timeout ends here;
+		// otherwise its use is recorded (at most once a minute).
+		if !p.sessionIdleCheck(w, r, cookie.Value, session) {
+			return
+		}
 
 		// Attach the caller (id + role) so handlers can enforce ownership.
 		// Suspended accounts are cut off immediately, whatever session they
@@ -163,6 +168,12 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 				return
 			}
 			c.ImpersonatorID = session.ImpersonatorID
+		}
+		// alpha.128 (G4): administrator sessions, and "Log in as" sessions
+		// an administrator opened, only from the listed addresses.
+		if !p.adminSessionAddressAllowed(r, c) {
+			writePanelAccessRefused(w)
+			return
 		}
 
 		// Additional users are tenant-scoped team members. Server-global and
