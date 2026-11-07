@@ -19,16 +19,19 @@ import (
 // fakeOutgoingHost is postconf, systemctl, postfwd and the policy socket as
 // the Agent sees them.
 type fakeOutgoingHost struct {
-	mu          sync.Mutex
-	commands    []string
-	params      map[string]map[string]string // service -> -o params
-	global      string
-	active      bool
-	countWorks  bool
-	checkFails  bool
-	reloadFails bool
-	reloads     int
-	seen        map[string]int
+	mu         sync.Mutex
+	commands   []string
+	params     map[string]map[string]string // service -> -o params
+	global     string
+	active     bool
+	countWorks bool
+	checkFails bool
+	// checkExitsOne: postfwd 1.x ends --showconfig with "exit 1" after
+	// printing the rules (Debian 13 postfwd 1.35-10).
+	checkExitsOne bool
+	reloadFails   bool
+	reloads       int
+	seen          map[string]int
 }
 
 func (h *fakeOutgoingHost) run(_ context.Context, name string, args ...string) ([]byte, error) {
@@ -351,6 +354,21 @@ func TestApplyOutgoingMailLimitsWritesChecksProvesAndWires(t *testing.T) {
 	}
 	if host.count("systemctl reload postfwd") != 1 {
 		t.Fatalf("postfwd not reloaded: %v", host.commands)
+	}
+}
+
+// alpha.128 lab (Debian 13, postfwd 1.35-10): postfwd2 --showconfig always
+// ends with exit status 1, so the printed rules are the check; turning the
+// limits on must not fail on a valid file.
+func TestApplyOutgoingMailLimitsAcceptsPostfwd1ShowconfigExitStatus(t *testing.T) {
+	host, _ := installFakeOutgoingHost(t)
+	host.checkExitsOne = true
+	var resp transport.OutgoingMailLimitsApplyResponse
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Applied || !resp.Verified || resp.Code != "" {
+		t.Fatalf("apply = %+v", resp)
 	}
 }
 

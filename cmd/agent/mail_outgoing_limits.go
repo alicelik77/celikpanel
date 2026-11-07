@@ -152,6 +152,9 @@ func (l outgoingLayout) dropInContent() string {
 	return strings.Join(lines, "\n")
 }
 
+// postfwdShownRuleRe is one rule line of postfwd --showconfig ("Rule   0: ...").
+var postfwdShownRuleRe = regexp.MustCompile(`(?m)^Rule +[0-9]+:`)
+
 // Swapped by tests.
 var (
 	outgoingFamily   = detectPkgFamily
@@ -867,9 +870,14 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 			fail(transport.OutgoingMailCheckFailed, fmt.Errorf("write the rule file for its check: %s", boundedNativeDetail(err.Error())))
 			return
 		}
+		// postfwd 1.x (postfwd2: Debian, Ubuntu) ends --showconfig with
+		// "exit 1" whatever the file holds (alpha.128 lab, Debian 13
+		// postfwd 1.35-10), so its exit status says nothing: the check is
+		// the rules it printed, one "Rule N:" line for every rule it
+		// parsed. The self-test below then proves the running daemon counts.
 		out, err := outgoingRun(ctx, layout.program, "-f", candidate, "-C")
 		_ = outgoingRemoveFile(candidate)
-		if err != nil || strings.Count(string(out), "Rule ") < rendered.rules {
+		if len(postfwdShownRuleRe.FindAllIndex(out, -1)) < rendered.rules {
 			fail(transport.OutgoingMailCheckFailed, fmt.Errorf("postfwd refused the new rules (postfwd -C): %s", boundedNativeDetail(firstNonEmpty(string(out), errString(err)))))
 			return
 		}
