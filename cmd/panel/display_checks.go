@@ -60,8 +60,18 @@ var (
 	displayCheckKeep = 24 * time.Hour
 	// displayCheckLimit bounds one check that runs behind the screen.
 	displayCheckLimit = 45 * time.Second
-	displayCheckClock = time.Now
 )
+
+// displayCheckNow is the clock of the display checks. It is read by the
+// checks that run behind the screen, so tests swap it atomically.
+var displayCheckNow atomic.Pointer[func() time.Time]
+
+func displayCheckClock() time.Time {
+	if now := displayCheckNow.Load(); now != nil {
+		return (*now)()
+	}
+	return time.Now()
+}
 
 // displayChangesGeneration moves on every change made through the panel
 // (alpha.127): screens of site content (mail health, applications, the

@@ -27,11 +27,12 @@ func displayCheckTestClock(t *testing.T) displayCheckTestTime {
 	t.Helper()
 	now := time.Date(2026, 11, 6, 17, 0, 0, 0, time.UTC)
 	var mu sync.Mutex
-	previousClock, previousEnabled := displayCheckClock, displayChecksEnabled.Load()
-	displayCheckClock = func() time.Time { mu.Lock(); defer mu.Unlock(); return now }
+	previousClock, previousEnabled := displayCheckNow.Load(), displayChecksEnabled.Load()
+	clock := func() time.Time { mu.Lock(); defer mu.Unlock(); return now }
+	displayCheckNow.Store(&clock)
 	displayChecksEnabled.Store(true)
 	t.Cleanup(func() {
-		displayCheckClock = previousClock
+		displayCheckNow.Store(previousClock)
 		displayChecksEnabled.Store(previousEnabled)
 	})
 	return displayCheckTestTime{mu: &mu, now: &now}
