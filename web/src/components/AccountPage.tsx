@@ -19,6 +19,8 @@ import { PasswordInput } from './PasswordInput';
 // or who can grant them. Its own chunk, fetched with this page.
 // Bayi ya da müşterinin kendi uzak yedek hedefleri; ya da bu hakkı kimin verebileceği.
 const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
+// alpha.128 ops (G23): the way to the account's own activity.
+const ActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityCard })));
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -48,6 +50,7 @@ export function AccountPage() {
                         <Suspense fallback={null}><RemoteBackupDestinations admin={false} /></Suspense>
                     </section>
                 )}
+                {(role === 'customer' || role === 'reseller') && <Suspense fallback={null}><ActivityCard /></Suspense>}
                 <PasswordPanel />
                 <EmailPanel />
                 <TwoFactorPanel />

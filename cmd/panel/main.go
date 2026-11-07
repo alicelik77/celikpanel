@@ -1581,6 +1581,8 @@ func main() {
 	http.HandleFunc(ownEmailPath, panel.handleChangeOwnEmail)
 	// alpha.119: the first-login tour's state, the signed-in person's own row.
 	http.HandleFunc(guideStatePath, panel.handleGuideState)
+	// alpha.128 ops: G23 the account's own action log (read only, filtered by rights).
+	http.HandleFunc(activityLogPath, panel.handleActivityLog)
 	http.HandleFunc("/api/v1/auth/2fa/status", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)

@@ -173,6 +173,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/host-mutation-readiness":    gateTenant, // read-only readiness
 	"/api/v1/license/access":             gateTenant, // the caller's own access state
 	"/api/v1/me/guide-state":             gateTenant, // alpha.119: the caller's own tour state only
+	"/api/v1/me/activity":                gateTenant, // alpha.128 ops G23: own rows (+ customers' for a reseller) only (handler)
 	"/api/v1/maintenance/restarts":       gateTenant, // admin-only in handler
 	"/api/v1/offered-versions":           gateTenant, // read for all; changed by admin (handler)
 	"/api/v1/panel/access-address":       gatePublic, // GET is public (how to reach the panel)

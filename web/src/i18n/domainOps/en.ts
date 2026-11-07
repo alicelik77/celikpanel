@@ -1,5 +1,5 @@
 // Route-scoped copy (alpha.128, workstream "ops"), like ../monitoringAlerts:
-// the domain health strip on a domain's Overview (dhealth.). It ships with
+// the domain health strip on a domain's Overview (dhealth.) and the account's action log (activity.). It ships with
 // the screen's own chunk, so the critical boot path does not grow;
 // ../domainOps.ts looks keys up in the I18nProvider's locale.
 //
@@ -79,6 +79,34 @@ export const enDomainOps = {
     'dhealth.who.administrator': 'the administrator',
     'dhealth.who.provider': 'your provider',
     'dhealth.who.owner': 'the account owner',
+    // alpha.128 G23: the account’s own action log (activity.).
+    'activity.title': 'Activity',
+    'activity.subtitle': 'What was done in your account, newest first.',
+    'activity.subtitleReseller': 'What was done in your account and in your customers’ accounts, newest first.',
+    'activity.subtitleTeam': 'What you did, newest first.',
+    'activity.checking': 'Reading the activity…',
+    'activity.unknown': 'The activity could not be read, so it is not shown. This does not mean nothing was done. Nothing was changed.',
+    'activity.empty': 'Nothing has been recorded yet.',
+    'activity.incomplete': 'Some recent actions are still being saved and may be missing here for a moment.',
+    'activity.older': 'Show older',
+    'activity.olderFailed': 'Older activity could not be read. Try again.',
+    'activity.end': 'This is the beginning of the record.',
+    'activity.col.time': 'When',
+    'activity.col.who': 'Who',
+    'activity.col.what': 'What',
+    'activity.col.ip': 'From',
+    'activity.actor.you': 'You',
+    'activity.actor.administrator': 'The administrator',
+    'activity.actor.provider': 'Your provider',
+    'activity.actor.team_member': '{name} (team member)',
+    'activity.actor.system': 'The panel',
+    'activity.actor.someone': 'Someone else',
+    'activity.as': '{who}, as {name}',
+    'activity.generic': 'An action in the panel',
+    'activity.cardTitle': 'Activity',
+    'activity.cardText': 'See what was done in your account, by you and by whoever acted for you.',
+    'activity.cardTextTeam': 'See what you did in the panel.',
+    'activity.cardOpen': 'Open activity',
 };
 
 export type DomainOpsKey = keyof typeof enDomainOps;
