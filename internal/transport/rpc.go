@@ -65,6 +65,9 @@ type CreateDatabaseResponse struct {
 	OwnedByOperation  bool   `json:"owned_by_operation,omitempty"`
 	CleanupIncomplete bool   `json:"cleanup_incomplete,omitempty"`
 	Error             string `json:"error,omitempty"`
+	// NameTaken (alpha.129): "database" or "user" when the engine already has
+	// that name; nothing was changed and nothing was taken over. Additive.
+	NameTaken string `json:"name_taken,omitempty"`
 	// Refusal is set when nothing ran because the PostgreSQL cluster the
 	// statement would go to cannot take it (alpha.127): a typed, verified
 	// prerequisite, never an engine failure. Additive.

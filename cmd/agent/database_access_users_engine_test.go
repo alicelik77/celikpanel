@@ -304,3 +304,103 @@ func TestDatabaseAccessUsersOnRealPostgreSQL(t *testing.T) {
 	res = e.pg("a129shop_user", engineOwnerPassword, "a129shop", "SELECT 1;")
 	mustFail(t, "old password", res)
 }
+
+func createDatabaseOn(t *testing.T, req CreateDatabaseRequest) CreateDatabaseResponse {
+	t.Helper()
+	var resp CreateDatabaseResponse
+	if err := (&Agent{}).CreateDatabase(req, &resp); err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
+// alpha.129: the Agent's create (every path that makes a database: the
+// domain, the catalogue and WordPress installs, a database copy, a site copy)
+// never takes over a role or database that is already there; a replay of
+// CelikPanel's own operation resumes on its own role only.
+func TestCreateDatabaseNeverTakesOverAnExistingRoleOnRealPostgreSQL(t *testing.T) {
+	e := requireTestEngines(t)
+	installTestEngines(t, e)
+	cleanup := "DROP DATABASE IF EXISTS a129take; DROP DATABASE IF EXISTS a129takedb; DROP DATABASE IF EXISTS a129fresh; DROP DATABASE IF EXISTS a129op; " +
+		"DROP ROLE IF EXISTS a129take_user; DROP ROLE IF EXISTS a129takedb_user; DROP ROLE IF EXISTS a129fresh_user; DROP ROLE IF EXISTS a129op_user;"
+	mustRun(t, "clean", e.pg("", "", "", cleanup))
+	t.Cleanup(func() { _ = e.pg("", "", "", cleanup) })
+	const foreignPassword = "Foreign-Passw0rd!1"
+	const newPassword = "Panel-Passw0rd!123"
+
+	// A role made outside CelikPanel: refused, nothing changed, its password kept.
+	mustRun(t, "foreign role", e.pg("", "", "", "CREATE ROLE a129take_user LOGIN PASSWORD '"+foreignPassword+"';"))
+	resp := createDatabaseOn(t, CreateDatabaseRequest{Type: "postgresql", Name: "a129take", User: "a129take_user", Password: newPassword, Port: 5432})
+	if resp.Success || resp.NameTaken != "user" || strings.Contains(resp.Error, newPassword) {
+		t.Fatalf("foreign role: %+v", resp)
+	}
+	if got := mustRun(t, "no database", e.pg("", "", "", "SELECT count(*) FROM pg_database WHERE datname = 'a129take';")); got != "0" {
+		t.Fatal("a database was made for a foreign role")
+	}
+	mustRun(t, "foreign password kept", e.pg("a129take_user", foreignPassword, "postgres", "SELECT 1;"))
+	mustFail(t, "the new password does not sign in", e.pg("a129take_user", newPassword, "postgres", "SELECT 1;"))
+
+	// A database made outside CelikPanel: refused, no role made.
+	mustRun(t, "foreign database", e.pg("", "", "", "CREATE DATABASE a129takedb;"))
+	resp = createDatabaseOn(t, CreateDatabaseRequest{Type: "postgresql", Name: "a129takedb", User: "a129takedb_user", Password: newPassword, Port: 5432})
+	if resp.Success || resp.NameTaken != "database" {
+		t.Fatalf("foreign database: %+v", resp)
+	}
+	if got := mustRun(t, "no role", e.pg("", "", "", "SELECT count(*) FROM pg_roles WHERE rolname = 'a129takedb_user';")); got != "0" {
+		t.Fatal("a role was made for a foreign database")
+	}
+
+	// A fresh create: the user owns the database and signs in with a SCRAM
+	// verifier; the same create again is refused (the panel's request
+	// identity answers its own replays before the Agent).
+	if resp = createDatabaseOn(t, CreateDatabaseRequest{Type: "postgresql", Name: "a129fresh", User: "a129fresh_user", Password: newPassword, Port: 5432}); !resp.Success {
+		t.Fatalf("fresh: %+v", resp)
+	}
+	if got := mustRun(t, "owner and verifier", e.pg("", "", "", "SELECT pg_get_userbyid(datdba) || ' ' || (SELECT rolpassword LIKE 'SCRAM-SHA-256$%' FROM pg_authid WHERE rolname = 'a129fresh_user') FROM pg_database WHERE datname = 'a129fresh';")); got != "a129fresh_user true" {
+		t.Fatalf("fresh: %q", got)
+	}
+	mustRun(t, "fresh signs in", e.pg("a129fresh_user", newPassword, "a129fresh", "SELECT 1;"))
+	if resp = createDatabaseOn(t, CreateDatabaseRequest{Type: "postgresql", Name: "a129fresh", User: "a129fresh_user", Password: newPassword, Port: 5432}); resp.Success || resp.NameTaken != "user" {
+		t.Fatalf("second plain create: %+v", resp)
+	}
+
+	// An operation's create: a replay of the same operation resumes on its
+	// own marked role (also after the database was lost in between); another
+	// operation never adopts it.
+	op := CreateDatabaseRequest{Type: "postgresql", Name: "a129op", User: "a129op_user", Password: newPassword, Port: 5432,
+		OperationID: strings.Repeat("ab", 16), CleanupToken: strings.Repeat("cd", 32)}
+	if resp = createDatabaseOn(t, op); !resp.Success || !resp.OwnedByOperation {
+		t.Fatalf("operation: %+v", resp)
+	}
+	if resp = createDatabaseOn(t, op); !resp.Success || !resp.OwnedByOperation {
+		t.Fatalf("replay of the same operation: %+v", resp)
+	}
+	mustRun(t, "lose the database", e.pg("", "", "", "DROP DATABASE a129op;"))
+	if resp = createDatabaseOn(t, op); !resp.Success {
+		t.Fatalf("resume after the database was lost: %+v", resp)
+	}
+	if got := mustRun(t, "one role, owner", e.pg("", "", "", "SELECT (SELECT count(*) FROM pg_roles WHERE rolname = 'a129op_user') || ' ' || pg_get_userbyid(datdba) FROM pg_database WHERE datname = 'a129op';")); got != "1 a129op_user" {
+		t.Fatalf("operation state %q", got)
+	}
+	other := op
+	other.CleanupToken = strings.Repeat("ef", 32)
+	if resp = createDatabaseOn(t, other); resp.Success || resp.NameTaken != "user" {
+		t.Fatalf("another operation adopted the role: %+v", resp)
+	}
+}
+
+func TestCreateDatabaseNamesWhatIsTakenOnRealMariaDB(t *testing.T) {
+	e := requireTestEngines(t)
+	installTestEngines(t, e)
+	cleanup := "DROP DATABASE IF EXISTS a129mtake; DROP USER IF EXISTS 'a129mtake_user'@'localhost';"
+	mustRun(t, "clean", e.maria("", "", cleanup))
+	t.Cleanup(func() { _ = e.maria("", "", cleanup) })
+	mustRun(t, "foreign database", e.maria("", "", "CREATE DATABASE a129mtake;"))
+	resp := createDatabaseOn(t, CreateDatabaseRequest{Type: "mysql", Name: "a129mtake", User: "a129mtake_user", Password: "Panel-Passw0rd!123"})
+	if resp.Success || resp.NameTaken != "database" {
+		t.Fatalf("foreign database: %+v", resp)
+	}
+	if got := mustRun(t, "no user", e.maria("", "", "SELECT COUNT(*) FROM mysql.user WHERE User = 'a129mtake_user';")); got != "0" {
+		t.Fatal("a user was made for a foreign database")
+	}
+}

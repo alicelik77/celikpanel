@@ -402,6 +402,12 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		writeDatabaseClusterRefusal(w, r, agentResp.Refusal)
 		return
 	}
+	if err == nil && agentResp.NameTaken != "" {
+		// alpha.129: the engine has the name already (made outside
+		// CelikPanel); nothing was changed or taken over.
+		writeDatabaseNameTaken(w, agentResp.NameTaken, map[string]string{"database": dbName, "user": dbUser}[agentResp.NameTaken])
+		return
+	}
 	if err != nil || !agentResp.Success {
 		writeAgentError(w, err, agentResp.Error)
 		return

@@ -85,6 +85,17 @@ Audit of 7 November 2026:
   both compare every record of the same engine (localhost and 127.0.0.1 are
   one engine) and refuse with `DATABASE_NAME_TAKEN`, and the panel-side
   drivers create exclusively. Different engines may share a name.
-- Remaining: the Agent's domain create on PostgreSQL still treats an
-  existing role as usable (only a role CelikPanel does not record, i.e. one
-  made outside it, can reach that path now).
+- The Agent's create (`Agent.CreateDatabase`: domain databases, database
+  copies, catalogue and WordPress installs, WordPress clones, site copies)
+  is exclusive on both engines. PostgreSQL used to take "role already
+  exists" as success and made the new database owned by that role; now an
+  existing role or database changes nothing and the answer names it
+  (`NameTaken`, shown as `DATABASE_NAME_TAKEN`). A create that carries an
+  operation's ownership proof marks its role (`COMMENT ON ROLE` with the
+  proof's hash), so a replay of the same operation resumes on its own role;
+  another operation or a plain create never adopts it. A role made by a
+  failed create is dropped again. Replays of the same request are answered
+  by the panel's request identity before the Agent.
+- Not changed: moving a database to another PostgreSQL cluster
+  (`CopyPostgreSQLDatabaseV1`) creates the roles the target lacks and reuses
+  roles of the same name already on the target, by design of the move.

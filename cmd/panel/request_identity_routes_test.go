@@ -82,8 +82,10 @@ type requestIdentityRoutesAgent struct {
 	installedCalls      int
 	createDatabaseCalls int
 	provisionCalls      int
-	inspectEntered      chan struct{}
-	inspectRelease      chan struct{}
+	// nameTaken (alpha.129): the engine answers that this name is taken.
+	nameTaken      string
+	inspectEntered chan struct{}
+	inspectRelease chan struct{}
 }
 
 func (a *requestIdentityRoutesAgent) InspectCpmove(
@@ -135,6 +137,14 @@ func (a *requestIdentityRoutesAgent) CreateDatabase(
 	a.mu.Unlock()
 	// Long enough for two handlers to overlap if two were ever started.
 	time.Sleep(3 * time.Millisecond)
+	a.mu.Lock()
+	taken := a.nameTaken
+	a.mu.Unlock()
+	if taken != "" {
+		resp.NameTaken = taken
+		resp.Error = "taken"
+		return nil
+	}
 	resp.Success = true
 	return nil
 }

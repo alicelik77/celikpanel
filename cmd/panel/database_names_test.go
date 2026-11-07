@@ -120,3 +120,24 @@ func TestDatabaseExportFileNameCarriesTheEngine(t *testing.T) {
 		t.Fatalf("%s / %s", maria, pg)
 	}
 }
+
+// The Agent found the role (or database) already on the engine, made
+// outside CelikPanel: the domain create says so and records nothing.
+func TestDomainDatabaseCreateSaysWhenTheEngineHasTheName(t *testing.T) {
+	panel, agent, userID, _, domainID := newRequestIdentityHostingFixture(t)
+	agent.nameTaken = "user"
+	c := requestIdentityRouteCase{
+		path:   fmt.Sprintf("/api/v1/domains/%d/databases", domainID),
+		body:   `{"name":"shop","type":"mysql","password":"A-long-enough-Passw0rd!"}`,
+		caller: &Caller{ID: userID, Role: roleAdmin},
+	}
+	answer := c.send(requestIdentityRoutesMux(panel), "")
+	if answer.Code != http.StatusConflict || !strings.Contains(answer.Body.String(), errCodeDatabaseNameTaken) ||
+		!strings.Contains(answer.Body.String(), "database user named request_example_shop_user") {
+		t.Fatalf("status = %d, body = %s", answer.Code, answer.Body.String())
+	}
+	var rows int
+	if err := panel.db.GetDB().QueryRow(`SELECT (SELECT COUNT(*) FROM databases_v2) + (SELECT COUNT(*) FROM database_users)`).Scan(&rows); err != nil || rows != 0 {
+		t.Fatalf("recorded %d rows (%v)", rows, err)
+	}
+}
