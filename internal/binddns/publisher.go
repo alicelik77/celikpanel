@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/checkresult"
 )
 
 const (
@@ -20,7 +22,7 @@ const (
 	immutableDirectoryMode = fs.FileMode(0o555)
 	immutableFileMode      = fs.FileMode(0o444)
 	maxGenerationFileBytes = int64(16 << 20)
-	switchRecoveryTimeout  = 30 * time.Second
+	switchRecoveryTimeout  = 90 * time.Second
 )
 
 // ErrRollbackPeerUnverified is returned only after the exact prior pointer, daemon reload,
@@ -713,6 +715,19 @@ func (publisher *Publisher) Switch(
 		if rollbackErr != nil {
 			if errors.Is(rollbackErr, ErrRollbackPeerUnverified) {
 				return errors.Join(activationErr, fmt.Errorf("prior BIND generation is locally restored but paired authority is unverified: %w", rollbackErr))
+			}
+			if checkresult.Is(rollbackErr) {
+				// The durable pointer is back on the prior generation and
+				// the reapply only could not finish checking it (a deadline,
+				// not a refusal). An unknown result never stops a running
+				// native service (D-024): BIND keeps serving, the caller
+				// reports "checking could not finish" and tries again later.
+				// Stopping it here turned a slow dpkg-query into a DNS outage
+				// (alpha.129 lab, Debian 12).
+				return errors.Join(
+					activationErr,
+					fmt.Errorf("prior BIND generation restored; BIND keeps running because checking it could not finish: %w", rollbackErr),
+				)
 			}
 			// A failed reapply leaves the daemon's in-memory view ambiguous even
 			// though the durable pointer is back on the prior generation. Give the

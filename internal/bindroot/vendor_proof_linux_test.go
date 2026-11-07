@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"golang.org/x/sys/unix"
 )
@@ -171,5 +172,29 @@ func TestAPTVendorPackageOwnershipAcceptsMergedUsrLibName(t *testing.T) {
 	}
 	if err := VerifyAPTVendorPackageOwnership(context.Background(), nil, true); err == nil {
 		t.Fatal("missing lookup accepted")
+	}
+}
+
+// alpha.129 lab: on a busy Debian 12 the /lib query ran past the deadline.
+// A lookup that ends with its context is an unknown result, never "not
+// owned"; a lookup that answers "not owned" stays a verified refusal.
+func TestAPTVendorPackageOwnershipDeadlineIsUnknownNotAbsent(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	lookup := func(lookupCtx context.Context, path string) ([]byte, error) {
+		if path == aptVendorUnitPath {
+			return []byte("dpkg-query: no path found matching pattern " + path + "\n"), errors.New("exit status 1")
+		}
+		cancel() // the deadline passes while the /lib name is asked
+		return nil, lookupCtx.Err()
+	}
+	err := VerifyAPTVendorPackageOwnership(ctx, lookup, true)
+	if err == nil || !checkresult.Is(err) {
+		t.Fatalf("a lookup cut by the deadline must be unknown: %v", err)
+	}
+	refused := func(_ context.Context, path string) ([]byte, error) {
+		return []byte("dpkg-query: no path found matching pattern " + path + "\n"), errors.New("exit status 1")
+	}
+	if err := VerifyAPTVendorPackageOwnership(context.Background(), refused, true); err == nil || checkresult.Is(err) {
+		t.Fatalf("a finished \"not owned\" answer stays a verified refusal: %v", err)
 	}
 }

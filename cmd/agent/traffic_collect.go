@@ -463,7 +463,7 @@ func renderTrafficLogrotate() string {
 		"    create\n" +
 		"    sharedscripts\n" +
 		"    postrotate\n" +
-		"        systemctl kill --kill-whom=main --signal=USR1 nginx.service >/dev/null 2>&1 || true\n" +
+		"        systemctl kill --kill-who=main --signal=USR1 nginx.service >/dev/null 2>&1 || true\n" +
 		"    endscript\n" +
 		"}\n"
 }

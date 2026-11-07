@@ -36,7 +36,7 @@ assert_before() {
 }
 
 flag_set=$(line_of 'printf -v "$flag_name" '\''%s'\'' 1')
-sigstop=$(line_of 'if ! systemctl kill --kill-whom=all --signal=SIGSTOP "$unit"; then')
+sigstop=$(line_of 'if ! systemctl kill --kill-who=all --signal=SIGSTOP "$unit"; then')
 flag_reset=$(line_of 'printf -v "$flag_name" '\''%s'\'' 0')
 assert_before "$flag_set" "$sigstop" "frozen flag must be published before SIGSTOP"
 assert_before "$sigstop" "$flag_reset" "failed SIGSTOP must reset the frozen flag"

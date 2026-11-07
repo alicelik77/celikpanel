@@ -1048,7 +1048,7 @@ stop_coordinators_trap_safe() {
         sleep 0.05
     done
     for unit in celikpanel-panel.service celikpanel-agent.service; do
-        systemctl kill --kill-whom=all --signal=SIGKILL "$unit" >/dev/null 2>&1 || true
+        systemctl kill --kill-who=all --signal=SIGKILL "$unit" >/dev/null 2>&1 || true
         systemctl stop --no-block "$unit" >/dev/null 2>&1 || true
     done
     for _ in $(seq 1 50); do

@@ -183,7 +183,7 @@ func TestParseTrafficLineSkipsWhatItCannotRead(t *testing.T) {
 
 func TestTrafficLogrotateFileRotatesWithoutThePanel(t *testing.T) {
 	body := renderTrafficLogrotate()
-	for _, want := range []string{"daily", "rotate 3", "maxsize 100M", "delaycompress", "missingok", "systemctl kill --kill-whom=main --signal=USR1 nginx.service"} {
+	for _, want := range []string{"daily", "rotate 3", "maxsize 100M", "delaycompress", "missingok", "systemctl kill --kill-who=main --signal=USR1 nginx.service"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("logrotate file lacks %q:\n%s", want, body)
 		}

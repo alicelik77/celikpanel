@@ -58,6 +58,17 @@ Postfix policy protocol, package removed afterwards):
   (alpha.128 lab), so the check is the "Rule N:" lines it prints; `postconf -P` refuses a value
   with whitespace (`check_policy_service,inet:127.0.0.1:10040` is used).
 
+On Debian 12's postfwd 1.35-8 (alpha.129 lab, `raw/D4-pf135-*.log` in the
+`a128-other-systems` evidence): when "limits on" reloaded postfwd, its policy
+server failed the master's check during the reload and was respawned; after
+that, reloads did not reach the prefork children still answering, so a limit
+set afterwards was ignored (6 of 6 sent) and a lifted pause answered 550 for
+about 4 minutes on Ubuntu 22.04 (1.35-7). The manual also says a changed rate
+rule needs a restart with `--keep_rates`. A restart takes the new rules at once
+(about 0.3 s; Postfix's DUNNO default answers meanwhile), and with
+`--save_rates <file>` the counters survive it (the cache daemon stores them at
+its end and loads them at its start; without it they start from zero).
+
 On the Arch 2.03 program (run from the downloaded package with the same
 rules): with Arch's `--cache=600` identical end-of-message requests were
 answered from the request cache and not counted; with `--cache=0` they were.
@@ -68,12 +79,14 @@ answered from the request cache and not counted; with `--cache=0` they were.
   seat; never installed by a panel update). The install writes a rule file that
   only says DUNNO (Debian ships none) and a systemd drop-in
   `/etc/systemd/system/postfwd.service.d/celikpanel.conf`: Debian keeps the
-  owner's `/etc/default/postfwd` and adds `--keep_rates`; Arch adds
-  `--cache=0 --keep_rates`.
+  owner's `/etc/default/postfwd` and adds `--cache=0 --keep_rates --save_rates
+  /var/lib/celikpanel-postfwd/rates` (an `ExecStartPre` gives that folder to
+  `$RUNAS`); Arch adds `--cache=0 --keep_rates`.
 - The panel sends the whole wanted state; the Agent renders the rule file
   (marker + body digest) and lists under `/etc/postfix/celikpanel-postfwd/`
-  (Arch: `/etc/postfwd/celikpanel/`), checks them with `postfwd -C`, reloads
-  postfwd and sends two self-test requests for a name no mailbox can have (the
+  (Arch: `/etc/postfwd/celikpanel/`), checks them with `postfwd -C`, restarts
+  postfwd 1.x (Debian, Ubuntu; counters kept by `--save_rates`) or reloads
+  postfwd 2.x (Arch), and sends two self-test requests for a name no mailbox can have (the
   self-test rule reads a list too, `selftest.domains`, so a list postfwd cannot
   read fails it; the list folder is kept 0755 because postfwd runs as its own
   account and the Agent's umask is 0027 — alpha.128 lab)
@@ -147,5 +160,5 @@ preview phase does not apply; the report counts the refusals it makes.
   per hour), the package measurements above.
 - Open: an end-to-end run with a real Postfix on the five systems (install,
   limit hit, panel stopped, postfwd stopped = mail still flows) is the lab
-  round; component tests alone do not establish it. A postfwd restart starts
-  the hour from zero (`--save_rates` not used).
+  round; component tests alone do not establish it. On Arch (2.x, reloaded) a
+  restart by the owner still starts the hour from zero.

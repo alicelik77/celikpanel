@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alicelik/celikpanel/internal/checkresult"
 )
 
 type memoryNode struct {
@@ -1053,5 +1055,70 @@ func TestPublisherTellsAChangedPublishedTreeApart(t *testing.T) {
 	zone.data = []byte("$ORIGIN example.com.\n@ 60 IN TXT \"set by the owner\"\n")
 	if _, err := publisher.LoadCurrent(); !errors.Is(err, ErrGenerationChanged) {
 		t.Fatalf("a changed zone file: %v", err)
+	}
+}
+
+// alpha.129 lab (Debian 12 under load): the activation's check and the
+// prior generation's re-check both ran past their deadline. An unfinished
+// check is an unknown result; the prior generation was restored and
+// reloaded, so BIND must keep running: no empty recovery (no stop).
+func TestPublisherSwitchKeepsBINDRunningWhenTheRestoredCheckCannotFinish(t *testing.T) {
+	filesystem := newMemoryFS()
+	publisher := newTestPublisher(t, filesystem, &recordingRunner{})
+	first := publisherGeneration(t, 1, "192.0.2.1")
+	second := publisherGeneration(t, 2, "192.0.2.2")
+	for _, generation := range []Generation{first, second} {
+		if err := publisher.Stage(context.Background(), generation); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := publisher.Activate(first.ID); err != nil {
+		t.Fatal(err)
+	}
+	unfinished := checkresult.Incomplete(errors.New("verify BIND vendor unit files: context deadline exceeded"))
+	applyCalls := 0
+	err := publisher.Switch(context.Background(), second.ID, func(context.Context) error {
+		applyCalls++
+		return unfinished
+	}, func(context.Context) error {
+		t.Fatal("empty recovery (stop BIND) ran for an unfinished check")
+		return nil
+	})
+	if err == nil || !checkresult.Is(err) || !strings.Contains(err.Error(), "BIND keeps running") {
+		t.Fatalf("Switch error = %v", err)
+	}
+	if applyCalls != 2 {
+		t.Fatalf("apply calls = %d, want 2 (activation, then the prior generation)", applyCalls)
+	}
+	id, exists, currentErr := publisher.Current()
+	if currentErr != nil || !exists || id != first.ID {
+		t.Fatalf("current = %q, %v, %v; want the prior generation", id, exists, currentErr)
+	}
+}
+
+// A verified failure of the re-apply (not a deadline) keeps the fail-closed
+// recovery: only the unknown result changed.
+func TestPublisherSwitchStillFailsClosedOnAVerifiedReapplyFailure(t *testing.T) {
+	filesystem := newMemoryFS()
+	publisher := newTestPublisher(t, filesystem, &recordingRunner{})
+	first := publisherGeneration(t, 1, "192.0.2.1")
+	second := publisherGeneration(t, 2, "192.0.2.2")
+	for _, generation := range []Generation{first, second} {
+		if err := publisher.Stage(context.Background(), generation); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := publisher.Activate(first.ID); err != nil {
+		t.Fatal(err)
+	}
+	emptied := false
+	err := publisher.Switch(context.Background(), second.ID, func(context.Context) error {
+		return errors.New("named.service is not owned by the exact bind9 package")
+	}, func(context.Context) error {
+		emptied = true
+		return nil
+	})
+	if err == nil || !emptied || checkresult.Is(err) {
+		t.Fatalf("err = %v, emptied = %v", err, emptied)
 	}
 }

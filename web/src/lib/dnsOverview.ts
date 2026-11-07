@@ -72,7 +72,7 @@ export const DNS_OVERVIEW_CODES = [
     'setup_not_done', 'setup_running', 'join_waiting', 'main_not_serving', 'backup_not_serving', 'peer_not_joined',
     'registrar_not_pointing', 'domain_not_registered', 'glue_missing', 'provider_records', 'remote_records',
     'provider_mail', 'remote_mail', 'server_unknown', 'some_unknown', 'spreading', 'mail_spreading',
-    'owner_changed', 'engine_owner_changed', 'engine_series_untested', 'mail_no_mx', 'mail_not_in_list', 'backup_first_copy', 'ok_mail_kept', 'ok_mail_elsewhere', 'ok_optional_glue', 'dkim_pending', 'ok', 'check_running',
+    'owner_changed', 'engine_owner_changed', 'engine_series_untested', 'engine_stopped', 'mail_no_mx', 'mail_not_in_list', 'backup_first_copy', 'ok_mail_kept', 'ok_mail_elsewhere', 'ok_optional_glue', 'dkim_pending', 'ok', 'check_running',
 ] as const;
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);

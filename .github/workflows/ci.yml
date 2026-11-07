@@ -208,6 +208,8 @@ jobs:
       # Prove exact coordinator identity and crash-safe quiesce recovery.
       # Tam koordinatör kimliğini ve çökme güvenli quiesce kurtarmasını kanıtla.
       - run: bash deploy/test-update-quiesce-exit-contract.sh update.sh
+      # systemd 249 (Ubuntu 22.04) knows --kill-who=, not --kill-whom= (alpha.129 lab).
+      - run: bash deploy/test-systemd-option-portability-contract.sh
       - run: bash deploy/test-update-failure-report.sh
       # upd4 F4/F5/O8: live-probe re-read only for a concurrent write, typed
       # unchanged preflight refusal, snapshot cause, recorded renewal state.

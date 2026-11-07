@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/bindconfig"
 	"github.com/alicelik/celikpanel/internal/binddns"
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/dnsengineartifact"
 	"github.com/alicelik/celikpanel/internal/dnsenginerecovery"
@@ -34,7 +35,7 @@ const (
 	abandonedAPTBindGenerationRoot = "/etc/bind/celikpanel"
 	bindDaemonReloadTimeout        = 15 * time.Second
 	bindIdentityInspectionTimeout  = 15 * time.Second
-	dnsRuntimeInspectionTimeout    = 15 * time.Second
+	dnsRuntimeInspectionTimeout    = 45 * time.Second
 
 	dnsSecondaryWriteDeniedError = "directional secondary DNS cannot publish panel-local zones"
 )
@@ -2926,7 +2927,9 @@ func verifyOnlyBINDActive(
 	}
 	proofCtx, cancel := context.WithTimeout(ctx, dnsRuntimeInspectionTimeout)
 	defer cancel()
-	return verifyOnlyBINDActiveWithOps(profile, bindActiveProofOps{
+	// A proof that ran out of time is an unknown result, not a refusal: the
+	// BIND switch keeps a reloaded daemon running on it (checkresult).
+	return checkresult.IfContextEnded(proofCtx, verifyOnlyBINDActiveWithOps(profile, bindActiveProofOps{
 		inspectTopology: func() (bindRuntimeTopologySnapshot, error) {
 			return inspectVerifiedBINDRuntimeTopology(proofCtx, profile, systemctl)
 		},
@@ -2951,7 +2954,7 @@ func verifyOnlyBINDActive(
 			}
 			return string(output), nil
 		},
-	})
+	}))
 }
 
 type bindActiveProofOps struct {

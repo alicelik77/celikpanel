@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/checkresult"
 	"github.com/alicelik/celikpanel/internal/dnsunitidentity"
 	"github.com/alicelik/celikpanel/internal/hostplatform"
 	"golang.org/x/sys/unix"
@@ -18,6 +19,12 @@ type VendorFilesIdentity struct {
 	Unit        FileIdentity
 	Environment FileIdentity
 }
+
+// vendorProofTimeout bounds the package-manager queries of one vendor proof.
+// dpkg-query reads every package list for a path it does not find, and on a
+// busy server (installs running) that took longer than the earlier 15 s. A
+// query that still does not finish is an unknown result (checkresult).
+const vendorProofTimeout = 45 * time.Second
 
 const (
 	aptVendorUnitPath         = dnsunitidentity.VendorUnitDir + "named.service"
@@ -53,6 +60,11 @@ type APTVendorOwnerLookup func(context.Context, string) ([]byte, error)
 // map to /usr/lib; that name is asked for only when libIsUsrLibAlias proves
 // /lib is the merged-/usr symlink, so the dpkg-owned file is the same file
 // whose bytes are proven at /usr/lib and that systemd loads.
+//
+// A lookup that ends because ctx ended (deadline, cancel) proves nothing:
+// the error is marked checkresult.ErrIncomplete, never "not owned" (alpha.129
+// lab: Debian 12 under load, dpkg-query ran past the deadline and the
+// publication's recovery stopped BIND).
 func VerifyAPTVendorPackageOwnership(
 	ctx context.Context,
 	lookup APTVendorOwnerLookup,
@@ -61,6 +73,14 @@ func VerifyAPTVendorPackageOwnership(
 	if ctx == nil || lookup == nil {
 		return errors.New("invalid APT BIND vendor package ownership proof")
 	}
+	return checkresult.IfContextEnded(ctx, verifyAPTVendorPackageOwnership(ctx, lookup, libIsUsrLibAlias))
+}
+
+func verifyAPTVendorPackageOwnership(
+	ctx context.Context,
+	lookup APTVendorOwnerLookup,
+	libIsUsrLibAlias bool,
+) error {
 	output, err := lookup(ctx, aptVendorUnitPath)
 	if unitErr := VerifyAPTVendorOwner(aptVendorUnitPath, output, err); unitErr != nil {
 		if !libIsUsrLibAlias {
@@ -118,7 +138,7 @@ func InspectInstalledVendor(ctx context.Context, profile hostplatform.Profile) (
 	if err != nil {
 		return VendorFilesIdentity{}, err
 	}
-	proofCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	proofCtx, cancel := context.WithTimeout(ctx, vendorProofTimeout)
 	defer cancel()
 	rootFD, err := unix.Open("/", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if err != nil {
@@ -126,14 +146,14 @@ func InspectInstalledVendor(ctx context.Context, profile hostplatform.Profile) (
 	}
 	defer unix.Close(rootFD)
 	if err := proveInstalledVendorPackage(proofCtx, profile); err != nil {
-		return VendorFilesIdentity{}, err
+		return VendorFilesIdentity{}, checkresult.IfContextEnded(proofCtx, err)
 	}
 	identity, err := inspectVendorAt(rootFD, contract, nil)
 	if err != nil {
 		return VendorFilesIdentity{}, err
 	}
 	if err := proveInstalledVendorPackage(proofCtx, profile); err != nil {
-		return VendorFilesIdentity{}, err
+		return VendorFilesIdentity{}, checkresult.IfContextEnded(proofCtx, err)
 	}
 	return identity, nil
 }

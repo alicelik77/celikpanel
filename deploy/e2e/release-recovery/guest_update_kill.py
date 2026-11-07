@@ -232,7 +232,7 @@ class Native:
         return None
 
     def kill(self):
-        result = subprocess.run(["/usr/bin/systemctl", "kill", "--kill-whom=all", "--signal=KILL", self.unit],
+        result = subprocess.run(["/usr/bin/systemctl", "kill", "--kill-who=all", "--signal=KILL", self.unit],
                                 stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=5, env=ENV)
         if result.returncode:
             raise probe.ProbeError("exact frozen update unit kill result unknown")
