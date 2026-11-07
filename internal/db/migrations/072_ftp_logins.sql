@@ -39,3 +39,8 @@ CREATE TABLE ftp_logins (
 );
 
 CREATE INDEX idx_ftp_logins_domain ON ftp_logins(domain_id);
+
+-- The plan's number of logins is a key of the limits chain (066,
+-- cmd/panel/ftp_logins_limit.go): 10 per subscription on the server level;
+-- a plan, reseller plan or Custom set may lower it (0: none).
+INSERT INTO setting_policy (key, server_ceiling, server_default) VALUES ('ftp.max_logins', 10, NULL);

@@ -88,6 +88,9 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'err.FTP_LOGIN_REFUSED.name_taken': 'Bu ad sunucuda kullanılıyor. Başka bir giriş adı seçin; hiçbir şey değiştirilmedi.',
     'err.FTP_LOGIN_REFUSED.site_account': 'Sitenin kendi hesabı sunucuda yok ya da değişmiş, bu yüzden giriş eklenemez. Sunucu yöneticisi siteyi Barındırma sekmesinden denetler.',
 
+    // The plan form's and the server limits' label of the key ftp.max_logins.
+    'limits.key.ftp.max_logins': 'Abonelik başına ek FTP/SFTP girişi',
+
     'opstep.ftplogin.check': 'Giriş, klasör ve plan denetleniyor',
     'opstep.ftplogin.server_change': 'Değişiklik sunucuda yapılıyor',
     'opstep.ftplogin.server_changeNote': 'Hesap, kapalı klasörü, SSH, FTP ve şifre; her biri bir sonrakinden önce denetlenir.',

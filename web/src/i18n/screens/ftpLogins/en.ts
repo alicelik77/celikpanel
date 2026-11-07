@@ -94,6 +94,9 @@ export const enFtpLoginsScreens = {
     'err.FTP_LOGIN_REFUSED.name_taken': 'This name is taken on the server. Choose another login name; nothing was changed.',
     'err.FTP_LOGIN_REFUSED.site_account': 'The site’s own account is missing or changed on the server, so no login can be added. The server administrator checks the site on the Hosting tab.',
 
+    // The plan form's and the server limits' label of the key ftp.max_logins.
+    'limits.key.ftp.max_logins': 'Additional FTP/SFTP logins per subscription',
+
     'opstep.ftplogin.check': 'Checking the login, the folder and the plan',
     'opstep.ftplogin.server_change': 'Making the change on the server',
     'opstep.ftplogin.server_changeNote': 'The account, its closed folder, SSH, FTP and the password, each checked before the next.',

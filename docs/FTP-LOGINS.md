@@ -132,9 +132,11 @@ userdel -f <login>                             # never -r
 A subscription may have at most the plan's number of logins. The count is
 checked on the server when a login is added, in the same transaction that
 writes its row, so two requests cannot both take the last place. The
-administrator's own workspace has no limit. Until the plan carries the number
-(the limits chain of alpha.128, key `ftp.max_logins`), the server default of
-10 per subscription applies. One server keeps at most 500 logins.
+administrator's own workspace has no limit. The number is the key
+`ftp.max_logins` of the limits chain (docs/SITE-LIMITS.md: server ⊇ reseller ⊇
+plan or Custom): 10 per subscription on the server level (migration 072), and
+every plan, reseller plan and Custom set can lower it in its limits (0: no
+additional login). One server keeps at most 500 logins.
 
 ## 6. Escape matrix
 
