@@ -161,7 +161,8 @@ func removeUnchangedAppIncludes(domain string) {
 		return
 	}
 	for _, entry := range entries {
-		if !appIncludeName.MatchString(entry.Name()) {
+		// alpha.128: the site's settings file goes with the site too.
+		if !appIncludeName.MatchString(entry.Name()) && entry.Name() != SiteSettingsFileName {
 			continue
 		}
 		path := filepath.Join(PanelManagedDir(domain), entry.Name())

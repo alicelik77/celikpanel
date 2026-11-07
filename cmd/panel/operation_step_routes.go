@@ -46,6 +46,8 @@ var (
 	requestIdentityRouteAdminRemove    = operationStepRoute("/api/v1/database-servers/{id}/admin-account")
 	requestIdentityRouteUserDelete     = operationStepRoute("/api/v1/users/{id}")
 	requestIdentityRouteTeamDelete     = operationStepRoute("/api/v1/team-members/{id}")
+	// alpha.128: the site's PHP values (pool, then nginx file).
+	requestIdentityRoutePHPSettings = operationStepRoute("/api/v1/domains/{id}/php/settings")
 )
 
 // operationStepRouteFor names the optional route a request would reach, using
@@ -118,6 +120,8 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteMailCert, true
 	case match.kind == "hosting" && r.Method == http.MethodPut:
 		return requestIdentityRouteHosting, true
+	case match.kind == "php-settings" && r.Method == http.MethodPut:
+		return requestIdentityRoutePHPSettings, true
 	case match.kind == "database-delete" && r.Method == http.MethodDelete:
 		return requestIdentityRouteDomainDBDelete, true
 	case match.kind == "dns" && strings.HasSuffix(path, "/records") &&

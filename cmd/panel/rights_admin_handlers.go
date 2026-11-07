@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -18,6 +19,9 @@ import (
 //	GET               /api/v1/rights/catalog[?subscription_id=]  what the caller may choose or hand out
 //	GET               /api/v1/rights/notices                 administrator: all; reseller: its own
 //	POST              /api/v1/rights/notices/{id}/acknowledge
+//	GET/PUT           /api/v1/rights/offered-permissions     administrator (alpha.128)
+//	GET/PUT           /api/v1/rights/setting-limits          limits of site settings (alpha.128)
+//	GET/PUT           /api/v1/rights/password-level          the password level (alpha.128; PUT administrator)
 //
 // Bayi planları, hak kataloğu ve hak bildirimleri.
 
@@ -37,6 +41,11 @@ type resellerPlanPayload struct {
 	TrafficQuotaMB   int            `json:"traffic_quota_mb"`
 	Rights           *rightsPayload `json:"rights,omitempty"`
 	ConfirmNarrowing bool           `json:"confirm_narrowing,omitempty"`
+	// alpha.128: limits of site settings for the reseller's tree (nil:
+	// none on a create, unchanged on an edit) and the overselling choice
+	// ("allowed" is K2, the default; "" keeps it).
+	Ceilings    *ceilingsPayload `json:"ceilings,omitempty"`
+	Overselling string           `json:"overselling,omitempty"`
 	// Read-only: how many resellers are bound to it.
 	Resellers int `json:"resellers,omitempty"`
 }
@@ -73,6 +82,10 @@ func decodeResellerPlan(w http.ResponseWriter, r *http.Request) (resellerPlanPay
 		writeClientError(w, http.StatusBadRequest, "limits must be 0 (unlimited) or a positive number")
 		return pl, false
 	}
+	if !validOverselling(pl.Overselling) {
+		writeClientError(w, http.StatusBadRequest, "overselling must be allowed or not_allowed")
+		return pl, false
+	}
 	return pl, true
 }
 
@@ -96,7 +109,8 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		rows, err := db.QueryContext(ctx, `
 			SELECT rp.id, rp.name, rp.max_customers, rp.max_domains, rp.max_databases, rp.max_email_accounts, rp.disk_quota_mb,
-			       rp.traffic_quota_mb, (SELECT COUNT(*) FROM reseller_plan_bindings b WHERE b.reseller_plan_id = rp.id)
+			       rp.traffic_quota_mb, (SELECT COUNT(*) FROM reseller_plan_bindings b WHERE b.reseller_plan_id = rp.id),
+			       rp.overselling
 			FROM reseller_plans rp ORDER BY rp.name, rp.id`)
 		if err != nil {
 			writeServerError(w, err)
@@ -105,7 +119,7 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 		plans := []resellerPlanPayload{}
 		for rows.Next() {
 			var pl resellerPlanPayload
-			if err := rows.Scan(&pl.ID, &pl.Name, &pl.MaxCustomers, &pl.MaxDomains, &pl.MaxDatabases, &pl.MaxEmailAccounts, &pl.DiskQuotaMB, &pl.TrafficQuotaMB, &pl.Resellers); err != nil {
+			if err := rows.Scan(&pl.ID, &pl.Name, &pl.MaxCustomers, &pl.MaxDomains, &pl.MaxDatabases, &pl.MaxEmailAccounts, &pl.DiskQuotaMB, &pl.TrafficQuotaMB, &pl.Resellers, &pl.Overselling); err != nil {
 				rows.Close()
 				writeServerError(w, err)
 				return
@@ -121,6 +135,13 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 			}
 			payload := plan.Set.payload()
 			plans[i].Rights = &payload
+			ceilings, err := loadSettingCeilings(ctx, db, rightsOwnerResellerPlan, plans[i].ID)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			c := ceilingsPayload(ceilings)
+			plans[i].Ceilings = &c
 		}
 		writeRightsJSON(w, http.StatusOK, map[string]any{
 			"plans":   plans,
@@ -143,6 +164,14 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 		if !p.planRightsWithinGrantor(w, r, currentCaller(r), rightsSet{}, set) {
 			return
 		}
+		ceilings, ok := p.planCeilingsWithinGrantor(w, r, currentCaller(r), pl.Ceilings, map[string]int{})
+		if !ok {
+			return
+		}
+		overselling := pl.Overselling
+		if overselling == "" {
+			overselling = oversellingAllowed
+		}
 		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			writeServerError(w, err)
@@ -150,8 +179,8 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 		}
 		defer tx.Rollback()
 		result, err := tx.ExecContext(ctx, `
-			INSERT INTO reseller_plans (name, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb, traffic_quota_mb)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`, pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.TrafficQuotaMB)
+			INSERT INTO reseller_plans (name, max_customers, max_domains, max_databases, max_email_accounts, disk_quota_mb, traffic_quota_mb, overselling)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.TrafficQuotaMB, overselling)
 		if err != nil {
 			writeServerError(w, err)
 			return
@@ -163,6 +192,10 @@ func (p *Panel) handleResellerPlans(w http.ResponseWriter, r *http.Request) {
 		}
 		id := int(id64)
 		if err := saveRightsSet(ctx, tx, rightsOwnerResellerPlan, id, set); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if err := saveSettingCeilings(ctx, tx, rightsOwnerResellerPlan, id, ceilings); err != nil {
 			writeServerError(w, err)
 			return
 		}
@@ -203,9 +236,17 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case action == "" && r.Method == http.MethodGet:
 		payload := plan.Set.payload()
+		ceilings, err := loadSettingCeilings(ctx, db, rightsOwnerResellerPlan, id)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		c := ceilingsPayload(ceilings)
+		var overselling string
+		_ = db.QueryRowContext(ctx, `SELECT overselling FROM reseller_plans WHERE id = ?`, id).Scan(&overselling)
 		writeRightsJSON(w, http.StatusOK, resellerPlanPayload{ID: plan.ID, Name: plan.Name, MaxCustomers: plan.Pool.MaxCustomers,
 			MaxDomains: plan.Pool.Domains, MaxDatabases: plan.Pool.Databases, MaxEmailAccounts: plan.Pool.Mailboxes,
-			DiskQuotaMB: plan.Pool.DiskMB, TrafficQuotaMB: plan.Pool.TrafficMB, Rights: &payload})
+			DiskQuotaMB: plan.Pool.DiskMB, TrafficQuotaMB: plan.Pool.TrafficMB, Rights: &payload, Ceilings: &c, Overselling: overselling})
 	case (action == "" && r.Method == http.MethodPut) || (action == "preview" && r.Method == http.MethodPost):
 		pl, ok := decodeResellerPlan(w, r)
 		if !ok {
@@ -219,6 +260,15 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !p.planRightsWithinGrantor(w, r, currentCaller(r), plan.Set, after) {
+			return
+		}
+		ceilingsBefore, err := loadSettingCeilings(ctx, db, rightsOwnerResellerPlan, id)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		ceilingsAfter, ok := p.planCeilingsWithinGrantor(w, r, currentCaller(r), pl.Ceilings, ceilingsBefore)
+		if !ok {
 			return
 		}
 		resellers, err := p.resellersOnPlan(r, id)
@@ -259,6 +309,10 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 		}
 		preview.Message = fmt.Sprintf("%d reseller(s) are bound to this plan and follow the change, with their plans and customers. "+
 			"Items taken away keep running where they are used; they cannot be chosen again. Confirm to save.", len(resellers))
+		preview.CeilingsLowered = loweredCeilings(ceilingsBefore, ceilingsAfter)
+		if len(preview.CeilingsLowered) > 0 {
+			preview.Message += " Lowered limits of site settings reach every site of these resellers at its next write; a site above one runs at the new limit."
+		}
 		if action == "preview" {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
 			return
@@ -277,6 +331,16 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 			UPDATE reseller_plans SET name = ?, max_customers = ?, max_domains = ?, max_databases = ?,
 			       max_email_accounts = ?, disk_quota_mb = ?, traffic_quota_mb = ?, updated_at = datetime('now') WHERE id = ?`,
 			pl.Name, pl.MaxCustomers, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.TrafficQuotaMB, id); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		if pl.Overselling != "" {
+			if _, err := tx.ExecContext(ctx, `UPDATE reseller_plans SET overselling = ? WHERE id = ?`, pl.Overselling, id); err != nil {
+				writeServerError(w, err)
+				return
+			}
+		}
+		if err := saveSettingCeilings(ctx, tx, rightsOwnerResellerPlan, id, ceilingsAfter); err != nil {
 			writeServerError(w, err)
 			return
 		}
@@ -349,6 +413,12 @@ func (p *Panel) handleRightsRoutes(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.handleRightsCatalog(w, r)
+	case rest == "offered-permissions":
+		p.handleOfferedOptInPermissions(w, r)
+	case rest == "setting-limits":
+		p.handleSettingLimits(w, r)
+	case rest == "password-level":
+		p.handlePasswordLevel(w, r)
 	case rest == "notices":
 		if r.Method != http.MethodGet {
 			rejectRouteMethod(w, []string{http.MethodGet})
@@ -480,4 +550,61 @@ func (p *Panel) acknowledgeRightsNotice(w http.ResponseWriter, r *http.Request, 
 	}
 	p.audit(r, "rights.notice_acknowledge", "rights_notice", id)
 	writeRightsJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+// handleOfferedOptInPermissions: the administrator's offer of the opt-in
+// permissions (alpha.128; today nginx_directives). GET lists each with its
+// state; PUT {"permission": id, "offered": bool} changes one. Withdrawing
+// removes nothing: what accounts already set keeps working, only new
+// changes are refused (P5).
+// Yöneticinin isteğe bağlı izin sunumu; geri çekmek çalışanı durdurmaz.
+func (p *Panel) handleOfferedOptInPermissions(w http.ResponseWriter, r *http.Request) {
+	c := currentCaller(r)
+	if !c.hasAccountRole(roleAdmin) {
+		writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "only the administrator offers permissions", "")
+		return
+	}
+	ctx := r.Context()
+	switch r.Method {
+	case http.MethodGet:
+	case http.MethodPut:
+		var req struct {
+			Permission string `json:"permission"`
+			Offered    bool   `json:"offered"`
+		}
+		if err := decodeStrictJSON(w, r, &req); err != nil || !optInPermissions[req.Permission] {
+			writeClientError(w, http.StatusBadRequest, "permission must be one of the opt-in permissions")
+			return
+		}
+		offered, err := p.loadOfferedOptInPermissions(ctx)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		offered[req.Permission] = req.Offered
+		if err := p.saveOfferedOptInPermissions(ctx, offered); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		p.auditDetailed(r, "rights.offer_permission:"+req.Permission, "panel_settings", 0,
+			map[string]any{"permission": req.Permission, "offered": req.Offered})
+	default:
+		rejectRouteMethod(w, []string{http.MethodGet, http.MethodPut})
+		return
+	}
+	offered, err := p.loadOfferedOptInPermissions(ctx)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	list := []map[string]any{}
+	ids := make([]string, 0, len(optInPermissions))
+	for id := range optInPermissions {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		list = append(list, map[string]any{"permission": id, "name": rightPermissionNames[id], "offered": offered[id]})
+	}
+	writeRightsJSON(w, http.StatusOK, map[string]any{"permissions": list})
 }

@@ -47,7 +47,7 @@ func TestRenderDistroConfigMatrix(t *testing.T) {
 		{"pool-ondemand", "site pool, pm=ondemand", &poolValues{pm: "ondemand", maxChildren: 10, startServers: 2, minSpare: 1, maxSpare: 3, maxRequests: 1000}},
 		{"pool-static", "site pool, pm=static", &poolValues{pm: "static", maxChildren: 4, startServers: 2, minSpare: 1, maxSpare: 3, maxRequests: 0}},
 	} {
-		file := sitePoolFile(transport.SitePoolRequest{SiteID: 42, Username: user, PHPVersion: version}, version, v.values, transport.SiteFileTriggerCreate)
+		file := sitePoolFile(transport.SitePoolRequest{SiteID: 42, Username: user, PHPVersion: version}, version, v.values, nil, transport.SiteFileTriggerCreate)
 		c := &configmatrix.Case{ID: "php-fpm." + v.id, Program: "php-fpm", Variant: v.variant, Validator: "php-fpm",
 			Source: "internal/services/site_pool_file.go:165 sitePoolBody / legacy_site_file_texts.go:65 legacyPoolText",
 			Target: file.Path, Extra: map[string]string{"USERS": user, "PHP_VERSION": version}}

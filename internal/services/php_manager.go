@@ -85,7 +85,7 @@ func (pm *PHPFPMManager) CreatePool(siteID int, username, phpVersion string) (st
 	values := defaultPoolValues()
 	result, err := ApplyManagedSiteFile(sitePoolFile(transport.SitePoolRequest{
 		SiteID: siteID, Username: username, PHPVersion: phpVersion,
-	}, phpVersion, &values, transport.SiteFileTriggerCreate),
+	}, phpVersion, &values, nil, transport.SiteFileTriggerCreate),
 		func() error { return phpFPMConfigTest(phpVersion) },
 		func() error { return reloadPHPFPM(phpVersion) })
 	if err := siteFileHeld(result, err); err != nil {

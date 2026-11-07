@@ -87,6 +87,9 @@ var teamMemberDomainRequirements = map[teamMemberRouteKey]teamMemberDomainRequir
 	{kind: "php", method: http.MethodPost}:      {capability: core.TeamCapabilityPHP, mode: core.TeamPermissionManage},
 	{kind: "php-pool", method: http.MethodGet}:  {capability: core.TeamCapabilityPHP, mode: core.TeamPermissionView},
 	{kind: "php-pool", method: http.MethodPost}: {capability: core.TeamCapabilityPHP, mode: core.TeamPermissionManage},
+	// alpha.128: the site's own PHP values.
+	{kind: "php-settings", method: http.MethodGet}: {capability: core.TeamCapabilityPHP, mode: core.TeamPermissionView},
+	{kind: "php-settings", method: http.MethodPut}: {capability: core.TeamCapabilityPHP, mode: core.TeamPermissionManage},
 
 	{kind: "usage", method: http.MethodGet}:   {capability: core.TeamCapabilityStatistics, mode: core.TeamPermissionView},
 	{kind: "logs", method: http.MethodGet}:    {capability: core.TeamCapabilityStatistics, mode: core.TeamPermissionView},

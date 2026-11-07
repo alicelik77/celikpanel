@@ -52,6 +52,36 @@ type rightsChangeRequest struct {
 	Revoke          []string          `json:"revoke,omitempty"`
 	Confirm         bool              `json:"confirm,omitempty"`
 	AcceptOverUsage bool              `json:"accept_over_usage,omitempty"`
+	// alpha.128: a Custom set's own limits of site settings (nil keeps
+	// them; leaving a plan starts from the plan's), a Custom subscription's
+	// overuse policy and notice levels, and a Custom reseller's overselling
+	// choice ("" keeps it).
+	Ceilings             *ceilingsPayload `json:"ceilings,omitempty"`
+	OverusePolicy        string           `json:"overuse_policy,omitempty"`
+	NotifyPercentDisk    int              `json:"notify_percent_disk,omitempty"`
+	NotifyPercentTraffic int              `json:"notify_percent_traffic,omitempty"`
+	Overselling          string           `json:"overselling,omitempty"`
+}
+
+// customExtrasValid checks the alpha.128 fields of a rights change: they
+// belong to a Custom state only.
+func (req rightsChangeRequest) customExtrasValid(state string) string {
+	extras := req.Ceilings != nil || req.OverusePolicy != "" || req.NotifyPercentDisk != 0 || req.NotifyPercentTraffic != 0 || req.Overselling != ""
+	if extras && state != rightsStateCustom {
+		return "limits of site settings, the overuse policy and the overselling choice are set on a plan or on a Custom set; choose Custom to set them here"
+	}
+	if req.OverusePolicy != "" && req.OverusePolicy != overusePolicyClose && req.OverusePolicy != overusePolicyNotify {
+		return "overuse_policy must be close or notify"
+	}
+	for _, pct := range []int{req.NotifyPercentDisk, req.NotifyPercentTraffic} {
+		if pct != 0 && (pct < 50 || pct > 95) {
+			return "a notice level must be between 50 and 95 percent"
+		}
+	}
+	if !validOverselling(req.Overselling) {
+		return "overselling must be allowed or not_allowed"
+	}
+	return ""
 }
 
 // rightsPreview is what a change would do.
@@ -70,9 +100,17 @@ type rightsPreview struct {
 	Outside          []string    `json:"outside_grantor"`
 	InstalledUnknown bool        `json:"installed_unknown,omitempty"`
 	Subscriptions    int         `json:"subscriptions,omitempty"`
-	Message          string      `json:"message"`
-	planned          *plannedRights
-	resellerPlanned  *plannedReseller
+	// alpha.128 (setting_limits.go): ceilings an edit lowers, and the sites
+	// of the plan whose own value is above a new ceiling (they will run at
+	// the ceiling). SitesUnread: the sites' values could not be read, so
+	// the count is not known.
+	CeilingsLowered []string `json:"ceilings_lowered,omitempty"`
+	SitesAbove      []string `json:"sites_above,omitempty"`
+	SitesAboveCount int      `json:"sites_above_count,omitempty"`
+	SitesUnread     bool     `json:"sites_unread,omitempty"`
+	Message         string   `json:"message"`
+	planned         *plannedRights
+	resellerPlanned *plannedReseller
 }
 
 type plannedRights struct {
@@ -118,6 +156,12 @@ func applyGrantRevoke(base rightsSet, grant, revoke []string, candidates []strin
 		if strings.HasPrefix(item, permissionItemHead) && out.AllPermissions {
 			out.AllPermissions = false
 			for _, id := range rightPermissionIDs {
+				// alpha.128: an opt-in permission is in "everything offered"
+				// only when the administrator offers it; the caller adds it
+				// back then (keepOfferedOptIn).
+				if optInPermissions[id] {
+					continue
+				}
 				out.Items[permissionItemHead+id] = true
 			}
 		}
@@ -281,13 +325,36 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 			"", plan.OverLimit)
 		return
 	}
+	planned := plan.planned
+	if problem := req.customExtrasValid(planned.state); problem != "" || req.Overselling != "" {
+		if problem == "" {
+			problem = "overselling is a reseller's choice, not a subscription's"
+		}
+		writeClientError(w, http.StatusBadRequest, problem)
+		return
+	}
+	var ceilings map[string]int
+	if req.Ceilings != nil {
+		var ok bool
+		if ceilings, ok = p.planCeilingsWithinGrantor(w, r, c, req.Ceilings, nil); !ok {
+			return
+		}
+	}
+	// alpha.128 (G17): a reseller that does not oversell hands out only
+	// what its pool still holds.
+	nextLimits := planned.limits
+	if planned.state == rightsStatePlan && planned.plan != nil {
+		nextLimits = planned.plan.Limits
+	}
+	if planned.state != rightsStateUnlimited && owner != nil && p.refuseOverselling(w, ctx, owner.ID, subID, nextLimits) {
+		return
+	}
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
 	defer tx.Rollback()
-	planned := plan.planned
 	switch planned.state {
 	case rightsStateUnlimited:
 		err = setSubscriptionUnlimited(ctx, tx, subID)
@@ -295,6 +362,12 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 		err = bindSubscriptionPlan(ctx, tx, subID, *planned.plan)
 	default:
 		err = setSubscriptionCustom(ctx, tx, subID, planned.set, planned.limits)
+		if err == nil && ceilings != nil {
+			err = saveSettingCeilings(ctx, tx, rightsOwnerSubscription, subID, ceilings)
+		}
+		if err == nil {
+			err = setSubscriptionOwnPolicy(ctx, tx, subID, req)
+		}
 	}
 	if err == nil {
 		err = tx.Commit()
@@ -386,6 +459,7 @@ func (p *Panel) planSubscriptionChange(w http.ResponseWriter, r *http.Request, c
 				candidates = withoutLicenceClosed(candidates)
 			}
 			set, err := applyGrantRevoke(current.Own.Set, req.Grant, req.Revoke, candidates, unknown)
+			set = keepOfferedOptIn(current.Own.Set, set, current.admin, req.Revoke)
 			if errors.Is(err, errUnknownRightsItem) {
 				writeCodedError(w, http.StatusBadRequest, errCodeRightsUnknownItem, "an item to grant or revoke is not a known permission or offering id", "")
 				return rightsPreview{}, false
@@ -577,13 +651,27 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 		writeRightsPreviewRefusal(w, code, plan)
 		return
 	}
+	planned := plan.resellerPlanned
+	if problem := req.customExtrasValid(planned.state); problem != "" || req.OverusePolicy != "" || req.NotifyPercentDisk != 0 || req.NotifyPercentTraffic != 0 {
+		if problem == "" {
+			problem = "the overuse policy belongs to a customer's plan or subscription"
+		}
+		writeClientError(w, http.StatusBadRequest, problem)
+		return
+	}
+	var ceilings map[string]int
+	if req.Ceilings != nil {
+		var ok bool
+		if ceilings, ok = p.planCeilingsWithinGrantor(w, r, currentCaller(r), req.Ceilings, nil); !ok {
+			return
+		}
+	}
 	tx, err := p.db.GetDB().BeginTx(ctx, nil)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
 	defer tx.Rollback()
-	planned := plan.resellerPlanned
 	switch planned.state {
 	case rightsStateUnlimited:
 		err = setResellerUnlimited(ctx, tx, target.ID)
@@ -591,6 +679,12 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 		err = bindResellerPlan(ctx, tx, target.ID, *planned.plan)
 	default:
 		err = setResellerCustom(ctx, tx, target.ID, planned.set, planned.pool)
+		if err == nil && ceilings != nil {
+			err = saveSettingCeilings(ctx, tx, rightsOwnerReseller, target.ID, ceilings)
+		}
+		if err == nil && req.Overselling != "" {
+			_, err = tx.ExecContext(ctx, `UPDATE reseller_pools SET overselling = ? WHERE reseller_id = ?`, req.Overselling, target.ID)
+		}
 	}
 	if err == nil {
 		err = tx.Commit()
@@ -660,6 +754,7 @@ func (p *Panel) planResellerChange(w http.ResponseWriter, r *http.Request, resel
 			// licence, also when an item is taken out of "everything offered".
 			candidates = withoutLicenceClosed(candidates)
 			set, err := applyGrantRevoke(current.Own.Set, req.Grant, req.Revoke, candidates, unknown)
+			set = keepOfferedOptIn(current.Own.Set, set, current.admin, req.Revoke)
 			if errors.Is(err, errUnknownRightsItem) {
 				writeCodedError(w, http.StatusBadRequest, errCodeRightsUnknownItem, "an item to grant or revoke is not a known permission or offering id", "")
 				return rightsPreview{}, false
@@ -745,4 +840,23 @@ func (p *Panel) writeResellerRightsView(w http.ResponseWriter, r *http.Request, 
 		"role": roleReseller, "reseller_id": resellerID, "rights": view,
 		"pool": shownPool, "used": usage, "over_limit": over,
 	})
+}
+
+// keepOfferedOptIn: a set that had "every permission" and lost it in a
+// grant/revoke keeps the opt-in permissions the administrator offers
+// (alpha.128), unless they were the ones revoked.
+func keepOfferedOptIn(before, after rightsSet, admin adminOfferLayer, revoke []string) rightsSet {
+	if !before.AllPermissions || after.AllPermissions {
+		return after
+	}
+	revoked := map[string]bool{}
+	for _, item := range revoke {
+		revoked[strings.TrimSpace(item)] = true
+	}
+	for id := range optInPermissions {
+		if admin.permits(id) && !revoked[permissionItemHead+id] {
+			after.Items[permissionItemHead+id] = true
+		}
+	}
+	return after
 }
