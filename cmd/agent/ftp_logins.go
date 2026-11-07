@@ -416,7 +416,8 @@ func ftpLoginJailProblem(ctx context.Context, login string) string {
 			line = strings.TrimSpace(line)
 			switch {
 			case line == "":
-			case strings.HasPrefix(line, "celikpanel-ftp: ") && !strings.Contains(line, "girişin") && !strings.Contains(line, "klasör"):
+			case strings.HasPrefix(line, "celikpanel-ftp: the login ") && strings.Contains(line, " has no jail"):
+				// The helper's reason; the screen words who acts.
 				lines = append(lines, strings.TrimPrefix(line, "celikpanel-ftp: "))
 			case strings.Contains(line, ".service: ") && !strings.Contains(line, "Failed with result") && !strings.Contains(line, "Main process exited"):
 				// systemd's own words (a missing helper, an exec failure).
@@ -424,7 +425,7 @@ func ftpLoginJailProblem(ctx context.Context, login string) string {
 			}
 		}
 		if len(lines) > 0 {
-			return strings.Join(lines, " ")
+			return lines[len(lines)-1]
 		}
 		if len(other) > 0 {
 			return other[0]

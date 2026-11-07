@@ -91,6 +91,11 @@ const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) =
 const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
     default: module.DomainFileAccess,
 })));
+// alpha.128: the site's other FTP/SFTP logins, each closed into one folder,
+// below the access settings; a chunk of its own.
+const FTPLogins = lazy(() => import('./FTPLogins').then((module) => ({
+    default: module.FTPLogins,
+})));
 // AI and automation apps of the site (alpha.118), fetched when the tab opens.
 // Kept apart from the PHP app catalogue of the Apps tab.
 const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module) => ({
@@ -468,7 +473,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         // alpha.119: a program that runs stays manageable after the right closes.
         ...(!isTeamMember && !isDnsOnly && (open('program_apps') || open('python_apps') || projectType === 'runtime_app') ? [{ id: 'programs', labelKey: 'runtime.tab', icon: Cpu, render: () => <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <div className="space-y-6"><DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /><Suspense fallback={null}><FTPLogins domainId={domain.id} isAdmin={role === 'admin'} /></Suspense></div> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{
             id: 'advanced', labelKey: 'domain.tab.advanced', icon: Wrench,
             subs: advancedSubs,
