@@ -1,0 +1,56 @@
+== 5.0 a mysql database with rows 15:02:53
+1 site1_u22_test_shop site1_u22_test_shop_user
+database site1_u22_test_shop id 1 user site1_u22_test_shop_user
+3
+== 5.1 tools view 15:02:55
+404 404 page not found
+
+== 5.2 export + download 15:02:55
+404 404 page not found
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; print(json.loads(json.load(open(sys.argv[1]))["body"]).get("export_id",""))
+                           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 348, in decode
+    raise JSONDecodeError("Extra data", s, end)
+json.decoder.JSONDecodeError: Extra data: line 1 column 5 (char 4)
+404 saved 19 bytes {'content-type': 'text/plain; charset=utf-8'}
+
+gzip: /var/tmp/a129o/t-u22u/export-mysql.sql.gz: not in gzip format
+   lines naming lab_items in the dump: 0
+   second download:
+404  404 page not found 
+== 5.3 import with a safety copy 15:02:55
+404  404 page not found 
+404  404 page not found 
+1	one
+2	two
+3	three
+--------------
+select note from lab_imported
+--------------
+
+ERROR 1146 (42S02) at line 1: Table 'site1_u22_test_shop.lab_imported' doesn't exist
+== 5.4 an import that fails half way rolls back 15:02:56
+404  404 page not found 
+404  404 page not found 
+1	one
+2	two
+3	three
+   a file with a client command:
+404  404 page not found 
+404  404 page not found 
+== 5.5 copy 15:02:57
+404 404 page not found
+
+1 site1_u22_test_shop site1_u22_test_shop_user
+== 5.6 check (and repair for MariaDB) 15:02:58
+404 404 page not found
+
+404 404 page not found
+
+== c5db main mysql done 15:02:58

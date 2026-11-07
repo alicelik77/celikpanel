@@ -1,0 +1,32 @@
+== evidence 15:03:13
+40:2026/11/07 14:40:32 DNS switch (request cacd55e968835d91fa733ff311151d62): BIND rndc key /etc/bind/rndc.key is owner_or_package_provided (key_present)
+393:2026/11/07 14:50:52 bind zone publication failed for d12.test at epoch 1: activate BIND generation 7d2ac18350636f5d9955fb780b2eab7ba7f6e4ba663c028d7b7f5b2d3ab70ce0: verify BIND vendor unit files: verify BIND vendor package ownership for /usr/lib/systemd/system/named.service: exit status 1; under the merged-/usr name: verify BIND vendor package ownership for /lib/systemd/system/named.service: context deadline exceeded
+394:reload restored BIND generation: verify BIND vendor unit files: verify BIND vendor package ownership for /usr/lib/systemd/system/named.service: exit status 1; under the merged-/usr name: verify BIND vendor package ownership for /lib/systemd/system/named.service: context deadline exceeded
+
+dpkg-query: no path found matching pattern /usr/lib/systemd/system/named.service
+rc 1
+bind9: /lib/systemd/system/named.service
+rc 0
+systemd: /usr/share/man/man8/systemd-hostnamed.service.8.gz
+bind9: /lib/systemd/system/named.service
+systemd: /lib/systemd/system/systemd-hostnamed.service
+waiting verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=pending
+== service status for named 15:03:17
+200 {"active": false, "name": "named"}
+== owner: Components -> Start BIND 15:03:18
+409 {"action": "/dns-infrastructure", "code": "DNS_ENGINE_WORKFLOW_REQUIRED", "error": "BIND and PowerDNS must be installed, activated, switched, or removed from Server \u2192 DNS and peer servers"}
+inactive
+15:03:36 waiting verification null
+15:03:51 waiting verification null
+15:04:07 waiting verification null
+15:04:22 waiting verification null
+15:04:37 waiting verification null
+15:04:52 waiting verification null
+15:05:07 waiting verification null
+15:05:22 waiting verification null
+15:05:37 waiting verification null
+15:05:52 waiting verification null
+15:06:11 waiting verification null
+15:06:27 waiting verification null
+inactive

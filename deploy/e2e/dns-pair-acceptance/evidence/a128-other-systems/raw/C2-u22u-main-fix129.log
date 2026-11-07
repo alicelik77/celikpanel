@@ -1,0 +1,64 @@
+== C2 main before 14:59:58
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.u22.test", "ipv4": "192.0.3.221", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 47042076828c461cd231b04f232a1680 v0.1.0-alpha.127 -> v0.1.0-alpha.128
+== press Update once 14:59:58
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T14:59:59Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "47042076828c461cd231b04f232a1680", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "1044dfa67d03a7268dece8b7d5961a1af894088d7bdc76aa5b079dc5eae5278d", "archive_size": "72570450", "commit": "818a03e36db19421f689
+  4s 200 running None  | 
+  33s 
+  41s 503 None None  | 
+  70s 200 failed None reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=panel could not be frozen detail= | 
+== after 15:01:22
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.u22.test", "ipv4": "192.0.3.221", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+200 {"created_at": "2026-11-07T14:59:59.028159012Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T14:59:59Z", "state": "done"}, {"finished_at": "2026-11-07T15:00:04Z", "id": "verify", "state": "done"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "47042076828c461cd231b04f232a1680", "status": "failed", "summary": "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=panel could not be frozen detail=", "target": {"arch": "amd64", "archive_sha256": "1044dfa67d03a7268dece8b7d5961a1af894088d7bdc76aa5b079dc5eae5278d", "archive_size": "72570450", "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "os": "linux", "sequence": "128", "version": "v0.1.0-alpha.128"}, "updated_at": "2026-11-07T15:00:31.205844951Z"}
+release 
+--- systemctl --failed (all units)
+celikpanel-self-update-47042076828c461cd231b04f232a1680.service loaded failed failed /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680
+(end)
+--- self-update units
+celikpanel-self-update-47042076828c461cd231b04f232a1680.service loaded failed failed /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '47042076828c461cd231b04f232a1680.json'] {'request_id': '47042076828c461cd231b04f232a1680', 'status': 'failed', 'phase': None, 'created_at': '2026-11-07T14:59:59.028159012Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 main done 15:01:23
+== C2 main before 15:38:43
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.u22.test", "ipv4": "192.0.3.221", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+celikpanel-self-update-47042076828c461cd231b04f232a1680.service loaded failed failed /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680
+(end)
+--- self-update units
+celikpanel-self-update-47042076828c461cd231b04f232a1680.service loaded failed failed /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680
+  request 221ebc260b7c422a9fe9702eeccfa007 v0.1.0-alpha.127 -> v0.1.0-alpha.129
+== press Update once 15:38:44
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T15:38:44Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "221ebc260b7c422a9fe9702eeccfa007", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "df9450029c3db1fa96edb1ba80909085c2ca7facd8687640d46ef98e5bd4b5bd", "archive_size": "72570160", "commit": "2ac7e5624db3c7335786
+  5s 200 running None  | 
+  39s 
+  85s 200 running verifying  | 
+  98s 200 succeeded None  | 
+== after 15:40:34
+200 {"agent_commit": "2ac7e5624db3c73357863ffba559f8085317298e", "agent_matches": true, "commit": "2ac7e5624db3c73357863ffba559f8085317298e", "hostname": "host1.u22.test", "ipv4": "192.0.3.221", "schema_version": 72, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-07T15:38:44.842528575Z", "found": true, "plan": {"expected_restart_seconds": 114, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T15:38:44Z", "state": "done"}, {"finished_at": "2026-11-07T15:38:51Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T15:38:51Z", "state": "done"}, {"finished_at": "2026-11-07T15:40:06Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-07T15:40:19Z", "id": "confirm", "started_at": "2026-11-07T15:40:06Z", "state": "done"}]}, "request_id": "221ebc260b7c422a9fe9702eeccfa007", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "df9450029c3db1fa96edb1ba80909085c2ca7facd8687640d46ef98e5bd4b5bd", "archive_size": "72570160", "commit": "2ac7e5624db3c73357863ffba559f8085317298e", "os": "linux", "sequence": "129", "version": "v0.1.0-alpha.129"}, "updated_at": "2026-11-07T15:40:19.252402486Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 15:40:06 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 15:40:06 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/07 15:40:22 self-update: cleared the failed mark of celikpanel-self-update-47042076828c461cd231b04f232a1680.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '221ebc260b7c422a9fe9702eeccfa007.json'] {'request_id': '221ebc260b7c422a9fe9702eeccfa007', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T15:38:44.842528575Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.129', 'reason': None, 'code': None}
+  ['self-update', '47042076828c461cd231b04f232a1680.json'] {'request_id': '47042076828c461cd231b04f232a1680', 'status': 'failed', 'phase': None, 'created_at': '2026-11-07T14:59:59.028159012Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 main done 15:40:35

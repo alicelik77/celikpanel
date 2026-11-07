@@ -1,0 +1,33 @@
+== provision 14:33:10 ubuntu2204 192.0.3.211
+meserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nVERSION_ID=\"22.04\"\n5.15.0-198-generic\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 31.2
+}
+
+host1.u22.test
+host1.u22.test
+v0.1.0-alpha.128
+== get.sh in a root terminal 14:33:44
+install exit 0 after 69 s
+main terminal rc 0 67.1 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.211:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.128
+login active can_use_panel True
+200 {
+ "agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea",
+ "agent_matches": true,
+ "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea",
+ "hostname": "host1.u22.test",
+ "ipv4": "192.0.3.211",
+ "schema_version": 72,
+ "version": "v0.1.0-alpha.128"
+}
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+   setting_policy 13 rows
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+(failed end)
+CELIKPANEL_LISTEN=:1923
+active active 
+== fresh u22 done 14:34:59

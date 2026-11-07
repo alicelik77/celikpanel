@@ -1,0 +1,33 @@
+== provision 14:33:10 arch 192.0.3.212
+ab0 src 192.0.3.212 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Arch Linux\"\n7.1.8-arch1-3\n",
+ "rc": 127,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 32.6
+}
+
+sh: line 1: hostname: command not found
+sh: line 1: hostname: command not found
+v0.1.0-alpha.128
+== get.sh in a root terminal 14:33:44
+install exit 0 after 148 s
+main terminal rc 0 115.1 problem None restart_required True postinstall rc 0
+  tail: raded the kernel and replaced them. Until this server |     is restarted it cannot load nftables or WireGuard, so turning the firewall on |     or installing the VPN will fail. Everything else is installed and running. |         reboot |  |     Bu sunucu, modulleri artik diskte olmayan 7.1.8-arch1-3 cekirdegiyle calisiyor: |     on gereksinim adimi cekirdegi yukseltti ve modulleri degistirdi. Sunucu |     yeniden baslatilana kadar nftables veya WireGuard yuklenemez; guvenlik |     duvarini acmak veya VPN kurmak hata verir. Geri kalan her sey kurulu. |         reboot | ]3008;end=1d9c158abe85439cacd9ea60f9caacb6\
+v0.1.0-alpha.128
+login active can_use_panel True
+200 {
+ "agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea",
+ "agent_matches": true,
+ "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea",
+ "hostname": "host1.ar.test",
+ "ipv4": "192.0.3.212",
+ "schema_version": 72,
+ "version": "v0.1.0-alpha.128"
+}
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+   setting_policy 13 rows
+PRETTY_NAME="Arch Linux"
+(failed end)
+CELIKPANEL_LISTEN=:1923
+active active 
+== fresh ar done 14:36:15

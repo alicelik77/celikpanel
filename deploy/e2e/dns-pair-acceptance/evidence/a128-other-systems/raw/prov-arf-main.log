@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "arf",
+  "node": "main",
+  "os": "arch",
+  "ip": "192.0.3.212",
+  "hostname": "frankfurt",
+  "uuid": "e6dd76ec-c4fc-5427-a67e-be0dc0ca94ba",
+  "tap": "cpt1acc1552",
+  "mac": "52:54:00:bc:ea:c5",
+  "image": "Arch-Linux-x86_64-cloudimg-20260815.573966.qcow2",
+  "image_digest": {
+   "sha256": "5d8be8d28cfd290f051b0f67df0a6874596ad23de3f3f18b90c91aeb758eb878"
+  },
+  "memory_mb": 3072,
+  "cpus": 2,
+  "started_at": "2026-11-07T14:33:10Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "f6340ff7-b9ac-4226-a7d2-4de9c4b46927",
+  "waited_seconds": 30.7
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.212 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.212 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Arch Linux\"\n7.1.8-arch1-3\n",
+ "rc": 127,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 32.6
+}

@@ -1,0 +1,17 @@
+2026-11-07T14:49:43+0000 host1.d12.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:74: Unknown key 'RestartSteps' in section [Service], ignoring.
+2026-11-07T14:49:43+0000 host1.d12.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:75: Unknown key 'RestartMaxDelaySec' in section [Service], ignoring.
+2026-11-07T14:49:51+0000 host1.d12.test postfix/postfix-script[38624]: the Postfix mail system is running: PID: 36339
+2026-11-07T14:49:51+0000 host1.d12.test postfix/postfix-script[38643]: refreshing the Postfix mail system
+2026-11-07T14:49:52+0000 host1.d12.test postfix/postfix-script[38662]: the Postfix mail system is running: PID: 36339
+2026-11-07T14:50:12+0000 host1.d12.test agent[6020]: 2026/11/07 14:50:12 hosting root: created /var/www/celikpanel at 0755 0:0
+2026-11-07T14:50:12+0000 host1.d12.test groupadd[39369]: group added to /etc/group: name=celikpanel-site, GID=993
+2026-11-07T14:50:12+0000 host1.d12.test groupadd[39369]: group added to /etc/gshadow: name=celikpanel-site
+2026-11-07T14:50:12+0000 host1.d12.test groupadd[39369]: new group: name=celikpanel-site, GID=993
+2026-11-07T14:50:12+0000 host1.d12.test useradd[39375]: new group: name=d12_test, GID=5001
+2026-11-07T14:50:12+0000 host1.d12.test useradd[39375]: new user: name=d12_test, UID=5001, GID=5001, home=/var/www/celikpanel/subscriptions/2/sites/1, shell=/usr/sbin/nologin, from=none
+2026-11-07T14:50:12+0000 host1.d12.test useradd[39375]: add 'd12_test' to group 'celikpanel-site'
+2026-11-07T14:50:12+0000 host1.d12.test useradd[39375]: add 'd12_test' to shadow group 'celikpanel-site'
+2026-11-07T14:50:52+0000 host1.d12.test agent[6020]: 2026/11/07 14:50:52 bind zone publication failed for d12.test at epoch 1: activate BIND generation 7d2ac18350636f5d9955fb780b2eab7ba7f6e4ba663c028d7b7f5b2d3ab70ce0: verify BIND vendor unit files: verify BIND vendor package ownership for /usr/lib/systemd/system/named.service: exit status 1; under the merged-/usr name: verify BIND vendor package ownership for /lib/systemd/system/named.service: context deadline exceeded
+2026-11-07T14:50:52+0000 host1.d12.test agent[6020]: reload restored BIND generation: verify BIND vendor unit files: verify BIND vendor package ownership for /usr/lib/systemd/system/named.service: exit status 1; under the merged-/usr name: verify BIND vendor package ownership for /lib/systemd/system/named.service: context deadline exceeded
+2026-11-07T14:50:52+0000 host1.d12.test agent[6020]: explicit empty recovery applied after restored generation reload failed
+inactive

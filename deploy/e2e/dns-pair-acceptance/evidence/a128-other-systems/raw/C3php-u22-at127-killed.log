@@ -1,0 +1,42 @@
+== 3a customer's PHP page 15:01:26
+404 version None can_change None pool None nginx None
+== 3b within the limits: 384 MB, 120 s, 64 MB, 3000 fields, 6 processes 15:01:26
+404 404 page not found
+
+404 version None can_change None pool None nginx None
+socket /var/run/php/php8.1-fpm-site3.sock
+pool file(s): /etc/php/8.1/fpm/pool.d/site3.conf
+1:; celikpanel-render v2 sha256=b15b24cff6f795ba49e9ff4deb1f99c3df3e334d42c75300094fc0d19892b01d
+2:; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:
+3:; CelikPanel then shows the difference and asks before writing this file again.
+4:; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+13:pm.max_children = 5
+2ca203fabd721cbc
+access-log.traffic
+acme-http-01.conf
+== 3c above the server's limit: 1024 MB 15:01:27
+404 404 page not found
+
+   600 s run time:
+404 404 page not found
+
+   30 processes:
+404 404 page not found
+
+== 3d the application cannot raise them (ini_set, set_time_limit, .user.ini) 15:01:27
+files in /var/www/celikpanel/subscriptions/3/sites/3/public_html (owner cust1_u22_test:www-data)
+-rw-r--r-- 1 cust1_u22_test www-data   75 Nov  7 15:01 .user.ini
+-rw-r--r-- 1 cust1_u22_test www-data  648 Nov  7 15:01 lab-ini.php
+-rw-r--r-- 1 cust1_u22_test www-data  188 Nov  7 15:01 lab-sleep.php
+{"php":"8.1.2-1ubuntu2.28","before":{"memory_limit":"1536M","max_execution_time":"2000","upload_max_filesize":"2000M","post_max_size":"8M","max_input_vars":"1000"},"ini_set_returned":["1536M","2000"],"after":{"memory_limit":"2048M","max_execution_time":"5000"},"user_ini":".user.ini"}
+
+   after .user.ini cache (user_ini.cache_ttl 300 s is not waited; .user.ini values read on the first request):
+{"php":"8.1.2-1ubuntu2.28","before":{"memory_limit":"128M","max_execution_time":"30","upload_max_filesize":"2M","post_max_size":"8M","max_input_vars":"1000"},"ini_set_returned":["128M","30"],"after":{"memory_limit":"2048M","max_execution_time":"5000"},"user_ini":".user.ini"}
+
+== 3e a 140 s script with run time 120 s (stopped) 15:01:34
+http 504 after 60.009122s
+<html>
+<head><title>504 Gateway Time-out</title></head>
+<body>
+cleaned
+== k3php u22 done 15:02:36

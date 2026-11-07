@@ -1,0 +1,168 @@
+== 4.0 Components: postfwd row 15:43:55
+  row {"id": "postfwd", "is_installed": null, "status": "unknown", "package": null, "available": null, "reason": null, "notice": null}
+== 4.1 postfwd from Components 15:43:57
+200 {"distribution": "ubuntu", "installs": ["libhtml-tagset-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-ip-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "7a0174ff0b4245f8e98be8a69ccc08cb", "kind": "service_install", "phase": "queued", "request_id": "b92428597aa5ebaa1d2d971df8f16927", "service_id": "postfwd", "started_at": "2026-11-07T15:44:02.828570228Z", "status": "queued"}}
+  op b92428597aa5ebaa1d2d971df8f16927: succeeded completed "" (15:44:33)
+/usr/sbin/postfwd
+/usr/sbin/postfwd2
+active
+Environment=PIDFILE=/var/run/postfwd.pid
+EnvironmentFile=-/etc/default/postfwd
+ExecStart=/usr/sbin/postfwd $ARGS --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+# turns off the request cache, which answers a repeated request with an
+# and repeated end-of-message requests would not be counted (--cache=0).
+ExecStart=
+ii  postfwd        1.35-7       all          Postfix policyd to combine complex restrictions in a ruleset
+celikpanel.conf
+# Written by CelikPanel (outgoing mail limits).
+# It keeps postfwd's hourly counters across a reload (--keep_rates) and
+# turns off the request cache, which answers a repeated request with an
+# earlier decision: a lifted pause or a changed limit would wait for it,
+# and repeated end-of-message requests would not be counted (--cache=0).
+# Remove this file and run systemctl daemon-reload to return to the
+# package's own start line.
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+/usr/sbin/postfwd --summary=600 --cache=600 --cache-rdomain-only --cache-no-size --cache=0 --keep_rates --daemon --file /etc/postfix/postfwd.cf --interface 127.0.0.1 --port 10040 --user postfw --group
+ postfwd2::cache
+ postfwd2::policy
+box1 1 box2 2
+== 4.2 limits on 15:44:34
+200 applied True verified True code None |  | steps ["postfwd's rules were written and checked (postfwd -C)", 'postfwd took the new rules and kept its counters', 'a test message was counted and the second one refused, so the limits work', 'Postfix asks postfwd at the end of each message on 587 and 465 (mail flows if postfwd stops)']
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+drwxr-xr-x root:celikpanel /etc/postfix/celikpanel-postfwd
+-- one message before any own limit:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 0BAB9800E6
+== 4.3 box1 own limit 3; 6 messages 15:44:37
+200 {"applied": true, "called": true, "saved": true}
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 6273F800E5
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as C4558800E5
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 2CCA6800E5
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 8869A800E5
+ msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as E7558800E5
+ msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 4D2BA800E5
+== 4.4 the pause (worker round, refusal_pause 3) 15:44:40
+ msg while paused:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as AA4C07FD52
+== 4.5 password change reopens 15:57:45
+200 {"applied": true, "called": true, "saved": true}
+200 {"success": true}
+   answer after 0 s
+ msg 1 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 047917F48D
+ msg 2 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 5D4D77F48D
+== 4.6 postfwd stopped (lab load): mail still flows 15:57:47
+inactive
+ msg with postfwd stopped:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 74DEF7F48D
+active
+(failed end)
+== k4mail u22 done 15:57:49
+== 4.7 box2 own limit 2 (limits already on) 15:59:55
+200 {"applied": true, "called": true, "saved": true}
+ box2 msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 05F0C800E6
+ box2 msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 626C8800E6
+ box2 msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2, action=450 4.7.1 This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+    PID ELAPSED COMMAND
+103291  postfwd2::policy
+103328  postfwd2::policy::child
+103329  postfwd2::policy::child
+103330  postfwd2::policy::child
+103331  postfwd2::policy::child
+103332  postfwd2::policy::child
+103333  postfwd2::policy::child
+103334  postfwd2::policy::child
+103335  postfwd2::policy::child
+103336  postfwd2::policy::child
+== 4.8 postfwd restarted (lab load) 16:00:01
+active
+ box2 msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 19EBF800E6
+ box2 msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as C8266800E6
+ box2 msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2, action=450 4.7.1 This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2, action=450 4.7.1 This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== k4b u22 done 16:00:05
+== 4.9 box2 two more messages over its limit 16:01:29
+ box2 msg 7:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ box2 msg 8:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== 4.10 the pause (worker round) 16:01:29
+  paused after 240 s: [{"address": "box2@site1.u22.test", "detail": "4 messages refused by the hourly limit in the hour from 2026-11-07 16:00 UTC", "domain": "site1.u22.test", "domain_id": 2, "id": 2, "paused_at": "2026-11-07 16:05:06", "reason": "refusals"}]
+ box2 msg while paused:
+  <~  235 2.7.0 Authentication successful
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+== 4.11 password change reopens 16:05:31
+200 {"applied": true, "called": true, "saved": true}
+200 {"sending_resumed": true, "success": true}
+ box2 msg 1 after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+ box2 msg 2 after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+(failed end)
+== k4c u22 done 16:05:39
+== 4.12 box2 again, 16:09:22 (password changed at 16:05:31)
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as B8466800E5
+[RULES] rule=3, id=CP_DOMAIN_750, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=4, id=CP_SUBSCRIPTION_1000, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=5, id=CP_DEFAULT, hits=CP_MARK_s2;CP_MAILBOX_50;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+[RULES] rule=2, id=CP_MAILBOX_50, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=3, id=CP_DOMAIN_750, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=4, id=CP_SUBSCRIPTION_1000, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=5, id=CP_DEFAULT, hits=CP_MARK_s2;CP_MAILBOX_50;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+[RULES] rule=2, id=CP_MAILBOX_50, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=3, id=CP_DOMAIN_750, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=4, id=CP_SUBSCRIPTION_1000, client=localhost[127.0.0.1], user=box2@site1.u22.test, sender=<box2@site1.u22.test>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, ignoring empty counter
+[RULES] rule=5, id=CP_DEFAULT, hits=CP_MARK_s2;CP_MAILBOX_50;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+[RULES] rule=1, id=CP_PAUSED, queue=2F44E800E4, hits=CP_PAUSED, action=550 5.7.1 Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+[RULES] rule=1, id=CP_PAUSED, queue=78F08800E4, hits=CP_PAUSED, action=550 5.7.1 Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+[RULES] rule=5, id=CP_DEFAULT, queue=B8466800E5, hits=CP_MARK_s2;CP_MAILBOX_50;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO

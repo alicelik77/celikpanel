@@ -1,0 +1,101 @@
+== provision 15:23:31 debian12 192.0.3.224 zone=d12.test
+_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 44.7
+}
+
+host1.d12.test
+host1.d12.test
+v0.1.0-alpha.128
+== install 127 through get.sh 15:24:24
+install exit 0
+main terminal rc 0 44.1 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.224:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.128
+license active can_use_panel True
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:d12.test', '06-access_dns:frankfurt.d12.test', '07-panel_certificate:frankfurt.d12.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.d12.test', '13-mail_certificate:mail.d12.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:d12.test', '17-mail_enrollment:mail-renewal', '18-main_site:d12.test', '19-verify:custom'] 
+== start 15:25:22 (try 1)
+start 202 {
+ "id": "c9e68ef63654c8f3b8878caa83296a71",
+ "panel_url": "https://frankfurt.d12.test:1923/",
+ "phase": "queued",
+ "plan_id": "a8a2b3fb827c29f4f7f7674e4e6b96af",
+ "request_id": "c9e68ef63654c8f3b8878caa83296a71",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "eb760549e6b0476c24cbe12c817a9778",
+   "request_id": "4ebf26eb13fde76b828d3b064d3065d8",
+   "sta
+-- d12v/main 15:25:26
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:26:06
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:26:26
+running 07-panel_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=running 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:26:46
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:27:48
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:29:11
+running 11-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=running 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:29:32
+running 13-mail_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=running 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:29:52
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=running 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:32:56
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=running 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:34:58
+running 16-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=running 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12v/main 15:35:19
+running 18-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=running 19-verify=pending
+-- d12v/main 15:35:39
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+succeeded complete null
+== content at 127 15:35:39
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "site1.d12.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "site1_d12_test", "PHPVersion": "8.2", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+site1 id 2
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"id": 1, "name": "site1_d12_test_shop", "status": "success", "type": "mysql", "user": "site1_d12_test_shop_user"}
+200 {"id": 1, "success": true}
+plan id 1
+200 {"id": 3, "rights": "plan", "success": true}
+cust1 subscription 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/3/sites/3/public_html", "Domain": "cust1.d12.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "cust1_d12_test", "PHPVersion": "8.2", "ProjectType": "php", "SiteID": 3, "TempDomain": ""}
+cust1 site id 3
+snapshot pre127: 246 entries
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+PHP 8.2.35 (cli) (built: Oct 21 2026 06:29:51) (NTS)
+8.2
+active active active active active active 
+PasswordAuthentication no
+PasswordAuthentication no
+  site1.d12.test: 200
+  cust1.d12.test: 200
+== setup127 d12 done 15:36:21

@@ -1,0 +1,37 @@
+{
+ "method": "get.sh in a root terminal (ssh -tt), lab portal",
+ "session": "# owner terminal session (lab): only PATH differs, see the curl stand-in\ncd /root\nexport PATH=/root/lab-portal/bin:$PATH\ncurl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&\nsh celikpanel-install.sh\n",
+ "stage": {
+  "rc": 0,
+  "out": "staged\n",
+  "err": ""
+ },
+ "terminal": {
+  "rc": -9,
+  "seconds": 54.2,
+  "answered": [
+   {
+    "prompt": "Admin username",
+    "at_seconds": 53.2
+   },
+   {
+    "prompt": "Admin email",
+    "at_seconds": 53.7
+   },
+   {
+    "prompt": "Show password while typing",
+    "at_seconds": 54.2
+   }
+  ],
+  "problem": "prompt refused an answer",
+  "tail": "43 Applied migration: 030_domain_deletion_operations.sql\n2026/11/07 15:10:43 Applied migration: 031_service_operation_data.sql\n2026/11/07 15:10:43 Applied migration: 032_dns_zone_sync_state.sql\n2026/11/07 15:10:43 Applied migration: 033_dns_engine_state.sql\n2026/11/07 15:10:43 Applied migration: 034_dns_engine_publication_switch_guard.sql\n2026/11/07 15:10:43 Applied migration: 035_dns_zone_generation_high_water.sql\n2026/11/07 15:10:43 Applied migration: 036_bind_paired_engine.sql\n2026/11/07 15:10:43 Applied migration: 037_dns_pair_identity_immutable.sql\n2026/11/07 15:10:43 Applied migration: 038_database_admin_account.sql\n2026/11/07 15:10:43 Applied migration: 039_server_setup_state.sql\n2026/11/07 15:10:43 Applied migration: 040_dns_management.sql\n2026/11/07 15:10:43 Applied migration: 041_server_setup_execution.sql\n2026/11/07 15:10:43 Applied migration: 042_remote_dns_publish.sql\n2026/11/07 15:10:43 Applied migration: 043_request_identities.sql\n2026/11/07 15:10:43 Applied migration: 044_managed_site_files.sql\n2026/11/07 15:10:43 Applied migration: 045_audit_details_app_account.sql\n2026/11/07 15:10:43 Applied migration: 046_postgresql_clusters.sql\n2026/11/07 15:10:43 Applied migration: 047_panel_port_change.sql\n2026/11/07 15:10:43 Applied migration: 048_accounts_plans_resellers.sql\n2026/11/07 15:10:43 Applied migration: 049_account_recovery.sql\n2026/11/07 15:10:43 Applied migration: 050_site_protect_redirect_recovery_codes.sql\n2026/11/07 15:10:43 Applied migration: 051_mail_autoresponders.sql\n2026/11/07 15:10:43 Applied migration: 052_rights_sets.sql\n2026/11/07 15:10:43 Applied migration: 053_suspension.sql\n2026/11/07 15:10:43 Applied migration: 054_transfers.sql\n2026/11/07 15:10:43 Applied migration: 055_security_emergency.sql\n2026/11/07 15:10:43 Applied migration: 056_transfer_rotation.sql\n2026/11/07 15:10:43 Applied migration: 057_usage_limits.sql\n2026/11/07 15:10:43 Applied migration: 058_app_catalog_operations.sql\n2026/11/07 15:10:43 Applied migration: 059_site_tools.sql\n2026/11/07 15:10:43 Applied migration: 060_remote_backups.sql\n2026/11/07 15:10:44 Applied migration: 061_service_apps.sql\n2026/11/07 15:10:44 Applied migration: 062_user_guide_state.sql\n2026/11/07 15:10:44 Applied migration: 063_runtime_apps.sql\n2026/11/07 15:10:44 Applied migration: 064_metrics_history.sql\n2026/11/07 15:10:44 Applied migration: 065_monitoring_alerts.sql\n2026/11/07 15:10:44 Successfully applied 65 migrations\n==> Creating the first administrator / \u0130lk y\u00f6netici olu\u015fturuluyor\n2026/11/07 15:10:44 Starting CelikPanel Backend...\nAdmin username / Y\u00f6netici kullan\u0131c\u0131 ad\u0131: owner\nAdmin email / Y\u00f6netici e-posta: owner@beta1-lab.test\nShow password while typing? / Parola yazarken g\u00f6r\u00fcns\u00fcn m\u00fc? [y/e = yes/evet, Enter = no/hay\u0131r]: \nThe password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / \u015eifre en az 8 karakter olmal\u0131; bir b\u00fcy\u00fck harf, bir k\u00fc\u00e7\u00fck harf ve bir \u00f6zel karakter (\u00f6rne\u011fin - _ . !) i\u00e7ermeli.\n",
+  "restart_required": false,
+  "restart_recommended": false
+ },
+ "portal_requests": "2026-11-07T15:09:52Z https://celikpanel.net/get.sh\n2026-11-07T15:09:53Z https://celikpanel.net/release-signing-ed25519.pem\n2026-11-07T15:09:53Z https://celikpanel.net/releases/v0.1.0-alpha.127/linux/amd64/release-manifest-v2\n2026-11-07T15:09:53Z https://celikpanel.net/releases/v0.1.0-alpha.127/linux/amd64/release-manifest-v2.sig\n2026-11-07T15:09:54Z https://celikpanel.net/releases/v0.1.0-alpha.127/linux/amd64/celikpanel-v0.1.0-alpha.127-linux-amd64.tar.gz\n2026-11-07T15:09:54Z https://celikpanel.net/releases/v0.1.0-alpha.127/linux/amd64/celikpanel-v0.1.0-alpha.127-linux-amd64.tar.gz.sha256\n-rw-r--r-- 1 root root 77532 Nov  7 15:09 /root/celikpanel-install.sh\nec769069bfd0d223ab2342d1bef087bf5eb9ede1a0d4bc2aa8cd5c81f1fb032b  /root/celikpanel-install.sh\n",
+ "postinstall": {
+  "rc": 1,
+  "out": ""
+ },
+ "seconds": 54.7
+}

@@ -1,0 +1,102 @@
+== provision 14:39:20 arch 192.0.3.222 zone=ar.test
+er 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Arch Linux\"\n7.1.8-arch1-3\n",
+ "rc": 127,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 36.1
+}
+
+sh: line 1: hostname: command not found
+sh: line 1: hostname: command not found
+v0.1.0-alpha.128
+== install 127 through get.sh 14:39:59
+install exit 0
+main terminal rc 0 193.3 problem None restart_required True postinstall rc 0
+  tail: raded the kernel and replaced them. Until this server |     is restarted it cannot load nftables or WireGuard, so turning the firewall on |     or installing the VPN will fail. Everything else is installed and running. |         reboot |  |     Bu sunucu, modulleri artik diskte olmayan 7.1.8-arch1-3 cekirdegiyle calisiyor: |     on gereksinim adimi cekirdegi yukseltti ve modulleri degistirdi. Sunucu |     yeniden baslatilana kadar nftables veya WireGuard yuklenemez; guvenlik |     duvarini acmak veya VPN kurmak hata verir. Geri kalan her sey kurulu. |         reboot | ]3008;end=2052522224d94deda0793692ab40e6a8\
+v0.1.0-alpha.128
+== the install asked for a restart (kernel upgraded): the owner reboots 14:43:54
+v0.1.0-alpha.128
+7.2.14-arch1-1
+active active
+
+license active can_use_panel True
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:ar.test', '06-access_dns:frankfurt.ar.test', '07-panel_certificate:frankfurt.ar.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.ar.test', '13-mail_certificate:mail.ar.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:ar.test', '17-mail_enrollment:mail-renewal', '18-main_site:ar.test', '19-verify:custom'] 
+== start 14:44:58 (try 1)
+start 202 {
+ "id": "07a8e8544d12eac188926101b1dda824",
+ "panel_url": "https://frankfurt.ar.test:1923/",
+ "phase": "queued",
+ "plan_id": "4d90ade4b33f6ab0dd5d15f6f8385c92",
+ "request_id": "07a8e8544d12eac188926101b1dda824",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "c5369da0b5c6a7457936b602da5a7bf9",
+   "request_id": "260f086b991f50e333cba96a51b99255",
+   "stat
+-- aru/main 14:45:01
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:45:21
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:45:42
+running 04-firewall null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=running 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:46:02
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:46:22
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:46:43
+running 13-mail_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=running 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:47:03
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=running 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:48:24
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=running 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- aru/main 14:49:45
+running 17-mail_enrollment {"code": "server_setup_mail_enrollment_running", "message": "The mail renewal request is recorded, but its final result is not verified. Setup will keep checking. The server administrator can inspect celikpanel-mail-enrollment-c144fa6ddd669df5d9e2157945a16de5.service and continue the same recorded operation if it stopped."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=running 18-main_site=pending 19-verify=pending
+-- aru/main 14:50:05
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=succeeded
+succeeded complete null
+== content at 127 14:50:06
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "site1.ar.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "site1_ar_test", "PHPVersion": "8.5", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+site1 id 2
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"id": 1, "name": "site1_ar_test_shop", "status": "success", "type": "mysql", "user": "site1_ar_test_shop_user"}
+200 {"id": 1, "success": true}
+plan id 1
+200 {"id": 3, "rights": "plan", "success": true}
+cust1 subscription 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/3/sites/3/public_html", "Domain": "cust1.ar.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "cust1_ar_test", "PHPVersion": "8.5", "ProjectType": "php", "SiteID": 3, "TempDomain": ""}
+cust1 site id 3
+snapshot pre127: 150 entries
+PRETTY_NAME="Arch Linux"
+PHP 8.5.12 (cli) (built: Nov  2 2026 01:08:25) (NTS)
+conf.d
+php-fpm.conf
+php-fpm.d
+php.ini
+active active active active active inactive 
+PasswordAuthentication no
+  site1.ar.test: 200
+  cust1.ar.test: 200
+== setup127 ar done 14:51:18

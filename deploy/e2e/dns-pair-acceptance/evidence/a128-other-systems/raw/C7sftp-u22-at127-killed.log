@@ -1,0 +1,9 @@
+== 7.state 15:02:58
+usepam yes passwordauthentication no kbdinteractiveauthentication no authenticationmethods any 
+KbdInteractiveAuthentication no
+PasswordAuthentication no
+PasswordAuthentication no
+vsftpd: not installed
+404 404 page not found
+
+== k7sftp u22 state done 15:02:59

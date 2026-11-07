@@ -1,0 +1,99 @@
+== 5.0 files 14:56:30
+docroot /var/www/celikpanel/subscriptions/2/sites/2/public_html
+clock.php
+errors
+file.lab
+home.html
+index.php
+== 5.1 an error page whose file is missing -> refused 14:56:30
+409 {"code": "WEB_ERROR_PAGE_MISSING", "reason": null, "error": "These error pages are not in the site's folder: /errors/500.html. Upload them (File manager or SFTP) to the site's document root first; nothing was changed.", "vars": null, "details": null}
+== 5.2 index + custom 404 + page cache 5 min 14:56:30
+200 saved {"error_pages": [{"code": 404, "path": "/errors/404.html"}], "index_files": ["home.html", "index.php"]}
+-- /  (index: home.html first)
+HTTP/1.1 200 OK Content-Type: text/html 
+<html><body>lab home.html first in the index</body></html>
+
+-- /file.lab (MIME)
+HTTP/1.1 200 OK Content-Type: application/octet-stream 
+lab mime
+
+-- /missing (custom 404)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>site1.ar.test</title>
+
+-- /clock.php twice (page cache)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab-Php: 1 
+time=1794063391.9837
+
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab-Php: 1 
+time=1794063392.994
+
+clock 1: HTTP/1.1 200 OK time=1794063393.4708
+clock 2: HTTP/1.1 200 OK time=1794063394.4997
+clock with a session cookie: 
+find: '/var/cache/celikpanel/pagecache': No such file or directory
+0
+409 {"code": "WEB_PAGE_CACHE_OFF", "error": "This site has no page cache, so there is nothing to clear. The administrator turns it on under Hosting \u2192 Web server."}
+   after clear:
+clock 1: HTTP/1.1 200 OK time=1794063395.6714
+clock 2: HTTP/1.1 200 OK time=1794063396.7134
+clock with a session cookie: 
+0
+find: '/var/cache/celikpanel/pagecache': No such file or directory
+stat: cannot statx '/var/cache/celikpanel': No such file or directory
+stat: cannot statx '/var/cache/celikpanel/pagecache': No such file or directory
+== 5.3 directives 14:56:36
+   nginx tree before ff514ec3bedb2f50
+   nginx refuses (client_max_body_size abc):
+400 {"code": "WEB_DIRECTIVES_INVALID", "error": "Nothing was changed: line 1: client_max_body_size is set by the field \"largest upload (PHP settings)\" on this screen; use the field instead.", "reason": "field"}
+   nginx tree after  ff514ec3bedb2f50 (same: yes)
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+active
+   forbidden (root /etc):
+400 {"code": "WEB_SETTINGS_NGINX_REFUSED", "error": "nginx refused this change, so the previous settings stay and the site works as before. nginx said: 2026/11/07 14:56:38 [emerg] 33519#33519: \"root\" directive is duplicate in /etc/nginx/celikpanel-managed.d/site1.ar.test/directives.site:6"}
+   allowed (add_header):
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"by_admin": true, "max_size": 16384, "may_edit": true, "offered": false, "set": true, "text": "add_header X-Lab-Directive yes always;"}, "domain_id": 2, "error_codes": [400, 401, 403, 404, 405, 410, 42
+/home.html -> 200
+X-Lab-Directive: yes
+<html><body>lab home.html first in the index</body></html> 
+== 5.4 page cache off 14:56:39
+200 saved {"error_pages": [{"code": 404, "path": "/errors/404.html"}], "index_files": ["home.html", "index.php"]}
+/missing-a129 -> 200
+<!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=
+== k5web ar done 14:56:39
+== 5b.1 page cache 5 minutes (in settings) 15:00:19
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"by_admin": true, "max_size": 16384, "may_edit": true, "offer
+drwxr-xr-x root:celikpanel /var/cache/celikpanel
+drwxr-xr-x root:celikpanel /var/cache/celikpanel/pagecache
+clock 1: HTTP/1.1 200 OK X-Cache-Status: MISS time=1794063620.4174
+clock 2: HTTP/1.1 200 OK X-Cache-Status: HIT time=1794063620.4174
+clock with a session cookie: X-Cache-Status: BYPASS
+1
+200 {"cleared": true, "removed": 1}
+   after clear:
+clock 1: HTTP/1.1 200 OK X-Cache-Status: MISS time=1794063621.9694
+clock 2: HTTP/1.1 200 OK X-Cache-Status: HIT time=1794063621.9694
+clock with a session cookie: X-Cache-Status: BYPASS
+1
+== 5b.2 custom 404 for a missing PHP file 15:00:22
+/nope-a129.php -> 404
+<html><body>LAB CUSTOM 404 a128</body></html> 
+== 5b.3 a directive nginx refuses (unknown directive) 15:00:23
+400 {"code": "WEB_SETTINGS_NGINX_REFUSED", "error": "nginx refused this change, so the previous settings stay and the site works as before. nginx said: 2026/11/07 15:00:23 [emerg] 34742#34742: unknown directive \"lab_unknown_directive\" in /etc/nginx/celikpanel-managed.d/site1.ar.test/directives.site:7"}
+   nginx tree before f0aa03636ea5c505 after f0aa03636ea5c505 (same: yes)
+/home.html -> 200
+X-Lab-Directive: yes
+<html><body>lab home.html first in the index</body></html> 
+== 5b.4 page cache off 15:00:24
+200 {"cache_choices": [0, 1, 7, 30], "default_index": "index.php index.html index.htm", "directives": {"by_admin": true, "ma
+clock 1: HTTP/1.1 200 OK time=1794063625.5178
+clock 2: HTTP/1.1 200 OK time=1794063626.6795
+clock with a session cookie: 
+1
+== k5b ar done 15:00:26

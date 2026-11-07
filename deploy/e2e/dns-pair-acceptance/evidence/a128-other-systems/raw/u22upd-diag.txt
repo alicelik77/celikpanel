@@ -1,0 +1,53 @@
+unit celikpanel-self-update-47042076828c461cd231b04f232a1680.service
+2026-11-07T14:59:59+0000 host1.u22.test systemd[1]: Starting /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680...
+2026-11-07T14:59:59+0000 host1.u22.test systemd[1]: Started /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680.
+2026-11-07T15:00:31+0000 host1.u22.test agent[56715]: 2026/11/07 15:00:31 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=panel could not be frozen detail=
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Failed with result 'exit-code'.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Triggering OnFailure= dependencies.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Consumed 32.462s CPU time.
+---- frozen grep
+2026-11-07T14:59:59+0000 host1.u22.test systemd[1]: Starting /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680...
+2026-11-07T14:59:59+0000 host1.u22.test systemd[1]: Started /opt/celikpanel/bin/agent --self-update-worker 47042076828c461cd231b04f232a1680.
+2026-11-07T15:00:13+0000 host1.u22.test systemd[1]: Starting CelikPanel verified release transaction recovery...
+2026-11-07T15:00:13+0000 host1.u22.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T15:00:13+0000 host1.u22.test systemd[1]: Finished CelikPanel verified release transaction recovery.
+2026-11-07T15:00:23+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T15:00:23+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T15:00:24+0000 host1.u22.test systemd[1]: Starting CelikPanel verified release transaction recovery...
+2026-11-07T15:00:25+0000 host1.u22.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T15:00:25+0000 host1.u22.test systemd[1]: Finished CelikPanel verified release transaction recovery.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-panel.service: Deactivated successfully.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-panel.service: Consumed 12.705s CPU time.
+2026-11-07T15:00:31+0000 host1.u22.test agent[56715]: 2026/11/07 15:00:31 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=panel could not be frozen detail=
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Failed with result 'exit-code'.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Triggering OnFailure= dependencies.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: celikpanel-self-update-47042076828c461cd231b04f232a1680.service: Consumed 32.462s CPU time.
+2026-11-07T15:00:31+0000 host1.u22.test systemd[1]: Starting CelikPanel verified release transaction recovery...
+2026-11-07T15:00:33+0000 host1.u22.test release-recovery[65161]: Recovery dispatch admitted: attempt=1 snapshot=20261107T150026Z-from-unknown-to-818a03e36db19421f6898c6ca53aaaea4c6b5cea-c4a302f7fb5980cc9ab8dc52f0ed1698
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: ==> Starting the stopped agent service again (the update was stopped before anything changed)
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: ==> Durdurulmuş agent hizmeti yeniden başlatılıyor (güncelleme hiçbir şey değişmeden durdu)
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: ==> Starting the stopped panel service again (the update was stopped before anything changed)
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: ==> Durdurulmuş panel hizmeti yeniden başlatılıyor (güncelleme hiçbir şey değişmeden durdu)
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: !! previous quiesce phase was safely aborted and cleaned; rerun the exact trusted update
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: !! Update stopped before installed bytes changed.
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: !! Kurulu baytlar değişmeden önce güncelleme durdu.
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[66795]: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=unchanged reason=previous quiesce phase was safely aborted and cleaned; rerun the exact trusted update detail=
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[65161]: The interrupted update was stopped before the installed release or its data changed: the panel and Agent were returned to their state from before the update and its pending phase was removed. Nothing more happens for this update and no owner action is needed; start the update again from the panel when convenient.
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[65161]: Yarım kalan güncelleme, kurulu sürüm veya verileri değişmeden durduruldu: panel ve Agent güncellemeden önceki durumlarına döndürüldü, bekleyen aşaması kaldırıldı. Bu güncelleme için başka bir şey olmayacak ve kullanıcı işlemi gerekmiyor; uygun olduğunda güncellemeyi panelden yeniden başlatın.
+2026-11-07T15:00:36+0000 host1.u22.test release-recovery[65161]: !! release recovery child failed with status 1 and left no pending transaction
+2026-11-07T15:00:36+0000 host1.u22.test systemd[1]: celikpanel-release-recovery.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-07T15:00:37+0000 host1.u22.test systemd[1]: celikpanel-release-recovery.service: Failed with result 'exit-code'.
+2026-11-07T15:00:37+0000 host1.u22.test systemd[1]: Failed to start CelikPanel verified release transaction recovery.
+2026-11-07T15:00:37+0000 host1.u22.test systemd[1]: celikpanel-release-recovery.service: Consumed 6.203s CPU time.
+2026-11-07T15:01:00+0000 host1.u22.test panel[68627]: 2026/11/07 15:01:00 certificate startup reconcile: mail SNI reconciled from 0 active secure-mail certificates; TLSA left unchanged: automatic DANE/TLSA updates are disabled: safe TTL-aware certificate rollover and explicit panel record ownership are not available in this release
+2026-11-07T15:01:07+0000 host1.u22.test systemd[1]: Starting CelikPanel verified release transaction recovery...
+2026-11-07T15:01:07+0000 host1.u22.test systemd[1]: celikpanel-release-recovery.service: Deactivated successfully.
+2026-11-07T15:01:07+0000 host1.u22.test systemd[1]: Finished CelikPanel verified release transaction recovery.

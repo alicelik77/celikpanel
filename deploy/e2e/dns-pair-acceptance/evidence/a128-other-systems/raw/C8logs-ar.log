@@ -1,0 +1,43 @@
+== 8.0 what the screen reads before 15:07:30
+200 {"domain": "cust1.ar.test", "files": [{"bytes": 945, "live": true, "mod_time": "2026-11-07T15:04:33Z", "name": "cust1.ar.test-access.log"}, {"bytes": 310, "live": true, "mod_time": "2026-11-07T14:56:30Z", "name": "cust1.ar.test-error.log"}], "keep_days": 0, "may_change": true, "plan_id": 1, "plan_name": "Basic", "source": "system", "system": {"found": true, "path": "/etc/logrotate.d/nginx"}}
+   customer reads it:
+200 {"domain": "cust1.ar.test", "files": [{"bytes": 945, "live": true, "mod_time": "2026-11-07T15:04:33Z", "name": "cust1.ar.test-access.log"}, {"bytes": 310, "live": true, "mod_time": "2026-11-07T14:56:30Z", "name": "cust1.ar.test-error.log"}], "keep_days": 0, "may_change": false, "plan_id": 1, "plan_name": "Basic", "source": "system", "system": {"found": true, "path": "/etc/logrotate.d/nginx"}}
+== 8.1 lab load: rotated files with old and young dates, another site's, another name, a link 15:07:30
+-rw-r----- 1 root celikpanel  945 Nov  7 15:04 cust1.ar.test-access.log
+-rw-r----- 1 root celikpanel  310 Nov  7 14:56 cust1.ar.test-error.log
+-rw-r----- 1 root celikpanel 2906 Nov  7 15:04 site1.ar.test-access.log
+-rw-r----- 1 root celikpanel    0 Nov  7 14:50 site1.ar.test-error.log
+-- /var/log/nginx for cust1.ar.test and site1.ar.test:
+-rw-r----- 945 2026-10-18 cust1.ar.test-access.log  
+-rw-r--r-- 35 2026-10-18 cust1.ar.test-access.log.1  
+-rw-r--r-- 38 2026-10-18 cust1.ar.test-access.log.2.gz  
+-rw-r--r-- 10 2026-11-05 cust1.ar.test-access.log.3.gz  
+lrwxrwxrwx 13 2026-10-18 cust1.ar.test-access.log.4.gz -> /etc/hostname
+-rw-r--r-- 38 2026-10-18 cust1.ar.test-access.log.9.gz  
+-rw-r--r-- 37 2026-10-18 cust1.ar.test-access.log.bak  
+-rw-r----- 310 2026-11-07 cust1.ar.test-error.log  
+-rw-r--r-- 44 2026-10-18 cust1.ar.test-error.log-20261001.gz  
+-rw-r----- 2906 2026-11-07 site1.ar.test-access.log  
+-rw-r--r-- 38 2026-10-18 site1.ar.test-access.log.2.gz  
+-rw-r----- 0 2026-11-07 site1.ar.test-error.log  
+== 8.2 administrator sets 7 days for the subscription 15:07:30
+200 {"domain": "cust1.ar.test", "files": [{"bytes": 310, "live": true, "mod_time": "2026-11-07T14:56:30Z", "name": "cust1.ar.test-error.log"}, {"bytes": 10, "mod_time": "2026-11-05T15:07:31Z", "name": "cust1.ar.test-access.log.3.gz"}, {"bytes": 945, "live": true, "mod_time": "2026-10-18T15:07:31Z", "name": "cust1.ar.test-access.log"}], "keep_days": 7, "may_change": true, "plan_id": 1, "plan_name": "Basic", "source": "subscription", "subscription_days": 7, "system": {"found": true, "path": "/etc/logrotate.d/nginx"}}
+-- /var/log/nginx for cust1.ar.test and site1.ar.test:
+-rw-r----- 945 2026-10-18 cust1.ar.test-access.log  
+-rw-r--r-- 10 2026-11-05 cust1.ar.test-access.log.3.gz  
+lrwxrwxrwx 13 2026-10-18 cust1.ar.test-access.log.4.gz -> /etc/hostname
+-rw-r--r-- 37 2026-10-18 cust1.ar.test-access.log.bak  
+-rw-r----- 310 2026-11-07 cust1.ar.test-error.log  
+-rw-r----- 2906 2026-11-07 site1.ar.test-access.log  
+-rw-r--r-- 38 2026-10-18 site1.ar.test-access.log.2.gz  
+-rw-r----- 0 2026-11-07 site1.ar.test-error.log  
+== 8.3 the screen after 15:07:31
+200 {"domain": "cust1.ar.test", "files": [{"bytes": 310, "live": true, "mod_time": "2026-11-07T14:56:30Z", "name": "cust1.ar.test-error.log"}, {"bytes": 10, "mod_time": "2026-11-05T15:07:31Z", "name": "cust1.ar.test-access.log.3.gz"}, {"bytes": 945, "live": true, "mod_time": "2026-10-18T15:07:31Z", "name": "cust1.ar.test-access.log"}], "keep_days": 7, "may_change": true, "plan_id": 1, "plan_name": "Basic", "source": "subscription", "subscription_days": 7, "system": {"found": true, "path": "/etc/logrotate.d/nginx"}}
+   customer tries to change it:
+403 {"error": "only the administrator changes how long logs are kept"}
+   0 / 4000 days:
+400 {"code": "LOG_RETENTION_INVALID", "error": "Nothing was changed: logs are kept 1 to 3650 days, or as the system keeps them."}
+-rw-r--r-- 1 root root        216 Oct 17 17:39 nginx
+	postrotate
+d0586778442f573e
+== k8logs ar done 15:07:32

@@ -1,0 +1,84 @@
+== 7.state 14:56:46
+UsePAM yes PasswordAuthentication no KbdInteractiveAuthentication no AuthenticationMethods any 
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+vsftpd: not installed
+200 warnings ["sftp_password_off", "sftp_shell_refused"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.ar.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.222", "sftp_host": "site1.ar.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.ar.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off", "sftp_shell_refused"]}, "subscription_status": "active"}
+== k7sftp ar state done 14:56:46
+== 7.add anna-nokey 15:00:26
+409 {"code": "FTP_LOGIN_REFUSED", "error": "anna-nokey could not sign in: sshd on this server accepts only keys, and a login signs in with a password, and FTP over TLS (vsftpd) is not installed; so it was not created. The administrator installs the FTP server (vsftpd) from Components, or allows passwords for SSH (the owner's own decision; CelikPanel does not change sshd); the earlier steps were put back", "reason": "no_sign_in", "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-nokey", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "no way to sign in", "status": "failed", "step": "verify"}, {"status": "rolled_back", "step": "cleanup"}], "warnings": ["ftp_not_installed"]}
+id: 'anna-nokey': no such user
+inactive
+-- sftp as anna-nokey
+anna-nokey@192.0.3.222: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-nokey (must be refused)
+Warning: Permanently added '192.0.3.222' (ED25519) to the list of known hosts.
+anna-nokey@192.0.3.222: Permission denied (publickey).
+-- ftps as anna-nokey
+ftp://[REDACTED]@192.0.3.222
+ls: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off", "sftp_shell_refused"]}, "steps": [{"detail": "no such login: nothing to remove", "status": "done", "step": "check"}], "success": true, "warnings": null}
+id: 'anna-nokey': no such user
+inactive
+-- after removal:
+-- sftp as anna-nokey
+anna-nokey@192.0.3.222: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-nokey (must be refused)
+Warning: Permanently added '192.0.3.222' (ED25519) to the list of known hosts.
+anna-nokey@192.0.3.222: Permission denied (publickey).
+-- ftps as anna-nokey
+== k7sftp ar add done 15:01:50
+== 7.vsftpd from Components 15:01:51
+  row {"id": "vsftpd", "name": "vsftpd", "is_installed": false, "status": "not_installed", "package": null}
+200 {"distribution": "arch", "installs": ["vsftpd"], "notable": [], "refusals": [], "removes": [], "requested": ["vsftpd"], "state": "known"}
+202 {"operation": {"id": "8d3896abd6fce6af503bf4702d5ee87d", "kind": "service_install", "phase": "queued", "request_id": "a0fd5988de841fbbf4a30dea9f64f4bd", "service_id": "vsftpd", "started_at": "2026-11-07T15:01:53.285342925Z", "status": "queued"}}
+  op a0fd5988de841fbbf4a30dea9f64f4bd: succeeded completed "" (15:02:03)
+200 warnings ["sftp_password_off", "sftp_shell_refused"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.ar.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.222", "sftp_host": "site1.ar.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.ar.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "managed", "ftp_installed": true, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off", "sftp_shell_refused"]}, "subscription_status": "active"}
+== k7sftp ar vsftpd done 15:02:03
+== 7.add anna-up 15:02:03
+200 {"state": {"ftp_config": "managed", "ftp_installed": true, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "anna-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true, "warnings": ["sftp_password_off", "sftp_shell_refused"]}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/anna-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "done", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["sftp_password_off", "sftp_shell_refused"]}
+uid=5002(site1_ar_test) gid=5002(site1_ar_test) groups=5002(site1_ar_test),965(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_ar_test:/run/celikpanel-ftp/anna-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/anna-up/files /dev/vda3[/var/www/celikpanel/subscriptions/2/sites/2/public_html] btrfs rw,nosuid,nodev,relatime,compress=zstd:1,discard=asyn
+-- sftp as anna-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.222' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as anna-up
+ftp://[REDACTED]@192.0.3.222
+-rw-r--r--    1 5002     33             67 Nov 07 14:56 clock.php
+drwxr-sr-x    1 5002     33             16 Nov 07 14:56 errors
+-rw-r--r--    1 5002     33              9 Nov 07 14:56 file.lab
+-rw-r--r--    1 5002     33             59 Nov 07 14:56 home.html
+-rw-r-----    1 5002     33           3250 Nov 07 14:50 index.php
+ftp://[REDACTED]@192.0.3.222/%2F
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+5002
+200 {"state": {"ftp_config": "managed", "ftp_installed": true, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true, "warnings": ["sftp_password_off", "sftp_shell_refused"]}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "done", "step": "ftp"}, {"detail": "removed", "st
+id: 'anna-up': no such user
+inactive
+0
+/etc/vsftpd/celikpanel-users.list:0
+/etc/vsftpd.conf:0
+/etc/vsftpd.conf.distro:0
+-- after removal:
+-- sftp as anna-up
+anna-up@192.0.3.222: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as anna-up (must be refused)
+Warning: Permanently added '192.0.3.222' (ED25519) to the list of known hosts.
+anna-up@192.0.3.222: Permission denied (publickey).
+-- ftps as anna-up
+== k7sftp ar add done 15:02:16

@@ -1,0 +1,53 @@
+{
+ "method": "get.sh in a root terminal (ssh -tt), lab portal",
+ "session": "# owner terminal session (lab): only PATH differs, see the curl stand-in\ncd /root\nexport PATH=/root/lab-portal/bin:$PATH\ncurl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&\nsh celikpanel-install.sh\n",
+ "stage": {
+  "rc": 0,
+  "out": "staged\n",
+  "err": ""
+ },
+ "terminal": {
+  "rc": 0,
+  "seconds": 115.1,
+  "answered": [
+   {
+    "prompt": "Admin username",
+    "at_seconds": 109.6
+   },
+   {
+    "prompt": "Admin email",
+    "at_seconds": 110.1
+   },
+   {
+    "prompt": "Show password while typing",
+    "at_seconds": 110.6
+   },
+   {
+    "prompt": "Admin password",
+    "at_seconds": 111.1
+   },
+   {
+    "prompt": "Confirm password",
+    "at_seconds": 111.6
+   }
+  ],
+  "problem": null,
+  "tail": "limits.sql\n2026/11/07 14:35:33 Applied migration: 058_app_catalog_operations.sql\n2026/11/07 14:35:33 Applied migration: 059_site_tools.sql\n2026/11/07 14:35:33 Applied migration: 060_remote_backups.sql\n2026/11/07 14:35:33 Applied migration: 061_service_apps.sql\n2026/11/07 14:35:33 Applied migration: 062_user_guide_state.sql\n2026/11/07 14:35:33 Applied migration: 063_runtime_apps.sql\n2026/11/07 14:35:33 Applied migration: 064_metrics_history.sql\n2026/11/07 14:35:33 Applied migration: 065_monitoring_alerts.sql\n2026/11/07 14:35:33 Applied migration: 066_site_setting_limits.sql\n2026/11/07 14:35:33 Applied migration: 067_mail_outgoing.sql\n2026/11/07 14:35:33 Applied migration: 068_site_web_settings.sql\n2026/11/07 14:35:33 Applied migration: 069_site_visitor_stats.sql\n2026/11/07 14:35:33 Applied migration: 070_api_tokens.sql\n2026/11/07 14:35:33 Applied migration: 071_ftp_logins.sql\n2026/11/07 14:35:33 Applied migration: 072_panel_operations.sql\n2026/11/07 14:35:33 Successfully applied 72 migrations\n==> Creating the first administrator / \u0130lk y\u00f6netici olu\u015fturuluyor\n2026/11/07 14:35:33 Starting CelikPanel Backend...\nAdmin username / Y\u00f6netici kullan\u0131c\u0131 ad\u0131: owner\nAdmin email / Y\u00f6netici e-posta: owner@beta1-lab.test\nShow password while typing? / Parola yazarken g\u00f6r\u00fcns\u00fcn m\u00fc? [y/e = yes/evet, Enter = no/hay\u0131r]: \nThe password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / \u015eifre en az 8 karakter olmal\u0131; bir b\u00fcy\u00fck harf, bir k\u00fc\u00e7\u00fck harf ve bir \u00f6zel karakter (\u00f6rne\u011fin - _ . !) i\u00e7ermeli.\nAdmin password / Y\u00f6netici parolas\u0131: \nConfirm password / Parolay\u0131 do\u011frula: \nCreated administrator / Y\u00f6netici olu\u015fturuldu.\n    \u2713 administrator is ready / y\u00f6netici haz\u0131r\n==> Starting the panel / Panel ba\u015flat\u0131l\u0131yor\n    \u2713 panel is running / panel \u00e7al\u0131\u015f\u0131yor\n==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor\n    \u2713 initial panel certificate is protected / ilk panel sertifikasi korundu\n\nCelikPanel was installed successfully. / CelikPanel ba\u015far\u0131yla kuruldu.\n    Panel:  https://SUNUCU_IP:1923\n    Services / Servisler: systemctl status celikpanel-agent celikpanel-panel\n    Logs / G\u00fcnl\u00fckler: journalctl -u celikpanel-panel -f\n\nRESTART THIS SERVER NOW / BU SUNUCUYU SIMDI YENIDEN BASLATIN\n    This server is running kernel 7.1.8-arch1-3, whose modules are no longer on disk:\n    the prerequisite step upgraded the kernel and replaced them. Until this server\n    is restarted it cannot load nftables or WireGuard, so turning the firewall on\n    or installing the VPN will fail. Everything else is installed and running.\n        reboot\n\n    Bu sunucu, modulleri artik diskte olmayan 7.1.8-arch1-3 cekirdegiyle calisiyor:\n    on gereksinim adimi cekirdegi yukseltti ve modulleri degistirdi. Sunucu\n    yeniden baslatilana kadar nftables veya WireGuard yuklenemez; guvenlik\n    duvarini acmak veya VPN kurmak hata verir. Geri kalan her sey kurulu.\n        reboot\n\u001b]3008;end=1d9c158abe85439cacd9ea60f9caacb6\u001b\\",
+  "restart_required": true,
+  "restart_recommended": false
+ },
+ "portal_requests": "2026-11-07T14:33:45Z https://celikpanel.net/get.sh\n2026-11-07T14:33:45Z https://celikpanel.net/release-signing-ed25519.pem\n2026-11-07T14:33:45Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/release-manifest-v2\n2026-11-07T14:33:45Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/release-manifest-v2.sig\n2026-11-07T14:33:46Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/celikpanel-v0.1.0-alpha.128-linux-amd64.tar.gz\n2026-11-07T14:33:46Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/celikpanel-v0.1.0-alpha.128-linux-amd64.tar.gz.sha256\n-rw-r--r-- 1 root root 77532 Nov  7 14:33 /root/celikpanel-install.sh\n67db4e6a2d449285507c114b11222bde3e4d560d444d38b8dd14b90824a839e7  /root/celikpanel-install.sh\n",
+ "postinstall": {
+  "rc": 0,
+  "out": "active\nactive\nenabled\nenabled\n"
+ },
+ "owner_restart": {
+  "action": "reboot",
+  "node": "main",
+  "boot_id_before": "f6340ff7-b9ac-4226-a7d2-4de9c4b46927",
+  "boot_id_after": "7d5f640a-4c97-4f73-9198-200fcf159dd5",
+  "elapsed_seconds": 21.7
+ },
+ "after_restart_units": "active\nactive\n",
+ "seconds": 147.7
+}

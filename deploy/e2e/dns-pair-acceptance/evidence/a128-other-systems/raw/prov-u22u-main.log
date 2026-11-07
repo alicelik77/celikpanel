@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "u22u",
+  "node": "main",
+  "os": "ubuntu2204",
+  "ip": "192.0.3.221",
+  "hostname": "frankfurt",
+  "uuid": "a4c5c7b3-f3e0-574b-b28c-1760b554d531",
+  "tap": "cpt9dd6162f",
+  "mac": "52:54:00:24:88:9c",
+  "image": "ubuntu-22.04-server-cloudimg-amd64-20261020.img",
+  "image_digest": {
+   "sha256": "2099e63da0b822ef8e05e3d596c1b402eaaae658fc08ab919cb8495bfcdc488b"
+  },
+  "memory_mb": 3584,
+  "cpus": 2,
+  "started_at": "2026-11-07T14:39:01Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "8e2963c4-5369-4033-b437-2c457a7bee89",
+  "waited_seconds": 33.9
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.221 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.221 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nVERSION_ID=\"22.04\"\n5.15.0-198-generic\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 36.1
+}

@@ -1,0 +1,115 @@
+== 5.0 files 15:02:36
+docroot /var/www/celikpanel/subscriptions/2/sites/2/public_html
+clock.php
+errors
+file.lab
+home.html
+index.php
+== 5.1 an error page whose file is missing -> refused 15:02:36
+404 404 page not found
+
+== 5.2 index + custom 404 + page cache 5 min 15:02:37
+404 404 page not found
+
+-- /  (index: home.html first)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>site1.u22.test</title>
+-- /file.lab (MIME)
+HTTP/1.1 200 OK Content-Type: application/octet-stream 
+lab mime
+
+-- /missing (custom 404)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>site1.u22.test</title>
+-- /clock.php twice (page cache)
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab-Php: 1 
+time=1794063757.6721
+
+HTTP/1.1 200 OK Content-Type: text/html; charset=UTF-8 X-Lab-Php: 1 
+time=1794063758.6861
+
+clock 1: HTTP/1.1 200 OK time=1794063759.2637
+clock 2: HTTP/1.1 200 OK time=1794063760.2796
+clock with a session cookie: 
+find: ‘/var/cache/celikpanel/pagecache’0
+: No such file or directory
+404 404 page not found
+
+   after clear:
+clock 1: HTTP/1.1 200 OK time=1794063760.8742
+clock 2: HTTP/1.1 200 OK time=1794063761.8989
+clock with a session cookie: 
+find: ‘/var/cache/celikpanel/pagecache’: No such file or directory
+0
+stat: cannot statx '/var/cache/celikpanel': No such file or directory
+stat: cannot statx '/var/cache/celikpanel/pagecache': No such file or directory
+== 5.3 directives 15:02:42
+   nginx tree before fa5f13816faee2b2
+   nginx refuses (client_max_body_size abc):
+404 404 page not found
+
+   nginx tree after  fa5f13816faee2b2 (same: yes)
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+active
+   forbidden (root /etc):
+404 404 page not found
+
+   allowed (add_header):
+404 404 page not found
+
+/home.html -> 200
+<html><body>lab home.html first in the index</body></html> 
+== 5.4 page cache off 15:02:44
+404 404 page not found
+
+/missing-a129 -> 200
+<!doctype html> <html lang="tr"> <head> <meta charset="utf-8"> <meta name="viewport" content="width=
+== k5web u22 done 15:02:44
+== 5b.1 page cache 5 minutes (in settings) 15:02:44
+404 404 page not found
+
+stat: cannot statx '/var/cache/celikpanel': No such file or directory
+stat: cannot statx '/var/cache/celikpanel/pagecache': No such file or directory
+clock 1: HTTP/1.1 200 OK time=1794063765.8151
+clock 2: HTTP/1.1 200 OK time=1794063766.8249
+clock with a session cookie: 
+find: ‘/var/cache/celikpanel/pagecache’: No such file or directory
+0
+404 404 page not found
+
+   after clear:
+clock 1: HTTP/1.1 200 OK time=1794063767.44
+clock 2: HTTP/1.1 200 OK time=1794063768.4564
+clock with a session cookie: 
+find: ‘/var/cache/celikpanel/pagecache’: No such file or directory
+0
+== 5b.2 custom 404 for a missing PHP file 15:02:48
+/nope-a129.php -> 404
+<html> <head><title>404 Not Found</title></head> <body> <center><h1>404 Not Found</h1></center> 
+== 5b.3 a directive nginx refuses (unknown directive) 15:02:49
+404 404 page not found
+
+   nginx tree before fa5f13816faee2b2 after fa5f13816faee2b2 (same: yes)
+/home.html -> 200
+<html><body>lab home.html first in the index</body></html> 
+== 5b.4 page cache off 15:02:51
+404 404 page not found
+
+clock 1: HTTP/1.1 200 OK time=1794063772.7457
+clock 2: HTTP/1.1 200 OK time=1794063773.7691
+clock with a session cookie: 
+find: ‘/var/cache/celikpanel/pagecache’: No such file or directory
+0
+== k5b u22 done 15:02:53

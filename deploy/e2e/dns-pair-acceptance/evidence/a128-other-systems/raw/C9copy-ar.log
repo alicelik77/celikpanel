@@ -1,0 +1,54 @@
+== 9.0 source big.ar.test and target tgt.ar.test 15:07:32
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html", "Domain": "big.ar.test", "DomainID": 4, "FTPPassword": "[REDACTED]", "FTPUser": "big_ar_test", "PHPVersion": "8.5", "ProjectType": "php", "SiteID": 4, "TempDomain": ""}
+big id 4
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/5/public_html", "Domain": "tgt.ar.test", "DomainID": 5, "FTPPassword": "[REDACTED]", "FTPUser": "tgt_ar_test", "PHPVersion": "8.5", "ProjectType": "php", "SiteID": 5, "TempDomain": ""}
+tgt id 5
+200 {"id": 3, "name": "big_ar_test_bigdb", "status": "success", "type": "mysql", "user": "big_ar_test_bigdb_user"}
+database big_ar_test_bigdb id 3
+filled in 63 s
+count(*)
+330000
+database filled in 10 s
+-- /var/www/celikpanel/subscriptions/2/sites/4/public_html: 40023 files, 2.4G (2495167265 bytes)
+big_ar_test_bigdb	0
+330000
+/dev/vda3        24G  5.1G   19G  22% /
+-- /var/www/celikpanel/subscriptions/2/sites/5/public_html: 1 files, 3.2K (3246 bytes)
+/dev/vda3        24G  5.1G   19G  22% /
+== 9.1 what the copy window offers 15:08:59
+200 {"copyable": true, "databases": [{"id": 3, "name": "big_ar_test_bigdb"}], "targets": [{"domain": "ar.test", "domain_id": 1, "project_type": "static"}, {"domain": "cust1.ar.test", "domain_id": 3, "project_type": "php"}, {"domain": "site1.ar.test", "domain_id": 2, "project_type": "php"}, {"domain": "tgt.ar.test", "domain_id": 5, "project_type": "php"}]}
+== 9.2 copy without overwrite onto a site with content 15:08:59
+None 
+== 9.3 copy with overwrite 15:18:59
+200 {"backup": "full-20261107T151907.989697795Z-39724dbdfee58196.cpbak", "copied": true, "database": {"name": "tgt_ar_test_copy_c4b5", "password": "[REDACTED]", "user": "tgt_ar_test_copy_c4b5"}, "note": "The copied site's own configuration still names the source's database. Change it to this database, user and password; the password is shown only now.", "target": "tgt.ar.test"}
+   answer after 695 s
+-- /var/www/celikpanel/subscriptions/2/sites/5/public_html: 40023 files, 2.4G (2495167265 bytes)
+/dev/vda3        24G  8.4G   15G  36% /
+200 {"available_types": ["mysql"], "databases": [{"created_at": "2026-11-07 15:19:08", "id": 5, "name": "tgt_ar_test_copy_c4b5", "type": "mysql", "user": "tgt_ar_test_copy_c4b5"}], "domain_id": 5, "domain_name": "tgt.ar.test"}
+330000
+   target backups:
+200 {"backups": [{"created_at": "2026-11-07T15:19:00.390391304Z", "name": "full-20261107T151907.989697795Z-39724dbdfee58196.cpbak", "origin": "pre_update", "restorable": true, "size": 3320, "type": "full"}]}
+   the copied site answers: big site 40000
+/dev/vda3        24G  8.4G   15G  36% /
+(failed end)
+== k9copy ar done 15:30:40
+== 9.4 before 15:33:58
+tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+== 9.5 copy (database 3) without overwrite onto tgt with content 15:33:59
+409 {"code": "SITE_COPY_TARGET_NOT_EMPTY", "error": "tgt.ar.test already has content in its web folder, so nothing was copied. To replace it, confirm overwriting: a backup of it is made first."}
+   answer after 0 s
+tgt_ar_test_copy_76c5 tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+tgt_ar_test_copy_76c5 tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+200 {"available_types": ["mysql"], "databases": [{"created_at": "2026-11-07 15:19:08", "id": 5, "name": "tgt_ar_test_copy_c4b5", "type": "mysql", "user": "tgt_ar_test_copy_c4b5"}], "domain_id": 5, "domain_name": "tgt.ar.test"}
+== 9.5 done 15:34:00
+== 9.4 before 15:46:27
+tgt_ar_test_copy_76c5 tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+tgt_ar_test_copy_76c5 tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+== 9.5 copy (database 3) without overwrite onto tgt with content 15:46:27
+409 {"code": "SITE_COPY_TARGET_NOT_EMPTY", "error": "tgt.ar.test already has content in its web folder, so nothing was copied. To replace it, confirm overwriting: a backup of it is made first."}
+   answer after 1 s
+tgt_ar_test_copy_76c5 tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+tgt_ar_test_copy_76c5 tgt_ar_test_copy_91f3 tgt_ar_test_copy_c4b5
+200 {"available_types": ["mysql"], "databases": [{"created_at": "2026-11-07 15:19:08", "id": 5, "name": "tgt_ar_test_copy_c4b5", "type": "mysql", "user": "tgt_ar_test_copy_c4b5"}], "domain_id": 5, "domain_name": "tgt.ar.test"}
+== 9.5 done 15:46:29

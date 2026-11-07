@@ -1,0 +1,34 @@
+== C2 main before 15:36:33
+200 {"agent_commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "agent_matches": true, "commit": "0c7aefe8613c9fd5fd34799ec36b991d894c16cd", "hostname": "host1.d12.test", "ipv4": "192.0.3.224", "schema_version": 65, "version": "v0.1.0-alpha.127"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 0efe0b2de3a2b5e6b93a2a2533a3483d v0.1.0-alpha.127 -> v0.1.0-alpha.128
+== press Update once 15:36:34
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T15:36:34Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "0efe0b2de3a2b5e6b93a2a2533a3483d", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "1044dfa67d03a7268dece8b7d5961a1af894088d7bdc76aa5b079dc5eae5278d", "archive_size": "72570450", "commit": "818a03e36db19421f689
+  4s 200 running None  | 
+  34s 
+  81s 200 running verifying  | 
+  94s 200 succeeded None  | 
+== after 15:38:19
+200 {"agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "agent_matches": true, "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "hostname": "host1.d12.test", "ipv4": "192.0.3.224", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+200 {"created_at": "2026-11-07T15:36:34.318532192Z", "found": true, "plan": {"expected_restart_seconds": 114, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T15:36:34Z", "state": "done"}, {"finished_at": "2026-11-07T15:36:39Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T15:36:39Z", "state": "done"}, {"finished_at": "2026-11-07T15:37:54Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 11, "finished_at": "2026-11-07T15:38:06Z", "id": "confirm", "started_at": "2026-11-07T15:37:54Z", "state": "done"}]}, "request_id": "0efe0b2de3a2b5e6b93a2a2533a3483d", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "1044dfa67d03a7268dece8b7d5961a1af894088d7bdc76aa5b079dc5eae5278d", "archive_size": "72570450", "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "os": "linux", "sequence": "128", "version": "v0.1.0-alpha.128"}, "updated_at": "2026-11-07T15:38:06.681150782Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 15:25:06 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 15:25:08 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 15:26:30 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 15:37:54 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 15:37:54 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '0efe0b2de3a2b5e6b93a2a2533a3483d.json'] {'request_id': '0efe0b2de3a2b5e6b93a2a2533a3483d', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T15:36:34.318532192Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+== C2 main done 15:38:20

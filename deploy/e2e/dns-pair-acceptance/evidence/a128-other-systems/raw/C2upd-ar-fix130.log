@@ -1,0 +1,56 @@
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+== C2 main before 15:44:50
+200 {"agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "agent_matches": true, "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "hostname": "host1.ar.test", "ipv4": "192.0.3.222", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 54bf252c6debc09db2d4177e5ecbbc08 v0.1.0-alpha.128 -> v0.1.0-alpha.130
+== press Update once 15:44:51
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T15:44:51Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "54bf252c6debc09db2d4177e5ecbbc08", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "ab6604c0fbaa02e187f37ef935b2b3eb93186f79a2bba24f139b1f3354ef01c9", "archive_size": "72570687", "commit": "2b8114325036a218174e
+  4s 200 running None  | 
+  29s 
+  67s 200 running verifying  | 
+  80s 200 succeeded None  | 
+== after 15:46:22
+200 {"agent_commit": "2b8114325036a218174e5f26144951f748287b06", "agent_matches": true, "commit": "2b8114325036a218174e5f26144951f748287b06", "hostname": "host1.ar.test", "ipv4": "192.0.3.222", "schema_version": 72, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-07T15:44:51.470679899Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T15:44:51Z", "state": "done"}, {"finished_at": "2026-11-07T15:44:58Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-07T15:44:58Z", "state": "done"}, {"finished_at": "2026-11-07T15:45:55Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-07T15:46:07Z", "id": "confirm", "started_at": "2026-11-07T15:45:55Z", "state": "done"}]}, "request_id": "54bf252c6debc09db2d4177e5ecbbc08", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "ab6604c0fbaa02e187f37ef935b2b3eb93186f79a2bba24f139b1f3354ef01c9", "archive_size": "72570687", "commit": "2b8114325036a218174e5f26144951f748287b06", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-07T15:46:07.944366551Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 15:45:55 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/07 15:45:55 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '4df36b35ccc10f25b0d9759ac2bc69ab.json'] {'request_id': '4df36b35ccc10f25b0d9759ac2bc69ab', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T14:52:29.767246868Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.128', 'reason': None, 'code': None}
+  ['self-update', '54bf252c6debc09db2d4177e5ecbbc08.json'] {'request_id': '54bf252c6debc09db2d4177e5ecbbc08', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T15:44:51.470679899Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+== C2 main done 15:46:24
+== after 15:46:24
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 1 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(1,)]
+snapshot post128: 178 entries
+--- differences pre127 -> post128 (excluding systemd self-update/runtime units)
+(end)
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+(postconf -P policy lines end)
+(failed end)
+cat: /opt/celikpanel/release.commit: No such file or directory
+active active active active active active   site1.ar.test: 200
+  cust1.ar.test: 200
+== upd128 ar done 15:46:27

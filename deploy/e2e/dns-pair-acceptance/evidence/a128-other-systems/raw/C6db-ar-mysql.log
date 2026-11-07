@@ -1,0 +1,41 @@
+== 5.0 a mysql database with rows 14:56:39
+1 site1_ar_test_shop site1_ar_test_shop_user
+database site1_ar_test_shop id 1 user site1_ar_test_shop_user
+3
+== 5.1 tools view 14:56:40
+200 {"can_repair": true, "connections": 0, "host": "localhost", "id": 1, "known": false, "name": "site1_ar_test_shop", "port": 3306, "read_at": "2026-11-07T14:56:41Z", "size_bytes": 0, "tables": 0, "type": "mariadb", "user": "site1_ar_test_shop_user"}
+== 5.2 export + download 14:56:40
+200 {"export_id": "628ea1e2d989618407075830f698b9aa", "filename": "site1_ar_test_shop-20261107-1456.sql.gz", "size": 828}
+200 saved 828 bytes {'content-disposition': 'attachment; filename=site1_ar_test_shop-20261107-1456.sql.gz', 'content-type': 'application/gzip'}
+   lines naming lab_items in the dump: 8
+   second download:
+410  {"error":"This export file is no longer on the server (it is removed after one download, or after six hours). Nothing was changed. Make a new export.","code":"DB_EXPORT_GONE"} 
+== 5.3 import with a safety copy 14:56:41
+200  {"size":169} 
+200  {"safety_backup":"database-1-20261107T145641.953367921Z-0bf5fbbb5c3c4f50.cpbak","status":"success"} 
+1	changed-by-import
+2	two
+3	three
+imported
+== 5.4 an import that fails half way rolls back 14:56:42
+200  {"size":96} 
+422  {"error":"Loading the file stopped at an error, and the database was put back as it was before. Fix the line named below in the file, then import again.","code":"DB_IMPORT_LOAD_FAILED","details":["-------------- INSERT INTO lab_items VALUES (1,\"duplicate key\") --------------  ERROR 1062 (23000) at line 2: Duplicate entry '1' for key 'PRIMARY'"]} 
+1	changed-by-import
+2	two
+3	three
+   a file with a client command:
+200  {"size":16} 
+422  {"error":"Loading the file stopped at an error, and the database was put back as it was before. Fix the line named below in the file, then import again.","code":"DB_IMPORT_LOAD_FAILED","details":["ERROR at line 2: Not allowed in the sandbox mode 1 1"]} 
+== 5.5 copy 14:56:44
+200 {"id": 2, "name": "site1_ar_test_copy1", "status": "success", "type": "mariadb", "user": "site1_ar_test_copy1_user"}
+2 site1_ar_test_copy1 site1_ar_test_copy1_user
+1 site1_ar_test_shop site1_ar_test_shop_user
+3
+imported
+== 5.6 check (and repair for MariaDB) 14:56:45
+200 {"checked": 2, "problems": [], "repair": false, "self_repairing": 0}
+200 {"checked": 2, "problems": [], "repair": true, "self_repairing": 0}
+== c5db main mysql done 14:56:45
+== 5.1 again on the lab 130 label (mariadb client) 15:46:41
+200 {"can_repair": true, "connections": 0, "host": "localhost", "id": 1, "known": true, "name": "site1_ar_test_shop", "port": 3306, "read_at": "2026-11-07T15:46:42Z", "size_bytes": 32768, "tables": 2, "type": "mariadb", "user": "site1_ar_test_shop_user"}
+200 {"can_repair": true, "connections": 0, "host": "localhost", "id": 3, "known": true, "name": "big_ar_test_bigdb", "port": 3306, "read_at": "2026-11-07T15:46:42Z", "size_bytes": 386777088, "tables": 1, "type": "mariadb", "user": "big_ar_test_bigdb_user"}

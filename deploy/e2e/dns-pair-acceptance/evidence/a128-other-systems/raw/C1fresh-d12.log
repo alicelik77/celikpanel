@@ -1,0 +1,33 @@
+== provision 14:33:10 debian12 192.0.3.210
+ cache \n\nnameserver 192.0.2.53\nsearch .\nPRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 18.1
+}
+
+host1.d12.test
+host1.d12.test
+v0.1.0-alpha.128
+== get.sh in a root terminal 14:33:31
+install exit 0 after 74 s
+main terminal rc 0 73.5 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.210:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.128
+login active can_use_panel True
+200 {
+ "agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea",
+ "agent_matches": true,
+ "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea",
+ "hostname": "host1.d12.test",
+ "ipv4": "192.0.3.210",
+ "schema_version": 72,
+ "version": "v0.1.0-alpha.128"
+}
+db /var/lib/celikpanel/celikpanel.db migrations 72 last: [(67, '067_mail_outgoing.sql'), (68, '068_site_web_settings.sql'), (69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql')]
+   setting_policy 13 rows
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+(failed end)
+CELIKPANEL_LISTEN=:1923
+active active 
+== fresh d12 done 14:34:49

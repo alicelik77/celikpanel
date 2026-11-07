@@ -1,0 +1,64 @@
+== 3a customer's PHP page 15:41:02
+200 version 8.1 can_change True pool managed_unchanged nginx absent
+    {"field": "memory", "own": null, "server": 128, "ceiling": 512, "set_by": "server", "effective": 128, "source": "server", "clamped": null}
+    {"field": "time", "own": null, "server": 30, "ceiling": 300, "set_by": "server", "effective": 30, "source": "server", "clamped": null}
+    {"field": "upload", "own": null, "server": 2, "ceiling": 256, "set_by": "server", "effective": 2, "source": "server", "clamped": null}
+    {"field": "input_vars", "own": null, "server": 1000, "ceiling": 10000, "set_by": "server", "effective": 1000, "source": "server", "clamped": null}
+    {"field": "processes", "own": 5, "server": 5, "ceiling": 20, "set_by": "server", "effective": 5, "source": "site", "clamped": null}
+== 3b within the limits: 384 MB, 120 s, 64 MB, 3000 fields, 6 processes 15:41:02
+200 {"message": "The PHP settings of cust1.u22.test were saved.", "nginx": "written", "status": "saved", "timeout_owner": "", "upload_owner": ""}
+200 version 8.1 can_change True pool managed_unchanged nginx managed_unchanged
+    {"field": "memory", "own": 384, "server": 128, "ceiling": 512, "set_by": "server", "effective": 384, "source": "site", "clamped": null}
+    {"field": "time", "own": 120, "server": 30, "ceiling": 300, "set_by": "server", "effective": 120, "source": "site", "clamped": null}
+    {"field": "upload", "own": 64, "server": 2, "ceiling": 256, "set_by": "server", "effective": 64, "source": "site", "clamped": null}
+    {"field": "input_vars", "own": 3000, "server": 1000, "ceiling": 10000, "set_by": "server", "effective": 3000, "source": "site", "clamped": null}
+    {"field": "processes", "own": 6, "server": 5, "ceiling": 20, "set_by": "server", "effective": 6, "source": "site", "clamped": null}
+socket /var/run/php/php8.1-fpm-site3.sock
+pool file(s): /etc/php/8.1/fpm/pool.d/site3.conf
+1:; celikpanel-render v2 sha256=97935bd1098e48bc9e72abe0f52850f57fca8456cbdf175907a3bb6be089b9bc
+2:; The PHP-FPM pool of site3, written by CelikPanel. A line you add or change here is kept:
+3:; CelikPanel then shows the difference and asks before writing this file again.
+4:; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.
+13:pm.max_children = 6
+19:; PHP settings of this site, chosen in CelikPanel. An application cannot raise the php_admin_value limits.
+20:; Bu sitenin CelikPanel'de seçilen PHP ayarları; uygulama php_admin_value sınırlarını yükseltemez.
+21:php_admin_value[memory_limit] = 384M
+22:php_admin_value[max_execution_time] = 120
+23:php_admin_value[max_input_time] = 120
+24:request_terminate_timeout = 130s
+25:php_admin_value[upload_max_filesize] = 64M
+26:php_admin_value[post_max_size] = 64M
+27:php_admin_value[max_input_vars] = 3000
+d3899f3f49c19ccb
+access-log.traffic
+acme-http-01.conf
+site-settings.conf
+# celikpanel-render v2 sha256=527c0a24a58f556cf7d6a3759dbc716d3131a351a7368588f6cfbe0224ff3d15
+# Site settings of cust1.u22.test, written by CelikPanel from the site's PHP settings.
+# Change them on that page. A line you change here is kept, and CelikPanel stops writing this file.
+# Sitenin ayarları; PHP ayarları sayfasında değiştirin. Burada değiştirilen satır korunur.
+client_max_body_size 64m;
+fastcgi_read_timeout 130s;
+== 3c above the server's limit: 1024 MB 15:41:03
+409 {"code": "SETTING_ABOVE_LIMIT", "details": ["php.memory_limit_mb: 1024 (limit 512, set by the server administrator)"], "error": "Nothing was changed: php.memory_limit_mb is above the limit 512 set by the server administrator. Choose a value up to the limit, or ask them to raise it.", "vars": {"key": "php.memory_limit_mb", "limit": "512", "set_by": "server", "set_by_name": "", "value": "1024"}}
+   600 s run time:
+409 {"code": "SETTING_ABOVE_LIMIT", "details": ["php.max_execution_time_s: 600 (limit 300, set by the server administrator)"], "error": "Nothing was changed: php.max_execution_time_s is above the limit 300 set by the server administrator. Choose a value up to the limit, or ask them to raise it.", "vars": {"key": "php.max_execution_time_s", "limit": "300", "set_by": "server", "set_by_name": "", "value": "600"}}
+   30 processes:
+409 {"code": "SETTING_ABOVE_LIMIT", "details": ["php.max_children: 30 (limit 20, set by the server administrator)"], "error": "Nothing was changed: php.max_children is above the limit 20 set by the server administrator. Choose a value up to the limit, or ask them to raise it.", "vars": {"key": "php.max_children", "limit": "20", "set_by": "server", "set_by_name": "", "value": "30"}}
+== 3d the application cannot raise them (ini_set, set_time_limit, .user.ini) 15:41:03
+files in /var/www/celikpanel/subscriptions/3/sites/3/public_html (owner cust1_u22_test:www-data)
+-rw-r--r-- 1 cust1_u22_test www-data   75 Nov  7 15:41 .user.ini
+-rw-r--r-- 1 cust1_u22_test www-data  648 Nov  7 15:41 lab-ini.php
+-rw-r--r-- 1 cust1_u22_test www-data  188 Nov  7 15:41 lab-sleep.php
+{"php":"8.1.2-1ubuntu2.28","before":{"memory_limit":"384M","max_execution_time":"120","upload_max_filesize":"64M","post_max_size":"64M","max_input_vars":"3000"},"ini_set_returned":[false,false],"after":{"memory_limit":"384M","max_execution_time":"120"},"user_ini":".user.ini"}
+
+   after .user.ini cache (user_ini.cache_ttl 300 s is not waited; .user.ini values read on the first request):
+{"php":"8.1.2-1ubuntu2.28","before":{"memory_limit":"384M","max_execution_time":"120","upload_max_filesize":"64M","post_max_size":"64M","max_input_vars":"3000"},"ini_set_returned":[false,false],"after":{"memory_limit":"384M","max_execution_time":"120"},"user_ini":".user.ini"}
+
+== 3e a 140 s script with run time 120 s (stopped) 15:41:11
+http 504 after 130.077461s
+<html>
+<head><title>504 Gateway Time-out</title></head>
+<body>
+cleaned
+== k3php u22 done 15:43:23

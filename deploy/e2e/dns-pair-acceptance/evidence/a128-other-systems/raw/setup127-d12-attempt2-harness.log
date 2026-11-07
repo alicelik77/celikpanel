@@ -1,0 +1,694 @@
+== provision 14:38:40 debian12 192.0.3.220 zone=d12.test
+_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 21.9
+}
+
+host1.d12.test
+host1.d12.test
+v0.1.0-alpha.128
+== install 127 through get.sh 14:39:06
+install exit 0
+main terminal rc 0 45.6 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.220:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.128
+license active can_use_panel True
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:d12.test', '06-access_dns:frankfurt.d12.test', '07-panel_certificate:frankfurt.d12.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-service:cron', '12-access_dns:mail.d12.test', '13-mail_certificate:mail.d12.test', '14-mail_profile:webmail', '15-mail_profile:protected-mail', '16-mail_dns:d12.test', '17-mail_enrollment:mail-renewal', '18-main_site:d12.test', '19-verify:custom'] 
+== start 14:40:08 (try 1)
+start 202 {
+ "id": "b09e052643949bad416be043d921bc07",
+ "panel_url": "https://frankfurt.d12.test:1923/",
+ "phase": "queued",
+ "plan_id": "e4c51d56929ac33ae5fb9bf137ebe753",
+ "request_id": "b09e052643949bad416be043d921bc07",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "73d99b11682114bd70e55672dc4cfdd3",
+   "request_id": "cacd55e968835d91fa733ff311151d62",
+   "sta
+-- d12u/main 14:40:16
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:40:57
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:41:39
+running 03-service null
+01-dns=succeeded 02-service=succeeded 03-service=running 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:42:20
+running 05-infrastructure_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=running 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:42:40
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:44:02
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-service=pending 12-access_dns=pending 13-mail_certificate=pending 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:44:43
+running 13-mail_certificate null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=running 14-mail_profile=pending 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:45:04
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=running 15-mail_profile=pending 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:48:06
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=running 16-mail_dns=pending 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:49:48
+running 16-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=running 17-mail_enrollment=pending 18-main_site=pending 19-verify=pending
+-- d12u/main 14:50:09
+running 17-mail_enrollment {"code": "server_setup_mail_enrollment_running", "message": "The mail renewal request is recorded, but its final result is not verified. Setup will keep checking. The server administrator can inspect celikpanel-mail-enrollment-00f23bdb7d700c1d9e906a0e87b84797.service and continue the same recorded operation if it stopped."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=running 18-main_site=pending 19-verify=pending
+-- d12u/main 14:50:30
+running 18-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=running 19-verify=pending
+-- d12u/main 14:51:31
+waiting verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificate=succeeded 14-mail_profile=succeeded 15-mail_profile=succeeded 16-mail_dns=succeeded 17-mail_enrollment=succeeded 18-main_site=succeeded 19-verify=pending
+== provision 15:09:27 debian12 192.0.3.223 zone=d12.test
+_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nVERSION_ID=\"12\"\n6.1.0-54-cloud-amd64\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 21.2
+}
+
+host1.d12.test
+host1.d12.test
+v0.1.0-alpha.128
+== install 127 through get.sh 15:09:51
+install exit 1
+main terminal rc -9 54.2 problem prompt refused an answer restart_required False postinstall rc 1
+  tail: 0:44 Successfully applied 65 migrations | ==> Creating the first administrator / İlk yönetici oluşturuluyor | 2026/11/07 15:10:44 Starting CelikPanel Backend... | Admin username / Yönetici kullanıcı adı: owner | Admin email / Yönetici e-posta: owner@beta1-lab.test | Show password while typing? / Parola yazarken görünsün mü? [y/e = yes/evet, Enter = no/hayır]:  | The password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / Şifre en az 8 karakter olmalı; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli. | 
+v0.1.0-alpha.128
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 273, in cmd_login
+    identity = c.login(st["username"], st["password"])
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 377, in login
+    response = self.post("/api/v1/auth/login", {"username": username, "password": password},
+                         purpose="login (Login.tsx)")
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 263, in post
+    return self.request("POST", path, body, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 221, in request
+    raise UnknownOutcome(f"{method} {path}: response lost ({type(exc).__name__}); reconcile by reads") from exc
+panel_api.UnknownOutcome: POST /api/v1/auth/login: response lost (ConnectionRefusedError); reconcile by reads
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print("license", d["license_after"].get("state"), "can_use_panel", d["access"].get("can_use_panel"))
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance None 
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 455, in cmd_records
+    snap = c.get("/api/v1/setup").json()
+           ~~~~~^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 432, in cmd_save
+    snap = c.get("/api/v1/setup", purpose="setup snapshot (useServerSetup)").json()
+           ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 216, in request
+    response = self.transport(method, path, headers, payload, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 180, in watching
+    resp = transport(method, path, headers, body, timeout)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 105, in __call__
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1520, in connect
+    super().connect()
+    ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1051, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 874, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 859, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 483, in cmd_plan
+    snap = c.get("/api/v1/setup").json()
+           ~~~~~^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 260, in get
+    return self.request("GET", path, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/panel_api.py", line 222, in request
+    raise PanelError(f"GET {path} failed: {exc}") from exc
+panel_api.PanelError: GET /api/v1/setup failed: [Errno 111] Connection refused
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab6/plansum2.py", line 3, in <module>
+    d = json.load(open(sys.argv[1]))
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+== start 15:11:01 (try 1)
+Traceback (most recent call last):
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a129o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 504, in cmd_start
+    resp = c.post("/api/v1/setup/start", {"plan_id": st["plan_id"], "request_id": rid, "confirmed": True, "package_updates_digest": digest or ""},
+                                                     ~~^^^^^^^^^^^
+KeyError: 'plan_id'
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); print(sys.argv[1], d.get("status"), (d.get("body") or "")[:int(sys.argv[2])])
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+-- d12v/main 15:11:02
+Traceback (most recent call last):
+  File "/mnt/c/Users/alice/AppData/Local/Temp/claude/c--CELIKBROS-PROJECTS-celikpanel/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/alpha114/lab6/opsum.py", line 2, in <module>

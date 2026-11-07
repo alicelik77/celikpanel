@@ -1,0 +1,136 @@
+== 4.0 Components: postfwd row 15:41:09
+  row {"id": "postfwd", "is_installed": null, "status": "unknown", "package": null, "available": null, "reason": null, "notice": null}
+== 4.1 postfwd from Components 15:41:10
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "libregexp-ipv6-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "24086a18e24dee6fc54fcb6fd6ac0246", "kind": "service_install", "phase": "queued", "request_id": "3a611c32b876057de6f46d94debb6f98", "service_id": "postfwd", "started_at": "2026-11-07T15:41:13.231972582Z", "status": "queued"}}
+  op 3a611c32b876057de6f46d94debb6f98: succeeded completed "" (15:42:04)
+/usr/sbin/postfwd
+/usr/sbin/postfwd2
+active
+Environment=PIDFILE=/var/run/postfwd.pid
+EnvironmentFile=-/etc/default/postfwd
+ExecStart=/usr/sbin/postfwd $ARGS --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+# turns off the request cache, which answers a repeated request with an
+# and repeated end-of-message requests would not be counted (--cache=0).
+ExecStart=
+ii  postfwd        1.35-8       all          Postfix policyd to combine complex restrictions in a ruleset
+celikpanel.conf
+# Written by CelikPanel (outgoing mail limits).
+# It keeps postfwd's hourly counters across a reload (--keep_rates) and
+# turns off the request cache, which answers a repeated request with an
+# earlier decision: a lifted pause or a changed limit would wait for it,
+# and repeated end-of-message requests would not be counted (--cache=0).
+# Remove this file and run systemctl daemon-reload to return to the
+# package's own start line.
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+/usr/sbin/postfwd --summary=600 --cache=600 --cache-rdomain-only --cache-no-size --cache=0 --keep_rates --daemon --file /etc/postfix/postfwd.cf --interface 127.0.0.1 --port 10040 --user postfw --group
+ postfwd2::cache
+ postfwd2::policy
+box1 1 box2 2
+== 4.2 limits on 15:42:04
+200 applied True verified True code None |  | steps ["postfwd's rules were written and checked (postfwd -C)", 'postfwd took the new rules and kept its counters', 'a test message was counted and the second one refused, so the limits work', 'Postfix asks postfwd at the end of each message on 587 and 465 (mail flows if postfwd stops)']
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+drwxr-xr-x root:celikpanel /etc/postfix/celikpanel-postfwd
+-- one message before any own limit:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as B8ED341EE2
+== 4.3 box1 own limit 3; 6 messages 15:42:12
+200 {"applied": true, "called": true, "saved": true}
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 1C43041EE1
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 7827141EE1
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as DCB9C41EE1
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 4784941EE1
+ msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as B008C41EE1
+ msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 20AD341EE1
+== 4.4 the pause (worker round, refusal_pause 3) 15:42:16
+ msg while paused:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as C8EB341ED1
+== 4.5 password change reopens 15:55:24
+200 {"applied": true, "called": true, "saved": true}
+200 {"success": true}
+   answer after 0 s
+ msg 1 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 964AE4146D
+ msg 2 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as ED3FF4146D
+== 4.6 postfwd stopped (lab load): mail still flows 15:55:26
+inactive
+ msg with postfwd stopped:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as CC0514146D
+active
+(failed end)
+== k4mail d12 done 15:55:28
+== 4.7 box2 own limit 2 (limits already on) 15:55:53
+200 {"applied": true, "called": true, "saved": true}
+ box2 msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as AE11E41EE2
+ box2 msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 3363C41EE2
+ box2 msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2, action=450 4.7.1 This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+    PID ELAPSED COMMAND
+64742  postfwd2::policy
+64769  postfwd2::policy::child
+64770  postfwd2::policy::child
+64771  postfwd2::policy::child
+64772  postfwd2::policy::child
+64773  postfwd2::policy::child
+64774  postfwd2::policy::child
+64775  postfwd2::policy::child
+64776  postfwd2::policy::child
+64777  postfwd2::policy::child
+== 4.8 postfwd restarted (lab load) 15:55:58
+active
+ box2 msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as B463041EE2
+ box2 msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 1A78441EE2
+ box2 msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2, action=450 4.7.1 This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2;CP_DOMAIN_750;CP_SUBSCRIPTION_1000;CP_DEFAULT, action=DUNNO
+hits=CP_MARK_s2;CP_MAILBOX_2, action=450 4.7.1 This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== k4b d12 done 15:56:02
+== 4.9 box2 two more messages over its limit 16:01:29
+ box2 msg 7:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ box2 msg 8:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 2 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== 4.10 the pause (worker round) 16:01:29

@@ -1,0 +1,57 @@
+== 7.state 15:43:54
+usepam yes passwordauthentication no kbdinteractiveauthentication no authenticationmethods any 
+KbdInteractiveAuthentication no
+PasswordAuthentication no
+PasswordAuthentication no
+vsftpd: not installed
+200 warnings ["sftp_password_off"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.u22.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.221", "sftp_host": "site1.u22.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.u22.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off"]}, "subscription_status": "active"}
+== k7sftp u22 state done 15:43:55
+== 7.vsftpd from Components 16:00:05
+  row {"id": "vsftpd", "name": "vsftpd", "is_installed": false, "status": "not_installed", "package": null}
+200 {"distribution": "ubuntu", "installs": ["vsftpd"], "notable": [], "refusals": [], "removes": [], "requested": ["vsftpd"], "state": "known"}
+202 {"operation": {"id": "d6f2b56d6426f5977f21e2dc670227b6", "kind": "service_install", "phase": "queued", "request_id": "2730a5a1ba6b9eecfd0154a7afaed827", "service_id": "vsftpd", "started_at": "2026-11-07T16:00:11.182932749Z", "status": "queued"}}
+  op 2730a5a1ba6b9eecfd0154a7afaed827: succeeded completed "" (16:00:42)
+200 warnings ["sftp_password_off"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.u22.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.221", "sftp_host": "site1.u22.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.u22.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "managed", "ftp_installed": true, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off"]}, "subscription_status": "active"}
+== k7sftp u22 vsftpd done 16:00:42
+== 7.add ulla-up 16:00:42
+200 {"state": {"ftp_config": "managed", "ftp_installed": true, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "ulla-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true, "warnings": ["sftp_password_off"]}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/ulla-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "done", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["sftp_password_off"]}
+uid=5002(site1_u22_test) gid=5002(site1_u22_test) groups=5002(site1_u22_test),997(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_u22_test:/run/celikpanel-ftp/ulla-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/ulla-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro
+-- sftp as ulla-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as ulla-up (must be refused)
+Warning: Permanently added '192.0.3.221' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as ulla-up
+ftp://[REDACTED]@192.0.3.221
+-rw-r--r--    1 5002     33             67 Nov 07 15:43 clock.php
+drwxr-sr-x    2 5002     33           4096 Nov 07 15:02 errors
+-rw-r--r--    1 5002     33              9 Nov 07 15:43 file.lab
+-rw-r--r--    1 5002     33             59 Nov 07 15:43 home.html
+-rw-r-----    1 5002     33           3252 Nov 07 14:53 index.php
+ftp://[REDACTED]@192.0.3.221/%2F
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+-rw-r----- 1 5002 33 22 Nov  7 16:00 /var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-ftps.txt
+5002
+200 {"state": {"ftp_config": "managed", "ftp_installed": true, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true, "warnings": ["sftp_password_off"]}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "done", "step": "ftp"}, {"detail": "removed", "status": "done", "step":
+id: ‘ulla-up’: no such user
+inactive
+0
+/etc/vsftpd/celikpanel-users.list:0
+/etc/vsftpd.conf:0
+/etc/vsftpd.conf.distro:0
+-- after removal:
+-- sftp as ulla-up
+ulla-up@192.0.3.221: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as ulla-up (must be refused)
+Warning: Permanently added '192.0.3.221' (ED25519) to the list of known hosts.
+ulla-up@192.0.3.221: Permission denied (publickey).
+-- ftps as ulla-up
+== k7sftp u22 add done 16:01:03

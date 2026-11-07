@@ -1,0 +1,107 @@
+== 7.state 15:41:09
+usepam yes passwordauthentication no kbdinteractiveauthentication no authenticationmethods any 
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PasswordAuthentication no
+vsftpd: not installed
+200 warnings ["sftp_password_off"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.d12.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.224", "sftp_host": "site1.d12.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.d12.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off"]}, "subscription_status": "active"}
+== k7sftp d12 state done 15:41:09
+== 7.add dora-nokey 15:56:02
+409 {"code": "FTP_LOGIN_REFUSED", "error": "dora-nokey could not sign in: sshd on this server accepts only keys, and a login signs in with a password, and FTP over TLS (vsftpd) is not installed; so it was not created. The administrator installs the FTP server (vsftpd) from Components, or allows passwords for SSH (the owner's own decision; CelikPanel does not change sshd); the earlier steps were put back", "reason": "no_sign_in", "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/dora-nokey", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "no way to sign in", "status": "failed", "step": "verify"}, {"status": "rolled_back", "step": "cleanup"}], "warnings": ["ftp_not_installed"]}
+id: ‘dora-nokey’: no such user
+inactive
+-- sftp as dora-nokey
+dora-nokey@192.0.3.224: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as dora-nokey (must be refused)
+Warning: Permanently added '192.0.3.224' (ED25519) to the list of known hosts.
+dora-nokey@192.0.3.224: Permission denied (publickey).
+-- ftps as dora-nokey
+ftp://[REDACTED]@192.0.3.224
+ls: Fatal error: max-retries exceeded
+put: /root/lab-up.txt: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt': No such file or directory
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-ftps.txt': No such file or directory
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true, "warnings": ["sftp_password_off"]}, "steps": [{"detail": "no such login: nothing to remove", "status": "done", "step": "check"}], "success": true, "warnings": null}
+id: ‘dora-nokey’: no such user
+inactive
+-- after removal:
+-- sftp as dora-nokey
+dora-nokey@192.0.3.224: Permission denied (publickey).
+Connection closed
+   got /etc/hostname: no
+-- ssh shell as dora-nokey (must be refused)
+Warning: Permanently added '192.0.3.224' (ED25519) to the list of known hosts.
+dora-nokey@192.0.3.224: Permission denied (publickey).
+-- ftps as dora-nokey
+== k7sftp d12 add done 15:57:26
+== 7.pw yes (lab drop-in /etc/ssh/sshd_config.d/01-lab-password.conf) 15:57:27
+passwordauthentication yes
+200 warnings null | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.d12.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.224", "sftp_host": "site1.d12.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.d12.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "absent", "sshd_present": true}, "subscription_status": "active"}
+== k7sftp d12 pw done 15:57:27
+== 7.add dora-up 15:57:27
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": [{"account_ok": true, "folder": "/public_html", "jail_active": true, "login": "dora-up", "password": "[REDACTED]", "read_only": false, "unit_file": "managed"}], "server_logins": 1, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "account"}, {"detail": "/run/celikpanel-ftp/dora-up", "status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"status": "done", "step": "password"}, {"status": "done", "step": "verify"}], "success": true, "warnings": ["ftp_not_installed"]}
+uid=5002(site1_d12_test) gid=5002(site1_d12_test) groups=5002(site1_d12_test),993(celikpanel-site)
+5002:5002:CelikPanel FTP login of site1_d12_test:/run/celikpanel-ftp/dora-up/./files:/usr/sbin/nologin
+active
+/run/celikpanel-ftp/dora-up/files /dev/vda1[/var/www/celikpanel/subscriptions/2/sites/2/public_html] ext4   rw,nosuid,nodev,relatime,discard,errors=remount-ro
+-- sftp as dora-up
+sftp> pwd
+Remote working directory: /files
+sftp> ls -la /
+drwxr-x---    ? 0        5002           60 Nov  7 15:57 /.
+drwxr-x---    ? 0        5002           60 Nov  7 15:57 /..
+drwxr-s---    ? 5002     33           4096 Nov  7 15:40 /files
+sftp> put /root/lab-up.txt
+sftp> ls
+clock.php    errors       file.lab     home.html    index.php    lab-up.txt   
+sftp> -cd /..
+sftp> -ls /..
+/../files  
+sftp> -get /etc/hostname /root/got-hostname
+File "/etc/hostname" not found.
+sftp> -cd /proc
+stat remote: No such file or directory
+   got /etc/hostname: no
+-- ssh shell as dora-up (must be refused)
+Warning: Permanently added '192.0.3.224' (ED25519) to the list of known hosts.
+This service allows sftp connections only.
+-- ftps as dora-up
+ftp://[REDACTED]@192.0.3.224
+ls: Fatal error: max-retries exceeded
+put: /root/lab-up.txt: Fatal error: max-retries exceeded
+ls: cannot access '/var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-ftps.txt': No such file or directory
+-rw------- 1 5002 33 22 Nov  7 15:57 /var/www/celikpanel/subscriptions/2/sites/2/public_html/lab-up.txt
+5002
+200 {"state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true}, "steps": [{"status": "done", "step": "check"}, {"status": "done", "step": "jail"}, {"status": "done", "step": "sshd"}, {"status": "skipped", "step": "ftp"}, {"detail": "removed", "status": "done", "step": "account"}], "success": true, "
+id: ‘dora-up’: no such user
+inactive
+0
+-- after removal:
+-- sftp as dora-up
+Permission denied, please try again.
+   got /etc/hostname: no
+-- ssh shell as dora-up (must be refused)
+Warning: Permanently added '192.0.3.224' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+-- ftps as dora-up
+ftp://[REDACTED]@192.0.3.224
+== k7sftp d12 add done 15:58:56
+== 7.pw clear (lab drop-in /etc/ssh/sshd_config.d/01-lab-password.conf) 15:58:56
+passwordauthentication no
+200 warnings ["sftp_password_off"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.d12.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.224", "sftp_host": "site1.d12.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.d12.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true, "warnings": ["sftp_password_off"]}, "subscription_status": "active"}
+== k7sftp d12 pw done 15:58:57
+== 7.state 15:58:57
+usepam yes passwordauthentication no kbdinteractiveauthentication no authenticationmethods any 
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PasswordAuthentication no
+vsftpd: not installed
+200 warnings ["sftp_password_off"] | keys ['available', 'connection', 'domain', 'limit', 'records', 'rights', 'state', 'subscription_status']
+    {"available": true, "connection": {"ftp_host": "site1.d12.test", "ftp_port": 21, "passive_max": 40049, "passive_min": 40000, "server_ip": "192.0.3.224", "sftp_host": "site1.d12.test", "sftp_port": 22, "start_dir": "/files", "username": ""}, "domain": "site1.d12.test", "limit": {"ceiling": null, "used": 0}, "records": [], "rights": {"file_access": true, "ssh": true}, "state": {"ftp_config": "absent", "ftp_installed": false, "logins": null, "server_logins": 0, "ssh_ports": [22], "sshd_drop_in": "managed", "sshd_present": true, "warnings": ["sftp_password_off"]}, "subscription_status": "active"}
+== k7sftp d12 state done 15:58:57

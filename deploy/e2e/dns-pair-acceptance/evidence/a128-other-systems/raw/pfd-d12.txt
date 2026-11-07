@@ -1,0 +1,63 @@
+total 32
+drwxr-xr-x 2 root celikpanel 4096 Nov  7 15:42 .
+drwxr-xr-x 6 root root       4096 Nov  7 15:42 ..
+-rw-r--r-- 1 root celikpanel   80 Nov  7 15:42 domain-750.list
+-rw-r--r-- 1 root celikpanel   85 Nov  7 15:42 mailbox-3.list
+-rw-r--r-- 1 root celikpanel   85 Nov  7 15:42 mailbox-50.list
+-rw-r--r-- 1 root celikpanel   82 Nov  7 15:42 selftest.domains
+-rw-r--r-- 1 root celikpanel   68 Nov  7 15:42 subscription-1000.list
+-rw-r--r-- 1 root celikpanel   80 Nov  7 15:42 subscription-s2.domains
+## /etc/postfix/celikpanel-postfwd/domain-750.list
+site1.d12.test
+## /etc/postfix/celikpanel-postfwd/mailbox-3.list
+box1@site1.d12.test
+## /etc/postfix/celikpanel-postfwd/mailbox-50.list
+box2@site1.d12.test
+## /etc/postfix/celikpanel-postfwd/selftest.domains
+selftest.invalid
+## /etc/postfix/celikpanel-postfwd/subscription-1000.list
+s2
+## /etc/postfix/celikpanel-postfwd/subscription-s2.domains
+site1.d12.test
+## postfwd.cf
+id=CP_SELFTEST ; protocol_state==END-OF-MESSAGE ; sender_domain==file:/etc/postfix/celikpanel-postfwd/selftest.domains ; sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/ ; action=rcpt(sasl_username/1/600/450 4.7.1 CelikPanel self-test limit)
+id=CP_MARK_s2 ; protocol_state==END-OF-MESSAGE ; sender_domain==file:/etc/postfix/celikpanel-postfwd/subscription-s2.domains ; action=set(cp_subscription=s2)
+id=CP_MAILBOX_3 ; protocol_state==END-OF-MESSAGE ; sasl_username==file:/etc/postfix/celikpanel-postfwd/mailbox-3.list ; action=rcpt(sasl_username/3/3600/450 4.7.1 This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_MAILBOX_50 ; protocol_state==END-OF-MESSAGE ; sasl_username==file:/etc/postfix/celikpanel-postfwd/mailbox-50.list ; action=rcpt(sasl_username/50/3600/450 4.7.1 This mailbox reached its sending limit of 50 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_DOMAIN_750 ; protocol_state==END-OF-MESSAGE ; sender_domain==file:/etc/postfix/celikpanel-postfwd/domain-750.list ; action=rcpt(sender_domain/750/3600/450 4.7.1 This domain reached its sending limit of 750 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_SUBSCRIPTION_1000 ; protocol_state==END-OF-MESSAGE ; cp_subscription==file:/etc/postfix/celikpanel-postfwd/subscription-1000.list ; action=rcpt(cp_subscription/1000/3600/450 4.7.1 This hosting account reached its sending limit of 1000 recipients per hour. Sending reopens within one hour and your mail program will try again.)
+id=CP_DEFAULT ; action=DUNNO
+## journal
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-4178736df0a1@selftest.invalid, sender=<celikpanel-selftest-4178736df0a1@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-4178736df0a1@selftest.invalid, sender=<celikpanel-selftest-4178736df0a1@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, d
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-cbd31cc46cc3@selftest.invalid, sender=<celikpanel-selftest-cbd31cc46cc3@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-cbd31cc46cc3@selftest.invalid, sender=<celikpanel-selftest-cbd31cc46cc3@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, d
+[STATS] postfwd2::cache 1.35: 63 queries since 0 days, 00:09:59 hours
+[STATS] Hitrates: 0.0% requests, 0.0% dns, 0.0% rates
+[STATS] Contents: rate=24
+[STATS] postfwd2::policy 1.35: 49 requests since 0 days, 00:09:48 hours
+[STATS] Dnsstats: 0.00/min last, 0.00/min overall, 0.00/min top
+[STATS] Hitrates: 57.1% ruleset, 0.0% parent, 0.0% child, 42.9% rates
+[STATS] Timeouts: 0.0% (0 of 0 dns queries)
+[STATS]   42 matches for id:  CP_SELFTEST
+[STATS]   28 matches for id:  CP_DEFAULT
+[STATS]    7 matches for id:  CP_DOMAIN_750
+[STATS]    7 matches for id:  CP_MAILBOX_50
+[STATS]    7 matches for id:  CP_MARK_s2
+[STATS]    7 matches for id:  CP_SUBSCRIPTION_1000
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-3241b40cadef@selftest.invalid, sender=<celikpanel-selftest-3241b40cadef@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-3241b40cadef@selftest.invalid, sender=<celikpanel-selftest-3241b40cadef@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, d
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-7693824dcd0a@selftest.invalid, sender=<celikpanel-selftest-7693824dcd0a@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-7693824dcd0a@selftest.invalid, sender=<celikpanel-selftest-7693824dcd0a@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, d
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-6d17923560d1@selftest.invalid, sender=<celikpanel-selftest-6d17923560d1@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-6d17923560d1@selftest.invalid, sender=<celikpanel-selftest-6d17923560d1@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, d
+[RULES] rule=6, id=CP_DEFAULT, client=localhost[127.0.0.1], user=celikpanel-selftest-e5e6a6beecc7@selftest.invalid, sender=<celikpanel-selftest-e5e6a6beecc7@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, delay=0.00s, hits=CP_
+[RULES] rule=0, id=CP_SELFTEST, client=localhost[127.0.0.1], user=celikpanel-selftest-e5e6a6beecc7@selftest.invalid, sender=<celikpanel-selftest-e5e6a6beecc7@selftest.invalid>, helo=<localhost>, proto=ESMTP, state=END-OF-MESSAGE, rate=rcpt/2/0.00s, d
+
+STARTUP=0
+
+CONF=/etc/postfix/postfwd.cf
+INET=127.0.0.1
+PORT=10040
+RUNAS="postfw"
+ARGS="--summary=600 --cache=600 --cache-rdomain-only --cache-no-size"
