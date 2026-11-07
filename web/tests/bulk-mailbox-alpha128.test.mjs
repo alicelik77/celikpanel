@@ -45,3 +45,19 @@ test('the mail screen offers the three bulk actions with the panel’s own confi
   assert.match(source, /runBulk\(/);
   assert.doesNotMatch(source, /window\.confirm|[^.]confirm\(/);
 });
+
+// alpha.128 lab: a saved limit the server did not take at once is said on
+// its step (no silent deferral).
+test('a done step carries the note of a saved but not yet applied change', async () => {
+  let last = [];
+  await runBulk(targets.slice(0, 2), async (t) => (t.id === 1 ? { ok: true, note: 'applies within 5 minutes' } : { ok: true }),
+    (steps) => { last = steps; }, words, () => 0);
+  assert.deepEqual(last.map((s) => s.state), ['done', 'done']);
+  assert.equal(last[0].note, 'applies within 5 minutes');
+  assert.equal(last[1].note, undefined);
+});
+
+test('the bulk limit says pending, off and unknown answers on the step', () => {
+  const src = readFileSync(new URL('../src/components/DomainMailManager.tsx', import.meta.url), 'utf8');
+  for (const key of ['mail.bulk.limitPending', 'mail.bulk.limitOff', 'mail.bulk.limitUnknown']) assert.ok(src.includes(key), key);
+});

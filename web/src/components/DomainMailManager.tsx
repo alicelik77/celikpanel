@@ -264,14 +264,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         return { ok: false, reason: (await readApiError(res)).message || t('common.error') };
     };
     const runBulkAction = async (accounts: EmailAccount[], title: string, message: string, label: TranslationKey, tone: 'default' | 'danger',
-        call: (account: EmailAccount) => Promise<Response>) => {
+        call: (account: EmailAccount) => Promise<Response>, outcome?: (res: Response) => Promise<BulkOutcome>) => {
         const targets: BulkTarget[] = accounts.filter((a) => selected.has(a.id)).map((a) => ({ id: a.id, label: a.address }));
         if (readOnly || targets.length === 0) return;
         await confirmAction({
             title, message, tone, confirmLabel: title, progressTitle: title,
             action: async (report) => {
                 const byID = new Map(accounts.map((a) => [a.id, a]));
-                const result = await runBulk(targets, async (target) => outcomeOf(await call(byID.get(target.id)!)),
+                const result = await runBulk(targets, async (target) => (outcome ?? outcomeOf)(await call(byID.get(target.id)!)),
                     (steps) => report.steps(steps),
                     { stepLabel: (target) => t(label, { name: target.label }), unknownNote: t('common.resultUnknown'), notStartedNote: t('mail.bulk.notStarted') });
                 invalidate('mail');
@@ -282,12 +282,25 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             },
         });
     };
+    // A saved limit the server did not take at once says so on its step
+    // (alpha.128 lab: no silent deferral): pending is the worker's next
+    // round, off means the outgoing limits are not turned on.
+    const limitOutcomeOf = async (res: Response): Promise<BulkOutcome> => {
+        if (!res.ok) return outcomeOf(res);
+        let answer: { applied?: boolean; unknown?: boolean; pending?: boolean; off?: boolean; code?: string } = {};
+        try { answer = await res.json(); } catch { return { ok: true, note: t('mail.bulk.limitUnknown') }; }
+        if (answer.code) return { ok: false, reason: t('mail.bulk.limitRefused') };
+        if (answer.unknown) return { ok: true, note: t('mail.bulk.limitUnknown') };
+        if (answer.off) return { ok: true, note: t('mail.bulk.limitOff') };
+        if (answer.pending || answer.applied === false) return { ok: true, note: t('mail.bulk.limitPending') };
+        return { ok: true };
+    };
     const bulkLimit = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.limitTitle', { n: selected.size }),
         t('mail.bulk.limitConfirm', { n: selected.size }), 'mail.bulk.limitStep', 'default',
         (account) => fetch(`/api/v1/domains/${domainId}/mail/outgoing`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: account.id, mode: bulkMode, per_hour: bulkMode === 'custom' ? bulkPerHour : 0 }),
-        }));
+        }), limitOutcomeOf);
     const bulkEmpty = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.emptyTitle', { n: selected.size }),
         t('mail.bulk.emptyConfirm', { n: selected.size }), 'mail.bulk.emptyStep', 'danger',
         (account) => fetch(`/api/v1/domains/${domainId}/mail/accounts/empty`, {

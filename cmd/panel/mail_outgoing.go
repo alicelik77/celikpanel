@@ -424,7 +424,11 @@ func (p *Panel) applyOutgoingMail(ctx context.Context, force bool) (transport.Ou
 			// Never turned on: nothing on the server to change.
 			return transport.OutgoingMailLimitsApplyResponse{}, false, nil
 		case hash == record.hash && record.State == "applied":
-			return transport.OutgoingMailLimitsApplyResponse{}, false, nil
+			// The server already holds exactly this state (a saved value
+			// that does not change what postfwd counts, e.g. a mailbox
+			// limit above its new-mailbox cap): it is in force, not
+			// deferred (alpha.128 lab: bulk saves answered applied false).
+			return transport.OutgoingMailLimitsApplyResponse{Applied: true}, false, nil
 		case hash == record.attempted && record.State != "applied":
 			// A refusal that ends without anyone touching the panel (the
 			// administrator installed postfwd from Components, another mail
@@ -1394,6 +1398,14 @@ func (p *Panel) handleDomainMailOutgoingSet(w http.ResponseWriter, r *http.Reque
 		answer["unknown"] = true
 	} else if called && !resp.Applied {
 		answer["code"] = resp.Code
+	} else if !called && !resp.Applied {
+		// Not sent now: the limits are off, or a failed state waits for
+		// its retry; the screen says which instead of a silent "saved".
+		if settings, _, err := p.loadOutgoingSettings(ctx); err == nil && !settings.Enabled {
+			answer["off"] = true
+		} else {
+			answer["pending"] = true
+		}
 	}
 	_ = json.NewEncoder(w).Encode(answer)
 }
