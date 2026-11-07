@@ -147,6 +147,7 @@ what happened, who acts and what to do next:
 | `API_TOKEN_SCOPE` | 403 | a Read only token tried a change |
 | `API_TOKEN_NOT_PERMITTED` | 403 | the plan does not include "Remote API" |
 | `API_TOKEN_TEAM_MEMBER` | 403 | team members cannot use tokens |
+| `PANEL_ACCESS_NOT_ALLOWED` | 403 | an administrator's token from an address outside the administrator address list (Security → Panel access), as for an administrator's session |
 | `API_TOKEN_WITH_SESSION` | 400 | the request carried a session cookie as well |
 | `ACCOUNT_SUSPENDED` | 403 | the owner's account is suspended |
 

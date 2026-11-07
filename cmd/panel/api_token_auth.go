@@ -635,6 +635,13 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 		writeCodedError(w, http.StatusForbidden, errCodeAPITokenTeamMember, apiTokenTeamMemberMessage, "")
 		return
 	}
+	// Integration (alpha.128): the administrator address list (G4,
+	// panel_sessions.go) holds an administrator's token as it holds an
+	// administrator's session; customers and resellers are never refused.
+	if !p.adminSessionAddressAllowed(r, c) {
+		writePanelAccessRefused(w)
+		return
+	}
 	route, listed := apiTokenRouteFor(r)
 	if !listed {
 		writeCodedError(w, http.StatusForbidden, errCodeAPITokenRouteRefused, apiTokenRouteRefusedMessage, "")
