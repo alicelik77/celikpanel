@@ -50,6 +50,7 @@ Kurallar:
 | 🧹 Rspamd | Servis | `rspamd` | `rspamd` | spam filtresi | SMTP sunucusu |
 | 📬 Dovecot | Servis | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` `pigeonhole` | IMAP sunucusu | — |
 | 🛡️ SpamAssassin | Servis | `spamassassin` `spamd` `spamass-milter` | — | spam filtresi | SMTP sunucusu |
+| 📤 Outgoing mail limits (postfwd) | Servis | `postfwd` | `postfwd` | — | SMTP sunucusu |
 
 ### Güvenlik
 

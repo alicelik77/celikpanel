@@ -415,6 +415,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/autoresponder":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
+	case "mail/outgoing":
+		// alpha.128: the domain's mailboxes, their hourly sending limits and use.
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
 	case "apps/install":
 		match.kind, match.methods = "app-install", []string{http.MethodPost}
 	case "apps":
@@ -1739,6 +1742,11 @@ func main() {
 	http.HandleFunc("/api/v1/dns/engine/switch", panel.handleDNSEngineSwitch)
 	http.HandleFunc("/api/v1/mail/configure", panel.handleMailConfigure)
 	http.HandleFunc("/api/v1/mail/policy", panel.handleMailPolicy)
+	// alpha.128: outgoing mail limits (administrator) and their notices.
+	http.HandleFunc(mailOutgoingPath, panel.handleMailOutgoing)
+	http.HandleFunc(mailOutgoingReportPath, panel.handleMailOutgoing)
+	http.HandleFunc(mailOutgoingNoticesPath, panel.handleOutgoingNotices)
+	http.HandleFunc(mailOutgoingNoticesPath+"/", panel.handleOutgoingNotices)
 	http.HandleFunc("/api/v1/apps", panel.handleAppCatalog)
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
@@ -1841,6 +1849,9 @@ func main() {
 	// alpha.118 (D-044): traffic collection, disk measurement and mailbox
 	// quota enforcement.
 	panel.startUsageWorker()
+	// alpha.128: outgoing mail activity, notices, security pauses and the
+	// postfwd state.
+	panel.startOutgoingMailWorker()
 	// Security emergencies (D-043): continue what a restart interrupted,
 	// hand pending notices to the mail system.
 	panel.startEmergencyWorker()

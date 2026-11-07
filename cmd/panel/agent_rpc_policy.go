@@ -140,7 +140,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
-		Agent.PasswordlessMailReportV1
+		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
@@ -218,6 +218,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
+		Agent.ApplyOutgoingMailLimitsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -339,7 +340,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ListFiles":     agentRPCStandardReadTimeout,
 	"Agent.MailHealth":    agentRPCStandardReadTimeout,
 	// One bounded journal read of Postfix lines (45 s in the Agent).
-	"Agent.PasswordlessMailReportV1":      agentRPCStandardReadTimeout,
+	"Agent.PasswordlessMailReportV1": agentRPCStandardReadTimeout,
+	// alpha.128: one bounded journal read (45 s) and a status with a
+	// self-test request to postfwd on loopback.
+	"Agent.OutgoingMailActivityV1":        agentRPCStandardReadTimeout,
+	"Agent.OutgoingMailLimitsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
@@ -406,6 +411,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RemoveAppUnit":                 agentRPCMutationTimeout,
 	"Agent.RenameFile":                    agentRPCMutationTimeout,
 	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
+	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
 	"Agent.TogglePHPExtension":            agentRPCMutationTimeout,
 	"Agent.UpdateConfig":                  agentRPCMutationTimeout,
 	"Agent.UpdateCronJob":                 agentRPCMutationTimeout,

@@ -60,6 +60,8 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleMailCatchAll(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):
 		p.handleMailAutoresponder(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/outgoing"):
+		p.handleDomainMailOutgoing(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/quota"):
 		p.handleMailQuotaStatus(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/password"):
@@ -308,6 +310,8 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 	p.queueAutomaticDKIMForMailbox(context.WithoutCancel(r.Context()), domainID, domain)
 	// Its size limit is enforced from now on, not at the next hourly check.
 	p.requestMailQuotaReconcile()
+	// alpha.128: its first-day sending limit is held by postfwd right away.
+	p.requestOutgoingApply()
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 
@@ -408,6 +412,14 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 
 	succeeded = true
 	answer := map[string]any{"success": true}
+	// alpha.128: a mailbox paused for security sends again only after its
+	// password changed (owner decision of 7 Nov 2026); this is that change.
+	if resumed, err := p.resumeOutgoingAfterPassword(context.WithoutCancel(r.Context()), request.ID); resumed {
+		answer["sending_resumed"] = err == nil
+		if err != nil {
+			answer["sending_resume_pending"] = true
+		}
+	}
 	if claimed {
 		// The previous owner's open mail sessions end with the transfer's step.
 		ended, endErr := p.rotationNativeOps().endMailSessions(r.Context(), address)
@@ -470,6 +482,7 @@ func (p *Panel) handleDeleteEmailAccount(w http.ResponseWriter, r *http.Request,
 		writeServerError(w, err)
 		return
 	}
+	p.requestOutgoingApply()
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
