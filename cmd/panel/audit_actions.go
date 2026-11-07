@@ -107,6 +107,7 @@ var auditActionNames = []string{
 	"domain.alias.delete.reissue",
 	"domain.alias.delete.reissue.dependents_partial",
 	"domain.alias.delete.reissue.partial",
+	"domain.copy",
 	"domain.create",
 	"domain.create.dns_pending",
 	"domain.delete",

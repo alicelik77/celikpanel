@@ -276,6 +276,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRoutePageCacheClear, true
 		case "logs-retention":
 			return requestIdentityRouteLogRetention, true
+		case "site-copy":
+			return requestIdentityRouteSiteCopy, true
 		}
 	case strings.HasPrefix(path, "/api/v1/database-users/"):
 		if match, ok := matchDatabaseSubroute(r, "/api/v1/database-users/"); ok && match.kind == "user-password" {

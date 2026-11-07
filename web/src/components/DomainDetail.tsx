@@ -78,6 +78,10 @@ const DomainSiteProtect = lazy(() => import('./DomainSiteFeatures').then((module
 const DomainSiteRedirects = lazy(() => import('./DomainSiteFeatures').then((module) => ({
     default: module.DomainSiteRedirects,
 })));
+// Copying the website into another site (alpha.128), fetched when opened.
+const SiteCopyPanel = lazy(() => import('./SiteCopyPanel').then((module) => ({
+    default: module.SiteCopyPanel,
+})));
 // The site's web server settings (alpha.128), fetched when the sub-tab opens.
 const DomainWebSettings = lazy(() => import('./DomainWebSettings').then((module) => ({
     default: module.DomainWebSettings,
@@ -448,6 +452,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(!isTeamMember && !isDnsOnly && projectType !== 'forwarding' && open('file_manager') ? [{ id: 'copy', labelKey: 'siteFeatures.copy.title', render: () => <SiteCopyPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
         ...(!isTeamMember && !isDnsOnly && (role === 'admin' || open('malware_scan')) ? [{ id: 'malware', labelKey: 'mscan.title', render: () => <DomainMalwareScan domainId={domain.id} /> } satisfies SubDef] : []),
     ];
     const tabs: TabDef[] = [

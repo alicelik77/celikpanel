@@ -372,6 +372,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "ssl-settings", []string{http.MethodPost}
 	case "ssl":
 		match.kind, match.methods = "ssl", []string{http.MethodGet, http.MethodDelete}
+	case "copy":
+		// alpha.128 (G8): copy this site into another site the caller manages.
+		// Not mapped for additional users.
+		match.kind, match.methods = "site-copy", getPost
 	case "logs/retention":
 		// alpha.128 (G27): how long the site's rotated logs are kept.
 		match.kind, match.methods = "logs-retention", getPost
@@ -638,6 +642,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainPageCacheClear(w, r, match.domainID)
 	case "logs-retention":
 		p.handleDomainLogRetention(w, r, match.domainID)
+	case "site-copy":
+		p.handleDomainSiteCopy(w, r, match.domainID)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":

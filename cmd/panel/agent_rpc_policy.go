@@ -180,7 +180,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
 		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1 Agent.SetFileAccessReadOnlyV1
-		Agent.WordPressUpdateV1 Agent.WordPressCloneV1
+		Agent.WordPressUpdateV1 Agent.WordPressCloneV1 Agent.SiteCopyV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
 		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
@@ -532,6 +532,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
 	"Agent.WordPressUpdateV1":          agentRPCBulkImportTimeout,
 	"Agent.WordPressCloneV1":           agentRPCSiteLongTimeout,
+	"Agent.SiteCopyV1":                 agentRPCSiteLongTimeout,
 	"Agent.MalwareScannerStatusV1":     agentRPCQuickReadTimeout,
 	"Agent.MalwareScanSiteV1":          agentRPCSiteLongTimeout,
 	"Agent.MalwareQuarantineV1":        agentRPCMutationTimeout,

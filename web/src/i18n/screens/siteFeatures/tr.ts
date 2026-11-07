@@ -100,6 +100,8 @@ export const trSiteFeaturesScreens: Record<SiteFeaturesScreenKey, string> = {
     'dashboard.audit.action.domain.web.directives': 'bir sitenin ek nginx yönergelerini değiştirdi',
     'dashboard.audit.action.domain.web.cache_clear': 'bir sitenin sayfa önbelleğini temizledi',
     'dashboard.audit.action.logs.retention': 'site günlüklerinin saklanma süresini değiştirdi',
+    'siteFeatures.copy.title': 'Web sitesini kopyala',
+    'dashboard.audit.action.domain.copy': 'bir web sitesini başka bir siteye kopyaladı',
     'dashboard.audit.action.domain.node.env': 'bir Node.js sitesinin ortam değişkenlerini değiştirdi',
     'dashboard.audit.action.nginx.directives.offer': 'ek nginx yönergelerinin sunulup sunulmadığını değiştirdi',
 };

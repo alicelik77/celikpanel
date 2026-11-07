@@ -56,6 +56,12 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SiteLogRetentionV1(&transport.SiteLogRetentionRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.128: website copying.
+		{name: "SiteCopyV1", run: func(expected string) string {
+			var response transport.SiteCopyResponse
+			_ = agent.SiteCopyV1(&transport.SiteCopyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		// alpha.118: WordPress tools and the malware quarantine.
 		{name: "WordPressUpdateV1", run: func(expected string) string {
 			var response transport.WordPressUpdateResponse
