@@ -12,7 +12,8 @@ durduruluyor. Her site web sunucusu ayarları, hata sayfaları, sayfa
 değişkenleri ve Git ile dağıtım ekleniyor; bir web sitesi bütünüyle
 kopyalanabiliyor. Veritabanları dışa aktarma, içe aktarma, kopyalama,
 denetleme ve onarma araçları alıyor. Siteler ziyaretçi istatistikleri
-kazanıyor. Yeni gelen her şey biri açana dek kapalı ya da değişmeden
+kazanıyor. Kendi programlarınız, jetonlu bir uzak API ile bir hesap üzerinde
+çalışabiliyor. Yeni gelen her şey biri açana dek kapalı ya da değişmeden
 kalıyor; güncellenen bir sunucu tam eskisi gibi çalışıyor. **Kurulu
 panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 
@@ -129,6 +130,25 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 - **IP adresleri:** yönetici sunucunun adreslerini görebiliyor (yalnız
   okuma).
 
+## Uzak API
+
+- **Yönetici açana dek kapalı** (Ayarlar → Panel → Uzak API). Planın da yeni
+  "Uzak API" iznini içermesi gerekiyor.
+- **Jetonlar** Hesabım → API jetonları sayfasında oluşturuluyor: yalnız okuma
+  ya da okuma ve değiştirme; 7, 30, 90 ya da 365 gün sonra bitiyor. Jeton
+  oluşturmak parolanızı (ve iki adımlı doğrulama kodunuzu) yeniden istiyor.
+  Jeton bir kez gösteriliyor; CelikPanel yalnız özetini saklıyor.
+- **Bir jetonun ulaştıkları:** hesabın alan adları, DNS kayıtları, posta
+  kutuları, veritabanları, yedekleri, kullanımı ve ziyaretçi istatistikleri;
+  başka hiçbir şey. Bir jeton yalnız hesabın kendisinin, planı içinde
+  ulaşabildiğine ulaşıyor. Bir alan adını silmek, onay olarak alan adının
+  kendisini istiyor.
+- **Güvenlik:** jeton başına dakikada 120 istek; bir adresten tekrarlanan
+  yanlış jetonlar yavaşlatılıyor; parola değişikliği hesabın jetonlarını
+  bitiriyor; ekip üyeleri jeton tutamıyor. Bir jetonla yapılan her değişiklik
+  denetim kaydında.
+- Rehber: docs/REMOTE-API.tr.md.
+
 ## Laboratuvar sonuçları
 
 _Laboratuvar turundan sonra doldurulacak._
@@ -193,6 +213,7 @@ varsayılanları dışında var olan hiçbir şey değişmiyor):
   `log_retention_plans`, `log_retention_subscriptions`,
   `git_deploy_settings`.
 - **069 `site_visitor_stats`:** `site_visitor_stats_daily`.
+- **070 `api_tokens`:** `api_tokens` (her jetonun yalnız özeti saklanır).
 
 Her geçişte olduğu gibi alpha.127 bu geçişleri içeren bir veritabanını
 reddeder; geri dönmek, güncelleme öncesi alınan anlık görüntüyü geri

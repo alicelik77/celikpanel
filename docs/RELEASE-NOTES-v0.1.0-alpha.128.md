@@ -10,7 +10,8 @@ paused until its password is changed. Every site gets web server settings,
 error pages, a page cache and log retention. Node.js sites can have
 environment variables and Git deployment, and a whole website can be
 copied. Databases get export, import, copy, check and repair. Sites get
-visitor statistics. Everything new is off or unchanged until someone turns
+visitor statistics. Your own programs can work with an account through a
+remote API with tokens. Everything new is off or unchanged until someone turns
 it on, so an updated server works exactly as before. **Only the owner
 updates installed panels, from the panel's own update screen.**
 
@@ -122,6 +123,24 @@ updates installed panels, from the panel's own update screen.**
 - **IP addresses:** the administrator can see the server's addresses
   (read only).
 
+## Remote API
+
+- **Off until the administrator turns it on** (Settings → Panel → Remote
+  API). A plan must also include the new permission "Remote API".
+- **Tokens** are made on My account → API tokens: read only, or read and
+  change, ending after 7, 30, 90 or 365 days. Making one asks for your
+  password again (and your two-factor code). The token is shown once;
+  CelikPanel keeps only its hash.
+- **What a token reaches:** the account's domains, DNS records, mailboxes,
+  databases, backups, usage and visitor statistics, and nothing else. A
+  token reaches only what the account itself may, under its plan. Deleting
+  a domain needs the domain's name as confirmation.
+- **Safety:** 120 requests a minute per token; repeated wrong tokens from
+  one address are slowed down; a password change ends the account's
+  tokens; team members cannot hold tokens. Every change made with a token
+  is in the audit log.
+- Guide: docs/REMOTE-API.md.
+
 ## Lab results
 
 _To be filled in after the lab round._
@@ -185,6 +204,7 @@ columns' defaults on plans and subscriptions):
   `log_retention_plans`, `log_retention_subscriptions`,
   `git_deploy_settings`.
 - **069 `site_visitor_stats`:** `site_visitor_stats_daily`.
+- **070 `api_tokens`:** `api_tokens` (only a hash of each token is kept).
 
 As with every migration, alpha.127 refuses a database that has these
 migrations, and going back means restoring the snapshot taken before the
