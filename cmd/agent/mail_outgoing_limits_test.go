@@ -32,6 +32,9 @@ type fakeOutgoingHost struct {
 	reloadFails   bool
 	reloads       int
 	seen          map[string]int
+	// stalePaused: answers in which a resumed mailbox is still answered as
+	// paused (a prefork child with the old rules); -1: always.
+	stalePaused map[string]int
 }
 
 func (h *fakeOutgoingHost) run(_ context.Context, name string, args ...string) ([]byte, error) {
@@ -129,6 +132,14 @@ func (h *fakeOutgoingHost) dial(_ context.Context) (net.Conn, error) {
 		if works && n > 1 {
 			answer = "action=450 4.7.1 " + outgoingSelfTestText + "\n\n"
 		}
+		h.mu.Lock()
+		if left, ok := h.stalePaused[user]; ok && left != 0 {
+			answer = "action=550 5.7.1 " + transport.OutgoingMailPausedText + "\n\n"
+			if left > 0 {
+				h.stalePaused[user] = left - 1
+			}
+		}
+		h.mu.Unlock()
 		_, _ = server.Write([]byte(answer))
 	}()
 	return client, nil
@@ -531,5 +542,47 @@ func TestArchDropInTurnsOffTheRequestCache(t *testing.T) {
 		if !strings.HasSuffix(layout.dropInContent(), "\n") || strings.Count(layout.dropInContent(), "ExecStart=") != 2 {
 			t.Fatalf("drop-in shape: %q", layout.dropInContent())
 		}
+	}
+}
+
+// alpha.128 lab: after a password change the first real message was still
+// refused 550 by a postfwd child holding the old rules. The apply asks the
+// resumed mailbox until postfwd answers it as not paused; a mailbox still
+// answered as paused when the time is up is named.
+func TestApplyOutgoingMailLimitsConfirmsResumedMailboxes(t *testing.T) {
+	host, _ := installFakeOutgoingHost(t)
+	var resp transport.OutgoingMailLimitsApplyResponse
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil || !resp.Applied {
+		t.Fatalf("paused apply: %+v %v", resp, err)
+	}
+	resumedSpec := sampleOutgoingSpec()
+	resumedSpec.Paused = nil
+	host.mu.Lock()
+	host.stalePaused = map[string]int{"bad@example.com": 3}
+	host.mu.Unlock()
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(resumedSpec, &resp); err != nil || !resp.Applied || len(resp.ResumeUnconfirmed) != 0 {
+		t.Fatalf("resume apply: %+v %v", resp, err)
+	}
+	host.mu.Lock()
+	asked := host.seen["bad@example.com"]
+	host.mu.Unlock()
+	if asked < 3+outgoingResumeClean {
+		t.Fatalf("the resumed mailbox was asked %d times", asked)
+	}
+	// A child that never takes the rules: named, not claimed open.
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	saved := outgoingResumeWait
+	outgoingResumeWait = 0
+	t.Cleanup(func() { outgoingResumeWait = saved })
+	host.mu.Lock()
+	host.stalePaused = map[string]int{"bad@example.com": -1}
+	host.mu.Unlock()
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(resumedSpec, &resp); err != nil || !resp.Applied ||
+		len(resp.ResumeUnconfirmed) != 1 || resp.ResumeUnconfirmed[0] != "bad@example.com" {
+		t.Fatalf("stale resume apply: %+v %v", resp, err)
 	}
 }

@@ -845,20 +845,36 @@ func outgoingHistory(ctx context.Context, q sqlQueryer, address string, from, to
 // resumeOutgoingAfterPassword ends a pause once the mailbox has a new
 // password (the only way out, owner decision 2) and has postfwd let it send.
 func (p *Panel) resumeOutgoingAfterPassword(ctx context.Context, accountID int) (bool, error) {
+	resumed, pending, err := p.resumeOutgoingAfterPasswordConfirmed(ctx, accountID)
+	if err == nil && pending {
+		err = errOutgoingResumeUnconfirmed
+	}
+	return resumed, err
+}
+
+// errOutgoingResumeUnconfirmed: the pause is lifted, but the running postfwd
+// still answered the mailbox as paused when its check ended; it takes the
+// new rules within minutes by itself.
+var errOutgoingResumeUnconfirmed = errors.New("postfwd has not confirmed the resumed mailbox yet")
+
+// resumeOutgoingAfterPasswordConfirmed also says whether postfwd still
+// answered the mailbox as paused after the apply (pending).
+func (p *Panel) resumeOutgoingAfterPasswordConfirmed(ctx context.Context, accountID int) (bool, bool, error) {
 	result, err := p.db.GetDB().ExecContext(ctx, `
 		UPDATE mailbox_outgoing SET paused_at = NULL, paused_reason = NULL, paused_detail = NULL,
 		       resumed_at = datetime('now'), updated_at = datetime('now')
 		WHERE email_account_id = ? AND paused_at IS NOT NULL`, accountID)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 	if n, _ := result.RowsAffected(); n == 0 {
-		return false, nil
+		return false, false, nil
 	}
-	if _, _, err := p.applyOutgoingMail(ctx, false); err != nil {
-		return true, err
+	resp, _, err := p.applyOutgoingMail(ctx, false)
+	if err != nil {
+		return true, false, err
 	}
-	return true, nil
+	return true, len(resp.ResumeUnconfirmed) > 0, nil
 }
 
 // ---- Notices ----------------------------------------------------------------

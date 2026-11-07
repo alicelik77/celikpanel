@@ -19,6 +19,7 @@ export const enMailWorkScreens = {
     'opstep.mailEmpty.check': 'Checking the mailbox',
     'opstep.mailEmpty.empty': 'Removing the messages of {name} (Dovecot)',
     'mail.sendingResumed': 'Sending from it, stopped for security, is open again.',
+    'mail.sendingResumePending': 'The security stop is lifted; sending opens again within a few minutes, by itself.',
     'mail.bulk.selected': '{n} selected',
     'mail.bulk.select': 'Select {name}',
     'mail.bulk.selectAll': 'Select all mailboxes',

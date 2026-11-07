@@ -434,6 +434,8 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 	if resumed, err := p.resumeOutgoingAfterPassword(context.WithoutCancel(r.Context()), request.ID); resumed {
 		answer["sending_resumed"] = err == nil
 		if err != nil {
+			// The pause is lifted; postfwd takes it within minutes by
+			// itself (the screen says so, not "open again").
 			answer["sending_resume_pending"] = true
 		}
 	}

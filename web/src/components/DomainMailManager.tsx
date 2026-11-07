@@ -382,8 +382,11 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             }
             succeeded = true;
             // alpha.128: a mailbox stopped for security sends again after this change.
-            const resumed = /"sending_resumed":\s*true/.test(await res.text());
-            showToast('success', resumed ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumed')}` : t('mail.passwordUpdated'));
+            const text = await res.text();
+            const resumed = /"sending_resumed":\s*true/.test(text);
+            const resumePending = /"sending_resume_pending":\s*true/.test(text);
+            showToast('success', resumed ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumed')}`
+                : resumePending ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumePending')}` : t('mail.passwordUpdated'));
             invalidate('mail');
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;

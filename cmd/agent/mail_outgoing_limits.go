@@ -580,7 +580,50 @@ func outgoingSelfTest(ctx context.Context) (bool, string) {
 	return false, fmt.Sprintf("postfwd answered %q and %q instead of passing the first test message and refusing the second; it does not count with CelikPanel's rules", boundedNativeDetail(answers[0]), boundedNativeDetail(answers[1]))
 }
 
+// outgoingResumeWait bounds the check of resumed mailboxes; outgoingResumeClean
+// is how many answers in a row must not be the pause (postfwd's prefork
+// children take a reload one by one, at their next request).
+var (
+	outgoingResumeWait  = 30 * time.Second
+	outgoingResumeClean = 12
+)
+
+// outgoingConfirmResumed asks the running postfwd about each resumed
+// mailbox with a request that counts nothing (recipient_count=0) until it
+// answers outgoingResumeClean times in a row without the pause, so the
+// mailbox's next real message is not refused by a child that still holds
+// the old rules (alpha.128 lab: the first message 70 s after a password
+// change was still refused 550). It returns the mailboxes still answered as
+// paused when the time is up.
+func outgoingConfirmResumed(ctx context.Context, resumed []string) []string {
+	deadline := time.Now().Add(outgoingResumeWait)
+	var unconfirmed []string
+	for _, address := range resumed {
+		clean := 0
+		for n := 0; clean < outgoingResumeClean; n++ {
+			answer, err := outgoingPolicyAskCount(ctx, address, n, 0)
+			switch {
+			case err == nil && !strings.Contains(answer, transport.OutgoingMailPausedText):
+				clean++
+				continue
+			case err == nil:
+				clean = 0
+			}
+			if time.Now().After(deadline) {
+				unconfirmed = append(unconfirmed, address)
+				break
+			}
+			outgoingSleep(200 * time.Millisecond)
+		}
+	}
+	return unconfirmed
+}
+
 func outgoingPolicyAsk(ctx context.Context, user string, n int) (string, error) {
+	return outgoingPolicyAskCount(ctx, user, n, 1)
+}
+
+func outgoingPolicyAskCount(ctx context.Context, user string, n, recipients int) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	conn, err := outgoingDial(ctx)
@@ -595,7 +638,7 @@ func outgoingPolicyAsk(ctx context.Context, user string, n int) (string, error) 
 		"request=smtpd_access_policy", "protocol_state=END-OF-MESSAGE", "protocol_name=ESMTP",
 		"client_address=127.0.0.1", "client_name=localhost", "reverse_client_name=localhost",
 		"helo_name=localhost", "sasl_method=PLAIN", "sasl_username=" + user, "sender=" + user,
-		"recipient=", "recipient_count=1", "size=100", "queue_id=",
+		"recipient=", fmt.Sprintf("recipient_count=%d", recipients), "size=100", "queue_id=",
 		fmt.Sprintf("instance=celikpanel.selftest.%d", n), "",
 	}, "\n") + "\n"
 	if _, err := conn.Write([]byte(request)); err != nil {
@@ -865,6 +908,22 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 		refuse(code, detail)
 	}
 
+	// The mailboxes this apply takes off the pause list: once postfwd took
+	// the rules they are asked until postfwd answers them as not paused.
+	var resumed []string
+	if old, exists, _ := outgoingReadOptional(filepath.Join(layout.listDir, "paused.list")); exists {
+		still := map[string]bool{}
+		for _, address := range spec.Paused {
+			still[strings.ToLower(address)] = true
+		}
+		for _, line := range strings.Split(string(old), "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" && !strings.HasPrefix(line, "#") && !still[strings.ToLower(line)] {
+				resumed = append(resumed, line)
+			}
+		}
+	}
+
 	// 3. Lists, then the checked rule file. postfwd runs as its own account
 	// (postfw, postfwd) and reads the lists itself: their folder must be
 	// passable by it whatever the Agent's umask (0027), also when no list
@@ -983,6 +1042,12 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 	}
 	resp.Verified = true
 	step("a test message was counted and the second one refused, so the limits work")
+	if len(resumed) > 0 {
+		resp.ResumeUnconfirmed = outgoingConfirmResumed(ctx, resumed)
+		if len(resp.ResumeUnconfirmed) == 0 {
+			step("postfwd answers the resumed mailboxes as not paused, so they can send again now")
+		}
+	}
 
 	// 7. Postfix asks postfwd from 587 and 465.
 	if !lockOutgoingMailMutex(ctx) {

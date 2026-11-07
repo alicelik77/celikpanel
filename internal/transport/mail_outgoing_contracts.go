@@ -78,6 +78,10 @@ type OutgoingMailLimitsApplyResponse struct {
 	// Steps: what was done, in order (real server steps for the progress
 	// view; no secret).
 	Steps []string `json:"steps,omitempty"`
+	// ResumeUnconfirmed: mailboxes taken off the pause list that the
+	// running postfwd still answered as paused when the check ended
+	// (alpha.128 lab: postfwd's prefork children took the reload late).
+	ResumeUnconfirmed []string `json:"resume_unconfirmed,omitempty"`
 	// Status after the call.
 	Status OutgoingMailLimitsStatus `json:"status"`
 }

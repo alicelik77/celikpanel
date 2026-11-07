@@ -19,6 +19,7 @@ export const trMailWorkScreens: Record<MailWorkScreenKey, string> = {
     'opstep.mailEmpty.check': 'Posta kutusu denetleniyor',
     'opstep.mailEmpty.empty': '{name} iletileri siliniyor (Dovecot)',
     'mail.sendingResumed': 'Güvenlik için durdurulan gönderim yeniden açıldı.',
+    'mail.sendingResumePending': 'Güvenlik durdurması kaldırıldı; gönderim birkaç dakika içinde kendiliğinden yeniden açılır.',
     'mail.bulk.selected': '{n} seçili',
     'mail.bulk.select': '{name} seç',
     'mail.bulk.selectAll': 'Bütün posta kutularını seç',
