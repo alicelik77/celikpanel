@@ -448,7 +448,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
         with self.assertRaises(p.Refused):
             self.verify(result, 57)
 
-    def test_actual_39_through_71_migrations_add_tables_and_change_no_other_old_row(self):
+    def test_actual_39_through_72_migrations_add_tables_and_change_no_other_old_row(self):
         # alpha.118: 58 application catalog operations, 59 WordPress tools and
         # malware scans, 60 remote backups, 61 service apps; all additive.
         # alpha.119: 62 the first-login tour's state (one table, one trigger),
@@ -461,10 +461,11 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # the old service_plans and subscriptions, proved equal to the default
         # in every old row), 67 outgoing mail, 68 web server settings, 69
         # visitor statistics, 70 remote API tokens, 71 additional FTP/SFTP
-        # logins; all additive.
-        self.assertEqual(len(self.sql), 71, 'a migration after 71 needs its own pin before a candidate carries it')
+        # logins, 72 panel operations (three NULL columns on the old
+        # sessions); all additive.
+        self.assertEqual(len(self.sql), 72, 'a migration after 72 needs its own pin before a candidate carries it')
         counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114, 63: 117, 64: 118, 65: 121,
-                  66: 123, 67: 129, 68: 134, 69: 135, 70: 136, 71: 137}
+                  66: 123, 67: 129, 68: 134, 69: 135, 70: 136, 71: 137, 72: 140}
         for version, tables in counts.items():
             with self.subTest(version=version):
                 self.setUp()
@@ -480,8 +481,10 @@ class PopulatedDatabaseTests(unittest.TestCase):
                     expected_columns['metrics_samples'] = ('cpu_peak',)
                 if version >= 65:
                     expected_columns['metrics_samples'] += ('net_rx', 'net_tx', 'disk_read', 'disk_write')
+                if version >= 72:
+                    expected_columns['sessions'] = expected_columns.get('sessions', ()) + ('last_seen_at', 'client_ip', 'user_agent')
                 self.assertEqual(p.added_columns(version), expected_columns)
-        for version in (72, '71', True):
+        for version in (73, '72', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

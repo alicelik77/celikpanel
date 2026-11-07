@@ -1506,10 +1506,11 @@ class Set3PublishedBaselineTests(unittest.TestCase):
         # backups, service apps); alpha.119 schemas 62 and 63 (the first-login tour, runtime apps);
         # alpha.126 schema 64 (monitoring history: CPU short peak and rollups, additive);
         # alpha.127 schema 65 (monitoring alerts, site checks, spike snapshots, additive);
-        # alpha.128 schemas 66-71 (site setting limits, outgoing mail, web server
-        # settings, visitor statistics, remote API tokens, FTP/SFTP logins; additive).
+        # alpha.128 schemas 66-72 (site setting limits, outgoing mail, web server
+        # settings, visitor statistics, remote API tokens, FTP/SFTP logins, panel
+        # operations; additive).
         self.assertEqual(sorted(pins["migrations"]), [38, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-                                                      57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71])
+                                                      57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72])
 
         def reading(version, guarded):
             return {"schema_version": version, "ledger_rows": version, "ledger_contiguous": True,
