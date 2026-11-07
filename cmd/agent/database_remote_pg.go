@@ -228,45 +228,45 @@ func pgAlterSystem(port int, statements ...string) error {
 	return err
 }
 
+// databaseRemoteWriteHBA puts the managed block into pg_hba.conf (swapped
+// by tests).
+var databaseRemoteWriteHBA = pgRemoteWriteHBA
+
+// databaseRemoteReadHBA reads the cluster's pg_hba.conf (swapped by tests).
+var databaseRemoteReadHBA = secureReadConfig
+
 func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts *dbremote.TargetState, hostName string) transport.DatabaseRemoteTargetResult {
 	result := transport.DatabaseRemoteTargetResult{Engine: target.Engine, Port: target.Port, Unit: dbRemoteUnit(target), TLS: "off", SlowDown: "none"}
+	problem := func(code, detail string) {
+		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: code, Detail: detail})
+	}
 	fail := func(code, detail string) transport.DatabaseRemoteTargetResult {
 		result.State = transport.DatabaseRemoteStateFailed
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: code, Detail: detail})
+		problem(code, detail)
 		return result
 	}
 	s, err := p.read(target.Port)
 	if err != nil {
 		return fail(transport.DatabaseRemoteEngineDown, err.Error())
 	}
-	active, problems, err := pgRemoteRoles(target.Port, target.Rules)
+	candidates, problems, err := pgRemoteRoles(target.Port, target.Rules)
 	if err != nil {
 		return fail(transport.DatabaseRemoteFailed, "the users could not be checked: "+boundedText(err.Error(), 200))
 	}
 	result.Problems = append(result.Problems, problems...)
-	lines, err := dbremote.HBALines(dbremote.Target{Engine: target.Engine, Port: target.Port, Rules: active})
-	if err != nil {
-		return fail(transport.DatabaseRemoteFailed, err.Error())
-	}
-	if err := pgRemoteWriteHBA(s.hbaFile, lines); err != nil {
-		code := transport.DatabaseRemoteFailed
-		if errors.Is(err, dbremote.ErrHBABlockEdited) {
-			code = transport.DatabaseRemoteOwnerFile
-		}
-		return fail(code, "pg_hba.conf: "+boundedText(err.Error(), 300))
-	}
-	result.Active = toTransportRules(active)
 
+	// 1. The settings, TLS first (alpha.129 review L4): a hostssl line is
+	// written only once the cluster runs TLS, so the validated writer never
+	// sees a block PostgreSQL would refuse.
 	var statements []string
-	if len(active) > 0 {
+	if len(candidates) > 0 {
 		if !s.alterSystem {
-			result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteAlterSystemOff,
-				Detail: "allow_alter_system is off on this cluster, so CelikPanel cannot set its listen address or TLS"})
+			problem(transport.DatabaseRemoteAlterSystemOff, "allow_alter_system is off on this cluster, so CelikPanel cannot set its listen address or TLS")
 		} else {
 			if !s.ssl && !ts.TLS {
 				cert, key, err := ensureDatabaseRemoteCertificate("postgresql", "postgres", hostName)
 				if err != nil {
-					result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteTLSMissing, Detail: err.Error()})
+					problem(transport.DatabaseRemoteTLSMissing, err.Error())
 				} else {
 					statements = append(statements,
 						"ALTER SYSTEM SET ssl_cert_file = '"+cert+"';",
@@ -287,38 +287,50 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 				ts.AuthDelay = true
 			}
 		}
-	} else {
-		if ts.Listen {
-			statements = append(statements, "ALTER SYSTEM RESET listen_addresses;")
-			ts.Listen = false
-			ts.ListenPending = true
-		}
+	} else if ts.Listen {
+		statements = append(statements, "ALTER SYSTEM RESET listen_addresses;")
+		ts.Listen = false
+		ts.ListenPending = true
 	}
 	if len(statements) > 0 {
 		if err := pgAlterSystem(target.Port, statements...); err != nil {
 			// Nothing of these statements is assumed: read what took.
-			result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteFailed,
-				Detail: "PostgreSQL did not accept a setting: " + boundedText(err.Error(), 200)})
+			problem(transport.DatabaseRemoteFailed, "PostgreSQL did not accept a setting: "+boundedText(err.Error(), 200))
 		}
-		time.Sleep(300 * time.Millisecond) // pg_reload_conf only signals the server
+		time.Sleep(databaseRemotePGReloadWait) // pg_reload_conf only signals the server
 	}
 	after, err := p.read(target.Port)
 	if err != nil {
 		return fail(transport.DatabaseRemoteEngineDown, err.Error())
 	}
-	// Reconcile the record with what PostgreSQL now says.
 	if ts.TLS && !after.ssl && !containsString(after.pendingRestart, "ssl") {
 		// TLS did not come on: put the settings back, say so.
 		_ = pgAlterSystem(target.Port, "ALTER SYSTEM RESET ssl;", "ALTER SYSTEM RESET ssl_cert_file;", "ALTER SYSTEM RESET ssl_key_file;")
 		ts.TLS = false
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteTLSMissing,
-			Detail: "PostgreSQL did not turn TLS on with the certificate CelikPanel made; its log says why"})
+		problem(transport.DatabaseRemoteTLSMissing, "PostgreSQL did not turn TLS on with the certificate CelikPanel made; its log says why")
 	}
 	if ts.Listen && after.listenFile != "" && !strings.HasSuffix(after.listenFile, "postgresql.auto.conf") {
-		// Another file sets listen_addresses after ours.
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteOwnerListen,
-			Detail: "listen_addresses is set again in " + after.listenFile + ", after CelikPanel's setting"})
+		problem(transport.DatabaseRemoteOwnerListen, "listen_addresses is set again in "+after.listenFile+", after CelikPanel's setting")
 	}
+
+	// 2. The rules in force: only with TLS on.
+	active := candidates
+	if !after.ssl {
+		active = nil
+	}
+	lines, err := dbremote.HBALines(dbremote.Target{Engine: target.Engine, Port: target.Port, Rules: active})
+	if err != nil {
+		return fail(transport.DatabaseRemoteFailed, err.Error())
+	}
+	if err := databaseRemoteWriteHBA(s.hbaFile, lines); err != nil {
+		code := transport.DatabaseRemoteFailed
+		if errors.Is(err, dbremote.ErrHBABlockEdited) {
+			code = transport.DatabaseRemoteOwnerFile
+		}
+		return fail(code, "pg_hba.conf: "+boundedText(err.Error(), 300))
+	}
+	result.Active = toTransportRules(active)
+
 	listenRemote := !pgListenIsLocal(after.listen)
 	if !listenRemote && ts.ListenPending {
 		ts.ListenPending = false
@@ -331,35 +343,46 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 		result.TLS = "pending_restart"
 	}
 	switch {
-	case strings.Contains(","+after.preload+",", ",auth_delay,") || strings.Contains(after.preload, "auth_delay"):
+	case pgPreloadHasAuthDelay(after.preload):
 		result.SlowDown = "auth_delay"
 	case ts.AuthDelay:
 		result.SlowDown = "auth_delay_pending_restart"
 	}
-	if len(active) > 0 && result.SlowDown == "none" {
+	if len(candidates) > 0 && result.SlowDown == "none" {
 		detail := "auth_delay is not available in this PostgreSQL"
 		if strings.TrimSpace(s.preload) != "" || (s.preloadFile != "<none>" && strings.Trim(s.preloadFile, "' ") != "") {
 			detail = "shared_preload_libraries is set by the server's owner; add auth_delay to it to slow down wrong passwords"
 		}
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteNoSlowDown, Detail: detail})
+		problem(transport.DatabaseRemoteNoSlowDown, detail)
 	}
 	switch {
-	case len(active) == 0 && ts.ListenPending:
+	case len(candidates) == 0 && ts.ListenPending:
 		result.State = transport.DatabaseRemoteStateClosing
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteRestartNeeded,
-			Detail: "PostgreSQL still listens beyond this server until it restarts; the port stays closed by the address filter meanwhile"})
-	case len(active) == 0:
+		problem(transport.DatabaseRemoteRestartNeeded, "PostgreSQL still listens beyond this server until it restarts; the port stays closed by the address filter meanwhile")
+	case len(candidates) == 0:
 		result.State = transport.DatabaseRemoteStateOff
 	case ts.Listen && (!listenRemote || len(after.pendingRestart) > 0):
 		result.State = transport.DatabaseRemoteStateWaitRestart
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteRestartNeeded,
-			Detail: "PostgreSQL reads its listen address" + pendingRestartDetail(after.pendingRestart) + " only when it starts"})
-	case listenRemote && after.ssl:
+		problem(transport.DatabaseRemoteRestartNeeded, "PostgreSQL reads its listen address"+pendingRestartDetail(after.pendingRestart)+" only when it starts")
+	case len(active) > 0 && listenRemote:
 		result.State = transport.DatabaseRemoteStateOpen
 	default:
 		result.State = transport.DatabaseRemoteStateWaitRestart
 	}
 	return result
+}
+
+// databaseRemotePGReloadWait: pg_reload_conf only signals the server.
+var databaseRemotePGReloadWait = 300 * time.Millisecond
+
+// pgPreloadHasAuthDelay: auth_delay is among the loaded libraries.
+func pgPreloadHasAuthDelay(preload string) bool {
+	for _, part := range strings.Split(preload, ",") {
+		if strings.Trim(strings.TrimSpace(part), "'\"") == "auth_delay" {
+			return true
+		}
+	}
+	return false
 }
 
 func pendingRestartDetail(names []string) string {
