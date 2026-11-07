@@ -25,7 +25,7 @@ func TestSSHDropInConfinesEveryAccountAndDeniesTheRest(t *testing.T) {
 	text, err := RenderSSHDropIn([]Entry{
 		{Username: "shop_test", SubscriptionID: 7, DomainID: 12, SSH: true},
 		{Username: "example_com", SubscriptionID: 3, DomainID: 5},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,14 +50,14 @@ func TestSSHDropInConfinesEveryAccountAndDeniesTheRest(t *testing.T) {
 	if strings.Contains(shop, "ForceCommand") {
 		t.Fatalf("ssh account is forced to SFTP:\n%s", shop)
 	}
-	entries, err := ParseSSHDropInEntries(body)
+	entries, err := parseSSHDropInEntries(body)
 	if err != nil || len(entries) != 2 || entries[0].Username != "example_com" || entries[1].SSH != true || entries[1].DomainID != 12 {
 		t.Fatalf("entries read back %+v %v", entries, err)
 	}
 }
 
 func TestSSHDropInWithoutAccountsStillDeniesHostingAccounts(t *testing.T) {
-	text, err := RenderSSHDropIn(nil)
+	text, err := RenderSSHDropIn(nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,11 +68,11 @@ func TestSSHDropInWithoutAccountsStillDeniesHostingAccounts(t *testing.T) {
 
 func TestSSHDropInRefusesUnsafeNamesAndDuplicates(t *testing.T) {
 	for _, name := range []string{"a*", "!root", "a,b", "a b", "", "UPPER", strings.Repeat("a", 33)} {
-		if _, err := RenderSSHDropIn([]Entry{{Username: name, SubscriptionID: 1, DomainID: 1}}); err == nil {
+		if _, err := RenderSSHDropIn([]Entry{{Username: name, SubscriptionID: 1, DomainID: 1}}, nil); err == nil {
 			t.Fatalf("name %q accepted", name)
 		}
 	}
-	if _, err := RenderSSHDropIn([]Entry{{Username: "a", SubscriptionID: 1, DomainID: 1}, {Username: "a", SubscriptionID: 1, DomainID: 2}}); err == nil {
+	if _, err := RenderSSHDropIn([]Entry{{Username: "a", SubscriptionID: 1, DomainID: 1}, {Username: "a", SubscriptionID: 1, DomainID: 2}}, nil); err == nil {
 		t.Fatal("duplicate accepted")
 	}
 }
@@ -160,7 +160,7 @@ func TestReadOnlyEntriesCloseUploadsAndReadBack(t *testing.T) {
 		{Username: "full_example", SubscriptionID: 7, DomainID: 70, ReadOnly: true},
 		{Username: "free_example", SubscriptionID: 8, DomainID: 80},
 	}
-	text, err := RenderSSHDropIn(entries)
+	text, err := RenderSSHDropIn(entries, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestReadOnlyEntriesCloseUploadsAndReadBack(t *testing.T) {
 		t.Fatalf("drop-in:\n%s", text)
 	}
 	_, body := Classify([]byte(text), true)
-	parsed, err := ParseSSHDropInEntries(body)
+	parsed, err := parseSSHDropInEntries(body)
 	if err != nil || len(parsed) != 2 || parsed[0].ReadOnly == parsed[1].ReadOnly {
 		t.Fatalf("parsed %+v %v", parsed, err)
 	}
@@ -183,11 +183,11 @@ func TestReadOnlyEntriesCloseUploadsAndReadBack(t *testing.T) {
 		t.Fatal("a free subscription is read-only")
 	}
 	// A drop-in written before this release (no readonly field) reads as writable.
-	old, err := ParseSSHDropInEntries(entryMarker + "user=old_example subscription=1 domain=2 ssh=0\n")
+	old, err := parseSSHDropInEntries(entryMarker + "user=old_example subscription=1 domain=2 ssh=0\n")
 	if err != nil || len(old) != 1 || old[0].ReadOnly {
 		t.Fatalf("an earlier entry line: %+v %v", old, err)
 	}
-	if _, err := ParseSSHDropInEntries(entryMarker + "user=old_example subscription=1 domain=2 ssh=0 readonly=yes\n"); err == nil {
+	if _, err := parseSSHDropInEntries(entryMarker + "user=old_example subscription=1 domain=2 ssh=0 readonly=yes\n"); err == nil {
 		t.Fatal("a malformed readonly field was accepted")
 	}
 }

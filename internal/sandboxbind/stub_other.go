@@ -16,6 +16,19 @@ func CheckAppFolder(appDir string, uid uint32) error {
 	return errors.New("the app folder check runs only on Linux")
 }
 
+// CheckLoginFolder needs Linux (openat2).
+func CheckLoginFolder(req FTPRequest) error {
+	if err := ValidFTPRequest(req); err != nil {
+		return err
+	}
+	return errors.New("the login folder check runs only on Linux")
+}
+
+// CheckSiteFolder needs Linux (openat2).
+func CheckSiteFolder(site, folder string) error {
+	return errors.New("the folder check runs only on Linux")
+}
+
 // Main needs Linux.
 func Main(_ []string, stderr io.Writer) int {
 	fmt.Fprintln(stderr, "celikpanel-sandbox: the helper runs only on Linux")

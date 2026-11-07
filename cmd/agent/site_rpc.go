@@ -68,6 +68,9 @@ type siteLifecycleOps struct {
 	// forgetAccess removes a deleted account's file access (sshd entry,
 	// keys, FTP files). Nil skips it (component tests).
 	forgetAccess func(string)
+	// forgetLogins removes the site's additional FTP logins (alpha.128)
+	// before its account: they share its uid and group. Nil skips it.
+	forgetLogins func(string) error
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -145,6 +148,7 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 		},
 		removeAll:    os.RemoveAll,
 		forgetAccess: forgetFileAccessAccount,
+		forgetLogins: forgetFTPLoginsOfSite,
 	}
 }
 
@@ -664,6 +668,20 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 	// 4. System user — never a system account, even if asked.
 	// 4. Sistem kullanıcısı — istense bile asla bir sistem hesabı değil.
 	if req.Username != "" {
+		// 4a. Additional FTP logins first: an account left with the site's
+		// uid would outlive the site. If they cannot be removed, the site's
+		// account stays too (its uid is not freed) and the deletion is
+		// reported incomplete, so it can be repeated.
+		if ops.forgetLogins != nil {
+			if err := ops.forgetLogins(req.Username); err != nil {
+				keepFailure("FTP logins", err)
+				keepFailure("site files", ops.removeAll(cleanHome))
+				logSiteLifecycleFailures("DeleteSite", req.Domain, failures)
+				resp.Success = false
+				resp.Error = "site cleanup incomplete: FTP logins (the site's account is kept until they are removed)"
+				return nil
+			}
+		}
 		keepFailure("system user", removeSiteUser(ops, req.Username, cleanHome))
 		if ops.forgetAccess != nil {
 			ops.forgetAccess(req.Username)

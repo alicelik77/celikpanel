@@ -142,6 +142,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.PasswordlessMailReportV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.FTPLoginsStateV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -178,6 +179,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
+		Agent.ApplyFTPLoginV1
 		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1 Agent.SetFileAccessReadOnlyV1
 		Agent.WordPressUpdateV1 Agent.WordPressCloneV1
@@ -527,6 +529,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.FileAccessStateV1":   agentRPCStandardReadTimeout,
 	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
 	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
+
+	// alpha.128: additional FTP/SFTP logins (account, jail unit, sshd, vsftpd).
+	"Agent.FTPLoginsStateV1": agentRPCStandardReadTimeout,
+	"Agent.ApplyFTPLoginV1":  agentRPCDatabaseTimeout,
 
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,

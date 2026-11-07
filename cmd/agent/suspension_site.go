@@ -212,6 +212,7 @@ func (a *Agent) SetSiteAccountSuspensionV1(
 	switch suspensionDecide(current.Expiry, target, from) {
 	case suspensionAlready:
 		resp.Applied = true
+		followSiteAccountLogins(username, target, resp)
 		return nil
 	case suspensionConflict:
 		resp.Conflict = true
@@ -254,5 +255,18 @@ func (a *Agent) SetSiteAccountSuspensionV1(
 		return nil
 	}
 	resp.Applied = true
+	followSiteAccountLogins(username, target, resp)
 	return nil
+}
+
+// followSiteAccountLogins gives the site's additional FTP logins (alpha.128)
+// the site account's expiry. A failure leaves the step unfinished, so the
+// operation repeats it (the site account is then already in place).
+var followSiteAccountLogins = func(username, expiry string, resp *transport.SetSiteAccountSuspensionResponse) {
+	ctx, cancel := context.WithTimeout(context.Background(), suspensionCommandTimeout)
+	defer cancel()
+	if err := syncFTPLoginsExpiry(ctx, username, expiry); err != nil {
+		resp.Applied = false
+		resp.Error = err.Error() + "; the site account itself is in place"
+	}
 }

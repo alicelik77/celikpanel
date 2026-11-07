@@ -170,7 +170,14 @@ func installFileAccessFakeHost(t *testing.T) *fileAccessFakeHost {
 // the rendered drop-in, enough for CheckSSHDEffective.
 func effectiveFromFakeDropIn(dropIn, user string) string {
 	_, body := fileaccess.Classify([]byte(dropIn), dropIn != "")
-	entries, _ := fileaccess.ParseSSHDropInEntries(body)
+	entries, logins, _ := fileaccess.ParseSSHDropIn(body)
+	if login, ok := fileaccess.FindLogin(logins, user); ok {
+		var lines []string
+		for key, value := range fileaccess.ExpectedLoginSSHDEffective(login) {
+			lines = append(lines, key+" "+value)
+		}
+		return "passwordauthentication yes\nport 22\n" + strings.Join(lines, "\n") + "\n"
+	}
 	entry, ok := fileaccess.FindEntry(entries, user)
 	if !ok {
 		return "passwordauthentication yes\ndenygroups " + fileaccess.SiteGroup + "\n"
