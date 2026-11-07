@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -226,8 +227,13 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		writeClientError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if len(request.Password) < transport.MinMailboxPasswordBytes || len(request.Password) > transport.MaxMailboxPasswordBytes {
-		writeClientError(w, http.StatusBadRequest, "password length is outside the allowed range")
+	if refusal := passwordpolicy.CheckField(request.Password, "mailbox"); refusal != nil {
+		writePasswordRefusal(w, refusal)
+		return
+	}
+	// The wire check the Agent repeats (bytes, line delimiters).
+	if err := transport.ValidateMailboxPassword(request.Password); err != nil {
+		writeClientError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if request.QuotaMB <= 0 || request.QuotaMB > transport.MaxMailboxQuotaMB {
@@ -313,6 +319,10 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 	}
 	if err := decodeStrictJSON(w, r, &request); err != nil || request.ID <= 0 {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if refusal := passwordpolicy.CheckField(request.NewPassword, "mailbox"); refusal != nil {
+		writePasswordRefusal(w, refusal)
 		return
 	}
 	if err := transport.ValidateMailboxPassword(request.NewPassword); err != nil {

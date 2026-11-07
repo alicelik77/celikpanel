@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Layers, Send, XCircle, Ban, Power } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -22,6 +22,9 @@ import { DeletableAccounts } from './DeletableAccounts';
 import { useSuspendedOwners } from '../lib/suspension';
 import { TransferRequestsList, TransferRowAction } from './SubscriptionTransfer';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -125,7 +128,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     const createMissing = [
         ...(!username.trim() ? [t('users.form.username')] : []),
         ...(!email.trim() ? [t('users.form.email')] : []),
-        ...(!invite && password.length < 8 ? [t('users.create.passwordRule')] : []),
+        ...(!invite && !passwordAcceptable(password, 'account') ? [t('users.create.passwordRule')] : []),
         ...newAccountRightsMissing(newRights, t),
     ];
 
@@ -138,6 +141,29 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
     // The refusal stays in the toast until it is closed, with its fix; the
     // create form also keeps it beside its button (owner feedback 2026-10-31).
     const navigate = useNavigate();
+
+    // ?rights=<account> / ?resume=<account> (alpha.127): a plan, pool or
+    // suspension notice elsewhere (a customer's Access tab) opens that
+    // account's rights panel, or its suspend/resume window, here. Used once
+    // and removed from the address; an account this list does not hold opens
+    // nothing.
+    // Başka ekrandaki bildirim, hesabın hak panelini ya da sürdürme penceresini açar.
+    const accountLinkRef = useRef(false);
+    useEffect(() => {
+        if (accountLinkRef.current || users.remote.state !== 'known' || typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const rights = params.get('rights');
+        const resume = params.get('resume');
+        if (rights === null && resume === null) return;
+        accountLinkRef.current = true;
+        const found = users.remote.value.find((u) => u.username === (rights ?? resume));
+        if (found && rights !== null) setPanel({ user: found });
+        else if (found) setSuspension({ kind: 'user', id: found.id, name: found.username });
+        params.delete('rights');
+        params.delete('resume');
+        const query = params.toString();
+        navigate(`${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`, { replace: true });
+    }, [users.remote, navigate]);
     const [createRefusal, setCreateRefusal] = useState<ApiError | null>(null);
     const apiError = async (res: Response, sentence: 'users.createFailed' | 'users.changeFailed' = 'users.changeFailed') => {
         const problem = await readApiError(res);
@@ -173,7 +199,8 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
             });
             if (!res) return;
             if (!res.ok) {
-                setCreateRefusal(await apiError(res, 'users.createFailed'));
+                // Said once, in the banner beside the form (useRefusal): no notice.
+                setCreateRefusal(await readApiError(res));
                 return;
             }
             showToast('success', t('users.created'));
@@ -222,8 +249,10 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
 
     const deleteUser = async (u: PanelUser) => {
         await confirmAction({ message: t('users.deleteConfirm', { name: u.username }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
-                const res = await send(`/api/v1/users/${u.id}`, { method: 'DELETE' });
+            action: async (report) => {
+                // The server's own step (alpha.127).
+                const res = await sendWithSteps(report, flowSteps(t, 'userDelete', ['delete'], { name: u.username }), t, `userDelete.${u.id}`,
+                    (headers) => send(`/api/v1/users/${u.id}`, { method: 'DELETE', headers }));
                 if (!res) return;
                 if (!res.ok) {
                     await apiError(res);
@@ -262,6 +291,10 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
             {/* After the update: accounts that became Unlimited, and pools nearly used up. */}
             {isAdmin && (
                 <AdminRightsNotices
+                    onOpenAccount={(name) => {
+                        const found = users.remote.state === 'known' ? users.remote.value.find((u) => u.username === name) : undefined;
+                        if (found) setPanel({ user: found });
+                    }}
                     onSetRights={(userId) => {
                         const found = users.remote.state === 'known' ? users.remote.value.find((u) => u.id === userId) : undefined;
                         if (found) setPanel({ user: found });
@@ -291,7 +324,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.password')}</span>
-                            <input type="password" value={invite ? '' : password} disabled={invite} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+                            <PasswordInput field="account" value={invite ? '' : password} disabled={invite} onChange={setPassword} maxLength={1024} />
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.role')}</span>

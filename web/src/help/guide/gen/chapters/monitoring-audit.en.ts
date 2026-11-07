@@ -8,12 +8,14 @@ const chapter = {
   title: "Monitoring, the audit log and notices",
   blocks: [
     ["h",2,"monitoring","Monitoring"],
-    ["p",[["b","Monitoring"]," draws ",["b","CPU"],", ",["b","Memory"],", ",["b","Disk (/)"]," and ",["b","Load (1m)"],", sampled every 30 seconds and kept for 48 hours; choose ",["b","1h"]," to ",["b","48h"],". A fresh server needs a few minutes for its first samples. Service states are on the dashboard under ",["b","System services"],". The panel sends no health alerts by email."]],
+    ["p",[["b","Monitoring"]," starts with ",["b","Problems now"]," and ",["b","Alerts"],", then draws ",["b","Processor"],", ",["b","Memory"],", ",["b","Disk (/)"]," and ",["b","Load (1m)"],": each point is the average of 30 seconds, kept for 30 days; choose ",["b","1 hour"]," to ",["b","30 days"],". The disk card adds disk read and write speed, the load card network in and out. When the processor or memory reaches 90%, the five busiest processes of that moment appear under the chart."]],
+    ["p",[["b","Services"]," lists each installed service: running since when, restarts in the last hour, processor and memory. ",["b","Websites"]," asks each site for its home page from this server every 5 minutes and shows whether it answers and how many days its certificate has left."]],
+    ["p",["A problem that lasts longer than the delay in ",["b","Alert settings"]," (10 minutes by default) becomes an alert. Alerts are emailed only to administrators whose address is confirmed on ",["b","My account"],", at most four emails an hour. While the panel or the server is stopped there are no alerts: also use an outside uptime checker for important sites."]],
     ["h",2,"audit","Audit log"],
     ["p",[["b","Audit log"]," lists who did what, newest first: ",["b","Time"],", ",["b","User"],", ",["b","Action"],", ",["b","Detail"]," and ",["b","IP"],". Work done with ",["b","Log in as"]," shows both names. The page shows the latest 200 entries, without filter or search yet; the dashboard shows the newest under ",["b","Recent activity"],"."]],
     ["p","If the log looks empty on a server that has been used, reload the page: the list may not have been read."],
     ["h",2,"notices","Notices"],
-    ["t",["Where","What"],[[["Dashboard, ",["b","Needs attention"]],"A stopped service, the firewall off or not saved, certificate renewal problems, mail without a spam filter."],["Dashboard","A new panel version, system updates, license problems."],[[["b","Users"],", ",["b","Traffic and disk notices"]],"Accounts and reseller pools at 80% or 100%."],["Email","Usage notices, malware findings, security emergency notices to customers."]]],
+    ["t",["Where","What"],[[["Dashboard, ",["b","Needs attention"]],"A stopped service, the firewall off or not saved, certificate renewal problems, mail without a spam filter."],["Dashboard","A new panel version, system updates, license problems."],[[["b","Users"],", ",["b","Traffic and disk notices"]],"Accounts and reseller pools at 80% or 100%."],[[["b","Monitoring"],", ",["b","Alerts"]],"Problems that lasted longer than the alert delay; the Dashboard shows how many are new."],["Email","Monitoring alerts to confirmed administrators, usage notices, malware findings, security emergency notices to customers."]]],
   ],
 } as unknown as GuideChapter;
 

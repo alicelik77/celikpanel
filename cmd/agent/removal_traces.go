@@ -90,6 +90,9 @@ type removalTraceScope struct {
 
 func newRemovalTraceScope(svc *core.ManagedService, version string, workUnits []string) removalTraceScope {
 	scope := removalTraceScope{facts: core.RemovalTraceFactsFor(svc, version), units: map[string]bool{}}
+	if svc.ID == "postgresql" {
+		scope.facts.Ports = pgRemovalTracePorts(scope.facts.Ports, version)
+	}
 	names := append(append([]string{}, workUnits...), svc.HelperUnits...)
 	if version == "" {
 		names = append(names, svc.SystemNames...)
@@ -517,3 +520,27 @@ func removalTraceVersion(svc *core.ManagedService, pkg string) string {
 }
 
 var versionDigits = regexp.MustCompile(`[0-9]+(.[0-9]+)*`)
+
+// pgRemovalTracePorts adds the ports PostgreSQL's clusters run on (alpha.127):
+// the catalogue's 5432 is only the first cluster's, and a major installed
+// beside another, or after one was removed with its data kept, runs on the
+// next free port. One major's removal looks at that major's clusters' ports,
+// which the clusters do tell apart.
+func pgRemovalTracePorts(ports []int, version string) []int {
+	clusters, ok := pgStatementClusters()
+	if !ok {
+		return ports
+	}
+	seen := map[int]bool{}
+	for _, port := range ports {
+		seen[port] = true
+	}
+	for _, cluster := range clusters {
+		if (version == "" || cluster.Version == version) && !seen[cluster.Port] {
+			seen[cluster.Port] = true
+			ports = append(ports, cluster.Port)
+		}
+	}
+	sort.Ints(ports)
+	return ports
+}

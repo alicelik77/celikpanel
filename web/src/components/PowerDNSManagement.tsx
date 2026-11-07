@@ -10,6 +10,7 @@ import { Button, Checking, CouldNotCheck, ErrorBanner } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { useComponentConfigFiles } from '../lib/managedServices';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 interface PowerDNSManagementProps {
     onBack: () => void;
@@ -61,7 +62,8 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
 
     const handleRepair = async () => {
         await confirmAction({ message: t('pdns.repairConfirm'), tone: 'danger',
-            action: async () => {
+            progressTitle: t('opstep.pdns.title'),
+            action: async (report) => {
                 setRepairing(true);
                 setRepairProblem(null);
                 try {
@@ -71,7 +73,9 @@ export function PowerDNSManagement({ onBack }: PowerDNSManagementProps) {
                     // panel bölgelerini PowerDNS'e eşitler.
                     let res: Response;
                     try {
-                        res = await fetch('/api/v1/pdns/enable', { method: 'POST' });
+                        // The server's own steps: check, repair, publish again (alpha.127).
+                        res = await sendWithSteps(report, flowSteps(t, 'pdns', ['check!', 'configure', 'sync']), t, 'pdns',
+                            (headers) => fetch('/api/v1/pdns/enable', { method: 'POST', headers }));
                     } catch {
                         // No answer: whether the repair ran is not known.
                         setRepairProblem({ kind: 'unknown' });

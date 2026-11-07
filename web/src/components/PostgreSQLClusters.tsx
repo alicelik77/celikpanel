@@ -186,6 +186,12 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
 
 function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PGCluster; records: PGRecord[]; canMove: boolean; onPort: () => void; onMove: () => void }) {
     const { t } = useI18n();
+    // alpha.127: a removed major whose data was kept ("down,binaries_missing")
+    // cannot be started; it says what it is, where the data is, and how the
+    // owner removes it, rather than "start it".
+    // Programı kaldırılmış, verisi saklanan küme başlatılamaz; ne olduğunu,
+    // verinin nerede olduğunu ve sahibin onu nasıl kaldıracağını söyler.
+    const removed = !cluster.online && cluster.status.includes('binaries_missing');
     return (
         <li className="rounded-xl border border-border p-4" data-pg-cluster={pgRef(cluster)}>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -193,7 +199,7 @@ function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PG
                     {t('pgc.cluster.name', { version: cluster.version, cluster: pgRef(cluster) })}
                 </p>
                 <span className={`rounded px-2 py-0.5 text-xs font-medium ${cluster.online ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
-                    {cluster.online ? t('pgc.cluster.online') : t('pgc.cluster.down', { status: cluster.status })}
+                    {cluster.online ? t('pgc.cluster.online') : removed ? t('pgc.cluster.removed') : t('pgc.cluster.down', { status: cluster.status })}
                 </span>
             </div>
             <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
@@ -220,7 +226,9 @@ function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PG
                 <Button onClick={onPort} disabled={!cluster.online} icon={Network} className="max-sm:min-h-11" data-pg-port-offer="">{t('pgc.port.offer')}</Button>
                 <Button onClick={onMove} disabled={!canMove} icon={ArrowRightLeft} className="max-sm:min-h-11" data-pg-move-offer="">{t('pgc.move.offer')}</Button>
             </div>
-            {!cluster.online && <p className="mt-2 text-xs text-fg-subtle">{t('pgc.cluster.downHint', { unit: `postgresql@${cluster.version}-${cluster.name}` })}</p>}
+            {removed
+                ? <p className="mt-2 text-xs text-fg-subtle" data-pg-removed="">{t('pgc.cluster.removedHint', { version: cluster.version, name: cluster.name, data: cluster.data_directory, port: cluster.port })}</p>
+                : !cluster.online && <p className="mt-2 text-xs text-fg-subtle">{t('pgc.cluster.downHint', { unit: `postgresql@${cluster.version}-${cluster.name}` })}</p>}
         </li>
     );
 }

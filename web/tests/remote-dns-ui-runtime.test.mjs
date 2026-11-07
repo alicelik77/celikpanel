@@ -12,7 +12,7 @@ const dataURL=value=>`data:text/javascript;base64,${Buffer.from(value).toString(
 const compile=path=>ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.React,module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2020}}).outputText;
 const contractURL=dataURL(compile('../src/lib/remoteDNS.ts'));
 const contract=await import(contractURL);
-const stubURL=dataURL(`import React from '${reactURL}'; export const invalidate=()=>[]; export const useAuth=()=>({role:globalThis.remoteFixture.role}); export const useI18n=()=>({t:(key,vars)=>key}); export const Button=props=>React.createElement('button',props); export const inputClass='';`);
+const stubURL=dataURL(`import React from '${reactURL}'; export const invalidate=()=>[]; export const useAuth=()=>({role:globalThis.remoteFixture.role}); export const useI18n=()=>({t:(key,vars)=>key}); export const Button=props=>React.createElement('button',props); export const inputClass=''; export const PasswordInput=({onChange,...props})=>React.createElement('input',{...props,type:'password',onChange:event=>onChange?.(event.target.value)});`);
 const source=compile('../src/components/ServerSetupDNSConnections.tsx').replace(/from ['"]([^'"]+)['"]/g,(_,path)=>`from '${path==='react'?reactURL:path.endsWith('/remoteDNS')?contractURL:stubURL}'`);
 const {ServerSetupDNSConnection:Connection,ServerSetupDNSAccess:Access}=await import(dataURL(`import React from '${reactURL}';\n${source}`));
 const original={fetch:globalThis.fetch,window:globalThis.window,localStorage:globalThis.localStorage};
@@ -38,7 +38,9 @@ async function mount(Component=Host){await act(async()=>{tree=Renderer.create(Re
 async function clean(){if(tree)await act(async()=>tree.unmount());for(const[key,value]of Object.entries(original)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}delete globalThis.remoteFixture;}
 const button=label=>tree.root.findAllByType('button').find(item=>item.props.children===label);
 const writes=()=>calls.filter(item=>item.options?.method&&item.options.method!=='GET');
-async function fill(){await act(async()=>tree.root.findByProps({id:'setup-remote-endpoint'}).props.onChange({target:{value:'https://dns.example.com:2083'}}));await act(async()=>tree.root.findByProps({id:'setup-remote-code'}).props.onChange({target:{value:'one-time-secret'}}));}
+// The code fields are PasswordInput: the host <input> carries the id and the typing.
+const hostField=id=>tree.root.findAll(node=>typeof node.type==='string'&&node.props.id===id)[0];
+async function fill(){await act(async()=>tree.root.findByProps({id:'setup-remote-endpoint'}).props.onChange({target:{value:'https://dns.example.com:2083'}}));await act(async()=>hostField('setup-remote-code').props.onChange({target:{value:'one-time-secret'}}));}
 
 test('remote DNS parsers reject invalid identities, secret-bearing endpoints and malformed lists',()=>{
     assert.equal(contract.decodeDNSConnections({connections:[connection({id:'other'})]}),null);
@@ -66,7 +68,7 @@ test('pairing requires explicit scoped confirmation and duplicate clicks send on
         await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));const action=button('setup.remote.authorize');
         await act(async()=>{void action.props.onClick();void action.props.onClick();});
         assert.equal(writes().length,1);assert.deepEqual(JSON.parse(writes()[0].options.body),{endpoint:'https://dns.example.com:2083',enrollment_code:'one-time-secret'});
-        assert.ok(calls.every(item=>!item.url.includes('one-time-secret')));assert.equal(tree.root.findByProps({id:'setup-remote-code'}).props.value,'');assert.equal(fixture.value,connection().id);assert.equal(fixture.validity.at(-1),true);
+        assert.ok(calls.every(item=>!item.url.includes('one-time-secret')));assert.equal(hostField('setup-remote-code').props.value,'');assert.equal(fixture.value,connection().id);assert.equal(fixture.validity.at(-1),true);
     }finally{await clean();}
 });
 test('lost pairing response reconciles pending identity and resumes without resending the code',async()=>{
@@ -77,7 +79,7 @@ test('lost pairing response reconciles pending identity and resumes without rese
     };
     try{
         await mount();await fill();await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));await act(async()=>button('setup.remote.authorize').props.onClick());
-        assert.equal(tree.root.findByProps({id:'setup-remote-code'}).props.value,'');assert.equal(button('setup.remote.authorize').props.disabled,true);
+        assert.equal(hostField('setup-remote-code').props.value,'');assert.equal(button('setup.remote.authorize').props.disabled,true);
         await act(async()=>button('setup.remote.resume').props.onClick());assert.equal(writes().length,2);assert.deepEqual(JSON.parse(writes()[1].options.body),{id:connection().id});assert.equal(fixture.value,connection().id);
     }finally{await clean();}
 });
@@ -86,7 +88,7 @@ test('receiver enrollment is explicit, keeps secret in memory and revocation nee
     try{
         await mount(Access);assert.equal(button('setup.remote.generate').props.disabled,true);assert.equal(writes().length,0);
         await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));await act(async()=>button('setup.remote.generate').props.onClick());
-        assert.equal(writes().length,1);assert.equal(tree.root.findByProps({id:'dns-enrollment-code'}).props.type,'password');assert.ok(calls.every(item=>!item.url.includes('secret-only-body')));
+        assert.equal(writes().length,1);assert.equal(hostField('dns-enrollment-code').props.type,'password');assert.ok(calls.every(item=>!item.url.includes('secret-only-body')));
         await act(async()=>button('setup.remote.revoke').props.onClick());assert.equal(writes().length,1);
         const confirm=tree.root.findAllByType('button').find(item=>item.props.variant==='danger');await act(async()=>confirm.props.onClick());assert.equal(writes().length,2);assert.equal(writes()[1].options.method,'DELETE');assert.ok(JSON.stringify(tree.toJSON()).includes('setup.remote.revoked'));
     }finally{await clean();}
@@ -101,7 +103,7 @@ test('unavailable clipboard reports a recoverable error without losing the gener
     init();const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{configurable:true,value:{}});
     try{
         await mount(Access);await act(async()=>tree.root.findByProps({type:'checkbox'}).props.onChange({target:{checked:true}}));await act(async()=>button('setup.remote.generate').props.onClick());
-        await act(async()=>button('conn.copy').props.onClick());assert.ok(JSON.stringify(tree.toJSON()).includes('setup.remote.copyFailed'));assert.equal(tree.root.findByProps({id:'dns-enrollment-code'}).props.value,'secret-only-body');assert.equal(writes().length,1);
+        await act(async()=>button('conn.copy').props.onClick());assert.ok(JSON.stringify(tree.toJSON()).includes('setup.remote.copyFailed'));assert.equal(hostField('dns-enrollment-code').props.value,'secret-only-body');assert.equal(writes().length,1);
     }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;await clean();}
 });
 

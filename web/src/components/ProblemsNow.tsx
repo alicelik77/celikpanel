@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -40,13 +40,36 @@ export type ProblemKind =
     | 'memory_sustained'
     | 'cpu_sustained'
     | 'mail_queue_deferred'
-    | 'security_updates';
+    | 'security_updates'
+    | 'site_down'
+    | 'site_certificate'
+    | 'service_restarting';
 
 const KINDS: readonly ProblemKind[] = [
     'service_stopped', 'disk_full', 'certificate_expired', 'certificate_renewal_failed', 'certificate_expiring',
     'memory_sustained', 'cpu_sustained', 'mail_queue_deferred', 'security_updates',
+    // alpha.127: website checks and a service that keeps restarting.
+    'site_down', 'site_certificate', 'service_restarting',
 ];
-const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates'] as const;
+const SOURCES = ['services', 'metrics', 'disk', 'certificates', 'mail_queue', 'security_updates', 'sites'] as const;
+
+/** The words of a problem's title and body; alerts use the same (alpha.127). */
+export function problemVars(
+    problem: { kind: string; subject?: string; name?: string; value: number },
+    t: ReturnType<typeof useI18n>['t'],
+): Record<string, string | number> {
+    return {
+        name: componentName({ id: problem.subject ?? '', name: problem.name }, t),
+        domain: problem.subject ?? '',
+        days: Math.max(problem.value, 0),
+        value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? t('monitoring.pct', { n: Math.round(problem.value) }) : problem.value,
+    };
+}
+
+/** Whether a kind is one this screen has words for. */
+export function isProblemKind(kind: unknown): kind is ProblemKind {
+    return typeof kind === 'string' && (KINDS as readonly string[]).includes(kind);
+}
 const REASONS = ['checking', 'unreadable', 'not_scanned'] as const;
 
 export interface Problem {
@@ -111,7 +134,6 @@ export function ProblemsNow({
     const [outcome, setOutcome] = useState<ApiError | null>(null);
     const [failed, setFailed] = useState<{ key: string; text: string } | null>(null);
 
-    const pct = (n: number) => t('monitoring.pct', { n: Math.round(n) });
     const clock = (iso?: string) => {
         if (!iso) return '';
         const at = new Date(iso);
@@ -202,12 +224,7 @@ export function ProblemsNow({
                         {problems.map((problem) => {
                             const critical = problem.severity === 'critical';
                             const Icon = critical ? XCircle : AlertTriangle;
-                            const vars = {
-                                name: componentName({ id: problem.subject ?? '', name: problem.name }, t),
-                                domain: problem.subject ?? '',
-                                days: Math.max(problem.value, 0),
-                                value: problem.kind === 'disk_full' || problem.kind.endsWith('_sustained') ? pct(problem.value) : problem.value,
-                            };
+                            const vars = problemVars(problem, t);
                             const when = problem.since
                                 ? t('pnow.since', { time: clock(problem.since) })
                                 : problem.kind === 'service_stopped' && problem.observed_at ? t('pnow.seen', { time: clock(problem.observed_at) }) : '';
@@ -253,5 +270,36 @@ export function ProblemsNow({
                 </p>
             )}
         </section>
+    );
+}
+
+// alpha.127: one quiet line on the Dashboard while open alerts are unseen
+// (Monitoring lists them). It lives here, beside the list the Dashboard
+// already loads, so the Dashboard does not pull in the Monitoring page.
+// Gösterge Paneli'nde görülmemiş açık uyarı varken tek sakin satır.
+export const ALERTS_URL = '/api/v1/metrics/alerts';
+
+export function decodeUnseenOpenAlerts(raw: unknown): number {
+    const body = raw as { alerts?: unknown } | null;
+    if (!body || typeof body !== 'object' || !Array.isArray(body.alerts)) throw new Error('shape');
+    return body.alerts.filter((a) => !!a && typeof a === 'object'
+        && (a as { state?: unknown }).state === 'open' && (a as { seen?: unknown }).seen === false
+        && isProblemKind((a as { kind?: unknown }).kind)).length;
+}
+
+export function AlertsNotice() {
+    const { t } = useI18n();
+    const handle = useRemote(ALERTS_URL, decodeUnseenOpenAlerts);
+    const reread = handle.retry;
+    useEffect(() => startVisibleReads(reread, REFRESH_MS, { setInterval: (callback, ms) => setInterval(callback, ms) as unknown as number, clearInterval: (id) => clearInterval(id) }), [reread]);
+    const remote = handle.remote;
+    const open = remote.state === 'known' ? remote.value : 0;
+    if (open === 0) return null;
+    return (
+        <p className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border-strong bg-surface p-3 text-sm text-fg" data-alerts-notice={open}>
+            <Bell className="h-4 w-4 text-warning" aria-hidden="true" />
+            <span className="font-semibold">{t('pnow.alertsNew', { n: open })}</span>
+            <Link to="/monitoring" className="ml-auto font-semibold text-primary max-sm:min-h-11">{t('pnow.cpu_sustained.action')}</Link>
+        </p>
     );
 }

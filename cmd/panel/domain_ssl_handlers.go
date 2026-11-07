@@ -571,6 +571,11 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := sslDurableContext(r.Context())
 	defer cancel()
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	// The mail step is in the plan only when mail TLS can follow the site.
+	sslSteps := []string{"check", "dns_check", "prepare_validation", "acme", "verify", "install", "reload"}
+	reportOperationPlan(ctx, sslSteps...)
+	reportOperationStep(ctx, "check")
 	if err := p.requireMatchingAgentBuild(ctx); err != nil {
 		writeClientError(w, http.StatusServiceUnavailable, err.Error())
 		return
@@ -659,6 +664,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 			"an active certificate already exists -- use Reissue and confirm the replacement")
 		return
 	}
+	if previousSecureMail || mailName != "" {
+		reportOperationPlan(ctx, append(sslSteps, "mail")...)
+	}
 	if activeCount > 0 {
 		if err := pool.QueryRowContext(ctx, `
 			SELECT type, cert_path, COALESCE(lineage_name, ?)
@@ -716,6 +724,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	// (2 Nov 2026). A lookup that failed is unknown and does not refuse.
 	// Genel DNS'in başka yerde gösterdiği ad doğrulanamaz; istek, web sunucusuna
 	// ya da yetkiliye dokunulmadan reddedilir. Başarısız sorgu bilinmeyendir.
+	reportOperationStep(ctx, "dns_check")
 	if p.refuseCertificateDomainNotPointed(ctx, w, r, domainID, domain.Name, managedNames, mailName, req.AllowNotPointed) {
 		return
 	}
@@ -731,6 +740,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	// validated through the Panel's own include directory, without touching
 	// the file, when the file still includes it; otherwise the request is
 	// refused here with the file's state, before anything is requested.
+	reportOperationStep(ctx, "prepare_validation")
 	keptSiteConfig, validationNotRun, err := p.prepareCertificateValidationNoted(ctx, domainID, validationChallengeNames)
 	if err != nil {
 		log.Printf("SSL issue domain %d: prepare validation vhost: %v", domainID, err)
@@ -773,6 +783,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		EABHMACKey:         req.EABHMACKey,
 	}
 
+	// Asking the authority and proving control of every name are one run
+	// of the Agent's ACME client: one step.
+	reportOperationStep(ctx, "acme")
 	err = p.callAgentContext(ctx, "Agent.IssueLetsEncryptCertificate", agentReq, &agentResp)
 	if err != nil || !agentResp.Success {
 		cleanupCtx, cleanupCancel := sslCompensationContext()
@@ -823,6 +836,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		}
 		p.cleanupUncommittedCertificate(cleanupCtx, cleanupTarget)
 	}()
+	reportOperationStep(ctx, "verify")
 	if strings.TrimSpace(agentResp.CertPath) == "" ||
 		strings.TrimSpace(agentResp.KeyPath) == "" ||
 		strings.TrimSpace(agentResp.ChainPath) == "" {
@@ -892,6 +906,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	// keeps whatever the owner chose.
 	httpsRedirect := req.RedirectHTTP && activeCount == 0
 
+	reportOperationStep(ctx, "install")
 	// Store certificate in database. issuer is the chosen CA's display name so
 	// the SSL page shows who signed it, not a hardcoded "Let's Encrypt".
 	// Sertifikayı veritabanına yaz. issuer, seçilen CA'nın görünen adıdır;
@@ -927,6 +942,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	// Sertifika ancak nginx sunduğunda işe yarar: vhost'u yeniden üret (443
 	// bloğu eklenir) ve yeniden yükle.
 	waitingForOwner := false
+	reportOperationStep(ctx, "reload")
 	if err := p.applyVhostForDomain(ctx, domainID); err != nil {
 		if _, kept := keptSiteFile(err); kept {
 			// D-031 step 1b: the file is the owner's. The new certificate is
@@ -963,6 +979,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 
 	// Keep mail SNI in step with the new certificate if mail is secured.
 	// Posta korunuyorsa posta SNI'ını yeni sertifikayla adımda tut.
+	if secureMail {
+		reportOperationStep(ctx, "mail")
+	}
 	if err := p.syncCertificateDependents(ctx, domainID); err != nil {
 		if markErr := p.markCertificatePendingDetached(
 			ctx, domainID, sslPendingDependents, false,
@@ -1093,6 +1112,9 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Validate certificate via agent
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(ctx, "validate", "install", "reload", "mail")
+	reportOperationStep(ctx, "validate")
 	var validateResp transport.ValidateCertResponse
 
 	validateReq := transport.ValidateCertRequest{
@@ -1180,6 +1202,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			},
 		)
 	}()
+	reportOperationStep(ctx, "install")
 	err = p.callAgentContext(ctx, "Agent.InstallCustomCertificate", installReq, &installResp)
 	if err != nil || !installResp.Success {
 		writeAgentError(w, err, installResp.Error)
@@ -1276,6 +1299,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	// Sertifika ancak nginx sunduğunda işe yarar: vhost'u yeniden üret (443
 	// bloğu eklenir) ve yeniden yükle. Bu olmadan sertifika diskte dururken
 	// site yalnız HTTP kalıyordu.
+	reportOperationStep(ctx, "reload")
 	if err := p.applyVhostForDomain(ctx, domainID); err != nil {
 		if markErr := p.markCertificatePendingDetached(
 			ctx, domainID, sslPendingActivation, true,
@@ -1292,6 +1316,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	reportOperationStep(ctx, "mail")
 	if err := p.syncCertificateDependents(ctx, domainID); err != nil {
 		if markErr := p.markCertificatePendingDetached(
 			ctx, domainID, sslPendingDependents, false,
@@ -1429,6 +1454,9 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
 	ctx := r.Context()
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(ctx, "detach", "reload", "mail")
+	reportOperationStep(ctx, "detach")
 	detach, err := p.detachCertificate(ctx, domainID)
 	if err != nil {
 		if message, guarded := hstsRemovalConflictMessage(err, "the certificate"); guarded {
@@ -1441,6 +1469,7 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 		return
 	}
 
+	reportOperationStep(ctx, "reload")
 	if err := p.applyVhostForDomain(ctx, domainID); err != nil {
 		rollbackCtx, cancel := sslCompensationContext()
 		defer cancel()
@@ -1459,6 +1488,7 @@ func (p *Panel) handleDeleteSSL(w http.ResponseWriter, r *http.Request, domainID
 
 	// A removed certificate must drop out of the mail SNI maps too.
 	// Kaldırılan sertifika posta SNI map'lerinden de düşmelidir.
+	reportOperationStep(ctx, "mail")
 	if err := p.syncCertificateDependents(ctx, domainID); err != nil {
 		rollbackCtx, cancel := sslCompensationContext()
 		defer cancel()

@@ -1256,6 +1256,67 @@ func removeEmptyOwnerIncludeDir(domain string) {
 	}
 }
 
+// SweepEmptyOwnerIncludeDirs removes the empty owner include directories
+// that a site deletion left before removeEmptyOwnerIncludeDir existed
+// (alpha.125: a deletion that waited for the main DNS server left an empty
+// /etc/nginx/celikpanel-sites.d/<domain>). The Agent cannot read the Panel's
+// records, so "the site is gone" is read from the files the directory serves:
+// a directory is removed only when it is a real directory (not a link), it
+// is empty, and nothing could include it: no sites-available or
+// sites-enabled file of that name and no Panel-managed directory of that
+// site. A directory with anything in it is never touched (os.Remove refuses
+// it). A live site that is rewritten later gets its directory back
+// (ensureOwnerIncludeDir), and nginx accepts an include pattern that matches
+// nothing. It returns the names removed, for one journal line.
+// Silinen sitelerden kalan BOŞ sahip ekleme dizinlerini kaldırır; içinde bir
+// şey olan dizine ve hâlâ bir site dosyası olan ada dokunmaz.
+func SweepEmptyOwnerIncludeDirs() []string {
+	nginxMutationMu.Lock()
+	defer nginxMutationMu.Unlock()
+	root := nginxBase() + "/" + ownerIncludeDirName
+	if info, err := os.Lstat(root); err != nil || !info.IsDir() {
+		return nil
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+	var removed []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == "" || strings.HasPrefix(name, ".") || strings.ContainsAny(name, `/\`) {
+			continue
+		}
+		directory := root + "/" + name
+		info, err := os.Lstat(directory)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+		if !ownerIncludeDirUnreferenced(name) {
+			continue
+		}
+		if children, err := os.ReadDir(directory); err != nil || len(children) != 0 {
+			continue
+		}
+		if err := os.Remove(directory); err == nil {
+			removed = append(removed, name)
+		}
+	}
+	return removed
+}
+
+// ownerIncludeDirUnreferenced: no site file and no Panel-managed directory
+// of that name exist. Anything that cannot be read counts as present.
+func ownerIncludeDirUnreferenced(domain string) bool {
+	available, enabled := vhostPaths(domain)
+	for _, path := range []string{available, enabled, PanelManagedDir(domain)} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+	}
+	return true
+}
+
 // removePanelManagedDir removes a deleted site's challenge file when it is
 // still the Panel's unchanged text, then the Panel's directory when it is
 // empty. Anything else in it is left.

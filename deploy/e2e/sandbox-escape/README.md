@@ -43,7 +43,13 @@ nft, ip, ss, findmnt and python3. Then:
 sudo ./run.sh               # the whole matrix
 sudo ./run.sh quick         # the two probes only (no namespace, no load tests, no table removal)
 sudo ./run.sh reboot-prepare; sudo reboot; sudo ./run.sh reboot-verify   # item 17 across a reboot
+sudo NODE_VERSION=22.23.4 ./run.sh node   # Node.js sites only (alpha.127): the matrix under a Node.js site's unit, items 19 and 20
 ```
+
+Items 19 and 20 need a Node.js under `/opt/celikpanel/runtimes/node/<version>`
+(Components → Node.js on a CelikPanel host); `NODE_VERSION` names it, and
+`matrix` and `quick` include them when it is set (SKIP otherwise). The kit
+puts a decoy version `0.0.1` beside it for item 19 and removes it at the end.
 
 The last line is `PASS` or `FAIL`. Every item shows its own result and the
 attempts that escaped. A host at the **reduced** level fails the items its
@@ -87,6 +93,8 @@ from the journal. An item with no line at all is a FAIL.
 | 16 | Writes to /sys/fs/cgroup (root and own memory.max) | must fail |
 | 17 | The SMTP block after a restart, after a reboot and after the egress table is removed | the unit's cgroup is in `@smtp_blocked` again, and a new attempt is refused (the counter rises). After the table is removed, the guard timer must restore it within 45 seconds. |
 | 18 | Swap the app folder for a link to another site's folder while the program runs, then restart | the running program still sees only its own folder (read through `/proc/<pid>/root`, its own mount namespace; `nsenter -m test` cannot run there under `NoExecPaths`); the restart is refused (`app_folder_not_real` in the journal of `celikpanel-sandbox@<unit name>`) and no mount's source folder (`FSROOT`) is the other site's; with the real folder back the unit starts again, and within 15 seconds of a stop no `/run/celikpanel-sandbox/<unit>` is left |
+| 19 | A Node.js site (alpha.127): another Node.js version, writing the runtime, the toolchains | The probe runs as the site's code through its start command (`render -what node-unit`, the Agent's renderer). A decoy version beside the site's must not be listed; the site's own `bin/node` must be reachable; a write into the runtime and a listing of `/opt/celikpanel/toolchains` must fail. Items 1–16 are judged under the Node.js unit too (14 is SKIP: npm needs `/bin/sh`) |
+| 20 | A Node.js site's install step `celikappinst-<id>` | `systemd-run` must accept the rendered arguments (`render -what node-install`); npm installs a project whose `postinstall` runs the probe once (`PROBE_ONCE`) and whose `build` runs node. No attempt may escape (mail ports on a host without the SMTP block count for item 9), the step must end `success`, and the build must have written its file |
 
 ## Running the probe as a real runtime app
 

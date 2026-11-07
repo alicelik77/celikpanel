@@ -32,7 +32,7 @@ func newTOTPSecurityPanel(t *testing.T) (*Panel, *paneldb.SQLiteDB, *core.User) 
 	if err != nil {
 		t.Fatalf(`open TOTP secret box: %v`, err)
 	}
-	hash, err := auth.HashPassword(`correct horse battery staple`)
+	hash, err := auth.HashPassword(`Correct horse battery staple`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestPasswordAndTOTPLoginReturnCanonicalEffectiveIdentity(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(
-			`{"username":"totp-user","password":"correct horse battery staple"}`,
+			`{"username":"totp-user","password":"Correct horse battery staple"}`,
 		))
 		panel.handleLogin(recorder, request)
 
@@ -231,7 +231,7 @@ func TestPasswordAndTOTPLoginReturnCanonicalEffectiveIdentity(t *testing.T) {
 
 		loginRecorder := httptest.NewRecorder()
 		loginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(
-			`{"username":"totp-user","password":"correct horse battery staple"}`,
+			`{"username":"totp-user","password":"Correct horse battery staple"}`,
 		))
 		panel.handleLogin(loginRecorder, loginRequest)
 		if loginRecorder.Code != http.StatusOK {
@@ -391,7 +391,7 @@ func TestTOTPSetupStoresOnlySealedSecret(t *testing.T) {
 	panel, database, user := newTOTPSecurityPanel(t)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/setup`, strings.NewReader(
-		`{"password":"correct horse battery staple"}`,
+		`{"password":"Correct horse battery staple"}`,
 	))
 	panel.handle2FASetup(recorder, request, user.ID)
 	if recorder.Code != http.StatusOK {
@@ -438,7 +438,7 @@ func TestTOTPSetupRejectsEnabledAccountWithoutMutation(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/setup`, strings.NewReader(
-		`{"password":"correct horse battery staple"}`,
+		`{"password":"Correct horse battery staple"}`,
 	))
 	panel.handle2FASetup(recorder, request, user.ID)
 	if recorder.Code != http.StatusConflict {
@@ -466,7 +466,7 @@ func TestLoginFailsClosedWhenTOTPReadFails(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/login`, strings.NewReader(
-		`{"username":"totp-user","password":"correct horse battery staple"}`,
+		`{"username":"totp-user","password":"Correct horse battery staple"}`,
 	))
 	panel.handleLogin(recorder, request)
 
@@ -504,7 +504,7 @@ func TestLoginFailsClosedForInvalidOrUnopenableTOTPSecret(t *testing.T) {
 			}
 			recorder := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/login`, strings.NewReader(
-				`{"username":"totp-user","password":"correct horse battery staple"}`,
+				`{"username":"totp-user","password":"Correct horse battery staple"}`,
 			))
 			panel.handleLogin(recorder, request)
 			if recorder.Code != http.StatusServiceUnavailable || !strings.Contains(recorder.Body.String(), errCodeAuthStatusUnavailable) {
@@ -647,7 +647,7 @@ func TestTOTPSetupIncrementsEpochAndRevokesPendingLogin(t *testing.T) {
 	}
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/setup`, strings.NewReader(
-		`{"password":"correct horse battery staple"}`,
+		`{"password":"Correct horse battery staple"}`,
 	))
 	panel.handle2FASetup(recorder, request, user.ID)
 	if recorder.Code != http.StatusOK {
@@ -680,7 +680,7 @@ func TestTOTPSetupIncrementsEpochAndRevokesPendingLogin(t *testing.T) {
 	}
 	enableRecorder := httptest.NewRecorder()
 	enableRequest := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/enable`, strings.NewReader(
-		fmt.Sprintf(`{"password":"correct horse battery staple","code":%q}`,
+		fmt.Sprintf(`{"password":"Correct horse battery staple","code":%q}`,
 			totpCodeForSecurityTest(t, setupResponse.Secret)),
 	))
 	panel.handle2FAEnable(enableRecorder, enableRequest, user.ID)
@@ -704,7 +704,7 @@ func TestTOTPSetupIncrementsEpochAndRevokesPendingLogin(t *testing.T) {
 	}
 	disableRecorder := httptest.NewRecorder()
 	disableRequest := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/disable`, strings.NewReader(
-		fmt.Sprintf(`{"password":"correct horse battery staple","code":%q}`,
+		fmt.Sprintf(`{"password":"Correct horse battery staple","code":%q}`,
 			totpCodeForSecurityTest(t, setupResponse.Secret)),
 	))
 	panel.handle2FADisable(disableRecorder, disableRequest, user.ID)
@@ -809,7 +809,7 @@ func TestTOTPStateChangesRevokeOldSessionsAndRotateCurrentBrowser(t *testing.T) 
 
 	setupRecorder := httptest.NewRecorder()
 	setupRequest := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/setup`, strings.NewReader(
-		`{"password":"correct horse battery staple"}`,
+		`{"password":"Correct horse battery staple"}`,
 	))
 	panel.handle2FASetup(setupRecorder, setupRequest, user.ID)
 	if setupRecorder.Code != http.StatusOK {
@@ -832,7 +832,7 @@ func TestTOTPStateChangesRevokeOldSessionsAndRotateCurrentBrowser(t *testing.T) 
 	}
 	enableRecorder := httptest.NewRecorder()
 	enableRequest := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/enable`, strings.NewReader(
-		fmt.Sprintf(`{"password":"correct horse battery staple","code":%q}`,
+		fmt.Sprintf(`{"password":"Correct horse battery staple","code":%q}`,
 			totpCodeForSecurityTest(t, setupResponse.Secret)),
 	))
 	panel.handle2FAEnable(enableRecorder, enableRequest, user.ID)
@@ -850,7 +850,7 @@ func TestTOTPStateChangesRevokeOldSessionsAndRotateCurrentBrowser(t *testing.T) 
 	}
 	disableRecorder := httptest.NewRecorder()
 	disableRequest := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/disable`, strings.NewReader(
-		fmt.Sprintf(`{"password":"correct horse battery staple","code":%q}`,
+		fmt.Sprintf(`{"password":"Correct horse battery staple","code":%q}`,
 			totpCodeForSecurityTest(t, setupResponse.Secret)),
 	))
 	panel.handle2FADisable(disableRecorder, disableRequest, user.ID)
@@ -891,7 +891,7 @@ func TestTOTPStateAndSessionRevocationRollbackTogether(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, `/api/v1/auth/2fa/setup`, strings.NewReader(
-		`{"password":"correct horse battery staple"}`,
+		`{"password":"Correct horse battery staple"}`,
 	))
 	panel.handle2FASetup(recorder, request, user.ID)
 	if recorder.Code != http.StatusInternalServerError {

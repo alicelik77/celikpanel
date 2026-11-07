@@ -13,6 +13,7 @@ import { useLocation } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import { MyPlanCard } from './MyPlanCard';
 import { TransferRequestCard } from './SubscriptionTransfer';
+import { PasswordInput } from './PasswordInput';
 
 // alpha.118 (W4): a reseller's or customer's own remote backup destinations,
 // or who can grant them. Its own chunk, fetched with this page.
@@ -433,12 +434,10 @@ function TwoFactorPanel() {
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <label className="space-y-1 text-sm font-medium text-fg">
                                         <span>{t('login.password')}</span>
-                                        <input
-                                            type="password"
+                                        <PasswordInput
                                             value={regenPw}
-                                            onChange={(e) => setRegenPw(e.target.value)}
+                                            onChange={setRegenPw}
                                             autoComplete="current-password"
-                                            className={inputClass}
                                         />
                                     </label>
                                     <label className="space-y-1 text-sm font-medium text-fg">
@@ -461,12 +460,10 @@ function TwoFactorPanel() {
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <label className="space-y-1 text-sm font-medium text-fg">
                                     <span>{t('login.password')}</span>
-                                    <input
-                                        type="password"
+                                    <PasswordInput
                                         value={disablePw}
-                                        onChange={(e) => setDisablePw(e.target.value)}
+                                        onChange={setDisablePw}
                                         autoComplete="current-password"
-                                        className={inputClass}
                                     />
                                 </label>
                                 <label className="space-y-1 text-sm font-medium text-fg">
@@ -521,12 +518,10 @@ function TwoFactorPanel() {
                             <p className="text-sm text-fg-muted">{t('settings.2fa.reauthHint')}</p>
                             <label className="block max-w-md space-y-1 text-sm font-medium text-fg">
                                 <span>{t('login.password')}</span>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     value={setupPw}
-                                    onChange={(e) => setSetupPw(e.target.value)}
+                                    onChange={setSetupPw}
                                     autoComplete="current-password"
-                                    className={inputClass}
                                 />
                             </label>
                             <Button variant="primary" icon={ShieldCheck} disabled={locked || !setupPw} onClick={startSetup}>

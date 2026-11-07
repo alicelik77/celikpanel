@@ -65,6 +65,33 @@ type CreateDatabaseResponse struct {
 	OwnedByOperation  bool   `json:"owned_by_operation,omitempty"`
 	CleanupIncomplete bool   `json:"cleanup_incomplete,omitempty"`
 	Error             string `json:"error,omitempty"`
+	// Refusal is set when nothing ran because the PostgreSQL cluster the
+	// statement would go to cannot take it (alpha.127): a typed, verified
+	// prerequisite, never an engine failure. Additive.
+	// Refusal, ifadenin gidecegi PostgreSQL kumesi onu alamadigi icin hicbir
+	// sey calismadiginda doludur: dogrulanmis onkosul, motor hatasi degil.
+	Refusal *DatabaseClusterRefusal `json:"refusal,omitempty"`
+}
+
+// DatabaseClusterRefusal says why a PostgreSQL cluster cannot take a
+// statement, in facts the panel turns into words: Reason "removed" (the
+// major's program was removed and its data kept), "stopped" (installed, not
+// running) or "none" (no cluster at all). Running names a cluster that does
+// run ("18 on port 5433"), when there is one.
+// DatabaseClusterRefusal, bir PostgreSQL kumesinin neden ifade alamadigini
+// olgularla soyler.
+type DatabaseClusterRefusal struct {
+	Reason         string `json:"reason"`
+	Version        string `json:"version,omitempty"`
+	Cluster        string `json:"cluster,omitempty"`
+	Port           int    `json:"port,omitempty"`
+	DataDirectory  string `json:"data_directory,omitempty"`
+	RunningVersion string `json:"running_version,omitempty"`
+	RunningPort    int    `json:"running_port,omitempty"`
+	// BackupVersion: a restore refused because the backup's PostgreSQL major
+	// (this) is not the database's cluster's (Version), reason
+	// "major_mismatch".
+	BackupVersion string `json:"backup_version,omitempty"`
 }
 
 type DeleteDatabaseRequest struct {
@@ -82,6 +109,8 @@ type DeleteDatabaseRequest struct {
 type DeleteDatabaseResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error,omitempty"`
+	// Refusal: as CreateDatabaseResponse.Refusal (alpha.127).
+	Refusal *DatabaseClusterRefusal `json:"refusal,omitempty"`
 }
 
 type ChangeDatabasePasswordRequest struct {

@@ -3,13 +3,12 @@ import { useNavigate, useSearchParams } from '../router';
 import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network } from 'lucide-react';
 import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
 import { KeptSiteRecords } from './KeptSiteRecords';
-import { showToast } from './Toast';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { useI18n } from '../i18n';
 import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, Spinner, StatusDot, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { DNSCheckToolNotice } from './DNSCheckToolNotice';
 import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
@@ -589,10 +588,10 @@ export function Domains() {
             }
             if (outcome.state === 'error') {
                 // The refusal and its fix stay at the top of the list until the
-                // next delete (owner feedback 2026-10-31); the toast carries the fix too.
+                // next delete (owner feedback 2026-10-31); it is said there, and
+                // in the window that asked, never again in a notice (useRefusal).
                 const apiError = await readApiError(res);
                 setDeleteRefusal(apiError);
-                showToast('error', refusalText(apiError, t, 'domains.deleteFailed'), refusalToast(apiError, t, navigate));
                 return { kind: 'failed', text: refusalText(apiError, t, 'domains.deleteFailed') };
             }
             setDeleteRefusal(null);

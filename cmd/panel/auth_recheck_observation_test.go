@@ -49,7 +49,7 @@ func TestAuthObservationLoginKeepsInvalidCredentialsIndistinguishable(t *testing
 		t.Fatal("invalid credentials became distinguishable")
 	}
 	p.users = &authzUserRepositoryOverride{UserRepository: p.users, errs: map[int]error{user.ID: errors.New("private canonical read error")}}
-	w := login(user.Username, "correct horse battery staple")
+	w := login(user.Username, "Correct horse battery staple")
 	if w.Code != 503 || !strings.Contains(w.Body.String(), errCodeAuthStatusUnavailable) || w.Header().Get("Set-Cookie") != "" || strings.Contains(w.Body.String(), "private canonical") {
 		t.Fatalf("canonical login read: %d %s", w.Code, w.Body.String())
 	}
@@ -61,7 +61,7 @@ func TestAuthObservationLoginKeepsInvalidCredentialsIndistinguishable(t *testing
 		t.Fatal(err)
 	}
 	for _, name := range []string{user.Username, "absent"} {
-		w := login(name, "correct horse battery staple")
+		w := login(name, "Correct horse battery staple")
 		if w.Code != 503 || !strings.Contains(w.Body.String(), errCodeAuthStatusUnavailable) || w.Header().Get("Set-Cookie") != "" {
 			t.Fatalf("DB failure for lookup: %d %s", w.Code, w.Body.String())
 		}

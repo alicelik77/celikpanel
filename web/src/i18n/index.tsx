@@ -76,133 +76,43 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 async function loadShell(locale: Locale): Promise<Catalog> {
+    // The screen-part list is fetched beside the shell; loadScreens awaits the
+    // same fetch (and reports its failure) once the shell is in.
+    // Ekran parçası listesi kabukla birlikte getirilir.
+    void screenPartList();
     if (locale === 'tr') {
         return (await import('./tr')).tr;
     }
     return (await import('./en')).en;
 }
 
-// The screen part is itself stored in several parts per locale, one directory
-// per group of screens under ./screens (setup, sites, siteConfig,
-// dnsCertificates, components, componentPages, mailDatabases, security,
-// dashboard, settings, errors, lifecycle; v0.1.0-alpha.97, componentPages since alpha.106, lifecycle since alpha.107, databaseClusters and vendorLanes since alpha.108, webmailAddress since alpha.110, setupWizard since alpha.111, setupRegistrar since alpha.113, setupJoin and setupLink since alpha.114, setupInspection with the automatic deletion check, dnsOverview since alpha.115, nginxDefaultHttps since alpha.113's nginx fixes, dnsPublication since the held-Agent reason, problems with the shared problem pattern, refusals with what refused changes say, accountAccess, siteFeatures, osUpdates (from lifecycle) and panelPort (from settings) since alpha.114, setupOwner with the owner's setup review, setupPublishing split out of setupLink, fileAccess, suspension, transfers, transferRotation and rights since alpha.117, planUsage (myPlan., usage.), appCatalog, siteTools, remoteBackup and serviceApps since alpha.118, guide and runtimeApps since alpha.119, hostName since alpha.121, removalRule since alpha.123, componentInstall since alpha.124, monitoring since alpha.126). That is a size split only - each part has its own budget
-// in web/scripts/check-bundle-budget.mjs - so every part is fetched in parallel
-// and merged before `screens` becomes true. No screen can render with only
-// some of them, and a part that fails fails the screen copy as a whole.
-// Adding a part means a line in each list below, in en.ts's ScreenKey, in
-// tests/locale-catalogue.mjs and in the budget script.
-//
-// Ekran parçası da her dil için ./screens altında ekran grubu başına bir
-// dizindedir. Bu yalnızca boyut bölünmesidir; bütün parçalar paralel getirilir
-// ve `screens` doğru olmadan önce birleştirilir. Bir parçanın hatası ekran
-// metninin tamamını başarısız sayar.
-// Each part module exports exactly one value, its catalogue object, so the
-// loaders stay one import each (the list is on the critical boot path).
-// Her parça modülü tek bir değer, katalog nesnesini dışa aktarır.
-const screenParts: Record<Locale, Array<() => Promise<Record<string, unknown>>>> = {
-    en: [
-        () => import('./screens/setup/en'),
-        () => import('./screens/sites/en'),
-        () => import('./screens/siteConfig/en'),
-        () => import('./screens/dnsCertificates/en'),
-        () => import('./screens/components/en'),
-        () => import('./screens/componentPages/en'),
-        () => import('./screens/mailDatabases/en'),
-        () => import('./screens/security/en'),
-        () => import('./screens/dashboard/en'),
-        () => import('./screens/settings/en'),
-        () => import('./screens/errors/en'),
-        () => import('./screens/lifecycle/en'),
-        () => import('./screens/databaseClusters/en'),
-        () => import('./screens/vendorLanes/en'),
-        () => import('./screens/webmailAddress/en'),
-        () => import('./screens/setupWizard/en'),
-        () => import('./screens/setupRegistrar/en'),
-        () => import('./screens/setupJoin/en'),
-        () => import('./screens/setupLink/en'),
-        () => import('./screens/setupInspection/en'),
-        () => import('./screens/dnsOverview/en'),
-        () => import('./screens/nginxDefaultHttps/en'),
-        () => import('./screens/dnsPublication/en'),
-        () => import('./screens/problems/en'),
-        () => import('./screens/refusals/en'),
-        () => import('./screens/accountAccess/en'),
-        () => import('./screens/siteFeatures/en'),
-        () => import('./screens/osUpdates/en'),
-        () => import('./screens/panelPort/en'),
-        () => import('./screens/setupOwner/en'),
-        () => import('./screens/setupPublishing/en'),
-        () => import('./screens/fileAccess/en'),
-        () => import('./screens/suspension/en'),
-        () => import('./screens/transfers/en'),
-        () => import('./screens/transferRotation/en'),
-        () => import('./screens/rights/en'),
-        () => import('./screens/emergency/en'),
-        () => import('./screens/planUsage/en'),
-        () => import('./screens/appCatalog/en'),
-        () => import('./screens/siteTools/en'),
-        () => import('./screens/remoteBackup/en'),
-        () => import('./screens/serviceApps/en'),
-        () => import('./screens/guide/en'),
-        () => import('./screens/runtimeApps/en'),
-        () => import('./screens/hostName/en'),
-        () => import('./screens/removalRule/en'),
-        () => import('./screens/componentInstall/en'),
-        () => import('./screens/monitoring/en'),
-    ],
-    tr: [
-        () => import('./screens/setup/tr'),
-        () => import('./screens/sites/tr'),
-        () => import('./screens/siteConfig/tr'),
-        () => import('./screens/dnsCertificates/tr'),
-        () => import('./screens/components/tr'),
-        () => import('./screens/componentPages/tr'),
-        () => import('./screens/mailDatabases/tr'),
-        () => import('./screens/security/tr'),
-        () => import('./screens/dashboard/tr'),
-        () => import('./screens/settings/tr'),
-        () => import('./screens/errors/tr'),
-        () => import('./screens/lifecycle/tr'),
-        () => import('./screens/databaseClusters/tr'),
-        () => import('./screens/vendorLanes/tr'),
-        () => import('./screens/webmailAddress/tr'),
-        () => import('./screens/setupWizard/tr'),
-        () => import('./screens/setupRegistrar/tr'),
-        () => import('./screens/setupJoin/tr'),
-        () => import('./screens/setupLink/tr'),
-        () => import('./screens/setupInspection/tr'),
-        () => import('./screens/dnsOverview/tr'),
-        () => import('./screens/nginxDefaultHttps/tr'),
-        () => import('./screens/dnsPublication/tr'),
-        () => import('./screens/problems/tr'),
-        () => import('./screens/refusals/tr'),
-        () => import('./screens/accountAccess/tr'),
-        () => import('./screens/siteFeatures/tr'),
-        () => import('./screens/osUpdates/tr'),
-        () => import('./screens/panelPort/tr'),
-        () => import('./screens/setupOwner/tr'),
-        () => import('./screens/setupPublishing/tr'),
-        () => import('./screens/fileAccess/tr'),
-        () => import('./screens/suspension/tr'),
-        () => import('./screens/transfers/tr'),
-        () => import('./screens/transferRotation/tr'),
-        () => import('./screens/rights/tr'),
-        () => import('./screens/emergency/tr'),
-        () => import('./screens/planUsage/tr'),
-        () => import('./screens/appCatalog/tr'),
-        () => import('./screens/siteTools/tr'),
-        () => import('./screens/remoteBackup/tr'),
-        () => import('./screens/serviceApps/tr'),
-        () => import('./screens/guide/tr'),
-        () => import('./screens/runtimeApps/tr'),
-        () => import('./screens/hostName/tr'),
-        () => import('./screens/removalRule/tr'),
-        () => import('./screens/componentInstall/tr'),
-        () => import('./screens/monitoring/tr'),
-    ],
-};
+// The screen parts (one directory per group of screens under ./screens) and
+// their loaders are listed in ./screenParts, fetched lazily beside the shell
+// catalogue (v0.1.0-alpha.127: the list itself left the critical boot path).
+// Every part is fetched in parallel and merged before `screens` becomes true;
+// a part that fails fails the screen copy as a whole.
+// Ekran parçaları ve yükleyicileri ./screenParts içindedir; kabuk kataloğuyla
+// birlikte tembel getirilir. Bir parçanın hatası ekran metninin tamamını
+// başarısız sayar.
+// One fetch is shared by the early start and loadScreens. A failed fetch is
+// forgotten, so the next load asks again; loadScreens, which awaits the same
+// promise, reports the failure as the screen copy's.
+// Erken başlatma ile loadScreens aynı getirmeyi paylaşır; başarısız getirme
+// unutulur ve hatayı loadScreens bildirir.
+let screenPartListLoad: Promise<typeof import('./screenParts')> | null = null;
+function screenPartList(): Promise<typeof import('./screenParts')> {
+    if (screenPartListLoad === null) {
+        const load = import('./screenParts');
+        screenPartListLoad = load;
+        load.then(undefined, () => {
+            if (screenPartListLoad === load) screenPartListLoad = null;
+        });
+    }
+    return screenPartListLoad;
+}
 
 async function loadScreens(locale: Locale): Promise<Catalog> {
+    const { screenParts } = await screenPartList();
     const loaded = await Promise.all(screenParts[locale].map((load) => load()));
     return Object.assign({}, ...loaded.map((part) => Object.values(part)[0] as Catalog));
 }

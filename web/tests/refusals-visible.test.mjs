@@ -84,12 +84,13 @@ export const Button = ({ loading, ...props }) => React.createElement('button', p
         Object.assign(console, saved);
         if (navigatorBefore) Object.defineProperty(globalThis, 'navigator', navigatorBefore); else delete globalThis.navigator;
     }
-    const { generatedPassword } = await import(dataURL(compile('../src/lib/generatedPassword.ts')));
-    const one = generatedPassword(), two = generatedPassword();
+    // One generator for every password field since alpha.127 (lib/passwordPolicy.ts).
+    const { generatePassword } = await import(dataURL(compile('../src/lib/passwordPolicy.ts')));
+    const one = generatePassword(), two = generatePassword();
     assert.equal(one.length, 20);
     assert.notEqual(one, two);
     assert.match(one, /^[A-Za-z0-9._-]+$/);
-    assert.doesNotMatch(read('../src/lib/generatedPassword.ts') + read('../src/components/AddDatabaseModalV2.tsx') + read('../src/components/AddUserModalV2.tsx'), /Math\.random/);
+    assert.doesNotMatch(read('../src/lib/passwordPolicy.ts') + read('../src/components/PasswordInput.tsx') + read('../src/components/AddDatabaseModalV2.tsx') + read('../src/components/AddUserModalV2.tsx'), /Math\.random/);
 });
 
 // Each screen named in the follow-up keeps a refusal on the page where it
@@ -103,9 +104,13 @@ test('refusals stay where they happened, with the server reason, on the named sc
     };
     for (const [file, key] of Object.entries(screens)) {
         const source = read(`../src/components/${file}`);
-        assert.ok(source.includes(`'${key}'`), `${file} names ${key}`);
+        assert.ok(source.includes(`'${key}'`) || source.includes(`"${key}"`), `${file} names ${key}`);
         assert.match(source, /<ErrorBanner[^>]*sentence=/, `${file} keeps the refusal on the page`);
-        assert.match(source, /refusalToast\(/, `${file} gives the toast its fix and code`);
+        // alpha.127 (owner rule "the same warning is never repeated"): the
+        // banner says the refusal, with its fix and code; no notice repeats it.
+        assert.doesNotMatch(source, /set\w*\([^;\n]*\);\s*(?:\/\/[^\n]*\n\s*)?showToast\('error', (?:refusalText|keys\[)/, `${file} repeats the banner's refusal in a notice`);
+        // Covers the alpha.127 weak-password case too (owner, 6 Nov 2026: a weak
+        // password was refused twice, in the banner and a notice).
         assert.doesNotMatch(source, /showToast\('error', t\('common\.error'\)\)/, `${file} says a bare "Something went wrong"`);
         assert.ok(enScreens[key] && trScreens[key], `${key} in both languages`);
     }
@@ -114,8 +119,10 @@ test('refusals stay where they happened, with the server reason, on the named sc
     const action = addons.slice(addons.indexOf('const runStoreAction'), addons.indexOf('const selectedSubscription'));
     assert.doesNotMatch(action, /setStoreError\(error\)/);
     assert.match(action, /setActionError\(\{ error, sentence \}\)/);
-    // Domain delete refusal keeps its fix: the toast gets navigate.
-    assert.match(read('../src/components/Domains.tsx'), /refusalToast\(apiError, t, navigate\)/);
+    // Domain delete refusal keeps its fix in its banner, said once.
+    const domains = read('../src/components/Domains.tsx');
+    assert.match(domains, /<ErrorBanner[^>]*error=\{deleteRefusal\}/);
+    assert.doesNotMatch(domains, /refusalToast\(apiError/);
 });
 
 test('the database screens and forms speak the catalogue, in both languages', () => {

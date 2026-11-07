@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -213,27 +214,35 @@ type nameserverFact struct {
 //
 // Tahmin edilen varsayılan, ancak kontrol edildiğinde güvenlidir. Kontrol budur.
 func verifyNameservers(ctx context.Context, hosts []string, serverIP, serverV6 string) []nameserverFact {
-	out := make([]nameserverFact, 0, len(hosts))
-	for _, h := range hosts {
+	// Each name is resolved at the same time (alpha.127): one slow name no
+	// longer delays the other.
+	// Her ad ayni anda cozulur; yavas bir ad digerini geciktirmez.
+	out := make([]nameserverFact, len(hosts))
+	var wg sync.WaitGroup
+	for index, h := range hosts {
 		// Keep the JSON contract stable on a fresh install or during a DNS
 		// outage. A nil slice is encoded as null, while every consumer expects
 		// an array it can safely inspect.
-		f := nameserverFact{Host: h, IPs: make([]string, 0)}
+		out[index] = nameserverFact{Host: h, IPs: make([]string, 0)}
 		if h == "" {
-			out = append(out, f)
 			continue
 		}
-		addrs, err := lookupNameserverHost(ctx, h, nameserverResolvers)
-		if err == nil {
+		wg.Add(1)
+		go func(f *nameserverFact) {
+			defer wg.Done()
+			addrs, err := lookupNameserverHost(ctx, f.Host, nameserverResolvers)
+			if err != nil {
+				return
+			}
 			f.IPs = addrs
 			for _, a := range addrs {
 				if (serverIP != "" && a == serverIP) || (serverV6 != "" && a == serverV6) {
 					f.PointsHere = true
 				}
 			}
-		}
-		out = append(out, f)
+		}(&out[index])
 	}
+	wg.Wait()
 	return out
 }
 

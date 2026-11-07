@@ -120,7 +120,12 @@ func (p *Panel) handleTeamMembers(w http.ResponseWriter, r *http.Request) {
 		if !invitationPassword(w, request.Invite, &request.Password) {
 			return
 		}
-		if err := validateTeamMemberIdentity(request.Username, request.Email, request.Password, request.Status, true); err != nil {
+		// An invited member's password is the unusable one made above; the
+		// person chooses theirs by the link, where the rule applies.
+		if err := validateTeamMemberIdentity(request.Username, request.Email, request.Password, request.Status, !request.Invite); err != nil {
+			if writePasswordRefusalIf(w, err) {
+				return
+			}
 			writeUsernameError(w, err)
 			return
 		}
@@ -208,7 +213,17 @@ func (p *Panel) handleTeamMemberByID(w http.ResponseWriter, r *http.Request) {
 				current, getErr := repository.GetByOwner(r.Context(), ownerID, memberID)
 				keeps = getErr == nil && current.Username == strings.TrimSpace(*request.Username)
 			}
-			if !keeps {
+			if keeps {
+				// The kept name is fine; the rest of the change (a new
+				// password among it) is still checked.
+				rest := request
+				rest.Username = nil
+				err = validateTeamMemberUpdateRequest(rest)
+			}
+			if err != nil {
+				if writePasswordRefusalIf(w, err) {
+					return
+				}
 				writeUsernameError(w, err)
 				return
 			}
@@ -256,6 +271,9 @@ func (p *Panel) handleTeamMemberByID(w http.ResponseWriter, r *http.Request) {
 		writeTeamMemberJSON(w, http.StatusOK, map[string]any{"team_member": member})
 
 	case http.MethodDelete:
+		// alpha.127: one real step (operation_steps.go).
+		reportOperationPlan(r.Context(), "delete")
+		reportOperationStep(r.Context(), "delete")
 		member, err := repository.Delete(r.Context(), ownerID, memberID)
 		if err != nil {
 			writeTeamMemberRepositoryError(w, err)
@@ -345,8 +363,11 @@ func validateTeamMemberIdentity(username, email, password, status string, passwo
 	if err != nil || address.Address != email {
 		return errors.New("invalid email address")
 	}
-	if passwordRequired && len(password) < minPasswordLen {
-		return errors.New("password must be at least 8 characters")
+	if passwordRequired {
+		// A *passwordpolicy.Error; the handler answers it as PASSWORD_WEAK.
+		if refusal := checkAccountPassword(password); refusal != nil {
+			return refusal
+		}
 	}
 	if status != "active" && status != "suspended" {
 		return errors.New("status must be active or suspended")
@@ -370,8 +391,10 @@ func validateTeamMemberUpdateRequest(request updateTeamMemberRequest) error {
 			return errors.New("invalid email address")
 		}
 	}
-	if request.Password != nil && len(*request.Password) < minPasswordLen {
-		return errors.New("password must be at least 8 characters")
+	if request.Password != nil {
+		if refusal := checkAccountPassword(*request.Password); refusal != nil {
+			return refusal
+		}
 	}
 	if request.Status != nil && *request.Status != "active" && *request.Status != "suspended" {
 		return errors.New("status must be active or suspended")

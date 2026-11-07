@@ -237,6 +237,9 @@ const (
 	// accountMailUsageNotice (alpha.118, D-044): a traffic or disk notice;
 	// its subject and body are written by usage_limits.go.
 	accountMailUsageNotice accountMailKind = "usage_notice"
+	// accountMailAlert (alpha.127): a monitoring alert; its subject and body
+	// are written by monitoring_alerts.go.
+	accountMailAlert accountMailKind = "monitoring_alert"
 )
 
 type accountMailContent struct {
@@ -264,7 +267,7 @@ func accountMailText(content accountMailContent, host string) (string, string) {
 	tr := content.lang == "tr"
 	user, inviter, link := content.username, content.inviter, content.link
 	switch content.kind {
-	case accountMailSecurityNotice, accountMailUsageNotice:
+	case accountMailSecurityNotice, accountMailUsageNotice, accountMailAlert:
 		return content.subject, content.body
 	case accountMailReset:
 		if tr {

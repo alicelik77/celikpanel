@@ -2,14 +2,18 @@ import { useState } from 'react';
 import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
-import type { TranslationKey } from '../i18n/en';
+import { readApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { Button, Checking, CouldNotCheck, ErrorBanner, RemoteGate, ResultUnknown } from './ui';
 import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib/remote';
 import { decodeDomainDatabases, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { AdminInstallLink } from './AdminInstallLink';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -61,12 +65,18 @@ function DBToolsCard({ capabilities }: { capabilities: CapabilitiesRemote }) {
                             {t('dbtools.open', { name: tl.label })}
                         </a>
                     ) : (
-                        <span
+                        // alpha.127: the administrator installs the tool from here
+                        // (its own install window); anyone else is told who does.
+                        // Yönetici aracı buradan kurar; diğerleri kimin kurduğunu okur.
+                        <AdminInstallLink
                             key={tl.id}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-fg-subtle"
-                        >
-                            {t('dbtools.install', { name: tl.label })}
-                        </span>
+                            component={tl.id}
+                            fallback={
+                                <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-fg-subtle">
+                                    {t('dbtools.install', { name: tl.label })}
+                                </span>
+                            }
+                        />
                     ),
                 )}
             </div>
@@ -142,21 +152,19 @@ export function DomainDatabaseManager({
 
     // A refusal stays on the page, with its fix, until the next change
     // succeeds (owner feedback 2026-10-31).
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
-    const refuse = (problem: ApiError, sentence: TranslationKey) => {
-        setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
-    };
+    // Said once, in the banner (useRefusal): no notice repeats it.
+    const { refusal, refuse, clear: clearRefusal } = useRefusal();
+    const passwordOK = passwordAcceptable(dbPassword, 'database_user');
 
     const handleCreateDatabase = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canCreate || dbType === null) return;
 
-        if (!dbName || !dbPassword) {
+        if (!dbName || !passwordOK) {
             showToast('error', t('ddb.namePasswordRequired'));
             return;
         }
-        setRefusal(null);
+        clearRefusal();
 
         setCreating(true);
         try {
@@ -217,14 +225,14 @@ export function DomainDatabaseManager({
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
         if (readOnly || list.remote.state !== 'known' || answer.holding) return;
         await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 try {
-                    const res = await fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, {
-                        method: 'DELETE'
-                    });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'dbDelete', ['check!', 'delete', 'records'], { name: db.name }), t, `dbDelete.${db.id}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/databases/${db.id}`, { method: 'DELETE', headers }));
 
                     if (res.ok) {
-                        setRefusal(null);
+                        clearRefusal();
                         showToast('success', t('ddb.deleted', { name: db.name }));
                         invalidate('databases');
                     } else {
@@ -326,12 +334,12 @@ export function DomainDatabaseManager({
 
                         <div>
                             <label className="block text-sm text-fg-muted mb-2">{t('ddb.password')}</label>
-                            <input
-                                type="password"
+                            <PasswordInput
+                                field="database_user"
                                 value={dbPassword}
-                                onChange={(e) => setDbPassword(e.target.value)}
+                                onChange={setDbPassword}
                                 placeholder={t('ddb.passwordPlaceholder')}
-                                className="w-full bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary"
+                                maxLength={128}
                                 required
                             />
                         </div>
@@ -339,7 +347,7 @@ export function DomainDatabaseManager({
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                disabled={creating || dbType === null || answer.holding}
+                                disabled={creating || dbType === null || answer.holding || !passwordOK}
                                 className="px-6 py-2 bg-success text-white rounded hover:bg-success disabled:opacity-50 flex items-center gap-2"
                             >
                                 <Database className="w-4 h-4" />

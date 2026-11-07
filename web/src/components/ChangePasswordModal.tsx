@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { KeyRound } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { readApiError, apiErrorText } from '../lib/apiError';
-import { Button, Dialog, inputClass } from './ui';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { passwordAcceptable } from '../lib/passwordPolicy';
+import { PasswordInput } from './PasswordInput';
+import { Button, Dialog, ErrorBanner } from './ui';
 
 // Self-service password change for the signed-in user; the current password
 // must be proven (the API enforces it too).
@@ -15,13 +17,15 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
     const [next, setNext] = useState('');
     const [next2, setNext2] = useState('');
     const [saving, setSaving] = useState(false);
+    // A refusal is said once, in the dialogue that stays open.
+    const [problem, setProblem] = useState<ApiError | null>(null);
+    const mismatch = next2 !== '' && next !== next2;
+    const ready = !saving && current !== '' && passwordAcceptable(next, 'account') && next === next2;
 
     const submit = async () => {
-        if (next !== next2) {
-            showToast('error', t('profile.mismatch'));
-            return;
-        }
+        if (!ready) return;
         setSaving(true);
+        setProblem(null);
         try {
             const res = await fetch('/api/v1/auth/password', {
                 method: 'POST',
@@ -29,17 +33,17 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                 body: JSON.stringify({ current_password: current, new_password: next }),
             });
             if (res.status === 403) {
-                showToast('error', t('profile.wrongCurrent'));
+                setProblem({ message: t('profile.wrongCurrent') });
                 return;
             }
             if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t));
+                setProblem(await readApiError(res));
                 return;
             }
             showToast('success', t('profile.changed'));
             onClose();
         } catch {
-            showToast('error', t('common.error'));
+            setProblem({ message: t('common.resultUnknown') });
         } finally {
             setSaving(false);
         }
@@ -56,7 +60,7 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             actions={
                 <>
                     <Button onClick={onClose}>{t('users.cancel')}</Button>
-                    <Button variant="primary" onClick={submit} disabled={saving || !current || next.length < 8}>
+                    <Button variant="primary" onClick={submit} disabled={!ready}>
                         {t('profile.changePassword')}
                     </Button>
                 </>
@@ -65,22 +69,25 @@ export function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                 <div className="space-y-3">
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('profile.current')}</span>
-                        <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} autoFocus />
+                        <PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" autoFocus />
                     </label>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('profile.new')}</span>
-                        <input type="password" value={next} onChange={(e) => setNext(e.target.value)} className={inputClass} />
+                        <PasswordInput field="account" value={next} onChange={setNext} onGenerated={setNext2} maxLength={1024} />
                     </label>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('profile.new2')}</span>
-                        <input
-                            type="password"
+                        <PasswordInput
                             value={next2}
-                            onChange={(e) => setNext2(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && submit()}
-                            className={inputClass}
+                            onChange={setNext2}
+                            autoComplete="new-password"
+                            maxLength={1024}
+                            aria-invalid={mismatch}
+                            onKeyDown={(e) => e.key === 'Enter' && void submit()}
                         />
                     </label>
+                    {mismatch && <p role="alert" className="text-xs text-danger">{t('profile.mismatch')}</p>}
+                    <ErrorBanner error={problem} />
                 </div>
         </Dialog>
     );

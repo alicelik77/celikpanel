@@ -141,6 +141,9 @@ func (p *Panel) runUsageRound(ctx context.Context) {
 	if _, err := p.measureDueDisks(ctx); err != nil {
 		log.Printf("[disk] %v", err)
 	}
+	if err := p.measureDueSiteDisks(ctx); err != nil {
+		log.Printf("[disk] sites: %v", err)
+	}
 	if err := p.evaluateDiskLimits(ctx); err != nil {
 		log.Printf("[disk] limits: %v", err)
 	}

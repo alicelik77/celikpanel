@@ -12,10 +12,12 @@ import { DatabaseAccountStrip } from './DatabaseAccountStrip';
 import { decodeList, invalidate, lastKnown, useRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { OnceOnlyNotice, ShownOnceSecret } from './OnceOnlyNotice';
-import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
 // Tek API yüzeyi (B1, 18 Tem): eski /api/v2 artık /api/v1 altında.
@@ -128,18 +130,20 @@ export function DatabaseManagementV2() {
     // A refused delete keeps the server's reason (a user that still has
     // grants…) on the page until the next change succeeds; a password the
     // server made up stays until it is closed (owner feedback 2026-10-31).
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    const { refusal, setRefusal } = useRefusal();
     const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        // Said once, in the banner (useRefusal): no notice repeats it.
         setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t, navigate));
     };
     const [secret, setSecret] = useState<CreatedSecret | null>(null);
 
     const handleDeleteDatabase = async (id: number, name: string) => {
         await confirmAction({ message: t('databases.confirmDeleteDb', { name }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 try {
-                    const res = await fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE' });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'dbDelete', ['check!', 'delete', 'records'], { name }), t, `dbDelete.${id}`,
+                        (headers) => fetch(`${API_BASE}/databases/${id}`, { method: 'DELETE', headers }));
                     if (!res.ok) { refuse(await readApiError(res), 'databases.deleteDbFailed'); return; }
                     setRefusal(null);
                     showToast('success', t('databases.dbDeleted'));
@@ -155,9 +159,10 @@ export function DatabaseManagementV2() {
 
     const handleDeleteUser = async (id: number, name: string) => {
         await confirmAction({ message: t('databases.confirmDeleteUser', { name }), confirmLabel: t('common.delete'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 try {
-                    const res = await fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE' });
+                    const res = await sendWithSteps(report, flowSteps(t, 'dbUserDelete', ['check!', 'delete', 'records'], { name }), t, `dbUserDelete.${id}`,
+                        (headers) => fetch(`${API_BASE}/database-users/${id}`, { method: 'DELETE', headers }));
                     if (!res.ok) { refuse(await readApiError(res), 'databases.deleteUserFailed'); return; }
                     setRefusal(null);
                     showToast('success', t('databases.userDeleted'));

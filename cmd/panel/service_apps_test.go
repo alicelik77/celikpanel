@@ -233,9 +233,9 @@ func (f serviceAppFixture) waitOperation(t *testing.T, id string) serviceAppOper
 	}
 }
 
-const n8nInstallBody = `{"app":"n8n","operation_id":"op-n8n-0001","owner_email":"owner@outsider.matrix.test","owner_password":"correct horse battery","confirm_replace":true}`
+const n8nInstallBody = `{"app":"n8n","operation_id":"op-n8n-0001","owner_email":"owner@outsider.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`
 
-const webuiInstallBody = `{"app":"open-webui","operation_id":"op-webui-0001","owner_email":"owner@customer.matrix.test","owner_password":"correct horse battery","confirm_replace":true}`
+const webuiInstallBody = `{"app":"open-webui","operation_id":"op-webui-0001","owner_email":"owner@customer.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`
 
 func TestServiceAppIsClosedUntilTheAdministratorOffersIt(t *testing.T) {
 	f := newServiceAppFixture(t)
@@ -322,7 +322,7 @@ func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 		t.Fatalf("the install ran %d prepares and %d activations", prepares, activates)
 	}
 	// n8n receives a bcrypt hash of the owner's password, never the password.
-	if !strings.HasPrefix(prepared.OwnerSecret, "$2a$") || strings.Contains(prepared.OwnerSecret, "correct horse") {
+	if !strings.HasPrefix(prepared.OwnerSecret, "$2a$") || strings.Contains(prepared.OwnerSecret, "Correct horse") {
 		t.Fatalf("owner secret: %q", prepared.OwnerSecret)
 	}
 	if prepared.Port < serviceapps.PortMin || prepared.AuxPort != prepared.Port+1 {
@@ -346,12 +346,12 @@ func TestServiceAppInstallIsOneOperationAndKeepsNoSecret(t *testing.T) {
 		if err := f.panel.db.GetDB().QueryRow(query).Scan(&text); err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(text, "correct horse") || strings.Contains(text, "$2a$") {
+		if strings.Contains(text, "Correct horse") || strings.Contains(text, "$2a$") {
 			t.Fatalf("a secret reached the database: %s", text)
 		}
 	}
 	// A second app on the same domain is refused.
-	wantStatus(t, f.as(t, 9704, http.MethodPost, path, `{"app":"n8n","owner_email":"a@b.cd","owner_password":"another long password","confirm_replace":true}`), http.StatusConflict, errCodeServiceApp)
+	wantStatus(t, f.as(t, 9704, http.MethodPost, path, `{"app":"n8n","owner_email":"a@b.cd","owner_password":"Another long password","confirm_replace":true}`), http.StatusConflict, errCodeServiceApp)
 
 	// Removal puts the site back as it was and keeps the data unless asked.
 	rec = f.as(t, 9704, http.MethodPost, "/api/v1/domains/9903/service-apps/uninstall", `{"operation_id":"op-n8n-remove","remove_data":true}`)
@@ -382,7 +382,7 @@ func TestServiceAppRefusedWhereTheOSCannotRunIt(t *testing.T) {
 	f.native.mu.Unlock()
 	f.offer(t, "open-webui")
 	rec := f.as(t, 9703, http.MethodPost, "/api/v1/domains/9902/service-apps/install",
-		`{"app":"open-webui","owner_email":"owner@customer.matrix.test","owner_password":"correct horse battery","confirm_replace":true}`)
+		`{"app":"open-webui","owner_email":"owner@customer.matrix.test","owner_password":"Correct horse battery","confirm_replace":true}`)
 	wantStatus(t, rec, http.StatusConflict, errCodeServiceApp)
 	if !strings.Contains(rec.Body.String(), `"reason":"os_unsupported"`) || !strings.Contains(rec.Body.String(), "Python 3.13") {
 		t.Fatalf("refusal: %s", rec.Body.String())

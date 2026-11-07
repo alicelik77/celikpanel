@@ -59,6 +59,8 @@ export const capabilitiesURL = compileSource('lib/hostingCapabilities.ts', (spec
 // Gelmeyen yanıt, kaybolan yanıt tanımını ve kimlik taşıyan rotaların listesini
 // istek kimliğiyle paylaşır: yine gönderilen modül.
 export const requestIdentityURL = compileSource('lib/requestIdentity.ts', unexpected('lib/requestIdentity.ts'));
+// alpha.127: a refusal said once, in its banner (lib/useRefusal.ts): the shipped hook.
+export const useRefusalURL = compileSource('lib/useRefusal.ts', unexpected('lib/useRefusal.ts'));
 export const lostAnswerURL = compileSource('lib/lostAnswer.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/lostAnswer.ts')(specifier)
 ));
@@ -158,6 +160,16 @@ confirmActionModule.registerConfirmHost(async (request) => {
   return true;
 });
 
+// alpha.127: the real steps of a change, read from the server while it runs
+// (lib/requestProgress.ts): the shipped module, with the shipped confirmation,
+// refusal reader and request identity.
+export const requestProgressURL = compileSource('lib/requestProgress.ts', (specifier) => (
+  specifier.endsWith('/apiError') ? apiErrorURL
+    : specifier.endsWith('/confirmAction') ? confirmActionURL
+      : specifier.endsWith('/requestIdentity') ? requestIdentityURL
+        : unexpected('lib/requestProgress.ts')(specifier)
+));
+
 // A part of a screen loaded lazily (`import('./X')`) is given a stand-in by the
 // test that mounts the screen: the compiled module, with that one import
 // pointed at `replacementURL`. Any other lazy import is left as it is.
@@ -171,10 +183,15 @@ export function replaceLazyImport(moduleURL, specifier, replacementURL) {
   return dataModule(replaced);
 }
 
+// alpha.127: the owner's password rule, read by every password field and form.
+export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
+
 export function sharedLayer(stubURL, extra = {}) {
   const uiURL = compileSource('components/ui.tsx', (specifier) => (
     specifier.endsWith('/apiError') ? apiErrorURL : stubURL
   ));
+  // alpha.127: the command copy box is the shipped one; it needs only useI18n.
+  const copyCommandURL = compileSource('components/CopyCommand.tsx', () => stubURL);
   const table = {
     '/lib/apiError': apiErrorURL,
     '/apiError': apiErrorURL,
@@ -204,15 +221,28 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/removalOperation': removalOperationURL,
     '/lib/installPlan': installPlanURL,
     '/lib/confirmAction': confirmActionURL,
+    '/lib/useRefusal': useRefusalURL,
+    '/lib/requestProgress': requestProgressURL,
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
+    '/lib/passwordPolicy': passwordPolicyURL,
     '/ui': uiURL,
+    '/CopyCommand': copyCommandURL,
     ...extra,
   };
   const resolve = (specifier) => {
     for (const [suffix, url] of Object.entries(table)) if (specifier.endsWith(suffix)) return url;
     return stubURL;
   };
+  // alpha.127: every password field is the shipped PasswordInput with the
+  // shipped rule. Its icons come from its own small stub, so a test's stub
+  // need not list them.
+  if (!extra['/PasswordInput']) {
+    const icons = dataModule(['Check', 'Copy', 'Eye', 'EyeOff', 'Wand2'].map((name) => `export const ${name} = () => null;`).join(' '));
+    table['/PasswordInput'] = compileSource('components/PasswordInput.tsx', (specifier) => (
+      specifier === 'lucide-react' ? icons : resolve(specifier)
+    ));
+  }
   // The firewall box left ServiceList.tsx for its own module in alpha.98; a
   // screen that mounted it inside the Components page still gets the real one.
   if (!extra['/FirewallPanel']) table['/FirewallPanel'] = compileSource('components/FirewallPanel.tsx', resolve);
@@ -229,6 +259,9 @@ export function sharedLayer(stubURL, extra = {}) {
   if (!extra['/RoundcubeUpdateFlow']) table['/RoundcubeUpdateFlow'] = compileSource('components/RoundcubeUpdateFlow.tsx', resolve);
   if (!extra['/VendorLaneDialog']) table['/VendorLaneDialog'] = compileSource('components/VendorLaneDialog.tsx', resolve);
   if (!extra['/NodePatches']) table['/NodePatches'] = compileSource('components/NodePatches.tsx', resolve);
+  // alpha.127: Node.js sites in the site sandbox (Components card, Hosting tab line).
+  if (!extra['/NodeSandboxCard']) table['/NodeSandboxCard'] = compileSource('components/NodeSandboxCard.tsx', resolve);
+  if (!extra['/NodeSiteSandbox']) table['/NodeSiteSandbox'] = compileSource('components/NodeSiteSandbox.tsx', resolve);
   // alpha.117 (D-043): the security emergency section of a component.
   if (!extra['/SecurityEmergency']) table['/SecurityEmergency'] = compileSource('components/SecurityEmergency.tsx', resolve);
   // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.

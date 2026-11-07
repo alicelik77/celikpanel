@@ -1,3 +1,4 @@
+import { CopyCommand } from './CopyCommand';
 import { useState } from 'react';
 import { AlertTriangle, Check, ExternalLink } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -40,10 +41,11 @@ export function usageNoticeText(notice: UsageNotice, t: Say): { title: string; b
                 title: t('usage.notice.traffic100Title', vars),
                 body: t(b.cause === 'pool' ? 'usage.notice.traffic100Pool' : forOthers ? 'usage.notice.traffic100Others' : 'usage.notice.traffic100', vars),
             };
+        // alpha.127: the administrator raises the pool; a reseller is told the administrator does.
         case 'pool_traffic_80':
-            return { title: t('usage.notice.pool80Title', vars), body: t('usage.notice.pool80', vars) };
+            return { title: t('usage.notice.pool80Title', vars), body: t(notice.audience === 'administrator' ? 'adminNext.pool80' : 'usage.notice.pool80', vars) };
         case 'pool_traffic_100':
-            return { title: t('usage.notice.pool100Title', vars), body: t('usage.notice.pool100', vars) };
+            return { title: t('usage.notice.pool100Title', vars), body: t(notice.audience === 'administrator' ? 'adminNext.pool100' : 'usage.notice.pool100', vars) };
         case 'disk_80':
             return { title: t('usage.notice.disk80Title', vars), body: t('usage.notice.disk80', vars) };
         case 'disk_100':
@@ -56,7 +58,10 @@ export function usageNoticeText(notice: UsageNotice, t: Say): { title: string; b
 }
 
 /** The signed-in person's unseen traffic and disk notices. */
-export function UsageNotices() {
+export function UsageNotices({ onOpenAccount }: {
+    /** alpha.127: opens an account's rights in place (the Users page passes it). */
+    onOpenAccount?: (username: string) => void;
+} = {}) {
     const { t } = useI18n();
     const read = useRemote(USAGE_NOTICES_URL, decodeUsageNotices);
     const [busy, setBusy] = useState(false);
@@ -99,6 +104,11 @@ export function UsageNotices() {
                             <span>{text.title}</span>
                         </p>
                         <p className="mt-1 max-w-[75ch]">{text.body}</p>
+                        {onOpenAccount && notice.audience === 'administrator' && notice.kind.startsWith('pool_') && notice.body.reseller && (
+                            <Button type="button" variant="primary" className="mt-2 mr-2 max-sm:min-h-11" onClick={() => onOpenAccount(notice.body.reseller!)} data-open-account={notice.body.reseller}>
+                                {t('adminNext.openRights', { name: notice.body.reseller })}
+                            </Button>
+                        )}
                         <Button type="button" icon={Check} className="mt-2 max-sm:min-h-11" onClick={() => void seen([notice.id])} disabled={busy}>{t('rights.notice.seen')}</Button>
                     </div>
                 );
@@ -195,6 +205,7 @@ export function UsageStatusCard() {
     const status = read.remote.value;
     const problems = usageStatusProblems(status);
     if (problems.length === 0) return null;
+    const logrotateMissing = t('usage.status.logrotateMissing');
     const lines: string[] = problems.filter((problem) => problem !== 'traffic_unknown').map((problem) => {
         switch (problem) {
             case 'traffic_collect':
@@ -219,7 +230,13 @@ export function UsageStatusCard() {
             {problems.includes('traffic_unknown') && <div className="mt-1"><TrafficNotCounted status={status} /></div>}
             {lines.length > 0 && (
                 <ul className="mt-2 list-disc pl-5">
-                    {lines.map((line) => <li key={line} className="max-w-[75ch]">{line}</li>)}
+                    {lines.map((line) => <li key={line} className="max-w-[75ch]">{line}
+                        {/* alpha.127: the command, ready to copy, for each system. / Her sistem için kopyalanmaya hazır komut. */}
+                        {line === logrotateMissing && <>
+                            <CopyCommand label={t('adminNext.onDebian')} command="sudo apt install logrotate" />
+                            <CopyCommand label={t('adminNext.onArch')} command="sudo pacman -Syu --needed logrotate" />
+                        </>}
+                    </li>)}
                 </ul>
             )}
             <p className="mt-2 text-xs text-fg-muted">{t('usage.status.resumes')}</p>

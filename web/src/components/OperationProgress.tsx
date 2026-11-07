@@ -41,7 +41,7 @@ const END_TITLE = {
     unknown: 'operation.unknown',
 } as const;
 
-export default function OperationProgress({ title, tone, steps, startedAt, end, onClose }: {
+export default function OperationProgress({ title, tone, steps, startedAt, end: said, onClose }: {
     title: string;
     tone?: 'default' | 'danger';
     steps: OperationStep[] | null;
@@ -50,6 +50,11 @@ export default function OperationProgress({ title, tone, steps, startedAt, end, 
     onClose: () => void;
 }) {
     const { t } = useI18n();
+    // A refusal at a check that runs before anything is changed is an unmet
+    // prerequisite, not a failure (D-024): nothing needs repairing.
+    const end: OperationEnd | null = said && said.state === 'failed' && steps?.some((step) => step.state === 'failed' && step.prerequisite)
+        ? { ...said, state: 'blocked' }
+        : said;
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         if (end) return;

@@ -1441,6 +1441,17 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the monitoring alerts (migration 65, alpha.127).
+        DROP TABLE site_uptime;
+        DROP INDEX idx_monitoring_alerts_opened;
+        DROP INDEX idx_monitoring_alerts_active_key;
+        DROP TABLE monitoring_alerts;
+        DROP INDEX idx_metrics_process_snapshots_ts;
+        DROP TABLE metrics_process_snapshots;
+        ALTER TABLE metrics_samples DROP COLUMN disk_write;
+        ALTER TABLE metrics_samples DROP COLUMN disk_read;
+        ALTER TABLE metrics_samples DROP COLUMN net_tx;
+        ALTER TABLE metrics_samples DROP COLUMN net_rx;
         -- Reverse the monitoring history (migration 64, alpha.126).
         DROP TABLE metrics_rollups;
         ALTER TABLE metrics_samples DROP COLUMN cpu_peak;

@@ -749,6 +749,46 @@ func TestRemovingASiteRemovesItsEmptyOwnerDirectory(t *testing.T) {
 	}
 }
 
+// alpha.126 notes: a deletion stuck on alpha.125 left an empty owner include
+// directory. The Agent's start sweeps only empty, real directories that no
+// site file or Panel-managed directory refers to.
+func TestSweepRemovesOnlyEmptyLeftoverOwnerDirectories(t *testing.T) {
+	h := newManagedVhostHarness(t)
+	live := managedTestData("live.example", managedVhostPlatforms[0].socket)
+	h.apply(h.item(live, transport.SiteFileTriggerCreate))
+
+	leftover := OwnerIncludeDir("gone.example")
+	withContent := OwnerIncludeDir("kept.example")
+	panelManaged := OwnerIncludeDir("managed.example")
+	for _, directory := range []string{leftover, withContent, panelManaged, PanelManagedDir("managed.example")} {
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeTestFile(t, withContent+"/owner.conf", "# the owner's\n", 0o644)
+	linkTarget := t.TempDir()
+	link := OwnerIncludeDir("link.example")
+	if err := os.Symlink(linkTarget, link); err != nil {
+		t.Fatal(err)
+	}
+
+	removed := SweepEmptyOwnerIncludeDirs()
+	if strings.Join(removed, ",") != "gone.example" {
+		t.Fatalf("removed = %v, want only gone.example", removed)
+	}
+	if _, err := os.Lstat(leftover); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the empty leftover stayed: %v", err)
+	}
+	for _, kept := range []string{OwnerIncludeDir(live.Domain), withContent, panelManaged, link, linkTarget} {
+		if _, err := os.Lstat(kept); err != nil {
+			t.Fatalf("%s was removed: %v", kept, err)
+		}
+	}
+	if again := SweepEmptyOwnerIncludeDirs(); len(again) != 0 {
+		t.Fatalf("second sweep removed %v", again)
+	}
+}
+
 func TestInspectionDiffIsBoundedAndHidesCredentials(t *testing.T) {
 	h := newManagedVhostHarness(t)
 	data := managedTestData("diff.example", managedVhostPlatforms[0].socket)

@@ -1051,5 +1051,10 @@ func (a *Agent) ProvePHPToolV1(req *transport.ProvePHPToolRequest, resp *transpo
 	}
 	defer finishStep()
 	*resp = provePHPToolWith(ctx, hostPHPToolProveOps(), tool, req.AllowFallback)
+	// alpha.127: right after its install, phpPgAdmin's server list names
+	// the running PostgreSQL clusters (never over the owner's edit).
+	if tool == phpToolPHPPgAdmin && req.AfterInstall {
+		resp.Warning = alignPHPPgAdminServers()
+	}
 	return nil
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Copy, RefreshCw, Download } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -7,7 +7,9 @@ import { Button, ErrorBanner, RemoteGate } from './ui';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { useRemote, useRefreshEvery } from '../lib/remote';
 import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
-import { confirmAction, type OperationReport } from '../lib/confirmAction';
+import { AdminInstallLink } from './AdminInstallLink';
+import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
+import { forget, remember, remembered } from '../lib/requestProgress';
 
 // WordPress tools of one site (alpha.118, docs/WORDPRESS-TOOLS.md): status,
 // verified updates with a backup first, the switch for automatic minor
@@ -91,11 +93,51 @@ function OperationGuidance({ op }: { op: WPOperation }) {
         case 'rolled_back':
             return <SiteToolGuidance tone="failure" reason={t('wpt.op.rolled_back', { detail })} who="you" next={t('wpt.op.rolledBackNext')}>{backup}</SiteToolGuidance>;
         default:
+            // alpha.127: a restore refused for a PostgreSQL prerequisite says
+            // which one (its own coded sentence, the server administrator acts),
+            // with the facts underneath; nothing of the backup was written.
+            if (op.code?.startsWith('WORDPRESS_RESTORE_PG_') && coded && coded !== `err.${op.code}`) {
+                return (
+                    <SiteToolGuidance tone="failure" reason={coded} who="administrator" next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}>
+                        {detail && <p className="text-xs text-fg-muted">{detail}</p>}
+                    </SiteToolGuidance>
+                );
+            }
             return (
                 <SiteToolGuidance tone="unknown" reason={t('wpt.op.needs_review', { detail })} who="you"
                     next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })} />
             );
     }
+}
+
+// The window's steps are the server's own durable status of the operation
+// (alpha.127): waiting for its turn, the backup made first, the update or the
+// copy, the restore when an update fails its check, and the end.
+// Pencerenin adımları, işlemin sunucudaki kalıcı durumudur.
+type WPStepID = 'start' | 'queued' | 'backing_up' | 'updating' | 'restoring' | 'cloning' | 'finish';
+const WP_ORDER: Record<'update' | 'clone', WPStepID[]> = {
+    update: ['start', 'queued', 'backing_up', 'updating', 'finish'],
+    clone: ['start', 'queued', 'cloning', 'finish'],
+};
+
+export function wordpressSteps(
+    t: ReturnType<typeof useI18n>['t'], kind: 'update' | 'clone', at: WPStepID, since: number,
+    ended: 'done' | 'failed' | 'unknown' | null, restored: boolean, target: string,
+): OperationStep[] {
+    const order = [...WP_ORDER[kind]];
+    if (restored) order.splice(order.indexOf('updating') + 1, 0, 'restoring');
+    const index = Math.max(0, order.indexOf(at));
+    return order.map((id, position) => {
+        const label = t(`opstep.wp.${id}` as TranslationKey, { target });
+        if (ended === 'done' || position < index) {
+            // The update that failed its check is the step that failed; the restore after it ran.
+            return { id, label, state: id === 'updating' && restored ? 'failed' as const : 'done' as const };
+        }
+        if (position > index) return { id, label, state: 'pending' as const };
+        if (ended === 'failed') return { id, label, state: 'failed' as const, note: t('opstep.stoppedHere') };
+        if (ended === 'unknown') return { id, label, state: 'waiting' as const, note: t('opstep.stepUnknown') };
+        return { id, label, state: 'running' as const, since };
+    });
 }
 
 export function WordPressToolsPanel({ domainId }: { domainId: number }) {
@@ -111,9 +153,10 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
     const [busy, setBusy] = useState(false);
     const [failure, setFailure] = useState<ApiError | null>(null);
 
-    // Starts an update or a copy and returns whether the server accepted it.
-    const start = async (path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void): Promise<boolean> => {
-        if (busy) return false;
+    // Starts an update or a copy; answers the operation the server accepted
+    // (its id, or '' when the answer named none), or null when it was refused.
+    const start = async (path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void): Promise<string | null> => {
+        if (busy) return null;
         setBusy(true);
         setFailure(null);
         try {
@@ -122,47 +165,128 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                 const problem = await readApiError(res);
                 setFailure(problem);
                 showToast('error', refusalText(problem, t, 'wpt.startFailed'));
-                return false;
+                return null;
+            }
+            let id = '';
+            try {
+                const answer = await res.json() as { operation_id?: unknown } | null;
+                if (typeof answer?.operation_id === 'string') id = answer.operation_id;
+            } catch {
+                // The change was accepted; which operation is read from the list.
+                id = '';
             }
             done?.();
             await state.retry();
-            return true;
+            return id;
         } finally {
             setBusy(false);
         }
     };
 
     // A confirmed update or copy runs in the locked progress window until the
-    // server's operation is no longer open (owner's firm order, 6 Nov 2026):
-    // first the start, then the server's own operation, read every 4 s (reads
-    // only). How it ended stays on the page (OperationGuidance).
+    // server's operation is no longer open (owner's firm order, 6 Nov 2026).
+    // The steps are the operation's own status, read every 4 s (reads only);
+    // the end says how it ended, who acts and the next step (D-024). The
+    // operation is kept in this tab's session, so a reload reopens the window.
     // Onaylanan güncelleme ya da kopya, sunucudaki işlem açık kaldıkça kilitli
-    // pencerede sürer; yalnız okunur.
-    const startAndFollow = async (report: OperationReport, path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void) => {
-        const since = Date.now();
-        report.steps([
-            { id: 'start', label: t('wpt.step.start'), state: 'running', since },
-            { id: 'run', label: t('wpt.step.run'), state: 'pending' },
-        ]);
-        if (!(await start(path, method, body, done))) return;
-        const running = Date.now();
-        report.steps([
-            { id: 'start', label: t('wpt.step.start'), state: 'done' },
-            { id: 'run', label: t('wpt.step.run'), state: 'running', since: running, note: t('wpt.step.runNote') },
-        ]);
+    // pencerede sürer; adımlar işlemin kendi durumudur. Yalnız okunur.
+    const sessionKey = `wp.${domainId}`;
+    const followRun = async (report: OperationReport, kind: 'update' | 'clone', id: string, target: string): Promise<OperationEnd | void> => {
+        let at: WPStepID = 'queued';
+        let since = Date.now();
+        let restored = false;
         let unknownSince: number | null = null;
-        for (;;) {
-            await new Promise((resolve) => window.setTimeout(resolve, 4000));
-            const read = await state.retry();
-            if (read.state === 'known') {
+        const show = (ended: 'done' | 'failed' | 'unknown' | null) => report.steps(wordpressSteps(t, kind, at, since, ended, restored, target));
+        show(null);
+        try {
+            for (;;) {
+                await new Promise((resolve) => window.setTimeout(resolve, 4000));
+                const read = await state.retry();
+                if (read.state !== 'known') {
+                    unknownSince ??= Date.now();
+                    if (Date.now() - unknownSince > 60_000) {
+                        show('unknown');
+                        return { state: 'unknown', reason: t('wpt.step.unread') };
+                    }
+                    continue;
+                }
                 unknownSince = null;
-                if (!read.value.operations.some((op) => op.open)) return;
-            } else {
-                unknownSince ??= Date.now();
-                if (Date.now() - unknownSince > 60_000) return { state: 'unknown' as const, reason: t('wpt.step.unread') };
+                const op = read.value.operations.find((item) => (id ? item.operation_id === id : item.kind === kind));
+                if (!op) {
+                    show('unknown');
+                    return { state: 'unknown', reason: t('wpt.step.unread') };
+                }
+                if (op.open) {
+                    const next: WPStepID = op.status === 'cloning' || op.status === 'updating' || op.status === 'backing_up' || op.status === 'restoring'
+                        ? op.status : 'queued';
+                    if (next === 'restoring') restored = true;
+                    if (next !== at) {
+                        at = next;
+                        since = Date.now();
+                    }
+                    show(null);
+                    continue;
+                }
+                const detail = op.detail ?? '';
+                const coded = op.code ? t(`err.${op.code}` as TranslationKey) : '';
+                const why = coded && coded !== `err.${op.code}` ? coded : detail;
+                if (op.status === 'applied') {
+                    at = 'finish';
+                    show('done');
+                    return { state: 'done', message: t('wpt.op.applied', { detail }) };
+                }
+                if (op.status === 'rolled_back') restored = true;
+                if (op.status === 'failed' || op.status === 'rolled_back') {
+                    show('failed');
+                    return {
+                        state: 'failed',
+                        reason: op.status === 'failed'
+                            ? `${t('wpt.op.failed', { detail: why })} ${t('wpt.op.failedNext')}`
+                            : `${t('wpt.op.rolled_back', { detail })} ${t('wpt.op.rolledBackNext')}`,
+                    };
+                }
+                show('unknown');
+                return { state: 'unknown', reason: `${t('wpt.op.needs_review', { detail })} ${t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}` };
             }
+        } finally {
+            forget(sessionKey);
         }
     };
+
+    const startAndFollow = async (report: OperationReport, path: 'update' | 'clone', method: 'POST' | 'PUT', body: unknown, done?: () => void, target = '') => {
+        const since = Date.now();
+        report.steps(wordpressSteps(t, path, 'start', since, null, false, target));
+        const id = await start(path, method, body, done);
+        if (id === null) {
+            report.steps(wordpressSteps(t, path, 'start', since, 'failed', false, target));
+            return;
+        }
+        remember(sessionKey, id, { kind: path, target });
+        return followRun(report, path, id, target);
+    };
+
+    // An update or copy this tab started and the page reloaded during: the
+    // window reopens at the operation's status while it is still open.
+    // Sayfa yenilenirken süren işlem, açık kaldıkça yeniden izlenir.
+    const resumed = useRef(false);
+    useEffect(() => {
+        if (resumed.current || !known) return;
+        resumed.current = true;
+        const kept = remembered(sessionKey);
+        if (!kept) return;
+        const op = known.operations.find((item) => item.operation_id === kept.id);
+        if (!op?.open) {
+            forget(sessionKey);
+            return;
+        }
+        const kind = kept.context.kind === 'clone' ? 'clone' : 'update';
+        const target = kept.context.target ?? '';
+        void followOperation({
+            progressTitle: kind === 'clone' ? t('wpt.step.cloneTitle', { target }) : t('wpt.step.pluginsTitle'),
+            action: (report) => followRun(report, kind, kept.id, target),
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [known]);
 
     return (
         <section className="mt-6 border-t border-border pt-6" aria-labelledby={`wpt-${domainId}`}>
@@ -175,7 +299,12 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                     const s = value.status;
                     if (value.project_type !== 'php') return <p className="text-sm text-fg-muted">{t('wpt.notPHP')}</p>;
                     if (s.code === 'WORDPRESS_PHP_CLI_MISSING') {
-                        return <SiteToolGuidance tone="prerequisite" reason={t('wpt.phpMissing')} who="administrator" next={t('wpt.phpMissingNext')} resumes={t('wpt.phpMissingResumes')} />;
+                        // alpha.127: the administrator opens PHP-FPM's page, where the site's version is installed again.
+                        return (
+                            <SiteToolGuidance tone="prerequisite" reason={t('wpt.phpMissing')} who="administrator" next={t('wpt.phpMissingNext')} resumes={t('wpt.phpMissingResumes')}>
+                                <AdminInstallLink to="/components/php-fpm" label={t('adminNext.openPHPFPM')} />
+                            </SiteToolGuidance>
+                        );
                     }
                     if (!s.detected) return <SiteToolGuidance tone="prerequisite" reason={t('wpt.notDetected')} who="you" next={t('wpt.notDetectedNext')} />;
                     const latest = value.operations[0];
@@ -272,7 +401,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                         <Button icon={Copy} disabled={locked || target === ''}
                                             onClick={() => {
                                                 const name = targets.remote.state === 'known' ? targets.remote.value.find((c) => String(c.domain_id) === target)?.domain ?? '' : '';
-                                                void confirmAction({ message: t('wpt.clone.confirm', { target: name }), tone: 'danger', progressTitle: t('wpt.step.cloneTitle', { target: name }), action: (report) => startAndFollow(report, 'clone', 'POST', { target_domain_id: Number(target) }, () => setTarget('')) });
+                                                void confirmAction({ message: t('wpt.clone.confirm', { target: name }), tone: 'danger', progressTitle: t('wpt.step.cloneTitle', { target: name }), action: (report) => startAndFollow(report, 'clone', 'POST', { target_domain_id: Number(target) }, () => setTarget(''), name) });
                                             }}>
                                             {t('wpt.clone.start')}
                                         </Button>

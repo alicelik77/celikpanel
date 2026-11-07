@@ -121,7 +121,13 @@ func (a *Agent) RemoveDatabaseAdminAccount(
 			resp.Error = "CelikPanel could not compose the statement to remove its own account"
 			return nil
 		}
-		if output, err := postgreSQLExecStatement(
+		// alpha.127: the cluster the panel's record names; 0 is the running one.
+		run, err := postgreSQLStatementFor(req.Port)
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+		if output, err := run(
 			fmt.Sprintf("DROP ROLE IF EXISTS %s;", ident),
 		); err != nil {
 			resp.Error = hostcmd.Fail(

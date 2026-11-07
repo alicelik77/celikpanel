@@ -16,6 +16,8 @@ import { BrandMark } from './BrandMark';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { Spinner } from './ui';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 // The page a reset, invitation or confirmation link opens (v0.1.0-alpha.114,
 // P6). It needs no session. The token is read from the fragment and removed
@@ -36,8 +38,6 @@ type Phase =
     | { kind: 'refused'; text: string }
     | { kind: 'unknown' }
     | { kind: 'missing' };
-
-const fieldClass = 'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-fg outline-none transition-shadow focus:border-primary';
 
 export function AccountLinkPage() {
     const { t, screensReady } = useI18n();
@@ -81,7 +81,7 @@ export function AccountLinkPage() {
 
     const save = async (event: FormEvent) => {
         event.preventDefault();
-        if (phase.kind !== 'form' || password.length < 8 || password !== repeat || !token) return;
+        if (phase.kind !== 'form' || !passwordAcceptable(password, 'account') || password !== repeat || !token) return;
         const username = phase.username;
         setFormProblem('');
         setPhase({ kind: 'saving', username });
@@ -94,8 +94,8 @@ export function AccountLinkPage() {
                 return;
             }
             const problem = await readApiError(res);
-            // A too-short or too-long password leaves the link usable.
-            if (problem.code === 'account_password_too_short' || problem.code === 'account_password_too_long') {
+            // A password the rule refuses leaves the link usable.
+            if (problem.code === 'PASSWORD_WEAK') {
                 setFormProblem(apiErrorText(problem, t));
                 setPhase({ kind: 'form', username });
                 return;
@@ -163,20 +163,20 @@ export function AccountLinkPage() {
                                     <input type="text" name="username" autoComplete="username" value={phase.username} readOnly hidden />
                                     <label className="block">
                                         <span className="mb-1.5 block text-sm font-medium text-fg-muted">{t('acct.link.password')}</span>
-                                        <input type="password" autoComplete="new-password" autoFocus value={password} maxLength={1024}
-                                            disabled={phase.kind === 'saving'} onChange={(e) => setPassword(e.target.value)} className={fieldClass} />
+                                        <PasswordInput field="account" autoComplete="new-password" autoFocus value={password} maxLength={1024}
+                                            disabled={phase.kind === 'saving'} onChange={setPassword} onGenerated={setRepeat} />
                                     </label>
                                     <label className="block">
                                         <span className="mb-1.5 block text-sm font-medium text-fg-muted">{t('acct.link.repeat')}</span>
-                                        <input type="password" autoComplete="new-password" value={repeat} maxLength={1024}
-                                            disabled={phase.kind === 'saving'} onChange={(e) => setRepeat(e.target.value)} className={fieldClass} />
+                                        <PasswordInput autoComplete="new-password" value={repeat} maxLength={1024}
+                                            disabled={phase.kind === 'saving'} onChange={setRepeat} />
                                     </label>
                                     {mismatch && <p role="alert" className="text-sm text-danger">{t('acct.link.mismatch')}</p>}
                                     {formProblem && <p role="alert" className="text-sm text-danger">{formProblem}</p>}
                                     <p className="text-xs text-fg-subtle">{t(purpose === 'invitation' ? 'acct.link.hintInvitation' : 'acct.link.hint')}</p>
                                     <button
                                         type="submit"
-                                        disabled={phase.kind === 'saving' || password.length < 8 || password !== repeat}
+                                        disabled={phase.kind === 'saving' || !passwordAcceptable(password, 'account') || password !== repeat}
                                         className="w-full rounded-lg bg-primary px-3 py-2.5 font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         {phase.kind === 'saving' ? t('acct.link.saving') : t('acct.link.save')}

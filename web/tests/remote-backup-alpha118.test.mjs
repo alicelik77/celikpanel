@@ -179,7 +179,7 @@ test('the new right follows ssh, as on the server, with its name in both languag
 test('secrets are typed into password fields and never echoed; the host key is never accepted by itself', () => {
   const editor = read('../src/components/RemoteBackupDestinations.tsx');
   for (const field of ['secret', 'password']) {
-    assert.match(editor, new RegExp(`id=\\{id\\('${field}'\\)\\} type="password"`), `${field} is not a password field`);
+    assert.match(editor, new RegExp(`<PasswordInput id=\\{id\\('${field}'\\)\\}`), `${field} is not a password field`);
   }
   assert.match(editor, /<textarea id=\{id\('key'\)\}[\s\S]{0,300}autoComplete="off"/);
   // The fingerprint goes back only from the "matches" button.
@@ -326,14 +326,15 @@ test('mounted: an SFTP key is sent back only after "The fingerprint matches"; no
   const act2 = (fn) => act(async () => { await fn(); await settled(); });
   const textOf = (node) => node.children.map((child) => (typeof child === 'string' ? child : textOf(child))).join('');
   const button = (label) => tree.root.findAllByType('button').find((node) => textOf(node).includes(label));
-  const type = (id, value) => tree.root.findByProps({ id }).props.onChange({ target: { value, checked: value } });
+  const host = (id) => tree.root.findAll((node) => typeof node.type === 'string' && node.props.id === id)[0];
+  const type = (id, value) => host(id).props.onChange({ target: { value, checked: value } });
   try {
     await act2(async () => { tree = Renderer.create(React.createElement(RemoteBackupDestinations, { admin: false })); });
     await act2(() => button('[rbak.add]').props.onClick());
     await act2(() => tree.root.findAll((node) => node.type === 'input' && node.props.value === 'sftp')[0].props.onChange());
     await act2(() => { type('rbak-form-name', 'Office'); type('rbak-form-host', 'backup.example.com'); type('rbak-form-user', 'u'); type('rbak-form-path', '/b'); type('rbak-form-password', 'secret-pw'); });
-    assert.equal(tree.root.findByProps({ id: 'rbak-form-password' }).props.type, 'password');
-    assert.equal(tree.root.findByProps({ id: 'rbak-form-passphrase' }).props.type, 'password');
+    assert.equal(host('rbak-form-password').props.type, 'password');
+    assert.equal(host('rbak-form-passphrase').props.type, 'password');
     await act2(() => button('[rbak.test]').props.onClick());
     assert.equal(posts.length, 1);
     assert.equal(posts[0].body.host_key_fingerprint, undefined, 'a key was confirmed without a person');

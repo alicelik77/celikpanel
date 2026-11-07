@@ -17,11 +17,11 @@ import { readFileSync } from 'node:fs';
 // parçaya dairdir; bu yüzden testler hepsini tek katalog olarak okur.
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-// Every part of the screen half, in load order. index.tsx must load each one.
-// Ekran yarısının her parçası; index.tsx her birini yüklemelidir.
+// Every part of the screen half, in load order. src/i18n/screenParts.ts must load each one.
+// Ekran yarısının her parçası; screenParts.ts her birini yüklemelidir.
 export const screenParts = [
   'setup', 'sites', 'siteConfig', 'dnsCertificates', 'components', 'componentPages',
-  'mailDatabases', 'security', 'dashboard', 'settings', 'errors', 'lifecycle', 'databaseClusters', 'vendorLanes', 'webmailAddress', 'setupWizard', 'setupRegistrar', 'setupJoin', 'setupLink', 'setupInspection', 'dnsOverview', 'nginxDefaultHttps', 'dnsPublication', 'problems', 'refusals', 'accountAccess', 'siteFeatures', 'osUpdates', 'panelPort', 'setupOwner', 'setupPublishing', 'fileAccess', 'suspension', 'transfers', 'transferRotation', 'rights', 'emergency', 'planUsage', 'appCatalog', 'siteTools', 'remoteBackup', 'serviceApps', 'guide', 'runtimeApps', 'hostName', 'removalRule', 'componentInstall', 'monitoring',
+  'mailDatabases', 'security', 'dashboard', 'settings', 'errors', 'lifecycle', 'databaseClusters', 'vendorLanes', 'webmailAddress', 'setupWizard', 'setupRegistrar', 'setupJoin', 'setupLink', 'setupInspection', 'dnsOverview', 'nginxDefaultHttps', 'dnsPublication', 'problems', 'refusals', 'accountAccess', 'siteFeatures', 'osUpdates', 'panelPort', 'setupOwner', 'setupPublishing', 'fileAccess', 'suspension', 'transfers', 'transferRotation', 'rights', 'emergency', 'planUsage', 'appCatalog', 'siteTools', 'remoteBackup', 'serviceApps', 'guide', 'runtimeApps', 'hostName', 'removalRule', 'componentInstall', 'monitoring', 'passwords', 'adminNext', 'nodeSandbox', 'opsteps',
 ];
 
 const capitalised = (part) => part[0].toUpperCase() + part.slice(1);
@@ -38,8 +38,8 @@ export const screenPartExport = (part, locale) => `${locale}${capitalised(part)}
 export const englishScreens = screenCatalogueFiles.en.map(read).join('');
 export const turkishScreens = screenCatalogueFiles.tr.map(read).join('');
 
-export const englishCatalogue = read('../src/i18n/en.ts') + englishScreens + read('../src/i18n/setupDNS/en.ts');
-export const turkishCatalogue = read('../src/i18n/tr.ts') + turkishScreens + read('../src/i18n/setupDNS/tr.ts');
+export const englishCatalogue = read('../src/i18n/en.ts') + englishScreens + read('../src/i18n/setupDNS/en.ts') + read('../src/i18n/monitoringAlerts/en.ts');
+export const turkishCatalogue = read('../src/i18n/tr.ts') + turkishScreens + read('../src/i18n/setupDNS/tr.ts') + read('../src/i18n/monitoringAlerts/tr.ts');
 
 // Every screen part merged, as the provider merges them. enServerScreens and
 // trServerScreens are the same merged objects under the names tests used when

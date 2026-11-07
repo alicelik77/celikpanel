@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/core"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -35,7 +34,9 @@ import (
 // which an administrator is explicitly allowed to do here.
 // databaseAdminAccountAlphabet, ekrandan okunup baska bir yere yazilirken
 // birbirine karistirilabilecek karakterleri icermez.
-const databaseAdminAccountAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+// It carries -_. so the password meets the owner's rule (6 Nov 2026); none
+// of them is mistaken for another character either.
+const databaseAdminAccountAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789" + passwordpolicy.GeneratedSpecials
 
 // databaseAdminAccountPasswordLength gives about 232 bits over the alphabet
 // above. This credential is never typed by a person under time pressure and
@@ -51,16 +52,11 @@ const databaseAdminAccountPasswordLength = 40
 // generateDatabaseAdminPassword, crypto/rand'dan cizer ve tam cizemedigi bir
 // parolayi dondurmeyi reddeder.
 func generateDatabaseAdminPassword() (string, error) {
-	limit := big.NewInt(int64(len(databaseAdminAccountAlphabet)))
-	password := make([]byte, databaseAdminAccountPasswordLength)
-	for i := range password {
-		index, err := rand.Int(rand.Reader, limit)
-		if err != nil {
-			return "", fmt.Errorf("generate database admin password: %w", err)
-		}
-		password[i] = databaseAdminAccountAlphabet[index.Int64()]
+	password, err := passwordpolicy.GenerateFrom(databaseAdminAccountAlphabet, databaseAdminAccountPasswordLength)
+	if err != nil {
+		return "", fmt.Errorf("generate database admin password: %w", err)
 	}
-	return string(password), nil
+	return password, nil
 }
 
 // newSealedDatabaseAdminPassword draws a password and seals it, and refuses to
@@ -277,6 +273,9 @@ func (p *Panel) handleRevealDatabaseAdminAccountPassword(w http.ResponseWriter, 
 //
 // handleRemoveDatabaseAdminAccount, panelin hesabini motordan kaldirir.
 func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.Request) {
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "remove", "records")
+	reportOperationStep(r.Context(), "check")
 	server, ok := p.loadDatabaseServerForAdminAccount(w, r)
 	if !ok {
 		return
@@ -297,8 +296,9 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 	}
 
 	var resp transport.RemoveDatabaseAdminAccountResponse
+	reportOperationStep(r.Context(), "remove")
 	if err := p.callAgentContext(r.Context(), "Agent.RemoveDatabaseAdminAccount",
-		&transport.RemoveDatabaseAdminAccountRequest{Engine: server.TypeName},
+		&transport.RemoveDatabaseAdminAccountRequest{Engine: server.TypeName, Port: databaseAdminAccountPort(server)},
 		&resp); err != nil {
 		writeServerError(w, err)
 		return
@@ -311,6 +311,7 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 	server.AdminUsername = ""
 	server.AdminPasswordEncrypted = ""
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
+	reportOperationStep(r.Context(), "records")
 	if err := serverRepo.Update(r.Context(), server); err != nil {
 		writeServerError(w, err)
 		return
@@ -368,9 +369,11 @@ func (p *Panel) recordEngineVersion(server *core.DatabaseServer) {
 // claimed and an engine an administrator asked about end up in exactly the
 // same state.
 //
-// It skips a server that already has an account and a server on another
-// machine, and it stops at the first engine it cannot do, so the caller's log
-// line names something true rather than the last of several failures.
+// It skips a server that already has an account, a server on another
+// machine and a retired one. A server it cannot do does not stop the others
+// (alpha.127: a PostgreSQL record of a removed version's cluster kept every
+// later record of the running cluster without an account); the first failure
+// is returned, so the caller's log line names something true.
 //
 // provisionDatabaseAdminAccountsFor, autodiscovery'nin az once kaydettigi
 // motorlarda panelin hesabini acar. Yukaridaki isleyiciyle ayni istir.
@@ -378,13 +381,14 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 	ctx context.Context, subscriptionID int, engines []string,
 ) error {
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
+	var first error
 	for _, engine := range engines {
 		servers, err := serverRepo.ListByType(ctx, subscriptionID, engine)
 		if err != nil {
 			return fmt.Errorf("find the %s server that was just registered: %w", engine, err)
 		}
 		for _, server := range servers {
-			if !databaseEngineIsOnThisMachine(server.Host) {
+			if !databaseEngineIsOnThisMachine(server.Host) || server.Status == "retired" {
 				continue
 			}
 			if strings.TrimSpace(server.AdminUsername) != "" {
@@ -399,10 +403,19 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 				&transport.ProvisionDatabaseAdminAccountRequest{
 					Engine: engine, Password: password, Port: databaseAdminAccountPort(server),
 				}, &resp); err != nil {
-				return err
+				if agentUnreachableAlone(err) {
+					return err
+				}
+				if first == nil {
+					first = err
+				}
+				continue
 			}
 			if !resp.Provisioned {
-				return fmt.Errorf("%s", resp.Error)
+				if first == nil {
+					first = fmt.Errorf("%s", resp.Error)
+				}
+				continue
 			}
 			server.AdminUsername = resp.Username
 			server.AdminPasswordEncrypted = sealed
@@ -412,7 +425,7 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 			}
 		}
 	}
-	return nil
+	return first
 }
 
 // databaseAdminAccountPort is the cluster a PostgreSQL record is (alpha.108:

@@ -118,6 +118,9 @@ type phpToolView struct {
 	FPMState    string                  `json:"fpm_state"`
 	ProofFailed bool                    `json:"proof_failed"`
 	ProofCause  *transport.PHPToolCause `json:"proof_cause,omitempty"`
+	// PGServers (alpha.127, phpPgAdmin): the PostgreSQL servers it names
+	// against the clusters that run.
+	PGServers *transport.PHPPgAdminServers `json:"pg_servers,omitempty"`
 }
 
 // phpVersionUsage says who uses one installed PHP-FPM version.
@@ -180,6 +183,7 @@ func phpToolsView(ctx context.Context, p *Panel, bindings transport.PHPToolBindi
 			FPMState:          binding.FPMState,
 			ProofFailed:       binding.ProofFailed,
 			ProofCause:        binding.ProofCause,
+			PGServers:         binding.PGServers,
 		})
 	}
 	for _, version := range bindings.Versions {

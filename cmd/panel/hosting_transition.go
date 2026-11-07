@@ -143,6 +143,9 @@ type hostingRuntimeState struct {
 }
 
 func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, domainID int) {
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "switch")
+	reportOperationStep(r.Context(), "check")
 	var req hostingSettings
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
@@ -257,6 +260,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	ctx, cancel := hostingDurableContext(r.Context())
 	defer cancel()
 	previous, previousErr := p.loadHostingRuntimeState(ctx, domainID)
+	reportOperationStep(ctx, "switch")
 	appPort, err := p.transitionHostingWithPolicy(ctx, domainID, req, phpPolicy)
 	switch {
 	case err == nil:
@@ -274,7 +278,7 @@ func (p *Panel) handleUpdateHosting(w http.ResponseWriter, r *http.Request, doma
 	case errors.Is(err, errHostingPortInUse):
 		writeClientError(w, http.StatusConflict, "the selected application port is already assigned")
 	case errors.Is(err, errHostingPHPMissing):
-		writeHostingPHPRefusal(w, errCodePHPRequired, "/components",
+		writeHostingPHPRefusal(w, errCodePHPRequired, adminInstallAction(r, "php-fpm"),
 			"PHP-FPM is not installed on this server, so the site was not switched to PHP. Nothing was changed. "+
 				"The server administrator installs PHP-FPM from Components, then the site is switched to PHP again.")
 	case errors.As(err, new(*hostingPHPWithdrawnError)):

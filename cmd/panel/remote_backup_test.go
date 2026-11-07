@@ -226,7 +226,7 @@ func newRemoteFixture(t *testing.T) remoteFixture {
 		id, _ := res.LastInsertId()
 		return int(id)
 	}
-	f := remoteFixture{passphrase: "correct horse battery staple", secretKey: "very-secret-storage-key-123"}
+	f := remoteFixture{passphrase: "Correct horse battery staple", secretKey: "very-secret-storage-key-123"}
 	f.adminID = mustID(`INSERT INTO users (username,password_hash,email,role) VALUES ('rb-admin','x','a@example.test','admin')`)
 	f.resellerID = mustID(`INSERT INTO users (username,password_hash,email,role) VALUES ('rb-reseller','x','r@example.test','reseller')`)
 	f.customerID = mustID(`INSERT INTO users (username,password_hash,email,role,parent_id) VALUES ('rb-customer','x','c@example.test','customer',?)`, f.resellerID)

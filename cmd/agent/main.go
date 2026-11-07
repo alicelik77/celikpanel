@@ -773,6 +773,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create nginx generator: %v", err)
 	}
+	// alpha.127: empty owner include directories that a site deletion left
+	// before alpha.126 (a deletion stuck on alpha.125). Only empty, real
+	// directories no site file refers to; before the RPC service starts, so
+	// no site write races it.
+	if removed := services.SweepEmptyOwnerIncludeDirs(); len(removed) > 0 {
+		log.Printf(
+			"site include directories: removed %d empty directories left by deleted sites: %s",
+			len(removed), strings.Join(removed, ", "),
+		)
+	}
 
 	// Initialize PHP-FPM Manager
 	phpMgr, err := services.NewPHPFPMManager()

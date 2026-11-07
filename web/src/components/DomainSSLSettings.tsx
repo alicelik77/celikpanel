@@ -4,7 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Button, Checking, CouldNotCheck, ErrorBanner, Field, FormActions, FormSection, ResultUnknown, inputClass } from './ui';
 import type { TranslationKey } from '../i18n/en';
-import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
 import { CertificateReachNotice } from './CertificateReachNotice';
 import { certificateReachGate, decodeCertificateReach, type CertificateReachGate } from '../lib/certificateNames';
@@ -13,7 +13,9 @@ import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/sslRenewal';
-import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { confirmAction, followOperation } from '../lib/confirmAction';
+import { flowSteps, followRequestProgress, resumeRequestProgress, sendWithSteps, sslIssueSteps } from '../lib/requestProgress';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -337,6 +339,21 @@ export function DomainSSLSettings({
         return loadSSLData();
     };
 
+    // A certificate request this tab sent and the page reloaded during: the
+    // locked window reopens at the server's step and says how it ended (reads only).
+    // Bu sekmenin gönderdiği ve sayfa yenilenirken süren istek yeniden izlenir.
+    useEffect(() => {
+        resumeRequestProgress({
+            key: `ssl.${domainId}`,
+            labels: (kept) => sslIssueSteps(t, domainName, kept.authority ?? provider),
+            t,
+            progressTitle: () => t('opstep.ssl.title', { name: domainName }),
+            refusedSentence: 'ssl.issueFailed',
+            ended: () => { void loadSSLData(); },
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [domainId]);
+
     // allowNotPointed: the owner states the names are behind a proxy such as
     // Cloudflare. Only the "not pointed here" check is skipped, by the server
     // too; a failure is then the certificate authority's own answer.
@@ -361,14 +378,17 @@ export function DomainSSLSettings({
                       : 'ssl.issueConfirm';
         const authority = providers.find((candidate) => candidate.id === provider)?.name ?? provider;
         await confirmAction({ message: t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }),
-            action: async () => {
+            progressTitle: t('opstep.ssl.title', { name: domainName }),
+            action: async (report) => {
                 setIssuing(true);
                 setIssueFailure(null);
                 setActionRefusal(null);
+                // The server's own steps, read while the request runs (alpha.127).
+                const progress = followRequestProgress(report, sslIssueSteps(t, domainName, authority), t, `ssl.${domainId}`, { authority });
                 try {
                     const res = await issueAnswer.send(`/api/v1/domains/${domainId}/ssl/letsencrypt`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...progress.headers },
                         body: JSON.stringify({
                             email,
                             auto_renew: autoRenew,
@@ -380,6 +400,7 @@ export function DomainSSLSettings({
                             ...(allowNotPointed ? { allow_not_pointed: true } : {}),
                         }),
                     });
+                    progress.settle(res);
                     // No result of its own: the notice is up and the certificate is
                     // being read again.
                     // Kendi sonucu yok: bildirim açıldı, sertifika yeniden okunuyor.
@@ -417,8 +438,7 @@ export function DomainSSLSettings({
                         }
                         // Kept on the page beside the form too (owner feedback 2026-10-31).
                         const sentence: TranslationKey = isReissue ? 'ssl.reissueFailed' : 'ssl.issueFailed';
-                        setActionRefusal({ problem: apiError, sentence });
-                        showToast('error', refusalText(apiError, t, sentence), refusalToast(apiError, t));
+                        setActionRefusal({ problem: apiError, sentence }); // said once, in the banner
                         return;
                     }
                     // Issued and stored, but the site's configuration file is the
@@ -445,6 +465,7 @@ export function DomainSSLSettings({
                     // Yanıt geldi ama yanıt olarak okunamadı.
                     issueAnswer.lose(undefined, 'asked');
                 } finally {
+                    progress.settle(null);
                     setEabKid('');
                     setEabHmac('');
                     setIssuing(false);
@@ -464,7 +485,8 @@ export function DomainSSLSettings({
             return;
         }
         await confirmAction({ message: t(isReplacement ? 'ssl.replaceCertificateConfirm' : 'ssl.uploadConfirm', { name: domainName }),
-            action: async () => {
+            progressTitle: t('opstep.ssl.title', { name: domainName }),
+            action: async (report) => {
                 const targetDomainId = domainId;
                 setUploading(true);
                 try {
@@ -472,7 +494,9 @@ export function DomainSSLSettings({
                     fd.append('certificate', certFile);
                     fd.append('private_key', keyFile);
                     if (chainFile) fd.append('chain', chainFile);
-                    const res = await fetch(`/api/v1/domains/${domainId}/ssl/upload`, { method: 'POST', body: fd });
+                    // The server's own steps (alpha.127).
+                    const res = await sendWithSteps(report, flowSteps(t, 'sslUpload', ['validate!', 'install', 'reload', 'mail']), t, `sslUpload.${domainId}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/ssl/upload`, { method: 'POST', body: fd, headers }));
                     if (!res.ok) {
                         const apiError = await readApiError(res);
                         if (
@@ -494,8 +518,7 @@ export function DomainSSLSettings({
                             await loadSSLData();
                             return;
                         }
-                        setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' });
-                        showToast('error', refusalText(apiError, t, 'ssl.uploadFailed'), refusalToast(apiError, t));
+                        setActionRefusal({ problem: apiError, sentence: 'ssl.uploadFailed' }); // said once, in the banner
                         return;
                     }
                     showToast('success', t('ssl.uploaded'));
@@ -554,12 +577,15 @@ export function DomainSSLSettings({
         const targetDomainId = domainId;
         secureMailMutationBusyRef.current = true;
         setSecureMailBusy(true);
+        // Runs in the locked progress window with the server's steps (alpha.127).
+        await followOperation({ progressTitle: t('opstep.mailCert.title', { name: domainName }), action: async (report) => {
         try {
-            const res = await fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secure_mail: nextSecureMail }),
-            });
+            const res = await sendWithSteps(report, flowSteps(t, 'mailCert', ['check!', 'mail_tls', 'tlsa'], { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
+                (headers) => fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...headers },
+                    body: JSON.stringify({ secure_mail: nextSecureMail }),
+                }));
             if (!res.ok) {
                 const apiError = await readApiError(res);
                 if (currentDomainIdRef.current === targetDomainId) {
@@ -577,6 +603,9 @@ export function DomainSSLSettings({
             secureMailMutationBusyRef.current = false;
             setSecureMailBusy(false);
         }
+        } });
+        secureMailMutationBusyRef.current = false;
+        setSecureMailBusy(false);
     };
 
     const handleAutoRenewChange = async (nextAutoRenew: boolean) => {
@@ -647,11 +676,12 @@ export function DomainSSLSettings({
             return;
         }
         await confirmAction({ message: t('ssl.confirmRemove', { name: domainName }), confirmLabel: t('common.remove'), tone: 'danger',
-            action: async () => {
+            action: async (report) => {
                 const targetDomainId = domainId;
                 setRemoving(true);
                 try {
-                    const res = await fetch(`/api/v1/domains/${domainId}/ssl`, { method: 'DELETE' });
+                    const res = await sendWithSteps(report, flowSteps(t, 'sslRemove', ['detach', 'reload', 'mail']), t, `sslRemove.${domainId}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/ssl`, { method: 'DELETE', headers }));
                     if (!res.ok) {
                         const apiError = await readApiError(res);
                         showToast('error', apiErrorText(apiError, t, 'common.error'));
@@ -1033,11 +1063,9 @@ export function DomainSSLSettings({
                                         <input value={eabKid} onChange={(e) => setEabKid(e.target.value)} className={inputClass} autoComplete="off" />
                                     </Field>
                                     <Field label={t('ssl.eabHmac')}>
-                                        <input
-                                            type="password"
+                                        <PasswordInput
                                             value={eabHmac}
-                                            onChange={(e) => setEabHmac(e.target.value)}
-                                            className={inputClass}
+                                            onChange={setEabHmac}
                                             autoComplete="new-password"
                                         />
                                     </Field>

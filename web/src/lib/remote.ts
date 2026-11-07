@@ -282,6 +282,42 @@ export function refreshRemote(url: string): void {
     if (entry) void read(url, entry, true);
 }
 
+// --- An answer the server is still checking again (alpha.127) ---------------
+//
+// A slow proof (the DNS pair, a main DNS server) is served as its last
+// verified answer while the server checks it again behind the screen; the
+// answer then says `rechecking`. The screen shows it at once and reads again
+// shortly, only while the tab is visible and at most RECHECK_READS times, so
+// the newer answer replaces it without a page refresh. It only reads: a
+// reread can never repeat a change, and the server runs one check however
+// often it is asked.
+// Sunucu yavas bir kaniti arkada yeniden kontrol ederken son dogrulanmis yanit
+// gelir (`rechecking`); ekran onu hemen gosterir ve kisa sure sonra yeniden
+// okur. Yalniz okur; hicbir degisikligi tekrarlamaz.
+export const RECHECK_READ_MS = 4_000;
+export const RECHECK_READS = 6;
+
+// `answerAt` is when the shown answer arrived: each new answer that is still
+// rechecking schedules the next read.
+export function useRereadWhileRechecking(rechecking: boolean, answerAt: number | undefined, reread: () => void): void {
+    const rereads = useRef(0);
+    const latest = useRef(reread);
+    latest.current = reread;
+    useEffect(() => {
+        if (!rechecking) {
+            rereads.current = 0;
+            return;
+        }
+        if (rereads.current >= RECHECK_READS) return;
+        const timer = window.setTimeout(() => {
+            if (document.visibilityState !== 'visible') return;
+            rereads.current += 1;
+            latest.current();
+        }, RECHECK_READ_MS);
+        return () => window.clearTimeout(timer);
+    }, [rechecking, answerAt]);
+}
+
 // --- Reads named by what they show (alpha.114) ------------------------------
 //
 // The owner's rule of 31 Oct 2026: no change may need a page refresh. A change

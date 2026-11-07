@@ -167,7 +167,7 @@ func TestMailMutationsRejectDomainDeletionPending(t *testing.T) {
 	}{
 		{
 			name: "add account", method: http.MethodPost, target: "/mail/accounts",
-			body:    `{"address":"new@example.com","password":"long-enough","quota_mb":200}`,
+			body:    `{"address":"new@example.com","password":"Long-enough","quota_mb":200}`,
 			handler: panel.handleAddEmailAccount,
 		},
 		{
@@ -180,7 +180,7 @@ func TestMailMutationsRejectDomainDeletionPending(t *testing.T) {
 		},
 		{
 			name: "update password", method: http.MethodPut, target: "/mail/accounts/password",
-			body: `{"id":6201,"new_password":"replacement-password"}`, handler: panel.handleUpdateEmailPassword,
+			body: `{"id":6201,"new_password":"Replacement-password"}`, handler: panel.handleUpdateEmailPassword,
 		},
 		{
 			name: "add forwarding", method: http.MethodPost, target: "/mail/forwardings",
@@ -269,7 +269,7 @@ func TestUpdateEmailPasswordSuccessUsesStoredIdentityAndAuditsWithoutSecret(t *t
 	t.Cleanup(func() { buildCommit = previousCommit })
 
 	request := httptest.NewRequest(http.MethodPut, "/mail/accounts/password",
-		strings.NewReader(`{"id":6401,"new_password":"replacement-password"}`))
+		strings.NewReader(`{"id":6401,"new_password":"Replacement-password"}`))
 	request = request.WithContext(context.WithValue(request.Context(), callerKey, &Caller{
 		ID: 6101, Role: roleAdmin, AccountType: core.AccountTypeAccount,
 	}))
@@ -282,14 +282,14 @@ func TestUpdateEmailPasswordSuccessUsesStoredIdentityAndAuditsWithoutSecret(t *t
 	if got := response.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control=%q, want no-store", got)
 	}
-	if body := response.Body.String(); strings.Contains(body, "replacement-password") ||
+	if body := response.Body.String(); strings.Contains(body, "Replacement-password") ||
 		strings.Contains(strings.ToLower(body), "user@example.com") {
 		t.Fatalf("sensitive identity leaked in response: %s", body)
 	}
 	calls := agent.passwordCallState()
 	if len(calls) != 1 || calls[0].ExpectedBuildCommit != "mail-password-panel-test" ||
 		calls[0].Email != "user@example.com" ||
-		calls[0].NewPassword != "replacement-password" {
+		calls[0].NewPassword != "Replacement-password" {
 		t.Fatalf("password calls=%+v", calls)
 	}
 	var passwordHash string
@@ -314,7 +314,7 @@ func TestUpdateEmailPasswordSuccessUsesStoredIdentityAndAuditsWithoutSecret(t *t
 		t.Fatalf("audit=%q/%q/%d user=%d", action, resourceType, resourceID, userID)
 	}
 	if strings.Contains(strings.ToLower(action), "user@example.com") ||
-		strings.Contains(action, "replacement-password") {
+		strings.Contains(action, "Replacement-password") {
 		t.Fatalf("sensitive identity leaked in audit action: %q", action)
 	}
 }
@@ -356,9 +356,9 @@ func TestUpdateEmailPasswordRejectsInvalidBodiesBeforeAgent(t *testing.T) {
 		body string
 	}{
 		{name: "malformed", body: `{"id":6401,`},
-		{name: "unknown field", body: `{"id":6401,"new_password":"replacement-password","email":"other@example.com"}`},
-		{name: "trailing value", body: `{"id":6401,"new_password":"replacement-password"} {}`},
-		{name: "missing id", body: `{"new_password":"replacement-password"}`},
+		{name: "unknown field", body: `{"id":6401,"new_password":"Replacement-password","email":"other@example.com"}`},
+		{name: "trailing value", body: `{"id":6401,"new_password":"Replacement-password"} {}`},
+		{name: "missing id", body: `{"new_password":"Replacement-password"}`},
 		{name: "short password", body: `{"id":6401,"new_password":"short"}`},
 		{name: "long password", body: `{"id":6401,"new_password":"` + strings.Repeat("x", transport.MaxMailboxPasswordBytes+1) + `"}`},
 		{name: "carriage return"},
@@ -399,7 +399,7 @@ func TestUpdateEmailPasswordHidesUnknownAndCrossDomainAccounts(t *testing.T) {
 	for index, accountID := range []int{6403, 999999} {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPut, "/mail/accounts/password",
-			strings.NewReader(`{"id":`+strconv.Itoa(accountID)+`,"new_password":"replacement-password"}`))
+			strings.NewReader(`{"id":`+strconv.Itoa(accountID)+`,"new_password":"Replacement-password"}`))
 		panel.handleUpdateEmailPassword(response, request, domainID)
 		if response.Code != http.StatusNotFound {
 			t.Fatalf("id=%d status=%d body=%s", accountID, response.Code, response.Body.String())
@@ -443,14 +443,14 @@ func TestUpdateEmailPasswordRequiresPositiveAgentConfirmationAndSanitizesErrors(
 
 			response := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodPut, "/mail/accounts/password",
-				strings.NewReader(`{"id":6401,"new_password":"replacement-password"}`))
+				strings.NewReader(`{"id":6401,"new_password":"Replacement-password"}`))
 			panel.handleUpdateEmailPassword(response, request, domainID)
 			if response.Code != http.StatusInternalServerError {
 				t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 			}
-			if strings.Contains(response.Body.String(), "replacement-password") ||
+			if strings.Contains(response.Body.String(), "Replacement-password") ||
 				strings.Contains(strings.ToLower(response.Body.String()), "user@example.com") ||
-				strings.Contains(logs.String(), "replacement-password") ||
+				strings.Contains(logs.String(), "Replacement-password") ||
 				strings.Contains(strings.ToLower(logs.String()), "user@example.com") {
 				t.Fatalf("sensitive value leaked: body=%q logs=%q", response.Body.String(), logs.String())
 			}
@@ -513,7 +513,7 @@ func TestAddEmailAccountRejectsCrossTenantAddressBeforeAgent(t *testing.T) {
 	agent := &mailMutationPanelAgent{addApplied: true}
 	panel, domainID := newMailMutationPanel(t, agent)
 	request := httptest.NewRequest(http.MethodPost, "/mail/accounts",
-		strings.NewReader(`{"address":"user@evil.test","password":"long-enough","quota_mb":100}`))
+		strings.NewReader(`{"address":"user@evil.test","password":"Long-enough","quota_mb":100}`))
 	response := httptest.NewRecorder()
 
 	panel.handleAddEmailAccount(response, request, domainID)
@@ -537,7 +537,7 @@ func TestAddEmailAccountRollsBackWhenAgentDoesNotConfirm(t *testing.T) {
 	agent := &mailMutationPanelAgent{addApplied: false}
 	panel, domainID := newMailMutationPanel(t, agent)
 	request := httptest.NewRequest(http.MethodPost, "/mail/accounts",
-		strings.NewReader(`{"address":"user","password":"long-enough","quota_mb":100}`))
+		strings.NewReader(`{"address":"user","password":"Long-enough","quota_mb":100}`))
 	response := httptest.NewRecorder()
 
 	panel.handleAddEmailAccount(response, request, domainID)
@@ -643,7 +643,7 @@ func TestAddEmailAccountThatAlreadyExistsIsATypedConflict(t *testing.T) {
 	}
 	for _, address := range []string{"user", "user@example.com", "USER@example.com"} {
 		request := httptest.NewRequest(http.MethodPost, "/mail/accounts",
-			strings.NewReader(`{"address":"`+address+`","password":"long-enough","quota_mb":100}`))
+			strings.NewReader(`{"address":"`+address+`","password":"Long-enough","quota_mb":100}`))
 		response := httptest.NewRecorder()
 		panel.handleAddEmailAccount(response, request, domainID)
 		if response.Code != http.StatusConflict {

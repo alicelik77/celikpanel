@@ -18,7 +18,7 @@ func TestUbuntu2204SandboxIsTheSameAsUbuntu2404(t *testing.T) {
 	if !reflect.DeepEqual(a, b) || a.Level != LevelReduced || !reflect.DeepEqual(a.Gaps, []Gap{GapBPF}) {
 		t.Fatalf("22.04 %+v, 24.04 %+v", a, b)
 	}
-	for _, kind := range []Kind{KindProgram, KindPython, KindServiceApp} {
+	for _, kind := range []Kind{KindProgram, KindPython, KindServiceApp, KindNode} {
 		p := programProfile()
 		p.Kind, p.Level = kind, LevelReduced
 		for _, render := range []func(Profile, Caps) ([]string, error){Directives, TransientDirectives} {

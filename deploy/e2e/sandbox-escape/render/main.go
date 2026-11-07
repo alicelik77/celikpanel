@@ -8,6 +8,12 @@
 //	render -what caps
 //	render -what egress|guard-script|guard-service|guard-timer|bind-template
 //	render -what unit -unit celikrt-990001.service -kind program -user u -appdir D -port 30990 -exec "D/bin/probe"
+//	render -what node-unit -site 990004 -user u -appdir D/public_html -port 34993 -version 22.11.0 -command "..."
+//	render -what node-install -site 990004 -user u -appdir D/public_html -version 22.11.0 [-build]
+//
+// node-unit is a Node.js site's unit exactly as the Agent writes it
+// (nodesite.RenderUnit, alpha.127); node-install prints systemd-run's
+// arguments for the site's install step, one per line.
 package main
 
 import (
@@ -18,6 +24,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/nodesite"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
 )
 
@@ -33,6 +40,10 @@ func main() {
 	memory := flag.Int("memory", 256, "MemoryMax in MB")
 	tasks := flag.Int("tasks", 64, "TasksMax")
 	cpu := flag.Int("cpu", 50, "CPUQuota percent")
+	site := flag.Int("site", 0, "node-unit, node-install: the site id (celikapp-<id>)")
+	version := flag.String("version", "", "node-unit, node-install: the Node.js version under /opt/celikpanel/runtimes/node")
+	command := flag.String("command", "", "node-unit: the start command (a shell command line)")
+	build := flag.Bool("build", false, "node-install: run npm run build --if-present afterwards")
 	flag.Parse()
 
 	caps := sitesandbox.Probe(context.Background(), sitesandbox.HostRunner{})
@@ -61,6 +72,26 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Print(text)
+	case "node-unit":
+		text, err := nodesite.RenderUnit(nodesite.Params{SiteID: *site, Domain: "sandbox-escape.test", User: *user, Group: *user,
+			AppDir: *appDir, Port: *port, NodeVersion: *version, Command: *command, Caps: caps,
+			DropInDir: "/etc/systemd/system/" + nodesite.UnitName(*site) + ".d"})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "render:", err)
+			os.Exit(1)
+		}
+		fmt.Println("# Site sandbox escape-test unit (deploy/e2e/sandbox-escape). Remove after the run.")
+		fmt.Print(text)
+	case "node-install":
+		args, err := nodesite.InstallRunArgs(nodesite.InstallParams{SiteID: *site, Domain: "sandbox-escape.test", User: *user, Group: *user,
+			AppDir: *appDir, NodeVersion: *version, Build: *build, Caps: caps})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "render:", err)
+			os.Exit(1)
+		}
+		for _, arg := range args {
+			fmt.Println(arg)
+		}
 	default:
 		flag.Usage()
 		os.Exit(2)

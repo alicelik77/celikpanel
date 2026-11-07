@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,6 +46,9 @@ func validateDatabaseIdentity(database backupspec.DatabaseIdentity) (backupspec.
 	default:
 		return backupspec.DatabaseIdentity{}, errors.New("unsupported database type")
 	}
+	if err := validDatabaseCluster(database); err != nil {
+		return backupspec.DatabaseIdentity{}, err
+	}
 	return database, nil
 }
 
@@ -78,10 +82,15 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 		return backupCommand{}, err
 	}
 	if database.Type == "postgresql" {
-		return backupCommand{
-			Name: "sudo",
-			Args: []string{"-u", "postgres", "pg_dump", "--no-owner", "--no-privileges", "--dbname", database.Name},
-		}, nil
+		args := []string{"-u", "postgres", "pg_dump", "--no-owner", "--no-privileges", "--dbname", database.Name}
+		port, err := pgBackupPortFor(database)
+		if err != nil {
+			return backupCommand{}, err
+		}
+		if port > 0 {
+			args = append(args, "--port", strconv.Itoa(port))
+		}
+		return backupCommand{Name: "sudo", Args: args}, nil
 	}
 	return backupCommand{
 		Name: "mysqldump",
@@ -92,16 +101,51 @@ func databaseDumpCommand(database backupspec.DatabaseIdentity) (backupCommand, e
 	}, nil
 }
 
+// pgRestorePrelude makes a PostgreSQL restore work on a database that still
+// holds its tables (alpha.127 lab: every restore of a non-empty database
+// stopped at "relation already exists", and so did the safety rollback). A
+// dump is plain SQL made with --no-owner and without DROP statements, so the
+// restore session first becomes the database's owner and drops what that
+// owner owns in this database; the dump then recreates it, owned by the
+// owner as before. A database owned by a superuser is left as it was (DROP
+// OWNED BY postgres is refused by the server). Objects of other roles are
+// not touched. Everything runs in one transaction, so a restore that stops
+// (for example at an object another role owns) leaves the database as it was;
+// the caller then reapplies the safety dump the same way.
+//
+// pgRestorePrelude, tabloları duran bir veritabanına geri yüklemeyi çalıştırır:
+// oturum önce veritabanının sahibi olur ve sahibin bu veritabanındaki
+// nesnelerini düşürür; döküm onları yine sahibine ait olarak yeniden kurar.
+const pgRestorePrelude = `DO $celikpanel_restore$
+DECLARE
+  owner_name name := (SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = current_database());
+BEGIN
+  IF NOT (SELECT rolsuper FROM pg_roles WHERE rolname = owner_name) THEN
+    EXECUTE format('SET ROLE %I', owner_name);
+    EXECUTE 'DROP OWNED BY CURRENT_USER';
+  END IF;
+END
+$celikpanel_restore$`
+
 func databaseRestoreCommand(database backupspec.DatabaseIdentity) (backupCommand, error) {
 	database, err := validateDatabaseIdentity(database)
 	if err != nil {
 		return backupCommand{}, err
 	}
 	if database.Type == "postgresql" {
-		return backupCommand{
-			Name: "sudo",
-			Args: []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", database.Name},
-		}, nil
+		args := []string{"-u", "postgres", "psql", "--set", "ON_ERROR_STOP=on", "--dbname", database.Name}
+		port, err := pgBackupPortFor(database)
+		if err != nil {
+			return backupCommand{}, err
+		}
+		if port > 0 {
+			args = append(args, "--port", strconv.Itoa(port))
+		}
+		// The prelude runs first, then the dump from stdin, all in one
+		// transaction: a restore that stops anywhere (an object of another
+		// role, a broken dump) changes nothing, the dropped objects included.
+		args = append(args, "--single-transaction", "--command", pgRestorePrelude, "--file", "-")
+		return backupCommand{Name: "sudo", Args: args}, nil
 	}
 	return backupCommand{
 		Name: "mysql",
@@ -203,10 +247,12 @@ func validateRestoreDatabase(expected, requested backupspec.DatabaseIdentity) (b
 	if err != nil {
 		return backupspec.DatabaseIdentity{}, err
 	}
-	if expected != requested {
+	// alpha.127: the same database, whichever cluster each side names; the
+	// requested identity (the database's cluster now) is the one returned.
+	if !expected.SameDatabase(requested) {
 		return backupspec.DatabaseIdentity{}, errors.New("database identity mismatch")
 	}
-	return expected, nil
+	return requested, nil
 }
 
 func validateFullRestoreSet(expected, requested []backupspec.DatabaseIdentity) ([]backupspec.DatabaseIdentity, error) {
@@ -222,9 +268,19 @@ func validateFullRestoreSet(expected, requested []backupspec.DatabaseIdentity) (
 		return nil, errors.New("full restore database set mismatch")
 	}
 	for i := range expected {
-		if expected[i] != requested[i] {
+		if !expected[i].SameDatabase(requested[i]) {
 			return nil, errors.New("full restore database set mismatch")
 		}
 	}
-	return expected, nil
+	return requested, nil
+}
+
+// pgBackupPortFor is the cluster a PostgreSQL backup or restore talks to
+// (alpha.127): the identity's cluster port when it names one (resolved
+// before, backup_pg_cluster.go), else the running cluster psql would choose
+// without a port, never a removed version's kept cluster that still claims
+// the default port: on Boston, psql without a port went to 16/main, which had
+// no program left.
+func pgBackupPortFor(database backupspec.DatabaseIdentity) (int, error) {
+	return resolvePGStatementPort(database.ClusterPort)
 }

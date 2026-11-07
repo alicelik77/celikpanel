@@ -114,7 +114,9 @@ SAMPLE_INTERVAL_S = 5.0
 # Tables that authentication and background writers change (BOUND-WORKER AJ).
 # alpha.126: metrics_rollups, which the monitoring sampler rewrites every five
 # minutes (cmd/panel/metrics.go), like metrics_samples.
-VOLATILE_TABLES = frozenset({"audit_logs", "metrics_samples", "metrics_rollups", "sessions", "sqlite_sequence"})
+# alpha.127: the sampler also writes spike snapshots, alerts and site checks.
+VOLATILE_TABLES = frozenset({"audit_logs", "metrics_samples", "metrics_rollups", "metrics_process_snapshots",
+                             "monitoring_alerts", "site_uptime", "sessions", "sqlite_sequence"})
 # L2 (upd1 2026-09-30): a setup that waits at a prerequisite (access_dns on an
 # isolated host) is a background writer too. Excluded only when this run
 # recorded such a wait; server_setup_state is still compared (it changes only

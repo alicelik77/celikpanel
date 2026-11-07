@@ -294,16 +294,21 @@ signed_narrow_credentials=$tmp/signed-narrow-admin.credentials
 signed_invalid_secure_credentials=$tmp/signed-invalid-secure-admin.credentials
 signed_reordered_credentials=$tmp/signed-reordered-admin.credentials
 signed_public_credentials=$tmp/signed-public-admin.credentials
+signed_weak_credentials=$tmp/signed-weak-admin.credentials
 printf '%s\n' \
-    '{"username":"first-admin","email":"admin@example.test","password":"never-print-this-password"}' \
+    '{"username":"first-admin","email":"admin@example.test","password":"Never-print-this-password"}' \
     > "$signed_narrow_credentials"
 printf '%s\n' '{"username":"first-admin"' > "$signed_invalid_secure_credentials"
 printf '%s\n' \
-    '{"email":"admin@example.test","username":"first-admin","password":"never-print-this-password"}' \
+    '{"email":"admin@example.test","username":"first-admin","password":"Never-print-this-password"}' \
     > "$signed_reordered_credentials"
+# The owner's password rule (alpha.127): no uppercase letter.
+printf '%s\n' \
+    '{"username":"first-admin","email":"admin@example.test","password":"never-print-this-password"}' \
+    > "$signed_weak_credentials"
 cp -- "$signed_narrow_credentials" "$signed_public_credentials"
 chmod 0600 "$signed_narrow_credentials" "$signed_invalid_secure_credentials" \
-    "$signed_reordered_credentials"
+    "$signed_reordered_credentials" "$signed_weak_credentials"
 chmod 0644 "$signed_public_credentials"
 
 partial_zero_admin_db=$tmp/partial-zero-admin.db
@@ -396,6 +401,15 @@ expect_signed_admission_refusal signed-invalid-secure-credentials \
     "$tmp/signed-invalid-secure-credentials.log" \
     /usr/bin/env -i PATH="$fake_bin:$clean_path" HOME=/root \
     CELIKPANEL_ADMIN_CREDENTIALS_FILE="$signed_invalid_secure_credentials" \
+    S3_ENTRY_SITE_ROOT="$site" \
+    S5_ADMISSION_CURL_TRACE="$tmp/signed-admission-curl.trace" \
+    /bin/sh "$test_bootstrap" --install
+expect_signed_admission_refusal signed-weak-admin-password \
+    'must contain an uppercase letter' \
+    'en az bir büyük harf içermeli' \
+    "$tmp/signed-weak-admin-password.log" \
+    /usr/bin/env -i PATH="$fake_bin:$clean_path" HOME=/root \
+    CELIKPANEL_ADMIN_CREDENTIALS_FILE="$signed_weak_credentials" \
     S3_ENTRY_SITE_ROOT="$site" \
     S5_ADMISSION_CURL_TRACE="$tmp/signed-admission-curl.trace" \
     /bin/sh "$test_bootstrap" --install

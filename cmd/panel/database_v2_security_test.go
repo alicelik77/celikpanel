@@ -387,7 +387,7 @@ func TestCreateDatabaseV2ReturnsOnlyNewSecretAndStoresItSealed(t *testing.T) {
 	driver := useRecordingDatabaseDriver(t)
 	recorder := httptest.NewRecorder()
 	requestBody := fmt.Sprintf(
-		`{"database_name":"newdb","domain_id":%d,"new_username":"new_user","new_password":"new-clear-secret"}`,
+		`{"database_name":"newdb","domain_id":%d,"new_username":"new_user","new_password":"New-clear-secret"}`,
 		dbSecurityDomain,
 	)
 
@@ -403,11 +403,11 @@ func TestCreateDatabaseV2ReturnsOnlyNewSecretAndStoresItSealed(t *testing.T) {
 	// The caller sent this password, so the answer does not send it back
 	// (11 Oct 2026); it says that the new user has it.
 	if _, echoed := response[`password`]; echoed || response[`password_set`] != true ||
-		strings.Contains(recorder.Body.String(), `new-clear-secret`) {
+		strings.Contains(recorder.Body.String(), `New-clear-secret`) {
 		t.Fatalf(`a password the caller sent was answered back: %s`, recorder.Body.String())
 	}
 	if driver.createdUser != `s9201_new_user` ||
-		driver.createdPassword != `new-clear-secret` {
+		driver.createdPassword != `New-clear-secret` {
 		t.Fatalf(`unexpected engine credential: %+v`, driver)
 	}
 	var stored string
@@ -416,14 +416,14 @@ func TestCreateDatabaseV2ReturnsOnlyNewSecretAndStoresItSealed(t *testing.T) {
 	).Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored == `new-clear-secret` || !secrets.IsEncrypted(stored) {
+	if stored == `New-clear-secret` || !secrets.IsEncrypted(stored) {
 		t.Fatalf(`new credential stored in plaintext: %q`, stored)
 	}
 	opened, err := fixture.box.Decrypt(stored)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opened != `new-clear-secret` {
+	if opened != `New-clear-secret` {
 		t.Fatalf(`opened secret = %q`, opened)
 	}
 }
@@ -441,7 +441,7 @@ func TestCreateDatabaseV2MetadataFailureRollsBackAndCompensatesEngine(t *testing
 	before := countDatabaseSecurityRows(t, fixture.sql)
 	recorder := httptest.NewRecorder()
 	body := fmt.Sprintf(
-		`{"database_name":"tx_rollback","domain_id":%d,"new_username":"new_compensated","new_password":"new-secret"}`,
+		`{"database_name":"tx_rollback","domain_id":%d,"new_username":"new_compensated","new_password":"New-secret-pass"}`,
 		dbSecurityDomain,
 	)
 
@@ -470,7 +470,7 @@ func TestCreateDatabaseV2PhysicalGrantFailureCompensatesCompletedWork(t *testing
 	before := countDatabaseSecurityRows(t, fixture.sql)
 	recorder := httptest.NewRecorder()
 	body := fmt.Sprintf(
-		`{"database_name":"grant_failure","domain_id":%d,"new_username":"grant_user","new_password":"new-secret"}`,
+		`{"database_name":"grant_failure","domain_id":%d,"new_username":"grant_user","new_password":"New-secret-pass"}`,
 		dbSecurityDomain,
 	)
 
@@ -507,7 +507,7 @@ func TestCreateDatabaseV2UserMetadataFailureDeletesPhysicalUser(t *testing.T) {
 	request := fixture.requestAsOwner(
 		http.MethodPost,
 		fmt.Sprintf(`/api/v1/database-servers/%d/users`, dbSecurityServer),
-		`{"username":"standalone","password":"new-secret"}`,
+		`{"username":"standalone","password":"New-secret-pass"}`,
 	)
 
 	fixture.panel.handleCreateDatabaseV2User(recorder, request)

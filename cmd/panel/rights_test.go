@@ -645,7 +645,7 @@ func TestResellerPoolLimitsRealUseNotAllocation(t *testing.T) {
 	wantStatus(t, f.as(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/9702/pool",
 		`{"pool":{"max_customers":1,"max_domains":0,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0}}`), http.StatusOK, "")
 	wantStatus(t, f.as(t, authzMatrixResellerID, http.MethodPost, "/api/v1/users",
-		`{"username":"one-more","email":"one-more@example.test","password":"long-enough-1","role":"customer"}`), http.StatusConflict, errCodeResellerCustomersLimit)
+		`{"username":"one-more","email":"one-more@example.test","password":"Long-enough-1","role":"customer"}`), http.StatusConflict, errCodeResellerCustomersLimit)
 	// Notices: the administrator sees all, the reseller its own, and either
 	// may acknowledge.
 	notices := f.call(t, authzMatrixResellerID, http.MethodGet, "/api/v1/rights/notices", "")
@@ -668,7 +668,7 @@ func TestAccountCreationRightsChoice(t *testing.T) {
 		return f.call(t, caller, http.MethodPost, "/api/v1/users", body)
 	}
 	// Default: Unlimited, named in the answer, with one all-unlimited subscription.
-	recorder := create(authzMatrixResellerID, `{"username":"plain","email":"plain@example.test","password":"long-enough-1","role":"customer"}`)
+	recorder := create(authzMatrixResellerID, `{"username":"plain","email":"plain@example.test","password":"Long-enough-1","role":"customer"}`)
 	wantStatus(t, recorder, http.StatusOK, "")
 	if !strings.Contains(recorder.Body.String(), `"rights":"unlimited"`) {
 		t.Fatalf("answer = %s", recorder.Body.String())
@@ -686,12 +686,12 @@ func TestAccountCreationRightsChoice(t *testing.T) {
 		t.Fatal("an Unlimited customer of a narrowed reseller got cron")
 	}
 	// Custom inside the reseller's set; outside is refused before anything exists.
-	wantStatus(t, create(authzMatrixResellerID, `{"username":"too-much","email":"too-much@example.test","password":"long-enough-1","role":"customer",
+	wantStatus(t, create(authzMatrixResellerID, `{"username":"too-much","email":"too-much@example.test","password":"Long-enough-1","role":"customer",
 		"rights":{"state":"custom","rights":{"all_permissions":false,"all_software":false,"permissions":["cron"],"software":[]}}}`), http.StatusConflict, errCodeRightsOutside)
 	if n := f.count(t, `SELECT COUNT(*) FROM users WHERE username = 'too-much'`); n != 0 {
 		t.Fatal("a refused account was created")
 	}
-	wantStatus(t, create(authzMatrixResellerID, `{"username":"narrow","email":"narrow@example.test","password":"long-enough-1","role":"customer",
+	wantStatus(t, create(authzMatrixResellerID, `{"username":"narrow","email":"narrow@example.test","password":"Long-enough-1","role":"customer",
 		"rights":{"state":"custom","rights":{"all_permissions":false,"all_software":false,"permissions":["mail"],"software":["component:php-fpm:8.3"]},"quantities":{"max_domains":2}}}`), http.StatusOK, "")
 	var narrowSub, domains int
 	if err := db.QueryRow(`SELECT s.id, s.max_domains FROM subscriptions s JOIN users u ON u.id = s.owner_id WHERE u.username = 'narrow'`).Scan(&narrowSub, &domains); err != nil || domains != 2 {
@@ -702,23 +702,23 @@ func TestAccountCreationRightsChoice(t *testing.T) {
 	}
 	// A plan by the rights choice (and the old plan_id still works).
 	plan := createPlan(t, f.accountsFixture, authzMatrixAdminID, `{"name":"Basic","max_domains":1,"max_databases":1,"max_email_accounts":1,"disk_quota_mb":1,"bandwidth_quota_mb":0}`)
-	wantStatus(t, create(authzMatrixAdminID, `{"username":"planned","email":"planned@example.test","password":"long-enough-1","role":"customer","rights":{"state":"plan","plan_id":`+itoa(plan)+`}}`), http.StatusOK, "")
-	wantStatus(t, create(authzMatrixAdminID, `{"username":"oldway","email":"oldway@example.test","password":"long-enough-1","role":"customer","plan_id":`+itoa(plan)+`}`), http.StatusOK, "")
+	wantStatus(t, create(authzMatrixAdminID, `{"username":"planned","email":"planned@example.test","password":"Long-enough-1","role":"customer","rights":{"state":"plan","plan_id":`+itoa(plan)+`}}`), http.StatusOK, "")
+	wantStatus(t, create(authzMatrixAdminID, `{"username":"oldway","email":"oldway@example.test","password":"Long-enough-1","role":"customer","plan_id":`+itoa(plan)+`}`), http.StatusOK, "")
 	if n := f.count(t, `SELECT COUNT(*) FROM subscriptions WHERE plan_id = ?`, plan); n != 2 {
 		t.Fatalf("plan subscriptions = %d", n)
 	}
-	wantStatus(t, create(authzMatrixAdminID, `{"username":"mixed","email":"mixed@example.test","password":"long-enough-1","role":"customer","plan_id":`+itoa(plan)+`,"rights":{"state":"unlimited"}}`), http.StatusBadRequest, "")
+	wantStatus(t, create(authzMatrixAdminID, `{"username":"mixed","email":"mixed@example.test","password":"Long-enough-1","role":"customer","plan_id":`+itoa(plan)+`,"rights":{"state":"unlimited"}}`), http.StatusBadRequest, "")
 	// Resellers: a reseller plan binds and mirrors its pool; Custom stores both.
 	created := f.call(t, authzMatrixAdminID, http.MethodPost, resellerPlansPath,
 		`{"name":"Gold","max_customers":3,"max_domains":30,"max_databases":0,"max_email_accounts":0,"disk_quota_mb":0,"rights":{"all_permissions":true,"all_software":false,"permissions":[],"software":["component:php-fpm:8.3"]}}`)
 	wantStatus(t, created, http.StatusOK, "")
 	gold := int(decodeBody(t, created)["id"].(float64))
-	wantStatus(t, create(authzMatrixAdminID, `{"username":"gold-r","email":"gold-r@example.test","password":"long-enough-1","role":"reseller","rights":{"state":"plan","plan_id":`+itoa(gold)+`}}`), http.StatusOK, "")
+	wantStatus(t, create(authzMatrixAdminID, `{"username":"gold-r","email":"gold-r@example.test","password":"Long-enough-1","role":"reseller","rights":{"state":"plan","plan_id":`+itoa(gold)+`}}`), http.StatusOK, "")
 	if n := f.count(t, `SELECT COUNT(*) FROM reseller_plan_bindings b JOIN users u ON u.id = b.reseller_id JOIN reseller_pools p ON p.reseller_id = u.id
 		WHERE u.username = 'gold-r' AND b.reseller_plan_id = ? AND p.max_customers = 3 AND p.max_domains = 30`, gold); n != 1 {
 		t.Fatal("the reseller plan was not bound with its pool")
 	}
-	wantStatus(t, create(authzMatrixAdminID, `{"username":"free-r","email":"free-r@example.test","password":"long-enough-1","role":"reseller"}`), http.StatusOK, "")
+	wantStatus(t, create(authzMatrixAdminID, `{"username":"free-r","email":"free-r@example.test","password":"Long-enough-1","role":"reseller"}`), http.StatusOK, "")
 	var freeID int
 	if err := db.QueryRow(`SELECT id FROM users WHERE username = 'free-r'`).Scan(&freeID); err != nil {
 		t.Fatal(err)

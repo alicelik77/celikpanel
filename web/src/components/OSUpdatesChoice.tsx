@@ -16,6 +16,7 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
+import { CopyCommand } from './CopyCommand';
 
 export interface OSUpdatesAutoConfig {
     path: string;
@@ -34,7 +35,7 @@ export interface OSUpdatesAutoConfig {
 }
 
 type Mode = 'auto' | 'manual';
-type Outcome = { tone: Tone; text: string } | null;
+type Outcome = { tone: Tone; text: string; command?: string } | null;
 
 export const MANUAL_COMMAND = 'sudo apt-get update && sudo apt-get upgrade';
 export const FIND_OVERRIDE_COMMAND = 'grep -R "Periodic::Unattended-Upgrade" /etc/apt/apt.conf.d/';
@@ -105,7 +106,7 @@ export function OSUpdatesChoice({ config, automaticState, onChanged }: { config:
                 const text = known
                     ? t(`life.choice.failed.${code}` as TranslationKey, { path: config.path, command: INSTALL_COMMAND })
                     : t('life.choice.failed.other', { reason: body.error ?? '', command: RECONFIGURE_COMMAND });
-                setOutcome({ tone: 'bad', text });
+                setOutcome({ tone: 'bad', text, ...(code === 'UNATTENDED_NOT_INSTALLED' ? { command: INSTALL_COMMAND } : {}) });
             } else {
                 const parts: string[] = [];
                 const reason = body.effective_reason ?? '';
@@ -173,6 +174,8 @@ export function OSUpdatesChoice({ config, automaticState, onChanged }: { config:
                 {modeButton('manual')}
             </div>
             {outcome && <LifeLine tone={outcome.tone} attr="choice-result"><KeepWords text={outcome.text} /></LifeLine>}
+            {/* alpha.127: the command, ready to copy. / Kopyalanmaya hazır komut. */}
+            {outcome?.command && <CopyCommand command={outcome.command} />}
             {target && (
                 <Dialog
                     id="os-updates-mode"

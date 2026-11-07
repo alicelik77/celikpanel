@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/fileaccess"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -139,6 +140,29 @@ type fileAccessView struct {
 	// StateError says why State is missing: agent_unavailable or
 	// agent_upgrade_required (unknown, not "no access").
 	StateError string `json:"state_error,omitempty"`
+	// Owner (alpha.127) is the subscription's account, named only to an
+	// administrator or reseller who manages it, so a plan or suspension
+	// notice can open that account's rights instead of "ask your provider".
+	// Abonelik sahibi; yalnız onu yöneten yöneticiye ya da bayiye söylenir.
+	Owner string `json:"owner,omitempty"`
+}
+
+// fileAccessManagedOwner names the subscription's account when the caller is
+// an administrator or reseller other than that account; "" otherwise. The
+// domain route has already proved the caller may see this subscription.
+func (p *Panel) fileAccessManagedOwner(r *http.Request, subscriptionID int) string {
+	caller := currentCaller(r)
+	if caller == nil || !(caller.hasAccountRole(roleAdmin) || caller.hasAccountRole(roleReseller)) {
+		return ""
+	}
+	var ownerID int
+	var username string
+	if err := p.db.GetDB().QueryRowContext(r.Context(),
+		`SELECT u.id, u.username FROM subscriptions s JOIN users u ON u.id = s.owner_id WHERE s.id = ?`, subscriptionID).
+		Scan(&ownerID, &username); err != nil || ownerID == caller.ID {
+		return ""
+	}
+	return username
 }
 
 func fileAccessConnectionFor(site fileAccessSite, state *transport.FileAccessStateResponse) fileAccessConnection {
@@ -204,6 +228,7 @@ func (p *Panel) handleGetFileAccess(w http.ResponseWriter, r *http.Request, site
 	}
 	view := fileAccessView{
 		Domain: site.Domain, Available: site.hasAccount(), SubscriptionStatus: site.SubscriptionStatus, Rights: rights,
+		Owner: p.fileAccessManagedOwner(r, site.SubscriptionID),
 	}
 	if view.Available {
 		if err := p.requireFileAccessAgent(r.Context()); err != nil {
@@ -283,6 +308,13 @@ func (p *Panel) handlePutFileAccess(w http.ResponseWriter, r *http.Request, site
 		return
 	}
 	if request.Password != "" {
+		// The owner's rule first (8 characters to 128 bytes, both letter
+		// cases, a special character), as PASSWORD_WEAK; ValidatePassword is
+		// the wire check the Agent repeats.
+		if refusal := passwordpolicy.CheckField(request.Password, "file_access"); refusal != nil {
+			writePasswordRefusal(w, refusal)
+			return
+		}
 		if err := fileaccess.ValidatePassword(request.Password); err != nil {
 			writeCodedError(w, http.StatusBadRequest, errCodeFileAccessInvalid, err.Error(), "")
 			return

@@ -187,7 +187,6 @@ export const enSettingsScreens = {
     'team.username': 'Username',
     'team.email': 'Email',
     'team.password': 'Password',
-    'team.passwordHint': 'Use at least 8 characters.',
     'team.newPassword': 'New password',
     'team.newPasswordHint': 'Leave blank to keep the current password.',
     'team.status': 'Status',

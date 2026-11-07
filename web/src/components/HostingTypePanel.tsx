@@ -11,9 +11,11 @@ import { useLostAnswer, type LostAnswerHandle } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
 import { AppAccountLine } from './AppAccountLine';
+import { NodeSiteSandbox } from './NodeSiteSandbox';
 import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationReport } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -80,7 +82,7 @@ function showsHosting(before: HostingState, now: HostingState, sent: HostingStat
 const NODE_RUNTIMES_URL = '/api/v1/runtimes/node';
 const decodeNodeRuntimes = (raw: unknown) => decodeListIn<string>(raw, 'installed');
 
-export function HostingTypePanel({ domainId }: { domainId: number; domainName: string }) {
+export function HostingTypePanel({ domainId, domainName }: { domainId: number; domainName: string }) {
     const { t, locale } = useI18n();
     const [saving, setSaving] = useState(false);
 
@@ -117,12 +119,16 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
         const unsupported = form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version
             ? supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose')
             : '';
-        const proceed = async () => {
+        // The change runs in the locked progress window with the server's
+        // steps (alpha.127): a confirmed change in the question's own window,
+        // otherwise in one opened for it.
+        const proceed = async (report: OperationReport) => {
             setSaving(true);
             try {
-                const res = await answer.send(`/api/v1/domains/${domainId}/hosting`, {
+                const res = await sendWithSteps(report, flowSteps(t, 'hosting', ['check!', 'switch']), t, `hosting.${domainId}`,
+                    (headers) => answer.send(`/api/v1/domains/${domainId}/hosting`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...headers },
                     body: JSON.stringify(form),
                 }, {
                     // If the answer is lost and the settings read again are still
@@ -132,7 +138,7 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
                     // o yeni yanıtın üzerine geri konur.
                     shows: (read) => showsHosting(before, read[0].value as HostingState, form),
                     notMade: (read) => setEdit({ from: read[0].observedAt, value: form }),
-                });
+                }));
                 if (!res) return;
                 if (!res.ok) {
                     showToast('error', apiErrorText(await readApiError(res), t));
@@ -145,11 +151,12 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
                 setSaving(false);
             }
         };
+        const progressTitle = t('opstep.hosting.title', { name: domainName });
         if (!(unsupported)) {
-            await proceed();
+            await followOperation({ progressTitle, action: proceed });
             return;
         }
-        await confirmAction({ message: unsupported, action: proceed });
+        await confirmAction({ message: unsupported, progressTitle, action: proceed });
     };
 
     return (
@@ -163,6 +170,7 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
             {(shown) => (
                 <HostingForm
                     domainId={domainId}
+                    domainName={domainName}
                     saved={shown.value}
                     state={edit && edit.from === shown.observedAt ? edit.value : shown.value}
                     setState={(value) => setEdit({ from: shown.observedAt, value })}
@@ -179,6 +187,7 @@ export function HostingTypePanel({ domainId }: { domainId: number; domainName: s
 
 function HostingForm({
     domainId,
+    domainName,
     saved,
     state,
     setState,
@@ -189,6 +198,7 @@ function HostingForm({
     onApply,
 }: {
     domainId: number;
+    domainName: string;
     /** What the server has saved; the live application panel follows this, not the draft. */
     saved: HostingState;
     state: HostingState;
@@ -378,6 +388,8 @@ function HostingForm({
             {saved.project_type === 'node' && <AppPanel domainId={domainId} />}
             {/* alpha.107 (D-038 §6): which account the application runs as. */}
             {saved.project_type === 'node' && <AppAccountLine domainId={domainId} />}
+            {/* alpha.127: the site sandbox and the install step. */}
+            {saved.project_type === 'node' && <NodeSiteSandbox domainId={domainId} domainName={domainName} />}
             {/* Installing a Node VERSION happens in one place: the Services
                 page's version drawer (B3b) — a runtime install is a server
                 decision, not a per-domain setting. This page only SELECTS

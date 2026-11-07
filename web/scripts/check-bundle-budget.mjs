@@ -11,7 +11,7 @@
 //   part that already holds its prefix (each part's header lists its
 //   prefixes); a new prefix goes into the part of the screen that uses it.
 //   Every part is fetched in parallel and merged before any screen renders
-//   (src/i18n/index.tsx), so the choice of part never changes what a screen
+//   (src/i18n/index.tsx, the list in src/i18n/screenParts.ts), so the choice of part never changes what a screen
 //   can show.
 // - Each part has its own ceiling below (screenPartBudgets), set with at least
 //   25% headroom when the part was made (v0.1.0-alpha.97). The ceiling is not
@@ -19,14 +19,14 @@
 //   screen boundaries: move whole prefixes into a new directory with an en.ts
 //   (`export const en<Part>Screens = {…} as const`, `<Part>ScreenKey`) and a
 //   tr.ts (`Record<<Part>ScreenKey, string>`, so a missing Turkish key fails
-//   tsc), then add the part to src/i18n/index.tsx (both lists), to ScreenKey in
+//   tsc), then add the part to src/i18n/screenParts.ts (both lists), to ScreenKey in
 //   src/i18n/en.ts, to screenParts in tests/locale-catalogue.mjs and here,
 //   each with headroom of at least 25% again.
 //
 // Paket bütçesi. Ekran katalogu src/i18n/screens altında parçalara bölünür; yeni
 // anahtar, önekini tutan parçaya girer. Her parçanın kendi tavanı vardır ve
 // tavan yükseltilmez: payı biten parça ekran sınırlarından yeniden bölünür
-// (index.tsx, en.ts ScreenKey, tests/locale-catalogue.mjs ve bu dosya), her
+// (screenParts.ts, en.ts ScreenKey, tests/locale-catalogue.mjs ve bu dosya), her
 // yeni parça en az %25 payla.
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
@@ -264,6 +264,29 @@ const screenPartBudgets = {
   // (pnow.). A new part, set with at least 25% headroom from its Turkish
   // file: 5.76 / 2.06 KiB.
   monitoring: kib(8, 3),
+  // v0.1.0-alpha.127: the shared password field (pw.) and the server's
+  // PASSWORD_WEAK refusal. Its own part so the file-access and errors parts
+  // keep their headroom. Set with at least 25% headroom from its Turkish file.
+  passwords: kib(4, 2),
+  // v0.1.0-alpha.127: what screens say to the server's administrator with the
+  // one next step they offer, and the command copy box (adminNext.). A new
+  // part, so that "mailDatabases", "vendorLanes" and "fileAccess", which had
+  // no headroom, are not squeezed (the administrator's sentences of
+  // "fileAccess" and "mailDatabases" moved here too); set with at least 25%
+  // headroom from its Turkish file: 6.06 / 2.11 KiB.
+  adminNext: kib(8.25, 3),
+  // v0.1.0-alpha.127: Node.js sites in the site sandbox (nodesandbox.): the
+  // administrator's move under Components → Node.js and the site's install
+  // step. A new part, set with at least 25% headroom from its Turkish file.
+  nodeSandbox: kib(12, 4.5),
+  // v0.1.0-alpha.127: the real steps of the progress window - certificate,
+  // backup restore and creation, PHP version, application install and
+  // WordPress tools (opstep.), and the other confirmed changes' steps
+  // (certificate upload/removal, mail encryption, DNS records, PowerDNS
+  // repair, php.ini, hosting type, services, malware, database and account
+  // deletion). A new part, set with at least 25% headroom from its Turkish
+  // file: 6.3 / 1.92 KiB.
+  opsteps: kib(8.5, 2.6),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
@@ -273,6 +296,9 @@ const screenPartBudgets = {
 const namedChunkBudgets = {
   'src/i18n/en.ts': budgets.async,
   'src/i18n/tr.ts': budgets.async,
+  // The list of screen-part loaders (v0.1.0-alpha.127), fetched lazily beside
+  // the shell instead of sitting on the critical boot path.
+  'src/i18n/screenParts.ts': budgets.async,
   ...Object.fromEntries(Object.entries(screenPartBudgets).flatMap(([part, limit]) => [
     [`src/i18n/screens/${part}/en.ts`, limit],
     [`src/i18n/screens/${part}/tr.ts`, limit],

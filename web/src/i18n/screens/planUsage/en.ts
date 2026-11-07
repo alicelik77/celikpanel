@@ -67,7 +67,7 @@ export const enPlanUsageScreens = {
     'usage.status.openSite': 'Open {name}',
     'usage.status.openDomains': 'Open Domains',
     'usage.status.trafficDetails': 'Traffic is counted from nginx logs written by /etc/nginx/conf.d/celikpanel-traffic.conf and each site’s celikpanel-managed.d folder. A site whose file does not read them is not counted.',
-    'usage.status.logrotateMissing': 'logrotate is not installed, so the small traffic logs in /var/log/celikpanel/traffic grow without being rotated; traffic is still counted correctly. The server administrator installs the operating system’s logrotate package (Debian and Ubuntu: sudo apt install logrotate; Arch Linux: sudo pacman -Syu --needed logrotate). CelikPanel notices it within an hour and sets up the rotation by itself.',
+    'usage.status.logrotateMissing': 'logrotate is not installed, so the small traffic logs in /var/log/celikpanel/traffic grow without being rotated; traffic is still counted correctly. Install the operating system’s logrotate package with the command below. CelikPanel notices it within an hour and sets up the rotation by itself.',
     'usage.status.logrotateKept': 'The rotation file /etc/logrotate.d/celikpanel-traffic is not CelikPanel’s unchanged text, so CelikPanel left it alone. Make sure it still rotates /var/log/celikpanel/traffic/*.log.',
     'usage.status.diskUnknown': '{n} subscription(s) could not be measured; their last known number is used. CelikPanel measures again within {hours} hours.',
     'usage.status.diskLow': 'The hosting file system has less than 10% free space, so disks are measured every hour.',

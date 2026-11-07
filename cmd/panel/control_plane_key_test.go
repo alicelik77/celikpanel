@@ -115,7 +115,7 @@ func TestControlPlaneKeyRejections(t *testing.T) {
 			input: controlPlaneKeyPrefix + payload[:len(payload)-1] + "1",
 		},
 		{name: "hex instead of base32", input: "cpk1-0123-4567-89ab-cdef"},
-		{name: "words", input: "correct horse battery staple"},
+		{name: "words", input: "Correct horse battery staple"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

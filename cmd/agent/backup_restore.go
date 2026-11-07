@@ -108,11 +108,25 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		if err != nil {
 			return err
 		}
+		// alpha.127: the database's running cluster of the backup's major,
+		// decided before the safety backup and before anything is written.
+		if singleDatabase, err = restoreDatabaseTarget(manifest.Databases[0].Identity, singleDatabase); err != nil {
+			return err
+		}
 		requestedDatabases = []backupspec.DatabaseIdentity{singleDatabase}
 	case backupspec.TypeFull:
 		requestedDatabases, err = validateFullRestoreSet(manifest.databaseIdentities(), req.Databases)
 		if err != nil {
 			return err
+		}
+		stored := make(map[int]backupspec.DatabaseIdentity, len(manifest.Databases))
+		for _, database := range manifest.Databases {
+			stored[database.Identity.ID] = database.Identity
+		}
+		for i := range requestedDatabases {
+			if requestedDatabases[i], err = restoreDatabaseTarget(stored[requestedDatabases[i].ID], requestedDatabases[i]); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.New("unsupported backup type")
@@ -144,19 +158,17 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 			return err
 		}
 	case backupspec.TypeDatabase:
-		database, err := validateRestoreDatabase(unpacked.Databases[0].Identity, req.Database)
-		if err != nil {
+		if _, err := validateRestoreDatabase(unpacked.Databases[0].Identity, singleDatabase); err != nil {
 			return err
 		}
-		if err := a.restoreDatabasePackage(scope, targetDir, safety.Path, database); err != nil {
+		if err := a.restoreDatabasePackage(scope, targetDir, safety.Path, singleDatabase); err != nil {
 			return err
 		}
 	case backupspec.TypeFull:
-		databases, err := validateFullRestoreSet(unpacked.databaseIdentities(), req.Databases)
-		if err != nil {
+		if _, err := validateFullRestoreSet(unpacked.databaseIdentities(), requestedDatabases); err != nil {
 			return err
 		}
-		if err := a.restoreFullPackage(scope, targetDir, safety.Path, docroot, unpacked, databases); err != nil {
+		if err := a.restoreFullPackage(scope, targetDir, safety.Path, docroot, unpacked, requestedDatabases); err != nil {
 			return err
 		}
 	}

@@ -3,8 +3,8 @@ set -eu
 umask 077
 
 base_url=https://celikpanel.net
-bootstrap_release_sequence=126
-bootstrap_release_version=v0.1.0-alpha.126
+bootstrap_release_sequence=127
+bootstrap_release_version=v0.1.0-alpha.127
 bootstrap_release_public_key_sha256=7eadeb0b156f1a821575c4293fe664b44b8004bcdb5e9e770122cb5c144c68bb
 requested_version=latest
 requested_action=auto
@@ -962,10 +962,15 @@ admin_credentials_file_identity() {
 
 # This is intentionally a strict subset of the candidate panel's canonical
 # JSON parser: one line, fixed field order, no JSON escapes, ASCII-only values,
-# the shared username grammar, a non-empty trim-safe email, and an 8-byte
-# minimum password. The secret is read on stdin by awk and is never placed in
-# argv, the environment, or output. The downloaded candidate validates the
-# same file again with --validate-admin-credentials-file=- before host setup.
+# the shared username grammar, a non-empty trim-safe email, and the owner's
+# password rule for panel accounts (internal/passwordpolicy, field "account":
+# 8 to 1024 characters with an uppercase letter, a lowercase letter and a
+# special character), checked before anything is downloaded or changed. The
+# secret is read on stdin by awk and is never placed in argv, the environment,
+# or output. Exit status: 1 the form, 3 too short, 4 no uppercase letter, 5 no
+# lowercase letter, 6 no special character, 7 too long. The downloaded
+# candidate validates the same file again with
+# --validate-admin-credentials-file=- before host setup.
 validate_admin_credentials_content_subset() {
   admin_subset_path=$1
   LC_ALL=C awk '
@@ -1015,18 +1020,41 @@ validate_admin_credentials_content_subset() {
           substr(email, length(email), 1) == " ") {
         exit 1
       }
-      if (length(password) < 8 || password !~ /^[ -~]+$/ ||
+      if (password !~ /^[ -~]+$/ ||
           index(password, quote) != 0 || index(password, backslash) != 0) {
         exit 1
       }
+      if (length(password) < 8) { rule = 3; exit rule }
+      if (length(password) > 1024) { rule = 7; exit rule }
+      if (password !~ /[A-Z]/) { rule = 4; exit rule }
+      if (password !~ /[a-z]/) { rule = 5; exit rule }
+      if (password !~ /[^A-Za-z0-9]/) { rule = 6; exit rule }
       valid = 1
     }
     END {
+      if (rule != 0) {
+        exit rule
+      }
       if (seen != 1 || valid != 1) {
         exit 1
       }
     }
   ' < "$admin_subset_path"
+}
+
+# The administrator password in the credentials file broke the owner's rule:
+# say which rule, in both languages, before anything is downloaded or changed.
+admin_password_rule_refusal() {
+  case "$1" in
+    3) rule_en="must be at least 8 characters"; rule_tr="en az 8 karakter olmalı" ;;
+    4) rule_en="must contain an uppercase letter"; rule_tr="en az bir büyük harf içermeli" ;;
+    5) rule_en="must contain a lowercase letter"; rule_tr="en az bir küçük harf içermeli" ;;
+    6) rule_en="must contain a special character (not a letter or digit, for example - _ . !)"; rule_tr="en az bir özel karakter (harf ya da rakam olmayan, örneğin - _ . !) içermeli" ;;
+    *) rule_en="can be at most 1024 characters"; rule_tr="en fazla 1024 karakter olabilir" ;;
+  esac
+  fail \
+    "The administrator password in CELIKPANEL_ADMIN_CREDENTIALS_FILE $rule_en. Nothing was downloaded or changed on this server. Who acts: you. Next: put a password in the file with at least 8 characters, an uppercase letter, a lowercase letter and a special character (for example - _ . !), then run the command again (the installer passes the file to panel --admin-credentials-file=-)." \
+    "CELIKPANEL_ADMIN_CREDENTIALS_FILE içindeki yönetici parolası $rule_tr. Bu sunucuya hiçbir şey indirilmedi ve hiçbir şey değiştirilmedi. Kim yapar: siz. Sonraki adım: dosyaya en az 8 karakterli, büyük harf, küçük harf ve özel karakter (örneğin - _ . !) içeren bir parola yazın, sonra komutu yeniden çalıştırın (kurucu dosyayı panel --admin-credentials-file=- olarak aktarır)."
 }
 
 preflight_first_administrator_download_admission() {
@@ -1049,7 +1077,16 @@ preflight_first_administrator_download_admission() {
     admission_credentials_identity_before=$(admin_credentials_file_identity "$admission_credentials_path") || fail \
       "Administrator credentials file changed before validation; CELIKPANEL_ADMIN_CREDENTIALS_FILE was not admitted (the candidate later receives it on panel --admin-credentials-file=-)." \
       "Yönetici kimlik bilgisi dosyası doğrulamadan önce değişti; CELIKPANEL_ADMIN_CREDENTIALS_FILE kabul edilmedi (aday daha sonra bunu panel --admin-credentials-file=- üzerinden alır)."
-    validate_admin_credentials_content_subset "$admission_credentials_path" || fail \
+    if validate_admin_credentials_content_subset "$admission_credentials_path"; then
+      admission_subset_status=0
+    else
+      admission_subset_status=$?
+    fi
+    case "$admission_subset_status" in
+      0|1) ;;
+      *) admin_password_rule_refusal "$admission_subset_status" ;;
+    esac
+    [ "$admission_subset_status" -eq 0 ] || fail \
       "CELIKPANEL_ADMIN_CREDENTIALS_FILE does not match the signed entry's restricted first-write-safe JSON form (one line; username,email,password order; ASCII without quote/backslash escapes); other candidate-valid JSON forms are intentionally not accepted here and remain available through the verified release's direct install.sh (forwarded internally to panel --admin-credentials-file=-)." \
       "CELIKPANEL_ADMIN_CREDENTIALS_FILE imzalı girişin dar ilk-yazım-güvenli JSON biçimine uymuyor (tek satır; username,email,password sırası; tırnak/ters eğik çizgi kaçışı olmayan ASCII); adayın kabul edebileceği diğer JSON biçimleri burada bilinçli olarak kabul edilmez ve doğrulanmış sürümün doğrudan install.sh yolunda kullanılabilir (kurucu bunu panel --admin-credentials-file=- olarak içeride aktarır)."
     validate_admin_credentials_path_metadata "$admission_credentials_path" || fail \

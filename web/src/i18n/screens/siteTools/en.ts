@@ -32,9 +32,6 @@ export const enSiteToolsScreens = {
     'wpt.coreMinor': 'Security and maintenance release {version} is available',
     'wpt.updateTo': 'Update to {version}',
     'wpt.confirmCore': 'Update WordPress to {version}? A full backup (files and database) is made first and restored automatically if the update fails.',
-    'wpt.step.start': 'Starting on the server',
-    'wpt.step.run': 'Running on the server',
-    'wpt.step.runNote': 'A full backup is made first. This window closes when the server finishes; the page then shows how it ended.',
     'wpt.step.coreTitle': 'Updating WordPress to {version}',
     'wpt.step.pluginsTitle': 'Updating plugins',
     'wpt.step.cloneTitle': 'Copying the site to {target}',
@@ -89,8 +86,14 @@ export const enSiteToolsScreens = {
     'err.WORDPRESS_CLONE_TARGET_INVALID': 'Choose an empty site of the same subscription as the target. Nothing was changed.',
     'err.WORDPRESS_DATABASE_NOT_LINKED': 'The site’s database is not linked to this domain in the panel, so it cannot be backed up or copied safely. Nothing was changed.',
     'err.WORDPRESS_NO_MARIADB': 'No MariaDB server is installed for this subscription. The administrator installs MariaDB from Components; then start again.',
+    'err.WORDPRESS_NO_MARIADB.action': 'Install MariaDB',
     'err.WORDPRESS_NOT_DETECTED': 'WordPress was not found on this site. Nothing was changed.',
     'err.WORDPRESS_NOT_PHP_SITE': 'WordPress tools work on PHP sites only. Nothing was changed.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_REMOVED': 'The update failed, and its backup was not restored: the PostgreSQL version the site’s PostgreSQL database lives on was removed from this server (its data is kept). The server administrator installs that version again from Components, then restores the backup from Backups.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_STOPPED': 'The update failed, and its backup was not restored: the site’s PostgreSQL is installed but not running. The server administrator starts it from Components, then restores the backup from Backups.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_NONE': 'The update failed, and its backup was not restored: no PostgreSQL runs on this server. The server administrator installs PostgreSQL from Components, then restores the backup from Backups.',
+    'err.WORDPRESS_RESTORE_PG_MAJOR_MISMATCH': 'The update failed, and its backup was not restored: the backup’s PostgreSQL database was made from another major version than the one it lives on now, and CelikPanel never loads one into the other on its own. The server administrator restores it by hand or installs the backup’s version beside it.',
+    'err.WORDPRESS_RESTORE_PG_CLUSTER_UNPLACED': 'The update failed, and its backup was not restored: no PostgreSQL runs on the port CelikPanel’s record names for the site’s database. The server administrator updates CelikPanel’s records on the PostgreSQL page, then restores the backup from Backups.',
 
     // Malware scan
     // The audit trail's words for these actions (Dashboard > Recent activity).
@@ -130,6 +133,7 @@ export const enSiteToolsScreens = {
     'mscan.prereq.MALWARE_SCANNER_UNKNOWN': 'The scanner’s state could not be read now.',
     'mscan.prereq.MALWARE_SCANNER_UNKNOWN.next': 'Read again in a moment; if it stays, the administrator checks the server agent.',
     'mscan.prereq.resumes': 'Start the scan again once ClamAV is ready.',
+    'mscan.openClamAV': 'Open ClamAV',
     'mscan.signaturesAge': 'Signatures are {hours} hour(s) old.',
     'mscan.scan.queued': 'Waiting for its turn (one scan runs at a time on the server, at low priority).',
     'mscan.scan.running': 'Scanning {domain} (site {done} of {total})…',

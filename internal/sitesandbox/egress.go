@@ -59,7 +59,7 @@ func EgressRuleset() string {
 	portSet := "{ " + strings.Join(ports, ", ") + " }"
 	return `# CelikPanel site sandbox: SMTP egress block (docs/SITE-SANDBOX.md).
 # Members of @smtp_blocked are the cgroups of sandboxed programs (celiksvc-*,
-# celiksvcinst-*, celikrt-*, celikrtbuild-*). They cannot connect to ports 25, 465 and 587 on
+# celiksvcinst-*, celikrt-*, celikrtbuild-*, celikapp-*, celikappinst-*). They cannot connect to ports 25, 465 and 587 on
 # any address, 127.0.0.1 included, and nothing outside reaches a port they
 # opened on another address than loopback. Each unit adds its own cgroup
 # before it starts and removes it after it stops; celikpanel-egress-guard.timer
@@ -100,7 +100,10 @@ table inet ` + EgressTable + ` {
 // "nft flush ruleset" or restarted nftables.service), then adds the cgroup
 // of every running sandboxed unit whose helper loads the block (its
 // ExecStartPre runs the helper's egress-add) again. A unit whose cgroup is not
-// /system.slice/<unit> is named in the journal and left out.
+// /system.slice/<unit> is named in the journal and left out. A finished
+// install step that stays "active (exited)" has no cgroup and is skipped
+// (alpha.127 lab: after a Node.js "Install packages and build" the guard
+// failed every 30 seconds on celikappinst-N, "runs in , not ...").
 func EgressGuardScriptText() string {
 	return `# CelikPanel site sandbox: SMTP egress guard (docs/SITE-SANDBOX.md).
 # Run by ` + EgressGuardUnit + ` every 30 seconds; works without CelikPanel.
@@ -111,13 +114,16 @@ if ! "$nft" list chain inet ` + EgressTable + ` output 2>/dev/null | grep -q '@`
 	"$nft" -f ` + EgressFile + ` || { echo "celikpanel-egress: nft could not load the SMTP block"; exit 1; }
 fi
 status=0
-for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' | awk '{print $1}'); do
+for unit in $(systemctl list-units --type=service --state=active,activating,reloading --plain --no-legend --no-pager 'celiksvc-*.service' 'celiksvcinst-*.service' 'celikrt-*.service' 'celikrtbuild-*.service' 'celikapp-*.service' 'celikappinst-*.service' | awk '{print $1}'); do
 	case "$unit" in
-		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service) ;;
+		celiksvc-[0-9]*.service|celiksvcinst-[0-9]*.service|celikrt-[0-9]*.service|celikrtbuild-[0-9]*.service|celikapp-[0-9]*.service|celikappinst-[0-9]*.service) ;;
 		*) continue ;;
 	esac
 	systemctl show -P ExecStartPre "$unit" | grep -q -F 'argv[]=` + HelperPath + ` egress-add ' || continue
 	cgroup=$(systemctl show -P ControlGroup "$unit")
+	# A finished install step (RemainAfterExit, "active (exited)") has no
+	# cgroup any more: nothing runs there, so there is nothing to block.
+	[ -n "$cgroup" ] || continue
 	if [ "$cgroup" != "/system.slice/$unit" ]; then
 		echo "celikpanel-egress: $unit runs in $cgroup, not /system.slice/$unit; it is not blocked"
 		status=1

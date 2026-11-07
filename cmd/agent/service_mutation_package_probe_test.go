@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // TestMain isolates ledger and supervisor tests from package-manager locks on
@@ -46,6 +48,9 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS != "linux" {
 		verifyServiceMutationSecurityPolicy = func() error { return nil }
 	}
+	// No test reads the machine's own PostgreSQL clusters to decide where a
+	// statement goes (alpha.127); the tests about it set their own.
+	pgStatementClusters = func() ([]transport.PostgreSQLCluster, bool) { return nil, false }
 	// Outside the disposable VM trials no test may reach a real CA.
 	if !nativeV3 && os.Getenv("CELIKPANEL_DISPOSABLE_MAIL_VM") != "debian13-20260911" {
 		blockRealCertificateAuthority()

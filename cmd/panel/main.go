@@ -90,6 +90,10 @@ type Panel struct {
 	loginLimiter  *rateLimiter
 	demoMode      bool
 	startupGate   *panelHTTPStartupGate
+	// Screens' last-known DNS proofs (alpha.127, display_checks.go).
+	displayChecks displayChecks
+	// Site disk measurements run once per site (alpha.127, domain_usage_handlers.go).
+	siteDiskMeasurements siteDiskMeasurements
 	// listenerControl is the running HTTP server's listener set; a panel
 	// port change adds and retires listeners through it (panel_port.go).
 	listenerControl panelListenerControl
@@ -337,6 +341,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "app/node-version":
 		// alpha.107 (D-038 §9): move a site to another Node.js patch, with proof.
 		match.kind, match.methods = "app-node-version", []string{http.MethodPost}
+	case "app/packages":
+		// alpha.127: npm install and build in the site sandbox.
+		match.kind, match.methods = "app-packages", getPost
 	case "php":
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
@@ -531,6 +538,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainAppAccount(w, r, match.domainID)
 	case "app-node-version":
 		p.handleDomainAppNodeVersion(w, r, match.domainID)
+	case "app-packages":
+		p.handleDomainAppInstall(w, r, match.domainID)
 	case "php":
 		p.handleDomainPHPSettings(w, r)
 	case "php-pool":
@@ -1585,6 +1594,13 @@ func main() {
 	http.HandleFunc("/api/v1/metrics/history", panel.handleMetricsHistory)
 	// alpha.126: "Problems now" (Monitoring and Dashboard), a read only.
 	http.HandleFunc("/api/v1/metrics/problems", panel.handleMonitoringProblems)
+	// alpha.127: per-service health, site checks and alerts (administrator,
+	// through the /api/v1/metrics/ prefix). The reads serve stored results.
+	http.HandleFunc("/api/v1/metrics/services", panel.handleMonitoringServices)
+	http.HandleFunc("/api/v1/metrics/sites", panel.handleMonitoringSites)
+	http.HandleFunc("/api/v1/metrics/alerts", panel.handleMonitoringAlerts)
+	http.HandleFunc("/api/v1/metrics/alerts/settings", panel.handleMonitoringAlertSettings)
+	http.HandleFunc("/api/v1/metrics/alerts/seen", panel.handleMonitoringAlertsSeen)
 	// History needs a historian: sample for as long as the panel lives.
 	// Geçmiş, tarihçi ister: panel yaşadıkça örnekle.
 	panel.startMetricsSampler()
@@ -1727,6 +1743,8 @@ func main() {
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
 	http.HandleFunc(malwarePath, panel.handleMalware)
+	// alpha.127: the live step of a change this person sent (read only).
+	http.HandleFunc(operationProgressPath, panel.handleOperationProgress)
 
 	// System SQLite maintenance is a fixed-ID, administrator-only surface.
 	// Sistem SQLite bakımı, sabit kimlikli ve yalnız yöneticiye açık bir yüzeydir.
@@ -1853,6 +1871,11 @@ func main() {
 		protocol = "HTTPS"
 	}
 	log.Printf("Panel ready on %s (%s)", addr, protocol)
+	// alpha.127: screens read the DNS proofs through a last-known answer;
+	// the first one is read now, behind the start, so the first page opened
+	// does not wait for it. Changes keep using the live proofs.
+	displayChecksEnabled.Store(true)
+	go panel.warmDisplayChecks()
 	if err := waitPanelHTTP(runningServer); err != nil {
 		log.Fatal(err)
 	}
@@ -2036,6 +2059,9 @@ func (p *Panel) handleServiceAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// alpha.127: the progress window follows these steps (operation_steps.go).
+	reportOperationPlan(r.Context(), "check", "action", "refresh")
+	reportOperationStep(r.Context(), "check")
 	var req struct {
 		ServiceName string `json:"service_name"`
 		Name        string `json:"name"`   // Support 'name' from frontend
@@ -2074,6 +2100,7 @@ func (p *Panel) handleServiceAction(w http.ResponseWriter, r *http.Request) {
 	}
 	defer release()
 	var reply transport.ServiceActionResult
+	reportOperationStep(r.Context(), "action")
 	err := p.withStandaloneAgentMutation(r.Context(), "service_"+req.Action, serviceName, "", func(callCtx context.Context, binding agentMutationBinding) error {
 		request := transport.ServiceMutationActionRequest{
 			ServiceMutationBinding: binding,
@@ -2131,6 +2158,7 @@ func (p *Panel) handleServiceAction(w http.ResponseWriter, r *http.Request) {
 	// Eylem gerçek durumu değiştirdi; önbellekteki tarama bayatladı. Burada
 	// tazele — bir bilinçli eylem, bir tarama — sayfalar kendi başına
 	// yoklama yapmadan önbellekten yüklenmeye devam etsin.
+	reportOperationStep(r.Context(), "refresh")
 	if _, err := p.scanManagedServices(r.Context()); err != nil {
 		log.Printf("service scan after %s %s: %v", req.Action, serviceName, err)
 		p.audit(r, "service."+req.Action+".refresh.failed:"+serviceName+" — "+auditReason(err.Error()), "service", 0)

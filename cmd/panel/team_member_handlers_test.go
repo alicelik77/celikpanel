@@ -98,7 +98,7 @@ func teamMemberCreateBody(ownerID *int, username string, subscriptionID, domainI
 	request := map[string]any{
 		"username": username,
 		"email":    username + "@example.test",
-		"password": "handler-password",
+		"password": "Handler-password",
 		"access": map[string]any{
 			"subscription_permissions": []map[string]any{{
 				"subscription_id": subscriptionID,
@@ -325,11 +325,11 @@ func TestTeamMemberHandlersDenyUnknownIdentitiesAndInvalidInput(t *testing.T) {
 
 	customer := &Caller{ID: ownerID, Role: roleCustomer, AccountType: core.AccountTypeAccount, CustomerID: ownerID}
 	invalidBodies := []string{
-		fmt.Sprintf(`{"username":"invalid-capability","email":"invalid-capability@example.test","password":"handler-password","access":{"subscription_permissions":[{"subscription_id":%d,"capability":"shell","mode":"view"}],"domain_permissions":[]}}`, subscriptionID),
-		fmt.Sprintf(`{"username":"invalid-mode","email":"invalid-mode@example.test","password":"handler-password","access":{"subscription_permissions":[],"domain_permissions":[{"domain_id":%d,"capability":"dns","mode":"owner"}]}}`, domainID),
-		`{"username":"missing-access","email":"missing-access@example.test","password":"handler-password"}`,
-		`{"username":"unknown-field","email":"unknown-field@example.test","password":"handler-password","unknown":true,"access":{"subscription_permissions":[],"domain_permissions":[]}}`,
-		`{"username":"trailing","email":"trailing@example.test","password":"handler-password","access":{"subscription_permissions":[],"domain_permissions":[]}} {}`,
+		fmt.Sprintf(`{"username":"invalid-capability","email":"invalid-capability@example.test","password":"Handler-password","access":{"subscription_permissions":[{"subscription_id":%d,"capability":"shell","mode":"view"}],"domain_permissions":[]}}`, subscriptionID),
+		fmt.Sprintf(`{"username":"invalid-mode","email":"invalid-mode@example.test","password":"Handler-password","access":{"subscription_permissions":[],"domain_permissions":[{"domain_id":%d,"capability":"dns","mode":"owner"}]}}`, domainID),
+		`{"username":"missing-access","email":"missing-access@example.test","password":"Handler-password"}`,
+		`{"username":"unknown-field","email":"unknown-field@example.test","password":"Handler-password","unknown":true,"access":{"subscription_permissions":[],"domain_permissions":[]}}`,
+		`{"username":"trailing","email":"trailing@example.test","password":"Handler-password","access":{"subscription_permissions":[],"domain_permissions":[]}} {}`,
 	}
 	for index, body := range invalidBodies {
 		recorder := httptest.NewRecorder()
@@ -380,7 +380,7 @@ func TestTeamMemberHandlersSecurityUpdateAndDeleteRevokeSessions(t *testing.T) {
 	})
 
 	updateBody := fmt.Sprintf(`{
-		"password":"replacement-password",
+		"password":"Replacement-password",
 		"status":"suspended",
 		"access":{
 			"subscription_permissions":[{"subscription_id":%d,"capability":"backups","mode":"manage"}],

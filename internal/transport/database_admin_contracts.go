@@ -72,6 +72,9 @@ type ProvisionDatabaseAdminAccountResponse struct {
 // kaldirmasini ister. Operatorun kendi giris yolu bundan etkilenmez.
 type RemoveDatabaseAdminAccountRequest struct {
 	Engine string
+	// Port names the PostgreSQL cluster the account is on (alpha.127); 0 is
+	// the Agent's choice of the running cluster.
+	Port int `json:",omitempty"`
 }
 
 // RemoveDatabaseAdminAccountResponse reports whether the account is gone.

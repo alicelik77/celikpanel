@@ -4,18 +4,26 @@
 (systemd 257). The escape matrix on the five supported systems is still
 pending in the lab.*
 
+*alpha.127 · Node.js sites joined the sandbox (§1, §6, §7). In source and
+component-tested; the Node.js items of the escape kit (19, 20, with the
+matrix under a Node.js site's unit) were smoke-run on WSL Debian 13 (systemd
+257, Node.js 22.23.4). The lab round on the five systems is still open.*
+
 Turkish: [SITE-SANDBOX.tr.md](SITE-SANDBOX.tr.md).
 
 Every customer program runs in one systemd sandbox. That covers the AI and
 automation service apps (`celiksvc-<id>`, and their install step
-`celiksvcinst-<id>`), Python apps and uploaded programs (`celikrt-<id>`).
+`celiksvcinst-<id>`), Python apps and uploaded programs (`celikrt-<id>`),
+and since alpha.127 Node.js sites (`celikapp-<site id>`, and their install
+step `celikappinst-<site id>`).
 CelikPanel treats every program as arbitrary code. An uploaded Go binary can
 start Python, so the security boundary is the sandbox. Which languages the
 server has installed does not matter.
 
 The code is in `internal/sitesandbox`. Service apps render their units
 through it (`internal/serviceapps`). The runtime workstream uses it for
-Python apps and uploaded programs. Uploaded programs are described in
+Python apps and uploaded programs. Node.js sites render theirs through
+`internal/nodesite`. Uploaded programs are described in
 [RUNTIME-APPS.md](RUNTIME-APPS.md).
 
 ## 1. What every sandboxed program gets
@@ -51,6 +59,40 @@ Python apps and uploaded programs. Uploaded programs are described in
 - **Service apps** keep alpha.118's full `/proc` view. Node.js reads
   `/proc/cpuinfo` and `/proc/meminfo`, and this has not been measured with
   n8n and Open WebUI yet.
+- **Node.js sites** (alpha.127) get the base set with the full `/proc` view
+  (as the service apps: `os.cpus()` would see no processor, and code that
+  sizes a worker pool from it would start none; `ProtectProc=invisible`
+  still hides every other account's processes). No `MemoryDenyWriteExecute`
+  (V8 compiles JavaScript at run time) and no `NoExecPaths` (npm runs the
+  project's scripts with `/bin/sh`). In addition:
+  - **One Node.js version.** `/opt/celikpanel/runtimes` is an empty read-only
+    `TemporaryFileSystem` with only the site's chosen version bound back in
+    read-only (`BindReadOnlyPaths=/opt/celikpanel/runtimes/node/<version>`).
+    A version the site's plan does not allow cannot be started by its full
+    path; the source is root's, outside the hosting tree.
+  - **Its own folder.** The app folder is the site's document root
+    (`<site home>/public_html`), bound by the helper like any app folder
+    (§1a). `HOME` is `<document root>/.home` (npm's cache is `HOME/.npm`).
+    `PATH` is the version's `bin`, then `/usr/bin:/bin`.
+  - **Its own port.** The port the site was given (1024–65535, as before:
+    the Panel checks it against every other site's); `SocketBindAllow` lets
+    the program bind only that one. `PORT`, `HOST=127.0.0.1` and
+    `NODE_ENV=production` are set.
+  - **The start command** stays the customer's shell command line, run as
+    `ExecStart=/bin/sh -c "<command>"` as the site's account inside the
+    sandbox. It is written so that the shell receives exactly what was typed
+    (`%` as `%%`, `$` as `$$`, `\` and `"` escaped; a line break refused).
+  - **Limits** (fixed in this release; a Node.js site had none before):
+    `MemoryMax=1536M`, `CPUQuota=200%`, `TasksMax=512`; the install step gets
+    `MemoryMax=2048M`.
+  - **The install step** `celikappinst-<site id>` (the Hosting tab's "Install
+    packages and build"): a transient unit, the same sandbox without a port,
+    outbound open for the npm registry and the SMTP block in place. It runs
+    `<version>/bin/node <version>/lib/node_modules/npm/bin/npm-cli.js ci`
+    (`install` without `package-lock.json`) `--no-audit --no-fund
+    --foreground-scripts`, then `npm run build --if-present`, as separate
+    command lines. It runs only for a site whose unit is already in the
+    sandbox; the running application is not touched.
 
 **Additions on systemd 257 and later:** `PrivatePIDs=yes` (the program is
 PID 1 of its own namespace) and `ProtectControlGroups=strict`.
@@ -157,6 +199,10 @@ The Agent copies itself to `/usr/lib/celikpanel-sandbox/sandbox-helper`
 | Debian 13 | 6.12 | yes | yes | yes | 257 |
 | Arch | current | yes | yes | yes | 258+ |
 
+The helper accepts three kinds of app folder: a runtime app's
+`<site home>/app`, a service app's `<site home>/apps/<app>` and, since
+alpha.127, a Node.js site's document root `<site home>/public_html`.
+
 The systemd side (a template unit, `Requires=`/`After=`/`PartOf=`,
 `BindPaths=source:destination`, `Type=oneshot` with `RemainAfterExit=`) is
 older than every supported release. On a kernel without `openat2` the
@@ -209,7 +255,10 @@ cgroup v2, and nft can load the egress table. Otherwise the level is
 A runtime is offered at the reduced level only when the administrator
 accepts the named gap (`sitesandbox.Permit`). The service apps were offered
 before levels existed. They run at the level the host enforces, and the
-administrator's page shows it.
+administrator's page shows it. Node.js sites existed before levels too and
+run the same way: at the level the host enforces, shown with its named gaps
+under Components → Node.js. Ubuntu 22.04 and 24.04 give them the same unit
+(`TestNodeUbuntu2204IsUbuntu2404`).
 
 ## 3. The SMTP egress block
 
@@ -253,7 +302,9 @@ another slice), the unit does not start.
 again. It then adds every running sandboxed unit whose `ExecStartPre` runs
 the helper's `egress-add`. Between a flush and the guard's next run, the block is absent for
 up to 30 seconds. A unit started by an earlier release (with no
-`ExecStartPre`) is never added silently.
+`ExecStartPre`) is never added silently. Since alpha.127 the guard also
+covers `celikapp-*` and `celikappinst-*`; a Node.js site's unit an earlier
+release wrote has no helper line and stays out.
 
 **Not covered:** port 2525, mail sent through HTTP mail APIs, and a program's
 own outbound traffic in general. A program's outbound traffic is also not
@@ -312,6 +363,18 @@ its profile (`sitesandbox.Prove`):
 - The unit's cgroup is in `@smtp_blocked`, and the reject rule is loaded.
 - The unit listens on loopback only.
 
+**Node.js sites** are proved after every start the Agent makes (a new site,
+a settings change, the move of §6), once the unit runs and listens on its
+port (up to 20 seconds). Node.js listens on every address when a program
+calls `listen(port)` without a host. Where the host holds the egress block,
+its input chain drops every new connection from outside to a sandboxed
+socket, so a wildcard listener on the site's own port counts as loopback
+(`sitesandbox.ProveNodeListening`); a wildcard on another port, or a named
+public address, is `listens_elsewhere`. Without the block a wildcard is
+exposed, as for every other kind. A new site without code yet (not running,
+not listening) is reported, not refused. A unit already in the sandbox that
+fails its proof is stopped and not published.
+
 Any mismatch, and anything that cannot be read, is a coded refusal:
 `property_mismatch`, `site_path_on_host`, `cgroup_unexpected`, `not_in_smtp_set`,
 `egress_rule_missing`, `listens_elsewhere`, `port_taken`, `not_listening` or
@@ -342,9 +405,71 @@ need the new sandbox, and has one action:
   version gets the new sandbox with its update.
 - The action is audited as `service_app.sandbox_refresh`.
 
+### 6a. Node.js sites (alpha.127)
+
+A Node.js site's unit keeps its name, `celikapp-<site id>`. Which text the
+Agent writes is decided from the request and the file on the server:
+
+- a new site (no unit file yet) and a unit already in the sandbox get the
+  sandbox;
+- a unit an earlier release wrote (no `# celikpanel-sandbox-generation`
+  marker) keeps that release's text on every ordinary write (a settings
+  change, a Node.js version move, the site configuration page). It is never
+  rewritten silently. The site's Hosting tab says "runs in an earlier
+  release's protection" and who moves it;
+- an application that still runs as the shared web account stays outside:
+  the sandbox needs the site's own account, so "Run under the site's own
+  user" (D-038 §6) comes first.
+
+Components → Node.js shows the host's level and gaps, how many sites run in
+the sandbox, and one action:
+
+`POST /api/v1/runtimes/node/sandbox-refresh {request_id, expected}`
+
+- `expected` is the number the page showed; a changed number is refused.
+- One move at a time across the Panel; a second press while it runs is
+  refused, a repeated `request_id` returns the first answer.
+- The sites move one after the other (`ApplyAppUnit` with `sandbox_move`).
+  A running application restarts once in the sandbox and is proved (§5). If
+  the proof refutes the move, or an application that answered on its port
+  before no longer does, the Agent writes the earlier unit again and starts
+  the application on it (put back; resilience contract invariant 4). A
+  stopped application gets the new unit and stays stopped (`no_start`).
+- Owner-changed units are kept and listed, never moved. Sites on the shared
+  web account are listed with their next action.
+- Each written file is recorded in the site-file ledger; the action is
+  audited as `site.node_sandbox_refresh`.
+
+The install step (§1) is offered only once the site is in the sandbox:
+`POST /api/v1/domains/{id}/app/packages {request_id, build}` starts it (a
+repeated `request_id` answers the first start; a second step while one runs
+is refused), `GET` reads it and never starts anything. It is audited as
+`site.node_install`.
+
 ## 7. Escape tests
 
 The kit is in `deploy/e2e/sandbox-escape/` (see its README). It runs a static
 Go probe and a Python probe under rendered units through matrix items 1–18,
 and reports PASS only when every attempt fails. The lab round on the five
 supported systems is still open.
+
+**Node.js sites (alpha.127).** With `NODE_VERSION=<version>` (a Node.js
+under `/opt/celikpanel/runtimes/node`) the kit also renders a Node.js site's
+unit with the Agent's own renderer (`render -what node-unit`) and runs the Go
+probe as the site's code through its start command, so items 1–16 are
+judged under the Node.js profile (item 14 is SKIP: npm needs `/bin/sh`).
+Two items are added:
+
+| # | Attempt | How it is judged |
+|---|---|---|
+| 19 | Another Node.js version; writing the runtime; the toolchains | A decoy version beside the site's must not be listed; the site's own `bin/node` must be reachable; a write into the runtime and a listing of `/opt/celikpanel/toolchains` must fail |
+| 20 | The install step | `systemd-run` with the rendered install arguments (`render -what node-install`) must be accepted; npm installs a project whose `postinstall` runs the probe once and whose `build` runs node; no attempt may escape, the step must end `success` and the build must have written its file |
+
+`sudo NODE_VERSION=<v> ./run.sh node` runs only these; `matrix` and `quick`
+include them. On WSL Debian 13 (systemd 257, kernel without nft
+`socket cgroupv2`, so level reduced with `nft_cgroup_missing`) items 1–8,
+10, 12–16, 19 and 20 passed; item 9 failed as the named gap says (no SMTP
+block on that host). Still open for the lab: the five systems, item 10's
+outside reach of a wildcard Node.js listener with the egress table loaded,
+and a real Node.js application (Express, Next.js) moved by the
+administrator's action on each system.

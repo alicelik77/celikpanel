@@ -1,4 +1,6 @@
 import type { SetupDNSKey } from './setupDNS/en';
+// alpha.127: the Monitoring page's own copy, loaded with its route (monitoringAlerts.ts).
+import type { MonitoringAlertsKey } from './monitoringAlerts/en';
 // English catalog. This file is the source of truth for translation keys:
 // its shape defines the TranslationKey type, and every other locale must
 // provide the same keys.
@@ -69,6 +71,10 @@ import type { HostNameScreenKey } from './screens/hostName/en';
 import type { RemovalRuleScreenKey } from './screens/removalRule/en';
 import type { ComponentInstallScreenKey } from './screens/componentInstall/en';
 import type { MonitoringScreenKey } from './screens/monitoring/en';
+import type { PasswordsScreenKey } from './screens/passwords/en';
+import type { AdminNextScreenKey } from './screens/adminNext/en';
+import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
+import type { OpstepsScreenKey } from './screens/opsteps/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -575,5 +581,9 @@ export type ScreenKey =
     | HostNameScreenKey
     | RemovalRuleScreenKey
     | ComponentInstallScreenKey
-    | MonitoringScreenKey;
-export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey;
+    | MonitoringScreenKey
+    | PasswordsScreenKey
+    | AdminNextScreenKey
+    | NodeSandboxScreenKey
+    | OpstepsScreenKey;
+export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey;

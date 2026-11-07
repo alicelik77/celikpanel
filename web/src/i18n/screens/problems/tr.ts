@@ -68,7 +68,7 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "setup.problem.firewallKernel.what": "Güvenlik duvarı denetlenemedi: güvenlik duvarı bu sunucunun çekirdeğine ulaşamıyor. Hiçbir şey değiştirilmedi.",
     "setup.problem.firewallKernel.todo": "Sunucuyu yeniden başlatın, sonra Yeniden kontrol et’i seçin. Sürerse sunucunun ne bildirdiği Teknik ayrıntılar’da yazar.",
     "setup.problem.firewallEngine.what": "Kayıtlı bir güvenlik duvarı kural seti var, ama onu uygulayan nftables programı kurulu değil. Hiçbir şey değiştirilmedi.",
-    "setup.problem.firewallEngine.todo": "Sunucuya nftables kurun (sudo apt install nftables, Arch’ta sudo pacman -S nftables), sonra Yeniden kontrol et’i seçin.",
+    "setup.problem.firewallEngine.todo": "nftables’i düğmeyle kurun: Bileşenler’de kurulum penceresini açar. Sonra kuruluma dönüp Yeniden kontrol et’i seçin.",
     "setup.problem.firewallBusy.what": "Şu anda başka bir güvenlik duvarı değişikliği sürüyor. Hiçbir şey değiştirilmedi.",
     "setup.problem.firewallBusy.todo": "Bitmesi için bir dakika bekleyin, sonra Yeniden kontrol et’i seçin.",
     "setup.problem.firewallUnknown.what": "Güvenlik duvarı denetlenemedi. Hiçbir şey değiştirilmedi.",
@@ -121,7 +121,7 @@ export const trProblemsScreens: Record<ProblemsScreenKey, string> = {
     "setup.problem.mailEnrollUnknown.todo": "Yeniden kontrol et’i seçin. Sürerse sunucuyu yeniden başlatıp yeniden kontrol edin.",
 
     "users.create.missing": "Kullanıcıyı oluşturmak için doldurun: {fields}.",
-    "users.create.passwordRule": "Parola (en az 8 karakter)",
+    "users.create.passwordRule": "Parola (alanın altındaki kurala uygun)",
     "mail.create.missing": "Oluşturmak için doldurun: {fields}.",
     "ssl.issue.needsEmail": "Sertifikayı almak için yukarıya bir e-posta adresi girin.",
     "domains.add.blockedTitle": "Henüz alan adı eklenemiyor",

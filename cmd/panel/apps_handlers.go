@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 	"sync"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
+	"github.com/alicelik/celikpanel/internal/passwordpolicy"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -586,18 +586,14 @@ func sanitizeDBIdent(value string) string {
 	return result
 }
 
+// randomDBPassword draws 24 characters that meet the owner's password rule
+// (an uppercase and a lowercase letter and one of -_.), because it is shown:
+// a database user's minted password, an application's admin password and a
+// transfer's replaced credentials. The specials mean nothing to a shell, a URL
+// or a config file.
+// randomDBPassword, sahibin kuralina uyan 24 karakter cizer; gosterilir.
 func randomDBPassword() (string, error) {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	password := make([]byte, 24)
-	maximum := big.NewInt(int64(len(charset)))
-	for index := range password {
-		value, err := rand.Int(rand.Reader, maximum)
-		if err != nil {
-			return "", err
-		}
-		password[index] = charset[value.Int64()]
-	}
-	return string(password), nil
+	return passwordpolicy.Generate(24)
 }
 
 func randomHexToken(byteCount int) (string, error) {

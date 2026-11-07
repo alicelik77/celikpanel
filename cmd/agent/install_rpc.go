@@ -615,6 +615,13 @@ func (a *Agent) installServiceWith(ctx context.Context, req *InstallServiceReque
 	if clamAVNote != "" {
 		resp.Detail += " — " + clamAVNote
 	}
+	// alpha.127: a PostgreSQL major installed beside the others (or again)
+	// joins phpPgAdmin's server list, never over the owner's own edit.
+	if svc.ID == "postgresql" && family == "apt" {
+		if note := alignPHPPgAdminServers(); note != "" {
+			resp.Detail += " — " + note
+		}
+	}
 	return nil
 }
 
@@ -1034,6 +1041,13 @@ func (a *Agent) UninstallService(req *InstallServiceRequest, resp *UninstallServ
 	err = a.uninstallServiceWithOps(req, resp, ops)
 	// The path unit that would start ClamAV after its first signatures
 	// goes with ClamAV (only the files CelikPanel wrote unchanged).
+	// alpha.127: a removed PostgreSQL major leaves phpPgAdmin's server list
+	// (its kept cluster no longer answers), never over the owner's own edit.
+	if err == nil && resp.Removed && svc.ID == "postgresql" {
+		if note := alignPHPPgAdminServers(); note != "" {
+			resp.Detail += " — " + note
+		}
+	}
 	if err == nil && resp.Removed && svc.ID == "clamav" {
 		if systemctl, resolveErr := serviceMutationSystemctlResolver(); resolveErr == nil {
 			if note := clamAVRetireFirstStart(ctx, systemctl); note != "" {

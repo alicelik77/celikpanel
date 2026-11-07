@@ -1580,6 +1580,10 @@ func phpToolBindingsView() transport.PHPToolBindingsResponse {
 	}
 	for _, state := range phpToolStates() {
 		binding := transport.PHPToolBinding{Tool: state.Tool, Installed: state.Installed, Source: state.Source}
+		// alpha.127: which PostgreSQL servers phpPgAdmin names, read only.
+		if state.Tool == phpToolPHPPgAdmin && state.Installed {
+			binding.PGServers = phpPgAdminServersState()
+		}
 		// alpha.105: a tool whose proof after its install failed on every
 		// version tried reads "Not ready" with the cause.
 		if failure, failed := proofFailures[state.Tool]; failed && state.Installed {

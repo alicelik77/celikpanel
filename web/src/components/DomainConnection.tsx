@@ -3,7 +3,7 @@ import { Copy, Globe, RefreshCw, ShieldCheck, AlertTriangle, Check } from 'lucid
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { Checking, CouldNotCheck, KeepWords, RemoteGate, StatusDot } from './ui';
-import { decodeList, lastKnown, useRemote } from '../lib/remote';
+import { decodeList, lastKnown, useRemote, useRereadWhileRechecking } from '../lib/remote';
 import { HelpButton } from './HelpDrawer';
 
 // The screen that answers "what do I do at my registrar?" — and then checks.
@@ -56,6 +56,8 @@ interface Connection {
     nameservers_usable: boolean;
     nameserver_facts?: { host: string; ips: string[]; points_here: boolean }[];
     checked_at: string;
+    /** The main DNS server's readiness is its last verified answer; read again shortly (alpha.127). */
+    rechecking?: boolean;
 }
 
 function CopyField({ label, value }: { label: string; value: string }) {
@@ -129,6 +131,7 @@ export function DomainConnection({ domainId, domainName }: { domainId: number; d
 
     const shown = lastKnown(connection.remote);
     const spreading = shown?.value.propagation_pending === true;
+    useRereadWhileRechecking(shown?.value.rechecking === true, shown?.observedAt, recheck);
     const [autoStopped, setAutoStopped] = useState(false);
     const autoChecks = useRef(0);
     const latest = useRef(connection);

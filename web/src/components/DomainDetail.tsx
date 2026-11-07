@@ -10,7 +10,6 @@ import { DomainGeneralSettings } from './DomainGeneralSettings';
 import { DomainSSLSettings, decodeSSLData, type SSLRuntimeSummary } from './DomainSSLSettings';
 import { DomainSSLOverviewCard } from './DomainSSLOverviewCard';
 import { DomainConnection } from './DomainConnection';
-import { DomainDatabaseManager } from './DomainDatabaseManager';
 import { DomainFileManager } from './DomainFileManager';
 import { DomainMailManager } from './DomainMailManager';
 import { DomainDNSManager } from './DomainDNSManager';
@@ -20,7 +19,7 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner, StatusDot } from './ui';
 import { useAuth } from '../auth/AuthContext';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
-import { decodeList, lastKnown, useRemote } from '../lib/remote';
+import { decodeList, lastKnown, useRemote, useRereadWhileRechecking } from '../lib/remote';
 import {
     hasAnyDomainAccess,
     hasDomainAccess,
@@ -59,6 +58,13 @@ const DomainBackupManager = lazy(() => import('./DomainBackupManager').then((mod
 })));
 const DomainCronManager = lazy(() => import('./DomainCronManager').then((module) => ({
     default: module.DomainCronManager,
+})));
+// The Databases tab is fetched when it is opened (alpha.127): the merged
+// alpha.127 work put the page 0.40 KiB over its size limit, and the limit is
+// not raised. The tab content already waits inside one Suspense boundary.
+// Veritabanları sekmesi açıldığında getirilir; sayfa sınırı yükseltilmez.
+const DomainDatabaseManager = lazy(() => import('./DomainDatabaseManager').then((module) => ({
+    default: module.DomainDatabaseManager,
 })));
 const DomainLogsViewer = lazy(() => import('./DomainLogsViewer').then((module) => ({
     default: module.DomainLogsViewer,
@@ -119,11 +125,13 @@ interface DomainUsage {
     bandwidth: number;
     /** alpha.118 (D-044): whether this month's traffic is counted. */
     traffic_state?: string;
+    /** alpha.127: the disk is the last measurement; a new one runs behind the page. */
+    rechecking?: boolean;
 }
 function decodeUsage(raw: unknown): DomainUsage {
-    const body = raw as { disk_usage?: unknown; bandwidth?: unknown; traffic_state?: unknown } | null;
+    const body = raw as { disk_usage?: unknown; bandwidth?: unknown; traffic_state?: unknown; rechecking?: unknown } | null;
     if (!body || typeof body.disk_usage !== 'number' || typeof body.bandwidth !== 'number') throw new Error('shape');
-    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth, traffic_state: typeof body.traffic_state === 'string' ? body.traffic_state : undefined };
+    return { disk_usage: body.disk_usage, bandwidth: body.bandwidth, traffic_state: typeof body.traffic_state === 'string' ? body.traffic_state : undefined, rechecking: body.rechecking === true };
 }
 
 // What became of looking this domain up in the list the server gave.
@@ -284,6 +292,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         || Boolean(domain?.access && hasDomainAccess(domain.access, 'statistics'));
     const usage = useRemote(domainLoaded && canViewStatistics ? `/api/v1/domains/${domainId}/usage` : null, decodeUsage);
     const measured = domainLoaded && canViewStatistics && usage.remote.state === 'known' ? usage.remote.value : null;
+    useRereadWhileRechecking(measured?.rechecking === true, usage.remote.state === 'known' ? usage.remote.observedAt : undefined, () => void usage.retry());
 
     // The certificate line of the strip under the title reads the certificate
     // itself, at the address and with the decoder the overview card and the

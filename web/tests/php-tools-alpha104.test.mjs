@@ -513,9 +513,10 @@ test('an install result naming another tool’s PHP problem is decoded for a war
   const say = (key, vars = {}) => (key in enNotes || key === 'services.installed' ? key + JSON.stringify(vars) : key);
   assert.deepEqual(installedNotes({ result: { php_tool_problems: [{ tool: 'phppgadmin', version: '8.4', kind: 'version_gone' }] }, name: 'phpMyAdmin', fallbackOnly: false, t: say }), [
     { kind: 'success', text: 'services.installed{"name":"phpMyAdmin"}' },
-    { kind: 'warning', text: 'services.phpToolProblem.versionGone{"tool":"phpPgAdmin","version":"8.4"}' },
+    // alpha.127: with the tool's own page, where its version is chosen in Manage.
+    { kind: 'warning', text: 'services.phpToolProblem.versionGone{"tool":"phpPgAdmin","version":"8.4"}', link: { label: 'adminNext.openTool', to: '/components/phppgadmin' } },
   ]);
-  assert.match(source('components/ComponentOperation.tsx'), /showToast\(note\.kind, note\.text\)/);
+  assert.match(source('components/ComponentOperation.tsx'), /showToast\(note\.kind, note\.text, link && open \? \{ action: \{ label: link\.label, run: \(\) => open\(link\.to\) \} \} : undefined\)/);
 });
 
 // After moves no refusal says "Nothing was removed" (EN) or "Hiçbir şey

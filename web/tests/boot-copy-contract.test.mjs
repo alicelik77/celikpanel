@@ -245,13 +245,20 @@ test('a route waits for its own copy the way it waits for its own bundle', () =>
   // copy. Ekran yarısının her dosyası tek Promise.all ile getirilir ve bayrak
   // doğru olmadan önce birleştirilir.
   // Since v0.1.0-alpha.97 the parts are listed per locale in `screenParts`
-  // and loaded together; the list must name every part, in order.
+  // and loaded together; the list must name every part, in order. Since
+  // v0.1.0-alpha.127 the list is its own lazy module (src/i18n/screenParts.ts),
+  // fetched beside the shell, so its loaders are off the critical boot path.
+  const partList = read('src/i18n/screenParts.ts');
+  assert.match(i18n, /const load = import\('\.\/screenParts'\);/);
+  assert.match(i18n, /async function loadShell\(locale: Locale\): Promise<Catalog> \{[\s\S]*?void screenPartList\(\);/, 'the list is fetched beside the shell');
+  assert.match(i18n, /const \{ screenParts \} = await screenPartList\(\);/);
+  assert.doesNotMatch(i18n, /import\('\.\/screens\//, 'no screen-part loader on the critical boot path');
   for (const locale of ['en', 'tr']) {
     const expected = screenCatalogueFiles[locale].map((file) => file.replace('../src/i18n/', './').replace(/\.ts$/, ''));
-    const block = i18n.match(new RegExp(`\\n    ${locale}: \\[([\\s\\S]*?)\\n    \\],`));
-    assert.ok(block, `index.tsx lists no ${locale} screen parts`);
+    const block = partList.match(new RegExp(`\\n    ${locale}: \\[([\\s\\S]*?)\\n    \\],`));
+    assert.ok(block, `screenParts.ts lists no ${locale} screen parts`);
     const loads = [...block[1].matchAll(/import\('([^']+)'\)/g)].map((i) => i[1]);
-    assert.deepEqual(loads, expected, `index.tsx must load every ${locale} screen part`);
+    assert.deepEqual(loads, expected, `screenParts.ts must load every ${locale} screen part`);
   }
   assert.match(i18n, /await Promise\.all\(screenParts\[locale\]\.map\(\(load\) => load\(\)\)\);/);
   assert.match(i18n, /return Object\.assign\(\{\}, \.\.\.loaded\.map\(\(part\) => Object\.values\(part\)\[0\] as Catalog\)\);/);

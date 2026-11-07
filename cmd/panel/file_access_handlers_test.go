@@ -138,7 +138,7 @@ func TestFileAccessEnableSendsTheSiteAccountAndReconcilesTheSubscription(t *test
 	buildCommit = "file-access-test"
 	t.Cleanup(func() { buildCommit = previous })
 
-	response := fileAccessRequest(panel, http.MethodPut, 7103, false, `{"enabled":true,"ssh":true,"password":"correct horse battery"}`)
+	response := fileAccessRequest(panel, http.MethodPut, 7103, false, `{"enabled":true,"ssh":true,"password":"Correct horse battery"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
@@ -148,7 +148,7 @@ func TestFileAccessEnableSendsTheSiteAccountAndReconcilesTheSubscription(t *test
 	}
 	call := calls[0]
 	if call.ExpectedBuildCommit != "file-access-test" || call.Site.Username != "example_com" || call.Site.SubscriptionID != 7102 ||
-		call.Site.DomainID != 7103 || !call.Enabled || !call.SSH || call.Password != "correct horse battery" {
+		call.Site.DomainID != 7103 || !call.Enabled || !call.SSH || call.Password != "Correct horse battery" {
 		t.Fatalf("apply %+v", call)
 	}
 	// The subscription's other site is reconciled; the DNS-only domain has
@@ -156,7 +156,7 @@ func TestFileAccessEnableSendsTheSiteAccountAndReconcilesTheSubscription(t *test
 	if len(call.Reconcile) != 1 || call.Reconcile[0].Username != "shop_example_com" || call.Reconcile[0].DomainID != 7104 {
 		t.Fatalf("reconcile %+v", call.Reconcile)
 	}
-	if strings.Contains(response.Body.String(), "correct horse") {
+	if strings.Contains(response.Body.String(), "Correct horse") {
 		t.Fatal("the password came back")
 	}
 	var action string
@@ -165,7 +165,7 @@ func TestFileAccessEnableSendsTheSiteAccountAndReconcilesTheSubscription(t *test
 	}
 	var details string
 	_ = panel.db.GetDB().QueryRow(`SELECT COALESCE(details, '') FROM audit_logs ORDER BY id DESC LIMIT 1`).Scan(&details)
-	if strings.Contains(details, "correct horse") {
+	if strings.Contains(details, "Correct horse") {
 		t.Fatal("the audit trail carries the password")
 	}
 }
@@ -197,9 +197,9 @@ func TestFileAccessRefusals(t *testing.T) {
 	}{
 		{"suspended subscription", 7111, `{"enabled":true}`, http.StatusConflict, errCodeFileAccessSubscriptionInactive},
 		{"dns-only domain", 7105, `{"enabled":true}`, http.StatusConflict, errCodeFileAccessUnavailable},
-		{"short password", 7103, `{"enabled":true,"password":"short"}`, http.StatusBadRequest, errCodeFileAccessInvalid},
+		{"short password", 7103, `{"enabled":true,"password":"short"}`, http.StatusBadRequest, errCodePasswordWeak},
 		{"bad key", 7103, `{"enabled":true,"add_keys":["not a key"]}`, http.StatusBadRequest, errCodeFileAccessInvalid},
-		{"password while off", 7103, `{"enabled":false,"password":"long enough pw"}`, http.StatusBadRequest, errCodeFileAccessInvalid},
+		{"password while off", 7103, `{"enabled":false,"password":"Long enough pw"}`, http.StatusBadRequest, errCodeFileAccessInvalid},
 		{"unknown field", 7103, `{"enabled":true,"shell":"/bin/sh"}`, http.StatusBadRequest, errCodeFileAccessInvalid},
 	}
 	for _, c := range cases {
@@ -250,7 +250,7 @@ func TestFileAccessAgentRefusalIsCoded(t *testing.T) {
 func TestFileAccessPreviewNeverCarriesThePassword(t *testing.T) {
 	agent := &fileAccessPanelAgent{capabilities: []string{transport.AgentCapabilityFileAccessV1}}
 	panel := newFileAccessPanel(t, agent)
-	response := fileAccessRequest(panel, http.MethodPost, 7103, true, `{"enabled":true,"password":"correct horse battery"}`)
+	response := fileAccessRequest(panel, http.MethodPost, 7103, true, `{"enabled":true,"password":"Correct horse battery"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
@@ -273,5 +273,36 @@ func TestFileAccessRoutesAreOwnerOnly(t *testing.T) {
 				t.Fatalf("%s %s is open to additional users", method, path)
 			}
 		}
+	}
+}
+
+// alpha.127: a plan or suspension notice opens the subscription account's
+// rights for the administrator or reseller who manages it; the account
+// itself, and anyone else, is never told an owner.
+func TestFileAccessNamesTheOwnerOnlyToWhoManagesIt(t *testing.T) {
+	agent := &fileAccessPanelAgent{capabilities: []string{transport.AgentCapabilityFileAccessV1}}
+	panel := newFileAccessPanel(t, agent)
+	if _, err := panel.db.GetDB().Exec(`
+		INSERT INTO users (id, username, password_hash, email, role) VALUES (7120, 'files-customer', 'x', 'c@example.test', 'customer');
+		UPDATE subscriptions SET owner_id = 7120 WHERE id = 7102;`); err != nil {
+		t.Fatal(err)
+	}
+	owner := func(caller *Caller) string {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodGet, "/api/v1/domains/x/access", nil)
+		request = request.WithContext(context.WithValue(request.Context(), callerKey, caller))
+		response := httptest.NewRecorder()
+		panel.handleDomainFileAccess(response, request, 7103, false)
+		var view fileAccessView
+		if err := json.Unmarshal(response.Body.Bytes(), &view); err != nil {
+			t.Fatal(err)
+		}
+		return view.Owner
+	}
+	if got := owner(&Caller{ID: 7101, Role: roleAdmin, AccountType: core.AccountTypeAccount}); got != "files-customer" {
+		t.Fatalf("administrator: owner = %q", got)
+	}
+	if got := owner(&Caller{ID: 7120, Role: roleCustomer, AccountType: core.AccountTypeAccount}); got != "" {
+		t.Fatalf("the account itself: owner = %q", got)
 	}
 }

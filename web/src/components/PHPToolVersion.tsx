@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { invalidate, useInvalidation } from '../lib/remote';
 import { Code2 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { useNavigate } from '../router';
 import { Button, Checking, CouldNotCheck, KeepWords, Spinner } from './ui';
 import { componentName } from '../lib/componentName';
 import { supportFor, useSupportTable } from '../lib/supportTable';
-import { movePHPTool, phpToolCauseText, provePHPTool, readPHPTools, type PHPToolName, type PHPToolsInfo } from '../lib/phpTools';
+import { movePHPTool, phpToolCauseText, provePHPTool, readPHPTools, type PGToolServers, type PHPToolName, type PHPToolsInfo } from '../lib/phpTools';
 
 // Which PHP version webmail (Roundcube), phpMyAdmin or phpPgAdmin runs on, in
 // the tool's own Manage window (alpha.104, owner decision of 2026-10-23),
@@ -252,6 +253,8 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                                                 ? t('component.phpTool.current', { tool: name, version: state.version })
                                                 : t('component.phpTool.missingExtensions', { tool: name, version: state.version })} />
                         </p>
+                        {/* alpha.127: PHP-FPM's own page starts a version or installs another. / PHP-FPM'in kendi sayfası. */}
+                        {stopped && <PHPFPMLink />}
                         {proofFailed && (
                             <Button variant="primary" onClick={() => void check()} disabled={busy} loading={checking} className="max-sm:min-h-11" data-php-tool-check="">
                                 {checking ? t('component.phpTool.checkingAgain') : t('component.phpTool.checkAgain')}
@@ -264,7 +267,7 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                             </div>
                         )}
                         {options.length === 0 ? (
-                            <p className="text-fg-muted" data-php-tool-options="none">{t('component.phpTool.onlyOne', { tool: name })}</p>
+                            <p className="text-fg-muted" data-php-tool-options="none">{t('component.phpTool.onlyOne', { tool: name })} <PHPFPMLink /></p>
                         ) : (
                             <div className="flex flex-wrap items-center gap-2">
                                 <label className="flex items-center gap-2 text-fg">
@@ -302,7 +305,38 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                         <p className="text-xs text-fg-subtle">{t('component.phpTool.note', { tool: name })}</p>
                     </>
                 )}
+                {state?.installed && state.pg_servers && <PGToolServersLine servers={state.pg_servers} />}
             </div>
         </section>
+    );
+}
+
+// alpha.127: which PostgreSQL phpPgAdmin connects to, against the clusters
+// that run. A list the owner edited is theirs: the line says what it names,
+// what runs, and what to set; CelikPanel never rewrites it.
+// phpPgAdmin'in hangi PostgreSQL'e bağlandığı; sahibin düzenlediği liste onundur.
+function PGToolServersLine({ servers }: { servers: PGToolServers }) {
+    const { t } = useI18n();
+    const list = (items: PGToolServers['running']) => items.map((s) => s.version ? t('pga.server', { version: s.version, port: s.port }) : t('pga.serverPort', { port: s.port })).join(', ');
+    const vars = { configured: list(servers.configured), running: list(servers.running), path: servers.config_path, first: servers.running[0]?.port ?? '' };
+    const key = servers.state === 'aligned' ? 'pga.servers.aligned'
+        : servers.state === 'none_running' ? 'pga.servers.none'
+            : servers.owner === 'owner' ? 'pga.servers.owner' : 'pga.servers.differs';
+    return (
+        <p className={`mt-2 text-xs leading-5 ${servers.state === 'aligned' ? 'text-fg-subtle' : 'text-warning'}`} data-pg-tool-servers={servers.state}>
+            <KeepWords text={t(key, vars)} />
+        </p>
+    );
+}
+
+// The page where PHP-FPM's versions are started and installed (alpha.127).
+// PHP-FPM sürümlerinin başlatıldığı ve kurulduğu sayfa.
+function PHPFPMLink() {
+    const { t } = useI18n();
+    const navigate = useNavigate();
+    return (
+        <button type="button" onClick={() => navigate('/components/php-fpm')} className="font-semibold text-primary underline underline-offset-2 max-sm:min-h-11" data-php-fpm-link="">
+            {t('adminNext.openPHPFPM')}
+        </button>
     );
 }

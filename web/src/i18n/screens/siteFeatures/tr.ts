@@ -18,7 +18,7 @@ export const trSiteFeaturesScreens: Record<SiteFeaturesScreenKey, string> = {
     'siteFeatures.protect.realmHint': 'Tarayıcı bunu giriş kutusunda gösterir. İsteğe bağlı.',
     'siteFeatures.protect.username': 'Kullanıcı adı',
     'siteFeatures.protect.password': 'Parola',
-    'siteFeatures.protect.passwordHint': '8 ile 72 karakter. CelikPanel yalnız bir özet saklar; parola kimse tarafından geri okunamaz.',
+    'siteFeatures.protect.passwordHint': 'CelikPanel yalnız bir özet saklar; parola kimse tarafından geri okunamaz.',
     'siteFeatures.protect.add': 'Klasörü koru',
     'siteFeatures.protect.adding': 'Korunuyor…',
     'siteFeatures.protect.users': 'Kullanıcılar',
@@ -66,7 +66,6 @@ export const trSiteFeaturesScreens: Record<SiteFeaturesScreenKey, string> = {
     // --- bir şey gönderilmeden önce yapılan denetimler ---
     'siteFeatures.check.path': 'Klasör eğik çizgiyle başlamalı ve yalnız harf, rakam, nokta, tire, alt çizgi ve yaklaşık işareti içermeli, örneğin /ozel.',
     'siteFeatures.check.username': 'Kullanıcı adı yalnız harf, rakam, nokta, tire ve alt çizgi içerebilir.',
-    'siteFeatures.check.password': 'Parola 8 ile 72 karakter olmalı.',
     'siteFeatures.check.target': 'Hedef, / ile başlayan bir yol ya da tam bir http:// veya https:// adresi olmalı; boşluk, tırnak, noktalı virgül, süslü parantez ve # içermemeli.',
     'siteFeatures.check.source': 'Yol eğik çizgiyle başlamalı ve yalnız harf, rakam, nokta, tire, alt çizgi ve yaklaşık işareti içermeli.',
     // --- retler ---

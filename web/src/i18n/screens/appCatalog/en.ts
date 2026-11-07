@@ -82,6 +82,7 @@ export const enAppCatalogScreens = {
     'err.APP_DOCROOT_NOT_EMPTY': 'The site’s public folder already holds files, and an application is installed only into an empty site so nothing of yours is overwritten. Nothing was changed. Move or delete those files with the file manager, or use a new subdomain.',
     'err.APP_DISK_ROOM': 'There is not enough room for this application. Nothing was changed. Free some space, or ask your provider for a larger plan.',
     'err.APP_NO_DATABASE_SERVER': 'No MariaDB server is installed on this server, so the application cannot get its database. Nothing was changed. The administrator installs MariaDB in Components; then install again.',
+    'err.APP_NO_DATABASE_SERVER.action': 'Install MariaDB',
     'err.APP_VERIFICATION_FAILED': 'The downloaded {app} is not the file CelikPanel pinned, so it was deleted and nothing was changed. Do not install it by hand. Try again later; if it repeats, report it to CelikPanel.',
     'err.APP_UNPACK_FAILED': 'The downloaded {app} matched its pinned fingerprint but could not be unpacked safely, so nothing was changed on the site. Try again later; if it repeats, report it to CelikPanel with the message shown.',
     'err.APP_DOWNLOAD_FAILED': '{app} could not be downloaded from its official address. Nothing was changed on the site. The administrator checks that this server can reach the internet; then install again.',

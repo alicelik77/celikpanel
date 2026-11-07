@@ -76,6 +76,7 @@ export const trAppCatalogScreens: Record<AppCatalogScreenKey, string> = {
     'err.APP_DOCROOT_NOT_EMPTY': 'Sitenin genel klasöründe zaten dosyalar var; uygulama yalnız boş siteye kurulur, böylece sizin hiçbir dosyanızın üzerine yazılmaz. Hiçbir şey değişmedi. O dosyaları dosya yöneticisiyle taşıyın ya da silin veya yeni bir alt alan adı kullanın.',
     'err.APP_DISK_ROOM': 'Bu uygulama için yeterli alan yok. Hiçbir şey değişmedi. Biraz yer açın ya da sağlayıcınızdan daha büyük bir plan isteyin.',
     'err.APP_NO_DATABASE_SERVER': 'Bu sunucuda MariaDB kurulu değil; uygulama veritabanını alamaz. Hiçbir şey değişmedi. Yönetici Bileşenler’den MariaDB’yi kurar; sonra yeniden kurun.',
+    'err.APP_NO_DATABASE_SERVER.action': 'MariaDB’yi kur',
     'err.APP_VERIFICATION_FAILED': 'İndirilen {app}, CelikPanel’in sabitlediği dosya değil; bu yüzden silindi ve hiçbir şey değişmedi. Elle kurmayın. Daha sonra yeniden deneyin; tekrarlarsa CelikPanel’e bildirin.',
     'err.APP_UNPACK_FAILED': 'İndirilen {app} sabitlenen parmak iziyle eşleşti ama güvenle açılamadı; sitede hiçbir şey değişmedi. Daha sonra yeniden deneyin; tekrarlarsa gösterilen iletiyle CelikPanel’e bildirin.',
     'err.APP_DOWNLOAD_FAILED': '{app} resmi adresinden indirilemedi. Sitede hiçbir şey değişmedi. Yönetici bu sunucunun internete erişebildiğini denetler; sonra yeniden kurun.',

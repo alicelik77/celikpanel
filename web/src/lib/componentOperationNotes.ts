@@ -157,7 +157,16 @@ export function refusalDetails(result: unknown, t: Translate, locale: string): s
     return [heading, ...notableRefusalLines(notable, (key, params) => t(key, params), locale)];
 }
 
-export interface InstalledNote { kind: 'success' | 'info' | 'warning'; text: string }
+export interface InstalledNote {
+    kind: 'success' | 'info' | 'warning';
+    text: string;
+    /** alpha.127: the page that holds the next step (the tool's own page, where Manage is). */
+    link?: { label: string; to: string };
+}
+
+// The component page of each PHP tool (Roundcube is the webmail tool).
+const PHP_TOOL_PAGES: Record<keyof typeof PHP_TOOL_NAMES, string> = { webmail: '/components/roundcube', phpmyadmin: '/components/phpmyadmin', phppgadmin: '/components/phppgadmin' };
+const toolLink = (t: Translate, tool: keyof typeof PHP_TOOL_NAMES) => ({ label: t('adminNext.openTool', { tool: PHP_TOOL_NAMES[tool] }), to: PHP_TOOL_PAGES[tool] });
 
 // installedNotes: what a finished install says, in order. The first note
 // replaces the plain "installed" (a mail profile on the default certificate,
@@ -187,7 +196,7 @@ export function installedNotes({ result, name, fallbackOnly, t }: { result: unkn
         const text = proof.moved
             ? said(t, 'services.phpToolProof.moved', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version, first: proof.first, why })
             : said(t, 'services.phpToolProof.notReady', { tool: PHP_TOOL_NAMES[proof.tool], version: proof.version || proof.first, why });
-        if (text) notes.push({ kind: 'warning', text });
+        if (text) notes.push({ kind: 'warning', text, link: toolLink(t, proof.tool) });
     }
     // alpha.124: the PHP version chosen in the install window could not be
     // used; the tool runs on the version it had.
@@ -197,7 +206,7 @@ export function installedNotes({ result, name, fallbackOnly, t }: { result: unkn
         const previous = typeof bind.previous === 'string' && /^[0-9]{1,2}\.[0-9]{1,2}$/.test(bind.previous) ? bind.previous : proof?.version || '—';
         const detail = typeof bind.detail === 'string' ? bind.detail.slice(0, 240) : '';
         const text = said(t, 'cinst.bindFailed', { tool: PHP_TOOL_NAMES[bind.tool as keyof typeof PHP_TOOL_NAMES], version, previous, why: detail ? ` (${detail})` : '' });
-        if (text) notes.push({ kind: 'warning', text });
+        if (text) notes.push({ kind: 'warning', text, link: toolLink(t, bind.tool as keyof typeof PHP_TOOL_NAMES) });
     }
     // Another PHP tool needing attention does not fail this install
     // (alpha.104 review): it is said as a warning that names the tool.
@@ -206,7 +215,7 @@ export function installedNotes({ result, name, fallbackOnly, t }: { result: unkn
             tool: PHP_TOOL_NAMES[problem.tool],
             version: problem.version,
         });
-        if (text) notes.push({ kind: 'warning', text });
+        if (text) notes.push({ kind: 'warning', text, link: toolLink(t, problem.tool) });
     }
     return notes;
 }

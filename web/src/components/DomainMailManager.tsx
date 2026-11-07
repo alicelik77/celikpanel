@@ -2,14 +2,17 @@ import { lazy, useState, useEffect, useRef } from 'react';
 import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { apiErrorText, readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
+import { readApiError, type ApiError } from '../lib/apiError';
+import { useRefusal } from '../lib/useRefusal';
 import type { TranslationKey } from '../i18n/en';
-import { invalidate, useRemote, type Remote } from '../lib/remote';
+import { invalidate, lastKnown, useRemote, useRereadWhileRechecking, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 import { confirmAction } from '../lib/confirmAction';
+import { PasswordInput } from './PasswordInput';
+import { passwordAcceptable } from '../lib/passwordPolicy';
 
 interface EmailAccount {
     id: number;
@@ -40,8 +43,6 @@ interface DomainMailManagerProps {
     domainName: string;
     readOnly?: boolean;
 }
-
-const mailPasswordByteLength = (value: string) => new TextEncoder().encode(value).byteLength;
 
 // The decoders of the three reads of this screen. An answer that does not hold
 // its list is not the contract and is unknown; it is never an empty list.
@@ -135,12 +136,15 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const reloadForwardings = () => { invalidate('mail'); };
 
     // A refused change stays above the list with its fix until the next one
-    // succeeds (owner feedback 2026-10-31).
-    const [refusal, setRefusal] = useState<{ problem: ApiError; sentence: TranslationKey } | null>(null);
+    // succeeds (owner feedback 2026-10-31), said once: the banner, not also a
+    // toast (owner, 6 Nov 2026: the weak-password refusal was shown twice).
+    const { refusal, setRefusal } = useRefusal();
     const refuse = (problem: ApiError, sentence: TranslationKey) => {
+        // Said once, in the banner (useRefusal): no notice repeats it.
         setRefusal({ problem, sentence });
-        showToast('error', refusalText(problem, t, sentence), refusalToast(problem, t));
     };
+    // The change-password dialogue's own refusal, shown inside it.
+    const [passwordRefusal, setPasswordRefusal] = useState<ApiError | null>(null);
     // A failure keeps the reason the server gave; a lost answer says nothing more.
     const failedCreate = (failure: unknown, sentence: TranslationKey) => {
         if (failure instanceof Error && failure.constructor === Error) { refuse({ message: failure.message.trim() }, sentence); return; }
@@ -154,8 +158,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         ? [...(!user.trim() ? [t('mail.username')] : []), ...(!pass ? [t('mail.password')] : [])]
         : [...(!fwdSource.trim() ? [t('mail.source')] : []), ...(!fwdDest.trim() ? [t('mail.destination')] : [])];
 
+    // A typed password that breaks the rule keeps Create off; the field itself
+    // names what is still needed.
+    const createPasswordWeak = activeTab === 'accounts' && pass !== '' && !passwordAcceptable(pass, 'mailbox');
+
     const createAccount = async () => {
-        if (readOnly || !user || !pass) return;
+        if (readOnly || !user || !pass || !passwordAcceptable(pass, 'mailbox')) return;
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts`, {
                 method: 'POST',
@@ -168,6 +176,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             const data = await res.json();
             if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : '');
             showToast('success', t('mail.accountCreated'));
+            setRefusal(null);
             setShowForm(false);
             setUser('');
             setPass('');
@@ -224,6 +233,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         setPasswordAccount(account);
         setNewPassword('');
         setPasswordConfirmation('');
+        setPasswordRefusal(null);
     };
 
     const closePasswordDialog = () => {
@@ -231,17 +241,18 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         setPasswordAccount(null);
         setNewPassword('');
         setPasswordConfirmation('');
+        setPasswordRefusal(null);
     };
 
     const rotateAccountPassword = async () => {
         if (readOnly || passwordSaving || !passwordAccount || passwordRequestRef.current) return;
-        const passwordBytes = mailPasswordByteLength(newPassword);
-        if (passwordBytes < 8 || passwordBytes > 1024 || newPassword !== passwordConfirmation) return;
+        if (!passwordAcceptable(newPassword, 'mailbox') || newPassword !== passwordConfirmation) return;
 
         const request = new AbortController();
         passwordRequestRef.current = request;
         let succeeded = false;
         setPasswordSaving(true);
+        setPasswordRefusal(null);
         try {
             const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts/password`, {
                 method: 'PUT',
@@ -252,15 +263,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             if (!res.ok) {
                 const apiError = await readApiError(res);
                 // Stable codes stay useful, but an untrusted server message is
-                // not echoed on this secret-bearing path.
-                showToast('error', apiErrorText({ ...apiError, message: '' }, t, 'mail.passwordUpdateFailed'));
+                // not echoed on this secret-bearing path. Said once, inside
+                // the dialogue that is still open.
+                setPasswordRefusal({ ...apiError, message: '' });
                 return;
             }
             succeeded = true;
             showToast('success', t('mail.passwordUpdated'));
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
-            showToast('error', t('mail.passwordUpdateFailed'));
+            setPasswordRefusal({ message: '' });
         } finally {
             // Clear submitted secrets after both success and failure. On a
             // failure the target stays visible so the user can safely retry,
@@ -317,8 +329,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     };
 
     const listed = activeTab === 'accounts' ? accountsRead.remote : forwardingsRead.remote;
-    const passwordBytes = mailPasswordByteLength(newPassword);
-    const passwordInRange = passwordBytes >= 8 && passwordBytes <= 1024;
+    const passwordInRange = passwordAcceptable(newPassword, 'mailbox');
     const passwordMatches = passwordConfirmation.length > 0 && newPassword === passwordConfirmation;
 
     return (
@@ -369,7 +380,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             </label>
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.password')}</span>
-                                <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" className={inputClass} />
+                                <PasswordInput value={pass} onChange={setPass} field="mailbox" maxLength={1024} />
                             </label>
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.quota')}</span>
@@ -393,7 +404,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                         <Button variant="secondary" onClick={() => setShowForm(false)}>
                             {t('mail.cancel')}
                         </Button>
-                        <Button variant="primary" icon={Plus} disabled={createMissing.length > 0} aria-describedby={createMissing.length > 0 ? 'mail-create-reason' : undefined} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
+                        <Button variant="primary" icon={Plus} disabled={createMissing.length > 0 || createPasswordWeak} aria-describedby={createMissing.length > 0 ? 'mail-create-reason' : undefined} onClick={activeTab === 'accounts' ? createAccount : createForwarding}>
                             {t('mail.create')}
                         </Button>
                     </div>
@@ -632,40 +643,33 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                     <div className="space-y-3">
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('mail.passwordDialog.new')}</span>
-                            <input
-                                type="password"
+                            <PasswordInput
+                                field="mailbox"
                                 value={newPassword}
-                                onChange={(event) => setNewPassword(event.target.value)}
-                                minLength={8}
+                                onChange={setNewPassword}
+                                onGenerated={setPasswordConfirmation}
                                 maxLength={1024}
                                 autoComplete="new-password"
                                 required
                                 autoFocus
                                 disabled={passwordSaving}
                                 aria-invalid={newPassword.length > 0 && !passwordInRange}
-                                aria-describedby="mail-password-requirements"
-                                className={inputClass}
                             />
                         </label>
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('mail.passwordDialog.confirm')}</span>
-                            <input
-                                type="password"
+                            <PasswordInput
                                 value={passwordConfirmation}
-                                onChange={(event) => setPasswordConfirmation(event.target.value)}
-                                minLength={8}
+                                onChange={setPasswordConfirmation}
                                 maxLength={1024}
                                 autoComplete="new-password"
                                 required
                                 disabled={passwordSaving}
                                 aria-invalid={passwordConfirmation.length > 0 && !passwordMatches}
                                 aria-describedby={passwordConfirmation.length > 0 && !passwordMatches ? 'mail-password-mismatch' : undefined}
-                                className={inputClass}
                             />
                         </label>
-                        <p id="mail-password-requirements" className={`text-xs ${newPassword.length > 0 && !passwordInRange ? 'text-danger' : 'text-fg-subtle'}`}>
-                            {t('mail.passwordDialog.requirements')}
-                        </p>
+                        <ErrorBanner error={passwordRefusal} sentence="mail.passwordUpdateFailed" />
                         {passwordConfirmation.length > 0 && !passwordMatches && (
                             <p id="mail-password-mismatch" role="alert" className="text-xs text-danger">
                                 {t('mail.passwordDialog.mismatch')}
@@ -723,6 +727,9 @@ interface MailHealth {
     server_ip: string;
     expected_ptr: string;
     checks: { id: string; status: string; detail?: string }[];
+    /** alpha.127: when this check ran; rechecking = it runs again behind the card. */
+    checked_at?: string;
+    rechecking?: boolean;
 }
 
 function decodeMailHealth(raw: unknown): MailHealth {
@@ -739,6 +746,8 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
     // Denetimler sunucudan okunur. Okunamadıklarında kart bunu Tekrar dene ile
     // söyler; önceden kaybolurdu.
     const { remote, reading, retry } = useRemote(`/api/v1/domains/${domainId}/mail/health`, decodeMailHealth);
+    const shown = lastKnown(remote);
+    useRereadWhileRechecking(shown?.value.rechecking === true, shown?.observedAt, () => void retry());
     if (remote.state !== 'known') {
         return (
             <section className="mb-5 rounded-xl border border-border bg-surface p-5">
@@ -762,6 +771,12 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
                 <span className={`h-2.5 w-2.5 rounded-full ${tone[data.overall]}`} />
                 <h3 className="text-sm font-semibold text-fg">{t('mail.health.title')}</h3>
             </div>
+            {/* The last verified check while it runs again: said, with its time. */}
+            {data.rechecking && data.checked_at && (
+                <p role="status" className="mb-2 text-xs text-fg-muted">
+                    {t('mail.health.rechecking', { time: new Date(data.checked_at).toLocaleTimeString() })}
+                </p>
+            )}
             <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
                 {data.checks.map((c) => (
                     <div key={c.id} className="flex items-center gap-2 text-sm">

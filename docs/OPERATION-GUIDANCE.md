@@ -75,6 +75,41 @@ warning toasts stay until closed. Setup Summary blockers are mapped in
 (`setup.problem.<name>.what/.todo`). Other screens are being moved to the pattern;
 the audit list is not complete.
 
+### Who acts is the reader's role (2026-11-06)
+
+On Boston the owner read "the server administrator must install them; ask your
+provider" and "Webmail is not available on this server yet". The panel decides
+who acts from the signed-in role. The administrator gets the reason and one
+action that fixes it: install the official packages in place (confirmed in the
+panel's own window, then shown step by step, and the screen reads its state
+again), or open that component's own install window on Components
+(`AdminInstallLink`, `/components?component=<id>&install=`; for a ready setup,
+`/components?bundle=<id>`), where nothing starts before it is confirmed. A
+coded refusal caused by a missing component carries that action only for the
+administrator (`adminInstallAction`). Everyone else is told what is missing
+and that their provider, the server's administrator, acts; they get no
+administrator action. When an administrator signs in with a customer account,
+the customer sentence says so. Covered: the Access tab (command-line tools,
+FTP, OpenSSH), the webmail card (reason: not installed, no address, not
+answering), scheduled tasks (cron), database web tools, program and AI-app
+runtimes, ClamAV signatures, and the refusals for a missing web server, PHP,
+MariaDB and nftables; uploaded programs and AI apps on hold, not offered, not
+in the plan or on a reduced sandbox (Catalog management or Users); a PHP tool
+whose PHP-FPM is stopped (PHP-FPM's page); the setup wizard's missing
+firewall engine (its install window); DKIM signing that fails again (the mail
+setup's Repair). Where CelikPanel has no install path of its own (the
+operating system's automatic updates, logrotate), the administrator gets the
+command whole with a Copy button (`CopyCommand`), never a command inside a
+sentence. The administrator's sentences live in the screen catalogue part
+`adminNext`. Refusals for a hold carry the Catalog management link too. A PHP tool's
+note after an install opens the tool's page (the root passes the router's
+navigate to the operation provider); WordPress tools without the site's PHP
+command line link to PHP-FPM; a reseller's traffic pool notice opens the
+reseller's rights for the administrator; on a customer's Access tab, the
+administrator or reseller who manages the subscription opens that account's
+rights or its resume window (`/users?rights=` or `?resume=`), while the
+account itself keeps the provider wording. The audit is not complete.
+
 ## Truth and operation identity
 
 Separate an observed failure from an unmet prerequisite and an unknown result.
@@ -9988,7 +10023,9 @@ typo is caught when the administrator is created.
   the installer stops before anything is installed and says the file was left
   untouched. **Who acts:** the person installing. **Next action:** correct the
   file (a username the panel accepts, a real email address such as
-  you@example.com, a password of at least 8 characters). **How work resumes:** run
+  you@example.com, a password of at least 8 characters with an uppercase letter,
+  a lowercase letter and a special character such as - _ . !). **How work
+  resumes:** run
   the same installation command again.
 - **An existing installation with an older invalid address.** Nothing changes on
   update; the Server setup screen's contact blocker and its "Open My account"
@@ -10981,3 +11018,58 @@ by the same map (`cmd/panel/component_install_together.go`, `GET
   refusal also names the PHP tools on it, each linked to its own page to move it.
 
 Schema unchanged; no migration. Lab checks pending (D-025).
+
+## The real steps of a running change (alpha.127, 2026-11-06)
+
+The owner's firm order of 6 Nov 2026: while work runs, the page is locked and
+says, step by step, what is being done, until it ends. alpha.126 gave domain
+deletion its real steps; every other confirmed change showed one "Working on the
+server…" step. alpha.127 adds one shared store for the steps of a change that
+runs under its request identity (D-029), `cmd/panel/operation_steps.go`:
+
+- The handler names its plan and the step it is starting
+  (`reportOperationPlan`, `reportOperationStep`). Steps are short stable codes;
+  the screen owns their words (`web/src/lib/requestProgress.ts`, copy part
+  `opsteps`).
+- `GET /api/v1/operation-progress/{request id}` answers only the person who sent
+  the change: `running` with the plan, the step and when it began; `done` with the
+  answer's status and, when the guard kept it, the answer; `unknown` when the
+  process that ran it is gone. It reads memory and the stored row only: it never
+  starts, retries or rewrites anything. A one-time secret is never returned.
+- The change's own answer carries the step it ended at
+  (`X-CelikPanel-Operation-Step`). A refusal at a check that runs before anything
+  is changed is shown as an unmet prerequisite; any other refusal as a failure
+  at its step; a lost answer leaves the step "not known".
+- The identity is kept in the tab's session while the change runs, so a reload
+  reopens the locked window at the server's step and says how it ended.
+- The steps are memory only, never saved evidence: a restart drops them with the
+  request, and the row then says the outcome is unknown.
+
+Flows: certificate request (check, the names point here, the web server is
+prepared for the check, asking the authority and proving control, checking the
+new certificate, installing it, reloading the web server, mail TLS), backup
+restore (disk limit, reading and checking the backup, restoring, finishing),
+backup creation (now in the locked window too), PHP version change (check,
+moving the pool, saving, the web server), application install and WordPress
+tools (their own durable status). A PHP version change sent with an identity is
+now guarded (a request without the header runs as before). The first-login tour
+waits while a question or progress window is open and sits below it.
+
+The same release puts the other confirmed changes on their server-reported
+steps too (`cmd/panel/operation_step_routes.go`, optional guarded routes): a
+certificate upload (validate, install, reload, mail) or removal (detach, reload,
+mail), mail encryption (check, mail TLS, TLSA records; now in the locked window),
+DNS record add and delete (check, save, publish; adding now in the locked
+window), PowerDNS repair (check, configure, publish every zone), php.ini (check,
+apply), hosting type (check, switch), service start/stop/restart (check, the
+action and its check, the state read again), malware quarantine/restore/delete
+(check, the action, record), database and database-user deletion (check,
+delete on the engine, records), CelikPanel's own database account (check,
+remove, records), and account deletion (one real step). A team member's
+removal reports its step on the server, but its page keeps the typed API call
+and the single generic step: passing the identity there would grow the boot
+path. Short
+changes keep their two or three real steps; no step is drawn by the screen
+alone. A reload does not yet reopen the window for these (the change goes on
+on the server and the page shows its result); domain deletion keeps its own
+step store and the deletion_already_running rule.

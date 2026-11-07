@@ -59,15 +59,12 @@ const (
 	recoveryVerifyEmailPath     = "/api/v1/auth/recovery/verify-email"
 	ownEmailVerificationPath    = "/api/v1/auth/email/verification"
 	accountRecoveryBodyMaxBytes = 8 << 10
-	accountPasswordMaxBytes     = 1024
 
 	errCodeAccountRecoveryInvalid  = "account_recovery_request_invalid"
 	errCodeAccountRecoveryTooMany  = "account_recovery_too_many"
 	errCodeAccountMailUnavailable  = "account_mail_unavailable"
 	errCodeAccountMailSendFailed   = "account_mail_send_failed"
 	errCodeAccountLinkInvalid      = "account_link_invalid"
-	errCodeAccountPasswordShort    = "account_password_too_short"
-	errCodeAccountPasswordLong     = "account_password_too_long"
 	errCodeAccountEmailMissing     = "account_email_missing"
 	errCodeAccountEmailVerified    = "account_email_already_verified"
 	errCodeAccountVerifyTooMany    = "account_email_verification_too_many"
@@ -82,8 +79,6 @@ const (
 	accountMailUnavailableMessage  = "This server cannot send account mail, so nothing was sent. Ask your administrator or provider to set a temporary password for you."
 	accountMailSendFailedMessage   = "The server's mail system did not accept the message, so nothing was sent. Try again in a few minutes; if it keeps failing, ask your administrator to check the mail service."
 	accountLinkInvalidMessage      = "This link is not valid any more: it was used, replaced by a newer one, or it expired. Nothing was changed. Ask for a new link."
-	accountPasswordShortMessage    = "The password must be at least 8 characters, so nothing was changed. Enter a longer password."
-	accountPasswordLongMessage     = "The password is too long, so nothing was changed. Use at most 1024 characters."
 	accountEmailMissingMessage     = "Your account has no email address, so nothing was sent. Add an address first."
 	accountEmailVerifiedMessage    = "Your email address is already confirmed, so nothing was sent."
 	accountVerifyTooManyMessage    = "Too many confirmation messages for this account, so nothing was sent. Wait an hour, then try again."
@@ -386,12 +381,10 @@ func (p *Panel) handleSetPasswordByLink(w http.ResponseWriter, r *http.Request, 
 		writeCodedError(w, http.StatusBadRequest, errCodeAccountRecoveryInvalid, accountRecoveryInvalidMessage, "")
 		return
 	}
-	if len(req.NewPassword) < minPasswordLen {
-		writeCodedError(w, http.StatusBadRequest, errCodeAccountPasswordShort, accountPasswordShortMessage, "")
-		return
-	}
-	if len(req.NewPassword) > accountPasswordMaxBytes {
-		writeCodedError(w, http.StatusBadRequest, errCodeAccountPasswordLong, accountPasswordLongMessage, "")
+	// The owner's rule (8 to 1024 bytes, both letter cases, a special
+	// character); it replaced account_password_too_short/_too_long.
+	if refusal := checkAccountPassword(req.NewPassword); refusal != nil {
+		writePasswordRefusal(w, refusal)
 		return
 	}
 	// A malformed token is refused before the (slow) password hash.

@@ -105,7 +105,7 @@ test('the tab, the screen part and its budget are wired', () => {
   assert.doesNotMatch(detail, /^import \{[^}]*DomainRuntimeApps[^}]*\} from/m);
   const addons = read('../src/components/AddonsPage.tsx');
   assert.match(addons, /const AdminRuntimeApps = lazy\(\(\) => import\('\.\/AdminRuntimeApps'\)/);
-  const index = read('../src/i18n/index.tsx');
+  const index = read('../src/i18n/screenParts.ts');
   assert.match(index, /import\('\.\/screens\/runtimeApps\/en'\)/);
   assert.match(index, /import\('\.\/screens\/runtimeApps\/tr'\)/);
   assert.match(read('../src/i18n/en.ts'), /\| RuntimeAppsScreenKey/);
@@ -136,6 +136,8 @@ const stub = dataModule(`
   const i18n = { t: (key, vars) => (vars ? key + JSON.stringify(vars) : key), locale: 'en' };
   export const useI18n = () => i18n;
   export const useNavigate = () => () => true;
+  // alpha.127: the administrator's install link; others see the sentence it carries.
+  export const AdminInstallLink = (props) => props.fallback ?? null;
   export const showToast = () => {};
   export const RuntimeAppRisk = () => null;
   let n = 0;

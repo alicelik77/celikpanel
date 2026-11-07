@@ -20,6 +20,7 @@ import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { componentName } from '../lib/componentName';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 interface ManagedService {
     id: string;
@@ -388,17 +389,22 @@ export function ServiceShell({
         if (!unit || stale) return;
         const key = action === 'start' ? 'svc.confirmStart' : action === 'stop' ? 'svc.confirmStop' : 'svc.confirmRestart';
         await confirmAction({ message: t(key, { name }),
-            action: async () => {
+            action: async (report) => {
                 setActionOutcome(null);
                 setBusy(true);
                 try {
                     let r: Response;
                     try {
-                        r = await fetch('/api/v1/service/action', {
+                        // The server's own steps: check, the action and its check, the state read again (alpha.127).
+                        r = await sendWithSteps(report, [
+                            ...flowSteps(t, 'service', ['check!']),
+                            { id: 'action', label: t(`opstep.service.${action}`, { name }) },
+                            ...flowSteps(t, 'service', ['refresh']),
+                        ], t, `service.${unit}`, (headers) => fetch('/api/v1/service/action', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json', ...headers },
                             body: JSON.stringify({ name: unit, action }),
-                        });
+                        }));
                     } catch {
                         // No answer: whether the unit was started or stopped is not
                         // known. The state is read again; nothing is sent twice. An
