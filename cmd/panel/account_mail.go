@@ -240,6 +240,10 @@ const (
 	// accountMailAlert (alpha.127): a monitoring alert; its subject and body
 	// are written by monitoring_alerts.go.
 	accountMailAlert accountMailKind = "monitoring_alert"
+	// accountMailAccountNotice (alpha.128): an account notice (a
+	// subscription's end date, and other features' notices); its subject and
+	// body are written by account_notices.go.
+	accountMailAccountNotice accountMailKind = "account_notice"
 )
 
 type accountMailContent struct {
@@ -267,7 +271,7 @@ func accountMailText(content accountMailContent, host string) (string, string) {
 	tr := content.lang == "tr"
 	user, inviter, link := content.username, content.inviter, content.link
 	switch content.kind {
-	case accountMailSecurityNotice, accountMailUsageNotice, accountMailAlert:
+	case accountMailSecurityNotice, accountMailUsageNotice, accountMailAlert, accountMailAccountNotice:
 		return content.subject, content.body
 	case accountMailReset:
 		if tr {
