@@ -84,6 +84,8 @@ var mailPolicyInvalidMessages = map[string]string{
 	transport.MailPolicyInvalidSize: "Nothing was changed: the maximum message size must be between 1 and 200 MB.",
 	transport.MailPolicyInvalidZone: "Nothing was changed: a DNSBL zone must be a plain host name such as zen.spamhaus.org, with zones separated by commas.",
 	transport.MailPolicyInvalidRate: "Nothing was changed: the outgoing rate limit must be between 0 and 10000 messages per minute.",
+	// alpha.128 (G30).
+	transport.MailPolicyInvalidConnections: "Nothing was changed: the connections one sending server may hold at once must be between 0 (no limit) and 1000.",
 }
 
 // writeMailPolicyAgentAnswer turns the Agent's classified refusal into the

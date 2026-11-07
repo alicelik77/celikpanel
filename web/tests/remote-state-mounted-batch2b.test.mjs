@@ -63,6 +63,12 @@ const stub = dataModule(`
   export const RepoCard = () => null;
   // alpha.124: the passwordless mail notice on the Postfix page reads its own address; not under test here.
   export const PasswordlessMailNotice = () => null;
+  // alpha.128: the outgoing mail sections on the Postfix page read their own addresses; not under test here.
+  export const OutgoingMailSettings = () => null;
+  export const OutgoingMailNotices = () => null;
+  export const MailPlanLimits = () => null;
+  // alpha.128: bulk mailbox actions run only after a confirmation; not under test here.
+  export const runBulk = async () => ({ done: [], refused: [], unknown: null, notStarted: [] });
   // alpha.108: the PostgreSQL clusters card has its own mounted tests.
   export const PostgreSQLClustersCard = () => null;
   // What components/ComponentOperation.tsx imports and never calls here: only
@@ -112,7 +118,11 @@ const PostfixManagement = await pick(lib('components/PostfixManagement.tsx', own
 
 // DomainMailManager loads the webmail card with a dynamic import, which a
 // module compiled into a data: URL cannot resolve by itself.
-const mailManagerText = source('components/DomainMailManager.tsx').replace("import('./WebmailAccess')", `import('${webmailURL}')`);
+const mailManagerText = source('components/DomainMailManager.tsx').replace("import('./WebmailAccess')", `import('${webmailURL}')`)
+  // alpha.128: the sending-limits section reads its own address; not under test here.
+  .replace("import('./OutgoingMailboxLimits')", "import('data:text/javascript,export default () => null')")
+  .replace("import('./MailDeliveryLookup')", "import('data:text/javascript,export default () => null')")
+  .replace("import('./DomainMailOptions')", "import('data:text/javascript,export default () => null')");
 assert.ok(mailManagerText.includes(webmailURL), 'DomainMailManager no longer loads the webmail card lazily');
 const mailManagerCompiled = ts.transpileModule(mailManagerText, {
   compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2020 },

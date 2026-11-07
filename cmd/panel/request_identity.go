@@ -217,6 +217,20 @@ var requestIdentityRoutePHPVersion = requestIdentityRoute{
 	timeout: agentRPCDatabaseTimeout + agentRPCMutationTimeout + 5*time.Minute,
 }
 
+// requestIdentityRouteMailOutgoing (alpha.128): saving the outgoing mail
+// limits writes postfwd's rules and Postfix's settings; guarded when the page
+// sends an identity, so the progress window can follow its steps.
+var requestIdentityRouteMailOutgoing = requestIdentityRoute{
+	pattern: mailOutgoingPath, optional: true, timeout: agentRPCMutationTimeout + time.Minute,
+}
+
+// requestIdentityRouteMailboxEmpty (alpha.128, G20): emptying a mailbox
+// removes messages; a replay is answered from the first run.
+var requestIdentityRouteMailboxEmpty = requestIdentityRoute{
+	pattern: "/api/v1/domains/{id}/mail/accounts/empty", optional: true,
+	timeout: agentRPCDatabaseTimeout + time.Minute,
+}
+
 // requestIdentityRouteFor names the protected route a request would reach. It
 // uses the dispatcher's own strict matchers, so a path the guard does not
 // recognize is a path the dispatcher does not serve either.
@@ -240,6 +254,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteImportApply, true
 	case path == "/api/v1/vpn/peers":
 		return requestIdentityRouteVPNPeer, true
+	case path == mailOutgoingPath:
+		return requestIdentityRouteMailOutgoing, true
 	case strings.HasPrefix(path, "/api/v1/domains/"):
 		match, ok := matchDomainSubroute(r)
 		if !ok {
@@ -258,6 +274,10 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteLetsEncrypt, true
 		case "php":
 			return requestIdentityRoutePHPVersion, true
+		case "mail":
+			if strings.HasSuffix(path, "/mail/accounts/empty") {
+				return requestIdentityRouteMailboxEmpty, true
+			}
 		case "databases":
 			return requestIdentityRouteDomainDatabase, true
 		case "site-config-keep":

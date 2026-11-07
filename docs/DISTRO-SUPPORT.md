@@ -53,6 +53,7 @@ Rules:
 | 🧹 Rspamd | Service | `rspamd` | `rspamd` | spam filter | SMTP server |
 | 📬 Dovecot | Service | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` `pigeonhole` | IMAP server | — |
 | 🛡️ SpamAssassin | Service | `spamassassin` `spamd` `spamass-milter` | — | spam filter | SMTP server |
+| 📤 Outgoing mail limits (postfwd) | Service | `postfwd` | `postfwd` | — | SMTP server |
 
 ### Security
 

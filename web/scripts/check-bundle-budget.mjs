@@ -291,6 +291,10 @@ const screenPartBudgets = {
   // limits, overuse policy and overselling, the server's limits and the
   // password level (limits.). A new part with at least 25% headroom.
   limits: kib(14, 5),
+  // v0.1.0-alpha.128: mailbox work and the outgoing mail action log words
+  // (moved out of dashboard and mailDatabases, which were full). A new part,
+  // set with at least 25% headroom from its Turkish file.
+  mailWork: kib(6, 2.2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

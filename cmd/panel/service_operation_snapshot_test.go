@@ -1441,6 +1441,19 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the outgoing mail limits (migration 67, alpha.128).
+        DROP TRIGGER mail_plan_limits_follow_subscription;
+        DROP TRIGGER mail_outgoing_notices_follow_user;
+        DROP TRIGGER mail_plan_limits_follow_plan;
+        DROP INDEX idx_mail_outgoing_notices_user;
+        DROP INDEX idx_mail_outgoing_notices_one;
+        DROP TABLE mail_outgoing_notices;
+        DROP TABLE domain_mail_options;
+        DROP INDEX idx_mail_outgoing_hourly_hour;
+        DROP TABLE mail_outgoing_hourly;
+        DROP TABLE mail_plan_limits;
+        DROP TABLE mailbox_outgoing;
+        DROP TABLE mail_outgoing_settings;
         -- Reverse the site setting limits (migration 66, alpha.128).
         DELETE FROM rights_set_items WHERE item IN ('permission:php_settings', 'permission:php_version');
         ALTER TABLE reseller_pools DROP COLUMN overselling;

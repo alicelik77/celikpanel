@@ -17,8 +17,14 @@ import (
 // alpha.114 beÅŸ gÃ¶Ã§ taÅŸÄ±r (047â€“051); hepsi eklemelidir, var olan satÄ±r deÄŸiÅŸmez.
 const (
 	panelPortChangeMigrationVersion = 47
-	newestMigrationVersion          = siteSettingLimitsMigrationVersion
+	newestMigrationVersion          = mailOutgoingMigrationVersion
 )
+
+// reservedMigrationVersions (alpha.128): numbers given to workstreams of the
+// same release that are not merged yet. The integrator renumbers merged
+// migrations to be contiguous and removes a number once its migration is in;
+// the count below fails while a reserved number is missing or left listed.
+var reservedMigrationVersions = map[int]bool{}
 
 // requireMigrationsFrom proves that the embedded list ends at the newest
 // migration this release ships and that it holds every version from `from`
@@ -29,7 +35,13 @@ func requireMigrationsFrom(t *testing.T, embedded, older []embeddedMigration, fr
 	if len(embedded) == 0 || embedded[len(embedded)-1].version != newestMigrationVersion {
 		t.Fatalf("the newest embedded migration is not %d", newestMigrationVersion)
 	}
-	if len(older) != len(embedded)-(newestMigrationVersion-from+1) {
+	reserved := 0
+	for version := range reservedMigrationVersions {
+		if version >= from && version <= newestMigrationVersion {
+			reserved++
+		}
+	}
+	if len(older) != len(embedded)-(newestMigrationVersion-from+1-reserved) {
 		t.Fatalf("the embedded migrations from %d are not exactly %d to %d", from, from, newestMigrationVersion)
 	}
 }

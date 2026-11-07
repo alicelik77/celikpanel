@@ -19,6 +19,12 @@ func prepareInstalledService(serviceID, family string) error {
 // prepareInstalledServiceContext, ilk çalıştırma hazırlığını kalıcı kurulum
 // değişikliğiyle aynı iptal edilebilir süreç grubunda tutar.
 func prepareInstalledServiceContext(ctx context.Context, serviceID, family string) error {
+	// alpha.128: postfwd on every family gets a rule file that only says
+	// DUNNO (Debian ships none) and the drop-in that keeps its counters,
+	// before the install enables and starts it (mail_outgoing_limits.go).
+	if serviceID == "postfwd" {
+		return preparePostfwd(family)
+	}
 	if family != "pacman" {
 		return nil
 	}

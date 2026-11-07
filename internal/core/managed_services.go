@@ -926,6 +926,28 @@ var ManagedServices = []ManagedService{
 		// web-server gereksinimiyle aynı kural.
 	},
 	{
+		// Outgoing mail limits (alpha.128, gap G1; owner decision of 7 Nov
+		// 2026): postfwd, the Postfix policy daemon, from the distribution's
+		// own repository on every supported system (Debian main, Ubuntu
+		// universe, Arch extra; docs/OUTGOING-MAIL-LIMITS.md). It counts the
+		// recipients each mailbox, domain and hosting account sends per hour
+		// and holds a paused mailbox. Postfix asks it from the submission
+		// services only, with default action DUNNO, so mail keeps flowing
+		// when it stops. Installed only from Components or the Mail settings,
+		// never by a panel update; its rule file and unit are native and keep
+		// working without the panel.
+		// Giden posta sınırları: dağıtımın kendi deposundan postfwd; Postfix
+		// yalnız 587/465'te sorar, postfwd durursa posta akmaya devam eder.
+		ID:          "postfwd",
+		Name:        "Outgoing mail limits (postfwd)",
+		Description: "Hourly sending limits for mailboxes",
+		Icon:        "📤",
+		Category:    "email",
+		Kind:        KindService,
+		SystemNames: []string{"postfwd"},
+		Packages:    map[string][]string{"apt": {"postfwd"}, "pacman": {"postfwd"}},
+	},
+	{
 		ID:            "wireguard",
 		Name:          "WireGuard VPN",
 		Description:   "Built-in VPN server",
