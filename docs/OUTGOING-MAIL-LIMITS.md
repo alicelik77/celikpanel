@@ -46,6 +46,11 @@ Postfix policy protocol, package removed afterwards):
 - `file:` lists match without regard to case and accept `#` comments.
 - A plain `systemctl reload postfwd` clears the counters; with `--keep_rates`
   on the start line it keeps them.
+- A kept rate object keeps the limit and text of the rule that made it, so a
+  changed limit would wait up to an hour for it to end (alpha.128 lab). After a
+  reload the Agent removes the rate objects of the mailboxes, domains and
+  hosting accounts whose limit changed, and of resumed mailboxes
+  (`postfwd --delrate <item>`); their hour counts again from then.
 - A semicolon inside an action text splits the rule (texts avoid it).
 - `postfwd -C` (postfwd2 1.35) ends with `exit 1` whatever the file holds
   (alpha.128 lab), so the check is the "Rule N:" lines it prints; `postconf -P` refuses a value

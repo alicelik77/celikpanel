@@ -173,6 +173,27 @@ func outgoingEnsureReadableDir(dir string) error {
 	return nil
 }
 
+// outgoingLimitListRe names the lists of the counting rules and the postfwd
+// item each counts by.
+var outgoingLimitListRe = regexp.MustCompile(`^(mailbox|domain|subscription)-([0-9]+)\.list$`)
+
+// outgoingLimitMembers adds "item=value" -> list name for each entry of a
+// counting list (mailbox: sasl_username, domain: sender_domain, hosting
+// account: cp_subscription).
+func outgoingLimitMembers(name, content string, into map[string]string) {
+	m := outgoingLimitListRe.FindStringSubmatch(name)
+	if m == nil {
+		return
+	}
+	item := map[string]string{"mailbox": "sasl_username", "domain": "sender_domain", "subscription": "cp_subscription"}[m[1]]
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") {
+			into[item+"="+line] = name
+		}
+	}
+}
+
 // postfwdShownRuleRe is one rule line of postfwd --showconfig ("Rule   0: ...").
 var postfwdShownRuleRe = regexp.MustCompile(`(?m)^Rule +[0-9]+:`)
 
@@ -908,6 +929,24 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 		refuse(code, detail)
 	}
 
+	// The counters whose limit this apply changes: postfwd keeps a rate
+	// object with the limit and text of the rule that made it, also across
+	// a reload (--keep_rates), so a raised or lowered limit, or a resumed
+	// mailbox, would wait up to an hour for the old object to end (alpha.128
+	// lab: a mailbox raised from 3 to 100 per hour kept getting "limit of 3").
+	// Their rate objects are removed once postfwd holds the new rules; the
+	// hour then counts again from that moment for them only.
+	oldMembers := map[string]string{}
+	for _, name := range existingLists {
+		if raw, exists, _ := outgoingReadOptional(filepath.Join(layout.listDir, name)); exists {
+			outgoingLimitMembers(name, string(raw), oldMembers)
+		}
+	}
+	newMembers := map[string]string{}
+	for name, content := range rendered.lists {
+		outgoingLimitMembers(name, content, newMembers)
+	}
+
 	// The mailboxes this apply takes off the pause list: once postfwd took
 	// the rules they are asked until postfwd answers them as not paused.
 	var resumed []string
@@ -1042,6 +1081,35 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 	}
 	resp.Verified = true
 	step("a test message was counted and the second one refused, so the limits work")
+	resetSet := map[string]bool{}
+	for key, list := range oldMembers {
+		if newMembers[key] != list {
+			resetSet[key] = true
+		}
+	}
+	for _, address := range resumed {
+		// A resumed mailbox starts its hour again too: its old counter may
+		// still be over the limit from the hour that led to the pause.
+		resetSet["sasl_username="+address] = true
+	}
+	reset := make([]string, 0, len(resetSet))
+	for key := range resetSet {
+		reset = append(reset, key)
+	}
+	sort.Strings(reset)
+	if len(reset) > 0 {
+		failed := 0
+		for _, key := range reset {
+			if _, err := outgoingRun(ctx, layout.program, "--delrate", key); err != nil {
+				failed++
+			}
+		}
+		if failed == 0 {
+			step(fmt.Sprintf("the hourly counters of %d changed limits start again, so the new limits apply now", len(reset)))
+		} else {
+			step(fmt.Sprintf("%d of %d changed limits keep their old counter until the hour ends (postfwd did not take the reset)", failed, len(reset)))
+		}
+	}
 	if len(resumed) > 0 {
 		resp.ResumeUnconfirmed = outgoingConfirmResumed(ctx, resumed)
 		if len(resp.ResumeUnconfirmed) == 0 {

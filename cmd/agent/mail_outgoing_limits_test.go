@@ -586,3 +586,35 @@ func TestApplyOutgoingMailLimitsConfirmsResumedMailboxes(t *testing.T) {
 		t.Fatalf("stale resume apply: %+v %v", resp, err)
 	}
 }
+
+// alpha.128 lab: a mailbox raised from 3 to 100 per hour kept the refusal
+// "limit of 3": postfwd keeps the rate object of the old rule across a
+// reload. A changed limit's rate object is removed after the reload.
+func TestApplyOutgoingMailLimitsResetsTheCountersOfChangedLimits(t *testing.T) {
+	host, _ := installFakeOutgoingHost(t)
+	var resp transport.OutgoingMailLimitsApplyResponse
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil || !resp.Applied {
+		t.Fatalf("first apply: %+v %v", resp, err)
+	}
+	for _, c := range host.commands {
+		if strings.Contains(c, "--delrate") {
+			t.Fatalf("a first apply reset counters: %v", host.commands)
+		}
+	}
+	changed := sampleOutgoingSpec()
+	changed.MailboxLimits["a@example.com"] = 100
+	changed.Paused = nil
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(changed, &resp); err != nil || !resp.Applied {
+		t.Fatalf("changed apply: %+v %v", resp, err)
+	}
+	var resets []string
+	for _, c := range host.commands {
+		if i := strings.Index(c, "--delrate "); i >= 0 {
+			resets = append(resets, c[i+len("--delrate "):])
+		}
+	}
+	if strings.Join(resets, ",") != "sasl_username=a@example.com,sasl_username=bad@example.com" {
+		t.Fatalf("counters reset = %v", resets)
+	}
+}
