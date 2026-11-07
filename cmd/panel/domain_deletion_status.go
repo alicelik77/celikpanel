@@ -37,6 +37,9 @@ type domainDeletionStatusSnapshot struct {
 	// not a hold (domain_deletion_pending_dns.go).
 	dnsWaiting bool
 	dnsFailed  bool
+	// dnsHeldAlone: the removal is saved and held with no other publication
+	// pending (the backup's zone-list wait; domainDeletionPairWaitStatus).
+	dnsHeldAlone bool
 	// remote: a joined server's deletion (the zone is on the main DNS
 	// server); remoteDNS is what its saved records say.
 	remote    bool
@@ -151,7 +154,7 @@ func (p *Panel) readDomainDeletionStatusSnapshot(ctx context.Context, domainID i
 	}
 	lease, err := readDNSZoneEngineLease(ctx, tx, snapshot.domain)
 	if errors.Is(err, sql.ErrNoRows) {
-		snapshot.dnsWaiting, snapshot.dnsFailed, err = domainDeletionDNSWithoutLease(ctx, tx, state)
+		snapshot.dnsWaiting, snapshot.dnsHeldAlone, snapshot.dnsFailed, err = domainDeletionDNSWithoutLease(ctx, tx, state)
 		return snapshot, err
 	}
 	if err != nil {
@@ -274,6 +277,12 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 	if snapshot.dnsWaiting {
 		_ = json.NewEncoder(w).Encode(p.domainDeletionDNSWaitingStatus())
 		return
+	}
+	if snapshot.dnsHeldAlone {
+		if result, waiting := p.domainDeletionPairWaitStatus(r.Context()); waiting {
+			_ = json.NewEncoder(w).Encode(result)
+			return
+		}
 	}
 	// No running request, no recorded failure and no DNS step waiting on
 	// its own: the deletion stopped before it finished (D-024: never an

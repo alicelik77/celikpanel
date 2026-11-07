@@ -65,30 +65,65 @@ const domainDeletionDNSFinishRetryEnglish = "The DNS removal of this domain is c
 // domainDeletionDNSWithoutLease classifies a parentless local deletion whose
 // zone has a deletion marker and a saved removal but no publication lease of
 // its own: waiting (held behind another zone's exact publication, which the
-// reconciler owns and after which it publishes held zones), or failed (the
-// removal ended with an error that is not a hold). Read only.
-func domainDeletionDNSWithoutLease(ctx context.Context, tx *sql.Tx, state dnsZoneSyncState) (waiting, failed bool, err error) {
+// reconciler owns and after which it publishes held zones), held alone (held
+// with no other publication pending: the caller decides whether the backup's
+// zone-list wait publishes it by itself), or failed (the removal ended with
+// an error that is not a hold). Read only.
+func domainDeletionDNSWithoutLease(ctx context.Context, tx *sql.Tx, state dnsZoneSyncState) (waiting, heldAlone, failed bool, err error) {
 	if state.DesiredAction != "delete" || state.SourceDomainID.Valid || state.DesiredGeneration <= state.AppliedGeneration {
-		return false, false, nil
+		return false, false, false, nil
 	}
 	held := state.Status == "pending"
 	if state.Status == "error" {
 		lastError := strings.TrimSpace(state.LastError.String)
 		held = strings.Contains(lastError, dnsAgentPendingRecoveryRefusal) || lastError == errHostMutationBusy.Error()
 		if !held {
-			return false, true, nil
+			return false, false, true, nil
 		}
 	}
 	if !held {
-		return false, false, nil
+		return false, false, false, nil
 	}
 	var leases int
 	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM dns_zone_engine_leases WHERE zone_name <> ?`, state.ZoneName).Scan(&leases); err != nil {
-		return false, false, err
+		return false, false, false, err
 	}
-	// With no other publication pending nothing is known to publish it by
-	// itself: that stays "incomplete" (delete again).
-	return leases > 0, false, nil
+	return leases > 0, leases == 0, false, nil
+}
+
+// domainDeletionStatusPublisher is the DNS publisher as screens read it
+// (cached display check, never a mutation); a variable for tests.
+var domainDeletionStatusPublisher = func(p *Panel, ctx context.Context) (dnsPublisherIdentity, bool, error) {
+	return p.activeDNSPublisherForDisplay(ctx)
+}
+
+// domainDeletionPairWaitStatus answers for a removal held with no other
+// publication pending, when the hold is the backup DNS server's confirmation
+// of the zone list and the reconciler is armed to publish held zones
+// (dns_sync.go arms it with the hold). alpha.129 lab, case 6: the 202 said
+// the deletion finishes by itself while the status said "stopped … delete
+// again"; it then finished 31 s after the backup answered. Without the armed
+// reconciler (for example after a panel restart) nothing publishes it by
+// itself and the answer stays "incomplete" (delete again). Read only: memory
+// and the cached display check of the DNS publisher.
+func (p *Panel) domainDeletionPairWaitStatus(ctx context.Context) (domainDeletionStatusResponse, bool) {
+	scheduler := p.dnsPendingPublications()
+	scheduler.mu.Lock()
+	armed := scheduler.republishArmed
+	scheduler.mu.Unlock()
+	if !armed {
+		return domainDeletionStatusResponse{}, false
+	}
+	publisher, ready, err := domainDeletionStatusPublisher(p, ctx)
+	if err != nil || !dnsHeldStatusIsPairWait(publisher, ready) {
+		return domainDeletionStatusResponse{}, false
+	}
+	held := &dnsPublicationHeldError{Automatic: true}
+	return domainDeletionStatusResponse{
+		Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+		Reason:  held.heldReason(),
+		Message: held.englishMessage() + " " + domainDeletionFinishesByItselfEnglish,
+	}, true
 }
 
 // domainDeletionAheadLease: the zone's exact publication lease is an
@@ -150,6 +185,9 @@ func (p *Panel) localDomainDeletionContinuesByItself(ctx context.Context, domain
 		return !failed, nil
 	case snapshot.dnsWaiting:
 		return p.dnsPendingPublicationsAutomatic(), nil
+	case snapshot.dnsHeldAlone:
+		_, waiting := p.domainDeletionPairWaitStatus(ctx)
+		return waiting, nil
 	case snapshot.candidate || snapshot.ahead:
 		code, pending, active, err := p.readPendingDNSPublicationStatus(ctx, snapshot.lease)
 		if err != nil {
