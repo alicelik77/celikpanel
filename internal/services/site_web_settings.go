@@ -503,8 +503,9 @@ type SitePart struct {
 	// file is the owner's, FallbackBody is written instead.
 	NeedsWebHTTP bool
 	FallbackBody string
-	// EnsureDir, when set, is made (0755) before the part is written: the
-	// page cache's parent folder, which nginx -t needs to exist.
+	// EnsureDir, when set, is made (0755, whatever the umask) before the part
+	// is written: the page cache's parent folder, which nginx -t needs to
+	// exist and nginx's worker account must be able to pass through.
 	EnsureDir string
 }
 
@@ -577,7 +578,7 @@ func planSitePart(domain string, part SitePart, body string) (*plannedTrafficFil
 		return nil, state, nil
 	}
 	if part.EnsureDir != "" {
-		if err := os.MkdirAll(part.EnsureDir, 0o755); err != nil {
+		if err := ensureTraversableDir(part.EnsureDir); err != nil {
 			return nil, transport.SiteFileChallengeFailed, err
 		}
 	}

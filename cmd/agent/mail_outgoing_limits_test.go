@@ -19,16 +19,22 @@ import (
 // fakeOutgoingHost is postconf, systemctl, postfwd and the policy socket as
 // the Agent sees them.
 type fakeOutgoingHost struct {
-	mu          sync.Mutex
-	commands    []string
-	params      map[string]map[string]string // service -> -o params
-	global      string
-	active      bool
-	countWorks  bool
-	checkFails  bool
-	reloadFails bool
-	reloads     int
-	seen        map[string]int
+	mu         sync.Mutex
+	commands   []string
+	params     map[string]map[string]string // service -> -o params
+	global     string
+	active     bool
+	countWorks bool
+	checkFails bool
+	// checkExitsOne: postfwd 1.x ends --showconfig with "exit 1" after
+	// printing the rules (Debian 13 postfwd 1.35-10).
+	checkExitsOne bool
+	reloadFails   bool
+	reloads       int
+	seen          map[string]int
+	// stalePaused: answers in which a resumed mailbox is still answered as
+	// paused (a prefork child with the old rules); -1: always.
+	stalePaused map[string]int
 }
 
 func (h *fakeOutgoingHost) run(_ context.Context, name string, args ...string) ([]byte, error) {
@@ -126,6 +132,14 @@ func (h *fakeOutgoingHost) dial(_ context.Context) (net.Conn, error) {
 		if works && n > 1 {
 			answer = "action=450 4.7.1 " + outgoingSelfTestText + "\n\n"
 		}
+		h.mu.Lock()
+		if left, ok := h.stalePaused[user]; ok && left != 0 {
+			answer = "action=550 5.7.1 " + transport.OutgoingMailPausedText + "\n\n"
+			if left > 0 {
+				h.stalePaused[user] = left - 1
+			}
+		}
+		h.mu.Unlock()
 		_, _ = server.Write([]byte(answer))
 	}()
 	return client, nil
@@ -244,7 +258,7 @@ func TestRenderOutgoingConfigOrderAndTexts(t *testing.T) {
 		t.Fatalf("texts missing:\n%s", rendered.config)
 	}
 	empty := renderOutgoingConfig(layout, &transport.OutgoingMailLimitsSpec{Enabled: true})
-	if empty.rules != 2 || len(empty.lists) != 0 {
+	if empty.rules != 2 || len(empty.lists) != 1 || empty.lists["selftest.domains"] == "" {
 		t.Fatalf("an empty state writes rules for empty lists: %d %v", empty.rules, empty.lists)
 	}
 }
@@ -351,6 +365,50 @@ func TestApplyOutgoingMailLimitsWritesChecksProvesAndWires(t *testing.T) {
 	}
 	if host.count("systemctl reload postfwd") != 1 {
 		t.Fatalf("postfwd not reloaded: %v", host.commands)
+	}
+}
+
+// alpha.128 lab (Debian 13): the Agent's umask made the list folder 0750
+// root:celikpanel, postfwd (user postfw) could not read any list and no limit
+// applied. The folder is passable for postfwd after an apply, also when it
+// existed 0750 and no list changed.
+func TestApplyOutgoingMailLimitsListFolderIsReadableForPostfwd(t *testing.T) {
+	_, layout := installFakeOutgoingHost(t)
+	if err := os.MkdirAll(layout.listDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(layout.listDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for round := 0; round < 2; round++ {
+		var resp transport.OutgoingMailLimitsApplyResponse
+		if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil || !resp.Applied {
+			t.Fatalf("round %d: %+v %v", round, resp, err)
+		}
+		info, err := os.Stat(layout.listDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o755 {
+			t.Fatalf("round %d: list folder is %o, want 0755", round, info.Mode().Perm())
+		}
+		// The second round changes no list: the folder is checked anyway.
+		_ = os.Chmod(layout.listDir, 0o750)
+	}
+}
+
+// alpha.128 lab (Debian 13, postfwd 1.35-10): postfwd2 --showconfig always
+// ends with exit status 1, so the printed rules are the check; turning the
+// limits on must not fail on a valid file.
+func TestApplyOutgoingMailLimitsAcceptsPostfwd1ShowconfigExitStatus(t *testing.T) {
+	host, _ := installFakeOutgoingHost(t)
+	host.checkExitsOne = true
+	var resp transport.OutgoingMailLimitsApplyResponse
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Applied || !resp.Verified || resp.Code != "" {
+		t.Fatalf("apply = %+v", resp)
 	}
 }
 
@@ -477,12 +535,109 @@ func TestArchDropInTurnsOffTheRequestCache(t *testing.T) {
 	if !strings.Contains(arch.dropInContent(), "--cache=0") || !strings.Contains(arch.dropInContent(), "--keep_rates") {
 		t.Fatalf("arch drop-in = %q", arch.dropInContent())
 	}
-	if strings.Contains(debian.dropInContent(), "--cache=0") || !strings.Contains(debian.dropInContent(), "$ARGS --keep_rates") {
+	// alpha.128 lab: Debian's ARGS has --cache=600; the later --cache=0 wins.
+	if !strings.Contains(debian.dropInContent(), "$ARGS --cache=0 --keep_rates") {
 		t.Fatalf("debian drop-in = %q", debian.dropInContent())
 	}
 	for _, layout := range []outgoingLayout{arch, debian} {
 		if !strings.HasSuffix(layout.dropInContent(), "\n") || strings.Count(layout.dropInContent(), "ExecStart=") != 2 {
 			t.Fatalf("drop-in shape: %q", layout.dropInContent())
 		}
+	}
+}
+
+// alpha.128 lab: after a password change the first real message was still
+// refused 550 by a postfwd child holding the old rules. The apply asks the
+// resumed mailbox until postfwd answers it as not paused; a mailbox still
+// answered as paused when the time is up is named.
+func TestApplyOutgoingMailLimitsConfirmsResumedMailboxes(t *testing.T) {
+	host, _ := installFakeOutgoingHost(t)
+	var resp transport.OutgoingMailLimitsApplyResponse
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil || !resp.Applied {
+		t.Fatalf("paused apply: %+v %v", resp, err)
+	}
+	resumedSpec := sampleOutgoingSpec()
+	resumedSpec.Paused = nil
+	host.mu.Lock()
+	host.stalePaused = map[string]int{"bad@example.com": 3}
+	host.mu.Unlock()
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(resumedSpec, &resp); err != nil || !resp.Applied || len(resp.ResumeUnconfirmed) != 0 {
+		t.Fatalf("resume apply: %+v %v", resp, err)
+	}
+	host.mu.Lock()
+	asked := host.seen["bad@example.com"]
+	host.mu.Unlock()
+	if asked < 3+outgoingResumeClean {
+		t.Fatalf("the resumed mailbox was asked %d times", asked)
+	}
+	// A child that never takes the rules: named, not claimed open.
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	saved := outgoingResumeWait
+	outgoingResumeWait = 0
+	t.Cleanup(func() { outgoingResumeWait = saved })
+	host.mu.Lock()
+	host.stalePaused = map[string]int{"bad@example.com": -1}
+	host.mu.Unlock()
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(resumedSpec, &resp); err != nil || !resp.Applied ||
+		len(resp.ResumeUnconfirmed) != 1 || resp.ResumeUnconfirmed[0] != "bad@example.com" {
+		t.Fatalf("stale resume apply: %+v %v", resp, err)
+	}
+}
+
+// alpha.128 lab: a mailbox raised from 3 to 100 per hour kept the refusal
+// "limit of 3": postfwd keeps the rate object of the old rule across a
+// reload. A changed limit's rate object is removed after the reload.
+func TestApplyOutgoingMailLimitsResetsTheCountersOfChangedLimits(t *testing.T) {
+	host, _ := installFakeOutgoingHost(t)
+	var resp transport.OutgoingMailLimitsApplyResponse
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(sampleOutgoingSpec(), &resp); err != nil || !resp.Applied {
+		t.Fatalf("first apply: %+v %v", resp, err)
+	}
+	for _, c := range host.commands {
+		// The first apply resets only the mailbox it pauses (bad@).
+		if strings.Contains(c, "--delrate") && !strings.HasSuffix(c, "--delrate sasl_username=bad@example.com") {
+			t.Fatalf("a first apply reset other counters: %v", host.commands)
+		}
+	}
+	host.mu.Lock()
+	host.commands = nil
+	host.mu.Unlock()
+	changed := sampleOutgoingSpec()
+	changed.MailboxLimits["a@example.com"] = 100
+	changed.Paused = nil
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(changed, &resp); err != nil || !resp.Applied {
+		t.Fatalf("changed apply: %+v %v", resp, err)
+	}
+	var resets []string
+	for _, c := range host.commands {
+		if i := strings.Index(c, "--delrate "); i >= 0 {
+			resets = append(resets, c[i+len("--delrate "):])
+		}
+	}
+	if strings.Join(resets, ",") != "sasl_username=a@example.com,sasl_username=bad@example.com" {
+		t.Fatalf("counters reset = %v", resets)
+	}
+	// A newly paused mailbox is reset so the pause rule answers it.
+	host.mu.Lock()
+	host.commands = nil
+	host.mu.Unlock()
+	paused := sampleOutgoingSpec()
+	paused.MailboxLimits["a@example.com"] = 100
+	paused.Paused = []string{"a@example.com"}
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(paused, &resp); err != nil || !resp.Applied {
+		t.Fatalf("pause apply: %+v %v", resp, err)
+	}
+	found := false
+	for _, c := range host.commands {
+		found = found || strings.HasSuffix(c, "--delrate sasl_username=a@example.com")
+	}
+	if !found {
+		t.Fatalf("the newly paused mailbox was not reset: %v", host.commands)
 	}
 }

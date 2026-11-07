@@ -93,6 +93,13 @@ ceilings asks the outgoing mail worker to apply again.
   own workspace has no ceiling. When a plan's (or reseller's) ceiling is below what the server's
   php.ini gives a site that chose nothing, the ceiling is written in a second block marked as the
   plan's; it is never read back as the site's own value, so a raised ceiling takes it away.
+  A site whose own value is above a lowered ceiling runs at the ceiling: the own block's line holds
+  the ceiling and a comment line of the own block keeps the value the site chose (a second
+  `php_admin_value` line would not work: PHP-FPM keeps the first admin value of a key). The
+  process count is kept the same way while `pm.max_children` holds the limit.
+  The screen reads the own values back and marks them clamped; a raised or removed ceiling of a
+  plan writes its sites again and gives the own values back (alpha.128 lab: 384 MB had become
+  256 MB for good). Server and reseller ceiling changes still reach a site at its next write.
 - **A save** runs: check against the limits → write the pool (`php-fpm -t`, put back on refusal) →
   write the nginx file (`nginx -t`, put back on refusal). When nginx refuses, the pool is written
   back with its previous values, so PHP and nginx never disagree silently. Steps are reported to
@@ -115,7 +122,8 @@ ceilings asks the outgoing mail worker to apply again.
 - **New sites:** the pool is created within the plan's process limit (5 or the limit when lower).
 - **A lowered limit that clamps a site** leaves one notice per person (customer, its reseller,
   administrators): what changed, that the site keeps running at the new limit, who acts and the
-  next step; the site's PHP screen marks the clamped value.
+  next step; the site's PHP screen marks the clamped value (its own value stays stored), and a
+  form sent back with that unchanged value is accepted (P5).
 - **PHP version change with nginx stopped** (alpha.127 lab): a web server known to be stopped
   refuses the change before anything moves (`WEB_SERVER_STOPPED`, role-aware next step); a vhost
   that does not follow the new socket moves the pool and the record back

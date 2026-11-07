@@ -26,6 +26,16 @@ import (
 // raised ceiling takes it away again (it is never read back as the site's
 // own value).
 //
+// A site whose own value is above a lowered ceiling runs at the ceiling: the
+// own block's line holds min(own, ceiling), and a comment line of the own
+// block keeps the value the site chose ("; Chosen for this site ...:
+// memory_mb=384"). It is read back as the site's own value, the screen marks
+// it clamped, and a raised ceiling gives it back at the next write (alpha.128
+// lab: 384 MB had become 256 MB for good). A second php_admin_value line is
+// not used for this: PHP-FPM keeps the first admin value of a key, so a later
+// line cannot lower it (lab: ini_get still said 384M). The process count works
+// the same way (pm.max_children holds the effective count).
+//
 // Sitenin kendi PHP değerleri havuz dosyasındadır; sınırlar php_admin_value
 // ile yazılır, uygulama yükseltemez. Kendi değeri olmayan sitenin havuzu
 // eskisiyle bayt bayt aynı kalır.
@@ -37,6 +47,9 @@ const (
 		"; Sitenin planının sınırları (site kendi değerini seçmedi; sunucunun php.ini değeri bunların üstünde).\n"
 	sitePHPOwnMarker  = "; PHP settings of this site, chosen in CelikPanel."
 	sitePHPPlanMarker = "; Limits of this site's plan"
+	// sitePHPOwnChosenMarker keeps a value the site chose while the plan's
+	// lower limit is the one written ("memory_mb=384", "processes=6").
+	sitePHPOwnChosenMarker = "; Chosen for this site, the plan's lower limit applies until it is raised: "
 )
 
 // Error level presets as numbers: a pool passes the value to PHP as text, and
@@ -111,6 +124,7 @@ func clampedSitePHPSettings(own transport.SitePHPSettings, limits transport.Site
 // the site's values.
 func sitePHPSettingsIn(content []byte) transport.SitePHPSettings {
 	var own transport.SitePHPSettings
+	chosen := map[string]int{}
 	block := ""
 	for _, raw := range strings.Split(string(content), "\n") {
 		line := strings.TrimSpace(strings.TrimSuffix(raw, "\r"))
@@ -120,6 +134,12 @@ func sitePHPSettingsIn(content []byte) transport.SitePHPSettings {
 			continue
 		case strings.HasPrefix(line, sitePHPPlanMarker):
 			block = "plan"
+			continue
+		case block == "own" && strings.HasPrefix(line, sitePHPOwnChosenMarker):
+			key, value, ok := strings.Cut(strings.TrimSpace(strings.TrimPrefix(line, sitePHPOwnChosenMarker)), "=")
+			if n, err := strconv.Atoi(strings.TrimSpace(value)); ok && err == nil && n > 0 {
+				chosen[strings.TrimSpace(key)] = n
+			}
 			continue
 		case line == "" || strings.HasPrefix(line, ";"):
 			continue
@@ -168,6 +188,13 @@ func sitePHPSettingsIn(content []byte) transport.SitePHPSettings {
 			}
 		}
 	}
+	// A kept choice is the site's own value (its line holds the limit).
+	for key, field := range map[string]*int{"memory_mb": &own.MemoryMB, "time_s": &own.TimeS, "upload_mb": &own.UploadMB,
+		"input_vars": &own.InputVars, "processes": &own.Processes} {
+		if n, ok := chosen[key]; ok && n > *field {
+			*field = n
+		}
+	}
 	return own
 }
 
@@ -199,13 +226,34 @@ func sitePHPLimitLines(memoryMB, timeS, uploadMB, inputVars int) string {
 }
 
 // sitePHPSettingsBlock is the text CelikPanel renders for a site's values
-// ("" when the site has none and no plan ceiling applies).
-func sitePHPSettingsBlock(own transport.SitePHPSettings, limits transport.SitePHPLimits, server func() transport.SitePHPServerValues) string {
-	own = clampedSitePHPSettings(own, limits)
+// ("" when the site has none and no plan ceiling applies). own holds the
+// site's own values as chosen (not clamped); processes is the pool's
+// effective pm.max_children.
+func sitePHPSettingsBlock(own transport.SitePHPSettings, limits transport.SitePHPLimits, server func() transport.SitePHPServerValues, processes int) string {
 	var b strings.Builder
-	if !sitePHPSettingsEmpty(own) {
+	// The lines hold the values within the ceilings; a value the site chose
+	// above a ceiling is kept as a comment line of the own block.
+	clamped := clampedSitePHPSettings(own, limits)
+	type kept struct {
+		key        string
+		own, value int
+	}
+	keeps := []kept{{"memory_mb", own.MemoryMB, clamped.MemoryMB}, {"time_s", own.TimeS, clamped.TimeS},
+		{"upload_mb", own.UploadMB, clamped.UploadMB}, {"input_vars", own.InputVars, clamped.InputVars}, {"processes", own.Processes, processes}}
+	keepAny := false
+	for _, k := range keeps {
+		if k.own > 0 && k.value > 0 && k.own > k.value {
+			keepAny = true
+		}
+	}
+	if !sitePHPSettingsEmpty(own) || keepAny {
 		b.WriteString(sitePHPOwnComment)
-		b.WriteString(sitePHPLimitLines(own.MemoryMB, own.TimeS, own.UploadMB, own.InputVars))
+		for _, k := range keeps {
+			if k.own > 0 && k.value > 0 && k.own > k.value {
+				fmt.Fprintf(&b, "%s%s=%d\n", sitePHPOwnChosenMarker, k.key, k.own)
+			}
+		}
+		b.WriteString(sitePHPLimitLines(clamped.MemoryMB, clamped.TimeS, clamped.UploadMB, clamped.InputVars))
 		if own.DisplayErrors != "" {
 			fmt.Fprintf(&b, "php_flag[display_errors] = %s\n", own.DisplayErrors)
 		}

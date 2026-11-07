@@ -61,6 +61,10 @@ kimlik vekilinin taşıyıcı jetonu ya da bir vekilin Basic girişi buna
 - alan adı ekleyip silebilir; silerken `confirm_domain` parametresi alan
   adının kendisi olmalıdır, yoksa `400 API_TOKEN_CONFIRM_DOMAIN` döner ve
   hiçbir şey silinmez;
+  yedek DNS sunucusu olan bir sunucuda ekleme `409 DNS_PUBLICATION_PENDING`
+  (`partial_success: true`; alan adı eklenmiştir, DNS yayını kendiliğinden
+  biter), silme `202 deletion_pending` yanıtı verebilir: yedeğin onayı
+  beklenir ve sunucu silmeyi kendiliğinden bitirir;
 - DNS kayıtlarını ekleyip değiştirip silebilir;
 - posta kutusu ekleyip silebilir, kotasını ve parolasını değiştirebilir;
 - veritabanı ekleyip silebilir;

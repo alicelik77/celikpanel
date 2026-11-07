@@ -60,6 +60,17 @@ Rules:
 | Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
 |---|---|---|---|---|---|
 | 🔐 WireGuard VPN | Service | `wireguard` | `wireguard-tools` | — | — |
+
+### Web
+
+| Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
+|---|---|---|---|---|---|
+| 🌿 Git | Tool | `git` | `git` | — | — |
+
+### Security
+
+| Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
+|---|---|---|---|---|---|
 | 🔐 Let's Encrypt client (certbot) | Tool | `certbot` | `certbot` | — | — |
 | 🚫 Fail2ban | Service | `fail2ban` | `fail2ban` | — | Firewall engine |
 | 🧱 Firewall engine | Tool | `nftables` | `nftables` | — | — |

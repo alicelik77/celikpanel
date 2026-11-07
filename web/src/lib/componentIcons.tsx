@@ -45,6 +45,7 @@ const componentIconMap: Record<string, LucideIcon> = {
     roundcube: MailOpen,
     wireguard: Lock,
     certbot: BadgeCheck,
+    git: FileCode2,
     fail2ban: ShieldBan,
     nftables: BrickWall,
     clamav: ScanSearch,

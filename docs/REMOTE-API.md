@@ -99,8 +99,8 @@ A customer's token never reaches another account's domain.
 
 | Method | Path | What |
 |---|---|---|
-| POST | `/api/v1/domains/create` | add a domain (`{"domain":"example.com","project_type":"php"}`) |
-| DELETE | `/api/v1/domains/{id}?confirm_domain={name}` | delete a domain and its site; `confirm_domain` must be the domain's name, otherwise `400 API_TOKEN_CONFIRM_DOMAIN` and nothing is deleted |
+| POST | `/api/v1/domains/create` | add a domain (`{"domain":"example.com","project_type":"php"}`). On a server with a backup DNS server the answer can be `409 DNS_PUBLICATION_PENDING` with `partial_success: true`: the domain exists and its DNS publication finishes by itself |
+| DELETE | `/api/v1/domains/{id}?confirm_domain={name}` | delete a domain and its site; `confirm_domain` must be the domain's name, otherwise `400 API_TOKEN_CONFIRM_DOMAIN` and nothing is deleted. On a server with a backup DNS server the answer can be `202 deletion_pending` (stage `dns_cleanup`): the removal waits for the backup's confirmation and the server finishes the deletion by itself; `GET /api/v1/domains` no longer lists it once it is done |
 | POST | `/api/v1/domains/{id}/dns/records` | add a record (`name`, `type`, `content`, `ttl`, `prio`) |
 | PUT | `/api/v1/domains/{id}/dns/records` | change a record (`id`, `content`, `ttl`, `prio`, `disabled`, optional `expected_content`) |
 | DELETE | `/api/v1/domains/{id}/dns/records?id={record}` | delete a record |

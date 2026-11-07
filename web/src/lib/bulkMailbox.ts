@@ -16,7 +16,7 @@ export interface BulkTarget {
     label: string;
 }
 
-export type BulkOutcome = { ok: true } | { ok: false; reason: string } | { unknown: true };
+export type BulkOutcome = { ok: true; note?: string } | { ok: false; reason: string } | { unknown: true };
 
 export interface BulkResult {
     done: number[];
@@ -63,7 +63,7 @@ export async function runBulk(
             return result;
         }
         if (outcome.ok) {
-            steps[index] = { ...steps[index], state: 'done' };
+            steps[index] = outcome.note ? { ...steps[index], state: 'done', note: outcome.note } : { ...steps[index], state: 'done' };
             result.done.push(target.id);
         } else {
             steps[index] = { ...steps[index], state: 'failed', note: outcome.reason };

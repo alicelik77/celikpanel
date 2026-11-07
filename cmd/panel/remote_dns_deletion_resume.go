@@ -329,6 +329,7 @@ func (p *Panel) startRemoteDNSDeletionReconciler(ctx context.Context) {
 				}
 			}
 			p.reconcileRemoteDNSDeletionsOnce(ctx)
+			p.reconcileLocalDNSDeletionsOnce(ctx)
 			timer.Reset(remoteDNSDeletionScanInterval)
 		}
 	}()
@@ -373,6 +374,84 @@ func (p *Panel) reconcileRemoteDNSDeletionsOnce(ctx context.Context) {
 		p.resumeRemoteDNSDeletion(attemptCtx, c.id, c.name)
 		cancel()
 	}
+}
+
+// reconcileLocalDNSDeletionsOnce finishes the deletions whose own DNS
+// removal is complete. On a DNS pair's main server a deletion stops at
+// dns_cleanup while the backup DNS server confirms the zone's removal; the
+// removal is then confirmed by itself (dns_pending_publication.go), but the
+// rest of the deletion waited for "Retry this deletion" (alpha.128 lab: a
+// domain deleted with an API token stayed "pending" until someone pressed it
+// in the panel, and a token cannot). Such a deletion is finished here, as
+// the request would have finished it: certificates, then the ledger row. A
+// recorded failure of another stage stays the owner's retry. A status read
+// never starts this work.
+//
+// Ana DNS sunucusunda silmenin DNS adımı yedeğin onayını beklerken durur;
+// onay kendiliğinden gelince silmenin kalanı burada bitirilir.
+func (p *Panel) reconcileLocalDNSDeletionsOnce(ctx context.Context) {
+	rows, err := p.db.GetDB().QueryContext(ctx, `
+		SELECT d.id, d.name
+		FROM domains d
+		JOIN domain_deletion_operations op ON op.domain_id = d.id
+		WHERE d.status = ? AND d.dns_management = ?
+		ORDER BY d.id`, domainDeletionLedgerStatus, setupDNSModeLocal)
+	if err != nil {
+		log.Printf("local DNS deletions: read the waiting deletions: %v", err)
+		return
+	}
+	type candidate struct {
+		id   int
+		name string
+	}
+	var candidates []candidate
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.id, &c.name); err != nil {
+			rows.Close()
+			log.Printf("local DNS deletions: read the waiting deletions: %v", err)
+			return
+		}
+		candidates = append(candidates, c)
+	}
+	rows.Close()
+	scheduler := p.remoteDNSDeletions()
+	for _, c := range candidates {
+		if ctx.Err() != nil {
+			return
+		}
+		if p.deletionsRunning.isRunning(c.id) || !scheduler.due(c.id) {
+			continue
+		}
+		if snapshot, err := p.readDomainDeletionStatusSnapshot(ctx, c.id); err != nil || !snapshot.dnsRemoved {
+			continue
+		}
+		attemptCtx, cancel := context.WithTimeout(ctx, remoteDNSDeletionAttemptLimit)
+		p.finishLocalDNSDeletion(attemptCtx, c.id, c.name)
+		cancel()
+	}
+}
+
+// finishLocalDNSDeletion is one attempt, under the domain's operation lock
+// (the lock a "Retry this deletion" request holds), re-read under it.
+func (p *Panel) finishLocalDNSDeletion(ctx context.Context, domainID int, domain string) {
+	unlock := lockDomainSSLOperation(domainID)
+	defer unlock()
+	scheduler := p.remoteDNSDeletions()
+	if p.deletionsRunning.isRunning(domainID) {
+		return
+	}
+	snapshot, err := p.readDomainDeletionStatusSnapshot(ctx, domainID)
+	if err != nil || !snapshot.dnsRemoved || snapshot.domain != domain {
+		return
+	}
+	if err := p.finishRemoteDNSDeletion(ctx, domainID, domain); err != nil {
+		scheduler.record(domainID, remoteDNSDeletionFinishingReason)
+		log.Printf("deletion of %s: the DNS removal is confirmed; finishing the deletion did not succeed yet: %v; tried again by itself", domain, err)
+		return
+	}
+	scheduler.forget(domainID)
+	log.Printf("deletion of %s: finished by itself after the backup DNS server confirmed the zone's removal", domain)
 }
 
 // resumeRemoteDNSDeletion is one attempt for one deletion: the exact removal

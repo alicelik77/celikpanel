@@ -424,7 +424,11 @@ func (p *Panel) applyOutgoingMail(ctx context.Context, force bool) (transport.Ou
 			// Never turned on: nothing on the server to change.
 			return transport.OutgoingMailLimitsApplyResponse{}, false, nil
 		case hash == record.hash && record.State == "applied":
-			return transport.OutgoingMailLimitsApplyResponse{}, false, nil
+			// The server already holds exactly this state (a saved value
+			// that does not change what postfwd counts, e.g. a mailbox
+			// limit above its new-mailbox cap): it is in force, not
+			// deferred (alpha.128 lab: bulk saves answered applied false).
+			return transport.OutgoingMailLimitsApplyResponse{Applied: true}, false, nil
 		case hash == record.attempted && record.State != "applied":
 			// A refusal that ends without anyone touching the panel (the
 			// administrator installed postfwd from Components, another mail
@@ -841,20 +845,36 @@ func outgoingHistory(ctx context.Context, q sqlQueryer, address string, from, to
 // resumeOutgoingAfterPassword ends a pause once the mailbox has a new
 // password (the only way out, owner decision 2) and has postfwd let it send.
 func (p *Panel) resumeOutgoingAfterPassword(ctx context.Context, accountID int) (bool, error) {
+	resumed, pending, err := p.resumeOutgoingAfterPasswordConfirmed(ctx, accountID)
+	if err == nil && pending {
+		err = errOutgoingResumeUnconfirmed
+	}
+	return resumed, err
+}
+
+// errOutgoingResumeUnconfirmed: the pause is lifted, but the running postfwd
+// still answered the mailbox as paused when its check ended; it takes the
+// new rules within minutes by itself.
+var errOutgoingResumeUnconfirmed = errors.New("postfwd has not confirmed the resumed mailbox yet")
+
+// resumeOutgoingAfterPasswordConfirmed also says whether postfwd still
+// answered the mailbox as paused after the apply (pending).
+func (p *Panel) resumeOutgoingAfterPasswordConfirmed(ctx context.Context, accountID int) (bool, bool, error) {
 	result, err := p.db.GetDB().ExecContext(ctx, `
 		UPDATE mailbox_outgoing SET paused_at = NULL, paused_reason = NULL, paused_detail = NULL,
 		       resumed_at = datetime('now'), updated_at = datetime('now')
 		WHERE email_account_id = ? AND paused_at IS NOT NULL`, accountID)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 	if n, _ := result.RowsAffected(); n == 0 {
-		return false, nil
+		return false, false, nil
 	}
-	if _, _, err := p.applyOutgoingMail(ctx, false); err != nil {
-		return true, err
+	resp, _, err := p.applyOutgoingMail(ctx, false)
+	if err != nil {
+		return true, false, err
 	}
-	return true, nil
+	return true, len(resp.ResumeUnconfirmed) > 0, nil
 }
 
 // ---- Notices ----------------------------------------------------------------
@@ -1394,6 +1414,14 @@ func (p *Panel) handleDomainMailOutgoingSet(w http.ResponseWriter, r *http.Reque
 		answer["unknown"] = true
 	} else if called && !resp.Applied {
 		answer["code"] = resp.Code
+	} else if !called && !resp.Applied {
+		// Not sent now: the limits are off, or a failed state waits for
+		// its retry; the screen says which instead of a silent "saved".
+		if settings, _, err := p.loadOutgoingSettings(ctx); err == nil && !settings.Enabled {
+			answer["off"] = true
+		} else {
+			answer["pending"] = true
+		}
 	}
 	_ = json.NewEncoder(w).Encode(answer)
 }

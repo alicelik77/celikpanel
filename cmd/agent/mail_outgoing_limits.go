@@ -107,9 +107,12 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 	switch family {
 	case "apt":
 		// Debian's unit reads /etc/default/postfwd (CONF, INET, PORT, RUNAS,
-		// ARGS); the drop-in keeps that file the owner's and adds only
-		// --keep_rates. /usr/sbin/postfwd is the package's alternative
-		// (postfwd2, the prefork program).
+		// ARGS); the drop-in keeps that file the owner's and adds
+		// --cache=0 --keep_rates after $ARGS (the later option wins).
+		// Debian's ARGS has --cache=600: a request cache that answered a
+		// mailbox's message with the pause's 550 for minutes after its
+		// password change (alpha.128 lab). /usr/sbin/postfwd is the package's
+		// alternative (postfwd2, the prefork program).
 		return outgoingLayout{
 			family:  family,
 			program: "/usr/sbin/postfwd",
@@ -117,7 +120,7 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 			listDir: "/etc/postfix/celikpanel-postfwd",
 			dropIn:  "/etc/systemd/system/postfwd.service.d/celikpanel.conf",
 			unit:    "postfwd",
-			execLine: "/usr/sbin/postfwd $ARGS --keep_rates --daemon --file $CONF --interface $INET --port $PORT " +
+			execLine: "/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --daemon --file $CONF --interface $INET --port $PORT " +
 				"--user $RUNAS --group $RUNAS --pidfile $PIDFILE",
 		}, true
 	case "pacman":
@@ -138,19 +141,62 @@ func outgoingLayoutForFamily(family string) (outgoingLayout, bool) {
 }
 
 func (l outgoingLayout) dropInContent() string {
-	lines := []string{outgoingDropInMarker, "# It keeps postfwd's hourly counters across a reload (--keep_rates)."}
-	if l.family == "pacman" {
-		lines = append(lines[:1],
-			"# It keeps postfwd's hourly counters across a reload (--keep_rates) and",
-			"# turns off the request cache, which on this postfwd answers repeated",
-			"# end-of-message requests without counting them (--cache=0).")
-	}
+	lines := []string{outgoingDropInMarker,
+		"# It keeps postfwd's hourly counters across a reload (--keep_rates) and",
+		"# turns off the request cache, which answers a repeated request with an",
+		"# earlier decision: a lifted pause or a changed limit would wait for it,",
+		"# and repeated end-of-message requests would not be counted (--cache=0)."}
 	lines = append(lines,
 		"# Remove this file and run systemctl daemon-reload to return to the",
 		"# package's own start line.",
 		"[Service]", "ExecStart=", "ExecStart="+l.execLine, "")
 	return strings.Join(lines, "\n")
 }
+
+// outgoingEnsureReadableDir makes dir (CelikPanel's postfwd list folder) and
+// gives it read and pass for every account (adds 0755), whatever the umask.
+// The lists hold mailbox addresses and domain names, as Postfix's own maps
+// in /etc/postfix do.
+func outgoingEnsureReadableDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s exists and is not a directory; it was left alone", dir)
+	}
+	if perm := info.Mode().Perm(); perm&0o755 != 0o755 {
+		return os.Chmod(dir, perm|0o755)
+	}
+	return nil
+}
+
+// outgoingLimitListRe names the lists of the counting rules and the postfwd
+// item each counts by.
+var outgoingLimitListRe = regexp.MustCompile(`^(mailbox|domain|subscription)-([0-9]+)\.list$`)
+
+// outgoingLimitMembers adds "item=value" -> list name for each entry of a
+// counting list (mailbox: sasl_username, domain: sender_domain, hosting
+// account: cp_subscription).
+func outgoingLimitMembers(name, content string, into map[string]string) {
+	m := outgoingLimitListRe.FindStringSubmatch(name)
+	if m == nil {
+		return
+	}
+	item := map[string]string{"mailbox": "sasl_username", "domain": "sender_domain", "subscription": "cp_subscription"}[m[1]]
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") {
+			into[item+"="+line] = name
+		}
+	}
+}
+
+// postfwdShownRuleRe is one rule line of postfwd --showconfig ("Rule   0: ...").
+var postfwdShownRuleRe = regexp.MustCompile(`(?m)^Rule +[0-9]+:`)
 
 // Swapped by tests.
 var (
@@ -306,8 +352,12 @@ func renderOutgoingConfig(layout outgoingLayout, spec *transport.OutgoingMailLim
 		out.lists[name] = outgoingListContent(values)
 		return "file:" + layout.listDir + "/" + name
 	}
+	// The self-test reads a list like every limit rule does, so a list
+	// postfwd cannot read fails the self-test (alpha.128 lab: an unreadable
+	// list folder disabled every limit while a pattern-only self-test passed).
 	add(outgoingRule("CP_SELFTEST",
-		`sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/`,
+		"sender_domain=="+list("selftest.domains", []string{outgoingSelfTestDomain})+" ; "+
+			`sasl_username=~/^celikpanel-selftest-[a-z0-9]+@selftest\.invalid$/`,
 		"rcpt(sasl_username/1/600/450 4.7.1 "+outgoingSelfTestText+")"))
 	if len(spec.Paused) > 0 {
 		add(outgoingRule("CP_PAUSED", "sasl_username=="+list("paused.list", append([]string(nil), spec.Paused...)),
@@ -552,7 +602,50 @@ func outgoingSelfTest(ctx context.Context) (bool, string) {
 	return false, fmt.Sprintf("postfwd answered %q and %q instead of passing the first test message and refusing the second; it does not count with CelikPanel's rules", boundedNativeDetail(answers[0]), boundedNativeDetail(answers[1]))
 }
 
+// outgoingResumeWait bounds the check of resumed mailboxes; outgoingResumeClean
+// is how many answers in a row must not be the pause (postfwd's prefork
+// children take a reload one by one, at their next request).
+var (
+	outgoingResumeWait  = 30 * time.Second
+	outgoingResumeClean = 12
+)
+
+// outgoingConfirmResumed asks the running postfwd about each resumed
+// mailbox with a request that counts nothing (recipient_count=0) until it
+// answers outgoingResumeClean times in a row without the pause, so the
+// mailbox's next real message is not refused by a child that still holds
+// the old rules (alpha.128 lab: the first message 70 s after a password
+// change was still refused 550). It returns the mailboxes still answered as
+// paused when the time is up.
+func outgoingConfirmResumed(ctx context.Context, resumed []string) []string {
+	deadline := time.Now().Add(outgoingResumeWait)
+	var unconfirmed []string
+	for _, address := range resumed {
+		clean := 0
+		for n := 0; clean < outgoingResumeClean; n++ {
+			answer, err := outgoingPolicyAskCount(ctx, address, n, 0)
+			switch {
+			case err == nil && !strings.Contains(answer, transport.OutgoingMailPausedText):
+				clean++
+				continue
+			case err == nil:
+				clean = 0
+			}
+			if time.Now().After(deadline) {
+				unconfirmed = append(unconfirmed, address)
+				break
+			}
+			outgoingSleep(200 * time.Millisecond)
+		}
+	}
+	return unconfirmed
+}
+
 func outgoingPolicyAsk(ctx context.Context, user string, n int) (string, error) {
+	return outgoingPolicyAskCount(ctx, user, n, 1)
+}
+
+func outgoingPolicyAskCount(ctx context.Context, user string, n, recipients int) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	conn, err := outgoingDial(ctx)
@@ -567,7 +660,7 @@ func outgoingPolicyAsk(ctx context.Context, user string, n int) (string, error) 
 		"request=smtpd_access_policy", "protocol_state=END-OF-MESSAGE", "protocol_name=ESMTP",
 		"client_address=127.0.0.1", "client_name=localhost", "reverse_client_name=localhost",
 		"helo_name=localhost", "sasl_method=PLAIN", "sasl_username=" + user, "sender=" + user,
-		"recipient=", "recipient_count=1", "size=100", "queue_id=",
+		"recipient=", fmt.Sprintf("recipient_count=%d", recipients), "size=100", "queue_id=",
 		fmt.Sprintf("instance=celikpanel.selftest.%d", n), "",
 	}, "\n") + "\n"
 	if _, err := conn.Write([]byte(request)); err != nil {
@@ -837,7 +930,65 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 		refuse(code, detail)
 	}
 
-	// 3. Lists, then the checked rule file.
+	// The counters whose limit this apply changes: postfwd keeps a rate
+	// object with the limit and text of the rule that made it, also across
+	// a reload (--keep_rates), so a raised or lowered limit, or a resumed
+	// mailbox, would wait up to an hour for the old object to end (alpha.128
+	// lab: a mailbox raised from 3 to 100 per hour kept getting "limit of 3").
+	// Their rate objects are removed once postfwd holds the new rules; the
+	// hour then counts again from that moment for them only.
+	oldMembers := map[string]string{}
+	for _, name := range existingLists {
+		if raw, exists, _ := outgoingReadOptional(filepath.Join(layout.listDir, name)); exists {
+			outgoingLimitMembers(name, string(raw), oldMembers)
+		}
+	}
+	newMembers := map[string]string{}
+	for name, content := range rendered.lists {
+		outgoingLimitMembers(name, content, newMembers)
+	}
+
+	// The mailboxes this apply takes off the pause list: once postfwd took
+	// the rules they are asked until postfwd answers them as not paused.
+	var resumed, newlyPaused []string
+	wasPaused := map[string]bool{}
+	if old, exists, _ := outgoingReadOptional(filepath.Join(layout.listDir, "paused.list")); exists {
+		still := map[string]bool{}
+		for _, address := range spec.Paused {
+			still[strings.ToLower(address)] = true
+		}
+		for _, line := range strings.Split(string(old), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			wasPaused[strings.ToLower(line)] = true
+			if !still[strings.ToLower(line)] {
+				resumed = append(resumed, line)
+			}
+		}
+	}
+	// A newly paused mailbox is usually over its hourly limit: its rate object
+	// would keep answering with the limit's 450 before the pause rule is
+	// asked (alpha.128 lab), so it is reset too and the mailbox hears the
+	// pause's 550 with the password-change text.
+	for _, address := range spec.Paused {
+		if !wasPaused[strings.ToLower(address)] {
+			newlyPaused = append(newlyPaused, address)
+		}
+	}
+
+	// 3. Lists, then the checked rule file. postfwd runs as its own account
+	// (postfw, postfwd) and reads the lists itself: their folder must be
+	// passable by it whatever the Agent's umask (0027), also when no list
+	// changes (a folder an earlier Agent made 0750 is corrected here).
+	// alpha.128 lab: the folder was 0750 root:celikpanel, every file: lookup
+	// failed ("not found - will be ignored") and no limit ever applied,
+	// while the self-test (which matches by pattern, not by list) passed.
+	if err := outgoingEnsureReadableDir(layout.listDir); err != nil {
+		fail(transport.OutgoingMailCheckFailed, fmt.Errorf("make postfwd's list folder readable for postfwd: %s", boundedNativeDetail(err.Error())))
+		return
+	}
 	for name, content := range rendered.lists {
 		path := filepath.Join(layout.listDir, name)
 		current, exists, _ := outgoingReadOptional(path)
@@ -867,9 +1018,14 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 			fail(transport.OutgoingMailCheckFailed, fmt.Errorf("write the rule file for its check: %s", boundedNativeDetail(err.Error())))
 			return
 		}
+		// postfwd 1.x (postfwd2: Debian, Ubuntu) ends --showconfig with
+		// "exit 1" whatever the file holds (alpha.128 lab, Debian 13
+		// postfwd 1.35-10), so its exit status says nothing: the check is
+		// the rules it printed, one "Rule N:" line for every rule it
+		// parsed. The self-test below then proves the running daemon counts.
 		out, err := outgoingRun(ctx, layout.program, "-f", candidate, "-C")
 		_ = outgoingRemoveFile(candidate)
-		if err != nil || strings.Count(string(out), "Rule ") < rendered.rules {
+		if len(postfwdShownRuleRe.FindAllIndex(out, -1)) < rendered.rules {
 			fail(transport.OutgoingMailCheckFailed, fmt.Errorf("postfwd refused the new rules (postfwd -C): %s", boundedNativeDetail(firstNonEmpty(string(out), errString(err)))))
 			return
 		}
@@ -940,6 +1096,44 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 	}
 	resp.Verified = true
 	step("a test message was counted and the second one refused, so the limits work")
+	resetSet := map[string]bool{}
+	for key, list := range oldMembers {
+		if newMembers[key] != list {
+			resetSet[key] = true
+		}
+	}
+	for _, address := range resumed {
+		// A resumed mailbox starts its hour again too: its old counter may
+		// still be over the limit from the hour that led to the pause.
+		resetSet["sasl_username="+address] = true
+	}
+	for _, address := range newlyPaused {
+		resetSet["sasl_username="+address] = true
+	}
+	reset := make([]string, 0, len(resetSet))
+	for key := range resetSet {
+		reset = append(reset, key)
+	}
+	sort.Strings(reset)
+	if len(reset) > 0 {
+		failed := 0
+		for _, key := range reset {
+			if _, err := outgoingRun(ctx, layout.program, "--delrate", key); err != nil {
+				failed++
+			}
+		}
+		if failed == 0 {
+			step(fmt.Sprintf("the hourly counters of %d changed limits start again, so the new limits apply now", len(reset)))
+		} else {
+			step(fmt.Sprintf("%d of %d changed limits keep their old counter until the hour ends (postfwd did not take the reset)", failed, len(reset)))
+		}
+	}
+	if len(resumed) > 0 {
+		resp.ResumeUnconfirmed = outgoingConfirmResumed(ctx, resumed)
+		if len(resp.ResumeUnconfirmed) == 0 {
+			step("postfwd answers the resumed mailboxes as not paused, so they can send again now")
+		}
+	}
 
 	// 7. Postfix asks postfwd from 587 and 465.
 	if !lockOutgoingMailMutex(ctx) {

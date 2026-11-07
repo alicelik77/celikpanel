@@ -985,6 +985,21 @@ var ManagedServices = []ManagedService{
 		// Kind=tool: certbot'un bize ait daemon'ı yoktur. Yenileme dağıtımın
 		// kendi systemd zamanlayıcısından koşar, ayrıca panelin kendi yenileme
 		// zamanlayıcısı vardır; başlatıp durduracağımız bir unit yok.
+		// alpha.128 lab: Git deployment needs the git client, and nothing in
+		// the panel offered it: the deploy said "the administrator installs
+		// the distribution's git package", which needed a terminal. git is the
+		// official package of every supported system (Debian, Ubuntu main,
+		// Arch core). Kind=tool: no service of its own.
+		// Git deposu dağıtımı için git istemcisi; her sistemin resmî paketi.
+		ID:          "git",
+		Name:        "Git",
+		Description: "Version control client for Git deployment",
+		Icon:        "🌿",
+		Category:    "web",
+		Kind:        KindTool,
+		Packages:    map[string][]string{"apt": {"git"}, "pacman": {"git"}},
+	},
+	{
 		ID:          "certbot",
 		Name:        "Let's Encrypt client (certbot)",
 		Description: "SSL certificate provider",

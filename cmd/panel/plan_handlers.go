@@ -569,6 +569,10 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		// render: their files are written again in the background.
 		if len(lowered) > 0 {
 			p.storeClampNotices(r.Context(), preview.clamped, settingSetByPlan, pl.Name)
+		}
+		// A raised or removed PHP ceiling gives the sites their own values
+		// back now (alpha.128 lab: a clamped value stayed lowered).
+		if len(lowered) > 0 || phpCeilingsChanged(ceilingsBefore, ceilingsAfter) {
 			p.reapplyPlanSiteLimits(id)
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.

@@ -202,7 +202,7 @@ func (a *Agent) GitDeployV1(req *transport.GitDeployRequest, resp *transport.Git
 		}
 	}
 	if _, err := os.Stat(gitBinaryPath); err != nil {
-		gitRefuse(resp, transport.RuntimeAppPrerequisite, "git_missing", "git is not installed on this server; the administrator installs the distribution's git package, then deploy again")
+		gitRefuse(resp, transport.RuntimeAppPrerequisite, "git_missing", "git is not installed on this server; the administrator installs Git in Components (Services), then deploy again")
 		return nil
 	}
 	ssh, err := nodesite.ParseGitURL(req.RepoURL)

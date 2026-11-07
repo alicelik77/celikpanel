@@ -100,6 +100,21 @@ func (p *Panel) planCeilingsWithinGrantor(w http.ResponseWriter, r *http.Request
 
 // loweredCeilings lists the keys whose ceiling an edit makes stricter (a new
 // ceiling, a smaller one, or for a floor a larger one).
+// phpCeilingsChanged says whether any PHP ceiling was set, changed or removed.
+func phpCeilingsChanged(before, after map[string]int) bool {
+	for key, value := range after {
+		if strings.HasPrefix(key, "php.") && before[key] != value {
+			return true
+		}
+	}
+	for key := range before {
+		if _, kept := after[key]; strings.HasPrefix(key, "php.") && !kept {
+			return true
+		}
+	}
+	return false
+}
+
 func loweredCeilings(before, after map[string]int) []string {
 	out := []string{}
 	for key, value := range after {

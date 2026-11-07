@@ -46,6 +46,39 @@ func PageCacheRoot() string {
 	return pageCacheRootDir
 }
 
+// ensureTraversableDir makes dir and, when its parent is CelikPanel's own
+// folder (/var/cache/celikpanel), that parent readable and passable by every
+// account (adds 0755), whatever the Agent's umask (0027). nginx's worker
+// account must pass through both to reach the site's cache folder, which
+// nginx's master makes and gives to that account. A folder an earlier Agent
+// made 0750 is corrected here: alpha.128 lab, every PHP answer of a site with
+// the page cache on was 500 ("open() ... failed (13: Permission denied)").
+// Ayrıca: nginx işçisinin önbellek klasörüne geçebilmesi için 0755.
+func ensureTraversableDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	dirs := []string{dir}
+	if parent := filepath.Dir(dir); filepath.Base(parent) == "celikpanel" {
+		dirs = []string{parent, dir}
+	}
+	for _, d := range dirs {
+		info, err := os.Lstat(d)
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("%s exists and is not a directory; it was left alone", d)
+		}
+		if perm := info.Mode().Perm(); perm&0o755 != 0o755 {
+			if err := os.Chmod(d, perm|0o755); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // PageCacheDir is one site's cache folder (made by nginx's master, owned by
 // its worker account).
 func PageCacheDir(siteID int) string {

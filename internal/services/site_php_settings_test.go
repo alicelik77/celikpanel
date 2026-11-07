@@ -75,6 +75,26 @@ func TestSitePoolSettingsAreAdminValuesAndReadBack(t *testing.T) {
 	if !strings.Contains(content, "php_admin_value[memory_limit] = 128M") || !strings.Contains(content, "pm.max_children = 4") {
 		t.Fatalf("lowered ceiling not applied:\n%s", content)
 	}
+	// alpha.128 lab: the line holds the limit (PHP-FPM keeps the first admin
+	// value of a key, so no second line is used) and a comment line keeps the
+	// value the site chose; a raised ceiling gives it back.
+	if strings.Count(content, "php_admin_value[memory_limit]") != 1 || !strings.Contains(content, sitePHPOwnChosenMarker+"memory_mb=256") ||
+		!strings.Contains(content, sitePHPOwnChosenMarker+"processes=8") {
+		t.Fatalf("own value not kept beside the plan's lower limit:\n%s", content)
+	}
+	if kept := sitePHPSettingsIn([]byte(content)); kept.MemoryMB != 256 || kept.Processes != 8 {
+		t.Fatalf("own values not read back while clamped: %+v", kept)
+	}
+	raised := sitePoolTestRequest(transport.SitePoolOperationApply)
+	raised.PHPLimits = transport.SitePHPLimits{Known: true, MemoryMB: 512, Processes: 20}
+	if _, err := manager.ApplySitePool(raised); err != nil {
+		t.Fatal(err)
+	}
+	content = readPoolTestFile(t, path)
+	if strings.Contains(content, "= 128M") || strings.Contains(content, sitePHPPlanMarker) || strings.Contains(content, sitePHPOwnChosenMarker) ||
+		!strings.Contains(content, "php_admin_value[memory_limit] = 256M") || !strings.Contains(content, "pm.max_children = 8") {
+		t.Fatalf("a raised ceiling did not give the own values back:\n%s", content)
+	}
 	// Reset to default: every line of the site's block goes.
 	reset := sitePoolTestRequest(transport.SitePoolOperationSettings)
 	if _, err := manager.ApplySitePool(reset); err != nil {

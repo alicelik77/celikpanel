@@ -144,6 +144,8 @@ var ComponentRules = map[string]ComponentRule{
 
 	"wireguard": {UsedBy: []string{UseVPNPeers}},
 	"certbot":   {UsedBy: []string{UseCertificates}},
+	// alpha.128: Git deployment's client; nothing else depends on it.
+	"git": {},
 	// Fail2ban bans through nftables (banaction = nftables).
 	"fail2ban": {Requires: []string{"nftables"}, Stops: []string{StopBanProtection}},
 	// The panel firewall is the panel's own requirement.

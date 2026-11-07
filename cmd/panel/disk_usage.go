@@ -430,7 +430,11 @@ func loadSubscriptionDiskView(ctx context.Context, q rowQueryer, subscriptionID 
 	}
 	view.Detail, view.MeasuredAt, view.OverSince = detail.String, measured.String, over.String
 	if t, ok := parseUsageTime(over.String); ok {
-		view.SuspendOn = t.Add(diskSuspendAfter).UTC().Format(time.RFC3339)
+		// A "notify only" plan never suspends for disk (alpha.128 lab: the
+		// account screen named a suspension day the notices did not).
+		if policy, _, _, err := subscriptionOverusePolicy(ctx, q, subscriptionID); err != nil || policy != overusePolicyNotify {
+			view.SuspendOn = t.Add(diskSuspendAfter).UTC().Format(time.RFC3339)
+		}
 	}
 	view.UploadsBlocked = blocked == 1
 	view.UploadsApplied = applied == blocked

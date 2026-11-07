@@ -259,7 +259,7 @@ func (p *Panel) handleDatabaseToolsInfo(w http.ResponseWriter, r *http.Request, 
 		port = info.ClusterPort
 	}
 	if port <= 0 {
-		port = map[string]int{"mysql": 3306, "postgresql": 5432}[target.identity.Type]
+		port = map[string]int{"mysql": 3306, "mariadb": 3306, "postgresql": 5432}[target.identity.Type]
 	}
 	body := map[string]any{
 		"id":          target.identity.ID,
@@ -268,7 +268,7 @@ func (p *Panel) handleDatabaseToolsInfo(w http.ResponseWriter, r *http.Request, 
 		"host":        "localhost",
 		"port":        port,
 		"user":        target.user,
-		"can_repair":  target.identity.Type == "mysql",
+		"can_repair":  apiTypeNameFor(target.identity.Type) == "mysql",
 		"read_at":     entry.at.UTC().Format(time.RFC3339),
 		"known":       info.Error == "" && info.Refusal == nil,
 		"size_bytes":  info.SizeBytes,
@@ -608,7 +608,10 @@ func (p *Panel) handleDatabaseCopy(w http.ResponseWriter, r *http.Request, domai
 		return
 	}
 	reportOperationStep(ctx, "create")
-	createReq := transport.CreateDatabaseRequest{Type: source.identity.Type, Name: dbName, User: dbUser, Password: body.Password}
+	// The engine record names MariaDB "mariadb"; the Agent's create and
+	// delete take the API name "mysql" (alpha.128 lab: the copy of a MariaDB
+	// database answered 500 "invalid database type").
+	createReq := transport.CreateDatabaseRequest{Type: apiTypeNameFor(source.identity.Type), Name: dbName, User: dbUser, Password: body.Password}
 	if source.identity.Type == "postgresql" {
 		createReq.Port = source.serverPort
 	}
@@ -691,7 +694,7 @@ func (p *Panel) insertDatabaseToolsCopyRecords(ctx context.Context, source datab
 func (p *Panel) dropDatabaseToolsCopy(source databaseToolsTarget, dbName, dbUser string, dbID int) {
 	ctx, cancel := context.WithTimeout(context.Background(), agentRPCDatabaseTimeout)
 	defer cancel()
-	req := transport.DeleteDatabaseRequest{Type: source.identity.Type, Name: dbName, User: dbUser}
+	req := transport.DeleteDatabaseRequest{Type: apiTypeNameFor(source.identity.Type), Name: dbName, User: dbUser}
 	if source.identity.Type == "postgresql" {
 		req.Port = source.serverPort
 	}
@@ -731,7 +734,7 @@ func (p *Panel) handleDatabaseCheck(w http.ResponseWriter, r *http.Request, doma
 		p.writeDatabaseToolsLoadError(w, err)
 		return
 	}
-	if body.Repair && target.identity.Type != "mysql" {
+	if body.Repair && apiTypeNameFor(target.identity.Type) != "mysql" {
 		writeClientError(w, http.StatusBadRequest, "PostgreSQL keeps its tables consistent itself; it has no repair step")
 		return
 	}

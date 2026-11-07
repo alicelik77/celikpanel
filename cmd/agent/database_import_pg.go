@@ -55,14 +55,26 @@ func (e *pgLoadRefusal) Error() string {
 	return fmt.Sprintf("line %d: %s", e.Line, e.What)
 }
 
-// pgLoadStatementError is a statement the server refused.
+// pgLoadStatementError is a statement the server refused. Statements are
+// sent in batches, so the server's refusal names the batch: the failing
+// statement starts on one of the lines from Line to EndLine (alpha.128 lab:
+// "line 1" was named for a statement on line 2).
 type pgLoadStatementError struct {
-	Line int
-	Err  error
+	Line    int
+	EndLine int
+	Err     error
 }
 
 func (e *pgLoadStatementError) Error() string {
-	return fmt.Sprintf("statement near line %d: %v", e.Line, e.Err)
+	return fmt.Sprintf("statement %s: %v", e.where(), e.Err)
+}
+
+// where is "line N", or "one of lines N–M" for a batch of statements.
+func (e *pgLoadStatementError) where() string {
+	if e.EndLine > e.Line {
+		return fmt.Sprintf("starting on one of lines %d–%d", e.Line, e.EndLine)
+	}
+	return fmt.Sprintf("near line %d", e.Line)
 }
 
 func (e *pgLoadStatementError) Unwrap() error { return e.Err }
@@ -376,17 +388,17 @@ func pgStatementHead(text string) string {
 func loadPGStatements(ctx context.Context, exec pgLoadExecutor, r io.Reader) error {
 	s := newPGSplitter(r)
 	var batch strings.Builder
-	batchLine := 0
+	batchLine, batchEnd := 0, 0
 	flush := func() error {
 		if batch.Len() == 0 {
 			return nil
 		}
 		sql := batch.String()
-		line := batchLine
+		line, end := batchLine, batchEnd
 		batch.Reset()
-		batchLine = 0
+		batchLine, batchEnd = 0, 0
 		if err := exec.Exec(ctx, sql); err != nil {
-			return &pgLoadStatementError{Line: line, Err: err}
+			return &pgLoadStatementError{Line: line, EndLine: end, Err: err}
 		}
 		return nil
 	}
@@ -436,6 +448,7 @@ func loadPGStatements(ctx context.Context, exec pgLoadExecutor, r io.Reader) err
 			if batchLine == 0 {
 				batchLine = line
 			}
+			batchEnd = line
 			batch.WriteString(text)
 			batch.WriteString(";\n")
 			if batch.Len() >= pgLoadBatchBytes {

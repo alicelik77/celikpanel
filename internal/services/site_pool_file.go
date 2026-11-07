@@ -231,7 +231,6 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 			chosen = parsed.clamped()
 		}
 	}
-	chosen = chosen.withinProcesses(request.PHPLimits)
 	settings := sitePHPSettingsIn(content)
 	if held, ok := HeldPendingBody(path, ManagedHeaderPrefixINI); ok {
 		settings = sitePHPSettingsIn([]byte(held))
@@ -239,10 +238,22 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 	if own != nil {
 		settings = *own
 	}
+	// A count the site chose above the plan's limit comes back when the
+	// limit rises (a re-render: values == nil).
+	if values == nil && settings.Processes > chosen.maxChildren {
+		chosen.maxChildren = settings.Processes
+		chosen = chosen.clamped()
+	}
+	// The pool's count is the site's own count; it is kept in the own
+	// block when the plan's limit lowers pm.max_children below it.
+	if settings.Processes < chosen.maxChildren {
+		settings.Processes = chosen.maxChildren
+	}
+	chosen = chosen.withinProcesses(request.PHPLimits)
 	block := sitePHPSettingsBlock(settings, request.PHPLimits, func() transport.SitePHPServerValues {
 		server, _ := ReadPHPServerValues(version)
 		return server
-	})
+	}, chosen.maxChildren)
 	return ManagedSiteFile{
 		Kind:                 transport.SiteFileKindPHPPool,
 		Path:                 path,
@@ -317,7 +328,10 @@ func applySitePoolLocked(request transport.SitePoolRequest) (transport.SiteFileR
 		current := sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerChange)
 		fallback, _ := poolValuesIn([]byte(current.Body))
 		values := poolValuesFromRequest(*request.Values, fallback)
-		return ApplyManagedSiteFile(sitePoolFile(request, version, &values, nil, transport.SiteFileTriggerChange),
+		// The pool page's explicit count replaces a kept own count.
+		own := sitePHPSettingsIn([]byte(current.Body))
+		own.Processes = 0
+		return ApplyManagedSiteFile(sitePoolFile(request, version, &values, &own, transport.SiteFileTriggerChange),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationSettings:
 		// alpha.128: the site's own PHP values; the pool's other values are
@@ -330,12 +344,17 @@ func applySitePoolLocked(request transport.SitePoolRequest) (transport.SiteFileR
 		if !found {
 			values = defaultPoolValues()
 		}
+		own := request.PHPSettings
 		if request.PHPSettings.Processes > 0 {
 			values.maxChildren = request.PHPSettings.Processes
+		} else {
+			// No count sent: a count kept above the limit stays.
+			own.Processes = sitePHPSettingsIn([]byte(current.Body)).Processes
+			if own.Processes > values.maxChildren {
+				values.maxChildren = own.Processes
+			}
 		}
 		values = values.clamped().withinProcesses(request.PHPLimits)
-		own := request.PHPSettings
-		own.Processes = 0
 		return ApplyManagedSiteFile(sitePoolFile(request, version, &values, &own, transport.SiteFileTriggerChange),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationTake:
