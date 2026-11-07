@@ -18,11 +18,12 @@ freedom.
 | Threat | Answer |
 |---|---|
 | Internet-wide scanning of 3306/5432 | The engine keeps listening on the local address until the first rule exists on it. Afterwards an nftables filter of its own drops every packet to the engine's port that does not come from a listed address, at a priority before every other filter, also when the panel firewall is off. |
-| Password guessing | Only listed addresses reach the engine at all. PostgreSQL: `auth_delay` (official contrib module of the distribution package) waits 1 s after every failed sign-in. MariaDB: a Fail2ban jail (`mysqld-auth`, the filter Fail2ban ships) bans an address after 5 failures in 10 minutes, when Fail2ban is installed. |
+| Password guessing | Only listed addresses reach the engine at all, and no rule is in force before wrong passwords are slowed down (review M3): PostgreSQL rules are written only while `auth_delay` (official contrib module) is loaded — it waits 1 s after every failed sign-in; MariaDB copies exist only while CelikPanel's own Fail2ban jail `celikpanel-mariadb-auth` runs (5 failures in 10 minutes ban for an hour). Until then the rules wait and the administrator is told the step. |
 | Sniffing | PostgreSQL rules are `hostssl` lines: a connection without TLS matches no line and is refused. MariaDB remote accounts are created `REQUIRE SSL`. |
 | A customer reaching another customer's database | A rule names one database, one database user and one address. The panel only accepts a rule for a database and a user of the caller's own subscription, the user must already hold access to that database, and the engine enforces the triple natively (pg_hba line; MariaDB account with grants on that database only). |
 | The administrator's own accounts | Rules are made only for panel-made database users (`database_users`). The engine superuser (`postgres`, `root`), the panel's own engine account and any role with superuser/replication rights are refused. PostgreSQL lines never name `all`, `replication` or `sameuser`; MariaDB never gets a `%` host. |
-| A stale remote copy (MariaDB) | A MariaDB account is `user@host`, so a remote copy is a second account. Deleting the user, revoking its access or changing its password acts on every host of that user name (driver and Agent), so a remote copy never outlives or out-privileges the local account. |
+| A stale remote copy (MariaDB) | A MariaDB account is `user@host`, so a remote copy is a second account. Deleting the user, revoking its access, changing its password or connection limit, and suspending or restoring it act on every address-form copy of that user (driver and Agent), so a copy never outlives, out-privileges or out-lasts a lock of the local account. Copies carry the local `max_user_connections` and lock state. |
+| An owner's own network access | An owner-set listen address (`bind-address`, `listen_addresses`), a lost Agent record, or a `pg_hba.conf` line outside CelikPanel's block that lets a network address in (`host … 10.0.0.0/8 …`, `all`, `samenet`, an include) means the owner manages network access: CelikPanel opens nothing there (and closes what it opened), and says which line or setting to change. |
 
 ## Decisions
 
@@ -32,8 +33,9 @@ administrator offers it on the server (`admin_offered_permissions`). Turning
 the offer off is the server switch: the Agent is asked to apply an empty rule
 set, so every remote path closes; the rows are kept and come back when the
 offer is turned on again. A subscription without the permission, suspended or
-expired contributes no rules. The panel re-checks this every five minutes and
-after every change, so a plan change takes effect within minutes.
+expired contributes no rules. A suspension or its end, a plan or rights change,
+a grant or revoke and a deletion apply the set again at once; the panel also
+re-checks every five minutes and retries waiting rules then.
 
 **Rule shape.** One rule = (database, database user, address). Addresses:
 a single IPv4 or IPv6 address, or a small range (IPv4 /24 to /32; IPv6 /64 to
@@ -42,7 +44,8 @@ IPv6 addresses). Refused: `0.0.0.0/0`, `::/0`, anything wider than the limits,
 loopback, unspecified, multicast, link-local and IPv4-mapped IPv6. Private
 ranges are allowed (VPN and office networks are a real use). A range with
 host bits set is written in its canonical form. At most 10 addresses per
-database user on one engine.
+database user on one engine, checked in the insert itself; a user over it (rows
+written around the panel) loses only its own rules.
 
 **Listen address.** It changes only when the first rule exists on that engine
 (PostgreSQL: that cluster) and goes back with the last one. Both engines read
@@ -76,7 +79,10 @@ hostssl "shop_db" "shop_user" 203.0.113.7/32 scram-sha-256
 # END CELIKPANEL REMOTE DATABASE ACCESS sha256=<digest of the lines>
 ```
 
-The block is last, so the owner's own lines decide first. A block whose lines
+The block is last, so the owner's own lines decide first; that is why any
+owner `host*` line for a non-loopback address means CelikPanel opens nothing on
+that cluster. Lines are written only while the cluster runs TLS and has
+`auth_delay` loaded. A block whose lines
 no longer match their digest was edited by hand and is not rewritten. A role
 whose password is still stored as md5 is refused with the fix ("set a new
 password once").
@@ -92,14 +98,18 @@ never changed (the rule is reported as a conflict).
 **Firewall.** Two layers:
 
 1. `table inet celikpanel_dbremote` (file `/etc/celikpanel/database-remote.nft`,
-   loaded at boot before the network by the oneshot unit
-   `celikpanel-database-remote-firewall.service`, which runs only `nft -f`):
+   kept loaded by `/etc/celikpanel/database-remote-guard.sh`, run at boot
+   before the network by `celikpanel-database-remote-firewall.service` and
+   every 30 seconds by its timer, so `nft flush ruleset` heals by itself):
    at priority -10, loopback is accepted, listed addresses are accepted for
    the engine's port, every other packet to that port is dropped. A drop is
    final in nftables, so this restricts the port whatever other filter exists.
 2. The panel firewall (`celikpanel_fw`, default drop) gets the engine's port
-   among its open ports while rules exist on it; an accept in layer 1 alone
-   cannot pass layer 2's drop. The persisted policy format is unchanged.
+   among its open ports only while the Agent's last answer has rules in force
+   there, its filter holds the port and is proven loaded (probed every
+   minute; review H1/L2). Anything unknown keeps the port shut. An accept in
+   layer 1 alone cannot pass layer 2's drop. The persisted policy format is
+   unchanged.
 
 **TLS.** An engine that already runs TLS keeps its own certificate (Debian's
 PostgreSQL ships with `ssl = on` and the snakeoil pair). Otherwise the Agent
@@ -142,8 +152,11 @@ User: as listed; Password: the database user's password; SSL mode: `require`
 - Restarting the engine after the first rule is the administrator's step in
   Components (no automatic restart).
 - Fail2ban for PostgreSQL is not used (its default log lines carry no client
-  address); `auth_delay` is used instead, and only when
-  `shared_preload_libraries` is empty: an owner value is never rewritten.
+  address); `auth_delay` is used instead. CelikPanel sets it only when
+  `shared_preload_libraries` is empty; an owner value is never rewritten — the
+  administrator is told the exact value to set.
+- The engines' units do not depend on the filter unit; the filter loads
+  before the network at boot and the guard reloads it within 30 seconds.
 - MariaDB IPv6 ranges are refused (single IPv6 addresses only).
 
 ## Evidence
@@ -155,8 +168,14 @@ file rendering, the record, the Agent's MariaDB path with a fake engine
 reach the engine, an owner's account and an edited option file are left
 alone, closing removes only CelikPanel's accounts), authorization (another
 customer's user or database, team members, the server switch), the
-off-by-default path, suspended and ungranted rules left out. The rendered
-nft file was accepted by `nft --check` (Debian 13, nothing loaded).
+off-by-default path, suspended and ungranted rules left out. Review items:
+TLS before any hostssl line, owner pg_hba lines, copies' limit and lock,
+suspension of copies, rules waiting for auth_delay / the jail, firewall ports
+only when filtered and loaded, the guard, the atomic limit. The Fail2ban
+failregex is tested against journal and error-log line formats of MariaDB
+10.6/10.11/11.x. The rendered nft file was accepted by `nft --check`, the
+guard parses (`sh -n`) and its units pass `systemd-analyze verify` (Debian 13,
+nothing loaded).
 
 Not yet run on a real system (the lab's, on Debian 12, Ubuntu 22.04 and
 Arch Linux): a listed address connects with TLS; an unlisted address is
@@ -164,4 +183,7 @@ refused by the filter; a non-TLS connection is refused; the restart turns
 the listen address on; removing the last rule closes at once and, after the
 restart, the engine listens locally again; a password change and a user
 deletion carry to the MariaDB copies; reboot keeps the filter
-(`celikpanel-database-remote-firewall.service`).
+(`celikpanel-database-remote-firewall.service`), `nft flush ruleset` heals
+within 30 s; Fail2ban's systemd backend reads MariaDB's journal on each
+distribution and bans after five wrong passwords; `auth_delay` loads after
+the restart.
