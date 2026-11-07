@@ -20,6 +20,22 @@ tonight.
 - **G20 (part):** aliases shown under each mailbox with "Add an alias" (the
   forwarding form, prefilled); "Empty mailbox" through `doveadm expunge` with
   the panel's own confirmation, the server's steps and a request identity.
+- **G1 off by default:** after the update a server sends exactly as before;
+  nothing reaches the Agent and no log is read until the administrator saves
+  the limits on (postfwd is installed only from Components, with its preview).
+  Turning them off unwires Postfix first and leaves postfwd installed.
+- **G20 bulk actions:** select mailboxes, then change the sending limit, empty
+  or delete them; one confirmation, one server call and one step per mailbox;
+  a refusal is shown and the rest go on, a lost answer stops the run.
+- **G25 per-domain options:** "send only" (550 5.7.1 for mail from other
+  servers; the domain's mailboxes keep sending) and an own reply for unknown
+  addresses (known addresses DUNNO, the domain 550 5.1.1 <text>; refused
+  beside a catch-all), one CelikPanel recipient access map named at the front
+  of smtpd_recipient_restrictions only while it has lines; the map can never
+  say OK; an owner-changed map is kept. Table domain_mail_options (067).
+- **G30 (part):** the connections one sending server may hold at once
+  (smtpd_client_connection_count_limit) in the versioned mail policy; the
+  largest message size was already there.
 - **G9 delivery lookup:** `GET /api/v1/domains/{id}/mail/delivery`, read from
   Postfix's journal (7 days), filtered by the domain inside the Agent (an
   incoming message shows only this domain's recipients) and again in the
@@ -43,30 +59,20 @@ tonight.
   changing in the same release, and needs certificate SAN handling. It joins
   the 129 template change.
 
-### G20 bulk actions and recovery address
+### G20 recovery address
 
-- Bulk: a checkbox column, "Remove selected" and "Set the sending limit of
-  selected" as one confirmed operation with one step per mailbox; the server
-  side exists per mailbox, so this is screen work plus a batch endpoint that
-  records each mailbox's outcome (no partial silence).
 - Recovery address and mailed reset link: an unauthenticated reset flow for a
   mailbox. Needs a token table (hashed, 30-minute, single use), rate limits per
   address and per IP, a public page outside the panel's session, and a mailed
   link only to an address confirmed by the mailbox owner. Security work; it is
   not to be shipped half-done, so it waits for its own review (131+).
 
-### G25 per-domain mail service options
+### Lab round still open for G25
 
-- "Incoming off, send only": the domain leaves `virtual_mailbox_domains` while
-  its mailboxes keep SASL login (Dovecot passdb) so submission still works;
-  port 25 then refuses RCPT for the domain (`550 5.1.1`). Preview: the MX
-  record is shown as no longer used; mailboxes and their mail are never
-  deleted. Owner edits of the map files kept (D-031).
-- "Bounce unknown users with a message": a `check_recipient_access` map per
-  domain returning `550 5.1.1 <text>` for unknown local parts, only when no
-  catch-all forward is set; the text is fixed and bilingual.
-- Why not tonight: both touch the mailbox-domain maps that mail enrollment and
-  domain deletion also write; they need the lab round on all five systems.
+The map and restriction were tested against fakes of postconf and the mail
+file transaction; a real Postfix run on the five systems (send-only refusal on
+port 25, a domain mailbox still sending on 587, the unknown-address text) is
+the lab round.
 
 ### G30 more mail server settings
 
@@ -80,4 +86,4 @@ limits (`mail_max_userip_connections`), subaddressing
 selector rotation (new selector published and verified in DNS before signing
 switches), mail antivirus (ClamAV milter, only with the spam filter seat
 clear), allow/block lists (`check_sender_access`), custom quota warning text.
-None was started in 128.
+Of these only the Postfix connection limit shipped in 128.
