@@ -33,6 +33,11 @@ type databaseRemoteRecorder struct {
 	mu       sync.Mutex
 	requests []transport.DatabaseRemoteApplyRequest
 	refuse   map[string]string // address -> problem code
+	// ownerPorts: instances the Agent leaves alone (an owner-set listen
+	// address or a lost record): no rule in force, not in the filter.
+	ownerPorts map[int]bool
+	// unfiltered: instances with rules in force whose filter is missing.
+	unfiltered map[int]bool
 }
 
 func (r *databaseRemoteRecorder) install(t *testing.T) {
@@ -47,6 +52,15 @@ func (r *databaseRemoteRecorder) install(t *testing.T) {
 		answer := transport.DatabaseRemoteResponse{NFTAvailable: true}
 		for _, target := range req.Targets {
 			result := transport.DatabaseRemoteTargetResult{Engine: target.Engine, Port: target.Port, State: transport.DatabaseRemoteStateWaitRestart}
+			if r.ownerPorts[target.Port] {
+				result.State = transport.DatabaseRemoteStateOwnerManaged
+				result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteOwnerListen, Detail: "bind-address = 0.0.0.0"})
+				answer.Targets = append(answer.Targets, result)
+				continue
+			}
+			if !r.unfiltered[target.Port] {
+				answer.FilterPorts = append(answer.FilterPorts, target.Port)
+			}
 			for _, rule := range target.Rules {
 				if code := r.refuse[rule.Address]; code != "" {
 					result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: code, Detail: "refused for the test", User: rule.User, Database: rule.Database, Address: rule.Address})
@@ -417,5 +431,42 @@ func TestDatabaseRemoteWaitingRulesAreRetried(t *testing.T) {
 	databaseRemoteMemory.answer.Targets[0].State = transport.DatabaseRemoteStateOpen
 	if databaseRemoteWaiting() {
 		t.Fatal("an open instance is retried")
+	}
+}
+
+// Review H1: the panel firewall opens an engine port only while the Agent
+// says rules are in force there and its address filter holds the port.
+func TestDatabaseRemoteFirewallOpensOnlyFilteredPorts(t *testing.T) {
+	for _, c := range []struct {
+		name     string
+		recorder *databaseRemoteRecorder
+		open     bool
+	}{
+		{"filtered and in force", &databaseRemoteRecorder{}, true},
+		// The owner set bind-address = 0.0.0.0 (or the Agent's record was
+		// lost): the Agent leaves MariaDB alone, so the port stays shut.
+		{"owner-managed or record lost", &databaseRemoteRecorder{ownerPorts: map[int]bool{3306: true}}, false},
+		{"filter not written", &databaseRemoteRecorder{unfiltered: map[int]bool{3306: true}}, false},
+		{"rule refused", &databaseRemoteRecorder{refuse: map[string]string{"203.0.113.7/32": transport.DatabaseRemotePasswordMD5}}, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := newDatabaseRemotePanel(t)
+			c.recorder.install(t)
+			dbrOffer(t, p, true)
+			if _, err := p.db.GetDB().Exec(`INSERT INTO database_remote_rules (database_id, user_id, address) VALUES (7530, 7540, '203.0.113.7/32')`); err != nil {
+				t.Fatal(err)
+			}
+			// Before any answer (a restart): closed.
+			if ports := p.databaseRemoteFirewallPorts(); len(ports) != 0 {
+				t.Fatalf("open before any answer: %v", ports)
+			}
+			if _, _, err := p.applyDatabaseRemote(context.Background(), true); err != nil {
+				t.Fatal(err)
+			}
+			ports := p.databaseRemoteFirewallPorts()
+			if got := len(ports) == 1 && ports[0] == 3306; got != c.open {
+				t.Fatalf("ports = %v, want open %v", ports, c.open)
+			}
+		})
 	}
 }

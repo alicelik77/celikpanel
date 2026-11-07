@@ -230,9 +230,13 @@ func databaseRemoteDigest(targets []transport.DatabaseRemoteTarget) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// databaseRemoteFirewallPorts are the ports the panel firewall must open:
-// those of instances with eligible rules. The address filter of the Agent
-// (table celikpanel_dbremote) narrows them to the listed addresses.
+// databaseRemoteFirewallPorts are the ports the panel firewall opens (review
+// H1): an engine port only while it has eligible rules AND the Agent's last
+// answer says rules are in force there AND its address filter holds that
+// port. An instance the Agent left alone (an owner-set listen address, a
+// lost record), a refused or waiting rule, a filter that could not be
+// written, or no answer yet (a restart) keeps the port closed: the panel
+// firewall is then the only door, and it stays shut.
 func (p *Panel) databaseRemoteFirewallPorts() []int {
 	if p == nil || p.db == nil {
 		return nil
@@ -244,9 +248,35 @@ func (p *Panel) databaseRemoteFirewallPorts() []int {
 		log.Printf("database remote access: firewall ports not known: %v", err)
 		return nil
 	}
+	proven := map[int]bool{}
+	for _, port := range databaseRemoteFilteredOpenPorts() {
+		proven[port] = true
+	}
 	ports := []int{}
 	for _, t := range targets {
-		if len(t.Rules) > 0 {
+		if len(t.Rules) > 0 && proven[t.Port] {
+			ports = append(ports, t.Port)
+		}
+	}
+	return ports
+}
+
+// databaseRemoteFilteredOpenPorts: ports the last answer has rules in force
+// on and the filter holding them.
+func databaseRemoteFilteredOpenPorts() []int {
+	m := databaseRemoteMemory
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.appliedAt.IsZero() {
+		return nil
+	}
+	filtered := map[int]bool{}
+	for _, port := range m.answer.FilterPorts {
+		filtered[port] = true
+	}
+	var ports []int
+	for _, t := range m.answer.Targets {
+		if len(t.Active) > 0 && filtered[t.Port] {
 			ports = append(ports, t.Port)
 		}
 	}
@@ -302,11 +332,15 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 	return answer, true, nil
 }
 
-// filterOpenPorts: instances with rules in force.
+// filterOpenPorts: instances with rules in force whose port the filter holds.
 func filterOpenPorts(answer transport.DatabaseRemoteResponse) []int {
+	filtered := map[int]bool{}
+	for _, port := range answer.FilterPorts {
+		filtered[port] = true
+	}
 	var ports []int
 	for _, t := range answer.Targets {
-		if len(t.Active) > 0 {
+		if len(t.Active) > 0 && filtered[t.Port] {
 			ports = append(ports, t.Port)
 		}
 	}

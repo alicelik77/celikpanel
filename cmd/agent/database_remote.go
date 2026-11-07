@@ -313,11 +313,16 @@ func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func
 			return nil
 		}
 		ports := dbRemoteFilterPorts(targets, facts, state, active)
+		if err := writeDatabaseRemoteFilter(nftPath, ports); err != nil {
+			return err
+		}
+		// Only ports the filter really holds are named (review H1): the
+		// panel opens nothing else.
 		resp.FilterPorts = resp.FilterPorts[:0]
 		for _, p := range ports {
 			resp.FilterPorts = append(resp.FilterPorts, p.Port)
 		}
-		return writeDatabaseRemoteFilter(nftPath, ports)
+		return nil
 	}
 	if err := filter(false); err != nil {
 		resp.ErrorCode = transport.DatabaseRemoteFirewallUnchanged

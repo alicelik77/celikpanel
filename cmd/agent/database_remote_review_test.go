@@ -182,3 +182,52 @@ func TestMariaDBRemoteCopiesWaitForTheJail(t *testing.T) {
 		t.Fatalf("a copy exists without TLS: %v", f.accounts)
 	}
 }
+
+// fakeFilterHost stands in for nft and systemctl and keeps the filter's
+// files in a temporary directory.
+func fakeFilterHost(t *testing.T) *[]string {
+	t.Helper()
+	var calls []string
+	dir := t.TempDir()
+	restoreRun, restoreLook, restoreFiles, restoreState := databaseRemoteRun, databaseRemoteLookPath, databaseRemoteFilterFiles, databaseRemoteStatePath
+	databaseRemoteLookPath = func(string) (string, error) { return "/usr/sbin/nft", nil }
+	databaseRemoteRun = func(name string, args []string, _ string) ([]byte, error) {
+		calls = append(calls, name+" "+strings.Join(args, " "))
+		return nil, nil
+	}
+	databaseRemoteFilterFiles.nftPath = filepath.Join(dir, "database-remote.nft")
+	databaseRemoteFilterFiles.unitPath = filepath.Join(dir, "unit.service")
+	databaseRemoteStatePath = filepath.Join(dir, "database-remote.json")
+	t.Cleanup(func() {
+		databaseRemoteRun, databaseRemoteLookPath, databaseRemoteFilterFiles, databaseRemoteStatePath = restoreRun, restoreLook, restoreFiles, restoreState
+	})
+	return &calls
+}
+
+// H1: an engine whose listen address the owner set, or whose record was
+// lost after CelikPanel set it, is left alone and its port is never named
+// in FilterPorts, so the panel firewall never opens it.
+func TestApplyDatabaseRemoteNamesNoPortForAnInstanceItLeavesAlone(t *testing.T) {
+	for _, c := range []struct{ name, file, value string }{
+		{"owner's postgresql.conf", "/etc/postgresql/17/main/postgresql.conf", "*"},
+		{"record lost", "/var/lib/postgresql/17/main/postgresql.auto.conf", "*"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			fakeFilterHost(t)
+			f := &fakePGCluster{listen: "*", ssl: true, preload: "auth_delay", hbaText: "local all postgres peer\n"}
+			withFakePG(t, f)
+			databaseRemotePGQuery = func(port int, sql string) (string, error) {
+				if strings.Contains(sql, "current_setting('hba_file')") {
+					return strings.Join([]string{"*", "on", "/etc/postgresql/17/main/pg_hba.conf", "auth_delay", "/nonexistent", "", c.file + "\x1e" + c.value, "<none>", "on"}, "\x1f"), nil
+				}
+				return f.query(port, sql)
+			}
+			var resp transport.DatabaseRemoteResponse
+			applyDatabaseRemote([]dbremote.Target{shopTarget()}, "db.example.com", nil, &resp)
+			if len(resp.FilterPorts) != 0 || len(resp.Targets) != 1 || resp.Targets[0].State != transport.DatabaseRemoteStateOwnerManaged ||
+				len(resp.Targets[0].Active) != 0 || len(f.hbaLines) != 0 {
+				t.Fatalf("resp = %+v, lines %v", resp, f.hbaLines)
+			}
+		})
+	}
+}
