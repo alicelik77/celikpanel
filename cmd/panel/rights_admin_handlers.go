@@ -361,6 +361,8 @@ func (p *Panel) handleResellerPlanByID(w http.ResponseWriter, r *http.Request) {
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.
 		p.reapplyDBConnectionLimitsAfter(ctx, rightsOwnerResellerPlan, id, ceilingsBefore, ceilingsAfter)
+		// alpha.128 (integration): outgoing mail follows the mail keys.
+		p.requestOutgoingApply()
 		p.auditDetailed(r, "reseller_plan.update:"+pl.Name, "reseller_plan", id, map[string]any{
 			"pool": pool, "rights_added": preview.Added, "rights_removed": preview.Removed, "resellers": len(resellers),
 		})

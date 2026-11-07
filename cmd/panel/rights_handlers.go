@@ -381,6 +381,8 @@ func (p *Panel) handleSubscriptionRights(w http.ResponseWriter, r *http.Request,
 	// alpha.128 (G5): the subscription's limits may have changed with its
 	// state or its own ceilings; its database users follow.
 	p.reapplyDBConnectionLimits([]int{subID})
+	// alpha.128 (integration): outgoing mail follows the mail keys.
+	p.requestOutgoingApply()
 	p.auditDetailed(r, "subscription.rights:"+plan.To, "subscription", subID, map[string]any{
 		"from": plan.From, "to": plan.To, "added": plan.Added, "removed": plan.Removed,
 		"limits_to": plan.LimitsTo, "over_limit": plan.OverLimit,
@@ -702,6 +704,8 @@ func (p *Panel) handleResellerRights(w http.ResponseWriter, r *http.Request, c *
 	if tree, err := treeSubscriptionIDs(ctx, p.db.GetDB(), target.ID); err == nil {
 		p.reapplyDBConnectionLimits(tree)
 	}
+	// alpha.128 (integration): outgoing mail follows the mail keys.
+	p.requestOutgoingApply()
 	p.auditDetailed(r, "reseller.rights:"+target.Username, "user", target.ID, map[string]any{
 		"from": plan.From, "to": plan.To, "added": plan.Added, "removed": plan.Removed, "pool_to": plan.LimitsTo,
 	})

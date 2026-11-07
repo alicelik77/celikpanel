@@ -150,3 +150,13 @@ BEGIN
     DELETE FROM mail_plan_limits WHERE owner_kind = 'subscription' AND owner_id = OLD.id;
     DELETE FROM mail_outgoing_notices WHERE subscription_id = OLD.id;
 END;
+
+-- The mail keys in the limits model of migration 066 (alpha.128
+-- integration, docs/SITE-LIMITS.md §1.1): no server ceiling and no default,
+-- so nothing changes until an administrator, reseller plan, plan or Custom
+-- set holds one. The Mail server page keeps the defaults (500, 750, 1000).
+INSERT INTO setting_policy (key, server_ceiling, server_default) VALUES
+    ('mail.mailbox_size_mb', NULL, NULL),
+    ('mail.outgoing.mailbox', NULL, NULL),
+    ('mail.outgoing.domain', NULL, NULL),
+    ('mail.outgoing.subscription', NULL, NULL);

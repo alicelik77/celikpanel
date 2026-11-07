@@ -158,7 +158,8 @@ func (p *Panel) mailboxSizeCeiling(ctx context.Context, domainID int) (int, erro
 	if err != nil {
 		return 0, err
 	}
-	if size := planLimitsFor(limits, subID, planID).MailboxSizeMB; size != nil {
+	// The rights chain's mail.mailbox_size_mb folds in (integration).
+	if size := foldMailChain(planLimitsFor(limits, subID, planID), outgoingSettings{}, newMailLimitChains(ctx, db).of(subID)).MailboxSizeMB; size != nil {
 		return *size, nil
 	}
 	return 0, nil

@@ -160,13 +160,7 @@ func loadMailPlanLimits(ctx context.Context, q sqlQueryer) (map[mailPlanLimitKey
 	return out, rows.Err()
 }
 
-func nullIntPtr(v sql.NullInt64) *int {
-	if !v.Valid {
-		return nil
-	}
-	n := int(v.Int64)
-	return &n
-}
+// nullIntPtr is shared with the limits model (setting_limits.go).
 
 // planLimitsFor: a plan-bound subscription reads its plan's row, a Custom
 // subscription its own; Unlimited has none.
@@ -316,7 +310,8 @@ func outgoingSubscriptionLimit(settings outgoingSettings, plan mailPlanLimitRow)
 }
 
 // buildOutgoingSpec turns the database into the Agent's whole wanted state.
-func buildOutgoingSpec(settings outgoingSettings, mailboxes []outgoingMailbox, limits map[mailPlanLimitKey]mailPlanLimitRow, now time.Time) transport.OutgoingMailLimitsSpec {
+// chains folds the rights chain's mail ceilings in (nil: the mail rows only).
+func buildOutgoingSpec(settings outgoingSettings, mailboxes []outgoingMailbox, limits map[mailPlanLimitKey]mailPlanLimitRow, chains *mailLimitChains, now time.Time) transport.OutgoingMailLimitsSpec {
 	spec := transport.OutgoingMailLimitsSpec{Enabled: settings.Enabled, MailboxLimits: map[string]int{}, DomainLimits: map[string]int{}}
 	if !settings.Enabled {
 		return spec
@@ -327,7 +322,7 @@ func buildOutgoingSpec(settings outgoingSettings, mailboxes []outgoingMailbox, l
 		if _, err := transport.CanonicalMailAddress(m.Address); err != nil {
 			continue
 		}
-		plan := planLimitsFor(limits, m.SubscriptionID, m.PlanID)
+		plan := chains.mailRowFor(limits, settings, m.SubscriptionID, m.PlanID)
 		if m.Paused {
 			spec.Paused = append(spec.Paused, m.Address)
 		}
@@ -421,7 +416,7 @@ func (p *Panel) applyOutgoingMail(ctx context.Context, force bool) (transport.Ou
 	if err != nil {
 		return transport.OutgoingMailLimitsApplyResponse{}, false, err
 	}
-	spec := buildOutgoingSpec(settings, mailboxes, limits, time.Now())
+	spec := buildOutgoingSpec(settings, mailboxes, limits, newMailLimitChains(ctx, db), time.Now())
 	hash := outgoingSpecHash(spec)
 	if !force {
 		switch {
@@ -677,6 +672,7 @@ func (p *Panel) raiseOutgoingLimitNotices(ctx context.Context, now time.Time) {
 		return
 	}
 	limits, _ := loadMailPlanLimits(ctx, db)
+	chains := newMailLimitChains(ctx, db)
 	for _, h := range hits {
 		ref, ok := outgoingAccountByAddress(ctx, db, h.address)
 		if !ok {
@@ -688,7 +684,7 @@ func (p *Panel) raiseOutgoingLimitNotices(ctx context.Context, now time.Time) {
 				if m.ID != ref.id {
 					continue
 				}
-				plan := planLimitsFor(limits, m.SubscriptionID, m.PlanID)
+				plan := chains.mailRowFor(limits, settings, m.SubscriptionID, m.PlanID)
 				switch h.kind {
 				case "domain":
 					body.Limit = outgoingDomainLimit(settings, plan)
@@ -1283,7 +1279,7 @@ func (p *Panel) outgoingDomainView(ctx context.Context, domainID int, caller *Ca
 		domainID).Scan(&subID, &planID); err != nil {
 		return view, err
 	}
-	plan := planLimitsFor(limits, subID, planID)
+	plan := newMailLimitChains(ctx, db).mailRowFor(limits, settings, subID, planID)
 	view.Ceiling, view.Default = outgoingCeilingAndDefault(settings, plan)
 	view.DomainLimit = outgoingDomainLimit(settings, plan)
 	view.SubscriptionLimit = outgoingSubscriptionLimit(settings, plan)

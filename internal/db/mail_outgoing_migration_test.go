@@ -49,6 +49,12 @@ func TestMailOutgoingMigrationSeedsChecksAndFollowsOwners(t *testing.T) {
 	if enabled != 0 || mailbox != 500 || domain != 750 || sub != 1000 {
 		t.Fatalf("seed = %d %d %d %d", enabled, mailbox, domain, sub)
 	}
+	// Integration (alpha.128): the mail keys' server rows in the limits model
+	// of migration 66, with no ceiling and no default.
+	var mailKeys int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM setting_policy WHERE key IN ('mail.mailbox_size_mb', 'mail.outgoing.mailbox', 'mail.outgoing.domain', 'mail.outgoing.subscription') AND server_ceiling IS NULL AND server_default IS NULL AND customer_editable = 1`).Scan(&mailKeys); err != nil || mailKeys != 4 {
+		t.Fatalf("mail keys in setting_policy = %d (%v)", mailKeys, err)
+	}
 	for _, stmt := range []string{
 		`INSERT INTO users (id, username, password_hash, email, role) VALUES (71, 'c', 'x', 'c@example.net', 'customer')`,
 		`INSERT INTO service_plans (id, name) VALUES (72, 'P')`,

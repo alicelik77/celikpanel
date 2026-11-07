@@ -131,6 +131,8 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
+		// alpha.128 (integration): outgoing mail follows the mail keys.
+		p.requestOutgoingApply()
 		// alpha.128 (G5): every database user follows the server's limit.
 		if req.Key == settingDBConnections {
 			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {

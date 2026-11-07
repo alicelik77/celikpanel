@@ -573,6 +573,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		}
 		// alpha.128 (G5): database users follow a changed connection limit.
 		p.reapplyDBConnectionLimitsAfter(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
+		// alpha.128 (integration): outgoing mail follows the mail keys.
+		p.requestOutgoingApply()
 		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 			log.Printf("encode service plan update: %v", err)
 		}

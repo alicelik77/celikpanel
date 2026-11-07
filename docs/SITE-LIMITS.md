@@ -63,6 +63,15 @@ Nothing else changes: plans, reseller plans and Custom sets carry every register
 `GET /api/v1/rights/setting-limits` returns it. The plan preview's "sites above the new limit"
 reads PHP values only; a feature that wants its own count adds it to `previewLoweredCeilings`.
 
+**Mail keys (alpha.128 integration).** `mail.mailbox_size_mb` and
+`mail.outgoing.{mailbox,domain,subscription}` are registered in
+`cmd/panel/setting_limits_mail.go`; their server rows (no ceiling, no default) are inserted by
+the outgoing mail migration (067). The mail workstream keeps its own plan mail settings in
+`mail_plan_limits` (the Mail server page); every mail value a server enforces or a screen shows
+is the tighter of that row (or, without one, the Mail server page's value) and the chain's
+effective ceiling (`foldMailChain`). Nothing is copied between the two stores. A change of
+ceilings asks the outgoing mail worker to apply again.
+
 ## 2. PHP per site (G2)
 
 - **Where the values live:** CelikPanel's text of the site's pool carries one block after the
