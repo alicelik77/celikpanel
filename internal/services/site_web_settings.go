@@ -250,7 +250,51 @@ func PrepareSiteWebSettings(projectType string, s SiteWebSettings) (SiteWebSetti
 		}
 		out.NodePublic = true
 	}
+
+	// G26: the site's own error pages.
+	if len(s.ErrorPages) > 0 {
+		if !index {
+			return s, refuseWebField("error_pages", "custom error pages apply to PHP and static sites; a Node.js application answers its own errors")
+		}
+		seenCode := map[int]bool{}
+		for _, page := range s.ErrorPages {
+			if !siteErrorCodes[page.Code] {
+				return s, refuseWebField("error_pages", "%d is not an error code a page can be set for", page.Code)
+			}
+			if seenCode[page.Code] {
+				return s, refuseWebField("error_pages", "the error %d is listed twice", page.Code)
+			}
+			seenCode[page.Code] = true
+			p := strings.TrimSpace(page.Path)
+			if !siteErrorPagePattern.MatchString(p) || strings.Contains(p, "..") || strings.Contains(p, "//") || strings.Contains(p, "/.") {
+				return s, refuseWebField("error_pages", "%q is not a page of this site such as /errors/404.html (an .html file)", page.Path)
+			}
+			out.ErrorPages = append(out.ErrorPages, transport.SiteErrorPage{Code: page.Code, Path: p})
+		}
+		sort.Slice(out.ErrorPages, func(i, j int) bool { return out.ErrorPages[i].Code < out.ErrorPages[j].Code })
+	}
 	return out, nil
+}
+
+// siteErrorCodes are the errors a site can give its own page for.
+var siteErrorCodes = map[int]bool{400: true, 401: true, 403: true, 404: true, 405: true, 410: true, 429: true,
+	500: true, 502: true, 503: true, 504: true}
+
+// SiteErrorCodes lists them in order (for the screen).
+func SiteErrorCodes() []int {
+	codes := make([]int, 0, len(siteErrorCodes))
+	for code := range siteErrorCodes {
+		codes = append(codes, code)
+	}
+	sort.Ints(codes)
+	return codes
+}
+
+var siteErrorPagePattern = regexp.MustCompile(`^/[A-Za-z0-9._~/-]{0,250}\.html?$`)
+
+// SiteErrorPageFile is the file of an error page in the document root.
+func SiteErrorPageFile(documentRoot, page string) string {
+	return strings.TrimSuffix(documentRoot, "/") + page
 }
 
 // ApplicableSiteWebSettings drops the fields a project type cannot use (a
@@ -263,6 +307,7 @@ func ApplicableSiteWebSettings(projectType string, s SiteWebSettings) (SiteWebSe
 	}
 	if !index {
 		s.IndexFiles = nil
+		s.ErrorPages = nil
 	}
 	if !node {
 		s.NodePublic = false
@@ -281,7 +326,7 @@ func validBrowserCacheDays(days int) bool {
 
 func siteWebSettingsEmpty(s SiteWebSettings) bool {
 	return len(s.IndexFiles) == 0 && len(s.MIMETypes) == 0 && s.BrowserCacheDays == 0 && len(s.Headers) == 0 &&
-		s.AccessMode == "" && len(s.AccessList) == 0 && !s.NodePublic
+		s.AccessMode == "" && len(s.AccessList) == 0 && !s.NodePublic && len(s.ErrorPages) == 0
 }
 
 // normalizedAccessEntry is one IP address or network in nginx's form.
@@ -393,6 +438,11 @@ func RenderSiteSettingsPart(domain string, s SiteWebSettings, withHTTP bool) str
 	}
 	for _, h := range s.Headers {
 		fmt.Fprintf(&b, "add_header %s %s always;\n", h.Name, siteHeaderValue(h.Value))
+	}
+	// G26: nginx's own errors answered with the site's pages (the files
+	// were checked to exist when the settings were saved).
+	for _, page := range s.ErrorPages {
+		fmt.Fprintf(&b, "error_page %d %s;\n", page.Code, page.Path)
 	}
 	switch s.AccessMode {
 	case "allow":

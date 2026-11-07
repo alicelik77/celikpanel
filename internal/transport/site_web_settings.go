@@ -53,6 +53,16 @@ type SiteWebSettings struct {
 	// application's public/ folder itself and hands every other address to
 	// the application. The application folder itself is never served.
 	NodePublic bool `json:"node_public,omitempty"`
+	// ErrorPages (G26): the site's own page for an error nginx answers
+	// (error_page), a file in the document root that must exist. PHP and
+	// static sites.
+	ErrorPages []SiteErrorPage `json:"error_pages,omitempty"`
+}
+
+// SiteErrorPage is one error code and the site's page for it.
+type SiteErrorPage struct {
+	Code int    `json:"code"`
+	Path string `json:"path"`
 }
 
 // SiteWebSettingsRequest travels with a vhost render. Settings nil: the site

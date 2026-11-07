@@ -63,6 +63,7 @@ const (
 	errCodeWebSettingsNginx      = "WEB_SETTINGS_NGINX_REFUSED"
 	errCodeWebSettingsNginxFails = "WEB_SETTINGS_NGINX_FAILING"
 	errCodeWebSettingsUnavail    = "WEB_SETTINGS_UNAVAILABLE"
+	errCodeWebErrorPageMissing   = "WEB_ERROR_PAGE_MISSING"
 
 	maxWebSettingsRequestBytes = 64 << 10
 )
@@ -230,6 +231,7 @@ type siteWebSettingsView struct {
 	Saved         bool                      `json:"saved"`
 	Settings      transport.SiteWebSettings `json:"settings"`
 	CacheChoices  []int                     `json:"cache_choices"`
+	ErrorCodes    []int                     `json:"error_codes"`
 	HTTPSEnforced bool                      `json:"https_enforced"`
 	Directives    siteWebDirectivesView     `json:"directives"`
 }
@@ -249,7 +251,7 @@ func (p *Panel) siteWebSettingsViewOf(ctx context.Context, r *http.Request, doma
 	view := siteWebSettingsView{
 		DomainID: domainID, ProjectType: site.ProjectType,
 		IndexApplies: index, FieldsApply: anyField, NodeApplies: node,
-		Saved: row.Exists, Settings: row.Settings, CacheChoices: services.BrowserCacheChoices,
+		Saved: row.Exists, Settings: row.Settings, CacheChoices: services.BrowserCacheChoices, ErrorCodes: services.SiteErrorCodes(),
 		HTTPSEnforced: site.ForceHTTPS,
 	}
 	if index {
@@ -503,6 +505,11 @@ func classifyWebSettingsApply(err error) error {
 		return err
 	}
 	text := err.Error()
+	if rest, ok := strings.CutPrefix(text, "ERROR_PAGE_MISSING: "); ok {
+		return &errWebSettingsApply{status: http.StatusConflict, code: errCodeWebErrorPageMissing, cause: err,
+			message: "These error pages are not in the site's folder: " + firstLineOf(rest) +
+				". Upload them (File manager or SFTP) to the site's document root first; nothing was changed."}
+	}
 	if rest, ok := strings.CutPrefix(text, "NGINX_FAILING_BEFORE: "); ok {
 		return &errWebSettingsApply{status: http.StatusConflict, code: errCodeWebSettingsNginxFails, cause: err,
 			message: "The server's nginx configuration already fails its check, so nothing was written. The server administrator must fix it first (nginx -t says: " +

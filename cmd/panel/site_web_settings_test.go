@@ -172,3 +172,23 @@ func TestWebDirectivesNeedTheOfferAndThePermission(t *testing.T) {
 		t.Fatalf("view: %+v", view.Directives)
 	}
 }
+
+// alpha.128 (G26): a page whose file is missing is an unmet prerequisite.
+func TestWebSettingsErrorPageMissingIsAPrerequisite(t *testing.T) {
+	p, domainID, owner, _ := newSiteFeatureFixture(t)
+	web := &webApplyRecorder{}
+	web.install(t)
+	web.script = []func() (*transport.SiteFileResult, error){
+		func() (*transport.SiteFileResult, error) {
+			return nil, errors.New("ERROR_PAGE_MISSING: /errors/404.html")
+		},
+	}
+	recorder := featureRequest(p, domainID, owner, http.MethodPost, "web-settings",
+		`{"settings":{"error_pages":[{"code":404,"path":"/errors/404.html"}]}}`)
+	if recorder.Code != http.StatusConflict || featureCode(t, recorder) != errCodeWebErrorPageMissing {
+		t.Fatalf("missing page: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if view := readWebView(t, p, domainID, owner); view.Saved {
+		t.Fatalf("the refused save left a record: %+v", view)
+	}
+}

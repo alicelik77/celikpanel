@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // The site's web server settings in a vhost render (alpha.128, PLESK-GAP G3,
@@ -29,8 +30,32 @@ func siteWebSettingsOf(req *ApplyVhostRequest, projectType string) (services.Sit
 	if err != nil {
 		return services.SiteWebSettings{}, false, fmt.Errorf("web server settings: %w", err)
 	}
+	// G26: an error page whose file is not there is left out of a render
+	// (a save refuses it first: missingErrorPages).
+	settings.ErrorPages, _ = presentErrorPages(req.DocumentRoot, settings.ErrorPages)
 	return settings, true, nil
 }
+
+// presentErrorPages splits the pages into those whose file is a regular
+// file in the document root (never a link) and the missing ones.
+func presentErrorPages(documentRoot string, pages []transport.SiteErrorPage) (present []transport.SiteErrorPage, missing []string) {
+	for _, page := range pages {
+		info, err := errorPageLstat(services.SiteErrorPageFile(documentRoot, page.Path))
+		if err == nil && info.Mode().IsRegular() {
+			present = append(present, page)
+		} else {
+			missing = append(missing, page.Path)
+		}
+	}
+	return present, missing
+}
+
+// errorPageLstat is a test seam.
+var errorPageLstat = os.Lstat
+
+// errorPageMissingMarker starts the error of a save naming a page whose file
+// is not in the document root (an unmet prerequisite; nothing written).
+const errorPageMissingMarker = "ERROR_PAGE_MISSING: "
 
 // applySiteWebSettingsToVhost sets the template fields of the settings.
 func applySiteWebSettingsToVhost(req *ApplyVhostRequest, data *services.VhostData) error {
@@ -95,6 +120,9 @@ const nginxFailingBeforeMarker = "NGINX_FAILING_BEFORE: "
 func (a *Agent) precheckSiteWebSettings(req *ApplyVhostRequest) string {
 	if req == nil || req.WebSettings == nil || !req.WebSettings.PrecheckNginx || a.nginxGen == nil {
 		return ""
+	}
+	if _, missing := presentErrorPages(req.DocumentRoot, req.WebSettings.Settings.ErrorPages); len(missing) > 0 {
+		return errorPageMissingMarker + strings.Join(missing, ", ")
 	}
 	if err := a.nginxGen.ValidateNginx(); err != nil {
 		detail := err.Error()

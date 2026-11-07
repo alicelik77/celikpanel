@@ -33,7 +33,9 @@ interface Settings {
     access_mode?: '' | 'allow' | 'deny';
     access_list?: string[];
     node_public?: boolean;
+    error_pages?: ErrorPage[];
 }
+interface ErrorPage { code: number; path: string }
 interface Directives {
     may_edit: boolean;
     reason?: string;
@@ -52,6 +54,7 @@ interface WebView {
     default_index?: string;
     settings: Settings;
     cache_choices: number[];
+    error_codes?: number[];
     directives: Directives;
 }
 
@@ -66,6 +69,7 @@ const INDEX_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MIME_TYPE = /^[a-z0-9][a-z0-9.+-]{0,62}\/[a-z0-9][a-z0-9.+_-]{0,126}$/;
 const MIME_EXT = /^[a-z0-9][a-z0-9_-]{0,15}$/;
 const HEADER_NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/;
+const ERROR_PAGE = /^\/[A-Za-z0-9._~/-]{0,250}\.html?$/;
 
 const words = (text: string) => text.split(/\s+/).map((item) => item.trim()).filter(Boolean);
 
@@ -73,7 +77,7 @@ const words = (text: string) => text.split(/\s+/).map((item) => item.trim()).fil
 // reason for a refused value (it names the field or the line).
 function refusal(error: ApiError, t: WebWords): string {
     const text = apiErrorText(error, t as unknown as (key: TranslationKey, values?: Record<string, string | number>) => string, 'common.error');
-    const detailed = error.code === 'WEB_SETTING_INVALID' || error.code === 'WEB_DIRECTIVES_INVALID' || error.code === 'WEB_SETTINGS_NGINX_REFUSED' || error.code === 'WEB_SETTINGS_NGINX_FAILING';
+    const detailed = error.code === 'WEB_ERROR_PAGE_MISSING' || error.code === 'WEB_SETTING_INVALID' || error.code === 'WEB_DIRECTIVES_INVALID' || error.code === 'WEB_SETTINGS_NGINX_REFUSED' || error.code === 'WEB_SETTINGS_NGINX_FAILING';
     return detailed && error.message ? `${text} (${error.message})` : text;
 }
 
@@ -183,6 +187,7 @@ function WebFields({ state, disabled, readOnly, t, onSave }: {
     const [mode, setMode] = useState<'' | 'allow' | 'deny'>(saved.access_mode ?? '');
     const [list, setList] = useState((saved.access_list ?? []).join('\n'));
     const [nodePublic, setNodePublic] = useState(!!saved.node_public);
+    const [pages, setPages] = useState<ErrorPage[]>(saved.error_pages ?? []);
     const [problem, setProblem] = useState('');
 
     const build = (): Settings | null => {
@@ -214,6 +219,16 @@ function WebFields({ state, disabled, readOnly, t, onSave }: {
             settings.access_list = entries;
         }
         if (state.node_applies && nodePublic) settings.node_public = true;
+        if (state.index_applies) {
+            const sentPages: ErrorPage[] = [];
+            for (const page of pages) {
+                if (!page.path.trim()) continue;
+                const path = page.path.trim();
+                if (!ERROR_PAGE.test(path) || path.includes('..') || sentPages.some((p) => p.code === page.code)) return setProblem(t('web.problem.errorPage')), null;
+                sentPages.push({ code: page.code, path });
+            }
+            if (sentPages.length) settings.error_pages = sentPages;
+        }
         setProblem('');
         return settings;
     };
@@ -276,6 +291,20 @@ function WebFields({ state, disabled, readOnly, t, onSave }: {
                     </div>
                 )}
             </FormSection>
+            {state.index_applies && (state.error_codes ?? []).length > 0 && (
+                <FormSection title={t('web.errors.title')} description={t('web.errors.desc')}>
+                    {pages.map((row, at) => (
+                        <div key={at} className="flex flex-col gap-2 sm:flex-row">
+                            <select value={row.code} onChange={(e) => setPages(pages.map((p, i) => i === at ? { ...p, code: Number(e.target.value) } : p))} disabled={fieldDisabled} className={`${inputClass} sm:w-32`} aria-label={t('web.errors.code')}>
+                                {(state.error_codes ?? []).map((code) => <option key={code} value={code}>{code}</option>)}
+                            </select>
+                            <input value={row.path} onChange={(e) => setPages(pages.map((p, i) => i === at ? { ...p, path: e.target.value } : p))} disabled={fieldDisabled} placeholder="/errors/404.html" aria-label={t('web.errors.path')} spellCheck={false} className={`${inputClass} font-mono`} />
+                            {!readOnly && <Button type="button" icon={Trash2} disabled={disabled} onClick={() => setPages(pages.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>}
+                        </div>
+                    ))}
+                    {!readOnly && <Button type="button" icon={Plus} disabled={disabled || pages.length >= (state.error_codes ?? []).length} onClick={() => setPages([...pages, { code: (state.error_codes ?? []).find((code) => !pages.some((p) => p.code === code)) ?? 404, path: '' }])}>{t('web.errors.add')}</Button>}
+                </FormSection>
+            )}
             {state.node_applies && (
                 <FormSection title={t('web.node.title')}>
                     <label className="flex cursor-pointer items-start gap-3">
