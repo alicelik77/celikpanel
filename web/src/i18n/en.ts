@@ -80,6 +80,7 @@ import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
 import type { OpstepsScreenKey } from './screens/opsteps/en';
 import type { LimitsScreenKey } from './screens/limits/en';
 import type { MailWorkScreenKey } from './screens/mailWork/en';
+import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -592,5 +593,6 @@ export type ScreenKey =
     | NodeSandboxScreenKey
     | OpstepsScreenKey
     | LimitsScreenKey
-    | MailWorkScreenKey;
+    | MailWorkScreenKey
+    | FtpLoginsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey;

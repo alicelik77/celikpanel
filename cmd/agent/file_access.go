@@ -210,6 +210,13 @@ func (a *Agent) ApplyFileAccessV1(req *transport.ApplyFileAccessRequest, resp *t
 	if refusal == nil {
 		refusal = executeFileAccessPlan(ctx, plan)
 	}
+	if refusal == nil && req.RevokeCredentials {
+		// alpha.128: after a transfer the site's additional FTP logins lose
+		// their passwords too (the new owner sets new ones or removes them).
+		if err := revokeFTPLoginsOfSite(ctx, req.Site.Username); err != nil {
+			refusal = refuseFileAccess(transport.FileAccessRefusedAccountChange, "%v", err)
+		}
+	}
 	if refusal != nil {
 		resp.Refusal, resp.Detail = refusal.code, refusal.detail
 	} else {
@@ -256,9 +263,12 @@ type fileAccessAccountChange struct {
 }
 
 type fileAccessPlan struct {
-	req        transport.ApplyFileAccessRequest
-	entry      fileaccess.Entry
-	entries    []fileaccess.Entry
+	req     transport.ApplyFileAccessRequest
+	entry   fileaccess.Entry
+	entries []fileaccess.Entry
+	// logins are the additional FTP/SFTP logins (alpha.128); every drop-in
+	// and FTP list this plan writes carries them.
+	logins     []fileaccess.Login
 	dropIn     *fileAccessFileWrite
 	keys       *fileAccessFileWrite
 	accounts   []fileAccessAccountChange
@@ -352,17 +362,20 @@ func verifiedFileAccessAccount(site transport.FileAccessSite) (fileAccessAccount
 	return account, nil
 }
 
-func readFileAccessEntries() ([]fileaccess.Entry, fileaccess.ManagedState, []byte, bool, error) {
+// readFileAccessEntries reads the drop-in's records: the site accounts with
+// access and the additional logins (alpha.128). Both are always rendered
+// back together.
+func readFileAccessEntries() ([]fileaccess.Entry, []fileaccess.Login, fileaccess.ManagedState, []byte, bool, error) {
 	before, exists, err := fileAccessReadFile(fileaccess.SSHDropInPath)
 	if err != nil {
-		return nil, "", nil, false, err
+		return nil, nil, "", nil, false, err
 	}
 	state, body := fileaccess.Classify(before, exists)
 	if state != fileaccess.FileManaged {
-		return nil, state, before, exists, nil
+		return nil, nil, state, before, exists, nil
 	}
-	entries, err := fileaccess.ParseSSHDropInEntries(body)
-	return entries, state, before, exists, err
+	entries, logins, err := fileaccess.ParseSSHDropIn(body)
+	return entries, logins, state, before, exists, err
 }
 
 func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessRequest) (*fileAccessPlan, *fileAccessRefusal) {
@@ -399,7 +412,8 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 	}
 
 	// The drop-in and its record of every account with access.
-	entries, state, before, exists, err := readFileAccessEntries()
+	entries, logins, state, before, exists, err := readFileAccessEntries()
+	plan.logins = logins
 	switch {
 	case err != nil:
 		return plan, refuseFileAccess(transport.FileAccessRefusedSSHDOwner, "read %s: %v", fileaccess.SSHDropInPath, err)
@@ -436,6 +450,11 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 			plan.entries[i].ReadOnly = req.ReadOnly
 		}
 	}
+	for i := range plan.logins {
+		if plan.logins[i].SubscriptionID == site.SubscriptionID {
+			plan.logins[i].ReadOnly = req.ReadOnly
+		}
+	}
 	if req.Enabled {
 		chroot := fileaccess.ChrootDir(site.SubscriptionID)
 		chain, statErr := fileAccessStatChain(fileaccess.ChrootChain(chroot))
@@ -449,7 +468,7 @@ func buildFileAccessPlan(ctx context.Context, req transport.ApplyFileAccessReque
 		}
 	}
 	if sshdPresent {
-		text, renderErr := fileaccess.RenderSSHDropIn(plan.entries)
+		text, renderErr := fileaccess.RenderSSHDropIn(plan.entries, plan.logins)
 		if renderErr != nil {
 			return plan, refuseFileAccess(transport.FileAccessRefusedInvalid, "%v", renderErr)
 		}
@@ -615,7 +634,7 @@ func planFileAccessFTP(ctx context.Context, plan *fileAccessPlan) {
 		plan.warn(transport.FileAccessWarnFTPNotInstalled)
 		return
 	}
-	conf, confState, err := renderFileAccessVsftpd(ctx)
+	conf, confState, err := renderFileAccessVsftpd(ctx, len(plan.logins) > 0)
 	if err != nil {
 		plan.warn(transport.FileAccessWarnFTPRejected)
 		plan.note("service", "vsftpd", "keep", err.Error())
@@ -646,7 +665,7 @@ func planFileAccessFTP(ctx context.Context, plan *fileAccessPlan) {
 		}
 		add(write, true, "PAM: FTP sign-in")
 	}
-	list, err := fileaccess.RenderVsftpdUserList(plan.entries)
+	list, err := fileaccess.RenderVsftpdUserList(plan.entries, plan.logins)
 	if err == nil {
 		if write, _, err := planFileWrite(fileaccess.VsftpdUserList, list, 0o600); err == nil {
 			add(write, false, "FTP accounts")
@@ -664,6 +683,17 @@ func planFileAccessFTP(ctx context.Context, plan *fileAccessPlan) {
 			add(write, false, "FTP folder of "+e.Username)
 		}
 	}
+	for _, l := range plan.logins {
+		path := filepath.Join(fileaccess.VsftpdUserConfDir, l.Login)
+		wanted[path] = true
+		text, renderErr := fileaccess.RenderVsftpdLoginConf(l)
+		if renderErr != nil {
+			continue
+		}
+		if write, _, err := planFileWrite(path, text, 0o600); err == nil {
+			add(write, false, "FTP login "+l.Login)
+		}
+	}
 	if names, err := os.ReadDir(fileaccess.VsftpdUserConfDir); err == nil {
 		for _, name := range names {
 			path := filepath.Join(fileaccess.VsftpdUserConfDir, name.Name())
@@ -677,7 +707,7 @@ func planFileAccessFTP(ctx context.Context, plan *fileAccessPlan) {
 	}
 }
 
-func renderFileAccessVsftpd(ctx context.Context) (string, fileaccess.ManagedState, error) {
+func renderFileAccessVsftpd(ctx context.Context, logins bool) (string, fileaccess.ManagedState, error) {
 	before, exists, err := fileAccessReadFile(fileaccess.VsftpdConfPath)
 	if err != nil {
 		return "", "", err
@@ -690,6 +720,7 @@ func renderFileAccessVsftpd(ctx context.Context) (string, fileaccess.ManagedStat
 	}
 	conf, err := fileaccess.RenderVsftpdConf(fileaccess.VsftpdParams{
 		CertFile: certFile, KeyFile: keyFile, SecureChrootDir: fileaccess.SecureChrootDirFor(fileAccessFamily()),
+		Logins: logins, NoSeccomp: fileaccess.VsftpdNeedsNoSeccomp(fileAccessFamily()),
 	})
 	return conf, state, err
 }
@@ -852,6 +883,13 @@ func effectiveSSHDValue(output, key string) string {
 // applies it to the account, and reloads sshd. Any failed proof puts the
 // previous file back.
 func applyFileAccessDropIn(ctx context.Context, plan *fileAccessPlan) *fileAccessRefusal {
+	return applySSHDropInWrite(ctx, plan, plan.entry.Username, fileaccess.ExpectedSSHDEffective(plan.entry, plan.req.Enabled))
+}
+
+// applySSHDropInWrite writes plan.dropIn, proves sshd accepts it and applies
+// want to the named account, and reloads sshd. Any failed proof puts the
+// previous file back.
+func applySSHDropInWrite(ctx context.Context, plan *fileAccessPlan, username string, want map[string]string) *fileAccessRefusal {
 	write := plan.dropIn
 	if err := writeFileAccessFile(write); err != nil {
 		return refuseFileAccess(transport.FileAccessRefusedSSHDRejected, "write %s: %v", write.path, err)
@@ -870,11 +908,11 @@ func applyFileAccessDropIn(ctx context.Context, plan *fileAccessPlan) *fileAcces
 	if out, err := fileAccessRun(ctx, nil, "sshd", "-t"); err != nil {
 		return restore(transport.FileAccessRefusedSSHDRejected, "sshd refused the configuration: %s", firstLine(string(out)))
 	}
-	out, err := fileAccessRun(ctx, nil, "sshd", "-T", "-C", sshdConnectionSpec(plan.entry.Username))
+	out, err := fileAccessRun(ctx, nil, "sshd", "-T", "-C", sshdConnectionSpec(username))
 	if err != nil {
 		return restore(transport.FileAccessRefusedSSHDRejected, "sshd could not show its effective configuration: %s", firstLine(string(out)))
 	}
-	if err := fileaccess.CheckSSHDEffective(string(out), fileaccess.ExpectedSSHDEffective(plan.entry, plan.req.Enabled)); err != nil {
+	if err := fileaccess.CheckSSHDEffective(string(out), want); err != nil {
 		return restore(transport.FileAccessRefusedSSHDInclude,
 			"%v. The server's /etc/ssh/sshd_config must read the drop-in folder: add the line \"Include /etc/ssh/sshd_config.d/*.conf\" at its top", err)
 	}
@@ -1045,7 +1083,7 @@ func readFileAccessState(ctx context.Context, site transport.FileAccessSite) tra
 		ChrootDir: fileaccess.ChrootDir(site.SubscriptionID),
 		StartDir:  fileaccess.StartDir(site.DomainID),
 	}
-	entries, dropInState, _, _, entriesErr := readFileAccessEntries()
+	entries, _, dropInState, _, _, entriesErr := readFileAccessEntries()
 	if host, err := fileAccessLookupAccount(site.Username); err == nil {
 		account.Exists = true
 		account.HomeMatches = filepath.Clean(host.Home) == fileaccess.SiteHome(site.SubscriptionID, site.DomainID)
@@ -1092,7 +1130,7 @@ func readFileAccessState(ctx context.Context, site transport.FileAccessSite) tra
 			}
 			for _, line := range strings.Split(string(out), "\n") {
 				var port int
-				if _, err := fmt.Sscanf(strings.TrimSpace(line), "port %d", &port); err == nil && port > 0 {
+				if _, err := fmt.Sscanf(strings.ToLower(strings.TrimSpace(line)), "port %d", &port); err == nil && port > 0 {
 					server.SSHPorts = append(server.SSHPorts, port)
 				}
 			}
@@ -1175,7 +1213,7 @@ func forgetFileAccessAccount(username string) {
 			}
 		}
 	}
-	entries, state, before, exists, err := readFileAccessEntries()
+	entries, logins, state, before, exists, err := readFileAccessEntries()
 	if err != nil || state != fileaccess.FileManaged {
 		return
 	}
@@ -1183,7 +1221,7 @@ func forgetFileAccessAccount(username string) {
 		return
 	}
 	remaining := fileaccess.MergeEntry(entries, fileaccess.Entry{Username: username}, false)
-	text, err := fileaccess.RenderSSHDropIn(remaining)
+	text, err := fileaccess.RenderSSHDropIn(remaining, logins)
 	if err != nil {
 		return
 	}
@@ -1197,7 +1235,7 @@ func forgetFileAccessAccount(username string) {
 		_ = restoreFileAccessFile(write)
 		return
 	}
-	if list, err := fileaccess.RenderVsftpdUserList(remaining); err == nil {
+	if list, err := fileaccess.RenderVsftpdUserList(remaining, logins); err == nil {
 		if listWrite, _, err := planFileWrite(fileaccess.VsftpdUserList, list, 0o600); err == nil && listWrite != nil {
 			_ = writeFileAccessFile(listWrite)
 		}
@@ -1235,12 +1273,12 @@ func prepareInstalledVsftpd(ctx context.Context, freshInstall, held bool) error 
 	if _, certFile, _ := fileAccessCertificate(true); certFile == "" {
 		return errors.New("no certificate for FTP over TLS could be prepared")
 	}
-	conf, _, err := renderFileAccessVsftpd(ctx)
+	entries, logins, _, _, _, _ := readFileAccessEntries()
+	conf, _, err := renderFileAccessVsftpd(ctx, len(logins) > 0)
 	if err != nil {
 		return err
 	}
-	entries, _, _, _, _ := readFileAccessEntries()
-	list, err := fileaccess.RenderVsftpdUserList(entries)
+	list, err := fileaccess.RenderVsftpdUserList(entries, logins)
 	if err != nil {
 		return err
 	}
@@ -1261,6 +1299,11 @@ func prepareInstalledVsftpd(ctx context.Context, freshInstall, held bool) error 
 	for _, e := range entries {
 		if text, err := fileaccess.RenderVsftpdUserConf(e); err == nil {
 			_ = fileAccessWriteFile(filepath.Join(fileaccess.VsftpdUserConfDir, e.Username), []byte(text), 0o600)
+		}
+	}
+	for _, l := range logins {
+		if text, err := fileaccess.RenderVsftpdLoginConf(l); err == nil {
+			_ = fileAccessWriteFile(filepath.Join(fileaccess.VsftpdUserConfDir, l.Login), []byte(text), 0o600)
 		}
 	}
 	fileAccessEnsureLogFile()
@@ -1328,7 +1371,7 @@ func (a *Agent) SetFileAccessReadOnlyV1(req *transport.SetFileAccessReadOnlyRequ
 	defer fileAccessMu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), fileAccessTimeout)
 	defer cancel()
-	entries, state, before, exists, err := readFileAccessEntries()
+	entries, logins, state, before, exists, err := readFileAccessEntries()
 	switch {
 	case err != nil:
 		resp.Error = fmt.Sprintf("read %s: %v; nothing was changed", fileaccess.SSHDropInPath, err)
@@ -1358,20 +1401,44 @@ func (a *Agent) SetFileAccessReadOnlyV1(req *transport.SetFileAccessReadOnlyRequ
 			changed = true
 		}
 	}
+	// alpha.128: the subscription's additional logins follow it.
+	var loginProof *fileaccess.Login
+	for i := range logins {
+		if logins[i].SubscriptionID != req.SubscriptionID {
+			continue
+		}
+		if loginProof == nil {
+			proof := logins[i]
+			loginProof = &proof
+		}
+		if logins[i].ReadOnly != req.ReadOnly {
+			logins[i].ReadOnly = req.ReadOnly
+			changed = true
+		}
+	}
 	if !changed {
 		resp.Applied = true
 		return nil
 	}
 	target.ReadOnly = req.ReadOnly
-	plan := &fileAccessPlan{req: transport.ApplyFileAccessRequest{Enabled: true, ReadOnly: req.ReadOnly}, entry: target, entries: entries}
+	plan := &fileAccessPlan{req: transport.ApplyFileAccessRequest{Enabled: true, ReadOnly: req.ReadOnly}, entry: target, entries: entries, logins: logins}
 	if fileAccessCommandPresent("sshd") {
-		text, renderErr := fileaccess.RenderSSHDropIn(entries)
+		text, renderErr := fileaccess.RenderSSHDropIn(entries, logins)
 		if renderErr != nil {
 			resp.Error = renderErr.Error() + "; nothing was changed"
 			return nil
 		}
 		plan.dropIn = &fileAccessFileWrite{path: fileaccess.SSHDropInPath, content: text, mode: 0o644, before: before, existed: true}
-		if refusal := applyFileAccessDropIn(ctx, plan); refusal != nil {
+		var refusal *fileAccessRefusal
+		if target.Username == "" && loginProof != nil {
+			// Only logins of this subscription have access: prove one.
+			proof := *loginProof
+			proof.ReadOnly = req.ReadOnly
+			refusal = applySSHDropInWrite(ctx, plan, proof.Login, fileaccess.ExpectedLoginSSHDEffective(proof))
+		} else {
+			refusal = applyFileAccessDropIn(ctx, plan)
+		}
+		if refusal != nil {
 			resp.Error = refusal.detail
 			return nil
 		}

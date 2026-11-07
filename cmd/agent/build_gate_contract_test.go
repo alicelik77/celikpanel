@@ -373,6 +373,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.128: additional FTP/SFTP logins of a site.
+			name: "ApplyFTPLoginV1",
+			run: func(expected string) string {
+				var response transport.ApplyFTPLoginResponse
+				if err := agent.ApplyFTPLoginV1(&transport.ApplyFTPLoginRequest{ExpectedBuildCommit: expected}, &response); err != nil {
+					return err.Error()
+				}
+				return response.Detail
+			},
+		},
+		{
 			name: "ApplyVhosts",
 			run: func(expected string) string {
 				var response ApplyVhostsResponse
@@ -614,6 +625,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 				return response.Error
 			},
 		},
+		// alpha.128 ops: restarting the server and certificate requests.
+		{name: "ServerRebootV1", run: func(expected string) string {
+			var response transport.ServerRebootResponse
+			_ = agent.ServerRebootV1(&transport.ServerRebootRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "CertificateRequestCreateV1", run: func(expected string) string {
+			var response transport.CertificateRequestCreateResponse
+			_ = agent.CertificateRequestCreateV1(&transport.CertificateRequestCreateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "CertificateRequestDiscardV1", run: func(expected string) string {
+			var response transport.CertificateRequestDiscardResponse
+			_ = agent.CertificateRequestDiscardV1(&transport.CertificateRequestDiscardRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 	}
 }
 

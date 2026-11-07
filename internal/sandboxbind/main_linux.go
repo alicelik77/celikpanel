@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/alicelik/celikpanel/internal/fileaccess"
 	"github.com/alicelik/celikpanel/internal/sitesandbox"
 )
 
@@ -91,7 +92,7 @@ func CheckAppFolder(appDir string, uid uint32) error {
 	return Check(plan)
 }
 
-const usage = "usage: sandbox-helper bind|unbind|egress-add|egress-remove --unit=<sandboxed unit>"
+const usage = "usage: sandbox-helper bind|unbind|egress-add|egress-remove --unit=<sandboxed unit> | ftp-bind|ftp-unbind --login=<login> ..."
 
 // Main is the helper's command line:
 //
@@ -111,6 +112,8 @@ func Main(args []string, stderr io.Writer) int {
 		return 2
 	}
 	switch args[0] {
+	case "ftp-bind", "ftp-unbind":
+		return ftpMain(args, stderr)
 	case "bind", "unbind", "egress-add", "egress-remove":
 	default:
 		fmt.Fprintln(stderr, usage)
@@ -158,5 +161,56 @@ func Main(args []string, stderr io.Writer) int {
 		return 1
 	}
 	fmt.Fprintf(stderr, "celikpanel-sandbox: %s %s: %v\n", args[0], *unit, err)
+	return 1
+}
+
+const ftpUsage = "usage: sandbox-helper ftp-bind --login=<login> --site=<site account> --folder=<folder> | ftp-unbind --login=<login>"
+
+// ftpMain is the login jail's command line (alpha.128, docs/FTP-LOGINS.md):
+//
+//	sandbox-helper ftp-bind --login=<l> --site=<s> --folder=<f>   (celikpanel-ftp-<l>.service ExecStart)
+//	sandbox-helper ftp-unbind --login=<l>                         (its ExecStop)
+func ftpMain(args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("sandbox-helper "+args[0], flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	login := fs.String("login", "", "the login")
+	site := fs.String("site", "", "the site account")
+	folder := fs.String("folder", "", "the chosen folder")
+	if err := fs.Parse(args[1:]); err != nil || fs.NArg() != 0 || *login == "" ||
+		(args[0] == "ftp-bind" && (*site == "" || *folder == "")) ||
+		(args[0] == "ftp-unbind" && (*site != "" || *folder != "")) {
+		fmt.Fprintln(stderr, ftpUsage)
+		return 2
+	}
+	if unix.Geteuid() != 0 {
+		fmt.Fprintln(stderr, "celikpanel-ftp: the helper runs as root")
+		return 1
+	}
+	h := ProductionFTPHelper(stderr)
+	if args[0] == "ftp-unbind" {
+		if err := h.Unbind(*login); err != nil {
+			fmt.Fprintf(stderr, "celikpanel-ftp: the jail of %s could not be removed: %v\n", *login, err)
+			return 1
+		}
+		return 0
+	}
+	err := h.Bind(FTPRequest{Login: *login, Site: *site, Folder: *folder})
+	if err == nil {
+		return 0
+	}
+	fmt.Fprintf(stderr, "celikpanel-ftp: the login %s has no jail, so it cannot sign in: %v.\n", *login, err)
+	if r, ok := AsRefusal(err); ok {
+		switch r.Code {
+		case CodeNotReal:
+			fmt.Fprintln(stderr, "celikpanel-ftp: the login's folder must be a real folder of its site, with no link on its way. Put the real folder back (or give the login another folder in the panel), then: systemctl restart "+fileaccess.LoginUnit(*login))
+			fmt.Fprintln(stderr, "celikpanel-ftp: girişin klasörü sitenin gerçek bir klasörü olmalı, yolunda bağlantı olmamalı. Gerçek klasörü geri koyun (ya da panelden başka klasör verin), sonra birimi yeniden başlatın.")
+		case CodeNotOwned:
+			fmt.Fprintln(stderr, "celikpanel-ftp: the folder must belong to the site's account and the login must be that site's login (same uid and group, home in its jail, no shell). The administrator corrects it, then restarts the unit.")
+			fmt.Fprintln(stderr, "celikpanel-ftp: klasör sitenin hesabına ait, giriş o sitenin girişi olmalı. Yönetici düzeltir, sonra birimi yeniden başlatır.")
+		default:
+			fmt.Fprintln(stderr, "celikpanel-ftp: the folder could not be checked, so no jail was made. The administrator reads the message above, then restarts the unit.")
+			fmt.Fprintln(stderr, "celikpanel-ftp: klasör denetlenemedi; hapis kurulmadı. Yönetici yukarıdaki iletiyi okur, sonra birimi yeniden başlatır.")
+		}
+	}
 	return 1
 }

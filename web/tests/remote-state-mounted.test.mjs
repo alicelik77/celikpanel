@@ -65,6 +65,12 @@ const stubbedComponents = [
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.
   'IPAddressesSection',
+  // alpha.128: the notifications list and cards read their own addresses
+  // (tests/notifications-alpha128.test.mjs); My account loads them lazily.
+  'NotificationsCenter', 'NotificationPreferencesCard', 'NotificationSettingsCard',
+  // alpha.128 (G4): the sessions and panel access cards read their own
+  // addresses; My account and Security load them lazily.
+  'OwnSessionsCard', 'CustomerSessionsCard', 'PanelAccessCard', 'AllSessionsCard',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
@@ -172,7 +178,7 @@ const HostingTypePanel = await load('HostingTypePanel');
 // The second batch. A screen that mounts another screen under test gets the
 // real one; everything else it mounts is the stub.
 const Settings = await load('Settings');
-const AccountPage = await load('AccountPage');
+const AccountPage = (await import(replaceLazyImport(replaceLazyImport(shared.compile('components/AccountPage.tsx', own), './Notifications', stub), './PanelSessions', stub))).AccountPage;
 const UsersPage = await load('UsersPage');
 const fileManagerURL = shared.compile('components/DomainFileManager.tsx', own);
 const DomainFileManager = (await import(fileManagerURL)).DomainFileManager;
@@ -186,7 +192,8 @@ const ServiceShell = await load('ServiceShell');
 const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`), '/SecurityEmergency': stub });
 const ServiceRecordLookup = await load('ServiceRecordLookup');
 // The Databases tab is lazy since alpha.127: the shipped module stands in.
-const DomainDetailByName = (await import(replaceLazyImport(shared.compile('components/DomainDetail.tsx', {
+// alpha.128 (G22): the health strip has its own test (domain-health-alpha128); here it stands aside.
+const DomainDetailByName = (await import(replaceLazyImport(replaceLazyImport(shared.compile('components/DomainDetail.tsx', {
   ...own,
   '/DomainFileManager': fileManagerURL,
   '/DomainSSLSettings': sslSettingsURL,
@@ -194,7 +201,7 @@ const DomainDetailByName = (await import(replaceLazyImport(shared.compile('compo
   '/DomainDNSManager': shared.compile('components/DomainDNSManager.tsx', own),
   '/DomainPHPSettings': shared.compile('components/DomainPHPSettings.tsx', own),
   '/HostingTypePanel': shared.compile('components/HostingTypePanel.tsx', own),
-}), './DomainDatabaseManager', shared.compile('components/DomainDatabaseManager.tsx', own)))).DomainDetailByName;
+}), './DomainDatabaseManager', shared.compile('components/DomainDatabaseManager.tsx', own)), './DomainHealthStrip', dataModule(`export const DomainHealthStrip = () => null;`)))).DomainDetailByName;
 
 // --- What the server answers when nothing is wrong ----------------------------
 const caps = (overrides = {}) => ({

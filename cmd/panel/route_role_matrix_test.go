@@ -182,6 +182,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/host-mutation-readiness":    gateTenant, // read-only readiness
 	"/api/v1/license/access":             gateTenant, // the caller's own access state
 	"/api/v1/me/guide-state":             gateTenant, // alpha.119: the caller's own tour state only
+	"/api/v1/me/activity":                gateTenant, // alpha.128 ops G23: own rows (+ customers' for a reseller) only (handler)
 	"/api/v1/maintenance/restarts":       gateTenant, // admin-only in handler
 	"/api/v1/offered-versions":           gateTenant, // read for all; changed by admin (handler)
 	"/api/v1/panel/access-address":       gatePublic, // GET is public (how to reach the panel)
@@ -189,6 +190,15 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/server/os-release":          gateTenant, // admin-only writes in handler
 	"/api/v1/server/os-release/reviewed": gateTenant, // admin-only in handler
 	"/api/v1/support-table":              gateTenant, // the dated support table, for everyone signed in
+
+	// alpha.128 ops: G29 server maintenance.
+	"/api/v1/maintenance/clock":     gateTenant, // admin-only in handler
+	"/api/v1/maintenance/processes": gateTenant, // admin-only in handler
+	"/api/v1/maintenance/reboot":    gateTenant, // admin-only in handler
+	// alpha.128 ops: G31 certificates overview and requests.
+	"/api/v1/maintenance/certificates":          gateTenant, // admin-only in handler
+	"/api/v1/maintenance/certificate-requests":  gateTenant, // admin-only in handler
+	"/api/v1/maintenance/certificate-requests/": gateTenant, // admin-only in handler
 
 	// alpha.114: forgot password, invitations, address confirmation, recovery codes.
 	"/api/v1/auth/2fa/recovery/regenerate":    gateTenant,  // own account only (signed-in self)
@@ -292,6 +302,31 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/account/api-tokens":  gateAccount,
 	"/api/v1/account/api-tokens/": gateAccount,
 	"/api/v1/panel/remote-api":    gateAdmin,
+
+	// alpha.128 ops: G18 notifications. The list and the seen mark read and
+	// change only the caller's own rows; the email choice is the caller's
+	// own (refused under "Log in as"); the server-wide settings are the
+	// administrator's (/api/v1/panel/ prefix, and the handler).
+	"/api/v1/notifications":               gateTenant,
+	"/api/v1/notifications/":              gateTenant,
+	"/api/v1/notification-preferences":    gateTenant,
+	"/api/v1/panel/notification-settings": gateAdmin,
+
+	// alpha.128 ops: G4 sessions. The own-session routes read and end only
+	// the caller's own sessions (ending is refused under "Log in as"); every
+	// account's sessions and the panel access settings are the
+	// administrator's (/api/v1/panel/ prefix, and the handlers).
+	"/api/v1/auth/activity":            gateTenant,
+	"/api/v1/auth/sessions":            gateTenant,
+	"/api/v1/auth/sessions/end":        gateTenant,
+	"/api/v1/auth/sessions/end-others": gateTenant,
+	"/api/v1/panel/sessions":           gateAdmin,
+	"/api/v1/panel/sessions/end":       gateAdmin,
+	"/api/v1/panel/access":             gateAdmin,
+	// A reseller's customers' sessions (handler: reseller only; scope:
+	// own customers and their team members).
+	"/api/v1/reseller/sessions":     gateAccount,
+	"/api/v1/reseller/sessions/end": gateAccount,
 }
 
 // registeredPanelRoutes parses the package source and returns every route

@@ -668,6 +668,7 @@ func (p *Panel) handleImpersonate(w http.ResponseWriter, r *http.Request, c *Cal
 		writeServerError(w, err)
 		return
 	}
+	p.describeNewSession(r, token)
 	p.writeAuditRow(r, c.ID, target.ID, "impersonate.start:"+target.Username, "user", target.ID, nil)
 
 	// Preserve the operator's own session for the way back.

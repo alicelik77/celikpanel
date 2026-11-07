@@ -1425,3 +1425,36 @@ func TestAPITokenDomainDeleteNeedsConfirmDomain(t *testing.T) {
 		t.Fatalf("a session's delete: %d %s", recorder.Code, recorder.Body.String())
 	}
 }
+
+// Integration (alpha.128): the administrator address list of the ops
+// workstream (G4) holds an administrator's API token from an unlisted
+// address, as it holds an administrator's session; a customer's token is
+// never refused by it.
+func TestAPITokenOfAnAdministratorFollowsTheAddressList(t *testing.T) {
+	f := newAPITokenFixture(t)
+	unlimitedAPITokenGuards(f.panel)
+	if err := f.panel.setSetting(context.Background(), settingPanelAccessList, `["203.0.113.0/24"]`); err != nil {
+		t.Fatal(err)
+	}
+	invalidatePanelAccessCache()
+	t.Cleanup(invalidatePanelAccessCache)
+	probe := &apiTokenProbe{}
+	handler := f.panel.requireAuth(probe.handler())
+	send := func(token, address string) *httptest.ResponseRecorder {
+		probe.reached = false
+		request := tokenRequest(http.MethodGet, "/api/v1/domains", token)
+		request.RemoteAddr = address + ":4000"
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, request)
+		return recorder
+	}
+	if recorder := send(f.minted["admin/read"], "198.51.100.7"); probe.reached || recorder.Code != http.StatusForbidden || apiErrorCode(t, recorder) != errCodePanelAccessNotAllowed {
+		t.Fatalf("an administrator's token from an unlisted address: reached=%v %d %s", probe.reached, recorder.Code, recorder.Body.String())
+	}
+	if recorder := send(f.minted["admin/read"], "203.0.113.9"); !probe.reached {
+		t.Fatalf("an administrator's token from a listed address: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if recorder := send(f.minted["customer/read"], "198.51.100.7"); !probe.reached {
+		t.Fatalf("a customer's token was refused by the address list: %d %s", recorder.Code, recorder.Body.String())
+	}
+}

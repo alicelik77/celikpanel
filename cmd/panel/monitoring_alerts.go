@@ -350,6 +350,69 @@ func confirmedAdministratorAddresses(ctx context.Context, db *sql.DB) ([]string,
 	return addresses, rows.Err()
 }
 
+// alertMailRecipients (alpha.128, G18): the confirmed administrators who
+// want email (an alert always needs the administrator's action, so only
+// "nothing" leaves one out), each one's extra address, and the
+// administrator's extra address for monitoring alerts; without repeats.
+// confirmed counts the confirmed administrators before their choice.
+func (p *Panel) alertMailRecipients(ctx context.Context, db *sql.DB) ([]string, int, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT id, trim(email) FROM users
+		WHERE role = 'admin' AND COALESCE(NULLIF(account_type, ''), 'account') = 'account'
+		  AND COALESCE(NULLIF(status, ''), 'active') = 'active'
+		  AND email_verified_at IS NOT NULL AND trim(COALESCE(email, '')) <> ''
+		ORDER BY id`)
+	if err != nil {
+		return nil, 0, err
+	}
+	type admin struct {
+		id    int
+		email string
+	}
+	var admins []admin
+	for rows.Next() {
+		var a admin
+		if err := rows.Scan(&a.id, &a.email); err != nil {
+			rows.Close()
+			return nil, 0, err
+		}
+		admins = append(admins, a)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	var addresses []string
+	seen := map[string]bool{}
+	add := func(raw string) {
+		canonical, err := mutationpayload.CanonicalContactEmail(raw)
+		if err != nil || seen[strings.ToLower(canonical)] {
+			return
+		}
+		seen[strings.ToLower(canonical)] = true
+		addresses = append(addresses, canonical)
+	}
+	confirmed := 0
+	for _, a := range admins {
+		if _, err := mutationpayload.CanonicalContactEmail(a.email); err != nil {
+			continue
+		}
+		confirmed++
+		pref := notificationPreferenceFor(ctx, db, a.id)
+		if !pref.mailWanted(true) {
+			continue
+		}
+		add(a.email)
+		if pref.ExtraEmail != "" {
+			add(pref.ExtraEmail)
+		}
+	}
+	if extra := p.adminGroupExtraEmail(ctx, notifyGroupMonitoring); extra != "" {
+		add(extra)
+	}
+	return addresses, confirmed, nil
+}
+
 type pendingAlertMail struct {
 	id       int64
 	kind     string
@@ -393,11 +456,17 @@ func (p *Panel) sendPendingAlertMail(ctx context.Context, now time.Time) {
 			log.Printf("monitoring: alert mail state could not be recorded: %v", err)
 		}
 	}
-	recipients, err := confirmedAdministratorAddresses(ctx, db)
+	recipients, confirmed, err := p.alertMailRecipients(ctx, db)
 	if err != nil {
 		return
 	}
 	if len(recipients) == 0 {
+		if confirmed > 0 {
+			// alpha.128 (G18): every confirmed administrator chose not to
+			// receive email; the alert is still in the panel.
+			mark("suppressed", "not_wanted")
+			return
+		}
 		mark("not_confirmed", "")
 		return
 	}

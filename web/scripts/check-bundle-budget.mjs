@@ -75,10 +75,11 @@ const screenPartBudgets = {
   siteConfig: kib(52, 9),
   settings: kib(44, 13),
   mailDatabases: kib(43, 12),
-  // alpha.128: the database tools' audit words and the remote API's
-  // (api_token., remote_api.) brought Turkish to about 41.5 / 8.5 KiB;
-  // screen-time only. Both workstreams raised it the same way.
-  dashboard: kib(45, 9.5),
+  // alpha.128: the database tools' and the remote API's audit words (both
+  // workstreams raised it to 45 / 9.5), then ops' Recent activity words for
+  // the new actions; raised to keep 25% headroom. A lazy part, never on the
+  // boot path.
+  dashboard: kib(52, 11),
   dnsCertificates: kib(41, 12),
   security: kib(28, 9),
   // v0.1.0-alpha.98: the coded refusals only screens show moved out of the
@@ -301,6 +302,10 @@ const screenPartBudgets = {
   // (moved out of dashboard and mailDatabases, which were full). A new part,
   // set with at least 25% headroom from its Turkish file.
   mailWork: kib(6, 2.2),
+  // v0.1.0-alpha.128: a site's other FTP/SFTP logins, each closed into one
+  // folder (ftpLogins., err.FTP_LOGIN_, opstep.ftplogin.). A new part, set
+  // with at least 25% headroom from its Turkish file.
+  ftpLogins: kib(13, 4.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

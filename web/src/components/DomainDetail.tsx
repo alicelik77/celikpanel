@@ -112,6 +112,11 @@ const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) =
 const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
     default: module.DomainFileAccess,
 })));
+// alpha.128: the site's other FTP/SFTP logins, each closed into one folder,
+// below the access settings; a chunk of its own.
+const FTPLogins = lazy(() => import('./FTPLogins').then((module) => ({
+    default: module.FTPLogins,
+})));
 // AI and automation apps of the site (alpha.118), fetched when the tab opens.
 // Kept apart from the PHP app catalogue of the Apps tab.
 const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module) => ({
@@ -120,6 +125,10 @@ const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module)
 // Uploaded programs of the site (alpha.119), fetched when the Programs tab opens.
 const DomainRuntimeApps = lazy(() => import('./DomainRuntimeApps').then((module) => ({
     default: module.DomainRuntimeApps,
+})));
+// alpha.128 ops (G22): the health strip, with its own copy, in its own chunk.
+const DomainHealthStrip = lazy(() => import('./DomainHealthStrip').then((module) => ({
+    default: module.DomainHealthStrip,
 })));
 
 interface Domain {
@@ -494,7 +503,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         // alpha.119: a program that runs stays manageable after the right closes.
         ...(!isTeamMember && !isDnsOnly && (open('program_apps') || open('python_apps') || projectType === 'runtime_app') ? [{ id: 'programs', labelKey: 'runtime.tab', icon: Cpu, render: () => <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <div className="space-y-6"><DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /><Suspense fallback={null}><FTPLogins domainId={domain.id} isAdmin={role === 'admin'} /></Suspense></div> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{
             id: 'advanced', labelKey: 'domain.tab.advanced', icon: Wrench,
             subs: advancedSubs,
@@ -715,6 +724,28 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                         <div className="mb-4">
                             <DomainConnection domainId={domain.id} domainName={domain.domain_name} />
                         </div>
+                    )}
+
+                    {/* alpha.128 ops (G22): the health strip leads the Overview;
+                        a team member, who has no Overview, sees it on the first
+                        tab, with only the checks of its own grants.
+                        Sağlık şeridi Genel Bakış'ta; ekip üyesi ilk sekmede görür. */}
+                    {(current.id === 'overview' || (isTeamMember && current.id === tabs[0]?.id)) && (
+                        <Suspense fallback={null}>
+                            <DomainHealthStrip
+                                domainId={domain.id}
+                                showsConnection={current.id === 'overview'}
+                                hasTab={(tabId, subTab) => {
+                                    const tab = tabs.find((tb) => tb.id === tabId);
+                                    if (!tab) return false;
+                                    return !subTab || Boolean(tab.subs?.some((sub) => sub.id === subTab));
+                                }}
+                                onGo={(tabId, subTab) => {
+                                    if (subTab) setActiveSub((currentSubs) => ({ ...currentSubs, [tabId]: subTab }));
+                                    setActiveTab(tabId);
+                                }}
+                            />
+                        </Suspense>
                     )}
 
                     {/* Add domain created the site but could not publish its DNS

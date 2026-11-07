@@ -9,9 +9,13 @@ and hosting account. A mailbox that suddenly sends far more than usual is
 paused until its password is changed. Every site gets web server settings,
 error pages, a page cache and log retention. Node.js sites can have
 environment variables and Git deployment, and a whole website can be
-copied. Databases get export, import, copy, check and repair. Sites get
+copied. A site can give a colleague an FTP/SFTP login that sees one
+folder and nothing else. Databases get export, import, copy, check and repair. Sites get
 visitor statistics. Your own programs can work with an account through a
-remote API with tokens. Everything new is off or unchanged until someone turns
+remote API with tokens. Each person gets one list of notifications, with
+what needs their action first. Accounts can see and end their signed-in
+sessions, and the server's maintenance page can restart the server.
+Everything new is off or unchanged until someone turns
 it on, so an updated server works exactly as before. **Only the owner
 updates installed panels, from the panel's own update screen.**
 
@@ -110,6 +114,24 @@ updates installed panels, from the panel's own update screen.**
   made on the server (its public half is shown once). Builds run in the
   site sandbox.
 
+## More FTP/SFTP logins per site
+
+- **A login for one folder:** the site's owner can give a designer or a
+  colleague their own user name and password that sees only one folder of
+  the site. It works over SFTP, and over FTP with TLS where vsftpd is
+  CelikPanel's. A login can never open a command line, and it can be made
+  read only.
+- **Files stay the site's:** uploads belong to the site, so PHP can work
+  with them as before.
+- **Plan limit:** 10 logins per hosting account by default. A plan, a
+  reseller plan or a Custom account can lower it; 0 allows none.
+- **Escape tests:** 64 of 64 passed on all five supported systems. The tests
+  covered other folders, other sites, links, a swapped folder, reboots,
+  forwarding and plain FTP.
+- **Without the panel:** each login is ordinary system configuration (a
+  systemd unit, an sshd block, a vsftpd entry) and keeps working; the
+  guide shows how to remove one by hand (docs/FTP-LOGINS.md).
+
 ## Databases and statistics
 
 - **Database tools:** export, import (a safety copy is taken first), copy,
@@ -122,6 +144,51 @@ updates installed panels, from the panel's own update screen.**
   days are kept. Visitors' addresses are never stored.
 - **IP addresses:** the administrator can see the server's addresses
   (read only).
+
+## Notifications, sessions and server maintenance
+
+- **One notifications list per person** (Dashboard and My account): what
+  needs your action comes first, then what is for your information. Each
+  notice has its reason in plain words, a button to the fix, and "Mark as
+  seen". The usage notices, the "a lowered limit brought a site's PHP
+  setting down" notices and the outgoing mail notices are all in this list,
+  so there is one place to look; the separate blocks on My plan, Rights and
+  the Mail server page are gone. Each notice is still mailed only once, as
+  before. The site's PHP page still marks a value a lowered limit brought
+  down.
+- **Your email choice** (My account): every notice, only what needs your
+  action, or nothing, plus one extra address. The administrator can add an
+  extra address per kind of event.
+- **Subscription end date:** the account is warned a set number of days
+  before the end date and again on the last day.
+- **Signed-in sessions** (My account): every browser where you are signed
+  in, with its address and browser; end one, or all the others. The
+  administrator sees every account's sessions (Security), and a reseller
+  sees and can end its customers' sessions.
+- **Idle timeout:** a session unused for 60 minutes (15 to 480, set under
+  Security, Panel access) ends at its next request.
+- **Administrator addresses:** when the administrator lists addresses, the
+  administrator can sign in, and use API tokens, only from them. The server
+  itself is always allowed, so an SSH tunnel always works, and a local file
+  opens access again (docs/PANEL-ACCESS.md). Customers and resellers are
+  never affected.
+- **Your own activity:** each account can read its own action log; resellers
+  also see their customers'.
+- **Domain health:** one card on a domain's Overview shows whether the
+  website answers, the certificate, DNS, mail, disk use and the last backup,
+  each with its fix.
+- **Server maintenance:** restart the server (refused while another change
+  is running), see the server's clock and its busiest processes.
+- **Certificates on this server:** one read-only list of every certificate,
+  with who uses it, days left and whether it renews by itself. You can also
+  make a certificate request (CSR) for a certificate you buy; its key stays
+  on the server and is never shown. When the certificate authority sends the
+  certificate, install it on the site it is for: the panel first checks that
+  it matches the request's key, is valid now and covers every name, then
+  installs it like any uploaded certificate, and the key never leaves the
+  server. The panel's own certificate and the mail server's certificate are
+  renewed by Let's Encrypt, so a bought certificate is refused there with
+  the reason; install it on the site and its domain's mail uses it too.
 
 ## Remote API
 
@@ -162,6 +229,14 @@ _To be filled in after the lab round._
   yet; the copy still names the source database. PostgreSQL databases are
   not offered.
 - **Git deployment:** no releases or rollback folder and no webhook yet.
+- **FTP/SFTP logins:** where sshd accepts keys only, logins use FTP with
+  TLS. On Arch, the system's own sign-in rule refuses password SFTP for
+  these logins, so they use FTP over TLS. On Arch, vsftpd's extra seccomp
+  sandbox is turned off because it breaks TLS data connections (this
+  affected every FTP account since alpha.117); chroot and privilege
+  separation stay on. Where the owner runs their own vsftpd, logins use SFTP only. A login
+  shares the site account's user id, so the system's own tools show it as
+  the site.
 - **Log retention:** only shortens what the system already keeps. Keeping
   logs longer needs a log folder move, which is not built.
 - The lab round on the five systems is still open for log retention,
@@ -175,9 +250,6 @@ _To be filled in after the lab round._
   - **More mail server settings** (smarthost, Dovecot limits,
     subaddressing, DKIM key rotation, antivirus, allow and block lists):
     only the connection limit shipped.
-  - **More FTP/SFTP accounts per site:** the current mechanism cannot
-    confine a login to a folder on any system. The sandbox's folder binding
-    is the planned route (docs/A128-DATA-ACCESS-DESIGN.md).
   - **Dedicated IP per site:** changing one site's address changes nginx's
     default site on that address for every site. It needs rendering tests
     and a lab round first.
@@ -205,6 +277,11 @@ columns' defaults on plans and subscriptions):
   `git_deploy_settings`.
 - **069 `site_visitor_stats`:** `site_visitor_stats_daily`.
 - **070 `api_tokens`:** `api_tokens` (only a hash of each token is kept).
+- **071 `ftp_logins`:** `ftp_logins` (no password is kept), and the
+  `ftp.max_logins` row in `setting_policy` (10).
+- **072 `panel_operations`:** `notification_preferences`, `account_notices`,
+  `certificate_requests`; three new empty columns on `sessions` (last use,
+  address, browser); two indexes on `audit_logs`.
 
 As with every migration, alpha.127 refuses a database that has these
 migrations, and going back means restoring the snapshot taken before the

@@ -130,6 +130,9 @@ func (s *SessionStore) CreateImpersonation(ctx context.Context, targetID, operat
 type SessionIdentity struct {
 	UserID         int
 	ImpersonatorID int
+	// LastSeen is when the session was last used (alpha.128, migration
+	// 069); zero for a session not used since this release (never idle).
+	LastSeen time.Time
 }
 
 // ValidateIdentity is Validate plus the session's impersonator.
@@ -141,10 +144,11 @@ func (s *SessionStore) ValidateIdentity(ctx context.Context, token string) (Sess
 	var identity SessionIdentity
 	var impersonator sql.NullInt64
 	var expiresAt string
+	var lastSeen sql.NullString
 	err := s.db.QueryRowContext(ctx,
-		"SELECT user_id, impersonator_id, expires_at FROM sessions WHERE token_hash = ?",
+		"SELECT user_id, impersonator_id, expires_at, last_seen_at FROM sessions WHERE token_hash = ?",
 		hashToken(token),
-	).Scan(&identity.UserID, &impersonator, &expiresAt)
+	).Scan(&identity.UserID, &impersonator, &expiresAt, &lastSeen)
 	if errors.Is(err, sql.ErrNoRows) {
 		return SessionIdentity{}, ErrSessionInvalid
 	}
@@ -159,7 +163,52 @@ func (s *SessionStore) ValidateIdentity(ctx context.Context, token string) (Sess
 	if impersonator.Valid {
 		identity.ImpersonatorID = int(impersonator.Int64)
 	}
+	if lastSeen.Valid {
+		if at, parseErr := time.Parse(time.RFC3339, lastSeen.String); parseErr == nil {
+			identity.LastSeen = at
+		}
+	}
 	return identity, nil
+}
+
+// SessionHandle is the public name of a session: the first 16 hex digits
+// of its token's SHA-256. It identifies the row for "End this session" and
+// cannot be turned back into the token (alpha.128).
+// SessionHandle, oturumun herkese açık adıdır: jeton özetinin ilk 16 hanesi.
+func SessionHandle(token string) string {
+	return hashToken(token)[:16]
+}
+
+// Touch records that the session was used at `at` and, when given, from
+// which address and browser (alpha.128). A missing row is not an error.
+// Touch, oturumun kullanıldığını (ve verilirse adres ile tarayıcıyı) yazar.
+func (s *SessionStore) Touch(ctx context.Context, token string, at time.Time, clientIP, userAgent string) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE sessions SET last_seen_at = ?,
+		       client_ip = COALESCE(NULLIF(?, ''), client_ip),
+		       user_agent = COALESCE(NULLIF(?, ''), user_agent)
+		WHERE token_hash = ?`,
+		at.UTC().Format(time.RFC3339), boundedText(clientIP, 64), boundedText(userAgent, 200), hashToken(token))
+	return err
+}
+
+// boundedText keeps printable characters only and cuts to max bytes on a
+// rune boundary.
+func boundedText(value string, max int) string {
+	out := make([]rune, 0, len(value))
+	size := 0
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f {
+			continue
+		}
+		n := len(string(r))
+		if size+n > max {
+			break
+		}
+		out = append(out, r)
+		size += n
+	}
+	return string(out)
 }
 
 // Validate resolves a raw token to its user ID, rejecting expired ones.

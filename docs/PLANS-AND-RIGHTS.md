@@ -576,6 +576,14 @@ reseller's customers are also suspended.
 **Nothing is deleted.** Files, mailboxes, databases and configuration stay as they are. When the
 subscription is restarted, everything comes back exactly.
 
+**Warning before the end date (alpha.128).** The owner, the reseller who manages the account and
+the administrators are told a set number of days before the end date (administrator's choice:
+3, 7, 10, 14 or 30 days; default 10) and again within the last 24 hours. The owner is told whom to
+contact; the reseller (or the administrator, when no reseller is between) is the one who acts and
+gets the button to the account's rights, where the end date is changed. Each stage is sent once
+per end date; a moved or cleared end date retires the old notices, and a new date inside the
+window gives fresh ones. Email follows each person's own choice (My account → Notifications).
+
 **Deletion is by hand.** A suspended subscription appears at once in the administrator's or the
 reseller's "deletable" list (K6). Only a person starts a deletion; the panel never deletes on its
 own. Before deleting, what will be deleted (sites, mailboxes, databases, backups) is shown and

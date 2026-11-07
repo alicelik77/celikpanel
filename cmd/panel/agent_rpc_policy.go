@@ -142,6 +142,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.FTPLoginsStateV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -171,6 +172,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
 		Agent.StartServiceMutation Agent.SetEmergencyUnitLockV1
+		Agent.ServerRebootV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
@@ -180,6 +182,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
+		Agent.ApplyFTPLoginV1
 		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1 Agent.SetFileAccessReadOnlyV1
 		Agent.WordPressUpdateV1 Agent.WordPressCloneV1 Agent.SiteCopyV1
@@ -204,6 +207,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.IssuePanelCertificateV2 Agent.IssueMailHostCertificateV1 Agent.ReconcileSiteCertLineages
 		Agent.RenewLetsEncryptCertificate Agent.ValidateCertificate
 		Agent.SetSiteCertificateAutoRenewV1
+		Agent.CertificateRequestCreateV1 Agent.CertificateRequestDiscardV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFirewall, `
 		Agent.ApplyFirewallV2 Agent.Fail2banToggleJail Agent.Fail2banUnban
@@ -558,6 +562,10 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
 	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
 
+	// alpha.128: additional FTP/SFTP logins (account, jail unit, sshd, vsftpd).
+	"Agent.FTPLoginsStateV1": agentRPCStandardReadTimeout,
+	"Agent.ApplyFTPLoginV1":  agentRPCDatabaseTimeout,
+
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
 	"Agent.WordPressUpdateV1":          agentRPCBulkImportTimeout,
@@ -617,6 +625,12 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.GitDeployStatusV1":        agentRPCStandardReadTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
+
+	// alpha.128 ops: server maintenance (G29 reboot, G31 certificate requests;
+	// an RSA 4096 key can take a few seconds to make).
+	"Agent.ServerRebootV1":              agentRPCQuickReadTimeout,
+	"Agent.CertificateRequestCreateV1":  agentRPCMutationTimeout,
+	"Agent.CertificateRequestDiscardV1": agentRPCQuickReadTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

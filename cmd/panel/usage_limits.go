@@ -394,25 +394,50 @@ func usageNoticeMail(kind, audience string, body usageNoticeBody, baseURL string
 	return subject, text
 }
 
+// usageNoticeNeedsAction (alpha.128, G18): is this recipient the one who
+// acts? The owner of a full disk frees space (or asks for more); the
+// reseller or administrator raises a limit that is reached, counting down or
+// suspended; the administrator raises a reseller's pool. An 80% notice, a
+// traffic limit the owner can only wait out or ask about, and a pool the
+// reseller cannot raise are for information.
+func usageNoticeNeedsAction(kind, audience string) bool {
+	switch kind {
+	case noticeDisk100, noticeDiskCountdown, noticeDiskSuspended:
+		return true
+	case noticeTraffic100:
+		return audience != audienceCustomer
+	case noticePoolTraffic100:
+		return audience == audienceAdministrator
+	}
+	return false
+}
+
 // sendPendingUsageNotices hands pending notices to the mail system, or
-// records why it could not.
+// records why it could not. alpha.128 (G18): the person's own choice decides
+// (a notice they chose not to receive by email is recorded as no_address
+// with the detail "not_wanted"; 057's states are kept), their extra address
+// gets the same mail, and the administrator's extra address for account and
+// usage notices gets one copy of each event.
 func (p *Panel) sendPendingUsageNotices(ctx context.Context) error {
 	db := p.db.GetDB()
 	rows, err := db.QueryContext(ctx, `
-		SELECT n.id, n.kind, n.audience, n.body, COALESCE(u.email, '')
+		SELECT n.id, n.user_id, n.kind, n.audience, n.body, COALESCE(u.email, ''),
+		       n.id = (SELECT MIN(m.id) FROM usage_notices m WHERE m.kind = n.kind AND m.subscription_id = n.subscription_id
+		                AND m.reseller_id = n.reseller_id AND m.period = n.period)
 		FROM usage_notices n LEFT JOIN users u ON u.id = n.user_id
 		WHERE n.mail_state = 'pending' ORDER BY n.id LIMIT 200`)
 	if err != nil {
 		return err
 	}
 	type pending struct {
-		id                          int
+		id, userID                  int
 		kind, audience, body, email string
+		firstOfEvent                bool
 	}
 	var items []pending
 	for rows.Next() {
 		var item pending
-		if err := rows.Scan(&item.id, &item.kind, &item.audience, &item.body, &item.email); err != nil {
+		if err := rows.Scan(&item.id, &item.userID, &item.kind, &item.audience, &item.body, &item.email, &item.firstOfEvent); err != nil {
 			rows.Close()
 			return err
 		}
@@ -428,18 +453,35 @@ func (p *Panel) sendPendingUsageNotices(ctx context.Context) error {
 			log.Printf("[usage] notice %d mail state: %v", id, err)
 		}
 	}
+	groupCopy := ""
+	if setup.Available {
+		groupCopy = p.adminGroupExtraEmail(ctx, notifyGroupAccount)
+	}
 	for _, item := range items {
+		var body usageNoticeBody
+		if err := json.Unmarshal([]byte(item.body), &body); err != nil {
+			mark(item.id, "failed", "the notice could not be read")
+			continue
+		}
+		if item.firstOfEvent && groupCopy != "" {
+			if subject, text := usageNoticeMail(item.kind, audienceAdministrator, body, setup.baseURL); subject != "" {
+				if err := p.sendAccountMail(ctx, setup, groupCopy, accountMailContent{kind: accountMailUsageNotice, subject: subject, body: text}); err != nil {
+					log.Printf("[usage] group copy of notice %d: %s", item.id, boundedAgentDiagnostic(err.Error()))
+				}
+			}
+		}
+		pref := notificationPreferenceFor(ctx, db, item.userID)
+		if !pref.mailWanted(usageNoticeNeedsAction(item.kind, item.audience)) {
+			mark(item.id, "no_address", "not_wanted")
+			continue
+		}
 		if !setup.Available {
 			mark(item.id, "not_available", setup.Reason)
 			continue
 		}
-		if strings.TrimSpace(item.email) == "" {
+		addresses := pref.mailAddresses(item.email)
+		if len(addresses) == 0 {
 			mark(item.id, "no_address", "")
-			continue
-		}
-		var body usageNoticeBody
-		if err := json.Unmarshal([]byte(item.body), &body); err != nil {
-			mark(item.id, "failed", "the notice could not be read")
 			continue
 		}
 		subject, text := usageNoticeMail(item.kind, item.audience, body, setup.baseURL)
@@ -447,8 +489,16 @@ func (p *Panel) sendPendingUsageNotices(ctx context.Context) error {
 			mark(item.id, "failed", "unknown notice kind")
 			continue
 		}
-		if err := p.sendAccountMail(ctx, setup, strings.TrimSpace(item.email), accountMailContent{kind: accountMailUsageNotice, subject: subject, body: text}); err != nil {
-			mark(item.id, "failed", boundedAgentDiagnostic(err.Error()))
+		sent, failure := 0, ""
+		for _, to := range addresses {
+			if err := p.sendAccountMail(ctx, setup, to, accountMailContent{kind: accountMailUsageNotice, subject: subject, body: text}); err != nil {
+				failure = boundedAgentDiagnostic(err.Error())
+				continue
+			}
+			sent++
+		}
+		if sent == 0 {
+			mark(item.id, "failed", failure)
 			continue
 		}
 		mark(item.id, "sent", "")

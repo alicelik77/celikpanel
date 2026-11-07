@@ -2,8 +2,9 @@
 
 *alpha.128 · Design notes. They were written when the gap items (PLESK-GAP
 v3) were judged too large or too security-sensitive to finish safely in
-alpha.128. G15 (remote API tokens) was then built by its own workstream and
-shipped in alpha.128; see docs/REMOTE-API.md. G7 (database tools) and G24
+alpha.128. G15 (remote API tokens) and G16 (more FTP/SFTP logins) were then
+built by their own workstreams and shipped in alpha.128; see
+docs/REMOTE-API.md and docs/FTP-LOGINS.md. G7 (database tools) and G24
 (visitor statistics) shipped in the same release; see the end of this file.*
 
 Each note gives the decision, how to build it the CelikPanel way (native
@@ -12,7 +13,9 @@ contract D-025), and what must be proved before it ships.
 
 ## G16. More FTP/SFTP accounts per site
 
-**Status: design note only.**
+**Status: shipped in alpha.128, see docs/FTP-LOGINS.md** (its own workstream,
+migration 071 `ftp_logins`, through the sandbox helper route described at the
+end of this section). The note below is the reasoning it started from.
 
 **Why not tonight.** Today a site has exactly one access account: the site's
 own system user (alpha.117, `cmd/agent/file_access.go`). Files uploaded over

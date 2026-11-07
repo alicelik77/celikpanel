@@ -1092,6 +1092,27 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	p.installCustomCertificateForDomain(w, r, domainID, customCertificateMaterial{
+		cert: string(certContent), key: string(keyContent), chain: string(chainContent),
+	})
+}
+
+// customCertificateMaterial is what a custom certificate is installed from:
+// an uploaded certificate with its key, or (alpha.128, G31) the certificate
+// issued for a certificate request, whose key the Agent reads from its own
+// key file (requestToken + requestKeySHA256; key is then empty and the key
+// never passes through the panel).
+type customCertificateMaterial struct {
+	cert, key, chain string
+	requestToken     string
+	requestKeySHA256 string
+}
+
+// installCustomCertificateForDomain validates and installs a custom
+// certificate for a site and activates it (web server, then mail). It writes
+// the answer and reports whether the certificate became the site's active
+// certificate (true also when only the reload or the mail sync is pending).
+func (p *Panel) installCustomCertificateForDomain(w http.ResponseWriter, r *http.Request, domainID int, material customCertificateMaterial) (activated bool) {
 	unlock := lockDomainSSLOperation(domainID)
 	defer unlock()
 
@@ -1099,7 +1120,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	defer cancel()
 	if err := p.requireMatchingAgentBuild(ctx); err != nil {
 		writeClientError(w, http.StatusServiceUnavailable, err.Error())
-		return
+		return false
 	}
 	pool := p.db.GetDB()
 
@@ -1108,7 +1129,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	domain, err := domainRepo.GetByID(ctx, domainID)
 	if err != nil {
 		http.Error(w, "Domain not found", http.StatusNotFound)
-		return
+		return false
 	}
 
 	// Validate certificate via agent
@@ -1118,16 +1139,18 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	var validateResp transport.ValidateCertResponse
 
 	validateReq := transport.ValidateCertRequest{
-		CertContent:  string(certContent),
-		KeyContent:   string(keyContent),
-		ChainContent: string(chainContent),
-		Domain:       domain.Name,
+		CertContent:      material.cert,
+		KeyContent:       material.key,
+		ChainContent:     material.chain,
+		Domain:           domain.Name,
+		RequestKeyToken:  material.requestToken,
+		RequestKeySHA256: material.requestKeySHA256,
 	}
 
 	err = p.callAgentContext(ctx, "Agent.ValidateCertificate", validateReq, &validateResp)
 	if err != nil {
 		writeAgentError(w, err, "custom certificate validation RPC")
-		return
+		return false
 	}
 	if !validateResp.Valid {
 		if validateResp.Error != "" {
@@ -1138,28 +1161,28 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			message = "the certificate or private key is invalid"
 		}
 		writeClientError(w, http.StatusBadRequest, message)
-		return
+		return false
 	}
 	managedNames, err := p.managedSiteHostnames(ctx, domainID)
 	if err != nil {
 		writeServerError(w, err)
-		return
+		return false
 	}
 	for _, name := range managedNames {
 		if !certificateCoversHostname(validateResp.DNSNames, name) {
 			writeClientError(w, http.StatusBadRequest,
 				"the uploaded certificate does not cover managed hostname "+name)
-			return
+			return false
 		}
 	}
 	replacementState, err := p.loadCustomCertificateReplacementState(ctx, domainID)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Site not found", http.StatusNotFound)
-		return
+		return false
 	}
 	if err != nil {
 		writeServerError(w, err)
-		return
+		return false
 	}
 	if err := validateCustomCertificateReplacement(
 		replacementState,
@@ -1170,7 +1193,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 		time.Now().UTC(),
 	); err != nil {
 		writeClientError(w, http.StatusConflict, err.Error())
-		return
+		return false
 	}
 	previousSecureMail := replacementState.PreviousSecureMail
 
@@ -1180,9 +1203,11 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	installReq := transport.InstallCertRequest{
 		ExpectedBuildCommit: strings.TrimSpace(buildCommit),
 		Domain:              domain.Name,
-		CertContent:         string(certContent),
-		KeyContent:          string(keyContent),
-		ChainContent:        string(chainContent),
+		CertContent:         material.cert,
+		KeyContent:          material.key,
+		ChainContent:        material.chain,
+		RequestKeyToken:     material.requestToken,
+		RequestKeySHA256:    material.requestKeySHA256,
 	}
 
 	keepInstalledSnapshot := false
@@ -1206,7 +1231,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	err = p.callAgentContext(ctx, "Agent.InstallCustomCertificate", installReq, &installResp)
 	if err != nil || !installResp.Success {
 		writeAgentError(w, err, installResp.Error)
-		return
+		return false
 	}
 
 	if strings.TrimSpace(installResp.CertPath) == "" ||
@@ -1216,7 +1241,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			nil,
 			"custom certificate install returned incomplete managed snapshot paths",
 		)
-		return
+		return false
 	}
 	installedInfo, err := p.inspectManagedCertificate(
 		ctx,
@@ -1227,7 +1252,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	)
 	if err != nil {
 		writeAgentError(w, err, "inspect installed custom certificate snapshot")
-		return
+		return false
 	}
 	if !installedInfo.Valid {
 		detail := strings.TrimSpace(installedInfo.Error)
@@ -1235,7 +1260,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			detail = "installed custom certificate snapshot is invalid"
 		}
 		writeAgentError(w, nil, detail)
-		return
+		return false
 	}
 	for _, name := range managedNames {
 		if !certificateCoversHostname(installedInfo.DNSNames, name) {
@@ -1244,7 +1269,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 				nil,
 				"installed custom certificate snapshot does not cover managed hostname",
 			)
-			return
+			return false
 		}
 	}
 	if err := validateCustomCertificateReplacement(
@@ -1260,7 +1285,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			err,
 			"installed custom certificate snapshot failed the replacement guard",
 		)
-		return
+		return false
 	}
 	if installedInfo.ExpiresAt.IsZero() {
 		writeAgentError(
@@ -1268,7 +1293,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 			nil,
 			"installed custom certificate snapshot has no expiry",
 		)
-		return
+		return false
 	}
 	installedSubject := strings.TrimSpace(installedInfo.Subject)
 	if installedSubject == "" {
@@ -1289,7 +1314,7 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 	})
 	if err != nil {
 		writeServerError(w, err)
-		return
+		return false
 	}
 	keepInstalledSnapshot = true
 
@@ -1308,12 +1333,12 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 				"custom certificate activation failed: %v; pending state failed: %w",
 				err, markErr,
 			))
-			return
+			return true
 		}
 		p.audit(r, "ssl.upload.partial", "domain", domainID)
 		writeCodedError(w, http.StatusConflict, errCodeSSLActivationPending,
 			"the custom certificate was saved, but the web server could not activate it; use Retry activation", "")
-		return
+		return true
 	}
 
 	reportOperationStep(ctx, "mail")
@@ -1325,19 +1350,20 @@ func (p *Panel) handleUploadCertificate(w http.ResponseWriter, r *http.Request) 
 				"custom certificate dependent sync failed: %v; pending state failed: %w",
 				err, markErr,
 			))
-			return
+			return true
 		}
 		p.audit(r, "ssl.upload.dependents_partial", "domain", domainID)
 		writeCodedError(w, http.StatusConflict, errCodeSSLDependentsPending,
 			"the custom certificate is active, but mail TLS synchronization is pending; use Retry activation", "")
-		return
+		return true
 	}
 	if err := p.clearCertificatePendingDetached(ctx, domainID); err != nil {
 		writeServerError(w, err)
-		return
+		return true
 	}
 	p.audit(r, "ssl.upload", "domain", domainID)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	return true
 }
 
 // handleSSLSettings handles POST /api/v1/domains/:id/ssl/settings

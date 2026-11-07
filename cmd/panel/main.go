@@ -23,6 +23,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/db"
+	"github.com/alicelik/celikpanel/internal/fileaccess"
 	"github.com/alicelik/celikpanel/internal/licensing"
 	"github.com/alicelik/celikpanel/internal/recoveryobs"
 	"github.com/alicelik/celikpanel/internal/repositories"
@@ -502,6 +503,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "file-access", []string{http.MethodGet, http.MethodPut}
 	case "access/preview":
 		match.kind, match.methods = "file-access-preview", []string{http.MethodPost}
+	case "access/logins":
+		// alpha.128: additional FTP/SFTP logins, each closed into one folder
+		// of the site. Not mapped for additional users either.
+		match.kind, match.methods = "ftp-logins", []string{http.MethodGet, http.MethodPost}
 	case "site-config":
 		match.kind, match.methods = "site-config", []string{http.MethodGet}
 	case "site-config/keep":
@@ -532,6 +537,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
 		match.kind, match.methods = "dns", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete}
+	// alpha.128 ops: G22 domain health strip (stored answers only).
+	case "health":
+		match.kind, match.methods = domainHealthKind, []string{http.MethodGet}
 	default:
 		if len(tail) == 2 && tail[0] == "aliases" {
 			match.kind, match.methods = "aliases", []string{http.MethodDelete}
@@ -540,6 +548,8 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 			match.kind, match.methods = "app-operation", []string{http.MethodDelete}
 		} else if len(tail) == 3 && tail[0] == "apps" && validHexOperationID(tail[1]) && (tail[2] == "retry" || tail[2] == "credentials") {
 			match.kind, match.methods = "app-operation", []string{http.MethodPost}
+		} else if len(tail) == 3 && tail[0] == "access" && tail[1] == "logins" && fileaccess.ValidateLoginName(tail[2]) == nil {
+			match.kind, match.methods = "ftp-logins", []string{http.MethodPut, http.MethodDelete}
 		} else if len(tail) == 2 && tail[0] == "databases" {
 			if _, ok := strictPositiveID(tail[1]); !ok {
 				return domainSubroute{}, false
@@ -664,6 +674,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainFileAccess(w, r, match.domainID, false)
 	case "file-access-preview":
 		p.handleDomainFileAccess(w, r, match.domainID, true)
+	case "ftp-logins":
+		p.handleDomainFTPLogins(w, r, match.domainID)
 	case "dns":
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":
@@ -690,6 +702,9 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainSiteConfig(w, r, match.domainID, "recreate")
 	case "site-config-apply":
 		p.handleDomainSiteConfig(w, r, match.domainID, siteConfigActionApply)
+	// alpha.128 ops: G22 domain health strip.
+	case domainHealthKind:
+		p.handleDomainHealth(w, r, match.domainID)
 	default:
 		http.NotFound(w, r)
 	}
@@ -1560,6 +1575,18 @@ func main() {
 	http.HandleFunc("/api/v1/auth/login", panel.handleLogin)
 	http.HandleFunc("/api/v1/auth/logout", panel.handleLogout)
 	http.HandleFunc("/api/v1/auth/me", panel.handleMe)
+	// alpha.128 ops: G4 panel sessions, idle timeout and administrator
+	// access by address (panel_sessions.go). The own-session routes are the
+	// caller's own rows; /api/v1/panel/ is administrator-only.
+	http.HandleFunc(sessionActivityPath, panel.handleSessionActivity)
+	http.HandleFunc(ownSessionsPath, panel.handleOwnSessions)
+	http.HandleFunc(ownSessionEndPath, panel.handleOwnSessionEnd)
+	http.HandleFunc(ownSessionsEndOthers, panel.handleOwnSessionsEndOthers)
+	http.HandleFunc(allSessionsPath, panel.handleAllSessions)
+	http.HandleFunc(allSessionEndPath, panel.handleAllSessionEnd)
+	http.HandleFunc(resellerSessionsPath, panel.handleResellerSessions)
+	http.HandleFunc(resellerSessionEndPath, panel.handleResellerSessionEnd)
+	http.HandleFunc(panelAccessSettingPath, panel.handlePanelAccess)
 	http.HandleFunc(panelLicenseAccessPath, panel.handleLicenseAccess)
 	panel.registerRecoveryRoutes(http.DefaultServeMux)
 	// Password reset by email, invitations, address confirmation (alpha.114).
@@ -1600,6 +1627,12 @@ func main() {
 	http.HandleFunc(usageNoticesPath, panel.handleUsageNotices)
 	http.HandleFunc(usageNoticesPath+"/", panel.handleUsageNotices)
 	http.HandleFunc(usageStatusPath, panel.handleUsageStatus)
+	// alpha.128 ops: G18 notifications by recipient (one list, the person's
+	// own email choice, the administrator's expiry days and extra addresses).
+	http.HandleFunc(notificationsPath, panel.handleNotifications)
+	http.HandleFunc(notificationsPath+"/", panel.handleNotifications)
+	http.HandleFunc(notificationPreferencesPath, panel.handleNotificationPreferences)
+	http.HandleFunc(notificationSettingsPath, panel.handleNotificationSettings)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
@@ -1644,6 +1677,8 @@ func main() {
 	http.HandleFunc(ownEmailPath, panel.handleChangeOwnEmail)
 	// alpha.119: the first-login tour's state, the signed-in person's own row.
 	http.HandleFunc(guideStatePath, panel.handleGuideState)
+	// alpha.128 ops: G23 the account's own action log (read only, filtered by rights).
+	http.HandleFunc(activityLogPath, panel.handleActivityLog)
 	http.HandleFunc("/api/v1/auth/2fa/status", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)
@@ -1761,6 +1796,14 @@ func main() {
 	http.HandleFunc(fileAccessToolsPath, panel.handleFileAccessTools)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
+	// alpha.128 ops: G29 server maintenance (administrator, handler check).
+	http.HandleFunc(serverClockPath, panel.handleServerClock)
+	http.HandleFunc(serverProcessesPath, panel.handleServerProcesses)
+	http.HandleFunc(serverRebootPath, panel.handleServerReboot)
+	// alpha.128 ops: G31 certificates overview and certificate requests.
+	http.HandleFunc(certificatesOverviewPath, panel.handleCertificatesOverview)
+	http.HandleFunc(certificateRequestsPath, panel.handleCertificateRequests)
+	http.HandleFunc(certificateRequestsPath+"/", panel.handleCertificateRequestItem)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
 	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.

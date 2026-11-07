@@ -10,10 +10,14 @@ daha fazla gönderen bir posta kutusu, parolası değiştirilene dek
 durduruluyor. Her site web sunucusu ayarları, hata sayfaları, sayfa
 önbelleği ve günlük saklama süresi alıyor. Node.js sitelerine ortam
 değişkenleri ve Git ile dağıtım ekleniyor; bir web sitesi bütünüyle
-kopyalanabiliyor. Veritabanları dışa aktarma, içe aktarma, kopyalama,
+kopyalanabiliyor. Bir site, bir çalışma arkadaşına yalnız tek bir klasörü
+gören bir FTP/SFTP girişi verebiliyor. Veritabanları dışa aktarma, içe aktarma, kopyalama,
 denetleme ve onarma araçları alıyor. Siteler ziyaretçi istatistikleri
 kazanıyor. Kendi programlarınız, jetonlu bir uzak API ile bir hesap üzerinde
-çalışabiliyor. Yeni gelen her şey biri açana dek kapalı ya da değişmeden
+çalışabiliyor. Her kişinin, işlem bekleyenleri en üstte gösteren tek bir
+bildirim listesi var. Hesaplar oturum açık tarayıcılarını görüp
+kapatabiliyor; sunucunun bakım sayfası sunucuyu yeniden başlatabiliyor.
+Yeni gelen her şey biri açana dek kapalı ya da değişmeden
 kalıyor; güncellenen bir sunucu tam eskisi gibi çalışıyor. **Kurulu
 panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 
@@ -116,6 +120,24 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   dağıtım anahtarıyla (açık yarısı bir kez gösteriliyor). Derlemeler site
   korumasının içinde çalışıyor.
 
+## Site başına daha fazla FTP/SFTP girişi
+
+- **Tek klasörlük giriş:** sitenin sahibi bir tasarımcıya ya da çalışma
+  arkadaşına, sitenin yalnız tek bir klasörünü gören kendi kullanıcı adını
+  ve parolasını verebiliyor. SFTP ile, vsftpd CelikPanel'inse TLS'li FTP ile
+  çalışıyor. Bir giriş asla komut satırı açamıyor ve yalnız okunur
+  yapılabiliyor.
+- **Dosyalar sitenin kalıyor:** yüklenenler sitenin oluyor; PHP onlarla
+  eskisi gibi çalışabiliyor.
+- **Plan sınırı:** varsayılan olarak barındırma hesabı başına 10 giriş. Bir
+  plan, bayi planı ya da Özel hesap bunu düşürebiliyor; 0 hiç izin vermiyor.
+- **Kaçış denemeleri:** desteklenen beş sistemin hepsinde 64 denemenin 64'ü geçti.
+  Denemeler başka klasörleri, başka siteleri, bağlantıları, yeri değiştirilen
+  bir klasörü, yeniden başlatmaları, yönlendirmeyi ve düz FTP'yi kapsadı.
+- **Panel olmadan:** her giriş sıradan sistem yapılandırmasıdır (bir systemd
+  birimi, bir sshd bloğu, bir vsftpd kaydı) ve çalışmayı sürdürür; rehber
+  birinin elle nasıl kaldırılacağını gösterir (docs/FTP-LOGINS.md).
+
 ## Veritabanları ve istatistikler
 
 - **Veritabanı araçları:** MariaDB ve PostgreSQL için dışa aktarma, içe
@@ -129,6 +151,51 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   saklanmıyor.
 - **IP adresleri:** yönetici sunucunun adreslerini görebiliyor (yalnız
   okuma).
+
+## Bildirimler, oturumlar ve sunucu bakımı
+
+- **Kişi başına tek bildirim listesi** (Pano ve Hesabım): işlem yapmanızı
+  bekleyenler önce, bilgi amaçlılar sonra geliyor. Her bildirimde düz dille
+  nedeni, düzeltmeye götüren bir düğme ve "Görüldü olarak işaretle" var.
+  Kullanım bildirimleri, "düşürülen bir sınır bir sitenin PHP ayarını aşağı
+  çekti" bildirimleri ve giden posta bildirimleri hep bu listede; bakılacak
+  tek yer var. Planım, Haklar ve posta sunucusu sayfasındaki ayrı bloklar
+  kaldırıldı. Her bildirim eskisi gibi yalnız bir kez postalanıyor. Sitenin
+  PHP sayfası, düşürülen bir sınırın indirdiği değeri yine işaretliyor.
+- **E-posta tercihiniz** (Hesabım): her bildirim, yalnız işlem bekleyenler
+  ya da hiçbiri; ayrıca bir ek adres. Yönetici her olay türü için bir ek
+  adres ekleyebiliyor.
+- **Abonelik bitiş tarihi:** hesap, bitiş tarihinden belirli gün önce ve son
+  gün yeniden uyarılıyor.
+- **Açık oturumlar** (Hesabım): oturum açık her tarayıcı, adresi ve
+  tarayıcısıyla; birini ya da diğerlerinin hepsini kapatabiliyorsunuz.
+  Yönetici her hesabın oturumlarını görüyor (Güvenlik); bayi de
+  müşterilerinin oturumlarını görüp kapatabiliyor.
+- **Boşta kalma süresi:** 60 dakika kullanılmayan bir oturum (15 ile 480
+  arası, Güvenlik, Panel erişimi) bir sonraki isteğinde kapanıyor.
+- **Yönetici adresleri:** yönetici adres listesi girerse, yönetici yalnız bu
+  adreslerden giriş yapabiliyor ve API jetonu kullanabiliyor. Sunucunun
+  kendisine her zaman izin var, yani SSH tüneli her zaman çalışıyor; yerel bir
+  dosya erişimi yeniden açıyor (docs/PANEL-ACCESS.tr.md). Müşteriler ve
+  bayiler hiç etkilenmiyor.
+- **Kendi etkinliğiniz:** her hesap kendi işlem kaydını okuyabiliyor; bayiler
+  müşterilerininkini de görüyor.
+- **Alan adı sağlığı:** alan adının Genel bakış sayfasındaki tek bir kart, web
+  sitesinin yanıt verip vermediğini, sertifikayı, DNS'i, postayı, disk
+  kullanımını ve son yedeği, her birinin düzeltmesiyle gösteriyor.
+- **Sunucu bakımı:** sunucuyu yeniden başlatma (başka bir değişiklik
+  sürerken reddediliyor), sunucunun saati ve en yoğun işlemleri.
+- **Bu sunucudaki sertifikalar:** her sertifikanın, kimin kullandığı, kalan
+  gün ve kendiliğinden yenilenip yenilenmediğiyle salt okunur tek listesi.
+  Satın aldığınız bir sertifika için sertifika isteği (CSR) de
+  oluşturabiliyorsunuz; anahtarı sunucuda kalıyor ve asla gösterilmiyor.
+  Sertifika yetkilisi sertifikayı gönderince onu ait olduğu siteye
+  kurabiliyorsunuz: panel önce isteğin anahtarına uyduğunu, şu an geçerli
+  olduğunu ve her adı kapsadığını denetliyor, sonra yüklenen her sertifika
+  gibi kuruyor; anahtar sunucudan hiç çıkmıyor. Panelin kendi sertifikası ve
+  posta sunucusunun sertifikası Let's Encrypt ile yenilendiği için satın
+  alınan bir sertifika orada nedeniyle reddediliyor; siteye kurun, alan
+  adının postası da onu kullanır.
 
 ## Uzak API
 
@@ -171,6 +238,14 @@ _Laboratuvar turundan sonra doldurulacak._
   yeniden yazılmıyor; kopya hâlâ kaynak veritabanını gösteriyor. PostgreSQL
   veritabanları sunulmuyor.
 - **Git ile dağıtım:** henüz sürüm ya da geri alma klasörü ve webhook yok.
+- **FTP/SFTP girişleri:** sshd yalnız anahtar kabul ediyorsa girişler TLS'li
+  FTP kullanıyor. Arch'ta sistemin kendi giriş kuralı bu girişler için
+  parolalı SFTP'yi reddettiğinden girişler TLS'li FTP kullanıyor. Arch'ta
+  vsftpd'nin ek seccomp korumalı alanı kapalı, çünkü TLS veri bağlantılarını
+  bozuyor (alpha.117'den beri her FTP hesabını etkiliyordu); chroot ve
+  ayrıcalık ayrımı açık kalıyor. Sahip kendi vsftpd'sini çalıştırıyorsa girişler yalnız SFTP
+  kullanıyor. Bir giriş sitenin kullanıcı kimliğini paylaştığı için sistemin
+  kendi araçları onu site olarak gösteriyor.
 - **Günlük saklama:** yalnız sistemin zaten tuttuğunu kısaltıyor. Günlükleri
   daha uzun tutmak için günlük klasörünü taşımak gerekiyor; bu yapılmadı.
 - Günlük saklama, büyük bir sitenin kopyalanması, Git ile dağıtım, web
@@ -185,9 +260,6 @@ _Laboratuvar turundan sonra doldurulacak._
   - **Daha fazla posta sunucusu ayarı** (akıllı aktarıcı, Dovecot sınırları,
     alt adresleme, DKIM anahtar değişimi, virüs taraması, izin ve engel
     listeleri): yalnız bağlantı sınırı geldi.
-  - **Site başına daha fazla FTP/SFTP hesabı:** bugünkü düzenek hiçbir
-    sistemde bir girişi bir klasöre hapsedemiyor. Planlanan yol site
-    korumasının klasör bağlamasını kullanmak (docs/A128-DATA-ACCESS-DESIGN.md).
   - **Site başına ayrılmış IP:** bir sitenin adresini değiştirmek, o adresteki
     her site için nginx'in varsayılan sitesini değiştiriyor. Önce oluşturma
     testleri ve bir laboratuvar turu gerekiyor.
@@ -214,6 +286,11 @@ varsayılanları dışında var olan hiçbir şey değişmiyor):
   `git_deploy_settings`.
 - **069 `site_visitor_stats`:** `site_visitor_stats_daily`.
 - **070 `api_tokens`:** `api_tokens` (her jetonun yalnız özeti saklanır).
+- **071 `ftp_logins`:** `ftp_logins` (parola saklanmaz) ve `setting_policy`
+  tablosunda `ftp.max_logins` satırı (10).
+- **072 `panel_operations`:** `notification_preferences`, `account_notices`,
+  `certificate_requests`; `sessions` tablosunda üç yeni boş sütun (son
+  kullanım, adres, tarayıcı); `audit_logs` üzerinde iki dizin.
 
 Her geçişte olduğu gibi alpha.127 bu geçişleri içeren bir veritabanını
 reddeder; geri dönmek, güncelleme öncesi alınan anlık görüntüyü geri

@@ -75,6 +75,11 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 			}
 			return
 		}
+		// alpha.128 (G4): a session unused for the idle timeout ends here;
+		// otherwise its use is recorded (at most once a minute).
+		if !p.sessionIdleCheck(w, r, cookie.Value, session) {
+			return
+		}
 
 		c, u, ok := p.admitAccountIdentity(w, r, userID)
 		if !ok {
@@ -95,6 +100,12 @@ func (p *Panel) requireAuth(next http.Handler) http.Handler {
 				return
 			}
 			c.ImpersonatorID = session.ImpersonatorID
+		}
+		// alpha.128 (G4): administrator sessions, and "Log in as" sessions
+		// an administrator opened, only from the listed addresses.
+		if !p.adminSessionAddressAllowed(r, c) {
+			writePanelAccessRefused(w)
+			return
 		}
 
 		r, ok = p.admitCallerGates(w, r, c)
@@ -404,6 +415,8 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/api/v1/suspensions",
 		"/api/v1/vpn",
 		"/api/v1/runtimes",
+		// alpha.128 (G4): a reseller's customers' sessions.
+		"/api/v1/reseller",
 		"/dbtool",
 		// alpha.128 (G15): a team member never holds an API token.
 		apiTokensPath,

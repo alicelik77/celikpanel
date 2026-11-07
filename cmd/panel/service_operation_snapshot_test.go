@@ -1441,6 +1441,21 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the panel operations (migration 72, alpha.128).
+        DROP INDEX idx_certificate_requests_state;
+        DROP TABLE certificate_requests;
+        DROP INDEX idx_audit_logs_acting_as;
+        DROP INDEX idx_audit_logs_user;
+        DROP INDEX idx_account_notices_user;
+        DROP INDEX idx_account_notices_one;
+        DROP TABLE account_notices;
+        DROP TABLE notification_preferences;
+        ALTER TABLE sessions DROP COLUMN user_agent;
+        ALTER TABLE sessions DROP COLUMN client_ip;
+        ALTER TABLE sessions DROP COLUMN last_seen_at;
+        -- Reverse the additional FTP logins (migration 71, alpha.128).
+        DROP INDEX idx_ftp_logins_domain;
+        DROP TABLE ftp_logins;
         -- Reverse the API tokens (migration 70, alpha.128).
         DROP INDEX idx_api_tokens_user;
         DROP TABLE api_tokens;

@@ -115,8 +115,11 @@ SAMPLE_INTERVAL_S = 5.0
 # alpha.126: metrics_rollups, which the monitoring sampler rewrites every five
 # minutes (cmd/panel/metrics.go), like metrics_samples.
 # alpha.127: the sampler also writes spike snapshots, alerts and site checks.
+# alpha.128: the usage worker raises account notices (end dates) and records
+# their mail state each round.
 VOLATILE_TABLES = frozenset({"audit_logs", "metrics_samples", "metrics_rollups", "metrics_process_snapshots",
-                             "monitoring_alerts", "site_uptime", "sessions", "sqlite_sequence"})
+                             "monitoring_alerts", "site_uptime", "sessions", "sqlite_sequence",
+                             "account_notices"})
 # L2 (upd1 2026-09-30): a setup that waits at a prerequisite (access_dns on an
 # isolated host) is a background writer too. Excluded only when this run
 # recorded such a wait; server_setup_state is still compared (it changes only

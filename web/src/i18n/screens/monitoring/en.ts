@@ -86,6 +86,9 @@ export const enMonitoringScreens = {
     'pnow.service_restarting.body': 'systemd restarted it {value} times in the last hour: it fails and comes back. Its page on Components shows its log with the reason. This line goes away once it stays up.',
     'pnow.service_restarting.action': 'Open its page',
     'dashboard.audit.action.monitoring.alerts.settings': 'changed the monitoring alert settings',
+    // alpha.128 ops (G18): notifications by recipient.
+    'dashboard.audit.action.notifications.preferences': 'changed which notices they receive by email',
+    'dashboard.audit.action.notifications.settings': 'changed the server-wide notification settings',
 } as const;
 
 export type MonitoringScreenKey = keyof typeof enMonitoringScreens;
