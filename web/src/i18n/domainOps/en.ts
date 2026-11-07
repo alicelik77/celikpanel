@@ -107,6 +107,8 @@ export const enDomainOps = {
     'activity.cardText': 'See what was done in your account, by you and by whoever acted for you.',
     'activity.cardTextTeam': 'See what you did in the panel.',
     'activity.cardOpen': 'Open activity',
+    'activity.recentTitle': 'Recent activity',
+    'activity.recentAll': 'All activity',
 };
 
 export type DomainOpsKey = keyof typeof enDomainOps;

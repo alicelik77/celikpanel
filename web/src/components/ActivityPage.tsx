@@ -179,3 +179,38 @@ export function ActivityCard({ team = false }: { team?: boolean }) {
         </section>
     );
 }
+
+// The Dashboard's "Recent activity" for a reseller or customer (alpha.128,
+// G23 follow-up): the newest five rows of the same scoped log, and the way
+// to all of it. A read that failed says so; it is never "nothing was done".
+// Panodaki "Son etkinlik": aynı kapsamlı günlüğün en yeni beş satırı.
+export const RECENT_ACTIVITY_URL = `${ACTIVITY_URL}?limit=5`;
+
+export function RecentActivityCard() {
+    const { say, t, locale } = useDomainOpsWords();
+    const read = useRemote(RECENT_ACTIVITY_URL, decodeActivity);
+    return (
+        <section className="mt-6 rounded-xl border border-border bg-surface p-5" data-dashboard-section="recent-activity">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+                <History className="h-4 w-4 text-fg-muted" aria-hidden="true" />
+                <h2 className="text-base font-semibold text-fg">{say('activity.recentTitle')}</h2>
+                <Link to="/audit" className="ml-auto text-sm font-medium text-primary underline underline-offset-2 hover:text-primary-hover max-sm:min-h-11">{say('activity.recentAll')}</Link>
+            </div>
+            <RemoteGate remote={read.remote} checking={say('activity.checking')} failed={say('activity.unknown')} onRetry={() => void read.retry()} busy={read.reading}>
+                {(shown) => shown.value.entries.length === 0
+                    ? <KnownEmpty of={shown} icon={History} title={say('activity.empty')} />
+                    : (
+                        <ul className="divide-y divide-border text-sm">
+                            {shown.value.entries.slice(0, 5).map((entry) => (
+                                <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 py-2" data-recent-activity={entry.id}>
+                                    <span className="font-medium text-fg">{activityActorText(entry, say)}</span>
+                                    <span className="text-fg-muted">{entry.action ? auditActionText(entry.action, t) : say('activity.generic')}</span>
+                                    <span className="ml-auto text-xs text-fg-subtle">{formatTime(entry.at, locale)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+            </RemoteGate>
+        </section>
+    );
+}
