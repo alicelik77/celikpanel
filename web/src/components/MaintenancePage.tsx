@@ -3,6 +3,7 @@ import { PageHeader } from './PageHeader';
 import { SystemSQLiteManager } from './SystemSQLiteManager';
 import { RestartsCard } from './RestartsCard';
 import { ServerClockCard, ServerProcessesCard, ServerRebootCard } from './ServerMaintenanceCards';
+import { ServerCertificatesCard } from './ServerCertificatesCard';
 
 // Server → Maintenance (D-037, owner 2026-10-22): inspecting and safely
 // maintaining the SQLite files CelikPanel and the installed services keep.
@@ -28,6 +29,8 @@ export function MaintenancePage() {
                 <div className="max-w-5xl"><ServerRebootCard /></div>
                 <div className="max-w-5xl"><ServerClockCard /></div>
                 <div className="max-w-5xl"><ServerProcessesCard /></div>
+                {/* alpha.128 (G31): every certificate in use, and certificate requests. */}
+                <div className="max-w-5xl"><ServerCertificatesCard /></div>
                 <SystemSQLiteManager />
             </div>
         </div>

@@ -202,6 +202,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.IssuePanelCertificateV2 Agent.IssueMailHostCertificateV1 Agent.ReconcileSiteCertLineages
 		Agent.RenewLetsEncryptCertificate Agent.ValidateCertificate
 		Agent.SetSiteCertificateAutoRenewV1
+		Agent.CertificateRequestCreateV1 Agent.CertificateRequestDiscardV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFirewall, `
 		Agent.ApplyFirewallV2 Agent.Fail2banToggleJail Agent.Fail2banUnban
@@ -581,8 +582,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 
-	// alpha.128 ops: server maintenance (G29 reboot).
-	"Agent.ServerRebootV1": agentRPCQuickReadTimeout,
+	// alpha.128 ops: server maintenance (G29 reboot, G31 certificate requests;
+	// an RSA 4096 key can take a few seconds to make).
+	"Agent.ServerRebootV1":              agentRPCQuickReadTimeout,
+	"Agent.CertificateRequestCreateV1":  agentRPCMutationTimeout,
+	"Agent.CertificateRequestDiscardV1": agentRPCQuickReadTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

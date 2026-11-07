@@ -53,6 +53,8 @@ var auditActionNames = []string{
 	"backup.restore.failed",
 	"backup.schedule",
 	"backup.schedule.off",
+	"certificate.request.create",
+	"certificate.request.discard",
 	"config.read",
 	"config.read.failed",
 	"config.write",
