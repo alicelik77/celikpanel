@@ -147,6 +147,9 @@ type CreateSiteRequest struct {
 	// temporary name. Additive: an older Panel leaves it empty and the Agent
 	// renders the domain alone, as before.
 	ServerNames []string
+	// PHPLimits (alpha.128) are the site's limits: the new pool's process
+	// count is created within them instead of the fixed default (5).
+	PHPLimits SitePHPLimits `json:",omitempty"`
 }
 
 // CreateSiteResponse contains results of site creation

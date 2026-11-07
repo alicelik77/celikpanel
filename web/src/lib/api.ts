@@ -451,6 +451,11 @@ export interface ServicePlan {
     mine?: boolean;
     /** Its permission and software parts (alpha.117, D-042). */
     rights?: { all_permissions: boolean; all_software: boolean; permissions: string[]; software: string[] };
+    /** alpha.128: limits of site settings (key -> value), overuse policy and notice levels. */
+    ceilings?: Record<string, number>;
+    overuse_policy?: string;
+    notify_percent_disk?: number;
+    notify_percent_traffic?: number;
 }
 
 export interface DemoAccount {

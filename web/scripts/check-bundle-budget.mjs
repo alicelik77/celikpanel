@@ -287,6 +287,10 @@ const screenPartBudgets = {
   // deletion). A new part, set with at least 25% headroom from its Turkish
   // file: 6.3 / 1.92 KiB.
   opsteps: kib(8.5, 2.6),
+  // v0.1.0-alpha.128: a site's PHP settings within limits, the plan form's
+  // limits, overuse policy and overselling, the server's limits and the
+  // password level (limits.). A new part with at least 25% headroom.
+  limits: kib(14, 5),
   // v0.1.0-alpha.128: a site's other FTP/SFTP logins, each closed into one
   // folder (ftpLogins., err.FTP_LOGIN_, opstep.ftplogin.). A new part, set
   // with at least 25% headroom from its Turkish file.

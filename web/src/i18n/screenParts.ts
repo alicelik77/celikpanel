@@ -78,6 +78,7 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/adminNext/en'),
         () => import('./screens/nodeSandbox/en'),
         () => import('./screens/opsteps/en'),
+        () => import('./screens/limits/en'),
         () => import('./screens/ftpLogins/en'),
     ],
     tr: [
@@ -133,6 +134,7 @@ export const screenParts: Record<Locale, Array<() => Promise<Record<string, unkn
         () => import('./screens/adminNext/tr'),
         () => import('./screens/nodeSandbox/tr'),
         () => import('./screens/opsteps/tr'),
+        () => import('./screens/limits/tr'),
         () => import('./screens/ftpLogins/tr'),
     ],
 };

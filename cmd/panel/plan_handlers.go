@@ -51,6 +51,18 @@ type planPayload struct {
 	// ConfirmNarrowing confirms an edit that takes items away from the
 	// subscriptions on the plan (PLAN_NARROWING_CONFIRM shows them first).
 	ConfirmNarrowing bool `json:"confirm_narrowing,omitempty"`
+	// Ceilings (alpha.128, setting_limits.go): the plan's limits of site
+	// settings, key -> value; absent keys are "up to the level above".
+	// Absent on a create: none; absent on an edit: unchanged.
+	Ceilings *ceilingsPayload `json:"ceilings,omitempty"`
+	// OverusePolicy (alpha.128): "close" (D-044: traffic closes the sites,
+	// 7 days over disk suspends) or "notify" (notices only; a full disk
+	// still stops uploads). "" keeps the plan's (close on a create).
+	OverusePolicy string `json:"overuse_policy,omitempty"`
+	// NotifyPercentDisk / NotifyPercentTraffic: the notice level, 50-95
+	// (0 keeps the plan's; 80 on a create).
+	NotifyPercentDisk    int `json:"notify_percent_disk,omitempty"`
+	NotifyPercentTraffic int `json:"notify_percent_traffic,omitempty"`
 	// Read-only facts of a listed plan; a client may send them back and they
 	// are ignored (ownership never comes from a request body).
 	// Listelenen planın salt-okur bilgileri; istemci geri gönderebilir,
@@ -113,7 +125,8 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 		query := `
 			SELECT sp.id, sp.name, sp.max_domains, sp.max_databases, sp.max_email_accounts,
 			       sp.disk_quota_mb, sp.bandwidth_quota_mb, sp.owner_id, COALESCE(u.username, ''),
-			       (SELECT COUNT(*) FROM subscriptions s WHERE s.plan_id = sp.id)
+			       (SELECT COUNT(*) FROM subscriptions s WHERE s.plan_id = sp.id),
+			       sp.overuse_policy, sp.notify_percent_disk, sp.notify_percent_traffic
 			FROM service_plans sp LEFT JOIN users u ON u.id = sp.owner_id`
 		args := []any{}
 		if !c.hasAccountRole(roleAdmin) {
@@ -133,7 +146,8 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 			var pl planPayload
 			var owner sql.NullInt64
 			if err := rows.Scan(&pl.ID, &pl.Name, &pl.MaxDomains, &pl.MaxDatabases,
-				&pl.MaxEmailAccounts, &pl.DiskQuotaMB, &pl.BandwidthQuotaMB, &owner, &pl.Owner, &pl.Subscribers); err != nil {
+				&pl.MaxEmailAccounts, &pl.DiskQuotaMB, &pl.BandwidthQuotaMB, &owner, &pl.Owner, &pl.Subscribers,
+				&pl.OverusePolicy, &pl.NotifyPercentDisk, &pl.NotifyPercentTraffic); err != nil {
 				writeServerError(w, fmt.Errorf("scan service plan: %w", err))
 				return
 			}
@@ -162,6 +176,13 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 			}
 			payload := set.payload()
 			plans[i].Rights = &payload
+			ceilings, err := loadSettingCeilings(r.Context(), p.db.GetDB(), rightsOwnerPlan, plans[i].ID)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			c := ceilingsPayload(ceilings)
+			plans[i].Ceilings = &c
 		}
 		if err := json.NewEncoder(w).Encode(map[string]any{
 			"plans":   plans,
@@ -191,6 +212,11 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 		if !p.planRightsWithinGrantor(w, r, c, rightsSet{}, set) {
 			return
 		}
+		ceilings, ok := p.planCeilingsWithinGrantor(w, r, c, pl.Ceilings, map[string]int{})
+		if !ok {
+			return
+		}
+		policy, diskPct, trafficPct := planPolicyOrDefaults(pl, "close", 80, 80)
 		var owner any
 		if c.hasAccountRole(roleReseller) {
 			owner = c.ID
@@ -202,9 +228,11 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 		}
 		defer tx.Rollback()
 		res, err := tx.ExecContext(r.Context(), `
-			INSERT INTO service_plans (owner_id, name, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			owner, pl.Name, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.BandwidthQuotaMB)
+			INSERT INTO service_plans (owner_id, name, max_domains, max_databases, max_email_accounts, disk_quota_mb, bandwidth_quota_mb,
+			                           overuse_policy, notify_percent_disk, notify_percent_traffic)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			owner, pl.Name, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts, pl.DiskQuotaMB, pl.BandwidthQuotaMB,
+			policy, diskPct, trafficPct)
 		if err != nil {
 			writeServerError(w, err)
 			return
@@ -218,12 +246,17 @@ func (p *Panel) handlePlans(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
+		if err := saveSettingCeilings(r.Context(), tx, rightsOwnerPlan, int(id), ceilings); err != nil {
+			writeServerError(w, err)
+			return
+		}
 		if err := tx.Commit(); err != nil {
 			writeServerError(w, err)
 			return
 		}
 		details := planAuditDetails(pl)
 		details["rights"] = set.payload()
+		details["ceilings"], details["overuse_policy"] = ceilings, policy
 		p.auditDetailed(r, "plan.create:"+pl.Name, "service_plan", int(id), details)
 		if err := json.NewEncoder(w).Encode(map[string]any{"success": true, "id": id}); err != nil {
 			log.Printf("encode service plan creation: %v", err)
@@ -425,8 +458,28 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		if !p.planRightsWithinGrantor(w, r, c, before, after) {
 			return
 		}
+		ceilingsBefore, err := loadSettingCeilings(r.Context(), p.db.GetDB(), rightsOwnerPlan, id)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		ceilingsAfter, ok := p.planCeilingsWithinGrantor(w, r, c, pl.Ceilings, ceilingsBefore)
+		if !ok {
+			return
+		}
+		currentPolicy, currentDisk, currentTraffic, err := loadPlanPolicy(r.Context(), p.db.GetDB(), id)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		policy, diskPct, trafficPct := planPolicyOrDefaults(pl, currentPolicy, currentDisk, currentTraffic)
 		preview, err := p.planEditPreview(r.Context(), id, before, after, pl.limits())
 		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		lowered := loweredCeilings(ceilingsBefore, ceilingsAfter)
+		if err := p.previewLoweredCeilings(r.Context(), &preview, id, lowered, ceilingsAfter); err != nil {
 			writeServerError(w, err)
 			return
 		}
@@ -434,8 +487,9 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			writeRightsJSON(w, http.StatusOK, map[string]any{"preview": preview})
 			return
 		}
-		// Taking items away is shown first (6.4, P7).
-		if len(preview.Removed) > 0 && !pl.ConfirmNarrowing {
+		// Taking items away is shown first (6.4, P7); so is a lowered
+		// ceiling that sites of the plan are above (alpha.128).
+		if (len(preview.Removed) > 0 || preview.SitesAboveCount > 0 || preview.SitesUnread) && !pl.ConfirmNarrowing {
 			writeRightsPreviewRefusal(w, errCodePlanNarrowingConfirm, preview)
 			return
 		}
@@ -461,10 +515,11 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		result, err := tx.ExecContext(r.Context(), `
 			UPDATE service_plans SET name = ?, max_domains = ?, max_databases = ?,
 			       max_email_accounts = ?, disk_quota_mb = ?, bandwidth_quota_mb = ?,
+			       overuse_policy = ?, notify_percent_disk = ?, notify_percent_traffic = ?,
 			       updated_at = datetime('now')
 			WHERE id = ?`,
 			pl.Name, pl.MaxDomains, pl.MaxDatabases, pl.MaxEmailAccounts,
-			pl.DiskQuotaMB, pl.BandwidthQuotaMB, id)
+			pl.DiskQuotaMB, pl.BandwidthQuotaMB, policy, diskPct, trafficPct, id)
 		if err != nil {
 			writeServerError(w, fmt.Errorf("update service plan: %w", err))
 			return
@@ -487,6 +542,10 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
+		if err := saveSettingCeilings(r.Context(), tx, rightsOwnerPlan, id, ceilingsAfter); err != nil {
+			writeServerError(w, err)
+			return
+		}
 		if err := tx.Commit(); err != nil {
 			writeServerError(w, fmt.Errorf("commit service plan update: %w", err))
 			return
@@ -494,6 +553,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		details := planAuditDetails(pl)
 		details["rights_added"], details["rights_removed"] = preview.Added, preview.Removed
 		details["subscriptions"] = preview.Subscriptions
+		details["ceilings"], details["ceilings_lowered"], details["sites_above"] = ceilingsAfter, lowered, preview.SitesAboveCount
+		details["overuse_policy"], details["notify_percent_disk"], details["notify_percent_traffic"] = policy, diskPct, trafficPct
 		if len(over) > 0 {
 			// The audit row is size-bounded; keep the first entries and the total.
 			shown := over
@@ -504,6 +565,14 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			details["over_total"] = len(over)
 		}
 		p.auditDetailed(r, "plan.update:"+pl.Name, "service_plan", id, details)
+		// A lowered ceiling reaches the sites now, not at their next
+		// render: their files are written again in the background.
+		if len(lowered) > 0 {
+			p.storeClampNotices(r.Context(), preview.clamped, settingSetByPlan, pl.Name)
+			p.reapplyPlanSiteLimits(id)
+		}
+		// alpha.128 (G5): database users follow a changed connection limit.
+		p.reapplyDBConnectionLimitsAfter(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
 		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 			log.Printf("encode service plan update: %v", err)
 		}
@@ -564,6 +633,16 @@ func decodePlan(w http.ResponseWriter, r *http.Request) (planPayload, bool) {
 		pl.DiskQuotaMB < 0 || pl.BandwidthQuotaMB < 0 {
 		writeClientError(w, http.StatusBadRequest, "limits must be 0 (unlimited) or a positive number")
 		return pl, false
+	}
+	if pl.OverusePolicy != "" && pl.OverusePolicy != overusePolicyClose && pl.OverusePolicy != overusePolicyNotify {
+		writeClientError(w, http.StatusBadRequest, "overuse_policy must be close or notify")
+		return pl, false
+	}
+	for _, pct := range []int{pl.NotifyPercentDisk, pl.NotifyPercentTraffic} {
+		if pct != 0 && (pct < 50 || pct > 95) {
+			writeClientError(w, http.StatusBadRequest, "a notice level must be between 50 and 95 percent")
+			return pl, false
+		}
 	}
 	return pl, true
 }

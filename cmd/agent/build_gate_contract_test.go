@@ -266,6 +266,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "SitePHPSettingsV1",
+			run: func(expected string) string {
+				var response transport.SitePHPSettingsResponse
+				_ = agent.SitePHPSettingsV1(&transport.SitePHPSettingsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "ApplySiteSettingsIncludeV1",
+			run: func(expected string) string {
+				var response transport.SiteSettingsIncludeResponse
+				_ = agent.ApplySiteSettingsIncludeV1(&transport.SiteSettingsIncludeRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "InspectAppUnit",
 			run: func(expected string) string {
 				var response transport.InspectSiteFileResponse

@@ -75,6 +75,7 @@ import type { PasswordsScreenKey } from './screens/passwords/en';
 import type { AdminNextScreenKey } from './screens/adminNext/en';
 import type { NodeSandboxScreenKey } from './screens/nodeSandbox/en';
 import type { OpstepsScreenKey } from './screens/opsteps/en';
+import type { LimitsScreenKey } from './screens/limits/en';
 import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
 
 export const en = {
@@ -587,5 +588,6 @@ export type ScreenKey =
     | AdminNextScreenKey
     | NodeSandboxScreenKey
     | OpstepsScreenKey
+    | LimitsScreenKey
     | FtpLoginsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey;

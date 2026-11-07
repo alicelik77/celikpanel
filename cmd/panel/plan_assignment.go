@@ -165,6 +165,11 @@ func (p *Panel) handleAssignPlan(w http.ResponseWriter, r *http.Request, c *Call
 
 	// alpha.117 (K2): what a plan hands out may add up to more than the
 	// reseller's pool; the pool limits real use at creation time instead.
+	// alpha.128 (G17): unless the reseller's plan says overselling is not
+	// allowed; then the allocation must fit what is left of the pool.
+	if p.refuseOverselling(w, ctx, target.ID, subID, plan.Limits) {
+		return
+	}
 
 	if subID == 0 {
 		id, err := p.insertSubscriptionFromPlan(ctx, db, target.ID, plan)

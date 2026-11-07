@@ -794,6 +794,9 @@ func (p *Panel) runCatalogAppSetup(w http.ResponseWriter, r *http.Request, opera
 		writeServerError(w, err)
 		return
 	}
+	// alpha.128: the site's upload size follows the application, within the
+	// site's limit; the site setting takes the application's line over.
+	p.applyAppUploadDefault(r.Context(), domainID, app)
 	action := "app.install:" + app.ID
 	if retry {
 		action = "app.setup_retry:" + app.ID

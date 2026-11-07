@@ -117,7 +117,7 @@ func agentRPCAuthGroup(effect agentRPCEffect, capability agentRPCCapability, met
 
 var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectRead, "", `
-		Agent.InspectSiteFile Agent.InspectSitePool Agent.InspectAppUnit
+		Agent.InspectSiteFile Agent.InspectSitePool Agent.InspectAppUnit Agent.SitePHPSettingsV1
 		Agent.AppUnitLogs Agent.AppUnitStatus Agent.CheckInstalledServices Agent.CheckRBL
 		Agent.CheckSystemSQLiteDatabase Agent.DNSBackendReadiness Agent.DNSClusterReadiness
 		Agent.DNSEngineRollbackEvidenceV1
@@ -185,7 +185,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WordPressUpdateV1 Agent.WordPressCloneV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
-		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
+		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1 Agent.ApplySiteSettingsIncludeV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
 		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit Agent.SetAppUnitSuspensionV1
@@ -374,6 +374,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,
 	"Agent.InspectSitePool":               agentRPCStandardReadTimeout,
+	"Agent.SitePHPSettingsV1":             agentRPCStandardReadTimeout,
 	"Agent.InspectAppUnit":                agentRPCStandardReadTimeout,
 	"Agent.ChmodFile":                     agentRPCMutationTimeout,
 	"Agent.ClearLogs":                     agentRPCMutationTimeout,
@@ -461,6 +462,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.EnsureDKIMKey":                  agentRPCDatabaseTimeout,
 	"Agent.ImportMailAccount":              agentRPCDatabaseTimeout,
 	"Agent.ApplySitePool":                  agentRPCDatabaseTimeout,
+	"Agent.ApplySiteSettingsIncludeV1":     agentRPCDatabaseTimeout,
 	"Agent.SecureDNSZoneV2":                agentRPCDatabaseTimeout,
 	"Agent.SyncDNSZoneV2":                  agentRPCDatabaseTimeout,
 	"Agent.SyncDNSZoneV3":                  agentRPCDatabaseTimeout,

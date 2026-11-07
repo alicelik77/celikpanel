@@ -323,7 +323,12 @@ func TestDomainSubrouteFamiliesAreGatedByTheirPermission(t *testing.T) {
 		{"site-redirects", http.MethodGet, ""},
 		{"app-install", http.MethodPost, rightAppInstaller},
 		{"usage", http.MethodGet, ""},
-		{"php", http.MethodPost, ""},
+		// alpha.128: the PHP version and the PHP values have their permissions.
+		{"php", http.MethodPost, rightPHPVersion},
+		{"php", http.MethodGet, ""},
+		{"php-pool", http.MethodPost, rightPHPSettings},
+		{"php-settings", http.MethodPut, rightPHPSettings},
+		{"php-settings", http.MethodGet, ""},
 	}
 	customer := &Caller{ID: authzMatrixCustomerID, Role: roleCustomer}
 	admin := &Caller{ID: authzMatrixAdminID, Role: roleAdmin}
@@ -655,7 +660,15 @@ func TestResellerPoolLimitsRealUseNotAllocation(t *testing.T) {
 		t.Fatal("the reseller sees no pool notice")
 	}
 	id := int(list[0].(map[string]any)["id"].(float64))
-	wantStatus(t, f.call(t, authzMatrixCustomerID, http.MethodGet, "/api/v1/rights/notices", ""), http.StatusForbidden, "")
+	// alpha.128: a customer reads only its own notices of lowered site
+	// limits; the reseller's pool notice is not among them, nor can it be
+	// acknowledged by the customer.
+	customerNotices := f.call(t, authzMatrixCustomerID, http.MethodGet, "/api/v1/rights/notices", "")
+	wantStatus(t, customerNotices, http.StatusOK, "")
+	if got := decodeBody(t, customerNotices)["notices"].([]any); len(got) != 0 {
+		t.Fatalf("the customer sees another account's notices: %v", got)
+	}
+	wantStatus(t, f.call(t, authzMatrixCustomerID, http.MethodPost, "/api/v1/rights/notices/"+itoa(id)+"/acknowledge", ""), http.StatusNotFound, "")
 	wantStatus(t, f.call(t, authzMatrixResellerID, http.MethodPost, "/api/v1/rights/notices/"+itoa(id)+"/acknowledge", ""), http.StatusOK, "")
 	wantStatus(t, f.call(t, authzMatrixResellerID, http.MethodPost, "/api/v1/rights/notices/"+itoa(id)+"/acknowledge", ""), http.StatusNotFound, "")
 }

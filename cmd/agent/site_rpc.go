@@ -54,10 +54,12 @@ type siteLifecycleOps struct {
 	killUser             func(string) error
 	setOwnership         func(string, string) error
 	createPool           func(int, string, string) (string, error)
-	deletePool           func(int, string) error
-	writeFileExclusive   func(string, []byte, os.FileMode) error
-	applyLayout          func(string, string) error
-	applyVhost           func(string, string) error
+	// createPoolWithin (alpha.128) creates the pool within the site's limits.
+	createPoolWithin   func(int, string, string, transport.SitePHPLimits) (string, error)
+	deletePool         func(int, string) error
+	writeFileExclusive func(string, []byte, os.FileMode) error
+	applyLayout        func(string, string) error
+	applyVhost         func(string, string) error
 	// applySiteVhost is the D-031 path: classify, then write only an absent
 	// file at creation. Nil falls back to applyVhost (component tests that
 	// exercise other stages).
@@ -90,13 +92,14 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return false, err
 		},
-		mkdirAll:     os.MkdirAll,
-		lookupUser:   user.Lookup,
-		createUser:   a.userManager.CreateUser,
-		deleteUser:   a.userManager.DeleteUser,
-		setOwnership: a.userManager.SetOwnership,
-		createPool:   a.phpManager.CreatePool,
-		deletePool:   a.phpManager.DeletePool,
+		mkdirAll:         os.MkdirAll,
+		lookupUser:       user.Lookup,
+		createUser:       a.userManager.CreateUser,
+		deleteUser:       a.userManager.DeleteUser,
+		setOwnership:     a.userManager.SetOwnership,
+		createPool:       a.phpManager.CreatePool,
+		createPoolWithin: a.phpManager.CreatePoolWithin,
+		deletePool:       a.phpManager.DeletePool,
 		writeFileExclusive: func(path string, content []byte, mode os.FileMode) error {
 			file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 			if err != nil {
@@ -452,7 +455,11 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 	socket := ""
 	if req.ProjectType == "php" {
 		poolMayExist = true
-		socket, err = ops.createPool(req.SiteID, req.Username, req.PHPVersion)
+		if ops.createPoolWithin != nil && req.PHPLimits.Known {
+			socket, err = ops.createPoolWithin(req.SiteID, req.Username, req.PHPVersion, req.PHPLimits)
+		} else {
+			socket, err = ops.createPool(req.SiteID, req.Username, req.PHPVersion)
+		}
 		if err != nil {
 			fail("PHP-FPM pool creation", err)
 			return nil
