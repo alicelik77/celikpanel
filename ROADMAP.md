@@ -1,6 +1,6 @@
 # CelikPanel Roadmap
 
-*Last updated: October 10, 2026 · [Türkçe](ROADMAP.tr.md)*
+*Last updated: November 7, 2026 · [Türkçe](ROADMAP.tr.md)*
 
 ---
 
@@ -63,6 +63,179 @@ it does not close foundational P0 work or justify unrelated feature expansion.
 The exit matrix in D-025 must be implemented and passed before claiming resilient
 operation. No system is promised to recover autonomously from every possible fault.
 
+
+---
+
+## The Road Ahead — 7 November 2026
+
+This section puts what comes next in one place. The older "Where We Are" and
+release sections below are the historical record; for order and priority
+this section is the one that counts. Release numbers are targets: no release
+ships before its lab round passes, unfinished work does not hold a release
+back, it moves to the next one and is written down here.
+
+### Where we are
+
+- **Latest release:** v0.1.0-alpha.128, published on 7 November 2026. Site
+  settings within limits, "notify only" in plans, outgoing mail limits, web
+  server settings per site, extra FTP/SFTP logins, database tools, visitor
+  statistics, the remote API, one list of notifications, sessions and server
+  maintenance ([release notes](docs/RELEASE-NOTES-v0.1.0-alpha.128.md)).
+- **The owner's servers:** Frankfurt and Boston run 127; the owner starts the
+  update to 128 from the panel's own update screen. After the update, only
+  read-only checks are made.
+- **Lab coverage:** 128's new features were tried on Debian 13 and Ubuntu
+  24.04. Debian 12, Ubuntu 22.04 and Arch Linux were covered by the automatic
+  tests only.
+
+### Working rules (unchanged)
+
+- Only the owner updates an installed panel, from the panel's own update
+  screen.
+- Security and stability always come first; only the distributions' official
+  packages are used.
+- Every new feature is tried end to end in the lab, along the install and
+  update path the owner types; what was not tried is stated in the release
+  notes.
+- Every operation shows its steps, the problem and its fix together, no
+  browser dialogs, lists refresh by themselves, screens stay simple.
+- The server owner can run their services without the panel.
+
+### Next releases
+
+**alpha.129 — Databases and 128's open items**
+1. Change a database user's password (generate, show/hide, strength meter,
+   the alpha.127 password rule). Today a user can only be created and
+   removed.
+2. More users for one database: "read only" or "read and write".
+3. A connection guide: host, port, user and steps for pgAdmin, DBeaver and
+   HeidiSQL; the SSH tunnel route for the administrator.
+4. Connections from outside (waiting for the owner's decision, see below):
+   the proposed rule is off by default, only addresses that were added,
+   encrypted connections, wrong passwords slowed down, granted by a plan
+   permission.
+5. Database cards: the engine's mark and colour (official logos only if both
+   projects' trademark rules allow it, our own marks otherwise), a MariaDB
+   database no longer labelled "MySQL", an "Import" button that looks normal
+   but stays off until a file is chosen, readable boxes for size, tables and
+   connections.
+6. Two databases of different engines may keep the same name; only export
+   and backup file names carry the engine, so two files with the same name
+   never overwrite each other. The naming rule is checked for databases that
+   belong to no domain.
+7. 128's open items: lab rounds of the new features on Debian 12, Ubuntu
+   22.04 and Arch Linux; log retention and copying a large site; deleting,
+   with a token, a domain whose DNS publication is still pending; pausing a
+   mailbox again, when needed, within the hour it was reopened.
+
+**alpha.130 — Mail**
+1. Mail programs that set themselves up (Thunderbird, Outlook), together
+   with the site template change and certificate work.
+2. Smarthost: sending mail through another server. The other mail server
+   settings (Dovecot limits, subaddressing, DKIM key rotation, allow and
+   block lists) one at a time, on demand.
+3. Wildcard certificate (`*.domain`), postponed in alpha.114: on PowerDNS
+   only, validated through DNS; on BIND, a clear refusal.
+4. Mailbox recovery address and reset link: a sign-in path without a
+   password, so a security review first; if the review does not pass, it is
+   not built and the reason is written down.
+
+**alpha.131 — Application limits and hardening**
+1. Memory and CPU limits for Node.js, Python and service applications,
+   within the plan's ceilings.
+2. Limit hints from real use (a site that keeps hitting a limit is reported
+   to the administrator).
+3. Symlink hardening and per-site `open_basedir` as server defaults, first
+   tried in the lab with the catalogue's applications.
+4. The update's last database check still copies the live database; the
+   safer design (docs/UPDATE-LATE-DATABASE-PROOF.md) is built, or stays open
+   with its reason.
+
+**Later candidates (ordered by demand):** a dedicated IP address per site
+(changing one site's address changes the default of every site on that
+address, so tests first), HTTP/3, a web application firewall (depends on the
+owner's decision), one-click WordPress administrator sign-in, a customer's
+secondary DNS zone, remote database servers, search in long lists.
+
+### PostgreSQL management tool (a separate product)
+
+The owner's request of 7 November 2026: a strong management tool made for
+PostgreSQL. General tools (Adminer, phpPgAdmin) handle PostgreSQL's roles,
+schemas, extensions and performance tools poorly; pgAdmin's web edition is
+heavy and is not among Debian's and Ubuntu's official packages.
+
+- **Shape:** a separate program with its own releases; it works without
+  CelikPanel. It joins CelikPanel as a component installed from Components
+  and opens inside the panel. It is not a plug-in marketplace: we write and
+  sign the tool.
+- **Language:** Go (the same build, signing and test setup as the panel and
+  the agent; the `pgx` driver). Rust is discussed again only if work inside
+  PostgreSQL's wire protocol is ever needed.
+- **Security:** a customer connects only as their own database user, never
+  with administrator rights; every query has a time and result limit; every
+  change is logged.
+- **Phase 0:** a design document; no code before it is discussed with the
+  owner.
+- **Phase 1 (operations):** roles and privileges, schemas, extensions from an
+  allowed list, size and bloat, vacuum, the slowest queries, seeing and
+  ending open connections.
+- **Phase 2 (data):** browsing tables, writing queries, query plans.
+- **Split of work:** server settings (for both engines) and creating
+  databases and users stay in the panel; the inside of a database is the
+  tool's. For MariaDB, phpMyAdmin, which has official packages, is enough.
+- **Timing:** the design document after alpha.129; the coding date is
+  discussed with the document.
+
+### What must be finished before the beta
+
+The state today of the "v0.6 – v0.9 — Beta Program" section below:
+
+| Work | State |
+|---|---|
+| User guide (in the panel and on celikpanel.net) | Exists (alpha.119) |
+| API documentation (OpenAPI) | Missing |
+| Support policy (which release is supported for how long) | Missing |
+| Personal data: account data export and a deletion report | Missing |
+| Licence and business model decision, pricing principle | Waiting for the owner |
+| "Why CelikPanel" document | Missing |
+| Light branding (panel name, logo, colour) | Missing |
+| Self sign-up (off by default, with an abuse brake) | Missing |
+| Quick search (Ctrl+K, navigation only) | Missing |
+| First administrator created in the browser | Today the install command asks for the password in the terminal; whether this is needed will be discussed |
+| Review of the named limits in the resilience contract | Before the beta announcement |
+| At least three outside operators, at least one month with real sites | The beta itself |
+
+The exit criteria for the beta are the ones written in that section; if one
+changes, it changes with its reason.
+
+### Waiting for the owner's decision
+
+1. **Connections to databases from outside** (129): the proposed rule is
+   above.
+2. **Web application firewall (ModSecurity):** Arch has no official package,
+   Ubuntu has it only in its community repository. Options: offer it only
+   where an official package exists, or not build it.
+3. **Licence and business model:** the proposal is open core; the price per
+   server, never per account.
+4. **PostgreSQL tool:** open source or not, and a separate repository or not.
+5. **Release size:** themed releases with a lab round as above, or small
+   releases of one to three items.
+6. **Beta:** when, and with which operators.
+7. **Mailbox recovery address:** build it after the security review or not.
+
+### Deliberately not built (unchanged)
+
+A Docker layer, a plug-in marketplace, an in-panel terminal, telemetry and
+full visitor analytics; the reasons are in "Deliberate Non-Goals" below.
+Also plain FTP (TLS only since alpha.117), mail passwords stored in a
+reversible form and, by the owner's decision of 4 November 2026, mail
+sending without a password.
+
+### Horizon (after 1.0)
+
+A server cluster (the owner's request of 31 October 2026): one brand domain
+and many servers; it does not start before the two-server pair is proven on
+the owner's servers. Details in "Post-1.0 — horizon" below.
 
 ---
 
