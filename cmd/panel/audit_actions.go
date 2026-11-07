@@ -156,6 +156,8 @@ var auditActionNames = []string{
 	"malware.scan.queued",
 	"malware.schedule",
 	"monitoring.alerts.settings",
+	"notifications.preferences",
+	"notifications.settings",
 	"offering.admin_offer",
 	"panel.certificate",
 	"panel.certificate.failed",

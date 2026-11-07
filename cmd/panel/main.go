@@ -1531,6 +1531,12 @@ func main() {
 	http.HandleFunc(usageNoticesPath, panel.handleUsageNotices)
 	http.HandleFunc(usageNoticesPath+"/", panel.handleUsageNotices)
 	http.HandleFunc(usageStatusPath, panel.handleUsageStatus)
+	// alpha.128 ops: G18 notifications by recipient (one list, the person's
+	// own email choice, the administrator's expiry days and extra addresses).
+	http.HandleFunc(notificationsPath, panel.handleNotifications)
+	http.HandleFunc(notificationsPath+"/", panel.handleNotifications)
+	http.HandleFunc(notificationPreferencesPath, panel.handleNotificationPreferences)
+	http.HandleFunc(notificationSettingsPath, panel.handleNotificationSettings)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)

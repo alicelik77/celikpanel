@@ -277,6 +277,15 @@ var routeRoleMatrix = map[string]string{
 	// remote_backup_destinations rights and keep every-site schedules
 	// administrator-only.
 	"/api/v1/remote-backup/": gateAccount,
+
+	// alpha.128 ops: G18 notifications. The list and the seen mark read and
+	// change only the caller's own rows; the email choice is the caller's
+	// own (refused under "Log in as"); the server-wide settings are the
+	// administrator's (/api/v1/panel/ prefix, and the handler).
+	"/api/v1/notifications":               gateTenant,
+	"/api/v1/notifications/":              gateTenant,
+	"/api/v1/notification-preferences":    gateTenant,
+	"/api/v1/panel/notification-settings": gateAdmin,
 }
 
 // registeredPanelRoutes parses the package source and returns every route
