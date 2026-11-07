@@ -141,6 +141,7 @@ var auditActionNames = []string{
 	"impersonate.stop",
 	"import.cpanel.complete",
 	"import.cpanel.incomplete",
+	"logs.retention",
 	"mail.account.password.rotate",
 	"mail.autoresponder.disable",
 	"mail.autoresponder.enable",

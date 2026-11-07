@@ -372,6 +372,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "ssl-settings", []string{http.MethodPost}
 	case "ssl":
 		match.kind, match.methods = "ssl", []string{http.MethodGet, http.MethodDelete}
+	case "logs/retention":
+		// alpha.128 (G27): how long the site's rotated logs are kept.
+		match.kind, match.methods = "logs-retention", getPost
 	case "logs/access", "logs/error", "logs/php":
 		match.kind, match.methods = "logs", []string{http.MethodGet, http.MethodDelete}
 	case "databases":
@@ -633,6 +636,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainNodeEnv(w, r, match.domainID)
 	case "web-settings-cache-clear":
 		p.handleDomainPageCacheClear(w, r, match.domainID)
+	case "logs-retention":
+		p.handleDomainLogRetention(w, r, match.domainID)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":
@@ -1851,6 +1856,8 @@ func main() {
 	panel.startBackupScheduler()
 	// alpha.118: scheduled minor WordPress core releases and malware scans.
 	panel.startWordPressAutoUpdater()
+	// alpha.128 (G27): site log retention, every six hours.
+	panel.startSiteLogRetention()
 	panel.startMalwareScanWorker()
 	// alpha.118: remote backups; continues what a restart interrupted.
 	panel.startRemoteBackupWorker()

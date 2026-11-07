@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { startVisibleReads } from '../lib/visibleReads';
 import { AlertTriangle, Clock3, FileText, Download, Trash2, RefreshCw, Search, X } from 'lucide-react';
 import { showToast } from './Toast';
@@ -15,6 +15,9 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { LOADING, countText, lastKnown, mapRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { confirmAction } from '../lib/confirmAction';
+
+// alpha.128 (G27): how long the site's logs are kept, fetched when shown.
+const LogRetentionCard = lazy(() => import('./LogRetentionCard').then((module) => ({ default: module.LogRetentionCard })));
 
 interface DomainLogsViewerProps {
     domainId: number;
@@ -182,6 +185,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
 
     return (
         <div className="space-y-4">
+            <Suspense fallback={null}><LogRetentionCard domainId={domainId} /></Suspense>
             {/* Controls */}
             <div className="flex flex-wrap items-end gap-3">
                 <label className="block">

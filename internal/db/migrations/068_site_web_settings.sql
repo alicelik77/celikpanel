@@ -42,3 +42,19 @@ CREATE TABLE node_site_env (
     env_secret_keys TEXT NOT NULL DEFAULT '[]' CHECK (length(env_secret_keys) <= 65536),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- G27: site log retention. The site logs stay in /var/log/nginx and the
+-- distribution's logrotate rule keeps rotating them; a plan, a subscription
+-- or the server (panel setting site_logs_keep_days) may keep a site's ROTATED
+-- logs for fewer days, and the Agent removes the older ones. The subscription
+-- value wins over the plan's, the plan's over the server's.
+CREATE TABLE log_retention_plans (
+    plan_id INTEGER PRIMARY KEY REFERENCES service_plans(id) ON DELETE CASCADE,
+    keep_days INTEGER NOT NULL CHECK (keep_days BETWEEN 1 AND 3650),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE log_retention_subscriptions (
+    subscription_id INTEGER PRIMARY KEY REFERENCES subscriptions(id) ON DELETE CASCADE,
+    keep_days INTEGER NOT NULL CHECK (keep_days BETWEEN 1 AND 3650),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
