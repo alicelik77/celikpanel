@@ -350,9 +350,14 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 			never := m.appliedAt.IsZero()
 			m.mu.Unlock()
 			if rows == 0 && never {
-				// Nothing was ever asked on this panel: the Agent still closes
-				// what its own record holds the first time a rule changes.
-				return
+				// No rule here and none applied by this process: ask the
+				// Agent (read only) whether its record still holds anything
+				// CelikPanel opened, for example after a removal whose answer
+				// was lost before a restart. Only then is a change sent.
+				status, err := databaseRemoteStatusFromAgent(p, runCtx, transport.DatabaseRemoteStatusRequest{})
+				if err != nil || (status.Error == "" && len(status.FilterPorts) == 0) {
+					return
+				}
 			}
 			if _, _, err := p.applyDatabaseRemote(runCtx, false); err != nil && !errors.Is(err, context.Canceled) {
 				log.Printf("database remote access: apply: %v", err)

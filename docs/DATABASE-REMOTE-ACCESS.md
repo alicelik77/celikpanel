@@ -150,7 +150,18 @@ User: as listed; Password: the database user's password; SSL mode: `require`
 
 Unit tests: address validation, pg_hba block rendering and edit detection,
 MariaDB account/grant rendering and grant parsing, nft file rendering, option
-file rendering, authorization (another customer's user or database), the
-off-by-default path. Real-system checks (listed address connects with TLS,
-unlisted refused, non-TLS refused, last rule returns to local) are the lab's,
-on Debian 12, Ubuntu 22.04 and Arch Linux.
+file rendering, the record, the Agent's MariaDB path with a fake engine
+(accounts made with the copied hash and REQUIRE SSL, refused rules never
+reach the engine, an owner's account and an edited option file are left
+alone, closing removes only CelikPanel's accounts), authorization (another
+customer's user or database, team members, the server switch), the
+off-by-default path, suspended and ungranted rules left out. The rendered
+nft file was accepted by `nft --check` (Debian 13, nothing loaded).
+
+Not yet run on a real system (the lab's, on Debian 12, Ubuntu 22.04 and
+Arch Linux): a listed address connects with TLS; an unlisted address is
+refused by the filter; a non-TLS connection is refused; the restart turns
+the listen address on; removing the last rule closes at once and, after the
+restart, the engine listens locally again; a password change and a user
+deletion carry to the MariaDB copies; reboot keeps the filter
+(`celikpanel-database-remote-firewall.service`).
