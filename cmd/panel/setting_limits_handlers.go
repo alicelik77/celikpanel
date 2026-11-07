@@ -131,6 +131,12 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
+		// alpha.128 (G5): every database user follows the server's limit.
+		if req.Key == settingDBConnections {
+			if subs, err := p.subscriptionsReachedBy(ctx, "server", 0); err == nil {
+				p.reapplyDBConnectionLimits(subs)
+			}
+		}
 		p.auditDetailed(r, "settings.limit:"+req.Key, "settings", 0, map[string]any{
 			"key": req.Key, "server_ceiling": req.ServerCeiling, "server_default": req.ServerDefault, "customer_editable": editable,
 		})

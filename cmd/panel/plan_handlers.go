@@ -571,6 +571,8 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 			p.storeClampNotices(r.Context(), preview.clamped, settingSetByPlan, pl.Name)
 			p.reapplyPlanSiteLimits(id)
 		}
+		// alpha.128 (G5): database users follow a changed connection limit.
+		p.reapplyDBConnectionLimitsAfter(r.Context(), rightsOwnerPlan, id, ceilingsBefore, ceilingsAfter)
 		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
 			log.Printf("encode service plan update: %v", err)
 		}

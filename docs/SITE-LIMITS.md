@@ -152,13 +152,16 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   (`cron_limits.go`): the smallest gap between two runs within a day is read from the minute and
   hour fields (`@hourly`, `@daily`… too). A task whose schedule is kept is not held by a newer
   limit (P5), the crontab lines stay plain, and the administrator is not held by them.
-- **Database connections (design only):** `db.max_user_connections` is in the model (plans can
-  hold it). Enforcement is native: MariaDB `CREATE USER … WITH MAX_USER_CONNECTIONS n` /
-  `ALTER USER … WITH MAX_USER_CONNECTIONS n`, PostgreSQL `CREATE ROLE … CONNECTION LIMIT n` /
-  `ALTER ROLE … CONNECTION LIMIT n`, with the value sent from the panel on user creation and
-  re-applied when a plan lowers it. It touches the database drivers and their RPCs, which the
-  database workstream changes in the same release, so it is left for the integration round
-  rather than risk two edits of the same driver code.
+- **Database connections (done):** `db.max_user_connections` is the engine's own limit on the
+  user's role: MariaDB `ALTER USER 'u'@'localhost' WITH MAX_USER_CONNECTIONS n`, PostgreSQL
+  `ALTER ROLE "u" CONNECTION LIMIT n` (on the cluster the server's driver reaches, as every
+  statement). It is written when a user is created (a user the engine did not take the limit for
+  is removed again and the creation is refused), and for every existing user of the subscriptions
+  a changed limit reaches (a plan, a reseller plan, a Custom set, the server's policy) in the
+  background through the same function; no limit removes an earlier one. The driver functions are
+  separate (`internal/services/database_connection_limits.go`, `ConnectionLimiter`). It keeps
+  working without the panel. A user whose server cannot be reached keeps its limit until the next
+  change (logged).
 
 ## 5. Password level (G21)
 
@@ -171,7 +174,6 @@ applies when a password is set or changed. The generator always adds a digit. Re
 
 - Lab evidence per supported PHP version: `ini_get` after `ini_set`, after `.user.ini` and after
   `set_time_limit()` returns the admin value; `php-fpm -t` accepts each line.
-- G5 database connection limits: design in section 4, not wired.
 - The browser-side password check still uses the owner's rule; the server refusal names the level.
 - Limit hints from real use (G2, alpha.131).
 
