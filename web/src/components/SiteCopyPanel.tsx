@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
 import { Button, inputClass } from './ui';
 import { useRemote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -87,7 +86,6 @@ export function SiteCopyPanel({ domainId, domainName }: { domainId: number; doma
         <div className="space-y-4" data-site-copy="">
             <div>
                 <div className="flex items-center gap-2">
-                    <Copy className="h-5 w-5 text-fg-subtle" aria-hidden="true" />
                     <h3 className="text-base font-semibold text-fg">{t('copy.title')}</h3>
                 </div>
                 <p className="mt-1 text-sm text-fg-muted">{t('copy.desc')}</p>

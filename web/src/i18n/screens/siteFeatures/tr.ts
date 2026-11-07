@@ -102,6 +102,10 @@ export const trSiteFeaturesScreens: Record<SiteFeaturesScreenKey, string> = {
     'dashboard.audit.action.logs.retention': 'site günlüklerinin saklanma süresini değiştirdi',
     'siteFeatures.copy.title': 'Web sitesini kopyala',
     'dashboard.audit.action.domain.copy': 'bir web sitesini başka bir siteye kopyaladı',
+    'siteFeatures.git.title': 'Git ile yayın',
+    'dashboard.audit.action.domain.git.settings': 'bir sitenin Git yayınını değiştirdi',
+    'dashboard.audit.action.domain.git.key': 'bir site için yayın anahtarı yaptı',
+    'dashboard.audit.action.domain.git.deploy': 'bir sitenin Git yayınını başlattı',
     'dashboard.audit.action.domain.node.env': 'bir Node.js sitesinin ortam değişkenlerini değiştirdi',
     'dashboard.audit.action.nginx.directives.offer': 'ek nginx yönergelerinin sunulup sunulmadığını değiştirdi',
 };

@@ -111,6 +111,10 @@ export const enSiteFeaturesScreens = {
     'dashboard.audit.action.logs.retention': 'changed how long site logs are kept',
     'siteFeatures.copy.title': 'Copy website',
     'dashboard.audit.action.domain.copy': 'copied a website into another site',
+    'siteFeatures.git.title': 'Git deploy',
+    'dashboard.audit.action.domain.git.settings': 'changed the Git deploy of a site',
+    'dashboard.audit.action.domain.git.key': 'made a deploy key for a site',
+    'dashboard.audit.action.domain.git.deploy': 'started a Git deploy of a site',
     'dashboard.audit.action.domain.node.env': 'changed the environment variables of a Node.js site',
     'dashboard.audit.action.nginx.directives.offer': 'changed whether additional nginx directives are offered',
 } as const;

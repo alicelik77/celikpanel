@@ -148,7 +148,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
-		Agent.NodeSiteInstallStatusV1 Agent.SiteLogStatusV1
+		Agent.NodeSiteInstallStatusV1 Agent.SiteLogStatusV1 Agent.GitDeployStatusV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
 		Agent.ServiceHealthV1
@@ -195,6 +195,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimeAppBuildV1 Agent.RuntimeAppBuildAdvanceV1
 		Agent.SetRuntimeAppSuspensionV1
 		Agent.NodeSiteInstallV1 Agent.NodeSiteEnvV1 Agent.SitePageCacheClearV1 Agent.SiteLogRetentionV1
+		Agent.GitDeployKeyV1 Agent.GitDeployV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
@@ -582,6 +583,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SitePageCacheClearV1":     agentRPCMutationTimeout,
 	"Agent.SiteLogRetentionV1":       agentRPCMutationTimeout,
 	"Agent.SiteLogStatusV1":          agentRPCStandardReadTimeout,
+	"Agent.GitDeployKeyV1":           agentRPCMutationTimeout,
+	"Agent.GitDeployV1":              agentRPCMutationTimeout,
+	"Agent.GitDeployStatusV1":        agentRPCStandardReadTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
 }

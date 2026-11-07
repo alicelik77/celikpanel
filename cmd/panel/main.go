@@ -372,6 +372,13 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "ssl-settings", []string{http.MethodPost}
 	case "ssl":
 		match.kind, match.methods = "ssl", []string{http.MethodGet, http.MethodDelete}
+	case "git":
+		// alpha.128 (G32): Git deploy of the site. Not mapped for additional users.
+		match.kind, match.methods = "git", getPost
+	case "git/key":
+		match.kind, match.methods = "git-key", []string{http.MethodPost}
+	case "git/deploy":
+		match.kind, match.methods = "git-deploy", []string{http.MethodPost}
 	case "copy":
 		// alpha.128 (G8): copy this site into another site the caller manages.
 		// Not mapped for additional users.
@@ -644,6 +651,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainLogRetention(w, r, match.domainID)
 	case "site-copy":
 		p.handleDomainSiteCopy(w, r, match.domainID)
+	case "git", "git-key", "git-deploy":
+		p.handleDomainGitDeploy(w, r, match.domainID, match.kind)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Archive } from 'lucide-react';
 import { Button, inputClass } from './ui';
 import { useRemote } from '../lib/remote';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -83,7 +82,6 @@ export function LogRetentionCard({ domainId }: { domainId: number }) {
     return (
         <div className="rounded-xl border border-border bg-surface p-4" data-log-retention="">
             <div className="flex items-center gap-2">
-                <Archive className="h-4 w-4 text-fg-subtle" aria-hidden="true" />
                 <h4 className="text-sm font-semibold text-fg">{t('logs.keep.title')}</h4>
             </div>
             <p className="mt-1 text-sm text-fg">

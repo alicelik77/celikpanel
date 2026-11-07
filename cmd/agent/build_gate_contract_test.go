@@ -62,6 +62,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.SiteCopyV1(&transport.SiteCopyRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.128: Git deploy.
+		{name: "GitDeployKeyV1", run: func(expected string) string {
+			var response transport.GitDeployKeyResponse
+			_ = agent.GitDeployKeyV1(&transport.GitDeployKeyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "GitDeployV1", run: func(expected string) string {
+			var response transport.GitDeployResponse
+			_ = agent.GitDeployV1(&transport.GitDeployRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		// alpha.118: WordPress tools and the malware quarantine.
 		{name: "WordPressUpdateV1", run: func(expected string) string {
 			var response transport.WordPressUpdateResponse

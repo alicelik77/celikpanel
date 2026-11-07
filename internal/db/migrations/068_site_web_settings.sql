@@ -58,3 +58,16 @@ CREATE TABLE log_retention_subscriptions (
     keep_days INTEGER NOT NULL CHECK (keep_days BETWEEN 1 AND 3650),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- G32: Git deploy of a site. The repository address (https:// or SSH, never
+-- a password), the branch and whether a Node.js site builds after a deploy.
+-- The deploy key lives on the server only (root's file); this row records
+-- when it was made, never the key.
+CREATE TABLE git_deploy_settings (
+    site_id INTEGER PRIMARY KEY REFERENCES sites(id) ON DELETE CASCADE,
+    repo_url TEXT NOT NULL DEFAULT '' CHECK (length(repo_url) <= 300),
+    branch TEXT NOT NULL DEFAULT 'main' CHECK (length(branch) BETWEEN 1 AND 100),
+    build INTEGER NOT NULL DEFAULT 0 CHECK (build IN (0, 1)),
+    key_created_at TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

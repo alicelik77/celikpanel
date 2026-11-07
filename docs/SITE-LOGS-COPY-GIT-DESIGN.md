@@ -1,12 +1,32 @@
 # Site log retention, website copying and Git deploy — design note (alpha.128)
 
-Status: **design only, not shipped.** PLESK-GAP G27, G8 and G32 were in the
-alpha.128 "web" workstream after G3, G19, G26 and G28. They were not built
-tonight because each one changes a lifecycle or a native file layout that
-needs its own lab round (resilience contract, D-025); a half-built version
-would be a half security feature. This note fixes the design so the next
-release starts from it. Owner independence (D-022), detect-don't-overwrite
-(D-031) and actionable guidance (D-024) apply to all three.
+Status (updated later the same night): **built in alpha.128 in a narrower,
+safer form; the full designs below stay the target.** What shipped:
+
+- **G27:** no log move and no second logrotate rule. The distribution's
+  rule stays the only rotation; a subscription, plan or server limit makes
+  the Agent remove only the site's *rotated* files older than the limit
+  (`cmd/agent/site_logs.go`). Longer-than-system retention still needs the
+  `LogDir` move below.
+- **G8:** files plus an optional MariaDB database into a new database of
+  the target, a full backup of a non-empty target first
+  (`cmd/panel/site_copy.go`, `Agent.SiteCopyV1`). No configuration rewrite
+  of known applications yet (the answer says the copy's config still names
+  the source database); PostgreSQL databases are not offered.
+- **G32:** HTTPS or SSH repositories, a deploy key made on the server (public
+  half shown once), init/fetch/reset of one branch and an optional Node.js
+  build in the site sandbox (`internal/nodesite/gitdeploy.go`). The key is
+  handed over as a systemd credential, so SSH needs systemd 250+ (Ubuntu
+  22.04 is refused with a plain message); no releases/rollback folder and
+  no webhook yet.
+
+Open for all three: the lab round on the five systems (logrotate forms,
+backup + copy of a large site, LoadCredential inside the sandbox).
+
+Original note: PLESK-GAP G27, G8 and G32 were in the alpha.128 "web"
+workstream after G3, G19, G26 and G28. Owner independence (D-022),
+detect-don't-overwrite (D-031) and actionable guidance (D-024) apply to all
+three.
 
 ## 1. Log retention per plan (G27)
 
