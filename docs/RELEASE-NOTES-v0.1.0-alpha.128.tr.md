@@ -169,7 +169,8 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   gün yeniden uyarılıyor.
 - **Açık oturumlar** (Hesabım): oturum açık her tarayıcı, adresi ve
   tarayıcısıyla; birini ya da diğerlerinin hepsini kapatabiliyorsunuz.
-  Yönetici her hesabın oturumlarını görüyor (Güvenlik).
+  Yönetici her hesabın oturumlarını görüyor (Güvenlik); bayi de
+  müşterilerinin oturumlarını görüp kapatabiliyor.
 - **Boşta kalma süresi:** 60 dakika kullanılmayan bir oturum (15 ile 480
   arası, Güvenlik, Panel erişimi) bir sonraki isteğinde kapanıyor.
 - **Yönetici adresleri:** yönetici adres listesi girerse, yönetici yalnız bu
@@ -188,6 +189,13 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   gün ve kendiliğinden yenilenip yenilenmediğiyle salt okunur tek listesi.
   Satın aldığınız bir sertifika için sertifika isteği (CSR) de
   oluşturabiliyorsunuz; anahtarı sunucuda kalıyor ve asla gösterilmiyor.
+  Sertifika yetkilisi sertifikayı gönderince onu ait olduğu siteye
+  kurabiliyorsunuz: panel önce isteğin anahtarına uyduğunu, şu an geçerli
+  olduğunu ve her adı kapsadığını denetliyor, sonra yüklenen her sertifika
+  gibi kuruyor; anahtar sunucudan hiç çıkmıyor. Panelin kendi sertifikası ve
+  posta sunucusunun sertifikası Let's Encrypt ile yenilendiği için satın
+  alınan bir sertifika orada nedeniyle reddediliyor; siteye kurun, alan
+  adının postası da onu kullanır.
 
 ## Uzak API
 
@@ -238,9 +246,6 @@ _Laboratuvar turundan sonra doldurulacak._
   ayrıcalık ayrımı açık kalıyor. Sahip kendi vsftpd'sini çalıştırıyorsa girişler yalnız SFTP
   kullanıyor. Bir giriş sitenin kullanıcı kimliğini paylaştığı için sistemin
   kendi araçları onu site olarak gösteriyor.
-- **Sertifika istekleri:** bir istek için aldığınız sertifikayı kurmak bu
-  sürümde yok; anahtar asla panelden geçmemeli, bu yüzden kendi sunucu
-  adımı gerekiyor. Bayiler henüz müşterilerinin oturumlarını göremiyor.
 - **Günlük saklama:** yalnız sistemin zaten tuttuğunu kısaltıyor. Günlükleri
   daha uzun tutmak için günlük klasörünü taşımak gerekiyor; bu yapılmadı.
 - Günlük saklama, büyük bir sitenin kopyalanması, Git ile dağıtım, web

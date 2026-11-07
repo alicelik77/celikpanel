@@ -163,7 +163,8 @@ updates installed panels, from the panel's own update screen.**
   before the end date and again on the last day.
 - **Signed-in sessions** (My account): every browser where you are signed
   in, with its address and browser; end one, or all the others. The
-  administrator sees every account's sessions (Security).
+  administrator sees every account's sessions (Security), and a reseller
+  sees and can end its customers' sessions.
 - **Idle timeout:** a session unused for 60 minutes (15 to 480, set under
   Security, Panel access) ends at its next request.
 - **Administrator addresses:** when the administrator lists addresses, the
@@ -181,7 +182,13 @@ updates installed panels, from the panel's own update screen.**
 - **Certificates on this server:** one read-only list of every certificate,
   with who uses it, days left and whether it renews by itself. You can also
   make a certificate request (CSR) for a certificate you buy; its key stays
-  on the server and is never shown.
+  on the server and is never shown. When the certificate authority sends the
+  certificate, install it on the site it is for: the panel first checks that
+  it matches the request's key, is valid now and covers every name, then
+  installs it like any uploaded certificate, and the key never leaves the
+  server. The panel's own certificate and the mail server's certificate are
+  renewed by Let's Encrypt, so a bought certificate is refused there with
+  the reason; install it on the site and its domain's mail uses it too.
 
 ## Remote API
 
@@ -230,10 +237,6 @@ _To be filled in after the lab round._
   separation stay on. Where the owner runs their own vsftpd, logins use SFTP only. A login
   shares the site account's user id, so the system's own tools show it as
   the site.
-- **Certificate requests:** installing the certificate you receive for a
-  request is not in this release; the key must never pass through the
-  panel, so it needs its own server step. Resellers cannot yet see their
-  customers' sessions.
 - **Log retention:** only shortens what the system already keeps. Keeping
   logs longer needs a log folder move, which is not built.
 - The lab round on the five systems is still open for log retention,
