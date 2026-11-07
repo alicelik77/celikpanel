@@ -73,7 +73,13 @@ export const enFtpLoginsScreens = {
     'ftpLogins.block.sshOwnerAdmin': '/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf was changed by hand, so CelikPanel changes no login. Remove the file or put CelikPanel’s version back (the site’s Access settings above write it again).',
     'ftpLogins.block.ftpMissing': 'FTP is not installed on this server, so logins use SFTP. Your provider installs FTP if you need it.',
     'ftpLogins.block.ftpOwner': 'FTP (vsftpd) was configured by hand on this server, so CelikPanel does not add logins to it; logins use SFTP.',
-    'ftpLogins.warn.sftp_password_off': 'This server accepts only keys for SFTP, and logins have passwords: they connect with FTP over TLS.',
+    'ftpLogins.warn.sftp_password_off': 'SSH on this server accepts only keys, and logins sign in with a password, so SFTP is not possible: logins connect with FTP over TLS to {host}, port {port}.',
+    'ftpLogins.noSignIn.keys': 'No login can sign in on this server yet: SSH here accepts only keys, logins sign in with a password, and FTP over TLS is not available.',
+    'ftpLogins.noSignIn.shells': 'No login can sign in on this server yet: its own sign-in rules refuse SSH for accounts without a command line (pam_shells), and FTP over TLS is not available.',
+    'ftpLogins.noSignIn.ftpMissingAdmin': 'Install the FTP server (vsftpd) from Components; logins then connect with FTP over TLS, and you can add them here.',
+    'ftpLogins.noSignIn.ftpOwnerAdmin': 'FTP (vsftpd) was configured by hand on this server, so CelikPanel adds no login to it; that configuration is yours to keep or change.',
+    'ftpLogins.noSignIn.sshChoiceAdmin': 'Allowing passwords for SSH would also work; that is your own decision, and CelikPanel does not change the SSH settings.',
+    'ftpLogins.noSignIn.provider': 'Ask your provider (the server’s administrator) to make FTP over TLS available on this server. No login can be added until then.',
     'ftpLogins.warn.sftp_shell_refused': 'This server’s own sign-in rules refuse SSH for accounts without a command line (pam_shells, as on Arch Linux), so logins connect with FTP over TLS; SFTP with a password is refused. CelikPanel does not change that rule.',
     'ftpLogins.warn.ftp_not_installed': 'FTP is not installed on this server; the login uses SFTP.',
     'ftpLogins.warn.ftp_owner_config': 'FTP is configured by hand on this server, so the login was not added to it; it uses SFTP.',
@@ -93,6 +99,7 @@ export const enFtpLoginsScreens = {
     'err.FTP_LOGIN_REFUSED.sshd_include_missing': 'OpenSSH does not read CelikPanel’s access file. The server administrator adds "Include /etc/ssh/sshd_config.d/*.conf" at the top of /etc/ssh/sshd_config. Nothing was changed.',
     'err.FTP_LOGIN_REFUSED.no_sshd': 'This server has no OpenSSH server, which logins need. The server administrator installs it first.',
     'err.FTP_LOGIN_REFUSED.name_taken': 'This name is taken on the server. Choose another login name; nothing was changed.',
+    'err.FTP_LOGIN_REFUSED.no_sign_in': 'The login could not sign in on this server: SSH accepts only keys here (or refuses accounts without a command line) and FTP over TLS is not available, so it was not created and the earlier steps were put back. The server administrator installs the FTP server (vsftpd) from Components, or allows passwords for SSH; CelikPanel does not change the SSH settings.',
     'err.FTP_LOGIN_REFUSED.site_account': 'The site’s own account is missing or changed on the server, so no login can be added. The server administrator checks the site on the Hosting tab.',
 
     // The plan form's and the server limits' label of the key ftp.max_logins.

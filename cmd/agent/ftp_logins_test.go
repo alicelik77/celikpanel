@@ -186,3 +186,119 @@ func TestFTPLoginRemoveClosesStepByStep(t *testing.T) {
 		t.Fatalf("another site removed it: %+v", response)
 	}
 }
+
+func TestSSHDAllowsPasswordSignInReadsEveryPasswordPath(t *testing.T) {
+	cases := []struct {
+		name, output string
+		want         bool
+	}{
+		{"password on", "passwordauthentication yes\nkbdinteractiveauthentication no\nusepam yes\n", true},
+		{"keys only (cloud image)", "passwordauthentication no\nkbdinteractiveauthentication no\nusepam yes\n", false},
+		{"keyboard-interactive through PAM asks the password", "passwordauthentication no\nkbdinteractiveauthentication yes\nusepam yes\n", true},
+		{"keyboard-interactive without PAM has no password", "passwordauthentication no\nkbdinteractiveauthentication yes\nusepam no\n", false},
+		{"older OpenSSH: challenge-response through PAM", "passwordauthentication no\nchallengeresponseauthentication yes\nusepam yes\n", true},
+		{"a key is required", "passwordauthentication yes\nusepam yes\nauthenticationmethods publickey\n", false},
+		{"a key and a password are required", "passwordauthentication yes\nusepam yes\nauthenticationmethods publickey,password\n", false},
+		{"a key or a password", "passwordauthentication yes\nusepam yes\nauthenticationmethods publickey password\n", true},
+		{"keyboard-interactive:pam alone", "passwordauthentication no\nkbdinteractiveauthentication yes\nusepam yes\nauthenticationmethods keyboard-interactive:pam\n", true},
+		{"password listed but off", "passwordauthentication no\nkbdinteractiveauthentication no\nusepam yes\nauthenticationmethods password\n", false},
+	}
+	for _, c := range cases {
+		if got := sshdAllowsPasswordSignIn(c.output); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+const sshdKeysOnly = "passwordauthentication no\nkbdinteractiveauthentication no\nusepam yes\n"
+
+// Keys only and no FTP over TLS: the login could never sign in, so it is
+// refused and everything is put back; sshd's settings are never changed.
+func TestFTPLoginAddRefusedWhenNoWayToSignIn(t *testing.T) {
+	host := installFileAccessFakeHost(t)
+	installFTPLoginSeams(t, host)
+	host.present["vsftpd"] = false
+	host.sshdAuth = sshdKeysOnly
+	response := ftpLoginApply(t, transport.ApplyFTPLoginRequest{Site: exampleSite, Action: transport.FTPLoginAdd,
+		Login: "anna-up", Folder: "/", Password: "a long secret"})
+	if response.Applied || response.Refusal != transport.FTPLoginRefusedNoSignIn {
+		t.Fatalf("response %+v", response)
+	}
+	if !strings.Contains(response.Detail, "accepts only keys") || !strings.Contains(response.Detail, "not installed") || !strings.Contains(response.Detail, "put back") {
+		t.Fatalf("detail: %s", response.Detail)
+	}
+	if host.index("chpasswd") >= 0 {
+		t.Fatal("a password was set for a login that cannot sign in")
+	}
+	if _, ok := host.files[fileaccess.LoginUnitPath("anna-up")]; ok {
+		t.Fatal("the unit outlived the refusal")
+	}
+	if strings.Contains(host.files[fileaccess.SSHDropInPath], "anna-up") {
+		t.Fatal("the drop-in still names the login")
+	}
+	for _, command := range host.commands {
+		if strings.Contains(strings.ToLower(command), "passwordauthentication") || strings.HasPrefix(command, "write /etc/ssh/sshd_config ") {
+			t.Fatalf("sshd's own settings were touched: %s", command)
+		}
+	}
+	if !containsString(response.State.Warnings, transport.FTPLoginWarnPasswordAuthOff) {
+		t.Fatalf("the state does not say SFTP with a password is off: %+v", response.State.Warnings)
+	}
+}
+
+// The same on Arch (pam_shells refuses the no-login shell).
+func TestFTPLoginAddRefusedWhenShellRefusedAndNoFTP(t *testing.T) {
+	host := installFileAccessFakeHost(t)
+	installFTPLoginSeams(t, host)
+	host.present["vsftpd"] = false
+	ftpLoginSFTPShellRefused = func() bool { return true }
+	response := ftpLoginApply(t, transport.ApplyFTPLoginRequest{Site: exampleSite, Action: transport.FTPLoginAdd,
+		Login: "anna-up", Folder: "/", Password: "a long secret"})
+	if response.Refusal != transport.FTPLoginRefusedNoSignIn || !strings.Contains(response.Detail, "pam_shells") || host.index("chpasswd") >= 0 {
+		t.Fatalf("response %+v", response)
+	}
+}
+
+// Keys only with CelikPanel's FTP over TLS: the login is made, says it uses
+// FTP over TLS, and the list says so before the next one.
+func TestFTPLoginKeysOnlyUsesFTPOverTLS(t *testing.T) {
+	host := installFileAccessFakeHost(t)
+	installFTPLoginSeams(t, host)
+	host.sshdAuth = sshdKeysOnly
+	response := ftpLoginApply(t, transport.ApplyFTPLoginRequest{Site: exampleSite, Action: transport.FTPLoginAdd,
+		Login: "anna-up", Folder: "/", Password: "a long secret"})
+	if !response.Applied || !containsString(response.Warnings, transport.FTPLoginWarnPasswordAuthOff) {
+		t.Fatalf("response %+v", response)
+	}
+	// Password sign-in allowed: no warning, and a login is made without FTP.
+	host2 := installFileAccessFakeHost(t)
+	installFTPLoginSeams(t, host2)
+	host2.present["vsftpd"] = false
+	host2.sshdAuth = "passwordauthentication no\nkbdinteractiveauthentication yes\nusepam yes\n"
+	response = ftpLoginApply(t, transport.ApplyFTPLoginRequest{Site: exampleSite, Action: transport.FTPLoginAdd,
+		Login: "anna-up", Folder: "/", Password: "a long secret"})
+	if !response.Applied || containsString(response.Warnings, transport.FTPLoginWarnPasswordAuthOff) || containsString(response.State.Warnings, transport.FTPLoginWarnPasswordAuthOff) {
+		t.Fatalf("keyboard-interactive through PAM: %+v", response)
+	}
+}
+
+// The state says it before any login exists (the site's account stands in).
+func TestFTPLoginsStateSaysKeysOnlyBeforeTheFirstLogin(t *testing.T) {
+	host := installFileAccessFakeHost(t)
+	installFTPLoginSeams(t, host)
+	host.sshdAuth = sshdKeysOnly
+	var state transport.FTPLoginsStateResponse
+	if err := (&Agent{}).FTPLoginsStateV1(&transport.FTPLoginsStateRequest{Site: exampleSite}, &state); err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(state.Warnings, transport.FTPLoginWarnPasswordAuthOff) {
+		t.Fatalf("warnings %+v", state.Warnings)
+	}
+	host.sshdAuth = ""
+	if err := (&Agent{}).FTPLoginsStateV1(&transport.FTPLoginsStateRequest{Site: exampleSite}, &state); err != nil {
+		t.Fatal(err)
+	}
+	if containsString(state.Warnings, transport.FTPLoginWarnPasswordAuthOff) {
+		t.Fatalf("password sign-in is on, warnings %+v", state.Warnings)
+	}
+}

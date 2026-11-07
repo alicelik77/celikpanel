@@ -35,12 +35,20 @@ const (
 	FTPLoginRefusedAccount      = "account_change"
 	FTPLoginRefusedFTP          = "ftp_rejected"
 	FTPLoginRefusedLimit        = "server_limit"
+	// A new login could not sign in at all: sshd refuses its password
+	// (keys only, or pam_shells) and FTP over TLS is not CelikPanel's on
+	// this server. The earlier steps are put back; nothing stays. CelikPanel
+	// never turns on password sign-in for SSH (the owner decides).
+	FTPLoginRefusedNoSignIn = "no_sign_in"
 )
 
 // Warnings of ApplyFTPLoginV1 and FTPLoginsStateV1.
 const (
-	// The server's sshd refuses passwords for this login: SFTP does not
-	// work with a password, FTP over TLS does.
+	// The server's sshd refuses passwords for logins (password and
+	// keyboard-interactive through PAM are off for them, or
+	// AuthenticationMethods needs a key): SFTP does not work with a
+	// password, FTP over TLS does where it is CelikPanel's. Read from
+	// `sshd -T` only; CelikPanel does not change sshd.
 	FTPLoginWarnPasswordAuthOff = "sftp_password_off"
 	// The server's sign-in rules for sshd refuse accounts whose shell is
 	// not in /etc/shells (pam_shells, as Arch's system-login does), and a

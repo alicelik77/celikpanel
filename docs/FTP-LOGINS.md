@@ -77,8 +77,10 @@ account (locked; a suspended site's expiry is copied) → jail (helper copy,
 unit, `systemctl enable`, `restart`, mount proved) → sshd (drop-in, `sshd -t`,
 `sshd -T -C user=<login>` must show the chroot and the forced command, reload)
 → FTP (vsftpd files, restart, TLS handshake; optional: SFTP works without it)
-→ password (`chpasswd`, last) → verify (sshd's password setting, the mount, an
-FTP over TLS sign-in as the login that must start in `/files`). A failed step
+→ sign-in path (refused with `no_sign_in` when sshd takes no password for the
+login and FTP over TLS is not CelikPanel's; section 7) → password
+(`chpasswd`, last) → verify (sshd's password setting, the mount, an FTP over
+TLS sign-in as the login that must start in `/files`). A failed step
 puts back what the earlier steps did.
 
 Change: a new password and/or a new folder (open sessions of the login end
@@ -155,16 +157,30 @@ unit, jail, entry or ownerless file left) and site deletion.
 
 ## 7. Limits
 
-- SFTP with a password needs the server to accept passwords; where sshd
-  accepts keys only, logins use FTP over TLS (the screen says so). Logins have
-  no keys.
+- SFTP with a password needs sshd to accept a password for the login:
+  `PasswordAuthentication yes`, or `KbdInteractiveAuthentication yes` with
+  `UsePAM yes` (PAM asks for the same password), in an
+  `AuthenticationMethods` alternative that needs no key. Logins have no keys.
+  The Agent reads this only (`sshd -T -C user=<login>,…`; before the site's
+  first login, the site's account stands in) and **never changes sshd**:
+  allowing passwords for SSH is the owner's own decision.
+  - Where sshd accepts keys only and CelikPanel's FTP over TLS is there, the
+    list says once that logins connect with FTP over TLS (host, port) and
+    SFTP is not possible; the connection recipe leaves SFTP out.
+  - Where neither works (keys only, or Arch's pam_shells below, and vsftpd is
+    not installed or is the owner's), no login is added: the screen says why
+    before the form (the administrator gets vsftpd's install window in
+    Components and the SSH choice as theirs; anyone else is told to ask the
+    provider), and the Agent refuses an add with `no_sign_in` once sshd knows
+    the login, before its password, putting every earlier step back.
 - FTP needs CelikPanel's vsftpd configuration; an owner's vsftpd is kept and
   logins then use SFTP only.
 - Arch Linux: sshd's PAM stack (system-login) runs pam_shells, and
   /etc/shells does not list the no-login shell, so the system itself refuses
   SFTP with a password for logins (and site accounts): closed, not open. The
   Agent detects it (read only) and the screen says logins connect with FTP
-  over TLS. CelikPanel does not change the system's rule.
+  over TLS (or, without it, that no login can be added, as above).
+  CelikPanel does not change the system's rule.
 - Arch Linux: vsftpd 3.0.5 as Arch packages it kills every TLS data
   connection in its seccomp sandbox (listings and uploads failed for every
   account, site accounts included). CelikPanel's vsftpd.conf sets

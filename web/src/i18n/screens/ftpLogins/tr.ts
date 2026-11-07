@@ -67,7 +67,13 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'ftpLogins.block.sshOwnerAdmin': '/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf elle değiştirilmiş, bu yüzden CelikPanel hiçbir girişi değiştirmez. Dosyayı kaldırın ya da CelikPanel’in sürümünü geri koyun (yukarıdaki sitenin Erişim ayarları onu yeniden yazar).',
     'ftpLogins.block.ftpMissing': 'Bu sunucuda FTP kurulu değil, bu yüzden girişler SFTP kullanır. Gerekirse sağlayıcınız FTP’yi kurar.',
     'ftpLogins.block.ftpOwner': 'FTP (vsftpd) bu sunucuda elle yapılandırılmış, bu yüzden CelikPanel girişleri ona eklemez; girişler SFTP kullanır.',
-    'ftpLogins.warn.sftp_password_off': 'Bu sunucu SFTP için yalnız anahtar kabul ediyor, girişlerin ise şifresi var: şifreli FTP ile bağlanırlar.',
+    'ftpLogins.warn.sftp_password_off': 'Bu sunucuda SSH yalnız anahtar kabul ediyor, girişler ise şifreyle bağlanıyor; bu yüzden SFTP mümkün değil: girişler şifreli FTP (FTP over TLS) ile {host} sunucusuna, {port} numaralı bağlantı noktasından bağlanır.',
+    'ftpLogins.noSignIn.keys': 'Bu sunucuda henüz hiçbir giriş bağlanamaz: burada SSH yalnız anahtar kabul ediyor, girişler şifreyle bağlanıyor ve şifreli FTP (FTP over TLS) yok.',
+    'ftpLogins.noSignIn.shells': 'Bu sunucuda henüz hiçbir giriş bağlanamaz: sunucunun kendi giriş kuralları komut satırı olmayan hesaplara SSH’yi kapatıyor (pam_shells) ve şifreli FTP (FTP over TLS) yok.',
+    'ftpLogins.noSignIn.ftpMissingAdmin': 'FTP sunucusunu (vsftpd) Bileşenler’den kurun; girişler o zaman şifreli FTP ile bağlanır ve onları buradan ekleyebilirsiniz.',
+    'ftpLogins.noSignIn.ftpOwnerAdmin': 'FTP (vsftpd) bu sunucuda elle yapılandırılmış, bu yüzden CelikPanel ona giriş eklemez; bu yapılandırmayı korumak ya da değiştirmek sizin elinizde.',
+    'ftpLogins.noSignIn.sshChoiceAdmin': 'SSH’de şifreye izin vermek de işe yarar; bu sizin kararınızdır, CelikPanel SSH ayarlarını değiştirmez.',
+    'ftpLogins.noSignIn.provider': 'Sağlayıcınızdan (sunucunun yöneticisi) bu sunucuda şifreli FTP’yi kullanılabilir yapmasını isteyin. O zamana kadar giriş eklenemez.',
     'ftpLogins.warn.sftp_shell_refused': 'Bu sunucunun kendi giriş kuralları komut satırı olmayan hesaplara SSH’yi kapatıyor (Arch Linux’ta olduğu gibi pam_shells), bu yüzden girişler şifreli FTP ile bağlanır; şifreyle SFTP reddedilir. CelikPanel bu kuralı değiştirmez.',
     'ftpLogins.warn.ftp_not_installed': 'Bu sunucuda FTP kurulu değil; giriş SFTP kullanır.',
     'ftpLogins.warn.ftp_owner_config': 'FTP bu sunucuda elle yapılandırılmış, bu yüzden giriş ona eklenmedi; SFTP kullanır.',
@@ -87,6 +93,7 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'err.FTP_LOGIN_REFUSED.sshd_include_missing': 'OpenSSH, CelikPanel’in erişim dosyasını okumuyor. Sunucu yöneticisi /etc/ssh/sshd_config dosyasının başına "Include /etc/ssh/sshd_config.d/*.conf" satırını ekler. Hiçbir şey değiştirilmedi.',
     'err.FTP_LOGIN_REFUSED.no_sshd': 'Bu sunucuda girişlerin gerektirdiği OpenSSH sunucusu yok. Önce sunucu yöneticisi kurar.',
     'err.FTP_LOGIN_REFUSED.name_taken': 'Bu ad sunucuda kullanılıyor. Başka bir giriş adı seçin; hiçbir şey değiştirilmedi.',
+    'err.FTP_LOGIN_REFUSED.no_sign_in': 'Giriş bu sunucuda bağlanamazdı: burada SSH yalnız anahtar kabul ediyor (ya da komut satırı olmayan hesapları reddediyor) ve şifreli FTP yok; bu yüzden oluşturulmadı ve önceki adımlar geri alındı. Sunucu yöneticisi FTP sunucusunu (vsftpd) Bileşenler’den kurar ya da SSH’de şifreye izin verir; CelikPanel SSH ayarlarını değiştirmez.',
     'err.FTP_LOGIN_REFUSED.site_account': 'Sitenin kendi hesabı sunucuda yok ya da değişmiş, bu yüzden giriş eklenemez. Sunucu yöneticisi siteyi Barındırma sekmesinden denetler.',
 
     // The plan form's and the server limits' label of the key ftp.max_logins.
