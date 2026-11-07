@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -123,5 +124,61 @@ func TestClearPageCacheEmptiesOnlyTheSitesFolder(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(other, "keep")); err != nil {
 		t.Fatal("another site's cache was touched")
+	}
+}
+
+// alpha.128 lab: the Agent's umask (0027) made /var/cache/celikpanel and its
+// pagecache folder 0750 root:celikpanel, nginx's worker could not open its
+// cache files and every PHP answer of a cached site was 500. The cache's
+// parent folders are passable by every account, and a folder an earlier
+// Agent made 0750 is corrected.
+func TestPageCacheRootIsPassableForTheNginxWorker(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX modes")
+	}
+	base := t.TempDir()
+	parent := filepath.Join(base, "celikpanel")
+	root := filepath.Join(parent, "pagecache")
+	if err := os.MkdirAll(root, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{parent, root} {
+		if err := os.Chmod(d, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ensureTraversableDir(root); err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{parent, root} {
+		info, err := os.Stat(d)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o755 {
+			t.Fatalf("%s is %o, want 0755", d, info.Mode().Perm())
+		}
+	}
+	// A folder not under CelikPanel's own parent: only the folder itself.
+	other := filepath.Join(base, "elsewhere", "pagecache")
+	if err := os.MkdirAll(other, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Chmod(filepath.Dir(other), 0o700)
+	_ = os.Chmod(other, 0o700)
+	if err := ensureTraversableDir(other); err != nil {
+		t.Fatal(err)
+	}
+	if info, _ := os.Stat(filepath.Dir(other)); info.Mode().Perm() != 0o700 {
+		t.Fatalf("a parent that is not CelikPanel's was changed: %o", info.Mode().Perm())
+	}
+	if info, _ := os.Stat(other); info.Mode().Perm() != 0o755 {
+		t.Fatalf("the cache root is %o, want 0755", info.Mode().Perm())
+	}
+	// A file where the folder should be is left alone.
+	file := filepath.Join(base, "celikpanel-file")
+	_ = os.WriteFile(file, []byte("x"), 0o600)
+	if err := ensureTraversableDir(filepath.Join(file)); err == nil {
+		t.Fatal("a file was accepted as the cache folder")
 	}
 }
