@@ -107,6 +107,7 @@ export const enSiteFeaturesScreens = {
     'siteFeatures.web.title': 'Web server',
     'dashboard.audit.action.domain.web.settings': 'changed the web server settings of a site',
     'dashboard.audit.action.domain.web.directives': 'changed the additional nginx directives of a site',
+    'dashboard.audit.action.domain.web.cache_clear': 'cleared the page cache of a site',
     'dashboard.audit.action.domain.node.env': 'changed the environment variables of a Node.js site',
     'dashboard.audit.action.nginx.directives.offer': 'changed whether additional nginx directives are offered',
 } as const;

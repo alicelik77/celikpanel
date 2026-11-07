@@ -493,6 +493,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "web-settings", getPost
 	case "web-settings/directives":
 		match.kind, match.methods = "web-settings-directives", []string{http.MethodPost}
+	case "web-settings/cache-clear":
+		// alpha.128 (G28): empty the site's page cache.
+		match.kind, match.methods = "web-settings-cache-clear", []string{http.MethodPost}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
@@ -628,6 +631,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainWebSettings(w, r, match.domainID, match.kind)
 	case "app-env":
 		p.handleDomainNodeEnv(w, r, match.domainID)
+	case "web-settings-cache-clear":
+		p.handleDomainPageCacheClear(w, r, match.domainID)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":

@@ -93,7 +93,7 @@ func siteWebPartsFor(req *ApplyVhostRequest, data services.VhostData) []services
 		return nil
 	}
 	directives := req.WebSettings.Directives
-	parts := services.SitePartsFor(data.Domain, settings, directives)
+	parts := services.SitePartsForSite(data.Domain, data.SiteID, data.ProjectType, settings, directives)
 	if !req.WebSettings.DirectivesTrusted && strings.TrimSpace(directives) != "" {
 		if err := services.ValidateSiteDirectives(directives, false, services.SiteHomeOf(data.DocumentRoot)); err != nil {
 			// The Panel checked the same rules; a text that fails here is

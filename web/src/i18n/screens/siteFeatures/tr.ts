@@ -98,6 +98,7 @@ export const trSiteFeaturesScreens: Record<SiteFeaturesScreenKey, string> = {
     'siteFeatures.web.title': 'Web sunucusu',
     'dashboard.audit.action.domain.web.settings': 'bir sitenin web sunucusu ayarlarını değiştirdi',
     'dashboard.audit.action.domain.web.directives': 'bir sitenin ek nginx yönergelerini değiştirdi',
+    'dashboard.audit.action.domain.web.cache_clear': 'bir sitenin sayfa önbelleğini temizledi',
     'dashboard.audit.action.domain.node.env': 'bir Node.js sitesinin ortam değişkenlerini değiştirdi',
     'dashboard.audit.action.nginx.directives.offer': 'ek nginx yönergelerinin sunulup sunulmadığını değiştirdi',
 };

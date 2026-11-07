@@ -34,6 +34,8 @@ interface Settings {
     access_list?: string[];
     node_public?: boolean;
     error_pages?: ErrorPage[];
+    page_cache?: boolean;
+    page_cache_minutes?: number;
 }
 interface ErrorPage { code: number; path: string }
 interface Directives {
@@ -51,6 +53,8 @@ interface WebView {
     index_applies: boolean;
     fields_apply: boolean;
     node_applies: boolean;
+    page_cache_applies?: boolean;
+    may_cache?: boolean;
     default_index?: string;
     settings: Settings;
     cache_choices: number[];
@@ -98,13 +102,13 @@ export function DomainWebSettings({ domainId, domainName, readOnly = false }: { 
     const settled = view.remote.state === 'known' && !view.reading && !answer.holding;
 
     // One change, followed in the progress window with the server's steps.
-    const send = async (path: string, body: unknown, title: string, done: string, key: string): Promise<boolean> => {
+    const send = async (path: string, body: unknown, title: string, done: string, key: string, labels: StepLabel[] = steps(t)): Promise<boolean> => {
         let made = false;
         await followOperation({
             progressTitle: title,
             action: async (report) => {
                 setBusy(true);
-                const progress = followRequestProgress(report, steps(t), t as unknown as (key: TranslationKey) => string, key);
+                const progress = followRequestProgress(report, labels, t as unknown as (key: TranslationKey) => string, key);
                 try {
                     const res = await answer.send(path, {
                         method: 'POST', headers: { 'Content-Type': 'application/json', ...progress.headers }, body: JSON.stringify(body),
@@ -156,6 +160,8 @@ export function DomainWebSettings({ domainId, domainName, readOnly = false }: { 
                                     readOnly={readOnly}
                                     t={t}
                                     onSave={(settings) => send(url, { settings }, t('web.progress', { name: domainName }), t('web.saved'), `web.${domainId}`)}
+                                    onClearCache={() => send(`${url}/cache-clear`, {}, t('web.pageCache.clearProgress', { name: domainName }), t('web.pageCache.cleared'), `webcache.${domainId}`,
+                                        [{ id: 'check', label: t('web.step.check'), check: true }, { id: 'clear', label: t('web.pageCache.clearStep') }])}
                                 />
                                 <DirectivesCard
                                     key={state.directives.text ?? ''}
@@ -175,8 +181,10 @@ export function DomainWebSettings({ domainId, domainName, readOnly = false }: { 
     );
 }
 
-function WebFields({ state, disabled, readOnly, t, onSave }: {
-    state: WebView; disabled: boolean; readOnly: boolean; t: WebWords; onSave: (settings: Settings) => Promise<boolean>;
+const CACHE_MINUTES = [5, 10, 30, 60, 240, 1440];
+
+function WebFields({ state, disabled, readOnly, t, onSave, onClearCache }: {
+    state: WebView; disabled: boolean; readOnly: boolean; t: WebWords; onSave: (settings: Settings) => Promise<boolean>; onClearCache: () => Promise<boolean>;
 }) {
     const saved = state.settings;
     const [customIndex, setCustomIndex] = useState((saved.index_files ?? []).length > 0);
@@ -188,6 +196,8 @@ function WebFields({ state, disabled, readOnly, t, onSave }: {
     const [list, setList] = useState((saved.access_list ?? []).join('\n'));
     const [nodePublic, setNodePublic] = useState(!!saved.node_public);
     const [pages, setPages] = useState<ErrorPage[]>(saved.error_pages ?? []);
+    const [pageCache, setPageCache] = useState(!!saved.page_cache);
+    const [cacheMinutes, setCacheMinutes] = useState(saved.page_cache_minutes || 10);
     const [problem, setProblem] = useState('');
 
     const build = (): Settings | null => {
@@ -219,6 +229,10 @@ function WebFields({ state, disabled, readOnly, t, onSave }: {
             settings.access_list = entries;
         }
         if (state.node_applies && nodePublic) settings.node_public = true;
+        if (state.page_cache_applies && pageCache) {
+            settings.page_cache = true;
+            settings.page_cache_minutes = cacheMinutes;
+        }
         if (state.index_applies) {
             const sentPages: ErrorPage[] = [];
             for (const page of pages) {
@@ -303,6 +317,25 @@ function WebFields({ state, disabled, readOnly, t, onSave }: {
                         </div>
                     ))}
                     {!readOnly && <Button type="button" icon={Plus} disabled={disabled || pages.length >= (state.error_codes ?? []).length} onClick={() => setPages([...pages, { code: (state.error_codes ?? []).find((code) => !pages.some((p) => p.code === code)) ?? 404, path: '' }])}>{t('web.errors.add')}</Button>}
+                </FormSection>
+            )}
+            {state.page_cache_applies && (state.may_cache || saved.page_cache) && (
+                <FormSection title={t('web.pageCache.title')} description={t('web.pageCache.desc')}>
+                    {state.may_cache ? (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" className="accent-primary" checked={pageCache} disabled={fieldDisabled} onChange={(e) => setPageCache(e.target.checked)} />{t('web.pageCache.on')}</label>
+                            {pageCache && (
+                                <select value={cacheMinutes} onChange={(e) => setCacheMinutes(Number(e.target.value))} disabled={fieldDisabled} className={`${inputClass} sm:w-48`} aria-label={t('web.pageCache.minutes')}>
+                                    {CACHE_MINUTES.map((m) => <option key={m} value={m}>{t('web.pageCache.keep', { n: m })}</option>)}
+                                </select>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-fg-muted">{t('web.pageCache.byAdmin', { n: saved.page_cache_minutes || 10 })}</p>
+                    )}
+                    {saved.page_cache && !readOnly && (
+                        <div><Button type="button" disabled={disabled} onClick={() => void onClearCache()}>{t('web.pageCache.clear')}</Button></div>
+                    )}
                 </FormSection>
             )}
             {state.node_applies && (

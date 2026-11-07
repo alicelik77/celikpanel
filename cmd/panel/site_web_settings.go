@@ -64,6 +64,8 @@ const (
 	errCodeWebSettingsNginxFails = "WEB_SETTINGS_NGINX_FAILING"
 	errCodeWebSettingsUnavail    = "WEB_SETTINGS_UNAVAILABLE"
 	errCodeWebErrorPageMissing   = "WEB_ERROR_PAGE_MISSING"
+	errCodeWebPageCacheOff       = "WEB_PAGE_CACHE_OFF"
+	errCodeWebPageCacheClear     = "WEB_PAGE_CACHE_CLEAR"
 
 	maxWebSettingsRequestBytes = 64 << 10
 )
@@ -224,16 +226,20 @@ type siteWebSettingsView struct {
 	DomainID    int    `json:"domain_id"`
 	ProjectType string `json:"project_type"`
 	// Fields that apply to the site's type.
-	IndexApplies  bool                      `json:"index_applies"`
-	FieldsApply   bool                      `json:"fields_apply"`
-	NodeApplies   bool                      `json:"node_applies"`
-	DefaultIndex  string                    `json:"default_index,omitempty"`
-	Saved         bool                      `json:"saved"`
-	Settings      transport.SiteWebSettings `json:"settings"`
-	CacheChoices  []int                     `json:"cache_choices"`
-	ErrorCodes    []int                     `json:"error_codes"`
-	HTTPSEnforced bool                      `json:"https_enforced"`
-	Directives    siteWebDirectivesView     `json:"directives"`
+	IndexApplies bool                      `json:"index_applies"`
+	FieldsApply  bool                      `json:"fields_apply"`
+	NodeApplies  bool                      `json:"node_applies"`
+	DefaultIndex string                    `json:"default_index,omitempty"`
+	Saved        bool                      `json:"saved"`
+	Settings     transport.SiteWebSettings `json:"settings"`
+	CacheChoices []int                     `json:"cache_choices"`
+	ErrorCodes   []int                     `json:"error_codes"`
+	// PageCacheApplies: the site's type can have a page cache (G28);
+	// MayCache: the caller may turn it on or off (the administrator).
+	PageCacheApplies bool                  `json:"page_cache_applies"`
+	MayCache         bool                  `json:"may_cache"`
+	HTTPSEnforced    bool                  `json:"https_enforced"`
+	Directives       siteWebDirectivesView `json:"directives"`
 }
 
 type siteWebDirectivesView struct {
@@ -257,6 +263,8 @@ func (p *Panel) siteWebSettingsViewOf(ctx context.Context, r *http.Request, doma
 	if index {
 		view.DefaultIndex = services.DefaultIndexFiles(site.ProjectType)
 	}
+	view.PageCacheApplies = services.PageCacheApplies(site.ProjectType)
+	view.MayCache = callerIsAdministrator(r)
 	access, err := p.siteDirectivesAccess(ctx, r, domainID)
 	if err != nil {
 		return view, err
@@ -314,12 +322,25 @@ func (p *Panel) handleDomainWebSettings(w http.ResponseWriter, r *http.Request, 
 			writeClientError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
+		admin := callerIsAdministrator(r)
+		if !admin {
+			// G28: the page cache is the administrator's; anyone else's
+			// save keeps what the site has.
+			if current, err := loadSiteWebSettings(ctx, p.db.GetDB(), site.SiteID); err == nil {
+				req.Settings.PageCache, req.Settings.PageCacheMinutes = current.Settings.PageCache, current.Settings.PageCacheMinutes
+			}
+		}
 		prepared, err := services.PrepareSiteWebSettings(site.ProjectType, req.Settings)
 		if err != nil {
 			writeWebSettingsRefusal(w, err)
 			return
 		}
 		mutate = func(row *siteWebSettingsRow) error {
+			if !admin {
+				// Read again under the lock: the administrator may have
+				// changed it meanwhile.
+				prepared.PageCache, prepared.PageCacheMinutes = row.Settings.PageCache, row.Settings.PageCacheMinutes
+			}
 			row.Settings = prepared
 			return nil
 		}
@@ -327,6 +348,7 @@ func (p *Panel) handleDomainWebSettings(w http.ResponseWriter, r *http.Request, 
 		details["browser_cache"] = services.BrowserCacheLabel(prepared.BrowserCacheDays)
 		details["headers"] = len(prepared.Headers)
 		details["access"] = prepared.AccessMode
+		details["page_cache"] = prepared.PageCache
 	case "web-settings-directives":
 		var req struct {
 			Text string `json:"text"`

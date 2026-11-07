@@ -57,6 +57,12 @@ type SiteWebSettings struct {
 	// (error_page), a file in the document root that must exist. PHP and
 	// static sites.
 	ErrorPages []SiteErrorPage `json:"error_pages,omitempty"`
+	// PageCache (G28): nginx caches the site's pages (fastcgi_cache for
+	// PHP, proxy_cache for the proxied types), off by default and set by
+	// the administrator only. PageCacheMinutes: how long a page is used
+	// (0: 10 minutes; 1 to 1440).
+	PageCache        bool `json:"page_cache,omitempty"`
+	PageCacheMinutes int  `json:"page_cache_minutes,omitempty"`
 }
 
 // SiteErrorPage is one error code and the site's page for it.
@@ -97,3 +103,15 @@ const (
 	// nothing was written.
 	SitePartNginxFailingBefore = "nginx_failing_before"
 )
+
+// SitePageCacheClearRequest empties one site's page cache folder (G28).
+type SitePageCacheClearRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	SiteID              int    `json:"site_id"`
+}
+
+// SitePageCacheClearResponse says how many cache entries were removed.
+type SitePageCacheClearResponse struct {
+	Removed int    `json:"removed"`
+	Error   string `json:"error,omitempty"`
+}

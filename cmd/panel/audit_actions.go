@@ -125,6 +125,7 @@ var auditActionNames = []string{
 	"domain.site_config.keep",
 	"domain.site_config.recreate",
 	"domain.site_config.take",
+	"domain.web.cache_clear",
 	"domain.web.directives",
 	"domain.web.settings",
 	"entitlement.grant",

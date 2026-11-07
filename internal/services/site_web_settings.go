@@ -251,6 +251,20 @@ func PrepareSiteWebSettings(projectType string, s SiteWebSettings) (SiteWebSetti
 		out.NodePublic = true
 	}
 
+	// G28: the page cache (the Panel lets only the administrator set it).
+	if s.PageCache {
+		if !PageCacheApplies(projectType) {
+			return s, refuseWebField("page_cache", "the page cache applies to PHP sites and sites served by an application")
+		}
+		out.PageCache = true
+	}
+	if !validPageCacheMinutes(s.PageCacheMinutes) {
+		return s, refuseWebField("page_cache", "a cached page is used for 1 to 1440 minutes")
+	}
+	if out.PageCache {
+		out.PageCacheMinutes = s.PageCacheMinutes
+	}
+
 	// G26: the site's own error pages.
 	if len(s.ErrorPages) > 0 {
 		if !index {
@@ -312,6 +326,9 @@ func ApplicableSiteWebSettings(projectType string, s SiteWebSettings) (SiteWebSe
 	if !node {
 		s.NodePublic = false
 	}
+	if !PageCacheApplies(projectType) {
+		s.PageCache, s.PageCacheMinutes = false, 0
+	}
 	return PrepareSiteWebSettings(projectType, s)
 }
 
@@ -326,7 +343,7 @@ func validBrowserCacheDays(days int) bool {
 
 func siteWebSettingsEmpty(s SiteWebSettings) bool {
 	return len(s.IndexFiles) == 0 && len(s.MIMETypes) == 0 && s.BrowserCacheDays == 0 && len(s.Headers) == 0 &&
-		s.AccessMode == "" && len(s.AccessList) == 0 && !s.NodePublic && len(s.ErrorPages) == 0
+		s.AccessMode == "" && len(s.AccessList) == 0 && !s.NodePublic && len(s.ErrorPages) == 0 && !s.PageCache
 }
 
 // normalizedAccessEntry is one IP address or network in nginx's form.
@@ -402,6 +419,8 @@ func RenderWebHTTPConf() string {
 		}
 		b.WriteString("}\n")
 	}
+	// G28: the page cache's bypass.
+	b.WriteString(pageCacheMaps())
 	return b.String()
 }
 
@@ -484,22 +503,41 @@ type SitePart struct {
 	// file is the owner's, FallbackBody is written instead.
 	NeedsWebHTTP bool
 	FallbackBody string
+	// EnsureDir, when set, is made (0755) before the part is written: the
+	// page cache's parent folder, which nginx -t needs to exist.
+	EnsureDir string
 }
 
-// SitePartsFor renders the site's files for prepared settings.
+// SitePartsFor renders the site's files for prepared settings (no page
+// cache: SitePartsForSite adds it).
 func SitePartsFor(domain string, s SiteWebSettings, directives string) []SitePart {
-	settings := SitePart{
-		Name: SiteSettingsPartName, Path: SitePartPath(domain, SiteSettingsPartName),
-		Body: RenderSiteSettingsPart(domain, s, true),
+	s.PageCache = false
+	return SitePartsForSite(domain, 0, "", s, directives)
+}
+
+// SitePartsForSite renders the site's files, with the page cache of the
+// site's identity and project type (G28) when it is on.
+func SitePartsForSite(domain string, siteID int, projectType string, s SiteWebSettings, directives string) []SitePart {
+	cache := s.PageCache && siteID > 0 && PageCacheApplies(projectType)
+	body := RenderSiteSettingsPart(domain, s, true)
+	settings := SitePart{Name: SiteSettingsPartName, Path: SitePartPath(domain, SiteSettingsPartName), Body: body}
+	if cache {
+		settings.Body += renderPageCacheLines(siteID, projectType, s.PageCacheMinutes)
 	}
-	if s.BrowserCacheDays > 0 {
+	if s.BrowserCacheDays > 0 || cache {
+		// The fallback (the maps file is the owner's) has neither browser
+		// caching nor the page cache: both need its maps.
 		settings.NeedsWebHTTP = true
 		settings.FallbackBody = RenderSiteSettingsPart(domain, s, false)
 	}
-	return []SitePart{settings, {
+	parts := []SitePart{settings, {
 		Name: SiteDirectivesPartName, Path: SitePartPath(domain, SiteDirectivesPartName),
 		Body: RenderSiteDirectivesPart(domain, directives),
 	}}
+	if siteID > 0 && PageCacheApplies(projectType) {
+		parts = append(parts, pageCacheHTTPPart(domain, siteID, projectType, cache))
+	}
+	return parts
 }
 
 // SitePartState is a site file's state, read only: "absent", "unchanged"
@@ -537,6 +575,11 @@ func planSitePart(domain string, part SitePart, body string) (*plannedTrafficFil
 	switch state {
 	case transport.SiteFileChallengeUnchanged, transport.SiteFileChallengeKept:
 		return nil, state, nil
+	}
+	if part.EnsureDir != "" {
+		if err := os.MkdirAll(part.EnsureDir, 0o755); err != nil {
+			return nil, transport.SiteFileChallengeFailed, err
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(part.Path), 0o755); err != nil {
 		return nil, transport.SiteFileChallengeFailed, err

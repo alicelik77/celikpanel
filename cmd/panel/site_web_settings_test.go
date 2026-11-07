@@ -192,3 +192,43 @@ func TestWebSettingsErrorPageMissingIsAPrerequisite(t *testing.T) {
 		t.Fatalf("the refused save left a record: %+v", view)
 	}
 }
+
+// alpha.128 (G28): only the administrator turns the page cache on or off;
+// "Clear cache" needs the cache on and calls the Agent once.
+func TestPageCacheIsTheAdministratorsAndClears(t *testing.T) {
+	p, domainID, owner, _ := newSiteFeatureFixture(t)
+	web := &webApplyRecorder{}
+	web.install(t)
+	recorder := featureRequest(p, domainID, owner, http.MethodPost, "web-settings", `{"settings":{"page_cache":true}}`)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("customer save: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if view := readWebView(t, p, domainID, owner); view.Settings.PageCache || view.MayCache {
+		t.Fatalf("a customer turned the cache on: %+v", view)
+	}
+	recorder = featureRequest(p, domainID, owner, http.MethodPost, "web-settings/cache-clear", `{}`)
+	if recorder.Code != http.StatusConflict || featureCode(t, recorder) != errCodeWebPageCacheOff {
+		t.Fatalf("clear without cache: %d %s", recorder.Code, recorder.Body.String())
+	}
+	admin := &Caller{ID: 1, Role: roleAdmin}
+	recorder = featureRequest(p, domainID, admin, http.MethodPost, "web-settings", `{"settings":{"page_cache":true,"page_cache_minutes":5}}`)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("admin save: %d %s", recorder.Code, recorder.Body.String())
+	}
+	// A customer's later save keeps the administrator's cache.
+	recorder = featureRequest(p, domainID, owner, http.MethodPost, "web-settings", `{"settings":{"browser_cache_days":1}}`)
+	if view := readWebView(t, p, domainID, owner); recorder.Code != http.StatusOK || !view.Settings.PageCache || view.Settings.PageCacheMinutes != 5 {
+		t.Fatalf("customer save dropped the cache: %d %+v", recorder.Code, view.Settings)
+	}
+	calls := 0
+	saved := sitePageCacheClearCall
+	sitePageCacheClearCall = func(*Panel, context.Context, int) (transport.SitePageCacheClearResponse, error) {
+		calls++
+		return transport.SitePageCacheClearResponse{Removed: 3}, nil
+	}
+	t.Cleanup(func() { sitePageCacheClearCall = saved })
+	recorder = featureRequest(p, domainID, owner, http.MethodPost, "web-settings/cache-clear", `{}`)
+	if recorder.Code != http.StatusOK || calls != 1 {
+		t.Fatalf("clear: %d %s calls=%d", recorder.Code, recorder.Body.String(), calls)
+	}
+}
