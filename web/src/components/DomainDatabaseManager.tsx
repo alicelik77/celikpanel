@@ -15,6 +15,7 @@ import { PasswordInput } from './PasswordInput';
 import { AdminInstallLink } from './AdminInstallLink';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { DatabaseTools } from './DatabaseTools';
+import { DatabaseRemoteAccess } from './DatabaseRemoteAccess';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -458,6 +459,7 @@ export function DomainDatabaseManager({
                                     {/* alpha.128 (G7): the tools of this database. */}
                                     <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale}
                                         onRefusal={(problem, sentence) => refuse(problem, sentence)} onClear={clearRefusal} />
+                                    {!isAdditionalUser && <DatabaseRemoteAccess db={db} readOnly={readOnly || shown.stale} />}
                                 </div>
                             ))}
                         </div>

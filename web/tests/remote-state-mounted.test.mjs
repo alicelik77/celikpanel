@@ -61,6 +61,8 @@ const stubbedComponents = [
   'DNSCheckToolNotice',
   // alpha.128: each database's tools read their own address (DatabaseTools).
   'DatabaseTools',
+  // alpha.129: connections from outside read their own address when opened.
+  'DatabaseRemoteAccess',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.
