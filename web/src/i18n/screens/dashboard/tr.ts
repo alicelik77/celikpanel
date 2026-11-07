@@ -363,6 +363,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.server.reboot': 'sunucunun yeniden başlatılmasını istedi',
     'dashboard.audit.action.certificate.request.create': 'bir sertifika isteği oluşturdu',
     'dashboard.audit.action.certificate.request.discard': 'bir sertifika isteğini sildi',
+    'dashboard.audit.action.certificate.request.install': 'bir sertifika isteği için verilen sertifikayı kurdu',
     'dashboard.audit.action.repo.confine': '{target} paket deposunu kendi bileşeniyle sınırladı',
     'dashboard.audit.action.repo.confine.failed': '{target} paket deposunu kendi bileşeniyle sınırlayamadı',
     'dashboard.audit.action.repo.lane': '{target} paket deposunu sınırlaması ve otomatik güncellemeleriyle açtı ya da tamamladı',

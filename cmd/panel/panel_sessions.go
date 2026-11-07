@@ -63,6 +63,7 @@ const (
 	errCodeSessionNotFound         = "SESSION_NOT_FOUND"
 	errCodeSessionImpersonating    = "SESSION_CHANGE_WHILE_LOGGED_IN_AS"
 	errCodeSessionCurrent          = "SESSION_IS_CURRENT"
+	errCodeResellerOnly            = "RESELLER_ONLY"
 	panelAccessRecoveryCommand     = "sudo touch /etc/celikpanel/panel-access-open"
 	panelAccessRecoveryUndoCommand = "sudo rm /etc/celikpanel/panel-access-open"
 )
@@ -310,6 +311,8 @@ const (
 	ownSessionEndPath      = "/api/v1/auth/sessions/end"
 	ownSessionsEndOthers   = "/api/v1/auth/sessions/end-others"
 	allSessionsPath        = "/api/v1/panel/sessions"
+	resellerSessionsPath   = "/api/v1/reseller/sessions"
+	resellerSessionEndPath = "/api/v1/reseller/sessions/end"
 	allSessionEndPath      = "/api/v1/panel/sessions/end"
 	panelAccessSettingPath = "/api/v1/panel/access"
 )
@@ -341,8 +344,37 @@ func currentSessionHandle(r *http.Request) string {
 	return ""
 }
 
-// readSessions lists live sessions; userID 0 = every account.
-func (p *Panel) readSessions(ctx context.Context, userID int, current string) ([]sessionView, error) {
+// sessionScope is which sessions a reader may see and end: a WHERE clause
+// on sessions s (empty = every account) and whether the owner is named.
+type sessionScope struct {
+	clause    string
+	args      []any
+	hideOwner bool
+}
+
+func ownSessionScope(userID int) sessionScope {
+	return sessionScope{clause: `s.user_id = ?`, args: []any{userID}, hideOwner: true}
+}
+
+func allSessionScope() sessionScope { return sessionScope{} }
+
+// resellerSessionScope: the sessions of the reseller's own customers and of
+// those customers' team members, never another reseller's customers and
+// never the administrator's. A "Log in as" session someone other than this
+// reseller opened is the opener's, not shown here.
+func resellerSessionScope(resellerID int) sessionScope {
+	return sessionScope{clause: `s.user_id IN (
+			SELECT c.id FROM users c
+			WHERE c.parent_id = ? AND c.role = 'customer' AND COALESCE(NULLIF(c.account_type, ''), 'account') = 'account'
+			UNION
+			SELECT m.id FROM users m JOIN users c ON c.id = m.parent_id
+			WHERE c.parent_id = ? AND c.role = 'customer' AND COALESCE(NULLIF(c.account_type, ''), 'account') = 'account'
+			  AND m.account_type = 'additional_user')
+		AND (s.impersonator_id IS NULL OR s.impersonator_id = ?)`, args: []any{resellerID, resellerID, resellerID}}
+}
+
+// readSessions lists the live sessions of a scope.
+func (p *Panel) readSessions(ctx context.Context, scope sessionScope, current string) ([]sessionView, error) {
 	query := `
 		SELECT substr(s.token_hash, 1, 16), s.user_id, COALESCE(u.username, ''), COALESCE(u.role, ''),
 		       COALESCE(s.created_at, ''), COALESCE(s.last_seen_at, ''), s.expires_at,
@@ -353,9 +385,9 @@ func (p *Panel) readSessions(ctx context.Context, userID int, current string) ([
 		LEFT JOIN users o ON o.id = s.impersonator_id
 		WHERE s.expires_at > ?`
 	args := []any{time.Now().UTC().Format(time.RFC3339)}
-	if userID > 0 {
-		query += ` AND s.user_id = ?`
-		args = append(args, userID)
+	if scope.clause != "" {
+		query += ` AND ` + scope.clause
+		args = append(args, scope.args...)
 	}
 	query += ` ORDER BY COALESCE(s.last_seen_at, s.created_at) DESC LIMIT 500`
 	rows, err := p.db.GetDB().QueryContext(ctx, query, args...)
@@ -377,7 +409,7 @@ func (p *Panel) readSessions(ctx context.Context, userID int, current string) ([
 			continue
 		}
 		view.Current = view.Handle == current
-		if userID > 0 {
+		if scope.hideOwner {
 			view.UserID, view.Username, view.Role = 0, "", ""
 		}
 		out = append(out, view)
@@ -431,7 +463,7 @@ func (p *Panel) handleOwnSessions(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusUnauthorized, errCodeAuthRequired, "authentication required", "")
 		return
 	}
-	sessions, err := p.readSessions(r.Context(), c.ID, currentSessionHandle(r))
+	sessions, err := p.readSessions(r.Context(), ownSessionScope(c.ID), currentSessionHandle(r))
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -466,7 +498,7 @@ func (p *Panel) handleOwnSessionEnd(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, errCodeSessionCurrent, "This is the session you are using now. Use Sign out to end it.", "")
 		return
 	}
-	p.endSession(w, r, c.ID, handle, "auth.session.end")
+	p.endSession(w, r, ownSessionScope(c.ID), handle, "auth.session.end")
 }
 
 // handleOwnSessionsEndOthers: POST ends every session of the caller but
@@ -496,20 +528,17 @@ func (p *Panel) handleOwnSessionsEndOthers(w http.ResponseWriter, r *http.Reques
 	writeSessionsJSON(w, map[string]int64{"ended": ended})
 }
 
-// endSession deletes one session; userID 0 = any account (administrator).
-func (p *Panel) endSession(w http.ResponseWriter, r *http.Request, userID int, handle, action string) {
-	query := `DELETE FROM sessions WHERE substr(token_hash, 1, 16) = ?`
+// endSession deletes one session of a scope.
+func (p *Panel) endSession(w http.ResponseWriter, r *http.Request, scope sessionScope, handle, action string) {
+	where := `substr(s.token_hash, 1, 16) = ?`
 	args := []any{handle}
-	if userID > 0 {
-		query += ` AND user_id = ?`
-		args = append(args, userID)
+	if scope.clause != "" {
+		where += ` AND ` + scope.clause
+		args = append(args, scope.args...)
 	}
 	var owner int
-	lookup := `SELECT user_id FROM sessions WHERE substr(token_hash, 1, 16) = ?`
-	if userID > 0 {
-		lookup += ` AND user_id = ?`
-	}
-	_ = p.db.GetDB().QueryRowContext(r.Context(), lookup, args...).Scan(&owner)
+	_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT s.user_id FROM sessions s WHERE `+where, args...).Scan(&owner)
+	query := `DELETE FROM sessions WHERE token_hash IN (SELECT s.token_hash FROM sessions s WHERE ` + where + `)`
 	result, err := p.db.GetDB().ExecContext(r.Context(), query, args...)
 	if err != nil {
 		writeServerError(w, err)
@@ -525,12 +554,62 @@ func (p *Panel) endSession(w http.ResponseWriter, r *http.Request, userID int, h
 	writeSessionsJSON(w, map[string]int64{"ended": ended})
 }
 
+// requireResellerForSessions: the reseller's own account, not "Log in as".
+func requireResellerForSessions(w http.ResponseWriter, r *http.Request, changing bool) *Caller {
+	c := currentCaller(r)
+	if c == nil || !c.hasAccountRole(roleReseller) {
+		writeCodedError(w, http.StatusForbidden, errCodeResellerOnly,
+			"Only a reseller sees the sessions of their customers here. An administrator sees every session under Security.", "")
+		return nil
+	}
+	if changing && c.ImpersonatorID > 0 {
+		writeCodedError(w, http.StatusConflict, errCodeSessionImpersonating, sessionImpersonatingMessage, "")
+		return nil
+	}
+	return c
+}
+
+// handleResellerSessions: GET the live sessions of the reseller's customers
+// and their team members.
+func (p *Panel) handleResellerSessions(w http.ResponseWriter, r *http.Request) {
+	if !sessionsMethod(w, r, http.MethodGet) {
+		return
+	}
+	c := requireResellerForSessions(w, r, false)
+	if c == nil {
+		return
+	}
+	sessions, err := p.readSessions(r.Context(), resellerSessionScope(c.ID), currentSessionHandle(r))
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	writeSessionsJSON(w, sessionsReport{Sessions: sessions, IdleMinutes: p.panelAccess(r.Context()).idleMin})
+}
+
+// handleResellerSessionEnd: POST {"handle"} ends one of those sessions.
+func (p *Panel) handleResellerSessionEnd(w http.ResponseWriter, r *http.Request) {
+	if !sessionsMethod(w, r, http.MethodPost) {
+		return
+	}
+	c := requireResellerForSessions(w, r, true)
+	if c == nil {
+		return
+	}
+	handle, ok := decodeSessionHandle(r)
+	if !ok {
+		writeCodedError(w, http.StatusBadRequest, errCodeSessionNotFound, "This session could not be read, so nothing was ended. Reload the list and try again.", "")
+		return
+	}
+	p.endSession(w, r, resellerSessionScope(c.ID), handle, "auth.session.end")
+}
+
 // handleAllSessions: GET every account's live sessions (administrator).
 func (p *Panel) handleAllSessions(w http.ResponseWriter, r *http.Request) {
 	if !sessionsMethod(w, r, http.MethodGet) {
 		return
 	}
-	sessions, err := p.readSessions(r.Context(), 0, currentSessionHandle(r))
+	sessions, err := p.readSessions(r.Context(), allSessionScope(), currentSessionHandle(r))
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -561,7 +640,7 @@ func (p *Panel) handleAllSessionEnd(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, errCodeSessionCurrent, "This is the session you are using now. Use Sign out to end it.", "")
 		return
 	}
-	p.endSession(w, r, 0, handle, "auth.session.end")
+	p.endSession(w, r, allSessionScope(), handle, "auth.session.end")
 }
 
 type panelAccessView struct {

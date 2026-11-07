@@ -89,6 +89,12 @@ type ValidateCertRequest struct {
 	KeyContent   string `json:"key_content"`
 	ChainContent string `json:"chain_content,omitempty"`
 	Domain       string `json:"domain"`
+	// RequestKeyToken names a certificate request (alpha.128, G31) whose
+	// private key the Agent reads from its own key file instead of
+	// KeyContent, which must then be empty; RequestKeySHA256 is the public
+	// key fingerprint the panel recorded for that request.
+	RequestKeyToken  string `json:"request_key_token,omitempty"`
+	RequestKeySHA256 string `json:"request_key_sha256,omitempty"`
 }
 
 type ValidateCertResponse struct {
@@ -117,6 +123,9 @@ type InstallCertRequest struct {
 	CertContent         string `json:"cert_content"`
 	KeyContent          string `json:"key_content"`
 	ChainContent        string `json:"chain_content,omitempty"`
+	// See ValidateCertRequest (alpha.128, G31).
+	RequestKeyToken  string `json:"request_key_token,omitempty"`
+	RequestKeySHA256 string `json:"request_key_sha256,omitempty"`
 }
 
 type InstallCertResponse struct {

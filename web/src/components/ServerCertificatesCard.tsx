@@ -5,6 +5,7 @@ import { useMaintenanceWords, type MaintenanceWordKey } from '../i18n/serverMain
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { confirmAction, type OperationEnd } from '../lib/confirmAction';
 import { useRemote } from '../lib/remote';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { Button, Dialog, ErrorBanner, Field, inputClass, KeepWords, RemoteGate } from './ui';
 import { LifeLine, lifeDate, type Tone } from './LifeLine';
 
@@ -153,6 +154,7 @@ function CSRBlock({ request }: { request: CertificateRequestItem }) {
 function RequestRow({ request, reload }: { request: CertificateRequestItem; reload: () => void }) {
     const { t, locale } = useMaintenanceWords();
     const [open, setOpen] = useState(false);
+    const [installing, setInstalling] = useState(false);
     const discard = () => void confirmAction({
         title: t('mcert.req.discardTitle', { name: request.common_name }),
         message: t('mcert.req.discardMessage'),
@@ -180,13 +182,107 @@ function RequestRow({ request, reload }: { request: CertificateRequestItem; relo
                     <p className="break-all font-medium text-fg">{request.names.join(', ')}</p>
                     <p className="text-fg-muted">{t('mcert.req.created', { date: lifeDate(request.created_at, locale, true), key: t(`mcert.req.key.${request.key_type}` as MaintenanceWordKey) })}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Button onClick={() => setOpen(!open)} className="max-sm:min-h-11">{t(open ? 'mcert.req.hide' : 'mcert.req.show')}</Button>
+                    <Button variant="primary" onClick={() => setInstalling(true)} className="max-sm:min-h-11" data-certificate-request-install={request.id}>{t('mcert.req.install')}</Button>
                     <Button variant="danger" onClick={discard} className="max-sm:min-h-11">{t('mcert.req.discard')}</Button>
                 </div>
             </div>
             {open && <CSRBlock request={request} />}
+            {installing && <InstallIssuedDialog request={request} onClose={() => setInstalling(false)} reload={reload} />}
         </li>
+    );
+}
+
+interface SiteChoice { id: number; name: string }
+
+function decodeSites(raw: unknown): SiteChoice[] {
+    if (!Array.isArray(raw)) throw new Error('shape');
+    return raw.map((item) => {
+        const site = item as Partial<SiteChoice>;
+        if (typeof site.id !== 'number' || typeof site.name !== 'string') throw new Error('site');
+        return { id: site.id, name: site.name };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Installing the certificate an authority issued for a request (alpha.128,
+// G31 follow-up): the certificate (and chain) and the site. The server
+// proves the certificate belongs to the request's key, is valid now and
+// covers the requested names before anything changes, then runs the site's
+// own install with its real steps. The key never comes here.
+// Verilen sertifikanın kurulması: sunucu önce sertifikanın isteğin
+// anahtarına ait olduğunu kanıtlar; anahtar buraya hiç gelmez.
+function InstallIssuedDialog({ request, onClose, reload }: { request: CertificateRequestItem; onClose: () => void; reload: () => void }) {
+    const { t } = useMaintenanceWords();
+    const sites = useRemote('/api/v1/domains', decodeSites);
+    const [certificate, setCertificate] = useState('');
+    const [siteID, setSiteID] = useState<number | null>(null);
+    const known = sites.remote.state === 'known' ? sites.remote.value : null;
+    const preferred = known?.find((site) => site.name === request.common_name || `www.${site.name}` === request.common_name || `*.${site.name}` === request.common_name);
+    const chosen = known?.find((site) => site.id === (siteID ?? preferred?.id)) ?? null;
+    const readFile = async (file: File | undefined) => {
+        if (file && file.size <= 256 * 1024) setCertificate(await file.text());
+    };
+    const proceed = () => {
+        if (!chosen || certificate.trim() === '') return;
+        const site = chosen;
+        onClose();
+        void confirmAction({
+            title: t('mcert.inst.confirmTitle', { site: site.name }),
+            message: t('mcert.inst.confirmMessage', { site: site.name }),
+            confirmLabel: t('mcert.inst.confirm'),
+            progressTitle: t('mcert.inst.progress', { site: site.name }),
+            action: async (report): Promise<OperationEnd> => {
+                let res: Response | null = null;
+                try {
+                    res = await sendWithSteps(report, flowSteps(t as never, 'sslUpload', ['validate!', 'install', 'reload', 'mail']), t as never, `certificateRequestInstall.${request.id}`,
+                        (headers) => fetch(`${REQUESTS_URL}/${request.id}/install`, {
+                            method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ target: 'site', domain_id: site.id, certificate, chain: '' }),
+                        }));
+                } catch {
+                    res = null;
+                }
+                reload();
+                if (!res) return { state: 'unknown', reason: t('mcert.req.lost') };
+                if (res.ok) return { state: 'done', message: t('mcert.inst.done', { site: site.name }) };
+                const problem = await readApiError(res);
+                // The checks before anything changes are an unmet prerequisite (D-024).
+                const before = res.status === 409 || res.status === 400 || res.status === 404;
+                return { state: before ? 'blocked' : 'failed', reason: refusalText(problem, t, 'mcert.inst.failed' as never) };
+            },
+        });
+    };
+    return (
+        <Dialog id="certificate-request-install" title={t('mcert.inst.title', { name: request.common_name })} onDismiss={onClose} width="lg"
+            onSubmit={(event) => { event.preventDefault(); proceed(); }}
+            actions={<>
+                <Button onClick={onClose}>{t('common.cancel')}</Button>
+                <Button variant="primary" type="submit" disabled={!chosen || certificate.trim() === ''}>{t('mcert.inst.next')}</Button>
+            </>}>
+            <div className="space-y-4">
+                <p className="text-sm text-fg-muted">{t('mcert.inst.intro')}</p>
+                <Field label={t('mcert.inst.cert')} htmlFor="certificate-request-issued">
+                    <textarea id="certificate-request-issued" rows={8} value={certificate} onChange={(event) => setCertificate(event.target.value)} className={`${inputClass} font-mono text-xs`} spellCheck={false} autoCapitalize="none" data-certificate-issued="" />
+                </Field>
+                <Field label={t('mcert.inst.file')} htmlFor="certificate-request-issued-file">
+                    <input id="certificate-request-issued-file" type="file" accept=".crt,.pem,.cer,.txt" className="text-sm" onChange={(event) => void readFile(event.target.files?.[0])} />
+                </Field>
+                <RemoteGate remote={sites.remote} checking={t('mcert.inst.sitesChecking')} failed={t('mcert.inst.sitesFailed')} onRetry={() => void sites.retry()} busy={sites.reading}>
+                    {({ value }) => value.length === 0
+                        ? <p className="text-sm text-fg-muted">{t('mcert.inst.noSites')}</p>
+                        : (
+                            <Field label={t('mcert.inst.site')} htmlFor="certificate-request-site">
+                                <select id="certificate-request-site" value={chosen?.id ?? ''} onChange={(event) => setSiteID(Number(event.target.value))} className={inputClass} data-certificate-site="">
+                                    {!chosen && <option value="" disabled>—</option>}
+                                    {value.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
+                                </select>
+                            </Field>
+                        )}
+                </RemoteGate>
+                <p className="text-xs text-fg-muted">{t('mcert.inst.panelMail')}</p>
+            </div>
+        </Dialog>
     );
 }
 

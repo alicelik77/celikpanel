@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 // alpha.128 ops (G23): a team member's own activity, in its own chunk.
 const ActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityCard })));
+const RecentActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.RecentActivityCard })));
 import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
@@ -1831,6 +1832,9 @@ function CustomerDashboard() {
                     </dl>
                 </Card>
             </div>
+
+            {/* alpha.128 (G23): this account's newest actions, scoped by the server. */}
+            {(role === 'customer' || role === 'reseller') && <Suspense fallback={null}><RecentActivityCard /></Suspense>}
 
             <section className="mt-6">
                 <SectionTitle icon={Plus} tint="bg-primary/10 text-primary" title={t('dashboard.quickActions')} />

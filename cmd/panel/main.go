@@ -1584,6 +1584,8 @@ func main() {
 	http.HandleFunc(ownSessionsEndOthers, panel.handleOwnSessionsEndOthers)
 	http.HandleFunc(allSessionsPath, panel.handleAllSessions)
 	http.HandleFunc(allSessionEndPath, panel.handleAllSessionEnd)
+	http.HandleFunc(resellerSessionsPath, panel.handleResellerSessions)
+	http.HandleFunc(resellerSessionEndPath, panel.handleResellerSessionEnd)
 	http.HandleFunc(panelAccessSettingPath, panel.handlePanelAccess)
 	http.HandleFunc(panelLicenseAccessPath, panel.handleLicenseAccess)
 	panel.registerRecoveryRoutes(http.DefaultServeMux)

@@ -382,6 +382,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.server.reboot': 'asked to restart the server',
     'dashboard.audit.action.certificate.request.create': 'made a certificate request',
     'dashboard.audit.action.certificate.request.discard': 'discarded a certificate request',
+    'dashboard.audit.action.certificate.request.install': 'installed the certificate issued for a certificate request',
     'dashboard.audit.action.repo.confine': 'confined the package repository {target} to its component',
     'dashboard.audit.action.repo.confine.failed': 'could not confine the package repository {target} to its component',
     'dashboard.audit.action.repo.lane': 'enabled or completed the package repository {target} with its confinement and automatic updates',

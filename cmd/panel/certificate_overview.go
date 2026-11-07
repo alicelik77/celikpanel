@@ -523,6 +523,11 @@ func (p *Panel) handleCertificateRequestItem(w http.ResponseWriter, r *http.Requ
 	rest := strings.TrimPrefix(r.URL.Path, certificateRequestsPath+"/")
 	idText, action, found := strings.Cut(rest, "/")
 	id, valid := strictPositiveID(idText)
+	if found && action == "install" && valid {
+		// alpha.128 (G31 follow-up): install the issued certificate.
+		p.handleCertificateRequestInstall(w, r, id)
+		return
+	}
 	if !found || action != "discard" || !valid {
 		writeCodedError(w, http.StatusNotFound, errCodeCertificateRequestNotFound, "No such certificate request. Reload the page to see the current list.", "")
 		return

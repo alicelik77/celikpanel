@@ -104,4 +104,6 @@ export const trDomainOps: Record<DomainOpsKey, string> = {
     'activity.cardText': 'Hesabınızda sizin ve sizin adınıza işlem yapanların yaptıklarını görün.',
     'activity.cardTextTeam': 'Panelde yaptıklarınızı görün.',
     'activity.cardOpen': 'Etkinliği aç',
+    'activity.recentTitle': 'Son etkinlik',
+    'activity.recentAll': 'Bütün etkinlik',
 };

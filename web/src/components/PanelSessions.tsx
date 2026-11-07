@@ -28,6 +28,7 @@ import { useAuth } from '../auth/AuthContext';
 export const OWN_SESSIONS_URL = '/api/v1/auth/sessions';
 export const ALL_SESSIONS_URL = '/api/v1/panel/sessions';
 export const PANEL_ACCESS_URL = '/api/v1/panel/access';
+export const RESELLER_SESSIONS_URL = '/api/v1/reseller/sessions';
 
 type Key = TranslationKey | PanelSessionsKey;
 
@@ -197,11 +198,15 @@ export function OwnSessionsCard() {
     );
 }
 
-/** Security (administrator): every account's live sessions. */
-export function AllSessionsCard() {
+/**
+ * Every session a manager may end: the administrator's every account
+ * (Security), or a reseller's own customers and their team members (My
+ * account). The server decides the scope.
+ */
+function ManagedSessionsCard({ url, kind }: { url: string; kind: 'all' | 'customers' }) {
     const { t } = useSessionWords();
     const { user } = useAuth();
-    const read = useRemote(ALL_SESSIONS_URL, decodeSessions);
+    const read = useRemote(url, decodeSessions);
     const impersonating = user.impersonating === true;
     const end = async (session: PanelSession) => {
         const ok = await confirmAction({
@@ -211,18 +216,18 @@ export function AllSessionsCard() {
             tone: 'danger',
             progressTitle: t('psess.ending'),
             action: async () => {
-                await endSessions(`${ALL_SESSIONS_URL}/end`, { handle: session.handle }, t);
+                await endSessions(`${url}/end`, { handle: session.handle }, t);
             },
         });
         if (ok) await read.retry();
     };
     return (
-        <section className="rounded-xl border border-border bg-surface p-5" data-security-section="sessions">
+        <section className="rounded-xl border border-border bg-surface p-5" data-security-section={kind === 'all' ? 'sessions' : undefined} data-account-section={kind === 'customers' ? 'customer-sessions' : undefined}>
             <h2 className="flex items-center gap-2 text-base font-semibold text-fg">
                 <MonitorSmartphone className="h-4 w-4 text-fg-muted" aria-hidden="true" />
-                {t('psess.all.title')}
+                {t(kind === 'all' ? 'psess.all.title' : 'psess.customers.title')}
             </h2>
-            <p className="mb-4 mt-0.5 text-sm text-fg-muted">{t('psess.all.desc')}</p>
+            <p className="mb-4 mt-0.5 text-sm text-fg-muted">{t(kind === 'all' ? 'psess.all.desc' : 'psess.customers.desc')}</p>
             <RemoteGate remote={read.remote} checking={t('psess.checking')} failed={t('psess.readFailed')} onRetry={() => void read.retry()} busy={read.reading}>
                 {({ value }) => (
                     <div className="grid gap-2">
@@ -231,12 +236,22 @@ export function AllSessionsCard() {
                                 <SessionRow key={session.handle} session={session} showOwner canEnd={!impersonating} onEnd={(chosen) => void end(chosen)} />
                             ))}
                         </ul>
-                        {value.sessions.every((session) => session.current) && <p className="text-sm text-fg-muted">{t('psess.all.none')}</p>}
+                        {value.sessions.every((session) => session.current) && <p className="text-sm text-fg-muted">{t(kind === 'all' ? 'psess.all.none' : 'psess.customers.none')}</p>}
                     </div>
                 )}
             </RemoteGate>
         </section>
     );
+}
+
+/** Security (administrator): every account's live sessions. */
+export function AllSessionsCard() {
+    return <ManagedSessionsCard url={ALL_SESSIONS_URL} kind="all" />;
+}
+
+/** My account (reseller): the sessions of the reseller's customers and their team members. */
+export function CustomerSessionsCard() {
+    return <ManagedSessionsCard url={RESELLER_SESSIONS_URL} kind="customers" />;
 }
 
 function idleLabel(minutes: number, t: (key: Key, values?: Record<string, string | number>) => string): string {
