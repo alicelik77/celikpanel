@@ -484,6 +484,11 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "redirects":
 		// alpha.114: free-form redirects of the site.
 		match.kind, match.methods = "site-redirects", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
+	case "web-settings":
+		// alpha.128: the site's web server settings (site_web_settings.go).
+		match.kind, match.methods = "web-settings", getPost
+	case "web-settings/directives":
+		match.kind, match.methods = "web-settings-directives", []string{http.MethodPost}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
@@ -615,6 +620,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":
 		p.handleDomainSiteFeatures(w, r, match.domainID, match.kind)
+	case "web-settings", "web-settings-directives":
+		p.handleDomainWebSettings(w, r, match.domainID, match.kind)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":
@@ -1623,6 +1630,8 @@ func main() {
 	http.HandleFunc("/api/v1/settings/dns-cluster", panel.handleDNSCluster)
 	http.HandleFunc("/api/v1/settings/dns-setup", panel.handleDNSSetup)
 	http.HandleFunc("/api/v1/nginx/ratelimits", panel.handleNginxRateLimits)
+	// alpha.128: offer additional nginx directives to resellers and customers.
+	http.HandleFunc(nginxDirectivesOfferPath, panel.handleNginxDirectivesOffer)
 
 	// Fail2ban Management
 	http.HandleFunc("/api/v1/fail2ban/jails", panel.handleFail2banJails)

@@ -161,6 +161,11 @@ type SiteFileResult struct {
 	// log setting in ManagedDir (SiteFileChallenge* words: written,
 	// unchanged, kept, failed); "" when the operation did not look at it.
 	TrafficLog string
+	// SiteParts (alpha.128, additive) is what happened to each of the site's
+	// web server setting files in ManagedDir, by file name (settings.site,
+	// directives.site, and the http-level files they need): the challenge
+	// words or SitePart*. Nil when the operation carried no web settings.
+	SiteParts map[string]string
 	// Validation is, for a kept file (owner-edited, foreign, unknown origin),
 	// whether a certificate for the site can be validated without changing
 	// the file (SiteFileValidation*); "" for any other file.

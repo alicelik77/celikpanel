@@ -69,6 +69,7 @@ export const enTransfersScreens = {
     'transfer.permission.ssh': 'SSH (command line)',
     'transfer.permission.wordpress_tools': 'WordPress tools',
     'transfer.permission.malware_scan': 'Malware scan results',
+    'transfer.permission.nginx_directives': 'Additional nginx directives',
     'transfer.permission.remote_backup_destinations': 'Own remote backup destinations',
     'transfer.permission.service_apps': 'AI and automation apps',
     'transfer.permission.program_apps': 'Uploaded programs',

@@ -1441,6 +1441,8 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the web server settings (migration 68, alpha.128).
+        DROP TABLE site_web_settings;
         -- Reverse the monitoring alerts (migration 65, alpha.127).
         DROP TABLE site_uptime;
         DROP INDEX idx_monitoring_alerts_opened;

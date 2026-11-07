@@ -78,6 +78,10 @@ const DomainSiteProtect = lazy(() => import('./DomainSiteFeatures').then((module
 const DomainSiteRedirects = lazy(() => import('./DomainSiteFeatures').then((module) => ({
     default: module.DomainSiteRedirects,
 })));
+// The site's web server settings (alpha.128), fetched when the sub-tab opens.
+const DomainWebSettings = lazy(() => import('./DomainWebSettings').then((module) => ({
+    default: module.DomainWebSettings,
+})));
 // The site's configuration file (D-031), for an administrator; fetched when
 // it is needed, like the panels above.
 // Sitenin yapılandırma dosyası; gerektiğinde getirilir.
@@ -413,6 +417,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ] : []),
         ...(canView('files') && open('site_protect_redirects') && projectType !== 'forwarding' ? [
             { id: 'redirects', labelKey: 'siteFeatures.redirect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteRedirects domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
+        ] : []),
+        ...(canView('files') && projectType !== 'forwarding' ? [
+            { id: 'web', labelKey: 'siteFeatures.web.title', capabilities: ['files'], render: (readOnly) => <DomainWebSettings domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
         ] : []),
         ...(role === 'admin' ? [
             { id: 'config', labelKey: 'siteConfig.tab', capabilities: ['files'], render: () => <DomainSiteConfig domainId={domain.id} domainName={domain.domain_name} onReasonEnded={rereadList} /> } satisfies SubDef,

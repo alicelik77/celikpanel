@@ -63,6 +63,7 @@ export const trTransfersScreens: Record<TransfersScreenKey, string> = {
     'transfer.permission.ssh': 'SSH (komut satırı)',
     'transfer.permission.wordpress_tools': 'WordPress araçları',
     'transfer.permission.malware_scan': 'Zararlı yazılım taraması sonuçları',
+    'transfer.permission.nginx_directives': 'Ek nginx yönergeleri',
     'transfer.permission.remote_backup_destinations': 'Kendi uzak yedek hedefleri',
     'transfer.permission.service_apps': 'Yapay zekâ ve otomasyon uygulamaları',
     'transfer.permission.program_apps': 'Yüklenen programlar',

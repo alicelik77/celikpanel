@@ -118,10 +118,23 @@ func ACMEChallengeFilePath(domain string) string {
 // RenderACMEChallengeFile is the body of ACMEChallengeFilePath: the HTTP-01
 // location, root-owned validation content only, never tenant public_html.
 func RenderACMEChallengeFile(domain, challengeRoot string) string {
+	return RenderACMEChallengeFileFor(domain, challengeRoot, false)
+}
+
+// RenderACMEChallengeFileFor is RenderACMEChallengeFile; allowAll (alpha.128:
+// the site limits access by address in its web server settings) adds
+// `allow all;`, because the site's server-level allow/deny would otherwise be
+// inherited by this location and refuse the certificate authority. Without
+// an access rule the file is exactly what it was.
+func RenderACMEChallengeFileFor(domain, challengeRoot string, allowAll bool) string {
+	allow := ""
+	if allowAll {
+		allow = "    allow all;\n"
+	}
 	return "# The ACME HTTP-01 challenge location of " + domain + ", written by CelikPanel.\n" +
 		"# This directory is CelikPanel's; put your own additions in " + OwnerIncludeDir(domain) + "/*.conf.\n" +
 		"# Doğrulama konumu; bu dizin CelikPanel'indir, kendi eklemeleriniz " + OwnerIncludeDir(domain) + " içine.\n" +
-		"location ^~ /.well-known/acme-challenge/ {\n" +
+		"location ^~ /.well-known/acme-challenge/ {\n" + allow +
 		"    root " + challengeRoot + ";\n" +
 		"    default_type text/plain;\n" +
 		"    try_files $uri =404;\n" +
@@ -208,6 +221,13 @@ type ManagedVhostItem struct {
 	// Panel's directory (traffic_log.go, alpha.118) whenever the vhost after
 	// this operation reads that directory.
 	TrafficLog *TrafficLogItem
+	// SiteParts (alpha.128, site_web_settings.go): the site's web server
+	// setting files, kept whenever the vhost after this operation reads the
+	// content-only include point. Nil for a site that never saved one.
+	SiteParts []SitePart
+	// ACMEAllowAll: the challenge file says `allow all;` (the site limits
+	// access by address; RenderACMEChallengeFileFor).
+	ACMEAllowAll bool
 }
 
 type siteFileInspection struct {
@@ -643,7 +663,7 @@ func challengeFileState(item ManagedVhostItem) (plannedChallengeFile, string) {
 	path := ACMEChallengeFilePath(item.Domain)
 	plan := plannedChallengeFile{
 		domain: item.Domain, path: path,
-		sealed: []byte(SealManagedText(RenderACMEChallengeFile(item.Domain, item.ACMEChallengeRoot))),
+		sealed: []byte(SealManagedText(RenderACMEChallengeFileFor(item.Domain, item.ACMEChallengeRoot, item.ACMEAllowAll))),
 	}
 	plan.inspected = inspectSiteFile(path, nil, "")
 	switch plan.inspected.state {
@@ -959,6 +979,43 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		}
 	}
 
+	// alpha.128: the site's web server setting files, by the same rule, for
+	// the vhost's content-only include point (`*.site`). A kept vhost
+	// without that line reads none of them: nothing is written, and the
+	// result says so.
+	var siteFiles []*plannedTrafficFile
+	siteIndexes := []int{}
+	webHTTP := &webHTTPPlan{}
+	for index, item := range items {
+		if item.SiteParts == nil {
+			continue
+		}
+		result := &results[index]
+		result.SiteParts = make(map[string]string, len(item.SiteParts))
+		kept := result.Outcome == transport.SiteFileOutcomeKept
+		reads := vhostTouched[index] || result.Outcome == transport.SiteFileOutcomeUnchanged ||
+			(kept && fileHasDirective(keptContent[index], SiteIncludeLine(item.Domain)))
+		if !reads {
+			for _, part := range item.SiteParts {
+				result.SiteParts[part.Name] = transport.SitePartNotRead
+			}
+			continue
+		}
+		files, err := planSitePartsOf(item, result.SiteParts, webHTTP)
+		if err != nil {
+			result.Detail = boundedSiteFileDetail(strings.TrimPrefix(result.Detail+"; ", "; ") + "web server settings: " + err.Error())
+		}
+		if len(files) > 0 {
+			siteFiles = append(siteFiles, files...)
+			siteIndexes = append(siteIndexes, index)
+		}
+	}
+	if webHTTP.file != nil {
+		// First in the list, so a put-back restores it last.
+		siteFiles = append([]*plannedTrafficFile{webHTTP.file}, siteFiles...)
+	}
+	trafficFiles = append(trafficFiles, siteFiles...)
+
 	for _, path := range unchanged {
 		removeStalePending(path)
 	}
@@ -985,6 +1042,16 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		}
 		for _, index := range trafficIndexes {
 			results[index].TrafficLog = transport.SiteFileChallengeFailed
+		}
+		for _, index := range siteIndexes {
+			for name, outcome := range results[index].SiteParts {
+				if outcome == transport.SiteFileChallengeWritten || outcome == transport.SitePartRemoved || outcome == transport.SitePartHTTPKept {
+					results[index].SiteParts[name] = transport.SiteFileChallengeFailed
+				}
+			}
+			if !vhostTouched[index] {
+				results[index].Detail = boundedSiteFileDetail(detail)
+			}
 		}
 		setValidation()
 	}
@@ -1017,6 +1084,9 @@ func (ng *NginxGenerator) ApplyManagedVhosts(items []ManagedVhostItem) ([]transp
 		results[plan.index].Reloaded = true
 	}
 	for _, index := range trafficIndexes {
+		results[index].Reloaded = true
+	}
+	for _, index := range siteIndexes {
 		results[index].Reloaded = true
 	}
 	setValidation()
@@ -1328,6 +1398,8 @@ func removePanelManagedDir(domain string) {
 		_ = os.Remove(path)
 	}
 	removeTrafficInclude(domain)
+	// alpha.128: the site's web server setting files.
+	removeSiteParts(domain)
 	// alpha.118: the application rules and setup lock of a deleted site.
 	removeUnchangedAppIncludes(domain)
 	directory := PanelManagedDir(domain)

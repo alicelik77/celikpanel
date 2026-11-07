@@ -103,6 +103,11 @@ export const enSiteFeaturesScreens = {
     'account.recovery.download': 'Download as a text file',
     'account.recovery.saved': 'I saved the codes',
     'account.recovery.fileHeader': 'CelikPanel two-factor recovery codes. Each code works once.',
+    // --- alpha.128: the Web server sub-tab and its audit words ---
+    'siteFeatures.web.title': 'Web server',
+    'dashboard.audit.action.domain.web.settings': 'changed the web server settings of a site',
+    'dashboard.audit.action.domain.web.directives': 'changed the additional nginx directives of a site',
+    'dashboard.audit.action.nginx.directives.offer': 'changed whether additional nginx directives are offered',
 } as const;
 
 export type SiteFeaturesScreenKey = keyof typeof enSiteFeaturesScreens;
