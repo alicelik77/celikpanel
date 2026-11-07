@@ -26,7 +26,7 @@ type domainDeletionStatusSnapshot struct {
 	// dnsRemoved: the zone's removal was published and verified (its
 	// deletion marker retired, no zone, no publication pending), for example
 	// by the automatic re-check after the backup caught up; the rest of the
-	// deletion still waits for "Retry this deletion".
+	// deletion is finished by reconcileLocalDNSDeletionsOnce (alpha.128).
 	dnsRemoved bool
 	// remote: a joined server's deletion (the zone is on the main DNS
 	// server); remoteDNS is what its saved records say.
@@ -41,7 +41,7 @@ const domainDeletionDNSStageDone = "dns_removed"
 // domainDeletionDNSRemovalConfirmedReason names that state for the screen.
 const domainDeletionDNSRemovalConfirmedReason = "dns_removal_confirmed"
 
-const domainDeletionDNSRemovedEnglish = "The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). The rest of the deletion has not run yet: use “Retry this deletion” to finish removing the domain from this server. Nothing else is waiting."
+const domainDeletionDNSRemovedEnglish = "The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). This server finishes the rest of the deletion by itself within a minute; nobody needs to do anything. If this message stays for more than ten minutes, use “Retry this deletion”."
 
 // domainDeletionDNSRemovalConfirmed reports a zone whose deletion was applied
 // exactly: no zone row, no publication lease of either version, and an
