@@ -392,6 +392,8 @@ type rightsTx interface {
 
 // saveRightsSet replaces one owner's set.
 func saveRightsSet(ctx context.Context, tx rightsTx, ownerKind string, ownerID int, s rightsSet) error {
+	// alpha.129: remote database access follows the rights (review M1).
+	defer kickDatabaseRemoteSync()
 	// alpha.118: an app closed to resellers by its licence (n8n) is never
 	// written into a reseller's set or a set in a reseller's tree.
 	if err := refuseLicenceClosedRights(ctx, tx, ownerKind, ownerID, s); err != nil {

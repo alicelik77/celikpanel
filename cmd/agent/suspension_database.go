@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alicelik/celikpanel/internal/dbremote"
 	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -31,6 +32,11 @@ type suspensionDatabaseStatements struct {
 	lock       string
 	disconnect string
 	unlock     string
+	// copies lists the hosts of the user's other accounts (MariaDB): the
+	// remote copies of remote database access, locked and unlocked with the
+	// local account (alpha.129 review M1). Empty for PostgreSQL, whose one
+	// role is the remote access too.
+	copies string
 }
 
 // suspensionReservedDatabaseUsers are engine and CelikPanel accounts that
@@ -71,6 +77,7 @@ func suspensionDatabaseSQL(engine, username string) (suspensionDatabaseStatement
 			lock:       "ALTER USER " + literal + "@'localhost' ACCOUNT LOCK;",
 			disconnect: "KILL CONNECTION USER " + literal + ";",
 			unlock:     "ALTER USER " + literal + "@'localhost' ACCOUNT UNLOCK;",
+			copies:     "SELECT Host FROM mysql.user WHERE User = " + literal + " AND Host <> 'localhost';",
 		}, nil
 	case "postgresql":
 		ident, err := services.QuotePGIdentifier(username)
@@ -250,6 +257,13 @@ func (a *Agent) SetDatabaseUserSuspensionV1(
 		resp.Changed = true
 	}
 
+	// The remote copies follow the local account's lock, also on a retry,
+	// before the sessions are ended so none comes back through a copy.
+	if err := lockSuspensionRemoteCopies(run, statements, req.User.Username, target.Locked); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+
 	// A suspended account's sessions are always ended, also on a retry after
 	// the lock was already in place: a session opened before the lock keeps
 	// working until it is ended. It is idempotent.
@@ -278,5 +292,50 @@ func (a *Agent) SetDatabaseUserSuspensionV1(
 		return nil
 	}
 	resp.Applied = true
+	return nil
+}
+
+// lockSuspensionRemoteCopies locks or unlocks every remote copy of a MariaDB
+// user (an account of the same name whose host is an address or an IPv4
+// network, the forms remote database access writes); other hosts are never
+// touched.
+func lockSuspensionRemoteCopies(run func(string) ([]byte, error), statements suspensionDatabaseStatements, username string, locked bool) error {
+	if statements.copies == "" {
+		return nil
+	}
+	output, err := run(statements.copies)
+	if err != nil {
+		return hostcmd.Fail("the remote copies of the database account could not be listed", output, err, databaseClientMeaning)
+	}
+	literal, err := services.QuoteMySQLStringLiteral(username)
+	if err != nil {
+		return err
+	}
+	action := "ACCOUNT UNLOCK"
+	if locked {
+		action = "ACCOUNT LOCK"
+	}
+	var batch []string
+	for _, line := range strings.Split(string(output), "\n") {
+		host := strings.TrimSpace(line)
+		if host == "" || !dbremote.IsRemoteAccountHost(host) {
+			continue
+		}
+		hostLiteral, err := services.QuoteMySQLStringLiteral(host)
+		if err != nil {
+			continue
+		}
+		batch = append(batch, "ALTER USER "+literal+"@"+hostLiteral+" "+action+";")
+	}
+	if len(batch) == 0 {
+		return nil
+	}
+	if output, err := run(strings.Join(batch, "\n")); err != nil {
+		verb := "unlocked"
+		if locked {
+			verb = "locked"
+		}
+		return hostcmd.Fail("the database account's remote copies could not be "+verb, output, err, databaseClientMeaning)
+	}
 	return nil
 }

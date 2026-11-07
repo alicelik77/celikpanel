@@ -143,6 +143,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
+		Agent.DatabaseRemoteStatusV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -253,6 +254,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
+		Agent.ApplyDatabaseRemoteV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -569,6 +571,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// alpha.128: additional FTP/SFTP logins (account, jail unit, sshd, vsftpd).
 	"Agent.FTPLoginsStateV1": agentRPCStandardReadTimeout,
 	"Agent.ApplyFTPLoginV1":  agentRPCDatabaseTimeout,
+
+	// alpha.129: remote access to databases (pg_hba, MariaDB accounts,
+	// nftables filter, TLS, listen address).
+	"Agent.DatabaseRemoteStatusV1": agentRPCNetworkReadTimeout,
+	"Agent.ApplyDatabaseRemoteV1":  agentRPCDatabaseTimeout,
 
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,

@@ -140,6 +140,7 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'transfer.permission.php_settings': 'Sitenin PHP ayarları',
     'transfer.permission.php_version': 'Sitenin PHP sürümü',
     'transfer.permission.nginx_directives': 'Ek nginx yönergeleri',
+    'transfer.permission.database_remote': 'Veritabanlarına dışarıdan erişim',
 
     'err.SETTING_ABOVE_LIMIT': 'Hiçbir şey değiştirilmedi: {value}, {limit} sınırının dışında. Sınır içinde bir değer seçin ya da sınırı koyandan değiştirmesini isteyin.',
     'err.SETTING_UNKNOWN': 'Hiçbir şey değiştirilmedi: bir değer bu ayarın kabul ettiği aralığın dışında.',

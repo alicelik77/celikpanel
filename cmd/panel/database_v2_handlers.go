@@ -895,6 +895,7 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 }
@@ -1192,6 +1193,7 @@ func (p *Panel) handleDeleteDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 }
@@ -1387,6 +1389,7 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"id":         grant.ID,
@@ -1487,6 +1490,7 @@ func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "revoked"})
 }

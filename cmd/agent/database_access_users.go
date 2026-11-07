@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"slices"
 	"strings"
 
@@ -213,6 +214,7 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	hosts := parseRotationMySQLHosts(output)
 	if len(hosts) == 0 {
 		resp.Absent, resp.Applied = true, true
+		followRemovedMySQLAccessUser(req.Username)
 		return
 	}
 	user, _ := services.QuoteMySQLStringLiteral(req.Username)
@@ -230,6 +232,21 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		return
 	}
 	resp.Applied = true
+	followRemovedMySQLAccessUser(req.Username)
+}
+
+// followRemovedMySQLAccessUser keeps the remote access record
+// (docs/DATABASE-REMOTE-ACCESS.md) in step with a removed user: the DROP
+// above took every host of the user, remote copies included, and the record
+// must no longer list them (the panel's next apply then closes the address
+// too). A record that cannot be updated is logged; the removal stands.
+//
+// followRemovedMySQLAccessUser: kaldırılan kullanıcının uzak kopyaları
+// uzaktan erişim kaydından da çıkar.
+func followRemovedMySQLAccessUser(username string) {
+	if err := databaseRemoteFollowMariaDBUser(username, true); err != nil {
+		log.Printf("database user removal: %v", err)
+	}
 }
 
 // ---- PostgreSQL ----

@@ -615,6 +615,7 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 

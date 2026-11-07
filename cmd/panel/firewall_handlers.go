@@ -106,6 +106,9 @@ func panelFirewallPorts() []int {
 func (p *Panel) desiredFirewallPorts(extraTCP ...int) (tcp []int, udp []int, err error) {
 	tcp = append(tcp, panelFirewallPorts()...)
 	tcp = append(tcp, extraTCP...)
+	// alpha.129: the database ports with remote access rules; the Agent's
+	// address filter narrows them to the listed addresses.
+	tcp = append(tcp, p.databaseRemoteFirewallPorts()...)
 
 	// Let's Encrypt renewal answers HTTP-01 on :80. A panel carrying a real
 	// CA certificate with the firewall blocking 80 renews nothing — the

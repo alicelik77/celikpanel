@@ -420,6 +420,8 @@ func isAdditionalUserRestrictedPath(path string) bool {
 		"/dbtool",
 		// alpha.128 (G15): a team member never holds an API token.
 		apiTokensPath,
+		// alpha.129: remote access to databases is the account's decision.
+		"/api/v1/database-remote",
 	} {
 		if path == root || strings.HasPrefix(path, root+"/") {
 			return true

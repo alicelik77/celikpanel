@@ -100,6 +100,7 @@ export const enRightsScreens = {
     'rights.perm.wordpress_tools': 'WordPress tools',
     'rights.perm.malware_scan': 'Malware scan results',
     'rights.perm.remote_api': 'Remote API (API tokens)',
+    'rights.perm.database_remote': 'Remote access to databases',
     'rights.perm.remote_backup_destinations': 'Own remote backup destinations',
     'rights.perm.service_apps': 'AI and automation apps',
     'rights.perm.program_apps': 'Uploaded programs',

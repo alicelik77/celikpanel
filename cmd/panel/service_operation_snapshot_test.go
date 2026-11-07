@@ -1441,6 +1441,9 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse remote access to databases (migration 74, alpha.129).
+        DROP INDEX idx_database_remote_rules_user;
+        DROP TABLE database_remote_rules;
         -- Migration 73 (alpha.129) only adds two columns to mailbox_outgoing,
         -- which goes with migration 67 below.
         -- Reverse the panel operations (migration 72, alpha.128).

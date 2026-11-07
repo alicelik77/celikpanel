@@ -16,6 +16,7 @@ import { PasswordInput } from './PasswordInput';
 import { AdminInstallLink } from './AdminInstallLink';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { DatabaseTools } from './DatabaseTools';
+import { DatabaseRemoteAccess } from './DatabaseRemoteAccess';
 import { DatabaseUsers } from './DatabaseUsers';
 import { EngineMark } from './EngineMark';
 
@@ -461,6 +462,7 @@ export function DomainDatabaseManager({
                                         webTool={webToolOf(db.type)}
                                         onRefusal={(problem, sentence) => refuse(problem, sentence)} onClear={clearRefusal}
                                         afterStats={<DatabaseUsers domainId={domainId} databaseId={db.id} databaseName={db.name} users={db.users ?? []} readOnly={readOnly || shown.stale} />} />
+                                    {!isAdditionalUser && <DatabaseRemoteAccess db={db} readOnly={readOnly || shown.stale} />}
                                 </div>
                                 );
                             })}

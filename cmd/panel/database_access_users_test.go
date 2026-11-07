@@ -251,8 +251,18 @@ func TestDomainDatabaseAccessUsersAddAndRemove(t *testing.T) {
 		t.Fatalf("engine refusal: %d %s", got.Code, got.Body.String())
 	}
 	native.failRemove = false
+	select { // a kick left by an earlier change
+	case <-databaseRemoteMemory.kick:
+	default:
+	}
 	if got := f.call(t, authzMatrixCustomerID, http.MethodDelete, path+"/"+strconv.Itoa(userID), ""); got.Code != http.StatusOK {
 		t.Fatalf("remove: %d %s", got.Code, got.Body.String())
+	}
+	// alpha.129: the removed user's remote access is applied again.
+	select {
+	case <-databaseRemoteMemory.kick:
+	default:
+		t.Fatal("removing a user did not ask for the remote access to be applied again")
 	}
 	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM database_users WHERE id = ?`, userID).Scan(&count)
 	if count != 0 || len(native.removed) != 1 || native.removed[0].Username != "customer_matrix_test_shop_reader" {

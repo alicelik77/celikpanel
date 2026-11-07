@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -360,6 +361,12 @@ func (a *Agent) deleteMySQLDatabase(req DeleteDatabaseRequest, resp *DeleteDatab
 			}
 		} else {
 			_, dropErr := mysqlExecStatement(fmt.Sprintf("DROP USER IF EXISTS %s@'localhost';", userLiteral))
+			if dropErr == nil {
+				// alpha.129: its remote copies go with it.
+				if err := databaseRemoteFollowMariaDBUser(req.User, true); err != nil {
+					log.Printf("database deletion: %v", err)
+				}
+			}
 			if dropErr != nil && req.RequireUserCleanup {
 				resp.Success = false
 				resp.Error = "failed to drop database user"

@@ -54,7 +54,11 @@ var (
 		pattern: "/api/v1/domains/{id}/access/logins", timeout: operationStepRouteTimeout, optional: true,
 		digest: requestIdentityFTPLoginDigest,
 	}
-	requestIdentityRouteFTPLogin = requestIdentityRoute{
+	// alpha.129: remote access to databases (database_remote_handlers.go).
+	requestIdentityRouteDatabaseRemoteAdd    = operationStepRoute("/api/v1/database-remote/databases/{id}/rules")
+	requestIdentityRouteDatabaseRemoteRemove = operationStepRoute("/api/v1/database-remote/rules/{id}")
+	requestIdentityRouteDatabaseRemoteServer = operationStepRoute("/api/v1/database-remote/server")
+	requestIdentityRouteFTPLogin             = requestIdentityRoute{
 		pattern: "/api/v1/domains/{id}/access/logins/{login}", timeout: operationStepRouteTimeout, optional: true,
 		digest: requestIdentityFTPLoginDigest,
 	}
@@ -64,6 +68,19 @@ var (
 // the dispatchers' own strict matchers where they exist.
 func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 	path := r.URL.Path
+	if strings.HasPrefix(path, databaseRemotePath) {
+		if route, ok := matchDatabaseRemoteRoute(r); ok && routeAllows(r.Method, route.methods) {
+			switch {
+			case route.kind == "rules" && r.Method == http.MethodPost:
+				return requestIdentityRouteDatabaseRemoteAdd, true
+			case route.kind == "rule" && r.Method == http.MethodDelete:
+				return requestIdentityRouteDatabaseRemoteRemove, true
+			case route.kind == "server" && r.Method == http.MethodPut:
+				return requestIdentityRouteDatabaseRemoteServer, true
+			}
+		}
+		return requestIdentityRoute{}, false
+	}
 	switch r.Method {
 	case http.MethodPost:
 		switch path {

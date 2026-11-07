@@ -64,6 +64,8 @@ const stubbedComponents = [
   // alpha.129: a database's users and a user's new password are their own
   // parts (tests/database-users-alpha129.test.mjs).
   'DatabaseUsers', 'DatabaseUserPassword', 'EngineMark',
+  // alpha.129: connections from outside read their own address when opened.
+  'DatabaseRemoteAccess',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.

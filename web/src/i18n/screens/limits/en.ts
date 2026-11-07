@@ -146,6 +146,7 @@ export const enLimitsScreens = {
     'transfer.permission.php_settings': 'PHP settings of a site',
     'transfer.permission.php_version': 'PHP version of a site',
     'transfer.permission.nginx_directives': 'Additional nginx directives',
+    'transfer.permission.database_remote': 'Remote access to databases',
 
     'err.SETTING_ABOVE_LIMIT': 'Nothing was changed: {value} is outside the limit {limit}. Choose a value within the limit, or ask whoever set it to change it.',
     'err.SETTING_UNKNOWN': 'Nothing was changed: a value is outside what this setting accepts.',

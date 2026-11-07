@@ -281,6 +281,8 @@ func (p *Panel) acceptSuspensionChangeTx(ctx context.Context, tx sqlQueryer, sub
 	}
 	// One read of subscriptions tells the state: status, and 052's
 	// suspend_reason and suspended_at mirror the cause row (cleared on resume).
+	// alpha.129: remote database access follows the status (review M1).
+	defer kickDatabaseRemoteSync()
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE subscriptions SET status = ?, suspend_reason = ?,
 			suspended_at = (SELECT suspended_at FROM subscription_suspensions WHERE subscription_id = ?),

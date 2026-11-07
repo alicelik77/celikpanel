@@ -1929,6 +1929,8 @@ func main() {
 	})
 
 	// User/Grant deletions
+	// alpha.129: remote access to databases (docs/DATABASE-REMOTE-ACCESS.md).
+	http.HandleFunc(databaseRemotePath, panel.handleDatabaseRemote)
 	http.HandleFunc("/api/v1/database-users/", func(w http.ResponseWriter, r *http.Request) {
 		panel.handleDatabaseSubroute(w, r, "/api/v1/database-users/")
 	})
@@ -2003,6 +2005,9 @@ func main() {
 	// alpha.114: a panel port change a previous process left open ends
 	// here (a trial listener never survives a restart).
 	panel.startPanelPortReconciler(discoveryCtx)
+	// alpha.129: remote access to databases follows plans, suspensions and
+	// the server switch (database_remote.go).
+	panel.startDatabaseRemoteSync(discoveryCtx)
 	panel.startPanelUpdateDiscovery(discoveryCtx)
 	// alpha.107 (D-038 §12): vendor repositories enabled before this
 	// release are confined once, in their own jobs.
