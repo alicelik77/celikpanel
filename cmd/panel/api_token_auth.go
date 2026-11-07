@@ -112,17 +112,19 @@ func (u *apiTokenUse) label() string {
 
 // ----- the credential -----
 
-// apiTokenCredential reports whether the request presents a bearer token and
-// returns it. Only the Authorization header is read, never a query string or
-// another header. More than one Authorization header with a bearer among
-// them is presented but empty (refused as invalid). Another scheme (a proxy's
-// Basic sign-in in front of the panel) is not a token.
+// apiTokenCredential reports whether the request presents a CelikPanel API
+// token and returns it. Only an "Authorization: Bearer cpk_..." header is
+// one; any other Authorization header (a proxy's Basic sign-in, an identity
+// proxy's bearer ID token, a remote DNS machine's credential) is not a token
+// and is ignored here exactly as before the remote API existed. Only the
+// Authorization header is read, never a query string or another header. A
+// second Authorization header beside a token makes it ambiguous: presented,
+// but empty (refused as invalid).
 func apiTokenCredential(r *http.Request) (string, bool) {
 	values := r.Header.Values("Authorization")
 	present := false
 	for _, value := range values {
-		scheme, _, _ := strings.Cut(strings.TrimSpace(value), " ")
-		if strings.EqualFold(scheme, "Bearer") {
+		if _, ok := bearerAPIToken(value); ok {
 			present = true
 		}
 	}
@@ -132,19 +134,26 @@ func apiTokenCredential(r *http.Request) (string, bool) {
 	if len(values) != 1 {
 		return "", true
 	}
-	_, credential, _ := strings.Cut(strings.TrimSpace(values[0]), " ")
-	return strings.TrimSpace(credential), true
+	credential, _ := bearerAPIToken(values[0])
+	return credential, true
 }
 
-// apiTokenRequestWithoutSession: the request presents a token and no session
-// cookie. Such a request is authenticated by the token or refused, so the
-// origin check that protects cookie sessions has nothing to protect
-// (security.go).
-// Only a credential shaped like an API token (cpk_...) qualifies: another
-// bearer credential (a remote DNS machine's, which requireRemoteDNSMachineAuth
-// verifies before this) keeps the origin check.
+// bearerAPIToken: the credential of one "Bearer cpk_..." header value.
+func bearerAPIToken(value string) (string, bool) {
+	scheme, credential, _ := strings.Cut(strings.TrimSpace(value), " ")
+	credential = strings.TrimSpace(credential)
+	if !strings.EqualFold(scheme, "Bearer") || !strings.HasPrefix(credential, apiTokenPrefix) {
+		return "", false
+	}
+	return credential, true
+}
+
+// apiTokenRequestWithoutSession: the request presents an API token and no
+// session cookie. Such a request is authenticated by the token or refused, so
+// the origin check that protects cookie sessions has nothing to protect
+// (security.go). Any other bearer credential keeps the origin check.
 func apiTokenRequestWithoutSession(r *http.Request) bool {
-	if credential, present := apiTokenCredential(r); !present || !strings.HasPrefix(credential, apiTokenPrefix) {
+	if _, present := apiTokenCredential(r); !present {
 		return false
 	}
 	_, err := r.Cookie(sessionCookieName)

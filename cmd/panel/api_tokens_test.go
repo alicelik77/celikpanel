@@ -528,7 +528,7 @@ func TestAPITokenStatesEndATokenAndNameTheReason(t *testing.T) {
 	known := f.minted["admin/read"]
 	for name, bad := range map[string]string{
 		"short":         "cpk_abc",
-		"other prefix":  "xyz_" + known[4:],
+		"bad secret":    known[:17] + strings.Repeat("!", 43),
 		"wrong secret":  known[:len(known)-1] + map[bool]string{true: "A", false: "B"}[known[len(known)-1] != 'A'],
 		"unknown id":    "cpk_" + strings.Repeat("a", 12) + known[16:],
 		"upper-case id": "cpk_" + strings.ToUpper(known[4:16]) + known[16:],
@@ -536,14 +536,15 @@ func TestAPITokenStatesEndATokenAndNameTheReason(t *testing.T) {
 	} {
 		expect(name, bad, http.StatusUnauthorized, errCodeAPITokenInvalid)
 	}
-	// A bearer header with nothing after it is a token request, refused.
+	// A bearer header that is not a CelikPanel token is not a token request:
+	// without a session it is the ordinary "sign in" answer.
 	for _, header := range []string{"Bearer", "Bearer   ", "bearer x"} {
 		request := httptest.NewRequest(http.MethodGet, "/api/v1/domains", nil)
 		request.Header.Set("Authorization", header)
 		recorder := httptest.NewRecorder()
 		probe.reached = false
 		handler.ServeHTTP(recorder, request)
-		if probe.reached || recorder.Code != http.StatusUnauthorized || apiErrorCode(t, recorder) != errCodeAPITokenInvalid {
+		if probe.reached || recorder.Code != http.StatusUnauthorized || apiErrorCode(t, recorder) != errCodeAuthRequired {
 			t.Errorf("header %q: reached=%v %d %s", header, probe.reached, recorder.Code, recorder.Body.String())
 		}
 	}
@@ -1081,7 +1082,9 @@ func TestAPITokenFormat(t *testing.T) {
 	}{
 		{"Bearer cpk_x", true, "cpk_x"},
 		{"bearer   cpk_x  ", true, "cpk_x"},
-		{"Bearer", true, ""},
+		{"Bearer", false, ""},
+		{"Bearer eyJhbGciOiJSUzI1NiJ9.e30.sig", false, ""},
+		{"Bearer " + strings.Repeat("a", 32) + "." + strings.Repeat("b", 64), false, ""},
 		{"Basic abc", false, ""},
 		{"Token cpk_x", false, ""},
 	} {
@@ -1096,5 +1099,49 @@ func TestAPITokenFormat(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/domains?access_token=cpk_x&token=cpk_x", nil)
 	if _, present := apiTokenCredential(request); present {
 		t.Fatal("a query-string token was read")
+	}
+}
+
+// An identity proxy in front of the panel (oauth2-proxy and the like) sends
+// its own "Authorization: Bearer <ID token>". That header is not a CelikPanel
+// token: the sign-in route, the web interface and a signed-in session behave
+// exactly as without it, whether the remote API is on or off.
+func TestAPITokenOtherBearerHeadersAreIgnored(t *testing.T) {
+	f := newAPITokenFixture(t)
+	probe := &apiTokenProbe{}
+	handler := csrfProtect(f.panel.requireAuth(probe.handler()))
+	idToken := "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvd25lciJ9.c2lnbmF0dXJl"
+	for _, switchValue := range []string{"1", "0"} {
+		if err := f.panel.setSetting(context.Background(), settingRemoteAPIEnabled, switchValue); err != nil {
+			t.Fatal(err)
+		}
+		send := func(method, path string, session bool) (*httptest.ResponseRecorder, bool) {
+			request := httptest.NewRequest(method, path, strings.NewReader(`{}`))
+			request.Header.Set("Authorization", idToken)
+			request.Header.Set("Origin", "http://example.com")
+			if session {
+				request.AddCookie(&http.Cookie{Name: sessionCookieName, Value: f.tokens[authzMatrixCustomerID]})
+			}
+			recorder := httptest.NewRecorder()
+			probe.reached = false
+			handler.ServeHTTP(recorder, request)
+			return recorder, probe.reached
+		}
+		// The sign-in route stays public.
+		if recorder, reached := send(http.MethodPost, "/api/v1/auth/login", false); !reached {
+			t.Errorf("switch %s: sign-in with a proxy bearer header: %d %s", switchValue, recorder.Code, recorder.Body.String())
+		}
+		// The web interface stays public.
+		if recorder, reached := send(http.MethodGet, "/", false); !reached {
+			t.Errorf("switch %s: the web interface with a proxy bearer header: %d %s", switchValue, recorder.Code, recorder.Body.String())
+		}
+		// A signed-in session with the header works as before.
+		if recorder, reached := send(http.MethodGet, "/api/v1/auth/me", true); !reached || probe.caller == nil || probe.caller.APIToken != nil {
+			t.Errorf("switch %s: a session with a proxy bearer header: %d %s", switchValue, recorder.Code, recorder.Body.String())
+		}
+		// Without a session it is the ordinary answer, not a token refusal.
+		if recorder, reached := send(http.MethodGet, "/api/v1/domains", false); reached || recorder.Code != http.StatusUnauthorized || apiErrorCode(t, recorder) != errCodeAuthRequired {
+			t.Errorf("switch %s: no session: %d %s", switchValue, recorder.Code, recorder.Body.String())
+		}
 	}
 }
