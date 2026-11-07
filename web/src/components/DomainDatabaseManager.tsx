@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { useAuth } from '../auth/AuthContext';
 import { readApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
 import { passwordAcceptable } from '../lib/passwordPolicy';
@@ -135,6 +136,13 @@ export function DomainDatabaseManager({
     // ya bilinir, ya kontrol ediliyordur, ya da kontrol edilememiştir;
     // varsayılan motor yoktur.
     const capabilities = useHostingCapabilities({ enabled: !isAdditionalUser });
+    // alpha.129: the connection guide gives the administrator the SSH tunnel
+    // and anyone else the web tool, when it is known to be installed.
+    const isAdmin = useAuth().role === 'admin';
+    const webToolOf = (type: string): 'installed' | 'missing' | undefined => {
+        if (capabilities.remote.state !== 'known') return undefined;
+        return capabilities.remote.value.db_tools.includes(type === 'mysql' ? 'phpmyadmin' : 'phppgadmin') ? 'installed' : 'missing';
+    };
     const engineSource: Remote<DatabaseEngine[]> = isAdditionalUser
         ? mapRemote(list.remote, (value) => value.availableTypes)
         : mapRemote(capabilities.remote, (value) => value.database_servers.flatMap((id) => engineLabels[id] ?? []));
@@ -455,7 +463,8 @@ export function DomainDatabaseManager({
                                         <DatabaseUsers domainId={domainId} databaseId={db.id} databaseName={db.name} users={db.users ?? []} readOnly={readOnly || shown.stale} />
                                     </div>
                                     {/* alpha.128 (G7): the tools of this database. */}
-                                    <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale}
+                                    <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale} isAdmin={isAdmin}
+                                        webTool={webToolOf(db.type)}
                                         onRefusal={(problem, sentence) => refuse(problem, sentence)} onClear={clearRefusal} />
                                 </div>
                             ))}

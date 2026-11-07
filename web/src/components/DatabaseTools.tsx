@@ -61,10 +61,14 @@ function decodeInfo(raw: unknown): ToolsInfo {
 const UPLOAD_CHUNK = 4 * 1024 * 1024;
 const UPLOAD_MAX = 4 * 1024 * 1024 * 1024;
 
-export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
+export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAdmin = false, webTool }: {
     domainId: number;
     db: DatabaseToolsTarget;
     readOnly: boolean;
+    /** The administrator is shown the SSH tunnel route (alpha.129). */
+    isAdmin?: boolean;
+    /** Whether this engine's web tool is installed, when known. */
+    webTool?: 'installed' | 'missing';
     onRefusal: (problem: ApiError, sentence: TranslationKey) => void;
     onClear: () => void;
 }) {
@@ -80,6 +84,8 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
     const [copyPassword, setCopyPassword] = useState('');
     const [check, setCheck] = useState<null | { checked: number; problems: Array<{ table: string; message: string }>; selfRepairing: number; repair: boolean }>(null);
     const isMaria = db.type === 'mysql';
+    // The panel's own address is the server the administrator signs in to.
+    const sshHost = typeof window === 'undefined' ? '' : window.location.hostname;
 
     const refusedBy = async (res: Response, sentence: TranslationKey) => onRefusal(await readApiError(res), sentence);
     const lost = () => showToast('error', t('common.resultUnknown'));
@@ -259,15 +265,39 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear }: {
                 )}
             </div>
             {info && (
-                <details className="text-xs text-fg-muted">
+                <details className="text-xs text-fg-muted" data-database-connection-guide={db.id}>
                     <summary className="cursor-pointer">{t('dbt.connection')}</summary>
+                    {/* alpha.129: the site's connection, then the way from
+                        the person's own computer. Databases listen on this
+                        server only; the administrator's route is an SSH
+                        tunnel, anyone else uses the web tool in the panel. */}
+                    <p className="mt-2 font-semibold text-fg">{t('dbt.fromSite')}</p>
                     <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
                         <dt>{t('dbt.host')}</dt><dd className="font-mono text-fg">{info.host}</dd>
                         <dt>{t('dbt.port')}</dt><dd className="font-mono text-fg">{info.port}</dd>
-                        <dt>{t('dbt.database')}</dt><dd className="font-mono text-fg">{db.name}</dd>
-                        <dt>{t('dbt.user')}</dt><dd className="font-mono text-fg">{info.user}</dd>
+                        <dt>{t('dbt.database')}</dt><dd className="break-all font-mono text-fg">{db.name}</dd>
+                        <dt>{t('dbt.user')}</dt><dd className="break-all font-mono text-fg">{info.user}</dd>
                     </dl>
                     <p className="mt-1">{t('dbt.passwordNote')}</p>
+                    <p className="mt-3 font-semibold text-fg">{t('dbt.fromComputer')}</p>
+                    {isAdmin ? (
+                        <>
+                            <p className="mt-1">{t('dbt.tunnelIntro')}</p>
+                            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                                <dt>{t('dbt.sshHost')}</dt><dd className="break-all font-mono text-fg">{sshHost}</dd>
+                                <dt>{t('dbt.sshPort')}</dt><dd className="font-mono text-fg">22</dd>
+                                <dt>{t('dbt.sshUser')}</dt><dd className="text-fg">{t('dbt.sshUserValue')}</dd>
+                                <dt>{t('dbt.host')}</dt><dd className="font-mono text-fg">127.0.0.1</dd>
+                                <dt>{t('dbt.port')}</dt><dd className="font-mono text-fg">{info.port}</dd>
+                                <dt>{t('dbt.database')}</dt><dd className="break-all font-mono text-fg">{db.name}</dd>
+                            </dl>
+                            <p className="mt-1">{t(isMaria ? 'dbt.tunnelToolsMaria' : 'dbt.tunnelToolsPg')}</p>
+                        </>
+                    ) : (
+                        <p className="mt-1">
+                            {t(webTool === 'installed' ? 'dbt.noRemoteUseTool' : 'dbt.noRemoteAskTool', { tool: isMaria ? 'phpMyAdmin' : 'phpPgAdmin' })}
+                        </p>
+                    )}
                 </details>
             )}
             {!readOnly && (

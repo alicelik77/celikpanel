@@ -16,7 +16,7 @@ export const enDataTools = {
     'dbt.port': 'Port',
     'dbt.database': 'Database',
     'dbt.user': 'User',
-    'dbt.passwordNote': 'The password is the one set when the database was made; change it on the Databases page.',
+    'dbt.passwordNote': 'The password is the one set for this user; give it a new one under Users above.',
     'dbt.export': 'Export',
     'dbt.import': 'Import',
     'dbt.copy': 'Copy',
@@ -138,6 +138,17 @@ export const enDataTools = {
     'err.DATABASE_USER_ENGINE_FAILED': 'The database server did not do it; nothing in the list changed. Try again; if it fails again, the administrator finds the reason in the panel\'s log.',
     'err.DATABASE_USER_MADE_WITH_DATABASE': 'This user was made with the database and goes only with it: deleting the database removes it. Nothing was changed.',
     'err.DATABASE_USER_USED_ELSEWHERE': 'This user also has access to another database, so it is not removed from here. Nothing was changed; take its access away on the Databases page first.',
+    'dbt.fromSite': 'For the site on this server',
+    'dbt.fromComputer': 'From your computer',
+    'dbt.tunnelIntro': 'The database accepts connections only from this server, so a desktop tool (pgAdmin, DBeaver, HeidiSQL) connects through an SSH tunnel. Fill in the SSH part of the connection, then the database part:',
+    'dbt.sshHost': 'SSH host',
+    'dbt.sshPort': 'SSH port',
+    'dbt.sshUser': 'SSH user',
+    'dbt.sshUserValue': 'root, or your own administrator account (your SSH key or password)',
+    'dbt.tunnelToolsMaria': 'DBeaver: the SSH tab of the connection. HeidiSQL: network type "MariaDB or MySQL (SSH tunnel)". The database user and password are the ones above.',
+    'dbt.tunnelToolsPg': 'pgAdmin: the SSH Tunnel tab of the server. DBeaver: the SSH tab of the connection. The database user and password are the ones above.',
+    'dbt.noRemoteUseTool': 'Connecting from your computer is not available yet: the database accepts connections only from this server. Open {tool} in the panel (Database tools below) and sign in with the user and password above.',
+    'dbt.noRemoteAskTool': 'Connecting from your computer is not available yet: the database accepts connections only from this server. In the browser it is managed with {tool}, which your provider installs.',
 } as const;
 
 export type DataToolsKey = keyof typeof enDataTools;
