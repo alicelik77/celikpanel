@@ -355,6 +355,10 @@ func TestMariaDBFailRegexMatchesRefusedSignIns(t *testing.T) {
 		"2026-11-07 10:00:04 55 [Warning] Access denied for user 'shop_u'@'203.0.113.10' (using password: YES)":                     "203.0.113.10",
 		"[Warning] Access denied for user 'shop_u'@'203.0.113.11' (using password: YES)":                                            "203.0.113.11",
 		"srv1 mariadbd[812]: 2026-11-07 10:00:00 31 [Warning] Access denied for user ''@'203.0.113.12' (using password: NO)":        "203.0.113.12",
+		// alpha.129 lab, Fail2ban 1.1 on Debian 13: the timestamp is cut out
+		// and the space after it stays; an entry keeps its final newline.
+		" 44 [Warning] Access denied for user 'cust1_rmy_user'@'192.0.3.1' (using password: YES)\n":                              "192.0.3.1",
+		"host1 mariadbd[79962]: 2026-11-07 19:00:37 44 [Warning] Access denied for user 'u'@'192.0.3.1' (using password: YES)\n": "192.0.3.1",
 	}
 	for _, multiline := range []bool{false, true} {
 		pattern := failRegexForGo(multiline)

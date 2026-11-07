@@ -359,7 +359,14 @@ const (
 // MariaDBFailRegex is the filter's failregex (Python syntax, as Fail2ban
 // reads it): one refused sign-in (log_warnings >= 2) of MariaDB 10.x/11.x as
 // a journal entry. <HOST> is Fail2ban's address placeholder.
-const MariaDBFailRegex = `^(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\Z`
+//
+// Measured with Fail2ban 1.1 on Debian 13 (alpha.129 lab): Fail2ban cuts the
+// leading timestamp out of a line and leaves the space after it, and hands
+// an entry over with its final newline. The first version (anchored with
+// "^(?:" and " *\Z") matched no real line, so seven wrong passwords banned
+// nobody. " *" at the start and one optional "\n" before \Z accept exactly
+// those two; the name still may hold no quote and no newline.
+const MariaDBFailRegex = `^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\n?\Z`
 
 // MariaDBFilter renders the filter file.
 func MariaDBFilter() string {
