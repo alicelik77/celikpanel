@@ -139,9 +139,9 @@ func TestAPostgreSQLConnectionLimitGoesToTheRolesOwnRunningCluster(t *testing.T)
 		t.Fatal(err)
 	}
 	// Record 9961 names 18/main but still carries the old port 5432; record
-	// 9962 names the removed 16/main.
+	// 9962 names the removed 16/main (a stale port 5431 stored with it).
 	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, status) VALUES (9961, 9802, ?, 'pg18', '18', '127.0.0.1', 5432, '18/main', ?, 'active')`, typeID, sealed)
-	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, status) VALUES (9962, 9802, ?, 'pg16', '16', '127.0.0.1', 5432, '16/main', ?, 'active')`, typeID, sealed)
+	f.exec(t, `INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, cluster, root_password_encrypted, status) VALUES (9962, 9802, ?, 'pg16', '16', '127.0.0.1', 5431, '16/main', ?, 'active')`, typeID, sealed)
 	f.exec(t, `INSERT INTO database_users (server_id, subscription_id, username, password) VALUES (9961, 9802, 'sub9802_pg18', 'x')`)
 	f.exec(t, `INSERT INTO database_users (server_id, subscription_id, username, password) VALUES (9962, 9802, 'sub9802_pg16', 'x')`)
 	f.exec(t, `UPDATE setting_policy SET server_ceiling = 12 WHERE key = 'db.max_user_connections'`)
@@ -157,20 +157,20 @@ func TestAPostgreSQLConnectionLimitGoesToTheRolesOwnRunningCluster(t *testing.T)
 	}
 
 	// A new user on the removed cluster's record is refused, nothing written.
-	server := &core.DatabaseServer{ID: 9962, SubscriptionID: 9802, TypeName: "postgresql", Host: "127.0.0.1", Port: 5432}
-	stale := &portLimitDriver{port: 5432, writes: &writes, mu: &mu}
+	server := &core.DatabaseServer{ID: 9962, SubscriptionID: 9802, TypeName: "postgresql", Host: "127.0.0.1", Port: 5431}
+	stale := &portLimitDriver{port: 5431, writes: &writes, mu: &mu}
 	err = f.panel.applyNewUserConnectionLimit(ctx, server, stale, 9802, "sub9802_new16")
 	if refusal := (*pgClusterRefusalError)(nil); err == nil || !errors.As(err, &refusal) || refusal.refusal.Reason != "removed" {
 		t.Fatalf("a limit for a role on the removed cluster: %v", err)
 	}
-	if _, wrote := writes[5432]; wrote {
-		t.Fatalf("a limit went to the removed cluster's port: %v", writes)
+	if _, wrote := writes[5431]; wrote {
+		t.Fatalf("a limit went to the removed cluster's record port: %v", writes)
 	}
 
 	// Without postgresql-common the record is used as it is.
 	clusters = transport.PostgreSQLClustersResponse{}
-	plain := &portLimitDriver{port: 5432, writes: &writes, mu: &mu}
-	if err := f.panel.applyNewUserConnectionLimit(ctx, server, plain, 9802, "sub9802_plain"); err != nil || writes[5432]["sub9802_plain"] != 12 {
+	plain := &portLimitDriver{port: 5431, writes: &writes, mu: &mu}
+	if err := f.panel.applyNewUserConnectionLimit(ctx, server, plain, 9802, "sub9802_plain"); err != nil || writes[5431]["sub9802_plain"] != 12 {
 		t.Fatalf("one PostgreSQL without clusters: %v (%v)", writes, err)
 	}
 }
