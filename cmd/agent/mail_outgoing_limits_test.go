@@ -597,10 +597,14 @@ func TestApplyOutgoingMailLimitsResetsTheCountersOfChangedLimits(t *testing.T) {
 		t.Fatalf("first apply: %+v %v", resp, err)
 	}
 	for _, c := range host.commands {
-		if strings.Contains(c, "--delrate") {
-			t.Fatalf("a first apply reset counters: %v", host.commands)
+		// The first apply resets only the mailbox it pauses (bad@).
+		if strings.Contains(c, "--delrate") && !strings.HasSuffix(c, "--delrate sasl_username=bad@example.com") {
+			t.Fatalf("a first apply reset other counters: %v", host.commands)
 		}
 	}
+	host.mu.Lock()
+	host.commands = nil
+	host.mu.Unlock()
 	changed := sampleOutgoingSpec()
 	changed.MailboxLimits["a@example.com"] = 100
 	changed.Paused = nil
@@ -616,5 +620,23 @@ func TestApplyOutgoingMailLimitsResetsTheCountersOfChangedLimits(t *testing.T) {
 	}
 	if strings.Join(resets, ",") != "sasl_username=a@example.com,sasl_username=bad@example.com" {
 		t.Fatalf("counters reset = %v", resets)
+	}
+	// A newly paused mailbox is reset so the pause rule answers it.
+	host.mu.Lock()
+	host.commands = nil
+	host.mu.Unlock()
+	paused := sampleOutgoingSpec()
+	paused.MailboxLimits["a@example.com"] = 100
+	paused.Paused = []string{"a@example.com"}
+	resp = transport.OutgoingMailLimitsApplyResponse{}
+	if err := (&Agent{}).ApplyOutgoingMailLimitsV1(paused, &resp); err != nil || !resp.Applied {
+		t.Fatalf("pause apply: %+v %v", resp, err)
+	}
+	found := false
+	for _, c := range host.commands {
+		found = found || strings.HasSuffix(c, "--delrate sasl_username=a@example.com")
+	}
+	if !found {
+		t.Fatalf("the newly paused mailbox was not reset: %v", host.commands)
 	}
 }

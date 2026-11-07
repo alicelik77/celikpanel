@@ -949,7 +949,8 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 
 	// The mailboxes this apply takes off the pause list: once postfwd took
 	// the rules they are asked until postfwd answers them as not paused.
-	var resumed []string
+	var resumed, newlyPaused []string
+	wasPaused := map[string]bool{}
 	if old, exists, _ := outgoingReadOptional(filepath.Join(layout.listDir, "paused.list")); exists {
 		still := map[string]bool{}
 		for _, address := range spec.Paused {
@@ -957,9 +958,22 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 		}
 		for _, line := range strings.Split(string(old), "\n") {
 			line = strings.TrimSpace(line)
-			if line != "" && !strings.HasPrefix(line, "#") && !still[strings.ToLower(line)] {
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			wasPaused[strings.ToLower(line)] = true
+			if !still[strings.ToLower(line)] {
 				resumed = append(resumed, line)
 			}
+		}
+	}
+	// A newly paused mailbox is usually over its hourly limit: its rate object
+	// would keep answering with the limit's 450 before the pause rule is
+	// asked (alpha.128 lab), so it is reset too and the mailbox hears the
+	// pause's 550 with the password-change text.
+	for _, address := range spec.Paused {
+		if !wasPaused[strings.ToLower(address)] {
+			newlyPaused = append(newlyPaused, address)
 		}
 	}
 
@@ -1090,6 +1104,9 @@ func applyOutgoingMailLimits(ctx context.Context, spec *transport.OutgoingMailLi
 	for _, address := range resumed {
 		// A resumed mailbox starts its hour again too: its old counter may
 		// still be over the limit from the hour that led to the pause.
+		resetSet["sasl_username="+address] = true
+	}
+	for _, address := range newlyPaused {
 		resetSet["sasl_username="+address] = true
 	}
 	reset := make([]string, 0, len(resetSet))
