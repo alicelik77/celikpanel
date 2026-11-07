@@ -121,6 +121,9 @@ func dbToolsFailure(err error) (string, *transport.DatabaseClusterRefusal) {
 
 // ---- size, tables, connections ----
 
+// dbToolsQueryTimeout bounds one size, tables or connections read.
+const dbToolsQueryTimeout = 60 * time.Second
+
 var dbToolsQuery = func(database backupspec.DatabaseIdentity, onDatabase bool, statement string) (string, error) {
 	if database.Type == "postgresql" {
 		args := []string{"-u", "postgres", "psql", "--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--tuples-only", "--no-align"}
@@ -130,7 +133,10 @@ var dbToolsQuery = func(database backupspec.DatabaseIdentity, onDatabase bool, s
 		if onDatabase {
 			args = append(args, "--dbname", database.Name)
 		}
-		cmd := exec.Command("sudo", args...)
+		// Integration (alpha.128): a deadline, as every other database read.
+		ctx, cancel := context.WithTimeout(context.Background(), dbToolsQueryTimeout)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "sudo", args...)
 		cmd.Stdin = strings.NewReader(statement + "\n")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
