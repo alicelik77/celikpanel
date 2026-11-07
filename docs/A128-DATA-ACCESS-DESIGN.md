@@ -50,6 +50,52 @@ night:
 outside the folder; no symlink or `..` escape; uploads readable and writable
 by PHP; and removal leaves no orphan owner.
 
+**Re-examined on the coordinator's request (2026-11-07, later).** The
+existing alpha.117 mechanism cannot confine a login to a folder inside the
+site on any system. sshd's `ChrootDirectory` and a non-writable vsftpd chroot
+both need every path component owned by root. A folder inside the site is
+owned by the site's account, which can also swap it for a link at any time.
+"Ship where correct, refuse elsewhere" therefore means refusing everywhere
+with the current mechanism, so nothing is shipped.
+
+The mechanism that can make it correct already exists for a different job:
+the sandbox helper (`internal/sandboxbind`, docs/SITE-SANDBOX.md §1a). It
+opens a site folder with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)` and
+binds it by descriptor onto a root-owned mount point. Reusing it needs:
+
+1. A helper mode for an access jail. It binds the chosen folder onto
+   `/run/celikpanel-ftp/<login>/files`. The jail root is root-owned 0711 (not
+   0700: the login must traverse it after the chroot). The check "the
+   account's home is the site home" becomes "the folder lies under this
+   site's home, and the login belongs to this site".
+2. A persistent unit per login (`celikftp-<login>.service`, oneshot,
+   `RemainAfterExit`) that requires the bind unit, so the jail is checked
+   again at every boot. If a check fails, the login fails closed (sshd
+   refuses a missing chroot).
+3. The login as its own system user with the site's private group as primary
+   group, a `nologin` shell and `internal-sftp -u 0007`, and vsftpd
+   `local_umask=007` through its `user_config_dir` file. Files it makes are
+   group-writable for the site (PHP). Files the site made stay as their mode
+   says. The screen must say so.
+4. The sshd drop-in gains one `Match User` block per login (`ChrootDirectory
+   /run/celikpanel-ftp/<login>`, `ForceCommand internal-sftp -d /files`). The
+   "every other hosting account" block must list these logins too.
+   `ParseSSHDropInEntries` learns the entry kind. Owner edits are kept as
+   today (`Classify`).
+5. Panel: plan quantity `ftp_accounts`, a records table, steps (check,
+   account, jail, sshd -t / sshd -T -C, FTP TLS handshake as the login,
+   finish) with rollback, and the same password rule as the site account.
+
+**To prove before shipping.** The escape matrix on the five systems, run as
+the new login:
+- `..`, link swap of the folder before a reboot, hard links.
+- `/proc` inside the jail.
+- Upload or delete outside the folder.
+- PHP can still edit what the login uploaded.
+
+This is a release-sized change with a lab round. It is not something to
+finish in one night.
+
 ## G14. IP addresses
 
 **Status: design note only. There is no dedicated-IP assignment.**
@@ -129,6 +175,52 @@ complete, with its tests. A partial version is not shipped.
 - The secret is never logged or retained.
 - Token management cannot be done with a token.
 - The route matrix test (`route_role_matrix_test.go`) gains a token column.
+
+**Re-examined on the coordinator's request (2026-11-07, later).** It is not
+shipped tonight. The remaining work is in the authentication middleware, the
+most sensitive code of the panel. That work belongs in a fresh session with
+its own review, not at the end of a long one. The concrete plan:
+
+- **Fail closed.** A request authenticated by a token reaches only an
+  explicit allowlist of route families. Read scope:
+  - domains list and detail;
+  - DNS records;
+  - mail accounts list;
+  - databases list;
+  - backups list;
+  - usage and visitor statistics.
+
+  Manage scope adds the documented create, change and delete routes of the
+  same families. Everything else answers 403 `API_TOKEN_ROUTE_NOT_ALLOWED`:
+  - token management;
+  - password, two-factor and e-mail changes;
+  - administrator accounts and any reveal;
+  - VPN peer configurations;
+  - licence;
+  - every route whose request identity is `secret: true`.
+
+  This keeps "never able to read secrets" true by construction, not by a
+  per-route audit.
+- **Layers.** These sit in `requireAuth`:
+  - The Bearer header is read only when there is no session cookie, and a
+    request with both is refused.
+  - The server switch `remote_api` is off by default.
+  - The owner must be active and not suspended.
+  - A customer or reseller needs the plan right `remote_api` (D-042 layers);
+    an administrator always has it.
+  - The token must not be expired or revoked, and its scope is applied to
+    the method (read scope: GET and HEAD only).
+  - The allowlist is checked, then the ordinary role gates (an
+    administrator-only route still needs an administrator owner).
+- **Rate limits.** 120 requests a minute per token, and 10 failed token
+  sign-ins a minute per address (the sign-in limiter's store).
+- **Audit and last use.** Token creation and revocation are audited, and so
+  is every changing call made with a token (the token id, never the secret).
+  The last-used time and address are written at most once a minute.
+- **Storage.** The token table is in the workstream's migration. Management
+  routes are session-only: `GET/POST /api/v1/account/api-tokens` and
+  `DELETE /api/v1/account/api-tokens/{id}`. The token is shown once (request
+  identity `secret: true`).
 
 ## G6. Web application firewall
 
