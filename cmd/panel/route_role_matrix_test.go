@@ -74,13 +74,14 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/config/mysql":           gateAdmin,
 	"/api/v1/config/php":             gateAdmin,
 	"/api/v1/dashboard":              gateAdmin,
-	"/api/v1/database-grants/":       gateTenant, // ownership-checked
-	"/api/v1/database-servers":       gateTenant, // registration admin-only in handler
-	"/api/v1/database-servers/":      gateTenant, // ownership-checked
-	"/api/v1/database-users/":        gateTenant, // ownership-checked
-	"/api/v1/databases/":             gateTenant, // ownership-checked
-	"/api/v1/domains":                gateTenant, // ownership-filtered list
-	"/api/v1/domains/":               gateTenant, // single ownership chokepoint + team grants
+	"/api/v1/database-grants/":       gateTenant,  // ownership-checked
+	"/api/v1/database-servers":       gateTenant,  // registration admin-only in handler
+	"/api/v1/database-servers/":      gateTenant,  // ownership-checked
+	"/api/v1/database-users/":        gateTenant,  // ownership-checked
+	"/api/v1/database-remote/":       gateAccount, // alpha.129: ownership-checked; server switch administrator only
+	"/api/v1/databases/":             gateTenant,  // ownership-checked
+	"/api/v1/domains":                gateTenant,  // ownership-filtered list
+	"/api/v1/domains/":               gateTenant,  // single ownership chokepoint + team grants
 	"/api/v1/domains/create":         gateAccount,
 	"/api/v1/dovecot/stats":          gateAdmin,
 	"/api/v1/fail2ban/banned":        gateAdmin,

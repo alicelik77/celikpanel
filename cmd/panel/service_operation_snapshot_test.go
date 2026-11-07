@@ -1441,6 +1441,9 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse remote access to databases (migration 75, alpha.129).
+        DROP INDEX idx_database_remote_rules_user;
+        DROP TABLE database_remote_rules;
         -- Reverse the panel operations (migration 72, alpha.128).
         DROP INDEX idx_certificate_requests_state;
         DROP TABLE certificate_requests;

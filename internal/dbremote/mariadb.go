@@ -344,3 +344,9 @@ func MariaDBJail(port int, unit string) (string, error) {
 		"findtime = " + jailFindTime + "\n" +
 		"bantime = " + jailBanTime + "\n", nil
 }
+
+// IsRemoteAccountHost: host is in a form CelikPanel writes for a remote copy
+// (an address, or an IPv4 network in netmask form): never a wildcard, a name
+// or this server. The panel's engine driver acts on such copies when it
+// deletes a user, revokes its access or changes its password.
+func IsRemoteAccountHost(host string) bool { return validMariaDBHost(host) }
