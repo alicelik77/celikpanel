@@ -47,7 +47,8 @@ Postfix policy protocol, package removed afterwards):
 - A plain `systemctl reload postfwd` clears the counters; with `--keep_rates`
   on the start line it keeps them.
 - A semicolon inside an action text splits the rule (texts avoid it).
-- `postfwd -C` returns non-zero on a broken file; `postconf -P` refuses a value
+- `postfwd -C` (postfwd2 1.35) ends with `exit 1` whatever the file holds
+  (alpha.128 lab), so the check is the "Rule N:" lines it prints; `postconf -P` refuses a value
   with whitespace (`check_policy_service,inet:127.0.0.1:10040` is used).
 
 On the Arch 2.03 program (run from the downloaded package with the same
@@ -65,7 +66,10 @@ answered from the request cache and not counted; with `--cache=0` they were.
 - The panel sends the whole wanted state; the Agent renders the rule file
   (marker + body digest) and lists under `/etc/postfix/celikpanel-postfwd/`
   (Arch: `/etc/postfwd/celikpanel/`), checks them with `postfwd -C`, reloads
-  postfwd and sends two self-test requests for a name no mailbox can have
+  postfwd and sends two self-test requests for a name no mailbox can have (the
+  self-test rule reads a list too, `selftest.domains`, so a list postfwd cannot
+  read fails it; the list folder is kept 0755 because postfwd runs as its own
+  account and the Agent's umask is 0027 — alpha.128 lab)
   (`celikpanel-selftest-…@selftest.invalid`): the first must pass, the second
   must be refused. Only then submission and smtps get
   `smtpd_end_of_data_restrictions=check_policy_service,inet:127.0.0.1:10040`,
@@ -89,8 +93,13 @@ last 7 days) and at least 100 recipients, or collects 100 limit refusals. A
 mailbox without history is judged by volume only after the panel has watched
 for a day, so turning the limits on does not pause busy ordinary mailboxes.
 A new mailbox sends at most 50 per hour in its first 24 hours. The pause is in
-postfwd's `paused.list` (native); the only way out is a password change, which
-removes it within a minute. Notices: "limit reached" at most once per mailbox
+postfwd's `paused.list` (native); the only way out is a password change. The
+apply that lifts the pause asks postfwd about the mailbox with a request that
+counts nothing until it is answered 12 times in a row without the pause (at
+most 30 s): postfwd's prefork children take a reload one by one (alpha.128 lab:
+a message 70 s after the change was still refused). Only then does the answer
+say sending is open again; otherwise it says the stop is lifted and sending
+opens within minutes by itself. Notices: "limit reached" at most once per mailbox
 per hour, "paused" at once, to the customer, the reseller and administrators,
 in the panel and by mail.
 
