@@ -1,6 +1,6 @@
 # CelikPanel Yol Haritası
 
-*Son güncelleme: 10 Ekim 2026 · [English](ROADMAP.md)*
+*Son güncelleme: 7 Kasım 2026 · [English](ROADMAP.md)*
 
 ---
 
@@ -63,6 +63,175 @@ bu, temel P0 işlerini kapatmaz veya ilgisiz özellik genişlemesini haklı çı
 Dayanıklı çalışma iddiasından önce D-025'in kabul matrisi uygulanıp geçmelidir.
 Sistemin mümkün olan her arızayı kendiliğinden gidereceği vaat edilmez.
 
+
+---
+
+## Önümüzdeki Yol — 7 Kasım 2026
+
+Bu bölüm bundan sonra ne yapılacağını tek yerde toplar. Aşağıdaki eski
+"Neredeyiz" ve sürüm bölümleri tarihsel kayıttır; sıra ve öncelik için bu
+bölüm geçerlidir. Sürüm numaraları hedeftir: her sürüm laboratuvar turunu
+geçmeden yayımlanmaz, bitmeyen iş sürümü bekletmez, bir sonrakine kalır ve
+bu bölümde öyle yazılır.
+
+### Neredeyiz
+
+- **Son sürüm:** v0.1.0-alpha.128, 7 Kasım 2026'da yayımlandı. Site başına
+  ayarlar (sınırlar içinde), planlarda "yalnız bildir", giden posta
+  sınırları, site başına web sunucusu ayarları, ek FTP/SFTP girişleri,
+  veritabanı araçları, ziyaretçi istatistikleri, uzak API, tek bildirim
+  listesi, oturumlar ve sunucu bakımı ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.128.tr.md)).
+- **Sahibin sunucuları:** Frankfurt ve Boston 127'de; 128'e güncellemeyi
+  sahip panelin kendi güncelleme ekranından başlatacak. Güncellemeden sonra
+  yalnız salt-okur doğrulama yapılır.
+- **Laboratuvar kapsamı:** 128'in yeni özellikleri Debian 13 ve Ubuntu
+  24.04'te denendi. Debian 12, Ubuntu 22.04 ve Arch Linux yalnız otomatik
+  testlerle kapsandı.
+
+### Çalışma kuralları (değişmez)
+
+- Kurulu paneli yalnız sahip, panelin kendi güncelleme ekranından günceller.
+- Güvenlik ve kararlılık her zaman önce gelir; yalnız dağıtımın resmî
+  paketleri kullanılır.
+- Her yeni özellik laboratuvarda, sahibin yazdığı kurulum ve güncelleme
+  yolundan uçtan uca denenir; denenmeyen kısım sürüm notunda açıkça yazılır.
+- Her işlemde ilerleme adımları, sorun ve çözümü birlikte, tarayıcı penceresi
+  yok, listeler kendiliğinden yenilenir, ekranlar sade kalır.
+- Sunucu sahibi panel olmadan da hizmetlerini çalıştırabilir.
+
+### Sıradaki sürümler
+
+**alpha.129 — Veritabanları ve 128'in açıkları**
+1. Veritabanı kullanıcısının parolasını değiştirme (üretme, göster/gizle,
+   güç göstergesi, 127 parola kuralı). Bugün kullanıcı yalnız oluşturulup
+   silinebiliyor.
+2. Aynı veritabanına ek kullanıcı: "salt okunur" ya da "okuma-yazma".
+3. Bağlantı rehberi: pgAdmin, DBeaver ve HeidiSQL ile bağlanmak için sunucu
+   adı, port, kullanıcı ve adımlar; yönetici için SSH tüneli yolu.
+4. Dışarıdan bağlantı (sahip kararı bekliyor, aşağıya bakın): önerilen kural
+   varsayılan kapalı, yalnız eklenen IP adresleri, şifreli bağlantı, yanlış
+   parola denemelerinin yavaşlatılması, plan izniyle.
+5. Veritabanı kartları: motorun işareti ve rengi (resmî logolar ancak iki
+   projenin marka kuralları izin verirse, yoksa kendi işaretimiz), MariaDB
+   veritabanına "MySQL" yazılmaması, dosya seçilmeden önce kapalı ama normal
+   görünen "İçe aktar" düğmesi, boyut/tablo/bağlantı sayılarının okunur
+   kutuları.
+6. Aynı adlı iki farklı motor veritabanı serbest kalır; yalnız dışa aktarma
+   ve yedek dosya adlarında motor yer alır (aynı adlı iki dosya birbirinin
+   üstüne yazılmasın). Alan adına bağlı olmayan veritabanlarında ad kuralı
+   doğrulanır.
+7. 128'in açık kalanları: yeni özelliklerin Debian 12, Ubuntu 22.04 ve Arch
+   Linux'ta laboratuvar denemesi; günlük saklama ve büyük site kopyası
+   denemesi; DNS yayını beklenen alan adının anahtarla silinmesi; aynı saat
+   içinde yeniden açılan posta kutusunun gerektiğinde yeniden durdurulması.
+
+**alpha.130 — Posta**
+1. Posta programlarının kendiliğinden ayarlanması (Thunderbird, Outlook):
+   site şablonu değişikliği ve sertifika işiyle birlikte.
+2. Dış aktarıcı (smarthost): postayı başka bir sunucu üzerinden gönderme.
+   Diğer posta sunucusu ayarları (Dovecot sınırları, alt adresleme, DKIM
+   anahtarı değişimi, izin ve engel listeleri) talebe göre birer birer.
+3. Joker sertifika (`*.alanadi`): alpha.114'te ertelendi. Yalnız PowerDNS
+   üzerinde, DNS doğrulamasıyla; BIND'de açık bir retle.
+4. Posta kutusu kurtarma adresi ve sıfırlama bağlantısı: parolasız bir giriş
+   yolu olduğu için önce güvenlik incelemesi; inceleme geçmezse yapılmaz ve
+   nedeni yazılır.
+
+**alpha.131 — Uygulama sınırları ve sertleştirme**
+1. Node.js, Python ve hizmet uygulamaları için bellek ve işlemci sınırı,
+   planın tavanları içinde.
+2. Gerçek kullanımdan sınır önerileri (bir site sürekli sınıra dayanıyorsa
+   yöneticiye söylenir).
+3. Sunucu varsayılanı olarak sembolik bağ sertleştirmesi ve site başına
+   `open_basedir`: önce katalogdaki uygulamalarla laboratuvarda denenir.
+4. Güncellemenin son veritabanı denetimi hâlâ canlı veritabanını kopyalıyor;
+   daha güvenli tasarım (docs/UPDATE-LATE-DATABASE-PROOF.md) uygulanır ya da
+   gerekçesiyle açık kalır.
+
+**Sonraki adaylar (sıra talebe göre):** siteye ayrılmış IP adresi (bir
+sitenin adresini değiştirmek o adresteki bütün sitelerin varsayılanını
+etkilediği için önce testler), HTTP/3, web uygulaması güvenlik duvarı
+(sahip kararına bağlı), WordPress tek tıkla yönetici girişi, müşterinin
+ikincil DNS bölgesi, uzak veritabanı sunucuları, uzun listelerde arama.
+
+### PostgreSQL yönetim aracı (ayrı ürün)
+
+Sahibin 7 Kasım 2026 isteği: PostgreSQL'e özgü, güçlü bir yönetim aracı.
+Genel araçlar (Adminer, phpPgAdmin) PostgreSQL'in rollerini, şemalarını,
+eklentilerini ve performans araçlarını iyi yönetmiyor; pgAdmin'in web sürümü
+ağır ve Debian ile Ubuntu'nun resmî paketleri arasında değil.
+
+- **Biçim:** ayrı bir program, kendi sürümüyle; CelikPanel olmadan da
+  çalışır. CelikPanel'e Bileşenler'den kurulan bir bileşen olarak bağlanır ve
+  panelin içinden açılır. Eklenti pazarı değildir: aracı biz yazar, biz
+  imzalarız.
+- **Dil:** Go (panel ve ajanla aynı derleme, imza ve test düzeni; `pgx`
+  sürücüsü). Rust ancak PostgreSQL protokolünün arasına giren bir iş
+  gerekirse yeniden konuşulur.
+- **Güvenlik:** müşteri yalnız kendi veritabanı kullanıcısıyla bağlanır,
+  hiçbir zaman yönetici yetkisiyle; her sorgunun süre ve sonuç sınırı vardır;
+  her değişiklik kayda geçer.
+- **Aşama 0:** tasarım belgesi; sahiple konuşulmadan kodlamaya başlanmaz.
+- **Aşama 1 (işletme):** roller ve yetkiler, şemalar, izin verilen listeden
+  eklentiler, boyut ve şişme, vacuum, en yavaş sorgular, açık bağlantıları
+  görme ve sonlandırma.
+- **Aşama 2 (veri):** tablo gezme, sorgu yazma, sorgu planı.
+- **İş bölümü:** sunucu ayarları (iki motor için de) ve veritabanı/kullanıcı
+  oluşturma panelde kalır; veritabanının içi araçta. MariaDB için resmî
+  paketi olan phpMyAdmin yeterli.
+- **Zaman:** tasarım belgesi alpha.129'dan sonra; kodlama tarihi belgeyle
+  birlikte konuşulur.
+
+### Beta öncesi bitmesi gerekenler
+
+Aşağıdaki "v0.6 – v0.9 — Beta Programı" bölümünün bugünkü durumu:
+
+| İş | Durum |
+|---|---|
+| Kullanım kılavuzu (panel içinde ve celikpanel.net'te) | Var (alpha.119) |
+| API belgesi (OpenAPI) | Yok |
+| Destek politikası (hangi sürüm ne kadar desteklenir) | Yok |
+| Kişisel veri: hesap verisini dışa aktarma ve silme raporu | Yok |
+| Lisans ve iş modeli kararı, fiyat ilkesi | Sahip kararı bekliyor |
+| "Neden CelikPanel" belgesi | Yok |
+| Hafif marka ayarı (panel adı, logo, renk) | Yok |
+| Kendi kendine kayıt (varsayılan kapalı, kötüye kullanım freniyle) | Yok |
+| Hızlı arama (Ctrl+K, yalnız gezinme) | Yok |
+| İlk yönetici tarayıcıdan oluşturulsun | Bugün kurulum komutu parolayı terminalde soruyor; gerekip gerekmediği konuşulacak |
+| Dayanıklılık sözleşmesindeki adı belli sınırların yeniden gözden geçirilmesi | Beta duyurusundan önce |
+| En az üç dış işletmeci, en az bir ay gerçek sitelerle | Beta'nın kendisi |
+
+Beta'ya çıkış ölçütleri aşağıdaki bölümde yazılı olanlardır; değiştirilecekse
+gerekçesiyle değiştirilir.
+
+### Sahibin kararını bekleyenler
+
+1. **Veritabanına dışarıdan bağlantı** (129): önerilen kural yukarıda.
+2. **Web uygulaması güvenlik duvarı (ModSecurity):** Arch'ta resmî paketi
+   yok, Ubuntu'da yalnız topluluk deposunda. Seçenekler: yalnız resmî paketi
+   olan sistemlerde sunmak ya da yapmamak.
+3. **Lisans ve iş modeli:** önerilen açık çekirdek; fiyat sunucu başına,
+   hesap sayısına göre değil.
+4. **PostgreSQL aracı:** açık kaynak mı, ayrı depo mu.
+5. **Sürüm büyüklüğü:** yukarıdaki gibi konulu ve laboratuvarlı sürümler mi,
+   yoksa 1–3 işlik küçük sürümler mi.
+6. **Beta:** ne zaman ve hangi işletmecilerle.
+7. **Posta kutusu kurtarma adresi:** güvenlik incelemesinden sonra
+   yapılsın mı.
+
+### Bilerek yapılmayanlar (değişmedi)
+
+Docker katmanı, eklenti pazarı, panel içi terminal, telemetri ve tam
+ziyaretçi analitiği; gerekçeler aşağıdaki "Bilinçli Hedef-Dışılar"
+bölümünde. Ayrıca düz FTP (alpha.117'den beri yalnız TLS'li), çözülebilir
+biçimde saklanan posta parolası ve sahibin 4 Kasım 2026 kararıyla parolasız
+posta gönderimi.
+
+### Ufuk (1.0 sonrası)
+
+Sunucu kümesi (sahibin 31 Ekim 2026 isteği): tek marka alan adı ve çok
+sayıda sunucu; iki sunuculu çift sahibin sunucularında kanıtlanmadan
+başlanmaz. Ayrıntı aşağıdaki "1.0 Sonrası" bölümünde.
 
 ---
 
