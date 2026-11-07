@@ -293,8 +293,13 @@ hiçbir sunucuya dokunulmadı.
 - **Git ile dağıtım:** henüz sürüm ya da geri alma klasörü ve webhook yok.
   Düz ("dumb") HTTP ile sunulan depolar dağıtılamıyor; akıllı HTTP ve SSH
   çalışıyor.
-- **FTP/SFTP girişleri:** sshd yalnız anahtar kabul ediyorsa girişler TLS'li
-  FTP kullanıyor. Arch'ta sistemin kendi giriş kuralı bu girişler için
+- **FTP/SFTP girişleri:** sshd yalnız anahtar kabul ediyorsa (bulut
+  sunucularda yaygın) girişler TLS'li FTP kullanıyor ve ekran bunu
+  söylüyor. TLS'li FTP de kurulu değilse ekran hiçbir girişin neden
+  bağlanamadığını söylüyor ve Ekle'yi gizliyor; yönetici Bileşenler'deki FTP
+  sunucusuna yönlendiriliyor. CelikPanel sunucunun SSH ayarlarında parolayı
+  hiçbir zaman açmıyor. Bu uyarı laboratuvarda değil, otomatik testlerle
+  denetlendi. Arch'ta sistemin kendi giriş kuralı bu girişler için
   parolalı SFTP'yi reddettiğinden girişler TLS'li FTP kullanıyor. Arch'ta
   vsftpd'nin ek seccomp korumalı alanı kapalı, çünkü TLS veri bağlantılarını
   bozuyor (alpha.117'den beri her FTP hesabını etkiliyordu); chroot ve

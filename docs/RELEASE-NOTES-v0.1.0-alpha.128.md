@@ -280,8 +280,12 @@ The lab used its own CA and Git server; no real server was touched.
 - **Git deployment:** no releases or rollback folder and no webhook yet.
   Repositories served over plain ("dumb") HTTP cannot be deployed; smart
   HTTP and SSH work.
-- **FTP/SFTP logins:** where sshd accepts keys only, logins use FTP with
-  TLS. On Arch, the system's own sign-in rule refuses password SFTP for
+- **FTP/SFTP logins:** where sshd accepts keys only (common on cloud
+  servers), logins use FTP with TLS, and the screen says so. If FTP with TLS
+  is not installed either, the screen says why no login can sign in and
+  hides Add; the administrator is pointed to the FTP server in Components.
+  CelikPanel never turns on passwords in the server's SSH settings. This
+  notice was checked by automatic tests, not in the lab. On Arch, the system's own sign-in rule refuses password SFTP for
   these logins, so they use FTP over TLS. On Arch, vsftpd's extra seccomp
   sandbox is turned off because it breaks TLS data connections (this
   affected every FTP account since alpha.117); chroot and privilege
