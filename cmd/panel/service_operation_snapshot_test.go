@@ -1441,6 +1441,9 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the additional FTP logins (migration 72, alpha.128).
+        DROP INDEX idx_ftp_logins_domain;
+        DROP TABLE ftp_logins;
         -- Reverse the site setting limits (migration 66, alpha.128).
         DELETE FROM rights_set_items WHERE item IN ('permission:php_settings', 'permission:php_version');
         ALTER TABLE reseller_pools DROP COLUMN overselling;
