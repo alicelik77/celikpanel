@@ -348,6 +348,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
 		match.kind, match.methods = "php-pool", getPost
+	case "php/settings":
+		// alpha.128: the site's own PHP values within the plan's ceilings.
+		match.kind, match.methods = "php-settings", []string{http.MethodGet, http.MethodPut}
 	case "general":
 		match.kind, match.methods = "general", getPost
 	case "aliases":
@@ -544,6 +547,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainPHPSettings(w, r)
 	case "php-pool":
 		p.handleDomainPHPPool(w, r)
+	case "php-settings":
+		p.handleDomainPHPLimits(w, r, match.domainID)
 	case "general":
 		p.handleDomainGeneralSettings(w, r)
 	case "aliases":
@@ -1135,7 +1140,11 @@ func main() {
 		buildCommit,
 	)
 	panel.orchestrator.SetReleaseLabel(siteFileReleaseLabel())
+	// alpha.128 (G21): the administrator's password level, if one was set.
+	panel.loadPasswordLevel(context.Background())
 	panel.orchestrator.SetSiteServerNames(panel.managedSiteHostnames)
+	// alpha.128: a new site's pool starts within its plan's process limit.
+	panel.orchestrator.SetSitePHPLimits(panel.sitePHPLimits)
 
 	// Development demo accounts (gated behind --demo).
 	// Geliştirme demo hesapları (--demo bayrağının arkasında).

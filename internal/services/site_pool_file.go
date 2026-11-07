@@ -162,11 +162,14 @@ func sitePoolIdentity(version, poolName, username string) poolIdentity {
 
 // SitePoolBody is CelikPanel's text of a site's pool (the body under the
 // header): a comment that says what the file is, then the pool.
-func sitePoolBody(poolName string, identity poolIdentity, values poolValues, uploadsOff bool) string {
+func sitePoolBody(poolName string, identity poolIdentity, values poolValues, uploadsOff bool, settings string) string {
 	body := "; The PHP-FPM pool of " + poolName + ", written by CelikPanel. A line you add or change here is kept:\n" +
 		"; CelikPanel then shows the difference and asks before writing this file again.\n" +
 		"; Buraya eklediğiniz ya da değiştirdiğiniz satır korunur; CelikPanel yeniden yazmadan önce sorar.\n" +
 		legacyPoolText(poolName, identity, values)
+	// alpha.128: the site's own PHP values (site_php_settings.go), only when
+	// it has some, so a pool without them stays byte-identical.
+	body += settings
 	if uploadsOff {
 		body += poolUploadsOffComment + poolUploadsOffLine + "\n"
 	}
@@ -194,8 +197,9 @@ func poolUploadsOff(content []byte) bool {
 func sitePoolName(siteID int) string { return fmt.Sprintf("site%d", siteID) }
 
 // sitePoolFile is the pool of one site at one PHP version with the given
-// values (nil: CelikPanel's held text, else the file's values, else defaults).
-func sitePoolFile(request transport.SitePoolRequest, version string, values *poolValues, trigger string) ManagedSiteFile {
+// values (nil: CelikPanel's held text, else the file's values, else defaults)
+// and the site's own PHP settings (nil: the same order).
+func sitePoolFile(request transport.SitePoolRequest, version string, values *poolValues, own *transport.SitePHPSettings, trigger string) ManagedSiteFile {
 	poolName := sitePoolName(request.SiteID)
 	path := poolFilePath(version, poolName)
 	var content []byte
@@ -227,11 +231,23 @@ func sitePoolFile(request transport.SitePoolRequest, version string, values *poo
 			chosen = parsed.clamped()
 		}
 	}
+	chosen = chosen.withinProcesses(request.PHPLimits)
+	settings := sitePHPSettingsIn(content)
+	if held, ok := HeldPendingBody(path, ManagedHeaderPrefixINI); ok {
+		settings = sitePHPSettingsIn([]byte(held))
+	}
+	if own != nil {
+		settings = *own
+	}
+	block := sitePHPSettingsBlock(settings, request.PHPLimits, func() transport.SitePHPServerValues {
+		server, _ := ReadPHPServerValues(version)
+		return server
+	})
 	return ManagedSiteFile{
 		Kind:                 transport.SiteFileKindPHPPool,
 		Path:                 path,
 		HeaderPrefix:         ManagedHeaderPrefixINI,
-		Body:                 sitePoolBody(poolName, sitePoolIdentity(version, poolName, request.Username), chosen, uploadsOff),
+		Body:                 sitePoolBody(poolName, sitePoolIdentity(version, poolName, request.Username), chosen, uploadsOff, block),
 		Trigger:              trigger,
 		RecordedSHA256:       request.RecordedSHA256,
 		ExpectedFileSHA256:   request.ExpectedFileSHA256,
@@ -266,7 +282,7 @@ func (pm *PHPPoolManager) InspectSitePool(request transport.SitePoolRequest) (tr
 	}
 	managedConfigMutationMu.Lock()
 	defer managedConfigMutationMu.Unlock()
-	result, diff, truncated := InspectManagedSiteFile(sitePoolFile(request, request.PHPVersion, nil, transport.SiteFileTriggerChange))
+	result, diff, truncated := InspectManagedSiteFile(sitePoolFile(request, request.PHPVersion, nil, nil, transport.SiteFileTriggerChange))
 	return result, diff, truncated, nil
 }
 
@@ -298,22 +314,41 @@ func applySitePoolLocked(request transport.SitePoolRequest) (transport.SiteFileR
 		if request.Values == nil {
 			return transport.SiteFileResult{}, fmt.Errorf("a pool save needs its values")
 		}
-		current := sitePoolFile(request, version, nil, transport.SiteFileTriggerChange)
+		current := sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerChange)
 		fallback, _ := poolValuesIn([]byte(current.Body))
 		values := poolValuesFromRequest(*request.Values, fallback)
-		return ApplyManagedSiteFile(sitePoolFile(request, version, &values, transport.SiteFileTriggerChange),
+		return ApplyManagedSiteFile(sitePoolFile(request, version, &values, nil, transport.SiteFileTriggerChange),
+			phpValidate(version), phpReload(version))
+	case transport.SitePoolOperationSettings:
+		// alpha.128: the site's own PHP values; the pool's other values are
+		// kept, its process count only changes when one is sent.
+		if err := ValidateSitePHPSettings(request.PHPSettings); err != nil {
+			return transport.SiteFileResult{}, err
+		}
+		current := sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerChange)
+		values, found := poolValuesIn([]byte(current.Body))
+		if !found {
+			values = defaultPoolValues()
+		}
+		if request.PHPSettings.Processes > 0 {
+			values.maxChildren = request.PHPSettings.Processes
+		}
+		values = values.clamped().withinProcesses(request.PHPLimits)
+		own := request.PHPSettings
+		own.Processes = 0
+		return ApplyManagedSiteFile(sitePoolFile(request, version, &values, &own, transport.SiteFileTriggerChange),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationTake:
-		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, transport.SiteFileTriggerTake),
+		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerTake),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationRecreate:
-		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, transport.SiteFileTriggerRecreate),
+		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerRecreate),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationApply:
-		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, transport.SiteFileTriggerChange),
+		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerChange),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationCreate:
-		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, transport.SiteFileTriggerCreate),
+		return ApplyManagedSiteFile(sitePoolFile(request, version, nil, nil, transport.SiteFileTriggerCreate),
 			phpValidate(version), phpReload(version))
 	case transport.SitePoolOperationSwitch:
 		return switchSitePoolLocked(request)
@@ -334,7 +369,7 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 	if oldVersion == newVersion {
 		return transport.SiteFileResult{}, fmt.Errorf("source and target PHP versions are identical")
 	}
-	source := sitePoolFile(request, oldVersion, nil, transport.SiteFileTriggerChange)
+	source := sitePoolFile(request, oldVersion, nil, nil, transport.SiteFileTriggerChange)
 	sourceInspected := source.inspect()
 	if sourceInspected.state != transport.SiteFileManagedUnchanged {
 		// Kept, missing or refused: the rule writes nothing here; a kept file
@@ -352,7 +387,9 @@ func switchSitePoolLocked(request transport.SitePoolRequest) (transport.SiteFile
 	}
 	targetRequest.PHPVersion = newVersion
 	targetRequest.RecordedSHA256 = ""
-	target := sitePoolFile(targetRequest, newVersion, &values, transport.SiteFileTriggerCreate)
+	// alpha.128: the site's own PHP values move with it.
+	own := sitePHPSettingsIn(sourceInspected.content)
+	target := sitePoolFile(targetRequest, newVersion, &values, &own, transport.SiteFileTriggerCreate)
 	targetInspected := target.inspect()
 	if targetInspected.state != transport.SiteFileAbsent {
 		result := target.result(targetInspected)

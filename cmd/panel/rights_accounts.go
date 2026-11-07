@@ -99,6 +99,9 @@ func setSubscriptionUnlimited(ctx context.Context, tx rightsTx, subID int) error
 	if err := deleteRightsSet(ctx, tx, rightsOwnerSubscription, subID); err != nil {
 		return err
 	}
+	if err := deleteSettingCeilings(ctx, tx, rightsOwnerSubscription, subID); err != nil {
+		return err
+	}
 	return writeSubscriptionLimits(ctx, tx, subID, nil, planLimits{}, 0)
 }
 
@@ -107,12 +110,19 @@ func bindSubscriptionPlan(ctx context.Context, tx rightsTx, subID int, plan load
 	if err := deleteRightsSet(ctx, tx, rightsOwnerSubscription, subID); err != nil {
 		return err
 	}
+	// alpha.128: a bound subscription reads the plan's ceilings and policy.
+	if err := deleteSettingCeilings(ctx, tx, rightsOwnerSubscription, subID); err != nil {
+		return err
+	}
 	return writeSubscriptionLimits(ctx, tx, subID, &plan.ID, plan.Limits, plan.Limits.TrafficMB)
 }
 
 // setSubscriptionCustom: the subscription's own set and numbers.
 func setSubscriptionCustom(ctx context.Context, tx rightsTx, subID int, set rightsSet, limits planLimits) error {
 	if err := saveRightsSet(ctx, tx, rightsOwnerSubscription, subID, set); err != nil {
+		return err
+	}
+	if err := keepPlanLimitsAsOwn(ctx, tx, subID); err != nil {
 		return err
 	}
 	return writeSubscriptionLimits(ctx, tx, subID, nil, limits, limits.TrafficMB)
@@ -165,6 +175,9 @@ func setResellerUnlimited(ctx context.Context, tx rightsTx, resellerID int) erro
 	if _, err := tx.ExecContext(ctx, `DELETE FROM reseller_plan_bindings WHERE reseller_id = ?`, resellerID); err != nil {
 		return err
 	}
+	if err := deleteSettingCeilings(ctx, tx, rightsOwnerReseller, resellerID); err != nil {
+		return err
+	}
 	if err := deleteRightsSet(ctx, tx, rightsOwnerReseller, resellerID); err != nil {
 		return err
 	}
@@ -173,6 +186,9 @@ func setResellerUnlimited(ctx context.Context, tx rightsTx, resellerID int) erro
 
 func bindResellerPlan(ctx context.Context, tx rightsTx, resellerID int, plan resellerPlan) error {
 	if err := deleteRightsSet(ctx, tx, rightsOwnerReseller, resellerID); err != nil {
+		return err
+	}
+	if err := deleteSettingCeilings(ctx, tx, rightsOwnerReseller, resellerID); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `
@@ -186,6 +202,9 @@ func bindResellerPlan(ctx context.Context, tx rightsTx, resellerID int, plan res
 }
 
 func setResellerCustom(ctx context.Context, tx rightsTx, resellerID int, set rightsSet, pool resellerPool) error {
+	if err := keepResellerPlanLimitsAsOwn(ctx, tx, resellerID); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM reseller_plan_bindings WHERE reseller_id = ?`, resellerID); err != nil {
 		return err
 	}
@@ -206,6 +225,9 @@ func resellerToCustom(ctx context.Context, tx rightsTx, resellerID int, givingPo
 	}
 	switch {
 	case state.State == rightsStatePlan:
+		if err := keepResellerPlanLimitsAsOwn(ctx, tx, resellerID); err != nil {
+			return "", err
+		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM reseller_plan_bindings WHERE reseller_id = ?`, resellerID); err != nil {
 			return "", err
 		}

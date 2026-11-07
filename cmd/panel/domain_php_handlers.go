@@ -249,6 +249,21 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 
 		// Only migrate if version is actually changing
 		if req.PHPVersion != phpVersion {
+			// alpha.128 (alpha.127 lab): with nginx stopped, the vhost
+			// cannot be reloaded to the new socket; the change used to
+			// answer INTERNAL after the pool had moved, and the site gave
+			// 502 until the next vhost write. Nothing is changed while the
+			// web server is known to be stopped; an unknown reading goes
+			// on, and any failure below puts the site back (undo below).
+			if p.webServerKnownStopped(r.Context()) {
+				next, action := " The server administrator must start it; then choose the version again.", ""
+				if callerIsAdministrator(r) {
+					next, action = " Start it on the Services page, then choose the version again.", "/components"
+				}
+				writeCodedError(w, http.StatusConflict, errCodeWebServerStopped,
+					"Nothing was changed: the web server (nginx) is stopped, so "+domain.Name+" cannot be moved to PHP "+req.PHPVersion+" safely."+next, action)
+				return
+			}
 			// Move the pool to the new version under D-031 (second step,
 			// 2026-10-11): a pool file the owner changed is kept, nothing is
 			// switched, and the answer is SITE_CONFIG_OWNER_EDITED (reason
@@ -297,7 +312,17 @@ func (p *Panel) handleDomainPHPSettings(w http.ResponseWriter, r *http.Request) 
 				reportOperationStep(r.Context(), "web_server")
 				if verr := p.applySiteVhost(r.Context(), domainID); verr != nil {
 					log.Printf("vhost regen after php switch (domain %d): %v", domainID, verr)
-					writeServerError(w, verr)
+					// alpha.128: the vhost did not follow the socket; move
+					// the pool and the record back so the site keeps
+					// answering on its previous version.
+					if p.undoPHPVersionSwitch(r.Context(), site, poolName, phpVersion, req.PHPVersion, phpFPMSocket) {
+						writeCodedErrorDetails(w, http.StatusBadGateway, errCodePHPVersionUndone,
+							"Nothing was changed: the web server did not take the new configuration for "+domain.Name+
+								", so the site was put back on PHP "+phpVersion+" and keeps working. Check the web server on the Services page (server administrator), then try again.",
+							"", []string{boundedAgentDiagnostic(verr.Error())})
+						return
+					}
+					writeServerErrorFor(w, r, verr)
 					return
 				}
 			}
@@ -480,6 +505,34 @@ func (p *Panel) handleDomainPHPPool(w http.ResponseWriter, r *http.Request) {
 			writeClientError(w, http.StatusBadRequest, "pm must be dynamic, ondemand or static")
 			return
 		}
+		// alpha.128 (docs/SITE-LIMITS.md): the process count stays within the
+		// site's limit (a customer could ask 200 processes before), and the
+		// process manager's details are the administrator's: for anyone else
+		// only the count is taken, the rest stays as the pool has it.
+		if !callerIsAdministrator(r) {
+			var current core.PHPPoolConfig
+			if err := p.callAgent("Agent.GetPHPPoolConfig", transport.GetPHPPoolConfigRequest{Version: phpVersion, PoolName: poolName}, &current); err != nil {
+				writeServerError(w, err)
+				return
+			}
+			count := saveReq.Values.PMMaxChildren
+			saveReq.Values = &transport.SitePoolValues{
+				PM: current.PM, PMMaxChildren: count, PMStartServers: current.PMStartServers,
+				PMMinSpareServers: current.PMMinSpareServers, PMMaxSpareServers: current.PMMaxSpareServers,
+				PMMaxRequests: current.PMMaxRequests,
+			}
+		}
+		if limits, _, err := p.domainSettingLimits(r.Context(), domainID); err == nil {
+			limit := limits[settingPHPProcesses]
+			if saveReq.PHPLimits.Known && limit.Ceiling != nil && !limit.allows(saveReq.Values.PMMaxChildren) {
+				writeSettingAboveLimit(w, []settingRefusal{{Key: settingPHPProcesses, Value: saveReq.Values.PMMaxChildren,
+					Limit: *limit.Ceiling, SetBy: limit.SetBy, SetByName: limit.SetByName}})
+				return
+			}
+		} else {
+			writeServerError(w, err)
+			return
+		}
 		if _, err := p.applySitePool(r.Context(), site, saveReq); err != nil {
 			writeServerErrorFor(w, r, err)
 			return
@@ -532,4 +585,52 @@ func callerSetPoolIdentity(c *core.PHPPoolConfig) string {
 		return "listen.mode"
 	}
 	return ""
+}
+
+// errCodeWebServerStopped: a change that must reload nginx was refused before
+// anything changed, because nginx is stopped. Action: the Services page.
+// errCodePHPVersionUndone: the vhost did not take the new socket; the pool
+// and the record were moved back, so nothing changed.
+const (
+	errCodeWebServerStopped = "WEB_SERVER_STOPPED"
+	errCodePHPVersionUndone = "PHP_VERSION_UNDONE"
+)
+
+// webServerKnownStopped reads nginx's unit state (read only). Only a reading
+// that says inactive or failed is "stopped"; an unknown reading is not.
+func (p *Panel) webServerKnownStopped(ctx context.Context) bool {
+	var resp transport.ServiceHealthResponse
+	if err := p.callAgentContext(ctx, "Agent.ServiceHealthV1", &transport.ServiceHealthRequest{Units: []string{"nginx"}}, &resp); err != nil {
+		return false
+	}
+	if !resp.Batched || len(resp.Units) != 1 || resp.Units[0].LoadState != "loaded" {
+		return false
+	}
+	switch resp.Units[0].ActiveState {
+	case "inactive", "failed":
+		return true
+	}
+	return false
+}
+
+// undoPHPVersionSwitch moves the pool back to the previous version and puts
+// the site's record back. It reports whether both happened.
+func (p *Panel) undoPHPVersionSwitch(ctx context.Context, site siteFileSite, poolName, previous, current string, previousSocket *string) bool {
+	site.PHPVersion = current
+	back := p.sitePoolRequest(ctx, site, transport.SitePoolOperationSwitch)
+	back.NewPHPVersion = previous
+	if _, err := p.applySitePool(ctx, site, back); err != nil {
+		log.Printf("undo PHP switch of %s (%s -> %s): pool: %v", site.Domain, current, previous, err)
+		return false
+	}
+	socket := services.PHPFPMSocketPath(previous, poolName)
+	if previousSocket != nil && *previousSocket != "" {
+		socket = *previousSocket
+	}
+	if _, err := p.db.GetDB().ExecContext(ctx, `UPDATE sites SET php_version = ?, php_fpm_socket = ?, updated_at = datetime('now') WHERE domain_id = ?`,
+		previous, socket, site.DomainID); err != nil {
+		log.Printf("undo PHP switch of %s: record: %v", site.Domain, err)
+		return false
+	}
+	return true
 }

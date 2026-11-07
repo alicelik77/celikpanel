@@ -90,3 +90,39 @@ func TestUnknownFieldPanics(t *testing.T) {
 	}()
 	CheckField("Ab-defgh", "nope")
 }
+
+func TestPasswordLevelRaisesTheRule(t *testing.T) {
+	t.Cleanup(func() { _ = SetLevel(LevelOwner) })
+	if CheckField("Abc-defg", "account") != nil {
+		t.Fatal("the owner's rule refused a valid password")
+	}
+	if err := SetLevel(LevelStrong); err != nil {
+		t.Fatal(err)
+	}
+	refusal := CheckField("Abc-defgh", "account")
+	if refusal == nil || refusal.Rules[0] != RuleTooShort || refusal.MinChars != 10 {
+		t.Fatalf("strong level: %+v", refusal)
+	}
+	refusal = CheckField("Abc-defghij", "account")
+	if refusal == nil || refusal.Reason() != RuleNeedsDigit {
+		t.Fatalf("strong level without a digit: %+v", refusal)
+	}
+	if CheckField("Abc-defghi1", "account") != nil {
+		t.Fatal("strong level refused a valid password")
+	}
+	if err := SetLevel(LevelVeryStrong); err != nil {
+		t.Fatal(err)
+	}
+	if CheckField("Abc-defghi1", "account") == nil {
+		t.Fatal("very strong level took 11 characters")
+	}
+	if SetLevel("weak") == nil {
+		t.Fatal("an unknown level was taken")
+	}
+	for i := 0; i < 50; i++ {
+		generated, err := Generate(16)
+		if err != nil || CheckField(generated, "database_user") != nil {
+			t.Fatalf("generated %q does not meet the very strong level: %v", generated, err)
+		}
+	}
+}

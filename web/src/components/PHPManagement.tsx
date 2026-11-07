@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { FileCode, Puzzle, FileText, type LucideIcon } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { RepoCard } from './RepoCard';
@@ -9,6 +9,9 @@ import { KnownEmpty, RemoteGate } from './ui';
 import { decodeList, useRemote } from '../lib/remote';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+
+// alpha.128: the server's limits of PHP settings for customers' sites.
+const ServerSettingLimits = lazy(() => import('./ServerSettingLimits').then((module) => ({ default: module.ServerSettingLimits })));
 
 interface PHPManagementProps {
     versions: string[];
@@ -141,6 +144,7 @@ export function PHPManagement({ versions, onBack }: PHPManagementProps) {
             ) : (
                 <PHPExtendedConfig version={version} />
             )}
+            <div className="mt-6"><Suspense fallback={null}><ServerSettingLimits group="php" /></Suspense></div>
             {/* alpha.108 (D-038 §14): which versions customers are offered. */}
             <div className="mt-6 empty:hidden"><OfferedVersionsCard component="php" installed={versions} /></div>
             {/* alpha.107: the vendor PHP repository's card (D-038 §12). */}

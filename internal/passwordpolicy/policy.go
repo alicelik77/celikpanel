@@ -18,6 +18,7 @@ package passwordpolicy
 
 import (
 	"fmt"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
 )
@@ -37,7 +38,54 @@ const (
 	RuleNeedsUpper   = "needs_upper"   // no uppercase letter
 	RuleNeedsLower   = "needs_lower"   // no lowercase letter
 	RuleNeedsSpecial = "needs_special" // no character that is neither a letter nor a digit
+	// RuleNeedsDigit (alpha.128): no digit, at the Strong or Very strong level.
+	RuleNeedsDigit = "needs_digit"
 )
+
+// Password levels (alpha.128, gap G21). The administrator may raise the
+// owner's rule, never lower it; the level applies when a password is set or
+// changed, never to existing passwords.
+const (
+	LevelOwner      = "owner"       // the owner's rule above
+	LevelStrong     = "strong"      // also at least 10 characters and a digit
+	LevelVeryStrong = "very_strong" // also at least 14 characters and a digit
+)
+
+var currentLevel atomic.Value // string
+
+// ValidLevel reports whether level is one of the levels.
+func ValidLevel(level string) bool {
+	return level == LevelOwner || level == LevelStrong || level == LevelVeryStrong
+}
+
+// SetLevel sets the level CheckField applies (the panel loads it from its
+// settings at start and on every change). An unknown level is refused.
+func SetLevel(level string) error {
+	if !ValidLevel(level) {
+		return fmt.Errorf("passwordpolicy: unknown level %q", level)
+	}
+	currentLevel.Store(level)
+	return nil
+}
+
+// Level is the level in force (the owner's rule until one is set).
+func Level() string {
+	if level, ok := currentLevel.Load().(string); ok && level != "" {
+		return level
+	}
+	return LevelOwner
+}
+
+// LevelMinChars is the smallest length a level asks for (0: the field's).
+func LevelMinChars(level string) int {
+	switch level {
+	case LevelStrong:
+		return 10
+	case LevelVeryStrong:
+		return 14
+	}
+	return 0
+}
 
 // Field is the length window of one kind of password. MinChars counts
 // characters (Unicode code points) and is never below BaseMinChars; MaxBytes
@@ -116,6 +164,11 @@ func Message(rule string, minChars, maxBytes int, lang string) string {
 			return "Şifrede en az bir küçük harf olmalı."
 		}
 		return "Password must contain a lowercase letter."
+	case RuleNeedsDigit:
+		if tr {
+			return "Şifrede en az bir rakam olmalı (sunucunun parola düzeyi)."
+		}
+		return "Password must contain a digit (the server's password level)."
 	case RuleNeedsSpecial:
 		if tr {
 			return "Şifrede en az bir özel karakter (harf ya da rakam olmayan, örneğin - _ . !) olmalı."
@@ -193,5 +246,33 @@ func CheckField(password, field string) *Error {
 	if !ok {
 		panic("passwordpolicy: unknown field " + field)
 	}
-	return Check(password, f.MinChars, f.MaxBytes)
+	return CheckAtLevel(password, f.MinChars, f.MaxBytes, Level())
+}
+
+// CheckAtLevel is Check with a password level on top: the level's minimum
+// length when it is larger, and a digit at Strong and Very strong.
+func CheckAtLevel(password string, minChars, maxBytes int, level string) *Error {
+	if levelMin := LevelMinChars(level); levelMin > minChars {
+		minChars = levelMin
+	}
+	refusal := Check(password, minChars, maxBytes)
+	if level == LevelStrong || level == LevelVeryStrong {
+		hasDigit := false
+		for _, r := range password {
+			if unicode.IsDigit(r) {
+				hasDigit = true
+				break
+			}
+		}
+		if !hasDigit {
+			if refusal == nil {
+				if minChars < BaseMinChars {
+					minChars = BaseMinChars
+				}
+				refusal = &Error{MinChars: minChars, MaxBytes: maxBytes}
+			}
+			refusal.Rules = append(refusal.Rules, RuleNeedsDigit)
+		}
+	}
+	return refusal
 }

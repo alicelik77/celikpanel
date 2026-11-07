@@ -236,7 +236,13 @@ func (p *Panel) evaluateTrafficLimits(ctx context.Context) error {
 			continue
 		}
 		limit := sub.LimitMB * mib
-		level := usageLevel(sub.UsedBytes, limit)
+		// alpha.128 (G10): the plan's notice level and overuse policy; a
+		// "notify only" plan never closes the websites.
+		policy, _, notifyPct, err := subscriptionOverusePolicy(ctx, db, sub.ID)
+		if err != nil {
+			return err
+		}
+		level := usageLevelAt(sub.UsedBytes, limit, notifyPct)
 		if level == 0 {
 			continue
 		}
@@ -249,7 +255,11 @@ func (p *Panel) evaluateTrafficLimits(ctx context.Context) error {
 		kind := noticeTraffic80
 		if level == 100 {
 			kind = noticeTraffic100
-			want[sub.ID] = trafficCauseSubscription
+			if policy != overusePolicyNotify {
+				want[sub.ID] = trafficCauseSubscription
+			} else {
+				body.Cause = trafficCauseNotifyOnly
+			}
 		}
 		p.storeUsageNotices(ctx, db, recipients, kind, sub.ID, 0, period, body)
 	}

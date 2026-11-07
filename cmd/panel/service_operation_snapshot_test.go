@@ -1441,6 +1441,22 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the site setting limits (migration 66, alpha.128).
+        DELETE FROM rights_set_items WHERE item IN ('permission:php_settings', 'permission:php_version');
+        ALTER TABLE reseller_pools DROP COLUMN overselling;
+        ALTER TABLE reseller_plans DROP COLUMN overselling;
+        ALTER TABLE subscriptions DROP COLUMN notify_percent_traffic;
+        ALTER TABLE subscriptions DROP COLUMN notify_percent_disk;
+        ALTER TABLE subscriptions DROP COLUMN overuse_policy;
+        ALTER TABLE service_plans DROP COLUMN notify_percent_traffic;
+        ALTER TABLE service_plans DROP COLUMN notify_percent_disk;
+        ALTER TABLE service_plans DROP COLUMN overuse_policy;
+        DROP TRIGGER setting_ceilings_follow_user;
+        DROP TRIGGER setting_ceilings_follow_reseller_plan;
+        DROP TRIGGER setting_ceilings_follow_plan;
+        DROP TRIGGER setting_ceilings_follow_subscription;
+        DROP TABLE setting_ceilings;
+        DROP TABLE setting_policy;
         -- Reverse the monitoring alerts (migration 65, alpha.127).
         DROP TABLE site_uptime;
         DROP INDEX idx_monitoring_alerts_opened;

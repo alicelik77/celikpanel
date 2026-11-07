@@ -57,7 +57,9 @@ func GenerateFrom(alphabet string, length int) (string, error) {
 			strings.ContainsRune(GeneratedSpecials, rune(candidate[length-1])) {
 			continue
 		}
-		if Check(candidate, BaseMinChars, 0) == nil {
+		// alpha.128: a digit too when the alphabet has digits, so a
+		// generated password meets every password level (Strong, Very strong).
+		if Check(candidate, BaseMinChars, 0) == nil && (strings.ContainsAny(candidate, "0123456789") || !strings.ContainsAny(alphabet, "0123456789")) {
 			return candidate, nil
 		}
 	}
