@@ -318,6 +318,8 @@ func isAdminOnlyPath(path string) bool {
 		"/api/v1/managed-services",
 		"/api/v1/metrics/",
 		"/api/v1/nginx/",
+		// alpha.128: the server's IP addresses.
+		"/api/v1/network/",
 		"/api/v1/panel/",
 		"/api/v1/pdns/",
 		"/api/v1/php/",

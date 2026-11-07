@@ -120,6 +120,7 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/plans":                 gateAccount, // admin + reseller (handler); reseller sees global + own
 	"/api/v1/plans/":                gateAccount, // admin any plan, reseller own plans (handler)
 	"/api/v1/postfix/queue":         gateAdmin,
+	"/api/v1/network/ip-addresses":  gateAdmin,
 	"/api/v1/postfix/summary":       gateAdmin,
 	"/api/v1/products":              gateAccount,
 	"/api/v1/reseller-plans":        gateAccount, // administrator only (handler)

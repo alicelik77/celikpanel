@@ -1640,6 +1640,8 @@ func main() {
 	http.HandleFunc("/api/v1/fail2ban/config", panel.handleFail2banConfig)
 
 	// Email Management (Postfix & Dovecot)
+	// alpha.128 (G14): the server's IP addresses, read only.
+	http.HandleFunc(serverIPAddressesPath, panel.handleServerIPAddresses)
 	http.HandleFunc("/api/v1/postfix/queue", panel.handlePostfixQueue)
 	http.HandleFunc("/api/v1/postfix/summary", panel.handlePostfixSummary)
 	http.HandleFunc(passwordlessMailPath, panel.handlePasswordlessMail)

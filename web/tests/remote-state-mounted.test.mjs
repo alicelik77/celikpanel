@@ -61,6 +61,10 @@ const stubbedComponents = [
   'DNSCheckToolNotice',
   // alpha.128: each database's tools read their own address (DatabaseTools).
   'DatabaseTools',
+  // alpha.128: the visitor statistics above the logs read their own address.
+  'VisitorStats',
+  // alpha.128: the server's IP addresses on Settings read their own address.
+  'IPAddressesSection',
 ];
 for (const name of screenFiles) {
   for (const match of source(`components/${name}.tsx`).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {

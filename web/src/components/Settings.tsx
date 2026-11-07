@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext';
 import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
 import { PanelPortCard } from './PanelPortCard';
+// alpha.128 (G14): the server's addresses, read only.
+import { IPAddressesSection } from './IPAddressesSection';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, lastKnown, useRemote } from '../lib/remote';
 import { decodePanelCertificate, panelCertificateName, PANEL_CERTIFICATE_URL } from '../lib/panelCertificate';
@@ -172,6 +174,7 @@ function SettingsWorkspace({
                         <div id="settings-panel-panel" role="tabpanel" aria-labelledby="settings-panel-tab" hidden={activeID !== 'panel'}>
                             <PanelCertificatePanel active={activeID === 'panel'} />
                             {activeID === 'panel' && <PanelPortCard />}
+                            {activeID === 'panel' && <IPAddressesSection />}
                         </div>
                         <div id="settings-license-panel" role="tabpanel" aria-labelledby="settings-license-tab" hidden={activeID !== 'license'}>
                             {activeID === 'license' && <Suspense fallback={<p role="status">{t('common.loading')}</p>}><LicensePanel /></Suspense>}

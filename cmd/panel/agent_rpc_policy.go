@@ -153,7 +153,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DNSPeerInspectorToolStatusV1
 		Agent.ServiceHealthV1
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
-		Agent.SiteVisitorStatsV1
+		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -460,6 +460,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.DatabaseCheckV1":        agentRPCSiteLongTimeout,
 	// alpha.128 (G24): the Agent bounds one read at 25 s and 1 GiB.
 	"Agent.SiteVisitorStatsV1":            agentRPCStandardReadTimeout,
+	"Agent.ServerIPAddressesV1":           agentRPCQuickReadTimeout,
 	"Agent.CreateSite":                    agentRPCDatabaseTimeout,
 	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
 	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,
