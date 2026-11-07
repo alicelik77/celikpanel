@@ -117,6 +117,12 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.password.saved': 'Parola düzeyi kaydedildi.',
     'limits.password.failed': 'Parola düzeyi kaydedilemedi.',
 
+    'dashboard.audit.action.rights.offer_permission': '{target} izninin sunumunu değiştirdi',
+    'dashboard.audit.action.settings.limit': '{target} sunucu sınırını değiştirdi',
+    'dashboard.audit.action.settings.password_level': 'parola düzeyini {target} yaptı',
+    'dashboard.audit.action.site.php_settings.refused': '{target} PHP ayarlarını değiştirmeyi denedi; web sunucusu reddetti, önceki değerler geri kondu',
+    'dashboard.audit.action.site.php_settings': '{target} PHP ayarlarını değiştirdi',
+
     'rights.perm.php_settings': 'Sitenin PHP ayarları',
     'rights.perm.php_version': 'Sitenin PHP sürümü',
     'rights.perm.nginx_directives': 'Ek nginx yönergeleri',

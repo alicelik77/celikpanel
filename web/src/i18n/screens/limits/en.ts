@@ -123,6 +123,12 @@ export const enLimitsScreens = {
     'limits.password.saved': 'The password level was saved.',
     'limits.password.failed': 'The password level could not be saved.',
 
+    'dashboard.audit.action.rights.offer_permission': 'changed the offer of the permission {target}',
+    'dashboard.audit.action.settings.limit': 'changed the server limit {target}',
+    'dashboard.audit.action.settings.password_level': 'set the password level to {target}',
+    'dashboard.audit.action.site.php_settings.refused': 'tried to change the PHP settings of {target}; the web server refused and the previous values were put back',
+    'dashboard.audit.action.site.php_settings': 'changed the PHP settings of {target}',
+
     'rights.perm.php_settings': 'PHP settings of a site',
     'rights.perm.php_version': 'PHP version of a site',
     'rights.perm.nginx_directives': 'Additional nginx directives',

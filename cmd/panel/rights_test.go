@@ -323,7 +323,12 @@ func TestDomainSubrouteFamiliesAreGatedByTheirPermission(t *testing.T) {
 		{"site-redirects", http.MethodGet, ""},
 		{"app-install", http.MethodPost, rightAppInstaller},
 		{"usage", http.MethodGet, ""},
-		{"php", http.MethodPost, ""},
+		// alpha.128: the PHP version and the PHP values have their permissions.
+		{"php", http.MethodPost, rightPHPVersion},
+		{"php", http.MethodGet, ""},
+		{"php-pool", http.MethodPost, rightPHPSettings},
+		{"php-settings", http.MethodPut, rightPHPSettings},
+		{"php-settings", http.MethodGet, ""},
 	}
 	customer := &Caller{ID: authzMatrixCustomerID, Role: roleCustomer}
 	admin := &Caller{ID: authzMatrixAdminID, Role: roleAdmin}
