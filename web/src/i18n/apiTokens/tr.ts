@@ -36,7 +36,7 @@ export const trApiTokens: Record<ApiTokensKey, string> = {
     'apitok.empty': 'Henüz API jetonu yok.',
     'apitok.state.active': 'Çalışıyor',
     'apitok.state.expired': 'Süresi doldu',
-    'apitok.state.ended': 'Sona erdi: oluşturulduktan sonra parolanız ya da giriş ayarlarınız değişti',
+    'apitok.state.ended': 'Sona erdi: oluşturulduktan sonra parolanız, e-posta adresiniz ya da iki faktörlü girişiniz değişti ya da bir yönetici hesabı değiştirdi',
     'apitok.created': '{date} oluşturuldu',
     'apitok.expires': 'bitiş {date}',
     'apitok.lastUsed': 'son kullanım {date}, {ip} adresinden',

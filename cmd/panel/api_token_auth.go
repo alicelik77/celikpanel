@@ -32,7 +32,7 @@ import (
 //     from one address, that address gets 429 for the rest of the minute.
 //     A token that verifies is never refused by that limit.
 //  3. It must not be revoked or expired, and the owner's credential epoch
-//     must be the one it was made under.
+//     and e-mail address must be the ones it was made under.
 //  4. The server switch (Settings, off by default) must be on; whether it
 //     is on is told only to the holder of a working token.
 //  5. 120 requests a minute per token.
@@ -476,21 +476,23 @@ type apiTokenRecord struct {
 	TokenID      string
 	SecretSHA256 string
 	Scope        string
-	AuthEpoch    int64
-	UserEpoch    int64
-	ExpiresAt    int64
-	LastUsedAt   sql.NullInt64
-	RevokedAt    sql.NullInt64
+	// Current: the owner's credential epoch and e-mail address are the ones
+	// the token was made under.
+	Current    bool
+	ExpiresAt  int64
+	LastUsedAt sql.NullInt64
+	RevokedAt  sql.NullInt64
 }
 
 func (p *Panel) lookupAPIToken(ctx context.Context, tokenID string) (apiTokenRecord, error) {
 	var rec apiTokenRecord
 	err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT t.id, t.user_id, t.token_id, t.secret_sha256, t.scope, t.auth_epoch, u.auth_epoch,
+		SELECT t.id, t.user_id, t.token_id, t.secret_sha256, t.scope,
+		       (t.auth_epoch = u.auth_epoch AND t.owner_email = COALESCE(u.email, '')),
 		       t.expires_at, t.last_used_at, t.revoked_at
 		FROM api_tokens t JOIN users u ON u.id = t.user_id
 		WHERE t.token_id = ?`, tokenID).Scan(&rec.ID, &rec.UserID, &rec.TokenID, &rec.SecretSHA256, &rec.Scope,
-		&rec.AuthEpoch, &rec.UserEpoch, &rec.ExpiresAt, &rec.LastUsedAt, &rec.RevokedAt)
+		&rec.Current, &rec.ExpiresAt, &rec.LastUsedAt, &rec.RevokedAt)
 	return rec, err
 }
 
@@ -507,7 +509,7 @@ const (
 		"Make a new token on My account."
 	apiTokenExpiredMessage = "This API token has expired, so it no longer works and nothing was changed. " +
 		"Make a new token on My account."
-	apiTokenEndedMessage = "This API token ended because the account's password, two-factor sign-in or account details changed after it was made. " +
+	apiTokenEndedMessage = "This API token ended because, after it was made, the account's password, e-mail address or two-factor sign-in changed, or an administrator changed the account. " +
 		"Nothing was changed. Make a new token on My account."
 	apiTokenRateLimitedMessage = "This API token sent more than 120 requests in a minute, so this one was refused and nothing was changed. " +
 		"Wait a minute, then send it again more slowly."
@@ -603,7 +605,7 @@ func (p *Panel) serveAPITokenRequest(w http.ResponseWriter, r *http.Request, cre
 		ended("expired", errCodeAPITokenExpired, apiTokenExpiredMessage)
 		return
 	}
-	if rec.AuthEpoch != rec.UserEpoch {
+	if !rec.Current {
 		ended("ended", errCodeAPITokenEnded, apiTokenEndedMessage)
 		return
 	}

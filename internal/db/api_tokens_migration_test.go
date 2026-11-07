@@ -45,8 +45,8 @@ func TestAPITokensMigrationChecksItsRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	hash := strings.Repeat("a", 64)
-	good := `INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, created_at, expires_at)
-		VALUES (41, 'deploy', 'abcdefghijkl', '` + hash + `', 'read', 0, 100, 200)`
+	good := `INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, owner_email, created_at, expires_at)
+		VALUES (41, 'deploy', 'abcdefghijkl', '` + hash + `', 'read', 0, 'o@example.test', 100, 200)`
 	if _, err := db.Exec(good); err != nil {
 		t.Fatalf("a valid token row was refused: %v", err)
 	}

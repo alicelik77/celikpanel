@@ -158,7 +158,7 @@ func (p *Panel) listAPITokens(w http.ResponseWriter, r *http.Request, c *Caller)
 // accountAPITokens lists the account's tokens that are not removed.
 func (p *Panel) accountAPITokens(ctx context.Context, userID int) ([]apiTokenView, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
-		SELECT t.id, t.name, t.token_id, t.scope, t.auth_epoch, u.auth_epoch, t.created_at, t.expires_at,
+		SELECT t.id, t.name, t.token_id, t.scope, (t.auth_epoch = u.auth_epoch AND t.owner_email = COALESCE(u.email, '')), t.created_at, t.expires_at,
 		       t.last_used_at, COALESCE(t.last_used_ip, '')
 		FROM api_tokens t JOIN users u ON u.id = t.user_id
 		WHERE t.user_id = ? AND t.revoked_at IS NULL
@@ -172,9 +172,9 @@ func (p *Panel) accountAPITokens(ctx context.Context, userID int) ([]apiTokenVie
 	for rows.Next() {
 		var v apiTokenView
 		var tokenID string
-		var epoch, userEpoch int64
+		var current bool
 		var lastUsed sql.NullInt64
-		if err := rows.Scan(&v.ID, &v.Name, &tokenID, &v.Scope, &epoch, &userEpoch, &v.CreatedAt, &v.ExpiresAt, &lastUsed, &v.LastUsedIP); err != nil {
+		if err := rows.Scan(&v.ID, &v.Name, &tokenID, &v.Scope, &current, &v.CreatedAt, &v.ExpiresAt, &lastUsed, &v.LastUsedIP); err != nil {
 			return nil, err
 		}
 		v.Prefix = apiTokenPrefix + tokenID
@@ -182,7 +182,7 @@ func (p *Panel) accountAPITokens(ctx context.Context, userID int) ([]apiTokenVie
 			v.Scope = apiTokenScopeRead
 		}
 		switch {
-		case epoch != userEpoch:
+		case !current:
 			v.State = "ended"
 		case now >= v.ExpiresAt:
 			v.State = "expired"
@@ -284,11 +284,12 @@ func (p *Panel) createAPIToken(w http.ResponseWriter, r *http.Request, c *Caller
 			"This account already has 20 working API tokens, so no new one was made. Remove one you no longer use, then make the new one.", "")
 		return
 	}
-	// The token is bound to the owner's credential epoch read in the same
-	// transaction: a password or two-factor change after this ends it.
+	// The token is bound to the owner's credential epoch and e-mail address
+	// read in the same transaction: a password, e-mail or two-factor change
+	// after this ends it.
 	result, err := tx.ExecContext(ctx, `
-		INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, created_at, expires_at)
-		SELECT id, ?, ?, ?, ?, auth_epoch, ?, ?
+		INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, owner_email, created_at, expires_at)
+		SELECT id, ?, ?, ?, ?, auth_epoch, COALESCE(email, ''), ?, ?
 		FROM users WHERE id = ? AND COALESCE(NULLIF(status, ''), 'active') = 'active'`,
 		req.Name, tokenID, hashAPITokenSecret(secret), req.Scope, now, expires, c.ID)
 	if err != nil {
@@ -415,7 +416,7 @@ func (p *Panel) handleRemoteAPISetting(w http.ResponseWriter, r *http.Request) {
 	var working int
 	if err := p.db.GetDB().QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM api_tokens t JOIN users u ON u.id = t.user_id
-		WHERE t.revoked_at IS NULL AND t.expires_at > ? AND t.auth_epoch = u.auth_epoch`,
+		WHERE t.revoked_at IS NULL AND t.expires_at > ? AND t.auth_epoch = u.auth_epoch AND t.owner_email = COALESCE(u.email, '')`,
 		apiTokenNow().Unix()).Scan(&working); err != nil {
 		writeServerError(w, err)
 		return

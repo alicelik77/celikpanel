@@ -39,7 +39,7 @@ export const enApiTokens = {
     'apitok.empty': 'No API tokens yet.',
     'apitok.state.active': 'Working',
     'apitok.state.expired': 'Expired',
-    'apitok.state.ended': 'Ended: your password or sign-in settings changed after it was made',
+    'apitok.state.ended': 'Ended: your password, e-mail address or two-factor sign-in changed after it was made, or an administrator changed the account',
     'apitok.created': 'Made {date}',
     'apitok.expires': 'ends {date}',
     'apitok.lastUsed': 'last used {date} from {ip}',

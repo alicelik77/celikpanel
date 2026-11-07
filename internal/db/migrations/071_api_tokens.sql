@@ -8,9 +8,11 @@
 --
 -- scope is read (GET of the listed read routes) or manage (also the listed
 -- change routes); every other route refuses a token (cmd/panel
--- api_token_auth.go). auth_epoch is the owner's users.auth_epoch when the token
--- was made: a password change or reset, a two-factor change or an account
--- change ends the token, as it ends the account's sessions. Times are Unix
+-- api_token_auth.go). auth_epoch and owner_email are the owner's
+-- users.auth_epoch and users.email when the token was made: a password change
+-- or reset, a two-factor change or an administrator's change of the account
+-- (each moves auth_epoch, as it ends the account's sessions) and a change of
+-- the account's e-mail address (owner_email) end the token. Times are Unix
 -- seconds (UTC). name and scope are validated in code, without CHECK
 -- (project rule of 004); the token layer treats any scope other than manage
 -- as read. expires_at is required: a token always ends. revoked_at is
@@ -33,6 +35,7 @@ CREATE TABLE api_tokens (
     secret_sha256 TEXT NOT NULL CHECK (length(secret_sha256) = 64),
     scope TEXT NOT NULL,
     auth_epoch INTEGER NOT NULL,
+    owner_email TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL CHECK (expires_at > created_at),
     last_used_at INTEGER,

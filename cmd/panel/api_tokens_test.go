@@ -100,8 +100,8 @@ func mintTestAPIToken(t *testing.T, p *Panel, userID int, scope string, expires 
 	}
 	created := expires.Add(-48 * time.Hour).Unix()
 	result, err := p.db.GetDB().Exec(`
-		INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, created_at, expires_at)
-		SELECT id, 'test', ?, ?, ?, auth_epoch, ?, ? FROM users WHERE id = ?`,
+		INSERT INTO api_tokens (user_id, name, token_id, secret_sha256, scope, auth_epoch, owner_email, created_at, expires_at)
+		SELECT id, 'test', ?, ?, ?, auth_epoch, COALESCE(email, ''), ?, ? FROM users WHERE id = ?`,
 		tokenID, hashAPITokenSecret(secret), scope, created, expires.Unix(), userID)
 	if err != nil {
 		t.Fatal(err)
@@ -1232,5 +1232,61 @@ func TestAPITokenSignInFailuresAreAuditedPerMinute(t *testing.T) {
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("failure rows:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// A change of the account's e-mail address ends its tokens: the owner's own
+// change (which does not move the credential epoch or end sessions) and an
+// administrator's change of the account (which does). The same address
+// written again keeps them.
+func TestAPITokenEndsWhenTheAccountEmailChanges(t *testing.T) {
+	f := newAPITokenFixture(t)
+	probe := &apiTokenProbe{}
+	handler := f.panel.requireAuth(probe.handler())
+	call := func(token string) *httptest.ResponseRecorder {
+		probe.reached = false
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, tokenRequest(http.MethodGet, "/api/v1/domains", token))
+		return recorder
+	}
+	db := f.panel.db.GetDB()
+	// The same address written again: nothing ends.
+	if _, err := db.Exec(`UPDATE users SET email = email, updated_at = datetime('now') WHERE id = ?`, authzMatrixCustomerID); err != nil {
+		t.Fatal(err)
+	}
+	if recorder := call(f.minted["customer/read"]); recorder.Code != http.StatusNoContent {
+		t.Fatalf("an unchanged address ended the token: %d %s", recorder.Code, recorder.Body.String())
+	}
+	// The owner's own change, as account_email_handler.go writes it.
+	if _, err := db.Exec(`UPDATE users SET email = ?, updated_at = datetime('now') WHERE id = ?`, "new-customer@example.test", authzMatrixCustomerID); err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range []string{"read", "manage"} {
+		recorder := call(f.minted["customer/"+scope])
+		if probe.reached || recorder.Code != http.StatusUnauthorized || apiErrorCode(t, recorder) != errCodeAPITokenEnded ||
+			!strings.Contains(recorder.Body.String(), "e-mail address") {
+			t.Fatalf("own e-mail change, %s token: %d %s", scope, recorder.Code, recorder.Body.String())
+		}
+	}
+	// The screen says it ended.
+	tokens, err := f.panel.accountAPITokens(context.Background(), authzMatrixCustomerID)
+	if err != nil || len(tokens) != 2 || tokens[0].State != "ended" || tokens[1].State != "ended" {
+		t.Fatalf("list after the change: %+v %v", tokens, err)
+	}
+	// An administrator's change of the account.
+	user, err := f.panel.users.GetByID(context.Background(), authzMatrixResellerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user.Email = "renamed-reseller@example.test"
+	if err := f.panel.users.UpdateAndRevokeSessions(context.Background(), user); err != nil {
+		t.Fatal(err)
+	}
+	if recorder := call(f.minted["reseller/manage"]); recorder.Code != http.StatusUnauthorized || apiErrorCode(t, recorder) != errCodeAPITokenEnded {
+		t.Fatalf("administrator's change: %d %s", recorder.Code, recorder.Body.String())
+	}
+	// Other accounts' tokens keep working.
+	if recorder := call(f.minted["admin/read"]); recorder.Code != http.StatusNoContent {
+		t.Fatalf("another account's token: %d", recorder.Code)
 	}
 }
