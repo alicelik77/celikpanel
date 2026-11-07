@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { startVisibleReads } from '../lib/visibleReads';
 import { ShieldAlert, ShieldCheck, ShieldOff, ShieldQuestion } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -8,6 +8,8 @@ import { RemoteGate } from './ui';
 import { FirewallBar } from './FirewallPanel';
 import { SecurityAuditCard } from './SecurityAuditCard';
 import { SecurityUpdatesCard } from './SecurityUpdatesCard';
+// alpha.128 (G21): the administrator's password level, a chunk of its own.
+const PasswordLevelCard = lazy(() => import('./ServerSettingLimits').then((module) => ({ default: module.PasswordLevelCard })));
 import { fetchHostMutationReadiness, type HostMutationReadiness } from '../lib/panelUpdateAdmission';
 import { useManagedServices } from '../lib/managedServices';
 import { useRemote } from '../lib/remote';
@@ -72,6 +74,7 @@ export function SecurityPage() {
                 <div data-security-section="audit">
                     <SecurityAuditCard />
                 </div>
+                <Suspense fallback={null}><PasswordLevelCard /></Suspense>
             </div>
         </div>
     );

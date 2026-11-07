@@ -30,7 +30,9 @@ export const PERMISSION_IDS = [
     // alpha.118, in the server's order: own remote backup destinations, AI and
     // automation apps, then the site tools (rights_site_tools.go appends them).
     // alpha.119: uploaded programs and Python apps follow the AI apps (rights_model.go).
-    'remote_backup_destinations', 'service_apps', 'program_apps', 'python_apps', 'wordpress_tools', 'malware_scan',
+    // alpha.128: a site's PHP settings and version, additional nginx directives.
+    'remote_backup_destinations', 'service_apps', 'program_apps', 'python_apps', 'php_settings', 'php_version', 'nginx_directives',
+    'wordpress_tools', 'malware_scan',
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 
@@ -125,6 +127,11 @@ export interface RightsPreview {
     outside_grantor: string[];
     installed_unknown?: boolean;
     subscriptions?: number;
+    /** alpha.128: lowered limits of site settings and the sites above them. */
+    ceilings_lowered?: string[];
+    sites_above?: string[];
+    sites_above_count?: number;
+    sites_unread?: boolean;
     message: string;
 }
 
@@ -133,6 +140,9 @@ export interface ResellerPlan extends PoolNumbers {
     name: string;
     rights?: RightsPayload;
     resellers?: number;
+    /** alpha.128 */
+    ceilings?: Record<string, number>;
+    overselling?: string;
 }
 
 export interface RightsNotice {
@@ -275,6 +285,10 @@ export function decodePreview(raw: unknown): RightsPreview {
         outside_grantor: strings(raw.outside_grantor),
         installed_unknown: raw.installed_unknown === true || undefined,
         subscriptions: typeof raw.subscriptions === 'number' ? raw.subscriptions : undefined,
+        ceilings_lowered: Array.isArray(raw.ceilings_lowered) ? strings(raw.ceilings_lowered) : undefined,
+        sites_above: Array.isArray(raw.sites_above) ? strings(raw.sites_above) : undefined,
+        sites_above_count: typeof raw.sites_above_count === 'number' ? raw.sites_above_count : undefined,
+        sites_unread: raw.sites_unread === true || undefined,
         message: typeof raw.message === 'string' ? raw.message : '',
     };
 }
@@ -294,6 +308,8 @@ export function decodeResellerPlans(raw: unknown): ResellerPlansAnswer {
             name: entry.name,
             rights: isRecord(entry.rights) ? decodePayload(entry.rights) : undefined,
             resellers: num(entry.resellers),
+            ceilings: isRecord(entry.ceilings) ? (entry.ceilings as Record<string, number>) : undefined,
+            overselling: typeof entry.overselling === 'string' ? entry.overselling : undefined,
         };
     });
     const builtin = Array.isArray(raw.builtin) ? raw.builtin.filter(isRecord).map((b) => ({ key: String(b.key ?? ''), name: String(b.name ?? ''), kind: String(b.kind ?? '') })) : [];
@@ -648,6 +664,12 @@ export interface EditedPlan {
     bandwidth: number;
     /** The plan's own set as stored, to tell an untouched "everything offered" apart. */
     rights?: ServicePlan['rights'];
+    /** alpha.128: limits of site settings, overuse policy, notice levels, overselling. */
+    ceilings?: Record<string, number>;
+    overuse_policy?: string;
+    notify_percent_disk?: number;
+    notify_percent_traffic?: number;
+    overselling?: string;
 }
 
 /** A new plan starts with modest limits; 0 is unlimited. */
@@ -665,6 +687,10 @@ export function editedFromCustomerPlan(plan: ServicePlan): EditedPlan {
         numbers: { max_customers: 0, max_domains: plan.max_domains, max_databases: plan.max_databases, max_email_accounts: plan.max_email_accounts, disk_quota_mb: plan.disk_quota_mb, traffic_quota_mb: plan.bandwidth_quota_mb ?? 0 },
         bandwidth: plan.bandwidth_quota_mb ?? 0,
         rights: plan.rights,
+        ceilings: plan.ceilings,
+        overuse_policy: plan.overuse_policy,
+        notify_percent_disk: plan.notify_percent_disk,
+        notify_percent_traffic: plan.notify_percent_traffic,
     };
 }
 
@@ -675,6 +701,8 @@ export function editedFromResellerPlan(plan: ResellerPlan): EditedPlan {
         numbers: { max_customers: plan.max_customers, max_domains: plan.max_domains, max_databases: plan.max_databases, max_email_accounts: plan.max_email_accounts, disk_quota_mb: plan.disk_quota_mb, traffic_quota_mb: plan.traffic_quota_mb ?? 0 },
         bandwidth: 0,
         rights: plan.rights,
+        ceilings: plan.ceilings,
+        overselling: plan.overselling,
     };
 }
 
@@ -686,6 +714,15 @@ export function planBody(kind: PlanKind, plan: EditedPlan, selection: RightsSele
         ? { name: plan.name.trim(), max_customers, ...limits, traffic_quota_mb }
         : { name: plan.name.trim(), ...limits, bandwidth_quota_mb: traffic_quota_mb };
     if (selection) body.rights = payloadOf(selection);
+    // alpha.128: sent when the form holds them (a list read before has them).
+    if (plan.ceilings) body.ceilings = plan.ceilings;
+    if (kind === 'customer') {
+        if (plan.overuse_policy) body.overuse_policy = plan.overuse_policy;
+        if (plan.notify_percent_disk) body.notify_percent_disk = plan.notify_percent_disk;
+        if (plan.notify_percent_traffic) body.notify_percent_traffic = plan.notify_percent_traffic;
+    } else if (plan.overselling) {
+        body.overselling = plan.overselling;
+    }
     if (flags.narrowing) body.confirm_narrowing = true;
     if (flags.overUsage && kind === 'customer') body.accept_over_usage = true;
     return body;

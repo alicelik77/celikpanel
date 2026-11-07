@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -14,6 +14,9 @@ import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 import { confirmAction } from '../lib/confirmAction';
 import { followRequestProgress, phpVersionSteps, resumeRequestProgress } from '../lib/requestProgress';
 
+// alpha.128: the site's PHP values within its limits, a chunk of its own.
+const SitePHPLimits = lazy(() => import('./SitePHPLimits').then((module) => ({ default: module.SitePHPLimits })));
+
 interface DomainPHPSettingsProps {
     domainId: number;
     domainName: string;
@@ -21,6 +24,8 @@ interface DomainPHPSettingsProps {
     onVersionChange: (version: string) => void;
     readOnly?: boolean;
     isAdditionalUser?: boolean;
+    /** alpha.128: the process manager's details are the administrator's. */
+    isAdmin?: boolean;
 }
 
 interface PoolConfig {
@@ -87,6 +92,7 @@ export function DomainPHPSettings({
     onVersionChange,
     readOnly = false,
     isAdditionalUser = false,
+    isAdmin = false,
 }: DomainPHPSettingsProps) {
     const { t, locale } = useI18n();
     // alpha.107 (D-038 §5, §14): each version's security support, from the
@@ -312,7 +318,13 @@ export function DomainPHPSettings({
                             )}
                         </FormSection>
 
-                        <FormSection title={t('php.pool')} description={`${t('php.poolName')}: ${shown.value.pool_name}`}>
+                        {!pending && (
+                            <Suspense fallback={<Checking label={t('php.checking')} />}>
+                                <SitePHPLimits domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                            </Suspense>
+                        )}
+                        {isAdmin && (
+                        <FormSection title={t('limits.php.poolAdmin')} description={`${t('php.poolName')}: ${shown.value.pool_name}`}>
                             {pending ? (
                                 <div className="rounded-lg border border-warning-mark/60 bg-warning-mark/20 p-4">
                                     <p className="text-sm font-medium text-fg">{t('php.applyFirst')}</p>
@@ -363,6 +375,7 @@ export function DomainPHPSettings({
                                 <p className="text-sm text-fg-muted">{t('php.poolUnavailable')}</p>
                             )}
                         </FormSection>
+                        )}
                     </div>
                 );
             }}

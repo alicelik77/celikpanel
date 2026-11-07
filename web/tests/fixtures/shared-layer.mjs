@@ -27,9 +27,24 @@ const read = (path) => readFileSync(new URL('../../src/' + path, import.meta.url
 
 // compileSource turns one file under web/src into an importable module.
 // `resolve` maps each of its import specifiers to a module URL.
+// alpha.128: the lazily loaded parts of the limits screens (the site's PHP
+// values, the plan's limits, the server's limits and the password level) are
+// their own chunks; a screen that mounts one of them in a test gets a part
+// that draws nothing, as the screens' other lazy parts get their stubs.
+// alpha.128: sınır ekranlarının tembel parçaları testte hiçbir şey çizmez.
+const alpha128LazyParts = {
+  './SitePHPLimits': ['SitePHPLimits'],
+  './PlanLimitsSection': ['PlanLimitsSection'],
+  './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
+};
+
 export function compileSource(path, resolve) {
-  const compiled = ts.transpileModule(read(path), { compilerOptions }).outputText
+  let compiled = ts.transpileModule(read(path), { compilerOptions }).outputText
     .replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : resolve(specifier)}'`);
+  for (const [specifier, names] of Object.entries(alpha128LazyParts)) {
+    const empty = dataModule(names.map((name) => `export const ${name} = () => null;`).join(' '));
+    compiled = compiled.split(`import('${specifier}')`).join(`import('${empty}')`);
+  }
   return dataModule(`import React from '${reactURL}';\n${compiled}`);
 }
 

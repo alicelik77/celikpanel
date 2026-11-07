@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Users, Plus, Trash2, LogIn, Pause, Play, Pencil, Layers, Send, XCircle, Ban, Power } from 'lucide-react';
+import { Ban, Copy, Layers, LogIn, Pause, Pencil, Play, Plus, Power, Send, Trash2, Users, XCircle } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -619,14 +619,18 @@ function PlansTab({ isAdmin }: { isAdmin: boolean }) {
                                         {isAdmin && <td className="px-4 py-3 text-fg-muted">{p.owner || t('plans.ownerGlobal')}</td>}
                                         <td className="px-4 py-3 text-fg-muted">{p.subscribers ?? 0}</td>
                                         <td className="px-4 py-3">
-                                            {p.mine !== false && <div className="flex items-center justify-end gap-0.5">
-                                                <RowBtn disabled={!plansKnown || editing !== null} title={t('plans.edit')} onClick={() => setEditing(editedFromCustomerPlan(p))}>
+                                            <div className="flex items-center justify-end gap-0.5">
+                                                {p.mine !== false && <RowBtn disabled={!plansKnown || editing !== null} title={t('plans.edit')} onClick={() => setEditing(editedFromCustomerPlan(p))}>
                                                     <Pencil className="h-4 w-4" />
+                                                </RowBtn>}
+                                                {/* alpha.128 (G13): a new plan filled in from this one; accounts stay. */}
+                                                <RowBtn disabled={!plansKnown || editing !== null} title={t('limits.plan.copy')} onClick={() => setEditing({ ...editedFromCustomerPlan(p), id: 0, name: t('limits.plan.copyName', { name: p.name }) })}>
+                                                    <Copy className="h-4 w-4" />
                                                 </RowBtn>
-                                                <RowBtn danger disabled={!plansKnown || saving} title={t('users.delete')} onClick={() => remove(p)}>
+                                                {p.mine !== false && <RowBtn danger disabled={!plansKnown || saving} title={t('users.delete')} onClick={() => remove(p)}>
                                                     <Trash2 className="h-4 w-4" />
-                                                </RowBtn>
-                                            </div>}
+                                                </RowBtn>}
+                                            </div>
                                         </td>
                                     </tr>
                 ))}

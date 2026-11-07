@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState } from 'react';
-import { Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Copy, Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { showToast } from './Toast';
@@ -18,6 +18,9 @@ import { readableRefusal, useGrantorCatalog } from './AccountRights';
 import { confirmAction } from '../lib/confirmAction';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
+// alpha.128: the plan's limits of site settings, a chunk of its own.
+const PlanLimitsSection = lazy(() => import('./PlanLimitsSection').then((module) => ({ default: module.PlanLimitsSection })));
+const ServerSettingLimits = lazy(() => import('./ServerSettingLimits').then((module) => ({ default: module.ServerSettingLimits })));
 const OfferedAppsSection = lazy(() => import('./OfferedAppsSection').then((module) => ({ default: module.OfferedAppsSection })));
 
 // Plans are templates of a rights set (D-042 6.4-6.5): quantities,
@@ -119,6 +122,9 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                     idPrefix={idPrefix}
                 />
             </div>
+            <Suspense fallback={<Checking label={t('limits.checking')} />}>
+                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} />
+            </Suspense>
             {!isNew && !touched && initial.rights?.all_permissions && initial.rights.all_software && (
                 <p className="mt-3 text-xs text-fg-muted">{t('rights.plan.everythingKept')}</p>
             )}
@@ -253,6 +259,7 @@ export function ResellerPlansTab() {
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-0.5">
                                                 <IconButton disabled={!known || editing !== null} title={t('plans.edit')} onClick={() => setEditing(editedFromResellerPlan(plan))}><Pencil className="h-4 w-4" /></IconButton>
+                                                <IconButton disabled={!known || editing !== null} title={t('limits.plan.copy')} onClick={() => setEditing({ ...editedFromResellerPlan(plan), id: 0, name: t('limits.plan.copyName', { name: plan.name }) })}><Copy className="h-4 w-4" /></IconButton>
                                                 <IconButton danger disabled={!known || busy} title={t('users.delete')} onClick={() => void remove(plan)}><Trash2 className="h-4 w-4" /></IconButton>
                                             </div>
                                         </td>
@@ -361,6 +368,8 @@ export function OfferedItemsTab() {
             <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
                 <OfferedAppsSection />
             </Suspense>
+            {/* alpha.128: the server's limits of site settings, every key. */}
+            <div className="mt-6"><Suspense fallback={null}><ServerSettingLimits /></Suspense></div>
         </div>
     );
 }
