@@ -14,7 +14,10 @@ kopyalanabiliyor. Bir site, bir çalışma arkadaşına yalnız tek bir klasör�
 gören bir FTP/SFTP girişi verebiliyor. Veritabanları dışa aktarma, içe aktarma, kopyalama,
 denetleme ve onarma araçları alıyor. Siteler ziyaretçi istatistikleri
 kazanıyor. Kendi programlarınız, jetonlu bir uzak API ile bir hesap üzerinde
-çalışabiliyor. Yeni gelen her şey biri açana dek kapalı ya da değişmeden
+çalışabiliyor. Her kişinin, işlem bekleyenleri en üstte gösteren tek bir
+bildirim listesi var. Hesaplar oturum açık tarayıcılarını görüp
+kapatabiliyor; sunucunun bakım sayfası sunucuyu yeniden başlatabiliyor.
+Yeni gelen her şey biri açana dek kapalı ya da değişmeden
 kalıyor; güncellenen bir sunucu tam eskisi gibi çalışıyor. **Kurulu
 panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 
@@ -128,7 +131,7 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   eskisi gibi çalışabiliyor.
 - **Plan sınırı:** varsayılan olarak barındırma hesabı başına 10 giriş. Bir
   plan, bayi planı ya da Özel hesap bunu düşürebiliyor; 0 hiç izin vermiyor.
-- **Kaçış denemeleri:** Debian 13 ve Ubuntu 24.04'te 64 denemenin 64'ü geçti.
+- **Kaçış denemeleri:** desteklenen beş sistemin hepsinde 64 denemenin 64'ü geçti.
   Denemeler başka klasörleri, başka siteleri, bağlantıları, yeri değiştirilen
   bir klasörü, yeniden başlatmaları, yönlendirmeyi ve düz FTP'yi kapsadı.
 - **Panel olmadan:** her giriş sıradan sistem yapılandırmasıdır (bir systemd
@@ -148,6 +151,39 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   saklanmıyor.
 - **IP adresleri:** yönetici sunucunun adreslerini görebiliyor (yalnız
   okuma).
+
+## Bildirimler, oturumlar ve sunucu bakımı
+
+- **Kişi başına tek bildirim listesi** (Pano ve Hesabım): işlem yapmanızı
+  bekleyenler önce, bilgi amaçlılar sonra geliyor. Her bildirimde düz dille
+  nedeni, düzeltmeye götüren bir düğme ve "Görüldü olarak işaretle" var.
+  Kullanım bildirimleri Planım'dan bu listeye taşındı.
+- **E-posta tercihiniz** (Hesabım): her bildirim, yalnız işlem bekleyenler
+  ya da hiçbiri; ayrıca bir ek adres. Yönetici her olay türü için bir ek
+  adres ekleyebiliyor.
+- **Abonelik bitiş tarihi:** hesap, bitiş tarihinden belirli gün önce ve son
+  gün yeniden uyarılıyor.
+- **Açık oturumlar** (Hesabım): oturum açık her tarayıcı, adresi ve
+  tarayıcısıyla; birini ya da diğerlerinin hepsini kapatabiliyorsunuz.
+  Yönetici her hesabın oturumlarını görüyor (Güvenlik).
+- **Boşta kalma süresi:** 60 dakika kullanılmayan bir oturum (15 ile 480
+  arası, Güvenlik, Panel erişimi) bir sonraki isteğinde kapanıyor.
+- **Yönetici adresleri:** yönetici adres listesi girerse, yönetici yalnız bu
+  adreslerden giriş yapabiliyor ve API jetonu kullanabiliyor. Sunucunun
+  kendisine her zaman izin var, yani SSH tüneli her zaman çalışıyor; yerel bir
+  dosya erişimi yeniden açıyor (docs/PANEL-ACCESS.tr.md). Müşteriler ve
+  bayiler hiç etkilenmiyor.
+- **Kendi etkinliğiniz:** her hesap kendi işlem kaydını okuyabiliyor; bayiler
+  müşterilerininkini de görüyor.
+- **Alan adı sağlığı:** alan adının Genel bakış sayfasındaki tek bir kart, web
+  sitesinin yanıt verip vermediğini, sertifikayı, DNS'i, postayı, disk
+  kullanımını ve son yedeği, her birinin düzeltmesiyle gösteriyor.
+- **Sunucu bakımı:** sunucuyu yeniden başlatma (başka bir değişiklik
+  sürerken reddediliyor), sunucunun saati ve en yoğun işlemleri.
+- **Bu sunucudaki sertifikalar:** her sertifikanın, kimin kullandığı, kalan
+  gün ve kendiliğinden yenilenip yenilenmediğiyle salt okunur tek listesi.
+  Satın aldığınız bir sertifika için sertifika isteği (CSR) de
+  oluşturabiliyorsunuz; anahtarı sunucuda kalıyor ve asla gösterilmiyor.
 
 ## Uzak API
 
@@ -190,11 +226,21 @@ _Laboratuvar turundan sonra doldurulacak._
   yeniden yazılmıyor; kopya hâlâ kaynak veritabanını gösteriyor. PostgreSQL
   veritabanları sunulmuyor.
 - **Git ile dağıtım:** henüz sürüm ya da geri alma klasörü ve webhook yok.
-- **FTP/SFTP girişleri:** kaçış denemeleri Debian 12, Ubuntu 22.04 ve
-  Arch'ta henüz yapılmadı. sshd yalnız anahtar kabul ediyorsa girişler TLS'li
-  FTP kullanıyor. Sahip kendi vsftpd'sini çalıştırıyorsa girişler yalnız SFTP
+- **FTP/SFTP girişleri:** sshd yalnız anahtar kabul ediyorsa girişler TLS'li
+  FTP kullanıyor. Arch'ta sistemin kendi giriş kuralı bu girişler için
+  parolalı SFTP'yi reddettiğinden girişler TLS'li FTP kullanıyor. Arch'ta
+  vsftpd'nin ek seccomp korumalı alanı kapalı, çünkü TLS veri bağlantılarını
+  bozuyor (alpha.117'den beri her FTP hesabını etkiliyordu); chroot ve
+  ayrıcalık ayrımı açık kalıyor. Sahip kendi vsftpd'sini çalıştırıyorsa girişler yalnız SFTP
   kullanıyor. Bir giriş sitenin kullanıcı kimliğini paylaştığı için sistemin
   kendi araçları onu site olarak gösteriyor.
+- **Bildirimler:** giden posta bildirimleri ve "düşürülen bir sınır bir siteyi
+  aşağı çekti" bildirimleri hâlâ kendi listelerinde (Posta, ve Planım ya da
+  Haklar), henüz tek bildirim listesinde değil. Kendi depolarını ve
+  postalarını kullandıkları için birleştirmek küçük bir değişiklik değil.
+- **Sertifika istekleri:** bir istek için aldığınız sertifikayı kurmak bu
+  sürümde yok; anahtar asla panelden geçmemeli, bu yüzden kendi sunucu
+  adımı gerekiyor. Bayiler henüz müşterilerinin oturumlarını göremiyor.
 - **Günlük saklama:** yalnız sistemin zaten tuttuğunu kısaltıyor. Günlükleri
   daha uzun tutmak için günlük klasörünü taşımak gerekiyor; bu yapılmadı.
 - Günlük saklama, büyük bir sitenin kopyalanması, Git ile dağıtım, web
@@ -237,6 +283,9 @@ varsayılanları dışında var olan hiçbir şey değişmiyor):
 - **070 `api_tokens`:** `api_tokens` (her jetonun yalnız özeti saklanır).
 - **071 `ftp_logins`:** `ftp_logins` (parola saklanmaz) ve `setting_policy`
   tablosunda `ftp.max_logins` satırı (10).
+- **072 `panel_operations`:** `notification_preferences`, `account_notices`,
+  `certificate_requests`; `sessions` tablosunda üç yeni boş sütun (son
+  kullanım, adres, tarayıcı); `audit_logs` üzerinde iki dizin.
 
 Her geçişte olduğu gibi alpha.127 bu geçişleri içeren bir veritabanını
 reddeder; geri dönmek, güncelleme öncesi alınan anlık görüntüyü geri

@@ -12,7 +12,10 @@ environment variables and Git deployment, and a whole website can be
 copied. A site can give a colleague an FTP/SFTP login that sees one
 folder and nothing else. Databases get export, import, copy, check and repair. Sites get
 visitor statistics. Your own programs can work with an account through a
-remote API with tokens. Everything new is off or unchanged until someone turns
+remote API with tokens. Each person gets one list of notifications, with
+what needs their action first. Accounts can see and end their signed-in
+sessions, and the server's maintenance page can restart the server.
+Everything new is off or unchanged until someone turns
 it on, so an updated server works exactly as before. **Only the owner
 updates installed panels, from the panel's own update screen.**
 
@@ -122,7 +125,7 @@ updates installed panels, from the panel's own update screen.**
   with them as before.
 - **Plan limit:** 10 logins per hosting account by default. A plan, a
   reseller plan or a Custom account can lower it; 0 allows none.
-- **Escape tests:** 64 of 64 passed on Debian 13 and Ubuntu 24.04. The tests
+- **Escape tests:** 64 of 64 passed on all five supported systems. The tests
   covered other folders, other sites, links, a swapped folder, reboots,
   forwarding and plain FTP.
 - **Without the panel:** each login is ordinary system configuration (a
@@ -141,6 +144,39 @@ updates installed panels, from the panel's own update screen.**
   days are kept. Visitors' addresses are never stored.
 - **IP addresses:** the administrator can see the server's addresses
   (read only).
+
+## Notifications, sessions and server maintenance
+
+- **One notifications list per person** (Dashboard and My account): what
+  needs your action comes first, then what is for your information. Each
+  notice has its reason in plain words, a button to the fix, and "Mark as
+  seen". The usage notices moved into this list from My plan.
+- **Your email choice** (My account): every notice, only what needs your
+  action, or nothing, plus one extra address. The administrator can add an
+  extra address per kind of event.
+- **Subscription end date:** the account is warned a set number of days
+  before the end date and again on the last day.
+- **Signed-in sessions** (My account): every browser where you are signed
+  in, with its address and browser; end one, or all the others. The
+  administrator sees every account's sessions (Security).
+- **Idle timeout:** a session unused for 60 minutes (15 to 480, set under
+  Security, Panel access) ends at its next request.
+- **Administrator addresses:** when the administrator lists addresses, the
+  administrator can sign in, and use API tokens, only from them. The server
+  itself is always allowed, so an SSH tunnel always works, and a local file
+  opens access again (docs/PANEL-ACCESS.md). Customers and resellers are
+  never affected.
+- **Your own activity:** each account can read its own action log; resellers
+  also see their customers'.
+- **Domain health:** one card on a domain's Overview shows whether the
+  website answers, the certificate, DNS, mail, disk use and the last backup,
+  each with its fix.
+- **Server maintenance:** restart the server (refused while another change
+  is running), see the server's clock and its busiest processes.
+- **Certificates on this server:** one read-only list of every certificate,
+  with who uses it, days left and whether it renews by itself. You can also
+  make a certificate request (CSR) for a certificate you buy; its key stays
+  on the server and is never shown.
 
 ## Remote API
 
@@ -181,11 +217,22 @@ _To be filled in after the lab round._
   yet; the copy still names the source database. PostgreSQL databases are
   not offered.
 - **Git deployment:** no releases or rollback folder and no webhook yet.
-- **FTP/SFTP logins:** the escape tests have not been run yet on Debian 12,
-  Ubuntu 22.04 and Arch. Where sshd accepts keys only, logins use FTP with
-  TLS. Where the owner runs their own vsftpd, logins use SFTP only. A login
+- **FTP/SFTP logins:** where sshd accepts keys only, logins use FTP with
+  TLS. On Arch, the system's own sign-in rule refuses password SFTP for
+  these logins, so they use FTP over TLS. On Arch, vsftpd's extra seccomp
+  sandbox is turned off because it breaks TLS data connections (this
+  affected every FTP account since alpha.117); chroot and privilege
+  separation stay on. Where the owner runs their own vsftpd, logins use SFTP only. A login
   shares the site account's user id, so the system's own tools show it as
   the site.
+- **Notifications:** the outgoing mail notices and the "a lowered limit
+  brought a site down" notices still have their own lists (Mail, and My
+  plan or Rights) and are not yet in the one notifications list. They use
+  their own stores and mail, so joining them is more than a small change.
+- **Certificate requests:** installing the certificate you receive for a
+  request is not in this release; the key must never pass through the
+  panel, so it needs its own server step. Resellers cannot yet see their
+  customers' sessions.
 - **Log retention:** only shortens what the system already keeps. Keeping
   logs longer needs a log folder move, which is not built.
 - The lab round on the five systems is still open for log retention,
@@ -228,6 +275,9 @@ columns' defaults on plans and subscriptions):
 - **070 `api_tokens`:** `api_tokens` (only a hash of each token is kept).
 - **071 `ftp_logins`:** `ftp_logins` (no password is kept), and the
   `ftp.max_logins` row in `setting_policy` (10).
+- **072 `panel_operations`:** `notification_preferences`, `account_notices`,
+  `certificate_requests`; three new empty columns on `sessions` (last use,
+  address, browser); two indexes on `audit_logs`.
 
 As with every migration, alpha.127 refuses a database that has these
 migrations, and going back means restoring the snapshot taken before the
