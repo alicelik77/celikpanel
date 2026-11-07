@@ -107,7 +107,9 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAd
                     onClear();
                     const link = document.createElement('a');
                     link.href = `${base}/export?id=${encodeURIComponent(data.export_id)}`;
-                    link.download = data.filename ?? `${db.name}.sql.gz`;
+                    // The engine is in the name (alpha.129): two databases of
+                    // different engines may share a name.
+                    link.download = data.filename ?? `${db.name}-${isMaria ? 'mariadb' : 'postgresql'}.sql.gz`;
                     document.body.appendChild(link);
                     link.click();
                     link.remove();

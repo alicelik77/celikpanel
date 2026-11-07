@@ -94,17 +94,12 @@ func (p *Panel) handleAddDatabaseAccessUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	// The name is free on this engine as far as CelikPanel knows (every
-	// subscription's record of the same engine); the Agent checks the engine
-	// itself too.
-	var taken bool
-	if err := p.db.GetDB().QueryRowContext(ctx, `
-		SELECT EXISTS(SELECT 1 FROM database_users u JOIN database_servers ds ON ds.id = u.server_id
-		              JOIN database_servers mine ON mine.id = ? AND mine.type_id = ds.type_id AND mine.host = ds.host AND mine.port = ds.port
-		              WHERE u.username = ?)`, target.serverID, username).Scan(&taken); err != nil {
+	// subscription's record of the same engine, database_names.go); the Agent
+	// checks the engine itself too.
+	if what, err := p.databaseNameTakenOnEngine(ctx, target.serverID, "", username, false); err != nil {
 		writeServerError(w, err)
 		return
-	}
-	if taken {
+	} else if what != "" {
 		writeCodedError(w, http.StatusConflict, errCodeDatabaseUserExists,
 			"A database user named "+username+" already exists on this database server. Choose another name; nothing was changed.", "")
 		return

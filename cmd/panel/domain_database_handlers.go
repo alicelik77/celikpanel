@@ -357,17 +357,14 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 
-	// Check if database already exists on that server
-	var exists bool
-	err = pool.QueryRowContext(ctx,
-		"SELECT EXISTS(SELECT 1 FROM databases_v2 WHERE server_id = ? AND name = ?)",
-		serverID, dbName).Scan(&exists)
-	if err != nil {
-		http.Error(w, "Failed to check database existence", http.StatusInternalServerError)
+	// alpha.129: the database's and its user's names must be free on this
+	// engine under every account (database_names.go); this subscription's
+	// own user of that name is reused below, as before.
+	if what, err := p.databaseNameTakenOnEngine(ctx, serverID, dbName, dbUser, true); err != nil {
+		writeServerError(w, err)
 		return
-	}
-	if exists {
-		http.Error(w, "Database already exists", http.StatusConflict)
+	} else if what != "" {
+		writeDatabaseNameTaken(w, what, map[string]string{"database": dbName, "user": dbUser}[what])
 		return
 	}
 

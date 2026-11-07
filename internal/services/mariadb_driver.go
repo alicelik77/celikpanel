@@ -203,14 +203,41 @@ func mariaDBMarkedVersion(output string) string {
 	return ``
 }
 
-// CreateDatabase creates a MariaDB database
+// CreateDatabase creates a MariaDB database; a name that exists already is
+// ErrDatabaseNameTaken.
 func (d *MariaDBDriver) CreateDatabase(name string) error {
 	ident, err := QuoteMySQLIdentifier(name)
 	if err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
-	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", ident)
+	literal, err := QuoteMySQLStringLiteral(name)
+	if err != nil {
+		return fmt.Errorf("invalid database name: %w", err)
+	}
+	// alpha.129: exclusive. "IF NOT EXISTS" took over a database of the same
+	// name that was already there (another account's, or one made outside
+	// CelikPanel) and the caller then granted its new user on it.
+	if taken, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + literal + ";"); err != nil {
+		return err
+	} else if taken {
+		return fmt.Errorf("database %s: %w", name, ErrDatabaseNameTaken)
+	}
+	sql := fmt.Sprintf("CREATE DATABASE %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", ident)
 	return d.executeSQL(sql)
+}
+
+// countIsNonZero runs a statement that answers one "n=<count>" line.
+func (d *MariaDBDriver) countIsNonZero(statement string) (bool, error) {
+	output, err := d.runSQL(statement)
+	if err != nil {
+		return false, err
+	}
+	for _, line := range strings.Split(string(output), "\n") {
+		if count, ok := strings.CutPrefix(strings.TrimSpace(line), "n="); ok {
+			return count != "0", nil
+		}
+	}
+	return false, fmt.Errorf("the MariaDB answer about the name could not be read")
 }
 
 // DeleteDatabase drops a MariaDB database
@@ -244,7 +271,8 @@ func (d *MariaDBDriver) ListDatabases() ([]string, error) {
 	return databases, nil
 }
 
-// CreateUser creates a MariaDB user (localhost only)
+// CreateUser creates a MariaDB user (localhost only); a name that exists
+// already is ErrDatabaseNameTaken.
 func (d *MariaDBDriver) CreateUser(username, password string) error {
 	// The user name is a MySQL account name literal here, not a backtick
 	// identifier, so it is validated as an identifier and then quoted as a
@@ -263,7 +291,14 @@ func (d *MariaDBDriver) CreateUser(username, password string) error {
 	if err != nil {
 		return fmt.Errorf("invalid password: %w", err)
 	}
-	sql := fmt.Sprintf("CREATE USER IF NOT EXISTS %s@'localhost' IDENTIFIED BY %s;", userLiteral, pwLiteral)
+	// alpha.129: exclusive, for the same reason as CreateDatabase: an
+	// existing account of this name (on any host) is never taken over.
+	if taken, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM mysql.user WHERE User = " + userLiteral + ";"); err != nil {
+		return err
+	} else if taken {
+		return fmt.Errorf("database user %s: %w", username, ErrDatabaseNameTaken)
+	}
+	sql := fmt.Sprintf("CREATE USER %s@'localhost' IDENTIFIED BY %s;", userLiteral, pwLiteral)
 	if err := d.executeSQL(sql); err != nil {
 		return err
 	}

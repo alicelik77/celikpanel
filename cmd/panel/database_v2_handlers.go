@@ -665,6 +665,18 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		writeQuotaRefusal(w, err)
 		return
 	}
+	// alpha.129: the names must be free on this engine under every account.
+	newUserName := ""
+	if newUserSecret != "" {
+		newUserName = selectedUser.Username
+	}
+	if what, err := p.databaseNameTakenOnEngine(ctx, serverID, dbName, newUserName, false); err != nil {
+		writeServerError(w, err)
+		return
+	} else if what != "" {
+		writeDatabaseNameTaken(w, what, map[string]string{"database": dbName, "user": newUserName}[what])
+		return
+	}
 
 	driver, err := p.dbDriverFor(server)
 	if err != nil {
@@ -675,6 +687,10 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	// Apply the complete physical mutation first. Metadata is not published
 	// until every engine operation succeeds.
 	if err := driver.CreateDatabase(dbName); err != nil {
+		if databaseNameTakenByEngine(err) {
+			writeDatabaseNameTaken(w, "database", dbName)
+			return
+		}
 		writeDatabaseEngineError(w, server, err)
 		return
 	}
@@ -694,9 +710,13 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	userCreated := false
 	if newUserSecret != "" {
 		if err := driver.CreateUser(selectedUser.Username, newUserSecret); err != nil {
+			compensation := compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, false)
+			if databaseNameTakenByEngine(err) && compensation == nil {
+				writeDatabaseNameTaken(w, "user", selectedUser.Username)
+				return
+			}
 			writeDatabaseEngineError(w, server, databaseMutationError(
-				fmt.Errorf("create physical database user: %w", err),
-				compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, false),
+				fmt.Errorf("create physical database user: %w", err), compensation,
 			))
 			return
 		}
@@ -1020,6 +1040,14 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if what, err := p.databaseNameTakenOnEngine(ctx, serverID, "", username, false); err != nil {
+		writeServerError(w, err)
+		return
+	} else if what != "" {
+		writeDatabaseNameTaken(w, what, username)
+		return
+	}
+
 	driver, err := p.dbDriverFor(server)
 	if err != nil {
 		writeServerError(w, err)
@@ -1044,6 +1072,10 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 
 	// Create user on server
 	if err := driver.CreateUser(username, password); err != nil {
+		if databaseNameTakenByEngine(err) {
+			writeDatabaseNameTaken(w, "user", username)
+			return
+		}
 		writeDatabaseEngineError(w, server, err)
 		return
 	}

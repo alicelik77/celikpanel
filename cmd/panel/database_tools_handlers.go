@@ -331,12 +331,19 @@ func (p *Panel) handleDatabaseExport(w http.ResponseWriter, r *http.Request, dom
 	reportOperationStep(ctx, "ready")
 	p.audit(r, "database.export:"+target.identity.Name, "domain", domainID)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"export_id": id, "size": resp.Size, "filename": databaseExportFilename(target.identity.Name, time.Now()),
+		"export_id": id, "size": resp.Size, "filename": databaseExportFilename(target.identity.Name, target.identity.Type, time.Now()),
 	})
 }
 
-func databaseExportFilename(name string, at time.Time) string {
-	return name + "-" + at.UTC().Format("20060102-1504") + ".sql.gz"
+// databaseExportFilename names a download: the database, its engine and the
+// minute (alpha.129). Two databases of different engines may share a name,
+// and their exports must never overwrite each other in a downloads folder.
+// The engine is the server record's ("mariadb" or "postgresql").
+func databaseExportFilename(name, engine string, at time.Time) string {
+	if engine == "mysql" {
+		engine = "mariadb"
+	}
+	return name + "-" + engine + "-" + at.UTC().Format("20060102-1504") + ".sql.gz"
 }
 
 func (p *Panel) handleDatabaseExportDownload(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -366,7 +373,7 @@ func (p *Panel) handleDatabaseExportDownload(w http.ResponseWriter, r *http.Requ
 			"This export file is no longer on the server (it is removed after one download, or after six hours). Nothing was changed. Make a new export.", "")
 		return
 	}
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": databaseExportFilename(target.identity.Name, time.Now())}))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": databaseExportFilename(target.identity.Name, target.identity.Type, time.Now())}))
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Length", strconv.FormatInt(chunk.Size, 10))
 	w.Header().Set("Cache-Control", "no-store")
