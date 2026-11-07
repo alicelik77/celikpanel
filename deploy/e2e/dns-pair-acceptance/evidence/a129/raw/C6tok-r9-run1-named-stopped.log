@@ -1,0 +1,23 @@
+== 6.0 remote API on, plan Basic with remote_api 18:36:15
+200 {"enabled": true, "working_tokens": "[REDACTED]"}
+200 {"success": true}
+201 saved 211 bytes {'content-type': 'application/json'}
+   token saved: True {"code": null, "error": null}
+== 6.1 named stopped on the joined server (lab load) 18:36:16
+inactive
+== 6.2 create with the token 18:36:17
+409  {"error":"the zones are served, but new changes wait until the backup DNS server confirms it holds the same zone list","code":"DNS_SERVER_REQUIRED","action":"/dns-infrastructure","reason":"pair_pending","vars":{"engine":"pdns","peer":"ns2.r9.test"}} 
+   tokpend id 
+== 6.3 delete with the token (confirm_domain) 18:36:18
+403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+   status as the token:
+403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+   second press:
+403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'journalctl -u celikpanel-panel --since -3min -o cat --no-pager | grep -ciE 'tokpend.*(delet|removal)'''
+== 6.4 named started again; the deletion finishes by itself 18:36:19
+active
+   +0s 403  {"error":"API tokens cannot use this address, so the request was refused and nothing was changed. Use the panel itself for this, or one of the addresses listed in the Remote API guide.","code":"API_TOKEN_ROUTE_NOT_ALLOWED"} 
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a129lab/kit/k6tok.sh: line 44: syntax error near unexpected token `)'
+/mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a129lab/kit/k6tok.sh: line 44: ` 300 2>&1 | head -1 | cut -c1-300)'

@@ -1,0 +1,2 @@
+bash: -c: line 1: syntax error near unexpected token `failed'
+bash: -c: line 1: `systemctl list-units --failed --no-legend --plain | cat; echo (failed end); cat /opt/celikpanel/release.commit; systemctl is-active named celikpanel-panel'

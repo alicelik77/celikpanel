@@ -1,0 +1,36 @@
+== 4.0 the offer, plan permission, a mysql database of cust1 18:53:51
+200 {"engines": [], "offered": false, "rules": 0}
+200 {"engines": [], "offered": true, "rules": 0}
+200 {"success": true}
+200 {"id": 7, "name": "cust1_r9_test_rmy", "status": "success", "type": "mysql", "user": "cust1_r9_test_rmy_user"}
+7 cust1_r9_test_rmy cust1_r9_test_rmy_user
+200 access {"may_edit": true}
+   engine "mysql"
+== 4.1 a rule for the lab client 192.0.3.1, then the refusals 18:53:52
+   user id 13
+200 {"error": "", "id": 1, "status": "waiting", "success": true}
+   refused 0.0.0.0/0:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_TOO_WIDE"], "error": "0.0.0.0/0 would let the whole internet try to sign in. List your own address instead. Nothing was changed."}
+   refused 10.0.0.0/8:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_TOO_WIDE"], "error": "10.0.0.0/8 is too wide: an IPv4 range may hold at most 256 addresses (/24). List your own address or a /24 or smaller range. Nothing was changed."}
+   refused 127.0.0.1:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_LOCAL"], "error": "127.0.0.1/32 is this server itself; local connections are always allowed and need no rule. Nothing was changed."}
+   refused 169.254.1.1:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_SPECIAL"], "error": "169.254.1.1/32 is not an address a computer connects from. List the public address of your computer or office. Nothing was changed."}
+200 access {"may_edit": true}
+   engine "mysql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 18:53:52", "id": 1, "status": "waiting", "user": "cust1_r9_test_rmy_user", "user_id": 13}
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8025 ms]
+  from 192.0.3.2 (unlisted): no connection [8004 ms]
+== 4.2 the administrator restarts mariadb in Components 18:54:11
+200 {"success": true}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-07T18:54:34Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; inst
+200 access {"may_edit": true}
+   engine "mysql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 18:53:52", "id": 1, "status": "waiting", "user": "cust1_r9_test_rmy_user", "user_id": 13}
+== 4.3 listed TLS / listed plain / unlisted 18:54:49
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my plain -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8013 ms]
+  from 192.0.3.2 (unlisted): no connection [8004 ms]
+bash: line 1: saddr | head -6; ss -ltn | grep -E :3306: command not found
+== 4.4 wrong passwords from the listed address 18:55:14

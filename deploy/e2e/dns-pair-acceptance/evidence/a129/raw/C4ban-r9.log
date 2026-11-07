@@ -1,0 +1,132 @@
+== b.1 a rule for 192.0.3.2 19:35:54
+200 {"error": "The panel firewall could not be updated (read firewall status: persistent firewall policy exists but its live nft table is absent); the database port may stay closed until it is.", "id": 5, "status": "active", "success": true}
+   right password: ok
+== b.2 seven wrong passwords from 192.0.3.2 19:36:37
+   1: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   2: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   3: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   4: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   5: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   6: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   7: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+jails: celikpanel-mariadb-auth  sshd
+celikpanel-mariadb-auth: |  |- Currently failed:	0
+celikpanel-mariadb-auth: |  |- Total failed:	0
+celikpanel-mariadb-auth:    |- Currently banned:	0
+celikpanel-mariadb-auth:    `- Banned IP list:	
+sshd: |  |- Currently failed:	0
+sshd: |  |- Total failed:	0
+sshd:    |- Currently banned:	0
+sshd:    `- Banned IP list:	
+   right password after the wrong ones: ok
+jails: celikpanel-mariadb-auth  sshd
+unbanned in celikpanel-mariadb-auth
+unbanned in sshd
+   after unban: ok
+== k4ban done 19:37:03
+== 132: one apply, then the filter on disk 19:51:27
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 2, "state": {"applied_at": "2026-11-07T19:51:28Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgr
+-rw-r--r-- 1 root celikpanel  376 Nov  7 19:31 celikpanel-mariadb-auth.conf
+celikpanel-database-remote.conf
+4:[Definition]
+5:failregex = ^(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\Z
+2026-11-07T19:36:38+00:00 host1.r9.test mariadbd[734]: 2026-11-07 19:36:38 90 [Warning] Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+2026-11-07T19:36:39+00:00 host1.r9.test mariadbd[734]: 2026-11-07 19:36:39 91 [Warning] Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+== b.1 a rule for 192.0.3.2 19:51:34
+409 {"code": "DATABASE_REMOTE_EXISTS", "error": "this address is already listed for this user and database; nothing was changed"}
+   right password: ok
+== b.2 seven wrong passwords from 192.0.3.2 19:52:16
+   1: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   2: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   3: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   4: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   5: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   6: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   7: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+jails: celikpanel-mariadb-auth  sshd
+celikpanel-mariadb-auth: |  |- Currently failed:	0
+celikpanel-mariadb-auth: |  |- Total failed:	0
+celikpanel-mariadb-auth:    |- Currently banned:	0
+celikpanel-mariadb-auth:    `- Banned IP list:	
+sshd: |  |- Currently failed:	0
+sshd: |  |- Total failed:	0
+sshd:    |- Currently banned:	0
+sshd:    `- Banned IP list:	
+   right password after the wrong ones: ok
+jails: celikpanel-mariadb-auth  sshd
+unbanned in celikpanel-mariadb-auth
+unbanned in sshd
+   after unban: ok
+== k4ban done 19:52:41
+== 133: one apply, then the filter on disk 20:12:40
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-07T20:12:41Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgr
+-rw-r--r-- 1 root celikpanel  381 Nov  7 20:12 celikpanel-mariadb-auth.conf
+celikpanel-database-remote.conf
+4:[Definition]
+5:failregex = ^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\n?\Z
+2026-11-07T19:36:38+00:00 host1.r9.test mariadbd[734]: 2026-11-07 19:36:38 90 [Warning] Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+2026-11-07T19:36:39+00:00 host1.r9.test mariadbd[734]: 2026-11-07 19:36:39 91 [Warning] Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+== b.1 a rule for 192.0.3.2 20:12:47
+502 {"code": "DATABASE_REMOTE_AGENT", "error": "the address was saved but the server did not confirm the change; the list shows what is in force"}
+   right password: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+== b.2 seven wrong passwords from 192.0.3.2 20:13:35
+   1: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+   2: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+   3: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+   4: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+   5: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+   6: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+   7: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+jails: celikpanel-mariadb-auth  sshd
+celikpanel-mariadb-auth: |  |- Currently failed:	0
+celikpanel-mariadb-auth: |  |- Total failed:	0
+celikpanel-mariadb-auth:    |- Currently banned:	0
+celikpanel-mariadb-auth:    `- Banned IP list:	
+sshd: |  |- Currently failed:	0
+sshd: |  |- Total failed:	0
+sshd:    |- Currently banned:	0
+sshd:    `- Banned IP list:	
+   right password after the wrong ones: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+jails: celikpanel-mariadb-auth  sshd
+unbanned in celikpanel-mariadb-auth
+unbanned in sshd
+   after unban: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)
+== k4ban done 20:14:59
+== 133 retry 20:15:47: the 192.0.3.2 rule now (5 min after the 502):
+   rule 192.0.3.1 active
+   rule 192.0.3.2 waiting
+unit celikpanel-firewall-restore.service
+active
+table inet celikpanel_dbremote table inet celikpanel_fw
+   tcp dport 3306 ip saddr 192.0.3.1 accept
+   tcp dport 5432 ip saddr 192.0.3.1 accept
+== 133 retry: one apply 20:16:02
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 2, "state": {"applied_at": "2026-11-07T20:16:03Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T20:16:03Z", "filter_ready": tru
+   rule 192.0.3.1 active
+   rule 192.0.3.2 active
+== b.1 a rule for 192.0.3.2 20:16:09
+409 {"code": "DATABASE_REMOTE_EXISTS", "error": "this address is already listed for this user and database; nothing was changed"}
+   right password: ok
+== b.2 seven wrong passwords from 192.0.3.2 20:16:51
+   1: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   2: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   3: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   4: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   5: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   6: ERROR 2026 (HY000): TLS/SSL error: Connection timed out (110)
+   7: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115)
+jails: celikpanel-mariadb-auth  sshd
+celikpanel-mariadb-auth: |  |- Currently failed:	0
+celikpanel-mariadb-auth: |  |- Total failed:	5
+celikpanel-mariadb-auth:    |- Currently banned:	1
+celikpanel-mariadb-auth:    `- Banned IP list:	192.0.3.2
+sshd: |  |- Currently failed:	0
+sshd: |  |- Total failed:	0
+sshd:    |- Currently banned:	0
+sshd:    `- Banned IP list:	
+   right password after the wrong ones: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115)
+jails: celikpanel-mariadb-auth  sshd
+unbanned in celikpanel-mariadb-auth
+unbanned in sshd
+   after unban: ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115)
+== k4ban done 20:17:20

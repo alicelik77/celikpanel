@@ -1,0 +1,1 @@
+tail -n0 -F /var/tmp/a129o/logs/setup127-d12.log /var/tmp/a129o/logs/setup127-u22.log /var/tmp/a129o/logs/setup127-ar.log 2>/dev/null | grep --line-buffered -E "^==|install exit|terminal rc|bound reached|failed|FAIL|Traceback|^-- .*u-main|^-- .*u/main"

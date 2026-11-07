@@ -1,0 +1,74 @@
+== 3w.0 site wp.r9.test and WordPress from the catalogue 18:25:59
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html", "Domain": "wp.r9.test", "DomainID": 4, "FTPPassword": "[REDACTED]", "FTPUser": "wp_r9_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 4, "TempDomain": ""}
+wp id 4
+409 {"action": "/components?component=php-fpm&install=php8.4-fpm", "code": "APP_EXTENSIONS_MISSING", "details": ["mysqli: php8.4-mysql"], "error": "PHP 8.4 on this server lacks what WordPress needs (php8.4-mysql). Nothing was changed. The administrator installs PHP 8.4 in Components (PHP-FPM, version 8.4): that adds its standard extensions from the official packages. Then install again.", "vars": {"app": "WordPress", "packages": "php8.4-mysql", "php": "8.4"}}
+200 {"apps": [{"available": true, "checked": "the newest release, checked against the SHA-1 WordPress.org publishes beside it (the installer of earlier releases, kept unchanged)", "databases": ["mariadb"], "description": "Blogs, company sites and shops (WooCommerce).", "disk_mb": 100, "extensions": ["mysqli"], "homepage": "https://wordpress.org", "icon": "wordpress", "id": "wordpress", "kind": "php-site", "license": "GPL-2.0-or-later", "name": "WordPress", "offered": true, "offering_id": "app:wordpress", "php": "7.4+", "pinned": false, "requirements": {"database_ok": true, "disk_ok": true, "fa
+{
+ "available_types": [
+  "mysql",
+  "postgresql"
+ ],
+ "databases": [],
+ "domain_id": 4,
+ "domain_name": "wp.r9.test"
+}
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; b=json.loads(json.load(open(sys.argv[1]))["body"]); l=b.get("databases") if isinstance(b,dict) else b; x=l[0]; u=(x.get("users") or [{}])[0]; print(x["id"], x.get("user") or u.get("name") or u.get("username"), u.get("id") or x.get("user_id") or "")
+                                                                                                                              ~^^^
+IndexError: list index out of range
+wp database  user  user-id 
+sha256sum: /var/www/celikpanel/subscriptions/2/sites/4/public_html/wp-config.php: No such file or directory
+grep: /var/www/celikpanel/subscriptions/2/sites/4/public_html/wp-config.php: No such file or directory
+   site before: 200
+== 3w.1 new password for the WordPress database user 18:36:15
+307 
+grep: /var/www/celikpanel/subscriptions/2/sites/4/public_html/wp-config.php: No such file or directory
+wp-config holds the new password: 0
+sha256sum: /var/www/celikpanel/subscriptions/2/sites/4/public_html/wp-config.php: No such file or directory
+   site after: 200
+== k3wp done 18:36:15
+== 3w.0 site wp.r9.test and WordPress from the catalogue 19:52:41
+   the administrator installs PHP 8.4 in Components (PHP-FPM 8.4), as APP_EXTENSIONS_MISSING said
+200 {"distribution": "debian", "installs": ["fonts-dejavu-mono", "fonts-dejavu-core", "fontconfig-config", "libabsl20240722", "libaom3", "libdav1d7", "libgav1-1", "librav1e0.7", "libsvtav1enc2", "libjpeg62-turbo", "libyuv0", "libavif16", "libde265-0", "libdeflate0", "libfontconfig1", "libsharpyuv0", "libheif-plugin-libde265", "libheif-plugin-dav1d", "libheif1", "libgomp1", "libimagequant0", "libjbig0", "liblerc4", "libwebp7", "libtiff6", "libxau6", "libxdmcp6", "libxcb1", "libx11-data", "libx11-6", 
+202 {"operation": {"id": "734f14cb89c8f56b8820aeeccb154990", "kind": "service_install", "package_name": "php8.4-fpm", "phase": "queued", "request_id": "7ba27a365e2c83c7e87d000d453afb7b", "service_id": "php-fpm", "started_at": "2026-11-07T19:52:44.046479701Z", "status": "queued"}}
+  op 7ba27a365e2c83c7e87d000d453afb7b: failed firewall {"code": "firewall_sync_failed", "message": "The service changed successfully, but the active firewall policy could not be synchronized."} (19:53:15)
+wp id 4
+200 {"detail": "WordPress downloaded, configured and ready for setup; the previous CelikPanel placeholder was preserved in a private recovery path", "setup_url": "https://wp.r9.test/wp-admin/install.php", "success": true}
+200 {"apps": [{"available": true, "checked": "the newest release, checked against the SHA-1 WordPress.org publishes beside it (the installer of earlier releases, kept unchanged)", "databases": ["mariadb"], "description": "Blogs, company sites and shops (WooCommerce).", "disk_mb": 100, "extensions": ["mysqli"], "homepage": "https://wordpress.org", "icon": "wordpress", "id": "wordpress", "kind": "php-site", "license": "GPL-2.0-or-later", "name": "WordPress", "offered": true, "offering_id": "app:wordpress", "php": "7.4+", "pinned": false, "requires_db": true, "requires_php": true, "risk": "Widely
+{
+ "available_types": [
+  "mysql",
+  "postgresql"
+ ],
+ "databases": [
+  {
+   "created_at": "2026-11-07 19:53:14",
+   "engine": "mariadb",
+   "engine_version": "11.8",
+   "id": 9,
+   "name": "wp_r9_test_wp",
+   "type": "mysql",
+   "user": "wp_r9_test_wp",
+   "users": [
+    {
+     "access": "owner",
+     "id": 15,
+     "username": "wp_r9_test_wp"
+    }
+   ]
+  }
+ ],
+ "domain_id": 4,
+ "domain_name": "wp.r9.test"
+}
+wp database 9 user wp_r9_test_wp user-id 15
+cabe73f22a9c63ed
+1
+   site before: 302
+== 3w.1 new password for the WordPress database user 20:03:58
+200 {"app_domain": "wp.r9.test", "app_kind": "wordpress", "app_updated": true, "sessions_ended": true, "success": true}
+wp-config holds the new password: 1
+7f0be88d7e6c206e
+   site after: 500
+== k3wp done 20:03:59

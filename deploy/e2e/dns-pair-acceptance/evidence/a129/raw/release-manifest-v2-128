@@ -1,0 +1,10 @@
+format=celikpanel-release-manifest-v2
+sequence=128
+version=v0.1.0-alpha.128
+commit=818a03e36db19421f6898c6ca53aaaea4c6b5cea
+published_at=2026-11-07T17:58:07Z
+os=linux
+arch=amd64
+archive=celikpanel-v0.1.0-alpha.128-linux-amd64.tar.gz
+archive_sha256=1044dfa67d03a7268dece8b7d5961a1af894088d7bdc76aa5b079dc5eae5278d
+archive_size=72570450

@@ -1,0 +1,58 @@
+== 5.0 postfwd from Components, limits on 18:43:22
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "1cc770bfaa00ad680ecf761bca0d6371", "kind": "service_install", "phase": "queued", "request_id": "0a1a556edaf2898c80f7de13c29fa60a", "service_id": "postfwd", "started_at": "2026-11-07T18:43:25.022683459Z", "status": "queued"}}
+  op 0a1a556edaf2898c80f7de13c29fa60a: succeeded completed "" (18:44:16)
+200 {"id": 2, "success": true}
+200 {"called": true, "result": {"applied": true, "changed": true, "status": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"}, "steps": ["postfwd's rules were written and checked (postfwd -C)", "postfwd was restarted to take the new rules (postfwd 1.x); it kept its counters, and mail flowed meanwhile", "a test message was counted and the second one refused, so the limits w
+ii  postfwd        1.35-10      all          Postfix policyd to combine complex restrictions in a ruleset
+ExecStartPre=+/usr/bin/install -d -o ${RUNAS} -g ${RUNAS} -m 0700 /var/lib/celikpanel-postfwd
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --save_rates /var/lib/celikpanel-postfwd/rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+drwxr-xr-x 47 root   root   4096 Nov  7 18:44 ..
+200 {"applied": true, "called": true, "saved": true}
+== 5.1 six messages -> 450 from the 4th 18:44:21
+ msg 1:
+  <~  250 2.0.0 Ok: queued as D35A122CEA
+ msg 2:
+  <~  250 2.0.0 Ok: queued as 8E39722CEA
+ msg 3:
+  <~  250 2.0.0 Ok: queued as CC61422CEA
+ msg 4:
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 5:
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 6:
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== 5.2 first pause 18:45:06
+  paused after 210 s: [{"address": "box1@site1.r9.test", "detail": "3 messages refused by the hourly limit in the hour from 2026-11-07 18:00 UTC", "domain": "site1.r9.test", "domain_id": 2, "id": 1, "paused_at": "2026-11-07 18:48:21", "reason": "refusals"}]
+ msg while paused:
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+== 5.3 password change reopens 18:48:43
+200 {"sending_resumed": true, "success": true}
+   answer after 3 s
+== 5.4 after the change: 3 pass, then 450 x3 (same hour) 18:48:46
+ msg 1:
+  <~  250 2.0.0 Ok: queued as 1C64422A63
+ msg 2:
+  <~  250 2.0.0 Ok: queued as 9089222A63
+ msg 3:
+  <~  250 2.0.0 Ok: queued as CBF1A22A63
+ msg 4:
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 5:
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 6:
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== 5.5 the second pause within the same hour 18:49:36
+  paused after 240 s: [{"address": "box1@site1.r9.test", "detail": "3 messages refused by the hourly limit since the password change at 2026-11-07 18:48 UTC", "domain": "site1.r9.test", "domain_id": 2, "id": 1, "paused_at": "2026-11-07 18:53:21", "reason": "refusals"}]
+ msg while paused again:
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+   mail_outgoing paused True 2026-11-07 18:53:21
+   mail_outgoing paused True 2026-11-07 18:48:21
+   mail_outgoing limit_reached False 2026-11-07 18:48:21
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'python3 -c 'import sqlite3; c=sqlite3.connect("file:/var/lib/celikpanel/celikpanel.db?mode=ro",uri=True); print([r for r in c.execute("select address, resume_base_recipients, resume_base_refusals from mailbox_outgoing m join mail_accounts a on a.id=m.mailbox_id")])' 2>&1 | head -3''
+== 5.6 reopen at the end (password change) 18:53:47
+200 {"sending_resumed": true, "success": true}
+200 {"applied": true, "called": true, "saved": true}
+== k5repause done 18:53:51

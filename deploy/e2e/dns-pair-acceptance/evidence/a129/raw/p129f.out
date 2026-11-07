@@ -1,0 +1,91 @@
+commit 3616cec89ecd07c80343b24181157efe4826b03f
+lab bump commit 715d797924c5a83c94f2384da0b1140bc780f600
+EXIT 0
+  "sha256": "e4183e8363248038c13bb6fcb66e0ed4db632de5fda32f688b9f43fb09d4667c",
+portal131 exit 0
+/root/a114-portal/site/releases/v0.1.0-alpha.131
+v0.1.0-alpha.131
+  5s 200 running None  | 
+  51s 200 running verifying  | 
+  59s 200 succeeded None  | 
+200 {"agent_commit": "715d797924c5a83c94f2384da0b1140bc780f600", "agent_matches": true, "commit": "715d797924c5a83c94f2384da0b1140bc780f600", "hostname": "host1.ar.test", "ipv4": "192.0.3.222", "schema_version": 74, "version": "v0.1.0-alpha
+--- systemctl --failed (all units)
+postgresql.service loaded failed failed PostgreSQL database server
+--- differences pre127 -> post128 (excluding systemd self-update/runtime units)
+> 5a6e62908a9bc41e /etc/systemd/system/celikpanel-database-remote-firewall.service
+> f8443b2e452f97cc /etc/systemd/system/celikpanel-database-remote-firewall.timer
+> link:/etc/systemd/system/celikpanel-database-remote-firewall.service /etc/systemd/system/sysinit.target.wants/celikpanel-database-remote-firewall.service
+postgresql.service loaded failed failed PostgreSQL database server
+(failed end)
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T19:31:07Z", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "ENGINE_DOWN", "Database": "", "Detail": "PostgreSQL on port 5432 d
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 18:40:18", "id": 2, "status": "waiting", "user": "cust1_ar_test_rpg_user", "user_id": 2}
+== 4.3 listed TLS / listed plain / unlisted 19:31:22
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_fw table inet celikpanel_dbremote
+    tcp dport 5432 drop
+--- listeners:
+--- units: inactive active ; failed: postgresql.service
+== 4.4 wrong passwords from the listed address 19:31:48
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+jails: 
+== 4.5 password change: the old one fails remotely 19:32:54
+409 {"code": "DATABASE_PASSWORD_INVALID", "error": "the database account could not be inspected: nothing answered at this server's database engine; nothing was changed"}
+   old:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+   new:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8041 ms]
+== 4.8 the last rule removed closes at once 19:33:16
+200 {"error": "", "success": true}
+  closed after 9 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8051 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_fw table inet celikpanel_dbremote
+    tcp dport 5432 drop
+--- listeners:
+--- units: inactive active ; failed: postgresql.service
+   the rule back:
+200 {"error": "", "id": 3, "status": "waiting", "success": true}
+  still not open after 60 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+== k4remote postgresql restart checks fail2ban pass last done 19:34:37
+v0.1.0-alpha.131
+  4s 200 running None  | 
+  54s 200 running verifying  | 
+  62s 200 succeeded None  | 
+200 {"agent_commit": "715d797924c5a83c94f2384da0b1140bc780f600", "agent_matches": true, "commit": "715d797924c5a83c94f2384da0b1140bc780f600", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schem
+== b.1 a rule for 192.0.3.2 19:35:54
+200 {"error": "The panel firewall could not be updated (read firewall status: persistent firewall policy exists but its live nft table is absent); the database port may stay closed until it is.", "id": 5, "status": "active", "success": true}
+   right password: ok
+== b.2 seven wrong passwords from 192.0.3.2 19:36:37
+   1: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   2: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   3: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   4: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   5: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   6: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+   7: ERROR 1045 (28000): Access denied for user 'cust1_r9_test_rmy_user'@'192.0.3.2' (using password: YES)
+jails: celikpanel-mariadb-auth  sshd
+celikpanel-mariadb-auth: |  |- Currently failed:	0
+celikpanel-mariadb-auth: |  |- Total failed:	0
+celikpanel-mariadb-auth:    |- Currently banned:	0
+celikpanel-mariadb-auth:    `- Banned IP list:	
+sshd: |  |- Currently failed:	0
+sshd: |  |- Total failed:	0
+sshd:    |- Currently banned:	0
+sshd:    `- Banned IP list:	
+   right password after the wrong ones: ok
+jails: celikpanel-mariadb-auth  sshd
+unbanned in celikpanel-mariadb-auth
+unbanned in sshd
+   after unban: ok
+== k4ban done 19:37:03
+== p129h done 19:37:03

@@ -1,0 +1,45 @@
+{
+ "method": "get.sh in a root terminal (ssh -tt), lab portal",
+ "session": "# owner terminal session (lab): only PATH differs, see the curl stand-in\ncd /root\nexport PATH=/root/lab-portal/bin:$PATH\ncurl -fL --proto '=https' -o celikpanel-install.sh https://celikpanel.net/get.sh &&\nsh celikpanel-install.sh\n",
+ "stage": {
+  "rc": 0,
+  "out": "staged\n",
+  "err": ""
+ },
+ "terminal": {
+  "rc": 0,
+  "seconds": 54.7,
+  "answered": [
+   {
+    "prompt": "Admin username",
+    "at_seconds": 49.7
+   },
+   {
+    "prompt": "Admin email",
+    "at_seconds": 50.2
+   },
+   {
+    "prompt": "Show password while typing",
+    "at_seconds": 50.7
+   },
+   {
+    "prompt": "Admin password",
+    "at_seconds": 51.2
+   },
+   {
+    "prompt": "Confirm password",
+    "at_seconds": 51.7
+   }
+  ],
+  "problem": null,
+  "tail": "l\n2026/11/07 18:12:03 Applied migration: 046_postgresql_clusters.sql\n2026/11/07 18:12:03 Applied migration: 047_panel_port_change.sql\n2026/11/07 18:12:03 Applied migration: 048_accounts_plans_resellers.sql\n2026/11/07 18:12:04 Applied migration: 049_account_recovery.sql\n2026/11/07 18:12:04 Applied migration: 050_site_protect_redirect_recovery_codes.sql\n2026/11/07 18:12:04 Applied migration: 051_mail_autoresponders.sql\n2026/11/07 18:12:04 Applied migration: 052_rights_sets.sql\n2026/11/07 18:12:04 Applied migration: 053_suspension.sql\n2026/11/07 18:12:04 Applied migration: 054_transfers.sql\n2026/11/07 18:12:04 Applied migration: 055_security_emergency.sql\n2026/11/07 18:12:04 Applied migration: 056_transfer_rotation.sql\n2026/11/07 18:12:04 Applied migration: 057_usage_limits.sql\n2026/11/07 18:12:04 Applied migration: 058_app_catalog_operations.sql\n2026/11/07 18:12:04 Applied migration: 059_site_tools.sql\n2026/11/07 18:12:04 Applied migration: 060_remote_backups.sql\n2026/11/07 18:12:04 Applied migration: 061_service_apps.sql\n2026/11/07 18:12:04 Applied migration: 062_user_guide_state.sql\n2026/11/07 18:12:04 Applied migration: 063_runtime_apps.sql\n2026/11/07 18:12:04 Applied migration: 064_metrics_history.sql\n2026/11/07 18:12:04 Applied migration: 065_monitoring_alerts.sql\n2026/11/07 18:12:04 Applied migration: 066_site_setting_limits.sql\n2026/11/07 18:12:04 Applied migration: 067_mail_outgoing.sql\n2026/11/07 18:12:04 Applied migration: 068_site_web_settings.sql\n2026/11/07 18:12:04 Applied migration: 069_site_visitor_stats.sql\n2026/11/07 18:12:04 Applied migration: 070_api_tokens.sql\n2026/11/07 18:12:04 Applied migration: 071_ftp_logins.sql\n2026/11/07 18:12:04 Applied migration: 072_panel_operations.sql\n2026/11/07 18:12:04 Successfully applied 72 migrations\n==> Creating the first administrator / \u0130lk y\u00f6netici olu\u015fturuluyor\n2026/11/07 18:12:04 Starting CelikPanel Backend...\nAdmin username / Y\u00f6netici kullan\u0131c\u0131 ad\u0131: owner\nAdmin email / Y\u00f6netici e-posta: owner@beta1-lab.test\nShow password while typing? / Parola yazarken g\u00f6r\u00fcns\u00fcn m\u00fc? [y/e = yes/evet, Enter = no/hay\u0131r]: \nThe password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / \u015eifre en az 8 karakter olmal\u0131; bir b\u00fcy\u00fck harf, bir k\u00fc\u00e7\u00fck harf ve bir \u00f6zel karakter (\u00f6rne\u011fin - _ . !) i\u00e7ermeli.\nAdmin password / Y\u00f6netici parolas\u0131: \nConfirm password / Parolay\u0131 do\u011frula: \nCreated administrator / Y\u00f6netici olu\u015fturuldu.\n    \u2713 administrator is ready / y\u00f6netici haz\u0131r\n==> Starting the panel / Panel ba\u015flat\u0131l\u0131yor\n    \u2713 panel is running / panel \u00e7al\u0131\u015f\u0131yor\n==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor\n    \u2713 initial panel certificate is protected / ilk panel sertifikasi korundu\n\nCelikPanel was installed successfully. / CelikPanel ba\u015far\u0131yla kuruldu.\n    Panel:  https://192.0.3.190:1923\n    Services / Servisler: systemctl status celikpanel-agent celikpanel-panel\n    Logs / G\u00fcnl\u00fckler: journalctl -u celikpanel-panel -f\n",
+  "restart_required": false,
+  "restart_recommended": false
+ },
+ "portal_requests": "2026-11-07T18:11:16Z https://celikpanel.net/get.sh\n2026-11-07T18:11:17Z https://celikpanel.net/release-signing-ed25519.pem\n2026-11-07T18:11:17Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/release-manifest-v2\n2026-11-07T18:11:17Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/release-manifest-v2.sig\n2026-11-07T18:11:17Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/celikpanel-v0.1.0-alpha.128-linux-amd64.tar.gz\n2026-11-07T18:11:17Z https://celikpanel.net/releases/v0.1.0-alpha.128/linux/amd64/celikpanel-v0.1.0-alpha.128-linux-amd64.tar.gz.sha256\n-rw-r--r-- 1 root root 77532 Nov  7 18:11 /root/celikpanel-install.sh\n6e9dcd506c6b805a10e94dd402d0f067fd7fc95c73657d5b1b6081363701e11a  /root/celikpanel-install.sh\n",
+ "postinstall": {
+  "rc": 0,
+  "out": "active\nactive\nenabled\nenabled\n"
+ },
+ "seconds": 55.0
+}

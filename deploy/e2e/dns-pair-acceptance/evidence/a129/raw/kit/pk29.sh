@@ -1,0 +1,1 @@
+sed -n "/4.7 rerun/,\$p" /var/tmp/a129o/logs/C4remote-r9-mysql.log | cut -c1-260; echo; sed -n "/4.7 run with/,\$p" /var/tmp/a129o/logs/C4remote-r9-postgresql.log | cut -c1-260; echo ===; cat /var/tmp/a129o/logs/p129f.out 2>/dev/null | cut -c1-260

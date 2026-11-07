@@ -1,0 +1,95 @@
+== provision 18:00:30 ubuntu2204 192.0.3.221 zone=u22.test
+h .\nPRETTY_NAME=\"Ubuntu 22.04.5 LTS\"\nVERSION_ID=\"22.04\"\n5.15.0-198-generic\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 31.3
+}
+
+host1.u22.test
+host1.u22.test
+v0.1.0-alpha.129
+== install v0.1.0-alpha.127 through get.sh 18:01:03
+install exit 0
+main terminal rc 0 49.3 problem None restart_required False postinstall rc 0
+  tail: rolayı doğrula:  | Created administrator / Yönetici oluşturuldu. |     ✓ administrator is ready / yönetici hazır | ==> Starting the panel / Panel başlatılıyor |     ✓ panel is running / panel çalışıyor | ==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor |     ✓ initial panel certificate is protected / ilk panel sertifikasi korundu |  | CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu. |     Panel:  https://192.0.3.221:1923 |     Services / Servisler: systemctl status celikpanel-agent celikpanel-panel |     Logs / Günlükler: journalctl -u celikpanel-panel -f | 
+v0.1.0-alpha.129
+license active can_use_panel True
+wizard data single ['count', 'dnshome', 'domain', 'mail', 'name', 'names', 'roles']
+guidance 200 
+domain 200 
+count 200 
+name 200 
+roles 200 
+names 200 
+dnshome 200 
+mail 200 
+plan 200 can_start True blockers [] ['01-dns:local', '02-service:nginx', '03-service:certbot', '04-firewall:enable_and_persist', '05-infrastructure_dns:u22.test', '06-access_dns:frankfurt.u22.test', '07-panel_certificate:frankfurt.u22.test', '08-dns_readiness:local', '09-service:mariadb', '10-service:php-fpm', '11-access_dns:mail.u22.test', '12-mail_certificate:mail.u22.test', '13-mail_profile:webmail', '14-mail_profile:protected-mail', '15-mail_dns:u22.test', '16-mail_enrollment:mail-renewal', '17-main_site:u22.test', '18-verify:custom'] 
+== start 18:02:06 (try 1)
+start 202 {
+ "id": "2d4e91885785a615adcae962fb08f3ea",
+ "panel_url": "https://frankfurt.u22.test:1923/",
+ "phase": "queued",
+ "plan_id": "d076978ff7c86fe42c34cf0c2bb28cb7",
+ "request_id": "2d4e91885785a615adcae962fb08f3ea",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-dns",
+   "kind": "dns",
+   "owner_id": "f522d239fc9f8e49055efff505e8158d",
+   "request_id": "00d242d29c702289e4fdf63dbe7c74e6",
+   "sta
+-- u22u/main 18:02:10
+running 01-dns null
+01-dns=running 02-service=pending 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:02:51
+running 02-service null
+01-dns=succeeded 02-service=running 03-service=pending 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:03:11
+running 03-service null
+01-dns=succeeded 02-service=succeeded 03-service=running 04-firewall=pending 05-infrastructure_dns=pending 06-access_dns=pending 07-panel_certificate=pending 08-dns_readiness=pending 09-service=pending 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:03:31
+running 09-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=running 10-service=pending 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:04:11
+running 10-service null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=running 11-access_dns=pending 12-mail_certificate=pending 13-mail_profile=pending 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:04:31
+running 13-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=running 14-mail_profile=pending 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:06:52
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=running 15-mail_dns=pending 16-mail_enrollment=pending 17-main_site=pending 18-verify=pending
+-- u22u/main 18:08:33
+running 16-mail_enrollment {"code": "server_setup_mail_enrollment_running", "message": "The mail renewal request is recorded, but its final result is not verified. Setup will keep checking. The server administrator can inspect celikpanel-mail-enrollment-43a8e6aac7ffe40e10cf03df2b5d21ab.service and continue the same recorded operation if it stopped."}
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=running 17-main_site=pending 18-verify=pending
+-- u22u/main 18:08:53
+running verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=pending
+-- u22u/main 18:09:13
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_profile=succeeded 14-mail_profile=succeeded 15-mail_dns=succeeded 16-mail_enrollment=succeeded 17-main_site=succeeded 18-verify=succeeded
+succeeded complete null
+== content at 127 18:09:14
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "site1.u22.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "site1_u22_test", "PHPVersion": "8.1", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+site1 id 2
+200 {"id": 1, "success": true}
+200 {"id": 2, "success": true}
+200 {"id": 1, "name": "site1_u22_test_shop", "status": "success", "type": "mysql", "user": "site1_u22_test_shop_user"}
+200 {"id": 1, "success": true}
+plan id 1
+200 {"id": 3, "rights": "plan", "success": true}
+cust1 subscription 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/3/sites/3/public_html", "Domain": "cust1.u22.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "cust1_u22_test", "PHPVersion": "8.1", "ProjectType": "php", "SiteID": 3, "TempDomain": ""}
+cust1 site id 3
+snapshot pre127: 323 entries
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+PHP 8.1.2-1ubuntu2.28 (cli) (built: Oct 19 2026 18:54:45) (NTS)
+8.1
+active active active active active active 
+PasswordAuthentication no
+PasswordAuthentication no
+  site1.u22.test: 200
+  cust1.u22.test: 200
+== setup127 u22 done 18:09:55

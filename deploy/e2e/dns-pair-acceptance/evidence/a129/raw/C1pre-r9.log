@@ -1,0 +1,39 @@
+== versions 18:20:10
+200 {"agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "agent_matches": true, "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "hostname": "host1.r9.test", "ipv4": "192.0.3.190", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+200 {"agent_commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "agent_matches": true, "commit": "818a03e36db19421f6898c6ca53aaaea4c6b5cea", "hostname": "host2.r9.test", "ipv4": "192.0.3.191", "schema_version": 72, "version": "v0.1.0-alpha.128"}
+200 [{"bandwidth": 0, "created_at": "2026-11-07T18:19:02Z", "disk_usage": 0, "domain_name": "r9.test", "id": 1, "php_version": "", "project_type": "static", "site_config": {"state": "managed_unchanged"}, "ssl_enabled": true, "status": "active"}]
+-- admin PHP site site1.r9.test 18:20:10
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "site1.r9.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "site1_r9_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+site1 id 2
+200 {"id": 1, "success": true}
+200 {"id": 1, "name": "site1_r9_test_shop", "status": "success", "type": "mysql", "user": "site1_r9_test_shop_user"}
+-- plan Basic + customer cust1 + the customer's site 18:20:17
+200 {"id": 1, "success": true}
+plan id 1
+200 {"id": 3, "rights": "plan", "success": true}
+cust1 subscription 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/3/sites/3/public_html", "Domain": "cust1.r9.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "cust1_r9_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 3, "TempDomain": ""}
+cust1 site id 3
+-- joined server: PHP site bsite.r9.test 18:20:24
+409 {"action": "/dns-infrastructure", "code": "REMOTE_DNS_UNAVAILABLE", "error": "the connected DNS authority could not be verified; restore the existing DNS connection and retry"}
+bsite id 
+-- snapshot main
+snapshot pre128: 250 entries
+-- snapshot backup
+snapshot pre128: 193 entries
+/etc/nginx/celikpanel-managed.d:
+cust1.r9.test
+r9.test
+site1.r9.test
+
+/etc/nginx/sites-enabled:
+celikpanel-panel-acme-4c698407fb5d28f8038de818.conf
+celikpanel-panel-acme-924197b26ead2868a068c034.conf
+cust1.r9.test.conf
+default
+r9.test.conf
+site1.r9.test.conf
+site2.conf
+site3.conf
+www.conf
+active active active active == c1pre done 18:20:50

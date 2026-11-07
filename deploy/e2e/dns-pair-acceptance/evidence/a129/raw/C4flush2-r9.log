@@ -1,0 +1,13 @@
+== the rule for 192.0.3.2 (k4ban) removed 20:04:04
+200 {"error": "", "success": true}
+   before: my [ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110)] pg [psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired]
+== nft flush ruleset; right passwords from the unlisted 192.0.3.2 at once 20:05:03
+20:05:02
+   +0s my [ERROR 2002 (HY000): Received error packet before completion of TLS handshake. The authenticity of the following error cannot be verified: 1130 - Host '192.0.3.2' is not allowed to connect to this Mari]
+   pg [psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  no pg_hba.conf entry for host "192.0.3.2", user "cust1_r9_test_rpg_user", database "cust1_r9_test_rpg", SSL encryption]
+== after 40 s 20:05:45
+table inet celikpanel_dbremote
+== after 100 s 20:06:45
+table inet celikpanel_dbremote
+active
+== k4flush2 done 20:06:45

@@ -1,0 +1,1 @@
+grep -E "^== |install exit|terminal rc" /var/tmp/a129o/logs/pair-r9.log /var/tmp/a129o/logs/setup127-u22.log 2>/dev/null | tail -8 | cut -c1-160; for n in main backup; do :; done; tail -2 /var/tmp/a129o/logs/pair-r9.log | cut -c1-200

@@ -1,0 +1,227 @@
+== 4.0 the offer, plan permission, a postgresql database of cust1 18:36:37
+200 {"distribution": "arch", "installs": ["libxslt", "llvm-libs", "postgresql"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql"], "state": "known"}
+202 {"operation": {"id": "76abd869f8199df53918cf7e321dfe86", "kind": "service_install", "phase": "queued", "request_id": "82d82c533f28d631b62d63a984598c06", "service_id": "postgresql", "started_at": "2026-11-07T18:36:39.371401963Z", "status": "queued"}}
+  op 82d82c533f28d631b62d63a984598c06: succeeded completed "" (18:37:10)
+200 {"engines": [], "offered": false, "rules": 0}
+200 {"engines": [], "offered": true, "rules": 0}
+200 {"success": true}
+200 {"id": 2, "name": "cust1_ar_test_rpg", "status": "success", "type": "postgresql", "user": "cust1_ar_test_rpg_user"}
+2 cust1_ar_test_rpg cust1_ar_test_rpg_user
+200 access {"may_edit": true}
+   engine "postgresql"
+== 4.1 a rule for the lab client 192.0.3.1, then the refusals 18:37:11
+   user id 2
+200 {"error": "", "id": 1, "status": "waiting", "success": true}
+   refused 0.0.0.0/0:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_TOO_WIDE"], "error": "0.0.0.0/0 would let the whole internet try to sign in. List your own address instead. Nothing was changed."}
+   refused 10.0.0.0/8:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_TOO_WIDE"], "error": "10.0.0.0/8 is too wide: an IPv4 range may hold at most 256 addresses (/24). List your own address or a /24 or smaller range. Nothing was changed."}
+   refused 127.0.0.1:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_LOCAL"], "error": "127.0.0.1/32 is this server itself; local connections are always allowed and need no rule. Nothing was changed."}
+   refused 169.254.1.1:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_SPECIAL"], "error": "169.254.1.1/32 is not an address a computer connects from. List the public address of your computer or office. Nothing was changed."}
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 18:37:11", "id": 1, "status": "waiting", "user": "cust1_ar_test_rpg_user", "user_id": 2}
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8041 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+== 4.2 the administrator restarts postgresql in Components 18:37:30
+502 {"code": "SERVICE_ACTION_FAILED", "error": "The server's service manager did not carry out the action. The server owner runs the command shown to read the service's own answer, corrects what it names, and then repeats this action here; nothing repeats it automatically.", "reason": "command", "vars":
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T18:37:53Z", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "ENGINE_DOWN", "Database": "", "Detail": "PostgreSQL on port 5432 d
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 18:37:11", "id": 1, "status": "waiting", "user": "cust1_ar_test_rpg_user", "user_id": 2}
+== 4.3 listed TLS / listed plain / unlisted 18:38:08
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  from 192.0.3.2 (unlisted): no connection [8002 ms]
+bash: line 1: saddr | head -6; ss -ltn | grep -E :5432: command not found
+== 4.4 wrong passwords from the listed address 18:38:33
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8063 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8042 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8074 ms]
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8042 ms]
+bash: line 1: Banned: command not found
+list:s*//p | tr , : -c: line 2: unexpected EOF while looking for matching `)'
+== 4.5 password change: the old one fails remotely 18:39:39
+409 {"code": "DATABASE_PASSWORD_INVALID", "error": "the database account could not be inspected: nothing answered at this server's database engine; nothing was changed"}
+   old:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+   new:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8059 ms]
+== 4.8 the last rule removed closes at once 18:40:01
+200 {"error": "", "success": true}
+  closed after 8 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8042 ms]
+  from 192.0.3.2 (unlisted): no connection [8004 ms]
+0
+   the rule back:
+200 {"error": "", "id": 2, "status": "waiting", "success": true}
+  still not open after 60 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8044 ms]
+== k4remote postgresql setup open restart checks fail2ban pass last done 18:41:21
+== 4.2 the administrator restarts postgresql in Components 19:30:46
+502 {"code": "SERVICE_ACTION_FAILED", "error": "The server's service manager did not carry out the action. The server owner runs the command shown to read the service's own answer, corrects what it names, and then repeats this action here; nothing repeats it automatically.", "reason": "command", "vars":
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T19:31:07Z", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "ENGINE_DOWN", "Database": "", "Detail": "PostgreSQL on port 5432 d
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 18:40:18", "id": 2, "status": "waiting", "user": "cust1_ar_test_rpg_user", "user_id": 2}
+== 4.3 listed TLS / listed plain / unlisted 19:31:22
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_fw table inet celikpanel_dbremote
+    tcp dport 5432 drop
+--- listeners:
+--- units: inactive active ; failed: postgresql.service
+== 4.4 wrong passwords from the listed address 19:31:48
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+jails: 
+== 4.5 password change: the old one fails remotely 19:32:54
+409 {"code": "DATABASE_PASSWORD_INVALID", "error": "the database account could not be inspected: nothing answered at this server's database engine; nothing was changed"}
+   old:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8040 ms]
+   new:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8041 ms]
+== 4.8 the last rule removed closes at once 19:33:16
+200 {"error": "", "success": true}
+  closed after 9 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8051 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_fw table inet celikpanel_dbremote
+    tcp dport 5432 drop
+--- listeners:
+--- units: inactive active ; failed: postgresql.service
+   the rule back:
+200 {"error": "", "id": 3, "status": "waiting", "success": true}
+  still not open after 60 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+== k4remote postgresql restart checks fail2ban pass last done 19:34:37
+== 132: one apply (the panel's own loop would do it within a minute) 19:46:20
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T19:46:21Z", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "ENGINE_DOWN", "Database": "", "Detail": "PostgreSQL on port 5432 d
+drwxr-x--- 1 root celikpanel 20 Nov  7 18:37 /etc/ssl/celikpanel-database
+drwxr-x--- 1 root postgres   40 Nov  7 18:37 /etc/ssl/celikpanel-database/postgresql
+failed
+2026-11-07T19:30:46+00:00 host1.ar.test systemd[1]: Starting PostgreSQL database server...
+2026-11-07T19:30:46+00:00 host1.ar.test postgres[35098]: 2026-11-07 19:30:46.206 UTC [35098] FATAL:  could not load server certificate file "/etc/ssl/celikpanel-database/postgresql/server.crt": Permission denied
+2026-11-07T19:30:46+00:00 host1.ar.test postgres[35098]: 2026-11-07 19:30:46.206 UTC [35098] LOG:  database system is shut down
+2026-11-07T19:30:46+00:00 host1.ar.test systemd[1]: postgresql.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-07T19:30:46+00:00 host1.ar.test systemd[1]: postgresql.service: Failed with result 'exit-code'.
+2026-11-07T19:30:46+00:00 host1.ar.test systemd[1]: Failed to start PostgreSQL database server.
+2026/11/07 19:30:46 ERROR service restart postgresql: failed command: exit status 1: Job for postgresql.service failed because the control process exited with error code.
+    root : PWD=/ ; USER=postgres ; COMMAND=/usr/bin/psql --no-psqlrc --set ON_ERROR_STOP=on --port 5432
+pam_unix(sudo:session): session opened for user postgres(uid=964) by (uid=0)
+pam_unix(sudo:session): session closed for user postgres
+== 4.2 the administrator restarts postgresql in Components 19:46:22
+502 {"code": "SERVICE_ACTION_FAILED", "error": "The server's service manager did not carry out the action. The server owner runs the command shown to read the service's own answer, corrects what it names, and then repeats this action here; nothing repeats it automatically.", "reason": "command", "vars":
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T19:46:43Z", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "ENGINE_DOWN", "Database": "", "Detail": "PostgreSQL on port 5432 d
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 19:33:34", "id": 3, "status": "waiting", "user": "cust1_ar_test_rpg_user", "user_id": 2}
+== 4.3 listed TLS / listed plain / unlisted 19:46:58
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8036 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8030 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_fw table inet celikpanel_dbremote
+    tcp dport 5432 drop
+--- listeners:
+--- units: inactive active ; failed: postgresql.service
+== 4.4 wrong passwords from the listed address 19:47:23
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8036 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8034 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8035 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8036 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8035 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8038 ms]
+jails: 
+== 4.5 password change: the old one fails remotely 19:48:30
+409 {"code": "DATABASE_PASSWORD_INVALID", "error": "the database account could not be inspected: nothing answered at this server's database engine; nothing was changed"}
+   old:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8036 ms]
+   new:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+== 4.8 the last rule removed closes at once 19:48:51
+200 {"error": "", "success": true}
+  closed after 9 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_fw table inet celikpanel_dbremote
+    tcp dport 5432 drop
+--- listeners:
+--- units: inactive active ; failed: postgresql.service
+   the rule back:
+200 {"error": "", "id": 4, "status": "waiting", "success": true}
+  still not open after 60 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8039 ms]
+== k4remote postgresql restart checks fail2ban pass last done 19:50:11
+== 133: one apply (the panel's own loop would do it within a minute) 20:09:58
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T20:09:59Z", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "ENGINE_DOWN", "Database": "", "Detail": "PostgreSQL on port 5432 d
+drwxr-xr-x 1 root celikpanel 20 Nov  7 18:37 /etc/ssl/celikpanel-database
+drwxr-x--- 1 root postgres   40 Nov  7 18:37 /etc/ssl/celikpanel-database/postgresql
+failed
+2026-11-07T19:46:22+00:00 host1.ar.test systemd[1]: Starting PostgreSQL database server...
+2026-11-07T19:46:22+00:00 host1.ar.test postgres[53300]: 2026-11-07 19:46:22.253 UTC [53300] FATAL:  could not load server certificate file "/etc/ssl/celikpanel-database/postgresql/server.crt": Permission denied
+2026-11-07T19:46:22+00:00 host1.ar.test postgres[53300]: 2026-11-07 19:46:22.253 UTC [53300] LOG:  database system is shut down
+2026-11-07T19:46:22+00:00 host1.ar.test systemd[1]: postgresql.service: Main process exited, code=exited, status=1/FAILURE
+2026-11-07T19:46:22+00:00 host1.ar.test systemd[1]: postgresql.service: Failed with result 'exit-code'.
+2026-11-07T19:46:22+00:00 host1.ar.test systemd[1]: Failed to start PostgreSQL database server.
+pam_unix(sudo:session): session opened for user postgres(uid=964) by (uid=0)
+pam_unix(sudo:session): session closed for user postgres
+2026/11/07 19:46:22 ERROR service restart postgresql: failed command: exit status 1: Job for postgresql.service failed because the control process exited with error code.
+    root : PWD=/ ; USER=postgres ; COMMAND=/usr/bin/psql --no-psqlrc --set ON_ERROR_STOP=on --port 5432
+pam_unix(sudo:session): session opened for user postgres(uid=964) by (uid=0)
+pam_unix(sudo:session): session closed for user postgres
+== 4.2 the administrator restarts postgresql in Components 20:10:00
+200 {"success": true}
+200 {"engines": [{"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-07T20:10:21Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql"}}], "offere
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 19:49:09", "id": 4, "status": "active", "user": "cust1_ar_test_rpg_user", "user_id": 2}
+== 4.3 listed TLS / listed plain / unlisted 20:10:37
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1053 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  no pg_hba.conf entry for host "192.0.3.1", user "cust1_ar_test_rpg_user", database "cust1_ar_test_rpg", no encryption [33 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_dbremote table inet celikpanel_fw
+    tcp dport 5432 ip saddr 192.0.3.1 accept
+    tcp dport 5432 drop
+--- listeners:
+LISTEN 0      200                           0.0.0.0:5432       0.0.0.0:*
+LISTEN 0      200                              [::]:5432          [::]:*
+--- units: inactive active ; failed: 
+== 4.4 wrong passwords from the listed address 20:10:47
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1037 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1037 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1037 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1041 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1037 ms]
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1039 ms]
+jails: 
+== 4.5 password change: the old one fails remotely 20:10:57
+200 {"sessions_ended": true, "success": true}
+   old:
+  pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: FATAL:  password authentication failed for user "cust1_ar_test_rpg_user" [1041 ms]
+   new:
+  pg tls -> ok TLSv1.3 [44 ms]
+== 4.8 the last rule removed closes at once 20:11:04
+200 {"error": "", "success": true}
+  closed after 8 s:   pg tls -> psql: error: connection to server at "192.0.3.222", port 5432 failed: timeout expired [8037 ms]
+  from 192.0.3.2 (unlisted): no connection [8002 ms]
+--- nft tables: table inet celikpanel_dbremote table inet celikpanel_fw
+    tcp dport 5432 drop
+--- listeners:
+LISTEN 0      200                           0.0.0.0:5432       0.0.0.0:*
+LISTEN 0      200                              [::]:5432          [::]:*
+--- units: inactive active ; failed: 
+   the rule back:
+200 {"error": "", "id": 5, "status": "active", "success": true}
+  open after 1 s:   pg tls -> ok TLSv1.3 [41 ms]
+== k4remote postgresql restart checks fail2ban pass last done 20:11:25

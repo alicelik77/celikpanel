@@ -1,0 +1,125 @@
+Downloading and verifying CelikPanel v0.1.0-alpha.129. If interrupted, run the same installation command again. / CelikPanel v0.1.0-alpha.129 indiriliyor ve doğrulanıyor. Kesilirse aynı kurulum komutunu yeniden çalıştırın.
+celikpanel-v0.1.0-alpha.129-linux-amd64.tar.gz: OK
+Installing CelikPanel v0.1.0-alpha.129 from verified archive celikpanel-v0.1.0-alpha.129-linux-amd64.tar.gz / CelikPanel v0.1.0-alpha.129 doğrulanmış celikpanel-v0.1.0-alpha.129-linux-amd64.tar.gz arşivinden kuruluyor
+Signed release trust preflight passed for v0.1.0-alpha.129 at sequence 129 (ea363da4f823f5a1f69db4a6ac4898c7b9029ea4).
+==> Small prerequisites (curl, tar, xz, nftables, iproute2, logrotate, command-line tools) / Küçük ön gereksinimler (curl, tar, xz, nftables, iproute2, logrotate, komut satırı araçları)
+Scanning processes... [                                                        ]Scanning processes... [                                                        ]Scanning processes... [                                                        ]Scanning processes... [=                                                       ]Scanning processes... [=                                                       ]Scanning processes... [==                                                      ]Scanning processes... [==                                                      ]Scanning processes... [===                                                     ]Scanning processes... [===                                                     ]Scanning processes... [====                                                    ]Scanning processes... [====                                                    ]Scanning processes... [=====                                                   ]Scanning processes... [=====                                                   ]Scanning processes... [======                                                  ]Scanning processes... [======                                                  ]Scanning processes... [=======                                                 ]Scanning processes... [=======                                                 ]Scanning processes... [========                                                ]Scanning processes... [========                                                ]Scanning processes... [=========                                               ]Scanning processes... [=========                                               ]Scanning processes... [==========                                              ]Scanning processes... [==========                                              ]Scanning processes... [===========                                             ]Scanning processes... [===========                                             ]Scanning processes... [============                                            ]Scanning processes... [============                                            ]Scanning processes... [=============                                           ]Scanning processes... [=============                                           ]Scanning processes... [==============                                          ]Scanning processes... [==============                                          ]Scanning processes... [===============                                         ]Scanning processes... [===============                                         ]Scanning processes... [================                                        ]Scanning processes... [================                                        ]Scanning processes... [=================                                       ]Scanning processes... [=================                                       ]Scanning processes... [==================                                      ]Scanning processes... [==================                                      ]Scanning processes... [==================                                      ]Scanning processes... [===================                                     ]Scanning processes... [===================                                     ]Scanning processes... [====================                                    ]Scanning processes... [====================                                    ]Scanning processes... [=====================                                   ]Scanning processes... [=====================                                   ]Scanning processes... [======================                                  ]Scanning processes... [======================                                  ]Scanning processes... [=======================                                 ]Scanning processes... [=======================                                 ]Scanning processes... [========================                                ]Scanning processes... [========================                                ]Scanning processes... [=========================                               ]Scanning processes... [=========================                               ]Scanning processes... [==========================                              ]Scanning processes... [==========================                              ]Scanning processes... [===========================                             ]Scanning processes... [===========================                             ]Scanning processes... [============================                            ]Scanning processes... [============================                            ]Scanning processes... [=============================                           ]Scanning processes... [=============================                           ]Scanning processes... [==============================                          ]Scanning processes... [==============================                          ]Scanning processes... [===============================                         ]Scanning processes... [===============================                         ]Scanning processes... [================================                        ]Scanning processes... [================================                        ]Scanning processes... [=================================                       ]Scanning processes... [=================================                       ]Scanning processes... [==================================                      ]Scanning processes... [==================================                      ]Scanning processes... [===================================                     ]Scanning processes... [===================================                     ]Scanning processes... [====================================                    ]Scanning processes... [====================================                    ]Scanning processes... [=====================================                   ]Scanning processes... [=====================================                   ]Scanning processes... [=====================================                   ]Scanning processes... [======================================                  ]Scanning processes... [======================================                  ]Scanning processes... [=======================================                 ]Scanning processes... [=======================================                 ]Scanning processes... [========================================                ]Scanning processes... [========================================                ]Scanning processes... [=========================================               ]Scanning processes... [=========================================               ]Scanning processes... [==========================================              ]Scanning processes... [==========================================              ]Scanning processes... [===========================================             ]Scanning processes... [===========================================             ]Scanning processes... [============================================            ]Scanning processes... [============================================            ]Scanning processes... [=============================================           ]Scanning processes... [=============================================           ]Scanning processes... [==============================================          ]Scanning processes... [==============================================          ]Scanning processes... [===============================================         ]Scanning processes... [===============================================         ]Scanning processes... [================================================        ]Scanning processes... [================================================        ]Scanning processes... [=================================================       ]Scanning processes... [=================================================       ]Scanning processes... [==================================================      ]Scanning processes... [==================================================      ]Scanning processes... [===================================================     ]Scanning processes... [===================================================     ]Scanning processes... [====================================================    ]Scanning processes... [====================================================    ]Scanning processes... [=====================================================   ]Scanning processes... [=====================================================   ]Scanning processes... [======================================================  ]Scanning processes... [======================================================  ]Scanning processes... [======================================================= ]Scanning processes... [======================================================= ]Scanning processes... [========================================================]Scanning processes...                                                           
+Scanning linux images... [                                                     ]Scanning linux images... [=================                                    ]Scanning linux images... [===================================                  ]Scanning linux images... [=====================================================]Scanning linux images...                                                        
+    ✓ ready / hazır
+==> Running kernel / Calisan cekirdek
+    ✓ 5.15.0-198-generic can load its modules / 5.15.0-198-generic modullerini yukleyebiliyor
+==> Automatic security patches (unattended-upgrades) / Otomatik güvenlik yamaları (unattended-upgrades)
+    ✓ security patches enabled / güvenlik yamaları etkin
+==> Service user and group / Servis kullanıcısı ve grubu
+    ✓ celikpanel:celikpanel
+==> Panel configuration /etc/celikpanel/panel.env / Panel yapılandırması /etc/celikpanel/panel.env
+    ✓ ready / hazır
+    ✓ Using the prebuilt release (bin/ + web/dist) / Önceden derlenmiş sürüm kullanılıyor (bin/ + web/dist)
+==> Installing files under /opt/celikpanel / Dosyalar /opt/celikpanel altına kuruluyor
+    ✓ installed / kuruldu
+==> Data directory /var/lib/celikpanel / Veri dizini /var/lib/celikpanel
+    ✓ ready / hazır
+==> systemd services / systemd servisleri
+6c1c51b4f07155f52e1e9fc88f529e9c5beaeee53c127eeccfb66eaab86031b0
+591862c70c58c7e752e0a39a13c6bb8e968e18ca3846d80ef6f84636c8c6ba8b
+Signed release trust enrolled for v0.1.0-alpha.129 at sequence 129 (ea363da4f823f5a1f69db4a6ac4898c7b9029ea4).
+    ✓ installed / kuruldu
+==> Starting the agent / Agent başlatılıyor
+2026/11/07 20:16:01 Starting CelikPanel Agent...
+2026/11/07 20:16:01 Service mutation ledger initialized
+    ✓ agent is running / agent çalışıyor
+2026/11/07 20:16:02 Starting CelikPanel Backend...
+2026/11/07 20:16:02 Applied migration: 001_full_schema.sql
+2026/11/07 20:16:02 Applied migration: 002_auth.sql
+2026/11/07 20:16:02 Applied migration: 003_authz.sql
+2026/11/07 20:16:02 Applied migration: 004_accounts.sql
+2026/11/07 20:16:02 Applied migration: 005_projects.sql
+2026/11/07 20:16:02 Applied migration: 006_drop_placeholder_admin.sql
+2026/11/07 20:16:02 Applied migration: 007_service_scan_cache.sql
+2026/11/07 20:16:02 Applied migration: 008_site_usage.sql
+2026/11/07 20:16:02 Applied migration: 009_mail_catch_all.sql
+2026/11/07 20:16:02 Applied migration: 010_subdomains.sql
+2026/11/07 20:16:02 Applied migration: 011_entitlements.sql
+2026/11/07 20:16:02 Applied migration: 012_totp.sql
+2026/11/07 20:16:02 Applied migration: 013_backup_schedules.sql
+2026/11/07 20:16:02 Applied migration: 014_vpn_peers.sql
+2026/11/07 20:16:02 Applied migration: 015_ssl_secure_mail.sql
+2026/11/07 20:16:02 Applied migration: 016_metrics.sql
+2026/11/07 20:16:02 Applied migration: 017_panel_settings.sql
+2026/11/07 20:16:02 Applied migration: 018_hostname_namespace.sql
+2026/11/07 20:16:02 Applied migration: 019_hsts_retirement.sql
+2026/11/07 20:16:02 Applied migration: 020_ssl_lineage_identity.sql
+2026/11/07 20:16:02 Applied migration: 021_service_operations.sql
+2026/11/07 20:16:02 Applied migration: 022_service_operation_request_id.sql
+2026/11/07 20:16:02 Applied migration: 023_store_offerings.sql
+2026/11/07 20:16:02 Applied migration: 024_vpn_peer_state.sql
+2026/11/07 20:16:02 Applied migration: 025_auth_epoch.sql
+2026/11/07 20:16:02 Applied migration: 026_backup_schedule_status.sql
+2026/11/07 20:16:02 Applied migration: 027_backup_schedule_job_key.sql
+2026/11/07 20:16:02 Applied migration: 028_application_install_operations.sql
+2026/11/07 20:16:02 Applied migration: 029_additional_users.sql
+2026/11/07 20:16:02 Applied migration: 030_domain_deletion_operations.sql
+2026/11/07 20:16:02 Applied migration: 031_service_operation_data.sql
+2026/11/07 20:16:02 Applied migration: 032_dns_zone_sync_state.sql
+2026/11/07 20:16:02 Applied migration: 033_dns_engine_state.sql
+2026/11/07 20:16:02 Applied migration: 034_dns_engine_publication_switch_guard.sql
+2026/11/07 20:16:02 Applied migration: 035_dns_zone_generation_high_water.sql
+2026/11/07 20:16:02 Applied migration: 036_bind_paired_engine.sql
+2026/11/07 20:16:02 Applied migration: 037_dns_pair_identity_immutable.sql
+2026/11/07 20:16:02 Applied migration: 038_database_admin_account.sql
+2026/11/07 20:16:02 Applied migration: 039_server_setup_state.sql
+2026/11/07 20:16:03 Applied migration: 040_dns_management.sql
+2026/11/07 20:16:03 Applied migration: 041_server_setup_execution.sql
+2026/11/07 20:16:03 Applied migration: 042_remote_dns_publish.sql
+2026/11/07 20:16:03 Applied migration: 043_request_identities.sql
+2026/11/07 20:16:03 Applied migration: 044_managed_site_files.sql
+2026/11/07 20:16:03 Applied migration: 045_audit_details_app_account.sql
+2026/11/07 20:16:03 Applied migration: 046_postgresql_clusters.sql
+2026/11/07 20:16:03 Applied migration: 047_panel_port_change.sql
+2026/11/07 20:16:03 Applied migration: 048_accounts_plans_resellers.sql
+2026/11/07 20:16:03 Applied migration: 049_account_recovery.sql
+2026/11/07 20:16:03 Applied migration: 050_site_protect_redirect_recovery_codes.sql
+2026/11/07 20:16:03 Applied migration: 051_mail_autoresponders.sql
+2026/11/07 20:16:03 Applied migration: 052_rights_sets.sql
+2026/11/07 20:16:03 Applied migration: 053_suspension.sql
+2026/11/07 20:16:03 Applied migration: 054_transfers.sql
+2026/11/07 20:16:03 Applied migration: 055_security_emergency.sql
+2026/11/07 20:16:03 Applied migration: 056_transfer_rotation.sql
+2026/11/07 20:16:03 Applied migration: 057_usage_limits.sql
+2026/11/07 20:16:03 Applied migration: 058_app_catalog_operations.sql
+2026/11/07 20:16:03 Applied migration: 059_site_tools.sql
+2026/11/07 20:16:03 Applied migration: 060_remote_backups.sql
+2026/11/07 20:16:03 Applied migration: 061_service_apps.sql
+2026/11/07 20:16:03 Applied migration: 062_user_guide_state.sql
+2026/11/07 20:16:03 Applied migration: 063_runtime_apps.sql
+2026/11/07 20:16:03 Applied migration: 064_metrics_history.sql
+2026/11/07 20:16:03 Applied migration: 065_monitoring_alerts.sql
+2026/11/07 20:16:03 Applied migration: 066_site_setting_limits.sql
+2026/11/07 20:16:03 Applied migration: 067_mail_outgoing.sql
+2026/11/07 20:16:03 Applied migration: 068_site_web_settings.sql
+2026/11/07 20:16:03 Applied migration: 069_site_visitor_stats.sql
+2026/11/07 20:16:03 Applied migration: 070_api_tokens.sql
+2026/11/07 20:16:03 Applied migration: 071_ftp_logins.sql
+2026/11/07 20:16:03 Applied migration: 072_panel_operations.sql
+2026/11/07 20:16:03 Applied migration: 073_mail_outgoing_resume_baseline.sql
+2026/11/07 20:16:03 Applied migration: 074_database_remote_rules.sql
+2026/11/07 20:16:03 Successfully applied 74 migrations
+==> Creating the first administrator / İlk yönetici oluşturuluyor
+2026/11/07 20:16:03 Starting CelikPanel Backend...
+Admin username / Yönetici kullanıcı adı: owner
+Admin email / Yönetici e-posta: owner@beta1-lab.test
+Show password while typing? / Parola yazarken görünsün mü? [y/e = yes/evet, Enter = no/hayır]: 
+The password needs at least 8 characters, with an uppercase letter, a lowercase letter and a special character (for example - _ . !). / Şifre en az 8 karakter olmalı; bir büyük harf, bir küçük harf ve bir özel karakter (örneğin - _ . !) içermeli.
+Admin password / Yönetici parolası: 
+Confirm password / Parolayı doğrula: 
+Created administrator / Yönetici oluşturuldu.
+    ✓ administrator is ready / yönetici hazır
+==> Starting the panel / Panel başlatılıyor
+    ✓ panel is running / panel çalışıyor
+==> Protecting the initial panel certificate / Ilk panel sertifikasi korumaya aliniyor
+    ✓ initial panel certificate is protected / ilk panel sertifikasi korundu
+
+CelikPanel was installed successfully. / CelikPanel başarıyla kuruldu.
+    Panel:  https://192.0.3.211:1923
+    Services / Servisler: systemctl status celikpanel-agent celikpanel-panel
+    Logs / Günlükler: journalctl -u celikpanel-panel -f

@@ -1,0 +1,1 @@
+head -3 /var/tmp/a129o/logs/C1fresh-u22.log | cut -c1-200; grep -l "freshV" /mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a129lab/kit/p129*.sh; grep -h "freshV\|S=u22" /mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a129lab/kit/p129*.sh

@@ -1,0 +1,47 @@
+== 6.0 remote API on, plan Basic with remote_api 18:39:36
+200 {"enabled": true, "working_tokens": "[REDACTED]"}
+200 {"success": true}
+201 saved 211 bytes {'content-type': 'application/json'}
+   token saved: True {"code": null, "error": null}
+== 6.1/6.2 create with the token; named on the joined server is paused (SIGSTOP) 3 s later, after the pair check (lab load) 18:39:37
+active
+Tsl
+409  {"error":"the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page","code":"DNS_PUBLICATION_PENDING","partial_success":true,"domain_id":5,"domain":"tokpend.r9.test","zone_exists":true,"action":"/domains/tokpend.r9.test?tab=dns"} 
+   tokpend id 5
+== 6.3 delete with the token (confirm_domain) 18:39:59
+409  {"error":"Nothing was changed: the backup DNS server has not yet confirmed this server's current zone list, so CelikPanel does not publish another change yet. It usually catches up within a minute of the previous change; try again then. If this keeps happening, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53 (Server → DNS and peer servers shows the pair state).","code":"DNS_PEER_CATCHING_UP","action":"/dns-infrastructure"} 
+   status as the token:
+204  
+   second press:
+409  {"error":"Nothing was changed: the backup DNS server has not yet confirmed this server's current zone list, so CelikPanel does not publish another change yet. It usually catches up within a minute of the previous change; try again then. If this keeps happening, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53 (Server → DNS and peer servers shows the pair state).","code":"DNS_PEER_CATCHING_UP","action":"/dns-infrastructure"} 
+4
+== 6.4 named resumed (SIGCONT); the deletion finishes by itself 18:42:26
+active
+   +0s 204  
+   domains list has tokpend: 2
+   @192.0.3.190 tokpend SOA: ns1.r9.test. hostmaster.tokpend.r9.test. 2026110701 10800 3600 604800 3600 | @192.0.3.191: ns1.r9.test. hostmaster.tokpend.r9.test. 2026110701 10800 3600 604800 3600
+== k6tok done 18:42:28
+== 6.5 the pending domain of 6.2 (named running again): delete with the token 18:56:09
+   tokpend id 5
+200  {"domain":"tokpend.r9.test","status":"deleted"} 
+   +1s 404  {"error":"domain not found"} 
+   GONE from the domain list after 1 s
+== 6.6 a fresh token domain; delete, and the joined named paused 1 s later 18:56:21
+200  {"DomainID":6,"SiteID":6,"Domain":"tokdel2.r9.test","TempDomain":"","DocumentRoot":"/var/www/celikpanel/subscriptions/3/sites/6/public_html","ProjectType":"static","FTPUser":"tokdel2_r9_test","FTPPassword":"[REDACTED]","PHPVersion":""} 
+   tokdel2 id 6
+Tsl
+202  {"domain":"tokdel2.r9.test","message":"The change is saved on this server but not published yet: an earlier DNS change is waiting for the backup DNS server to catch up, and DNS changes are published one at a time. Nobody needs to do anything: CelikPanel re-checks the earlier change by itself and then publishes this one too; Server → DNS and peer servers shows the next check. DNS keeps answering with the published records meanwhile. If this lasts, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53. The rest of this deletion waits only for this DNS step: once it completes, this server finishes the deletion by itself. Nobody needs
+   status (token):
+200  {"status":"deletion_pending","stage":"incomplete","reason":"deletion_incomplete","message":"This deletion stopped before it finished, for example because the panel restarted during it. Nothing is lost and nothing more happens by itself. Delete the domain again to finish it; the steps already done are skipped."} 
+   second press:
+409  {"error":"Nothing was changed: the backup DNS server has not yet confirmed this server's current zone list, so CelikPanel does not publish another change yet. It usually catches up within a minute of the previous change; try again then. If this keeps happening, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53 (Server → DNS and peer servers shows the pair state).","code":"DNS_PEER_CATCHING_UP","action":"/dns-infrastructure"} 
+   status after 45 s:
+200  {"status":"deletion_pending","stage":"incomplete","reason":"deletion_incomplete","message":"This deletion stopped before it finished, for example because the panel restarted during it. Nothing is lost and nothing more happens by itself. Delete the domain again to finish it; the steps already done are skipped."} 
+== 6.7 named resumed 18:59:04
+active
+   +0s 200  {"status":"deletion_pending","stage":"incomplete","reason":"deletion_incomplete","message":"This deletion stopped before it finished, for example because the panel restarted during it. Nothing is lost and nothing more happens by itself. Delete the domain again to finish it; the steps already done are skipped."} 
+   +15s 200  {"status":"deletion_pending","stage":"dns_removed","reason":"dns_removal_confirmed","message":"The DNS removal of this domain is complete and verified (on the backup DNS server too, when this server has one). This server finishes the rest of the deletion by itself within a minute; nobody needs to do anything. If this message stays for more than ten minutes, use “Retry this deletion”."} 
+   +31s 404  {"error":"domain not found"} 
+   GONE from the domain list after 31 s
+   @192.0.3.190 tokdel2 SOA: [] @192.0.3.191: []
+== k6b done 18:59:36

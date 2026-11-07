@@ -1,0 +1,66 @@
+== versions 20:16:14
+200 {"agent_commit": "ea363da4f823f5a1f69db4a6ac4898c7b9029ea4", "agent_matches": true, "commit": "ea363da4f823f5a1f69db4a6ac4898c7b9029ea4", "hostname": "host1.u22.test", "ipv4": "192.0.3.211", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+== lab 130 label is the portal's latest 20:16:14
+v0.1.0-alpha.130
+CELIKPANEL_LAB_ROLLBACK_PROBE=1
+  request 766a66c36e223d42f130bcd1cf6323c1 v0.1.0-alpha.129 -> v0.1.0-alpha.130
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T20:16:14Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "766a66c36e223d42f130bcd1cf63
+  20:16:18 +3s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  20:16:21 +6s 200 running None  | download:done verify:done prepare:running restart:pending confirm:pending
+  20:16:40 +25s 
+  20:17:08 +53s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: | download:done verify:done prepare:pending restart:pending confirm:pending
+== after the refused attempt 20:17:08
+200 {"agent_commit": "ea363da4f823f5a1f69db4a6ac4898c7b9029ea4", "agent_matches": true, "commit": "ea363da4f823f5a1f69db4a6ac4898c7b9029ea4", "hostname": "host1.u22.test", "ipv4": "192.0.3.211", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-07T20:16:14.510953766Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-07T20:16:14Z", "state": "done"}, {"finished_at": "2026-11-07T20:16:19Z", "id": "verify", "state": "done"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "766a66c36e223d42f130bcd1cf6323c1", "status": "failed", "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) / panel.env:5 desteklenmeyen anahtar: CELIKPANEL_LAB_ROLLBACK_PROBE (satr silin, sonra yeniden deneyin)", "target": {"arch": "amd64", "archive_sha256": "6a2f08d482111c8ab68840149451bdb0cc4b41b6d0c0fb4f003503efd831b710", "archive_size": "72804563", "commit": "ac97b0a0464ecb3e07fb729ab34c23401639427c", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-07T20:16:51.906276534Z"}
+-- wait for the recovery runner to finish (up to 3 min)
+   recovery lines: 0
+   recovery lines: 1
+--- systemctl --failed
+celikpanel-self-update-766a66c36e223d42f130bcd1cf6323c1.service loaded failed failed /opt/celikpanel/bin/agent --self-update-worker 766a66c36e223d42f130bcd1cf6323c1
+(failed end)
+2026-11-07T20:16:14+0000 host1.u22.test sudo[14235]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'echo CELIKPANEL_LAB_ROLLBACK_PROBE=1 >> /etc/celikpanel/panel.env; tail -1 /etc/celikpanel/panel.env'
+2026-11-07T20:16:51+0000 host1.u22.test agent[14241]: 2026/11/07 20:16:51 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 ha
+2026-11-07T20:16:52+0000 host1.u22.test release-recovery[27091]: Recovery dispatch admitted: attempt=1 snapshot=20261107T201635Z-from-unknown-to-ac97b0a0464ecb3e07fb729ab34c23401639427c-56acbd975df4fb3879a1a557c9e64dfb
+2026-11-07T20:16:55+0000 host1.u22.test release-recovery[27574]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261107T201635Z-from-unknown-to-ac97b0a0464ecb3e07fb729ab34c23401639427c-56acbd975df4fb3879a1a557c9e64df
+2026-11-07T20:17:14+0000 host1.u22.test release-recovery[27574]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-07T20:17:14+0000 host1.u22.test release-recovery[27574]:     Restored release source commit / Geri yüklenen sürümün kaynak commit'i: ea363da4f823f5a1f69db4a6ac4898c7b9029ea4 (from the restored Agent's build record / geri yüklenen Agent'ın yapı k
+--- release  ; panel active agent active
+== the owner removes the line and presses Update again 20:17:15
+0
+  request df1b66cf78c78889e029c10e7e2e87b0 v0.1.0-alpha.129 -> v0.1.0-alpha.130
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-07T20:17:15Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "df1b66cf78c78889e029c10e7e2e
+  20:17:18 +2s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  20:17:37 +21s 
+  20:18:07 +51s 200 running verifying  | download:done verify:done prepare:done restart:done confirm:running
+  20:18:21 +65s 200 succeeded None  | download:done verify:done prepare:done restart:done confirm:done
+  press-to-end 66 s
+== after 20:18:34
+200 {"agent_commit": "ac97b0a0464ecb3e07fb729ab34c23401639427c", "agent_matches": true, "commit": "ac97b0a0464ecb3e07fb729ab34c23401639427c", "hostname": "host1.u22.test", "ipv4": "192.0.3.211", "schema_version": 74, "version": "v0.1.0-alpha.130"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/07 20:16:07 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 20:16:08 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 20:17:07 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+2026/11/07 20:18:05 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+--- agent journal (self-update / cleared)
+2026/11/07 20:18:20 self-update: cleared the failed mark of celikpanel-self-update-766a66c36e223d42f130bcd1cf6323c1.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '766a66c36e223d42f130bcd1cf6323c1.json'] {'request_id': '766a66c36e223d42f130bcd1cf6323c1', 'status': 'failed', 'phase': None, 'created_at': '2026-11-07T20:16:14.510953766Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+  ['self-update', 'df1b66cf78c78889e029c10e7e2e87b0.json'] {'request_id': 'df1b66cf78c78889e029c10e7e2e87b0', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-07T20:17:15.414348848Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+--- systemctl --failed
+(failed end)
+2026-11-07T20:16:14+0000 host1.u22.test sudo[14235]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'echo CELIKPANEL_LAB_ROLLBACK_PROBE=1 >> /etc/celikpanel/panel.env; tail -1 /etc/celikpanel/panel.env'
+2026-11-07T20:16:51+0000 host1.u22.test agent[14241]: 2026/11/07 20:16:51 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 ha
+2026-11-07T20:16:52+0000 host1.u22.test release-recovery[27091]: Recovery dispatch admitted: attempt=1 snapshot=20261107T201635Z-from-unknown-to-ac97b0a0464ecb3e07fb729ab34c23401639427c-56acbd975df4fb3879a1a557c9e64dfb
+2026-11-07T20:16:55+0000 host1.u22.test release-recovery[27574]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261107T201635Z-from-unknown-to-ac97b0a0464ecb3e07fb729ab34c23401639427c-56acbd975df4fb3879a1a557c9e64df
+2026-11-07T20:17:14+0000 host1.u22.test release-recovery[27574]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-07T20:17:14+0000 host1.u22.test release-recovery[27574]:     Restored release source commit / Geri yüklenen sürümün kaynak commit'i: ea363da4f823f5a1f69db4a6ac4898c7b9029ea4 (from the restored Agent's build record / geri yüklenen Agent'ın yapı k
+2026-11-07T20:17:15+0000 host1.u22.test sudo[32286]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'sed -i "/^CELIKPANEL_LAB_ROLLBACK_PROBE=/d" /etc/celikpanel/panel.env; grep -c LAB_ROLLBACK /etc/celikpanel/panel.env'
+--- release  ; panel active agent active
+v0.1.0-alpha.129
+== c8rb done 20:18:36

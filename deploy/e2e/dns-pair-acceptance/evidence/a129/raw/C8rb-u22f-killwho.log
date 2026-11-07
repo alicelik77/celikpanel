@@ -1,0 +1,33 @@
+2026-11-07T20:16:51+0000 host1.u22.test agent[14241]: 2026/11/07 20:16:51 System update worker failed: reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 ha
+2026-11-07T20:16:51+0000 host1.u22.test systemd[1]: Starting CelikPanel verified release transaction recovery...
+2026-11-07T20:16:52+0000 host1.u22.test release-recovery[27091]: Recovery dispatch admitted: attempt=1 snapshot=20261107T201635Z-from-unknown-to-ac97b0a0464ecb3e07fb729ab34c23401639427c-56acbd975df4fb3879a1a557c9e64dfb
+2026-11-07T20:16:55+0000 host1.u22.test release-recovery[27574]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261107T201635Z-from-unknown-to-ac97b0a0464ecb3e07fb729ab34c23401639427c-56acbd975df4fb3879a1a557c9e64df
+2026-11-07T20:16:55+0000 host1.u22.test release-recovery[27574]: ==> Stopping CelikPanel services / CelikPanel servisleri durduruluyor
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /lib/systemd/system/snapd.service:23: Unknown key name 'RestartMode' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:74: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:75: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /lib/systemd/system/snapd.service:23: Unknown key name 'RestartMode' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:74: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:75: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /lib/systemd/system/snapd.service:23: Unknown key name 'RestartMode' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:74: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:00+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:75: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:01+0000 host1.u22.test systemd[1]: /lib/systemd/system/snapd.service:23: Unknown key name 'RestartMode' in section 'Service', ignoring.
+2026-11-07T20:17:01+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:01+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:85: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:01+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:74: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:01+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:75: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:02+0000 host1.u22.test release-recovery[30044]: Created symlink /etc/systemd/system/multi-user.target.wants/celikpanel-agent.service -> /etc/systemd/system/celikpanel-agent.service.
+2026-11-07T20:17:02+0000 host1.u22.test systemd[1]: /lib/systemd/system/snapd.service:23: Unknown key name 'RestartMode' in section 'Service', ignoring.
+2026-11-07T20:17:02+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:74: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+2026-11-07T20:17:02+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-agent.service:75: Unknown key name 'RestartMaxDelaySec' in section 'Service', ignoring.
+2026-11-07T20:17:02+0000 host1.u22.test systemd[1]: /etc/systemd/system/celikpanel-panel.service:84: Unknown key name 'RestartSteps' in section 'Service', ignoring.
+0
+/opt/celikpanel/.recovery-publications/ff0d0c1a2bc723cfebc3bebb085bd47c282e3786f82805ceadb4bbfd87a7cd96/update-bin/.stage-91c11a4a9442ff58c9a6dbe24d5c66ac/agent
+/opt/celikpanel/bin/agent

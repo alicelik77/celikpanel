@@ -1,0 +1,57 @@
+== 3.0 a postgresql database of site1 18:33:06
+200 {"id": 6, "name": "site1_r9_test_vpg", "status": "success", "type": "postgresql", "user": "site1_r9_test_vpg_user"}
+database site1_r9_test_vpg id 6 owner user site1_r9_test_vpg_user id 10
+   {"created_at": "2026-11-07 18:33:06", "engine": "postgresql", "engine_version": "17", "id": 6, "name": "site1_r9_test_vpg", "type": "postgresql", "user": "site1_r9_test_vpg_user", "users": [{"access": "owner", "id": 10, "username": "site1_r9_test_vpg_user"}]}
+-- the owner user makes a table
+CREATE TABLE
+INSERT 0 1
+1
+== 3.1 password change of the owner user 18:33:07
+200 {"sessions_ended": true, "success": true}
+   old password:
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "site1_r9_test_vpg_user"
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "site1_r9_test_vpg_user"
+   new password:
+1
+   a weak password is refused:
+400 {"code": "PASSWORD_WEAK", "error": "Password must be at least 12 characters.", "reason": "too_short", "vars": {"max": "128", "min": "12", "rules": "too_short,needs_upper,needs_special"}}
+== 3.2 read-only and read-write users 18:33:08
+200 {"access": "read", "id": 11, "username": "site1_r9_test_vpg_ro"}
+200 {"access": "write", "id": 12, "username": "site1_r9_test_vpg_rw"}
+ro site1_r9_test_vpg_ro id 11, rw site1_r9_test_vpg_rw id 12
+-- rw makes a table later and writes
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1
+-- ro reads both, cannot write
+2|1
+ERROR:  permission denied for table t1
+ERROR:  permission denied for schema public
+LINE 1: create table t3(id int);
+                     ^
+-- the owner makes a table after ro exists; ro reads it
+CREATE TABLE
+INSERT 0 1
+1
+== 3.3 remove ro and rw: the database stays 18:33:10
+200 {"status": "removed"}
+200 {"status": "removed"}
+2|1|1
+   ro after removal:
+psql: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "site1_r9_test_vpg_ro"
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "site1_r9_test_vpg_ro"
+   removing the database's own user is refused:
+409 {"code": "DATABASE_USER_MADE_WITH_DATABASE", "error": "site1_r9_test_vpg_user was made with the database and goes only with it: deleting the database removes it. Nothing was changed."}
+== 3.4 a name made outside the panel 18:33:11
+CREATE ROLE
+CREATE DATABASE
+409 {"code": "DATABASE_NAME_TAKEN", "error": "A database named site1_r9_test_vtaken already exists on this database server (it may belong to another account, or have been made outside CelikPanel). Choose another name; nothing was changed."}
+409 {"code": "DATABASE_NAME_TAKEN", "error": "A database user named site1_r9_test_vtaken2_user already exists on this database server (it may belong to another account, or have been made outside CelikPanel). Choose another name; nothing was changed."}
+site1_r9_test_taken
+site1_r9_test_taken2
+site1_r9_test_vtaken
+site1_r9_test_taken_user
+site1_r9_test_taken2_user
+site1_r9_test_vtaken2_user
+== k3dbu postgresql done 18:33:13

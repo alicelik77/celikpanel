@@ -1,0 +1,106 @@
+== 4.0 the offer, plan permission, a postgresql database of cust1 19:16:54
+200 {"distribution": "debian", "installs": [], "notable": [], "refusals": [], "removes": [], "requested": [], "state": "known"}
+202 {"operation": {"id": "84758dbd803c9147190952e9153e4650", "kind": "service_install", "phase": "queued", "request_id": "78c3eda2a1baebd4b8e1545b65875623", "service_id": "postgresql", "started_at": "2026-11-07T19:16:56.194417697Z", "status": "queued"}}
+  op 78c3eda2a1baebd4b8e1545b65875623: succeeded completed "" (19:17:07)
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-07T19:16:51Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}], "offered": true, "rules": 1}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-07T19:17:08Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}], "offered": true, "rules": 1}
+200 {"success": true}
+200 {"id": 8, "name": "cust1_r9_test_rpg", "status": "success", "type": "postgresql", "user": "cust1_r9_test_rpg_user"}
+8 cust1_r9_test_rpg cust1_r9_test_rpg_user
+200 access {"may_edit": true}
+   engine "postgresql"
+== 4.1 a rule for the lab client 192.0.3.1, then the refusals 19:17:10
+   user id 14
+200 {"error": "", "id": 3, "status": "waiting", "success": true}
+   refused 0.0.0.0/0:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_TOO_WIDE"], "error": "0.0.0.0/0 would let the whole internet try to sign in. List your own address instead. Nothing was changed."}
+   refused 10.0.0.0/8:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_TOO_WIDE"], "error": "10.0.0.0/8 is too wide: an IPv4 range may hold at most 256 addresses (/24). List your own address or a /24 or smaller range. Nothing was changed."}
+   refused 127.0.0.1:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_LOCAL"], "error": "127.0.0.1/32 is this server itself; local connections are always allowed and need no rule. Nothing was changed."}
+   refused 169.254.1.1:
+400 {"code": "DATABASE_REMOTE_ADDRESS", "details": ["ADDRESS_SPECIAL"], "error": "169.254.1.1/32 is not an address a computer connects from. List the public address of your computer or office. Nothing was changed."}
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 19:17:10", "id": 3, "status": "waiting", "user": "cust1_r9_test_rpg_user", "user_id": 14}
+  pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8076 ms]
+  from 192.0.3.2 (unlisted): no connection [8005 ms]
+== 4.2 the administrator restarts postgresql in Components 19:17:29
+200 {"applied": "restarted", "outcome": "verified", "success": true, "unit": "postgresql@17-main.service"}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-07T19:17:53Z", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgr
+200 access {"may_edit": true}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 19:17:10", "id": 3, "status": "active", "user": "cust1_r9_test_rpg_user", "user_id": 14}
+== 4.3 listed TLS / listed plain / unlisted 19:18:09
+  pg tls -> ok TLSv1.3 [47 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  no pg_hba.conf entry for host "192.0.3.1", user "cust1_r9_test_rpg_user", database "cust1_r9_test_rpg", no encryption [32 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_dbremote table inet celikpanel_fw
+    tcp dport 3306 ip saddr 192.0.3.1 accept
+    tcp dport 3306 drop
+    tcp dport 5432 ip saddr 192.0.3.1 accept
+    tcp dport 5432 drop
+--- listeners:
+LISTEN 0      200          0.0.0.0:5432       0.0.0.0:*   
+LISTEN 0      200             [::]:5432          [::]:*   
+--- units: inactive active ; failed: 
+== 4.4 wrong passwords from the listed address 19:18:18
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1044 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1047 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1059 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1048 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1087 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1045 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1059 ms]
+  pg tls -> ok TLSv1.3 [47 ms]
+jails: celikpanel-mariadb-auth  sshd
+celikpanel-mariadb-auth: |  |- Currently failed:	0
+celikpanel-mariadb-auth: |  |- Total failed:	0
+celikpanel-mariadb-auth:    |- Currently banned:	0
+celikpanel-mariadb-auth:    `- Banned IP list:	
+sshd: |  |- Currently failed:	0
+sshd: |  |- Total failed:	0
+sshd:    |- Currently banned:	0
+sshd:    `- Banned IP list:	
+== 4.5 password change: the old one fails remotely 19:18:28
+200 {"sessions_ended": true, "success": true}
+   old:
+  pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_r9_test_rpg_user" [1048 ms]
+   new:
+  pg tls -> ok TLSv1.3 [43 ms]
+== 4.8 the last rule removed closes at once 19:18:35
+200 {"error": "", "success": true}
+  closed after 8 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8039 ms]
+  from 192.0.3.2 (unlisted): no connection [8003 ms]
+--- nft tables: table inet celikpanel_dbremote table inet celikpanel_fw
+    tcp dport 3306 ip saddr 192.0.3.1 accept
+    tcp dport 3306 drop
+    tcp dport 5432 drop
+--- listeners:
+LISTEN 0      200          0.0.0.0:5432       0.0.0.0:*   
+LISTEN 0      200             [::]:5432          [::]:*   
+--- units: inactive active ; failed: 
+   the rule back:
+200 {"error": "", "id": 4, "status": "active", "success": true}
+  open after 0 s:   pg tls -> ok TLSv1.3 [47 ms]
+== k4remote postgresql setup open restart checks fail2ban pass last done 19:18:56
+== 4.7 run with the explicit permission list
+== 4.7 plan permission withdrawn: closes within ~35 s 19:25:49
+200 {"success": true}
+  still not closed after 90 s:   pg tls -> ok TLSv1.3 [41 ms]
+200 access {"grantor": "the administrator", "may_edit": false, "reason": "not_in_plan"}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 19:18:53", "id": 4, "status": "not_in_plan", "user": "cust1_r9_test_rpg_user", "user_id": 14}
+200 {"success": true}
+  open after 0 s:   pg tls -> ok TLSv1.3 [42 ms]
+== k4remote postgresql plan done 19:27:25
+== 4.7 second run: systemd ready again
+== 4.7 plan permission withdrawn: closes within ~35 s 19:30:47
+200 {"success": true}
+  closed after 34 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8037 ms]
+200 access {"grantor": "the administrator", "may_edit": false, "reason": "not_in_plan"}
+   engine "postgresql"
+   rule {"address": "192.0.3.1", "created_at": "2026-11-07 19:18:53", "id": 4, "status": "not_in_plan", "user": "cust1_r9_test_rpg_user", "user_id": 14}
+200 {"success": true}
+  open after 20 s:   pg tls -> ok TLSv1.3 [7196 ms]
+== k4remote postgresql plan done 19:31:43
