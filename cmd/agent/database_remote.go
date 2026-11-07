@@ -265,6 +265,9 @@ var databaseRemoteHBAReload func(string) error
 
 func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func(string) error, resp *transport.DatabaseRemoteResponse) {
 	databaseRemoteHBAReload = reload
+	if err := healDatabaseRemoteCertRoot(); err != nil {
+		log.Printf("database remote access: the certificate folder %s could not be made readable for the engines: %v", databaseRemoteCertRoot, err)
+	}
 	nftPath, nftErr := databaseRemoteLookPath("nft")
 	resp.NFTAvailable = nftErr == nil
 	state, err := loadDatabaseRemoteState()

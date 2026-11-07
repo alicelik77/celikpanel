@@ -252,6 +252,25 @@ func ensureDatabaseRemoteCertificate(engine, group, hostName string) (cert, key 
 // here if missing) 0755 whatever the umask, so each engine's user can reach
 // its own 0750 folder below it. The root holds no secret: each engine's
 // folder and key keep their own restrictive modes.
+// healDatabaseRemoteCertRoot repairs an existing certificate root an earlier
+// Agent left 0750 (alpha.129 lab, Arch): the engine then cannot read its
+// certificate and does not start, so no apply reaches the certificate step;
+// every apply therefore heals the root first. Nothing is made when the root
+// is missing.
+func healDatabaseRemoteCertRoot() error {
+	info, err := os.Lstat(databaseRemoteCertRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return nil
+	}
+	return ensureDatabaseRemoteCertRootTraversable()
+}
+
 func ensureDatabaseRemoteCertRootTraversable() error {
 	if err := os.MkdirAll(databaseRemoteCertRoot, 0o755); err != nil {
 		return err
