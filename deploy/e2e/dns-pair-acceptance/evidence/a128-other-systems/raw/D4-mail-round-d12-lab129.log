@@ -1,0 +1,91 @@
+== 4.0 Components: postfwd row 17:23:52
+  row {"id": "postfwd", "is_installed": false, "status": "not_installed", "package": null, "available": null, "reason": null, "notice": null}
+== 4.1 postfwd from Components 17:23:53
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "libregexp-ipv6-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "f50819c9908e31b04b3dc4860b19feb6", "kind": "service_install", "phase": "queued", "request_id": "04061425ebc0c58a595aca4137cda057", "service_id": "postfwd", "started_at": "2026-11-07T17:23:55.582740176Z", "status": "queued"}}
+  op 04061425ebc0c58a595aca4137cda057: succeeded completed "" (17:24:46)
+/usr/sbin/postfwd
+/usr/sbin/postfwd2
+active
+Environment=PIDFILE=/var/run/postfwd.pid
+EnvironmentFile=-/etc/default/postfwd
+ExecStart=/usr/sbin/postfwd $ARGS --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+# turns off the request cache, which answers a repeated request with an
+# and repeated end-of-message requests would not be counted (--cache=0).
+ExecStartPre=+/usr/bin/install -d -o ${RUNAS} -g ${RUNAS} -m 0700 /var/lib/celikpanel-postfwd
+ii  postfwd        1.35-8       all          Postfix policyd to combine complex restrictions in a ruleset
+celikpanel.conf
+# Written by CelikPanel (outgoing mail limits).
+# It keeps postfwd's hourly counters across a reload (--keep_rates) and
+# turns off the request cache, which answers a repeated request with an
+# earlier decision: a lifted pause or a changed limit would wait for it,
+# and repeated end-of-message requests would not be counted (--cache=0).
+# postfwd 1.x is restarted to take changed rules; it saves its counters
+# at its end and loads them at its start (--save_rates).
+# Remove this file and run systemctl daemon-reload to return to the
+# package's own start line.
+[Service]
+ExecStartPre=+/usr/bin/install -d -o ${RUNAS} -g ${RUNAS} -m 0700 /var/lib/celikpanel-postfwd
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --save_rates /var/lib/celikpanel-postfwd/rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+/usr/sbin/postfwd --summary=600 --cache=600 --cache-rdomain-only --cache-no-size --cache=0 --keep_rates --save_rates /var/lib/celikpanel-postfwd/rates --daemon --file /etc/postfix/postfwd.cf --interfa
+ postfwd2::cache
+ postfwd2::policy
+box1 1 box2 2
+== 4.2 limits on 17:24:47
+200 applied True verified True code None |  | steps ["postfwd's rules were written and checked (postfwd -C)", 'postfwd was restarted to take the new rules (postfwd 1.x); it kept its counters, and mail flowed meanwhile', 'a test message was counted and the second one refused, so the limits work', 'Postfix asks postfwd at the end of each message on 587 and 465 (mail flows if postfwd stops)']
+submission/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+submission/inet/smtpd_policy_service_default_action = DUNNO
+submission/inet/smtpd_policy_service_timeout = 10s
+smtps/inet/smtpd_end_of_data_restrictions = check_policy_service,inet:127.0.0.1:10040
+smtps/inet/smtpd_policy_service_default_action = DUNNO
+smtps/inet/smtpd_policy_service_timeout = 10s
+drwxr-xr-x root:celikpanel /etc/postfix/celikpanel-postfwd
+-- one message before any own limit:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as A954B4149F
+== 4.3 box1 own limit 3; 6 messages 17:24:51
+200 {"applied": true, "called": true, "saved": true}
+ msg 1:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 7E9B841B12
+ msg 2:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as DE0F441B12
+ msg 3:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 4BB1541B12
+ msg 4:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 5:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+ msg 6:
+  <~  235 2.7.0 Authentication successful
+  <~* 450 4.7.1 <END-OF-MESSAGE>: End-of-data rejected: This mailbox reached its sending limit of 3 recipients per hour. Sending reopens within one hour and your mail program will try again.
+== 4.4 the pause (worker round, refusal_pause 3) 17:24:55
+  paused after 90 s: [{"address": "box1@site1.d12.test", "detail": "3 messages refused by the hourly limit in the hour from 2026-11-07 17:00 UTC", "domain": "site1.d12.test", "domain_id": 2, "id": 1, "paused_at": "2026-11-07 17:26:03", "reason": "refusals"}]
+ msg while paused:
+  <~  235 2.7.0 Authentication successful
+  <~* 550 5.7.1 <END-OF-MESSAGE>: End-of-data rejected: Sending from this mailbox was stopped for security. Change the mailbox password to send again.
+   mail_outgoing paused True /domains/site1.d12.test?tab=mail
+   mail_outgoing limit_reached False /domains/site1.d12.test?tab=mail
+== 4.5 password change reopens 17:26:26
+200 {"applied": true, "called": true, "saved": true}
+200 {"sending_resumed": true, "success": true}
+   answer after 2 s
+ msg 1 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 2F1404146D
+ msg 2 right after the password change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as A26CF4146D
+== 4.6 postfwd stopped (lab load): mail still flows 17:26:31
+inactive
+ msg with postfwd stopped:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 794B34146D
+active
+(failed end)
+== k4mail d12 done 17:26:33

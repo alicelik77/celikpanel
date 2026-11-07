@@ -147,3 +147,8 @@ the four dists built for this round and `/var/tmp/a129o` removed; no qemu proces
   65, Agent matching, services active, sites 200, recovery "stopped before installed bytes changed");
   leftovers: one failed `celikpanel-self-update-*` unit (cleared by the next successful update) and
   Postfix `.db` maps re-hashed from unchanged sources by the 127 Agent's restart.
+- D4 mail round with the fix (lab 129 label of `fix/a129-lab` `2c2221d97`, dist `90a112de…`; fresh
+  Debian 12 `m12` through get.sh, one-server setup, `raw/D4-mail-round-d12-lab129.log`): postfwd from
+  Components, limits on, then box1's own limit 3 set → 4th–6th messages `450 4.7.1` at once (128: 6 of
+  6 accepted); paused after 90 s, `550 5.7.1`; password change → the next two messages, seconds later,
+  `250` (128 on Ubuntu 22.04: 550 for ~4 min); postfwd stopped → mail flows. PASS.
