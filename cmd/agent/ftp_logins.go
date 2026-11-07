@@ -56,6 +56,55 @@ var (
 	ftpLoginSFTPShellRefused = func() bool { return pamRefusesShell("sshd", fileaccess.NoLoginShell) }
 )
 
+// sshdAllowsPasswordSignIn reads `sshd -T` output for one account (read
+// only) and reports whether an SSH client can sign in with a password at
+// all: password authentication, or keyboard-interactive through PAM (which
+// asks for the same password), in at least one alternative of
+// AuthenticationMethods that needs nothing else (a login has no key). A
+// missing value counts as OpenSSH's default. CelikPanel never changes these
+// settings; it only says what they mean for a login.
+func sshdAllowsPasswordSignIn(output string) bool {
+	value := func(key, fallback string) string {
+		if v := strings.ToLower(effectiveSSHDValue(output, key)); v != "" {
+			return v
+		}
+		return fallback
+	}
+	password := value("passwordauthentication", "yes") == "yes"
+	// OpenSSH before 8.7 printed challengeresponseauthentication instead.
+	kbd := value("kbdinteractiveauthentication", value("challengeresponseauthentication", "yes")) == "yes" &&
+		value("usepam", "no") == "yes"
+	methods := value("authenticationmethods", "any")
+	if methods == "any" {
+		return password || kbd
+	}
+	for _, alternative := range strings.Fields(methods) {
+		usable := true
+		for _, method := range strings.Split(alternative, ",") {
+			switch {
+			case method == "password":
+				usable = usable && password
+			case method == "keyboard-interactive" || strings.HasPrefix(method, "keyboard-interactive:"):
+				usable = usable && kbd
+			default:
+				usable = false // a key, a host key or GSSAPI: a login has none
+			}
+		}
+		if usable {
+			return true
+		}
+	}
+	return false
+}
+
+// ftpLoginSFTPPasswordOff reports whether sshd, as configured now, refuses a
+// password for this account: true only when `sshd -T` answered and says so
+// (an unknown answer is not a refusal).
+func ftpLoginSFTPPasswordOff(ctx context.Context, username string) bool {
+	out, err := fileAccessRun(ctx, nil, "sshd", "-T", "-C", sshdConnectionSpec(username))
+	return err == nil && strings.TrimSpace(string(out)) != "" && !sshdAllowsPasswordSignIn(string(out))
+}
+
 // pamRefusesShell reports whether a PAM service's auth stack runs
 // pam_shells while /etc/shells does not list shell (read only). Arch's
 // system-login does: an account with the no-login shell cannot sign in with
@@ -347,6 +396,10 @@ func (r *ftpLoginRun) add() *ftpLoginRefusal {
 		return refusal
 	}
 	r.applyFTP(plan)
+	if refusal := r.requireSignInPath(login, plan); refusal != nil {
+		refusal.detail += r.rollback()
+		return refusal
+	}
 	if refusal := r.setPassword(login.Login); refusal != nil {
 		refusal.detail += r.rollback()
 		return refusal
@@ -354,6 +407,37 @@ func (r *ftpLoginRun) add() *ftpLoginRefusal {
 	r.undo = nil
 	r.verify(login, true)
 	return nil
+}
+
+// requireSignInPath refuses a new login that could not sign in at all: sshd
+// refuses its password (keys only, or the system's pam_shells rule) and FTP
+// over TLS is not CelikPanel's on this server. Read only; it runs once sshd
+// knows the login (its Match block and groups), before the password, and
+// the caller puts the earlier steps back. CelikPanel never turns on password
+// sign-in for SSH: that is the owner's decision.
+func (r *ftpLoginRun) requireSignInPath(login fileaccess.Login, plan *fileAccessPlan) *ftpLoginRefusal {
+	if plan.ftpManaged && !plan.ftpFailed {
+		return nil
+	}
+	var sftp string
+	switch {
+	case ftpLoginSFTPPasswordOff(r.ctx, login.Login):
+		sftp = "sshd on this server accepts only keys, and a login signs in with a password"
+	case ftpLoginSFTPShellRefused():
+		sftp = "the server's sign-in rules for sshd (pam_shells) refuse accounts without a command line"
+	default:
+		return nil
+	}
+	ftp := "FTP over TLS (vsftpd) is not installed"
+	switch {
+	case plan.ftpFailed:
+		ftp = "FTP over TLS could not be updated"
+	case fileAccessCommandPresent("vsftpd"):
+		ftp = "vsftpd is configured by hand, so CelikPanel adds no login to it"
+	}
+	r.step("verify", "failed", "no way to sign in")
+	return refuseFTPLogin(transport.FTPLoginRefusedNoSignIn,
+		"%s could not sign in: %s, and %s; so it was not created. The administrator installs the FTP server (vsftpd) from Components, or allows passwords for SSH (the owner's own decision; CelikPanel does not change sshd)", login.Login, sftp, ftp)
 }
 
 func (r *ftpLoginRun) createAccount(login fileaccess.Login) *ftpLoginRefusal {
@@ -573,8 +657,7 @@ func (r *ftpLoginRun) setPassword(login string) *ftpLoginRefusal {
 func (r *ftpLoginRun) verify(login fileaccess.Login, withPassword bool) {
 	ctx := r.ctx
 	var notes []string
-	if out, err := fileAccessRun(ctx, nil, "sshd", "-T", "-C", sshdConnectionSpec(login.Login)); err == nil &&
-		effectiveSSHDValue(string(out), "passwordauthentication") == "no" {
+	if ftpLoginSFTPPasswordOff(ctx, login.Login) {
 		r.warn(transport.FTPLoginWarnPasswordAuthOff)
 	}
 	if ftpLoginSFTPShellRefused() {
@@ -787,6 +870,17 @@ func readFTPLoginsState(ctx context.Context, site transport.FTPLoginSite) transp
 					resp.SSHPorts = append(resp.SSHPorts, port)
 				}
 			}
+			// Whether a login could use a password over SSH. A login of
+			// this site answers exactly (its own Match block and groups);
+			// before the first one, the site's account (same groups, and
+			// CelikPanel's block for it sets no password rule) stands in.
+			if probe := ftpLoginOfSite(logins, site); probe != "" {
+				if ftpLoginSFTPPasswordOff(ctx, probe) {
+					resp.Warnings = append(resp.Warnings, transport.FTPLoginWarnPasswordAuthOff)
+				}
+			} else if strings.TrimSpace(string(out)) != "" && !sshdAllowsPasswordSignIn(string(out)) {
+				resp.Warnings = append(resp.Warnings, transport.FTPLoginWarnPasswordAuthOff)
+			}
 		}
 	}
 	if resp.SSHDPresent && ftpLoginSFTPShellRefused() {
@@ -827,6 +921,19 @@ func readFTPLoginsState(ctx context.Context, site transport.FTPLoginSite) transp
 		}
 	}
 	return resp
+}
+
+// ftpLoginOfSite is the first recorded login of the site whose account
+// exists ("" when there is none).
+func ftpLoginOfSite(logins []fileaccess.Login, site transport.FTPLoginSite) string {
+	for _, l := range logins {
+		if l.Site == strings.TrimSpace(site.Username) && l.DomainID == site.DomainID && l.SubscriptionID == site.SubscriptionID {
+			if _, err := fileAccessLookupAccount(l.Login); err == nil {
+				return l.Login
+			}
+		}
+	}
+	return ""
 }
 
 func ftpLoginStateOf(ctx context.Context, l fileaccess.Login, site fileAccessAccount, siteKnown bool) transport.FTPLoginState {

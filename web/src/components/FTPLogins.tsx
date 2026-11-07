@@ -11,6 +11,7 @@ import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 import { confirmAction, type OperationEnd, type OperationReport } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
+import { AdminInstallLink } from './AdminInstallLink';
 
 // A site's other FTP/SFTP logins (alpha.128, gap G16, docs/FTP-LOGINS.md).
 // Each login sees one folder of the site and uploads as the site. The server
@@ -47,6 +48,8 @@ interface LoginsView {
     ftpConfig: string;
     /** The server's own sign-in rules refuse SFTP with a password for logins (pam_shells). */
     sftpRefused: boolean;
+    /** sshd accepts only keys for logins (password and keyboard-interactive through PAM are off). */
+    sftpKeysOnly: boolean;
     connection: { host: string; ftpPort: number; sftpPort: number; passiveMin: number; passiveMax: number };
 }
 
@@ -102,6 +105,7 @@ function decodeLogins(raw: unknown): LoginsView {
         ftpInstalled: state?.ftp_installed === true,
         ftpConfig: str(state?.ftp_config),
         sftpRefused: decodeList<unknown>(state?.warnings ?? []).includes('sftp_shell_refused'),
+        sftpKeysOnly: decodeList<unknown>(state?.warnings ?? []).includes('sftp_password_off'),
         connection: {
             host: str(connection.sftp_host),
             ftpPort: num(connection.ftp_port) || 21,
@@ -170,13 +174,14 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                 const reason = explain(error);
                 setProblem(reason);
                 await logins.retry();
-                const blocked = res.status < 500 && (error.code !== 'FTP_LOGIN_REFUSED' || ['folder', 'sshd_owner_config', 'unit_owner_config', 'no_sshd', 'name_taken', 'site_account', 'sshd_include_missing'].includes(error.reason ?? ''));
+                const blocked = res.status < 500 && (error.code !== 'FTP_LOGIN_REFUSED' || ['folder', 'sshd_owner_config', 'unit_owner_config', 'no_sshd', 'name_taken', 'site_account', 'sshd_include_missing', 'no_sign_in'].includes(error.reason ?? ''));
                 return { state: blocked ? 'blocked' : 'failed', reason };
             }
             // The change is made; when its details cannot be read there are
             // no warnings to show, and the list read below says the rest.
             const answer = obj(await res.json().then((body: unknown) => body, () => ({ warnings: [] })));
-            setWarnings(decodeList<unknown>(answer.warnings ?? []).map(str).filter((w) => w !== 'sftp_shell_refused' && t(`ftpLogins.warn.${w}` as TranslationKey) !== `ftpLogins.warn.${w}`));
+            // The server's sign-in rules are said once, above the list, from its state.
+            setWarnings(decodeList<unknown>(answer.warnings ?? []).map(str).filter((w) => w !== 'sftp_shell_refused' && w !== 'sftp_password_off' && t(`ftpLogins.warn.${w}` as TranslationKey) !== `ftpLogins.warn.${w}`));
             await logins.retry();
             showToast('success', done);
             return { state: 'done', message: done };
@@ -209,10 +214,28 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                 if (view.stateError === 'agent_upgrade_required') blockers.push(<Notice key="agent" tone="warning">{t('ftpLogins.block.agentUpgrade')}</Notice>);
                 if (view.stateError === 'agent_unavailable') blockers.push(<Notice key="agent" tone="warning">{t('ftpLogins.block.agentUnavailable')}</Notice>);
                 if (view.sshdPresent === false) blockers.push(<Notice key="sshd" tone="warning">{t(isAdmin ? 'ftpLogins.block.noSSHDAdmin' : 'ftpLogins.block.noSSHD')}</Notice>);
-                if (view.sftpRefused) blockers.push(<Notice key="shells" tone="info">{t('ftpLogins.warn.sftp_shell_refused')}</Notice>);
+                // SFTP with a password impossible here (sshd keys only, or
+                // pam_shells): FTP over TLS carries the logins when it is
+                // CelikPanel's; without it no login could sign in, so none is
+                // added. CelikPanel never changes sshd (the owner decides).
+                const sftpBlocked = view.sftpKeysOnly || view.sftpRefused;
+                const ftpUsable = view.ftpInstalled && (view.ftpConfig === 'managed' || view.ftpConfig === 'absent');
+                const noSignIn = view.sshdPresent === true && sftpBlocked && !ftpUsable;
+                if (noSignIn) {
+                    blockers.push(<Notice key="signin" tone="warning">
+                        {t(view.sftpKeysOnly ? 'ftpLogins.noSignIn.keys' : 'ftpLogins.noSignIn.shells')}{' '}
+                        {isAdmin ? <>
+                            {view.ftpInstalled ? t('ftpLogins.noSignIn.ftpOwnerAdmin') : <>{t('ftpLogins.noSignIn.ftpMissingAdmin')}{' '}<AdminInstallLink component="vsftpd" /></>}
+                            {view.sftpKeysOnly && <>{' '}{t('ftpLogins.noSignIn.sshChoiceAdmin')}</>}
+                        </> : t('ftpLogins.noSignIn.provider')}
+                    </Notice>);
+                } else if (view.sftpKeysOnly) {
+                    blockers.push(<Notice key="keys" tone="info">{t('ftpLogins.warn.sftp_password_off', { host: view.connection.host, port: view.connection.ftpPort })}</Notice>);
+                } else if (view.sftpRefused) blockers.push(<Notice key="shells" tone="info">{t('ftpLogins.warn.sftp_shell_refused')}</Notice>);
                 if (view.sshDropIn === 'owner') blockers.push(<Notice key="owner" tone="warning">{t(isAdmin ? 'ftpLogins.block.sshOwnerAdmin' : 'ftpLogins.block.sshOwner')}</Notice>);
                 const canOpen = settled && !busy && view.available && view.fileAccess && view.subscriptionStatus === 'active'
                     && view.stateError === '' && view.sshdPresent === true && view.sshDropIn !== 'owner';
+                const canAdd = canOpen && !noSignIn;
                 const full = view.ceiling !== null && view.used >= view.ceiling;
                 const nameOK = LOGIN_NAME.test(name) && name.includes('-') && !name.includes('--');
                 const passwordOK = password !== '' && passwordAcceptable(password, 'file_access');
@@ -357,10 +380,10 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                             </ul>
                         ))}
 
-                        {canOpen && !full && !adding && (
+                        {canAdd && !full && !adding && (
                             <Button icon={Plus} onClick={() => setAdding(true)}>{t('ftpLogins.add')}</Button>
                         )}
-                        {canOpen && adding && (
+                        {canAdd && adding && (
                             <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
                                 <label className="block space-y-1 text-sm font-medium text-fg">
                                     <span>{t('ftpLogins.name')}</span>
@@ -390,7 +413,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                                 <p className="font-medium text-fg">{t('ftpLogins.connect')}</p>
                                 <p>{t('ftpLogins.connectHost', { host: view.connection.host })}</p>
                                 <p>{t('ftpLogins.connectUser')}</p>
-                                {!view.sftpRefused && <p>{t('ftpLogins.connectSftp', { port: view.connection.sftpPort })}</p>}
+                                {!sftpBlocked && <p>{t('ftpLogins.connectSftp', { port: view.connection.sftpPort })}</p>}
                                 {view.ftpInstalled && view.ftpConfig === 'managed' && (
                                     <p>{t('ftpLogins.connectFtp', { port: view.connection.ftpPort, min: view.connection.passiveMin, max: view.connection.passiveMax })}</p>
                                 )}
