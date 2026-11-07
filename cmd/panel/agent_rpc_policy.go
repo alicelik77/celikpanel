@@ -153,6 +153,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DNSPeerInspectorToolStatusV1
 		Agent.ServiceHealthV1
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
+		Agent.SiteVisitorStatsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -449,14 +450,16 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.CreateDatabase": agentRPCDatabaseTimeout,
 	// alpha.128 (G7): database tools; a dump, load or check of a large
 	// database is bounded by the Agent at two hours.
-	"Agent.DatabaseToolsInfoV1":           agentRPCStandardReadTimeout,
-	"Agent.DatabaseExportReadV1":          agentRPCStandardReadTimeout,
-	"Agent.DatabaseImportUploadV1":        agentRPCStandardReadTimeout,
-	"Agent.DatabaseExportV1":              agentRPCSiteLongTimeout,
-	"Agent.DatabaseImportSafetyV1":        agentRPCSiteLongTimeout,
-	"Agent.DatabaseImportV1":              agentRPCSiteLongTimeout,
-	"Agent.DatabaseCopyV1":                agentRPCSiteLongTimeout,
-	"Agent.DatabaseCheckV1":               agentRPCSiteLongTimeout,
+	"Agent.DatabaseToolsInfoV1":    agentRPCStandardReadTimeout,
+	"Agent.DatabaseExportReadV1":   agentRPCStandardReadTimeout,
+	"Agent.DatabaseImportUploadV1": agentRPCStandardReadTimeout,
+	"Agent.DatabaseExportV1":       agentRPCSiteLongTimeout,
+	"Agent.DatabaseImportSafetyV1": agentRPCSiteLongTimeout,
+	"Agent.DatabaseImportV1":       agentRPCSiteLongTimeout,
+	"Agent.DatabaseCopyV1":         agentRPCSiteLongTimeout,
+	"Agent.DatabaseCheckV1":        agentRPCSiteLongTimeout,
+	// alpha.128 (G24): the Agent bounds one read at 25 s and 1 GiB.
+	"Agent.SiteVisitorStatsV1":            agentRPCStandardReadTimeout,
 	"Agent.CreateSite":                    agentRPCDatabaseTimeout,
 	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
 	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,

@@ -457,6 +457,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "runtime-apps-remove", []string{http.MethodPost}
 	case "usage":
 		match.kind, match.methods = "usage", []string{http.MethodGet}
+	case "stats/visitors":
+		// alpha.128 (G24): visitor statistics from the site's access log.
+		match.kind, match.methods = "visitor-stats", []string{http.MethodGet}
 	case "connection":
 		match.kind, match.methods = "connection", []string{http.MethodGet}
 	case "access":
@@ -610,6 +613,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainRuntimeApps(w, r, match.domainID, match.kind)
 	case "usage":
 		p.handleDomainUsage(w, r)
+	case "visitor-stats":
+		p.handleVisitorStats(w, r, match.domainID)
 	case "connection":
 		p.handleDomainConnection(w, r, match.domainID)
 	case "file-access":

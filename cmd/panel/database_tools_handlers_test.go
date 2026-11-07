@@ -103,3 +103,19 @@ func TestWriteRestoreFailureIsTyped(t *testing.T) {
 		t.Fatal("an untyped failure was answered as typed")
 	}
 }
+
+func TestVisitorStatsRouteIsAStatisticsRead(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/domains/7/stats/visitors", nil)
+	match, ok := matchDomainSubroute(request)
+	if !ok || match.kind != "visitor-stats" || routeAllows(http.MethodPost, match.methods) {
+		t.Fatalf("matched %+v %v", match, ok)
+	}
+	requirement, ok := teamMemberDomainRequirements[teamMemberRouteKey{kind: "visitor-stats", method: http.MethodGet}]
+	if !ok || requirement.capability != core.TeamCapabilityStatistics || requirement.mode != core.TeamPermissionView {
+		t.Fatalf("team requirement %+v %v", requirement, ok)
+	}
+	got := rankVisitorCounts(map[string]int64{"/a": 1, "/b": 3, "/c": 3})
+	if len(got) != 3 || got[0].Name != "/b" || got[2].Name != "/a" {
+		t.Fatalf("ranked %+v", got)
+	}
+}
