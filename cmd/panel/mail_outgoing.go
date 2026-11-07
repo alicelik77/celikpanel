@@ -860,8 +860,20 @@ func (p *Panel) resumeOutgoingAfterPassword(ctx context.Context, accountID int) 
 // ---- Notices ----------------------------------------------------------------
 
 func outgoingNoticeMail(kind, audience string, body outgoingNoticeBody, baseURL string) (string, string) {
+	subject, _, _, en, tr := outgoingNoticeTexts(kind, body)
+	if subject == "" {
+		return "", ""
+	}
+	_ = audience
+	return subject, strings.Join([]string{en, "", tr, "", baseURL}, "\n")
+}
+
+// outgoingNoticeTexts is one notice's words: the mail subject (both
+// languages), the title in each language and the text in each language. The
+// mail and the panel's one notifications list (notifications_handlers.go)
+// read the same words.
+func outgoingNoticeTexts(kind string, body outgoingNoticeBody) (subject, titleEN, titleTR, en, tr string) {
 	who := body.Address
-	var subject, en, tr string
 	limitWhatEN, limitWhatTR := "this mailbox", "bu posta kutusu"
 	switch body.LimitKind {
 	case "domain":
@@ -872,10 +884,12 @@ func outgoingNoticeMail(kind, audience string, body outgoingNoticeBody, baseURL 
 	switch kind {
 	case outgoingNoticeLimit:
 		subject = "Hourly sending limit reached / Saatlik gönderim sınırı doldu: " + who
+		titleEN, titleTR = "Hourly sending limit reached: "+who, "Saatlik gönderim sınırı doldu: "+who
 		en = fmt.Sprintf("%s reached the hourly sending limit (%d recipients per hour for %s). Further messages were refused temporarily (%d so far); nothing is lost, the mail program sends them again when the hour is over. If this mailbox did not send that much, change its password now: someone else may be using it. A larger limit is set by the provider or administrator.", who, body.Limit, limitWhatEN, body.Refused)
 		tr = fmt.Sprintf("%s saatlik gönderim sınırına ulaştı (%s için saatte %d alıcı). Sonraki iletiler geçici olarak reddedildi (şimdiye dek %d); hiçbiri kaybolmaz, saat dolunca posta programı yeniden gönderir. Bu kutu bu kadar göndermediyse parolasını hemen değiştirin: başkası kullanıyor olabilir. Daha yüksek sınırı sağlayıcı ya da yönetici verir.", who, limitWhatTR, body.Limit, body.Refused)
 	case outgoingNoticePaused:
 		subject = "Mailbox sending stopped for security / Posta kutusunun gönderimi güvenlik için durduruldu: " + who
+		titleEN, titleTR = "Sending stopped for security: "+who, "Gönderim güvenlik için durduruldu: "+who
 		why := fmt.Sprintf("it sent to %d recipients in one hour, far more than its normal hour (%d)", body.Recipients, body.Normal)
 		whyTR := fmt.Sprintf("bir saatte %d alıcıya gönderdi; normal saatinin (%d) çok üstünde", body.Recipients, body.Normal)
 		if body.Reason == "refusals" {
@@ -885,10 +899,9 @@ func outgoingNoticeMail(kind, audience string, body outgoingNoticeBody, baseURL 
 		en = fmt.Sprintf("Sending from %s was stopped for security because %s. This usually means someone else knows its password. Receiving mail keeps working. Every message it tries to send is refused until its password is changed; the mail program keeps the messages. Next step: change the mailbox password in the panel (Mail > the mailbox > Change password), then update it in the mail programs that use it. Sending reopens within a minute after the change.", who, why)
 		tr = fmt.Sprintf("%s adresinden gönderim güvenlik için durduruldu, çünkü %s. Bu çoğunlukla parolasını başkasının bildiği anlamına gelir. Posta almak çalışmaya devam eder. Parola değişene dek göndermeye çalıştığı her ileti reddedilir; iletiler posta programında kalır. Sonraki adım: paneldeki posta kutusunun parolasını değiştirin (Posta > posta kutusu > Parolayı değiştir), sonra onu kullanan posta programlarında da güncelleyin. Değişiklikten sonra bir dakika içinde gönderim yeniden açılır.", who, whyTR)
 	default:
-		return "", ""
+		return "", "", "", "", ""
 	}
-	_ = audience
-	return subject, strings.Join([]string{en, "", tr, "", baseURL}, "\n")
+	return subject, titleEN, titleTR, en, tr
 }
 
 func (p *Panel) sendPendingOutgoingNotices(ctx context.Context) error {

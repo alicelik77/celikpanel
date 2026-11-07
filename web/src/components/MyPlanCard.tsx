@@ -1,4 +1,3 @@
-import { Suspense, lazy } from 'react';
 import { Layers } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -10,7 +9,6 @@ import { ResellerPoolNotices } from './RightsNotices';
 import { formatBytes } from '../lib/usage';
 
 // alpha.128: notices of lowered site limits, a chunk of their own.
-const SiteLimitNotices = lazy(() => import('./SiteLimitNotices').then((module) => ({ default: module.SiteLimitNotices })));
 
 // "My plan" (alpha.114): the signed-in customer's or reseller's plan, its
 // limits and the live usage the quota checks use — the same numbers a
@@ -182,7 +180,6 @@ export function MyPlanCard() {
                             {/* alpha.128 (G18): the usage notices are in the one Notifications list
                                 above this card (Dashboard and My account), with the account notices.
                                 Kullanım bildirimleri artık bu kartın üstündeki tek Bildirimler listesinde. */}
-                            <Suspense fallback={null}><SiteLimitNotices audience={plan.pool ? 'reseller' : 'customer'} /></Suspense>
                             {/* A reseller's pool comes first: it is what they hand out to customers.
                                 A plan of their own is only needed to host their own sites.
                                 Bayinin havuzu once gelir; kendi plani yalniz kendi siteleri icindir. */}

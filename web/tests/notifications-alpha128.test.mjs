@@ -95,3 +95,35 @@ test('screens: one Notifications list on the Dashboard and My account, lazily lo
   // The copy is route-scoped: the boot catalogue does not carry it.
   assert.ok(!source('i18n/en.ts').includes("'notif."), 'notification words were added to the boot catalogue');
 });
+
+// Integration (alpha.128): the one list also reads the lowered-limit notices
+// (rights_notices) and the outgoing mail notices (mail_outgoing_notices)
+// without copying them; "seen" goes back to the store that owns each one,
+// and the separate blocks that showed them are gone.
+// Tek liste sınır ve giden posta bildirimlerini de okur; "görüldü" sahibine gider.
+test('lowered-limit and outgoing mail notices join the one list, seen in their own stores', () => {
+  const report = lib.decodeNotifications({
+    items: [
+      { source: 'site_limit', id: 7, kind: 'site_limit_clamped', audience: 'customer', needs_action: false, fix_path: '/domains/example.com?tab=php', created_at: '2026-11-07 10:00:00',
+        clamp: { domain: 'example.com', key: 'php.memory_limit_mb', value: 1024, limit: 512, set_by: 'plan', set_by_name: 'Small' } },
+      { source: 'site_limit', id: 8, kind: 'site_limit_clamped', clamp: { domain: '', key: 'php.memory_limit_mb', value: 1, limit: 1 } },
+      { source: 'mail_outgoing', id: 9, kind: 'paused', audience: 'customer', needs_action: true, fix_path: '/domains/example.com?tab=mail', created_at: '2026-11-07 11:00:00', words },
+      { source: 'mail_outgoing', id: 10, kind: 'limit_reached', words: { title_en: 'x' } },
+    ],
+  });
+  assert.deepEqual(report.items.map((item) => `${item.source}:${item.id}`), ['site_limit:7', 'mail_outgoing:9']);
+  assert.equal(report.items[0].clamp.set_by_name, 'Small');
+  assert.deepEqual(lib.groupNotifications(report.items).action.map((item) => item.id), [9]);
+  assert.equal(lib.notificationSeenPath(report.items[0]), '/api/v1/rights/notices/7/acknowledge');
+  assert.equal(lib.notificationSeenPath(report.items[1]), '/api/v1/mail-outgoing-notices/9/seen');
+  assert.equal(lib.notificationSeenPath({ source: 'account', id: 3 }), '/api/v1/notifications/3/seen');
+  assert.equal(lib.notificationSeenPath({ source: 'usage', id: 4 }), '/api/v1/usage-notices/4/seen');
+  const component = source('components/Notifications.tsx');
+  assert.ok(component.includes('notificationSeenPath(item)'), 'the list does not send "seen" to the owning store');
+  assert.ok(component.includes("'limits.notice.line'"), 'the lowered-limit notice is not worded with the limits words');
+  for (const [page, block] of [['components/MyPlanCard.tsx', 'SiteLimitNotices'], ['components/RightsNotices.tsx', 'SiteLimitNotices'], ['components/PostfixManagement.tsx', 'OutgoingMailNotices']]) {
+    assert.ok(!source(page).includes(block), `${page} still shows ${block} beside the one list`);
+  }
+  // The PHP page keeps marking a value a lowered limit brought down.
+  assert.ok(source('components/SitePHPLimits.tsx').includes('data-limit-clamped'), 'the PHP page lost its marker of a lowered value');
+});

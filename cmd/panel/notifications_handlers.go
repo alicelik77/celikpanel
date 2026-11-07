@@ -22,8 +22,14 @@ import (
 //	GET  /api/v1/panel/notification-settings   administrator: expiry days and extra addresses
 //	PUT  /api/v1/panel/notification-settings   administrator: the same, all fields
 //
-// The list merges the caller's account notices (069) and usage notices
+// The list merges the caller's account notices (072) and usage notices
 // (057), each with whether this person acts and the page where the fix is;
+// alpha.128 integration: it also reads, never copies, two stores that keep
+// their own rows and mail: a lowered limit that brought a site's PHP value
+// down (rights_notices site_limit_clamped, source "site_limit", seen through
+// /api/v1/rights/notices/{id}/acknowledge) and the outgoing mail notices
+// (mail_outgoing_notices, source "mail_outgoing", seen through
+// /api/v1/mail-outgoing-notices/{id}/seen);
 // an administrator also gets the open monitoring alerts as one line. Rows
 // are filtered by the caller's own user id on the server; a team member
 // sees only notices addressed to them (none today). Usage notices keep their
@@ -47,7 +53,7 @@ const (
 )
 
 type notificationItem struct {
-	Source      string `json:"source"` // "account" or "usage"
+	Source      string `json:"source"` // "account", "usage", "site_limit" or "mail_outgoing"
 	ID          int    `json:"id"`
 	Kind        string `json:"kind"`
 	Audience    string `json:"audience"`
@@ -60,6 +66,9 @@ type notificationItem struct {
 	Usage *usageNoticeBody `json:"usage,omitempty"`
 	// SubscriptionID: a usage notice's subscription.
 	SubscriptionID int `json:"subscription_id,omitempty"`
+	// Clamp: a lowered limit's facts; the screen words them with the
+	// limits words.
+	Clamp *clampedSite `json:"clamp,omitempty"`
 }
 
 type notificationsMonitoring struct {
@@ -192,6 +201,12 @@ func (p *Panel) readNotifications(r *http.Request, caller *Caller) (notification
 	if err := rows.Err(); err != nil {
 		return report, err
 	}
+	if err := p.readSiteLimitNotifications(r, caller, &report); err != nil {
+		return report, err
+	}
+	if err := p.readOutgoingMailNotifications(r, caller, &report); err != nil {
+		return report, err
+	}
 	if caller.hasAccountRole(roleAdmin) {
 		var m notificationsMonitoring
 		if err := db.QueryRowContext(ctx, `
@@ -202,6 +217,87 @@ func (p *Panel) readNotifications(r *http.Request, caller *Caller) (notification
 		report.Monitoring = &m
 	}
 	return report, nil
+}
+
+// noticeAudienceOf is the audience of a notice whose store keeps none: the
+// caller's own role.
+func noticeAudienceOf(caller *Caller) string {
+	switch {
+	case caller.hasAccountRole(roleAdmin):
+		return audienceAdministrator
+	case caller.hasAccountRole(roleReseller):
+		return audienceReseller
+	}
+	return audienceCustomer
+}
+
+// readSiteLimitNotifications adds the caller's open "a lowered limit brought
+// a site's value down" notices (rights_notices). They are for information:
+// the site keeps running at the new limit. The fix link opens the site's PHP
+// page for whoever can open the site (not a reseller, as before).
+func (p *Panel) readSiteLimitNotifications(r *http.Request, caller *Caller, report *notificationsReport) error {
+	rows, err := p.db.GetDB().QueryContext(r.Context(), `
+		SELECT id, detail, created_at FROM rights_notices
+		WHERE user_id = ? AND kind = ? AND acknowledged_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ?`,
+		caller.ID, noticeSiteLimitClamped, notificationsListLimit)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	audience := noticeAudienceOf(caller)
+	for rows.Next() {
+		var item notificationItem
+		var raw string
+		if err := rows.Scan(&item.ID, &raw, &item.CreatedAt); err != nil {
+			return err
+		}
+		var site clampedSite
+		if json.Unmarshal([]byte(raw), &site) != nil || site.Domain == "" {
+			continue
+		}
+		item.Source, item.Kind, item.Audience, item.Clamp = "site_limit", noticeSiteLimitClamped, audience, &site
+		if audience != audienceReseller {
+			item.FixPath = validNoticeFixPath("/domains/" + url.PathEscape(site.Domain) + "?tab=php")
+		}
+		report.Items = append(report.Items, item)
+	}
+	return rows.Err()
+}
+
+// readOutgoingMailNotifications adds the caller's unseen outgoing mail
+// notices (mail_outgoing_notices), worded as their mail is. A paused mailbox
+// needs someone to change its password; a reached limit is for information.
+func (p *Panel) readOutgoingMailNotifications(r *http.Request, caller *Caller, report *notificationsReport) error {
+	rows, err := p.db.GetDB().QueryContext(r.Context(), `
+		SELECT id, kind, audience, body, created_at FROM mail_outgoing_notices
+		WHERE user_id = ? AND seen_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ?`, caller.ID, notificationsListLimit)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item notificationItem
+		var raw string
+		if err := rows.Scan(&item.ID, &item.Kind, &item.Audience, &raw, &item.CreatedAt); err != nil {
+			return err
+		}
+		var body outgoingNoticeBody
+		if json.Unmarshal([]byte(raw), &body) != nil {
+			continue
+		}
+		_, titleEN, titleTR, en, tr := outgoingNoticeTexts(item.Kind, body)
+		if titleEN == "" {
+			continue
+		}
+		item.Source = "mail_outgoing"
+		item.Words = &accountNoticeWords{TitleEN: titleEN, TextEN: en, TitleTR: titleTR, TextTR: tr}
+		item.NeedsAction = item.Kind == outgoingNoticePaused
+		if body.Domain != "" {
+			item.FixPath = validNoticeFixPath("/domains/" + url.PathEscape(body.Domain) + "?tab=mail")
+		}
+		report.Items = append(report.Items, item)
+	}
+	return rows.Err()
 }
 
 // --- The person's own email choice -------------------------------------------

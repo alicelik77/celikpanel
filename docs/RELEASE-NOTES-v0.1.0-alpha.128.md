@@ -150,7 +150,12 @@ updates installed panels, from the panel's own update screen.**
 - **One notifications list per person** (Dashboard and My account): what
   needs your action comes first, then what is for your information. Each
   notice has its reason in plain words, a button to the fix, and "Mark as
-  seen". The usage notices moved into this list from My plan.
+  seen". The usage notices, the "a lowered limit brought a site's PHP
+  setting down" notices and the outgoing mail notices are all in this list,
+  so there is one place to look; the separate blocks on My plan, Rights and
+  the Mail server page are gone. Each notice is still mailed only once, as
+  before. The site's PHP page still marks a value a lowered limit brought
+  down.
 - **Your email choice** (My account): every notice, only what needs your
   action, or nothing, plus one extra address. The administrator can add an
   extra address per kind of event.
@@ -225,10 +230,6 @@ _To be filled in after the lab round._
   separation stay on. Where the owner runs their own vsftpd, logins use SFTP only. A login
   shares the site account's user id, so the system's own tools show it as
   the site.
-- **Notifications:** the outgoing mail notices and the "a lowered limit
-  brought a site down" notices still have their own lists (Mail, and My
-  plan or Rights) and are not yet in the one notifications list. They use
-  their own stores and mail, so joining them is more than a small change.
 - **Certificate requests:** installing the certificate you receive for a
   request is not in this release; the key must never pass through the
   panel, so it needs its own server step. Resellers cannot yet see their

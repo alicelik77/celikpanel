@@ -36,7 +36,6 @@ const stub = dataModule(`
   export const PasswordlessMailNotice = () => null;
   // alpha.128: the outgoing mail sections on the Postfix page read their own addresses; not under test here.
   export const OutgoingMailSettings = () => null;
-  export const OutgoingMailNotices = () => null;
   export const MailPlanLimits = () => null;
 `);
 // Since 9 Oct 2026 these three screens stand on the shared remote-state layer,

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -9,7 +9,6 @@ import { invalidate, useRemote } from '../lib/remote';
 import { MIGRATION_NOTICE, POOL_NOTICES, RIGHTS_NOTICES_URL, TRAFFIC_MEASURED_NOTICE, decodeNotices, sendRights, type RightsNotice } from '../lib/rights';
 import { UsageNotices, UsageStatusCard } from './UsageNotices';
 // alpha.128: notices of lowered site limits, a chunk of their own.
-const SiteLimitNotices = lazy(() => import('./SiteLimitNotices').then((module) => ({ default: module.SiteLimitNotices })));
 
 // What the rights want someone to see (D-042 5 and 9): after the update, the
 // customers that had no subscription and are now Unlimited (the
@@ -85,7 +84,6 @@ export function AdminRightsNotices({ onSetRights, onOpenAccount }: { onSetRights
             {/* alpha.118 (D-044): whether measuring works, and the traffic and disk notices. */}
             <UsageStatusCard />
             <UsageNotices onOpenAccount={onOpenAccount} />
-            <Suspense fallback={null}><SiteLimitNotices audience="administrator" /></Suspense>
             {traffic.length > 0 && (
                 <section className="rounded-lg border border-border bg-surface p-4 text-sm leading-6 text-fg" role="status" data-rights-notice="traffic-measured">
                     <h3 className="text-base font-semibold">{t('usage.measured.title')}</h3>

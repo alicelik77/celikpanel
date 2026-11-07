@@ -13,6 +13,10 @@ export const NOTIFICATION_PREFERENCES_URL = '/api/v1/notification-preferences';
 export const NOTIFICATION_SETTINGS_URL = '/api/v1/panel/notification-settings';
 export const notificationSeenURL = (id: number) => `${NOTIFICATIONS_URL}/${id}/seen`;
 export const usageNoticeSeenURL = (id: number) => `/api/v1/usage-notices/${id}/seen`;
+// alpha.128 integration: two stores the list reads but never copies; "seen"
+// goes back to the store that owns the notice.
+export const siteLimitNoticeSeenURL = (id: number) => `/api/v1/rights/notices/${id}/acknowledge`;
+export const mailOutgoingNoticeSeenURL = (id: number) => `/api/v1/mail-outgoing-notices/${id}/seen`;
 
 export interface AccountNoticeWords { title_en: string; text_en: string; title_tr: string; text_tr: string }
 
@@ -25,9 +29,24 @@ interface ItemBase {
     fix_path: string;
     created_at: string;
 }
+/** A lowered limit that brought a site's own PHP value down (limits). */
+export interface ClampedSite { domain: string; key: string; value: number; limit: number; set_by: string; set_by_name: string }
+
 export type NotificationItem =
     | (ItemBase & { source: 'account'; words: AccountNoticeWords })
-    | (ItemBase & { source: 'usage'; usage: UsageNotice });
+    | (ItemBase & { source: 'mail_outgoing'; words: AccountNoticeWords })
+    | (ItemBase & { source: 'usage'; usage: UsageNotice })
+    | (ItemBase & { source: 'site_limit'; clamp: ClampedSite });
+
+/** Where "seen" goes for one item: the store that owns it. */
+export function notificationSeenPath(item: NotificationItem): string {
+    switch (item.source) {
+        case 'account': return notificationSeenURL(item.id);
+        case 'usage': return usageNoticeSeenURL(item.id);
+        case 'site_limit': return siteLimitNoticeSeenURL(item.id);
+        case 'mail_outgoing': return mailOutgoingNoticeSeenURL(item.id);
+    }
+}
 
 export interface NotificationsReport {
     items: NotificationItem[];
@@ -54,11 +73,16 @@ export function decodeNotifications(raw: unknown): NotificationsReport {
             id: entry.id, kind: entry.kind, audience, needs_action: entry.needs_action === true,
             fix_path: localFixPath(entry.fix_path), created_at: text(entry.created_at),
         };
-        if (entry.source === 'account' && isRecord(entry.words)) {
+        if ((entry.source === 'account' || entry.source === 'mail_outgoing') && isRecord(entry.words)) {
             const w = entry.words;
             const words = { title_en: text(w.title_en), text_en: text(w.text_en), title_tr: text(w.title_tr), text_tr: text(w.text_tr) };
             if (!words.title_en || !words.title_tr) return [];
-            return [{ ...base, source: 'account', words }];
+            return [{ ...base, source: entry.source, words }];
+        }
+        if (entry.source === 'site_limit' && isRecord(entry.clamp)) {
+            const c = entry.clamp;
+            if (typeof c.value !== 'number' || typeof c.limit !== 'number' || !text(c.domain) || !text(c.key)) return [];
+            return [{ ...base, source: 'site_limit', clamp: { domain: text(c.domain), key: text(c.key), value: c.value, limit: c.limit, set_by: text(c.set_by), set_by_name: text(c.set_by_name) } }];
         }
         if (entry.source === 'usage' && isRecord(entry.usage)) {
             // The usage notice's own decoder: the same contract as /usage-notices.

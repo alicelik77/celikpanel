@@ -157,7 +157,11 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
 - **Kişi başına tek bildirim listesi** (Pano ve Hesabım): işlem yapmanızı
   bekleyenler önce, bilgi amaçlılar sonra geliyor. Her bildirimde düz dille
   nedeni, düzeltmeye götüren bir düğme ve "Görüldü olarak işaretle" var.
-  Kullanım bildirimleri Planım'dan bu listeye taşındı.
+  Kullanım bildirimleri, "düşürülen bir sınır bir sitenin PHP ayarını aşağı
+  çekti" bildirimleri ve giden posta bildirimleri hep bu listede; bakılacak
+  tek yer var. Planım, Haklar ve posta sunucusu sayfasındaki ayrı bloklar
+  kaldırıldı. Her bildirim eskisi gibi yalnız bir kez postalanıyor. Sitenin
+  PHP sayfası, düşürülen bir sınırın indirdiği değeri yine işaretliyor.
 - **E-posta tercihiniz** (Hesabım): her bildirim, yalnız işlem bekleyenler
   ya da hiçbiri; ayrıca bir ek adres. Yönetici her olay türü için bir ek
   adres ekleyebiliyor.
@@ -234,10 +238,6 @@ _Laboratuvar turundan sonra doldurulacak._
   ayrıcalık ayrımı açık kalıyor. Sahip kendi vsftpd'sini çalıştırıyorsa girişler yalnız SFTP
   kullanıyor. Bir giriş sitenin kullanıcı kimliğini paylaştığı için sistemin
   kendi araçları onu site olarak gösteriyor.
-- **Bildirimler:** giden posta bildirimleri ve "düşürülen bir sınır bir siteyi
-  aşağı çekti" bildirimleri hâlâ kendi listelerinde (Posta, ve Planım ya da
-  Haklar), henüz tek bildirim listesinde değil. Kendi depolarını ve
-  postalarını kullandıkları için birleştirmek küçük bir değişiklik değil.
 - **Sertifika istekleri:** bir istek için aldığınız sertifikayı kurmak bu
   sürümde yok; anahtar asla panelden geçmemeli, bu yüzden kendi sunucu
   adımı gerekiyor. Bayiler henüz müşterilerinin oturumlarını göremiyor.

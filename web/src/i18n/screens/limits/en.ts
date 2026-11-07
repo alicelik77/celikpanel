@@ -137,7 +137,6 @@ export const enLimitsScreens = {
     'limits.notice.line': '{domain}: {key} was {value}; the new limit is {limit} ({who}). The site keeps running, at {limit}.',
     'limits.notice.todoCustomer': 'Next step: if the site needs more, ask {who} to raise the limit; otherwise nothing is needed.',
     'limits.notice.todoProvider': 'Next step: nothing, unless the customer needs more; then raise the limit of the plan or the account.',
-    'limits.notice.open': 'Open the PHP settings',
     'limits.php.appWish': '{app} asks for {wish}; the limit is {limit} ({who}), so it gets {limit}. It keeps working (large files are uploaded in parts); ask {who} for more if it needs it.',
     'limits.php.clamped': 'This site chose {value}, above the limit {limit} ({who}); PHP runs at {limit}. Save a value within the limit, or ask {who} to raise it.',
 

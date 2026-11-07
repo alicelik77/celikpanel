@@ -11,10 +11,11 @@ import { sendRights } from '../lib/rights';
 import { Link, useLocation, useNavigate } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import { usageNoticeText } from './UsageNotices';
+import { unitText, whoText } from '../lib/settingLimits';
 import {
     NOTIFICATIONS_URL, NOTIFICATION_PREFERENCES_URL, NOTIFICATION_SETTINGS_URL, NOTIFY_GROUPS,
     decodeNotificationPreferences, decodeNotificationSettings, decodeNotifications, groupNotifications,
-    notificationSeenURL, usageNoticeSeenURL,
+    notificationSeenPath,
     type NotificationItem, type NotificationMode, type NotificationSettings, type NotifyGroup,
 } from '../lib/notifications';
 
@@ -39,10 +40,25 @@ function useNotificationWords() {
     return { ...i18n, t: (key: Key, values?: Record<string, string | number>) => notificationsTranslation(i18n.locale, key, values) ?? i18n.t(key as TranslationKey, values) };
 }
 
+// The units of the limit keys a lowered limit can bring down (PHP values).
+const LIMIT_UNITS: Record<string, string> = {
+    'php.memory_limit_mb': 'mb', 'php.max_execution_time_s': 's', 'php.upload_max_mb': 'mb', 'php.max_input_vars': 'count', 'php.max_children': 'count',
+};
+
 function itemText(item: NotificationItem, locale: string | undefined, say: (key: TranslationKey, vars?: Record<string, string | number>) => string): { title: string; body: string } {
-    if (item.source === 'account') {
+    if (item.source === 'account' || item.source === 'mail_outgoing') {
         const tr = locale === 'tr';
         return { title: tr ? item.words.title_tr : item.words.title_en, body: tr ? item.words.text_tr : item.words.text_en };
+    }
+    if (item.source === 'site_limit') {
+        // The limits words (screen part "limits"): what changed, that the site
+        // keeps running, who acts.
+        const c = item.clamp;
+        const unit = LIMIT_UNITS[c.key] ?? 'count';
+        const who = whoText(say, c.set_by, c.set_by_name);
+        const line = say('limits.notice.line', { domain: c.domain, key: say(`limits.key.${c.key}` as TranslationKey), value: unitText(say, unit, c.value), limit: unitText(say, unit, c.limit), who });
+        const todo = say(item.audience === 'customer' ? 'limits.notice.todoCustomer' : 'limits.notice.todoProvider', { who });
+        return { title: say('limits.notice.title'), body: `${line} ${todo}` };
     }
     return usageNoticeText(item.usage, say);
 }
@@ -74,7 +90,7 @@ export function NotificationsCenter({ showAlerts = false }: { showAlerts?: boole
         setBusy(true);
         try {
             for (const item of items) {
-                const result = await sendRights(item.source === 'account' ? notificationSeenURL(item.id) : usageNoticeSeenURL(item.id), 'POST');
+                const result = await sendRights(notificationSeenPath(item), 'POST');
                 if (result.kind === 'lost') {
                     showToast('error', t('common.resultUnknown'));
                     break;

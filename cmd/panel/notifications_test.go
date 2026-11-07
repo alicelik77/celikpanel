@@ -235,3 +235,72 @@ func TestNotificationSettingsAreTheAdministrators(t *testing.T) {
 		t.Fatalf("stored settings: %s", rec.Body.String())
 	}
 }
+
+// Integration (alpha.128): the one list also reads the lowered-limit notices
+// (rights_notices) and the outgoing mail notices (mail_outgoing_notices); it
+// copies nothing, "seen" goes back to the owning store, and nothing is mailed
+// twice (each store keeps its own mail state).
+func TestNotificationsListReadsTheLimitAndOutgoingMailStores(t *testing.T) {
+	f := notificationsFixture(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc(notificationsPath, f.panel.handleNotifications)
+	mux.HandleFunc(notificationsPath+"/", f.panel.handleNotifications)
+	mux.HandleFunc(mailOutgoingNoticesPath+"/", f.panel.handleOutgoingNotices)
+	mux.HandleFunc("/api/v1/rights/", f.panel.handleRightsRoutes)
+	f.handler = f.panel.requireAuth(mux)
+	clamp := `{"domain_id":9902,"domain":"matrix-customer.example","key":"php.memory_limit_mb","value":1024,"limit":512,"set_by":"plan","set_by_name":"Small"}`
+	f.exec(t, `INSERT INTO rights_notices (kind, user_id, subject, detail) VALUES ('site_limit_clamped', 9703, 'matrix-customer.example php.memory_limit_mb', ?)`, clamp)
+	f.exec(t, `INSERT INTO rights_notices (kind, user_id, subject, detail) VALUES ('site_limit_clamped', 9702, 'matrix-customer.example php.memory_limit_mb', ?)`, clamp)
+	f.exec(t, `INSERT INTO mail_outgoing_notices (user_id, audience, kind, address, subscription_id, period, body, mail_state)
+		VALUES (9703, 'customer', 'paused', 'a@matrix-customer.example', 9802, '2026-11-07T10', '{"address":"a@matrix-customer.example","domain":"matrix-customer.example","reason":"spike","recipients":600,"normal":3}', 'sent')`)
+	read := func(user int) []notificationItem {
+		rec := f.as(t, user, http.MethodGet, notificationsPath, "")
+		wantStatus(t, rec, http.StatusOK, "")
+		var report notificationsReport
+		if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
+			t.Fatal(err)
+		}
+		return report.Items
+	}
+	var clampItem, mailItem *notificationItem
+	items := read(9703)
+	for i := range items {
+		switch items[i].Source {
+		case "site_limit":
+			clampItem = &items[i]
+		case "mail_outgoing":
+			mailItem = &items[i]
+		}
+	}
+	if clampItem == nil || clampItem.NeedsAction || clampItem.Audience != audienceCustomer || clampItem.Clamp == nil || clampItem.Clamp.Limit != 512 ||
+		clampItem.FixPath != "/domains/matrix-customer.example?tab=php" {
+		t.Fatalf("the lowered-limit notice %+v", clampItem)
+	}
+	if mailItem == nil || !mailItem.NeedsAction || mailItem.Words == nil || !strings.Contains(mailItem.Words.TitleEN, "a@matrix-customer.example") ||
+		!strings.Contains(mailItem.Words.TextTR, "parolasını değiştirin") || mailItem.FixPath != "/domains/matrix-customer.example?tab=mail" {
+		t.Fatalf("the outgoing mail notice %+v", mailItem)
+	}
+	// The reseller's own lowered-limit notice has no link (it cannot open the site's PHP page).
+	for _, item := range read(9702) {
+		if item.Source == "site_limit" && (item.Audience != audienceReseller || item.FixPath != "") {
+			t.Fatalf("the reseller's lowered-limit notice %+v", item)
+		}
+	}
+	if outsider := read(9704); len(outsider) != 0 {
+		t.Fatalf("another account's notices leaked: %+v", outsider)
+	}
+	// Seen goes back to each owning store; the list then leaves them out.
+	wantStatus(t, f.as(t, 9703, http.MethodPost, "/api/v1/rights/notices/"+strconv.Itoa(clampItem.ID)+"/acknowledge", ""), http.StatusOK, "")
+	wantStatus(t, f.as(t, 9703, http.MethodPost, mailOutgoingNoticesPath+"/"+strconv.Itoa(mailItem.ID)+"/seen", ""), http.StatusOK, "")
+	for _, item := range read(9703) {
+		if item.Source == "site_limit" || item.Source == "mail_outgoing" {
+			t.Fatalf("a seen notice is still listed: %+v", item)
+		}
+	}
+	// Nothing was copied into account_notices (no second mail).
+	var copied int
+	_ = f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM account_notices WHERE kind IN ('site_limit_clamped', 'paused', 'limit_reached')`).Scan(&copied)
+	if copied != 0 {
+		t.Fatalf("%d notices were copied into account_notices", copied)
+	}
+}
