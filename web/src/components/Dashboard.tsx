@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+// alpha.128 ops (G23): a team member's own activity, in its own chunk.
+const ActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityCard })));
 import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
@@ -1756,6 +1758,8 @@ function AdditionalUserDashboard() {
                     </div>
                 )}
             </section>
+            {/* alpha.128 ops (G23): what this team member did. */}
+            <div className={'mt-5 max-w-4xl'}><Suspense fallback={null}><ActivityCard team /></Suspense></div>
         </div>
     );
 }

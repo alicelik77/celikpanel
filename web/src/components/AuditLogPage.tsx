@@ -1,4 +1,6 @@
+import { Suspense, lazy } from 'react';
 import { ScrollText } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import { auditActionParts, auditActionText, auditActorName, auditDetailParts, auditResourceText } from '../lib/auditAction';
 import type { TranslationKey } from '../i18n/en';
@@ -50,7 +52,19 @@ function decodeAudit(raw: unknown): AuditPage {
     return { entries, pending: { count: p.count, stalled: p.code === 'audit_rows_stalled' } };
 }
 
+// alpha.128 ops (G23): the same address shows every other role its own
+// activity (GET /api/v1/me/activity); the server-wide log stays the
+// administrator's. Its own chunk.
+// Diger roller ayni adreste kendi etkinliklerini gorur.
+const ActivityPage = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityPage })));
+
 export function AuditLogPage() {
+    const { role } = useAuth();
+    if (role !== 'admin') return <Suspense fallback={null}><ActivityPage /></Suspense>;
+    return <ServerAuditLog />;
+}
+
+function ServerAuditLog() {
     const { t } = useI18n();
     const audit = useRemote('/api/v1/audit-logs?limit=200', decodeAudit);
 

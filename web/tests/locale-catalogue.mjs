@@ -38,8 +38,8 @@ export const screenPartExport = (part, locale) => `${locale}${capitalised(part)}
 export const englishScreens = screenCatalogueFiles.en.map(read).join('');
 export const turkishScreens = screenCatalogueFiles.tr.map(read).join('');
 
-export const englishCatalogue = read('../src/i18n/en.ts') + englishScreens + read('../src/i18n/setupDNS/en.ts') + read('../src/i18n/monitoringAlerts/en.ts') + read('../src/i18n/notifications/en.ts');
-export const turkishCatalogue = read('../src/i18n/tr.ts') + turkishScreens + read('../src/i18n/setupDNS/tr.ts') + read('../src/i18n/monitoringAlerts/tr.ts') + read('../src/i18n/notifications/tr.ts');
+export const englishCatalogue = read('../src/i18n/en.ts') + englishScreens + read('../src/i18n/setupDNS/en.ts') + read('../src/i18n/monitoringAlerts/en.ts') + read('../src/i18n/notifications/en.ts') + read('../src/i18n/domainOps/en.ts');
+export const turkishCatalogue = read('../src/i18n/tr.ts') + turkishScreens + read('../src/i18n/setupDNS/tr.ts') + read('../src/i18n/monitoringAlerts/tr.ts') + read('../src/i18n/notifications/tr.ts') + read('../src/i18n/domainOps/tr.ts');
 
 // Every screen part merged, as the provider merges them. enServerScreens and
 // trServerScreens are the same merged objects under the names tests used when

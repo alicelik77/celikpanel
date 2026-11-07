@@ -25,6 +25,8 @@ const NotificationsCenter = lazy(() => import('./Notifications').then((module) =
 const NotificationPreferencesCard = lazy(() => import('./Notifications').then((module) => ({ default: module.NotificationPreferencesCard })));
 const NotificationSettingsCard = lazy(() => import('./Notifications').then((module) => ({ default: module.NotificationSettingsCard })));
 const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
+// alpha.128 ops (G23): the way to the account's own activity.
+const ActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityCard })));
 
 // My account: the signed-in person's own sign-in security, opened from the
 // personal menu at the top right (D-037, owner 2026-10-22). It is what
@@ -55,6 +57,7 @@ export function AccountPage() {
                         <Suspense fallback={null}><RemoteBackupDestinations admin={false} /></Suspense>
                     </section>
                 )}
+                {(role === 'customer' || role === 'reseller') && <Suspense fallback={null}><ActivityCard /></Suspense>}
                 <PasswordPanel />
                 <EmailPanel />
                 {role !== 'additional_user' && <Suspense fallback={null}><NotificationPreferencesCard /></Suspense>}
