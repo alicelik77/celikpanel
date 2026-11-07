@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -644,5 +645,31 @@ func TestDatabaseRemoteRefusedGrantAndRevokeStartNoApply(t *testing.T) {
 			t.Fatalf("%s: a refused request asked for an apply", c.name)
 		default:
 		}
+	}
+}
+
+// alpha.129 lab: an add whose apply was not confirmed asks the loop to apply
+// again soon (as a removal does), so the saved rule does not wait for the
+// next five-minute run.
+func TestDatabaseRemoteAddWithoutAnAnswerAppliesAgainSoon(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	dbrOffer(t, p, true)
+	select {
+	case <-databaseRemoteMemory.kick:
+	default:
+	}
+	databaseRemoteApplyThroughAgent = func(*Panel, context.Context, transport.DatabaseRemoteApplyRequest) (transport.DatabaseRemoteResponse, error) {
+		return transport.DatabaseRemoteResponse{}, errors.New("the Agent did not answer")
+	}
+	add := dbrCall(p, dbrCaller(dbrCustomerA, roleCustomer), http.MethodPost, "/api/v1/database-remote/databases/7530/rules", `{"user_id":7540,"address":"203.0.113.7"}`)
+	if add.Code != http.StatusBadGateway || dbrCode(t, add) != errCodeDatabaseRemoteAgent {
+		t.Fatalf("add without an answer: %d %s", add.Code, add.Body.String())
+	}
+	select {
+	case <-databaseRemoteMemory.kick:
+	default:
+		t.Fatal("an unconfirmed add did not ask for the remote access to be applied again")
 	}
 }

@@ -371,6 +371,9 @@ func (p *Panel) handleDatabaseRemoteAdd(w http.ResponseWriter, r *http.Request, 
 	answer, _, err := p.applyDatabaseRemote(ctx, true)
 	if err != nil {
 		// The answer was lost: the row stays and the list reads the server.
+		// The loop applies again soon, as after a removal (alpha.129 lab: the
+		// rule waited until the next five-minute run).
+		p.kickDatabaseRemoteSync()
 		writeCodedError(w, http.StatusBadGateway, errCodeDatabaseRemoteAgent,
 			"the address was saved but the server did not confirm the change; the list shows what is in force", "")
 		return
