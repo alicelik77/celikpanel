@@ -55,7 +55,7 @@ Open (report only):
 - Ubuntu 24.04 joined server as a remote-access host; IPv6 rules; MariaDB copies after a user deletion.
 - A real external Fail2ban ban from a second listed address of the same user.
 - The 132 label was built from a stale source bundle (same code as 131); its runs are kept but count for nothing.
-- Full `go test ./cmd/agent` was not rerun after the last fixes in this round (targeted packages and tests only).
+- Tests: `internal/dbremote` passes; `go test ./cmd/agent` on `7bb6dcdb9` fails exactly the same 29 environment-only tests (DNS/mail/updater) as `release/alpha129` in the same WSL guest; `cmd/panel -run DatabaseRemote` passes. The web was not changed.
 
 ## Files
 
