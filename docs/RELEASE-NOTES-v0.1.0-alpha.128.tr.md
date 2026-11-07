@@ -10,7 +10,8 @@ daha fazla gönderen bir posta kutusu, parolası değiştirilene dek
 durduruluyor. Her site web sunucusu ayarları, hata sayfaları, sayfa
 önbelleği ve günlük saklama süresi alıyor. Node.js sitelerine ortam
 değişkenleri ve Git ile dağıtım ekleniyor; bir web sitesi bütünüyle
-kopyalanabiliyor. Veritabanları dışa aktarma, içe aktarma, kopyalama,
+kopyalanabiliyor. Bir site, bir çalışma arkadaşına yalnız tek bir klasörü
+gören bir FTP/SFTP girişi verebiliyor. Veritabanları dışa aktarma, içe aktarma, kopyalama,
 denetleme ve onarma araçları alıyor. Siteler ziyaretçi istatistikleri
 kazanıyor. Kendi programlarınız, jetonlu bir uzak API ile bir hesap üzerinde
 çalışabiliyor. Yeni gelen her şey biri açana dek kapalı ya da değişmeden
@@ -116,6 +117,24 @@ panelleri yalnız sahibi, panelin kendi güncelleme ekranından günceller.**
   dağıtım anahtarıyla (açık yarısı bir kez gösteriliyor). Derlemeler site
   korumasının içinde çalışıyor.
 
+## Site başına daha fazla FTP/SFTP girişi
+
+- **Tek klasörlük giriş:** sitenin sahibi bir tasarımcıya ya da çalışma
+  arkadaşına, sitenin yalnız tek bir klasörünü gören kendi kullanıcı adını
+  ve parolasını verebiliyor. SFTP ile, vsftpd CelikPanel'inse TLS'li FTP ile
+  çalışıyor. Bir giriş asla komut satırı açamıyor ve yalnız okunur
+  yapılabiliyor.
+- **Dosyalar sitenin kalıyor:** yüklenenler sitenin oluyor; PHP onlarla
+  eskisi gibi çalışabiliyor.
+- **Plan sınırı:** varsayılan olarak barındırma hesabı başına 10 giriş. Bir
+  plan, bayi planı ya da Özel hesap bunu düşürebiliyor; 0 hiç izin vermiyor.
+- **Kaçış denemeleri:** Debian 13 ve Ubuntu 24.04'te 64 denemenin 64'ü geçti.
+  Denemeler başka klasörleri, başka siteleri, bağlantıları, yeri değiştirilen
+  bir klasörü, yeniden başlatmaları, yönlendirmeyi ve düz FTP'yi kapsadı.
+- **Panel olmadan:** her giriş sıradan sistem yapılandırmasıdır (bir systemd
+  birimi, bir sshd bloğu, bir vsftpd kaydı) ve çalışmayı sürdürür; rehber
+  birinin elle nasıl kaldırılacağını gösterir (docs/FTP-LOGINS.md).
+
 ## Veritabanları ve istatistikler
 
 - **Veritabanı araçları:** MariaDB ve PostgreSQL için dışa aktarma, içe
@@ -171,6 +190,11 @@ _Laboratuvar turundan sonra doldurulacak._
   yeniden yazılmıyor; kopya hâlâ kaynak veritabanını gösteriyor. PostgreSQL
   veritabanları sunulmuyor.
 - **Git ile dağıtım:** henüz sürüm ya da geri alma klasörü ve webhook yok.
+- **FTP/SFTP girişleri:** kaçış denemeleri Debian 12, Ubuntu 22.04 ve
+  Arch'ta henüz yapılmadı. sshd yalnız anahtar kabul ediyorsa girişler TLS'li
+  FTP kullanıyor. Sahip kendi vsftpd'sini çalıştırıyorsa girişler yalnız SFTP
+  kullanıyor. Bir giriş sitenin kullanıcı kimliğini paylaştığı için sistemin
+  kendi araçları onu site olarak gösteriyor.
 - **Günlük saklama:** yalnız sistemin zaten tuttuğunu kısaltıyor. Günlükleri
   daha uzun tutmak için günlük klasörünü taşımak gerekiyor; bu yapılmadı.
 - Günlük saklama, büyük bir sitenin kopyalanması, Git ile dağıtım, web
@@ -185,9 +209,6 @@ _Laboratuvar turundan sonra doldurulacak._
   - **Daha fazla posta sunucusu ayarı** (akıllı aktarıcı, Dovecot sınırları,
     alt adresleme, DKIM anahtar değişimi, virüs taraması, izin ve engel
     listeleri): yalnız bağlantı sınırı geldi.
-  - **Site başına daha fazla FTP/SFTP hesabı:** bugünkü düzenek hiçbir
-    sistemde bir girişi bir klasöre hapsedemiyor. Planlanan yol site
-    korumasının klasör bağlamasını kullanmak (docs/A128-DATA-ACCESS-DESIGN.md).
   - **Site başına ayrılmış IP:** bir sitenin adresini değiştirmek, o adresteki
     her site için nginx'in varsayılan sitesini değiştiriyor. Önce oluşturma
     testleri ve bir laboratuvar turu gerekiyor.
@@ -214,6 +235,8 @@ varsayılanları dışında var olan hiçbir şey değişmiyor):
   `git_deploy_settings`.
 - **069 `site_visitor_stats`:** `site_visitor_stats_daily`.
 - **070 `api_tokens`:** `api_tokens` (her jetonun yalnız özeti saklanır).
+- **071 `ftp_logins`:** `ftp_logins` (parola saklanmaz) ve `setting_policy`
+  tablosunda `ftp.max_logins` satırı (10).
 
 Her geçişte olduğu gibi alpha.127 bu geçişleri içeren bir veritabanını
 reddeder; geri dönmek, güncelleme öncesi alınan anlık görüntüyü geri

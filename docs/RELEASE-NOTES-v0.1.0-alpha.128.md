@@ -9,7 +9,8 @@ and hosting account. A mailbox that suddenly sends far more than usual is
 paused until its password is changed. Every site gets web server settings,
 error pages, a page cache and log retention. Node.js sites can have
 environment variables and Git deployment, and a whole website can be
-copied. Databases get export, import, copy, check and repair. Sites get
+copied. A site can give a colleague an FTP/SFTP login that sees one
+folder and nothing else. Databases get export, import, copy, check and repair. Sites get
 visitor statistics. Your own programs can work with an account through a
 remote API with tokens. Everything new is off or unchanged until someone turns
 it on, so an updated server works exactly as before. **Only the owner
@@ -110,6 +111,24 @@ updates installed panels, from the panel's own update screen.**
   made on the server (its public half is shown once). Builds run in the
   site sandbox.
 
+## More FTP/SFTP logins per site
+
+- **A login for one folder:** the site's owner can give a designer or a
+  colleague their own user name and password that sees only one folder of
+  the site. It works over SFTP, and over FTP with TLS where vsftpd is
+  CelikPanel's. A login can never open a command line, and it can be made
+  read only.
+- **Files stay the site's:** uploads belong to the site, so PHP can work
+  with them as before.
+- **Plan limit:** 10 logins per hosting account by default. A plan, a
+  reseller plan or a Custom account can lower it; 0 allows none.
+- **Escape tests:** 64 of 64 passed on Debian 13 and Ubuntu 24.04. The tests
+  covered other folders, other sites, links, a swapped folder, reboots,
+  forwarding and plain FTP.
+- **Without the panel:** each login is ordinary system configuration (a
+  systemd unit, an sshd block, a vsftpd entry) and keeps working; the
+  guide shows how to remove one by hand (docs/FTP-LOGINS.md).
+
 ## Databases and statistics
 
 - **Database tools:** export, import (a safety copy is taken first), copy,
@@ -162,6 +181,11 @@ _To be filled in after the lab round._
   yet; the copy still names the source database. PostgreSQL databases are
   not offered.
 - **Git deployment:** no releases or rollback folder and no webhook yet.
+- **FTP/SFTP logins:** the escape tests have not been run yet on Debian 12,
+  Ubuntu 22.04 and Arch. Where sshd accepts keys only, logins use FTP with
+  TLS. Where the owner runs their own vsftpd, logins use SFTP only. A login
+  shares the site account's user id, so the system's own tools show it as
+  the site.
 - **Log retention:** only shortens what the system already keeps. Keeping
   logs longer needs a log folder move, which is not built.
 - The lab round on the five systems is still open for log retention,
@@ -175,9 +199,6 @@ _To be filled in after the lab round._
   - **More mail server settings** (smarthost, Dovecot limits,
     subaddressing, DKIM key rotation, antivirus, allow and block lists):
     only the connection limit shipped.
-  - **More FTP/SFTP accounts per site:** the current mechanism cannot
-    confine a login to a folder on any system. The sandbox's folder binding
-    is the planned route (docs/A128-DATA-ACCESS-DESIGN.md).
   - **Dedicated IP per site:** changing one site's address changes nginx's
     default site on that address for every site. It needs rendering tests
     and a lab round first.
@@ -205,6 +226,8 @@ columns' defaults on plans and subscriptions):
   `git_deploy_settings`.
 - **069 `site_visitor_stats`:** `site_visitor_stats_daily`.
 - **070 `api_tokens`:** `api_tokens` (only a hash of each token is kept).
+- **071 `ftp_logins`:** `ftp_logins` (no password is kept), and the
+  `ftp.max_logins` row in `setting_policy` (10).
 
 As with every migration, alpha.127 refuses a database that has these
 migrations, and going back means restoring the snapshot taken before the
