@@ -64,6 +64,8 @@ func installRotationEngine(t *testing.T, engineName string, engine *rotationEngi
 			return []byte("state=open\n"), nil
 		case statement == statements.disconnect:
 			return nil, nil
+		case strings.HasPrefix(statement, "SELECT CONCAT('host='"):
+			return []byte("host=127.0.0.1\nhost=localhost\n"), nil
 		case strings.Contains(statement, "PASSWORD") || strings.Contains(statement, "IDENTIFIED BY"):
 			if engine.failSet {
 				return []byte("ERROR 1064: near '" + statement + "'"), errors.New("exit status 1")
@@ -99,8 +101,20 @@ func TestRotateDatabaseUserPasswordSetsPasswordAndEndsSessions(t *testing.T) {
 			if !response.Applied || !response.PasswordChanged || !response.SessionsEnded || response.Error != "" {
 				t.Fatalf("response %+v", response)
 			}
-			if len(engine.statements) != 3 || engine.statements[0] != statements.inspect || engine.statements[2] != statements.disconnect ||
-				!strings.Contains(engine.statements[1], "'"+secret+"'") {
+			// MariaDB reads the account's hosts first and sets the password on
+			// each; PostgreSQL stores a SCRAM verifier (alpha.129).
+			set := engine.statements[len(engine.statements)-2]
+			want := 3
+			if engineName == "mysql" {
+				want = 4
+				if !strings.Contains(set, "'shop_user'@'127.0.0.1' IDENTIFIED BY '"+secret+"'") || !strings.Contains(set, "'shop_user'@'localhost' IDENTIFIED BY '"+secret+"'") {
+					t.Fatalf("hosts not all set: %q", set)
+				}
+			} else if !strings.HasPrefix(set, "SET password_encryption = 'scram-sha-256'; ALTER ROLE") {
+				t.Fatalf("not SCRAM: %q", set)
+			}
+			if len(engine.statements) != want || engine.statements[0] != statements.inspect || engine.statements[want-1] != statements.disconnect ||
+				!strings.Contains(set, "'"+secret+"'") {
 				t.Fatalf("statements %q", engine.statements)
 			}
 		})

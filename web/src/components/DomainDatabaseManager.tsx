@@ -15,6 +15,7 @@ import { PasswordInput } from './PasswordInput';
 import { AdminInstallLink } from './AdminInstallLink';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { DatabaseTools } from './DatabaseTools';
+import { DatabaseUsers } from './DatabaseUsers';
 
 interface DomainDatabaseManagerProps {
     domainId: number;
@@ -91,7 +92,7 @@ function DBToolsCard({ capabilities }: { capabilities: CapabilitiesRemote }) {
 // Yedekler sekmesiyle paylaşılır.
 
 const engineLabels: Record<string, DatabaseEngine> = {
-    mariadb: { value: 'mysql', label: 'MySQL / MariaDB' },
+    mariadb: { value: 'mysql', label: 'MariaDB' },
     postgresql: { value: 'postgresql', label: 'PostgreSQL' },
 };
 
@@ -428,17 +429,11 @@ export function DomainDatabaseManager({
                                                     {db.type.toUpperCase()}
                                                 </span>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                                <div>
-                                                    <span className="text-fg-muted">{t('ddb.user')}</span>
-                                                    <span className="ml-2 text-fg font-mono">{db.user}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-fg-muted">{t('ddb.createdAt')}</span>
-                                                    <span className="ml-2 text-fg">
-                                                        {new Date(db.created_at).toLocaleDateString()}
-                                                    </span>
-                                                </div>
+                                            <div className="text-sm">
+                                                <span className="text-fg-muted">{t('ddb.createdAt')}</span>
+                                                <span className="ml-2 text-fg">
+                                                    {new Date(db.created_at).toLocaleDateString()}
+                                                </span>
                                             </div>
                                         </div>
                                         {!readOnly && (
@@ -454,6 +449,10 @@ export function DomainDatabaseManager({
                                                 </button>
                                             </div>
                                         )}
+                                    </div>
+                                    {/* alpha.129: its users, each with a new password. */}
+                                    <div className="mt-3 border-t border-border pt-3">
+                                        <DatabaseUsers domainId={domainId} databaseId={db.id} users={db.users ?? []} readOnly={readOnly || shown.stale} />
                                     </div>
                                     {/* alpha.128 (G7): the tools of this database. */}
                                     <DatabaseTools domainId={domainId} db={db} readOnly={readOnly || shown.stale}

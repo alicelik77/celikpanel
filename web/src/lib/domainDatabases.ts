@@ -8,12 +8,23 @@ import { decodeList } from './remote';
 export type DatabaseType = 'mysql' | 'postgresql';
 export type DatabaseEngine = { value: DatabaseType; label: string };
 
+/** One user of a database (alpha.129): the first is made with it ("owner"). */
+export interface DatabaseUserInfo {
+    id: number;
+    username: string;
+    access: 'owner' | 'read' | 'write';
+}
+
 export interface DatabaseInfo {
     id: number;
     name: string;
     type: string;
     user: string;
     created_at: string;
+    /** alpha.129: the engine the server runs and its major version, when known. */
+    engine?: 'mariadb' | 'mysql' | 'postgresql';
+    engine_version?: string;
+    users?: DatabaseUserInfo[];
 }
 
 export function parseAvailableDatabaseTypes(value: unknown): DatabaseEngine[] {
@@ -27,7 +38,7 @@ export function parseAvailableDatabaseTypes(value: unknown): DatabaseEngine[] {
         seen.add(item);
         parsed.push({
             value: item,
-            label: item === 'mysql' ? 'MySQL / MariaDB' : 'PostgreSQL',
+            label: item === 'mysql' ? 'MariaDB' : 'PostgreSQL',
         });
     }
     return parsed;

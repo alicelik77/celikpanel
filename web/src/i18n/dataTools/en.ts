@@ -91,6 +91,24 @@ export const enDataTools = {
     "ipl.public": "public",
     "ipl.private": "private network",
     "ipl.shared": "shared by {n} sites",
+    // alpha.129: a database user's new password. / Veritabanı kullanıcısının yeni parolası.
+    'dbu.newPassword': 'New password',
+    'dbu.newPasswordFor': 'New password for {user}',
+    'dbu.newPasswordHint': 'The new password works at once and the open connections of this user are closed. Everything that connects with the old password stops working until it is given the new one.',
+    'dbu.change': 'Change password',
+    'dbu.title': 'Changing the password of {user}',
+    'dbu.done': 'The password of {user} was changed. Sites and programs that connect as {user} need the new password in their own configuration (for WordPress, DB_PASSWORD in wp-config.php); until they have it they cannot reach the database.',
+    'dbu.doneApp': 'The password of {user} was changed, and the {app} site on {domain} got it in its configuration file, so it keeps working. Any other program that connects as {user} needs the new password too.',
+    'dbu.doneAppKept': 'The password of {user} was changed, but the configuration file of the {app} site on {domain} was not updated ({detail}). Put the new password into it now; until then the site cannot reach its database.',
+    'dbu.failed': 'The password was not changed.',
+    'dbu.unknown': 'The answer did not arrive, so whether the password of {user} changed is not known. The list was read again; if the site stopped working, set a new password once more.',
+    'opstep.dbUserPassword.check': 'Checking {user} and the new password',
+    'opstep.dbUserPassword.password': 'Setting the new password on the database server',
+    'dbu.users': 'Users',
+    'dbu.noUsers': 'No user can reach this database.',
+    'dbu.accessOwner': 'made with the database',
+    'dbu.accessRead': 'read only',
+    'dbu.accessWrite': 'read and write',
 } as const;
 
 export type DataToolsKey = keyof typeof enDataTools;

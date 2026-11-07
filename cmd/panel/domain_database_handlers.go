@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
@@ -33,6 +34,12 @@ type DatabaseInfo struct {
 	User      string `json:"user"`
 	CreatedAt string `json:"created_at"`
 	Size      string `json:"size,omitempty"`
+	// alpha.129: the engine the server runs (mariadb, mysql or postgresql)
+	// and its version as the server reported it (major only), and every
+	// user of the database with its access.
+	Engine        string               `json:"engine"`
+	EngineVersion string               `json:"engine_version,omitempty"`
+	Users         []domainDatabaseUser `json:"users"`
 }
 
 // CreateDatabaseRequest represents a request to create a database
@@ -93,6 +100,57 @@ func availableDatabaseTypes(ctx context.Context, pool *sql.DB, subscriptionID in
 		return nil, err
 	}
 	return types, nil
+}
+
+// databaseEngineLabel names the engine a server record runs, for the
+// database cards (alpha.129): a "mariadb" record is MariaDB unless its
+// version is one only MySQL has (8 and later, without "MariaDB"; MariaDB's
+// own majors are 5.5, 10, 11 and 12, and a stored version may be the bare
+// "10.11"). The version is
+// cut to its major: "11.8" for MariaDB/MySQL, "17" for PostgreSQL. An
+// unknown version is left out, never guessed.
+//
+// databaseEngineLabel, kartlar için motorun adı ve ana sürümü.
+func databaseEngineLabel(serverType, version string) (string, string) {
+	version = strings.TrimSpace(version)
+	switch serverType {
+	case "postgresql":
+		return "postgresql", leadingVersion(version, 1)
+	case "mariadb", "mysql":
+		major := leadingVersion(version, 2)
+		if !strings.Contains(strings.ToLower(version), "mariadb") && mysqlOnlyMajor(major) {
+			return "mysql", major
+		}
+		return "mariadb", major
+	}
+	return serverType, ""
+}
+
+// mysqlOnlyMajor: MySQL 8.x and 9.x; MariaDB never used those numbers.
+func mysqlOnlyMajor(major string) bool {
+	return strings.HasPrefix(major, "8.") || strings.HasPrefix(major, "9.") || major == "8" || major == "9"
+}
+
+// leadingVersion keeps the first `parts` numeric parts of a version ("11.8.6-
+// MariaDB" with 2 is "11.8"; "17.11 (Debian…)" with 1 is "17").
+func leadingVersion(version string, parts int) string {
+	end := 0
+	seen := 0
+	for end < len(version) {
+		c := version[end]
+		if c >= '0' && c <= '9' {
+			end++
+			continue
+		}
+		if c == '.' && end > 0 && seen+1 < parts {
+			seen++
+			end++
+			continue
+		}
+		break
+	}
+	out := strings.TrimSuffix(version[:end], ".")
+	return out
 }
 
 // handleDomainDatabases handles GET/POST for domain databases
@@ -159,7 +217,7 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		                 JOIN database_users u ON u.id = g.user_id
 		                 WHERE g.database_id = d.id
 		                 ORDER BY g.id LIMIT 1), ''),
-		       d.created_at
+		       d.created_at, COALESCE(ds.version, '')
 		FROM databases_v2 d
 		JOIN database_servers ds ON ds.id = d.server_id
 		JOIN database_server_types dst ON dst.id = ds.type_id
@@ -175,17 +233,30 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 	databases := make([]DatabaseInfo, 0)
 	for rows.Next() {
 		var db DatabaseInfo
-		var serverType string
-		if err := rows.Scan(&db.ID, &db.Name, &serverType, &db.User, &db.CreatedAt); err != nil {
+		var serverType, version string
+		if err := rows.Scan(&db.ID, &db.Name, &serverType, &db.User, &db.CreatedAt, &version); err != nil {
 			http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 			return
 		}
 		db.Type = apiTypeNameFor(serverType)
+		db.Engine, db.EngineVersion = databaseEngineLabel(serverType, version)
 		databases = append(databases, db)
 	}
 	if err := rows.Err(); err != nil {
 		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 		return
+	}
+
+	users, err := p.domainDatabaseUsers(ctx, domainID)
+	if err != nil {
+		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
+		return
+	}
+	for i := range databases {
+		databases[i].Users = users[databases[i].ID]
+		if databases[i].Users == nil {
+			databases[i].Users = []domainDatabaseUser{}
+		}
 	}
 
 	response := map[string]interface{}{

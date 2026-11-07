@@ -307,6 +307,9 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			if route, ok := databaseToolsIdentityRoute(match.kind); ok {
 				return route, true
 			}
+			if route, ok := databaseUsersIdentityRoute(match.kind); ok {
+				return route, true
+			}
 		}
 	case strings.HasPrefix(path, "/api/v1/database-users/"):
 		if match, ok := matchDatabaseSubroute(r, "/api/v1/database-users/"); ok && match.kind == "user-password" {

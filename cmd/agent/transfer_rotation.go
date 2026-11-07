@@ -39,7 +39,16 @@ func rotationPasswordValid(password string) error {
 
 // rotationPasswordStatement is the statement that sets the password. It is
 // passed on stdin; its failure text is never forwarded.
-func rotationPasswordStatement(engine, username, password string) (string, error) {
+//
+// alpha.129: MariaDB sets it on every host the account has (hosts, read by
+// rotationMySQLHostsStatement; CelikPanel creates 'name'@'localhost' only,
+// but an owner who added 'name'@'127.0.0.1' or another host keeps one
+// password for all of them). PostgreSQL stores it as a SCRAM-SHA-256 verifier
+// whatever the server's password_encryption says: the SET is local to this
+// psql session, and an md5 pg_hba line still accepts a SCRAM verifier.
+//
+// alpha.129: MariaDB'de hesabın her makine adına; PostgreSQL'de SCRAM.
+func rotationPasswordStatement(engine, username, password string, hosts []string) (string, error) {
 	switch engine {
 	case "mysql":
 		user, err := services.QuoteMySQLStringLiteral(username)
@@ -50,7 +59,18 @@ func rotationPasswordStatement(engine, username, password string) (string, error
 		if err != nil {
 			return "", errors.New("the password cannot be written as a MariaDB string")
 		}
-		return "ALTER USER " + user + "@'localhost' IDENTIFIED BY " + secret + ";", nil
+		if len(hosts) == 0 {
+			hosts = []string{"localhost"}
+		}
+		accounts := make([]string, 0, len(hosts))
+		for _, host := range hosts {
+			literal, err := services.QuoteMySQLStringLiteral(host)
+			if err != nil {
+				return "", fmt.Errorf("the account's host %q cannot be written as a MariaDB string", host)
+			}
+			accounts = append(accounts, user+"@"+literal+" IDENTIFIED BY "+secret)
+		}
+		return "ALTER USER " + strings.Join(accounts, ", ") + ";", nil
 	case "postgresql":
 		ident, err := services.QuotePGIdentifier(username)
 		if err != nil {
@@ -60,9 +80,31 @@ func rotationPasswordStatement(engine, username, password string) (string, error
 		if err != nil {
 			return "", errors.New("the password cannot be written as a PostgreSQL string")
 		}
-		return "ALTER ROLE " + ident + " WITH PASSWORD " + secret + ";", nil
+		return "SET password_encryption = 'scram-sha-256'; ALTER ROLE " + ident + " WITH PASSWORD " + secret + ";", nil
 	}
 	return "", fmt.Errorf("unknown database engine %q; expected mysql or postgresql", engine)
+}
+
+// rotationMySQLHostsStatement lists every host of a MariaDB account name, one
+// "host=" line each.
+func rotationMySQLHostsStatement(username string) (string, error) {
+	literal, err := services.QuoteMySQLStringLiteral(username)
+	if err != nil {
+		return "", err
+	}
+	return "SELECT CONCAT('host=', Host) FROM mysql.user WHERE User = " + literal + " ORDER BY Host;", nil
+}
+
+// parseRotationMySQLHosts reads the "host=" lines; anything else (a client
+// warning) is ignored.
+func parseRotationMySQLHosts(output []byte) []string {
+	var hosts []string
+	for _, line := range strings.Fields(string(output)) {
+		if host, ok := strings.CutPrefix(strings.TrimSpace(line), "host="); ok && host != "" {
+			hosts = append(hosts, host)
+		}
+	}
+	return hosts
 }
 
 func validDatabaseUserApp(app *transport.DatabaseUserApp, username string) error {
@@ -111,8 +153,8 @@ func (a *Agent) RotateDatabaseUserPasswordV1(
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
-	setPassword, err := rotationPasswordStatement(req.User.Engine, req.User.Username, req.NewPassword)
-	if err != nil {
+	// The statement is composed after the account was read (MariaDB: its hosts).
+	if _, err := rotationPasswordStatement(req.User.Engine, req.User.Username, req.NewPassword, nil); err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
@@ -151,6 +193,25 @@ func (a *Agent) RotateDatabaseUserPasswordV1(
 	if !current.Present {
 		resp.Absent = true
 		resp.Error = fmt.Sprintf("database user is absent: %s does not exist on this server's %s engine, so nothing was changed", req.User.Username, req.User.Engine)
+		return nil
+	}
+	var hosts []string
+	if req.User.Engine == "mysql" {
+		listHosts, err := rotationMySQLHostsStatement(req.User.Username)
+		if err != nil {
+			resp.Error = err.Error() + "; nothing was changed"
+			return nil
+		}
+		output, runErr := run(listHosts)
+		if runErr != nil {
+			resp.Error = hostcmd.Fail("the database account's hosts could not be read; nothing was changed", output, runErr, databaseClientMeaning).Error()
+			return nil
+		}
+		hosts = parseRotationMySQLHosts(output)
+	}
+	setPassword, err := rotationPasswordStatement(req.User.Engine, req.User.Username, req.NewPassword, hosts)
+	if err != nil {
+		resp.Error = err.Error() + "; nothing was changed"
 		return nil
 	}
 	if _, runErr := run(setPassword); runErr != nil {
