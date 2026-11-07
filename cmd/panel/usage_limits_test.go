@@ -539,3 +539,22 @@ func TestTrafficStatusNamesUnmeasuredSitesAndSkipsDomainsBeingDeleted(t *testing
 		t.Fatal("unknown_sites must be a list, never null")
 	}
 }
+
+// alpha.128 lab: a "notify only" account over its disk limit was shown a
+// suspension day on its account screen although nothing is suspended.
+func TestNotifyOnlyDiskViewNamesNoSuspensionDay(t *testing.T) {
+	f := newUsageFixture(t)
+	ctx := context.Background()
+	f.panel.diskMeasurer = &fakeDiskMeasurer{bytes: map[int]int64{9802: 3 * mib}}
+	f.panel.uploadBlockNative = func(context.Context, int, bool) (string, error) { return "", nil }
+	f.exec(t, `UPDATE subscriptions SET disk_quota_mb = 2, overuse_policy = 'notify' WHERE id = 9802`)
+	f.panel.runUsageRound(ctx)
+	view, err := loadSubscriptionDiskView(ctx, f.panel.db.GetDB(), 9802)
+	if err != nil || view.OverSince == "" || view.SuspendOn != "" {
+		t.Fatalf("notify-only view = %+v, %v", view, err)
+	}
+	f.exec(t, `UPDATE subscriptions SET overuse_policy = 'close' WHERE id = 9802`)
+	if view, _ = loadSubscriptionDiskView(ctx, f.panel.db.GetDB(), 9802); view.SuspendOn == "" {
+		t.Fatalf("a closing plan lost its suspension day: %+v", view)
+	}
+}
