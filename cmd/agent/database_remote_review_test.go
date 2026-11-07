@@ -295,3 +295,41 @@ func TestApplyDatabaseRemoteNamesNoPortForAnInstanceItLeavesAlone(t *testing.T) 
 		})
 	}
 }
+
+// Re-review: applying an unchanged rule set again changes nothing on the
+// engine (no ALTER, REVOKE or GRANT); a changed connection limit is one
+// ALTER and still no REVOKE or GRANT.
+func TestMariaDBRemoteApplyIsIdempotent(t *testing.T) {
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true}, limit: "15"}
+	withFakeMariaDB(t, f)
+	target := dbremote.Target{Engine: "mysql", Port: 3306, Rules: []dbremote.Rule{{Database: "shop", User: "shop_u", Address: "203.0.113.7/32"}}}
+	var ts dbremote.TargetState
+	if result := (mariadbRemoteInstance{}).apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, ""); len(result.Active) != 1 {
+		t.Fatalf("first apply: %+v", result)
+	}
+	changes := func() []string {
+		var out []string
+		for _, s := range f.executed {
+			for _, verb := range []string{"CREATE USER", "ALTER USER", "REVOKE", "GRANT ", "DROP USER"} {
+				if strings.HasPrefix(s, verb) || strings.Contains(s, "\n"+verb) {
+					out = append(out, s)
+					break
+				}
+			}
+		}
+		return out
+	}
+	f.executed = nil
+	if result := (mariadbRemoteInstance{}).apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, ""); len(result.Active) != 1 {
+		t.Fatalf("second apply: %+v", result)
+	}
+	if got := changes(); len(got) != 0 {
+		t.Fatalf("an unchanged apply changed the engine: %q", got)
+	}
+	f.executed, f.limit = nil, "20"
+	(mariadbRemoteInstance{}).apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	got := changes()
+	if len(got) != 1 || !strings.HasPrefix(got[0], "ALTER USER 'shop_u'@'203.0.113.7'") || strings.Contains(got[0], "REVOKE") || strings.Contains(got[0], "GRANT") {
+		t.Fatalf("a changed limit: %q", got)
+	}
+}

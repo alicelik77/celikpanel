@@ -107,21 +107,71 @@ type fakeMariaDB struct {
 	locked   string // "1" when the local account is locked
 	haveSSL  string // @@have_ssl, "YES" by default
 	noJail   bool   // Fail2ban does not run the jail
+	// copies as the fake engine holds them: limit and lock, and grants
+	copyAuth   map[string]string
+	copyGrants map[string][]string
+}
+
+// fakeCopyHost answers the host of "... Host = '<host>'" or "'user'@'<host>'".
+func fakeCopyHost(statement string) string {
+	if i := strings.Index(statement, "Host = '"); i >= 0 {
+		rest := statement[i+len("Host = '"):]
+		return rest[:strings.Index(rest, "'")]
+	}
+	if i := strings.Index(statement, "'@'"); i >= 0 {
+		rest := statement[i+3:]
+		return rest[:strings.Index(rest, "'")]
+	}
+	return ""
+}
+
+// record keeps what the statements of one batch did to the copies.
+func (f *fakeMariaDB) record(batch string) {
+	for _, line := range strings.Split(batch, "\n") {
+		host := fakeCopyHost(line)
+		id := "shop_u@" + host
+		switch {
+		case strings.HasPrefix(line, "CREATE USER 'shop_u'"), strings.HasPrefix(line, "ALTER USER 'shop_u'"):
+			if f.copyAuth == nil {
+				f.copyAuth = map[string]string{}
+			}
+			f.copyAuth[id] = orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0")
+		case strings.HasPrefix(line, "REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'shop_u'"):
+			delete(f.copyGrants, id)
+		case strings.HasPrefix(line, "GRANT ") && strings.Contains(line, " TO 'shop_u'@'"):
+			if f.copyGrants == nil {
+				f.copyGrants = map[string][]string{}
+			}
+			db := line[strings.Index(line, " ON ")+4 : strings.Index(line, " TO ")]
+			privileges := strings.TrimPrefix(line[:strings.Index(line, " ON ")], "GRANT ")
+			f.copyGrants[id] = append(f.copyGrants[id], "GRANT "+privileges+" ON "+db+" TO `shop_u`@`"+host+"`")
+		}
+	}
 }
 
 func (f *fakeMariaDB) query(statement string) (string, error) {
 	f.executed = append(f.executed, statement)
+	f.record(statement)
 	switch {
 	case strings.HasPrefix(statement, "SELECT @@bind_address"):
 		return "127.0.0.1\t0\t" + orDefault(f.haveSSL, "YES") + "\t3306\t\t2\t/var/lib/mysql/\n", nil
+	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'") && fakeCopyHost(statement) == "localhost":
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\t\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'"):
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\n", nil
+		state, ok := f.copyAuth["shop_u@"+fakeCopyHost(statement)]
+		if !ok {
+			return "", nil
+		}
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + state + "\tANY\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'boss'"):
-		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t0\t0\n", nil
+		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t0\t0\t\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin"):
 		return "", nil
-	case strings.HasPrefix(statement, "SHOW GRANTS FOR 'shop_u'"):
+	case strings.HasPrefix(statement, "SHOW GRANTS FOR 'shop_u'@'localhost'"):
 		return "GRANT USAGE ON *.* TO `shop_u`@`localhost` IDENTIFIED BY PASSWORD '*0123456789ABCDEF0123456789ABCDEF01234567'\nGRANT ALL PRIVILEGES ON `shop`.* TO `shop_u`@`localhost`\n", nil
+	case strings.HasPrefix(statement, "SHOW GRANTS FOR 'shop_u'@"):
+		host := fakeCopyHost(statement)
+		return "GRANT USAGE ON *.* TO `shop_u`@`" + host + "`\n" + strings.Join(f.copyGrants["shop_u@"+host], "\n") + "\n", nil
 	case strings.HasPrefix(statement, "SHOW GRANTS FOR 'boss'"):
 		return "GRANT ALL PRIVILEGES ON *.* TO `boss`@`localhost`\n", nil
 	case strings.HasPrefix(statement, "SELECT Host FROM mysql.user WHERE User = '"):

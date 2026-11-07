@@ -418,7 +418,6 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 
 // handleDeleteDatabase handles DELETE for a specific database
 func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
-	defer kickDatabaseRemoteSync() // alpha.129: remote database access follows (review M1)
 	w.Header().Set("Content-Type", "application/json")
 
 	if r.Method != "DELETE" {
@@ -542,6 +541,7 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 

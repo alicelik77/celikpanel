@@ -439,3 +439,30 @@ host    all             all             localhost               md5
 		}
 	}
 }
+
+func TestMariaDBPrivilegeChangeTouchesOnlyWhatDiffers(t *testing.T) {
+	host := "203.0.113.7"
+	cases := []struct {
+		current, want string
+		statements    []string
+	}{
+		{"ALL PRIVILEGES", "ALL PRIVILEGES", nil},
+		{"SELECT, INSERT", "INSERT, SELECT", nil},
+		{"", "", nil},
+		{"", "SELECT", []string{"GRANT SELECT ON `shop`.* TO 'shop_u'@'203.0.113.7';"}},
+		{"SELECT", "", []string{"REVOKE ALL PRIVILEGES ON `shop`.* FROM 'shop_u'@'203.0.113.7';"}},
+		{"SELECT", "SELECT, INSERT", []string{"GRANT INSERT ON `shop`.* TO 'shop_u'@'203.0.113.7';"}},
+		{"SELECT, INSERT", "SELECT", []string{"REVOKE INSERT ON `shop`.* FROM 'shop_u'@'203.0.113.7';"}},
+		{"SELECT", "ALL PRIVILEGES", []string{"GRANT ALL PRIVILEGES ON `shop`.* TO 'shop_u'@'203.0.113.7';"}},
+		{"ALL PRIVILEGES", "SELECT", []string{"REVOKE ALL PRIVILEGES ON `shop`.* FROM 'shop_u'@'203.0.113.7';", "GRANT SELECT ON `shop`.* TO 'shop_u'@'203.0.113.7';"}},
+	}
+	for _, c := range cases {
+		got, err := MariaDBPrivilegeChange(c.current, c.want, "shop", "shop_u", host)
+		if err != nil || strings.Join(got, "|") != strings.Join(c.statements, "|") {
+			t.Errorf("%q -> %q = %q, %v", c.current, c.want, got, err)
+		}
+	}
+	if _, err := MariaDBPrivilegeChange("SELECT", "SUPER", "shop", "shop_u", host); err == nil {
+		t.Fatal("SUPER accepted")
+	}
+}

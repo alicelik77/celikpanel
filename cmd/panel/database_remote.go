@@ -345,7 +345,9 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 	}
 	// The panel firewall opens or closes the engines' ports.
 	reportOperationStep(ctx, "firewall")
-	if !portSetsEqual(filterOpenPorts(previous), filterOpenPorts(answer)) || force {
+	// Only when the open ports changed (re-review): a forced apply alone
+	// never re-syncs the firewall.
+	if !portSetsEqual(filterOpenPorts(previous), filterOpenPorts(answer)) {
 		if err := p.syncFirewall(ctx); err != nil {
 			log.Printf("database remote access: firewall sync: %v", err)
 			answer.Error = strings.TrimSpace(answer.Error + " The panel firewall could not be updated (" + err.Error() + "); the database port may stay closed until it is.")
@@ -398,8 +400,27 @@ func kickDatabaseRemoteSync() {
 	}
 }
 
-// databaseRemoteKickDelay lets the kicking transaction commit first.
-var databaseRemoteKickDelay = 2 * time.Second
+// Kicks are coalesced (re-review): the loop waits databaseRemoteKickDelay
+// after the first kick, folds every kick that arrives meanwhile into one
+// forced apply, and runs forced applies at most once per
+// databaseRemoteForcedGap. A burst of changes (or of requests) therefore
+// costs one durable job, and the Agent's apply changes nothing that is
+// already right.
+var (
+	databaseRemoteKickDelay = 5 * time.Second
+	databaseRemoteForcedGap = 30 * time.Second
+)
+
+// databaseRemoteKickWait is how long the loop waits after a kick.
+func databaseRemoteKickWait(now, lastForced time.Time) time.Duration {
+	wait := databaseRemoteKickDelay
+	if !lastForced.IsZero() {
+		if gap := lastForced.Add(databaseRemoteForcedGap).Sub(now); gap > wait {
+			wait = gap
+		}
+	}
+	return wait
+}
 
 // startDatabaseRemoteSync runs the apply at start, on a kick and every five
 // minutes; each run sends nothing when the eligible set did not change.
@@ -408,6 +429,7 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 		ticker := time.NewTicker(databaseRemoteProbeInterval)
 		defer ticker.Stop()
 		ticks := 0
+		var lastForced time.Time
 		run := func(force bool) {
 			runCtx, cancel := context.WithTimeout(ctx, agentRPCMutationTimeout+time.Minute)
 			defer cancel()
@@ -447,11 +469,19 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 					run(false)
 				}
 			case <-databaseRemoteMemory.kick:
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(databaseRemoteKickDelay):
+				timer := time.NewTimer(databaseRemoteKickWait(time.Now(), lastForced))
+			coalesce:
+				for {
+					select {
+					case <-ctx.Done():
+						timer.Stop()
+						return
+					case <-databaseRemoteMemory.kick: // folded into this run
+					case <-timer.C:
+						break coalesce
+					}
 				}
+				lastForced = time.Now()
 				run(true)
 			}
 		}

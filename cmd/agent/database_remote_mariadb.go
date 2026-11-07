@@ -147,39 +147,105 @@ func (m mariadbRemoteInstance) inspect(target dbremote.Target, ts dbremote.Targe
 	return facts
 }
 
-// mariadbLocalAccount reads the local account's credential and grants.
-func mariadbLocalAccount(user string) (dbremote.MariaDBCredential, dbremote.LocalGrants, error) {
-	name, err := dbremote.MariaDBAccountName(user, "203.0.113.1") // validates the user only
-	_ = name
-	if err != nil {
-		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, err
+// mariadbAccountState is one account as MariaDB holds it.
+type mariadbAccountState struct {
+	credential dbremote.MariaDBCredential
+	grants     dbremote.LocalGrants
+	requireSSL bool
+}
+
+// mariadbReadAccount reads one account: credential, connection limit, lock,
+// TLS requirement and grants. host is "localhost" or a remote copy's host.
+func mariadbReadAccount(user, host string) (mariadbAccountState, error) {
+	if _, err := dbremote.MariaDBAccountName(user, "203.0.113.1"); err != nil { // validates the user only
+		return mariadbAccountState{}, err
 	}
-	quoted := "'" + user + "'" // a checked identifier
+	if host != "localhost" && !dbremote.IsRemoteAccountHost(host) {
+		return mariadbAccountState{}, errors.New("not a host CelikPanel reads")
+	}
+	quoted, hostQuoted := "'"+user+"'", "'"+host+"'" // checked identifier and host
 	out, err := databaseRemoteMySQLQuery("SELECT plugin, authentication_string, max_user_connections, " +
-		"IF(JSON_VALUE(Priv, '$.account_locked') IN ('true', '1'), 1, 0) FROM mysql.global_priv " +
-		"JOIN mysql.user USING (User, Host) WHERE User = " + quoted + " AND Host = 'localhost';")
+		"IF(JSON_VALUE(Priv, '$.account_locked') IN ('true', '1'), 1, 0), ssl_type FROM mysql.global_priv " +
+		"JOIN mysql.user USING (User, Host) WHERE User = " + quoted + " AND Host = " + hostQuoted + ";")
 	if err != nil {
-		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, err
+		return mariadbAccountState{}, err
 	}
 	rows := pgRows(out)
 	if len(rows) != 1 {
-		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, errMariaDBUserMissing
+		return mariadbAccountState{}, errMariaDBUserMissing
 	}
 	fields := strings.Split(rows[0], "\t")
-	if len(fields) != 4 {
-		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, errors.New("MariaDB's answer about the account could not be read")
+	if len(fields) != 5 {
+		return mariadbAccountState{}, errors.New("MariaDB's answer about the account could not be read")
 	}
 	limit, err := strconv.Atoi(fields[2])
 	if err != nil {
-		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, errors.New("MariaDB's answer about the account's connection limit could not be read")
+		return mariadbAccountState{}, errors.New("MariaDB's answer about the account's connection limit could not be read")
 	}
-	credential := dbremote.MariaDBCredential{Plugin: fields[0], Auth: fields[1], MaxUserConnections: limit, Locked: fields[3] == "1"}
-	grantsOut, err := databaseRemoteMySQLQuery("SHOW GRANTS FOR " + quoted + "@'localhost';")
+	state := mariadbAccountState{
+		credential: dbremote.MariaDBCredential{Plugin: fields[0], Auth: fields[1], MaxUserConnections: limit, Locked: fields[3] == "1"},
+		requireSSL: fields[4] == "ANY",
+	}
+	grantsOut, err := databaseRemoteMySQLQuery("SHOW GRANTS FOR " + quoted + "@" + hostQuoted + ";")
 	if err != nil {
-		return dbremote.MariaDBCredential{}, dbremote.LocalGrants{}, err
+		return mariadbAccountState{}, err
 	}
-	grants, err := dbremote.ParseMariaDBGrants(pgRows(grantsOut), user, "localhost")
-	return credential, grants, err
+	state.grants, err = dbremote.ParseMariaDBGrants(pgRows(grantsOut), user, host)
+	return state, err
+}
+
+// mariadbLocalAccount reads the local account's credential and grants.
+func mariadbLocalAccount(user string) (dbremote.MariaDBCredential, dbremote.LocalGrants, error) {
+	state, err := mariadbReadAccount(user, "localhost")
+	return state.credential, state.grants, err
+}
+
+// mariadbCopyChanges answers the statements that bring an existing remote
+// copy to the wanted credential and grants, and nothing when it already is
+// (re-review). A copy that cannot be read, or that holds a server-wide
+// privilege it must never have, is reset as a whole.
+func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.MariaDBCredential, wanted map[string]string) ([]string, error) {
+	alter, err := dbremote.AlterMariaDBAccount(account.User, account.Host, credential)
+	if err != nil {
+		return nil, err
+	}
+	current, readErr := mariadbReadAccount(account.User, account.Host)
+	if readErr != nil || current.grants.Global {
+		revoke, _ := dbremote.RevokeAllMariaDB(account.User, account.Host)
+		batch := []string{alter, revoke}
+		for db, privileges := range wanted {
+			grant, err := dbremote.GrantMariaDB(privileges, db, account.User, account.Host)
+			if err != nil {
+				return nil, err
+			}
+			batch = append(batch, grant)
+		}
+		return batch, nil
+	}
+	var batch []string
+	if current.credential != credential || !current.requireSSL {
+		batch = append(batch, alter)
+	}
+	databases := map[string]bool{}
+	for db := range wanted {
+		databases[db] = true
+	}
+	for db := range current.grants.Databases {
+		databases[db] = true
+	}
+	names := make([]string, 0, len(databases))
+	for db := range databases {
+		names = append(names, db)
+	}
+	sort.Strings(names)
+	for _, db := range names {
+		change, err := dbremote.MariaDBPrivilegeChange(current.grants.Databases[db], wanted[db], db, account.User, account.Host)
+		if err != nil {
+			return nil, err
+		}
+		batch = append(batch, change...)
+	}
+	return batch, nil
 }
 
 var errMariaDBUserMissing = errors.New("the user does not exist on MariaDB")
@@ -337,6 +403,7 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		}
 		var statements []string
 		var granted []string
+		wanted := map[string]string{}
 		for _, db := range account.Databases {
 			privileges, ok := grants.Databases[db]
 			if !ok {
@@ -353,6 +420,7 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 			}
 			statements = append(statements, grant)
 			granted = append(granted, db)
+			wanted[db] = privileges
 		}
 		if len(granted) == 0 {
 			continue
@@ -362,24 +430,28 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 			refuseAll(transport.DatabaseRemoteFailed, "the accounts of "+account.User+" could not be read")
 			continue
 		}
-		var head string
+		var batch []string
 		if hosts[account.Host] {
 			if !made[account.ID()] {
 				refuseAll(transport.DatabaseRemoteAccountConflict, "the account "+account.ID()+" already exists on MariaDB and was not made by CelikPanel; CelikPanel leaves it as it is")
 				continue
 			}
-			head, err = dbremote.AlterMariaDBAccount(account.User, account.Host, credential)
+			// Only what differs (re-review): an unchanged copy gets no
+			// statement, so its sessions never see a REVOKE→GRANT window.
+			batch, err = mariadbCopyChanges(account, credential, wanted)
 		} else {
+			var head string
 			head, err = dbremote.CreateMariaDBAccount(account.User, account.Host, credential)
+			batch = append([]string{head}, statements...)
 		}
 		if err != nil {
 			refuseAll(transport.DatabaseRemoteFailed, err.Error())
 			continue
 		}
-		revoke, _ := dbremote.RevokeAllMariaDB(account.User, account.Host)
-		batch := append([]string{head, revoke}, statements...)
 		made[account.ID()] = true // from here on it may exist: it is CelikPanel's
-		if _, err := databaseRemoteMySQLQuery(strings.Join(batch, "\n")); err != nil {
+		if len(batch) == 0 {
+			// already right
+		} else if _, err := databaseRemoteMySQLQuery(strings.Join(batch, "\n")); err != nil {
 			// The engine's words may quote the statement (and so the hash):
 			// never forwarded.
 			refuseAll(transport.DatabaseRemoteFailed, "MariaDB did not accept the account "+account.ID())

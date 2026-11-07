@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -544,4 +545,66 @@ func TestDatabaseRemoteLimitIsAtomicAndPerUser(t *testing.T) {
 	if err != nil || len(targets) != 1 || len(targets[0].Rules) != 1 || targets[0].Rules[0].User != "a_other" {
 		t.Fatalf("desired = %+v, %v", targets, err)
 	}
+}
+
+// Re-review: a refused request starts nothing; kicks are coalesced.
+func TestDatabaseRemoteRefusedRequestStartsNoApply(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	dbrOffer(t, p, true)
+	// Customer A deletes customer B's database user: refused (not found).
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/database-users/7541", nil)
+	request = request.WithContext(context.WithValue(request.Context(), callerKey, dbrCaller(dbrCustomerA, roleCustomer)))
+	response := httptest.NewRecorder()
+	p.handleDeleteDatabaseV2User(response, request)
+	if response.Code == http.StatusOK {
+		t.Fatalf("another customer's user was deleted: %d", response.Code)
+	}
+	select {
+	case <-databaseRemoteMemory.kick:
+		t.Fatal("a refused request asked for an apply")
+	default:
+	}
+}
+
+func TestDatabaseRemoteKicksAreCoalesced(t *testing.T) {
+	p := newDatabaseRemotePanel(t)
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	dbrOffer(t, p, true)
+	if _, err := p.db.GetDB().Exec(`INSERT INTO database_remote_rules (database_id, user_id, address) VALUES (7530, 7540, '203.0.113.7/32')`); err != nil {
+		t.Fatal(err)
+	}
+	previousDelay, previousGap := databaseRemoteKickDelay, databaseRemoteForcedGap
+	databaseRemoteKickDelay, databaseRemoteForcedGap = 100*time.Millisecond, time.Hour
+	t.Cleanup(func() { databaseRemoteKickDelay, databaseRemoteForcedGap = previousDelay, previousGap })
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p.startDatabaseRemoteSync(ctx)
+	time.Sleep(50 * time.Millisecond) // the start-up apply
+	start := len(recorder.requestsCopy())
+	for i := 0; i < 20; i++ {
+		kickDatabaseRemoteSync()
+		time.Sleep(time.Millisecond)
+	}
+	time.Sleep(400 * time.Millisecond)
+	if got := len(recorder.requestsCopy()) - start; got != 1 {
+		t.Fatalf("%d applies for a burst of kicks, want 1", got)
+	}
+	// Within the gap a further kick waits.
+	kickDatabaseRemoteSync()
+	time.Sleep(300 * time.Millisecond)
+	if got := len(recorder.requestsCopy()) - start; got != 1 {
+		t.Fatalf("%d applies within the gap, want 1", got)
+	}
+	if wait := databaseRemoteKickWait(time.Now(), time.Now()); wait < 59*time.Minute {
+		t.Fatalf("wait inside the gap = %v", wait)
+	}
+}
+
+func (r *databaseRemoteRecorder) requestsCopy() []transport.DatabaseRemoteApplyRequest {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]transport.DatabaseRemoteApplyRequest(nil), r.requests...)
 }

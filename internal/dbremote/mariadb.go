@@ -396,3 +396,89 @@ func MariaDBJail(port int, unit, logPath string) (string, error) {
 // or this server. The panel's engine driver acts on such copies when it
 // deletes a user, revokes its access or changes its password.
 func IsRemoteAccountHost(host string) bool { return validMariaDBHost(host) }
+
+// mariadbPrivilegeSet reads a normalized privilege list as a set.
+func mariadbPrivilegeSet(text string) (map[string]bool, error) {
+	normalized, err := normalizeMariaDBPrivileges(text)
+	if err != nil {
+		return nil, err
+	}
+	set := map[string]bool{}
+	for _, p := range strings.Split(normalized, ", ") {
+		set[p] = true
+	}
+	return set, nil
+}
+
+// MariaDBPrivilegeChange answers the statements that bring a remote copy's
+// grant on one database from current to want ("" = none), adding before
+// taking away, so an unchanged grant gets no statement and a copy never
+// loses a privilege it keeps (re-review). The one exception is narrowing
+// ALL PRIVILEGES to a list, which MariaDB can only express as REVOKE ALL
+// then GRANT.
+func MariaDBPrivilegeChange(current, want, database, user, host string) ([]string, error) {
+	name, err := MariaDBAccountName(user, host)
+	if err != nil {
+		return nil, err
+	}
+	if err := validName(database); err != nil {
+		return nil, err
+	}
+	on := " ON " + mysqlIdent(database) + ".* "
+	switch {
+	case current == "" && want == "":
+		return nil, nil
+	case want == "":
+		return []string{"REVOKE ALL PRIVILEGES" + on + "FROM " + name + ";"}, nil
+	}
+	wantSet, err := mariadbPrivilegeSet(want)
+	if err != nil {
+		return nil, err
+	}
+	grant := func(privileges string) string { return "GRANT " + privileges + on + "TO " + name + ";" }
+	if current == "" {
+		normalized, _ := normalizeMariaDBPrivileges(want)
+		return []string{grant(normalized)}, nil
+	}
+	currentSet, err := mariadbPrivilegeSet(current)
+	if err != nil {
+		return nil, err
+	}
+	if len(currentSet) == len(wantSet) {
+		same := true
+		for p := range wantSet {
+			same = same && currentSet[p]
+		}
+		if same {
+			return nil, nil
+		}
+	}
+	switch {
+	case wantSet["ALL PRIVILEGES"]:
+		return []string{grant("ALL PRIVILEGES")}, nil
+	case currentSet["ALL PRIVILEGES"]:
+		normalized, _ := normalizeMariaDBPrivileges(want)
+		return []string{"REVOKE ALL PRIVILEGES" + on + "FROM " + name + ";", grant(normalized)}, nil
+	}
+	var add, extra []string
+	for p := range wantSet {
+		if !currentSet[p] {
+			add = append(add, p)
+		}
+	}
+	for p := range currentSet {
+		if !wantSet[p] {
+			extra = append(extra, p)
+		}
+	}
+	sort.Strings(add)
+	sort.Strings(extra)
+	var out []string
+	if len(add) > 0 {
+		out = append(out, grant(strings.Join(add, ", ")))
+	}
+	if len(extra) > 0 {
+		out = append(out, "REVOKE "+strings.Join(extra, ", ")+on+"FROM "+name+";")
+	}
+	return out, nil
+}
