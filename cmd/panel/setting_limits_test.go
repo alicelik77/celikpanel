@@ -151,3 +151,21 @@ func TestCronMinIntervalReadsTheSchedule(t *testing.T) {
 		t.Error("an unreadable schedule was read")
 	}
 }
+
+func TestCustomResellerKeepsItsOwnLimitsAndOverselling(t *testing.T) {
+	f := newRightsFixture(t)
+	body := `{"state":"custom","rights":{"all_permissions":true,"all_software":true,"permissions":[],"software":[]},` +
+		`"quantities":{"max_domains":10},"ceilings":{"php.memory_limit_mb":384},"overselling":"not_allowed","confirm":true}`
+	wantStatus(t, f.call(t, authzMatrixAdminID, http.MethodPut, "/api/v1/users/9702/rights", body), http.StatusOK, "")
+	read := f.call(t, authzMatrixAdminID, http.MethodGet, "/api/v1/rights/setting-limits?reseller_id=9702", "")
+	wantStatus(t, read, http.StatusOK, "")
+	if !strings.Contains(read.Body.String(), `"overselling":"not_allowed"`) || !strings.Contains(read.Body.String(), `"ceiling":384,"set_by":"reseller"`) {
+		t.Fatalf("reseller field = %s", read.Body.String())
+	}
+	// A reseller's own plan may not go above the reseller's own limit.
+	wantStatus(t, f.call(t, authzMatrixResellerID, http.MethodPost, "/api/v1/plans",
+		`{"name":"R","max_domains":1,"max_databases":1,"max_email_accounts":1,"disk_quota_mb":1,"bandwidth_quota_mb":0,"ceilings":{"php.memory_limit_mb":512}}`),
+		http.StatusConflict, errCodeSettingAboveLimit)
+	// Only the administrator reads another account's limits.
+	wantStatus(t, f.call(t, authzMatrixResellerID, http.MethodGet, "/api/v1/rights/setting-limits?reseller_id=9702", ""), http.StatusForbidden, errCodeAdminOnly)
+}

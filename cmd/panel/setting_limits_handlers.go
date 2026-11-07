@@ -33,6 +33,12 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 	db := p.db.GetDB()
 	switch r.Method {
 	case http.MethodGet:
+		// alpha.128: the administrator reads one reseller's field
+		// (?reseller_id=), with its overselling choice, for its Custom form.
+		if raw := r.URL.Query().Get("reseller_id"); raw != "" {
+			p.writeResellerSettingLimits(w, r, raw)
+			return
+		}
 		subID, scoped, handled := p.listingSubscription(w, r)
 		if handled {
 			return
@@ -137,4 +143,40 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 	default:
 		rejectRouteMethod(w, []string{http.MethodGet, http.MethodPut})
 	}
+}
+
+// writeResellerSettingLimits answers the administrator with a reseller's
+// limits (server ∩ the reseller's own level; set_by "reseller" marks its own
+// values) and the overselling choice it follows.
+func (p *Panel) writeResellerSettingLimits(w http.ResponseWriter, r *http.Request, raw string) {
+	c := currentCaller(r)
+	if !c.hasAccountRole(roleAdmin) {
+		writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "only the administrator reads another account's limits", "")
+		return
+	}
+	resellerID, ok := strictPositiveID(raw)
+	if !ok {
+		writeClientError(w, http.StatusBadRequest, "invalid reseller")
+		return
+	}
+	var role string
+	if err := p.db.GetDB().QueryRowContext(r.Context(), `SELECT role FROM users WHERE id = ?`, resellerID).Scan(&role); err != nil || role != roleReseller {
+		writeClientError(w, http.StatusNotFound, "reseller not found")
+		return
+	}
+	limits, err := resellerSettingLimits(r.Context(), p.db.GetDB(), resellerID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	overselling, err := resellerOverselling(r.Context(), p.db.GetDB(), resellerID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	list := make([]settingLimit, 0, len(settingKeyOrder))
+	for _, key := range settingKeyOrder {
+		list = append(list, limits[key])
+	}
+	writeRightsJSON(w, http.StatusOK, map[string]any{"scope": "reseller", "limits": list, "overselling": overselling})
 }

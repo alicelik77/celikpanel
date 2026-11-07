@@ -128,6 +128,10 @@ Agent RPCs (bound to the panel's build): `Agent.SitePHPSettingsV1` (read, many s
   default. "Not allowed" refuses an allocation (plan assignment, Custom numbers) that would hand
   out more than the pool still holds, or an unlimited one under a limited pool
   (`POOL_OVERSELLING_NOT_ALLOWED`). What was handed out before is kept.
+- **Custom sets:** the rights form of a Custom subscription edits its own ceilings (starting from
+  its plan's when it leaves one), overuse policy and notice levels; the form of a Custom reseller
+  edits its own ceilings and overselling choice (`GET /api/v1/rights/setting-limits?reseller_id=`,
+  administrator). Only what was touched is sent.
 
 ## 4. Database connections and scheduled tasks (G5)
 
@@ -161,9 +165,6 @@ applies when a password is set or changed. The generator always adds a digit. Re
 - A new site's pool is created with 5 processes; a lower plan ceiling applies at its first write.
 - Notices to the customer and reseller when a lowered ceiling clamps a site (G18).
 - G5 database connection limits: design in section 4, not wired.
-- A Custom reseller's own ceilings have no form yet (the API takes `ceilings` on the rights
-  change); the Custom subscription form edits its ceilings, policy and notice levels, and the
-  Custom reseller form its overselling choice.
 - The browser-side password check still uses the owner's rule; the server refusal names the level.
 - Limit hints from real use (G2, alpha.131).
 

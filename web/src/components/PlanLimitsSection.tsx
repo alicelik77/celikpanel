@@ -107,42 +107,51 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
     );
 }
 
-function decodeOwn(raw: unknown): Record<string, number> {
-    const body = decodeLimits(raw) as { limits: (GrantorLimit & { set_by?: string })[] };
-    const own: Record<string, number> = {};
-    for (const limit of body.limits) // A plan-bound subscription that becomes Custom starts from its plan's
-    // limits (the server copies them too), so both levels are its own here.
-    if ((limit.set_by === 'subscription' || limit.set_by === 'plan') && limit.ceiling !== null) own[limit.key] = limit.ceiling;
-    return own;
+function ownOf(kind: PlanKind) {
+    return (raw: unknown): { ceilings: Record<string, number>; overselling?: string } => {
+        const body = decodeLimits(raw) as { limits: (GrantorLimit & { set_by?: string })[]; overselling?: unknown };
+        const ceilings: Record<string, number> = {};
+        for (const limit of body.limits) {
+            // A plan-bound subscription that becomes Custom starts from its
+            // plan's limits (the server copies them too); a reseller's own
+            // level is marked "reseller" (its reseller plan's or its own).
+            const own = kind === 'customer' ? limit.set_by === 'subscription' || limit.set_by === 'plan' : limit.set_by === 'reseller';
+            if (own && limit.ceiling !== null) ceilings[limit.key] = limit.ceiling;
+        }
+        return { ceilings, overselling: typeof body.overselling === 'string' ? body.overselling : undefined };
+    };
 }
 
 /**
  * The limits of a Custom set (alpha.128): a Custom subscription's own
- * ceilings (read from its effective limits) or a Custom reseller's overselling
- * choice, edited like a plan's. `onChange` gets only what was touched, so an
+ * ceilings, overuse policy and notice levels, or a Custom reseller's own
+ * ceilings and overselling choice, edited like a plan's and read from the
+ * account's effective limits. `onChange` gets only what was touched, so an
  * untouched form sends nothing and keeps what is stored.
  */
-export function CustomLimitsSection({ kind, subscriptionId, idPrefix, onChange }: {
-    kind: PlanKind; subscriptionId: number; idPrefix: string;
+export function CustomLimitsSection({ kind, subscriptionId, resellerId, idPrefix, onChange }: {
+    kind: PlanKind; subscriptionId?: number; resellerId?: number; idPrefix: string;
     onChange: (extras: Record<string, unknown> | null) => void;
 }) {
-    const own = useRemote(kind === 'customer' && subscriptionId > 0 ? `/api/v1/rights/setting-limits?subscription_id=${subscriptionId}` : null, decodeOwn);
+    const url = kind === 'customer'
+        ? (subscriptionId ? `/api/v1/rights/setting-limits?subscription_id=${subscriptionId}` : null)
+        : (resellerId ? `/api/v1/rights/setting-limits?reseller_id=${resellerId}` : null);
+    const own = useRemote(url, ownOf(kind));
     const [edited, setEdited] = useState<EditedPlan | null>(null);
+    if (own.remote.state !== 'known') return null;
     const base: EditedPlan = { id: 0, name: '', numbers: { max_customers: 0, max_domains: 0, max_databases: 0, max_email_accounts: 0, disk_quota_mb: 0, traffic_quota_mb: 0 }, bandwidth: 0,
-        ceilings: kind === 'customer' && own.remote.state === 'known' ? own.remote.value : undefined };
-    if (kind === 'customer' && own.remote.state !== 'known') return null;
+        ceilings: own.remote.value.ceilings, overselling: own.remote.value.overselling };
     const plan = edited ?? base;
     return (
-        <PlanLimitsSection kind={kind} plan={plan} idPrefix={idPrefix} ceilingsOff={kind === 'reseller'} onPlan={(next) => {
+        <PlanLimitsSection kind={kind} plan={plan} idPrefix={idPrefix} onPlan={(next) => {
             setEdited(next);
-            const extras: Record<string, unknown> = {};
+            const extras: Record<string, unknown> = { ceilings: next.ceilings ?? {} };
             if (kind === 'customer') {
-                extras.ceilings = next.ceilings ?? {};
                 if (next.overuse_policy) extras.overuse_policy = next.overuse_policy;
                 if (next.notify_percent_disk) extras.notify_percent_disk = next.notify_percent_disk;
                 if (next.notify_percent_traffic) extras.notify_percent_traffic = next.notify_percent_traffic;
-            } else {
-                if (next.overselling) extras.overselling = next.overselling;
+            } else if (next.overselling) {
+                extras.overselling = next.overselling;
             }
             onChange(extras);
         }} />

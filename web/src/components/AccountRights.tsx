@@ -57,6 +57,8 @@ interface ChangeTarget {
     url: string;
     current: RightsView;
     numbers: Numbers;
+    /** alpha.128: the reseller whose Custom limits the form reads. */
+    resellerId?: number;
 }
 
 /**
@@ -172,7 +174,7 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
             )}
             {mode === 'custom' && (
                 <Suspense fallback={null}>
-                    <CustomLimitsSection kind={reseller ? 'reseller' : 'customer'} subscriptionId={target.current.subscription_id ?? 0} idPrefix={idPrefix} onChange={setExtras} />
+                    <CustomLimitsSection kind={reseller ? 'reseller' : 'customer'} subscriptionId={target.current.subscription_id} resellerId={target.resellerId} idPrefix={idPrefix} onChange={setExtras} />
                 </Suspense>
             )}
 
@@ -296,7 +298,7 @@ function ResellerRightsBlock({ userId, answer, grantor, onClose, onCreatePlan }:
             <RemoteGate remote={plans.remote} checking={t('rights.plansChecking')} failed={t('rights.plansUnknown')} onRetry={() => void plans.retry()} busy={plans.reading}>
                 {(list) => (
                     <RightsChangeForm
-                        target={{ kind: 'reseller', url: userRightsURL(userId), current: answer.rights, numbers }}
+                        target={{ kind: 'reseller', url: userRightsURL(userId), current: answer.rights, numbers, resellerId: userId }}
                         grantor={grantor}
                         plans={list.value.plans}
                         grantorIsReseller={false}
