@@ -501,7 +501,11 @@ func (p *Panel) handleRightsNotices(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case c.hasAccountRole(roleAdmin):
 	case c.hasAccountRole(roleReseller):
-		query += ` AND n.user_id = ? AND n.kind IN ('reseller_pool_80', 'reseller_pool_100')`
+		query += ` AND n.user_id = ? AND n.kind IN ('reseller_pool_80', 'reseller_pool_100', '` + noticeSiteLimitClamped + `')`
+		args = append(args, c.ID)
+	case c != nil && !c.isAdditionalUser():
+		// alpha.128: a customer reads its own notices of lowered site limits.
+		query += ` AND n.user_id = ? AND n.kind = '` + noticeSiteLimitClamped + `'`
 		args = append(args, c.ID)
 	default:
 		writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "administrator or reseller access required", "")
@@ -533,7 +537,10 @@ func (p *Panel) acknowledgeRightsNotice(w http.ResponseWriter, r *http.Request, 
 	switch {
 	case c.hasAccountRole(roleAdmin):
 	case c.hasAccountRole(roleReseller):
-		query += ` AND user_id = ? AND kind IN ('reseller_pool_80', 'reseller_pool_100')`
+		query += ` AND user_id = ? AND kind IN ('reseller_pool_80', 'reseller_pool_100', '` + noticeSiteLimitClamped + `')`
+		args = append(args, c.ID)
+	case c != nil && !c.isAdditionalUser():
+		query += ` AND user_id = ? AND kind = '` + noticeSiteLimitClamped + `'`
 		args = append(args, c.ID)
 	default:
 		writeCodedError(w, http.StatusForbidden, errCodeAdminOnly, "administrator or reseller access required", "")

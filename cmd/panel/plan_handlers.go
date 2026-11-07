@@ -568,6 +568,7 @@ func (p *Panel) handlePlanByID(w http.ResponseWriter, r *http.Request) {
 		// A lowered ceiling reaches the sites now, not at their next
 		// render: their files are written again in the background.
 		if len(lowered) > 0 {
+			p.storeClampNotices(r.Context(), preview.clamped, settingSetByPlan, pl.Name)
 			p.reapplyPlanSiteLimits(id)
 		}
 		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {

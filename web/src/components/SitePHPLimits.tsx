@@ -43,6 +43,7 @@ interface LimitField {
     source: 'site' | 'server' | 'plan' | 'nginx_file';
     owner_file?: string;
     server_above_ceiling?: boolean;
+    clamped?: boolean;
 }
 
 interface FreeField {
@@ -129,6 +130,9 @@ function LimitInput({ f, value, onChange, disabled, t }: { f: LimitField; value:
             </p>
             {invalid && <p className="mt-1 text-xs text-danger-fg">{value !== null && value < f.min ? t('limits.php.belowMin', { min: unitText(t, f.unit, f.min) }) : t('limits.php.aboveLimit', { limit: unitText(t, f.unit, top) })}</p>}
             {f.fixed && <p className="mt-1 text-xs text-fg-muted">{t('limits.php.fixed')}</p>}
+            {f.clamped && f.own !== null && f.ceiling !== null && (
+                <p className="mt-1 text-xs text-fg" data-limit-clamped={f.field}>{t('limits.php.clamped', { value: unitText(t, f.unit, f.own), limit: unitText(t, f.unit, f.ceiling), who: whoText(t, f.set_by, f.set_by_name) })}</p>
+            )}
             {f.server_above_ceiling && f.server !== null && <p className="mt-1 text-xs text-fg-muted">{t('limits.php.serverAbove', { server: unitText(t, f.unit, f.server) })}</p>}
             {f.owner_file && <p className="mt-1 text-xs text-fg-muted">{t('limits.php.ownerFile', { file: f.owner_file })}</p>}
             {!isProcesses && value !== null && !disabled && (

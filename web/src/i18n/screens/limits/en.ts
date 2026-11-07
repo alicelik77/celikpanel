@@ -129,6 +129,13 @@ export const enLimitsScreens = {
     'dashboard.audit.action.site.php_settings.refused': 'tried to change the PHP settings of {target}; the web server refused and the previous values were put back',
     'dashboard.audit.action.site.php_settings': 'changed the PHP settings of {target}',
 
+    'limits.notice.title': 'A lowered limit brought a site’s PHP setting down',
+    'limits.notice.line': '{domain}: {key} was {value}; the new limit is {limit} ({who}). The site keeps running, at {limit}.',
+    'limits.notice.todoCustomer': 'Next step: if the site needs more, ask {who} to raise the limit; otherwise nothing is needed.',
+    'limits.notice.todoProvider': 'Next step: nothing, unless the customer needs more; then raise the limit of the plan or the account.',
+    'limits.notice.open': 'Open the PHP settings',
+    'limits.php.clamped': 'This site chose {value}, above the limit {limit} ({who}); PHP runs at {limit}. Save a value within the limit, or ask {who} to raise it.',
+
     'rights.perm.php_settings': 'PHP settings of a site',
     'rights.perm.php_version': 'PHP version of a site',
     'rights.perm.nginx_directives': 'Additional nginx directives',

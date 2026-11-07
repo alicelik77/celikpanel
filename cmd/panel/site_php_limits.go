@@ -110,6 +110,9 @@ type phpLimitField struct {
 	// (the administrator's php.ini); sites without a value of their own get
 	// it, customers may choose up to the ceiling.
 	ServerAboveCeiling bool `json:"server_above_ceiling,omitempty"`
+	// Clamped (alpha.128): the site's own value is above its limit (the
+	// limit was lowered after it was chosen); PHP runs at the limit.
+	Clamped bool `json:"clamped,omitempty"`
 }
 
 // phpFreeField is one free choice of the screen.
@@ -221,6 +224,7 @@ func buildPHPLimitsView(site siteFileSite, limits settingLimits, adminWorkspace 
 			// The pool always carries its own count; the default is the
 			// pool's default within the ceiling.
 			field.Own = limitIntPtr(src.own)
+			field.Clamped = limit.Ceiling != nil && src.own > *limit.Ceiling
 			def := limit.clamp(5)
 			field.Default = &def
 			field.Effective = limitIntPtr(limit.clamp(src.own))
@@ -241,6 +245,7 @@ func buildPHPLimitsView(site siteFileSite, limits settingLimits, adminWorkspace 
 		field.Default = limitIntPtr(def)
 		if src.own > 0 {
 			field.Own = limitIntPtr(src.own)
+			field.Clamped = limit.Ceiling != nil && src.own > *limit.Ceiling
 			field.Effective, field.Source = limitIntPtr(limit.clamp(src.own)), "site"
 		} else {
 			field.Effective, field.Source = limitIntPtr(def), source

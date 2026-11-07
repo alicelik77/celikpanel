@@ -123,6 +123,13 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'dashboard.audit.action.site.php_settings.refused': '{target} PHP ayarlarını değiştirmeyi denedi; web sunucusu reddetti, önceki değerler geri kondu',
     'dashboard.audit.action.site.php_settings': '{target} PHP ayarlarını değiştirdi',
 
+    'limits.notice.title': 'Düşürülen bir sınır bir sitenin PHP ayarını indirdi',
+    'limits.notice.line': '{domain}: {key} {value} idi; yeni sınır {limit} ({who}). Site {limit} ile çalışmaya devam ediyor.',
+    'limits.notice.todoCustomer': 'Sonraki adım: site daha fazlasına ihtiyaç duyuyorsa sınırı yükseltmesini isteyin: {who}; yoksa bir şey gerekmez.',
+    'limits.notice.todoProvider': 'Sonraki adım: müşteri daha fazlasına ihtiyaç duymadıkça bir şey gerekmez; duyarsa planın ya da hesabın sınırını yükseltin.',
+    'limits.notice.open': 'PHP ayarlarını aç',
+    'limits.php.clamped': 'Bu site {value} seçmişti; bu, {limit} sınırının ({who}) üstünde ve PHP {limit} ile çalışıyor. Sınır içinde bir değer kaydedin ya da sınırı yükseltmesini isteyin: {who}.',
+
     'rights.perm.php_settings': 'Sitenin PHP ayarları',
     'rights.perm.php_version': 'Sitenin PHP sürümü',
     'rights.perm.nginx_directives': 'Ek nginx yönergeleri',

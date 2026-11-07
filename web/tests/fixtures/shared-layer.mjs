@@ -36,6 +36,7 @@ const alpha128LazyParts = {
   './SitePHPLimits': ['SitePHPLimits'],
   './PlanLimitsSection': ['PlanLimitsSection', 'CustomLimitsSection'],
   './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
+  './SiteLimitNotices': ['SiteLimitNotices'],
 };
 
 export function compileSource(path, resolve) {

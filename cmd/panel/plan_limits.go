@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -118,6 +119,51 @@ func loweredCeilings(before, after map[string]int) []string {
 }
 
 // planPHPSites lists the PHP sites of the subscriptions bound to a plan.
+// clampedSite is one site value above a lowered limit.
+type clampedSite struct {
+	DomainID int    `json:"domain_id"`
+	Domain   string `json:"domain"`
+	Key      string `json:"key"`
+	Value    int    `json:"value"`
+	Limit    int    `json:"limit"`
+	// SetBy and SetByName name the level that lowered it.
+	SetBy     string `json:"set_by"`
+	SetByName string `json:"set_by_name,omitempty"`
+}
+
+// noticeSiteLimitClamped (alpha.128): a lowered limit brought a site's own
+// value down. One notice per person and site value (customer, its reseller,
+// administrators), kept until it is marked seen; a second lowering of the
+// same value while it is open adds nothing (once).
+const noticeSiteLimitClamped = "site_limit_clamped"
+
+// storeClampNotices writes the notices of the sites a plan edit clamped.
+func (p *Panel) storeClampNotices(ctx context.Context, clamped []clampedSite, setBy, setByName string) {
+	db := p.db.GetDB()
+	for _, site := range clamped {
+		site.SetBy, site.SetByName = setBy, setByName
+		detail, err := json.Marshal(site)
+		if err != nil {
+			continue
+		}
+		subID, err := p.domainSubscriptionID(ctx, site.DomainID)
+		if err != nil {
+			continue
+		}
+		recipients, err := usageRecipientsFor(ctx, db, subID)
+		if err != nil {
+			log.Printf("site limit notice %s: %v", site.Domain, err)
+			continue
+		}
+		for _, recipient := range recipients {
+			if _, err := db.ExecContext(ctx, `INSERT INTO rights_notices (kind, user_id, subject, detail) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+				noticeSiteLimitClamped, recipient.UserID, site.Domain+" "+site.Key, string(detail)); err != nil {
+				log.Printf("site limit notice %s for user %d: %v", site.Domain, recipient.UserID, err)
+			}
+		}
+	}
+}
+
 func (p *Panel) planPHPSites(ctx context.Context, planID int) ([]siteFileSite, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
 		SELECT s.id, d.id, d.name, COALESCE(s.php_version, '')
@@ -174,6 +220,7 @@ func (p *Panel) previewLoweredCeilings(ctx context.Context, preview *rightsPrevi
 		return nil
 	}
 	above := []string{}
+	preview.clamped = nil
 	for index, read := range response.Sites {
 		values := map[string]int{settingPHPMemoryMB: read.Own.MemoryMB, settingPHPTimeS: read.Own.TimeS,
 			settingPHPUploadMB: read.Own.UploadMB, settingPHPInputVars: read.Own.InputVars, settingPHPProcesses: read.Processes}
@@ -185,6 +232,8 @@ func (p *Panel) previewLoweredCeilings(ctx context.Context, preview *rightsPrevi
 			}
 			if limit := after[key]; value > limit {
 				parts = append(parts, fmt.Sprintf("%s %d -> %d", key, value, limit))
+				preview.clamped = append(preview.clamped, clampedSite{DomainID: sites[index].DomainID, Domain: sites[index].Domain,
+					Key: key, Value: value, Limit: limit})
 			}
 		}
 		if len(parts) > 0 {

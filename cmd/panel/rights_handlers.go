@@ -109,6 +109,8 @@ type rightsPreview struct {
 	SitesAboveCount int      `json:"sites_above_count,omitempty"`
 	SitesUnread     bool     `json:"sites_unread,omitempty"`
 	Message         string   `json:"message"`
+	// clamped (alpha.128): the sites above a lowered limit, for their notices.
+	clamped         []clampedSite
 	planned         *plannedRights
 	resellerPlanned *plannedReseller
 }

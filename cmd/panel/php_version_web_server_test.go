@@ -259,3 +259,37 @@ func TestSitePHPSettingsPutThePoolBackWhenNginxRefuses(t *testing.T) {
 		t.Fatalf("the pool was not written back: %+v", agent.poolRequests)
 	}
 }
+
+func TestLoweredLimitNoticesTheSitesAboveItOnce(t *testing.T) {
+	panel, domainID, agent := phpLimitsFixture(t)
+	agent.own = transport.SitePHPSettings{MemoryMB: 256}
+	ctx := context.Background()
+	db := panel.db.GetDB()
+	var planID, subID, ownerID int
+	if err := db.QueryRow(`SELECT s.plan_id, s.id, s.owner_id FROM subscriptions s JOIN domains d ON d.subscription_id = s.id WHERE d.id = ?`, domainID).Scan(&planID, &subID, &ownerID); err != nil {
+		t.Fatal(err)
+	}
+	preview := rightsPreview{}
+	if err := panel.previewLoweredCeilings(ctx, &preview, planID, []string{settingPHPMemoryMB}, map[string]int{settingPHPMemoryMB: 128}); err != nil {
+		t.Fatal(err)
+	}
+	if preview.SitesAboveCount != 1 || len(preview.clamped) != 1 || preview.clamped[0].Value != 256 || preview.clamped[0].Limit != 128 {
+		t.Fatalf("preview %+v clamped %+v", preview, preview.clamped)
+	}
+	panel.storeClampNotices(ctx, preview.clamped, settingSetByPlan, "Small")
+	panel.storeClampNotices(ctx, preview.clamped, settingSetByPlan, "Small")
+	var rows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM rights_notices WHERE kind = ? AND acknowledged_at IS NULL`, noticeSiteLimitClamped).Scan(&rows); err != nil || rows == 0 {
+		t.Fatalf("notices %d %v", rows, err)
+	}
+	var perPerson int
+	if err := db.QueryRow(`SELECT MAX(n) FROM (SELECT COUNT(*) AS n FROM rights_notices WHERE kind = ? GROUP BY user_id)`, noticeSiteLimitClamped).Scan(&perPerson); err != nil || perPerson != 1 {
+		t.Fatalf("a person got the notice %d times: %v", perPerson, err)
+	}
+	// The site screen says the value is clamped where it is shown.
+	agent.own = transport.SitePHPSettings{MemoryMB: 512}
+	read := callPHPLimits(panel, domainID, http.MethodGet, "")
+	if !strings.Contains(read.Body.String(), `"clamped":true`) {
+		t.Fatalf("view does not mark the clamped value: %s", read.Body.String())
+	}
+}

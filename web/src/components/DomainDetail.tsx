@@ -254,7 +254,8 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // ?tab=config opens the site's Configuration file (alpha.126: from the
     // plan-limit card's "Open <site>"); it is a part of the hosting tab.
     // ?tab=config sitenin Yapılandırma dosyasını açar.
-    const hostingPart = requestedTab === 'ssl' || requestedTab === 'config' ? requestedTab : null;
+    // alpha.128: ?tab=php opens the site's PHP settings (a lowered limit's notice).
+    const hostingPart = requestedTab === 'ssl' || requestedTab === 'config' || requestedTab === 'php' ? requestedTab : null;
     const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : hostingPart ? 'hosting' : 'overview');
     const [activeSub, setActiveSub] = useState<Record<string, string>>(hostingPart ? { hosting: hostingPart } : {});
     // The guide's "?" opens the chapter of the tab on screen (alpha.119).
@@ -272,7 +273,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         if (requestedTab === 'dns') setActiveTab('dns');
         // The Dashboard's mail card opens the mailboxes of a site directly.
         if (requestedTab === 'mail') setActiveTab('mail');
-        if (requestedTab === 'ssl' || requestedTab === 'config') {
+        if (requestedTab === 'ssl' || requestedTab === 'config' || requestedTab === 'php') {
             setActiveTab('hosting');
             setActiveSub((current) => ({ ...current, hosting: requestedTab }));
         }
