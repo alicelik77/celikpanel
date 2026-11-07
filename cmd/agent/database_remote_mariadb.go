@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,13 +52,16 @@ var databaseRemoteValidateMariaDBOption = func(path string, content []byte) erro
 		dnsFileSnapshot{Path: path, Exists: false, Mode: 0o644, OwnerKnown: true}, content)
 }
 
-// databaseRemoteFail2ban reloads Fail2ban and says whether it runs.
+// databaseRemoteFail2ban reloads Fail2ban and says whether it, and one of
+// its jails, runs.
 var databaseRemoteFail2ban = struct {
-	active func() bool
-	reload func() error
+	active     func() bool
+	jailActive func(name string) bool
+	reload     func() error
 }{
-	active: func() bool { return false },
-	reload: func() error { return errors.New("Fail2ban is not reachable on this platform") },
+	active:     func() bool { return false },
+	jailActive: func(string) bool { return false },
+	reload:     func() error { return errors.New("Fail2ban is not reachable on this platform") },
 }
 
 const (
@@ -72,23 +76,28 @@ type mariadbRemoteSettings struct {
 	skipNetworking bool
 	haveSSL        bool
 	port           int
+	logError       string
+	logWarnings    int
+	dataDir        string
 }
 
 func (mariadbRemoteInstance) read() (mariadbRemoteSettings, error) {
-	out, err := databaseRemoteMySQLQuery("SELECT @@bind_address, @@skip_networking, @@have_ssl, @@port;")
+	out, err := databaseRemoteMySQLQuery("SELECT @@bind_address, @@skip_networking, @@have_ssl, @@port, @@log_error, @@log_warnings, @@datadir;")
 	if err != nil {
 		return mariadbRemoteSettings{}, err
 	}
 	fields := strings.Split(strings.TrimSpace(out), "\t")
-	if len(fields) != 4 {
-		return mariadbRemoteSettings{}, fmt.Errorf("MariaDB answered %d values, CelikPanel asked for 4", len(fields))
+	if len(fields) != 7 {
+		return mariadbRemoteSettings{}, fmt.Errorf("MariaDB answered %d values, CelikPanel asked for 7", len(fields))
 	}
 	port, _ := strconv.Atoi(fields[3])
 	bind := fields[0]
 	if bind == "NULL" {
 		bind = ""
 	}
-	return mariadbRemoteSettings{bind: bind, skipNetworking: fields[1] == "1", haveSSL: fields[2] == "YES", port: port}, nil
+	warnings, _ := strconv.Atoi(fields[5])
+	return mariadbRemoteSettings{bind: bind, skipNetworking: fields[1] == "1", haveSSL: fields[2] == "YES", port: port,
+		logError: fields[4], logWarnings: warnings, dataDir: fields[6]}, nil
 }
 
 // mariadbBindIsLocal: bind-address names this server only. MariaDB without
@@ -209,10 +218,77 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		problem(transport.DatabaseRemoteFailed, fmt.Sprintf("MariaDB runs on port %d, the panel's record says %d; nothing was changed", s.port, target.Port))
 		return result
 	}
+	wantOpen := len(target.Rules) > 0
 
-	// 1. Accounts: the desired ones from the rules, each checked against
+	// 1. The option file (listen address, TLS).
+	path, pathErr := mariadbOptionPath()
+	if pathErr != nil && (wantOpen || ts.Listen) {
+		problem(transport.DatabaseRemoteFailed, pathErr.Error())
+	}
+	certPath, keyPath := mariadbCertDir+"/server.crt", mariadbCertDir+"/server.key"
+	if pathErr == nil {
+		current, readErr := databaseRemoteFiles.read(path)
+		exists := readErr == nil
+		own := exists && dbremote.IsOwnMariaDBOptionFile(string(current), certPath, keyPath)
+		switch {
+		case exists && !own:
+			problem(transport.DatabaseRemoteOwnerFile, path+" was changed outside CelikPanel; CelikPanel leaves it as it is")
+		case wantOpen:
+			var content string
+			if s.haveSSL && !(own && strings.Contains(string(current), "ssl_cert")) {
+				content = dbremote.MariaDBOptionFile("", "")
+			} else {
+				cert, key, err := ensureDatabaseRemoteCertificate("mariadb", "mysql", hostName)
+				if err != nil {
+					problem(transport.DatabaseRemoteTLSMissing, err.Error())
+					content = dbremote.MariaDBOptionFile("", "")
+				} else {
+					content = dbremote.MariaDBOptionFile(cert, key)
+					ts.TLS = true
+				}
+			}
+			if !exists || string(current) != content {
+				if err := databaseRemoteValidateMariaDBOption(path, []byte(content)); err != nil {
+					problem(transport.DatabaseRemoteFailed, "MariaDB does not accept CelikPanel's option file: "+boundedText(err.Error(), 200))
+				} else if err := databaseRemoteFiles.write(path, []byte(content)); err != nil {
+					problem(transport.DatabaseRemoteFailed, "the option file could not be written: "+err.Error())
+				} else {
+					ts.Listen, ts.ListenPending = true, false
+				}
+			} else {
+				ts.Listen = true
+			}
+		case exists && own:
+			if err := databaseRemoteFiles.remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				problem(transport.DatabaseRemoteFailed, "the option file could not be removed: "+err.Error())
+			} else {
+				ts.Listen, ts.TLS = false, false
+				ts.ListenPending = facts.listenRemote
+			}
+		default:
+			if ts.Listen {
+				ts.Listen = false
+				ts.ListenPending = facts.listenRemote
+			}
+		}
+	}
+	if ts.ListenPending && !facts.listenRemote {
+		ts.ListenPending = false
+	}
+
+	// 2. Slowing wrong passwords down (review M3): the jail must be running
+	// before any copy exists, and TLS must run before a REQUIRE SSL copy is
+	// of any use. Until both hold, the rules wait and no copy is made.
+	m.applyJail(target, wantOpen, s, ts, &result)
+	ready := s.haveSSL && result.SlowDown == "fail2ban"
+	accountTarget := dbremote.Target{Engine: target.Engine, Port: target.Port}
+	if ready {
+		accountTarget.Rules = target.Rules
+	}
+
+	// 3. Accounts: the desired ones from the rules, each checked against
 	// the local account.
-	desired, err := dbremote.MariaDBAccounts(target)
+	desired, err := dbremote.MariaDBAccounts(accountTarget)
 	if err != nil {
 		result.State = transport.DatabaseRemoteStateFailed
 		problem(transport.DatabaseRemoteFailed, err.Error())
@@ -316,7 +392,7 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 			}
 		}
 	}
-	// Accounts CelikPanel made that no rule needs any more.
+	// Accounts CelikPanel made that no rule needs any more (or that wait).
 	for id := range made {
 		if keep[id] {
 			continue
@@ -338,63 +414,6 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 	sort.Strings(ts.Accounts)
 	result.Active = toTransportRules(active)
 
-	// 2. The option file (listen address, TLS) and 3. the jail.
-	path, pathErr := mariadbOptionPath()
-	if pathErr != nil && (len(active) > 0 || ts.Listen) {
-		problem(transport.DatabaseRemoteFailed, pathErr.Error())
-	}
-	certPath, keyPath := mariadbCertDir+"/server.crt", mariadbCertDir+"/server.key"
-	if pathErr == nil {
-		current, readErr := databaseRemoteFiles.read(path)
-		exists := readErr == nil
-		own := exists && dbremote.IsOwnMariaDBOptionFile(string(current), certPath, keyPath)
-		switch {
-		case exists && !own:
-			problem(transport.DatabaseRemoteOwnerFile, path+" was changed outside CelikPanel; CelikPanel leaves it as it is")
-		case len(active) > 0:
-			var content string
-			if s.haveSSL && !(own && strings.Contains(string(current), "ssl_cert")) {
-				content = dbremote.MariaDBOptionFile("", "")
-			} else {
-				cert, key, err := ensureDatabaseRemoteCertificate("mariadb", "mysql", hostName)
-				if err != nil {
-					problem(transport.DatabaseRemoteTLSMissing, err.Error())
-					content = dbremote.MariaDBOptionFile("", "")
-				} else {
-					content = dbremote.MariaDBOptionFile(cert, key)
-					ts.TLS = true
-				}
-			}
-			if !exists || string(current) != content {
-				if err := databaseRemoteValidateMariaDBOption(path, []byte(content)); err != nil {
-					problem(transport.DatabaseRemoteFailed, "MariaDB does not accept CelikPanel's option file: "+boundedText(err.Error(), 200))
-				} else if err := databaseRemoteFiles.write(path, []byte(content)); err != nil {
-					problem(transport.DatabaseRemoteFailed, "the option file could not be written: "+err.Error())
-				} else {
-					ts.Listen, ts.ListenPending = true, false
-				}
-			} else {
-				ts.Listen = true
-			}
-		case exists && own:
-			if err := databaseRemoteFiles.remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				problem(transport.DatabaseRemoteFailed, "the option file could not be removed: "+err.Error())
-			} else {
-				ts.Listen, ts.TLS = false, false
-				ts.ListenPending = facts.listenRemote
-			}
-		default:
-			if ts.Listen {
-				ts.Listen = false
-				ts.ListenPending = facts.listenRemote
-			}
-		}
-	}
-	if ts.ListenPending && !facts.listenRemote {
-		ts.ListenPending = false
-	}
-	m.applyJail(target, len(active) > 0, ts, &result)
-
 	// The answer.
 	result.ListenRemote = facts.listenRemote
 	switch {
@@ -404,63 +423,113 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		result.TLS = "pending_restart"
 	}
 	switch {
-	case len(active) == 0 && ts.ListenPending:
+	case !wantOpen && ts.ListenPending:
 		result.State = transport.DatabaseRemoteStateClosing
 		problem(transport.DatabaseRemoteRestartNeeded, "MariaDB still listens beyond this server until it restarts; the port stays closed by the address filter meanwhile")
-	case len(active) == 0:
+	case !wantOpen:
 		result.State = transport.DatabaseRemoteStateOff
-	case ts.Listen && facts.listenRemote && s.haveSSL:
-		result.State = transport.DatabaseRemoteStateOpen
-	case ts.Listen:
+	case ts.Listen && (!facts.listenRemote || !s.haveSSL):
 		result.State = transport.DatabaseRemoteStateWaitRestart
 		problem(transport.DatabaseRemoteRestartNeeded, "MariaDB reads its listen address and TLS settings only when it starts")
+	case len(active) > 0 && ts.Listen:
+		result.State = transport.DatabaseRemoteStateOpen
 	default:
-		result.State = transport.DatabaseRemoteStateFailed
+		result.State = transport.DatabaseRemoteStateWaiting
 	}
 	return result
 }
 
-// applyJail writes or removes the Fail2ban jail.
-func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, ts *dbremote.TargetState, result *transport.DatabaseRemoteTargetResult) {
-	jail, err := dbremote.MariaDBJail(target.Port, mariadbRemoteUnit)
+// mariadbJailLog is the error log file the jail reads, "" for the journal.
+func mariadbJailLog(s mariadbRemoteSettings) string {
+	logError := strings.TrimSpace(s.logError)
+	switch {
+	case logError == "" || logError == "stderr":
+		return ""
+	case strings.HasPrefix(logError, "/"):
+		return logError
+	}
+	return filepath.Join(s.dataDir, logError)
+}
+
+// applyJail writes or removes CelikPanel's Fail2ban filter and jail and says
+// whether the jail runs (result.SlowDown "fail2ban"), else why not.
+func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mariadbRemoteSettings, ts *dbremote.TargetState, result *transport.DatabaseRemoteTargetResult) {
+	noSlowDown := func(detail string) {
+		if want {
+			result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteNoSlowDown, Detail: detail})
+		}
+	}
+	jail, err := dbremote.MariaDBJail(target.Port, mariadbRemoteUnit, mariadbJailLog(s))
 	if err != nil {
+		noSlowDown("MariaDB's error log (" + s.logError + ") is at a place the jail cannot read; set log_error to a file under /var/log or remove it so MariaDB logs to the journal")
 		return
 	}
-	current, readErr := databaseRemoteFiles.read(dbremote.MariaDBJailPath)
-	exists := readErr == nil
-	own := exists && string(current) == jail
-	installed := databaseRemoteFiles.isDir("/etc/fail2ban/jail.d")
-	switch {
-	case want && exists && !own:
-		result.SlowDown = "fail2ban" // the owner's own version of the jail
-	case want && installed && databaseRemoteFail2ban.active():
-		if !exists {
-			if err := databaseRemoteFiles.write(dbremote.MariaDBJailPath, []byte(jail)); err != nil {
-				break
-			}
-			if err := databaseRemoteFail2ban.reload(); err != nil {
-				_ = databaseRemoteFiles.remove(dbremote.MariaDBJailPath)
-				_ = databaseRemoteFail2ban.reload()
-				result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteNoSlowDown,
-					Detail: "Fail2ban did not accept the MariaDB jail, so it was taken back"})
-				return
-			}
+	filter := dbremote.MariaDBFilter()
+	currentJail, jailErr := databaseRemoteFiles.read(dbremote.MariaDBJailPath)
+	currentFilter, filterErr := databaseRemoteFiles.read(dbremote.MariaDBFilterPath)
+	jailExists, filterExists := jailErr == nil, filterErr == nil
+	jailOwn := jailExists && string(currentJail) == jail
+	filterOwn := filterExists && string(currentFilter) == filter
+	installed := databaseRemoteFiles.isDir("/etc/fail2ban/jail.d") && databaseRemoteFiles.isDir("/etc/fail2ban/filter.d")
+	if !want {
+		changed := false
+		if jailOwn {
+			changed = databaseRemoteFiles.remove(dbremote.MariaDBJailPath) == nil
 		}
-		ts.Jail = true
-		result.SlowDown = "fail2ban"
-	case !want && own:
-		if err := databaseRemoteFiles.remove(dbremote.MariaDBJailPath); err == nil {
+		if filterOwn {
+			changed = databaseRemoteFiles.remove(dbremote.MariaDBFilterPath) == nil || changed
+		}
+		if changed {
 			ts.Jail = false
 			_ = databaseRemoteFail2ban.reload()
 		}
+		return
 	}
-	if want && result.SlowDown == "none" {
-		detail := "Fail2ban is not installed, so wrong MariaDB passwords are not slowed down"
-		if installed {
-			detail = "Fail2ban is installed but does not run, so wrong MariaDB passwords are not slowed down"
+	switch {
+	case !installed:
+		noSlowDown("Fail2ban is not installed; install it in Components, then apply again")
+		return
+	case !databaseRemoteFail2ban.active():
+		noSlowDown("Fail2ban is installed but does not run; start it in Components, then apply again")
+		return
+	case s.logWarnings < 2:
+		noSlowDown(fmt.Sprintf("MariaDB does not log refused sign-ins (log_warnings = %d); set log_warnings = 2, MariaDB's default, and restart MariaDB", s.logWarnings))
+		return
+	case (jailExists && !jailOwn) || (filterExists && !filterOwn):
+		// The owner's version: used as it is, if it runs.
+	default:
+		wrote := false
+		if !filterExists {
+			if err := databaseRemoteFiles.write(dbremote.MariaDBFilterPath, []byte(filter)); err != nil {
+				noSlowDown("the Fail2ban filter could not be written: " + err.Error())
+				return
+			}
+			wrote = true
 		}
-		result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteNoSlowDown, Detail: detail})
+		if !jailExists {
+			if err := databaseRemoteFiles.write(dbremote.MariaDBJailPath, []byte(jail)); err != nil {
+				noSlowDown("the Fail2ban jail could not be written: " + err.Error())
+				return
+			}
+			wrote = true
+		}
+		ts.Jail = true
+		if wrote {
+			if err := databaseRemoteFail2ban.reload(); err != nil {
+				_ = databaseRemoteFiles.remove(dbremote.MariaDBJailPath)
+				_ = databaseRemoteFiles.remove(dbremote.MariaDBFilterPath)
+				_ = databaseRemoteFail2ban.reload()
+				ts.Jail = false
+				noSlowDown("Fail2ban did not accept the MariaDB jail, so it was taken back; its log says why")
+				return
+			}
+		}
 	}
+	if !databaseRemoteFail2ban.jailActive(dbremote.MariaDBJailName) {
+		noSlowDown("Fail2ban does not run the " + dbremote.MariaDBJailName + " jail; its log says why (on a journal-only system Fail2ban needs its systemd backend)")
+		return
+	}
+	result.SlowDown = "fail2ban"
 }
 
 // databaseRemoteFollowMariaDBUser keeps CelikPanel's remote copies of one

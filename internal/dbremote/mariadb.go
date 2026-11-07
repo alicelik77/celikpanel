@@ -329,29 +329,63 @@ func IsOwnMariaDBOptionFile(content, cert, key string) bool {
 	return content == MariaDBOptionFile("", "") || (cert != "" && content == MariaDBOptionFile(cert, key))
 }
 
-// Fail2ban. The jail file uses the mysqld-auth filter that Fail2ban ships and
-// reads MariaDB's journal. jail.local and *.local files are read after it, so
-// an owner's own [mysqld-auth] section wins.
+// Fail2ban (review M3). CelikPanel ships its own filter and jail, named
+// celikpanel-mariadb-auth, so an owner's [mysqld-auth] is never changed, and
+// the filter does not depend on the syslog prefix of the distribution's
+// mysqld-auth filter (the journal names the program mariadbd, not mysqld).
+// The jail reads MariaDB's journal, or its error log file when log_error
+// names one. Remote access waits until `fail2ban-client status
+// celikpanel-mariadb-auth` answers, so wrong passwords are slowed down before
+// anybody can try one from outside.
 const (
-	MariaDBJailPath = "/etc/fail2ban/jail.d/celikpanel-database-remote.conf"
-	jailMaxRetry    = 5
-	jailFindTime    = "10m"
-	jailBanTime     = "1h"
+	MariaDBJailName   = "celikpanel-mariadb-auth"
+	MariaDBJailPath   = "/etc/fail2ban/jail.d/celikpanel-database-remote.conf"
+	MariaDBFilterPath = "/etc/fail2ban/filter.d/" + MariaDBJailName + ".conf"
+	jailMaxRetry      = 5
+	jailFindTime      = "10m"
+	jailBanTime       = "1h"
 )
 
-// MariaDBJail renders the jail for MariaDB's port and unit.
-func MariaDBJail(port int, unit string) (string, error) {
-	if port < 1 || port > 65535 || !regexp.MustCompile(`^[a-z0-9@._-]{1,64}\.service$`).MatchString(unit) {
+// MariaDBFailRegex is the filter's failregex: MariaDB's (log_warnings >= 2)
+// line for a refused sign-in, wherever the line's prefix comes from (journal,
+// file, MariaDB 10.x or 11.x). <HOST> is Fail2ban's address placeholder.
+const MariaDBFailRegex = `Access denied for user '[^']*'@'<HOST>' \(using password: (?:YES|NO)\)\s*$`
+
+// MariaDBFilter renders the filter file.
+func MariaDBFilter() string {
+	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
+		"# A refused MariaDB sign-in. Removed with the last remote access rule.\n" +
+		"[Definition]\n" +
+		"failregex = " + MariaDBFailRegex + "\n" +
+		"ignoreregex =\n"
+}
+
+var (
+	jailUnitPattern = regexp.MustCompile(`^[a-z0-9@._-]{1,64}\.service$`)
+	jailLogPattern  = regexp.MustCompile(`^/[A-Za-z0-9._/-]{1,250}$`)
+)
+
+// MariaDBJail renders the jail for MariaDB's port. With logPath empty it
+// reads the unit's journal; otherwise that error log file.
+func MariaDBJail(port int, unit, logPath string) (string, error) {
+	if port < 1 || port > 65535 || !jailUnitPattern.MatchString(unit) {
 		return "", errors.New("invalid MariaDB port or unit")
+	}
+	source := "backend = systemd\njournalmatch = _SYSTEMD_UNIT=" + unit + "\n"
+	if logPath != "" {
+		if !jailLogPattern.MatchString(logPath) || strings.Contains(logPath, "..") {
+			return "", errors.New("invalid MariaDB error log path")
+		}
+		source = "backend = auto\nlogpath = " + logPath + "\n"
 	}
 	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
 		"# Bans an address after repeated wrong MariaDB passwords. Removed with the\n" +
 		"# last remote access rule. If you change this file, CelikPanel leaves it.\n" +
-		"[mysqld-auth]\n" +
+		"[" + MariaDBJailName + "]\n" +
 		"enabled = true\n" +
+		"filter = " + MariaDBJailName + "\n" +
 		"port = " + strconv.Itoa(port) + "\n" +
-		"backend = systemd\n" +
-		"journalmatch = _SYSTEMD_UNIT=" + unit + "\n" +
+		source +
 		"maxretry = " + strconv.Itoa(jailMaxRetry) + "\n" +
 		"findtime = " + jailFindTime + "\n" +
 		"bantime = " + jailBanTime + "\n", nil

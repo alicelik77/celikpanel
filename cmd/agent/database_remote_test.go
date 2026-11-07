@@ -105,13 +105,15 @@ type fakeMariaDB struct {
 	executed []string
 	limit    string // the local account's max_user_connections
 	locked   string // "1" when the local account is locked
+	haveSSL  string // @@have_ssl, "YES" by default
+	noJail   bool   // Fail2ban does not run the jail
 }
 
 func (f *fakeMariaDB) query(statement string) (string, error) {
 	f.executed = append(f.executed, statement)
 	switch {
 	case strings.HasPrefix(statement, "SELECT @@bind_address"):
-		return "127.0.0.1\t0\tYES\t3306\n", nil
+		return "127.0.0.1\t0\t" + orDefault(f.haveSSL, "YES") + "\t3306\t\t2\t/var/lib/mysql/\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'shop_u'"):
 		return "mysql_native_password\t*0123456789ABCDEF0123456789ABCDEF01234567\t" + orDefault(f.limit, "0") + "\t" + orDefault(f.locked, "0") + "\n", nil
 	case strings.HasPrefix(statement, "SELECT plugin") && strings.Contains(statement, "User = 'boss'"):
@@ -156,11 +158,21 @@ func withFakeMariaDB(t *testing.T, f *fakeMariaDB) map[string][]byte {
 	}
 	databaseRemoteFiles.write = func(p string, c []byte) error { files[p] = append([]byte(nil), c...); return nil }
 	databaseRemoteFiles.remove = func(p string) error { delete(files, p); return nil }
-	databaseRemoteFiles.isDir = func(p string) bool { return p == "/etc/mysql/mariadb.conf.d" }
+	databaseRemoteFiles.isDir = func(p string) bool {
+		return p == "/etc/mysql/mariadb.conf.d" || p == "/etc/fail2ban/jail.d" || p == "/etc/fail2ban/filter.d"
+	}
 	databaseRemoteValidateMariaDBOption = func(string, []byte) error { return nil }
 	databaseRemoteStatePath = t.TempDir() + "/database-remote.json"
+	restoreFail2ban := databaseRemoteFail2ban
+	databaseRemoteFail2ban.active = func() bool { return true }
+	databaseRemoteFail2ban.jailActive = func(name string) bool {
+		_, written := files[dbremote.MariaDBJailPath]
+		return !f.noJail && written && name == dbremote.MariaDBJailName
+	}
+	databaseRemoteFail2ban.reload = func() error { return nil }
 	t.Cleanup(func() {
 		databaseRemoteMySQLQuery, databaseRemoteFiles, databaseRemoteValidateMariaDBOption, databaseRemoteStatePath = restoreQuery, restoreFiles, restoreValidate, restoreState
+		databaseRemoteFail2ban = restoreFail2ban
 	})
 	return files
 }
@@ -248,11 +260,11 @@ func TestMariaDBRemoteLeavesAnEditedOptionFile(t *testing.T) {
 func TestMariaDBRemoteInspectLeavesOwnerNetworkingAlone(t *testing.T) {
 	restore := databaseRemoteMySQLQuery
 	defer func() { databaseRemoteMySQLQuery = restore }()
-	databaseRemoteMySQLQuery = func(string) (string, error) { return "0.0.0.0\t0\tNO\t3306\n", nil }
+	databaseRemoteMySQLQuery = func(string) (string, error) { return "0.0.0.0\t0\tNO\t3306\t\t2\t/var/lib/mysql/\n", nil }
 	if f := (mariadbRemoteInstance{}).inspect(dbremote.Target{Engine: "mysql", Port: 3306}, dbremote.TargetState{}); !f.ownerManaged {
 		t.Fatal("an owner's bind-address was not recognised")
 	}
-	databaseRemoteMySQLQuery = func(string) (string, error) { return "127.0.0.1\t1\tNO\t3306\n", nil }
+	databaseRemoteMySQLQuery = func(string) (string, error) { return "127.0.0.1\t1\tNO\t3306\t\t2\t/var/lib/mysql/\n", nil }
 	if f := (mariadbRemoteInstance{}).inspect(dbremote.Target{Engine: "mysql", Port: 3306}, dbremote.TargetState{}); !f.ownerManaged {
 		t.Fatal("skip-networking was not recognised")
 	}

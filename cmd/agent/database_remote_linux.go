@@ -23,6 +23,10 @@ func init() {
 		_, err := databaseRemoteRun("systemctl", []string{"is-active", "--quiet", "fail2ban"}, "")
 		return err == nil
 	}
+	databaseRemoteFail2ban.jailActive = func(name string) bool {
+		_, err := databaseRemoteRun("fail2ban-client", []string{"status", name}, "")
+		return err == nil
+	}
 	databaseRemoteFail2ban.reload = func() error {
 		out, err := databaseRemoteRun("fail2ban-client", []string{"reload"}, "")
 		if err != nil {

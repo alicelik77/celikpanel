@@ -402,3 +402,20 @@ func TestDatabaseRemoteFollowsARightsChange(t *testing.T) {
 		t.Fatal("a rights change did not ask for the remote access to be applied again")
 	}
 }
+
+// Review M3: rules that wait for a prerequisite are tried again on every tick.
+func TestDatabaseRemoteWaitingRulesAreRetried(t *testing.T) {
+	recorder := &databaseRemoteRecorder{}
+	recorder.install(t)
+	if databaseRemoteWaiting() {
+		t.Fatal("nothing applied yet, yet waiting")
+	}
+	databaseRemoteMemory.answer = transport.DatabaseRemoteResponse{Targets: []transport.DatabaseRemoteTargetResult{{Engine: "mysql", Port: 3306, State: transport.DatabaseRemoteStateWaiting}}}
+	if !databaseRemoteWaiting() {
+		t.Fatal("a waiting instance is not retried")
+	}
+	databaseRemoteMemory.answer.Targets[0].State = transport.DatabaseRemoteStateOpen
+	if databaseRemoteWaiting() {
+		t.Fatal("an open instance is retried")
+	}
+}

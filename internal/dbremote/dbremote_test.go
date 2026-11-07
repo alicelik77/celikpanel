@@ -3,6 +3,7 @@ package dbremote
 import (
 	"errors"
 	"net/netip"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -302,12 +303,62 @@ func TestNFTUnitRunsOnlyNft(t *testing.T) {
 }
 
 func TestMariaDBJail(t *testing.T) {
-	jail, err := MariaDBJail(3306, "mariadb.service")
-	if err != nil || !strings.Contains(jail, "[mysqld-auth]\nenabled = true\nport = 3306\n") || !strings.Contains(jail, "journalmatch = _SYSTEMD_UNIT=mariadb.service") {
+	jail, err := MariaDBJail(3306, "mariadb.service", "")
+	if err != nil || !strings.Contains(jail, "[celikpanel-mariadb-auth]\nenabled = true\nfilter = celikpanel-mariadb-auth\nport = 3306\n") ||
+		!strings.Contains(jail, "backend = systemd\njournalmatch = _SYSTEMD_UNIT=mariadb.service\n") || strings.Contains(jail, "[mysqld-auth]") {
 		t.Fatalf("jail = %s, %v", jail, err)
 	}
-	if _, err := MariaDBJail(3306, "x;y"); err == nil {
+	file, err := MariaDBJail(3306, "mariadb.service", "/var/log/mysql/error.log")
+	if err != nil || !strings.Contains(file, "backend = auto\nlogpath = /var/log/mysql/error.log\n") {
+		t.Fatalf("file jail = %s, %v", file, err)
+	}
+	for _, bad := range []string{"relative.log", "/var/log/../etc/shadow", "/var/log/x\nenabled = false"} {
+		if _, err := MariaDBJail(3306, "mariadb.service", bad); err == nil {
+			t.Errorf("log path %q accepted", bad)
+		}
+	}
+	if _, err := MariaDBJail(3306, "x;y", ""); err == nil {
 		t.Fatal("bad unit accepted")
+	}
+	if !strings.Contains(MariaDBFilter(), "failregex = "+MariaDBFailRegex+"\n") {
+		t.Fatal("the filter does not carry the failregex")
+	}
+}
+
+// The filter's failregex against MariaDB's refused sign-in lines as they
+// reach Fail2ban: journal entries (Fail2ban's systemd backend prefixes host,
+// program and pid; the program is mariadbd on MariaDB 10.5+ as packaged by
+// Debian 12/13, Ubuntu 22.04/24.04 and Arch, mysqld on older builds) and
+// error-log file lines. <HOST> is Fail2ban's address group; here a plain
+// capture. Python's re and Go's regexp read this pattern the same way.
+func TestMariaDBFailRegexMatchesRefusedSignIns(t *testing.T) {
+	pattern := regexp.MustCompile(strings.Replace(MariaDBFailRegex, "<HOST>", `(?P<host>[^']+)`, 1))
+	matches := map[string]string{
+		// Debian 12 (10.11) / Debian 13 (11.8), journal backend.
+		"srv1 mariadbd[812]: 2026-11-07 10:00:00 31 [Warning] Access denied for user 'shop_u'@'203.0.113.7' (using password: YES)": "203.0.113.7",
+		// Ubuntu 22.04 (10.6), journal backend.
+		"srv2 mariadbd[1203]: 2026-11-07 10:00:01 7 [Warning] Access denied for user 'shop_u'@'198.51.100.20' (using password: NO)": "198.51.100.20",
+		// Arch (11.x), journal backend, IPv6 client.
+		"arch mariadbd[455]: 2026-11-07 10:00:02 12 [Warning] Access denied for user 'shop_u'@'2001:db8::7' (using password: YES)": "2001:db8::7",
+		// Older builds name the program mysqld; error log file line.
+		"srv3 mysqld[99]: 2026-11-07 10:00:03 140234 [Warning] Access denied for user 'x'@'203.0.113.9' (using password: YES)": "203.0.113.9",
+		"2026-11-07 10:00:04 55 [Warning] Access denied for user 'shop_u'@'203.0.113.10' (using password: YES)":                "203.0.113.10",
+		"201107 10:00:05 [Warning] Access denied for user 'shop_u'@'203.0.113.11' (using password: YES)":                       "203.0.113.11",
+	}
+	for line, host := range matches {
+		got := pattern.FindStringSubmatch(line)
+		if got == nil || got[1] != host {
+			t.Errorf("not matched or wrong host: %q -> %v", line, got)
+		}
+	}
+	for _, line := range []string{
+		// An authorization refusal after a correct password: not guessing.
+		"srv1 mariadbd[812]: 2026-11-07 10:00:00 31 [Warning] Access denied for user 'shop_u'@'203.0.113.7' to database 'other'",
+		"srv1 mariadbd[812]: 2026-11-07 10:00:00 31 [Note] Aborted connection 31 to db: 'shop' user: 'shop_u' host: '203.0.113.7'",
+	} {
+		if pattern.MatchString(line) {
+			t.Errorf("matched %q", line)
+		}
 	}
 }
 

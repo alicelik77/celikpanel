@@ -328,9 +328,10 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 		problem(transport.DatabaseRemoteOwnerListen, "listen_addresses is set again in "+after.listenFile+", after CelikPanel's setting")
 	}
 
-	// 2. The rules in force: only with TLS on.
+	// 2. The rules in force: only with TLS on and wrong passwords slowed
+	// down (review M3: auth_delay loaded); until then they wait.
 	active := candidates
-	if !after.ssl {
+	if !after.ssl || !pgPreloadHasAuthDelay(after.preload) {
 		active = nil
 	}
 	lines, err := dbremote.HBALines(dbremote.Target{Engine: target.Engine, Port: target.Port, Rules: active})
@@ -364,9 +365,15 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 		result.SlowDown = "auth_delay_pending_restart"
 	}
 	if len(candidates) > 0 && result.SlowDown == "none" {
-		detail := "auth_delay is not available in this PostgreSQL"
-		if strings.TrimSpace(s.preload) != "" || (s.preloadFile != "<none>" && strings.Trim(s.preloadFile, "' ") != "") {
-			detail = "shared_preload_libraries is set by the server's owner; add auth_delay to it to slow down wrong passwords"
+		// CelikPanel never rewrites an owner's shared_preload_libraries: the
+		// administrator adds auth_delay to it.
+		detail := "auth_delay is not among this PostgreSQL's installed modules; install the PostgreSQL contrib modules of this version, then apply again"
+		if owner := strings.TrimSpace(s.preload); owner != "" || (s.preloadFile != "<none>" && strings.Trim(s.preloadFile, "' ") != "") {
+			if owner == "" {
+				owner = strings.Trim(s.preloadFile, "' ")
+			}
+			detail = "shared_preload_libraries is set on this server ('" + boundedText(owner, 80) + "'); add auth_delay to it in postgresql.conf ('" +
+				boundedText(owner, 80) + ",auth_delay') and auth_delay.milliseconds = " + pgAuthDelayMilliseconds + ", restart PostgreSQL, then apply again"
 		}
 		problem(transport.DatabaseRemoteNoSlowDown, detail)
 	}
@@ -382,7 +389,7 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 	case len(active) > 0 && listenRemote:
 		result.State = transport.DatabaseRemoteStateOpen
 	default:
-		result.State = transport.DatabaseRemoteStateWaitRestart
+		result.State = transport.DatabaseRemoteStateWaiting
 	}
 	return result
 }

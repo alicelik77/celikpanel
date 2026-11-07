@@ -370,6 +370,10 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 					return
 				}
 			}
+			// Rules that wait (a restart, Fail2ban, auth_delay, TLS) are
+			// tried again on every tick, so they open by themselves once
+			// the administrator did the step (review M3).
+			force = force || databaseRemoteWaiting()
 			if _, _, err := p.applyDatabaseRemote(runCtx, force); err != nil && !errors.Is(err, context.Canceled) {
 				log.Printf("database remote access: apply: %v", err)
 			}
@@ -526,4 +530,18 @@ type databaseRemoteClient struct {
 
 func (p *Panel) databaseRemoteClientFor(ctx context.Context, d databaseRemoteDatabase) databaseRemoteClient {
 	return databaseRemoteClient{Host: p.mailHostnameIdentity(ctx).Hostname, Port: d.Port, SSLMode: "require"}
+}
+
+// databaseRemoteWaiting: the last answer has an instance whose rules wait
+// for a prerequisite.
+func databaseRemoteWaiting() bool {
+	m := databaseRemoteMemory
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, t := range m.answer.Targets {
+		if t.State == transport.DatabaseRemoteStateWaitRestart || t.State == transport.DatabaseRemoteStateWaiting {
+			return true
+		}
+	}
+	return false
 }

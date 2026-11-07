@@ -75,6 +75,7 @@ const (
 	DatabaseRemoteStateOff          = "off"          // no rule; the engine listens locally
 	DatabaseRemoteStateOpen         = "open"         // rules in force, listening, TLS on
 	DatabaseRemoteStateWaitRestart  = "wait_restart" // rules written, the engine must restart
+	DatabaseRemoteStateWaiting      = "waiting"      // rules wait for a prerequisite (slowing, TLS); see the problems
 	DatabaseRemoteStateClosing      = "closing"      // no rule; the port stays filtered until the restart
 	DatabaseRemoteStateOwnerManaged = "owner_managed"
 	DatabaseRemoteStateDown         = "down"

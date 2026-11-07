@@ -130,3 +130,55 @@ func TestPGRemoteOpensNothingBehindAnOwnersNetworkLine(t *testing.T) {
 		t.Fatalf("not closed: %+v, lines %v", ts, f.hbaLines)
 	}
 }
+
+// M3: PostgreSQL rules wait until auth_delay is loaded; an owner's
+// shared_preload_libraries is never rewritten, the guidance names it.
+func TestPGRemoteRulesWaitForAuthDelay(t *testing.T) {
+	f := &fakePGCluster{listen: "*", ssl: true, preload: "pg_stat_statements", hbaText: "local all postgres peer\n"}
+	withFakePG(t, f)
+	ts := dbremote.TargetState{Engine: "postgresql", Port: 5432, Listen: true}
+	result := (pgRemoteInstance{}).apply(shopTarget(), dbRemoteFacts{running: true, listenRemote: true}, &ts, "db.example.com")
+	if len(f.hbaLines) != 0 || len(result.Active) != 0 || ts.AuthDelay {
+		t.Fatalf("lines %v, active %v, auth_delay %v", f.hbaLines, result.Active, ts.AuthDelay)
+	}
+	found := false
+	for _, p := range result.Problems {
+		found = found || (p.Code == transport.DatabaseRemoteNoSlowDown && strings.Contains(p.Detail, "'pg_stat_statements,auth_delay'"))
+	}
+	if !found || result.State != transport.DatabaseRemoteStateWaiting {
+		t.Fatalf("state %s, problems %+v", result.State, result.Problems)
+	}
+	// Once auth_delay is loaded (the owner added it and restarted), the
+	// rules are written.
+	f.preload = "pg_stat_statements,auth_delay"
+	result = (pgRemoteInstance{}).apply(shopTarget(), dbRemoteFacts{running: true, listenRemote: true}, &ts, "db.example.com")
+	if len(f.hbaLines) != 1 || len(result.Active) != 1 || result.State != transport.DatabaseRemoteStateOpen || result.SlowDown != "auth_delay" {
+		t.Fatalf("lines %v, state %s, slow %s, problems %+v", f.hbaLines, result.State, result.SlowDown, result.Problems)
+	}
+}
+
+// M3: MariaDB copies wait until CelikPanel's Fail2ban jail runs.
+func TestMariaDBRemoteCopiesWaitForTheJail(t *testing.T) {
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true, "shop_u@203.0.113.7": true}, noJail: true}
+	files := withFakeMariaDB(t, f)
+	target := dbremote.Target{Engine: "mysql", Port: 3306, Rules: []dbremote.Rule{{Database: "shop", User: "shop_u", Address: "203.0.113.7/32"}}}
+	ts := dbremote.TargetState{Engine: "mysql", Port: 3306, Accounts: []string{"shop_u@203.0.113.7"}}
+	result := mariadbRemoteInstance{}.apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if len(result.Active) != 0 || f.accounts["shop_u@203.0.113.7"] || len(ts.Accounts) != 0 || !problemCodes(result)[transport.DatabaseRemoteNoSlowDown] {
+		t.Fatalf("a copy exists without the jail: active %v, accounts %v, problems %+v", result.Active, f.accounts, result.Problems)
+	}
+	if string(files[dbremote.MariaDBFilterPath]) != dbremote.MariaDBFilter() {
+		t.Fatal("CelikPanel's filter was not written")
+	}
+	f.noJail = false
+	result = mariadbRemoteInstance{}.apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if len(result.Active) != 1 || !f.accounts["shop_u@203.0.113.7"] || result.SlowDown != "fail2ban" || result.State != transport.DatabaseRemoteStateOpen {
+		t.Fatalf("with the jail: active %v, slow %s, state %s, problems %+v", result.Active, result.SlowDown, result.State, result.Problems)
+	}
+	// Without TLS on the running server the copies wait too.
+	f.haveSSL = "NO"
+	result = mariadbRemoteInstance{}.apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if len(result.Active) != 0 || f.accounts["shop_u@203.0.113.7"] {
+		t.Fatalf("a copy exists without TLS: %v", f.accounts)
+	}
+}
