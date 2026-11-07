@@ -128,3 +128,22 @@ the four dists built for this round and `/var/tmp/a129o` removed; no qemu proces
   Recovery|Pending|WAL`, `cmd/agent -run Update` all pass.
 - `74a7dda8e` MariaDB statements run with the `mariadb` client — tests: 3 new
   (`database_rpc_client_test.go`); `go test ./cmd/agent` only the 19 known guest-only DNS/mail failures.
+
+## Follow-up (fix/a129-lab, after this round)
+
+- D4 proof on Debian 12's postfwd 1.35-8 (plain lab guest, policy requests on 127.0.0.1:10040;
+  `raw/D4-pf135-old.log`, `raw/D4-pf135-new.log`, `raw/kit/g_pf135.sh`): with the 128 drop-in a
+  restart lost the counters (8 counted, limit 5: next request DUNNO); with `--save_rates` in a folder
+  owned by `$RUNAS` the restart took 0.3 s, the counters came back (next request 450 "limit 5"), and
+  after a changed rule, a restart and `--delrate` the new limit 3 counted from zero. A plain reload on
+  an idle daemon did reach the rules here; the lab failure followed the reload that made the master
+  respawn the policy server. Fixes: D4 `03949d7ca` (restart postfwd 1.x), D2 rest `ff5692016` (copy
+  database records kept unless removal is proven), D3 (unknown check never stops BIND; DNS page and
+  Setup name a stopped engine) on `fix/a129-lab`.
+- D1 history: `--kill-whom` has been in `update.sh`/`rollback.sh` since v0.1.0-alpha.1; Ubuntu 22.04
+  could first be installed with alpha.123, so every update of an Ubuntu 22.04 server (123 → 124 …
+  127 → 128) stopped at "panel could not be frozen", and an automatic rollback there would also have
+  failed. The failed 127 → 128 update left the server fully on 127 and healthy (version and schema
+  65, Agent matching, services active, sites 200, recovery "stopped before installed bytes changed");
+  leftovers: one failed `celikpanel-self-update-*` unit (cleared by the next successful update) and
+  Postfix `.db` maps re-hashed from unchanged sources by the 127 Agent's restart.

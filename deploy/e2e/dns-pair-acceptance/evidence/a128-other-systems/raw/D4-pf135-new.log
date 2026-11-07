@@ -1,0 +1,64 @@
+ii  postfwd        1.35-8       all          Postfix policyd to combine complex restrictions in a ruleset
+STARTUP=0
+CONF=/etc/postfix/postfwd.cf
+INET=127.0.0.1
+PORT=10040
+RUNAS="postfw"
+ARGS="--summary=600 --cache=600 --cache-rdomain-only --cache-no-size"
+[Service]
+ExecStartPre=+/usr/bin/install -d -o ${RUNAS} -g ${RUNAS} -m 0700 /var/lib/celikpanel-postfwd
+ExecStart=
+ExecStart=/usr/sbin/postfwd $ARGS --cache=0 --keep_rates --save_rates /var/lib/celikpanel-postfwd/rates --daemon --file $CONF --interface $INET --port $PORT --user $RUNAS --group $RUNAS --pidfile $PIDFILE
+active
+== A limit 2: three messages
+ 1: action=DUNNO
+ 2: action=DUNNO
+ 3: action=450 4.7.1 limit 2
+== B rules changed to limit 5, systemctl reload
+ 4: action=DUNNO
+ 5: action=DUNNO
+ 6: action=DUNNO
+   second reload (the lab's next change):
+ 7: action=DUNNO
+ 8: action=DUNNO
+  hits=CP_MAILBOX_2;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_2;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_2 action=450 4.7.1 limit 2
+postfwd2 1.35 reloading...
+catched HUP signal - clearing request cache on next request
+catched HUP signal - reloading ruleset on next request
+  hits=CP_MAILBOX_5;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_5;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_5;CP_DEFAULT action=DUNNO
+postfwd2 1.35 reloading...
+catched HUP signal - reloading ruleset on next request
+catched HUP signal - clearing request cache on next request
+  hits=CP_MAILBOX_5;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_5;CP_DEFAULT action=DUNNO
+== C limit 5 kept, systemctl restart: does the counter survive (save_rates)?
+drwx------  2 postfw postfw 4096 Nov  7 16:31 .
+drwxr-xr-x 23 root   root   4096 Nov  7 16:31 ..
+   restart took 314 ms
+/root/g_pf135.sh: connect: Connection refused
+/root/g_pf135.sh: line 9: /dev/tcp/127.0.0.1/10040: Connection refused
+   first answer after restart: action=450 4.7.1 limit 5
+drwxr-xr-x 23 root   root   4096 Nov  7 16:31 ..
+-rw-------  1 postfw postfw  580 Nov  7 16:31 rates
+ 9: action=450 4.7.1 limit 5
+ 10: action=450 4.7.1 limit 5
+ 11: action=450 4.7.1 limit 5
+== D rules changed to limit 3, systemctl restart + --delrate for the changed mailbox
+
+ 12: action=DUNNO
+ 13: action=DUNNO
+ 14: action=DUNNO
+ 15: action=450 4.7.1 limit 3
+  hits=CP_MAILBOX_5 action=450 4.7.1 limit 5
+  hits=CP_MAILBOX_5 action=450 4.7.1 limit 5
+[STATS] Hitrates: 0.0% requests, 0.0% dns, 0.0% rates
+[STATS] Hitrates: 0.0% ruleset, 0.0% parent, 0.0% child, 100.0% rates
+  hits=CP_MAILBOX_3;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_3;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_3;CP_DEFAULT action=DUNNO
+  hits=CP_MAILBOX_3 action=450 4.7.1 limit 3
+active
