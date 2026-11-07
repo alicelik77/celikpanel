@@ -268,6 +268,12 @@ type dnsOverviewInput struct {
 	// EngineSeriesUntested: the active PowerDNS runs a release outside its
 	// tested series after the system's own update; the same engine reading.
 	EngineSeriesUntested bool
+	// EngineStopped: the active engine is installed and managed by the panel
+	// but the engine card read it as not running (a verified reading, not an
+	// unread one). Setup cannot finish its DNS check then, so this page says
+	// so with the one next action instead of "setup is running" (alpha.129
+	// lab: Setup pointed here and this page pointed back to Setup).
+	EngineStopped transport.DNSEngine
 	// ZoneDigest is a digest of the main domain zone's records: any write
 	// to the zone, by any path, is a new state and a new check.
 	ZoneDigest string
@@ -332,6 +338,9 @@ func (p *Panel) dnsOverviewInputs(ctx context.Context, edges dnsOverviewSeams) (
 			for _, entry := range entries {
 				in.EngineOwnerChanged = in.EngineOwnerChanged || (entry.ID == engine.ActiveEngine && entry.DetailCode == dnsEngineOwnerChangedCode)
 				in.EngineSeriesUntested = in.EngineSeriesUntested || (entry.ID == engine.ActiveEngine && entry.DetailCode == dnsEngineSeriesUntestedCode)
+				if dnsEngineEntryStopped(engine.ActiveEngine, entry) {
+					in.EngineStopped = entry.ID
+				}
 			}
 		}
 	}
@@ -1007,6 +1016,14 @@ func dnsOverviewSentenceFor(in dnsOverviewInput, r dnsOverview) dnsOverviewSente
 	if in.EngineSeriesUntested {
 		return dnsOverviewSay("prerequisite", "dns_overview_"+dnsEngineSeriesUntestedCode, dnsEngineSeriesUntestedReason, dnsEngineSeriesUntestedWho, dnsEngineSeriesUntestedNext, dnsEngineSeriesUntestedThen, vars)
 	}
+	if in.EngineStopped != "" {
+		vars["engine"], vars["unit"] = dnsEngineDisplayName(in.EngineStopped), dnsEngineStartUnit(in.EngineStopped)
+		return dnsOverviewSay("failed", "dns_overview_engine_stopped",
+			"This server's DNS software ("+vars["engine"]+") is installed but not running, so "+d.MainDomain+" gets no answer from this server and setup cannot finish its DNS check.",
+			"You, the administrator of this server.",
+			"Start it in a terminal on this server: sudo systemctl start "+vars["unit"],
+			"Setup and this page check again by themselves within a minute; nothing else needs to be done.", vars)
+	}
 	if !in.Ready && in.Running {
 		return dnsOverviewSay("waiting", "dns_overview_setup_running", "Server setup is still running; DNS is part of it.", "Follow the setup page; it says when you need to act.", "Open Server setup.", "This page shows the finished picture once setup completes.", vars)
 	}
@@ -1336,4 +1353,28 @@ func (p *Panel) handleDNSOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(value)
+}
+
+// dnsEngineEntryStopped: the engine card's verified reading of the active
+// engine says installed and managed, but not running. An unread state
+// ("readiness_unavailable") is not "stopped".
+func dnsEngineEntryStopped(active transport.DNSEngine, entry dnsEngineEntry) bool {
+	return active != "" && entry.ID == active && entry.Installed && entry.Managed && !entry.Running &&
+		entry.DetailCode != "readiness_unavailable"
+}
+
+func dnsEngineDisplayName(engine transport.DNSEngine) string {
+	if engine == transport.DNSEnginePowerDNS {
+		return "PowerDNS"
+	}
+	return "BIND"
+}
+
+// dnsEngineStartUnit is the systemd unit the owner starts (the same name on
+// Debian, Ubuntu and Arch).
+func dnsEngineStartUnit(engine transport.DNSEngine) string {
+	if engine == transport.DNSEnginePowerDNS {
+		return "pdns"
+	}
+	return "named"
 }

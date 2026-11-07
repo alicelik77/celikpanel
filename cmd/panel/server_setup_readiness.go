@@ -29,7 +29,10 @@ func setupCheck(id string, ready bool, err error) serverSetupCheck {
 }
 
 const (
-	setupDNSReasonEngineNotReady       = "dns_engine_not_ready"
+	setupDNSReasonEngineNotReady = "dns_engine_not_ready"
+	// The active DNS software is installed and the panel's, but a verified
+	// reading says it is not running: the owner starts it (alpha.129 lab).
+	setupDNSReasonEngineStopped        = "dns_engine_stopped"
 	setupDNSReasonPairNotReady         = "dns_pair_not_ready"
 	setupDNSReasonNameserversNotPublic = "dns_nameservers_not_public"
 )
@@ -124,6 +127,8 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 		dnsReason = setupDNSReasonEngineNotReady
 		if mode == setupDNSModeExisting {
 			dnsReason = setupDNSReasonPublisherUnconfirmed
+		} else if !dnsReady && modeErr == nil && p.activeDNSEngineStopped(ctx) != "" {
+			dnsReason = setupDNSReasonEngineStopped
 		}
 	} else if modeErr == nil {
 		dnsReason = setupDNSReasonSetupChanged
@@ -143,6 +148,14 @@ func (p *Panel) serverSetupCompletionChecks(ctx context.Context, draft serverSet
 		dnsReason = setupDNSReasonNameserversNotPublic
 	}
 	dnsCheck := setupDNSCheck(draft, dnsReady, dnsReason, modeErr)
+	if dnsCheck.Reason == setupDNSReasonEngineStopped {
+		if engine := p.activeDNSEngineStopped(ctx); engine != "" {
+			if dnsCheck.Vars == nil {
+				dnsCheck.Vars = map[string]string{}
+			}
+			dnsCheck.Vars["engine"], dnsCheck.Vars["unit"] = dnsEngineDisplayName(engine), dnsEngineStartUnit(engine)
+		}
+	}
 	if errors.Is(modeErr, errSetupDNSPeerIPv6Unverified) {
 		dnsCheck.State, dnsCheck.Code, dnsCheck.Reason, dnsCheck.Vars = "action_required", "dns_peer_ipv6_unverified", "", nil
 	}
@@ -560,4 +573,26 @@ func probeSetupMailTLS(ctx context.Context, address, mailHostname string, submis
 		return fmt.Errorf("SMTP submission does not advertise authenticated delivery after TLS")
 	}
 	return nil
+}
+
+// activeDNSEngineStopped returns the active DNS engine when the engine card's
+// verified reading says it is installed and managed but not running; "" when
+// it runs, when nothing is active, or when the reading could not be made
+// (an unread state is not "stopped", D-024).
+func (p *Panel) activeDNSEngineStopped(ctx context.Context) transport.DNSEngine {
+	engine, _, err := p.readDNSEngineStateAndOperation(ctx)
+	if err != nil || engine.ActiveEngine == "" {
+		return ""
+	}
+	runtimes, _, hold, err := p.readDNSBackendRuntime(ctx)
+	if err != nil {
+		return ""
+	}
+	_, entries := deriveDNSEnginePresentation(engine, runtimes, nil, hold)
+	for _, entry := range entries {
+		if dnsEngineEntryStopped(engine.ActiveEngine, entry) {
+			return entry.ID
+		}
+	}
+	return ""
 }

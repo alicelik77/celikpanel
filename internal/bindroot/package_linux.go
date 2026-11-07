@@ -9,7 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
-	"time"
+
+	"github.com/alicelik/celikpanel/internal/checkresult"
 )
 
 // ProveInstalledPackage checks the package-owned BIND working directory using
@@ -20,8 +21,13 @@ func ProveInstalledPackage(ctx context.Context, layout Layout) error {
 	if ctx == nil {
 		return errors.New("BIND package proof requires a context")
 	}
-	proofCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	proofCtx, cancel := context.WithTimeout(ctx, vendorProofTimeout)
 	defer cancel()
+	// A query that ran out of time proves nothing either way (checkresult).
+	return checkresult.IfContextEnded(proofCtx, proveInstalledPackage(proofCtx, layout))
+}
+
+func proveInstalledPackage(proofCtx context.Context, layout Layout) error {
 	switch layout {
 	case APT:
 		owner, err := runTrusted(proofCtx, []string{"/usr/bin/dpkg-query", "/usr/sbin/dpkg-query"}, "-S", "--", "/var/cache/bind")

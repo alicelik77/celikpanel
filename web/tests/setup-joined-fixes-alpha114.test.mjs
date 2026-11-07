@@ -37,9 +37,11 @@ test('the final DNS check says its reason, who acts and the next action', () => 
         dns_nameservers_not_public: ['setup.check.dns.nameserversNotPublic', { ns1: 'ns1.c114.test', ns2: 'ns2.c114.test' }],
         dns_setup_changed: ['setup.check.dns.setupChanged', {}],
         dns_engine_not_ready: ['setup.check.dns.engineNotReady', {}],
+        // alpha.129 lab: the DNS software stopped; the line names it and the command.
+        dns_engine_stopped: ['setup.check.dns.engineStopped', { engine: 'BIND', unit: 'named' }],
         dns_pair_not_ready: ['setup.check.dns.pairNotReady', {}],
     };
-    const vars = { primary: 'frankfurt.c114.test', ns1: 'ns1.c114.test', ns2: 'ns2.c114.test', local_ip: '192.0.3.161', peer_ip: '192.0.3.160' };
+    const vars = { primary: 'frankfurt.c114.test', ns1: 'ns1.c114.test', ns2: 'ns2.c114.test', local_ip: '192.0.3.161', peer_ip: '192.0.3.160', engine: 'BIND', unit: 'named' };
     for (const [reason, [key, values]] of Object.entries(reasons)) {
         const line = setupCheckLine({ id: 'dns', state: reason === 'dns_publisher_unconfirmed' ? 'unknown' : 'action_required', code: 'dns_required', reason, vars });
         assert.equal(line.text?.key, key, reason);
