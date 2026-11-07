@@ -423,9 +423,12 @@ func databaseRemoteKickWait(now, lastForced time.Time) time.Duration {
 }
 
 // startDatabaseRemoteSync runs the apply at start, on a kick and every five
-// minutes; each run sends nothing when the eligible set did not change.
-func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
+// minutes; each run sends nothing when the eligible set did not change. The
+// returned channel closes when the loop has stopped (after ctx ends).
+func (p *Panel) startDatabaseRemoteSync(ctx context.Context) <-chan struct{} {
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(databaseRemoteProbeInterval)
 		defer ticker.Stop()
 		ticks := 0
@@ -486,6 +489,7 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) {
 			}
 		}
 	}()
+	return done
 }
 
 // databaseRemoteLast is the last apply's answer for one instance.

@@ -71,10 +71,12 @@ jobs:
       # use an explicit bounded package budget (race shards keep their own limits).
       - run: go test ./... -count=1 -timeout=20m
       # internal/db alone took 6m55s with -race on alpha.117 and 7m20s on
-      # alpha.118 (five more migrations); 8m timed out once. Keep every test.
+      # alpha.118 (five more migrations); 8m timed out once. It grows with
+      # every migration: 13m28s on alpha.129's first run, 15m timed out on the
+      # second (still running, not stuck). Keep every test.
       - name: Race-test security and persistence boundaries
         run: >-
-          go test -race -count=1 -timeout=15m
+          go test -race -count=1 -timeout=25m
           ./internal/auth
           ./internal/db
           ./internal/repositories
