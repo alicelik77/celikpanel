@@ -53,12 +53,24 @@ Rules:
 | 🧹 Rspamd | Service | `rspamd` | `rspamd` | spam filter | SMTP server |
 | 📬 Dovecot | Service | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` `pigeonhole` | IMAP server | — |
 | 🛡️ SpamAssassin | Service | `spamassassin` `spamd` `spamass-milter` | — | spam filter | SMTP server |
+| 📤 Outgoing mail limits (postfwd) | Service | `postfwd` | `postfwd` | — | SMTP server |
 
 ### Security
 
 | Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
 |---|---|---|---|---|---|
 | 🔐 WireGuard VPN | Service | `wireguard` | `wireguard-tools` | — | — |
+
+### Web
+
+| Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
+|---|---|---|---|---|---|
+| 🌿 Git | Tool | `git` | `git` | — | — |
+
+### Security
+
+| Component | Kind | APT package mapping | pacman package mapping | Seat | Needs |
+|---|---|---|---|---|---|
 | 🔐 Let's Encrypt client (certbot) | Tool | `certbot` | `certbot` | — | — |
 | 🚫 Fail2ban | Service | `fail2ban` | `fail2ban` | — | Firewall engine |
 | 🧱 Firewall engine | Tool | `nftables` | `nftables` | — | — |

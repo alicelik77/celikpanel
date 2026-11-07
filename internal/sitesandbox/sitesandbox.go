@@ -222,8 +222,8 @@ func (p Profile) Validate() error {
 // ValidUnitName is a sandboxed unit's name: a service app's long-running or
 // install unit, a runtime app's unit or its build (celikrtbuild, a Python
 // app's environment build), or a Node.js site's unit or its install step
-// (celikapp, celikappinst; alpha.127).
-var unitNamePattern = regexp.MustCompile(`^(celiksvc|celiksvcinst|celikrt|celikrtbuild|celikapp|celikappinst)-[1-9][0-9]{0,9}\.service$`)
+// (celikapp, celikappinst; alpha.127; celikgit, the Git deploy of alpha.128).
+var unitNamePattern = regexp.MustCompile(`^(celiksvc|celiksvcinst|celikrt|celikrtbuild|celikapp|celikappinst|celikgit)-[1-9][0-9]{0,9}\.service$`)
 
 // ValidUnitName reports whether name (with ".service") is a sandboxed unit.
 func ValidUnitName(name string) bool { return unitNamePattern.MatchString(name) }

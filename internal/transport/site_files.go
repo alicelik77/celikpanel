@@ -161,6 +161,11 @@ type SiteFileResult struct {
 	// log setting in ManagedDir (SiteFileChallenge* words: written,
 	// unchanged, kept, failed); "" when the operation did not look at it.
 	TrafficLog string
+	// SiteParts (alpha.128, additive) is what happened to each of the site's
+	// web server setting files in ManagedDir, by file name (settings.site,
+	// directives.site, and the http-level files they need): the challenge
+	// words or SitePart*. Nil when the operation carried no web settings.
+	SiteParts map[string]string
 	// Validation is, for a kept file (owner-edited, foreign, unknown origin),
 	// whether a certificate for the site can be validated without changing
 	// the file (SiteFileValidation*); "" for any other file.
@@ -347,7 +352,141 @@ const (
 	// another type (static, Node, proxy, forwarding). An existing pool is
 	// classified as for every other write; one the owner changed is kept.
 	SitePoolOperationCreate = "create"
+	// SitePoolOperationSettings (alpha.128) writes the site's own PHP
+	// values (SitePoolRequest.PHPSettings) and, when PHPSettings.Processes
+	// is set, its process count; every other pool value is kept.
+	SitePoolOperationSettings = "settings"
 )
+
+// SitePHPSettings (alpha.128, docs/SITE-LIMITS.md) are a site's own PHP
+// values, rendered into its pool: the limits as php_admin_value (an
+// application cannot raise them), the free choices as php_value/php_flag.
+// A zero or empty field is "no value of its own": nothing is rendered and
+// the server's php.ini applies. Processes is the pool's pm.max_children
+// (0 keeps the pool's).
+type SitePHPSettings struct {
+	MemoryMB      int    `json:",omitempty"`
+	TimeS         int    `json:",omitempty"`
+	UploadMB      int    `json:",omitempty"`
+	InputVars     int    `json:",omitempty"`
+	Processes     int    `json:",omitempty"`
+	DisplayErrors string `json:",omitempty"`
+	ErrorLevel    string `json:",omitempty"`
+	Timezone      string `json:",omitempty"`
+	ShortOpenTag  string `json:",omitempty"`
+}
+
+// SitePHPLimits are the effective ceilings every render keeps the site's
+// values within (0: no ceiling). Known is false when the Panel sent none:
+// only the fixed bounds apply (a pool's 200 processes). Inherit* are the
+// ceilings below the server's own level (a plan's, a reseller's): a site
+// without its own value whose php.ini value is above one gets the ceiling
+// written, so a plan's limit holds for every site of the plan.
+type SitePHPLimits struct {
+	Known            bool `json:",omitempty"`
+	MemoryMB         int  `json:",omitempty"`
+	TimeS            int  `json:",omitempty"`
+	UploadMB         int  `json:",omitempty"`
+	InputVars        int  `json:",omitempty"`
+	Processes        int  `json:",omitempty"`
+	InheritMemoryMB  int  `json:",omitempty"`
+	InheritTimeS     int  `json:",omitempty"`
+	InheritUploadMB  int  `json:",omitempty"`
+	InheritInputVars int  `json:",omitempty"`
+}
+
+// SitePHPSettingsSite names one site for SitePHPSettingsRequest.
+type SitePHPSettingsSite struct {
+	SiteID     int
+	Domain     string
+	Username   string
+	PHPVersion string
+}
+
+// SitePHPSettingsRequest asks the Agent for what the sites' pools and the
+// server hold (Agent.SitePHPSettingsV1). It reads only.
+type SitePHPSettingsRequest struct {
+	ExpectedBuildCommit string
+	Sites               []SitePHPSettingsSite
+}
+
+// SitePHPServerValues are a PHP version's php.ini values as written ("" when
+// the file does not set the key: PHP's built-in default applies).
+type SitePHPServerValues struct {
+	MemoryLimit       string `json:",omitempty"`
+	MaxExecutionTime  string `json:",omitempty"`
+	UploadMaxFilesize string `json:",omitempty"`
+	PostMaxSize       string `json:",omitempty"`
+	MaxInputVars      string `json:",omitempty"`
+	DisplayErrors     string `json:",omitempty"`
+	ErrorReporting    string `json:",omitempty"`
+	Timezone          string `json:",omitempty"`
+	ShortOpenTag      string `json:",omitempty"`
+}
+
+// SitePHPSettingsState is one site's answer. PoolState is the pool file's
+// D-031 state; Own the values CelikPanel's text of the pool carries;
+// Processes its pm.max_children. NginxUploadOwner / NginxTimeoutOwner name
+// another file of the site (an application's include, the owner's file) that
+// sets client_max_body_size / fastcgi_read_timeout: CelikPanel then writes
+// neither, and the value there (NginxUploadMB, NginxTimeoutS) applies.
+// SettingsFileState is the state of the site's site-settings.conf.
+type SitePHPSettingsState struct {
+	SiteID            int
+	PoolState         string `json:",omitempty"`
+	Own               SitePHPSettings
+	Processes         int                 `json:",omitempty"`
+	Server            SitePHPServerValues `json:",omitempty"`
+	NginxUploadOwner  string              `json:",omitempty"`
+	NginxUploadMB     int                 `json:",omitempty"`
+	NginxTimeoutOwner string              `json:",omitempty"`
+	NginxTimeoutS     int                 `json:",omitempty"`
+	SettingsFileState string              `json:",omitempty"`
+	Error             string              `json:",omitempty"`
+}
+
+// SitePHPSettingsResponse answers SitePHPSettingsRequest, one entry per site.
+type SitePHPSettingsResponse struct {
+	Sites []SitePHPSettingsState
+	Error string `json:",omitempty"`
+}
+
+// SiteSettingsIncludeRequest writes the site's nginx settings file
+// (celikpanel-managed.d/<domain>/site-settings.conf, Agent.ApplySiteSettingsIncludeV1):
+// client_max_body_size UploadMB m and fastcgi_read_timeout TimeoutS s, each
+// only when set and not already set by another file of the site. Both zero
+// removes CelikPanel's file.
+type SiteSettingsIncludeRequest struct {
+	ExpectedBuildCommit string
+	Domain              string
+	UploadMB            int `json:",omitempty"`
+	TimeoutS            int `json:",omitempty"`
+}
+
+// Outcomes of SiteSettingsIncludeResponse.
+const (
+	SiteSettingsIncludeWritten   = "written"
+	SiteSettingsIncludeRemoved   = "removed"
+	SiteSettingsIncludeUnchanged = "unchanged"
+	SiteSettingsIncludeKept      = "kept"
+	SiteSettingsIncludeRefused   = "refused"
+)
+
+// SiteSettingsIncludeResponse: Outcome, the file, which directives another
+// file owns, and for a refusal nginx's first line (Detail) and whether the
+// previous file is back (Restored).
+type SiteSettingsIncludeResponse struct {
+	Outcome      string
+	Path         string `json:",omitempty"`
+	UploadOwner  string `json:",omitempty"`
+	TimeoutOwner string `json:",omitempty"`
+	Detail       string `json:",omitempty"`
+	Restored     bool   `json:",omitempty"`
+	Error        string `json:",omitempty"`
+	// TookOverFrom (alpha.128): the application's include that gave its
+	// upload line up to the site setting (written again without it).
+	TookOverFrom string `json:",omitempty"`
+}
 
 // SitePoolValues are the process-manager settings CelikPanel renders into a
 // site's pool (the pool page's form). The pool's identity (user, group,
@@ -384,6 +523,12 @@ type SitePoolRequest struct {
 	// pointer to false, so "uploads on again" arrived as "keep" and the line
 	// stayed after the limit was lifted (alpha.118 lab, D4).
 	Uploads string `json:",omitempty"`
+	// PHPSettings (alpha.128) are the site's own PHP values for
+	// SitePoolOperationSettings; other operations keep the pool's.
+	PHPSettings SitePHPSettings `json:",omitempty"`
+	// PHPLimits (alpha.128) are the ceilings every render keeps the pool
+	// within (a lowered plan ceiling takes effect at the next render).
+	PHPLimits SitePHPLimits `json:",omitempty"`
 }
 
 // SitePoolRequest.Uploads values.

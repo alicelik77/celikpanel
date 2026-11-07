@@ -670,6 +670,54 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
             ],
         },
     },
+    'postfwd': {
+        tr: {
+            what: 'postfwd, Postfix için bir kural süzgecidir. CelikPanel onu giden posta sınırları için kullanır: her posta kutusu, alan adı ve barındırma hesabının saatte kaç alıcıya gönderebileceğini sayar ve güvenlik için durdurulan posta kutularını tutar. Postfix ona yalnız gönderim portlarında (587 ve 465) sorar; postfwd durursa posta sınırsız akmaya devam eder.',
+            tips: [
+                'Sınırların kendisi Posta sunucusu ayarlarındaki Giden posta sınırları bölümünde ayarlanır.',
+                'Kurallar değişince sayaçlar korunur; postfwd yeniden başlatılırsa saat sıfırdan başlar.',
+                'Kural dosyasını elle değiştirirseniz CelikPanel onu korur ve sınırları yazmayı bırakır; panel bunu söyler.',
+            ],
+            troubleshoot: [
+                { symptom: 'Panel sınırların uygulanmadığını söylüyor.', fix: 'Posta sunucusu ayarlarındaki durum cümlesi nedeni ve yapılacağı söyler. postfwd çalışmıyorsa buradan yeniden başlatın; aşağıdaki günlük ilk hatayı gösterir.' },
+                { symptom: 'Bir posta kutusu gönderemiyor.', fix: 'Güvenlik için durdurulduysa parolasını değiştirin; gönderim bir dakika içinde açılır. Saatlik sınırına ulaştıysa posta programı saat dolunca yeniden gönderir.' },
+            ],
+        },
+        en: {
+            what: 'postfwd is a rule filter for Postfix. CelikPanel uses it for outgoing mail limits: it counts how many recipients each mailbox, domain and hosting account sends to per hour and holds mailboxes stopped for security. Postfix asks it only on the sending ports (587 and 465); if postfwd stops, mail keeps flowing without limits.',
+            tips: [
+                'The limits themselves are set under Outgoing mail limits in the mail server settings.',
+                'Counters are kept when the rules change; a restart of postfwd starts the hour from zero.',
+                'If you change the rule file by hand, CelikPanel keeps it and stops writing the limits; the panel says so.',
+            ],
+            troubleshoot: [
+                { symptom: 'The panel says the limits are not in force.', fix: 'The state sentence in the mail server settings names the cause and the next step. If postfwd is not running, restart it here; the journal below shows the first error.' },
+                { symptom: 'A mailbox cannot send.', fix: 'If it was stopped for security, change its password; sending reopens within a minute. If it reached its hourly limit, the mail program sends again after the hour.' },
+            ],
+        },
+    },
+    'git': {
+        tr: {
+            what: 'Git, sürüm denetimi istemcisidir. CelikPanel onu sitelerin Git ile dağıtımı için kullanır: bir HTTPS ya da SSH deposundan sitenin klasörüne kodu çeker. Kendine ait bir hizmeti yoktur; yalnız dağıtım sırasında, sitenin korumalı alanında çalışır.',
+            tips: [
+                'Dağıtımın ayarları sitenin Git sekmesindedir; SSH deposu için orada bir dağıtım anahtarı oluşturulur.',
+                'Kaldırırsanız siteler çalışmaya devam eder; yalnız yeni Git dağıtımı yapılamaz.',
+            ],
+            troubleshoot: [
+                { symptom: 'Dağıtım "git kurulu değil" diyor.', fix: 'Git\'i buradan kurun, sonra dağıtımı yeniden başlatın.' },
+            ],
+        },
+        en: {
+            what: 'Git is a version control client. CelikPanel uses it for Git deployment of sites: it fetches code from an HTTPS or SSH repository into the site\'s folder. It has no service of its own; it runs only during a deployment, inside the site\'s sandbox.',
+            tips: [
+                'The deployment settings are on the site\'s Git tab; a deploy key for an SSH repository is made there.',
+                'If you remove it, sites keep running; only new Git deployments cannot run.',
+            ],
+            troubleshoot: [
+                { symptom: 'A deployment says git is not installed.', fix: 'Install Git here, then start the deployment again.' },
+            ],
+        },
+    },
     'spamassassin': {
         tr: {
             what: 'SpamAssassin, Rspamd ile aynı koltuğa oturabilen köklü bir istenmeyen posta filtresidir: Postfix\'e gelen iletileri puanlar ve çöpü posta kutularından uzak tutar. Kural setini tercih ediyorsanız ya da onu zaten iyi tanıyorsanız seçin; aksi halde daha modern olan Rspamd genelde ilk tercihtir. Aynı anda yalnızca bir spam filtresi etkin olmalı.',

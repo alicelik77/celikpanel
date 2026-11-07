@@ -8,6 +8,7 @@ import { refusalText } from '../lib/apiError';
 import { invalidate, useRemote } from '../lib/remote';
 import { MIGRATION_NOTICE, POOL_NOTICES, RIGHTS_NOTICES_URL, TRAFFIC_MEASURED_NOTICE, decodeNotices, sendRights, type RightsNotice } from '../lib/rights';
 import { UsageNotices, UsageStatusCard } from './UsageNotices';
+// alpha.128: notices of lowered site limits, a chunk of their own.
 
 // What the rights want someone to see (D-042 5 and 9): after the update, the
 // customers that had no subscription and are now Unlimited (the

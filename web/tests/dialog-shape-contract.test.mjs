@@ -191,6 +191,8 @@ test('every dialogue in the product is the shared one', () => {
     // alpha.110: webmail's own address - add to the zone, set up, remove.
     'WebmailAddressCard.tsx': 3,
     'SecurityUpdatesCard.tsx': 1,
+    // alpha.128 ops (G31): making a certificate request (CSR).
+    'ServerCertificatesCard.tsx': 2,
     // alpha.121: adding this server's own address record after review.
     'ServerHostnameNotice.tsx': 1,
     // alpha.108: install a major, change a port, move a database, a move's step.

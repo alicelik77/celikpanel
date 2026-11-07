@@ -81,6 +81,7 @@ func (a *Agent) RestoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		resp.Error = err.Error()
 		resp.Success = false
 		resp.Refusal = backupClusterRefusalOf(err)
+		resp.Code, resp.Detail = restoreFailureOf(err)
 	}
 	return nil
 }

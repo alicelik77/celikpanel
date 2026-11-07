@@ -46,11 +46,13 @@ type MailPolicy = transport.MailPolicy
 type MailPolicyResponse = transport.MailPolicyResponse
 
 const (
-	mailPolicyMebibyte     = 1024 * 1024
-	mailPolicyMaxSizeMB    = 200
-	mailPolicyMaxRate      = 10000
-	mailPolicyRateUnit     = "60s"
-	mailPolicyNotInstalled = "postfix is not installed"
+	mailPolicyMebibyte  = 1024 * 1024
+	mailPolicyMaxSizeMB = 200
+	mailPolicyMaxRate   = 10000
+	// alpha.128 (G30): Postfix's default is 50.
+	mailPolicyMaxConnections = 1000
+	mailPolicyRateUnit       = "60s"
+	mailPolicyNotInstalled   = "postfix is not installed"
 )
 
 // The Postfix values the policy is read from, in the order the version is
@@ -61,6 +63,8 @@ var mailPolicyParameters = []string{
 	"smtpd_recipient_restrictions",
 	"smtpd_client_message_rate_limit",
 	"anvil_rate_time_unit",
+	// alpha.128 (G30): connections one client may hold at once.
+	"smtpd_client_connection_count_limit",
 }
 
 // Swapped by tests. Production reads and writes through postconf and makes the
@@ -90,10 +94,11 @@ var mailPolicyMu sync.Mutex
 var errMailPolicyUnreadable = errors.New("the current Postfix mail policy could not be read")
 
 type mailPolicyNative struct {
-	values    map[string]string
-	sizeBytes int
-	rate      int
-	version   string
+	values      map[string]string
+	sizeBytes   int
+	rate        int
+	connections int
+	version     string
 }
 
 // readMailPolicyNative reads every value or none. A value is known only when
@@ -131,6 +136,10 @@ func readMailPolicyNative() (mailPolicyNative, error) {
 		log.Printf("mail policy: smtpd_client_message_rate_limit is not a number")
 		return mailPolicyNative{}, errMailPolicyUnreadable
 	}
+	if native.connections, err = strconv.Atoi(native.values["smtpd_client_connection_count_limit"]); err != nil || native.connections < 0 {
+		log.Printf("mail policy: smtpd_client_connection_count_limit is not a number")
+		return mailPolicyNative{}, errMailPolicyUnreadable
+	}
 	native.version = "mp1-" + hex.EncodeToString(digest.Sum(nil))
 	return native, nil
 }
@@ -141,10 +150,12 @@ func (n mailPolicyNative) policy() MailPolicy {
 	if zones == nil {
 		zones = []string{}
 	}
+	connections := n.connections
 	return MailPolicy{
 		MessageSizeMB:     n.sizeBytes / mailPolicyMebibyte,
 		DNSBLZones:        zones,
 		OutboundRateLimit: n.rate,
+		ConnectionLimit:   &connections,
 		Version:           n.version,
 		DNSBLLocked:       restrictions.lock,
 	}
@@ -238,6 +249,16 @@ func (a *Agent) SetMailPolicy(req *MailPolicy, resp *MailPolicyResponse) error {
 		if req.OutboundRateLimit > 0 && native.values["anvil_rate_time_unit"] != mailPolicyRateUnit {
 			assignments = append(assignments, "anvil_rate_time_unit="+mailPolicyRateUnit)
 		}
+	}
+
+	// Connections one client may hold at once (alpha.128, G30); absent from
+	// the request means "leave it".
+	if req.ConnectionLimit != nil && *req.ConnectionLimit != native.connections {
+		if *req.ConnectionLimit < 0 || *req.ConnectionLimit > mailPolicyMaxConnections {
+			return refuseMailPolicy(resp, transport.MailPolicyInvalid, transport.MailPolicyInvalidConnections,
+				"connection_limit must be between 0 and 1000")
+		}
+		assignments = append(assignments, "smtpd_client_connection_count_limit="+strconv.Itoa(*req.ConnectionLimit))
 	}
 
 	wrote := len(assignments) > 0

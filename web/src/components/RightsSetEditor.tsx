@@ -164,9 +164,19 @@ export function RightsPreviewBox({ preview, sentence, id }: { preview: RightsPre
                     <ul className="mt-1 list-disc pl-5">{preview.over_limit.map((line) => <li key={line}>{overLimitText(line, t)}</li>)}</ul>
                 </div>
             )}
-            {preview.added.length === 0 && preview.removed.length === 0 && preview.in_use.length === 0 && preview.over_limit.length === 0 && (
+            {preview.added.length === 0 && preview.removed.length === 0 && preview.in_use.length === 0 && preview.over_limit.length === 0 && !(preview.ceilings_lowered?.length) && (
                 <p className="mt-2 text-fg-muted">{t('rights.preview.nothingElse')}</p>
             )}
+            {preview.ceilings_lowered && preview.ceilings_lowered.length > 0 && (
+                <p className="mt-2">{t('limits.preview.lowered', { keys: preview.ceilings_lowered.map((key) => t(`limits.key.${key}` as TranslationKey)).join(', ') })}</p>
+            )}
+            {(preview.sites_above_count ?? 0) > 0 && (
+                <div className="mt-2">
+                    <p className="font-semibold">{t('limits.preview.sitesAbove', { n: preview.sites_above_count ?? 0 })}</p>
+                    <ul className="mt-1 list-disc pl-5">{(preview.sites_above ?? []).map((line) => <li key={line}>{line}</li>)}</ul>
+                </div>
+            )}
+            {preview.sites_unread && <p className="mt-2">{t('limits.preview.sitesUnread')}</p>}
             {preview.installed_unknown && <p className="mt-2 text-xs text-fg-muted">{t('rights.installedUnknown')}</p>}
         </section>
     );

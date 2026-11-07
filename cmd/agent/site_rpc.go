@@ -54,10 +54,12 @@ type siteLifecycleOps struct {
 	killUser             func(string) error
 	setOwnership         func(string, string) error
 	createPool           func(int, string, string) (string, error)
-	deletePool           func(int, string) error
-	writeFileExclusive   func(string, []byte, os.FileMode) error
-	applyLayout          func(string, string) error
-	applyVhost           func(string, string) error
+	// createPoolWithin (alpha.128) creates the pool within the site's limits.
+	createPoolWithin   func(int, string, string, transport.SitePHPLimits) (string, error)
+	deletePool         func(int, string) error
+	writeFileExclusive func(string, []byte, os.FileMode) error
+	applyLayout        func(string, string) error
+	applyVhost         func(string, string) error
 	// applySiteVhost is the D-031 path: classify, then write only an absent
 	// file at creation. Nil falls back to applyVhost (component tests that
 	// exercise other stages).
@@ -68,6 +70,9 @@ type siteLifecycleOps struct {
 	// forgetAccess removes a deleted account's file access (sshd entry,
 	// keys, FTP files). Nil skips it (component tests).
 	forgetAccess func(string)
+	// forgetLogins removes the site's additional FTP logins (alpha.128)
+	// before its account: they share its uid and group. Nil skips it.
+	forgetLogins func(string) error
 }
 
 func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
@@ -87,13 +92,14 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 			}
 			return false, err
 		},
-		mkdirAll:     os.MkdirAll,
-		lookupUser:   user.Lookup,
-		createUser:   a.userManager.CreateUser,
-		deleteUser:   a.userManager.DeleteUser,
-		setOwnership: a.userManager.SetOwnership,
-		createPool:   a.phpManager.CreatePool,
-		deletePool:   a.phpManager.DeletePool,
+		mkdirAll:         os.MkdirAll,
+		lookupUser:       user.Lookup,
+		createUser:       a.userManager.CreateUser,
+		deleteUser:       a.userManager.DeleteUser,
+		setOwnership:     a.userManager.SetOwnership,
+		createPool:       a.phpManager.CreatePool,
+		createPoolWithin: a.phpManager.CreatePoolWithin,
+		deletePool:       a.phpManager.DeletePool,
 		writeFileExclusive: func(path string, content []byte, mode os.FileMode) error {
 			file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 			if err != nil {
@@ -145,6 +151,7 @@ func (a *Agent) resolvedSiteLifecycleOps() siteLifecycleOps {
 		},
 		removeAll:    os.RemoveAll,
 		forgetAccess: forgetFileAccessAccount,
+		forgetLogins: forgetFTPLoginsOfSite,
 	}
 }
 
@@ -448,7 +455,11 @@ func (a *Agent) CreateSite(req transport.CreateSiteRequest, reply *transport.Cre
 	socket := ""
 	if req.ProjectType == "php" {
 		poolMayExist = true
-		socket, err = ops.createPool(req.SiteID, req.Username, req.PHPVersion)
+		if ops.createPoolWithin != nil && req.PHPLimits.Known {
+			socket, err = ops.createPoolWithin(req.SiteID, req.Username, req.PHPVersion, req.PHPLimits)
+		} else {
+			socket, err = ops.createPool(req.SiteID, req.Username, req.PHPVersion)
+		}
 		if err != nil {
 			fail("PHP-FPM pool creation", err)
 			return nil
@@ -664,6 +675,20 @@ func (a *Agent) DeleteSite(req *DeleteSiteRequest, resp *DeleteSiteResponse) err
 	// 4. System user — never a system account, even if asked.
 	// 4. Sistem kullanıcısı — istense bile asla bir sistem hesabı değil.
 	if req.Username != "" {
+		// 4a. Additional FTP logins first: an account left with the site's
+		// uid would outlive the site. If they cannot be removed, the site's
+		// account stays too (its uid is not freed) and the deletion is
+		// reported incomplete, so it can be repeated.
+		if ops.forgetLogins != nil {
+			if err := ops.forgetLogins(req.Username); err != nil {
+				keepFailure("FTP logins", err)
+				keepFailure("site files", ops.removeAll(cleanHome))
+				logSiteLifecycleFailures("DeleteSite", req.Domain, failures)
+				resp.Success = false
+				resp.Error = "site cleanup incomplete: FTP logins (the site's account is kept until they are removed)"
+				return nil
+			}
+		}
 		keepFailure("system user", removeSiteUser(ops, req.Username, cleanHome))
 		if ops.forgetAccess != nil {
 			ops.forgetAccess(req.Username)

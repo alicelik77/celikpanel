@@ -30,6 +30,7 @@ const stub = dataModule(`
   export const useLocation = () => ({ pathname: '/components/php-fpm', search: '', hash: '' });
   export const useAuth = () => ({ role: globalThis.emergencyTest?.role ?? 'customer' });
   export const showToast = () => {};
+  export const startSessionActivity = () => {};
 `);
 const shared = sharedLayer(stub);
 const { SecurityEmergencySection } = await import(shared.compile('components/SecurityEmergency.tsx'));

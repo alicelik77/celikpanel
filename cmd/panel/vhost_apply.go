@@ -167,6 +167,11 @@ func (p *Panel) buildVhostRequest(
 		return applyVhostRPCRequest{}, fmt.Errorf("read the site's protected folders and redirects: %w", err)
 	}
 	req.ProtectedDirs, req.Redirects = siteFeatureRequestFields(features)
+	// alpha.128: every render carries the site's web server settings
+	// (site_web_settings.go); nil for a site that never saved one.
+	if req.WebSettings, err = p.siteWebRequestFor(ctx, siteID); err != nil {
+		return applyVhostRPCRequest{}, fmt.Errorf("read the site's web server settings: %w", err)
+	}
 
 	// alpha.117: a suspended subscription's site renders the suspended page,
 	// in every flow that re-renders (startup batch, certificates, settings).

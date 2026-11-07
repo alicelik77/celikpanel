@@ -50,12 +50,24 @@ Kurallar:
 | 🧹 Rspamd | Servis | `rspamd` | `rspamd` | spam filtresi | SMTP sunucusu |
 | 📬 Dovecot | Servis | `dovecot-imapd` `dovecot-pop3d` `dovecot-lmtpd` | `dovecot` `pigeonhole` | IMAP sunucusu | — |
 | 🛡️ SpamAssassin | Servis | `spamassassin` `spamd` `spamass-milter` | — | spam filtresi | SMTP sunucusu |
+| 📤 Outgoing mail limits (postfwd) | Servis | `postfwd` | `postfwd` | — | SMTP sunucusu |
 
 ### Güvenlik
 
 | Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
 |---|---|---|---|---|---|
 | 🔐 WireGuard VPN | Servis | `wireguard` | `wireguard-tools` | — | — |
+
+### Web
+
+| Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
+|---|---|---|---|---|---|
+| 🌿 Git | Araç | `git` | `git` | — | — |
+
+### Güvenlik
+
+| Bileşen | Tür | APT paket eşlemesi | pacman paket eşlemesi | Koltuk | Gerekenler |
+|---|---|---|---|---|---|
 | 🔐 Let's Encrypt client (certbot) | Araç | `certbot` | `certbot` | — | — |
 | 🚫 Fail2ban | Servis | `fail2ban` | `fail2ban` | — | Firewall engine |
 | 🧱 Firewall engine | Araç | `nftables` | `nftables` | — | — |

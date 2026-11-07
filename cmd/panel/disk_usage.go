@@ -296,6 +296,12 @@ func parseUsageTime(value string) (time.Time, bool) {
 func (p *Panel) evaluateDiskRow(ctx context.Context, row diskRow, now time.Time) error {
 	db := p.db.GetDB()
 	limit := row.LimitMB * mib
+	// alpha.128 (G10): the plan's overuse policy and notice level. "notify"
+	// suspends nothing; a full disk still stops uploads (the server's disk).
+	policy, notifyPct, _, err := subscriptionOverusePolicy(ctx, db, row.ID)
+	if err != nil {
+		return err
+	}
 	over := !row.Admin && limit > 0 && row.UsedBytes >= limit
 	if !over {
 		// Under the limit (or unlimited): the episode ends.
@@ -315,7 +321,7 @@ func (p *Panel) evaluateDiskRow(ctx context.Context, row diskRow, now time.Time)
 				return err
 			}
 		}
-		if !row.Admin && limit > 0 && usageLevel(row.UsedBytes, limit) == 80 {
+		if !row.Admin && limit > 0 && usageLevelAt(row.UsedBytes, limit, notifyPct) == 80 {
 			name, owner, reseller := subscriptionNoticeNames(ctx, db, row.ID)
 			recipients, err := usageRecipientsFor(ctx, db, row.ID)
 			if err != nil {
@@ -348,6 +354,11 @@ func (p *Panel) evaluateDiskRow(ctx context.Context, row diskRow, now time.Time)
 	recipients, err := usageRecipientsFor(ctx, db, row.ID)
 	if err != nil {
 		return err
+	}
+	if policy == overusePolicyNotify {
+		body.SuspendOn = ""
+		p.storeUsageNotices(ctx, db, recipients, noticeDisk100, row.ID, 0, episode, body)
+		return nil
 	}
 	p.storeUsageNotices(ctx, db, recipients, noticeDisk100, row.ID, 0, episode, body)
 	switch {
@@ -419,7 +430,11 @@ func loadSubscriptionDiskView(ctx context.Context, q rowQueryer, subscriptionID 
 	}
 	view.Detail, view.MeasuredAt, view.OverSince = detail.String, measured.String, over.String
 	if t, ok := parseUsageTime(over.String); ok {
-		view.SuspendOn = t.Add(diskSuspendAfter).UTC().Format(time.RFC3339)
+		// A "notify only" plan never suspends for disk (alpha.128 lab: the
+		// account screen named a suspension day the notices did not).
+		if policy, _, _, err := subscriptionOverusePolicy(ctx, q, subscriptionID); err != nil || policy != overusePolicyNotify {
+			view.SuspendOn = t.Add(diskSuspendAfter).UTC().Format(time.RFC3339)
+		}
 	}
 	view.UploadsBlocked = blocked == 1
 	view.UploadsApplied = applied == blocked

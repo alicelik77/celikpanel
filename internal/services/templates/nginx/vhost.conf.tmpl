@@ -89,7 +89,7 @@
 {{- define "locations"}}{{template "site-features" .}}
 {{- if eq .ProjectType "php"}}
     root {{.DocumentRoot}};
-    index index.php index.html index.htm;
+    index {{.IndexFiles}};
 
     location / {
 {{template "www-redirect" .}}
@@ -145,7 +145,7 @@
     }
 {{- else if eq .ProjectType "static"}}
     root {{.DocumentRoot}};
-    index index.html index.htm;
+    index {{.IndexFiles}};
 
     location / {
 {{template "www-redirect" .}}
@@ -186,6 +186,39 @@
     location ~ /\.(?!well-known).* {
         deny all;
     }
+{{- else if .NodePublicRoot}}
+    {{- /* alpha.128 (G19): the Node.js site chose to have nginx serve its
+        public/ folder itself. Only that folder is the root: the application
+        folder (its code, package.json, .env) is never served. A file that
+        exists there is answered by nginx; every other address, a folder
+        included, goes to the application. Dotfiles are refused, as on a
+        PHP site.
+        Node.js sitesi public/ klasörünü nginx'in sunmasını seçti; yalnız o
+        klasör köktür, uygulama klasörü asla sunulmaz. */}}
+    # Static files of the application's public/ folder, then the application
+    # public/ klasörünün dosyaları, sonra uygulama
+    root {{.NodePublicRoot}};
+
+    location / {
+{{template "www-redirect" .}}
+        try_files $uri @celikpanel_app;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    location @celikpanel_app {
+        proxy_pass {{.Upstream}};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 60s;
+    }
 {{- else}}
     # Reverse proxy to the application / Uygulamaya ters vekil
     location / {
@@ -215,6 +248,17 @@
         proxy_set_header Connection "upgrade";
         proxy_read_timeout 60s;
     }
+{{- end}}
+{{- /* alpha.128 (G3): the content-only include point of the site's web
+    server settings (settings.site, directives.site). It is in the blocks
+    that serve the site's content only, never in the block that only
+    redirects to HTTPS. A site that never saved a web server setting has no
+    such line, so its file is exactly what it was.
+    Sitenin web sunucusu ayarları; yalnız içerik sunan bloklarda. */}}
+{{- if .SiteInclude}}
+
+    # This site's web server settings (Hosting → Web server) / Web sunucusu ayarları
+    include {{.PanelManagedDir}}/*.site;
 {{- end}}
 {{- end}}
 

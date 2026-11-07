@@ -102,6 +102,10 @@ func (p *Panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusUnauthorized, "sign-in expired, start again")
 		return
 	}
+	// alpha.128 (G4): administrators only from the listed addresses.
+	if p.refuseAdministratorFromUnlistedAddress(w, r, user.ID) {
+		return
+	}
 	if state.totpEnabled {
 		pendingToken, err := newPendingToken(state)
 		if err != nil {
@@ -125,6 +129,7 @@ func (p *Panel) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeSignInStateError(w, err)
 		return
 	}
+	p.describeNewSession(r, token)
 
 	http.SetCookie(w, p.sessionCookie(token, time.Now().Add(auth.SessionDuration)))
 

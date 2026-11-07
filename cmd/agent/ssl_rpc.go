@@ -554,6 +554,12 @@ func verifyCertificateTrust(leaf *x509.Certificate, bundle []*x509.Certificate, 
 
 // ValidateCertificate validates a certificate and extracts information
 func (a *Agent) ValidateCertificate(req ValidateCertRequest, resp *ValidateCertResponse) error {
+	// alpha.128 (G31): the key of a certificate request stays in the Agent.
+	if err := useCertificateRequestKey(req.RequestKeyToken, req.RequestKeySHA256, &req.KeyContent); err != nil {
+		resp.Valid = false
+		resp.Error = err.Error()
+		return nil
+	}
 	certificates, err := parseCertificateBundle(req.CertContent, req.ChainContent)
 	if err != nil {
 		resp.Valid = false
@@ -922,6 +928,12 @@ func snapshotCertbotCertificateFromLineage(
 // InstallCustomCertificate installs a custom SSL certificate
 func (a *Agent) InstallCustomCertificate(req InstallCertRequest, resp *InstallCertResponse) error {
 	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "installing a custom certificate"); err != nil {
+		resp.Success = false
+		resp.Error = err.Error()
+		return nil
+	}
+	// alpha.128 (G31): the key of a certificate request stays in the Agent.
+	if err := useCertificateRequestKey(req.RequestKeyToken, req.RequestKeySHA256, &req.KeyContent); err != nil {
 		resp.Success = false
 		resp.Error = err.Error()
 		return nil

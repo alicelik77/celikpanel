@@ -58,6 +58,9 @@ var rightPermissionIDs = []string{
 	rightServiceApps,
 	rightProgramApps,
 	rightPythonApps,
+	rightPHPSettings,
+	rightPHPVersion,
+	rightNginxDirectives,
 }
 
 var rightPermissionNames = map[string]string{
@@ -84,7 +87,28 @@ var rightPermissionNames = map[string]string{
 	// alpha.119 (runtime_apps_model.go).
 	rightProgramApps: "Uploaded programs",
 	rightPythonApps:  "Python apps",
+	// alpha.128 (setting_limits.go, docs/SITE-LIMITS.md).
+	rightPHPSettings:     "PHP settings of a site",
+	rightPHPVersion:      "PHP version of a site",
+	rightNginxDirectives: "Additional nginx directives",
 }
+
+// alpha.128 permissions (docs/SITE-LIMITS.md). php_settings: the site's PHP
+// values within the plan's ceilings (closed: shown read-only).
+// php_version: choosing the site's PHP version (closed: shown, not
+// changeable). nginx_directives: the site's additional nginx directives; an
+// opt-in permission (optInPermissions): closed for everyone, Unlimited plans
+// included, until the administrator offers it.
+const (
+	rightPHPSettings     = "php_settings"
+	rightPHPVersion      = "php_version"
+	rightNginxDirectives = "nginx_directives"
+)
+
+// optInPermissions are offered only when the administrator turned them on
+// (panel setting admin_offered_permissions); every other permission is
+// offered unless hidden.
+var optInPermissions = map[string]bool{rightNginxDirectives: true}
 
 // legacyGrantPermissions are the two product permissions that still need an
 // active add-on grant (subscription_entitlements) as well: the VPN server

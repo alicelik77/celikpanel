@@ -60,8 +60,16 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleMailCatchAll(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):
 		p.handleMailAutoresponder(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/options"):
+		p.handleDomainMailOptions(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/delivery"):
+		p.handleMailDelivery(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/outgoing"):
+		p.handleDomainMailOutgoing(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/quota"):
 		p.handleMailQuotaStatus(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/accounts/empty"):
+		p.handleEmptyMailbox(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/password"):
 		p.handleUpdateEmailPassword(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/accounts"):
@@ -125,7 +133,13 @@ func (p *Panel) handleListEmailAccounts(w http.ResponseWriter, r *http.Request, 
 		writeServerError(w, err)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"accounts": accounts})
+	// alpha.128 (G12): the plan's largest mailbox (0 = no plan limit).
+	ceiling, err := p.mailboxSizeCeiling(r.Context(), domainID)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"accounts": accounts, "mailbox_size_ceiling_mb": ceiling})
 }
 
 func (p *Panel) handleListEmailForwardings(w http.ResponseWriter, r *http.Request, domainID int) {
@@ -240,6 +254,10 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 		writeClientError(w, http.StatusBadRequest, "quota is outside the allowed range")
 		return
 	}
+	// alpha.128 (G12): within the plan's largest mailbox.
+	if p.refuseMailboxAbovePlan(w, r, domainID, request.QuotaMB) {
+		return
+	}
 	// A mailbox that already exists is the person's to use, not a server
 	// fault: answered before the plan limit and the Agent are asked, nothing
 	// changed (a124 lab: it was a 500 from the UNIQUE constraint). A row
@@ -308,6 +326,9 @@ func (p *Panel) handleAddEmailAccount(w http.ResponseWriter, r *http.Request, do
 	p.queueAutomaticDKIMForMailbox(context.WithoutCancel(r.Context()), domainID, domain)
 	// Its size limit is enforced from now on, not at the next hourly check.
 	p.requestMailQuotaReconcile()
+	// alpha.128: its first-day sending limit is held by postfwd right away.
+	p.requestOutgoingApply()
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 
@@ -408,6 +429,16 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 
 	succeeded = true
 	answer := map[string]any{"success": true}
+	// alpha.128: a mailbox paused for security sends again only after its
+	// password changed (owner decision of 7 Nov 2026); this is that change.
+	if resumed, err := p.resumeOutgoingAfterPassword(context.WithoutCancel(r.Context()), request.ID); resumed {
+		answer["sending_resumed"] = err == nil
+		if err != nil {
+			// The pause is lifted; postfwd takes it within minutes by
+			// itself (the screen says so, not "open again").
+			answer["sending_resume_pending"] = true
+		}
+	}
 	if claimed {
 		// The previous owner's open mail sessions end with the transfer's step.
 		ended, endErr := p.rotationNativeOps().endMailSessions(r.Context(), address)
@@ -470,6 +501,8 @@ func (p *Panel) handleDeleteEmailAccount(w http.ResponseWriter, r *http.Request,
 		writeServerError(w, err)
 		return
 	}
+	p.requestOutgoingApply()
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
@@ -481,6 +514,10 @@ func (p *Panel) handleUpdateEmailQuota(w http.ResponseWriter, r *http.Request, d
 	if err := decodeStrictJSON(w, r, &request); err != nil ||
 		request.ID <= 0 || request.QuotaMB <= 0 || request.QuotaMB > transport.MaxMailboxQuotaMB {
 		writeClientError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	// alpha.128 (G12): within the plan's largest mailbox.
+	if p.refuseMailboxAbovePlan(w, r, domainID, request.QuotaMB) {
 		return
 	}
 	p.mailMutationMu.Lock()
@@ -728,6 +765,7 @@ func (p *Panel) handleAddEmailForwarding(w http.ResponseWriter, r *http.Request,
 		writeMailDomainMutationError(w, err)
 		return
 	}
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "id": newID})
 }
 
@@ -762,6 +800,7 @@ func (p *Panel) handleDeleteEmailForwarding(w http.ResponseWriter, r *http.Reque
 		writeMailDomainMutationError(w, err)
 		return
 	}
+	p.requestDomainMailOptionsApply(r.Context())
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 

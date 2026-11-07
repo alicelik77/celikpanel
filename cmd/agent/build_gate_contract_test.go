@@ -38,6 +38,41 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.NodeSiteInstallV1(&transport.NodeSiteInstallRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.128: a Node.js site's environment file.
+		{name: "NodeSiteEnvV1", run: func(expected string) string {
+			var response transport.RuntimeAppStepResponse
+			_ = agent.NodeSiteEnvV1(&transport.NodeSiteEnvRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: a site's page cache.
+		{name: "SitePageCacheClearV1", run: func(expected string) string {
+			var response transport.SitePageCacheClearResponse
+			_ = agent.SitePageCacheClearV1(&transport.SitePageCacheClearRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: site log retention.
+		{name: "SiteLogRetentionV1", run: func(expected string) string {
+			var response transport.SiteLogRetentionResponse
+			_ = agent.SiteLogRetentionV1(&transport.SiteLogRetentionRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: website copying.
+		{name: "SiteCopyV1", run: func(expected string) string {
+			var response transport.SiteCopyResponse
+			_ = agent.SiteCopyV1(&transport.SiteCopyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.128: Git deploy.
+		{name: "GitDeployKeyV1", run: func(expected string) string {
+			var response transport.GitDeployKeyResponse
+			_ = agent.GitDeployKeyV1(&transport.GitDeployKeyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "GitDeployV1", run: func(expected string) string {
+			var response transport.GitDeployResponse
+			_ = agent.GitDeployV1(&transport.GitDeployRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		// alpha.118: WordPress tools and the malware quarantine.
 		{name: "WordPressUpdateV1", run: func(expected string) string {
 			var response transport.WordPressUpdateResponse
@@ -199,6 +234,24 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.128 (G25): per-domain mail options.
+			name: "SetMailDomainOptionsV1",
+			run: func(expected string) string {
+				var response transport.SetMailDomainOptionsResponse
+				_ = agent.SetMailDomainOptionsV1(&transport.SetMailDomainOptionsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			// alpha.128 (G20): emptying a mailbox.
+			name: "EmptyMailboxV1",
+			run: func(expected string) string {
+				var response transport.EmptyMailboxResponse
+				_ = agent.EmptyMailboxV1(&transport.EmptyMailboxRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "EndMailSessionsV1",
 			run: func(expected string) string {
 				var response transport.EndMailSessionsResponse
@@ -266,6 +319,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			name: "SitePHPSettingsV1",
+			run: func(expected string) string {
+				var response transport.SitePHPSettingsResponse
+				_ = agent.SitePHPSettingsV1(&transport.SitePHPSettingsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "ApplySiteSettingsIncludeV1",
+			run: func(expected string) string {
+				var response transport.SiteSettingsIncludeResponse
+				_ = agent.ApplySiteSettingsIncludeV1(&transport.SiteSettingsIncludeRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			name: "InspectAppUnit",
 			run: func(expected string) string {
 				var response transport.InspectSiteFileResponse
@@ -298,6 +367,17 @@ func protectedBuildGateOperations() []buildGateOperation {
 			run: func(expected string) string {
 				var response transport.ApplyFileAccessResponse
 				if err := agent.ApplyFileAccessV1(&transport.ApplyFileAccessRequest{ExpectedBuildCommit: expected}, &response); err != nil {
+					return err.Error()
+				}
+				return response.Detail
+			},
+		},
+		{
+			// alpha.128: additional FTP/SFTP logins of a site.
+			name: "ApplyFTPLoginV1",
+			run: func(expected string) string {
+				var response transport.ApplyFTPLoginResponse
+				if err := agent.ApplyFTPLoginV1(&transport.ApplyFTPLoginRequest{ExpectedBuildCommit: expected}, &response); err != nil {
 					return err.Error()
 				}
 				return response.Detail
@@ -545,6 +625,22 @@ func protectedBuildGateOperations() []buildGateOperation {
 				return response.Error
 			},
 		},
+		// alpha.128 ops: restarting the server and certificate requests.
+		{name: "ServerRebootV1", run: func(expected string) string {
+			var response transport.ServerRebootResponse
+			_ = agent.ServerRebootV1(&transport.ServerRebootRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "CertificateRequestCreateV1", run: func(expected string) string {
+			var response transport.CertificateRequestCreateResponse
+			_ = agent.CertificateRequestCreateV1(&transport.CertificateRequestCreateRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "CertificateRequestDiscardV1", run: func(expected string) string {
+			var response transport.CertificateRequestDiscardResponse
+			_ = agent.CertificateRequestDiscardV1(&transport.CertificateRequestDiscardRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 	}
 }
 

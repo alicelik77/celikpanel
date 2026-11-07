@@ -36,6 +36,7 @@ export const trRemovalRuleScreens: Record<RemovalRuleScreenKey, string> = {
     'rmrule.stop.monitoring': 'Canlı izleme ekranı durur. Siteler ve hizmetler çalışmaya devam eder.',
     'rmrule.stop.unknown_use': 'CelikPanel hangi sitelerin bunu kullandığını kaydetmez; kimin etkileneceğini söyleyemez. Bu sunucuda onu kullanan her şey durur.',
     'rmrule.stop.toolchain': 'Derleyici artık bu sunucuda olmaz. Barındırılan hiçbir şey onu kullanmıyor.',
+    'rmrule.stop.outgoing_limits': 'Saatlik giden posta sınırları ve posta kutularının güvenlik için durdurulması biter. Posta sınırsız akmaya devam eder.',
     'rmrule.stop.database_tool': 'Veritabanlarını yöneten web sayfası kapanır. Veritabanları yerinde kalır.',
     'rmrule.nothingStops': 'Bu sunucuda hiçbir şey buna ihtiyaç duymuyor.',
     'rmrule.withdraws': 'Müşterilere sunulanlar: {sets} plan ya da hesaptaki {count} kayıt bununla birlikte geri çekilir. Onu kullanan siteler yukarıda sayılır; hiçbiri bozulmaz.',

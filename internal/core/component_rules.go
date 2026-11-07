@@ -69,6 +69,9 @@ const (
 	StopUnknownUse    = "unknown_use"    // the Panel records no usage (caches)
 	StopToolchain     = "toolchain"      // the administrator's own compiler
 	StopDatabaseTool  = "database_tool"  // the web database administration page
+	// alpha.128: hourly outgoing mail limits and the security pause stop;
+	// mail keeps flowing (Postfix asks postfwd with default action DUNNO).
+	StopOutgoingLimits = "outgoing_limits"
 )
 
 // TogetherMalwareSchedule is a setting turned off together with ClamAV: the
@@ -136,9 +139,13 @@ var ComponentRules = map[string]ComponentRule{
 	"rspamd":       {Requires: []string{SeatSMTPServer}, Provides: []string{SeatSpamFilter}, Conflicts: []string{"spamassassin"}, Together: true, Stops: []string{StopSpamFiltering}},
 	"spamassassin": {Requires: []string{SeatSMTPServer}, Provides: []string{SeatSpamFilter}, Conflicts: []string{"rspamd"}, Together: true, Stops: []string{StopSpamFiltering}},
 	"roundcube":    {Requires: []string{SeatSMTPServer, SeatIMAPServer, SeatWebServer, "php-fpm"}, Together: true, Stops: []string{StopWebmail}},
+	// alpha.128: postfwd is only asked by Postfix's submission services.
+	"postfwd": {Requires: []string{SeatSMTPServer}, Together: true, Stops: []string{StopOutgoingLimits}},
 
 	"wireguard": {UsedBy: []string{UseVPNPeers}},
 	"certbot":   {UsedBy: []string{UseCertificates}},
+	// alpha.128: Git deployment's client; nothing else depends on it.
+	"git": {},
 	// Fail2ban bans through nftables (banaction = nftables).
 	"fail2ban": {Requires: []string{"nftables"}, Stops: []string{StopBanProtection}},
 	// The panel firewall is the panel's own requirement.

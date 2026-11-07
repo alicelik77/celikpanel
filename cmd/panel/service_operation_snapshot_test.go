@@ -1441,6 +1441,61 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the panel operations (migration 72, alpha.128).
+        DROP INDEX idx_certificate_requests_state;
+        DROP TABLE certificate_requests;
+        DROP INDEX idx_audit_logs_acting_as;
+        DROP INDEX idx_audit_logs_user;
+        DROP INDEX idx_account_notices_user;
+        DROP INDEX idx_account_notices_one;
+        DROP TABLE account_notices;
+        DROP TABLE notification_preferences;
+        ALTER TABLE sessions DROP COLUMN user_agent;
+        ALTER TABLE sessions DROP COLUMN client_ip;
+        ALTER TABLE sessions DROP COLUMN last_seen_at;
+        -- Reverse the additional FTP logins (migration 71, alpha.128).
+        DROP INDEX idx_ftp_logins_domain;
+        DROP TABLE ftp_logins;
+        -- Reverse the API tokens (migration 70, alpha.128).
+        DROP INDEX idx_api_tokens_user;
+        DROP TABLE api_tokens;
+        -- Reverse the visitor statistics (migration 69, alpha.128).
+        DROP TABLE site_visitor_stats_daily;
+        -- Reverse the web server settings (migration 68, alpha.128).
+        DROP TABLE git_deploy_settings;
+        DROP TABLE log_retention_subscriptions;
+        DROP TABLE log_retention_plans;
+        DROP TABLE node_site_env;
+        DROP TABLE site_web_settings;
+        -- Reverse the outgoing mail limits (migration 67, alpha.128).
+        DROP TRIGGER mail_plan_limits_follow_subscription;
+        DROP TRIGGER mail_outgoing_notices_follow_user;
+        DROP TRIGGER mail_plan_limits_follow_plan;
+        DROP INDEX idx_mail_outgoing_notices_user;
+        DROP INDEX idx_mail_outgoing_notices_one;
+        DROP TABLE mail_outgoing_notices;
+        DROP TABLE domain_mail_options;
+        DROP INDEX idx_mail_outgoing_hourly_hour;
+        DROP TABLE mail_outgoing_hourly;
+        DROP TABLE mail_plan_limits;
+        DROP TABLE mailbox_outgoing;
+        DROP TABLE mail_outgoing_settings;
+        -- Reverse the site setting limits (migration 66, alpha.128).
+        DELETE FROM rights_set_items WHERE item IN ('permission:php_settings', 'permission:php_version');
+        ALTER TABLE reseller_pools DROP COLUMN overselling;
+        ALTER TABLE reseller_plans DROP COLUMN overselling;
+        ALTER TABLE subscriptions DROP COLUMN notify_percent_traffic;
+        ALTER TABLE subscriptions DROP COLUMN notify_percent_disk;
+        ALTER TABLE subscriptions DROP COLUMN overuse_policy;
+        ALTER TABLE service_plans DROP COLUMN notify_percent_traffic;
+        ALTER TABLE service_plans DROP COLUMN notify_percent_disk;
+        ALTER TABLE service_plans DROP COLUMN overuse_policy;
+        DROP TRIGGER setting_ceilings_follow_user;
+        DROP TRIGGER setting_ceilings_follow_reseller_plan;
+        DROP TRIGGER setting_ceilings_follow_plan;
+        DROP TRIGGER setting_ceilings_follow_subscription;
+        DROP TABLE setting_ceilings;
+        DROP TABLE setting_policy;
         -- Reverse the monitoring alerts (migration 65, alpha.127).
         DROP TABLE site_uptime;
         DROP INDEX idx_monitoring_alerts_opened;

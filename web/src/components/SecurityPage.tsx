@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { startVisibleReads } from '../lib/visibleReads';
 import { ShieldAlert, ShieldCheck, ShieldOff, ShieldQuestion } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -8,11 +8,17 @@ import { RemoteGate } from './ui';
 import { FirewallBar } from './FirewallPanel';
 import { SecurityAuditCard } from './SecurityAuditCard';
 import { SecurityUpdatesCard } from './SecurityUpdatesCard';
+// alpha.128 (G21): the administrator's password level, a chunk of its own.
+const PasswordLevelCard = lazy(() => import('./ServerSettingLimits').then((module) => ({ default: module.PasswordLevelCard })));
 import { fetchHostMutationReadiness, type HostMutationReadiness } from '../lib/panelUpdateAdmission';
 import { useManagedServices } from '../lib/managedServices';
 import { useRemote } from '../lib/remote';
 import { EMERGENCY_COMPONENTS, SECURITY_EMERGENCIES_URL, decodeEmergencyList, emergencyPath, openEmergenciesFor } from '../lib/securityEmergency';
 import { isServiceRunning } from '../lib/serviceStatus';
+
+// alpha.128 ops (G4): panel access and every account's sessions, in their own chunk.
+const PanelAccessCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.PanelAccessCard })));
+const AllSessionsCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.AllSessionsCard })));
 
 // Server → Security (D-037, owner 2026-10-22): one page that answers "is my
 // server safe?". Nothing here is new: the firewall box that used to open from
@@ -67,11 +73,14 @@ export function SecurityPage() {
                 </div>
                 {/* alpha.107 (D-038 §4): the operating system's own security updates. */}
                 <SecurityUpdatesCard />
+                <Suspense fallback={null}><PanelAccessCard /></Suspense>
+                <Suspense fallback={null}><AllSessionsCard /></Suspense>
                 <Fail2banStatus />
                 <EmergencyArea />
                 <div data-security-section="audit">
                     <SecurityAuditCard />
                 </div>
+                <Suspense fallback={null}><PasswordLevelCard /></Suspense>
             </div>
         </div>
     );

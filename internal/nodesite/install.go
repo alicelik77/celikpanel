@@ -1,7 +1,10 @@
 package nodesite
 
 import (
+	"encoding/json"
 	"errors"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -40,7 +43,37 @@ type InstallParams struct {
 	// Build: run the project's build script afterwards (--if-present: a
 	// project without one is not a failure).
 	Build bool
-	Caps  sitesandbox.Caps
+	// Script (alpha.128, G19): run only this script of package.json
+	// (`npm run <script>`), no install. It must be one of the project's
+	// scripts (the Agent reads package.json) and a plain name.
+	Script string
+	Caps   sitesandbox.Caps
+}
+
+// scriptNamePattern is a package.json script name the step may run: no
+// shell, no option, nothing systemd would expand.
+var scriptNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$`)
+
+// ValidScriptName says whether a script name can be run.
+func ValidScriptName(name string) bool { return scriptNamePattern.MatchString(name) }
+
+// PackageScripts lists the script names of a package.json text that can be
+// run, sorted. A text that is not JSON, or has no scripts, lists none.
+func PackageScripts(text []byte) []string {
+	var pkg struct {
+		Scripts map[string]json.RawMessage `json:"scripts"`
+	}
+	if len(text) > 1<<20 || json.Unmarshal(text, &pkg) != nil {
+		return nil
+	}
+	names := make([]string, 0, len(pkg.Scripts))
+	for name := range pkg.Scripts {
+		if ValidScriptName(name) {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Profile is the install step's sandbox profile: the application's,
@@ -67,6 +100,14 @@ func InstallSteps(p InstallParams) ([][]string, error) {
 	steps := [][]string{{node, npm, install, "--no-audit", "--no-fund", "--loglevel=warn", "--foreground-scripts"}}
 	if p.Build {
 		steps = append(steps, []string{node, npm, "run", "build", "--if-present"})
+	}
+	if p.Script != "" {
+		// A chosen package script alone: npm runs it with /bin/sh as the
+		// site's account inside the same sandbox as the install step.
+		if !ValidScriptName(p.Script) {
+			return nil, errors.New("the script name is not a plain package.json script name")
+		}
+		steps = [][]string{{node, npm, "run", p.Script}}
 	}
 	for _, step := range steps {
 		for _, word := range step {

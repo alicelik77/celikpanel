@@ -123,6 +123,18 @@ type Params struct {
 	// DropInDir is the owner's place (<unit>.d); CelikPanel never writes
 	// or removes it.
 	DropInDir string
+	// EnvFile (alpha.128, G19) is the site's environment file (EnvPath),
+	// root's and 0600, read by systemd before the sandbox starts. "" (the
+	// site has no environment variables) writes no line, so the unit is
+	// exactly what it was.
+	EnvFile string
+}
+
+// EnvPath is a Node.js site's environment file (alpha.128): in the root
+// folder of the runtime apps' files (0700), never in the site's folder, so
+// the site's account can neither read the secrets from disk nor plant a link.
+func EnvPath(envDir string, siteID int) string {
+	return path.Join(envDir, UnitName(siteID)+".env")
 }
 
 func profile(kind sitesandbox.Kind, unit, user, group, appDir, version string, port int, limits sitesandbox.Limits, caps sitesandbox.Caps) sitesandbox.Profile {
@@ -196,6 +208,11 @@ func (p Params) validate() error {
 	if _, err := RuntimeDir(p.NodeVersion); err != nil {
 		return err
 	}
+	if p.EnvFile != "" {
+		if err := sitesandbox.CheckValue(p.EnvFile); err != nil {
+			return err
+		}
+	}
 	return sitesandbox.CheckValue(p.DropInDir)
 }
 
@@ -247,6 +264,11 @@ func RenderUnit(p Params) (string, error) {
 	fmt.Fprintf(&b, "Environment=PATH=%s:/usr/bin:/bin\n", path.Join(runtime, "bin"))
 	fmt.Fprintf(&b, "Environment=PORT=%d\n", p.Port)
 	b.WriteString("Environment=HOST=127.0.0.1\nEnvironment=NODE_ENV=production\n")
+	if p.EnvFile != "" {
+		// After the fixed lines: the file cannot hold PATH, HOME, PORT or
+		// HOST (siteruntime.EnvKeyRefusal), so it adds and never replaces.
+		fmt.Fprintf(&b, "EnvironmentFile=-%s\n", p.EnvFile)
+	}
 	for _, line := range pre {
 		b.WriteString(line + "\n")
 	}

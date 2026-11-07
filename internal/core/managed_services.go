@@ -926,6 +926,28 @@ var ManagedServices = []ManagedService{
 		// web-server gereksinimiyle aynı kural.
 	},
 	{
+		// Outgoing mail limits (alpha.128, gap G1; owner decision of 7 Nov
+		// 2026): postfwd, the Postfix policy daemon, from the distribution's
+		// own repository on every supported system (Debian main, Ubuntu
+		// universe, Arch extra; docs/OUTGOING-MAIL-LIMITS.md). It counts the
+		// recipients each mailbox, domain and hosting account sends per hour
+		// and holds a paused mailbox. Postfix asks it from the submission
+		// services only, with default action DUNNO, so mail keeps flowing
+		// when it stops. Installed only from Components or the Mail settings,
+		// never by a panel update; its rule file and unit are native and keep
+		// working without the panel.
+		// Giden posta sınırları: dağıtımın kendi deposundan postfwd; Postfix
+		// yalnız 587/465'te sorar, postfwd durursa posta akmaya devam eder.
+		ID:          "postfwd",
+		Name:        "Outgoing mail limits (postfwd)",
+		Description: "Hourly sending limits for mailboxes",
+		Icon:        "📤",
+		Category:    "email",
+		Kind:        KindService,
+		SystemNames: []string{"postfwd"},
+		Packages:    map[string][]string{"apt": {"postfwd"}, "pacman": {"postfwd"}},
+	},
+	{
 		ID:            "wireguard",
 		Name:          "WireGuard VPN",
 		Description:   "Built-in VPN server",
@@ -963,6 +985,21 @@ var ManagedServices = []ManagedService{
 		// Kind=tool: certbot'un bize ait daemon'ı yoktur. Yenileme dağıtımın
 		// kendi systemd zamanlayıcısından koşar, ayrıca panelin kendi yenileme
 		// zamanlayıcısı vardır; başlatıp durduracağımız bir unit yok.
+		// alpha.128 lab: Git deployment needs the git client, and nothing in
+		// the panel offered it: the deploy said "the administrator installs
+		// the distribution's git package", which needed a terminal. git is the
+		// official package of every supported system (Debian, Ubuntu main,
+		// Arch core). Kind=tool: no service of its own.
+		// Git deposu dağıtımı için git istemcisi; her sistemin resmî paketi.
+		ID:          "git",
+		Name:        "Git",
+		Description: "Version control client for Git deployment",
+		Icon:        "🌿",
+		Category:    "web",
+		Kind:        KindTool,
+		Packages:    map[string][]string{"apt": {"git"}, "pacman": {"git"}},
+	},
+	{
 		ID:          "certbot",
 		Name:        "Let's Encrypt client (certbot)",
 		Description: "SSL certificate provider",

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/alicelik/celikpanel/internal/repositories"
@@ -395,6 +396,15 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 	if err := tx.Commit(); err != nil {
 		writeServerError(w, err)
 		return
+	}
+	// alpha.128 (G5): the user created here gets its subscription's
+	// connection limit too, on its own server (for PostgreSQL its own
+	// running cluster), through the same path as a changed limit. No limit
+	// writes nothing.
+	if limit, err := p.dbConnectionLimit(ctx, domain.SubscriptionID); err != nil {
+		log.Printf("database connection limit of %s: %v", dbUser, err)
+	} else if limit > 0 {
+		p.reapplyDBConnectionLimits([]int{domain.SubscriptionID})
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{

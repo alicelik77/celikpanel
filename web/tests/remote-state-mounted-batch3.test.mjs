@@ -100,6 +100,8 @@ const stub = dataModule(`
   export const ServerHostnameNotice = () => null;
   // alpha.114: My plan reads its own address (customers and resellers only).
   export const MyPlanCard = () => null;
+  // alpha.128: the notifications list and cards have their own tests (notifications-alpha128).
+  export const NotificationsCenter = () => null, NotificationPreferencesCard = () => null, NotificationSettingsCard = () => null;
   export const FirewallNoSSHAcknowledgement = () => null, readFirewallSSHReason = () => null, FirewallSSHReasonLine = () => null;
   // What the Components page imports beside these.
   export const useLocation = () => ({ hash: '', pathname: '/components' });
@@ -138,7 +140,8 @@ const { refreshRemote, useRemote } = await import(remoteURL);
 // component records and the real mail summary.
 const firewallURL = lib('lib/firewall.ts', { '/remote': remoteURL });
 const { decodeFirewallStatus, useFirewallStatus } = await import(firewallURL);
-const Dashboard = await pick(lib('components/Dashboard.tsx', {
+// alpha.128: the notifications list (lazy) is the stub's; it has its own tests.
+const Dashboard = await pick(replaceLazyImport(lib('components/Dashboard.tsx', {
   '/lib/firewall': firewallURL,
   '/lib/accounts': lib('lib/accounts.ts', { '/remote': remoteURL }),
   '/lib/mailProfileText': lib('lib/mailProfileText.ts'),
@@ -150,7 +153,7 @@ const Dashboard = await pick(lib('components/Dashboard.tsx', {
   '/lib/panelCertificate': lib('lib/panelCertificate.ts'),
   '/lib/auditAction': lib('lib/auditAction.ts', { '/componentName': lib('lib/componentName.ts') }),
   '/ComponentOperation': operationURL,
-}), 'Dashboard');
+}), './Notifications', stub), 'Dashboard');
 // The Components page, with the real decoders of ComponentOperation and an
 // operation tracker that is idle.
 // alpha.118: the page fetches the mail dialog lazily; the test hands it the real one.

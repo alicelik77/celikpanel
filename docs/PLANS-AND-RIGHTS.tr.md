@@ -592,6 +592,14 @@ müşterilerinin abonelikleri de askıya alınır.
 yapılandırma olduğu gibi durur. Abonelik yeniden başlatılınca her şey aynen
 geri gelir.
 
+**Bitiş tarihinden önce uyarı (alpha.128).** Sahibe, hesabı yöneten bayiye ve yöneticilere bitiş
+tarihinden belli gün önce (yöneticinin seçimi: 3, 7, 10, 14 ya da 30 gün; varsayılan 10) ve son 24
+saat içinde yeniden bildirilir. Sahibe kime başvuracağı söylenir; işi bayi (arada bayi yoksa
+yönetici) yapar ve bitiş tarihinin değiştirildiği hesap haklarına giden düğmeyi görür. Her aşama
+bir bitiş tarihi için bir kez gönderilir; ileri alınan ya da kaldırılan tarih eski bildirimleri
+kaldırır, pencere içindeki yeni tarih yenilerini verir. E-posta herkesin kendi seçimine uyar
+(Hesabım → Bildirimler).
+
 **Silme elle yapılır.** Askıya alınan abonelik hemen yöneticinin ya da
 bayinin "silinebilir" listesinde görünür (K6). Silmeyi yalnız bir kişi
 başlatır; panel kendiliğinden silmez. Silmeden önce neyin silineceği

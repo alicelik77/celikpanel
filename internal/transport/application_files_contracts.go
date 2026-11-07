@@ -106,21 +106,31 @@ type NodeSiteInstallRequest struct {
 	RunAsUser           string `json:"run_as_user"`
 	NodeVersion         string `json:"node_version"`
 	Build               bool   `json:"build"`
+	// Script (alpha.128, additive): run only this package.json script
+	// (npm run <script>) in the same sandbox, no install.
+	Script string `json:"script,omitempty"`
 }
 
 // NodeSiteInstallStatusRequest reads a site's install step (read-only).
 type NodeSiteInstallStatusRequest struct {
 	SiteID int `json:"site_id"`
+	// WorkDir (alpha.128, additive): the site's folder, so the answer can
+	// list package.json's scripts.
+	WorkDir string `json:"work_dir,omitempty"`
 }
 
 // NodeSiteInstallResponse is the install step's state: Phase is "" (none ran),
 // running, succeeded or failed. Class says what kind of answer a refusal
 // is (RuntimeApp* classes: verified, prerequisite, unknown).
 type NodeSiteInstallResponse struct {
-	RequestID string   `json:"request_id,omitempty"`
-	Phase     string   `json:"phase"`
-	Clean     bool     `json:"clean,omitempty"`
-	Build     bool     `json:"build,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
+	Phase     string `json:"phase"`
+	Clean     bool   `json:"clean,omitempty"`
+	Build     bool   `json:"build,omitempty"`
+	// Script (alpha.128, additive): the package script the step ran;
+	// Scripts: the scripts package.json offers now (status reads only).
+	Script    string   `json:"script,omitempty"`
+	Scripts   []string `json:"scripts,omitempty"`
 	StartedAt string   `json:"started_at,omitempty"`
 	EndedAt   string   `json:"ended_at,omitempty"`
 	Lines     []string `json:"lines,omitempty"`

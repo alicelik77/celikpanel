@@ -42,6 +42,7 @@ export const enRemovalRuleScreens = {
     'rmrule.stop.monitoring': 'The live monitoring dashboard stops. Sites and services keep working.',
     'rmrule.stop.unknown_use': 'CelikPanel does not record which sites use it, so it cannot say who is affected. Anything on this server that uses it stops.',
     'rmrule.stop.toolchain': 'The compiler is no longer on this server. Nothing hosted uses it.',
+    'rmrule.stop.outgoing_limits': 'Hourly outgoing mail limits and the security stop of mailboxes end. Mail keeps flowing without limits.',
     'rmrule.stop.database_tool': 'The web page for managing databases closes. The databases stay.',
     'rmrule.nothingStops': 'Nothing on this server requires it.',
     'rmrule.withdraws': 'Offered to customers: {count} entr(ies) in {sets} plan(s) or account(s) are withdrawn with it. Sites already using it are listed above, so none breaks.',

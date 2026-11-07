@@ -27,6 +27,14 @@ type SiteOrchestrator struct {
 	// function the Panel's start and saves use (D-031). Nil: the Agent names
 	// the domain alone, as before.
 	siteServerNames func(context.Context, int) ([]string, error)
+	// sitePHPLimits (alpha.128) gives creation the domain's site limits, so
+	// the new pool starts within the plan's process limit. Nil: none.
+	sitePHPLimits func(context.Context, int) transport.SitePHPLimits
+}
+
+// SetSitePHPLimits gives creation the Panel's limits of a domain's site.
+func (so *SiteOrchestrator) SetSitePHPLimits(derive func(context.Context, int) transport.SitePHPLimits) {
+	so.sitePHPLimits = derive
 }
 
 // SetSiteServerNames gives creation the Panel's own host-name derivation, so
@@ -269,6 +277,9 @@ func (so *SiteOrchestrator) CreateSite(ctx context.Context, req *CreateSiteReque
 			return nil, errors.Join(cause, so.rollbackCreatedSiteMetadata(domain.ID, siteID))
 		}
 		agentReq.ServerNames = names
+	}
+	if so.sitePHPLimits != nil {
+		agentReq.PHPLimits = so.sitePHPLimits(ctx, domain.ID)
 	}
 
 	var agentReply transport.CreateSiteResponse

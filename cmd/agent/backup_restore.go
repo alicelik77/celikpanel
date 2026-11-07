@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
@@ -78,7 +79,7 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 		// Restore them explicitly as file-only archives.
 		safety, err := a.createSafetyBackup(scope, backupspec.TypeFiles, backupspec.DatabaseIdentity{}, nil)
 		if err != nil {
-			return fmt.Errorf("create pre-restore safety backup: %w", err)
+			return &restoreFailure{code: backupspec.RestoreCodeSafetyFailed, reason: err, err: fmt.Errorf("create pre-restore safety backup: %w", err)}
 		}
 		resp.SafetyBackup = &safety
 		if err := restoreFilesArchive(backupPath, docroot); err != nil {
@@ -90,10 +91,10 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 
 	manifest, err := readBackupManifest(backupPath)
 	if err != nil {
-		return err
+		return &restoreFailure{code: backupspec.RestoreCodeInvalid, reason: err, err: err}
 	}
 	if err := validateManifest(manifest, scope); err != nil {
-		return err
+		return &restoreFailure{code: backupspec.RestoreCodeInvalid, reason: err, err: err}
 	}
 	var requestedDatabases []backupspec.DatabaseIdentity
 	var singleDatabase backupspec.DatabaseIdentity
@@ -134,7 +135,10 @@ func (a *Agent) restoreBackup(req *backupspec.RestoreRequest, resp *backupspec.R
 
 	safety, err := a.createSafetyBackup(scope, manifest.Type, singleDatabase, requestedDatabases)
 	if err != nil {
-		return fmt.Errorf("create pre-restore safety backup: %w", err)
+		if refusal := backupClusterRefusalOf(err); refusal != nil {
+			return err
+		}
+		return &restoreFailure{code: backupspec.RestoreCodeSafetyFailed, reason: err, err: fmt.Errorf("create pre-restore safety backup: %w", err)}
 	}
 	resp.SafetyBackup = &safety
 
@@ -216,10 +220,10 @@ func restoreFilesArchive(archivePath, docroot string) error {
 		return err
 	}
 	if err := staged.Commit(); err != nil {
-		return fmt.Errorf(
+		return &restoreFailure{code: backupspec.RestoreCodeFinishFailed, reason: err, err: fmt.Errorf(
 			"restored files were published, but final cleanup or durability proof failed; pre-restore safety backup was retained: %w",
 			err,
-		)
+		)}
 	}
 	return nil
 }
@@ -278,10 +282,10 @@ func (a *Agent) restoreFullPackage(scope backupScope, targetDir, safetyPath, doc
 		return restoreRollbackError(err, rollbackErr)
 	}
 	if err := staged.Commit(); err != nil {
-		return fmt.Errorf(
+		return &restoreFailure{code: backupspec.RestoreCodeFinishFailed, reason: err, err: fmt.Errorf(
 			"full restore was published, but final cleanup or durability proof failed; pre-restore safety backup was retained: %w",
 			err,
-		)
+		)}
 	}
 	return nil
 }
@@ -300,7 +304,49 @@ func rollbackDatabases(databases []backupspec.DatabaseIdentity, safetyDir string
 
 func restoreRollbackError(restoreErr, rollbackErr error) error {
 	if rollbackErr == nil {
-		return fmt.Errorf("restore failed and safety backup was reapplied: %w", restoreErr)
+		return &restoreFailure{code: backupspec.RestoreCodeLoadReverted, reason: restoreErr,
+			err: fmt.Errorf("restore failed and safety backup was reapplied: %w", restoreErr)}
 	}
-	return fmt.Errorf("restore failed: %v; safety rollback also failed: %w", restoreErr, rollbackErr)
+	return &restoreFailure{code: backupspec.RestoreCodeRollbackFailed, reason: restoreErr,
+		err: fmt.Errorf("restore failed: %v; safety rollback also failed: %w", restoreErr, rollbackErr)}
+}
+
+// restoreFailure is a restore that stopped, typed (alpha.128 lab finding: a
+// refused PostgreSQL restore answered a generic error). reason is the
+// engine's own refusal, which the screen shows bounded.
+type restoreFailure struct {
+	code   string
+	reason error
+	err    error
+}
+
+func (e *restoreFailure) Error() string { return e.err.Error() }
+func (e *restoreFailure) Unwrap() error { return e.err }
+
+// restoreEngineReason is the part of a failure the engine said: from its
+// first "ERROR" on, one line, bounded; control characters removed.
+func restoreEngineReason(err error) string {
+	if err == nil {
+		return ""
+	}
+	text := err.Error()
+	if i := strings.Index(text, "ERROR"); i >= 0 {
+		text = text[i:]
+	}
+	text = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, text)
+	return boundedText(strings.Join(strings.Fields(text), " "), 300)
+}
+
+// restoreFailureOf types an error of restoreBackup for the response.
+func restoreFailureOf(err error) (string, string) {
+	var failure *restoreFailure
+	if errors.As(err, &failure) {
+		return failure.code, restoreEngineReason(failure.reason)
+	}
+	return "", ""
 }

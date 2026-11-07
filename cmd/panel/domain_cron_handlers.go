@@ -132,6 +132,11 @@ func (p *Panel) handleAddCronJob(w http.ResponseWriter, r *http.Request, tenant 
 	if !requireCronVersion(w, req.Version) {
 		return
 	}
+	// alpha.128 (G5): the site's task count and the fewest minutes between
+	// two runs, within its limits.
+	if p.refuseCronLimits(r.Context(), w, r, tenant, req.Schedule, "", true) {
+		return
+	}
 
 	var success bool
 	err := p.callAgentContext(r.Context(), "Agent.AddCronJob", &transport.AddCronJobRequest{
@@ -169,6 +174,11 @@ func (p *Panel) handleUpdateCronJob(w http.ResponseWriter, r *http.Request, tena
 		return
 	}
 	if !requireCronVersion(w, req.Version) {
+		return
+	}
+	// alpha.128 (G5): a changed schedule keeps within the site's limit; a
+	// task whose schedule is kept is not held by a newer limit (P5).
+	if p.refuseCronLimits(r.Context(), w, r, tenant, req.Schedule, req.ID, false) {
 		return
 	}
 

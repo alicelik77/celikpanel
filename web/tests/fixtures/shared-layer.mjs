@@ -27,9 +27,24 @@ const read = (path) => readFileSync(new URL('../../src/' + path, import.meta.url
 
 // compileSource turns one file under web/src into an importable module.
 // `resolve` maps each of its import specifiers to a module URL.
+// alpha.128: the lazily loaded parts of the limits screens (the site's PHP
+// values, the plan's limits, the server's limits and the password level) are
+// their own chunks; a screen that mounts one of them in a test gets a part
+// that draws nothing, as the screens' other lazy parts get their stubs.
+// alpha.128: sınır ekranlarının tembel parçaları testte hiçbir şey çizmez.
+const alpha128LazyParts = {
+  './SitePHPLimits': ['SitePHPLimits'],
+  './PlanLimitsSection': ['PlanLimitsSection', 'CustomLimitsSection'],
+  './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
+};
+
 export function compileSource(path, resolve) {
-  const compiled = ts.transpileModule(read(path), { compilerOptions }).outputText
+  let compiled = ts.transpileModule(read(path), { compilerOptions }).outputText
     .replace(/from ['"]([^'"]+)['"]/g, (_, specifier) => `from '${specifier === 'react' ? reactURL : resolve(specifier)}'`);
+  for (const [specifier, names] of Object.entries(alpha128LazyParts)) {
+    const empty = dataModule(names.map((name) => `export const ${name} = () => null;`).join(' '));
+    compiled = compiled.split(`import('${specifier}')`).join(`import('${empty}')`);
+  }
   return dataModule(`import React from '${reactURL}';\n${compiled}`);
 }
 
@@ -267,8 +282,21 @@ export function sharedLayer(stubURL, extra = {}) {
   // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.
   if (!extra['/OSUpdatesChoice']) table['/OSUpdatesChoice'] = compileSource('components/OSUpdatesChoice.tsx', resolve);
   if (!extra['/ArchUpdateGuide']) table['/ArchUpdateGuide'] = compileSource('components/ArchUpdateGuide.tsx', resolve);
-  return { uiURL, resolve, compile: (path, more = {}) => compileSource(path, (specifier) => {
+  return { uiURL, resolve, compile: (path, more = {}) => quietLazyParts(compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);
-  }) };
+  })) };
+}
+
+// alpha.128 (G15): the API tokens card (My account) and the remote API switch
+// (Settings) are their own lazy chunk. A screen mounted for another reason
+// gets a quiet stand-in for it, so its tests stay about that screen; the
+// card itself is mounted in tests/api-tokens-alpha128.test.mjs.
+// API jetonları kartı ve anahtarı kendi tembel paketidir; başka bir ekran
+// bağlanırken sessiz bir vekil alır.
+const apiTokensStandInURL = dataModule('export const ApiTokensCard = () => null; export const RemoteApiSwitch = () => null;');
+function quietLazyParts(moduleURL) {
+  const source = Buffer.from(moduleURL.slice(moduleURL.indexOf(',') + 1), 'base64').toString();
+  if (!/import\(['"]\.\/ApiTokens['"]\)/.test(source)) return moduleURL;
+  return dataModule(source.replace(/import\(['"]\.\/ApiTokens['"]\)/g, `import('${apiTokensStandInURL}')`));
 }

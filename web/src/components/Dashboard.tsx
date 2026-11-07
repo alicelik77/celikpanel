@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+// alpha.128 ops (G23): a team member's own activity, in its own chunk.
+const ActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.ActivityCard })));
+const RecentActivityCard = lazy(() => import('./ActivityPage').then((module) => ({ default: module.RecentActivityCard })));
 import { startVisibleReads } from '../lib/visibleReads';
 import { useNavigate, Link } from '../router';
 import { ServerSetupDashboardNotice } from './ServerSetupGate';
@@ -22,6 +25,11 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
 import { PageHeader } from './PageHeader';
 import { MyPlanCard } from './MyPlanCard';
+
+// alpha.128 ops (G18): the person's own notices, "Needs your action" first.
+// Its own chunk with its own copy; nothing while there is nothing.
+// Kişinin kendi bildirimleri; kendi paketi, yokken hiçbir şey göstermez.
+const NotificationsCenter = lazy(() => import('./Notifications').then((module) => ({ default: module.NotificationsCenter })));
 import { showToast } from './Toast';
 import { FirewallNoSSHAcknowledgement, readFirewallSSHReason } from './FirewallSSHNotice';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -996,6 +1004,7 @@ function AdminDashboard() {
                 the top, each with its fix; nothing when there is none. */}
             <AlertsNotice />
             <ProblemsNow omit={DASHBOARD_SHOWS_ELSEWHERE} quiet />
+            <Suspense fallback={null}><NotificationsCenter /></Suspense>
 
             {/* A newer signed release, when the Panel found one: one quiet row
                 at the top, not an attention item (D-035).
@@ -1750,6 +1759,8 @@ function AdditionalUserDashboard() {
                     </div>
                 )}
             </section>
+            {/* alpha.128 ops (G23): what this team member did. */}
+            <div className={'mt-5 max-w-4xl'}><Suspense fallback={null}><ActivityCard team /></Suspense></div>
         </div>
     );
 }
@@ -1785,6 +1796,7 @@ function CustomerDashboard() {
                 </details>
             </section>}
 
+            <Suspense fallback={null}><NotificationsCenter /></Suspense>
             {(role === 'customer' || role === 'reseller') && <div className="mb-6"><MyPlanCard /></div>}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1820,6 +1832,9 @@ function CustomerDashboard() {
                     </dl>
                 </Card>
             </div>
+
+            {/* alpha.128 (G23): this account's newest actions, scoped by the server. */}
+            {(role === 'customer' || role === 'reseller') && <Suspense fallback={null}><RecentActivityCard /></Suspense>}
 
             <section className="mt-6">
                 <SectionTitle icon={Plus} tint="bg-primary/10 text-primary" title={t('dashboard.quickActions')} />

@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext';
 import { Button, CouldNotCheck, ErrorBanner, RemoteGate, inputClass } from './ui';
 import { PageHeader } from './PageHeader';
 import { PanelPortCard } from './PanelPortCard';
+// alpha.128 (G14): the server's addresses, read only.
+import { IPAddressesSection } from './IPAddressesSection';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, lastKnown, useRemote } from '../lib/remote';
 import { decodePanelCertificate, panelCertificateName, PANEL_CERTIFICATE_URL } from '../lib/panelCertificate';
@@ -16,6 +18,8 @@ const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ def
 const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => ({ default: module.PanelUpdateCard })));
 // alpha.118: server-wide remote backup destinations and every-site schedules.
 const RemoteBackupDestinations = lazy(() => import('./RemoteBackupDestinations').then((module) => ({ default: module.RemoteBackupDestinations })));
+// alpha.128 (G15): the remote API server switch, in the API tokens chunk.
+const RemoteApiSwitch = lazy(() => import('./ApiTokens').then((module) => ({ default: module.RemoteApiSwitch })));
 
 // Settings holds what is chosen once and decides how the panel behaves
 // (D-037, owner 2026-10-22). The person's own account security is My account
@@ -172,6 +176,8 @@ function SettingsWorkspace({
                         <div id="settings-panel-panel" role="tabpanel" aria-labelledby="settings-panel-tab" hidden={activeID !== 'panel'}>
                             <PanelCertificatePanel active={activeID === 'panel'} />
                             {activeID === 'panel' && <PanelPortCard />}
+                            {activeID === 'panel' && <IPAddressesSection />}
+                            {activeID === 'panel' && <Suspense fallback={null}><RemoteApiSwitch /></Suspense>}
                         </div>
                         <div id="settings-license-panel" role="tabpanel" aria-labelledby="settings-license-tab" hidden={activeID !== 'license'}>
                             {activeID === 'license' && <Suspense fallback={<p role="status">{t('common.loading')}</p>}><LicensePanel /></Suspense>}

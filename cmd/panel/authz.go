@@ -39,6 +39,11 @@ type Caller struct {
 	// audit trail names the real person through it.
 	// ImpersonatorID, bu oturumu "Farklı giriş yap" ile açan operatördür.
 	ImpersonatorID int
+	// APIToken is the remote API token this request was authenticated with
+	// (alpha.128, G15); nil for a session. Authorization still uses ID; the
+	// token layer has already narrowed the routes (api_token_auth.go).
+	// APIToken, isteğin doğrulandığı uzak API jetonudur; oturumda nil.
+	APIToken *apiTokenUse
 }
 
 // normalizedAccountType keeps existing account sessions and older focused

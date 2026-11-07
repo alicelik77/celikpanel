@@ -1043,6 +1043,16 @@ func postmapReadableContext(ctx context.Context, path string) error {
 		// texthash hiç dizin istemez — postfix düz dosyayı okur.
 		return secureChmodMailFile(path, 0o644)
 	}
+	// An index already built from this source (postfix's own rule: the
+	// index is not older than its source) is kept, so a reconcile or an
+	// update does not re-hash unchanged maps (alpha.128 lab: every .db of
+	// the server changed its digest at an update while no source changed).
+	if postfixIndexCurrent(path, t) {
+		if err := secureChmodMailFile(path, 0o644); err != nil {
+			return err
+		}
+		return secureChmodMailFile(path+postfixIndexExt(t), 0o644)
+	}
 	out, err := serviceMutationCommand(ctx, "postmap", t+":"+path).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("postmap %s failed: %s", path, firstLine(string(out)))
@@ -1068,6 +1078,37 @@ func postmapReadableContext(ctx context.Context, path string) error {
 		return errors.New("postmap completed without creating a readable index")
 	}
 	return nil
+}
+
+// postfixIndexExt is the index file suffix postmap writes for a map type.
+func postfixIndexExt(mapType string) string {
+	switch mapType {
+	case "hash", "btree":
+		return ".db"
+	case "lmdb":
+		return ".lmdb"
+	case "cdb":
+		return ".cdb"
+	}
+	return ""
+}
+
+// postfixIndexCurrent: the map type's index exists as a regular file and is
+// not older than its source.
+var postfixIndexCurrent = func(path, mapType string) bool {
+	ext := postfixIndexExt(mapType)
+	if ext == "" {
+		return false
+	}
+	source, err := os.Lstat(path)
+	if err != nil || !source.Mode().IsRegular() {
+		return false
+	}
+	index, err := os.Lstat(path + ext)
+	if err != nil || !index.Mode().IsRegular() || index.Size() == 0 {
+		return false
+	}
+	return !index.ModTime().Before(source.ModTime())
 }
 
 // ensureAliasDatabase builds the local alias index when the distro shipped only

@@ -59,6 +59,13 @@ func (a *Agent) ApplyVhost(req *ApplyVhostRequest, resp *ApplyVhostResponse) err
 		resp.Error = err.Error()
 		return nil
 	}
+	// alpha.128: a save of the web server settings first checks that the
+	// server's configuration passes `nginx -t` as it is; when it already
+	// fails, nothing is written and the answer names the prerequisite.
+	if failing := a.precheckSiteWebSettings(req); failing != "" {
+		resp.Error = failing
+		return nil
+	}
 	// D-031: the file on disk is classified first; only a managed and
 	// unchanged file is replaced (an absent one only on "recreate"), and a
 	// file the owner changed is kept with the Panel's text held beside it.
@@ -186,6 +193,12 @@ func managedVhostItemFor(
 			DomainID: req.DomainID,
 			Counted:  !data.Suspended && !data.Maintenance && !data.TrafficLimited,
 		}
+	}
+	// alpha.128: the site's web server setting files, checked and put back
+	// with the vhost.
+	if parts := siteWebPartsFor(req, data); parts != nil {
+		item.SiteParts = parts
+		item.ACMEAllowAll = req.WebSettings.Settings.AccessMode != ""
 	}
 	if data.SSLType != "none" {
 		item.SSLCert = data.SSLCert
@@ -657,6 +670,11 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 		return services.VhostData{}, err
 	}
 	data.ProtectedDirs, data.Redirects = protectedDirs, redirects
+	// alpha.128: the site's web server settings (index files, the
+	// content-only include point, a Node.js site's public/ folder).
+	if err := applySiteWebSettingsToVhost(req, &data); err != nil {
+		return services.VhostData{}, err
+	}
 
 	switch projectType {
 	case "php":

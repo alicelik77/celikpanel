@@ -11,7 +11,6 @@ import { DomainSSLSettings, decodeSSLData, type SSLRuntimeSummary } from './Doma
 import { DomainSSLOverviewCard } from './DomainSSLOverviewCard';
 import { DomainConnection } from './DomainConnection';
 import { DomainFileManager } from './DomainFileManager';
-import { DomainMailManager } from './DomainMailManager';
 import { DomainDNSManager } from './DomainDNSManager';
 import { HostingTypePanel } from './HostingTypePanel';
 import { useI18n } from '../i18n';
@@ -59,6 +58,12 @@ const DomainBackupManager = lazy(() => import('./DomainBackupManager').then((mod
 const DomainCronManager = lazy(() => import('./DomainCronManager').then((module) => ({
     default: module.DomainCronManager,
 })));
+// alpha.128: the mail tab with its outgoing limits, bulk actions and domain
+// options grew past the DomainDetail chunk budget; it loads with its tab.
+// The budget is not raised. Posta sekmesi kendi sekmesiyle yüklenir.
+const DomainMailManager = lazy(() => import('./DomainMailManager').then((module) => ({
+    default: module.DomainMailManager,
+})));
 // The Databases tab is fetched when it is opened (alpha.127): the merged
 // alpha.127 work put the page 0.40 KiB over its size limit, and the limit is
 // not raised. The tab content already waits inside one Suspense boundary.
@@ -78,6 +83,22 @@ const DomainSiteProtect = lazy(() => import('./DomainSiteFeatures').then((module
 const DomainSiteRedirects = lazy(() => import('./DomainSiteFeatures').then((module) => ({
     default: module.DomainSiteRedirects,
 })));
+// How long the site's logs are kept (alpha.128), beside the Logs viewer.
+const LogRetentionCard = lazy(() => import('./LogRetentionCard').then((module) => ({
+    default: module.LogRetentionCard,
+})));
+// Git deploy of the site (alpha.128), fetched when opened.
+const GitDeployPanel = lazy(() => import('./GitDeployPanel').then((module) => ({
+    default: module.GitDeployPanel,
+})));
+// Copying the website into another site (alpha.128), fetched when opened.
+const SiteCopyPanel = lazy(() => import('./SiteCopyPanel').then((module) => ({
+    default: module.SiteCopyPanel,
+})));
+// The site's web server settings (alpha.128), fetched when the sub-tab opens.
+const DomainWebSettings = lazy(() => import('./DomainWebSettings').then((module) => ({
+    default: module.DomainWebSettings,
+})));
 // The site's configuration file (D-031), for an administrator; fetched when
 // it is needed, like the panels above.
 // Sitenin yapılandırma dosyası; gerektiğinde getirilir.
@@ -91,6 +112,11 @@ const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) =
 const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
     default: module.DomainFileAccess,
 })));
+// alpha.128: the site's other FTP/SFTP logins, each closed into one folder,
+// below the access settings; a chunk of its own.
+const FTPLogins = lazy(() => import('./FTPLogins').then((module) => ({
+    default: module.FTPLogins,
+})));
 // AI and automation apps of the site (alpha.118), fetched when the tab opens.
 // Kept apart from the PHP app catalogue of the Apps tab.
 const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module) => ({
@@ -99,6 +125,10 @@ const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module)
 // Uploaded programs of the site (alpha.119), fetched when the Programs tab opens.
 const DomainRuntimeApps = lazy(() => import('./DomainRuntimeApps').then((module) => ({
     default: module.DomainRuntimeApps,
+})));
+// alpha.128 ops (G22): the health strip, with its own copy, in its own chunk.
+const DomainHealthStrip = lazy(() => import('./DomainHealthStrip').then((module) => ({
+    default: module.DomainHealthStrip,
 })));
 
 interface Domain {
@@ -254,7 +284,8 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // ?tab=config opens the site's Configuration file (alpha.126: from the
     // plan-limit card's "Open <site>"); it is a part of the hosting tab.
     // ?tab=config sitenin Yapılandırma dosyasını açar.
-    const hostingPart = requestedTab === 'ssl' || requestedTab === 'config' ? requestedTab : null;
+    // alpha.128: ?tab=php opens the site's PHP settings (a lowered limit's notice).
+    const hostingPart = requestedTab === 'ssl' || requestedTab === 'config' || requestedTab === 'php' ? requestedTab : null;
     const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : hostingPart ? 'hosting' : 'overview');
     const [activeSub, setActiveSub] = useState<Record<string, string>>(hostingPart ? { hosting: hostingPart } : {});
     // The guide's "?" opens the chapter of the tab on screen (alpha.119).
@@ -272,7 +303,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         if (requestedTab === 'dns') setActiveTab('dns');
         // The Dashboard's mail card opens the mailboxes of a site directly.
         if (requestedTab === 'mail') setActiveTab('mail');
-        if (requestedTab === 'ssl' || requestedTab === 'config') {
+        if (requestedTab === 'ssl' || requestedTab === 'config' || requestedTab === 'php') {
             setActiveTab('hosting');
             setActiveSub((current) => ({ ...current, hosting: requestedTab }));
         }
@@ -414,11 +445,14 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         ...(canView('files') && open('site_protect_redirects') && projectType !== 'forwarding' ? [
             { id: 'redirects', labelKey: 'siteFeatures.redirect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteRedirects domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
         ] : []),
+        ...(canView('files') && projectType !== 'forwarding' ? [
+            { id: 'web', labelKey: 'siteFeatures.web.title', capabilities: ['files'], render: (readOnly) => <DomainWebSettings domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
+        ] : []),
         ...(role === 'admin' ? [
             { id: 'config', labelKey: 'siteConfig.tab', capabilities: ['files'], render: () => <DomainSiteConfig domainId={domain.id} domainName={domain.domain_name} onReasonEnded={rereadList} /> } satisfies SubDef,
         ] : []),
         ...(projectType === 'php' && canView('php') ? [
-            { id: 'php', labelKey: 'domain.sub.php', capabilities: ['php'], render: (readOnly) => <DomainPHPSettings domainId={domain.id} domainName={domain.domain_name} currentVersion={domain.php_version ?? ''} onVersionChange={(v) => setChanged((current) => ({ ...current, php_version: v }))} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies SubDef,
+            { id: 'php', labelKey: 'domain.sub.php', capabilities: ['php'], render: (readOnly) => <DomainPHPSettings domainId={domain.id} domainName={domain.domain_name} currentVersion={domain.php_version ?? ''} onVersionChange={(v) => setChanged((current) => ({ ...current, php_version: v }))} readOnly={readOnly} isAdditionalUser={isTeamMember} isAdmin={role === 'admin'} /> } satisfies SubDef,
         ] : []),
         ...(canView('ssl') ? [{
             id: 'ssl',
@@ -440,7 +474,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const advancedSubs: SubDef[] = [
         ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
         ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
-        ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
+        ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <div className="space-y-4">{!isTeamMember && <LogRetentionCard domainId={domain.id} />}<DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /></div> } satisfies SubDef] : []),
+        ...(!isTeamMember && (projectType === 'php' || projectType === 'static' || projectType === 'node') && open('file_manager') ? [{ id: 'git', labelKey: 'siteFeatures.git.title', render: () => <GitDeployPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
+        ...(!isTeamMember && !isDnsOnly && projectType !== 'forwarding' && open('file_manager') ? [{ id: 'copy', labelKey: 'siteFeatures.copy.title', render: () => <SiteCopyPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
         ...(!isTeamMember && !isDnsOnly && (role === 'admin' || open('malware_scan')) ? [{ id: 'malware', labelKey: 'mscan.title', render: () => <DomainMalwareScan domainId={domain.id} /> } satisfies SubDef] : []),
     ];
     const tabs: TabDef[] = [
@@ -467,7 +503,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         // alpha.119: a program that runs stays manageable after the right closes.
         ...(!isTeamMember && !isDnsOnly && (open('program_apps') || open('python_apps') || projectType === 'runtime_app') ? [{ id: 'programs', labelKey: 'runtime.tab', icon: Cpu, render: () => <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
         ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /> } satisfies TabDef] : []),
+        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <div className="space-y-6"><DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /><Suspense fallback={null}><FTPLogins domainId={domain.id} isAdmin={role === 'admin'} /></Suspense></div> } satisfies TabDef] : []),
         ...(!isDnsOnly && advancedSubs.length > 0 ? [{
             id: 'advanced', labelKey: 'domain.tab.advanced', icon: Wrench,
             subs: advancedSubs,
@@ -688,6 +724,28 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                         <div className="mb-4">
                             <DomainConnection domainId={domain.id} domainName={domain.domain_name} />
                         </div>
+                    )}
+
+                    {/* alpha.128 ops (G22): the health strip leads the Overview;
+                        a team member, who has no Overview, sees it on the first
+                        tab, with only the checks of its own grants.
+                        Sağlık şeridi Genel Bakış'ta; ekip üyesi ilk sekmede görür. */}
+                    {(current.id === 'overview' || (isTeamMember && current.id === tabs[0]?.id)) && (
+                        <Suspense fallback={null}>
+                            <DomainHealthStrip
+                                domainId={domain.id}
+                                showsConnection={current.id === 'overview'}
+                                hasTab={(tabId, subTab) => {
+                                    const tab = tabs.find((tb) => tb.id === tabId);
+                                    if (!tab) return false;
+                                    return !subTab || Boolean(tab.subs?.some((sub) => sub.id === subTab));
+                                }}
+                                onGo={(tabId, subTab) => {
+                                    if (subTab) setActiveSub((currentSubs) => ({ ...currentSubs, [tabId]: subTab }));
+                                    setActiveTab(tabId);
+                                }}
+                            />
+                        </Suspense>
                     )}
 
                     {/* Add domain created the site but could not publish its DNS

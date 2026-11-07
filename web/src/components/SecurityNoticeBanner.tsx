@@ -9,13 +9,14 @@
 //
 // Güvenlik bildirimi: ne oldu, neden, sitelere ne oldu, ne yapmalı; her site
 // için önerilen sürüme tek tıkla geçiş. Görüldü işaretlenene dek durur.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { Button, ErrorBanner } from './ui';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRemote } from '../lib/remote';
+import { startSessionActivity } from '../lib/sessionActivity';
 
 export const SECURITY_NOTICES_URL = '/api/v1/security-notices';
 
@@ -44,6 +45,9 @@ export function switchRequest(action: SecurityNotice['actions'][number]): { url:
 const componentName = (component: string) => ({ php: 'PHP', node: 'Node.js', mariadb: 'MariaDB', postgresql: 'PostgreSQL' } as Record<string, string>)[component] ?? component;
 
 export function SecurityNoticeBanner() {
+    // alpha.128 (G4): this banner is mounted on every signed-in page, so it
+    // also starts the idle timeout's activity signal (lib/sessionActivity).
+    useEffect(() => startSessionActivity(), []);
     const { role } = useAuth();
     const { t } = useI18n();
     const read = useRemote(role === 'admin' ? null : SECURITY_NOTICES_URL, decodeSecurityNotices);

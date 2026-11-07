@@ -1,0 +1,66 @@
+// Route-scoped copy of panel sessions and panel access (alpha.128, G4), like
+// ../notifications: the signed-in sessions (My account), the administrator's
+// idle timeout, administrator addresses and every account's sessions
+// (Security). It ships with those lazy chunks, so the critical boot path does
+// not grow; ../panelSessions.ts looks keys up in the I18nProvider's locale.
+//
+// Panel oturumları ve panel erişiminin kendi metni: tembel paketlerle gelir.
+
+export const enPanelSessions = {
+    'psess.own.title': 'Signed-in sessions',
+    'psess.own.desc': 'Every browser where this account is signed in. If you do not recognise one, end it and change your password: a password change signs out every session.',
+    'psess.checking': 'Reading the sessions…',
+    'psess.readFailed': 'The sessions could not be read, so none are shown. This does not mean there are none. Nothing was changed.',
+    'psess.current': 'This browser',
+    'psess.unknownBrowser': 'Unknown browser',
+    'psess.lastUsed': 'Last used {time}',
+    'psess.notUsedYet': 'Not used since this panel update',
+    'psess.signedIn': 'Signed in {time}',
+    'psess.from': 'from {address}',
+    'psess.openedBy': 'Opened by {name} with "Log in as"',
+    'psess.end': 'End',
+    'psess.endOthers': 'End all other sessions',
+    'psess.endConfirm.title': 'End this session?',
+    'psess.endConfirm.text': 'The browser using it is signed out at its next step and must sign in again. Nothing else changes.',
+    'psess.endOthersConfirm.title': 'End all other sessions?',
+    'psess.endOthersConfirm.text': 'Every other browser signed in to this account is signed out. This browser stays signed in.',
+    'psess.ending': 'Ending the session',
+    'psess.ended': 'The session was ended.',
+    'psess.endedMany': '{n} sessions were ended.',
+    'psess.failed': 'The session could not be ended.',
+    'psess.idleNote': 'A session not used for {n} minutes ends by itself.',
+    'psess.impersonating': 'You are logged in as another account: its sessions are shown, but only the account itself can end them.',
+    'psess.onlyThis': 'Only this browser is signed in.',
+    'psess.all.title': 'Active panel sessions (every account)',
+    'psess.all.desc': 'Who is signed in to this panel now. Ending a session signs that browser out; to keep someone out, also change their password or suspend the account.',
+    'psess.all.none': 'No other session is active.',
+    'psess.customers.title': 'Your customers’ sessions',
+    'psess.customers.desc': 'Where your customers and their team members are signed in now. Ending a session signs that browser out; to keep someone out, also change their password or suspend the account.',
+    'psess.customers.none': 'None of your customers is signed in now.',
+    'psess.role.admin': 'administrator',
+    'psess.role.reseller': 'reseller',
+    'psess.role.customer': 'customer',
+    'pacc.title': 'Panel access',
+    'pacc.desc': 'How long an unused session stays signed in, and from which addresses administrators may sign in. Customers and resellers are not affected by the address list.',
+    'pacc.checking': 'Reading the panel access settings…',
+    'pacc.readFailed': 'The panel access settings could not be read. Nothing was changed.',
+    'pacc.idle': 'Sign out after this long without use',
+    'pacc.idleHint': 'Typing, clicking and changes count as use; pages refreshing by themselves do not.',
+    'pacc.minutes': '{n} minutes',
+    'pacc.hours': '{n} hours',
+    'pacc.list': 'Administrator addresses',
+    'pacc.listHint': 'One IP address or network per line (for example 203.0.113.7 or 203.0.113.0/24). Empty: administrators may sign in from anywhere.',
+    'pacc.yourAddress': 'Your address now: {address}',
+    'pacc.addMine': 'Add my address',
+    'pacc.mineMissing': 'Your address is not in the list. Saving would lock you out, so the panel refuses it: add your address first.',
+    'pacc.loopback': 'The server itself (127.0.0.1, ::1) is always allowed, so an SSH tunnel always works.',
+    'pacc.recovery.title': 'If you lock yourself out',
+    'pacc.recovery.text': 'On the server, as root, run the first command: administrators may then sign in from any address until you run the second. Or open an SSH tunnel to the server and sign in at https://localhost and the panel port.',
+    'pacc.recovery.open': 'The recovery file exists on the server, so the address list is not applied now: administrators may sign in from anywhere. Remove it when you are done:',
+    'pacc.save': 'Save',
+    'pacc.saved': 'Panel access saved.',
+    'pacc.failed': 'Panel access was not saved.',
+    'pacc.impersonating': 'You are logged in as another account; return to your own account to change panel access.',
+} as const;
+
+export type PanelSessionsKey = keyof typeof enPanelSessions;

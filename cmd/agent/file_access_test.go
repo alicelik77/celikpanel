@@ -22,10 +22,13 @@ type fileAccessFakeHost struct {
 	commands []string
 	// sshdEffective is what `sshd -T` prints; empty means "as rendered".
 	sshdEffective string
-	sshdTest      error
-	probe         error
-	present       map[string]bool
-	jailCalls     int
+	// sshdAuth comes first in every computed `sshd -T` answer (its values
+	// win): the server's own password settings (alpha.128).
+	sshdAuth  string
+	sshdTest  error
+	probe     error
+	present   map[string]bool
+	jailCalls int
 	// missing are the jail tools the host lacks (alpha.118).
 	missing []string
 }
@@ -93,7 +96,7 @@ func installFileAccessFakeHost(t *testing.T) *fileAccessFakeHost {
 			if host.sshdEffective != "" {
 				return []byte(host.sshdEffective), nil
 			}
-			return []byte(effectiveFromFakeDropIn(host.files[fileaccess.SSHDropInPath], strings.TrimPrefix(strings.Split(args[2], ",")[0], "user="))), nil
+			return []byte(host.sshdAuth + effectiveFromFakeDropIn(host.files[fileaccess.SSHDropInPath], strings.TrimPrefix(strings.Split(args[2], ",")[0], "user="))), nil
 		case name == "usermod" && len(args) == 3 && args[0] == "-s":
 			account := host.accounts[args[2]]
 			account.Shell = args[1]
@@ -170,7 +173,14 @@ func installFileAccessFakeHost(t *testing.T) *fileAccessFakeHost {
 // the rendered drop-in, enough for CheckSSHDEffective.
 func effectiveFromFakeDropIn(dropIn, user string) string {
 	_, body := fileaccess.Classify([]byte(dropIn), dropIn != "")
-	entries, _ := fileaccess.ParseSSHDropInEntries(body)
+	entries, logins, _ := fileaccess.ParseSSHDropIn(body)
+	if login, ok := fileaccess.FindLogin(logins, user); ok {
+		var lines []string
+		for key, value := range fileaccess.ExpectedLoginSSHDEffective(login) {
+			lines = append(lines, key+" "+value)
+		}
+		return "passwordauthentication yes\nport 22\n" + strings.Join(lines, "\n") + "\n"
+	}
 	entry, ok := fileaccess.FindEntry(entries, user)
 	if !ok {
 		return "passwordauthentication yes\ndenygroups " + fileaccess.SiteGroup + "\n"

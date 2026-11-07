@@ -91,3 +91,20 @@ func clientIP(r *http.Request) string {
 	}
 	return host
 }
+
+// blocked reports whether key has reached its limit in the current window,
+// without recording an attempt. The API token layer counts only failed
+// sign-ins (allow on a failure) and asks blocked before every attempt.
+// blocked, bir deneme kaydetmeden anahtarın sınıra ulaşıp ulaşmadığını söyler.
+func (l *rateLimiter) blocked(key string) bool {
+	cutoff := time.Now().Add(-l.window)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	recent := 0
+	for _, t := range l.hits[key] {
+		if t.After(cutoff) {
+			recent++
+		}
+	}
+	return recent >= l.limit
+}

@@ -22,7 +22,7 @@ export const enMonitoringAlerts = {
     'malert.mail.sent': 'Emailed to the confirmed administrators.',
     'malert.mail.none': 'Shown here only: alert email is off.',
     'malert.mail.pending': 'Being emailed…',
-    'malert.mail.suppressed': 'Not emailed again: the same problem was emailed in the last six hours, or four alert emails were sent this hour.',
+    'malert.mail.suppressed': 'Not emailed: the same problem was emailed in the last six hours, four alert emails were sent this hour, or every administrator chose not to receive email (My account → Notifications).',
     'malert.mail.not_confirmed': 'Not emailed: no administrator has confirmed an email address yet (Alert settings, below).',
     'malert.mail.not_available': 'Not emailed: this server has no mail system the panel can hand mail to.',
     'malert.mail.failed': 'Not emailed: the mail system refused it ({detail}). It is not tried again; the mail queue shows why.',

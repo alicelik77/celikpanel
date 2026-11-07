@@ -41,7 +41,10 @@ import (
 
 const (
 	trafficCauseSubscription = "subscription"
-	trafficCausePool         = "pool"
+	// trafficCauseNotifyOnly (alpha.128): the limit is used up on a "notify
+	// only" plan; nothing closes.
+	trafficCauseNotifyOnly = "notify_only"
+	trafficCausePool       = "pool"
 
 	noticeTraffic80      = "traffic_80"
 	noticeTraffic100     = "traffic_100"
@@ -288,16 +291,34 @@ func subscriptionNoticeNames(ctx context.Context, q sqlQueryer, subscriptionID i
 
 // usageFraction: used/limit in tenths of a percent band: 0 under 80%, 80, 100.
 func usageLevel(used, limit int64) int {
+	return usageLevelAt(used, limit, 80)
+}
+
+// usageLevelAt (alpha.128, gap G10) is usageLevel with the plan's notice
+// level (50-95 percent; anything else is 80): 0 under it, 80 (the notice
+// band, whatever its percent) and 100.
+func usageLevelAt(used, limit int64, notifyPercent int) int {
 	if limit <= 0 {
 		return 0
+	}
+	if notifyPercent < 50 || notifyPercent > 95 {
+		notifyPercent = 80
 	}
 	switch {
 	case used >= limit:
 		return 100
-	case used*10 >= limit*8:
+	case used*100 >= limit*int64(notifyPercent):
 		return 80
 	}
 	return 0
+}
+
+// usagePercent is used/limit as a whole percent for a notice's subject.
+func usagePercent(used, limit int64) int64 {
+	if limit <= 0 {
+		return 0
+	}
+	return used * 100 / limit
 }
 
 // formatMB is bytes as whole megabytes for a sentence.
@@ -316,7 +337,8 @@ func usageNoticeMail(kind, audience string, body usageNoticeBody, baseURL string
 	var subject, en, tr string
 	switch kind {
 	case noticeTraffic80:
-		subject = "Traffic 80% used / Trafik %80 kullanıldı: " + who
+		pct := usagePercent(body.UsedBytes, body.LimitBytes)
+		subject = fmt.Sprintf("Traffic %d%% used / Trafik %%%d kullanıldı: ", pct, pct) + who
 		en = fmt.Sprintf("The websites of %s have used %s of their %s monthly traffic. At 100%% only the websites show \"traffic limit reached\" until the 1st of next month; mail and databases keep working. To avoid it, ask for a larger plan.", who, used, limit)
 		tr = fmt.Sprintf("%s web sitelerinin aylık %s trafiğinin %s kadarı kullanıldı. %%100 olunca gelecek ayın 1'ine dek yalnız web siteleri \"trafik sınırı doldu\" gösterir; posta ve veritabanları çalışır. Önlemek için daha büyük bir plan isteyin.", who, limit, used)
 	case noticeTraffic100:
@@ -326,6 +348,12 @@ func usageNoticeMail(kind, audience string, body usageNoticeBody, baseURL string
 		if body.Cause == trafficCausePool {
 			cause = "the shared traffic of its provider (reseller pool)"
 			causeTR = "sağlayıcısının ortak trafiği (bayi havuzu)"
+		}
+		if body.Cause == trafficCauseNotifyOnly {
+			// alpha.128: a "notify only" plan keeps the websites open.
+			en = fmt.Sprintf("%s has used all of its monthly traffic (%s of %s). The plan only notifies, so the websites keep running. Ask the provider for a larger plan if this happens often.", who, used, limit)
+			tr = fmt.Sprintf("%s aylık trafiğinin tamamını kullandı (%s / %s). Plan yalnız uyarır; web siteleri çalışmaya devam eder. Sık oluyorsa sağlayıcıdan daha büyük plan isteyin.", who, used, limit)
+			break
 		}
 		en = fmt.Sprintf("The websites of %s now show \"traffic limit reached\": %s is used up (%s of %s). Mail, databases and file access keep working. The websites open again by themselves on the 1st of next month, or within minutes after the limit is raised. Who acts: the customer asks the provider for a larger plan; the provider or administrator raises the limit.", who, cause, used, limit)
 		tr = fmt.Sprintf("%s web siteleri artık \"trafik sınırı doldu\" gösteriyor: %s doldu (%s / %s). Posta, veritabanları ve dosya erişimi çalışır. Siteler gelecek ayın 1'inde ya da sınır yükseltildikten birkaç dakika sonra kendiliğinden açılır. Kim yapar: müşteri sağlayıcısından daha büyük plan ister; sağlayıcı ya da yönetici sınırı yükseltir.", who, causeTR, used, limit)
@@ -338,13 +366,19 @@ func usageNoticeMail(kind, audience string, body usageNoticeBody, baseURL string
 		en = fmt.Sprintf("The customers of %s have used the whole %s monthly traffic pool (%s). Their websites show \"traffic limit reached\" until the 1st of next month or until the administrator raises the pool; mail and databases keep working.", body.Reseller, limit, used)
 		tr = fmt.Sprintf("%s müşterileri aylık %s trafik havuzunun tamamını kullandı (%s). Web siteleri gelecek ayın 1'ine ya da yönetici havuzu yükseltene dek \"trafik sınırı doldu\" gösterir; posta ve veritabanları çalışır.", body.Reseller, limit, used)
 	case noticeDisk80:
-		subject = "Disk 80% used / Disk %80 dolu: " + who
+		pct := usagePercent(body.UsedBytes, body.LimitBytes)
+		subject = fmt.Sprintf("Disk %d%% used / Disk %%%d dolu: ", pct, pct) + who
 		en = fmt.Sprintf("%s uses %s of its %s disk space (site files, mail and databases). At 100%% nothing new can be created or uploaded. Delete what is no longer needed, or ask for a larger plan.", who, used, limit)
 		tr = fmt.Sprintf("%s, %s disk alanının %s kadarını kullanıyor (site dosyaları, posta ve veritabanları). %%100 olunca yeni bir şey oluşturulamaz ve yüklenemez. Gerekmeyenleri silin ya da daha büyük plan isteyin.", who, limit, used)
 	case noticeDisk100:
 		subject = "Disk full / Disk doldu: " + who
 		en = fmt.Sprintf("%s uses %s of its %s disk space. Nothing new can be created and uploads are refused; the websites keep running. If it stays over the limit, the subscription is suspended on %s. Delete files, mail or databases you no longer need, or ask the provider for a larger plan; it is measured again within hours.", who, used, limit, body.SuspendOn)
 		tr = fmt.Sprintf("%s, %s disk alanının %s kadarını kullanıyor. Yeni bir şey oluşturulamaz, yükleme reddedilir; web siteleri çalışmaya devam eder. Sınırın üstünde kalırsa abonelik %s tarihinde askıya alınır. Gerekmeyen dosya, posta ya da veritabanlarını silin veya sağlayıcıdan daha büyük plan isteyin; birkaç saat içinde yeniden ölçülür.", who, limit, used, body.SuspendOn)
+		if body.SuspendOn == "" {
+			// alpha.128: a "notify only" plan suspends nothing.
+			en = fmt.Sprintf("%s uses %s of its %s disk space. Nothing new can be created and uploads are refused, to protect the server's disk; the websites keep running and nothing is suspended (the plan only notifies). Delete files, mail or databases you no longer need, or ask the provider for a larger plan; it is measured again within hours.", who, used, limit)
+			tr = fmt.Sprintf("%s, %s disk alanının %s kadarını kullanıyor. Sunucunun diskini korumak için yeni bir şey oluşturulamaz ve yükleme reddedilir; web siteleri çalışır, hiçbir şey askıya alınmaz (plan yalnız uyarır). Gerekmeyen dosya, posta ya da veritabanlarını silin veya sağlayıcıdan daha büyük plan isteyin; birkaç saat içinde yeniden ölçülür.", who, limit, used)
+		}
 	case noticeDiskCountdown:
 		subject = "Suspension in 2 days: disk full / 2 gün sonra askı: disk dolu: " + who
 		en = fmt.Sprintf("%s has been over its %s disk space for 5 days (%s used). It is suspended on %s unless usage goes under the limit or the limit is raised.", who, limit, used, body.SuspendOn)
@@ -360,25 +394,50 @@ func usageNoticeMail(kind, audience string, body usageNoticeBody, baseURL string
 	return subject, text
 }
 
+// usageNoticeNeedsAction (alpha.128, G18): is this recipient the one who
+// acts? The owner of a full disk frees space (or asks for more); the
+// reseller or administrator raises a limit that is reached, counting down or
+// suspended; the administrator raises a reseller's pool. An 80% notice, a
+// traffic limit the owner can only wait out or ask about, and a pool the
+// reseller cannot raise are for information.
+func usageNoticeNeedsAction(kind, audience string) bool {
+	switch kind {
+	case noticeDisk100, noticeDiskCountdown, noticeDiskSuspended:
+		return true
+	case noticeTraffic100:
+		return audience != audienceCustomer
+	case noticePoolTraffic100:
+		return audience == audienceAdministrator
+	}
+	return false
+}
+
 // sendPendingUsageNotices hands pending notices to the mail system, or
-// records why it could not.
+// records why it could not. alpha.128 (G18): the person's own choice decides
+// (a notice they chose not to receive by email is recorded as no_address
+// with the detail "not_wanted"; 057's states are kept), their extra address
+// gets the same mail, and the administrator's extra address for account and
+// usage notices gets one copy of each event.
 func (p *Panel) sendPendingUsageNotices(ctx context.Context) error {
 	db := p.db.GetDB()
 	rows, err := db.QueryContext(ctx, `
-		SELECT n.id, n.kind, n.audience, n.body, COALESCE(u.email, '')
+		SELECT n.id, n.user_id, n.kind, n.audience, n.body, COALESCE(u.email, ''),
+		       n.id = (SELECT MIN(m.id) FROM usage_notices m WHERE m.kind = n.kind AND m.subscription_id = n.subscription_id
+		                AND m.reseller_id = n.reseller_id AND m.period = n.period)
 		FROM usage_notices n LEFT JOIN users u ON u.id = n.user_id
 		WHERE n.mail_state = 'pending' ORDER BY n.id LIMIT 200`)
 	if err != nil {
 		return err
 	}
 	type pending struct {
-		id                          int
+		id, userID                  int
 		kind, audience, body, email string
+		firstOfEvent                bool
 	}
 	var items []pending
 	for rows.Next() {
 		var item pending
-		if err := rows.Scan(&item.id, &item.kind, &item.audience, &item.body, &item.email); err != nil {
+		if err := rows.Scan(&item.id, &item.userID, &item.kind, &item.audience, &item.body, &item.email, &item.firstOfEvent); err != nil {
 			rows.Close()
 			return err
 		}
@@ -394,18 +453,35 @@ func (p *Panel) sendPendingUsageNotices(ctx context.Context) error {
 			log.Printf("[usage] notice %d mail state: %v", id, err)
 		}
 	}
+	groupCopy := ""
+	if setup.Available {
+		groupCopy = p.adminGroupExtraEmail(ctx, notifyGroupAccount)
+	}
 	for _, item := range items {
+		var body usageNoticeBody
+		if err := json.Unmarshal([]byte(item.body), &body); err != nil {
+			mark(item.id, "failed", "the notice could not be read")
+			continue
+		}
+		if item.firstOfEvent && groupCopy != "" {
+			if subject, text := usageNoticeMail(item.kind, audienceAdministrator, body, setup.baseURL); subject != "" {
+				if err := p.sendAccountMail(ctx, setup, groupCopy, accountMailContent{kind: accountMailUsageNotice, subject: subject, body: text}); err != nil {
+					log.Printf("[usage] group copy of notice %d: %s", item.id, boundedAgentDiagnostic(err.Error()))
+				}
+			}
+		}
+		pref := notificationPreferenceFor(ctx, db, item.userID)
+		if !pref.mailWanted(usageNoticeNeedsAction(item.kind, item.audience)) {
+			mark(item.id, "no_address", "not_wanted")
+			continue
+		}
 		if !setup.Available {
 			mark(item.id, "not_available", setup.Reason)
 			continue
 		}
-		if strings.TrimSpace(item.email) == "" {
+		addresses := pref.mailAddresses(item.email)
+		if len(addresses) == 0 {
 			mark(item.id, "no_address", "")
-			continue
-		}
-		var body usageNoticeBody
-		if err := json.Unmarshal([]byte(item.body), &body); err != nil {
-			mark(item.id, "failed", "the notice could not be read")
 			continue
 		}
 		subject, text := usageNoticeMail(item.kind, item.audience, body, setup.baseURL)
@@ -413,8 +489,16 @@ func (p *Panel) sendPendingUsageNotices(ctx context.Context) error {
 			mark(item.id, "failed", "unknown notice kind")
 			continue
 		}
-		if err := p.sendAccountMail(ctx, setup, strings.TrimSpace(item.email), accountMailContent{kind: accountMailUsageNotice, subject: subject, body: text}); err != nil {
-			mark(item.id, "failed", boundedAgentDiagnostic(err.Error()))
+		sent, failure := 0, ""
+		for _, to := range addresses {
+			if err := p.sendAccountMail(ctx, setup, to, accountMailContent{kind: accountMailUsageNotice, subject: subject, body: text}); err != nil {
+				failure = boundedAgentDiagnostic(err.Error())
+				continue
+			}
+			sent++
+		}
+		if sent == 0 {
+			mark(item.id, "failed", failure)
 			continue
 		}
 		mark(item.id, "sent", "")

@@ -46,12 +46,17 @@ async function loadProvider(heldPart) {
     const imports = { ...catalogueURL };
     imports[heldPart] = moduleURL(`// scenario ${id}\nawait globalThis.i18nPartGate;\nexport * from '${catalogueURL[heldPart]}';`);
     // The list of screen-part loaders is its own lazy module since alpha.127;
-    // its dynamic imports are mapped the same way.
+    // its dynamic imports are mapped the same way. alpha.128: through a
+    // per-scenario registry instead of writing every part's data URL into the
+    // module text; with 60 parts that text, and the provider naming it, grew
+    // to megabytes per scenario and the run ran out of memory.
+    globalThis.i18nScenarioImports = { ...(globalThis.i18nScenarioImports ?? {}), [id]: imports };
+    const dynamicImport = (path) => {
+        assert.ok(imports[path], `unmapped dynamic import ${path}`);
+        return `import(globalThis.i18nScenarioImports[${id}][${JSON.stringify(path)}])`;
+    };
     const partList = compile('../src/i18n/screenParts.ts')
-        .replace(/import\(['"]([^'"]+)['"]\)/g, (_m, path) => {
-            assert.ok(imports[path], `unmapped dynamic import ${path}`);
-            return `import('${imports[path]}')`;
-        });
+        .replace(/import\(['"]([^'"]+)['"]\)/g, (_m, path) => dynamicImport(path));
     imports['./screenParts'] = moduleURL(`// screen parts ${id}\n${partList}`);
     const source = compile('../src/i18n/index.tsx')
         .replace(/from ['"]([^'"]+)['"]/g, (_m, path) => {
@@ -59,10 +64,7 @@ async function loadProvider(heldPart) {
             assert.ok(target, `unmapped static import ${path}`);
             return `from '${target}'`;
         })
-        .replace(/import\(['"]([^'"]+)['"]\)/g, (_m, path) => {
-            assert.ok(imports[path], `unmapped dynamic import ${path}`);
-            return `import('${imports[path]}')`;
-        });
+        .replace(/import\(['"]([^'"]+)['"]\)/g, (_m, path) => dynamicImport(path));
     return import(moduleURL(`// provider ${id}\n${source}`));
 }
 

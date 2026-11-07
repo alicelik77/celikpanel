@@ -25,6 +25,7 @@ const stub = dataModule(`
   export const ScrollText = () => null, AlertTriangle = () => null;
   export const useI18n = () => globalThis.currentTest.i18n;
   export const useNavigate = () => () => true;
+  export const useAuth = () => ({ role: 'admin' });
   export const PageHeader = (props) => React.createElement('header', null, props.title);
   export const auditActionParts = () => ({ target: '' });
   export const auditActionText = (action) => action;

@@ -83,6 +83,21 @@ MIGRATIONS = {
     # alpha.127: 65 monitoring alerts (three tables, four NULL columns on the
     # old metrics_samples; no old row changed).
     65: 'c53809ccd606d926bb5606f92dee61795538f73cce6f98c866fbdd2bef3dad30',
+    # alpha.128: 66 site setting limits (two tables; NOT NULL defaults on the
+    # old service_plans and subscriptions, which every old row holds), 67
+    # outgoing mail limits (six tables, a seeded row, four setting_policy
+    # rows), 68 web server settings (five tables), 69 visitor statistics (one
+    # table), 70 remote API tokens (one table, one index), 71 additional
+    # FTP/SFTP logins (one table, one index, one setting_policy row), 72 panel
+    # operations (three tables, five indexes two of them on the old
+    # audit_logs, three NULL columns on the old sessions). No old row changed.
+    66: 'c770104cc8822d9681b3bf50c03fbfff083b25dccc7af09d46336f271e8237b6',
+    67: '7f0ef43949ae02e94224d77816d25e15c782c9735faf0a2832532366af600e6f',
+    68: 'd1f34d240576378ef0222be6e0161acd77358ddde9822f27fc105af81ee443c3',
+    69: 'e19867fd354b8bae8a5cc2d96ce433dcf7d67f6ab2c68ecae0a4242027d6054d',
+    70: '76f440497a072a82335dc052a2813f30a15206fa1048c44b497d68b613f470f6',
+    71: '7810ff00bebbdd3951eb4321990b103014e80b32395001c3b3fa0f6e239e9d14',
+    72: '92d09a9d1c3c89f07d78a0be60da059c8826dcc12f11f5ffd17d58d5170b294e',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -112,6 +127,13 @@ SCHEMAS = {
     63: '6ab9906b1962dab71e216bdba1c031d341fe6fdecb48beba10f6964b9b9cfd2b',
     64: '9593e3e87d93bab3a90f312e5341c84042858a74b156a09b7b2539c599e476e6',
     65: '084d65e602b0ce0efb6f61b621fa36112be8f400339e6b668cbeebeec08ba0a0',
+    66: 'a625d2863cc7e54d77921c0aaacb310823745e1d5359f27474e6a52d18656ba9',
+    67: 'ef6e46ce14365276daae66dbb71990d5040cd2168a2aac56867d3d491263b66d',
+    68: '53abe69e1359132f38a4aa86de355a575450bd4cc9f8e607cf69fa66a02a8ac5',
+    69: '8c1b2894622bc1b54d2dce2aae3936207e6d8af5dd507b3eec31d23160499e4b',
+    70: 'c7e656298361bb003e3d7932de2514ebfd52dac32b8185b6219f680cedb4f8ae',
+    71: '824ba28340247067b86698b18c73c05b98deba70abeecf971d4f486453815609',
+    72: 'aef97a118e579242ad865d58612597af1c67d64c37b0f14d3d3eb95f985432af',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -149,6 +171,15 @@ NEW_TABLES_62 = NEW_TABLES_61 | {'user_guide_state'}
 NEW_TABLES_63 = NEW_TABLES_62 | {'runtime_offerings', 'runtime_apps', 'runtime_app_operations'}
 NEW_TABLES_64 = NEW_TABLES_63 | {'metrics_rollups'}
 NEW_TABLES_65 = NEW_TABLES_64 | {'metrics_process_snapshots', 'monitoring_alerts', 'site_uptime'}
+NEW_TABLES_66 = NEW_TABLES_65 | {'setting_policy', 'setting_ceilings'}
+NEW_TABLES_67 = NEW_TABLES_66 | {'mail_outgoing_settings', 'mailbox_outgoing', 'mail_plan_limits', 'mail_outgoing_hourly',
+                                 'mail_outgoing_notices', 'domain_mail_options'}
+NEW_TABLES_68 = NEW_TABLES_67 | {'site_web_settings', 'node_site_env', 'log_retention_plans', 'log_retention_subscriptions',
+                                 'git_deploy_settings'}
+NEW_TABLES_69 = NEW_TABLES_68 | {'site_visitor_stats_daily'}
+NEW_TABLES_70 = NEW_TABLES_69 | {'api_tokens'}
+NEW_TABLES_71 = NEW_TABLES_70 | {'ftp_logins'}
+NEW_TABLES_72 = NEW_TABLES_71 | {'notification_preferences', 'account_notices', 'certificate_requests'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -158,7 +189,17 @@ ADDED_COLUMNS = {45: {'audit_logs': ('details',), 'sites': ('app_run_as',)},
                  49: {'users': ('email_verified_at',)},
                  52: {'subscriptions': ('starts_at', 'ends_at', 'suspend_reason', 'suspended_at')},
                  64: {'metrics_samples': ('cpu_peak',)},
-                 65: {'metrics_samples': ('net_rx', 'net_tx', 'disk_read', 'disk_write')}}
+                 65: {'metrics_samples': ('net_rx', 'net_tx', 'disk_read', 'disk_write')},
+                 72: {'sessions': ('last_seen_at', 'client_ip', 'user_agent')}}
+# Columns a pinned schema added to an old table NOT NULL with a fixed
+# default, left out of the old-row proof and required to hold exactly that
+# default in every old row (alpha.128, 66: the overuse policy and notice
+# levels of plans and subscriptions; the two reseller tables it also extends
+# are not old tables).
+ADDED_DEFAULT_COLUMNS = {66: {'service_plans': (('overuse_policy', 'close'), ('notify_percent_disk', 80),
+                                                ('notify_percent_traffic', 80)),
+                              'subscriptions': (('overuse_policy', 'close'), ('notify_percent_disk', 80),
+                                                ('notify_percent_traffic', 80))}}
 # The tables each pinned schema after the baseline adds to the 55 of schema38.
 # A schema that is not a key here is the baseline itself.
 NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_TABLES_45, 46: NEW_TABLES_46,
@@ -166,7 +207,9 @@ NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_T
               52: NEW_TABLES_52, 53: NEW_TABLES_53, 54: NEW_TABLES_54, 55: NEW_TABLES_55,
               56: NEW_TABLES_56, 57: NEW_TABLES_57, 58: NEW_TABLES_58, 59: NEW_TABLES_59, 60: NEW_TABLES_60,
               61: NEW_TABLES_61, 62: NEW_TABLES_62, 63: NEW_TABLES_63, 64: NEW_TABLES_64,
-              65: NEW_TABLES_65}
+              65: NEW_TABLES_65, 66: NEW_TABLES_66, 67: NEW_TABLES_67, 68: NEW_TABLES_68, 69: NEW_TABLES_69,
+              70: NEW_TABLES_70, 71: NEW_TABLES_71,
+              72: NEW_TABLES_72}
 # Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
 # value is only inside the sealed row digest, so a reset row is accepted only
 # when its digest is reproduced with one of these old values (NULL in 001's
@@ -180,6 +223,16 @@ def added_columns(version):
     """Old-table columns added by every pinned schema up to version."""
     added = {}
     for pinned, tables in sorted(ADDED_COLUMNS.items()):
+        if type(version) is int and version >= pinned:
+            for table, columns in tables.items():
+                added[table] = added.get(table, ()) + tuple(columns)
+    return added
+
+
+def added_default_columns(version):
+    """Old-table columns with a fixed default added by every pinned schema up to version."""
+    added = {}
+    for pinned, tables in sorted(ADDED_DEFAULT_COLUMNS.items()):
         if type(version) is int and version >= pinned:
             for table, columns in tables.items():
                 added[table] = added.get(table, ()) + tuple(columns)
@@ -325,7 +378,7 @@ def _connect(path, *, writable=False):
 
 def _schema(connection, version):
     if type(version) is not int or version not in SCHEMAS:
-        raise Refused('only exact schema38 or schema42 through schema65 is supported')
+        raise Refused('only exact schema38 or schema42 through schema72 is supported')
     objects = connection.execute('SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name').fetchall()
     if _sha(json.dumps(objects, ensure_ascii=True, separators=(',', ':')).encode()) != SCHEMAS[version]:
         raise Refused('schema SQL differs from pinned released schema')
@@ -689,6 +742,7 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
             if migrated and table == 'domains':
                 columns = [name for name in columns if name not in ('dns_management', 'dns_remote_connection_id')]
             added = added_columns(expected_version).get(table, ())
+            added += tuple(name for name, _ in added_default_columns(expected_version).get(table, ()))
             columns = [name for name in columns if name not in added]
             if proof['columns'] != columns:
                 raise Refused('every old column must be included in order')
@@ -710,6 +764,12 @@ def verify_copy(database: Path, manifest: dict, *, manifest_sha256: str, expecte
                 row = connection.execute('SELECT ' + ','.join(map(_quote, added)) + ' FROM ' + _quote(table) + ' WHERE rowid=?', (rowid,)).fetchone()
                 if row != tuple(None for _ in added):
                     raise Refused('old row of ' + table + ' has a non-NULL added column')
+        for table, added in added_default_columns(expected_version).items():
+            names = tuple(name for name, _ in added)
+            for rowid, _ in tables[table]['rows']:
+                row = connection.execute('SELECT ' + ','.join(map(_quote, names)) + ' FROM ' + _quote(table) + ' WHERE rowid=?', (rowid,)).fetchone()
+                if row != tuple(value for _, value in added):
+                    raise Refused('old row of ' + table + ' differs from an added column default')
         connection.execute('ROLLBACK')
     finally:
         connection.close()

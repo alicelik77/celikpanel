@@ -62,6 +62,10 @@ type MailPolicy struct {
 	MessageSizeMB     int      `json:"message_size_mb"`
 	DNSBLZones        []string `json:"dnsbl_zones"`
 	OutboundRateLimit int      `json:"outbound_rate_limit"`
+	// ConnectionLimit (alpha.128, G30): smtpd_client_connection_count_limit,
+	// the connections one client may hold open at once (0 = no limit). A
+	// write without it leaves the server's value as it is.
+	ConnectionLimit *int `json:"connection_limit,omitempty"`
 	// Version identifies the exact Postfix values this policy was read from.
 	// A read returns it and a write carries it back (8 Oct 2026); a write
 	// without it, or with one that no longer matches, changes nothing.
@@ -160,9 +164,10 @@ const (
 // Which requested value MailPolicyInvalid refused.
 // MailPolicyInvalid'in reddettiği değer.
 const (
-	MailPolicyInvalidSize = "message_size_mb"
-	MailPolicyInvalidZone = "dnsbl_zone"
-	MailPolicyInvalidRate = "outbound_rate_limit"
+	MailPolicyInvalidSize        = "message_size_mb"
+	MailPolicyInvalidZone        = "dnsbl_zone"
+	MailPolicyInvalidRate        = "outbound_rate_limit"
+	MailPolicyInvalidConnections = "connection_limit"
 )
 
 // PostfixQueueUnreadable is the Agent's exact answer when the mail queue could

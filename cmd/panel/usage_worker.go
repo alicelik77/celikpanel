@@ -164,6 +164,14 @@ func (p *Panel) runUsageRound(ctx context.Context) {
 	if err := p.sendPendingUsageNotices(ctx); err != nil {
 		log.Printf("[usage] notices: %v", err)
 	}
+	// alpha.128 (G11, G18): subscription end dates coming, then every
+	// pending account notice (this round's and other features').
+	if err := p.raiseExpiryNotices(ctx, usageNow()); err != nil {
+		log.Printf("[notices] expiry: %v", err)
+	}
+	if err := p.sendPendingAccountNotices(ctx); err != nil {
+		log.Printf("[notices] mail: %v", err)
+	}
 }
 
 // startUsageWorker runs a round at start, every few minutes and on a kick.

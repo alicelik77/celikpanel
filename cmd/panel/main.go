@@ -23,6 +23,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/auth"
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/db"
+	"github.com/alicelik/celikpanel/internal/fileaccess"
 	"github.com/alicelik/celikpanel/internal/licensing"
 	"github.com/alicelik/celikpanel/internal/recoveryobs"
 	"github.com/alicelik/celikpanel/internal/repositories"
@@ -344,10 +345,17 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "app/packages":
 		// alpha.127: npm install and build in the site sandbox.
 		match.kind, match.methods = "app-packages", getPost
+	case "app/env":
+		// alpha.128: the Node.js site's environment variables. Not mapped
+		// for additional users: the values are the owner's secrets.
+		match.kind, match.methods = "app-env", getPost
 	case "php":
 		match.kind, match.methods = "php", getPost
 	case "php/pool":
 		match.kind, match.methods = "php-pool", getPost
+	case "php/settings":
+		// alpha.128: the site's own PHP values within the plan's ceilings.
+		match.kind, match.methods = "php-settings", []string{http.MethodGet, http.MethodPut}
 	case "general":
 		match.kind, match.methods = "general", getPost
 	case "aliases":
@@ -368,6 +376,20 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "ssl-settings", []string{http.MethodPost}
 	case "ssl":
 		match.kind, match.methods = "ssl", []string{http.MethodGet, http.MethodDelete}
+	case "git":
+		// alpha.128 (G32): Git deploy of the site. Not mapped for additional users.
+		match.kind, match.methods = "git", getPost
+	case "git/key":
+		match.kind, match.methods = "git-key", []string{http.MethodPost}
+	case "git/deploy":
+		match.kind, match.methods = "git-deploy", []string{http.MethodPost}
+	case "copy":
+		// alpha.128 (G8): copy this site into another site the caller manages.
+		// Not mapped for additional users.
+		match.kind, match.methods = "site-copy", getPost
+	case "logs/retention":
+		// alpha.128 (G27): how long the site's rotated logs are kept.
+		match.kind, match.methods = "logs-retention", getPost
 	case "logs/access", "logs/error", "logs/php":
 		match.kind, match.methods = "logs", []string{http.MethodGet, http.MethodDelete}
 	case "databases":
@@ -403,6 +425,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail-health", []string{http.MethodGet}
 	case "mail/accounts/password":
 		match.kind, match.methods = "mail", []string{http.MethodPut}
+	case "mail/accounts/empty":
+		// alpha.128 (G20): remove every message of one mailbox.
+		match.kind, match.methods = "mail", []string{http.MethodPost}
 	case "mail/accounts":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/quota", "mail/rbl", "mail/setup", "mail/auth":
@@ -414,6 +439,15 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "mail/catch-all":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/autoresponder":
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
+	case "mail/options":
+		// alpha.128 (G25): send only, and the reply for unknown addresses.
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
+	case "mail/delivery":
+		// alpha.128 (G9): what happened to this domain's mail (read only).
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}
+	case "mail/outgoing":
+		// alpha.128: the domain's mailboxes, their hourly sending limits and use.
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodOptions}
 	case "apps/install":
 		match.kind, match.methods = "app-install", []string{http.MethodPost}
@@ -457,6 +491,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "runtime-apps-remove", []string{http.MethodPost}
 	case "usage":
 		match.kind, match.methods = "usage", []string{http.MethodGet}
+	case "stats/visitors":
+		// alpha.128 (G24): visitor statistics from the site's access log.
+		match.kind, match.methods = "visitor-stats", []string{http.MethodGet}
 	case "connection":
 		match.kind, match.methods = "connection", []string{http.MethodGet}
 	case "access":
@@ -466,6 +503,10 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "file-access", []string{http.MethodGet, http.MethodPut}
 	case "access/preview":
 		match.kind, match.methods = "file-access-preview", []string{http.MethodPost}
+	case "access/logins":
+		// alpha.128: additional FTP/SFTP logins, each closed into one folder
+		// of the site. Not mapped for additional users either.
+		match.kind, match.methods = "ftp-logins", []string{http.MethodGet, http.MethodPost}
 	case "site-config":
 		match.kind, match.methods = "site-config", []string{http.MethodGet}
 	case "site-config/keep":
@@ -484,10 +525,21 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 	case "redirects":
 		// alpha.114: free-form redirects of the site.
 		match.kind, match.methods = "site-redirects", []string{http.MethodGet, http.MethodPost, http.MethodDelete}
+	case "web-settings":
+		// alpha.128: the site's web server settings (site_web_settings.go).
+		match.kind, match.methods = "web-settings", getPost
+	case "web-settings/directives":
+		match.kind, match.methods = "web-settings-directives", []string{http.MethodPost}
+	case "web-settings/cache-clear":
+		// alpha.128 (G28): empty the site's page cache.
+		match.kind, match.methods = "web-settings-cache-clear", []string{http.MethodPost}
 	case "dns/zone":
 		match.kind, match.methods = "dns", getPost
 	case "dns/records":
 		match.kind, match.methods = "dns", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete}
+	// alpha.128 ops: G22 domain health strip (stored answers only).
+	case "health":
+		match.kind, match.methods = domainHealthKind, []string{http.MethodGet}
 	default:
 		if len(tail) == 2 && tail[0] == "aliases" {
 			match.kind, match.methods = "aliases", []string{http.MethodDelete}
@@ -496,11 +548,16 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 			match.kind, match.methods = "app-operation", []string{http.MethodDelete}
 		} else if len(tail) == 3 && tail[0] == "apps" && validHexOperationID(tail[1]) && (tail[2] == "retry" || tail[2] == "credentials") {
 			match.kind, match.methods = "app-operation", []string{http.MethodPost}
+		} else if len(tail) == 3 && tail[0] == "access" && tail[1] == "logins" && fileaccess.ValidateLoginName(tail[2]) == nil {
+			match.kind, match.methods = "ftp-logins", []string{http.MethodPut, http.MethodDelete}
 		} else if len(tail) == 2 && tail[0] == "databases" {
 			if _, ok := strictPositiveID(tail[1]); !ok {
 				return domainSubroute{}, false
 			}
 			match.kind, match.methods = "database-delete", []string{http.MethodDelete}
+		} else if kind, methods, ok := matchDatabaseToolsRoute(tail); ok {
+			// alpha.128 (G7): the tools of one database.
+			match.kind, match.methods = kind, methods
 		} else {
 			return domainSubroute{}, false
 		}
@@ -544,6 +601,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainPHPSettings(w, r)
 	case "php-pool":
 		p.handleDomainPHPPool(w, r)
+	case "php-settings":
+		p.handleDomainPHPLimits(w, r, match.domainID)
 	case "general":
 		p.handleDomainGeneralSettings(w, r)
 	case "aliases":
@@ -570,6 +629,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainDatabases(w, r)
 	case "database-delete":
 		p.handleDeleteDatabase(w, r)
+	case "database-tools", "database-export", "database-import", "database-import-upload", "database-copy", "database-check":
+		p.handleDatabaseTools(w, r, match.domainID, match.kind)
 	case "files":
 		p.handleDomainFiles(w, r)
 	case "files-download":
@@ -605,16 +666,32 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainRuntimeApps(w, r, match.domainID, match.kind)
 	case "usage":
 		p.handleDomainUsage(w, r)
+	case "visitor-stats":
+		p.handleVisitorStats(w, r, match.domainID)
 	case "connection":
 		p.handleDomainConnection(w, r, match.domainID)
 	case "file-access":
 		p.handleDomainFileAccess(w, r, match.domainID, false)
 	case "file-access-preview":
 		p.handleDomainFileAccess(w, r, match.domainID, true)
+	case "ftp-logins":
+		p.handleDomainFTPLogins(w, r, match.domainID)
 	case "dns":
 		p.handleDomainDNS(w, r)
 	case "site-protect", "site-protect-users", "site-redirects":
 		p.handleDomainSiteFeatures(w, r, match.domainID, match.kind)
+	case "web-settings", "web-settings-directives":
+		p.handleDomainWebSettings(w, r, match.domainID, match.kind)
+	case "app-env":
+		p.handleDomainNodeEnv(w, r, match.domainID)
+	case "web-settings-cache-clear":
+		p.handleDomainPageCacheClear(w, r, match.domainID)
+	case "logs-retention":
+		p.handleDomainLogRetention(w, r, match.domainID)
+	case "site-copy":
+		p.handleDomainSiteCopy(w, r, match.domainID)
+	case "git", "git-key", "git-deploy":
+		p.handleDomainGitDeploy(w, r, match.domainID, match.kind)
 	case "site-config":
 		p.handleDomainSiteConfig(w, r, match.domainID, "")
 	case "site-config-keep":
@@ -625,6 +702,9 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainSiteConfig(w, r, match.domainID, "recreate")
 	case "site-config-apply":
 		p.handleDomainSiteConfig(w, r, match.domainID, siteConfigActionApply)
+	// alpha.128 ops: G22 domain health strip.
+	case domainHealthKind:
+		p.handleDomainHealth(w, r, match.domainID)
 	default:
 		http.NotFound(w, r)
 	}
@@ -1135,7 +1215,11 @@ func main() {
 		buildCommit,
 	)
 	panel.orchestrator.SetReleaseLabel(siteFileReleaseLabel())
+	// alpha.128 (G21): the administrator's password level, if one was set.
+	panel.loadPasswordLevel(context.Background())
 	panel.orchestrator.SetSiteServerNames(panel.managedSiteHostnames)
+	// alpha.128: a new site's pool starts within its plan's process limit.
+	panel.orchestrator.SetSitePHPLimits(panel.sitePHPLimits)
 
 	// Development demo accounts (gated behind --demo).
 	// Geliştirme demo hesapları (--demo bayrağının arkasında).
@@ -1491,6 +1575,18 @@ func main() {
 	http.HandleFunc("/api/v1/auth/login", panel.handleLogin)
 	http.HandleFunc("/api/v1/auth/logout", panel.handleLogout)
 	http.HandleFunc("/api/v1/auth/me", panel.handleMe)
+	// alpha.128 ops: G4 panel sessions, idle timeout and administrator
+	// access by address (panel_sessions.go). The own-session routes are the
+	// caller's own rows; /api/v1/panel/ is administrator-only.
+	http.HandleFunc(sessionActivityPath, panel.handleSessionActivity)
+	http.HandleFunc(ownSessionsPath, panel.handleOwnSessions)
+	http.HandleFunc(ownSessionEndPath, panel.handleOwnSessionEnd)
+	http.HandleFunc(ownSessionsEndOthers, panel.handleOwnSessionsEndOthers)
+	http.HandleFunc(allSessionsPath, panel.handleAllSessions)
+	http.HandleFunc(allSessionEndPath, panel.handleAllSessionEnd)
+	http.HandleFunc(resellerSessionsPath, panel.handleResellerSessions)
+	http.HandleFunc(resellerSessionEndPath, panel.handleResellerSessionEnd)
+	http.HandleFunc(panelAccessSettingPath, panel.handlePanelAccess)
 	http.HandleFunc(panelLicenseAccessPath, panel.handleLicenseAccess)
 	panel.registerRecoveryRoutes(http.DefaultServeMux)
 	// Password reset by email, invitations, address confirmation (alpha.114).
@@ -1531,6 +1627,12 @@ func main() {
 	http.HandleFunc(usageNoticesPath, panel.handleUsageNotices)
 	http.HandleFunc(usageNoticesPath+"/", panel.handleUsageNotices)
 	http.HandleFunc(usageStatusPath, panel.handleUsageStatus)
+	// alpha.128 ops: G18 notifications by recipient (one list, the person's
+	// own email choice, the administrator's expiry days and extra addresses).
+	http.HandleFunc(notificationsPath, panel.handleNotifications)
+	http.HandleFunc(notificationsPath+"/", panel.handleNotifications)
+	http.HandleFunc(notificationPreferencesPath, panel.handleNotificationPreferences)
+	http.HandleFunc(notificationSettingsPath, panel.handleNotificationSettings)
 	http.HandleFunc("/api/v1/products", panel.handleProducts)
 	http.HandleFunc("/api/v1/store", panel.handleStore)
 	http.HandleFunc("/api/v1/store/", panel.handleStore)
@@ -1575,12 +1677,19 @@ func main() {
 	http.HandleFunc(ownEmailPath, panel.handleChangeOwnEmail)
 	// alpha.119: the first-login tour's state, the signed-in person's own row.
 	http.HandleFunc(guideStatePath, panel.handleGuideState)
+	// alpha.128 ops: G23 the account's own action log (read only, filtered by rights).
+	http.HandleFunc(activityLogPath, panel.handleActivityLog)
 	http.HandleFunc("/api/v1/auth/2fa/status", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/setup", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/enable", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/disable", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/2fa/recovery/regenerate", panel.handle2FA)
 	http.HandleFunc("/api/v1/auth/unimpersonate", panel.handleUnimpersonate)
+	// alpha.128 (G15): the account's own remote API tokens (session only)
+	// and the administrator's server switch (docs/REMOTE-API.md).
+	http.HandleFunc(apiTokensPath, panel.handleAPITokens)
+	http.HandleFunc(apiTokensPath+"/", panel.handleAPITokenItem)
+	http.HandleFunc(remoteAPISettingPath, panel.handleRemoteAPISetting)
 
 	// Managed Services
 	http.HandleFunc("/api/v1/managed-services", panel.handleManagedServices)
@@ -1623,6 +1732,8 @@ func main() {
 	http.HandleFunc("/api/v1/settings/dns-cluster", panel.handleDNSCluster)
 	http.HandleFunc("/api/v1/settings/dns-setup", panel.handleDNSSetup)
 	http.HandleFunc("/api/v1/nginx/ratelimits", panel.handleNginxRateLimits)
+	// alpha.128: offer additional nginx directives to resellers and customers.
+	http.HandleFunc(nginxDirectivesOfferPath, panel.handleNginxDirectivesOffer)
 
 	// Fail2ban Management
 	http.HandleFunc("/api/v1/fail2ban/jails", panel.handleFail2banJails)
@@ -1630,6 +1741,8 @@ func main() {
 	http.HandleFunc("/api/v1/fail2ban/config", panel.handleFail2banConfig)
 
 	// Email Management (Postfix & Dovecot)
+	// alpha.128 (G14): the server's IP addresses, read only.
+	http.HandleFunc(serverIPAddressesPath, panel.handleServerIPAddresses)
 	http.HandleFunc("/api/v1/postfix/queue", panel.handlePostfixQueue)
 	http.HandleFunc("/api/v1/postfix/summary", panel.handlePostfixSummary)
 	http.HandleFunc(passwordlessMailPath, panel.handlePasswordlessMail)
@@ -1683,6 +1796,14 @@ func main() {
 	http.HandleFunc(fileAccessToolsPath, panel.handleFileAccessTools)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
 	http.HandleFunc(restartNeedsPath, panel.handleRestartNeeds)
+	// alpha.128 ops: G29 server maintenance (administrator, handler check).
+	http.HandleFunc(serverClockPath, panel.handleServerClock)
+	http.HandleFunc(serverProcessesPath, panel.handleServerProcesses)
+	http.HandleFunc(serverRebootPath, panel.handleServerReboot)
+	// alpha.128 ops: G31 certificates overview and certificate requests.
+	http.HandleFunc(certificatesOverviewPath, panel.handleCertificatesOverview)
+	http.HandleFunc(certificateRequestsPath, panel.handleCertificateRequests)
+	http.HandleFunc(certificateRequestsPath+"/", panel.handleCertificateRequestItem)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
 	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
@@ -1739,6 +1860,12 @@ func main() {
 	http.HandleFunc("/api/v1/dns/engine/switch", panel.handleDNSEngineSwitch)
 	http.HandleFunc("/api/v1/mail/configure", panel.handleMailConfigure)
 	http.HandleFunc("/api/v1/mail/policy", panel.handleMailPolicy)
+	// alpha.128: outgoing mail limits (administrator) and their notices.
+	http.HandleFunc(mailOutgoingPath, panel.handleMailOutgoing)
+	http.HandleFunc(mailOutgoingReportPath, panel.handleMailOutgoing)
+	http.HandleFunc(mailOutgoingNoticesPath, panel.handleOutgoingNotices)
+	http.HandleFunc(mailOutgoingNoticesPath+"/", panel.handleOutgoingNotices)
+	http.HandleFunc(mailPlanLimitsPath, panel.handleMailPlanLimits)
 	http.HandleFunc("/api/v1/apps", panel.handleAppCatalog)
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	http.HandleFunc(wordpressToolsPath, panel.handleWordPressTools)
@@ -1831,6 +1958,8 @@ func main() {
 	panel.startBackupScheduler()
 	// alpha.118: scheduled minor WordPress core releases and malware scans.
 	panel.startWordPressAutoUpdater()
+	// alpha.128 (G27): site log retention, every six hours.
+	panel.startSiteLogRetention()
 	panel.startMalwareScanWorker()
 	// alpha.118: remote backups; continues what a restart interrupted.
 	panel.startRemoteBackupWorker()
@@ -1841,6 +1970,9 @@ func main() {
 	// alpha.118 (D-044): traffic collection, disk measurement and mailbox
 	// quota enforcement.
 	panel.startUsageWorker()
+	// alpha.128: outgoing mail activity, notices, security pauses and the
+	// postfwd state.
+	panel.startOutgoingMailWorker()
 	// Security emergencies (D-043): continue what a restart interrupted,
 	// hand pending notices to the mail system.
 	panel.startEmergencyWorker()

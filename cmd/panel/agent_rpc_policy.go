@@ -117,7 +117,7 @@ func agentRPCAuthGroup(effect agentRPCEffect, capability agentRPCCapability, met
 
 var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectRead, "", `
-		Agent.InspectSiteFile Agent.InspectSitePool Agent.InspectAppUnit
+		Agent.InspectSiteFile Agent.InspectSitePool Agent.InspectAppUnit Agent.SitePHPSettingsV1
 		Agent.AppUnitLogs Agent.AppUnitStatus Agent.CheckInstalledServices Agent.CheckRBL
 		Agent.CheckSystemSQLiteDatabase Agent.DNSBackendReadiness Agent.DNSClusterReadiness
 		Agent.DNSEngineRollbackEvidenceV1
@@ -140,18 +140,21 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
-		Agent.PasswordlessMailReportV1
+		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
+		Agent.FTPLoginsStateV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
 		Agent.WordPressStatusV1 Agent.MalwareScannerStatusV1 Agent.MalwareScanSiteV1
 		Agent.ServiceAppProbeV1 Agent.ServiceAppStatusV1 Agent.ServiceAppLogsV1 Agent.ServiceAppUnitStateV1 Agent.SandboxCapsV1
 		Agent.RuntimeAppCheckV1 Agent.RuntimeAppStatusV1 Agent.RuntimeAppLogsV1 Agent.RuntimeAppUnitStateV1
-		Agent.NodeSiteInstallStatusV1
+		Agent.NodeSiteInstallStatusV1 Agent.SiteLogStatusV1 Agent.GitDeployStatusV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
 		Agent.ServiceHealthV1
+		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
+		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -169,6 +172,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityServiceLifecycle, `
 		Agent.EnsureNginxReady Agent.ResetFailedUnitMutation Agent.ServiceMutationAction
 		Agent.StartServiceMutation Agent.SetEmergencyUnitLockV1
+		Agent.ServerRebootV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
@@ -178,12 +182,13 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingSite, `
 		Agent.CreateSite Agent.DeleteSite Agent.InstallWordPress Agent.ApplyFileAccessV1
+		Agent.ApplyFTPLoginV1
 		Agent.InstallCatalogAppV1 Agent.SetupCatalogAppV1 Agent.RemoveCatalogAppV1
 		Agent.SetSiteAccountSuspensionV1 Agent.SetFileAccessReadOnlyV1
-		Agent.WordPressUpdateV1 Agent.WordPressCloneV1
+		Agent.WordPressUpdateV1 Agent.WordPressCloneV1 Agent.SiteCopyV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingVHost, `
-		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1
+		Agent.ApplyVhost Agent.ApplyVhosts Agent.ReconcileDefaultHTTPSServerV1 Agent.ApplySiteSettingsIncludeV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostingApp, `
 		Agent.ApplyAppUnit Agent.ControlAppUnit Agent.RemoveAppUnit Agent.SetAppUnitSuspensionV1
@@ -194,13 +199,15 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.RuntimeAppRenderV1 Agent.RuntimeAppControlV1 Agent.RuntimeAppEnvV1 Agent.RuntimeAppRemoveV1
 		Agent.RuntimeAppBuildV1 Agent.RuntimeAppBuildAdvanceV1
 		Agent.SetRuntimeAppSuspensionV1
-		Agent.NodeSiteInstallV1
+		Agent.NodeSiteInstallV1 Agent.NodeSiteEnvV1 Agent.SitePageCacheClearV1 Agent.SiteLogRetentionV1
+		Agent.GitDeployKeyV1 Agent.GitDeployV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityCertificate, `
 		Agent.DeleteCertLineage Agent.InstallCustomCertificate Agent.IssueLetsEncryptCertificate
 		Agent.IssuePanelCertificateV2 Agent.IssueMailHostCertificateV1 Agent.ReconcileSiteCertLineages
 		Agent.RenewLetsEncryptCertificate Agent.ValidateCertificate
 		Agent.SetSiteCertificateAutoRenewV1
+		Agent.CertificateRequestCreateV1 Agent.CertificateRequestDiscardV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFirewall, `
 		Agent.ApplyFirewallV2 Agent.Fail2banToggleJail Agent.Fail2banUnban
@@ -218,6 +225,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.UpdateMailForwarding Agent.UpdateMailPassword Agent.UpdateMailQuota
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
+		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1 Agent.SetMailDomainOptionsV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -242,6 +250,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
 		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
 		Agent.SetDatabaseUserSuspensionV1 Agent.RotateDatabaseUserPasswordV1
+		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
+		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -339,7 +349,12 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ListFiles":     agentRPCStandardReadTimeout,
 	"Agent.MailHealth":    agentRPCStandardReadTimeout,
 	// One bounded journal read of Postfix lines (45 s in the Agent).
-	"Agent.PasswordlessMailReportV1":      agentRPCStandardReadTimeout,
+	"Agent.PasswordlessMailReportV1": agentRPCStandardReadTimeout,
+	// alpha.128: one bounded journal read (45 s) and a status with a
+	// self-test request to postfwd on loopback.
+	"Agent.MailDeliveryLookupV1":          agentRPCStandardReadTimeout,
+	"Agent.OutgoingMailActivityV1":        agentRPCStandardReadTimeout,
+	"Agent.OutgoingMailLimitsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
@@ -372,6 +387,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,
 	"Agent.InspectSitePool":               agentRPCStandardReadTimeout,
+	"Agent.SitePHPSettingsV1":             agentRPCStandardReadTimeout,
 	"Agent.InspectAppUnit":                agentRPCStandardReadTimeout,
 	"Agent.ChmodFile":                     agentRPCMutationTimeout,
 	"Agent.ClearLogs":                     agentRPCMutationTimeout,
@@ -406,34 +422,38 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RemoveAppUnit":                 agentRPCMutationTimeout,
 	"Agent.RenameFile":                    agentRPCMutationTimeout,
 	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
-	"Agent.TogglePHPExtension":            agentRPCMutationTimeout,
-	"Agent.UpdateConfig":                  agentRPCMutationTimeout,
-	"Agent.UpdateCronJob":                 agentRPCMutationTimeout,
-	"Agent.UpdateExtendedPHPConfig":       agentRPCMutationTimeout,
-	"Agent.UpdateMailForwarding":          agentRPCMutationTimeout,
-	"Agent.SetMailAutoresponder":          agentRPCMutationTimeout,
-	"Agent.UpdateMailPassword":            agentRPCMutationTimeout,
-	"Agent.UpdateMailQuota":               agentRPCMutationTimeout,
-	"Agent.SuspensionInspectV1":           agentRPCStandardReadTimeout,
-	"Agent.TrafficCollectV1":              agentRPCStandardReadTimeout,
-	"Agent.SubscriptionDiskUsageV1":       agentRPCDatabaseTimeout,
-	"Agent.ReconcileMailQuotaV1":          agentRPCMutationTimeout,
-	"Agent.SetFileAccessReadOnlyV1":       agentRPCMutationTimeout,
-	"Agent.SetSiteAccountSuspensionV1":    agentRPCMutationTimeout,
-	"Agent.SetMailDomainSuspensionV1":     agentRPCMutationTimeout,
-	"Agent.SetDatabaseUserSuspensionV1":   agentRPCMutationTimeout,
-	"Agent.RotateDatabaseUserPasswordV1":  agentRPCMutationTimeout,
-	"Agent.EndMailSessionsV1":             agentRPCMutationTimeout,
-	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
-	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
-	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
-	"Agent.SetEmergencyAppLockV1":         agentRPCMutationTimeout,
-	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,
-	"Agent.UpdatePHPPoolConfig":           agentRPCMutationTimeout,
-	"Agent.UploadFile":                    agentRPCMutationTimeout,
-	"Agent.WriteFile":                     agentRPCMutationTimeout,
+	"Agent.SetMailDomainOptionsV1":        agentRPCMutationTimeout,
+	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
+	// alpha.128: doveadm expunge of one mailbox (the Agent bounds it at 9 min).
+	"Agent.EmptyMailboxV1":               agentRPCDatabaseTimeout,
+	"Agent.TogglePHPExtension":           agentRPCMutationTimeout,
+	"Agent.UpdateConfig":                 agentRPCMutationTimeout,
+	"Agent.UpdateCronJob":                agentRPCMutationTimeout,
+	"Agent.UpdateExtendedPHPConfig":      agentRPCMutationTimeout,
+	"Agent.UpdateMailForwarding":         agentRPCMutationTimeout,
+	"Agent.SetMailAutoresponder":         agentRPCMutationTimeout,
+	"Agent.UpdateMailPassword":           agentRPCMutationTimeout,
+	"Agent.UpdateMailQuota":              agentRPCMutationTimeout,
+	"Agent.SuspensionInspectV1":          agentRPCStandardReadTimeout,
+	"Agent.TrafficCollectV1":             agentRPCStandardReadTimeout,
+	"Agent.SubscriptionDiskUsageV1":      agentRPCDatabaseTimeout,
+	"Agent.ReconcileMailQuotaV1":         agentRPCMutationTimeout,
+	"Agent.SetFileAccessReadOnlyV1":      agentRPCMutationTimeout,
+	"Agent.SetSiteAccountSuspensionV1":   agentRPCMutationTimeout,
+	"Agent.SetMailDomainSuspensionV1":    agentRPCMutationTimeout,
+	"Agent.SetDatabaseUserSuspensionV1":  agentRPCMutationTimeout,
+	"Agent.RotateDatabaseUserPasswordV1": agentRPCMutationTimeout,
+	"Agent.EndMailSessionsV1":            agentRPCMutationTimeout,
+	"Agent.SetAppUnitSuspensionV1":       agentRPCMutationTimeout,
+	"Agent.EmergencyUnitsInspectV1":      agentRPCStandardReadTimeout,
+	"Agent.SetEmergencyUnitLockV1":       agentRPCMutationTimeout,
+	"Agent.SetEmergencyAppLockV1":        agentRPCMutationTimeout,
+	"Agent.UpdateMySQLConfig":            agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfig":              agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfiguration":       agentRPCMutationTimeout,
+	"Agent.UpdatePHPPoolConfig":          agentRPCMutationTimeout,
+	"Agent.UploadFile":                   agentRPCMutationTimeout,
+	"Agent.WriteFile":                    agentRPCMutationTimeout,
 
 	// Repository publication/removal refreshes package metadata and can be
 	// bounded by network and package-manager latency.
@@ -441,9 +461,22 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.EnableRepo":  agentRPCDeploymentTimeout,
 
 	// Database and site lifecycle operations.
-	"Agent.ApplyAppUnit":                  agentRPCDatabaseTimeout,
-	"Agent.ControlAppUnit":                agentRPCDatabaseTimeout,
-	"Agent.CreateDatabase":                agentRPCDatabaseTimeout,
+	"Agent.ApplyAppUnit":   agentRPCDatabaseTimeout,
+	"Agent.ControlAppUnit": agentRPCDatabaseTimeout,
+	"Agent.CreateDatabase": agentRPCDatabaseTimeout,
+	// alpha.128 (G7): database tools; a dump, load or check of a large
+	// database is bounded by the Agent at two hours.
+	"Agent.DatabaseToolsInfoV1":    agentRPCStandardReadTimeout,
+	"Agent.DatabaseExportReadV1":   agentRPCStandardReadTimeout,
+	"Agent.DatabaseImportUploadV1": agentRPCStandardReadTimeout,
+	"Agent.DatabaseExportV1":       agentRPCSiteLongTimeout,
+	"Agent.DatabaseImportSafetyV1": agentRPCSiteLongTimeout,
+	"Agent.DatabaseImportV1":       agentRPCSiteLongTimeout,
+	"Agent.DatabaseCopyV1":         agentRPCSiteLongTimeout,
+	"Agent.DatabaseCheckV1":        agentRPCSiteLongTimeout,
+	// alpha.128 (G24): the Agent bounds one read at 25 s and 1 GiB.
+	"Agent.SiteVisitorStatsV1":            agentRPCStandardReadTimeout,
+	"Agent.ServerIPAddressesV1":           agentRPCQuickReadTimeout,
 	"Agent.CreateSite":                    agentRPCDatabaseTimeout,
 	"Agent.DeleteDatabase":                agentRPCDatabaseTimeout,
 	"Agent.ProvisionDatabaseAdminAccount": agentRPCDatabaseTimeout,
@@ -459,6 +492,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.EnsureDKIMKey":                  agentRPCDatabaseTimeout,
 	"Agent.ImportMailAccount":              agentRPCDatabaseTimeout,
 	"Agent.ApplySitePool":                  agentRPCDatabaseTimeout,
+	"Agent.ApplySiteSettingsIncludeV1":     agentRPCDatabaseTimeout,
 	"Agent.SecureDNSZoneV2":                agentRPCDatabaseTimeout,
 	"Agent.SyncDNSZoneV2":                  agentRPCDatabaseTimeout,
 	"Agent.SyncDNSZoneV3":                  agentRPCDatabaseTimeout,
@@ -528,10 +562,15 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.FileAccessPreviewV1": agentRPCStandardReadTimeout,
 	"Agent.ApplyFileAccessV1":   agentRPCDatabaseTimeout,
 
+	// alpha.128: additional FTP/SFTP logins (account, jail unit, sshd, vsftpd).
+	"Agent.FTPLoginsStateV1": agentRPCStandardReadTimeout,
+	"Agent.ApplyFTPLoginV1":  agentRPCDatabaseTimeout,
+
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
 	"Agent.WordPressUpdateV1":          agentRPCBulkImportTimeout,
 	"Agent.WordPressCloneV1":           agentRPCSiteLongTimeout,
+	"Agent.SiteCopyV1":                 agentRPCSiteLongTimeout,
 	"Agent.MalwareScannerStatusV1":     agentRPCQuickReadTimeout,
 	"Agent.MalwareScanSiteV1":          agentRPCSiteLongTimeout,
 	"Agent.MalwareQuarantineV1":        agentRPCMutationTimeout,
@@ -577,8 +616,21 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RuntimeVersionUsersV1":    agentRPCQuickReadTimeout,
 	"Agent.RuntimeAppBuildV1":        agentRPCMutationTimeout,
 	"Agent.NodeSiteInstallV1":        agentRPCMutationTimeout,
+	"Agent.NodeSiteEnvV1":            agentRPCMutationTimeout,
+	"Agent.SitePageCacheClearV1":     agentRPCMutationTimeout,
+	"Agent.SiteLogRetentionV1":       agentRPCMutationTimeout,
+	"Agent.SiteLogStatusV1":          agentRPCStandardReadTimeout,
+	"Agent.GitDeployKeyV1":           agentRPCMutationTimeout,
+	"Agent.GitDeployV1":              agentRPCMutationTimeout,
+	"Agent.GitDeployStatusV1":        agentRPCStandardReadTimeout,
 	"Agent.NodeSiteInstallStatusV1":  agentRPCStandardReadTimeout,
 	"Agent.RuntimeAppBuildAdvanceV1": agentRPCDatabaseTimeout,
+
+	// alpha.128 ops: server maintenance (G29 reboot, G31 certificate requests;
+	// an RSA 4096 key can take a few seconds to make).
+	"Agent.ServerRebootV1":              agentRPCQuickReadTimeout,
+	"Agent.CertificateRequestCreateV1":  agentRPCMutationTimeout,
+	"Agent.CertificateRequestDiscardV1": agentRPCQuickReadTimeout,
 }
 
 var agentRPCPolicies = buildAgentRPCPolicies()

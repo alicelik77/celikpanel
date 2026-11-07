@@ -233,7 +233,15 @@ func TestDomainDeletionStatusNamesCompletedDNSRemoval(t *testing.T) {
 	status, body := readDeletionStatusForTest(t, p, id)
 	if status != http.StatusOK || body.Status != domainDeletionPendingStatus ||
 		body.Stage != domainDeletionDNSStageDone || body.Reason != domainDeletionDNSRemovalConfirmedReason ||
-		!strings.Contains(body.Message, "Retry this deletion") {
+		!strings.Contains(body.Message, "by itself") {
 		t.Fatalf("completed DNS removal status=%d body=%+v", status, body)
+	}
+	// alpha.128 lab: the rest of the deletion is finished by the panel
+	// itself (a token client cannot press "Retry this deletion").
+	p.reconcileLocalDNSDeletionsOnce(t.Context())
+	var left int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM domains WHERE id = ?`, id).Scan(&left); err != nil || left != 0 {
+		status, body = readDeletionStatusForTest(t, p, id)
+		t.Fatalf("the deletion was not finished by itself: rows=%d err=%v status=%d body=%+v", left, err, status, body)
 	}
 }

@@ -1,5 +1,5 @@
-import { lazy, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock } from 'lucide-react';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { readApiError, type ApiError } from '../lib/apiError';
@@ -11,6 +11,8 @@ import { MailAuthPanel } from './MailAuthPanel';
 import { MailSettingsPanel } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 import { confirmAction } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
+import { runBulk, type BulkOutcome, type BulkTarget } from '../lib/bulkMailbox';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 
@@ -69,6 +71,12 @@ function decodeQuota(raw: unknown): QuotaStatus {
 // Sekmenin yanındaki sayı: liste bilinince sayı, okunurken "…", okunamayınca "–".
 const countOf = (remote: Remote<unknown[]>) => (remote.state === 'known' ? remote.value.length : remote.state === 'loading' ? '…' : '–');
 const WebmailAccess = lazy(() => import('./WebmailAccess'));
+// alpha.128: each mailbox's hourly sending limit and a security pause (own chunk).
+const OutgoingMailboxLimits = lazy(() => import('./OutgoingMailboxLimits'));
+// alpha.128 (G9): "did a message arrive?" for this domain (own chunk).
+const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
+// alpha.128 (G25): send only, and the reply unknown addresses get (own chunk).
+const DomainMailOptions = lazy(() => import('./DomainMailOptions'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
     const { t } = useI18n();
@@ -107,6 +115,17 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         setShowForm(false);
         setEditingQuota(null);
     }, [domainId, activeTab, readOnly]);
+    // alpha.128 (G20): "Add an alias" under a mailbox opens the forwarding
+    // form with the mailbox as the destination.
+    const [aliasFor, setAliasFor] = useState<string | null>(null);
+    useEffect(() => {
+        if (activeTab === 'forwarding' && aliasFor) {
+            setShowForm(true);
+            setFwdSource('');
+            setFwdDest(aliasFor);
+            setAliasFor(null);
+        }
+    }, [activeTab, aliasFor]);
 
     useEffect(() => {
         // A mailbox secret must not survive an authorization or domain context
@@ -228,6 +247,99 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
         });
     };
 
+    // alpha.128 (G20): several mailboxes at once. One confirmation, one real
+    // server call and one step per mailbox; the list is read again after.
+    const [selected, setSelected] = useState<Set<number>>(() => new Set());
+    const [bulkMode, setBulkMode] = useState<'default' | 'custom' | 'unlimited'>('default');
+    const [bulkPerHour, setBulkPerHour] = useState(100);
+    const [bulkLimitOpen, setBulkLimitOpen] = useState(false);
+    useEffect(() => { setSelected(new Set()); setBulkLimitOpen(false); }, [domainId, activeTab]);
+    const toggleSelected = (id: number) => setSelected((current) => {
+        const next = new Set(current);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+    const outcomeOf = async (res: Response): Promise<BulkOutcome> => {
+        if (res.ok) return { ok: true };
+        return { ok: false, reason: (await readApiError(res)).message || t('common.error') };
+    };
+    const runBulkAction = async (accounts: EmailAccount[], title: string, message: string, label: TranslationKey, tone: 'default' | 'danger',
+        call: (account: EmailAccount) => Promise<Response>, outcome?: (res: Response) => Promise<BulkOutcome>) => {
+        const targets: BulkTarget[] = accounts.filter((a) => selected.has(a.id)).map((a) => ({ id: a.id, label: a.address }));
+        if (readOnly || targets.length === 0) return;
+        await confirmAction({
+            title, message, tone, confirmLabel: title, progressTitle: title,
+            action: async (report) => {
+                const byID = new Map(accounts.map((a) => [a.id, a]));
+                const result = await runBulk(targets, async (target) => (outcome ?? outcomeOf)(await call(byID.get(target.id)!)),
+                    (steps) => report.steps(steps),
+                    { stepLabel: (target) => t(label, { name: target.label }), unknownNote: t('common.resultUnknown'), notStartedNote: t('mail.bulk.notStarted') });
+                invalidate('mail');
+                setSelected(new Set());
+                if (result.unknown !== null) return { state: 'unknown', reason: t('common.resultUnknown') };
+                if (result.refused.length > 0) return { state: 'failed', reason: t('mail.bulk.someRefused', { done: result.done.length, refused: result.refused.length }) };
+                return { state: 'done', message: t('mail.bulk.done', { n: result.done.length }) };
+            },
+        });
+    };
+    // A saved limit the server did not take at once says so on its step
+    // (alpha.128 lab: no silent deferral): pending is the worker's next
+    // round, off means the outgoing limits are not turned on.
+    const limitOutcomeOf = async (res: Response): Promise<BulkOutcome> => {
+        if (!res.ok) return outcomeOf(res);
+        let answer: { applied?: boolean; unknown?: boolean; pending?: boolean; off?: boolean; code?: string } = {};
+        try { answer = await res.json(); } catch { return { ok: true, note: t('mail.bulk.limitUnknown') }; }
+        if (answer.code) return { ok: false, reason: t('mail.bulk.limitRefused') };
+        if (answer.unknown) return { ok: true, note: t('mail.bulk.limitUnknown') };
+        if (answer.off) return { ok: true, note: t('mail.bulk.limitOff') };
+        if (answer.pending || answer.applied === false) return { ok: true, note: t('mail.bulk.limitPending') };
+        return { ok: true };
+    };
+    const bulkLimit = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.limitTitle', { n: selected.size }),
+        t('mail.bulk.limitConfirm', { n: selected.size }), 'mail.bulk.limitStep', 'default',
+        (account) => fetch(`/api/v1/domains/${domainId}/mail/outgoing`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: account.id, mode: bulkMode, per_hour: bulkMode === 'custom' ? bulkPerHour : 0 }),
+        }), limitOutcomeOf);
+    const bulkEmpty = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.emptyTitle', { n: selected.size }),
+        t('mail.bulk.emptyConfirm', { n: selected.size }), 'mail.bulk.emptyStep', 'danger',
+        (account) => fetch(`/api/v1/domains/${domainId}/mail/accounts/empty`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: account.id }),
+        }));
+    const bulkDelete = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.deleteTitle', { n: selected.size }),
+        t('mail.bulk.deleteConfirm', { n: selected.size }), 'mail.bulk.deleteStep', 'danger',
+        (account) => fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${account.id}`, { method: 'DELETE' }));
+
+    // alpha.128 (G20): every message of one mailbox removed by Dovecot; the
+    // mailbox, its password and settings stay. Asked first, then the server's steps.
+    const emptyAccount = async (account: EmailAccount) => {
+        if (readOnly) return;
+        await confirmAction({
+            title: t('mail.empty.title', { name: account.address }),
+            message: t('mail.empty.confirm', { name: account.address }),
+            confirmLabel: t('mail.empty.confirmLabel'),
+            tone: 'danger',
+            progressTitle: t('mail.empty.progress', { name: account.address }),
+            action: async (report) => {
+                try {
+                    const res = await sendWithSteps(report, flowSteps(t, 'mailEmpty', ['check!', 'empty'], { name: account.address }), t, `mailEmpty.${account.id}`,
+                        (headers) => fetch(`/api/v1/domains/${domainId}/mail/accounts/empty`, {
+                            method: 'POST',
+                            headers: { ...headers, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: account.id }),
+                        }));
+                    if (!res.ok) return { state: 'failed', reason: (await readApiError(res)).message || t('common.error') };
+                    const answer = await res.json() as { messages?: number };
+                    return { state: 'done', message: (answer.messages ?? -1) >= 0 ? t('mail.empty.doneCount', { n: answer.messages ?? 0 }) : t('mail.empty.done') };
+                } catch {
+                    return { state: 'unknown', reason: t('common.resultUnknown') };
+                } finally {
+                    invalidate('mail');
+                }
+            },
+        });
+    };
+
     const openPasswordDialog = (account: EmailAccount) => {
         if (readOnly) return;
         setPasswordAccount(account);
@@ -269,7 +381,13 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 return;
             }
             succeeded = true;
-            showToast('success', t('mail.passwordUpdated'));
+            // alpha.128: a mailbox stopped for security sends again after this change.
+            const text = await res.text();
+            const resumed = /"sending_resumed":\s*true/.test(text);
+            const resumePending = /"sending_resume_pending":\s*true/.test(text);
+            showToast('success', resumed ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumed')}`
+                : resumePending ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumePending')}` : t('mail.passwordUpdated'));
+            invalidate('mail');
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
             setPasswordRefusal({ message: '' });
@@ -351,7 +469,10 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                     <MailAuthPanel domainId={domainId} readOnly={readOnly} />
                 </>
             ) : activeTab === 'settings' ? (
-                <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                <>
+                    <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                    <Suspense fallback={null}><DomainMailOptions domainId={domainId} domainName={domainName} readOnly={readOnly} /></Suspense>
+                </>
             ) : (
                 <>
             <div className="mb-3 flex min-h-[2.25rem] items-center justify-between gap-3">
@@ -433,10 +554,40 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             {quotaRead.remote.state === 'unknown' && (
                                 <CouldNotCheck className="mb-3" text={t('mail.quota.unknown')} onRetry={() => void quotaRead.retry()} busy={quotaRead.reading} />
                             )}
+                        {!readOnly && selected.size > 0 && (
+                            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-2/50 p-2 text-sm" data-mail-bulk={selected.size}>
+                                <span className="px-1 text-fg">{t('mail.bulk.selected', { n: selected.size })}</span>
+                                <Button type="button" disabled={stale} onClick={() => setBulkLimitOpen((open) => !open)}>{t('mail.bulk.limit')}</Button>
+                                <Button type="button" disabled={stale} onClick={() => void bulkEmpty(accounts)}>{t('mail.bulk.empty')}</Button>
+                                <Button type="button" variant="danger" disabled={stale} onClick={() => void bulkDelete(accounts)}>{t('mail.bulk.delete')}</Button>
+                                <Button type="button" onClick={() => setSelected(new Set())}>{t('mail.cancel')}</Button>
+                                {bulkLimitOpen && (
+                                    <span className="flex w-full flex-wrap items-center gap-2">
+                                        <select className={`${inputClass} w-auto`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
+                                            <option value="default">{t('mail.bulk.modeDefault')}</option>
+                                            <option value="custom">{t('mail.bulk.modeCustom')}</option>
+                                            <option value="unlimited">{t('mail.bulk.modeUnlimited')}</option>
+                                        </select>
+                                        {bulkMode === 'custom' && (
+                                            <input type="number" min={1} value={bulkPerHour} aria-label={t('mail.bulk.perHour')}
+                                                onChange={(event) => setBulkPerHour(Math.max(1, parseInt(event.target.value, 10) || 1))} className={`${inputClass} w-28`} />
+                                        )}
+                                        <Button type="button" variant="primary" onClick={() => void bulkLimit(accounts)}>{t('mail.bulk.apply')}</Button>
+                                    </span>
+                                )}
+                            </div>
+                        )}
                         <div className="overflow-x-auto rounded-lg border border-border">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-border text-left text-xs font-semibold text-fg-muted">
+                                        {!readOnly && (
+                                            <th className="w-8 py-2.5 pl-4">
+                                                <input type="checkbox" className="h-4 w-4" aria-label={t('mail.bulk.selectAll')} disabled={stale}
+                                                    checked={accounts.length > 0 && accounts.every((a) => selected.has(a.id))}
+                                                    onChange={(event) => setSelected(event.target.checked ? new Set(accounts.map((a) => a.id)) : new Set())} />
+                                            </th>
+                                        )}
                                         <th className="px-4 py-2.5">{t('mail.col.address')}</th>
                                         <th className="px-4 py-2.5">{t('mail.col.quota')}</th>
                                         <th className="w-44 px-4 py-2.5">{t('mail.col.usage')}</th>
@@ -449,11 +600,33 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                         const usedMB = usage?.available ? usage.used_kb / 1024 : null;
                                         return (
                                             <tr key={a.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
+                                                {!readOnly && (
+                                                    <td className="w-8 py-2.5 pl-4">
+                                                        <input type="checkbox" className="h-4 w-4" checked={selected.has(a.id)} disabled={stale}
+                                                            aria-label={t('mail.bulk.select', { name: a.address })} onChange={() => toggleSelected(a.id)} />
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-2.5">
                                                     <span className="flex items-center gap-2 font-medium text-fg">
                                                         <AtSign className="h-4 w-4 text-fg-subtle" />
                                                         {a.address}
                                                     </span>
+                                                    {/* alpha.128 (G20): the addresses that deliver here, under the mailbox. */}
+                                                    {(() => {
+                                                        const known = forwardingsRead.remote.state === 'known' ? forwardingsRead.remote.value : [];
+                                                        const aliases = known.filter((f) => f.destination.split(/[\s,]+/).includes(a.address) && f.source !== a.address);
+                                                        if (aliases.length === 0 && readOnly) return null;
+                                                        return (
+                                                            <span className="mt-0.5 block text-xs text-fg-muted" data-mail-aliases={a.address}>
+                                                                {aliases.length > 0 && <>{t('mail.aliases.label')} {aliases.map((f) => f.source).join(', ')}</>}
+                                                                {!readOnly && !stale && (
+                                                                    <button type="button" className="ml-1 rounded px-1 text-primary hover:bg-surface-2" onClick={() => { setAliasFor(a.address); setActiveTab('forwarding'); }}>
+                                                                        {t('mail.aliases.add')}
+                                                                    </button>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className="px-4 py-2.5 text-fg-muted">
                                                     {!readOnly && !stale && editingQuota === a.id ? (
@@ -535,6 +708,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             >
                                                                 <CalendarClock className="h-4 w-4" aria-hidden="true" />
                                                             </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => void emptyAccount(a)}
+                                                                disabled={stale}
+                                                                aria-label={t('mail.empty.title', { name: a.address })}
+                                                                title={t('mail.empty.title', { name: a.address })}
+                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-danger"
+                                                            >
+                                                                <Eraser className="h-4 w-4" aria-hidden="true" />
+                                                            </button>
                                                             <DeleteBtn disabled={stale} label={t('mail.deleteAccountNamed', { name: a.address })} onClick={() => deleteAccount(a.id, a.address)} />
                                                         </span>
                                                     )}
@@ -545,6 +728,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                 </tbody>
                             </table>
                         </div>
+                        <Suspense fallback={null}>
+                            <OutgoingMailboxLimits
+                                domainId={domainId}
+                                readOnly={readOnly}
+                                onChangePassword={(id, address) => openPasswordDialog(accounts.find((a) => a.id === id) ?? { id, address, quota_mb: 0 })}
+                            />
+                            <MailDeliveryLookup domainId={domainId} />
+                        </Suspense>
                         </>
                     ))}
                 </RemoteGate>

@@ -173,7 +173,31 @@ type RestoreResponse struct {
 	// Refusal (alpha.127): a PostgreSQL cluster prerequisite, refused before
 	// the safety backup and before anything was written.
 	Refusal *ClusterRefusal `json:"refusal,omitempty"`
+	// Code and Detail (alpha.128): a restore that stopped says how
+	// (RestoreCode*) and the engine's own reason, bounded, so the screen
+	// can name what happened and what to do instead of a generic error.
+	Code   string `json:"code,omitempty"`
+	Detail string `json:"detail,omitempty"`
 }
+
+// Restore failure codes (alpha.128). Additive.
+const (
+	// RestoreCodeSafetyFailed: the safety backup could not be made; nothing
+	// was written.
+	RestoreCodeSafetyFailed = "safety_failed"
+	// RestoreCodeLoadReverted: loading stopped and the safety backup was
+	// put back; the site is as it was.
+	RestoreCodeLoadReverted = "load_reverted"
+	// RestoreCodeRollbackFailed: loading stopped and putting the safety
+	// backup back did not finish either; the safety backup is kept.
+	RestoreCodeRollbackFailed = "rollback_failed"
+	// RestoreCodeInvalid: the backup failed its checks before anything was
+	// written.
+	RestoreCodeInvalid = "invalid_backup"
+	// RestoreCodeFinishFailed: the restore was published but its final
+	// cleanup or durability proof did not finish.
+	RestoreCodeFinishFailed = "finish_failed"
+)
 
 // RestoreInProgress is the exact RestoreResponse.Error of a restore refused
 // because another restore of the same domain is still running on the Agent.

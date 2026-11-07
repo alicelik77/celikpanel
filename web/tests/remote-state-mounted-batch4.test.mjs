@@ -61,6 +61,8 @@ const stub = dataModule(`
   export const AppAccountLine = () => null, IsolationFact = () => null;
   // The shared problem pattern has its own test (blocking-problems-mounted).
   export const BlockingProblems = () => null;
+  // alpha.128: the visitor statistics above the logs read their own address.
+  export const VisitorStats = () => null;
 `);
 const shared = sharedLayer(stub);
 const own = {
@@ -183,7 +185,8 @@ globalThis.confirm = () => true;
 // --- The table ---------------------------------------------------------------------
 const domain = { domainId: 1, domainName: 'example.com' };
 const el = (Component, props = {}) => () => React.createElement(Component, { ...domain, ...props });
-const php = el(DomainPHPSettings, { currentVersion: '8.3', onVersionChange() {} });
+// alpha.128: the process manager's form is the administrator's.
+const php = el(DomainPHPSettings, { currentVersion: '8.3', onVersionChange() {}, isAdmin: true });
 const screens = [
   { name: 'DNS, the zone', element: el(DomainDNSManager), read: `${D}/dns/zone`, negative: ['dns.zoneMissing', 'dns.noRecords'], changes: ['dns.enableZone', 'dns.addRecord', 'dns.republish', 'dns.confirmDelete'], checking: 'dns.checking', unknown: 'dns.zoneUnknown' },
   { name: 'DNS, the records', element: el(DomainDNSManager), read: `${D}/dns/records`, negative: ['dns.noRecords', 'common.itemsTotal{"n":"0"}'], changes: ['dns.addRecord', 'dns.confirmDelete', 'dns.save'], checking: 'dns.records.checking', unknown: 'dns.records.unknown', empty: 'dns.noRecords' },
@@ -919,7 +922,7 @@ test('PHP, the version whose answer was lost: applied when the settings read aga
         return answer({ ...good[`${D}/php`], php_version: lostOne && taken ? '8.4' : '8.3' });
       },
     });
-    await mount(React.createElement(DomainPHPSettings, { ...domain, currentVersion: '8.3', onVersionChange: (version) => told.push(version) }));
+    await mount(React.createElement(DomainPHPSettings, { ...domain, currentVersion: '8.3', onVersionChange: (version) => told.push(version), isAdmin: true }));
     try {
       const picker = () => fields().find((node) => node.type === 'select' && !node.props.name);
       await act(async () => { picker().props.onChange({ target: { value: '8.4' } }); });

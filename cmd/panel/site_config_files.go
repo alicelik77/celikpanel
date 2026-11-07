@@ -258,6 +258,9 @@ func (p *Panel) sitePoolRequest(ctx context.Context, site siteFileSite, operatio
 			request.Uploads = transport.SitePoolUploadsFor(blocked)
 		}
 	}
+	// alpha.128: every render keeps the pool within the site's limits
+	// (a lowered plan ceiling takes effect at the next render).
+	request.PHPLimits = p.sitePHPLimits(ctx, site.DomainID)
 	return request
 }
 

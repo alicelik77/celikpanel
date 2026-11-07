@@ -46,6 +46,18 @@ var (
 	requestIdentityRouteAdminRemove    = operationStepRoute("/api/v1/database-servers/{id}/admin-account")
 	requestIdentityRouteUserDelete     = operationStepRoute("/api/v1/users/{id}")
 	requestIdentityRouteTeamDelete     = operationStepRoute("/api/v1/team-members/{id}")
+	// alpha.128: the site's PHP values (pool, then nginx file).
+	requestIdentityRoutePHPSettings = operationStepRoute("/api/v1/domains/{id}/php/settings")
+	// alpha.128: additional FTP/SFTP logins; the stored digest leaves the
+	// password out.
+	requestIdentityRouteFTPLoginAdd = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/access/logins", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityFTPLoginDigest,
+	}
+	requestIdentityRouteFTPLogin = requestIdentityRoute{
+		pattern: "/api/v1/domains/{id}/access/logins/{login}", timeout: operationStepRouteTimeout, optional: true,
+		digest: requestIdentityFTPLoginDigest,
+	}
 )
 
 // operationStepRouteFor names the optional route a request would reach, using
@@ -61,6 +73,16 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRoutePHPIni, true
 		case "/api/v1/service/action":
 			return requestIdentityRouteServiceAction, true
+		case serverRebootPath: // alpha.128 ops: G29, always with an identity
+			return requestIdentityRouteServerReboot, true
+		}
+		// alpha.128 ops: G31, installing a request's issued certificate.
+		if rest, ok := strings.CutPrefix(path, certificateRequestsPath+"/"); ok {
+			if idText, action, found := strings.Cut(rest, "/"); found && action == "install" {
+				if _, valid := strictPositiveID(idText); valid {
+					return requestIdentityRouteCertificateRequestInstall, true
+				}
+			}
 		}
 		if rest, ok := strings.CutPrefix(path, malwarePath+"findings/"); ok {
 			segments := strings.Split(rest, "/")
@@ -118,8 +140,14 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteMailCert, true
 	case match.kind == "hosting" && r.Method == http.MethodPut:
 		return requestIdentityRouteHosting, true
+	case match.kind == "php-settings" && r.Method == http.MethodPut:
+		return requestIdentityRoutePHPSettings, true
 	case match.kind == "database-delete" && r.Method == http.MethodDelete:
 		return requestIdentityRouteDomainDBDelete, true
+	case match.kind == "ftp-logins" && r.Method == http.MethodPost:
+		return requestIdentityRouteFTPLoginAdd, true
+	case match.kind == "ftp-logins" && (r.Method == http.MethodPut || r.Method == http.MethodDelete):
+		return requestIdentityRouteFTPLogin, true
 	case match.kind == "dns" && strings.HasSuffix(path, "/records") &&
 		(r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete):
 		return requestIdentityRouteDNSRecords, true

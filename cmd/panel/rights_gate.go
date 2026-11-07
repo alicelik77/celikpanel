@@ -62,6 +62,52 @@ type adminOfferLayer struct {
 	// administrator offers, not held, with this release's risk digest.
 	// Closed by default.
 	runtimes map[string]bool
+	// optIn (alpha.128): the opt-in permissions (optInPermissions) the
+	// administrator offers. Closed by default.
+	optIn map[string]bool
+}
+
+// settingOfferedPermissions: the administrator's offer of opt-in
+// permissions (alpha.128), a JSON list of permission ids.
+const settingOfferedPermissions = "admin_offered_permissions"
+
+func (p *Panel) loadOfferedOptInPermissions(ctx context.Context) (map[string]bool, error) {
+	var raw string
+	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedPermissions).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return map[string]bool{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var list []string
+	if err := json.Unmarshal([]byte(raw), &list); err != nil {
+		return nil, errOfferedVersionsUnreadable
+	}
+	out := map[string]bool{}
+	for _, id := range list {
+		if optInPermissions[id] {
+			out[id] = true
+		}
+	}
+	return out, nil
+}
+
+func (p *Panel) saveOfferedOptInPermissions(ctx context.Context, offered map[string]bool) error {
+	list := []string{}
+	for id, on := range offered {
+		if on && optInPermissions[id] {
+			list = append(list, id)
+		}
+	}
+	sort.Strings(list)
+	raw, err := json.Marshal(list)
+	if err != nil {
+		return err
+	}
+	_, err = p.db.GetDB().ExecContext(ctx, `INSERT INTO panel_settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
+		ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`, settingOfferedPermissions, string(raw))
+	return err
 }
 
 func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
@@ -122,10 +168,17 @@ func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error
 	if err != nil {
 		return adminOfferLayer{}, fmt.Errorf("runtime apps offered to customers: %w", err)
 	}
-	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps, runtimes: runtimes}, nil
+	optIn, err := p.loadOfferedOptInPermissions(ctx)
+	if err != nil {
+		return adminOfferLayer{}, fmt.Errorf("permissions offered to customers: %w", err)
+	}
+	return adminOfferLayer{versions: versions, hidden: hidden, apps: apps, serviceApps: serviceApps, runtimes: runtimes, optIn: optIn}, nil
 }
 
 func (a adminOfferLayer) permits(permission string) bool {
+	if optInPermissions[permission] && !a.optIn[permission] {
+		return false
+	}
 	return !a.hidden[permissionItemHead+permission]
 }
 
@@ -613,6 +666,12 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"app-install":        {right: rightAppInstaller},
 	"app-catalog":        {right: rightAppInstaller},
 	"app-operation":      {right: rightAppInstaller},
+
+	// alpha.128 (docs/SITE-LIMITS.md): changing the site's PHP version and
+	// its PHP values; reading stays open (shown read-only when closed).
+	"php":          {right: rightPHPVersion},
+	"php-pool":     {right: rightPHPSettings},
+	"php-settings": {right: rightPHPSettings},
 
 	// alpha.118: remote backups use the backup permission; an own
 	// destination needs remote_backup_destinations as well (checked inside).

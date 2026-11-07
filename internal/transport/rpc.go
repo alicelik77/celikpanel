@@ -147,6 +147,9 @@ type CreateSiteRequest struct {
 	// temporary name. Additive: an older Panel leaves it empty and the Agent
 	// renders the domain alone, as before.
 	ServerNames []string
+	// PHPLimits (alpha.128) are the site's limits: the new pool's process
+	// count is created within them instead of the fixed default (5).
+	PHPLimits SitePHPLimits `json:",omitempty"`
 }
 
 // CreateSiteResponse contains results of site creation
@@ -530,6 +533,10 @@ type ApplyVhostRequest struct {
 	// request with the "traffic limit reached" page (503); mail, databases
 	// and file access are not affected. Suspended and Maintenance win.
 	TrafficLimited bool `json:"traffic_limited,omitempty"`
+	// WebSettings (alpha.128, additive): the site's web server settings and
+	// additional directives (site_web_settings.go). Nil for a site that never
+	// saved one: its vhost renders exactly as before.
+	WebSettings *SiteWebSettingsRequest `json:"web_settings,omitempty"`
 }
 
 // SiteProtectedDirRequest is one password-protected folder of a site.

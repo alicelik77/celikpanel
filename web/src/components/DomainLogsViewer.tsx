@@ -15,6 +15,7 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { LOADING, countText, lastKnown, mapRemote, type Remote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { confirmAction } from '../lib/confirmAction';
+import { VisitorStats } from './VisitorStats';
 
 interface DomainLogsViewerProps {
     domainId: number;
@@ -182,6 +183,8 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
 
     return (
         <div className="space-y-4">
+            {/* alpha.128 (G24): visitor statistics from the same access log. */}
+            <VisitorStats domainId={domainId} />
             {/* Controls */}
             <div className="flex flex-wrap items-end gap-3">
                 <label className="block">

@@ -171,7 +171,7 @@ test('a refused right says why and who grants it, in English and in Turkish', ()
 
 // ---- mounted forms ----------------------------------------------------------
 
-const icons = ['Save', 'X', 'AlertTriangle', 'XCircle', 'Check', 'Layers', 'Lock', 'Pencil', 'Plus', 'Trash2', 'Loader2'];
+const icons = ['Save', 'X', 'AlertTriangle', 'XCircle', 'Check', 'Copy', 'Layers', 'Lock', 'Pencil', 'Plus', 'Trash2', 'Loader2'];
 const stub = dataModule(`
   import React from '${reactURL}';
   ${icons.map((name) => `export const ${name} = () => null;`).join('\n')}
