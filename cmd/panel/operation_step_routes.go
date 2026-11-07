@@ -64,6 +64,14 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		case serverRebootPath: // alpha.128 ops: G29, always with an identity
 			return requestIdentityRouteServerReboot, true
 		}
+		// alpha.128 ops: G31, installing a request's issued certificate.
+		if rest, ok := strings.CutPrefix(path, certificateRequestsPath+"/"); ok {
+			if idText, action, found := strings.Cut(rest, "/"); found && action == "install" {
+				if _, valid := strictPositiveID(idText); valid {
+					return requestIdentityRouteCertificateRequestInstall, true
+				}
+			}
+		}
 		if rest, ok := strings.CutPrefix(path, malwarePath+"findings/"); ok {
 			segments := strings.Split(rest, "/")
 			if len(segments) == 2 {

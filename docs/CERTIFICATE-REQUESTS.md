@@ -20,40 +20,42 @@
 - The key file is the owner's: with or without CelikPanel it can be used with
   the issued certificate in the owner's own configuration (D-022).
 
-## What does not ship: installing the issued certificate
+## Installing the issued certificate (alpha.128 follow-up)
 
-Not in alpha.128, on purpose. The existing custom-certificate path
-(`handleUploadCertificate` → `Agent.ValidateCertificate` →
-`Agent.InstallCustomCertificate`) receives the private key *from the panel*,
-which a request's key must never pass through. Routing it safely needs:
+On a waiting request, *Install the issued certificate…* takes the certificate
+the authority sent (PEM; intermediates may follow it) and the site it is for.
+`POST /api/v1/maintenance/certificate-requests/{id}/install`
+`{"target": "site", "domain_id", "certificate", "chain"}` (administrator):
 
-1. A new typed RPC, e.g. `Agent.InstallRequestedCertificateV1{domain, token,
-   cert_pem, chain_pem, expected_public_key_sha256}`. The Agent reads the key
-   from its own file (`O_NOFOLLOW`, regular, 0600, root-owned, inside the key
-   directory), proves `sha256(cert.RawSubjectPublicKeyInfo)` equals the stored
-   fingerprint and that the key matches the certificate
-   (`certificateMatchesPrivateKey`), then runs the same validation
-   (`ValidateCertificate`: chain, dates, names) and the same publication
-   (`publishCertificateVersion`) as `InstallCustomCertificate`.
-2. A panel handler that shares the body of the custom upload after its
-   validation step — managed host names covered
-   (`managedSiteHostnames`), `validateCustomCertificateReplacement`,
-   `activateCertificate`, `applyVhostForDomain`, `syncCertificateDependents`,
-   the cleanup of an uncommitted snapshot and the SSL lock — so a requested
-   certificate behaves exactly like an uploaded one afterwards. The upload
-   handler is one long function today; it has to be split into "validate
-   inputs" and "install a validated certificate" first, with its tests.
-3. Matching on upload: the administrator uploads the issued certificate on the
-   site's SSL page; the panel finds the waiting request whose
-   `public_key_sha256` equals the certificate's, and only that request's key
-   is used. `certificate_requests.state` becomes `installed` with
-   `installed_at`/`installed_for` (the columns exist in 069), and *Discard* is
-   refused while it is in use (already enforced).
-4. The panel's own certificate and the mail host certificate are Let's
-   Encrypt-only today; a requested certificate is for sites only.
+1. Before anything changes the panel proves, from the certificate alone, that
+   `sha256(RawSubjectPublicKeyInfo)` is the request's recorded fingerprint
+   (else `CERTIFICATE_REQUEST_KEY_MISMATCH`), that it is valid now (else
+   `CERTIFICATE_REQUEST_CERT_NOT_VALID_NOW`, with the date) and that it covers
+   every requested name (else `CERTIFICATE_REQUEST_NAMES_MISSING`, naming
+   them). Only certificates are accepted in the body; a private key is
+   refused. An installed or discarded request is refused.
+2. The site's own custom-certificate path then runs unchanged
+   (`installCustomCertificateForDomain`, split out of the upload handler):
+   Agent validation (chain, dates, names, key match), managed host names, the
+   replacement guard, installation, activation, the web server and mail, with
+   the same steps in the progress window and the same audit. The only
+   difference is the key's source: `Agent.ValidateCertificate` and
+   `Agent.InstallCustomCertificate` receive `request_key_token` and
+   `request_key_sha256` instead of a key, and the Agent reads the key from
+   its own file (`O_NOFOLLOW`, regular, 0600, owned by the Agent, inside the
+   0700 directory) and proves its public key is the recorded one. Sending a
+   key and naming a request together is refused. The key never passes
+   through the panel or the browser.
+3. On success the request becomes `installed` (`installed_for =
+   site:<name>`) and the audit has `certificate.request.install`. The site's
+   installed files hold their own copy of the key, so a later Discard cannot
+   break the site.
 
-Until then the screen says plainly that installing from the panel is not
-available yet and that the key file can be used with the owner's own tools.
+Targets: a site. The panel's own certificate and the mail server's host
+certificate are renewed by Let's Encrypt through their own lineages; a bought
+certificate would be replaced at the next renewal there, so the panel refuses
+those targets (`CERTIFICATE_REQUEST_TARGET_UNSUPPORTED`) and says to install
+it on the site, whose domain's mail then uses it too.
 
 ## Evidence
 

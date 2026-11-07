@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -289,4 +290,80 @@ func syncCertificateRequestDir(root string) {
 		_ = dir.Sync()
 		_ = dir.Close()
 	}
+}
+
+// certificateRequestKeyMaxBytes bounds a key file read (an RSA 4096 PKCS#8
+// PEM is about 3.3 KiB).
+const certificateRequestKeyMaxBytes = 64 << 10
+
+// loadCertificateRequestKey reads a request's private key for installing
+// the certificate issued for it (alpha.128, G31). The key stays in the
+// Agent: the panel names the request by its token and the SHA-256 of the
+// public key it recorded; the file must be a regular, 0600 file owned by
+// the Agent's user inside the 0700 key directory (no symbolic link is
+// followed), and its public key must be the recorded one.
+//
+// Sertifika isteğinin anahtarı yalnız Agent içinde okunur; panel yalnız
+// isteğin adını ve açık anahtar özetini verir.
+func loadCertificateRequestKey(token, expectedSHA256 string) (string, error) {
+	if !certificateRequestToken.MatchString(token) {
+		return "", errors.New("invalid request token")
+	}
+	if len(expectedSHA256) != 64 {
+		return "", errors.New("the request's public key fingerprint is missing")
+	}
+	certificateRequestMu.Lock()
+	defer certificateRequestMu.Unlock()
+	root, err := secureCertificateRequestRoot(false)
+	if err != nil {
+		return "", fmt.Errorf("the key directory cannot be used: %w", err)
+	}
+	file, err := openCertificateRequestKeyNoFollow(filepath.Join(root, token+".key"))
+	if err != nil {
+		return "", fmt.Errorf("the request's key file cannot be opened: %w", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || !certificateRequestOwnedBySelf(info) {
+		return "", errors.New("the request's key file is not a 0600 file owned by the Agent")
+	}
+	if info.Size() <= 0 || info.Size() > certificateRequestKeyMaxBytes {
+		return "", errors.New("the request's key file has an unexpected size")
+	}
+	content := make([]byte, info.Size())
+	if _, err := io.ReadFull(file, content); err != nil {
+		return "", err
+	}
+	key, err := parsePrivateKey(string(content))
+	if err != nil {
+		clear(content)
+		return "", fmt.Errorf("the request's key file cannot be read: %w", err)
+	}
+	fingerprint, err := certificatePublicKeySHA256(key.Public())
+	if err != nil || !strings.EqualFold(fingerprint, expectedSHA256) {
+		clear(content)
+		return "", errors.New("the request's key file does not hold the key this request was made with")
+	}
+	return string(content), nil
+}
+
+// useCertificateRequestKey fills a validation or installation request's key
+// from the request's own key file when the panel named one. Sending a key
+// and naming a request at once is refused.
+func useCertificateRequestKey(token, expectedSHA256 string, keyContent *string) error {
+	if token == "" {
+		return nil
+	}
+	if *keyContent != "" {
+		return errors.New("a private key was sent together with a certificate request; send only one")
+	}
+	key, err := loadCertificateRequestKey(token, expectedSHA256)
+	if err != nil {
+		return err
+	}
+	*keyContent = key
+	return nil
 }
