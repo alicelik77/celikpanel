@@ -368,14 +368,36 @@ const (
 // those two; the name still may hold no quote and no newline.
 const MariaDBFailRegex = `^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\n?\Z`
 
+// mariaDBEarlierFailRegexes are failregexes CelikPanel wrote before
+// (newest first). A filter file holding exactly one of them is CelikPanel's
+// own earlier version, not the owner's: the Agent replaces it with the
+// current one (alpha.129 lab: the first version stayed on disk after an
+// update, kept as "the owner's", and still banned nobody).
+var mariaDBEarlierFailRegexes = []string{
+	`^(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\Z`,
+}
+
 // MariaDBFilter renders the filter file.
-func MariaDBFilter() string {
+func MariaDBFilter() string { return mariaDBFilterWith(MariaDBFailRegex) }
+
+func mariaDBFilterWith(failRegex string) string {
 	return "# CelikPanel: remote database access (docs/DATABASE-REMOTE-ACCESS.md).\n" +
 		"# A refused MariaDB sign-in, one journal entry. Removed with the last\n" +
 		"# remote access rule.\n" +
 		"[Definition]\n" +
-		"failregex = " + MariaDBFailRegex + "\n" +
+		"failregex = " + failRegex + "\n" +
 		"ignoreregex =\n"
+}
+
+// MariaDBFilterEarlier reports whether content is exactly a filter file an
+// earlier CelikPanel wrote (never the current one, never an owner's edit).
+func MariaDBFilterEarlier(content string) bool {
+	for _, re := range mariaDBEarlierFailRegexes {
+		if content == mariaDBFilterWith(re) {
+			return true
+		}
+	}
+	return false
 }
 
 var jailUnitPattern = regexp.MustCompile(`^[a-z0-9@._-]{1,64}\.service$`)

@@ -534,7 +534,9 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 	currentFilter, filterErr := databaseRemoteFiles.read(dbremote.MariaDBFilterPath)
 	jailExists, filterExists := jailErr == nil, filterErr == nil
 	jailOwn := jailExists && string(currentJail) == jail
-	filterOwn := filterExists && string(currentFilter) == filter
+	// CelikPanel's own earlier filter is replaced, not kept as the owner's.
+	filterEarlier := filterExists && dbremote.MariaDBFilterEarlier(string(currentFilter))
+	filterOwn := filterExists && (string(currentFilter) == filter || filterEarlier)
 	installed := databaseRemoteFiles.isDir("/etc/fail2ban/jail.d") && databaseRemoteFiles.isDir("/etc/fail2ban/filter.d")
 	if !want {
 		changed := false
@@ -564,7 +566,7 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 		// The owner's version: used as it is, if it runs.
 	default:
 		wrote := false
-		if !filterExists {
+		if !filterExists || filterEarlier {
 			if err := databaseRemoteFiles.write(dbremote.MariaDBFilterPath, []byte(filter)); err != nil {
 				noSlowDown("the Fail2ban filter could not be written: " + err.Error())
 				return

@@ -397,3 +397,29 @@ func TestDatabaseRemoteFilterClosesFileFirstUnderTheLock(t *testing.T) {
 		t.Fatalf("the guard does not lock, then look for the file, then load: %s", guard)
 	}
 }
+
+// alpha.129 lab: an update replaces CelikPanel's own earlier filter (it was
+// kept as "the owner's" and banned nobody); an owner's filter stays as it is.
+func TestMariaDBRemoteReplacesTheEarlierFilterOnly(t *testing.T) {
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true}}
+	files := withFakeMariaDB(t, f)
+	earlier := strings.Replace(dbremote.MariaDBFilter(), "failregex = ^ *(", "failregex = ^(", 1)
+	earlier = strings.Replace(earlier, `\) *\n?\Z`, `\) *\Z`, 1)
+	if !dbremote.MariaDBFilterEarlier(earlier) {
+		t.Fatalf("test setup: not the earlier filter:\n%s", earlier)
+	}
+	target := dbremote.Target{Engine: "mysql", Port: 3306, Rules: []dbremote.Rule{{Database: "shop", User: "shop_u", Address: "203.0.113.7/32"}}}
+	files[dbremote.MariaDBFilterPath] = []byte(earlier)
+	ts := dbremote.TargetState{Engine: "mysql", Port: 3306}
+	mariadbRemoteInstance{}.apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if string(files[dbremote.MariaDBFilterPath]) != dbremote.MariaDBFilter() {
+		t.Fatalf("the earlier filter was kept:\n%s", files[dbremote.MariaDBFilterPath])
+	}
+	owner := earlier + "# the owner's line\n"
+	files[dbremote.MariaDBFilterPath] = []byte(owner)
+	ts = dbremote.TargetState{Engine: "mysql", Port: 3306}
+	mariadbRemoteInstance{}.apply(target, dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if string(files[dbremote.MariaDBFilterPath]) != owner {
+		t.Fatal("an owner's filter was rewritten")
+	}
+}

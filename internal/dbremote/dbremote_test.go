@@ -495,3 +495,27 @@ func TestMariaDBPrivilegeChangeTouchesOnlyWhatDiffers(t *testing.T) {
 		t.Fatal("SUPER accepted")
 	}
 }
+
+// alpha.129 lab: the first filter CelikPanel wrote is recognised as its own
+// earlier version (replaced on the next apply); the current one and any edit
+// are not.
+func TestMariaDBFilterEarlierVersion(t *testing.T) {
+	if len(mariaDBEarlierFailRegexes) == 0 {
+		t.Fatal("no earlier failregex recorded")
+	}
+	earlier := mariaDBFilterWith(mariaDBEarlierFailRegexes[0])
+	if !MariaDBFilterEarlier(earlier) {
+		t.Fatal("the first shipped filter is not recognised")
+	}
+	for _, re := range mariaDBEarlierFailRegexes {
+		if re == MariaDBFailRegex {
+			t.Fatal("the current failregex is listed as an earlier one")
+		}
+	}
+	if MariaDBFilterEarlier(MariaDBFilter()) {
+		t.Fatal("the current filter counts as an earlier one")
+	}
+	if MariaDBFilterEarlier(earlier+"# owner\n") || MariaDBFilterEarlier(strings.Replace(earlier, "YES|NO", "YES", 1)) {
+		t.Fatal("an owner's edit of the earlier filter counts as CelikPanel's")
+	}
+}
