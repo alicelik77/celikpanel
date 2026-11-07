@@ -24,8 +24,8 @@ type fileAccessFakeHost struct {
 	sshdEffective string
 	// sshdAuth comes first in every computed `sshd -T` answer (its values
 	// win): the server's own password settings (alpha.128).
-	sshdAuth string
-	sshdTest error
+	sshdAuth      string
+	sshdTest      error
 	probe         error
 	present       map[string]bool
 	jailCalls     int
