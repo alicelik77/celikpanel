@@ -169,6 +169,16 @@ const (
 	errCodeSiteSettingsNginxRefuse = "SITE_SETTINGS_NGINX_REFUSED"
 )
 
+// sitePHPOwnProcesses is the process count the site chose: the count kept in
+// its pool while a plan's limit holds pm.max_children lower, else the pool's
+// count.
+func sitePHPOwnProcesses(read transport.SitePHPSettingsState) int {
+	if read.Own.Processes > read.Processes {
+		return read.Own.Processes
+	}
+	return read.Processes
+}
+
 // readSitePHPSettings asks the Agent for one site's pool and server values.
 func (p *Panel) readSitePHPSettings(ctx context.Context, site siteFileSite) (transport.SitePHPSettingsState, error) {
 	var response transport.SitePHPSettingsResponse
@@ -205,7 +215,7 @@ func buildPHPLimitsView(site siteFileSite, limits settingLimits, adminWorkspace 
 		{"time", settingPHPTimeS, read.Own.TimeS, read.Server.MaxExecutionTime, 30, false},
 		{"upload", settingPHPUploadMB, read.Own.UploadMB, read.Server.UploadMaxFilesize, 2, true},
 		{"input_vars", settingPHPInputVars, read.Own.InputVars, read.Server.MaxInputVars, 1000, false},
-		{"processes", settingPHPProcesses, read.Processes, "", 5, false},
+		{"processes", settingPHPProcesses, sitePHPOwnProcesses(read), "", 5, false},
 	}
 	for _, src := range sources {
 		limit := limits[src.key]
@@ -374,7 +384,7 @@ func (p *Panel) handleDomainPHPLimits(w http.ResponseWriter, r *http.Request, do
 		values := map[string]int{settingPHPMemoryMB: settings.MemoryMB, settingPHPTimeS: settings.TimeS,
 			settingPHPUploadMB: settings.UploadMB, settingPHPInputVars: settings.InputVars, settingPHPProcesses: settings.Processes}
 		current := map[string]int{settingPHPMemoryMB: read.Own.MemoryMB, settingPHPTimeS: read.Own.TimeS,
-			settingPHPUploadMB: read.Own.UploadMB, settingPHPInputVars: read.Own.InputVars, settingPHPProcesses: read.Processes}
+			settingPHPUploadMB: read.Own.UploadMB, settingPHPInputVars: read.Own.InputVars, settingPHPProcesses: sitePHPOwnProcesses(read)}
 		refusals := []settingRefusal{}
 		for _, key := range []string{settingPHPMemoryMB, settingPHPTimeS, settingPHPUploadMB, settingPHPInputVars, settingPHPProcesses} {
 			value := values[key]
@@ -389,7 +399,10 @@ func (p *Panel) handleDomainPHPLimits(w http.ResponseWriter, r *http.Request, do
 					map[string]string{"key": key, "set_by": "fixed"})
 				return
 			}
-			if limit.Ceiling != nil && !limit.allows(value) {
+			// A value the site already holds above a lowered limit may be
+			// sent back unchanged (the form shows it, marked as clamped);
+			// it keeps running at the limit (P5).
+			if limit.Ceiling != nil && !limit.allows(value) && value != current[key] {
 				refusals = append(refusals, settingRefusal{Key: key, Value: value, Limit: *limit.Ceiling, SetBy: limit.SetBy, SetByName: limit.SetByName})
 			}
 		}
@@ -399,7 +412,7 @@ func (p *Panel) handleDomainPHPLimits(w http.ResponseWriter, r *http.Request, do
 		}
 	}
 	previous := read.Own
-	previous.Processes = read.Processes
+	previous.Processes = sitePHPOwnProcesses(read)
 
 	written := p.writeSitePHPValues(ctx, site, settings, previous, limits, state.AdminWorkspace)
 	if written.poolErr != nil {
@@ -546,7 +559,7 @@ func (p *Panel) applyAppUploadDefault(ctx context.Context, domainID int, app app
 	settings.UploadMB = upload
 	settings.Processes = 0
 	previous := read.Own
-	previous.Processes = read.Processes
+	previous.Processes = sitePHPOwnProcesses(read)
 	written := p.writeSitePHPValues(ctx, site, settings, previous, limits, state.AdminWorkspace)
 	switch {
 	case written.poolErr != nil:
