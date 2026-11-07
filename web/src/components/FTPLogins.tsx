@@ -313,7 +313,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                                                     </div>
                                                     {row.folder && <p className="text-xs text-fg-muted font-mono break-all">{t('ftpLogins.folderLabel', { folder: folderShown(row.folder) })}</p>}
                                                     <p className={`text-xs ${healthy ? 'text-success' : 'text-warning'}`}>{stateWords}</p>
-                                                    {row.state === 'jail' && isAdmin && <p className="text-xs text-fg-muted font-mono break-all">{t('ftpLogins.state.jailAdmin', { unit: `celikpanel-ftp-${row.login}` })}</p>}
+                                                    {row.state === 'jail' && (isAdmin ? <p className="text-xs text-fg-muted font-mono break-all">{t('ftpLogins.state.jailAdmin', { unit: `celikpanel-ftp-${row.login}` })}</p> : <p className="text-xs text-fg-muted">{t('ftpLogins.state.jailFix')}</p>)}
                                                     {row.readOnly && <p className="text-xs text-fg-muted">{t('ftpLogins.state.readOnly')}</p>}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
