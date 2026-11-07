@@ -158,6 +158,16 @@ unit, jail, entry or ownerless file left) and site deletion.
   no keys.
 - FTP needs CelikPanel's vsftpd configuration; an owner's vsftpd is kept and
   logins then use SFTP only.
+- Arch Linux: sshd's PAM stack (system-login) runs pam_shells, and
+  /etc/shells does not list the no-login shell, so the system itself refuses
+  SFTP with a password for logins (and site accounts): closed, not open. The
+  Agent detects it (read only) and the screen says logins connect with FTP
+  over TLS. CelikPanel does not change the system's rule.
+- Arch Linux: vsftpd 3.0.5 as Arch packages it kills every TLS data
+  connection in its seccomp sandbox (listings and uploads failed for every
+  account, site accounts included). CelikPanel's vsftpd.conf sets
+  `seccomp_sandbox=NO` on Arch only; vsftpd's chroot and privilege
+  separation stay. Debian and Ubuntu keep the sandbox.
 - Folder names: letters, digits, dot, hyphen and underscore, at most 12
   levels below the site home. A folder must belong to the site account; a
   folder another account owns is refused.
