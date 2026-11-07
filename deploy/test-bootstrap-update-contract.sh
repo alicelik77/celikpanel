@@ -2571,9 +2571,9 @@ require_sequence "$UPDATE" \
     'classify_quiesce_abort_coordinator celikpanel-panel.service || return 1' \
     'classify_quiesce_abort_coordinator celikpanel-agent.service || return 1' \
     'if [[ ${quiesce_abort_actions[celikpanel-panel.service]:-} == resume ]]; then' \
-    'systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-panel.service' \
+    'systemctl kill --kill-who=all --signal=SIGCONT celikpanel-panel.service' \
     'if [[ ${quiesce_abort_actions[celikpanel-agent.service]:-} == resume ]]; then' \
-    'systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-agent.service' \
+    'systemctl kill --kill-who=all --signal=SIGCONT celikpanel-agent.service' \
     'verify_quiesce_coordinator_identity "$unit" resumed || {' \
     'verify_quiesce_coordinator_stopped "$unit" || {'
 require_function_sequence "$UPDATE" abort_quiesce_before_active \
@@ -3110,18 +3110,18 @@ require_sequence "$ROLLBACK" \
 # SIGCONT on a fail-closed error path. Its whole cgroup is killed, stopped and
 # proved empty before the frozen flag can be cleared.
 require_function_sequence "$ROLLBACK" freeze_and_stop_legacy_agent \
-    'systemctl kill --kill-whom=all --signal=SIGSTOP celikpanel-agent.service' \
+    'systemctl kill --kill-who=all --signal=SIGSTOP celikpanel-agent.service' \
     'legacy_agent_frozen=1' \
     'reject_extra_service_cgroup_processes celikpanel-agent.service "$main_pid"' \
     'systemctl stop --no-block celikpanel-agent.service' \
-    'systemctl kill --kill-whom=all --signal=SIGKILL celikpanel-agent.service' \
+    'systemctl kill --kill-who=all --signal=SIGKILL celikpanel-agent.service' \
     'systemctl stop celikpanel-agent.service \' \
     'systemctl is-active --quiet celikpanel-agent.service' \
     'reject_extra_service_cgroup_processes celikpanel-agent.service 0' \
     'legacy_agent_frozen=0'
 require_function_sequence "$ROLLBACK" terminate_frozen_legacy_agent_fail_closed \
     'systemctl stop --no-block celikpanel-agent.service' \
-    'systemctl kill --kill-whom=all --signal=SIGKILL celikpanel-agent.service' \
+    'systemctl kill --kill-who=all --signal=SIGKILL celikpanel-agent.service' \
     'systemctl stop --no-block celikpanel-agent.service' \
     'service_cgroup_pids celikpanel-agent.service' \
     'legacy_agent_frozen=0'
@@ -3324,10 +3324,10 @@ set -e
 [[ "$legacy_status" -eq 23 ]] \
     || die "rollback SIGSTOP failure changed original status: $legacy_status"
 require_sequence "$legacy_trace" \
-    'systemctl kill --kill-whom=all --signal=SIGSTOP celikpanel-agent.service' \
+    'systemctl kill --kill-who=all --signal=SIGSTOP celikpanel-agent.service' \
     'systemctl stop --no-block celikpanel-agent.service' \
     'systemctl stop --no-block celikpanel-agent.service' \
-    'systemctl kill --kill-whom=all --signal=SIGKILL celikpanel-agent.service' \
+    'systemctl kill --kill-who=all --signal=SIGKILL celikpanel-agent.service' \
     'systemctl stop --no-block celikpanel-agent.service' \
     'systemctl is-active --quiet celikpanel-agent.service' \
     'cgroup-empty celikpanel-agent.service' \

@@ -1328,11 +1328,11 @@ reject_extra_service_cgroup_processes() {
 
 unfreeze_release_services() {
     if [[ $panel_frozen -eq 1 ]]; then
-        systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-panel.service >/dev/null 2>&1 || true
+        systemctl kill --kill-who=all --signal=SIGCONT celikpanel-panel.service >/dev/null 2>&1 || true
         panel_frozen=0
     fi
     if [[ $agent_frozen -eq 1 ]]; then
-        systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-agent.service >/dev/null 2>&1 || true
+        systemctl kill --kill-who=all --signal=SIGCONT celikpanel-agent.service >/dev/null 2>&1 || true
         agent_frozen=0
     fi
 }
@@ -1354,7 +1354,7 @@ freeze_release_service_cgroup() {
             [[ "$main_pid" =~ ^[0-9]+$ && "$main_pid" -gt 1 ]] \
                 || die "$label has no valid MainPID"
             printf -v "$flag_name" '%s' 1
-            if ! systemctl kill --kill-whom=all --signal=SIGSTOP "$unit"; then
+            if ! systemctl kill --kill-who=all --signal=SIGSTOP "$unit"; then
                 printf -v "$flag_name" '%s' 0
                 die "$label could not be frozen"
             fi
@@ -1392,7 +1392,7 @@ terminate_frozen_release_service() {
         # Accept that race only after the captured PID and cgroup are gone.
         # Askidaki servis SIGKILL'den once normal durusunu tamamlayabilir. Bu
         # yarisi yalniz kaydedilmis PID ve cgroup tamamen gittiyse kabul et.
-        if ! systemctl kill --kill-whom=all --signal=SIGKILL "$unit" >/dev/null 2>&1; then
+        if ! systemctl kill --kill-who=all --signal=SIGKILL "$unit" >/dev/null 2>&1; then
             wait_for_quiesce_coordinator_stopped "$unit" \
                 || die "frozen $label could not be terminated"
         fi
@@ -1465,11 +1465,11 @@ resume_quiesced_release_services() {
     classify_quiesce_abort_coordinator celikpanel-panel.service || return 1
     classify_quiesce_abort_coordinator celikpanel-agent.service || return 1
     if [[ ${quiesce_abort_actions[celikpanel-panel.service]:-} == resume ]]; then
-        systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-panel.service >/dev/null 2>&1 \
+        systemctl kill --kill-who=all --signal=SIGCONT celikpanel-panel.service >/dev/null 2>&1 \
             || return 1
     fi
     if [[ ${quiesce_abort_actions[celikpanel-agent.service]:-} == resume ]]; then
-        systemctl kill --kill-whom=all --signal=SIGCONT celikpanel-agent.service >/dev/null 2>&1 \
+        systemctl kill --kill-who=all --signal=SIGCONT celikpanel-agent.service >/dev/null 2>&1 \
             || return 1
     fi
     panel_frozen=0
@@ -1554,7 +1554,7 @@ stop_release_coordinators_fail_closed() {
     local unit
     for unit in celikpanel-panel.service celikpanel-agent.service; do
         systemctl stop --no-block "$unit" >/dev/null 2>&1 || true
-        systemctl kill --kill-whom=all --signal=SIGKILL "$unit" >/dev/null 2>&1 || true
+        systemctl kill --kill-who=all --signal=SIGKILL "$unit" >/dev/null 2>&1 || true
         systemctl stop "$unit" >/dev/null 2>&1 || true
     done
     panel_frozen=0

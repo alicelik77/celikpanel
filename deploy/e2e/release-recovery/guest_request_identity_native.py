@@ -963,7 +963,7 @@ def lab_kill_panel(args: dict) -> dict:
     (``Restart=on-failure``) is left to bring it back; this helper only waits for that and reports it."""
     before = read_units({})
     started = time.time()
-    done = run(["systemctl", "kill", "--signal=SIGKILL", "--kill-whom=main", "celikpanel-panel.service"], timeout=60)
+    done = run(["systemctl", "kill", "--signal=SIGKILL", "--kill-who=main", "celikpanel-panel.service"], timeout=60)
     after = read_units({})
     for _ in range(120):
         unit = after["units"]["celikpanel-panel.service"]

@@ -349,7 +349,7 @@ class Native:
         return dict(snapshot, runtime=runtime_proof)
 
     def kill(self):
-        result = subprocess.run(['/usr/bin/systemctl', 'kill', '--kill-whom=all', '--signal=KILL', UNIT],
+        result = subprocess.run(['/usr/bin/systemctl', 'kill', '--kill-who=all', '--signal=KILL', UNIT],
                                 stdin=subprocess.DEVNULL, capture_output=True, timeout=5, env=ENV)
         if result.returncode: raise Unavailable('recovery-kill-result-unknown')
 
