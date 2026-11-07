@@ -192,15 +192,15 @@ func TestActivityLogPagesWithoutRepeating(t *testing.T) {
 
 func TestActivityActionKeepsOnlyThePlainNameAndTarget(t *testing.T) {
 	for raw, want := range map[string]string{
-		"domain.create:example.com":                   "domain.create:example.com",
-		"backup.create.failed:scheduled — disk full":  "backup.create.failed:scheduled",
-		"service.uninstall:nginx:nginx-core":          "service.uninstall:nginx",
-		"config.read:/etc/shadow":                     "config.read",
-		"mail.account.create:a@example.com extra":     "mail.account.create:a@example.com",
-		"Not An Action":                               "",
-		"auth.login":                                  "auth.login",
-		"x.y:<script>":                                "x.y",
-		strings.Repeat("a", 81):                       "",
+		"domain.create:example.com":                  "domain.create:example.com",
+		"backup.create.failed:scheduled — disk full": "backup.create.failed:scheduled",
+		"service.uninstall:nginx:nginx-core":         "service.uninstall:nginx",
+		"config.read:/etc/shadow":                    "config.read",
+		"mail.account.create:a@example.com extra":    "mail.account.create:a@example.com",
+		"Not An Action":                              "",
+		"auth.login":                                 "auth.login",
+		"x.y:<script>":                               "x.y",
+		strings.Repeat("a", 81):                      "",
 	} {
 		if got := activityAction(raw); got != want {
 			t.Errorf("activityAction(%q) = %q, want %q", raw, got, want)

@@ -262,4 +262,3 @@ func (p *Panel) readActivity(ctx context.Context, caller *Caller, before int64, 
 	}
 	return entries, more, nil
 }
-
