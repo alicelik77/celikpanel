@@ -159,6 +159,25 @@ func (p *Panel) databaseRemoteEngineView(r *http.Request, engine string, port in
 	return databaseRemoteEngineViewFrom(status, err, engine, port)
 }
 
+// databaseRemoteCustomerEngineView is the engine view for a customer or a
+// reseller (alpha.130): the codes and states stay (the screen words them as
+// "ask your provider"), the server's own details do not — a detail can name
+// another customer's MariaDB account (NAME_ACCOUNTS), an owner's file or a
+// pg_hba line, and the readiness list is the administrator's.
+func databaseRemoteCustomerEngineView(view databaseRemoteEngineView) databaseRemoteEngineView {
+	problems := make([]transport.DatabaseRemoteProblem, 0, len(view.Problems))
+	for _, p := range view.Problems {
+		problems = append(problems, transport.DatabaseRemoteProblem{Code: p.Code})
+	}
+	view.Problems = problems
+	view.Readiness = []transport.DatabaseRemoteProblem{}
+	view.Fail2banDetail, view.LastError = "", ""
+	if view.ReadError != "" {
+		view.ReadError = "the server could not be asked"
+	}
+	return view
+}
+
 // databaseRemoteEngineViewFrom builds one instance's view from a status
 // answer (which may describe several) and the last apply.
 func databaseRemoteEngineViewFrom(status transport.DatabaseRemoteResponse, err error, engine string, port int) databaseRemoteEngineView {
@@ -307,7 +326,11 @@ func (p *Panel) handleDatabaseRemoteView(w http.ResponseWriter, r *http.Request,
 		answer["your_address"] = dbremote.DisplayAddress(mine)
 	}
 	if offered && localDatabaseHost(d.Host) && (len(rules) > 0 || access.MayEdit) {
-		answer["engine_state"] = p.databaseRemoteEngineView(r, d.Engine, d.Port)
+		view := p.databaseRemoteEngineView(r, d.Engine, d.Port)
+		if !c.hasAccountRole(roleAdmin) || c.APIToken != nil {
+			view = databaseRemoteCustomerEngineView(view)
+		}
+		answer["engine_state"] = view
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(answer)

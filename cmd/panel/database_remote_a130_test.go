@@ -286,3 +286,17 @@ func TestDatabaseRemoteServerViewAndTheNameLookupAgreement(t *testing.T) {
 		t.Fatalf("a customer changed the agreement: %d", customer.Code)
 	}
 }
+
+// A customer's view carries the codes, never the server's details (a detail
+// can name another customer's MariaDB account).
+func TestDatabaseRemoteCustomerViewHidesServerDetails(t *testing.T) {
+	view := databaseRemoteCustomerEngineView(databaseRemoteEngineView{
+		Problems:       []transport.DatabaseRemoteProblem{{Code: transport.DatabaseRemoteNameAccounts, Detail: "'other_customer'@'app.example.com'"}},
+		Readiness:      []transport.DatabaseRemoteProblem{{Code: transport.DatabaseRemoteNoSlowDown, Detail: "Fail2ban is not installed"}},
+		Fail2banDetail: "log_line_prefix ('%t') was set", LastError: "agent said x", ReadError: "psql: socket",
+	})
+	if len(view.Problems) != 1 || view.Problems[0].Code != transport.DatabaseRemoteNameAccounts || view.Problems[0].Detail != "" ||
+		len(view.Readiness) != 0 || view.Fail2banDetail != "" || view.LastError != "" || strings.Contains(view.ReadError, "psql") {
+		t.Fatalf("customer view: %+v", view)
+	}
+}

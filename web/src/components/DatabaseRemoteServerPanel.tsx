@@ -91,7 +91,7 @@ export function DatabaseRemoteServerPanel() {
     }, [retry]);
 
     const change = async (body: Record<string, boolean>, title: TranslationKey, confirm?: { message: TranslationKey; label: TranslationKey; danger?: boolean }) => {
-        const action = async (report: OperationReport) => {
+        const send = async (report: OperationReport) => {
             setBusy(true);
             setRefusal(null);
             try {
@@ -117,9 +117,9 @@ export function DatabaseRemoteServerPanel() {
             }
         };
         if (confirm) {
-            await confirmAction({ message: t(confirm.message), confirmLabel: t(confirm.label), tone: confirm.danger ? 'danger' : 'default', progressTitle: t(title), action });
+            await confirmAction({ message: t(confirm.message), confirmLabel: t(confirm.label), tone: confirm.danger ? 'danger' : 'default', progressTitle: t(title), action: send });
         } else {
-            await followOperation({ progressTitle: t(title), action });
+            await followOperation({ progressTitle: t(title), action: send });
         }
     };
 

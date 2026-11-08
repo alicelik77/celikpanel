@@ -53,6 +53,12 @@ type databaseRemoteState struct {
 	// engines' own rules follow at the next full apply.
 	closePending bool
 	closedAt     time.Time
+	// callFailed: the last full apply did not reach the Agent or was
+	// refused before it ran (D5: tried again every minute).
+	callFailed bool
+	// narrowDigest: the wanted set the filter was last narrowed to; the
+	// same set is not sent again while the full apply keeps failing.
+	narrowDigest string
 	// firewallRestores is the Agent's count of panel firewall restores
 	// after a flush (D6), firewallNote why it was not restored.
 	firewallRestores      int
@@ -360,6 +366,7 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 	req := transport.DatabaseRemoteApplyRequest{Targets: targets, HostName: p.mailHostnameIdentity(ctx).Hostname, MariaDBSkipNameResolve: skipNameResolve}
 	answer, callErr := databaseRemoteApplyThroughAgent(p, ctx, req)
 	m.mu.Lock()
+	m.callFailed = callErr != nil
 	if callErr != nil {
 		m.lastError = callErr.Error()
 		m.digest = ""
@@ -368,6 +375,7 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 		m.lastError = answer.Error
 		m.digest = digest
 		m.closePending = false
+		m.narrowDigest = ""
 		if answer.Error != "" {
 			m.digest = ""
 		}

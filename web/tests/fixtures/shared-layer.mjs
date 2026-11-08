@@ -36,6 +36,9 @@ const alpha128LazyParts = {
   './SitePHPLimits': ['SitePHPLimits'],
   './PlanLimitsSection': ['PlanLimitsSection', 'CustomLimitsSection'],
   './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
+  // alpha.130: the administrator's switch of connections from outside on the
+  // Databases page reads its own address (its own chunk).
+  './DatabaseRemoteServerPanel': ['DatabaseRemoteServerPanel'],
 };
 
 export function compileSource(path, resolve) {

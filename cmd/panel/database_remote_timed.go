@@ -131,13 +131,14 @@ func (p *Panel) sweepExpiredDatabaseRemoteRules(ctx context.Context) int {
 	return removed
 }
 
-// databaseRemoteFailing: the last apply did not finish (D5: it is tried
-// again every minute).
+// databaseRemoteFailing: the last full apply did not run (refused before
+// it ran, or no answer; D5: it is tried again every minute). An apply that
+// ran and reported a problem waits for the five-minute run as before.
 func databaseRemoteFailing() bool {
 	m := databaseRemoteMemory
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.lastError != ""
+	return m.callFailed
 }
 
 // narrowDatabaseRemote closes at the address filter what targets no longer
@@ -148,6 +149,13 @@ func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.Da
 	// still starting): the Agent's record says what the filter holds, and a
 	// filter that already holds only wanted addresses is left untouched.
 	m := databaseRemoteMemory
+	digest := databaseRemoteDigest(targets)
+	m.mu.Lock()
+	already := digest == m.narrowDigest
+	m.mu.Unlock()
+	if already {
+		return
+	}
 	answer, err := databaseRemoteNarrowThroughAgent(p, ctx, transport.DatabaseRemoteNarrowRequest{Targets: targets})
 	if err != nil || answer.Error != "" {
 		detail := answer.Error
@@ -176,6 +184,7 @@ func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.Da
 		m.answer.Targets[i].Active = kept
 	}
 	m.answer.FilterPorts, m.answer.FilterLoaded = answer.FilterPorts, answer.FilterLoaded
+	m.narrowDigest = digest
 	if len(answer.Targets) > 0 {
 		// The Agent names the instances it closed at the filter.
 		m.closePending, m.closedAt = true, time.Now()
@@ -197,7 +206,7 @@ func databaseRemoteClosePending() (bool, time.Time) {
 	m := databaseRemoteMemory
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.closePending && m.lastError != "", m.closedAt
+	return m.closePending && m.callFailed, m.closedAt
 }
 
 // settingDatabaseRemoteSkipNameResolve: the administrator agreed that
