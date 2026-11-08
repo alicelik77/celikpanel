@@ -195,6 +195,7 @@ export const enComponentsScreens = {
     'services.removal.removed.allVersions': 'Every installed version of it is removed too, with the packages installed beside each version.',
     'services.removal.removed.mailFilter': 'Postfix is set to stop passing mail through it.',
     'services.removal.removed.databaseTools': 'The panel stops serving its pages.',
+    'services.removal.removed.pgClusters': 'Its clusters ({clusters}) are removed with it: PostgreSQL’s configuration, data directory and logs, so nothing of it stays behind to claim a port. The removal is refused while one of them holds a database. Anything else they hold beyond what PostgreSQL made at installation (roles, for example) is first kept in an archive under /var/backups/celikpanel.',
     'services.removal.removed.webmailTree': 'CelikPanel deletes Roundcube’s application files, its own settings and its address-book database, and the web server entry that served webmail at /webmail/.',
     'services.removal.command': 'Package manager command:',
     // alpha.107 (D-038 §8): a database engine is removed, not purged.

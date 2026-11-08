@@ -312,6 +312,12 @@ const screenPartBudgets = {
   // part, set with at least 25% headroom from its Turkish file: 11.81 / 3.70
   // KiB.
   dbConfig: kib(17.5, 5.5),
+  // v0.1.0-alpha.130: a removed PostgreSQL version's leftover cluster and its
+  // "Archive and remove", and the PostgreSQL page's cluster choice
+  // (pgc.leftover., pgc.pick., opstep.pgLeftover.), split out of
+  // "databaseClusters", which had 1.07 KiB left. A new part, set with at
+  // least 25% headroom from its Turkish file.
+  pgLeftovers: kib(7, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

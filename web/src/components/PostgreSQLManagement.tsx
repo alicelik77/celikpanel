@@ -31,22 +31,82 @@ interface PostgreSQLManagementProps {
 // dosyaları olduğu sunucudan okunur ve üç şeyden biridir: okunuyor, okunamadı
 // ya da biliniyor. "postgresql.conf bulunamadı" yalnız okunmuş ve dosyayı
 // adlandırmayan bir tarama için söylenir.
+//
+// alpha.130: with several PostgreSQL clusters (Debian/Ubuntu's
+// /etc/postgresql/<version>/<name>/), a compact choice above the tabs says
+// whose postgresql.conf and pg_hba.conf the editors open; the highest version
+// first. With one cluster, or Arch's single data directory, nothing extra is
+// shown. The choice lives in this screen only.
+// Birden çok kümede düzenleyicilerin hangi kümenin dosyalarını açtığı
+// sekmelerin üstünde seçilir; varsayılan en yüksek sürümdür.
+const CLUSTER_FILE = /^\/etc\/postgresql\/([^/]+)\/([^/]+)\/(postgresql\.conf|pg_hba\.conf)$/;
+
+export interface PGClusterFiles {
+    version: string;
+    name: string;
+    conf?: string;
+    hba?: string;
+}
+
+/** The clusters named by the file paths, highest version first. */
+export function pgClustersFromFiles(paths: string[]): PGClusterFiles[] {
+    const found = new Map<string, PGClusterFiles>();
+    for (const path of paths) {
+        const match = CLUSTER_FILE.exec(path);
+        if (!match) continue;
+        const [, version, name, file] = match;
+        const key = `${version}/${name}`;
+        const entry = found.get(key) ?? { version, name };
+        if (file === 'postgresql.conf') entry.conf = path;
+        else entry.hba = path;
+        found.set(key, entry);
+    }
+    return [...found.values()].sort((a, b) => (Number(b.version) - Number(a.version)) || b.version.localeCompare(a.version) || (a.name === 'main' ? -1 : b.name === 'main' ? 1 : a.name.localeCompare(b.name)));
+}
+
 export function PostgreSQLManagement({ onBack }: PostgreSQLManagementProps) {
     const { t } = useI18n();
     const { files, retry, reading } = useComponentConfigFiles('postgresql');
     const [tab, setTab] = useState<'visual' | 'access'>('visual');
     const [rawFile, setRawFile] = useState<string | null>(null);
+    const [picked, setPicked] = useState<string | null>(null);
 
     if (rawFile) {
         return <ConfigEditor path={rawFile} onBack={() => setRawFile(null)} />;
     }
 
     const known = files.state === 'known' ? files.value : null;
-    const mainConf = known?.find((path) => path.endsWith('postgresql.conf'));
-    const hbaConf = known?.find((path) => path.endsWith('pg_hba.conf'));
+    const clusters = known ? pgClustersFromFiles(known) : [];
+    const several = clusters.length > 1;
+    const chosen = several ? clusters.find((cluster) => `${cluster.version}/${cluster.name}` === picked) ?? clusters[0] : null;
+    const mainConf = chosen ? chosen.conf : known?.find((path) => path.endsWith('postgresql.conf'));
+    const hbaConf = chosen ? chosen.hba : known?.find((path) => path.endsWith('pg_hba.conf'));
 
     return (
         <ServiceShell serviceId="postgresql" name="PostgreSQL" icon={Database} onBack={onBack}>
+            {several && chosen && (
+                <div className="mb-3 flex flex-wrap items-center gap-2" data-pg-cluster-pick="">
+                    <span className="text-xs font-medium text-fg-subtle" id="pg-cluster-pick-label">{t('pgc.pick.label')}</span>
+                    <div role="group" aria-labelledby="pg-cluster-pick-label" className="inline-flex flex-wrap rounded-lg border border-border bg-surface p-0.5">
+                        {clusters.map((cluster) => {
+                            const ref = `${cluster.version}/${cluster.name}`;
+                            const active = cluster === chosen;
+                            return (
+                                <button
+                                    key={ref}
+                                    type="button"
+                                    onClick={() => setPicked(ref)}
+                                    aria-pressed={active}
+                                    data-pg-cluster-choice={ref}
+                                    className={`min-h-[2.25rem] rounded-md px-3 py-1.5 text-sm font-medium transition-colors max-sm:min-h-11 ${active ? 'bg-primary/10 text-primary' : 'text-fg-muted hover:text-fg'}`}
+                                >
+                                    {t('pgc.pick.cluster', { version: cluster.version, name: cluster.name })}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
             <div className="mb-4 flex items-center gap-1 border-b border-border">
                 <Tab active={tab === 'visual'} onClick={() => setTab('visual')} icon={Settings} label={t('db.tab.visual')} />
                 <Tab active={tab === 'access'} onClick={() => setTab('access')} icon={ShieldCheck} label={t('db.tab.access')} />
@@ -59,12 +119,12 @@ export function PostgreSQLManagement({ onBack }: PostgreSQLManagementProps) {
                     <CouldNotCheck text={t('dbconf.files.unknown', { service: 'PostgreSQL' })} onRetry={retry} busy={reading} />
                 ) : tab === 'visual' ? (
                     mainConf ? (
-                        <PostgreSQLSettings configPath={mainConf} />
+                        <PostgreSQLSettings key={mainConf} configPath={mainConf} />
                     ) : (
                         <p className="py-8 text-center text-sm text-fg-muted">{t('db.fileNotFound', { file: 'postgresql.conf' })}</p>
                     )
                 ) : hbaConf ? (
-                    <PostgreSQLAccessRules configPath={hbaConf} />
+                    <PostgreSQLAccessRules key={hbaConf} configPath={hbaConf} />
                 ) : (
                     <p className="py-8 text-center text-sm text-fg-muted">{t('db.fileNotFound', { file: 'pg_hba.conf' })}</p>
                 )}
