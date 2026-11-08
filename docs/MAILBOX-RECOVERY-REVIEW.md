@@ -301,8 +301,7 @@ Not built in this release, by choice:
 ## 6. Where it is built (alpha.130)
 
 - **Migration.** `076_mailbox_recovery.sql` adds two tables:
-  `mailbox_recovery_addresses` and `mailbox_recovery_links`. The integrator
-  renumbers it.
+  `mailbox_recovery_addresses` and `mailbox_recovery_links`.
 - **Panel.**
   - `cmd/panel/mailbox_recovery.go` holds the state, the binding and the
     links.
