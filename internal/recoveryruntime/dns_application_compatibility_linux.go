@@ -255,6 +255,8 @@ var NativeCatalogV3Releases = []NativeCatalogV3Release{
 		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
 	{Version: "v0.1.0-alpha.129", Policy: "pdns-native-catalog-v3",
 		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
+	{Version: "v0.1.0-alpha.130", Policy: "pdns-native-catalog-v3",
+		Kinds: []string{dnsengineartifact.NativeCatalogDebian49V3, dnsengineartifact.NativeCatalogArch51V3}},
 }
 
 func readsNativeCatalogV3(contract agentnativecontract.Contract, present map[string]bool) bool {
