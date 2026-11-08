@@ -117,6 +117,10 @@ export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
 export const engineIconsURL = compileSource('lib/engineIcons.ts', (specifier) => (
   specifier === 'lucide-react' ? dataModule('export const createLucideIcon = () => () => null;') : unexpected('lib/engineIcons.ts')(specifier)
 ));
+// alpha.130: the components' own marks (componentMarks.ts), the same way.
+export const componentMarksURL = compileSource('lib/componentMarks.ts', (specifier) => (
+  specifier === 'lucide-react' ? dataModule('export const createLucideIcon = () => () => null;') : unexpected('lib/componentMarks.ts')(specifier)
+));
 
 // alpha.105: what an install brings, and the component's version reads.
 export const installPreviewLibURL = compileSource('lib/installPreview.ts', unexpected('lib/installPreview.ts'));
@@ -250,6 +254,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/requestIdentity': requestIdentityURL,
     '/lib/passwordPolicy': passwordPolicyURL,
     '/engineIcons': engineIconsURL,
+    '/componentMarks': componentMarksURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
     ...extra,
