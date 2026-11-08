@@ -242,6 +242,7 @@ func TestTurnOffRefusesWhenTheDropInWouldNotDecide(t *testing.T) {
 		{"setting before the include", "PasswordAuthentication yes\nInclude /etc/ssh/sshd_config.d/*.conf\n", nil, "include_order"},
 		{"an owner's drop-in sorts first", debianMain, map[string]string{"00-aaa.conf": "PasswordAuthentication yes\n"}, "include_order"},
 		{"a match block", debianMain + "Match User deploy\n  PasswordAuthentication yes\n", map[string]string{"50-cloud-init.conf": "PasswordAuthentication yes\n"}, "match_block"},
+		{"an opening match block after a restricting one", debianMain + "Match User celikpeer\n  PasswordAuthentication no\nMatch User deploy\n  KbdInteractiveAuthentication yes\n", map[string]string{"50-cloud-init.conf": "PasswordAuthentication yes\n"}, "match_block"},
 		{"pubkey off", debianMain, map[string]string{"50-cloud-init.conf": "PasswordAuthentication yes\nPubkeyAuthentication no\n"}, "pubkey_off"},
 		{"owner edited the drop-in", debianMain, map[string]string{sshPasswordLoginDropInName: "PasswordAuthentication yes\n"}, "drop_in_edited"},
 	}
@@ -265,6 +266,23 @@ func TestTurnOffRefusesWhenTheDropInWouldNotDecide(t *testing.T) {
 				t.Fatal("the owner's drop-in was changed")
 			}
 		})
+	}
+}
+
+// A Match block that only turns passwords off (CelikPanel's own BIND peer
+// inspector on every joined BIND server) does not block the change, and the
+// change still turns password sign-in off for everyone else.
+func TestTurnOffAllowedWithARestrictingMatchBlock(t *testing.T) {
+	peer := debianMain + "Match User celikpeer\n  AuthenticationMethods publickey\n  PasswordAuthentication no\n  KbdInteractiveAuthentication no\n"
+	h := newFakeSSHHost(t, peer, map[string]string{"50-cloud-init.conf": "PasswordAuthentication yes\n"})
+	env := h.env()
+	status := sshPasswordLoginStatus(context.Background(), env)
+	if !status.CanTurnOff || status.Reason != "" {
+		t.Fatalf("status %+v", status)
+	}
+	off := setSSHPasswordLogin(context.Background(), env, &transport.SetSSHPasswordLoginRequest{Action: transport.SSHPasswordLoginActionOff, ExpectedDropInSHA256: status.DropIn.SHA256})
+	if off.Outcome != transport.SSHPasswordLoginTurnedOff || off.PasswordAuthentication != "no" {
+		t.Fatalf("off %+v", off)
 	}
 }
 
