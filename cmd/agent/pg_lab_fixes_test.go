@@ -146,45 +146,68 @@ func TestWholeRemovalFinishRemovesEmptyFoldersAndKeepsPGDGWhileUsed(t *testing.T
 	}
 }
 
-func TestOwnerFilesNextToAPurgedPackageAreKept(t *testing.T) {
-	root := t.TempDir()
-	oldInfo, oldKept, oldSystemd, oldEtc, oldNow := dpkgInfoDir, keptFilesRoot, systemdEtcDir, etcDir, pgLeftoverNow
+// ownerFilesFixture redirects every path the owner-file keeping reads.
+func ownerFilesFixture(t *testing.T) (root string, write func(path, content string)) {
+	t.Helper()
+	root = t.TempDir()
+	oldInfo, oldUcf, oldKept, oldSystemd, oldEtc, oldNow := dpkgInfoDir, ucfRegistryPath, keptFilesRoot, systemdEtcDir, etcDir, pgLeftoverNow
 	t.Cleanup(func() {
-		dpkgInfoDir, keptFilesRoot, systemdEtcDir, etcDir, pgLeftoverNow = oldInfo, oldKept, oldSystemd, oldEtc, oldNow
+		dpkgInfoDir, ucfRegistryPath, keptFilesRoot, systemdEtcDir, etcDir, pgLeftoverNow = oldInfo, oldUcf, oldKept, oldSystemd, oldEtc, oldNow
 	})
 	dpkgInfoDir = filepath.Join(root, "dpkg", "info")
+	ucfRegistryPath = filepath.Join(root, "ucf", "registry")
 	keptFilesRoot = filepath.Join(root, "kept")
 	systemdEtcDir = filepath.Join(root, "etc", "systemd", "system")
 	etcDir = filepath.Join(root, "etc")
-	write := func(path, content string) {
+	write = func(path, content string) {
 		os.MkdirAll(filepath.Dir(path), 0o755)
 		if err := os.WriteFile(path, []byte(content), 0o640); err != nil {
 			t.Fatal(err)
 		}
 	}
-	mainCF := filepath.Join(etcDir, "postfix", "main.cf")
-	masterCF := filepath.Join(etcDir, "postfix", "master.cf")
-	ownerMap := filepath.Join(etcDir, "postfix", "my_access")
-	ourMap := filepath.Join(etcDir, "postfix", "celikpanel_sni")
-	dropIn := filepath.Join(systemdEtcDir, "postfix.service.d", "override.conf")
-	write(mainCF, "edited by the owner\n")
-	write(masterCF, "as shipped\n")
+	return root, write
+}
+
+// alpha.130 re-verification: Postfix's purge left main.cf, master.cf,
+// dynamicmaps.cf, the *.proto copies and CelikPanel's maps, and the first
+// fix put them all back as "your own files". Now /etc/postfix is emptied
+// and removed; only the owner's systemd drop-in goes back in place; a file
+// that may be the owner's is copied to the kept folder, named.
+func TestPostfixPurgeEmptiesItsFolderAndKeepsOnlyTheOwnersDropIn(t *testing.T) {
+	_, write := ownerFilesFixture(t)
+	dir := filepath.Join(etcDir, "postfix")
+	script := filepath.Join(dir, "postfix-script")
+	initScript := filepath.Join(etcDir, "init.d", "postfix")
+	postinst := []string{"main.cf", "master.cf", "dynamicmaps.cf", "main.cf.proto", "master.cf.proto", "sasl/smtpd.conf",
+		"virtual", "virtual.db", "vmailbox", "vmailbox.db", "vmailbox_domains", "vmailbox_domains.db", "celikpanel_sni"}
+	for _, name := range postinst {
+		write(filepath.Join(dir, name), name+"\n")
+	}
+	write(script, "#!/bin/sh\n")
+	write(initScript, "#!/bin/sh\n")
+	ownerMap := filepath.Join(dir, "my_access")
 	write(ownerMap, "spam@example.com REJECT\n")
-	write(ourMap, "sni\n")
+	dropIn := filepath.Join(systemdEtcDir, "postfix.service.d", "owner.conf")
 	write(dropIn, "[Service]\nNice=5\n")
-	write(filepath.Join(dpkgInfoDir, "postfix.list"), "/etc\n"+mainCF+"\n"+masterCF+"\n")
-	shipped, _ := fileMD5(masterCF)
-	status := "Package: postfix\nStatus: install ok installed\nConffiles:\n " + mainCF + " 00000000000000000000000000000000\n " + masterCF + " " + shipped + "\nVersion: 3\n"
+	write(filepath.Join(dpkgInfoDir, "postfix.list"), "/etc\n"+dir+"\n"+script+"\n"+initScript+"\n")
+	shipped, _ := fileMD5(initScript)
+	status := "Package: postfix\nStatus: install ok installed\nConffiles:\n " + initScript + " " + shipped + "\nVersion: 3\n"
 	keep, err := keepOwnerFiles("postfix", []string{"postfix"}, []string{"postfix", "postfix@-"}, strings.NewReader(status))
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The purge script deletes the drop-in folder and /etc/postfix.
+	// The purge: the package's own files and the drop-in folder go; the
+	// maintainer-script and CelikPanel files stay (as on the lab VM).
+	os.Remove(script)
+	os.Remove(initScript)
 	os.RemoveAll(filepath.Join(systemdEtcDir, "postfix.service.d"))
-	os.RemoveAll(filepath.Join(etcDir, "postfix"))
-	restored, inPlace, copies, notes := keep.restore()
-	if !reflect.DeepEqual(restored, []string{ownerMap, dropIn}) || len(inPlace) != 0 || !reflect.DeepEqual(copies, []string{mainCF}) || len(notes) != 0 {
-		t.Fatalf("restored=%v inPlace=%v copies=%v notes=%v", restored, inPlace, copies, notes)
+	out := keep.finish(true)
+	if !reflect.DeepEqual(out.Restored, []string{dropIn}) || !reflect.DeepEqual(out.Copied, []string{ownerMap}) ||
+		len(out.Changed)+len(out.Left)+len(out.Notes) != 0 || !reflect.DeepEqual(out.Cleared, []string{dir}) {
+		t.Fatalf("outcome = %+v", out)
+	}
+	if _, err := os.Lstat(dir); !os.IsNotExist(err) {
+		t.Fatalf("%s stayed", dir)
 	}
 	if data, err := os.ReadFile(dropIn); err != nil || string(data) != "[Service]\nNice=5\n" {
 		t.Fatalf("drop-in back = %q %v", data, err)
@@ -192,23 +215,92 @@ func TestOwnerFilesNextToAPurgedPackageAreKept(t *testing.T) {
 	if info, _ := os.Stat(dropIn); info.Mode().Perm() != 0o640 {
 		t.Fatalf("mode = %v", info.Mode().Perm())
 	}
-	if _, err := os.Stat(ourMap); !os.IsNotExist(err) {
-		t.Fatal("CelikPanel's own map is the component cleanup's, never put back")
+	copied := filepath.Join(out.CopyDir, strings.TrimPrefix(ownerMap, "/"))
+	if data, err := os.ReadFile(copied); err != nil || string(data) != "spam@example.com REJECT\n" {
+		t.Fatalf("copy = %q %v", data, err)
 	}
-	if _, err := os.Stat(masterCF); !os.IsNotExist(err) {
-		t.Fatal("an unchanged package file is not kept")
+	if info, _ := os.Stat(copied); info.Mode().Perm() != 0o600 {
+		t.Fatalf("the copy is root-only: %v", info.Mode().Perm())
 	}
-	copyOfMain := filepath.Join(keep.root, strings.TrimPrefix(mainCF, "/"))
-	if data, err := os.ReadFile(copyOfMain); err != nil || string(data) != "edited by the owner\n" {
-		t.Fatalf("the owner's edited main.cf copy = %q %v", data, err)
-	}
-	if detail := keptOwnerFilesDetail(keep.root, restored, inPlace, copies, notes); !strings.Contains(detail, dropIn) || !strings.Contains(detail, keep.root) {
+	if detail := out.detail(); !strings.Contains(detail, "a copy of 1 file(s) you may have added is in "+out.CopyDir) || strings.Contains(detail, "main.cf") {
 		t.Fatalf("detail = %q", detail)
 	}
+}
+
+// postgresql-common: createcluster.conf is ucf's, root.crt its postinst's;
+// they go with the folder, never back; an owner's note is copied.
+func TestPostgreSQLCommonFolderGoesWithTheWholeRemoval(t *testing.T) {
+	_, write := ownerFilesFixture(t)
+	dir := filepath.Join(etcDir, "postgresql-common")
+	owned := filepath.Join(dir, "pg_upgradecluster.d", "analyze")
+	write(owned, "x")
+	write(filepath.Join(dir, "createcluster.conf"), "create_main_cluster = true\n")
+	write(filepath.Join(dir, "root.crt"), "")
+	note := filepath.Join(dir, "my-notes.txt")
+	write(note, "remember 5433\n")
+	write(filepath.Join(dpkgInfoDir, "postgresql-common.list"), dir+"\n"+owned+"\n")
+	write(ucfRegistryPath, "0123456789abcdef0123456789abcdef  postgresql-common  "+filepath.Join(dir, "createcluster.conf")+"\n")
+	keep, err := keepOwnerFiles("postgresql", []string{"postgresql-common", "postgresql-18"}, []string{"postgresql"}, strings.NewReader(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Remove(owned) // the purge
+	out := keep.finish(true)
+	if !reflect.DeepEqual(out.Copied, []string{note}) || !reflect.DeepEqual(out.Cleared, []string{dir}) || len(out.Restored) != 0 {
+		t.Fatalf("outcome = %+v", out)
+	}
+	if _, err := os.Lstat(dir); !os.IsNotExist(err) {
+		t.Fatal("/etc/postgresql-common stayed")
+	}
+	// One version's removal does not reach the shared folder.
+	write(filepath.Join(dir, "createcluster.conf"), "x")
+	write(filepath.Join(dpkgInfoDir, "postgresql-16.list"), "/usr/lib/postgresql/16/bin/postgres\n")
+	keep, _ = keepOwnerFiles("postgresql", []string{"postgresql-16"}, nil, strings.NewReader(""))
+	out = keep.finish(true)
+	if len(out.Cleared) != 0 {
+		t.Fatalf("a version's removal cleared %v", out.Cleared)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "createcluster.conf")); err != nil {
+		t.Fatal("a version's removal touched postgresql-common's folder")
+	}
+}
+
+// A purge that failed empties nothing: the package may still be there.
+func TestFailedPurgeEmptiesNothing(t *testing.T) {
+	_, write := ownerFilesFixture(t)
+	dir := filepath.Join(etcDir, "dovecot")
+	write(filepath.Join(dir, "dovecot.conf"), "x")
+	users := filepath.Join(dir, "users")
+	write(users, "a@example.com:{CRYPT}x\n")
+	write(filepath.Join(dpkgInfoDir, "dovecot-core.list"), dir+"\n"+filepath.Join(dir, "dovecot.conf")+"\n")
+	keep, err := keepOwnerFiles("dovecot", []string{"dovecot-core"}, []string{"dovecot"}, strings.NewReader(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := keep.finish(false)
+	if len(out.Cleared) != 0 {
+		t.Fatalf("outcome = %+v", out)
+	}
+	if _, err := os.Stat(users); err != nil {
+		t.Fatal("a failed purge removed files")
+	}
+	// After a purge that worked, CelikPanel's users file goes with the
+	// folder, without a copy.
+	keep, _ = keepOwnerFiles("dovecot", []string{"dovecot-core"}, []string{"dovecot"}, strings.NewReader(""))
+	out = keep.finish(true)
+	if len(out.Copied) != 0 || !reflect.DeepEqual(out.Cleared, []string{dir}) {
+		t.Fatalf("outcome = %+v", out)
+	}
 	// A refused removal discards every copy.
-	keep2, _ := keepOwnerFiles("postfix", []string{"postfix"}, []string{"postfix"}, strings.NewReader(status))
-	keep2.discard()
-	if _, err := os.Stat(keep2.root); !os.IsNotExist(err) {
+	write(filepath.Join(dir, "mine.conf"), "x")
+	write(filepath.Join(dir, "dovecot.conf"), "x")
+	write(filepath.Join(dpkgInfoDir, "dovecot-core.list"), dir+"\n"+filepath.Join(dir, "dovecot.conf")+"\n")
+	keep, _ = keepOwnerFiles("dovecot", []string{"dovecot-core"}, nil, strings.NewReader(""))
+	if len(keep.files) != 1 {
+		t.Fatalf("kept = %+v", keep.files)
+	}
+	keep.discard()
+	if _, err := os.Stat(keep.root); !os.IsNotExist(err) {
 		t.Fatal("copies stayed after a refusal")
 	}
 }

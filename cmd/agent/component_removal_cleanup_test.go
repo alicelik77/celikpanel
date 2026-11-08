@@ -40,7 +40,7 @@ func TestMailRemovalCleanupNamesCelikPanelsOwnFiles(t *testing.T) {
 	if got := strings.Join(paths(dovecot), " "); !strings.Contains(got, "celikpanel-quota-warning.timer") ||
 		!strings.Contains(got, "99-celikpanel.conf") || !strings.Contains(got, "96-celikpanel-sieve.conf") ||
 		!strings.Contains(got, "98-celikpanel-tls.conf") || !strings.Contains(got, "/var/lib/celikpanel-quota-warning") ||
-		strings.Contains(got, "/etc/dovecot/users") {
+		!strings.Contains(got, "/etc/dovecot/users") {
 		t.Errorf("dovecot cleanup = %s", got)
 	}
 	if dovecot.files[0].unit != "celikpanel-quota-warning.timer" {

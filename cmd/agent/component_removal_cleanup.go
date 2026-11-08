@@ -128,6 +128,9 @@ func removalCleanupFor(serviceID, family string) componentRemovalCleanup {
 			{path: autoresponderDovecotConfPath, owned: digestLine(autoresponderDovecotHead)},
 			{path: dovecotSubmissionConf, owned: nil},
 			{path: dovecotTLSConf, owned: nil},
+			// CelikPanel's mailbox password file (the panel writes it again
+			// from its records when Dovecot is installed again).
+			{path: dovecotUsersPath, owned: nil},
 			{path: dovecotVirtualDropInPath, owned: func(content []byte) bool {
 				return classifyDovecotVirtualDropIn(content, true, dovecotVirtualEarlierRoots(mailRootDir)) != dovecotVirtualDropInOwnerEdited
 			}},

@@ -1513,8 +1513,7 @@ func (a *Agent) uninstallServiceWithOps(
 		}
 		failUninstallRemoval(resp, err, mutationApplied)
 		if ownerKeep != nil {
-			restored, inPlace, copies, notes := ownerKeep.restore()
-			if detail := keptOwnerFilesDetail(ownerKeep.root, restored, inPlace, copies, notes); detail != "" {
+			if detail := ownerKeep.finish(false).detail(); detail != "" {
 				resp.Error += "; " + detail
 			}
 		}
@@ -1531,9 +1530,11 @@ func (a *Agent) uninstallServiceWithOps(
 	resp.Removed = true
 	resp.Detail = fmt.Sprintf("removed %s", strings.Join(removed, ", "))
 	if ownerKeep != nil {
-		restored, inPlace, copies, notes := ownerKeep.restore()
-		resp.OwnerFilesKept = append(append([]string{}, restored...), inPlace...)
-		if detail := keptOwnerFilesDetail(ownerKeep.root, restored, inPlace, copies, notes); detail != "" {
+		outcome := ownerKeep.finish(true)
+		resp.OwnerFilesKept = append(append([]string{}, outcome.Restored...), outcome.InPlace...)
+		resp.OwnerFilesCopied = append(append([]string{}, outcome.Copied...), outcome.Changed...)
+		resp.OwnerFilesCopyDir = outcome.CopyDir
+		if detail := outcome.detail(); detail != "" {
 			resp.Detail += "; " + detail
 		}
 	}

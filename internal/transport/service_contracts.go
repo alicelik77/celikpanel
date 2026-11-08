@@ -354,6 +354,11 @@ type UninstallServiceResponse struct {
 	// purged package that were kept (left in place, or put back after the
 	// package's purge script deleted them). Additive.
 	OwnerFilesKept []string `json:"owner_files_kept,omitempty"`
+	// OwnerFilesCopied (alpha.130 lab, re-verification) are files that may
+	// be the owner's (or package files the owner changed) in the folders
+	// the purge emptied: not put back, copied to OwnerFilesCopyDir.
+	OwnerFilesCopied  []string `json:"owner_files_copied,omitempty"`
+	OwnerFilesCopyDir string   `json:"owner_files_copy_dir,omitempty"`
 }
 
 // PackageRemovalCollateral is one package a removal would take that it did
