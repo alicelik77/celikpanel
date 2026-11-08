@@ -111,6 +111,9 @@ type dbRemoteInstance interface {
 	// apply makes the engine's rules, TLS, listen address and slowing match
 	// target, recording what it changed in state.
 	apply(target dbremote.Target, facts dbRemoteFacts, state *dbremote.TargetState, hostName string) transport.DatabaseRemoteTargetResult
+	// readiness adds to result what is still missing before a first rule
+	// could be in force (alpha.130); it changes nothing.
+	readiness(target dbremote.Target, state dbremote.TargetState, result *transport.DatabaseRemoteTargetResult)
 }
 
 // dbRemoteFacts is one instance as it was read.
@@ -153,9 +156,18 @@ func (a *Agent) DatabaseRemoteStatusV1(req *transport.DatabaseRemoteStatusReques
 			continue
 		}
 		ts := state.Targets[target.Key()]
-		facts := dbRemoteInstanceFor(target.Engine).inspect(target, ts)
-		resp.Targets = append(resp.Targets, describeDBRemoteTarget(target, facts, ts))
+		instance := dbRemoteInstanceFor(target.Engine)
+		facts := instance.inspect(target, ts)
+		result := describeDBRemoteTarget(target, facts, ts)
+		if facts.running {
+			instance.readiness(target, ts, &result)
+		}
+		if nftErr != nil {
+			result.Readiness = append(result.Readiness, readinessProblem(transport.DatabaseRemoteNFTMissing, "nftables is not installed"))
+		}
+		resp.Targets = append(resp.Targets, result)
 	}
+	resp.PanelFirewallRestores, resp.PanelFirewallNote = panelFirewallGuardReport()
 	for _, ts := range state.Targets {
 		if len(ts.Addresses) > 0 || ts.Listen || ts.ListenPending {
 			resp.FilterPorts = append(resp.FilterPorts, ts.Port)
@@ -223,6 +235,7 @@ func (a *Agent) ApplyDatabaseRemoteV1(req *transport.DatabaseRemoteApplyRequest,
 	defer a.configMu.Unlock()
 	databaseRemoteMu.Lock()
 	defer databaseRemoteMu.Unlock()
+	databaseRemoteMariaDBSkipNameResolve = req.MariaDBSkipNameResolve
 	applyDatabaseRemote(targets, req.HostName, a.databaseRemoteReload(), resp)
 	return nil
 }

@@ -94,6 +94,12 @@ func (p *Panel) loadOfferedOptInPermissions(ctx context.Context) (map[string]boo
 }
 
 func (p *Panel) saveOfferedOptInPermissions(ctx context.Context, offered map[string]bool) error {
+	// alpha.130: the offer of database_remote is the server switch of remote
+	// database access, written from the Offered tab and the Databases page
+	// alike; whichever writes it, a change reaches the server
+	// (database_remote_offer.go).
+	before, _ := p.loadOfferedOptInPermissions(ctx)
+	defer databaseRemoteOfferMaybeChanged(before, offered)
 	list := []string{}
 	for id, on := range offered {
 		if on && optInPermissions[id] {

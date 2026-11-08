@@ -32,6 +32,22 @@ type DatabaseRemoteApplyRequest struct {
 	Targets []DatabaseRemoteTarget
 	// HostName is the certificate's name when the Agent has to make one.
 	HostName string
+	// MariaDBSkipNameResolve (alpha.130): the administrator agreed that
+	// CelikPanel turns MariaDB's host name lookup off while remote rules
+	// exist (its option file), so refused sign-ins name the client's
+	// address and the Fail2ban jail can ban it. Without it, MariaDB rules
+	// wait while MariaDB looks host names up.
+	MariaDBSkipNameResolve bool
+}
+
+// DatabaseRemoteNarrowRequest (alpha.130, D5) narrows the address filter to
+// the addresses of Targets' rules: an address or port leaves it, nothing is
+// ever added. It runs no engine client and no package or service manager,
+// so it also works while the server has not finished starting, when the
+// full apply is refused; the engines' own rules follow at the next apply.
+type DatabaseRemoteNarrowRequest struct {
+	ServiceMutationBinding
+	Targets []DatabaseRemoteTarget
 }
 
 // DatabaseRemoteStatusRequest names the instances to describe.
@@ -58,6 +74,19 @@ const (
 	DatabaseRemoteFailed            = "FAILED"             // a verified failure; Detail says which
 	DatabaseRemoteRecordUnreadable  = "RECORD_UNREADABLE"  // the Agent's record cannot be read
 	DatabaseRemoteFirewallUnchanged = "FIREWALL_UNCHANGED" // the address filter could not be written
+	// alpha.130: MariaDB looks client host names up, so a refused sign-in
+	// names a host, which the jail does not ban; the administrator may let
+	// CelikPanel turn the lookup off (MariaDBSkipNameResolve).
+	DatabaseRemoteNameResolve = "NAME_RESOLVE"
+	// alpha.130: the owner's MariaDB configuration sets the lookup itself
+	// (Detail names the file); CelikPanel does not override it.
+	DatabaseRemoteOwnerNameResolve = "OWNER_NAME_RESOLVE"
+	// alpha.130: accounts with a host name (Detail lists them) would stop
+	// working once the lookup is off; they must be changed first.
+	DatabaseRemoteNameAccounts = "NAME_ACCOUNTS"
+	// alpha.130: an informational note on the extra Fail2ban layer of
+	// PostgreSQL (never holds a rule back).
+	DatabaseRemotePGFail2ban = "PG_FAIL2BAN"
 )
 
 // DatabaseRemoteProblem is one problem of an instance or of one rule (User,
@@ -100,6 +129,18 @@ type DatabaseRemoteTargetResult struct {
 	// Active: the rules in force at the engine (refused rules left out).
 	Active   []DatabaseRemoteRule
 	Problems []DatabaseRemoteProblem
+	// Fail2ban (alpha.130): PostgreSQL's extra layer: "on" (its jail runs),
+	// "off" (no rule, or not wanted), "unavailable" (Fail2ban missing or
+	// stopped, or the log cannot be read: Fail2banDetail says why). MariaDB:
+	// "on" or "unavailable" (its jail is required).
+	Fail2ban       string
+	Fail2banDetail string
+	// NameResolve (alpha.130, MariaDB): "off" (addresses are logged), "on",
+	// "pending_restart" (CelikPanel's file turns it off at the next start).
+	NameResolve string
+	// Readiness (alpha.130, status only): what is still missing before a
+	// first rule could be in force here, read without changing anything.
+	Readiness []DatabaseRemoteProblem
 }
 
 // DatabaseRemoteResponse answers both apply and status.
@@ -113,4 +154,12 @@ type DatabaseRemoteResponse struct {
 	FilterLoaded bool
 	ErrorCode    string
 	Error        string
+	// PanelFirewallRestores (alpha.130, D6): how often this Agent put the
+	// panel firewall's table back after it vanished (nft flush ruleset);
+	// the panel syncs its live policy when the number changes.
+	PanelFirewallRestores int
+	// PanelFirewallNote: why the vanished table was not put back (the
+	// owner turned the firewall's boot restore or nftables off), or the
+	// last restore failure.
+	PanelFirewallNote string
 }

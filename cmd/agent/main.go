@@ -838,6 +838,8 @@ func main() {
 	}
 	log.Printf("Agent listening on unix socket %s", socketPath)
 	startPanelCertificateActivationReconciler(mutationManager)
+	// alpha.130 (D6): the panel firewall comes back after `nft flush ruleset`.
+	startPanelFirewallFlushGuard()
 
 	for {
 		conn, err := listener.Accept()

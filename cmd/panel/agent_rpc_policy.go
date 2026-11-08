@@ -33,6 +33,11 @@ const (
 	agentRPCEffectControl
 	agentRPCEffectHostMutation
 	agentRPCEffectHostRepairMutation
+	// agentRPCEffectAccessNarrowing (alpha.130, D5) only takes access away
+	// (an address out of CelikPanel's own nftables filter), uses no package
+	// or service manager and therefore needs no host identity: a closing
+	// must not wait for a server that never finishes starting.
+	agentRPCEffectAccessNarrowing
 )
 
 type agentRPCCapability string
@@ -93,6 +98,11 @@ func (p agentRPCPolicy) validate() error {
 	case agentRPCEffectRead, agentRPCEffectControl:
 		if p.capability != "" {
 			return errors.New("read/control policy carries a host capability")
+		}
+		return nil
+	case agentRPCEffectAccessNarrowing:
+		if p.capability != agentRPCCapabilityFirewall {
+			return errors.New("access narrowing policy must carry the firewall capability")
 		}
 		return nil
 	case agentRPCEffectHostMutation, agentRPCEffectHostRepairMutation:
@@ -255,6 +265,9 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
 		Agent.ApplyDatabaseRemoteV1
+	`),
+	agentRPCAuthGroup(agentRPCEffectAccessNarrowing, agentRPCCapabilityFirewall, `
+		Agent.NarrowDatabaseRemoteFilterV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -576,6 +589,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// nftables filter, TLS, listen address).
 	"Agent.DatabaseRemoteStatusV1": agentRPCNetworkReadTimeout,
 	"Agent.ApplyDatabaseRemoteV1":  agentRPCDatabaseTimeout,
+	// alpha.130 (D5): closing at the address filter only.
+	"Agent.NarrowDatabaseRemoteFilterV1": agentRPCMutationTimeout,
 
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
@@ -743,7 +758,7 @@ func authorizeAgentRPCPolicyForHost(method string, policy agentRPCPolicy, identi
 		return fmt.Errorf("%w: %v", errAgentRPCPolicyInvalid, err)
 	}
 	switch policy.effect {
-	case agentRPCEffectRead, agentRPCEffectControl:
+	case agentRPCEffectRead, agentRPCEffectControl, agentRPCEffectAccessNarrowing:
 		return nil
 	case agentRPCEffectHostMutation, agentRPCEffectHostRepairMutation:
 		packageFamily := strings.TrimSpace(identity.host.PackageFamily)
@@ -794,7 +809,7 @@ func (p *Panel) authorizeAgentRPCContext(ctx context.Context, method string) err
 	if err != nil {
 		return err
 	}
-	if policy.effect == agentRPCEffectRead || policy.effect == agentRPCEffectControl {
+	if policy.effect == agentRPCEffectRead || policy.effect == agentRPCEffectControl || policy.effect == agentRPCEffectAccessNarrowing {
 		return authorizeAgentRPCPolicyForHost(method, policy, agentRPCHostIdentity{})
 	}
 	if ctx == nil {

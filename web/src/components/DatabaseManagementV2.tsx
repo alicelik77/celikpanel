@@ -21,6 +21,8 @@ import { confirmAction } from '../lib/confirmAction';
 // tab; loaded when it is opened, so the entry's list of this page's parts
 // does not grow (the boot path).
 const DatabaseUserPassword = lazy(() => import('./DatabaseUserPassword').then((module) => ({ default: module.DatabaseUserPassword })));
+// alpha.130: the administrator's switch of connections from outside, with each engine's readiness.
+const DatabaseRemoteServerPanel = lazy(() => import('./DatabaseRemoteServerPanel').then((module) => ({ default: module.DatabaseRemoteServerPanel })));
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
@@ -197,6 +199,11 @@ export function DatabaseManagementV2() {
                 HOSTING from SERVER in its navigation and this page is a
                 hosting page.
                 R-069. Bu sayfa musterilerin veritabanlaridir, yalnizca onlar. */}
+            {isAdmin && (
+                <Suspense fallback={null}>
+                    <DatabaseRemoteServerPanel />
+                </Suspense>
+            )}
             <RemoteGate
                 remote={servers.remote}
                 checking={t('databases.checkingServers')}
