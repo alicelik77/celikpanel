@@ -244,7 +244,26 @@ deleted silently.
 
 ## Lab results
 
-_To be filled in after the lab round._
+Lab (QEMU, no real servers or CAs): the published 129 was installed with
+get.sh as a Debian 13 first server (PowerDNS, mail, MariaDB and PostgreSQL)
+and an Ubuntu 24.04 joined server carrying Boston's PostgreSQL history.
+Updates were pressed once from the panel. 129→130 took 70–84 s; schema 77;
+no failed services; sites answered. A forced failing update rolled back on
+the first attempt, with the panel down 29–31 s, with and without
+remote-access rules. Tested and passing: remote database access (host-name
+lookup switch, Fail2ban bans for MariaDB and PostgreSQL, timed access
+closing within a minute, recovery after `nft flush`, closing while the
+server boots), the Offered tab and Databases switch, PostgreSQL leftovers
+(removed and purged ten minutes after start; one-version and whole removal
+leave nothing), and component removals (only the owner's drop-ins and files
+stay, copied aside). Mail programs set themselves up, including DNS on both
+servers and certificates. Sending went through a SASL relay on 587 and 465.
+Subaddressing, the sender list, mailbox recovery, Turkish dates, the
+false-Postfix fix on Debian 13 and the SSH switch all passed. Not tried:
+Arch, IPv6 rules, Roundcube session end, the reseller-gap warning.
+
+Evidence: [`deploy/e2e/dns-pair-acceptance/evidence/a130/`](https://github.com/alicelik77/celikpanel/tree/e46b2c9ff/deploy/e2e/dns-pair-acceptance/evidence/a130) on the
+lab branch `lab/alpha114-acceptance` (commit `e46b2c9ff`).
 
 ## Known limits
 
@@ -315,8 +334,17 @@ _To be filled in after the lab round._
 - **Rights:** in the rare case where remote database access was on at its
   switch but hidden in the Offered tab, it now reads off (as customers
   already had it); the administrator turns it on again in one click.
-- None of the new features has run on a real system yet; the lab steps are
-  in docs/A130-OPS-LAB.md and the feature documents.
+- **Seen in the lab, not fixed in this release:**
+  - on Ubuntu a restored drop-in folder's mode and group changed (0755
+    root:root became 0750 root:celikpanel); systemd still reads it;
+  - the removal answer names the `kept/` folder but not each copied file;
+  - no screen creates a manual sending stop yet, and the 550 text for one
+    would still advise a password change;
+  - while the server is still starting, the customer's rule list answers
+    503, so only an address already on the screen can be removed.
+- The lab ran in virtual machines only (see Lab results); Arch, IPv6 rules,
+  the end of a Roundcube session and the reseller-gap warning were not
+  tried.
 - Earlier limits still apply (see alpha.129).
 
 ## Evidence

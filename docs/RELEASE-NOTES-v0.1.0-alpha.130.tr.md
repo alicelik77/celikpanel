@@ -259,7 +259,30 @@ sessizce silinmez.
 
 ## Laboratuvar sonuçları
 
-_Laboratuvar turundan sonra doldurulacak._
+Laboratuvar (QEMU; gerçek sunucu ya da sertifika sağlayıcısı yok):
+yayımlanmış 129, get.sh ile bir Debian 13 ilk sunucuya (PowerDNS, posta,
+MariaDB ve PostgreSQL) ve Boston'un PostgreSQL geçmişini taşıyan, sonradan
+katılmış bir Ubuntu 24.04 sunucuya kuruldu. Güncellemeler panelden bir kez
+basılarak başlatıldı. 129→130 güncellemesi 70–84 saniye sürdü; şema 77;
+başarısız hizmet yok; siteler yanıt verdi. Bilerek başarısız bırakılan bir
+güncelleme, dışarıdan erişim kuralları olsa da olmasa da ilk denemede geri
+alındı; panel 29–31 saniye kapalı kaldı. Denenip geçenler: veritabanına
+dışarıdan bağlanma (ad çözme anahtarı, MariaDB ve PostgreSQL için Fail2ban
+yasakları, bir dakika içinde kapanan süreli erişim, `nft flush` sonrası
+toparlanma, sunucu açılırken kapatma), Sunulanlar sekmesi ve Veritabanları
+anahtarı, PostgreSQL kalıntıları (açılıştan on dakika sonra kaldırıldı ve
+paketleri temizlendi; tek sürümü ya da tamamını kaldırmak geride hiçbir şey
+bırakmıyor) ve bileşen kaldırmaları (yalnız sahibin ek ayarları ve
+dosyaları, kenara kopyalanmış olarak kalıyor). Posta programları, iki
+sunucudaki DNS ve sertifikalar dahil kendiliğinden ayarlandı. Gönderim 587
+ve 465 portlarında SASL kullanan bir aktarma sunucusundan geçti. Alt
+adresleme, gönderen listesi, posta kutusu kurtarma, Türkçe tarihler,
+Debian 13'teki yanlış Postfix uyarısı düzeltmesi ve SSH anahtarı da geçti.
+Denenmeyenler: Arch, IPv6 kuralları, Roundcube oturumunun kapanması, bayi
+eksikliği uyarısı.
+
+Kanıt: laboratuvar dalı `lab/alpha114-acceptance` (commit `e46b2c9ff`)
+üzerinde [`deploy/e2e/dns-pair-acceptance/evidence/a130/`](https://github.com/alicelik77/celikpanel/tree/e46b2c9ff/deploy/e2e/dns-pair-acceptance/evidence/a130).
 
 ## Bilinen sınırlar
 
@@ -332,8 +355,18 @@ _Laboratuvar turundan sonra doldurulacak._
 - **Haklar:** veritabanına dışarıdan bağlanma kendi anahtarında açık ama
   Sunulanlar sekmesinde gizliyse (seyrek bir durum), artık kapalı okunur
   (müşteriler için zaten öyleydi); yönetici tek tıkla yeniden açar.
-- Yeni özelliklerin hiçbiri henüz gerçek bir sistemde çalıştırılmadı;
-  laboratuvar adımları docs/A130-OPS-LAB.md ve özellik belgelerinde.
+- **Laboratuvarda görülen, bu sürümde düzeltilmeyenler:**
+  - Ubuntu'da geri konan bir ek ayar klasörünün izni ve grubu değişti (0755
+    root:root, 0750 root:celikpanel oldu); systemd onu yine okuyor;
+  - kaldırma yanıtı `kept/` klasörünü söylüyor ama kopyalanan dosyaları tek
+    tek saymıyor;
+  - gönderimi elle durduran bir ekran henüz yok ve böyle bir durdurmadaki
+    550 iletisi hâlâ parola değiştirmeyi öneriyor;
+  - sunucu hâlâ açılırken müşterinin kural listesi 503 yanıtı veriyor; bu
+    yüzden yalnız ekranda zaten görünen bir adres kaldırılabiliyor.
+- Laboratuvar yalnız sanal makinelerde çalıştı (bkz. Laboratuvar
+  sonuçları); Arch, IPv6 kuralları, Roundcube oturumunun kapanması ve bayi
+  eksikliği uyarısı denenmedi.
 - Önceki sınırlar geçerliliğini koruyor (bkz. alpha.129).
 
 ## Kanıt
