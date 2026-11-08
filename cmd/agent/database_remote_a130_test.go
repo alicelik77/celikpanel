@@ -99,14 +99,14 @@ func TestMariaDBHostNameLookupLeavesTheOwnersSetting(t *testing.T) {
 
 func TestMariaDBNameResolveSettingAndAddressForms(t *testing.T) {
 	for text, want := range map[string]string{
-		"[mysqld]\nskip-name-resolve\n":                       "lookup_off",
-		"[mysqld]\nskip_name_resolve = ON\n":                  "lookup_off",
-		"[mariadbd]\nskip-name-resolve=0\n":                   "lookup_on",
-		"[server]\ndisable-skip-name-resolve\n":               "lookup_on",
-		"[client]\nskip-name-resolve\n":                       "",
-		"[mysqld]\n#skip-name-resolve\n":                      "",
-		"[mariadb-10.11]\nskip-name-resolve\n":                "lookup_off",
-		"[mariadb-client]\nskip-name-resolve\n":               "",
+		"[mysqld]\nskip-name-resolve\n":                      "lookup_off",
+		"[mysqld]\nskip_name_resolve = ON\n":                 "lookup_off",
+		"[mariadbd]\nskip-name-resolve=0\n":                  "lookup_on",
+		"[server]\ndisable-skip-name-resolve\n":              "lookup_on",
+		"[client]\nskip-name-resolve\n":                      "",
+		"[mysqld]\n#skip-name-resolve\n":                     "",
+		"[mariadb-10.11]\nskip-name-resolve\n":               "lookup_off",
+		"[mariadb-client]\nskip-name-resolve\n":              "",
 		"[mysqld]\nskip-name-resolve\nskip-name-resolve=off": "lookup_on",
 	} {
 		if got := mariadbNameResolveSetting(text); got != want {
@@ -150,7 +150,9 @@ func TestPGFail2banLayerIsAddedAndRemoved(t *testing.T) {
 	var statements []string
 	prefix := "%m [%p] %q%u@%d "
 	restoreQuery, restoreSource, restoreList := databaseRemotePGQuery, databaseRemotePGLogSource, databaseRemoteListDir
-	t.Cleanup(func() { databaseRemotePGQuery, databaseRemotePGLogSource, databaseRemoteListDir = restoreQuery, restoreSource, restoreList })
+	t.Cleanup(func() {
+		databaseRemotePGQuery, databaseRemotePGLogSource, databaseRemoteListDir = restoreQuery, restoreSource, restoreList
+	})
 	databaseRemotePGQuery = func(_ int, sql string) (string, error) {
 		statements = append(statements, sql)
 		if strings.Contains(sql, "current_setting('log_line_prefix')") {
@@ -290,7 +292,7 @@ type fakeGuardRunner struct {
 }
 
 func (r *fakeGuardRunner) AcquireFirewallLock() (io.Closer, error) { return io.NopCloser(nil), nil }
-func (r *fakeGuardRunner) LookPath(name string) (string, error)  { return "/usr/sbin/" + name, nil }
+func (r *fakeGuardRunner) LookPath(name string) (string, error)    { return "/usr/sbin/" + name, nil }
 func (r *fakeGuardRunner) Output(name string, args ...string) ([]byte, error) {
 	switch {
 	case name == "nft" && len(args) == 2 && args[0] == "list" && args[1] == "tables":
@@ -320,8 +322,8 @@ func (r *fakeGuardRunner) ConfiguredSSHSocketPorts() ([]int, error) { return nil
 type memoryFirewallStore struct{ data []byte }
 
 func (s *memoryFirewallStore) Load() ([]byte, bool, error) { return s.data, s.data != nil, nil }
-func (s *memoryFirewallStore) Save(b []byte) error           { s.data = b; return nil }
-func (s *memoryFirewallStore) Remove() error                 { s.data = nil; return nil }
+func (s *memoryFirewallStore) Save(b []byte) error         { s.data = b; return nil }
+func (s *memoryFirewallStore) Remove() error               { s.data = nil; return nil }
 
 func TestPanelFirewallGuardRestoresWithoutUnprovenDatabasePorts(t *testing.T) {
 	host := fakeFilterHost(t) // the database filter: file present, chain missing, nft -f "fails" to prove it

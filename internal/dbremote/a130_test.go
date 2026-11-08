@@ -65,7 +65,7 @@ func TestPGFailRegexReadsRefusedSignIns(t *testing.T) {
 		// Debian/Ubuntu '%m [%p] %q%u@%d ' + marker; Fail2ban cut the date.
 		" UTC [41234] shop_user@shop_db celikpanel-client=203.0.113.7 FATAL:  password authentication failed for user \"shop_user\"": "203.0.113.7",
 		" [41234] shop_user@shop_db celikpanel-client=203.0.113.7 FATAL:  password authentication failed for user \"shop_user\"\n":   "203.0.113.7",
-		" +03 [41234] shop_user@shop_db celikpanel-client=2001:db8::7 FATAL:  password authentication failed for user \"shop_user\"":  "2001:db8::7",
+		" +03 [41234] shop_user@shop_db celikpanel-client=2001:db8::7 FATAL:  password authentication failed for user \"shop_user\"": "2001:db8::7",
 		// With the date still there.
 		"2026-11-08 10:00:00.123 UTC [41234] shop_user@shop_db celikpanel-client=198.51.100.4 FATAL:  password authentication failed for user \"shop_user\"": "198.51.100.4",
 		// PostgreSQL's default '%m [%p] ' + '%q' + marker, from the journal.
