@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Copy, KeyRound, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { formatDate } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, Dialog } from './ui';
 import { showToast } from './Toast';
@@ -88,7 +89,7 @@ const titles: Record<'coming' | 'closed' | 'open' | 'owner' | 'failed', Translat
     failed: 'pwmail.failed.title',
 };
 
-const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString() : '');
+const day = (iso: string | undefined, locale: string) => (iso ? formatDate(new Date(iso), locale) : '');
 
 interface Created {
     domainId: number;
@@ -98,7 +99,7 @@ interface Created {
 }
 
 export function PasswordlessMailNotice() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const report = useRemote(PASSWORDLESS_MAIL_URL, decodePasswordless);
     const [busy, setBusy] = useState<number | null>(null);
     const [shown, setShown] = useState<Created | null>(null);
@@ -190,7 +191,7 @@ export function PasswordlessMailNotice() {
                                     <p className="text-xs text-fg-muted">
                                         {site.ways.map((way) => t(way === 'smtp' ? 'pwmail.way.smtp' : 'pwmail.way.sendmail')).join(' · ')}
                                         {' · '}
-                                        {t('pwmail.count', { count: site.messages + site.refused, last: day(site.last) })}
+                                        {t('pwmail.count', { count: site.messages + site.refused, last: day(site.last, locale) })}
                                     </p>
                                     {site.sender_mailbox && (
                                         <p className="text-xs text-fg-muted">{t('pwmail.hasMailbox', { address: site.sender_mailbox })}</p>
@@ -215,7 +216,7 @@ export function PasswordlessMailNotice() {
                                 {view.others.map((other) => (
                                     <li key={`${other.way}:${other.label}`} className="break-words">
                                         {other.label} · {t(other.way === 'smtp' ? 'pwmail.way.smtp' : 'pwmail.way.sendmail')} ·{' '}
-                                        {t('pwmail.count', { count: other.messages + other.refused, last: day(other.last) })}
+                                        {t('pwmail.count', { count: other.messages + other.refused, last: day(other.last, locale) })}
                                     </li>
                                 ))}
                             </ul>
@@ -224,7 +225,7 @@ export function PasswordlessMailNotice() {
                 </>
             )}
             {view.state !== 'unknown' && (shortLog || view.incomplete) && (
-                <p className="mt-2 text-xs">{t(view.incomplete ? 'pwmail.incomplete' : 'pwmail.shortLog', { since: day(view.covered_since) })}</p>
+                <p className="mt-2 text-xs">{t(view.incomplete ? 'pwmail.incomplete' : 'pwmail.shortLog', { since: day(view.covered_since, locale) })}</p>
             )}
             {shown && <SettingsDialog created={shown} onClose={() => setShown(null)} />}
         </Box>

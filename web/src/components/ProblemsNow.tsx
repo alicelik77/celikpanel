@@ -70,7 +70,7 @@ export function problemVars(
 export function isProblemKind(kind: unknown): kind is ProblemKind {
     return typeof kind === 'string' && (KINDS as readonly string[]).includes(kind);
 }
-const REASONS = ['checking', 'unreadable', 'not_scanned'] as const;
+const REASONS = ['checking', 'unreadable', 'not_scanned', 'stale'] as const;
 
 export interface Problem {
     key: string;

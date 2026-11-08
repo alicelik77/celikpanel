@@ -1800,6 +1800,8 @@ func main() {
 	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
 	http.HandleFunc(osUpdatesModePath, panel.handleOSUpdatesMode)
 	http.HandleFunc(osUpdatesSummaryPath, panel.handleOSUpdatesSummary)
+	// alpha.130: SSH password sign-in, read and changed by the administrator.
+	http.HandleFunc(sshPasswordLoginPath, panel.handleSSHPasswordLogin)
 	// alpha.118: the SSH command line's missing tools, installed by the administrator.
 	http.HandleFunc(fileAccessToolsPath, panel.handleFileAccessTools)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.

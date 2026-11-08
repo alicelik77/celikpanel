@@ -210,6 +210,10 @@ export function replaceLazyImport(moduleURL, specifier, replacementURL) {
   return dataModule(replaced);
 }
 
+// 8 Nov 2026: every date and time follows the interface language through the one formatter (no imports of its own).
+export const dateFormatURL = compileSource('lib/dateFormat.ts', unexpected('lib/dateFormat.ts'));
+// alpha.130: the update sources in plain words (no imports of its own).
+export const updateOriginsURL = compileSource('lib/updateOrigins.ts', unexpected('lib/updateOrigins.ts'));
 // alpha.127: the owner's password rule, read by every password field and form.
 export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
 
@@ -255,6 +259,8 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/passwordPolicy': passwordPolicyURL,
     '/engineIcons': engineIconsURL,
     '/componentMarks': componentMarksURL,
+    '/lib/dateFormat': dateFormatURL,
+    '/lib/updateOrigins': updateOriginsURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
     ...extra,

@@ -23,6 +23,7 @@ const stub = dataModule(`
   const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
   export const useI18n = () => ({ t: (key, vars) => (globalThis.cardWords?.[key] !== undefined ? fill(globalThis.cardWords[key], vars) : key), locale: 'en' });
   export const useNavigate = () => () => true;
+  export const Link = ({ to, children, ...rest }) => React.createElement('a', { href: to, ...rest }, children);
   export const showToast = () => {};
   export const componentName = (s) => (typeof s === 'string' ? s : s.name);
 `);

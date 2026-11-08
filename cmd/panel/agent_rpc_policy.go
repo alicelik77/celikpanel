@@ -153,7 +153,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodeSiteInstallStatusV1 Agent.SiteLogStatusV1 Agent.GitDeployStatusV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
-		Agent.ServiceHealthV1
+		Agent.ServiceHealthV1 Agent.SSHPasswordLoginStatusV1
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 	`),
@@ -176,6 +176,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServerRebootV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
+		Agent.SetSSHPasswordLoginV1
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
 		Agent.UpdateExtendedPHPConfig Agent.UpdateMySQLConfig Agent.UpdatePHPConfig
 		Agent.UpdatePHPConfiguration Agent.UpdatePHPPoolConfig Agent.ApplySitePool
@@ -325,6 +326,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.PHPToolBindingsV1":             agentRPCQuickReadTimeout,
 	"Agent.PostfixQueue":                  agentRPCQuickReadTimeout,
 	"Agent.ServiceHealthV1":               agentRPCQuickReadTimeout,
+	"Agent.SSHPasswordLoginStatusV1":      agentRPCQuickReadTimeout,
+	"Agent.SetSSHPasswordLoginV1":         agentRPCMutationTimeout,
 	"Agent.RepoStatus":                    agentRPCDeploymentTimeout,
 	"Agent.SiteUsage":                     agentRPCQuickReadTimeout,
 	"Agent.Version":                       agentRPCQuickReadTimeout,

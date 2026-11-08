@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Copy, Globe, RefreshCw, ShieldCheck, AlertTriangle, Check } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatTime } from '../lib/dateFormat';
 import { Checking, CouldNotCheck, KeepWords, RemoteGate, StatusDot } from './ui';
 import { decodeList, lastKnown, useRemote, useRereadWhileRechecking } from '../lib/remote';
 import { HelpButton } from './HelpDrawer';
@@ -189,8 +190,7 @@ export function DomainConnection({ domainId, domainName }: { domainId: number; d
     const lastCheckedAt = (() => {
         if (!shown) return '';
         const stamped = Date.parse(shown.value.checked_at);
-        return new Date(Number.isFinite(stamped) ? stamped : shown.observedAt)
-            .toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US');
+        return formatTime(Number.isFinite(stamped) ? stamped : shown.observedAt, locale, {});
     })();
 
     // Two different things can be unknown here, and neither is "this domain
