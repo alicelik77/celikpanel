@@ -111,6 +111,41 @@ func serviceHealthUnit(serviceID, pkgFamily, unit string) string {
 
 const postfixDefaultInstanceUnit = "postfix@-"
 
+// postfixWrapperUnit is read next to the default instance on apt systems.
+// Debian 13's Postfix 3.10 package ships postfix.service as the daemon
+// itself (Type=forking, "active (running)") and leaves postfix@-.service
+// "inactive (dead)"; reading only the instance called a running Postfix
+// stopped (lab, alpha.130, Debian 13 — Frankfurt's system). When the wrapper
+// reads "running" it is the daemon and its reading stands for the instance.
+//
+// Debian 13'te postfix.service daemon'ın kendisidir; "running" okunursa
+// örneğin yerine o okunur.
+const postfixWrapperUnit = "postfix"
+
+// withPostfixDaemonReading puts the wrapper's reading in place of the
+// default instance's when the wrapper itself runs the daemon.
+func withPostfixDaemonReading(units []transport.ServiceHealthUnit) []transport.ServiceHealthUnit {
+	var wrapper *transport.ServiceHealthUnit
+	for i := range units {
+		if units[i].Unit == postfixWrapperUnit {
+			wrapper = &units[i]
+		}
+	}
+	if wrapper == nil || wrapper.ActiveState != "active" || wrapper.SubState != "running" {
+		return units
+	}
+	out := make([]transport.ServiceHealthUnit, len(units))
+	copy(out, units)
+	for i := range out {
+		if out[i].Unit == postfixDefaultInstanceUnit {
+			reading := *wrapper
+			reading.Unit = postfixDefaultInstanceUnit
+			out[i] = reading
+		}
+	}
+	return out
+}
+
 // serviceHealthReady is the scan's own rule (managedServiceUnitReady) applied
 // to a live reading: any active state of the unit that proves the daemon is
 // up. A oneshot unit such as wg-quick@wg0, or a unit systemd generated from
@@ -178,9 +213,15 @@ func (p *Panel) refreshServiceHealth(ctx context.Context, now time.Time) {
 	if !ok || len(services) == 0 {
 		return
 	}
-	units := make([]string, 0, len(services))
+	units := make([]string, 0, len(services)+1)
+	readsWrapper, readsInstance := false, false
 	for _, service := range services {
 		units = append(units, service.Unit)
+		readsWrapper = readsWrapper || service.Unit == postfixWrapperUnit
+		readsInstance = readsInstance || service.Unit == postfixDefaultInstanceUnit
+	}
+	if readsInstance && !readsWrapper && len(units) < transport.ServiceHealthMaxUnits {
+		units = append(units, postfixWrapperUnit)
 	}
 	callCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -211,6 +252,7 @@ func (s *serviceHealthState) record(now time.Time, units []transport.ServiceHeal
 	if vcpus < 1 {
 		vcpus = 1
 	}
+	units = withPostfixDaemonReading(units)
 	s.units, s.cpu = map[string]transport.ServiceHealthUnit{}, map[string]float64{}
 	for _, unit := range units {
 		s.units[unit.Unit] = unit

@@ -163,3 +163,35 @@ func TestServiceHealthReportSaysRunningByTheScanRule(t *testing.T) {
 	}
 	_ = now
 }
+
+// Lab, alpha.130 (Debian 13, Postfix 3.10): postfix.service is the daemon
+// itself (Type=forking, "active (running)") and postfix@-.service stays
+// "inactive (dead)". The instance-only reading called a running Postfix
+// stopped; the wrapper's running reading now stands for the instance, while
+// Ubuntu's exited wrapper still defers to its running or dead instance.
+func TestDebian13PostfixDaemonInTheWrapperIsRunning(t *testing.T) {
+	now := time.Date(2026, 11, 8, 11, 42, 0, 0, time.UTC)
+	liveReadings(t, now,
+		transport.ServiceHealthUnit{Unit: "postfix@-", ActiveState: "inactive", SubState: "dead"},
+		transport.ServiceHealthUnit{Unit: "postfix", ActiveState: "active", SubState: "running"},
+	)
+	live, liveAt := overlayLiveServiceStatus([]serviceObservation{{ID: "postfix", IsInstalled: true, Status: "active (running)", Unit: "postfix"}}, "apt", now)
+	if live[0].Status != "active (running)" {
+		t.Fatalf("Debian 13 Postfix read as %q", live[0].Status)
+	}
+	problems, _ := serviceProblems(live, core.ManagedServiceHostProfile{PackageFamily: "apt"}, now.Add(-24*time.Hour), liveAt, now)
+	for _, p := range problems {
+		if p.Subject == "postfix" {
+			t.Fatalf("a running Debian 13 Postfix was called stopped: %+v", p)
+		}
+	}
+	// Ubuntu: the wrapper exited, the instance dead -> stopped.
+	liveReadings(t, now,
+		transport.ServiceHealthUnit{Unit: "postfix@-", ActiveState: "inactive", SubState: "dead"},
+		transport.ServiceHealthUnit{Unit: "postfix", ActiveState: "active", SubState: "exited"},
+	)
+	live, _ = overlayLiveServiceStatus([]serviceObservation{{ID: "postfix", IsInstalled: true, Status: "active (running)", Unit: "postfix"}}, "apt", now)
+	if live[0].Status == "active (running)" {
+		t.Fatal("a dead instance behind Ubuntu's exited wrapper was read as running")
+	}
+}
