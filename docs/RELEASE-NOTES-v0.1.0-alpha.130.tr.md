@@ -242,6 +242,13 @@ sessizce silinmez.
   yalnız bu birimi okuduğu için Debian 13'te uyarı veriyordu. İzleme artık
   ikisini de okuyor ve sarmalayıcı kendisi çalışıyorsa onun okumasını
   alıyor.
+- **Sunucu hâlâ açılırken gönderilen değişiklik bunu söylüyor.** systemd
+  sunucuyu hâlâ "açılıyor" gösterirken Ajan değişiklikleri reddeder; alan
+  adı oluşturmak (ve başka değişiklikler) o sırada yalnız "500 iç hata"
+  yanıtı alıyordu. Yanıt artık "sunucu hâlâ açılıyor": hiçbir şey
+  değişmedi, kimsenin bir şey yapması gerekmiyor, 15 saniye sonra yeniden
+  deneyin; açılış 10 dakikadan uzun sürerse bakılacak komutlar da
+  gösteriliyor.
 
 ## Laboratuvar sonuçları
 

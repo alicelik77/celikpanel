@@ -229,6 +229,12 @@ deleted silently.
   `postfix@-` instance behind a wrapper; the first fix read only the
   instance and raised the alarm on Debian 13. Monitoring now reads both and
   takes the wrapper's reading when the wrapper itself runs.
+- **A change sent while the server is still booting says so.** While
+  systemd still reports the server as starting, the Agent refuses changes;
+  creating a domain (and other changes) then answered a bare "500 internal
+  error". The answer is now "the server is still starting": nothing was
+  changed, nobody needs to act, try again in 15 seconds, and the commands
+  to look at when the boot lasts longer than 10 minutes.
 
 ## Lab results
 
