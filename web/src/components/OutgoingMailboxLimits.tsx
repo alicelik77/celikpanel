@@ -154,10 +154,12 @@ export function OutgoingMailboxLimits({ domainId, readOnly, onChangePassword }: 
                                             {row.paused && (
                                                 <div role="alert" className="mt-2 flex flex-wrap items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-fg">
                                                     <p className="min-w-0 max-w-[75ch] flex-1">
-                                                        {t('mout.dom.paused', { reason: t(`mout.paused.reason.${row.paused.reason}` as never) })}
+                                                        {row.paused.reason === 'manual'
+                                                            ? t(admin || role === 'reseller' ? 'mout.dom.pausedManual.manager' : 'mout.dom.pausedManual.customer')
+                                                            : t('mout.dom.paused', { reason: t(`mout.paused.reason.${row.paused.reason}` as never) })}
                                                         {row.paused.detail && <span className="mt-1 block text-xs text-fg-muted">{row.paused.detail}</span>}
                                                     </p>
-                                                    {!readOnly && (
+                                                    {!readOnly && row.paused.reason !== 'manual' && (
                                                         <Button type="button" variant="primary" icon={KeyRound} onClick={() => onChangePassword(row.id, row.address)} data-outgoing-resume={row.address}>
                                                             {t('mout.dom.changePassword')}
                                                         </Button>

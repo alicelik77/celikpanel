@@ -63,3 +63,17 @@ test('nothing joins the boot path: both screens are their own chunks', () => {
   assert.match(source('../src/components/DomainMailManager.tsx'), /lazy\(\(\) => import\('\.\/MailboxRecoveryDialog'\)\)/);
   assert.doesNotMatch(source('../src/i18n/en.ts'), /mailboxRecovery/);
 });
+
+test('a stop set by hand is not offered a password change and says who reopens it', () => {
+  const limits = source('../src/components/OutgoingMailboxLimits.tsx');
+  assert.match(limits, /!readOnly && row\.paused\.reason !== 'manual' &&/);
+  assert.match(limits, /'mout\.dom\.pausedManual\.manager' : 'mout\.dom\.pausedManual\.customer'/);
+  const manager = source('../src/components/DomainMailManager.tsx');
+  assert.ok(manager.includes('const stillPaused = /"sending_paused":'), 'the password answer is read for a stop that stays');
+  for (const lang of ['en', 'tr']) {
+    const words = source(`../src/i18n/mailOutgoing/${lang}.ts`) + source(`../src/i18n/screens/mailWork/${lang}.ts`);
+    for (const key of ['mout.dom.pausedManual.manager', 'mout.dom.pausedManual.customer', 'mout.paused.nextManual', 'mail.sendingStillPaused.manager', 'mail.sendingStillPaused.customer']) {
+      assert.ok(words.includes(`'${key}'`), `${lang} ${key}`);
+    }
+  }
+});

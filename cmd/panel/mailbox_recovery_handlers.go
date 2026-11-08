@@ -673,17 +673,13 @@ func (p *Panel) handleMailboxRecoveryReset(w http.ResponseWriter, r *http.Reques
 	}
 	// A security pause ends with a new password (owner decision, 7 Nov
 	// 2026); an administrator's manual pause stays.
-	switch reason := p.mailboxPauseReason(ctx, link.accountID); reason {
-	case "":
-	case "manual":
-		answer["sending_paused"] = true
-	default:
-		if resumed, err := p.resumeOutgoingAfterPassword(context.WithoutCancel(ctx), link.accountID); resumed {
-			answer["sending_resumed"] = err == nil
-			if err != nil {
-				answer["sending_resume_pending"] = true
-			}
+	if resumed, err := p.resumeOutgoingAfterPassword(context.WithoutCancel(ctx), link.accountID); resumed {
+		answer["sending_resumed"] = err == nil
+		if err != nil {
+			answer["sending_resume_pending"] = true
 		}
+	} else if p.mailboxPauseReason(ctx, link.accountID) == "manual" {
+		answer["sending_paused"] = true
 	}
 	p.auditAs(r, 0, "mail.account.recovery.reset_completed", "email_account", link.accountID)
 	if setup := p.accountMailSetup(ctx); setup.Available {

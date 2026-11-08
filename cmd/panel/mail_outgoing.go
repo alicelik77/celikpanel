@@ -875,8 +875,11 @@ func outgoingHistory(ctx context.Context, q sqlQueryer, address string, from, to
 	return out, rows.Err()
 }
 
-// resumeOutgoingAfterPassword ends a pause once the mailbox has a new
-// password (the only way out, owner decision 2) and has postfwd let it send.
+// resumeOutgoingAfterPassword ends a security pause (spike, refusals) once
+// the mailbox has a new password (the only way out, owner decision 2) and has
+// postfwd let it send. A pause an administrator or reseller set by hand
+// (paused_reason 'manual') is never ended by a password change, whoever
+// changes it and by whichever path (alpha.130): only that role lifts it.
 func (p *Panel) resumeOutgoingAfterPassword(ctx context.Context, accountID int) (bool, error) {
 	resumed, pending, err := p.resumeOutgoingAfterPasswordConfirmed(ctx, accountID)
 	if err == nil && pending {
@@ -897,7 +900,8 @@ func (p *Panel) resumeOutgoingAfterPasswordConfirmed(ctx context.Context, accoun
 	var address string
 	err := db.QueryRowContext(ctx, `
 		SELECT lower(a.address) FROM mailbox_outgoing mo JOIN email_accounts a ON a.id = mo.email_account_id
-		WHERE mo.email_account_id = ? AND mo.paused_at IS NOT NULL`, accountID).Scan(&address)
+		WHERE mo.email_account_id = ? AND mo.paused_at IS NOT NULL
+		  AND COALESCE(mo.paused_reason, '') <> 'manual'`, accountID).Scan(&address)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, false, nil
 	}
@@ -922,7 +926,7 @@ func (p *Panel) resumeOutgoingAfterPasswordConfirmed(ctx context.Context, accoun
 	result, err := db.ExecContext(ctx, `
 		UPDATE mailbox_outgoing SET paused_at = NULL, paused_reason = NULL, paused_detail = NULL,
 		       resumed_at = ?, resume_base_recipients = ?, resume_base_refusals = ?, updated_at = datetime('now')
-		WHERE email_account_id = ? AND paused_at IS NOT NULL`,
+		WHERE email_account_id = ? AND paused_at IS NOT NULL AND COALESCE(paused_reason, '') <> 'manual'`,
 		now.Format("2006-01-02 15:04:05"), max(baseRecipients, 0), max(baseRefusals, 0), accountID)
 	if err != nil {
 		return false, false, err

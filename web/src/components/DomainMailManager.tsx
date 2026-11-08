@@ -15,6 +15,7 @@ import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { runBulk, type BulkOutcome, type BulkTarget } from '../lib/bulkMailbox';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
+import { useAuth } from '../auth/AuthContext';
 
 interface EmailAccount {
     id: number;
@@ -82,6 +83,7 @@ const MailboxRecoveryDialog = lazy(() => import('./MailboxRecoveryDialog'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
     const { t } = useI18n();
+    const { role } = useAuth();
     const [activeTab, setActiveTab] = useState<'accounts' | 'forwarding' | 'auth' | 'settings'>('accounts');
     // The two lists are read once for the screen, so the number beside each
     // tab is the server's and not a zero for a tab nobody opened yet. Each is
@@ -388,8 +390,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             const text = await res.text();
             const resumed = /"sending_resumed":\s*true/.test(text);
             const resumePending = /"sending_resume_pending":\s*true/.test(text);
-            showToast('success', resumed ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumed')}`
-                : resumePending ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumePending')}` : t('mail.passwordUpdated'));
+            // alpha.130: a stop set by hand stays after a password change.
+            const stillPaused = /"sending_paused":\s*true/.test(text);
+            showToast(stillPaused ? 'warning' : 'success', resumed ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumed')}`
+                : resumePending ? `${t('mail.passwordUpdated')} ${t('mail.sendingResumePending')}`
+                : stillPaused ? `${t('mail.passwordUpdated')} ${t(role === 'admin' || role === 'reseller' ? 'mail.sendingStillPaused.manager' : 'mail.sendingStillPaused.customer')}`
+                : t('mail.passwordUpdated'));
             invalidate('mail');
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;

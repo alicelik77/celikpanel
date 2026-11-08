@@ -20,6 +20,8 @@ export const enMailWorkScreens = {
     'opstep.mailEmpty.empty': 'Removing the messages of {name} (Dovecot)',
     'mail.sendingResumed': 'Sending from it, stopped for security, is open again.',
     'mail.sendingResumePending': 'The security stop is lifted; sending opens again within a few minutes, by itself.',
+    'mail.sendingStillPaused.manager': 'Sending stays stopped: it was stopped by hand, and a password change does not reopen it. The administrator or reseller who stopped it reopens it.',
+    'mail.sendingStillPaused.customer': 'Sending stays stopped: your provider stopped it by hand, and a password change does not reopen it. Ask your provider to reopen it.',
     'mail.bulk.selected': '{n} selected',
     'mail.bulk.select': 'Select {name}',
     'mail.bulk.selectAll': 'Select all mailboxes',
