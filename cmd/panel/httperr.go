@@ -777,6 +777,13 @@ func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
 		writeAgentUnreachable(w, err)
 		return
 	}
+	// alpha.130 lab: a change sent while systemd still reports the server
+	// as starting is refused before it reaches the Agent; it is an unmet
+	// prerequisite that clears by itself, never a bare 500 (D-024).
+	if hostStillStartingError(err) {
+		writeHostStarting(w, err)
+		return
+	}
 	if classification, ok := classifyStableAgentError(err); ok {
 		log.Printf("[%d] %v", classification.Status, err)
 		body := apiErrorBody{
@@ -808,6 +815,42 @@ func writeServerErrorAs(w http.ResponseWriter, caller *Caller, err error) {
 	writeCodedError(w, http.StatusInternalServerError, errCodeInternal, "internal server error", "")
 }
 
+// errCodeHostStarting: systemd still reports the server as starting, so the
+// Agent cannot read the host identity and refuses every change before it is
+// sent. The same state the startup page shows as PANEL_STARTING, for a
+// request that reached a handler.
+const errCodeHostStarting = "HOST_STARTING"
+
+const hostStartingMessage = "This server is still starting: its system manager (systemd) does not report it ready yet, " +
+	"so CelikPanel did not send this change and nothing was changed. Nobody needs to act now: wait a minute and try again. " +
+	"If the server is still starting after 10 minutes, the server owner runs `systemctl is-system-running` and " +
+	"`systemctl --failed` on the server and fixes what keeps the boot from finishing."
+
+// hostStillStartingError: the refusal names systemd still starting (or
+// initializing). The message is also read when a handler kept only the text
+// of the Agent's refusal.
+func hostStillStartingError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if startupHostStillStarting(err) {
+		return true
+	}
+	message := err.Error()
+	if !strings.Contains(message, "systemd is not ready") {
+		return false
+	}
+	return strings.Contains(message, `"starting"`) || strings.Contains(message, `"initializing"`) ||
+		strings.Contains(message, "state starting") || strings.Contains(message, "state initializing")
+}
+
+func writeHostStarting(w http.ResponseWriter, err error) {
+	log.Printf("[503] host still starting: %v", err)
+	w.Header().Set("Retry-After", "15")
+	w.Header().Set("Cache-Control", "no-store")
+	writeCodedError(w, http.StatusServiceUnavailable, errCodeHostStarting, hostStartingMessage, "")
+}
+
 // writeUsernameError answers a username ValidateUsername refused: a reserved
 // name gets its own code (the page says why in the interface language), any
 // other refusal keeps its explicit message.
@@ -837,7 +880,7 @@ func writeClientError(w http.ResponseWriter, status int, message string) {
 func writeAgentError(w http.ResponseWriter, err error, agentDetail string) {
 	if agentDetail != "" {
 		status := http.StatusInternalServerError
-		if agentUnreachableAlone(err) {
+		if agentUnreachableAlone(err) || hostStillStartingError(err) {
 			// The log line names the status writeServerError answers.
 			// Günlük satırı writeServerError'ın döneceği durumu yazar.
 			status = http.StatusServiceUnavailable
