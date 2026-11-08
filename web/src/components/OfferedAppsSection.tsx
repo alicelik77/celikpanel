@@ -5,7 +5,7 @@ import { showToast } from './Toast';
 import { Checking, ErrorBanner, RemoteGate } from './ui';
 import type { ApiError } from '../lib/apiError';
 import { invalidate, useRemote } from '../lib/remote';
-import { OFFERED_URL, sendRights } from '../lib/rights';
+import { OFFERED_URL, offeredStateIn, sendRights } from '../lib/rights';
 import { APP_CATALOG_URL, appText, decodeCatalog, type CatalogApp } from '../lib/appCatalog';
 import { confirmAction } from '../lib/confirmAction';
 
@@ -38,7 +38,14 @@ export function OfferedAppsSection() {
                 if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
                 if (result.kind === 'refused') setFailure(result.error);
                 invalidate('rights');
-                await catalog.retry();
+                const reread = await catalog.retry();
+                if (result.kind === 'done') {
+                    // alpha.130: what the server did, never a box that quietly flips back.
+                    const listed = reread.state === 'known' ? reread.value.find((entry) => entry.id === app.id)?.offered : undefined;
+                    const now = offeredStateIn(result.body, app.offering_id) ?? listed;
+                    if (now === undefined) showToast('error', t('common.resultUnknown'));
+                    else if (now !== offered) setFailure({ message: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: app.name }) });
+                }
             } finally {
                 setPending(null);
             }

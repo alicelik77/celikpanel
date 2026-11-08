@@ -199,6 +199,7 @@ var auditActionNames = []string{
 	"notifications.preferences",
 	"notifications.settings",
 	"offering.admin_offer",
+	"offering.stale_entries_moved",
 	"panel.access.settings",
 	"panel.certificate",
 	"panel.certificate.failed",

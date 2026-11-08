@@ -27,6 +27,9 @@ type settingPolicyChange struct {
 	CustomerEditable *bool  `json:"customer_editable"`
 }
 
+// errCodeSettingNotCustomerChosen: "fixed" asked for a limit-only key.
+const errCodeSettingNotCustomerChosen = "SETTING_NOT_CUSTOMER_CHOSEN"
+
 func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	c := currentCaller(r)
@@ -117,6 +120,13 @@ func (p *Panel) handleSettingLimits(w http.ResponseWriter, r *http.Request) {
 		editable := true
 		if req.CustomerEditable != nil {
 			editable = *req.CustomerEditable
+		}
+		if !editable && !def.CustomerValue {
+			// alpha.130: a limit-only key has no value of the customer's own
+			// to fix; storing "fixed" would claim an effect it has not.
+			writeCodedError(w, http.StatusBadRequest, errCodeSettingNotCustomerChosen,
+				"Nothing was changed: customers do not choose a value for this setting, so it cannot be fixed; only its limit applies.", "")
+			return
 		}
 		boolInt := 0
 		if editable {

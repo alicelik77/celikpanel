@@ -64,7 +64,7 @@ export const enRightsScreens = {
     'rights.part.permissionsHint': 'Which jobs the account may do. What is not ticked is not shown to it.',
     'rights.part.software': 'Software',
     'rights.part.softwareHint': 'Which software and versions the account may choose. Software with nothing ticked is closed.',
-    'rights.notOffered': 'Not offered on this server. Offer it first in Accounts, Offered.',
+    'rights.notOffered': 'Not offered on this server. Offer it first in Users, Offered.',
     'rights.notYours': 'Not in your own rights. The administrator can include it.',
     'rights.softwareNone': 'No software that can be offered is installed on this server yet.',
     'rights.installedUnknown': 'The installed software could not be read just now, so only the software already named in a set is listed. Nothing was changed. Try again in a moment; if it stays, the administrator checks that the CelikPanel agent is running.',
@@ -211,6 +211,19 @@ export const enRightsScreens = {
     'err.BUILTIN_PLAN_FIXED': 'The built-in Unlimited plans cannot be changed or deleted. For fewer rights, create a new plan. Nothing was changed.',
     'err.PLAN_NAME_RESERVED': '"Unlimited" and "Unlimited reseller" are the built-in plans. Choose another name. Nothing was changed.',
     'err.RESELLER_PLAN_IN_USE': 'Resellers are on this plan. Move them to another plan or make them Custom first. Nothing was deleted.',
+    'rights.topic.dns': 'Domains and DNS',
+    'rights.topic.mail': 'Mail',
+    'rights.topic.databases': 'Databases',
+    'rights.topic.sites': 'Sites and PHP',
+    'rights.topic.files': 'Files and access',
+    'rights.topic.apps': 'Applications',
+    'rights.topic.security': 'Security and certificates',
+    'rights.topic.backups': 'Backups',
+    'rights.topic.account': 'Account, team and API',
+    'rights.topic.other': 'Other',
+    'rights.notOfferedCatalog': 'Not offered on this server. Offer it first in Store, Catalog management.',
+    'err.OFFERED_IN_CATALOG': 'Nothing was changed: this item is offered in Catalog management, where its risk summary is shown before it is offered.',
+    'err.OFFERED_IN_CATALOG.action': 'Open Catalog management',
 } as const;
 
 export type RightsScreenKey = keyof typeof enRightsScreens;

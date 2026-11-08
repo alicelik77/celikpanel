@@ -782,7 +782,7 @@ func (p *Panel) planResellerChange(w http.ResponseWriter, r *http.Request, resel
 		preview.Outside = grantorOutside(current.admin, nil, newlyGranted(current.Own.Set, planned.set))
 		if len(preview.Outside) > 0 {
 			writeCodedErrorDetails(w, http.StatusConflict, errCodeRightsOutside,
-				"Nothing was changed: these items are not offered on this server; offer them first (Settings, offered items).", "", preview.Outside)
+				"Nothing was changed: these items are not offered on this server; offer them first (Users, Offered).", "", preview.Outside)
 			return rightsPreview{}, false
 		}
 	default:

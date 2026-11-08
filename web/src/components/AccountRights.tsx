@@ -40,7 +40,7 @@ export function readableRefusal(error: ApiError | null, t: Say): ApiError | null
     if (!error || !error.details) return error;
     return {
         ...error,
-        details: error.details.map((line) => (/^(permission|component|integration|extension):/.test(line) ? itemLabel(line, t) : overLimitText(line, t))),
+        details: error.details.map((line) => (/^(permission|component|integration|extension|app|runtime):/.test(line) ? itemLabel(line, t) : overLimitText(line, t))),
     };
 }
 
@@ -170,6 +170,7 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
                     reseller={reseller}
                     grantorIsReseller={grantorIsReseller}
                     idPrefix={idPrefix}
+                    effective={target.kind === 'subscription' ? target.current : undefined}
                 />
             )}
             {mode === 'custom' && (
@@ -359,6 +360,7 @@ function SubscriptionRights({ subscriptionId, user, grantor, isAdmin, onClose, o
                 return (
                     <div className="grid gap-4">
                         <CurrentState view={view} numbers={numbers} reseller={false} t={t} />
+                        <ResellerLacks view={view} t={t} />
                         <EndDateField subscriptionId={subscriptionId} endsAt={view.ends_at} />
                         <RemoteGate remote={plans.remote} checking={t('rights.plansChecking')} failed={t('rights.plansUnknown')} onRetry={() => void plans.retry()} busy={plans.reading}>
                             {(list) => (
@@ -376,6 +378,26 @@ function SubscriptionRights({ subscriptionId, user, grantor, isAdmin, onClose, o
                 );
             }}
         </RemoteGate>
+    );
+}
+
+/**
+ * Items the account's own set names that its reseller does not have
+ * (alpha.130): saved, but refused until the reseller has them. Shown with
+ * the reseller's name, so the administrator knows where to add them.
+ */
+function ResellerLacks({ view, t }: { view: RightsView; t: Say }) {
+    const named = (id: string, kind: 'permissions' | 'software') =>
+        kind === 'permissions' ? view.own.permissions.includes(id) : view.own.software.includes(id);
+    const lacking = [
+        ...view.permissions.filter((item) => item.refused_by === 'reseller' && named(item.id, 'permissions')).map((item) => itemLabel('permission:' + item.id, t)),
+        ...view.software.filter((item) => item.refused_by === 'reseller' && named(item.id, 'software')).map((item) => itemLabel(item.id, t)),
+    ];
+    if (lacking.length === 0) return null;
+    return (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-fg" role="status" data-rights-reseller-lacks-list="">
+            {t('rights.resellerLacksList', { name: view.reseller_name ?? '', items: lacking.join(', ') })}
+        </p>
     );
 }
 

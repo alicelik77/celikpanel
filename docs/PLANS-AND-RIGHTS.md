@@ -725,3 +725,48 @@ from Dovecot's own quota warning and an hourly systemd timer running the same sc
 
 **Migration.** The traffic limits stored before were never shown or applied; they became
 unlimited (migration 057) and the administrator is told once.
+
+## 15. One store per offer, no silent ticks (alpha.130; owner, November 8, 2026)
+
+The administrator could not tick "Remote access to databases" in Users → Offered: the tab wrote
+every item into the hidden list (`admin_hidden_offerings`), but an opt-in permission is offered
+only in `admin_offered_permissions` (the store its own switch writes). The server answered 200,
+nothing changed, and the tick fell back without a word. The same happened to uploaded programs and
+Python lines (offered with their risk summary in Store → Catalog management) and to a PHP or
+Node.js version withdrawn for security.
+
+What changed:
+
+- **Every item has one store, and the Offered tab writes it.** `permission:<opt-in>` goes to the
+  opt-in store with the same audit and effect as its switch (withdrawing remote database access
+  closes what is open). The remote database switch, the nginx directives card and the Offered tab
+  read the same value in both directions.
+- **What the tab cannot change, it does not pretend to.** Uploaded programs, Python lines and AI
+  apps are shown with their state and a link to Catalog management; the server refuses a change
+  of them there with `OFFERED_IN_CATALOG` (409) and the action path. A withdrawn version is
+  refused with `VERSION_WITHDRAWN` (reason `offer`, a link to the component's page); hiding it is
+  still recorded, so it stays hidden after the emergency.
+- **Every answer carries the item's state as the gates read it** (`item: {id, offered}`); a
+  screen that sees another state than the one asked for says so beside the list.
+- **Entries an earlier release wrote into the wrong store are folded on the first read.** Every
+  read treats such an entry as "not offered" (what it did); the first read moves it into its own
+  store as a withdrawn offer in one transaction and records `offering.stale_entries_moved`.
+  Nothing is opened by the fold. In the rare case where remote database access was on at its
+  switch but hidden in the tab, the switch now reads off, matching what customers already had;
+  the administrator turns it on again in one click.
+- **Hints name the right screen** (Users → Offered, or Store → Catalog management, or the security
+  withdrawal); an item a subscription's reseller lacks says so with the reseller's name, beside
+  the item and on the account's current state. The remote API row says when the server switch is
+  off.
+- **Permissions stand under the same topics on every rights screen** (Domains and DNS, Mail,
+  Databases, Sites and PHP, Files and access, Applications, Security and certificates, Backups,
+  Account, team and API), sorted inside a topic by the label in the reader's language
+  (`Intl.Collator`, Turkish rules in Turkish).
+- **Limits of site settings:** "Customers may change it" is offered only for keys whose value a
+  customer chooses (the PHP settings); the other keys are limits only (a stored "fixed" for them
+  had no effect and now reads as editable; the server refuses it with
+  `SETTING_NOT_CUSTOMER_CHOSEN`). The section has one Save that names the rows it will save and
+  keeps a row's error beside the row.
+
+No migration: the fold is a data move inside existing `panel_settings`, `runtime_offerings` and
+`service_app_offerings` rows.

@@ -2,7 +2,8 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { inputClass } from './ui';
 import {
-    PERMISSION_IDS, grantable, groupSoftware, inUseText, itemLabel, overLimitText, quantity, softwareGroupKey, softwareGroupName, softwareLabel, toggle,
+    grantable, groupSoftware, inUseText, itemLabel, notOfferedKey, overLimitText, permissionGroups, permissionIdsOf, permissionLabel, permissionTopicKey, quantity,
+    softwareGroupKey, softwareGroupName, softwareLabel, toggle,
     type Numbers, type RightsPreview, type RightsSelection, type RightsView,
 } from '../lib/rights';
 
@@ -16,7 +17,7 @@ import {
 // ve yazılımlar. Yalnız düzenleyenin verebileceği seçilebilir; kümede olup
 // yeniden verilemeyen öğe görünür, işaretli ve sabit kalır.
 
-export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNumbers, reseller = false, grantorIsReseller = false, idPrefix }: {
+export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNumbers, reseller = false, grantorIsReseller = false, idPrefix, effective }: {
     /** What the person editing may hand out (GET /api/v1/rights/catalog). */
     grantor: RightsView;
     selection: RightsSelection;
@@ -28,9 +29,23 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
     /** The person editing is a reseller (the reason an item is fixed differs). */
     grantorIsReseller?: boolean;
     idPrefix: string;
+    /**
+     * alpha.130: the account's effective rights as the server read them. An
+     * item ticked here that a reseller above the account does not have says
+     * so beside it: saved, but not usable until the reseller has it.
+     */
+    effective?: RightsView;
 }) {
-    const { t } = useI18n();
-    const fixedReason = t(grantorIsReseller ? 'rights.notYours' : 'rights.notOffered');
+    const { t, locale } = useI18n();
+    // Why an item cannot be given, by its kind: a reseller asks the
+    // administrator; the administrator is pointed at the screen that offers
+    // it (the Offered tab, Catalog management, or a security withdrawal).
+    const fixedReason = (kind: 'permissions' | 'software', id: string) =>
+        t(grantorIsReseller ? 'rights.notYours' : notOfferedKey(kind === 'permissions' ? `permission:${id}` : id, grantor));
+    const resellerLacks = (kind: 'permissions' | 'software', id: string) => {
+        const item = effective?.[kind].find((entry) => entry.id === id);
+        return item?.refused_by === 'reseller' ? t('rights.resellerLacks', { name: effective?.reseller_name ?? '' }) : null;
+    };
     const software = groupSoftware([
         ...grantor.software,
         ...selection.software.filter((id) => !grantor.software.some((item) => item.id === id)).map((id) => ({ id, granted: false })),
@@ -69,29 +84,38 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
             <fieldset className="min-w-0">
                 <legend className="text-sm font-semibold text-fg">{t('rights.part.permissions')}</legend>
                 <p className="mt-0.5 text-xs text-fg-subtle">{t('rights.part.permissionsHint')}</p>
-                <ul className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
-                    {PERMISSION_IDS.map((id) => {
-                        const open = grantable(grantor, 'permissions', id);
-                        const checked = selection.permissions.includes(id);
-                        return (
-                            <li key={id}>
-                                <label className={`flex items-start gap-2.5 py-1 max-sm:min-h-11 ${open ? 'cursor-pointer' : 'cursor-not-allowed'}`} data-rights-permission={id}>
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                                        checked={checked}
-                                        disabled={!open}
-                                        onChange={(e) => onSelection({ ...selection, permissions: toggle(selection.permissions, id, e.target.checked) })}
-                                    />
-                                    <span className="min-w-0 text-sm">
-                                        <span className={open ? 'text-fg' : 'text-fg-muted'}>{t(`rights.perm.${id}` as TranslationKey)}</span>
-                                        {!open && <span className="block text-xs text-fg-subtle">{fixedReason}</span>}
-                                    </span>
-                                </label>
-                            </li>
-                        );
-                    })}
-                </ul>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {permissionGroups(permissionIdsOf(grantor), t, locale).map(({ topic, ids }) => (
+                        <div key={topic} className="min-w-0" data-rights-topic={topic}>
+                            <p className="text-xs font-semibold text-fg-muted">{t(permissionTopicKey(topic))}</p>
+                            <ul className="mt-0.5 grid gap-y-0.5">
+                                {ids.map((id) => {
+                                    const open = grantable(grantor, 'permissions', id);
+                                    const checked = selection.permissions.includes(id);
+                                    const lacks = checked ? resellerLacks('permissions', id) : null;
+                                    return (
+                                        <li key={id}>
+                                            <label className={`flex items-start gap-2.5 py-1 max-sm:min-h-11 ${open ? 'cursor-pointer' : 'cursor-not-allowed'}`} data-rights-permission={id}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                                                    checked={checked}
+                                                    disabled={!open}
+                                                    onChange={(e) => onSelection({ ...selection, permissions: toggle(selection.permissions, id, e.target.checked) })}
+                                                />
+                                                <span className="min-w-0 text-sm">
+                                                    <span className={open ? 'text-fg' : 'text-fg-muted'}>{permissionLabel(id, t)}</span>
+                                                    {!open && <span className="block text-xs text-fg-subtle">{fixedReason('permissions', id)}</span>}
+                                                    {lacks && <span className="block text-xs text-warning" data-rights-reseller-lacks={id}>{lacks}</span>}
+                                                </span>
+                                            </label>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
             </fieldset>
 
             <fieldset className="min-w-0">
@@ -110,9 +134,10 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                                     <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                                         {items.map((item) => {
                                             const open = grantable(grantor, 'software', item.id);
+                                            const lacks = selection.software.includes(item.id) ? resellerLacks('software', item.id) : null;
                                             return (
                                                 <li key={item.id}>
-                                                    <label className={`flex items-center gap-2 py-1 text-sm max-sm:min-h-11 ${open ? 'cursor-pointer text-fg' : 'cursor-not-allowed text-fg-muted'}`} title={open ? undefined : fixedReason} data-rights-software={item.id}>
+                                                    <label className={`flex items-center gap-2 py-1 text-sm max-sm:min-h-11 ${open ? 'cursor-pointer text-fg' : 'cursor-not-allowed text-fg-muted'}`} data-rights-software={item.id}>
                                                         <input
                                                             type="checkbox"
                                                             className="h-4 w-4 shrink-0 accent-primary"
@@ -122,6 +147,8 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                                                         />
                                                         <span>{softwareLabel(item.id, t)}</span>
                                                     </label>
+                                                    {!open && <span className="block text-xs text-fg-subtle">{fixedReason('software', item.id)}</span>}
+                                                    {lacks && <span className="block text-xs text-warning" data-rights-reseller-lacks={item.id}>{lacks}</span>}
                                                 </li>
                                             );
                                         })}
