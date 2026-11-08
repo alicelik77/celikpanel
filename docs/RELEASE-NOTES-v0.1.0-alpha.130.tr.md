@@ -212,13 +212,20 @@ sessizce silinmez.
   klasörleri, başka bir şey ihtiyaç duymuyorsa `libpq5` ve hiçbir PGDG
   paketi kalmadıysa CelikPanel'in PGDG kaynağı, anahtarı ve önceliği.
   Veri taşıyor olabilecek kalıntı küme kaldırmayı durdurur ve adı söylenir.
-- **Sahibin dosyaları tam temizlemeden sağ çıkıyor** (Debian ve Ubuntu).
-  Temizlemeden önce Ajan, kaldırılan hiçbir paketin sahibi olmadığı
-  dosyaları (örneğin sahibin yazdığı bir systemd ek ayarı) ve değiştirilmiş
-  paket yapılandırma dosyalarını kenara kopyalar; ardından silinen sahip
-  dosyası sahibi ve izinleriyle geri konur, değiştirilmiş yapılandırma
-  dosyaları `/var/backups/celikpanel/kept/` altında saklanır. Yanıt bunları
-  adıyla söyler. Kalıntı küme kaldırılınca Bileşenler hemen yeniden okunur.
+- **Tam temizleme sahibe ait olabilecek dosyaların kopyasını saklıyor ve
+  geride klasör bırakmıyor** (Debian ve Ubuntu). Sahibin kaldırılan hizmet
+  için yazdığı systemd ek ayarı temizlemeden sonra geri konur. Bileşenin
+  kendi klasörleri (`/etc/postfix`, `/etc/dovecot`,
+  `/etc/postgresql-common`) boşaltılıp kaldırılır: paket dosyaları ve
+  paket betiklerinin ya da CelikPanel'in yazdığı dosyalar kopyasız gider;
+  diğer her dosya ve değiştirilmiş her paket yapılandırma dosyası önce
+  `/var/backups/celikpanel/kept/<bileşen>-<zaman>/` altına (yalnız root)
+  kopyalanır, yanıt kaç dosyanın nereye kopyalandığını söyler. Başarısız
+  bir temizleme hiçbir şeyi boşaltmaz. Dovecot'u kaldırmak CelikPanel'in
+  `/etc/dovecot/users` dosyasını da götürür; posta kurulumu Dovecot'u artık
+  programından tanıdığı için sonraki bir Postfix kurulumu kalıntı bir
+  klasör yüzünden başarısız olmaz. Kalıntı küme kaldırılınca Bileşenler
+  hemen yeniden okunur.
 - **Katılmış BIND sunucusunda SSH parola girişi kapatılabiliyor.**
   CelikPanel'in kendi `Match User celikpeer` bloğu (yalnız DNS eş hesabı
   için parola girişini kapatır) değişikliği engelliyordu; artık yalnız
@@ -308,11 +315,12 @@ _Laboratuvar turundan sonra doldurulacak._
   `/var/lib/postgres/data` kalır; işaretsiz genel Postfix eşlemeleri, ortak
   posta sertifikası kopyaları ve eski DNS motorunun dosyaları kalır. Her
   biri için önce sahibin kararı gerekiyor.
-- **Sahip dosyaları ve tam temizleme:** sahibin dosyalarını temizleme
-  sırasında korumak yalnız apt ile (Debian ve Ubuntu) çalışır, Arch'ın
-  pacman'ında çalışmaz. Panelin yazdığı genel Postfix eşlemeleri
-  (`vmailbox`, `virtual`, `vmailbox_domains`) CelikPanel işareti taşımadığı
-  için sahip dosyası sayılır ve geri konur.
+- **Sahip dosyaları ve tam temizleme:** sahibin dosyalarını kenara
+  kopyalamak ve ek ayarları geri koymak yalnız apt ile (Debian ve Ubuntu)
+  çalışır, Arch'ın pacman'ında çalışmaz. systemd ek ayar klasörleri dışında
+  hiçbir şey yerine geri konmaz: sahibin `/etc/postfix`, `/etc/dovecot` ya
+  da `/etc/postgresql-common` içine eklediği bir dosya yalnız
+  `/var/backups/celikpanel/kept/` altındaki kopyası olarak kalır.
 - **Kalıntı PostgreSQL kümeleri:** bir küme yalnız dosyalarına bakılarak
   "yeni" sayılır; `postgres` ya da `template1` içinde oluşturulan işlev,
   görünüm ya da açıklamalar bu yolla görülemez, bu yüzden kendiliğinden

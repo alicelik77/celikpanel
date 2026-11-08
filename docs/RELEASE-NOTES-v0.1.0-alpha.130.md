@@ -200,13 +200,19 @@ deleted silently.
   nothing else needs it, and CelikPanel's PGDG source, key and pin when no
   PGDG package remains. A leftover cluster that may hold data stops the
   removal and is named.
-- **The owner's files survive a purge** (Debian and Ubuntu). Before a
-  purge the Agent copies aside files no removed package owns (for example
-  a systemd drop-in the owner wrote) and changed package configuration
-  files; afterwards a deleted owner file is put back with its owner and
-  mode, and changed configuration files are kept under
-  `/var/backups/celikpanel/kept/`. The answer names them. Components are
-  read again right after a leftover cluster is removed.
+- **A purge keeps a copy of what may be the owner's, and leaves no folder
+  behind** (Debian and Ubuntu). A systemd drop-in the owner wrote for the
+  removed service is put back after the purge. The component's own folders
+  (`/etc/postfix`, `/etc/dovecot`, `/etc/postgresql-common`) are emptied
+  and removed: package files and the files the packages' scripts and
+  CelikPanel wrote go without a copy; any other file, and every changed
+  package configuration file, is copied first to
+  `/var/backups/celikpanel/kept/<component>-<time>/` (root only), and the
+  answer says how many files were copied and where. A failed purge empties
+  nothing. Removing Dovecot also takes CelikPanel's `/etc/dovecot/users`,
+  and mail set-up now finds Dovecot by its program, so a later Postfix
+  installation no longer fails on a leftover folder. Components are read
+  again right after a leftover cluster is removed.
 - **SSH password sign-in can be turned off on a joined BIND server.**
   CelikPanel's own `Match User celikpeer` block (which only turns password
   sign-in off for the DNS peer account) blocked the change; only a Match
@@ -292,10 +298,12 @@ _To be filled in after the lab round._
   sites may need `mysqli`, and `/var/lib/postgres/data` stays; Postfix's
   generic maps without a marker, the shared mail certificate copies and the
   old DNS engine's files stay. Each needs an owner decision first.
-- **Owner files and purges:** keeping the owner's files across a purge works
-  with apt only (Debian and Ubuntu), not with Arch's pacman. Generic Postfix
-  maps the panel writes (`vmailbox`, `virtual`, `vmailbox_domains`) carry no
-  CelikPanel marker, so they are treated as owner files and put back.
+- **Owner files and purges:** copying the owner's files aside and putting
+  drop-ins back works with apt only (Debian and Ubuntu), not with Arch's
+  pacman. Outside the systemd drop-in folders nothing is put back in place:
+  a file the owner added to `/etc/postfix`, `/etc/dovecot` or
+  `/etc/postgresql-common` survives only as the copy under
+  `/var/backups/celikpanel/kept/`.
 - **Leftover PostgreSQL clusters:** a cluster counts as "fresh" only from its
   files; functions, views or comments made in `postgres` or `template1`
   cannot be seen that way, which is why the automatic removal keeps a
