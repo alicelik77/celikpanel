@@ -227,3 +227,33 @@ test('every new sentence is in both languages with the same placeholders, and th
   assert.match(source('components/PostgreSQLClusters.tsx'), /flowSteps\(t, 'pgLeftover', \['check!', 'archive', 'records'\]/);
   assert.match(source('components/PostgreSQLManagement.tsx'), /<PostgreSQLSettings key=\{mainConf\}/);
 });
+
+// alpha.130 lab: one PostgreSQL version could not be removed at all. With two
+// versions installed, each cluster row offers its version's removal; it asks
+// first, sends the version's package, names the owner's files that were kept
+// and reads the list again. With one version installed it is not offered (the
+// Components list removes the whole component).
+test('with two versions installed, one version is removed from its cluster row', async () => {
+  const sixteen = { ...live, version: '16', port: 5432, data_directory: '/var/lib/postgresql/16/main', config_path: '/etc/postgresql/16/main/postgresql.conf' };
+  const both = { ...clusters(), clusters: [sixteen, live] };
+  await mount([both, clusters()], {
+    post: (url) => (url === '/api/v1/service/uninstall'
+      ? answer({ removed: true, success: true, owner_files_kept: ['/etc/systemd/system/postgresql@16-main.service.d/override.conf'] })
+      : answer({}, 404)),
+  });
+  try {
+    assert.equal(attr('data-pg-remove-major').length, 2, 'each version of two is offered');
+    const before = reads();
+    await act(async () => { attr('data-pg-remove-major', '16')[0].props.onClick(); });
+    await settle();
+    const asked = globalThis.confirmed[0];
+    assert.equal(asked.title, fill(en['pgc.removeMajor.confirmTitle'], { version: '16' }));
+    assert.equal(asked.tone, 'danger');
+    const posts = requests.filter((request) => request.method === 'POST');
+    assert.deepEqual(JSON.parse(posts[0].body), { service_id: 'postgresql', package: 'postgresql-16' });
+    const done = fill(en['pgc.removeMajor.doneKept'], { version: '16', cluster: '16/main', port: 5432, files: '/etc/systemd/system/postgresql@16-main.service.d/override.conf' });
+    assert.deepEqual(globalThis.operationEnds[0], { state: 'done', message: done });
+    assert.ok(reads() > before, 'the list is read again by itself');
+    assert.equal(attr('data-pg-remove-major').length, 0, 'one version left: no version removal is offered');
+  } finally { await unmount(); }
+});

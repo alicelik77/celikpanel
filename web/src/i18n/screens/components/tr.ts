@@ -186,6 +186,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.removal.removed.allVersions': 'Kurulu her sürümü de, her sürümün yanında kurulan paketlerle birlikte kaldırılır.',
     'services.removal.removed.mailFilter': 'Postfix, postayı artık ondan geçirmeyecek biçimde ayarlanır.',
     'services.removal.removed.databaseTools': 'Panel onun sayfalarını artık sunmaz.',
+    'services.uninstalledOwnerKept': '{name} kaldırıldı. Yanındaki kendi dosyalarınız korundu: {files}.',
     'services.removal.removed.pgClusters': 'Kümeleri ({clusters}) da onunla birlikte silinir: PostgreSQL’in yapılandırması, veri dizini ve günlükleri. Böylece geride port tutan hiçbir şey kalmaz. Kümelerden birinde veritabanı varken kaldırma reddedilir. PostgreSQL’in kurulumda oluşturduklarının dışında kalan her şey (örneğin roller) önce /var/backups/celikpanel altında bir arşivde saklanır.',
     'services.removal.removed.webmailTree': 'CelikPanel Roundcube’un uygulama dosyalarını, kendi ayarlarını ve adres defteri veritabanını, ayrıca webmail’i /webmail/ adresinde sunan web sunucusu kaydını siler.',
     'services.removal.command': 'Paket yöneticisi komutu:',

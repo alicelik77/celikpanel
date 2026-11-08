@@ -350,6 +350,10 @@ type UninstallServiceResponse struct {
 	// are where anything beyond what initdb made was kept first. Additive.
 	PostgreSQLClustersRemoved []string `json:"postgresql_clusters_removed,omitempty"`
 	PostgreSQLArchives        []string `json:"postgresql_archives,omitempty"`
+	// OwnerFilesKept (alpha.130 lab) are the owner's own files next to a
+	// purged package that were kept (left in place, or put back after the
+	// package's purge script deleted them). Additive.
+	OwnerFilesKept []string `json:"owner_files_kept,omitempty"`
 }
 
 // PackageRemovalCollateral is one package a removal would take that it did

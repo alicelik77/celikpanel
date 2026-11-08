@@ -203,6 +203,9 @@ func (p *Panel) cleanPGLeftoversOnce(ctx context.Context) (done bool) {
 			Details:      auditDetailsText(pgLeftoverAuditDetails(removal, true)),
 		})
 	}
+	// What Components shows (the clusters' configuration files) is read
+	// again at once, not at the next scan (alpha.130 lab).
+	p.rescanAfterPGLeftovers(ctx)
 	if err != nil {
 		log.Printf("postgresql leftovers: the automatic removal did not finish: %v", err)
 		p.recordAudit(auditRecord{
@@ -308,8 +311,19 @@ func (p *Panel) handlePGLeftoverRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reportOperationStep(ctx, "records")
+	p.rescanAfterPGLeftovers(ctx)
 	p.auditDetailed(r, "postgresql.cluster.leftover.removed:"+ref, "service", 0, details)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"removed": true, "cluster": ref, "archive": response.Removal.Archive, "removed_paths": response.Removal.Removed,
 	})
 }
+
+// rescanAfterPGLeftovers reads the components again after a leftover
+// cluster's files went (a variable for tests).
+var rescanAfterPGLeftoversHook = func(p *Panel, ctx context.Context) {
+	if _, err := p.scanManagedServices(ctx); err != nil {
+		log.Printf("postgresql leftovers: rescan of the components: %v", err)
+	}
+}
+
+func (p *Panel) rescanAfterPGLeftovers(ctx context.Context) { rescanAfterPGLeftoversHook(p, ctx) }

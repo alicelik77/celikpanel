@@ -1236,11 +1236,17 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 return;
             }
             closeUninstallDialog();
+            // alpha.130 lab: the owner's own files next to a purged package
+            // that were kept are named.
+            const answer = (await answerBody(res)) as { owner_files_kept?: unknown } | null;
+            const ownerKept = Array.isArray(answer?.owner_files_kept) ? answer.owner_files_kept.filter((item): item is string => typeof item === 'string') : [];
             showToast(
                 'success',
                 nextCleanupAttempt !== null
                     ? t('services.webmailCleanupCompleted')
-                    : t('services.uninstalled', { name: componentName(service, t) }),
+                    : ownerKept.length > 0
+                        ? t('services.uninstalledOwnerKept', { name: componentName(service, t), files: ownerKept.join(', ') })
+                        : t('services.uninstalled', { name: componentName(service, t) }),
             );
             if (!(await loadServices())) markStateUnverified();
             announceComponentsChanged();

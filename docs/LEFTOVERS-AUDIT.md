@@ -29,6 +29,32 @@ same rule its writer uses: a matching digest line, CelikPanel's marker line,
 or a file CelikPanel rewrites whole every time. A file the owner changed is
 kept, and the removal's answer names it.
 
+### Lab fixes (alpha.130, Ubuntu 24.04)
+
+- One PostgreSQL version can be removed again (the PostgreSQL page offers
+  "Remove PostgreSQL N" on each cluster while two versions are installed).
+- A whole PostgreSQL removal also names every PostgreSQL package left in dpkg
+  state `rc`, every major's client and documentation, and
+  `postgresql-common` / `postgresql-client-common` (a PGDG install names them
+  exactly, so APT never took them as unused). A removed version's leftover
+  cluster goes with it when it holds only what initdb made, and refuses the
+  removal (named) when it may hold data. Afterwards the empty
+  `/etc/postgresql`, `/var/lib/postgresql` and `/var/log/postgresql` go (a
+  folder with anything in it stays, named), `libpq5` from PGDG goes when the
+  package manager's simulation shows nothing else needs it (PHP's pgsql
+  module does), and CelikPanel's PGDG source, key and pin go when no package
+  from PGDG is left.
+- **Owner files are never lost to a purge.** Before any purge (Debian/Ubuntu)
+  the Agent copies aside the owner's files where the purge reaches: the
+  systemd drop-in folders of the component's units and the component's own
+  folders under `/etc` (files no removed package owns and that are not
+  CelikPanel's), and the package configuration files the owner changed. After
+  the purge an owner file the package's script deleted is put back where it
+  was; changed package files are purged as purge means, with a copy kept in
+  `/var/backups/celikpanel/kept/<component>-<time>/`. The answer names them.
+  Arch's `pacman -Rns` (which does not save changed configuration files) is
+  not covered yet.
+
 ## Remaining leftovers (owner decisions)
 
 | Leftover | Why it remains | Proposed choice |
