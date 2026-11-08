@@ -55,7 +55,10 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		p.handleMailClientSetup(w, r, domain)
+		view := p.mailAutoconfigView(r.Context(), domainID, domain)
+		p.handleMailClientSetupWith(w, r, domain, &view)
+	case strings.HasSuffix(r.URL.Path, "/mail/autoconfig"):
+		p.handleMailAutoconfig(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/catch-all"):
 		p.handleMailCatchAll(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):

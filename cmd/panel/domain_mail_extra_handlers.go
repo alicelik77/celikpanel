@@ -50,6 +50,9 @@ type mailClientSetupResponse struct {
 	// when webmail is available. Read only: nothing is started.
 	// Web postasının neden kullanılamadığı; yalnız okunur.
 	WebmailReason string `json:"webmail_reason,omitempty"`
+	// Autoconfig (alpha.130): whether mail programs set themselves up for
+	// this domain, what is missing and who acts (mail_autoconfig.go).
+	Autoconfig *mailAutoconfigView `json:"autoconfig,omitempty"`
 }
 
 const (
@@ -84,9 +87,17 @@ func (p *Panel) webmailAvailable(ctx context.Context) bool {
 }
 
 func (p *Panel) handleMailClientSetup(w http.ResponseWriter, r *http.Request, domain string) {
+	p.handleMailClientSetupWith(w, r, domain, nil)
+}
+
+func (p *Panel) handleMailClientSetupWith(w http.ResponseWriter, r *http.Request, domain string, autoconfig *mailAutoconfigView) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	host := "mail." + domain
+	if autoconfig != nil && autoconfig.MailHost != "" {
+		// alpha.130: the same mail server name the mail programs are told.
+		host = autoconfig.MailHost
+	}
 	// alpha.110: webmail is offered only on its own address (never on the
 	// panel's origin), while Roundcube answers.
 	webmailURL := p.webmailLink(r.Context())
@@ -114,6 +125,7 @@ func (p *Panel) handleMailClientSetup(w http.ResponseWriter, r *http.Request, do
 		WebmailAvailable:    available,
 		WebmailURL:          webmailURL,
 		WebmailReason:       reason,
+		Autoconfig:          autoconfig,
 	})
 }
 

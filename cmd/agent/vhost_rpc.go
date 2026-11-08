@@ -675,6 +675,14 @@ func validatedVhostData(req *ApplyVhostRequest) (services.VhostData, error) {
 	if err := applySiteWebSettingsToVhost(req, &data); err != nil {
 		return services.VhostData{}, err
 	}
+	// alpha.130: mail programs set themselves up; the names are derived
+	// from the domain and the answers are checked by the generator.
+	if req.MailAutoconfig != nil {
+		data.MailAutoconfig = &services.MailAutoconfig{
+			MailHost: req.MailAutoconfig.MailHost,
+			TLS:      req.MailAutoconfig.TLS,
+		}
+	}
 
 	switch projectType {
 	case "php":

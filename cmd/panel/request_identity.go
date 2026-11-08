@@ -224,6 +224,20 @@ var requestIdentityRouteMailOutgoing = requestIdentityRoute{
 	pattern: mailOutgoingPath, optional: true, timeout: agentRPCMutationTimeout + time.Minute,
 }
 
+// requestIdentityRouteMailAutoconfig (alpha.130): turning on mail program
+// set-up writes the site file and DNS records; the progress window follows.
+var requestIdentityRouteMailAutoconfig = requestIdentityRoute{
+	pattern: "/api/v1/domains/{id}/mail/autoconfig", optional: true,
+	timeout: agentRPCMutationTimeout + dnsPublishTimeout + time.Minute,
+}
+
+// requestIdentityRouteMailRelay (alpha.130): saving the mail relay writes
+// Postfix's settings; guarded when the page sends an identity, so the
+// progress window follows its steps.
+var requestIdentityRouteMailRelay = requestIdentityRoute{
+	pattern: mailRelayPath, optional: true, timeout: agentRPCMutationTimeout + time.Minute,
+}
+
 // requestIdentityRouteMailboxEmpty (alpha.128, G20): emptying a mailbox
 // removes messages; a replay is answered from the first run.
 var requestIdentityRouteMailboxEmpty = requestIdentityRoute{
@@ -256,6 +270,8 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteVPNPeer, true
 	case path == mailOutgoingPath:
 		return requestIdentityRouteMailOutgoing, true
+	case path == mailRelayPath:
+		return requestIdentityRouteMailRelay, true
 	case path == apiTokensPath:
 		// alpha.128 (G15): the answer carries the new API token once.
 		return requestIdentityRouteAPITokenCreate, true
@@ -280,6 +296,9 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		case "mail":
 			if strings.HasSuffix(path, "/mail/accounts/empty") {
 				return requestIdentityRouteMailboxEmpty, true
+			}
+			if strings.HasSuffix(path, "/mail/autoconfig") {
+				return requestIdentityRouteMailAutoconfig, true
 			}
 		case "databases":
 			return requestIdentityRouteDomainDatabase, true

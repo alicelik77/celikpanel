@@ -728,6 +728,10 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if p.refuseCertificateDomainNotPointed(ctx, w, r, domainID, domain.Name, managedNames, mailName, req.AllowNotPointed) {
 		return
 	}
+	// alpha.130: the names mail programs ask (autoconfig, autodiscover) join
+	// the certificate only where the public DNS shows them here; the others
+	// are left out with a note and never stop the request.
+	autoconfigNames, autoconfigNote := p.mailAutoconfigCertificateNames(ctx, domainID)
 
 	// Publish every requested name on port 80 before asking the CA to validate
 	// it. The HTTP vhost keeps the ACME challenge path reachable even when
@@ -753,6 +757,12 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	// A kept file was not changed, so there is nothing to restore.
 	validationVhostPrepared := !keptSiteConfig
+	if keptSiteConfig && len(autoconfigNames) > 0 {
+		// The kept file has no mail set-up server to validate them.
+		autoconfigNames = nil
+		autoconfigNote = "The site's web server file is kept by the server owner, so autoconfig and autodiscover were left out of the certificate."
+	}
+	aliases = append(aliases, autoconfigNames...)
 	defer func() {
 		if !validationVhostPrepared {
 			return
@@ -884,6 +894,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if mailName != "" {
 		requestedNames = append(requestedNames, mailName)
 	}
+	requestedNames = append(requestedNames, autoconfigNames...)
 	if err := exactCertificateDNSNames(info.DNSNames, requestedNames); err != nil {
 		writeAgentError(w, nil, err.Error())
 		return
@@ -1022,6 +1033,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
 			answer["renewal_warning"] = warning
 		}
+		if autoconfigNote != "" {
+			answer["mail_setup_note"] = autoconfigNote
+		}
 		validationNotRun.addTo(answer)
 		json.NewEncoder(w).Encode(answer)
 		return
@@ -1035,6 +1049,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	if warning := strings.TrimSpace(agentResp.RenewalWarning); warning != "" {
 		answer["renewal_warning"] = warning
+	}
+	if autoconfigNote != "" {
+		answer["mail_setup_note"] = autoconfigNote
 	}
 	validationNotRun.addTo(answer)
 	json.NewEncoder(w).Encode(answer)
