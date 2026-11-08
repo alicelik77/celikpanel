@@ -86,6 +86,7 @@ func (p *Panel) handleSecurityAudit(w http.ResponseWriter, r *http.Request) {
 	agent.Firewall.UDPAllowlist = append([]int{}, agent.Firewall.UDPAllowlist...)
 	agent.Listeners.Findings = append([]transport.SecurityAuditListenerFinding{}, agent.Listeners.Findings...)
 	tlsResult := inspectActivePanelTLS(r.Context(), time.Now().UTC())
+	annotatePanelTLSHostname(&tlsResult, r.Host)
 	if err := transport.ValidateSecurityAuditTLSResponse(tlsResult); err != nil {
 		writeCodedError(w, http.StatusInternalServerError, "security_audit_tls_invalid", "the local panel TLS audit could not be verified", "")
 		return
@@ -140,7 +141,13 @@ func inspectActivePanelTLS(ctx context.Context, now time.Time) transport.Securit
 	if block == nil {
 		return unknownPanelTLSResponse("panel_tls_live_unverified")
 	}
-	liveMatches, err := livePanelTLSMatches(ctx, block.Bytes)
+	// alpha.130: the listener serves the managed certificate for its name and
+	// keeps the start-up self-signed one for a bare IP address (no SNI). A
+	// self-dial without a name was answered with the start-up certificate and
+	// reported a valid Let's Encrypt certificate as "Failed" (Frankfurt and
+	// Boston, 8 Nov 2026). Ask for the name the certificate is for, as a
+	// browser does.
+	liveMatches, err := livePanelTLSMatches(ctx, block.Bytes, panelTLSDialName(result.Names))
 	if err != nil {
 		return unknownPanelTLSResponse("panel_tls_live_unverified")
 	}
@@ -169,7 +176,25 @@ func nonAuthoritativePanelTLSResponse(status, code string) transport.SecurityAud
 	}
 }
 
-func livePanelTLSMatches(ctx context.Context, expectedLeaf []byte) (bool, error) {
+// panelTLSDialName is the name a self-dial asks for: the certificate's first
+// DNS name ("*.example.com" asks for "panel.example.com"). Empty when the
+// certificate names none; the listener then answers as for a bare address.
+func panelTLSDialName(names []string) string {
+	for _, name := range names {
+		if rest, wildcard := strings.CutPrefix(name, "*."); wildcard {
+			if rest != "" {
+				return "panel." + rest
+			}
+			continue
+		}
+		if name != "" && net.ParseIP(name) == nil {
+			return name
+		}
+	}
+	return ""
+}
+
+func livePanelTLSMatches(ctx context.Context, expectedLeaf []byte, serverName string) (bool, error) {
 	host, portText, err := net.SplitHostPort(listenAddr())
 	if err != nil {
 		return false, err
@@ -193,6 +218,7 @@ func livePanelTLSMatches(ctx context.Context, expectedLeaf []byte) (bool, error)
 		NetDialer: &net.Dialer{Timeout: 2 * time.Second},
 		Config: &tls.Config{
 			MinVersion: tls.VersionTLS12,
+			ServerName: serverName,
 			// This connection proves byte identity with the separately parsed
 			// configured leaf; CA and hostname trust are deliberately not inferred.
 			InsecureSkipVerify: true, //nolint:gosec
@@ -231,6 +257,7 @@ func inspectPanelTLSMaterial(certPEM, keyPEM []byte, now time.Time) transport.Se
 		return response
 	}
 	response.Certificate = transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusPass, Code: "panel_tls_certificate_valid"}
+	response.Names = boundedPanelTLSNames(certificate.DNSNames)
 	response.ExpiresAt = certificate.NotAfter.UTC().Truncate(time.Second).Format(time.RFC3339)
 
 	sameIdentity := bytes.Equal(certificate.RawIssuer, certificate.RawSubject)
@@ -260,6 +287,64 @@ func inspectPanelTLSMaterial(certPEM, keyPEM []byte, now time.Time) transport.Se
 		response.KeyMatch = transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusPass, Code: "panel_tls_key_match"}
 	}
 	return response
+}
+
+func boundedPanelTLSNames(names []string) []string {
+	out := []string{}
+	for _, name := range names {
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name == "" || len(name) > 253 || strings.ContainsAny(name, " \t\r\n") {
+			continue
+		}
+		out = append(out, name)
+		if len(out) == transport.SecurityAuditTLSMaxNames {
+			break
+		}
+	}
+	return out
+}
+
+// annotatePanelTLSHostname says whether the certificate covers the address
+// the administrator opened the panel with (alpha.130). The Host header is
+// the browser's own address bar; it is compared, never trusted or stored.
+// A bare IP address is answered with the start-up certificate by design, so
+// it is said as such rather than as a mismatch.
+func annotatePanelTLSHostname(response *transport.SecurityAuditTLSResponse, requestHost string) {
+	if response.Certificate.Status != transport.SecurityAuditStatusPass {
+		response.Hostname = &transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusUnknown, Code: "panel_tls_unknown"}
+		return
+	}
+	host := strings.TrimSpace(requestHost)
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.TrimSuffix(strings.Trim(host, "[]"), "."))
+	switch {
+	case host == "":
+		response.Hostname = &transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusUnknown, Code: "panel_tls_unknown"}
+	case net.ParseIP(host) != nil:
+		response.Hostname = &transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusUnknown, Code: "panel_tls_hostname_address"}
+	case certificateNamesCover(response.Names, host):
+		response.Hostname = &transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusPass, Code: "panel_tls_hostname_match"}
+	default:
+		response.Hostname = &transport.SecurityAuditCheck{Status: transport.SecurityAuditStatusWarning, Code: "panel_tls_hostname_mismatch"}
+	}
+}
+
+// certificateNamesCover matches a host name as a browser does: exactly, or
+// by a wildcard for exactly one leftmost label.
+func certificateNamesCover(names []string, host string) bool {
+	for _, name := range names {
+		if name == host {
+			return true
+		}
+		if rest, wildcard := strings.CutPrefix(name, "*."); wildcard {
+			if label, tail, found := strings.Cut(host, "."); found && label != "" && tail == rest {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // activePanelTLSPaths mirrors tlsSettings without generating or changing

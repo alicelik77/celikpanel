@@ -1,5 +1,6 @@
 import { Suspense, lazy, useState } from 'react';
 import { Copy, Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { showToast } from './Toast';
@@ -9,9 +10,9 @@ import type { ApiError } from '../lib/apiError';
 import { refusalText, refusalToast } from '../lib/apiError';
 import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
 import {
-    NEW_PLAN, OFFERED_URL, PERMISSION_IDS, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, limitWords, planBody, rightsSummary,
-    selectionOf, sendRights, softwareGroupKey, softwareGroupName, softwareLabel,
-    type EditedPlan, type PlanKind, type ResellerPlan, type RightsPreview, type RightsSelection, type RightsView,
+    NEW_PLAN, OFFERED_URL, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateIn, offeredStateOf,
+    permissionGroups, permissionIdsOf, permissionTopicKey, planBody, rightsSummary, selectionOf, sendRights, softwareGroupKey, softwareGroupName,
+    type EditedPlan, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
@@ -287,7 +288,17 @@ function IconButton({ children, title, onClick, danger, disabled }: { children: 
 
 /** One item of the offered layer in words. */
 function offeredLabel(id: string, t: Say): string {
-    return id.startsWith('permission:') ? t(`rights.perm.${id.slice('permission:'.length)}` as TranslationKey) : softwareLabel(id, t);
+    return itemLabel(id, t);
+}
+
+/** Where a row's own screen is: Catalog management, a component's page or Settings. */
+function RowLink({ to, label }: { to: string; label: string }) {
+    const navigate = useNavigate();
+    return (
+        <button type="button" onClick={() => navigate(to)} className="text-xs font-semibold text-primary hover:underline max-sm:min-h-11" data-offered-link={to}>
+            {label}
+        </button>
+    );
 }
 
 /**
@@ -295,9 +306,17 @@ function offeredLabel(id: string, t: Say): string {
  * installed piece of software, each shown or hidden for resellers and
  * customers. Hiding changes nothing that runs; the item can no longer be
  * chosen. The Unlimited plans follow at once (P4).
+ *
+ * alpha.130: a tick says what the server did. Every change is answered with
+ * the item's state as the gates now read it (or the list is read again); a
+ * state other than the one asked for is said beside the list, never a box
+ * that quietly flips back. Items offered elsewhere (uploaded programs,
+ * Python in Catalog management) are shown with their state and a way there,
+ * not with a box that cannot change them. Permissions stand under the same
+ * topics as on every rights screen, sorted in the reader's language.
  */
 export function OfferedItemsTab() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const catalog = useGrantorCatalog();
     const [pending, setPending] = useState<string | null>(null);
     const [failure, setFailure] = useState<ApiError | null>(null);
@@ -310,6 +329,19 @@ export function OfferedItemsTab() {
             const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: item, offered });
             if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
             if (result.kind === 'refused') setFailure(result.error);
+            if (result.kind === 'done') {
+                // The answer names the item's state now; an older answer
+                // without it is checked against the list read again.
+                let now = offeredStateIn(result.body, item);
+                if (now === undefined) {
+                    const reread = await catalog.retry();
+                    now = reread && reread.state === 'known' ? offeredStateOf(reread.value, item) : undefined;
+                }
+                if (now === undefined) showToast('error', t('common.resultUnknown'));
+                else if (now !== offered) {
+                    setFailure({ message: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: offeredLabel(item, t) }) });
+                }
+            }
             // Every chooser, plan and account screen follows the offer.
             invalidate('rights', 'components');
         } finally {
@@ -317,31 +349,67 @@ export function OfferedItemsTab() {
         }
     };
 
-    const row = (item: string, offered: boolean) => (
-        <li key={item} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2" data-offered-item={item} data-offered={offered ? 'yes' : 'no'}>
-            <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 max-sm:min-h-11">
-                <input type="checkbox" checked={offered} disabled={pending !== null || catalog.reading} onChange={(e) => void change(item, e.target.checked)}
-                    className="h-4 w-4 shrink-0 accent-primary" aria-label={t('rights.offered.toggle', { name: offeredLabel(item, t) })} />
-                <span className="min-w-0 text-sm font-medium text-fg">{offeredLabel(item, t)}</span>
-            </label>
-            <span className={`text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>{t(offered ? 'rights.offered.yes' : 'rights.offered.no')}</span>
-        </li>
-    );
+    const row = (item: string, state: RightsItem | undefined) => {
+        const offered = state?.granted ?? false;
+        const name = offeredLabel(item, t);
+        const inCatalog = offeredInCatalog(item);
+        const withdrawn = state?.withdrawn === true;
+        const component = item.startsWith('component:node:') ? 'node' : 'php-fpm';
+        return (
+            <li key={item} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2" data-offered-item={item} data-offered={offered ? 'yes' : 'no'}>
+                {inCatalog ? (
+                    <span className="min-w-0 flex-1 text-sm font-medium text-fg">{name}</span>
+                ) : (
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 max-sm:min-h-11">
+                        <input type="checkbox" checked={offered} disabled={pending !== null || catalog.reading || (withdrawn && !offered)}
+                            onChange={(e) => void change(item, e.target.checked)}
+                            className="h-4 w-4 shrink-0 accent-primary" aria-label={t('rights.offered.toggle', { name })} />
+                        <span className="min-w-0 text-sm font-medium text-fg">{name}</span>
+                    </label>
+                )}
+                <span className={`text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>{t(offered ? 'rights.offered.yes' : 'rights.offered.no')}</span>
+                {inCatalog && (
+                    <span className="flex w-full flex-wrap items-center gap-x-2 text-xs text-fg-muted" data-offered-elsewhere={item}>
+                        {t('rights.offered.inCatalog')} <RowLink to="/addons?view=catalog" label={t('rights.offered.openCatalog')} />
+                    </span>
+                )}
+                {withdrawn && (
+                    <span className="flex w-full flex-wrap items-center gap-x-2 text-xs text-warning" data-offered-withdrawn={item}>
+                        {t('rights.offered.withdrawn')} <RowLink to={`/components/${component}`} label={t('rights.offered.openComponent')} />
+                    </span>
+                )}
+                {state?.server_off && (
+                    <span className="flex w-full flex-wrap items-center gap-x-2 text-xs text-warning" data-offered-server-off={item}>
+                        {t('rights.offered.remoteApiOff')} <RowLink to="/settings?section=panel" label={t('rights.offered.turnOn')} />
+                    </span>
+                )}
+            </li>
+        );
+    };
 
     return (
         <div data-offered-layer="">
             <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('rights.offered.intro')}</p>
             {catalog.remote.state === 'loading' && <Checking label={t('rights.catalogChecking')} />}
             {catalog.remote.state === 'unknown' && <CouldNotCheck text={t('rights.catalogUnknown')} onRetry={() => void catalog.retry()} busy={catalog.reading} />}
+            {pending && <Checking className="mb-2" label={t('rights.offered.saving', { name: offeredLabel(pending, t) })} />}
+            <ErrorBanner className="mb-3" error={failure} sentence="rights.offered.failed" />
             {catalog.remote.state === 'known' && (() => {
                 const view = catalog.remote.value;
                 return (
                     <div className="grid gap-4 lg:grid-cols-2">
                         <section>
                             <h3 className="mb-2 text-sm font-semibold text-fg">{t('rights.part.permissions')}</h3>
-                            <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
-                                {PERMISSION_IDS.map((id) => row(`permission:${id}`, view.permissions.find((item) => item.id === id)?.granted !== false))}
-                            </ul>
+                            <div className="grid gap-3">
+                                {permissionGroups(permissionIdsOf(view), t, locale).map(({ topic, ids }) => (
+                                    <div key={topic} data-offered-topic={topic}>
+                                        <p className="mb-1 text-xs font-semibold text-fg-muted">{t(permissionTopicKey(topic))}</p>
+                                        <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+                                            {ids.map((id) => row(`permission:${id}`, view.permissions.find((item) => item.id === id)))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
                         </section>
                         <section>
                             <h3 className="mb-2 text-sm font-semibold text-fg">{t('rights.part.software')}</h3>
@@ -353,7 +421,7 @@ export function OfferedItemsTab() {
                                         return (
                                             <div key={group}>
                                                 <p className="mb-1 text-xs font-semibold text-fg-muted">{heading.product ?? t(softwareGroupKey(heading.key))}</p>
-                                                <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{items.map((item) => row(item.id, item.granted))}</ul>
+                                                <ul className="divide-y divide-border rounded-lg border border-border bg-surface">{items.map((item) => row(item.id, item))}</ul>
                                             </div>
                                         );
                                     })}
@@ -363,8 +431,6 @@ export function OfferedItemsTab() {
                     </div>
                 );
             })()}
-            {pending && <Checking className="mt-2" label={t('rights.offered.saving', { name: offeredLabel(pending, t) })} />}
-            <ErrorBanner className="mt-3" error={failure} sentence="rights.offered.failed" />
             <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
                 <OfferedAppsSection />
             </Suspense>
@@ -373,4 +439,3 @@ export function OfferedItemsTab() {
         </div>
     );
 }
-

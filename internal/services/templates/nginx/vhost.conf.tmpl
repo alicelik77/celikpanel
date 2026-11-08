@@ -393,8 +393,82 @@ server {
 {{end}}
 {{- end}}
 
+{{- /* Mail programs set themselves up (alpha.130, docs/MAIL-AUTOCONFIG.md).
+    Only for a site whose domain has its mail on this server; nothing is
+    written for any other site, so its file is exactly what it was. The
+    answers are fixed texts made and checked by Render (mail_autoconfig.go):
+    the mail server's name, ports and TLS, never a password, and nothing of
+    the request is written back. `return` answers GET and POST alike (Outlook
+    POSTs), without PHP, so they work with the panel stopped or removed.
+    Posta programları kendini ayarlar: yalnız postası bu sunucuda olan alan
+    adının sitesinde; yanıtlar sabittir, parola yoktur. */}}
+{{- define "mail-autoconfig-answers"}}
+    location = /mail/config-v1.1.xml {
+        default_type application/xml;
+        return 200 '{{.MailAutoconfig.ThunderbirdXML}}';
+    }
+
+    location = /.well-known/autoconfig/mail/config-v1.1.xml {
+        default_type application/xml;
+        return 200 '{{.MailAutoconfig.ThunderbirdXML}}';
+    }
+
+    location ~* ^/autodiscover/autodiscover\.xml$ {
+        default_type application/xml;
+        return 200 '{{.MailAutoconfig.AutodiscoverXML}}';
+    }
+
+    location / {
+        return 404;
+    }
+{{- end}}
+
+{{- define "mail-autoconfig-location"}}
+{{- if .MailAutoconfig}}
+
+    # Mail programs set themselves up (Thunderbird) / Posta programları kendini ayarlar
+    location = /.well-known/autoconfig/mail/config-v1.1.xml {
+        default_type application/xml;
+        return 200 '{{.MailAutoconfig.ThunderbirdXML}}';
+    }
+{{- end}}
+{{- end}}
+
+{{- define "mail-autoconfig-server"}}
+# Mail programs set themselves up: Thunderbird asks autoconfig.<domain>,
+# Outlook autodiscover.<domain>. Only the fixed set-up answers are served
+# here, never the website.
+# Posta programları kendini ayarlar; burada yalnız sabit ayar yanıtları var.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name{{range .MailAutoconfig.Names}} {{.}}{{end}};
+{{template "panel-include" .}}
+{{template "mail-autoconfig-answers" .}}
+}
+{{- if .MailAutoconfig.TLS}}
+
+server {
+{{template "https-listen" .}}
+    server_name{{range .MailAutoconfig.Names}} {{.}}{{end}};
+    ssl_certificate {{.SSLCert}};
+    ssl_certificate_key {{.SSLKey}};
+
+    ssl_session_cache shared:SSL:10m;
+{{- template "tls-policy"}}
+{{template "panel-include" .}}
+{{template "mail-autoconfig-answers" .}}
+}
+{{- end}}
+{{- end}}
+
 {{- if .ACMEChallengeNames}}
 {{template "acme-names-server" .}}
+{{- end}}
+
+{{- if and .MailAutoconfig (not .Suspended)}}
+
+{{template "mail-autoconfig-server" .}}
 {{- end}}
 
 {{- /* A suspended subscription (alpha.117, PLANS-AND-RIGHTS 9A). Every
@@ -485,7 +559,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "traffic-include" .}}
-{{template "panel-include" .}}
+{{template "panel-include" .}}{{template "mail-autoconfig-location" .}}
 
     location / {
 {{template "www-redirect" .}}
@@ -503,7 +577,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "traffic-include" .}}
-{{template "panel-include" .}}
+{{template "panel-include" .}}{{template "mail-autoconfig-location" .}}
 
     location / {
 {{template "www-redirect" .}}
@@ -527,7 +601,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "traffic-include" .}}
-{{template "panel-include" .}}
+{{template "panel-include" .}}{{template "mail-autoconfig-location" .}}
 
     location / {
 {{template "www-redirect" .}}
@@ -545,7 +619,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "traffic-include" .}}
-{{template "panel-include" .}}
+{{template "panel-include" .}}{{template "mail-autoconfig-location" .}}
 {{template "locations" .}}
 {{template "owner-include" .}}
 }
@@ -555,7 +629,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name{{range .ServerNames}} {{.}}{{end}};
-{{template "panel-include" .}}
+{{template "panel-include" .}}{{template "mail-autoconfig-location" .}}
 {{if .ForceHTTPS}}
     location / {
 {{template "www-redirect" .}}
@@ -579,7 +653,7 @@ server {
     access_log /var/log/nginx/{{.Domain}}-access.log;
     error_log /var/log/nginx/{{.Domain}}-error.log;
 {{template "traffic-include" .}}
-{{template "panel-include" .}}
+{{template "panel-include" .}}{{template "mail-autoconfig-location" .}}
 {{template "locations" .}}
 {{template "owner-include" .}}
 }

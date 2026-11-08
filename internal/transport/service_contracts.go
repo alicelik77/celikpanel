@@ -345,6 +345,20 @@ type UninstallServiceResponse struct {
 	ErrorCode  string                     `json:"error_code,omitempty"`
 	Collateral []PackageRemovalCollateral `json:"collateral,omitempty"`
 	BoundTools []string                   `json:"bound_tools,omitempty"`
+	// PostgreSQLClustersRemoved (alpha.130, no leftovers) are the clusters
+	// ("16/main") whose files went with their packages; PostgreSQLArchives
+	// are where anything beyond what initdb made was kept first. Additive.
+	PostgreSQLClustersRemoved []string `json:"postgresql_clusters_removed,omitempty"`
+	PostgreSQLArchives        []string `json:"postgresql_archives,omitempty"`
+	// OwnerFilesKept (alpha.130 lab) are the owner's own files next to a
+	// purged package that were kept (left in place, or put back after the
+	// package's purge script deleted them). Additive.
+	OwnerFilesKept []string `json:"owner_files_kept,omitempty"`
+	// OwnerFilesCopied (alpha.130 lab, re-verification) are files that may
+	// be the owner's (or package files the owner changed) in the folders
+	// the purge emptied: not put back, copied to OwnerFilesCopyDir.
+	OwnerFilesCopied  []string `json:"owner_files_copied,omitempty"`
+	OwnerFilesCopyDir string   `json:"owner_files_copy_dir,omitempty"`
 }
 
 // PackageRemovalCollateral is one package a removal would take that it did
@@ -387,6 +401,12 @@ type ServiceRemovalPreviewResponse struct {
 	// stays on this server. Additive.
 	KeepsData bool     `json:"keeps_data,omitempty"`
 	DataPaths []string `json:"data_paths,omitempty"`
+	// RemovesClusters (alpha.130, no leftovers): the PostgreSQL clusters of
+	// this removal ("16/main") go with their packages (purged): their
+	// configuration, data directory and logs. The removal is still refused
+	// while one holds a database; anything else they hold beyond what initdb
+	// made is archived under /var/backups/celikpanel first. Additive.
+	RemovesClusters []string `json:"removes_clusters,omitempty"`
 	// HoldsDatabases (alpha.108, D-038 §2): the PostgreSQL clusters of this
 	// removal that still hold user databases ("17/main: shop, blog"); the
 	// removal is refused while there is one. DatabasesUnknown are the

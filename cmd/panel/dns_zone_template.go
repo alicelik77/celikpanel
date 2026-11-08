@@ -120,6 +120,17 @@ func (p *Panel) createZoneWithTemplate(ctx context.Context, domain string) (int,
 		{domain, "TXT", splitTXTContent(spfRecommended()), nil},
 		{"_dmarc." + domain, "TXT", splitTXTContent(dmarcRecommended(domain, "")), nil},
 	}
+	// alpha.130: mail programs set themselves up (mail_autoconfig.go):
+	// autoconfig/autodiscover point to the mail host, and Outlook finds
+	// autodiscover.<domain> through its SRV record. They go with the zone.
+	srvPrio := 0
+	for _, rec := range mailAutoconfigRecords(domain, "mail."+domain) {
+		var prio *int
+		if rec.Type == "SRV" {
+			prio = &srvPrio
+		}
+		records = append(records, record{rec.Name, rec.Type, rec.Content, prio})
+	}
 
 	// Address records only when we actually know this host's address —
 	// guessing an IP would serve wrong DNS, which is worse than a record the

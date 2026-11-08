@@ -33,6 +33,11 @@ const (
 	agentRPCEffectControl
 	agentRPCEffectHostMutation
 	agentRPCEffectHostRepairMutation
+	// agentRPCEffectAccessNarrowing (alpha.130, D5) only takes access away
+	// (an address out of CelikPanel's own nftables filter), uses no package
+	// or service manager and therefore needs no host identity: a closing
+	// must not wait for a server that never finishes starting.
+	agentRPCEffectAccessNarrowing
 )
 
 type agentRPCCapability string
@@ -95,6 +100,11 @@ func (p agentRPCPolicy) validate() error {
 			return errors.New("read/control policy carries a host capability")
 		}
 		return nil
+	case agentRPCEffectAccessNarrowing:
+		if p.capability != agentRPCCapabilityFirewall {
+			return errors.New("access narrowing policy must carry the firewall capability")
+		}
+		return nil
 	case agentRPCEffectHostMutation, agentRPCEffectHostRepairMutation:
 		if _, ok := validAgentRPCCapabilities[p.capability]; !ok {
 			return errors.New("host mutation policy lacks a known capability")
@@ -140,7 +150,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
-		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
+		Agent.MailRelayStatusV1 Agent.MailServerSettingsStatusV1 Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
+		Agent.MailPasswordFingerprintV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
 		Agent.DatabaseRemoteStatusV1
@@ -153,7 +164,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodeSiteInstallStatusV1 Agent.SiteLogStatusV1 Agent.GitDeployStatusV1
 		Agent.RuntimePythonV1 Agent.RuntimeVersionUsersV1
 		Agent.DNSPeerInspectorToolStatusV1
-		Agent.ServiceHealthV1
+		Agent.ServiceHealthV1 Agent.SSHPasswordLoginStatusV1
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
 	`),
@@ -176,6 +187,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServerRebootV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityHostConfig, `
+		Agent.SetSSHPasswordLoginV1
 		Agent.DeletePHPPool Agent.TogglePHPExtension Agent.UpdateConfig
 		Agent.UpdateExtendedPHPConfig Agent.UpdateMySQLConfig Agent.UpdatePHPConfig
 		Agent.UpdatePHPConfiguration Agent.UpdatePHPPoolConfig Agent.ApplySitePool
@@ -227,6 +239,8 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
 		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1 Agent.SetMailDomainOptionsV1
+		Agent.SetMailPasswordIfUnchangedV1
+		Agent.MailRelayApplyV1 Agent.MailSubaddressingV1 Agent.MailSenderListV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -250,11 +264,15 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateDatabase Agent.DeleteDatabase Agent.ImportCpmoveDatabase
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
 		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
+		Agent.PostgreSQLLeftoverCleanupV1 Agent.RemovePostgreSQLLeftoverV1
 		Agent.SetDatabaseUserSuspensionV1 Agent.RotateDatabaseUserPasswordV1
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
 		Agent.ApplyDatabaseRemoteV1
+	`),
+	agentRPCAuthGroup(agentRPCEffectAccessNarrowing, agentRPCCapabilityFirewall, `
+		Agent.NarrowDatabaseRemoteFilterV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilitySystemSQLite, `
 		Agent.CreateSystemSQLiteSnapshot Agent.OptimizeSystemSQLiteDatabase
@@ -325,6 +343,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.PHPToolBindingsV1":             agentRPCQuickReadTimeout,
 	"Agent.PostfixQueue":                  agentRPCQuickReadTimeout,
 	"Agent.ServiceHealthV1":               agentRPCQuickReadTimeout,
+	"Agent.SSHPasswordLoginStatusV1":      agentRPCQuickReadTimeout,
+	"Agent.SetSSHPasswordLoginV1":         agentRPCMutationTimeout,
 	"Agent.RepoStatus":                    agentRPCDeploymentTimeout,
 	"Agent.SiteUsage":                     agentRPCQuickReadTimeout,
 	"Agent.Version":                       agentRPCQuickReadTimeout,
@@ -358,6 +378,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.MailDeliveryLookupV1":          agentRPCStandardReadTimeout,
 	"Agent.OutgoingMailActivityV1":        agentRPCStandardReadTimeout,
 	"Agent.OutgoingMailLimitsStatusV1":    agentRPCQuickReadTimeout,
+	"Agent.MailRelayStatusV1":             agentRPCQuickReadTimeout,
+	"Agent.MailServerSettingsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
@@ -384,8 +406,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.AddMailAccount":           agentRPCMutationTimeout,
 	// One sendmail run, bounded at 30 s by the Agent (passwordless mail closed).
 	"Agent.SendAccountMailV1": agentRPCMutationTimeout,
-	"Agent.ApplyFirewallV2":   agentRPCMutationTimeout,
-	"Agent.ApplyVhost":        agentRPCMutationTimeout,
+	// alpha.130: one passwd-file read, one hash and one write.
+	"Agent.SetMailPasswordIfUnchangedV1": agentRPCMutationTimeout,
+	"Agent.MailPasswordFingerprintV1":    agentRPCQuickReadTimeout,
+	"Agent.ApplyFirewallV2":              agentRPCMutationTimeout,
+	"Agent.ApplyVhost":                   agentRPCMutationTimeout,
 	// One nginx -T, at most one file write, nginx -t and one reload.
 	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,
@@ -427,6 +452,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
 	"Agent.SetMailDomainOptionsV1":        agentRPCMutationTimeout,
 	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
+	"Agent.MailRelayApplyV1":              agentRPCMutationTimeout,
+	"Agent.MailSubaddressingV1":           agentRPCMutationTimeout,
+	"Agent.MailSenderListV1":              agentRPCMutationTimeout,
 	// alpha.128: doveadm expunge of one mailbox (the Agent bounds it at 9 min).
 	"Agent.EmptyMailboxV1":               agentRPCDatabaseTimeout,
 	"Agent.TogglePHPExtension":           agentRPCMutationTimeout,
@@ -494,18 +522,21 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
 	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
 	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,
-	"Agent.DeleteSite":                     agentRPCDatabaseTimeout,
-	"Agent.EnsureDKIMKey":                  agentRPCDatabaseTimeout,
-	"Agent.ImportMailAccount":              agentRPCDatabaseTimeout,
-	"Agent.ApplySitePool":                  agentRPCDatabaseTimeout,
-	"Agent.ApplySiteSettingsIncludeV1":     agentRPCDatabaseTimeout,
-	"Agent.SecureDNSZoneV2":                agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV2":                  agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV3":                  agentRPCDatabaseTimeout,
-	"Agent.RecoverDNSZoneV3":               agentRPCDatabaseTimeout,
-	"Agent.SyncMailTLSV2":                  agentRPCMutationTimeout,
-	"Agent.CreateSystemSQLiteSnapshot":     agentRPCDatabaseTimeout,
-	"Agent.OptimizeSystemSQLiteDatabase":   agentRPCDatabaseTimeout,
+	// alpha.130: leftover clusters of removed majors (archive may be large).
+	"Agent.PostgreSQLLeftoverCleanupV1":  agentRPCDatabaseTimeout,
+	"Agent.RemovePostgreSQLLeftoverV1":   agentRPCDeploymentTimeout,
+	"Agent.DeleteSite":                   agentRPCDatabaseTimeout,
+	"Agent.EnsureDKIMKey":                agentRPCDatabaseTimeout,
+	"Agent.ImportMailAccount":            agentRPCDatabaseTimeout,
+	"Agent.ApplySitePool":                agentRPCDatabaseTimeout,
+	"Agent.ApplySiteSettingsIncludeV1":   agentRPCDatabaseTimeout,
+	"Agent.SecureDNSZoneV2":              agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV2":                agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV3":                agentRPCDatabaseTimeout,
+	"Agent.RecoverDNSZoneV3":             agentRPCDatabaseTimeout,
+	"Agent.SyncMailTLSV2":                agentRPCMutationTimeout,
+	"Agent.CreateSystemSQLiteSnapshot":   agentRPCDatabaseTimeout,
+	"Agent.OptimizeSystemSQLiteDatabase": agentRPCDatabaseTimeout,
 
 	// Operations that legitimately run package/application installers.
 	"Agent.ApplyVhosts":                 agentRPCDeploymentTimeout,
@@ -576,6 +607,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// nftables filter, TLS, listen address).
 	"Agent.DatabaseRemoteStatusV1": agentRPCNetworkReadTimeout,
 	"Agent.ApplyDatabaseRemoteV1":  agentRPCDatabaseTimeout,
+	// alpha.130 (D5): closing at the address filter only.
+	"Agent.NarrowDatabaseRemoteFilterV1": agentRPCMutationTimeout,
 
 	// alpha.118: WordPress tools and malware scanning of hosted sites.
 	"Agent.WordPressStatusV1":          agentRPCNetworkReadTimeout,
@@ -743,7 +776,7 @@ func authorizeAgentRPCPolicyForHost(method string, policy agentRPCPolicy, identi
 		return fmt.Errorf("%w: %v", errAgentRPCPolicyInvalid, err)
 	}
 	switch policy.effect {
-	case agentRPCEffectRead, agentRPCEffectControl:
+	case agentRPCEffectRead, agentRPCEffectControl, agentRPCEffectAccessNarrowing:
 		return nil
 	case agentRPCEffectHostMutation, agentRPCEffectHostRepairMutation:
 		packageFamily := strings.TrimSpace(identity.host.PackageFamily)
@@ -794,7 +827,7 @@ func (p *Panel) authorizeAgentRPCContext(ctx context.Context, method string) err
 	if err != nil {
 		return err
 	}
-	if policy.effect == agentRPCEffectRead || policy.effect == agentRPCEffectControl {
+	if policy.effect == agentRPCEffectRead || policy.effect == agentRPCEffectControl || policy.effect == agentRPCEffectAccessNarrowing {
 		return authorizeAgentRPCPolicyForHost(method, policy, agentRPCHostIdentity{})
 	}
 	if ctx == nil {

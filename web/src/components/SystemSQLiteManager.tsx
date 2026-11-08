@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Database, Download, Gauge, HardDrive, LockKeyhole, RefreshCw, Settings2 } from 'lucide-react';
 import { Link } from '../router';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { showToast } from './Toast';
 import { Button, Card, EmptyState, ErrorBanner } from './ui';
@@ -410,8 +411,5 @@ function formatDate(value: string, locale: string, unknown: string): string {
     if (!value) return unknown;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return unknown;
-    return new Intl.DateTimeFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(date);
+    return formatDateTime(date, locale);
 }

@@ -1,9 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useConfigFile, type ConfigFile, type ConfigFileHandle } from '../lib/configFile';
 import { applyHba, hbaMethods, hbaRuleComplete, hbaTypes, parseHba, type HbaFields, type HbaRule } from '../lib/dbConfigText';
-import { ConfigFileGate, ConfigSaveBar, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine } from './ConfigFileNotices';
+import { ConfigFileGate, ConfigSaveBar, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, revealField, type RefusalTarget } from './ConfigFileNotices';
 import { Button } from './ui';
 
 // The access rules of pg_hba.conf, in the order PostgreSQL reads them.
@@ -83,6 +83,28 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
     const placed = refusedAdded >= 0 || !!refusedRule;
     const locked = handle.saving || handle.stale;
 
+    // The rule by the number the list shows it under, and the first control of
+    // its row (8 Nov 2026: the reason stood only under the row, below the
+    // fold). The page goes to that row once for each refusal, and the banner
+    // offers to go there again.
+    // Kural, listenin gösterdiği numarayla; satırın ilk denetimi. Sayfa her
+    // ret için bir kez o satıra gider, bildirim yeniden gitmeyi sunar.
+    const uid = useId();
+    const controlOf = (key: string) => `${uid}hba-${key}`;
+    const refusedIndex = refusedRule ? rules.indexOf(refusedRule) : -1;
+    const refusedNumber = refusedRule ? refusedIndex + 1 : refusedAdded >= 0 ? rules.length + refusedAdded + 1 : 0;
+    const target: RefusalTarget | undefined = placed
+        ? {
+            label: t('dbconf.target.rule', { n: refusedNumber, line: refusedLine + 1, file: 'pg_hba.conf' }),
+            show: t('dbconf.target.ruleShow', { n: refusedNumber }),
+            id: controlOf(refusedRule ? `rule-${refusedRule.line}` : `new-${refusedAdded}`),
+        }
+        : undefined;
+    const targetId = target?.id ?? '';
+    useEffect(() => {
+        if (refusal && targetId) revealField(targetId);
+    }, [refusal]);
+
     const discard = () => {
         handle.clearRefusal();
         setEdited(new Map());
@@ -92,7 +114,7 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
 
     return (
         <>
-            <ConfigSaveNotices handle={handle} file="pg_hba.conf" service="PostgreSQL" placed={placed} />
+            <ConfigSaveNotices handle={handle} file="pg_hba.conf" service="PostgreSQL" placed={placed} target={target} />
             {rules.length === 0 && added.length === 0 ? (
                 // The file was read and holds no rule: a known answer.
                 // Dosya okundu ve hiç kural tutmuyor: bilinen bir yanıt.
@@ -105,6 +127,8 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
                                 <RuleFields
                                     number={index + 1}
                                     first={index === 0}
+                                    controlId={controlOf(`rule-${rule.line}`)}
+                                    refusalId={refusal && refusedRule === rule ? `hba-${rule.line}-refusal` : undefined}
                                     fields={fieldsOf(rule)}
                                     onChange={(fields) => editRule(rule, fields)}
                                     disabled={locked || removed.has(rule.line)}
@@ -128,7 +152,16 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
                                 <div className="grid gap-x-3 gap-y-1 sm:grid-cols-[2rem_minmax(0,1fr)_2.75rem]">
                                     <span className="pt-0.5 text-xs tabular-nums text-fg-muted">{index + 1}</span>
                                     <div className="min-w-0">
-                                        <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-sm text-fg">{rule.text}</pre>
+                                        {/* Focusable so the banner can bring a refused rule written by hand on screen.
+                                            Elle yazılmış reddedilen kural için odaklanabilir. */}
+                                        <pre
+                                            id={controlOf(`rule-${rule.line}`)}
+                                            tabIndex={-1}
+                                            aria-describedby={refusal && refusedRule === rule ? `hba-${rule.line}-refusal` : undefined}
+                                            className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                        >
+                                            {rule.text}
+                                        </pre>
                                         <p className="mt-1 text-xs text-fg-muted">{t('dbconf.hba.asWritten')}</p>
                                     </div>
                                 </div>
@@ -141,6 +174,8 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
                             <RuleFields
                                 number={rules.length + index + 1}
                                 first={rules.length + index === 0}
+                                controlId={controlOf(`new-${index}`)}
+                                refusalId={refusal && refusedAdded === index ? `hba-new-${index}-refusal` : undefined}
                                 fields={rule}
                                 onChange={(fields) => {
                                     handle.clearRefusal();
@@ -188,6 +223,8 @@ const cell = 'w-full rounded-lg border border-border-strong bg-surface px-2.5 py
 function RuleFields({
     number,
     first,
+    controlId,
+    refusalId,
     fields,
     onChange,
     disabled,
@@ -197,6 +234,10 @@ function RuleFields({
     number: number;
     /** The first row of the list carries the column names on a wide screen. */
     first: boolean;
+    /** The id of the row's first control, where a refusal of this rule takes the focus. */
+    controlId: string;
+    /** The id of the refusal shown under this row, when there is one. */
+    refusalId?: string;
     fields: HbaFields;
     onChange: (fields: HbaFields) => void;
     disabled: boolean;
@@ -235,8 +276,11 @@ function RuleFields({
                 <label className="min-w-0">
                     <span className={name}>{t('dbconf.hba.type')}</span>
                     <select
+                        id={controlId}
                         value={fields.type}
                         disabled={disabled}
+                        aria-invalid={refusalId ? true : undefined}
+                        aria-describedby={refusalId}
                         onChange={(event) => onChange({ ...fields, type: event.target.value, address: event.target.value === 'local' ? '' : fields.address })}
                         className={cell}
                     >

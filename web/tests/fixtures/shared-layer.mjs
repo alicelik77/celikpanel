@@ -36,6 +36,11 @@ const alpha128LazyParts = {
   './SitePHPLimits': ['SitePHPLimits'],
   './PlanLimitsSection': ['PlanLimitsSection', 'CustomLimitsSection'],
   './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
+  // alpha.130: the Offered tab's applications are their own chunk too.
+  './OfferedAppsSection': ['OfferedAppsSection'],
+  // alpha.130: the administrator's switch of connections from outside on the
+  // Databases page reads its own address (its own chunk).
+  './DatabaseRemoteServerPanel': ['DatabaseRemoteServerPanel'],
 };
 
 export function compileSource(path, resolve) {
@@ -108,6 +113,18 @@ export const serviceStatusURL = compileSource('lib/serviceStatus.ts', unexpected
 // It reads a lost answer the one way (alpha.104 review).
 export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/phpTools.ts')(specifier)
+));
+
+// alpha.130: the database engines' own marks (an elephant and a sea lion),
+// shared by the Components page and the domain's database cards. Compiled
+// from source; its icon factory is a stand-in that draws nothing, like
+// every stub icon.
+export const engineIconsURL = compileSource('lib/engineIcons.ts', (specifier) => (
+  specifier === 'lucide-react' ? dataModule('export const createLucideIcon = () => () => null;') : unexpected('lib/engineIcons.ts')(specifier)
+));
+// alpha.130: the components' own marks (componentMarks.ts), the same way.
+export const componentMarksURL = compileSource('lib/componentMarks.ts', (specifier) => (
+  specifier === 'lucide-react' ? dataModule('export const createLucideIcon = () => () => null;') : unexpected('lib/componentMarks.ts')(specifier)
 ));
 
 // alpha.105: what an install brings, and the component's version reads.
@@ -198,6 +215,10 @@ export function replaceLazyImport(moduleURL, specifier, replacementURL) {
   return dataModule(replaced);
 }
 
+// 8 Nov 2026: every date and time follows the interface language through the one formatter (no imports of its own).
+export const dateFormatURL = compileSource('lib/dateFormat.ts', unexpected('lib/dateFormat.ts'));
+// alpha.130: the update sources in plain words (no imports of its own).
+export const updateOriginsURL = compileSource('lib/updateOrigins.ts', unexpected('lib/updateOrigins.ts'));
 // alpha.127: the owner's password rule, read by every password field and form.
 export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
 
@@ -241,6 +262,10 @@ export function sharedLayer(stubURL, extra = {}) {
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/lib/passwordPolicy': passwordPolicyURL,
+    '/engineIcons': engineIconsURL,
+    '/componentMarks': componentMarksURL,
+    '/lib/dateFormat': dateFormatURL,
+    '/lib/updateOrigins': updateOriginsURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
     ...extra,

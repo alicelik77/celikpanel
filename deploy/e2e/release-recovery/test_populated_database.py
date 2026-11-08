@@ -448,7 +448,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
         with self.assertRaises(p.Refused):
             self.verify(result, 57)
 
-    def test_actual_39_through_74_migrations_add_tables_and_change_no_other_old_row(self):
+    def test_actual_39_through_77_migrations_add_tables_and_change_no_other_old_row(self):
         # alpha.118: 58 application catalog operations, 59 WordPress tools and
         # malware scans, 60 remote backups, 61 service apps; all additive.
         # alpha.119: 62 the first-login tour's state (one table, one trigger),
@@ -466,9 +466,14 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # alpha.129: 73 outgoing mail resume baseline (two NOT NULL DEFAULT 0
         # columns on mailbox_outgoing, a table of 67; no table added), 74
         # remote access to databases (one table).
-        self.assertEqual(len(self.sql), 74, 'a migration after 74 needs its own pin before a candidate carries it')
+        # alpha.130: 75 timed remote access (one NULL column on
+        # database_remote_rules, a table of 74; no table added), 76 mailbox
+        # recovery (two tables), 77 mail relay and mail server settings (three
+        # tables).
+        self.assertEqual(len(self.sql), 77, 'a migration after 77 needs its own pin before a candidate carries it')
         counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114, 63: 117, 64: 118, 65: 121,
-                  66: 123, 67: 129, 68: 134, 69: 135, 70: 136, 71: 137, 72: 140, 73: 140, 74: 141}
+                  66: 123, 67: 129, 68: 134, 69: 135, 70: 136, 71: 137, 72: 140, 73: 140, 74: 141,
+                  75: 141, 76: 143, 77: 146}
         for version, tables in counts.items():
             with self.subTest(version=version):
                 self.setUp()
@@ -487,7 +492,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
                 if version >= 72:
                     expected_columns['sessions'] = expected_columns.get('sessions', ()) + ('last_seen_at', 'client_ip', 'user_agent')
                 self.assertEqual(p.added_columns(version), expected_columns)
-        for version in (75, '74', True):
+        for version in (78, '77', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
 

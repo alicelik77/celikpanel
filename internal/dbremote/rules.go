@@ -30,6 +30,36 @@ type Target struct {
 // Key names a target in state and answers ("postgresql:5432").
 func (t Target) Key() string { return TargetKey(t.Engine, t.Port) }
 
+// RequestDigest identifies a whole wanted rule set (alpha.130): the targets
+// that carry rules, normalized and in key order, and the administrator's
+// agreement on MariaDB's host name lookup. The Agent records it after a
+// clean apply; the panel compares it at start to send nothing when nothing
+// changed. A target that cannot be normalized makes the digest empty (never
+// equal to a recorded one).
+func RequestDigest(targets []Target, skipNameResolve bool) string {
+	var normalized []Target
+	for _, t := range targets {
+		if len(t.Rules) == 0 {
+			continue
+		}
+		n, err := t.Normalize()
+		if err != nil {
+			return ""
+		}
+		normalized = append(normalized, n)
+	}
+	sort.Slice(normalized, func(i, j int) bool { return normalized[i].Key() < normalized[j].Key() })
+	h := sha256.New()
+	fmt.Fprintf(h, "skip-name-resolve=%v\n", skipNameResolve)
+	for _, t := range normalized {
+		fmt.Fprintf(h, "%s\n", t.Key())
+		for _, r := range t.Rules {
+			fmt.Fprintf(h, "%s|%s|%s\n", r.Database, r.User, r.Address)
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 // TargetKey is Target.Key for loose values.
 func TargetKey(engine string, port int) string { return engine + ":" + strconv.Itoa(port) }
 

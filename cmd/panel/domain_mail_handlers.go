@@ -55,7 +55,10 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 			writeServerError(w, err)
 			return
 		}
-		p.handleMailClientSetup(w, r, domain)
+		view := p.mailAutoconfigView(r.Context(), domainID, domain)
+		p.handleMailClientSetupWith(w, r, domain, &view)
+	case strings.HasSuffix(r.URL.Path, "/mail/autoconfig"):
+		p.handleMailAutoconfig(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/catch-all"):
 		p.handleMailCatchAll(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/autoresponder"):
@@ -72,6 +75,8 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleEmptyMailbox(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/password"):
 		p.handleUpdateEmailPassword(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/accounts/recovery"):
+		p.handleMailboxRecovery(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/accounts"):
 		switch r.Method {
 		case http.MethodGet:
@@ -438,6 +443,9 @@ func (p *Panel) handleUpdateEmailPassword(w http.ResponseWriter, r *http.Request
 			// itself (the screen says so, not "open again").
 			answer["sending_resume_pending"] = true
 		}
+	} else if p.mailboxPauseReason(r.Context(), request.ID) == "manual" {
+		// alpha.130: a pause set by hand stays; the screen says who lifts it.
+		answer["sending_paused"] = true
 	}
 	if claimed {
 		// The previous owner's open mail sessions end with the transfer's step.

@@ -114,6 +114,13 @@ mailbox without history is judged by volume only after the panel has watched
 for a day, so turning the limits on does not pause busy ordinary mailboxes.
 A new mailbox sends at most 50 per hour in its first 24 hours. The pause is in
 postfwd's `paused.list` (native); the only way out is a password change.
+A pause set by hand (`paused_reason` `manual`, the administrator's or
+reseller's own stop) is different (alpha.130): no password change ends it,
+whichever path changes the password (the mail page of an administrator,
+reseller, customer or team member, a mail API token, or a mailbox recovery
+link). The answer says sending stays stopped and who reopens it, and the
+mailbox card offers no password change for it. No screen sets a manual
+pause yet; the rule holds for the value the schema already allows.
 A password change starts a fresh window (alpha.129; alpha.128 lab round 2: a
 mailbox reopened and abused again within the same hour was never paused
 again, because the whole hour of the change was skipped): the hours before

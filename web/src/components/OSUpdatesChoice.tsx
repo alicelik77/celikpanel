@@ -17,6 +17,28 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords } from './ui';
 import { LifeLine, type Tone } from './LifeLine';
 import { CopyCommand } from './CopyCommand';
+import { describeOrigins, type DescribedOrigin } from '../lib/updateOrigins';
+
+/** The sources in plain words, security first (alpha.130). */
+export function originPhrases(covers: readonly string[], t: ReturnType<typeof useI18n>['t']): string[] {
+    return describeOrigins(covers).map((item: DescribedOrigin) => t(`life.origin.${item.kind}` as TranslationKey, {
+        origin: item.origin ?? (item.kind === 'esm' ? 'Ubuntu' : t('life.origin.distro')),
+    }));
+}
+
+/** The exact patterns, only behind a disclosure. */
+export function OriginDetails({ covers }: { covers: readonly string[] }) {
+    const { t } = useI18n();
+    if (covers.length === 0) return null;
+    return (
+        <details className="pl-6 text-sm text-fg-muted" data-os-origins-raw="">
+            <summary className="cursor-pointer select-none max-sm:min-h-11">{t('life.origin.details')}</summary>
+            <ul className="mt-1 space-y-0.5 break-all font-mono text-xs">
+                {covers.map((pattern) => <li key={pattern}>{pattern}</li>)}
+            </ul>
+        </details>
+    );
+}
 
 export interface OSUpdatesAutoConfig {
     path: string;
@@ -59,7 +81,7 @@ export function OSUpdatesChoice({ config, automaticState, onChanged }: { config:
     const [outcome, setOutcome] = useState<Outcome>(null);
     const now = currentMode(automaticState);
     const edited = config.state === 'edited';
-    const covers = (config.covers ?? []).join(', ');
+    const covers = originPhrases(config.covers ?? [], t).join(', ');
     const notInstalled = automaticState === 'not_installed';
 
     const stateLine = ((): { tone: Tone; text: string } | null => {
@@ -154,6 +176,7 @@ export function OSUpdatesChoice({ config, automaticState, onChanged }: { config:
             <p className="pl-6 text-sm text-fg-muted" data-os-choice-auto="">
                 <KeepWords text={covers ? t('life.choice.auto.means', { origins: covers }) : t('life.choice.auto.meansDefault')} />
             </p>
+            <OriginDetails covers={config.covers ?? []} />
             <p className="pl-6 text-sm text-fg-muted" data-os-choice-manual="">
                 <KeepWords text={t('life.choice.manual.means', { command: MANUAL_COMMAND })} />
             </p>

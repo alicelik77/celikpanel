@@ -86,8 +86,82 @@ var readServiceHealthFromAgent = func(p *Panel, ctx context.Context, units []str
 	return resp, err
 }
 
+// serviceHealthUnit is the unit whose state proves that a service's daemon
+// runs (alpha.130). For most services it is the unit the panel acts on. On
+// Debian and Ubuntu, Postfix is packaged as a oneshot wrapper postfix.service
+// that stays "active (exited)" whatever happens to the mail system, and the
+// real master process runs in the default instance postfix@-.service (the
+// package's postfix-instance-generator always creates "-"). The wrapper's
+// "exited" was read as "Postfix is not running" (Boston, 8 Nov 2026), and a
+// dead instance behind an active wrapper would have been read as running.
+// Arch and other systems ship postfix.service as the daemon itself.
+//
+// Start and stop still act on postfix.service: its instances are PartOf it,
+// and the Agent acts only on catalogue units.
+//
+// serviceHealthUnit: bir hizmetin daemon'ının çalıştığını kanıtlayan birim.
+// Debian/Ubuntu'da Postfix'in postfix.service'i yalnız bir sarmalayıcıdır
+// (her zaman "active (exited)"); gerçek süreç postfix@-.service'tedir.
+func serviceHealthUnit(serviceID, pkgFamily, unit string) string {
+	if serviceID == "postfix" && pkgFamily == "apt" && unit == "postfix" {
+		return postfixDefaultInstanceUnit
+	}
+	return unit
+}
+
+const postfixDefaultInstanceUnit = "postfix@-"
+
+// postfixWrapperUnit is read next to the default instance on apt systems.
+// Debian 13's Postfix 3.10 package ships postfix.service as the daemon
+// itself (Type=forking, "active (running)") and leaves postfix@-.service
+// "inactive (dead)"; reading only the instance called a running Postfix
+// stopped (lab, alpha.130, Debian 13 — Frankfurt's system). When the wrapper
+// reads "running" it is the daemon and its reading stands for the instance.
+//
+// Debian 13'te postfix.service daemon'ın kendisidir; "running" okunursa
+// örneğin yerine o okunur.
+const postfixWrapperUnit = "postfix"
+
+// withPostfixDaemonReading puts the wrapper's reading in place of the
+// default instance's when the wrapper itself runs the daemon.
+func withPostfixDaemonReading(units []transport.ServiceHealthUnit) []transport.ServiceHealthUnit {
+	var wrapper *transport.ServiceHealthUnit
+	for i := range units {
+		if units[i].Unit == postfixWrapperUnit {
+			wrapper = &units[i]
+		}
+	}
+	if wrapper == nil || wrapper.ActiveState != "active" || wrapper.SubState != "running" {
+		return units
+	}
+	out := make([]transport.ServiceHealthUnit, len(units))
+	copy(out, units)
+	for i := range out {
+		if out[i].Unit == postfixDefaultInstanceUnit {
+			reading := *wrapper
+			reading.Unit = postfixDefaultInstanceUnit
+			out[i] = reading
+		}
+	}
+	return out
+}
+
+// serviceHealthReady is the scan's own rule (managedServiceUnitReady) applied
+// to a live reading: any active state of the unit that proves the daemon is
+// up. A oneshot unit such as wg-quick@wg0, or a unit systemd generated from
+// an init script, reports "active (exited)" while it is up; PostgreSQL's apt
+// wrapper never proves a cluster.
+func serviceHealthReady(serviceID, pkgFamily, unit string, reading transport.ServiceHealthUnit) bool {
+	status := reading.ActiveState
+	if reading.SubState != "" {
+		status += " (" + reading.SubState + ")"
+	}
+	return reading.ActiveState == "active" && managedServiceUnitReady(serviceID, pkgFamily, unit, status)
+}
+
 // monitoredServices is the installed managed services of the last component
-// scan, each with its unit, in the Components page's order.
+// scan, each with the unit that proves it runs (serviceHealthUnit), in the
+// Components page's order.
 func (p *Panel) monitoredServices(ctx context.Context) ([]ManagedServiceResponse, bool) {
 	observations, _, unknown := p.problemScanObservations(ctx)
 	if unknown != nil {
@@ -95,13 +169,15 @@ func (p *Panel) monitoredServices(ctx context.Context) ([]ManagedServiceResponse
 	}
 	var services []ManagedServiceResponse
 	seen := map[string]bool{}
-	for _, service := range catalogViewForHost(observations, p.managedServiceHostProfile()) {
+	host := p.managedServiceHostProfile()
+	for _, service := range catalogViewForHost(observations, host) {
 		if service.Kind != core.KindService || service.IsInstalled == nil || !*service.IsInstalled {
 			continue
 		}
 		if service.Unit == "" {
 			service.Unit = service.ID
 		}
+		service.Unit = serviceHealthUnit(service.ID, host.PackageFamily, service.Unit)
 		if !serviceUnitNameOK(service.Unit) || seen[service.Unit] {
 			continue
 		}
@@ -137,9 +213,15 @@ func (p *Panel) refreshServiceHealth(ctx context.Context, now time.Time) {
 	if !ok || len(services) == 0 {
 		return
 	}
-	units := make([]string, 0, len(services))
+	units := make([]string, 0, len(services)+1)
+	readsWrapper, readsInstance := false, false
 	for _, service := range services {
 		units = append(units, service.Unit)
+		readsWrapper = readsWrapper || service.Unit == postfixWrapperUnit
+		readsInstance = readsInstance || service.Unit == postfixDefaultInstanceUnit
+	}
+	if readsInstance && !readsWrapper && len(units) < transport.ServiceHealthMaxUnits {
+		units = append(units, postfixWrapperUnit)
 	}
 	callCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -170,6 +252,7 @@ func (s *serviceHealthState) record(now time.Time, units []transport.ServiceHeal
 	if vcpus < 1 {
 		vcpus = 1
 	}
+	units = withPostfixDaemonReading(units)
 	s.units, s.cpu = map[string]transport.ServiceHealthUnit{}, map[string]float64{}
 	for _, unit := range units {
 		s.units[unit.Unit] = unit
@@ -211,39 +294,54 @@ func restartsWithin(marks []serviceRestartMark, now time.Time) int64 {
 	return total
 }
 
-// liveStatus returns a fresh reading's status line for a unit, in the
-// scan's dialect ("active (running)").
-func (s *serviceHealthState) liveStatus(unit string, now time.Time) (string, bool) {
+// liveReading returns a fresh reading of a unit and when it was taken.
+func (s *serviceHealthState) liveReading(unit string, now time.Time) (transport.ServiceHealthUnit, time.Time, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.readAt.IsZero() || now.Sub(s.readAt) > serviceHealthFresh {
-		return "", false
+		return transport.ServiceHealthUnit{}, time.Time{}, false
 	}
 	reading, ok := s.units[unit]
 	if !ok || reading.ActiveState == "" {
-		return "", false
+		return transport.ServiceHealthUnit{}, time.Time{}, false
 	}
-	if reading.SubState == "" {
-		return reading.ActiveState, true
-	}
-	return reading.ActiveState + " (" + reading.SubState + ")", true
+	return reading, s.readAt, true
 }
 
 // overlayLiveServiceStatus puts the fresh reading's state on the scan's
-// observations, so "service stopped" is as new as the last minute.
-func overlayLiveServiceStatus(observations []serviceObservation, now time.Time) []serviceObservation {
-	out := make([]serviceObservation, len(observations))
+// observations, so "service stopped" is as new as the last minute. A unit
+// that is up by the scan's own rule reads "active (running)", as the scan
+// writes it; anything else keeps systemd's words. liveAt says, per service
+// id, when the reading that decided it was taken; a service missing from it
+// still carries only the scan's answer.
+func overlayLiveServiceStatus(observations []serviceObservation, pkgFamily string, now time.Time) (out []serviceObservation, liveAt map[string]time.Time) {
+	out = make([]serviceObservation, len(observations))
 	copy(out, observations)
+	liveAt = map[string]time.Time{}
 	for i := range out {
+		if !out[i].IsInstalled {
+			continue
+		}
 		unit := out[i].Unit
 		if unit == "" {
 			unit = out[i].ID
 		}
-		if status, ok := serviceHealth.liveStatus(unit, now); ok && out[i].IsInstalled {
-			out[i].Status = status
+		healthUnit := serviceHealthUnit(out[i].ID, pkgFamily, unit)
+		reading, at, ok := serviceHealth.liveReading(healthUnit, now)
+		if !ok {
+			continue
 		}
+		switch {
+		case serviceHealthReady(out[i].ID, pkgFamily, healthUnit, reading):
+			out[i].Status = "active (running)"
+		case reading.SubState == "":
+			out[i].Status = reading.ActiveState
+		default:
+			out[i].Status = reading.ActiveState + " (" + reading.SubState + ")"
+		}
+		liveAt[out[i].ID] = at
 	}
-	return out
+	return out, liveAt
 }
 
 // serviceRestartProblems: a service systemd restarted three times or more
@@ -282,6 +380,9 @@ type serviceHealthView struct {
 	RestartsHr  int64    `json:"restarts_last_hour"`
 	MemoryBytes *uint64  `json:"memory_bytes,omitempty"`
 	CPU         *float64 `json:"cpu,omitempty"`
+	// Running is the scan's own rule applied to the reading (alpha.130): a
+	// oneshot unit "active (exited)" is up, PostgreSQL's apt wrapper is not.
+	Running *bool `json:"running,omitempty"`
 }
 
 type serviceHealthReport struct {
@@ -299,6 +400,7 @@ func (p *Panel) serviceHealthReport(ctx context.Context, now time.Time) serviceH
 		report.State = "not_scanned"
 		return report
 	}
+	pkgFamily := p.managedServiceHostProfile().PackageFamily
 	s := &serviceHealth
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -322,6 +424,10 @@ func (p *Panel) serviceHealthReport(ctx context.Context, now time.Time) serviceH
 					value := cpu
 					view.CPU = &value
 				}
+				if reading.ActiveState != "" {
+					running := serviceHealthReady(service.ID, pkgFamily, service.Unit, reading)
+					view.Running = &running
+				}
 			}
 		}
 		report.Services = append(report.Services, view)
@@ -329,7 +435,7 @@ func (p *Panel) serviceHealthReport(ctx context.Context, now time.Time) serviceH
 	// Not running first, then the busiest.
 	sort.SliceStable(report.Services, func(i, j int) bool {
 		a, b := report.Services[i], report.Services[j]
-		aDown, bDown := a.ActiveState != "" && a.ActiveState != "active", b.ActiveState != "" && b.ActiveState != "active"
+		aDown, bDown := a.Running != nil && !*a.Running, b.Running != nil && !*b.Running
 		if aDown != bDown {
 			return aDown
 		}

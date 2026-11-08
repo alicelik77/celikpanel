@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDate } from '../lib/dateFormat';
 import { useAuth } from '../auth/AuthContext';
 import { readApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
@@ -105,7 +106,7 @@ export function DomainDatabaseManager({
     readOnly = false,
     isAdditionalUser = false,
 }: DomainDatabaseManagerProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [creating, setCreating] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -440,7 +441,7 @@ export function DomainDatabaseManager({
                                             <p className="mt-0.5 text-xs text-fg-muted">
                                                 <span className="font-medium text-fg">{engineLabel(engine, db.engine_version)}</span>
                                                 <span aria-hidden="true"> · </span>
-                                                {t('ddb.createdAt')} {new Date(db.created_at).toLocaleDateString()}
+                                                {t('ddb.createdAt')} {formatDate(new Date(db.created_at), locale)}
                                             </p>
                                         </div>
                                         {!readOnly && (

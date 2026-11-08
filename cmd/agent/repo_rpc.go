@@ -389,62 +389,8 @@ func (a *Agent) DisableRepo(req *EnableRepoRequest, resp *RepoStatusResponse) er
 		resp.Error = "managed repositories currently require a verified APT package ecosystem"
 		return nil
 	}
-	// Removal and apt refresh must be one package-manager critical section.
-	// install/remove operations therefore cannot use stale source/key state.
-	//
-	// Kaldirma ve apt yenileme tek paket-yoneticisi kritik bolgesi olmalidir.
-	// Boylece kurulum/kaldirma islemleri eski kaynak/anahtar durumunu kullanamaz.
-	var disabledLoc *aptSourceLocation
-	var fromVendor []string
-	if data, readErr := readSecureRepoFile(repoSourcePath(req.RepoID), repoManagedFileMode); readErr == nil {
-		if loc, parseErr := parseAptSourceLine(firstLine(string(data))); parseErr == nil {
-			disabledLoc = &loc
-			// alpha.108: what is installed from it stays installed and is
-			// no longer updated; the version lists say so. Nothing is removed.
-			if vendor, err := readVendorPackageIndex(loc); err == nil {
-				if installed, err := readDpkgStatusVersions(dpkgStatusPath); err == nil {
-					fromVendor = repoKeptPackages(installed, vendor)
-				}
-			}
-		}
-	}
-	err = runRepoPackageMutation(func() error {
-		lockedProfile, err := verifiedHostProfile("apt")
-		if err != nil {
-			return err
-		}
-		aptGet, err := executableForProfile(lockedProfile, "apt", "apt-get")
-		if err != nil {
-			return err
-		}
-		defer func() {
-			// The source is gone: CelikPanel's own preferences file goes
-			// with it (only as it was written; an edited one stays).
-			if repo := repoFromCatalogue(req.RepoID); repo != nil && disabledLoc != nil && !pathExists(repoSourcePath(req.RepoID)) {
-				if removeOwnRepoPin(repo, *disabledLoc) {
-					resp.Confinement = &transport.RepoConfinement{State: repoConfinementEdited, PinPath: repoPinPath(req.RepoID)}
-				}
-			}
-		}()
-		return disableRepoRecipe(
-			repoSourcePath(req.RepoID),
-			repoKeyringCandidates(req.RepoID),
-			func() ([]byte, error) {
-				cmd := serviceMutationCommand(ctx, aptGet, "update", "-o", "APT::Get::List-Cleanup=1")
-				cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
-				out, err := cmd.CombinedOutput()
-				// alpha.107 (D-038 §12): this full refresh is what apt now
-				// says about the repositories still enabled.
-				recordRepoAptErrors(string(out))
-				return out, err
-			},
-		)
-	})
-	if err != nil {
-		resp.MutationApplied = repoMutationApplied(err)
-		resp.PartialSuccess = resp.MutationApplied
-		resp.Repairable = resp.MutationApplied
-		resp.Error = err.Error()
+	_, fromVendor := disableManagedRepo(ctx, req.RepoID, resp)
+	if resp.Error != "" {
 		return nil
 	}
 	resp.Enabled = false
@@ -845,4 +791,69 @@ func fetchRepoKey(url, expectedFingerprint string) (key []byte, armored bool, er
 func isBinaryPublicKey(b []byte) bool {
 	_, err := primaryPublicKeyFingerprint(b)
 	return err == nil
+}
+
+// disableManagedRepo removes CelikPanel's own source, keyring and pin of one
+// managed repository and refreshes APT, as one package-manager critical
+// section. It is shared by DisableRepo and, since alpha.130, by the removal
+// of the component the repository was enabled for. resp.Error is set on a
+// failure.
+func disableManagedRepo(ctx context.Context, repoID string, resp *RepoStatusResponse) (disabledLoc *aptSourceLocation, fromVendor []string) {
+	req := &EnableRepoRequest{RepoID: repoID}
+	// Removal and apt refresh must be one package-manager critical section.
+	// install/remove operations therefore cannot use stale source/key state.
+	//
+	// Kaldirma ve apt yenileme tek paket-yoneticisi kritik bolgesi olmalidir.
+	// Boylece kurulum/kaldirma islemleri eski kaynak/anahtar durumunu kullanamaz.
+	if data, readErr := readSecureRepoFile(repoSourcePath(req.RepoID), repoManagedFileMode); readErr == nil {
+		if loc, parseErr := parseAptSourceLine(firstLine(string(data))); parseErr == nil {
+			disabledLoc = &loc
+			// alpha.108: what is installed from it stays installed and is
+			// no longer updated; the version lists say so. Nothing is removed.
+			if vendor, err := readVendorPackageIndex(loc); err == nil {
+				if installed, err := readDpkgStatusVersions(dpkgStatusPath); err == nil {
+					fromVendor = repoKeptPackages(installed, vendor)
+				}
+			}
+		}
+	}
+	err := runRepoPackageMutation(func() error {
+		lockedProfile, err := verifiedHostProfile("apt")
+		if err != nil {
+			return err
+		}
+		aptGet, err := executableForProfile(lockedProfile, "apt", "apt-get")
+		if err != nil {
+			return err
+		}
+		defer func() {
+			// The source is gone: CelikPanel's own preferences file goes
+			// with it (only as it was written; an edited one stays).
+			if repo := repoFromCatalogue(req.RepoID); repo != nil && disabledLoc != nil && !pathExists(repoSourcePath(req.RepoID)) {
+				if removeOwnRepoPin(repo, *disabledLoc) {
+					resp.Confinement = &transport.RepoConfinement{State: repoConfinementEdited, PinPath: repoPinPath(req.RepoID)}
+				}
+			}
+		}()
+		return disableRepoRecipe(
+			repoSourcePath(req.RepoID),
+			repoKeyringCandidates(req.RepoID),
+			func() ([]byte, error) {
+				cmd := serviceMutationCommand(ctx, aptGet, "update", "-o", "APT::Get::List-Cleanup=1")
+				cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
+				out, err := cmd.CombinedOutput()
+				// alpha.107 (D-038 §12): this full refresh is what apt now
+				// says about the repositories still enabled.
+				recordRepoAptErrors(string(out))
+				return out, err
+			},
+		)
+	})
+	if err != nil {
+		resp.MutationApplied = repoMutationApplied(err)
+		resp.PartialSuccess = resp.MutationApplied
+		resp.Repairable = resp.MutationApplied
+		resp.Error = err.Error()
+	}
+	return disabledLoc, fromVendor
 }

@@ -316,17 +316,43 @@ bind-address = *
 
 // MariaDBOptionFile renders the option file; cert and key are empty when
 // MariaDB already runs TLS of its own.
-func MariaDBOptionFile(cert, key string) string {
+func MariaDBOptionFile(cert, key string) string { return MariaDBOptionFileWith(cert, key, false) }
+
+// mariadbSkipNameResolveLines turn MariaDB's host name lookup off (alpha.130,
+// written only after the administrator agreed; docs/DATABASE-REMOTE-ACCESS.md
+// "Host name lookup"): MariaDB then names the client's address, not its host
+// name, in a refused sign-in, so the Fail2ban jail can ban it.
+const mariadbSkipNameResolveLines = "# Host name lookup off (the administrator agreed in CelikPanel): refused\n" +
+	"# sign-ins are logged with the client's address, which Fail2ban bans.\n" +
+	"skip-name-resolve\n"
+
+// MariaDBOptionFileWith renders the option file, with host name lookup off
+// when skipNameResolve.
+func MariaDBOptionFileWith(cert, key string, skipNameResolve bool) string {
 	text := mariadbOptionHeader
 	if cert != "" && key != "" {
 		text += "ssl_cert = " + cert + "\nssl_key = " + key + "\n"
+	}
+	if skipNameResolve {
+		text += mariadbSkipNameResolveLines
 	}
 	return text
 }
 
 // IsOwnMariaDBOptionFile: the file is one CelikPanel wrote, unchanged.
 func IsOwnMariaDBOptionFile(content, cert, key string) bool {
-	return content == MariaDBOptionFile("", "") || (cert != "" && content == MariaDBOptionFile(cert, key))
+	for _, skip := range []bool{false, true} {
+		if content == MariaDBOptionFileWith("", "", skip) || (cert != "" && content == MariaDBOptionFileWith(cert, key, skip)) {
+			return true
+		}
+	}
+	return false
+}
+
+// MariaDBOptionFileSkipsNameResolve: CelikPanel's own option file turns host
+// name lookup off.
+func MariaDBOptionFileSkipsNameResolve(content string) bool {
+	return strings.Contains(content, mariadbSkipNameResolveLines)
 }
 
 // Fail2ban (review M3). CelikPanel ships its own filter and jail, named
@@ -358,7 +384,7 @@ const (
 
 // MariaDBFailRegex is the filter's failregex (Python syntax, as Fail2ban
 // reads it): one refused sign-in (log_warnings >= 2) of MariaDB 10.x/11.x as
-// a journal entry. <HOST> is Fail2ban's address placeholder.
+// a journal entry. <ADDR> is Fail2ban's placeholder for an IP address only.
 //
 // Measured with Fail2ban 1.1 on Debian 13 (alpha.129 lab): Fail2ban cuts the
 // leading timestamp out of a line and leaves the space after it, and hands
@@ -366,7 +392,15 @@ const (
 // "^(?:" and " *\Z") matched no real line, so seven wrong passwords banned
 // nobody. " *" at the start and one optional "\n" before \Z accept exactly
 // those two; the name still may hold no quote and no newline.
-const MariaDBFailRegex = `^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\n?\Z`
+//
+// alpha.130: <ADDR>, not <HOST>. While MariaDB looks client host names up
+// (skip_name_resolve off, its default) the line names the client's host
+// name ('_gateway' in the alpha.129 lab, so nobody was banned). Fail2ban
+// could only resolve such a name again by DNS when it bans, and whoever
+// controls that name's DNS can point it elsewhere by then. A line with a
+// name therefore bans nobody, and MariaDB rules wait until MariaDB logs
+// addresses (host name lookup off; database_remote_mariadb.go).
+const MariaDBFailRegex = `^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<ADDR>' \(using password: (?:YES|NO)\) *\n?\Z`
 
 // mariaDBEarlierFailRegexes are failregexes CelikPanel wrote before
 // (newest first). A filter file holding exactly one of them is CelikPanel's
@@ -374,6 +408,8 @@ const MariaDBFailRegex = `^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6})
 // current one (alpha.129 lab: the first version stayed on disk after an
 // update, kept as "the owner's", and still banned nobody).
 var mariaDBEarlierFailRegexes = []string{
+	// alpha.129 after its lab round (<HOST>).
+	`^ *(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\n?\Z`,
 	`^(?:\S+ +\S+\[\d+\]: +)?(?:(?:\d{4}-\d\d-\d\d|\d{6}) +\d{1,2}:\d\d:\d\d +)?(?:\d+ +)?\[Warning\] Access denied for user '[^'\n]*'@'<HOST>' \(using password: (?:YES|NO)\) *\Z`,
 }
 

@@ -48,6 +48,11 @@ const (
 	problemCertificateCrit = 3
 	problemMailQueueFresh  = 5 * time.Minute
 	problemMailQueueRetry  = 2 * time.Minute
+	// problemServiceScanTrust is how long a component scan alone may say a
+	// service is stopped (alpha.130). The minute-old service reading decides
+	// every service it covers; a service it does not cover, with a scan
+	// older than this, is "not checked" rather than a current problem.
+	problemServiceScanTrust = 15 * time.Minute
 )
 
 type monitoringProblemAction struct {
@@ -77,7 +82,8 @@ type monitoringProblem struct {
 type monitoringUnknown struct {
 	// Source: services, metrics, disk, certificates, mail_queue, security_updates.
 	Source string `json:"source"`
-	// Reason: not_scanned, unreadable, checking.
+	// Reason: not_scanned, unreadable, checking, stale (alpha.130: only an
+	// old component scan says it, and no current reading).
 	Reason string `json:"reason"`
 }
 
@@ -124,8 +130,11 @@ func (p *Panel) collectMonitoringProblemsFor(ctx context.Context, now time.Time,
 	// alpha.127: the minute-old service reading, where there is one, is
 	// newer than the last component scan.
 	host := p.managedServiceHostProfile()
-	add(serviceProblems(overlayLiveServiceStatus(observations, now), host, scannedAt), unknown)
-	if unknown == nil {
+	if unknown != nil {
+		add(nil, unknown)
+	} else {
+		live, liveAt := overlayLiveServiceStatus(observations, host.PackageFamily, now)
+		add(serviceProblems(live, host, scannedAt, liveAt, now))
 		if services, ok := p.monitoredServices(ctx); ok {
 			add(serviceRestartProblems(services, now), nil)
 		}
@@ -190,18 +199,30 @@ func (p *Panel) problemScanObservations(ctx context.Context) ([]serviceObservati
 // serviceProblems: an installed component of kind "service" whose status
 // does not say running (the Dashboard's rule, lib/serviceStatus.ts). Tools
 // and unit-less runtimes have no daemon to start and are never listed.
-func serviceProblems(observations []serviceObservation, host core.ManagedServiceHostProfile, scannedAt time.Time) []monitoringProblem {
+//
+// alpha.130: each problem says when it was observed: the live reading's
+// time (liveAt, by service id) or the scan's. A service no live reading
+// covers is judged by the scan only while the scan is younger than
+// problemServiceScanTrust; after that it is reported as not checked
+// (Unknown "stale"), never as a current problem or as "no problem".
+func serviceProblems(observations []serviceObservation, host core.ManagedServiceHostProfile, scannedAt time.Time, liveAt map[string]time.Time, now time.Time) ([]monitoringProblem, *monitoringUnknown) {
 	if len(observations) == 0 {
-		return nil
+		return nil, nil
 	}
-	observed := ""
-	if !scannedAt.IsZero() {
-		observed = metricsTime(scannedAt)
-	}
+	scanTrusted := !scannedAt.IsZero() && !scannedAt.After(now.Add(time.Minute)) && now.Sub(scannedAt) <= problemServiceScanTrust
 	var problems []monitoringProblem
+	var unknown *monitoringUnknown
 	for _, service := range catalogViewForHost(observations, host) {
 		if service.Kind != core.KindService || service.IsInstalled == nil || !*service.IsInstalled {
 			continue
+		}
+		observedAt, live := liveAt[service.ID]
+		if !live {
+			if !scanTrusted {
+				unknown = &monitoringUnknown{Source: "services", Reason: "stale"}
+				continue
+			}
+			observedAt = scannedAt
 		}
 		if serviceStatusRunning(service.Status) {
 			continue
@@ -212,11 +233,11 @@ func serviceProblems(observations []serviceObservation, host core.ManagedService
 		}
 		problems = append(problems, monitoringProblem{
 			Key: "service:" + service.ID, Kind: "service_stopped", Severity: "critical", Actor: "administrator",
-			Subject: service.ID, Name: service.Name, Unit: unit, ObservedAt: observed,
+			Subject: service.ID, Name: service.Name, Unit: unit, ObservedAt: metricsTime(observedAt),
 			Action: monitoringProblemAction{Kind: "start_service", To: "/components/" + url.PathEscape(service.ID)},
 		})
 	}
-	return problems
+	return problems, unknown
 }
 
 func serviceStatusRunning(status string) bool {

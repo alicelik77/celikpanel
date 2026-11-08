@@ -27,6 +27,11 @@ const (
 type State struct {
 	Version int                    `json:"version"`
 	Targets map[string]TargetState `json:"targets"`
+	// Applied (alpha.130): RequestDigest of the last apply that finished
+	// without an error, so a panel that starts again can see, by reading
+	// only, that the server already carries its rule set and send nothing.
+	// Cleared by any partial change (a narrowing).
+	Applied string `json:"applied,omitempty"`
 }
 
 // TargetState is what CelikPanel changed on one engine instance.
@@ -51,11 +56,24 @@ type TargetState struct {
 	Jail bool `json:"jail,omitempty"`
 	// Accounts: MariaDB accounts CelikPanel made, user@host.
 	Accounts []string `json:"accounts,omitempty"`
+	// SkipNameResolve (alpha.130): CelikPanel's MariaDB option file turns
+	// host name lookup off (the administrator agreed); it goes with the file.
+	SkipNameResolve bool `json:"skip_name_resolve,omitempty"`
+	// LogPrefix (alpha.130): CelikPanel added its client marker to
+	// PostgreSQL's log_line_prefix (ALTER SYSTEM); reset with the last rule
+	// or when Fail2ban is gone.
+	LogPrefix bool `json:"log_prefix,omitempty"`
+	// PGJail (alpha.130): CelikPanel wrote this cluster's Fail2ban jail.
+	PGJail bool `json:"pg_jail,omitempty"`
+	// Active (alpha.130): the rules in force after the last apply, read
+	// back by the status so a restarted panel knows which ports to open.
+	Active []Rule `json:"active,omitempty"`
 }
 
 // Empty: nothing CelikPanel changed is left on this target.
 func (s TargetState) Empty() bool {
-	return len(s.Addresses) == 0 && !s.Listen && !s.ListenPending && !s.TLS && !s.AuthDelay && !s.Jail && len(s.Accounts) == 0
+	return len(s.Addresses) == 0 && !s.Listen && !s.ListenPending && !s.TLS && !s.AuthDelay && !s.Jail && len(s.Accounts) == 0 &&
+		!s.SkipNameResolve && !s.LogPrefix && !s.PGJail && len(s.Active) == 0
 }
 
 // EncodeState writes the record in one stable form.

@@ -540,6 +540,20 @@ type ApplyVhostRequest struct {
 	// additional directives (site_web_settings.go). Nil for a site that never
 	// saved one: its vhost renders exactly as before.
 	WebSettings *SiteWebSettingsRequest `json:"web_settings,omitempty"`
+	// MailAutoconfig (alpha.130, additive): the domain's mail is on this
+	// server, so the site's file answers mail programs that set themselves
+	// up (Thunderbird autoconfig, Outlook Autodiscover). Nil renders the file
+	// exactly as before.
+	MailAutoconfig *MailAutoconfigRequest `json:"mail_autoconfig,omitempty"`
+}
+
+// MailAutoconfigRequest is the mail server's name the answers carry and
+// whether the site's certificate covers autoconfig.<domain> and
+// autodiscover.<domain> (then they are served over HTTPS as well). The Agent
+// derives the names from the domain itself.
+type MailAutoconfigRequest struct {
+	MailHost string `json:"mail_host"`
+	TLS      bool   `json:"tls,omitempty"`
 }
 
 // SiteProtectedDirRequest is one password-protected folder of a site.

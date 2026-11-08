@@ -1031,6 +1031,15 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	answer := map[string]any{"removed": resp.Removed, "detail": resp.Detail, "success": true}
+	// alpha.130 lab: the owner's own files next to a purged package that
+	// were kept (left in place, or put back after the purge deleted them).
+	if len(resp.OwnerFilesKept) > 0 {
+		answer["owner_files_kept"] = resp.OwnerFilesKept
+	}
+	if len(resp.OwnerFilesCopied) > 0 {
+		answer["owner_files_copied"] = resp.OwnerFilesCopied
+		answer["owner_files_copy_dir"] = resp.OwnerFilesCopyDir
+	}
 	if len(movedTools) > 0 {
 		answer["moved"] = movedTools
 		answer["moved_to"] = req.MoveToolsTo
@@ -1127,13 +1136,18 @@ func versionFromPackage(svc *core.ManagedService, pkg string) string {
 		return ""
 	}
 	m := re.FindStringSubmatch(pkg)
-	if len(m) < 2 {
+	if len(m) == 0 {
 		return ""
 	}
 	// Capture 1 is the version-bearing prefix ("php8.3"); the version is its
-	// digit tail. / 1. yakalama sürüm taşıyan önektir ("php8.3"); sürüm onun
-	// rakamla başlayan kuyruğudur.
-	prefix := m[1]
+	// digit tail. A pattern without a capture group (PostgreSQL's
+	// ^postgresql-[0-9]+$, alpha.130 lab) bears the version in the whole
+	// match ("postgresql-16" -> "16").
+	// 1. yakalama sürüm taşıyan önektir; yakalamasız desende tüm eşleşme.
+	prefix := m[0]
+	if len(m) > 1 {
+		prefix = m[1]
+	}
 	for i, r := range prefix {
 		if r >= '0' && r <= '9' {
 			return prefix[i:]

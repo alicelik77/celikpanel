@@ -18,6 +18,7 @@ import {
 import { showToast } from './Toast';
 import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { useAuth } from '../auth/AuthContext';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { Button, EmptyState, ErrorBanner, ResultUnknown, Spinner, StatusDot, inputClass } from './ui';
@@ -191,7 +192,7 @@ function VPNNotOffered() {
 }
 
 function VPNPageBody() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const navigate = useNavigate();
     const { role } = useAuth();
     const isAdmin = role === 'admin';
@@ -920,7 +921,7 @@ function VPNPageBody() {
                                                         {isOnline(peer)
                                                             ? t('vpn.online')
                                                             : peer.last_handshake > 0
-                                                                ? new Date(peer.last_handshake * 1000).toLocaleString()
+                                                                ? formatDateTime(new Date(peer.last_handshake * 1000), locale)
                                                                 : t('vpn.neverConnected')}
                                                     </span>
                                                 </td>

@@ -81,11 +81,15 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"enable webmail's own address", mutationPolicyJob("webmail_address", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepEnableWebmailAddress, "roundcube", "mail.example.com", "enable")},
 		{"remove webmail's own address", mutationPolicyJob("webmail_address_remove", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepRemoveWebmailAddress, "roundcube", "mail.example.com", "remove")},
 		{"change a PostgreSQL cluster's port", mutationPolicyJob("pg_cluster_port", "pg-17-main", "5440"), mutationPolicyClaim(serviceMutationStepSetPGClusterPort, "pg-17-main", "5440", "port")},
+		{"clean leftover PostgreSQL clusters", mutationPolicyJob("pg_leftover_cleanup", "pg-leftovers", ""), mutationPolicyClaim(serviceMutationStepCleanPGLeftovers, "pg-leftovers", "", "clean")},
+		{"archive and remove a leftover PostgreSQL cluster", mutationPolicyJob("pg_leftover_remove", "pg-16-main", ""), mutationPolicyClaim(serviceMutationStepRemovePGLeftover, "pg-16-main", "", "remove")},
 		{"apply remote database access", mutationPolicyJob("database_remote", "database-remote", ""), mutationPolicyClaim(serviceMutationStepApplyDatabaseRemote, "database-remote", "", "apply")},
 		{"copy a PostgreSQL database", mutationPolicyJob("pg_database_copy", "pgdb-shop", "5432-5433"), mutationPolicyClaim(serviceMutationStepCopyPGDatabase, "pgdb-shop", "5432-5433", "copy")},
 		{"drop a moved PostgreSQL database's source", mutationPolicyJob("pg_database_drop", "pgdb-shop", "5432"), mutationPolicyClaim(serviceMutationStepDropPGDatabase, "pgdb-shop", "5432", "drop")},
 		{"add vendor origins to the OS updates", mutationPolicyJob("os_updates_origins", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepWriteVendorOrigins, "unattended-upgrades", "", "origins")},
 		{"choose automatic or manual OS updates", mutationPolicyJob("os_updates_mode", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepSetOSUpdatesMode, "unattended-upgrades", "", "mode")},
+		{"turn SSH password sign-in off", mutationPolicyJob("ssh_password_login", "openssh", ""), mutationPolicyClaim(serviceMutationStepSSHPasswordLogin, "openssh", "", "turn_off")},
+		{"turn SSH password sign-in on", mutationPolicyJob("ssh_password_login", "openssh", ""), mutationPolicyClaim(serviceMutationStepSSHPasswordLogin, "openssh", "", "turn_on")},
 		{"change the panel's own listen port", mutationPolicyJob("panel_port_change", panelListenMutationTarget, "1923"), mutationPolicyClaim(serviceMutationStepSetPanelListen, panelListenMutationTarget, "1923", "port")},
 		{"install node", mutationPolicyJob("runtime_install", "node", "22.14.0"), mutationPolicyClaim(serviceMutationStepInstallNodeVersion, "node", "22.14.0", "install")},
 		{"remove node", mutationPolicyJob("runtime_remove", "node:22.14.0", ""), mutationPolicyClaim(serviceMutationStepRemoveNodeVersion, "node", "22.14.0", "remove")},
@@ -182,11 +186,14 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepConfineRepo,
 		serviceMutationStepWriteVendorOrigins,
 		serviceMutationStepSetOSUpdatesMode,
+		serviceMutationStepSSHPasswordLogin,
 		serviceMutationStepSetPanelListen,
 		serviceMutationStepVendorLane,
 		serviceMutationStepUpdateRoundcube,
 		serviceMutationStepMoveAppFilesOwner,
 		serviceMutationStepSetPGClusterPort,
+		serviceMutationStepCleanPGLeftovers,
+		serviceMutationStepRemovePGLeftover,
 		serviceMutationStepCopyPGDatabase,
 		serviceMutationStepDropPGDatabase,
 		serviceMutationStepActivatePanelCertificate,
@@ -443,6 +450,7 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepConfineRepo":              true,
 		"serviceMutationStepWriteVendorOrigins":       true,
 		"serviceMutationStepSetOSUpdatesMode":         true,
+		"serviceMutationStepSSHPasswordLogin":         true,
 		"serviceMutationStepInstallJailTools":         true,
 		"serviceMutationStepSetPanelListen":           true,
 		"serviceMutationStepVendorLane":               true,
@@ -451,6 +459,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepRemoveWebmailAddress":     true,
 		"serviceMutationStepMoveAppFilesOwner":        true,
 		"serviceMutationStepSetPGClusterPort":         true,
+		"serviceMutationStepCleanPGLeftovers":         true,
+		"serviceMutationStepRemovePGLeftover":         true,
 		"serviceMutationStepCopyPGDatabase":           true,
 		"serviceMutationStepDropPGDatabase":           true,
 		"serviceMutationStepSetServerHostname":        true,
@@ -514,8 +524,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 48 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=48", len(seenMethods))
+	if len(seenMethods) != 51 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=51", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {

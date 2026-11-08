@@ -194,6 +194,20 @@ func (s *ServiceScanner) getSearchPaths(serviceName string) []string {
 	return paths
 }
 
+// postgresqlBinRoot is where postgresql-common keeps every installed major's
+// programs (a variable for tests).
+var postgresqlBinRoot = "/usr/lib/postgresql"
+
+// postgresqlMajorRuns says whether a major's server program is installed. A
+// cluster whose program was removed (pg_lsclusters "binaries_missing", the
+// files of a removed major left on disk) is not a configuration anyone can
+// run: alpha.130, Boston 8 Nov 2026, Components → PostgreSQL showed and
+// edited /etc/postgresql/16/main while PostgreSQL 18 ran.
+func postgresqlMajorRuns(major string) bool {
+	info, err := os.Stat(filepath.Join(postgresqlBinRoot, major, "bin", "postgres"))
+	return err == nil && info.Mode().IsRegular()
+}
+
 var (
 	postgresqlUnitPattern    = regexp.MustCompile(`^postgresql@([0-9]+)-([A-Za-z0-9][A-Za-z0-9_.-]*)$`)
 	postgresqlMajorPattern   = regexp.MustCompile(`^[0-9]+$`)
@@ -256,6 +270,9 @@ func postgresqlConfigFiles(root, major, cluster string) []string {
 	majorPath := filepath.Join(root, major)
 	clusterPath := filepath.Join(majorPath, cluster)
 	if !isRealDirectory(root) || !isRealDirectory(majorPath) || !isRealDirectory(clusterPath) {
+		return nil
+	}
+	if !postgresqlMajorRuns(major) {
 		return nil
 	}
 

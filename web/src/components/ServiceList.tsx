@@ -7,6 +7,7 @@ import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCl
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { Button, Checking, CouldNotCheck, Dialog, EmptyState, ErrorBanner, KeepWords, SearchInput, Spinner, StatusDot } from './ui';
 import { PageHeader } from './PageHeader';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
@@ -494,7 +495,7 @@ function unknownCategories(list: ManagedService[]) {
 // managed-services'ten gelir (güvenilir kaynak), yanlış raporlayan
 // wrapper-unit uç noktasından değil.
 export function ServiceList({ onManageService }: ServiceListProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
     const componentOperation = useComponentOperation();
@@ -1235,11 +1236,23 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                 return;
             }
             closeUninstallDialog();
+            // alpha.130 lab: the owner's own files next to a purged package
+            // that were kept are named.
+            const answer = (await answerBody(res)) as { owner_files_kept?: unknown; owner_files_copied?: unknown; owner_files_copy_dir?: unknown } | null;
+            const ownerKept = Array.isArray(answer?.owner_files_kept) ? answer.owner_files_kept.filter((item): item is string => typeof item === 'string') : [];
+            // Files that may be the owner's in the folders the purge emptied
+            // are not put back; a copy is kept and its folder named.
+            const ownerCopied = Array.isArray(answer?.owner_files_copied) ? answer.owner_files_copied.filter((item): item is string => typeof item === 'string') : [];
+            const copyDir = typeof answer?.owner_files_copy_dir === 'string' ? answer.owner_files_copy_dir : '';
             showToast(
                 'success',
                 nextCleanupAttempt !== null
                     ? t('services.webmailCleanupCompleted')
-                    : t('services.uninstalled', { name: componentName(service, t) }),
+                    : ownerCopied.length > 0 && copyDir
+                        ? t('services.uninstalledOwnerCopied', { name: componentName(service, t), n: ownerCopied.length, dir: copyDir, files: ownerKept.join(', ') || '—' })
+                    : ownerKept.length > 0
+                        ? t('services.uninstalledOwnerKept', { name: componentName(service, t), files: ownerKept.join(', ') })
+                        : t('services.uninstalled', { name: componentName(service, t) }),
             );
             if (!(await loadServices())) markStateUnverified();
             announceComponentsChanged();
@@ -1733,7 +1746,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                             {scannedAt && <span>{t('services.showingLastSeen')}</span>}
                         </>
                     ) : scannedAt ? (
-                        t('services.lastScan', { time: new Date(scannedAt).toLocaleString() })
+                        t('services.lastScan', { time: formatDateTime(new Date(scannedAt), locale) })
                     ) : (
                         t('services.neverScannedShort')
                     )}
@@ -4522,6 +4535,8 @@ export interface RemovalSimulation {
     /** alpha.108 (D-038 §2): PostgreSQL clusters of this removal that still hold databases, or could not be asked. */
     holds_databases?: string[];
     databases_unknown?: string[];
+    /** alpha.130: PostgreSQL clusters ("16/main") removed with it: their configuration, data and logs. */
+    removes_clusters?: string[];
     /** alpha.108 (D-038 §13): the system's own traces of use outside CelikPanel. */
     traces?: RemovalTraces;
 }
@@ -4551,6 +4566,7 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
         ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
         ...(isStrings(v.holds_databases) && v.holds_databases.length > 0 ? { holds_databases: v.holds_databases } : {}),
         ...(isStrings(v.databases_unknown) && v.databases_unknown.length > 0 ? { databases_unknown: v.databases_unknown } : {}),
+        ...(isStrings(v.removes_clusters) && v.removes_clusters.length > 0 ? { removes_clusters: v.removes_clusters } : {}),
         traces: decodeRemovalTraces(v),
     };
 }
@@ -4707,6 +4723,8 @@ export function removalSentences(impact: RemovalImpact): { removed: TranslationK
     } else {
         removed.push('services.removal.removed.packages');
     }
+    // alpha.130: its PostgreSQL clusters go with it, so none stays to claim a port.
+    if (impact.simulation?.removes_clusters?.length) removed.push('services.removal.removed.pgClusters');
     if (impact.all_versions) removed.push('services.removal.removed.allVersions');
     if (impact.mail_filter_rewired) removed.push('services.removal.removed.mailFilter');
     if (impact.database_tools_reconfigured) removed.push('services.removal.removed.databaseTools');
@@ -5091,7 +5109,7 @@ function RemovalImpactSection({
     const removedPart = impact.removal === 'unsupported' ? null : (
         <div data-removal-removed="">
             <p className="font-semibold text-fg">{t(refused ? 'services.removal.wouldTitle' : 'services.removal.removedTitle')}</p>
-            {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
+            {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name, clusters: simulation?.removes_clusters?.join(', ') ?? '' })}</p>)}
             {findings.details.map((item) => <p key={item.key} className="mt-1 text-fg-muted"><RemovalItemText item={item} /></p>)}
             <div className="mt-2">
                 {simulation?.state === 'checked' && simulation.remove.length > 0

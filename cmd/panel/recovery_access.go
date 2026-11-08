@@ -95,6 +95,8 @@ func (p *Panel) startupRecoveryHandler(webRoot, certPath, keyPath string) http.H
 	mux.HandleFunc("/api/v1/auth/demo", p.handleDemoAccounts)
 	mux.HandleFunc(panelLicenseAccessPath, p.handleLicenseAccess)
 	mux.HandleFunc(panelAccessAddressPath, panelAccessAddressHandler(certPath, keyPath))
+	// alpha.130 lab: closing remote database access never waits for start.
+	mux.HandleFunc(databaseRemotePath, p.handleDatabaseRemoteWhileStarting)
 	authenticated := csrfProtect(p.requireAuth(mux))
 	frontend := frontendHandler(webRoot)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +113,10 @@ func (p *Panel) startupRecoveryHandler(webRoot, certPath, keyPath string) http.H
 			case "/api/v1/auth/login", "/api/v1/auth/login/totp", "/api/v1/auth/logout":
 				allowed = true
 			}
+		case http.MethodPut, http.MethodDelete:
+			// Only the writes that close remote database access; the
+			// handler refuses anything that would open (database_remote_starting.go).
+			allowed = databaseRemoteClosingRoute(r)
 		}
 		if allowed {
 			authenticated.ServeHTTP(w, r)

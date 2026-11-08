@@ -14,6 +14,7 @@ import { DomainFileManager } from './DomainFileManager';
 import { DomainDNSManager } from './DomainDNSManager';
 import { HostingTypePanel } from './HostingTypePanel';
 import { useI18n } from '../i18n';
+import { formatTime } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner, StatusDot } from './ui';
 import { useAuth } from '../auth/AuthContext';
@@ -608,7 +609,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                 <CouldNotCheck
                     className="mb-4"
                     text={t('common.staleNotice', {
-                        time: new Date(listed.observedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+                        time: formatTime(new Date(listed.observedAt), locale),
                     })}
                     onRetry={() => void list.retry()}
                     busy={list.reading}

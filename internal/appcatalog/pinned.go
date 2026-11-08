@@ -6,8 +6,13 @@ package appcatalog
 // and the digest here, update Version and the PHP range from the release's
 // own requirement file, and run the tests. Nothing else changes.
 //
+// Every entry carries its Turkish texts (TR) beside the English ones: when
+// Summary, Archive.Upstream or Risk changes, change TR in the same edit.
+//
 // Sabitlenmiş sürümler. Yeni sürüme geçmek: resmi arşivi indir, SHA-256'yı
-// yayımlanan değerle karşılaştır, adresi ve özeti buraya yaz.
+// yayımlanan değerle karşılaştır, adresi ve özeti buraya yaz. Açıklama,
+// doğrulama ve risk metinleri değişirse TR alanındaki Türkçeleri de aynı
+// anda güncelle.
 
 const mib = int64(1 << 20)
 
@@ -24,6 +29,11 @@ var catalog = []App{
 		MinDiskMB: 100, Setup: SetupWordPressLegacy, AdminPath: "/wp-admin/",
 		ConfigFile: "wp-config.php",
 		Risk:       "Widely used and widely attacked: keep WordPress, its plugins and themes updated.",
+		TR: Localized{
+			Summary:  "Bloglar, şirket siteleri ve mağazalar (WooCommerce).",
+			Upstream: "en yeni sürüm indirilir ve WordPress.org'un yanında yayımladığı SHA-1 değeriyle karşılaştırılır (önceki sürümlerdeki kurulum yolu değişmeden korunur)",
+			Risk:     "Çok kullanıldığı için saldırıların da hedefinde: WordPress'i, eklentilerini ve temalarını güncel tutun.",
+		},
 	},
 	{
 		ID: "prestashop", Kind: KindPHPSite, Name: "PrestaShop", Version: "9.2.0",
@@ -45,6 +55,11 @@ var catalog = []App{
 		AdminUser: "the e-mail address shown", ConfigFile: "app/config/parameters.php",
 		Nginx: "prestashop", UploadMB: 64,
 		Risk: "The Classic edition includes PrestaShop SA modules (PrestaShop Checkout, Account, CloudSync) that connect to PrestaShop's services once enabled. Shops handle personal and payment data: keep PrestaShop and its modules updated.",
+		TR: Localized{
+			Summary:  "Çevrim içi mağaza: ürün kataloğu, sepet, siparişler ve ödemeler.",
+			Upstream: "PrestaShop bu arşiv için sağlama değeri yayımlamıyor; özet 2026-11-03 tarihinde resmi indirmeden (prestashop.com/versions, Classic paketi 9.2.0-6.0) alındı",
+			Risk:     "Classic paketinde, etkinleştirildiğinde PrestaShop'un hizmetlerine bağlanan PrestaShop SA modülleri (PrestaShop Checkout, Account, CloudSync) bulunur. Mağazalar kişisel verileri ve ödeme bilgilerini işler: PrestaShop'u ve modüllerini güncel tutun.",
+		},
 	},
 	{
 		ID: "nextcloud", Kind: KindPHPSite, Name: "Nextcloud", Version: "35.0.2",
@@ -66,6 +81,11 @@ var catalog = []App{
 		AdminPath: "/", AdminUser: "admin", DataDir: "nextcloud-data", ConfigFile: "config/config.php",
 		Nginx: "nextcloud", UploadMB: 512,
 		Risk: "Holds people's files: the data folder is outside the site's public folder. Set up background jobs (cron) and keep Nextcloud updated with its own updater.",
+		TR: Localized{
+			Summary:  "Dosyalarınız, takvimleriniz ve kişileriniz kendi bulutunuzda.",
+			Upstream: "Nextcloud'un yayımladığı nextcloud-35.0.2.tar.bz2.sha256 dosyasındaki değerle aynı",
+			Risk:     "Kullanıcıların dosyalarını barındırır: veri klasörü sitenin herkese açık klasörünün dışında tutulur. Arka plan görevlerini (cron) ayarlayın ve Nextcloud'u kendi güncelleyicisiyle güncel tutun.",
+		},
 	},
 	{
 		ID: "drupal", Kind: KindPHPSite, Name: "Drupal", Version: "11.4.11",
@@ -87,6 +107,11 @@ var catalog = []App{
 		AdminPath: "/user/login", AdminUser: "admin", ConfigFile: "sites/default/settings.php",
 		Nginx: "drupal", UploadMB: 32,
 		Risk: "Keep Drupal core and its modules updated; Drupal publishes security releases on Wednesdays.",
+		TR: Localized{
+			Summary:  "Düzenli yapıda içerik barındıran siteler için içerik yönetim sistemi.",
+			Upstream: "drupal.org bu dosya için bir MD5 değeri (7be4f59239b421684573764a8809cfb1) yayımlıyor ve indirilen arşiv bununla eşleşti; SHA-256 özeti 2026-11-03 tarihinde aynı dosyadan alındı",
+			Risk:     "Drupal çekirdeğini ve modüllerini güncel tutun; Drupal güvenlik güncellemelerini çarşamba günleri yayımlar.",
+		},
 	},
 	{
 		ID: "joomla", Kind: KindPHPSite, Name: "Joomla", Version: "5.4.10",
@@ -107,6 +132,11 @@ var catalog = []App{
 		AdminPath: "/administrator/", AdminUser: "admin", ConfigFile: "configuration.php",
 		Nginx: "joomla", UploadMB: 32,
 		Risk: "Keep Joomla and its extensions updated; install extensions only from the Joomla Extensions Directory.",
+		TR: Localized{
+			Summary:  "Siteler ve portallar için içerik yönetim sistemi.",
+			Upstream: "GitHub'ın Joomla 5.4.10 sürüm dosyası için kaydettiği SHA-256 özetiyle aynı",
+			Risk:     "Joomla'yı ve eklentilerini güncel tutun; eklentileri yalnızca Joomla Extensions Directory'den kurun.",
+		},
 	},
 	{
 		ID: "mediawiki", Kind: KindPHPSite, Name: "MediaWiki", Version: "1.43.11",
@@ -128,6 +158,11 @@ var catalog = []App{
 		AdminPath: "/index.php?title=Special:UserLogin", AdminUser: "Admin", ConfigFile: "LocalSettings.php",
 		Nginx: "mediawiki", UploadMB: 32,
 		Risk: "A wiki is open for anyone to edit by default; decide who may edit in LocalSettings.php before announcing it.",
+		TR: Localized{
+			Summary:  "Wikipedia'nın da kullandığı viki yazılımı (uzun süreli destek sürümü).",
+			Upstream: "Wikimedia sağlama değeri değil, GPG imzası (.sig) yayımlıyor; SHA-256 özeti 2026-11-03 tarihinde resmi indirmeden alındı",
+			Risk:     "Bir viki varsayılan olarak herkesin düzenlemesine açıktır; siteyi duyurmadan önce kimlerin düzenleyebileceğini LocalSettings.php dosyasında belirleyin.",
+		},
 	},
 	{
 		// alpha.118 lab: download.phpbb.com answers 403 to the panel's own
@@ -153,5 +188,10 @@ var catalog = []App{
 		AdminPath: "/adm/", AdminUser: "admin", ConfigFile: "config.php",
 		Nginx: "phpbb", UploadMB: 32,
 		Risk: "Forums attract spam: turn on registration questions or e-mail activation before opening registration.",
+		TR: Localized{
+			Summary:  "Tartışma forumu.",
+			Upstream: "phpBB'nin yayımladığı phpBB-3.3.19.tar.bz2.sha256 dosyasındaki değerle aynı",
+			Risk:     "Forumlar spam çeker: üye kaydını açmadan önce kayıt sorularını ya da e-postayla etkinleştirmeyi açın.",
+		},
 	},
 }

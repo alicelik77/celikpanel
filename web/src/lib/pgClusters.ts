@@ -7,6 +7,8 @@
 // PostgreSQL ana sürümleri yan yana: kümeler, kayıtlar ve taşımalar.
 export const PG_CLUSTERS_URL = '/api/v1/service/postgresql/clusters';
 export const PG_MOVES_URL = '/api/v1/service/postgresql/moves';
+// alpha.130: archive and remove a removed version's leftover cluster.
+export const PG_LEFTOVER_URL = '/api/v1/service/postgresql/clusters/leftover';
 
 export interface PGCluster {
     version: string;
@@ -20,6 +22,21 @@ export interface PGCluster {
     databases: string[];
     databases_known: boolean;
     databases_error?: string;
+    /**
+     * alpha.130: set only for a cluster whose PostgreSQL program was removed
+     * and whose files stayed. fresh: it holds only what initdb made, and the
+     * Agent removes it by itself shortly after the panel starts; otherwise it
+     * may hold the owner's data and `reason` says why it is kept (English).
+     * Programı kaldırılmış, dosyaları kalmış küme; fresh: yalnız initdb'nin
+     * yaptığını tutar ve Agent onu kendisi kaldırır.
+     */
+    leftover?: PGLeftover;
+}
+
+export interface PGLeftover {
+    fresh: boolean;
+    reason?: string;
+    data_bytes: number;
 }
 
 export interface PGOffer {
@@ -104,6 +121,24 @@ export interface PGClusters {
 
 const isArray = (value: unknown): value is unknown[] => Array.isArray(value);
 
+// A leftover is read strictly: an object with a boolean `fresh` and a number
+// `data_bytes`, `reason` only as a string. Anything else is not a leftover
+// this screen can act on, so the cluster is shown without one.
+// Kalıntı katı okunur; biçimi bozuksa küme kalıntısız gösterilir.
+function decodeLeftover(value: unknown): PGLeftover | undefined {
+    if (!value || typeof value !== 'object' || isArray(value)) return undefined;
+    const v = value as Record<string, unknown>;
+    if (typeof v.fresh !== 'boolean' || typeof v.data_bytes !== 'number' || !Number.isFinite(v.data_bytes) || v.data_bytes < 0) return undefined;
+    if (v.reason !== undefined && typeof v.reason !== 'string') return undefined;
+    return { fresh: v.fresh, data_bytes: v.data_bytes, ...(typeof v.reason === 'string' && v.reason ? { reason: v.reason } : {}) };
+}
+
+function decodeCluster(raw: Record<string, unknown>): PGCluster {
+    const { leftover, ...rest } = raw;
+    const decoded = decodeLeftover(leftover);
+    return { ...(rest as unknown as PGCluster), ...(decoded ? { leftover: decoded } : {}) };
+}
+
 export function decodePGClusters(raw: unknown): PGClusters {
     const body = raw as Record<string, unknown> | null;
     if (!body || body.state !== 'read' || typeof body.supported !== 'boolean' || !isArray(body.clusters) || !isArray(body.offers) || !isArray(body.moves)) {
@@ -116,7 +151,7 @@ export function decodePGClusters(raw: unknown): PGClusters {
     }
     return {
         supported: body.supported,
-        clusters: body.clusters as PGCluster[],
+        clusters: (body.clusters as Record<string, unknown>[]).map(decodeCluster),
         offers: body.offers as PGOffer[],
         next_port: typeof body.next_port === 'number' ? body.next_port : 0,
         used_ports: isArray(body.used_ports) ? (body.used_ports as number[]) : [],
@@ -174,14 +209,20 @@ export async function pgPost(url: string, body: unknown): Promise<{ ok: boolean;
         headers: { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
     });
-    const raw = await res.text();
-    let parsed: Record<string, unknown>;
+    return { ok: res.ok, body: pgAnswerBody(await res.text()) };
+}
+
+// An answer's body as an object; text that is not a JSON object is kept as
+// its error sentence (cut to 200 characters).
+// Yanıt gövdesi nesne olarak; JSON nesnesi değilse hata cümlesi olarak tutulur.
+export function pgAnswerBody(raw: string): Record<string, unknown> {
     try {
-        parsed = JSON.parse(raw) as Record<string, unknown>;
+        const parsed: unknown = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
     } catch {
-        parsed = { error: raw.slice(0, 200) };
+        // Not JSON: the text itself is the answer.
     }
-    return { ok: res.ok, body: parsed };
+    return { error: raw.slice(0, 200) };
 }
 
 // A port a person typed: a whole number from 1024 to 65535.

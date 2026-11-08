@@ -32,6 +32,23 @@ func protectedBuildGateOperations() []buildGateOperation {
 			}
 			return err.Error()
 		}},
+		// alpha.130: outgoing mail through another server.
+		{name: "MailRelayApplyV1", run: func(expected string) string {
+			var response transport.MailRelayApplyResponse
+			_ = agent.MailRelayApplyV1(&transport.MailRelayApplyRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.130: subaddressing and the sender list.
+		{name: "MailSubaddressingV1", run: func(expected string) string {
+			var response transport.MailSettingApplyResponse
+			_ = agent.MailSubaddressingV1(&transport.MailSubaddressingRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		{name: "MailSenderListV1", run: func(expected string) string {
+			var response transport.MailSettingApplyResponse
+			_ = agent.MailSenderListV1(&transport.MailSenderListRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 		// alpha.127: a Node.js site's install step.
 		{name: "NodeSiteInstallV1", run: func(expected string) string {
 			var response transport.NodeSiteInstallResponse
@@ -656,6 +673,12 @@ func protectedBuildGateOperations() []buildGateOperation {
 		{name: "CertificateRequestDiscardV1", run: func(expected string) string {
 			var response transport.CertificateRequestDiscardResponse
 			_ = agent.CertificateRequestDiscardV1(&transport.CertificateRequestDiscardRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
+		// alpha.130: a mailbox password reset by a recovery link.
+		{name: "SetMailPasswordIfUnchangedV1", run: func(expected string) string {
+			var response transport.SetMailPasswordIfUnchangedResponse
+			_ = agent.SetMailPasswordIfUnchangedV1(&transport.SetMailPasswordIfUnchangedRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
 	}

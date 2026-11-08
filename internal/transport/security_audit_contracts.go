@@ -95,7 +95,17 @@ type SecurityAuditTLSResponse struct {
 	KeyMatch     SecurityAuditCheck `json:"key_match"`
 	IsSelfSigned bool               `json:"is_self_signed"`
 	ExpiresAt    string             `json:"expires_at,omitempty"`
+	// Names are the DNS names the served certificate covers (alpha.130,
+	// at most SecurityAuditTLSMaxNames), present only for a readable one.
+	Names []string `json:"names,omitempty"`
+	// Hostname says whether the certificate covers the address the
+	// administrator opened the panel with (alpha.130). Computed by the
+	// panel per request; absent in older answers.
+	Hostname *SecurityAuditCheck `json:"hostname,omitempty"`
 }
+
+// SecurityAuditTLSMaxNames bounds the certificate names an answer carries.
+const SecurityAuditTLSMaxNames = 16
 
 type SecurityAuditHTTPResponse struct {
 	ContractVersion int                        `json:"contract_version"`
@@ -173,6 +183,9 @@ var securityAuditCodeStatuses = map[string]string{
 	"panel_tls_not_yet_valid":           SecurityAuditStatusFail,
 	"panel_tls_key_match":               SecurityAuditStatusPass,
 	"panel_tls_key_mismatch":            SecurityAuditStatusFail,
+	"panel_tls_hostname_match":          SecurityAuditStatusPass,
+	"panel_tls_hostname_mismatch":       SecurityAuditStatusWarning,
+	"panel_tls_hostname_address":        SecurityAuditStatusUnknown,
 }
 
 func validSecurityAuditTimestamp(value string) bool {
@@ -448,7 +461,22 @@ func ValidateSecurityAuditTLSResponse(response SecurityAuditTLSResponse) error {
 			"panel_tls_key_match", "panel_tls_key_mismatch", "panel_tls_unknown") {
 		return fmt.Errorf("security audit TLS reason belongs to another check")
 	}
+	if response.Hostname != nil && !validSecurityAuditCheckFor(*response.Hostname,
+		"panel_tls_hostname_match", "panel_tls_hostname_mismatch", "panel_tls_hostname_address", "panel_tls_unknown") {
+		return fmt.Errorf("security audit TLS hostname check is invalid")
+	}
+	if len(response.Names) > SecurityAuditTLSMaxNames {
+		return fmt.Errorf("security audit TLS names exceed the fixed limit")
+	}
+	for _, name := range response.Names {
+		if name == "" || len(name) > 253 || strings.ContainsAny(name, " \t\r\n") {
+			return fmt.Errorf("security audit TLS name is invalid")
+		}
+	}
 	if response.Certificate.Status != SecurityAuditStatusPass {
+		if len(response.Names) != 0 || (response.Hostname != nil && response.Hostname.Status != SecurityAuditStatusUnknown) {
+			return fmt.Errorf("unreadable TLS certificate has authoritative names")
+		}
 		if response.ExpiresAt != "" || response.IsSelfSigned ||
 			response.SelfSigned.Status != SecurityAuditStatusUnknown ||
 			response.Expiry.Status != SecurityAuditStatusUnknown ||

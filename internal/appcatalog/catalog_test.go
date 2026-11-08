@@ -57,6 +57,34 @@ func TestCatalogEntriesArePinnedAndComplete(t *testing.T) {
 	}
 }
 
+// alpha.130: every entry carries Turkish texts, and they keep every fact the
+// reader may compare with the upstream: digests, dates, versions and file
+// names stay exactly as in English.
+var keptFacts = regexp.MustCompile(`[0-9a-f]{32,64}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9]+\.[0-9]+)?|[A-Za-z0-9_.-]+\.(?:php|sha256|sig)\b|SHA-1|SHA-256|MD5|GPG`)
+
+func TestCatalogEntriesHaveTurkishTextsKeepingTheFacts(t *testing.T) {
+	for _, app := range All() {
+		texts := []struct{ field, en, tr string }{
+			{"Summary", app.Summary, app.TR.Summary},
+			{"Upstream", app.Archive.Upstream, app.TR.Upstream},
+			{"Risk", app.Risk, app.TR.Risk},
+		}
+		for _, text := range texts {
+			if strings.TrimSpace(text.tr) == "" {
+				t.Fatalf("%s: no Turkish %s", app.ID, text.field)
+			}
+			if text.tr == text.en {
+				t.Fatalf("%s: the Turkish %s is the English text", app.ID, text.field)
+			}
+			for _, fact := range keptFacts.FindAllString(text.en, -1) {
+				if !strings.Contains(text.tr, fact) {
+					t.Fatalf("%s: the Turkish %s lost %q", app.ID, text.field, fact)
+				}
+			}
+		}
+	}
+}
+
 func TestPHPSupportedNamesTheBound(t *testing.T) {
 	nextcloud, _ := Lookup("nextcloud")
 	if ok, reason := nextcloud.PHPSupported("8.2.29"); ok || !strings.Contains(reason, "8.3 or newer") || !strings.Contains(reason, "8.2") {

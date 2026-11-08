@@ -40,17 +40,33 @@ type databaseRemoteRecorder struct {
 	ownerPorts map[int]bool
 	// unfiltered: instances with rules in force whose filter is missing.
 	unfiltered map[int]bool
+	// alpha.130: failApply makes the full apply fail (the server still
+	// starting); narrows records the closings at the filter sent then, and
+	// narrowed is what the Agent answers it closed.
+	failApply bool
+	narrows   []transport.DatabaseRemoteNarrowRequest
+	narrowed  []transport.DatabaseRemoteTargetResult
 }
 
 func (r *databaseRemoteRecorder) install(t *testing.T) {
 	t.Helper()
 	previousApply, previousStatus := databaseRemoteApplyThroughAgent, databaseRemoteStatusFromAgent
+	previousNarrow := databaseRemoteNarrowThroughAgent
+	databaseRemoteNarrowThroughAgent = func(_ *Panel, _ context.Context, req transport.DatabaseRemoteNarrowRequest) (transport.DatabaseRemoteResponse, error) {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		r.narrows = append(r.narrows, req)
+		return transport.DatabaseRemoteResponse{NFTAvailable: true, FilterLoaded: true, Targets: r.narrowed}, nil
+	}
 	previousMemory := databaseRemoteMemory
 	databaseRemoteMemory = &databaseRemoteState{kick: make(chan struct{}, 1)}
 	databaseRemoteApplyThroughAgent = func(_ *Panel, _ context.Context, req transport.DatabaseRemoteApplyRequest) (transport.DatabaseRemoteResponse, error) {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		r.requests = append(r.requests, req)
+		if r.failApply {
+			return transport.DatabaseRemoteResponse{}, errors.New("agent RPC platform identity unavailable: systemd is not ready (state starting)")
+		}
 		answer := transport.DatabaseRemoteResponse{NFTAvailable: true}
 		for _, target := range req.Targets {
 			result := transport.DatabaseRemoteTargetResult{Engine: target.Engine, Port: target.Port, State: transport.DatabaseRemoteStateWaitRestart}
@@ -80,6 +96,7 @@ func (r *databaseRemoteRecorder) install(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		databaseRemoteApplyThroughAgent, databaseRemoteStatusFromAgent = previousApply, previousStatus
+		databaseRemoteNarrowThroughAgent = previousNarrow
 		databaseRemoteMemory = previousMemory
 	})
 }
@@ -166,6 +183,12 @@ func dbrOffer(t *testing.T, p *Panel, on bool) {
 	t.Helper()
 	if err := p.saveOfferedOptInPermissions(context.Background(), map[string]bool{rightDatabaseRemote: on}); err != nil {
 		t.Fatal(err)
+	}
+	// alpha.130: a change of the offer asks for an apply by itself; the
+	// set-up's own request is not part of what a test checks.
+	select {
+	case <-databaseRemoteMemory.kick:
+	default:
 	}
 }
 
@@ -580,6 +603,8 @@ func TestDatabaseRemoteKicksAreCoalesced(t *testing.T) {
 	previousDelay, previousGap := databaseRemoteKickDelay, databaseRemoteForcedGap
 	databaseRemoteKickDelay, databaseRemoteForcedGap = 100*time.Millisecond, time.Hour
 	t.Cleanup(func() { databaseRemoteKickDelay, databaseRemoteForcedGap = previousDelay, previousGap })
+	// alpha.130: past the start-up window, on a quiet server.
+	dbrStartWindow(t, 0, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := p.startDatabaseRemoteSync(ctx)
 	// Cleanups run last-in first-out: the loop has stopped before the

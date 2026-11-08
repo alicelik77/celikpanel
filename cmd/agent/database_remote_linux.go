@@ -23,6 +23,10 @@ func init() {
 	databaseRemoteLockFilter = hostDatabaseRemoteLockFilter
 	databaseRemotePGQuery = hostDatabaseRemotePGQuery
 	databaseRemoteMySQLQuery = hostDatabaseRemoteMySQLQuery
+	databaseRemoteFail2ban.installed = func() bool {
+		_, err := exec.LookPath("fail2ban-client")
+		return err == nil
+	}
 	databaseRemoteFail2ban.active = func() bool {
 		_, err := databaseRemoteRun("systemctl", []string{"is-active", "--quiet", "fail2ban"}, "")
 		return err == nil

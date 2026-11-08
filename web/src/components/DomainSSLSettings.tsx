@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Shield, CheckCircle, AlertTriangle, XCircle, Lock, Upload, Unlink, RefreshCw } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDate, formatDateTime, formatTime } from '../lib/dateFormat';
 import { Button, Checking, CouldNotCheck, ErrorBanner, Field, FormActions, FormSection, ResultUnknown, inputClass } from './ui';
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
@@ -766,7 +767,7 @@ export function DomainSSLSettings({
                 <CouldNotCheck
                     className="mb-4"
                     text={t('common.staleNotice', {
-                        time: new Date(observedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+                        time: formatTime(new Date(observedAt), locale),
                     })}
                     onRetry={() => void loadSSLData()}
                     busy={ssl.reading}
@@ -818,7 +819,7 @@ export function DomainSSLSettings({
                                         label={t('ssl.expires')}
                                         value={
                                             <span>
-                                                {new Date(cert.expires_at).toLocaleDateString()}{' '}
+                                                {formatDate(new Date(cert.expires_at), locale)}{' '}
                                                 <span className={cert.days_until_expiry < 30 ? 'text-warning' : 'text-fg-subtle'}>
                                                     ({cert.days_until_expiry < 0
                                                         ? t('ssl.daysAgo', { n: -cert.days_until_expiry })
@@ -1509,10 +1510,7 @@ function activeHSTSRetirement(end: Date | null, nowMs: number): Date | null {
 }
 
 function formatHSTSRetirementDate(retireAfter: Date, locale: 'tr' | 'en'): string {
-    return retireAfter.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US', {
-        dateStyle: 'medium',
-        timeStyle: 'medium',
-    });
+    return formatDateTime(retireAfter, locale, { dateStyle: 'medium', timeStyle: 'medium' });
 }
 
 function formatHSTSRemaining(retireAfter: Date, nowMs: number, locale: 'tr' | 'en'): string {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, KeyRound, MailCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useLocation, useNavigate } from '../router';
@@ -39,7 +39,21 @@ type Phase =
     | { kind: 'unknown' }
     | { kind: 'missing' };
 
+// alpha.130: the pages of a mailbox's recovery links share the
+// /account-link/ prefix (so App's session gate needs no change and the boot
+// path does not grow); they are their own chunk.
+// Posta kutusu kurtarma sayfaları aynı öneki kullanır; kendi paketleridir.
+const MailboxRecoveryPage = lazy(() => import('./MailboxRecoveryPage'));
+
 export function AccountLinkPage() {
+    const location = useLocation();
+    if (location.pathname.startsWith('/account-link/mailbox-')) {
+        return <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-bg"><Spinner size="sm" /></div>}><MailboxRecoveryPage key={location.pathname} /></Suspense>;
+    }
+    return <AccountLinkForm />;
+}
+
+function AccountLinkForm() {
     const { t, screensReady } = useI18n();
     const location = useLocation();
     const navigate = useNavigate();

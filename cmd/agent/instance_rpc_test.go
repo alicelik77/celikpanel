@@ -196,6 +196,10 @@ func TestRemoveNodeVersion(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(runtimesBaseDir, "node", "24.18.0")); !os.IsNotExist(err) {
 		t.Error("tree still on disk after removal")
 	}
+	// alpha.130: the last version takes its empty parent folder with it.
+	if _, err := os.Lstat(filepath.Join(runtimesBaseDir, "node")); !os.IsNotExist(err) {
+		t.Error("the empty node folder stayed after the last version went")
+	}
 	resp = NodeRemoveResponse{}
 	if err := a.removeNodeVersion(&NodeRemoveRequest{Version: "24.18.0"}, &resp); err != nil || !resp.Removed {
 		t.Error("removing an absent version must be idempotent success")

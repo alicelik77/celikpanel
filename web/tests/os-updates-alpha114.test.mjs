@@ -119,7 +119,8 @@ test('switching to manual shows both texts and writes once, with the digest that
     assert.ok(text().includes(en['life.choice.result.manual']));
     // The card read the system again, and says manual now.
     assert.equal(attr('data-os-choice')[0].props['data-os-choice'], 'manual');
-    assert.equal(requests.filter((request) => request.method === 'GET').length, 2);
+    // alpha.130: the card also reads whether a reboot waits; the system's update state was read twice.
+    assert.equal(requests.filter((request) => request.method === 'GET' && !request.url.includes('/maintenance/restarts')).length, 2);
   } finally { await unmount(); }
 });
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Play, StopCircle, RotateCw, Download, ScanSearch, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { useAuth } from '../auth/AuthContext';
 import { Button, Checking, CouldNotCheck, Dialog, EmptyState, StatusDot } from './ui';
 import { HelpButton } from './HelpDrawer';
@@ -288,7 +289,7 @@ export function ServiceShell({
     // başlığında; bilinmeyen susar.
     const packageVersion = installed ? packageVersionFacts(svc) : null;
     const packageVersionReadAt = packageVersion?.readAt
-        ? new Date(packageVersion.readAt).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US') : '';
+        ? formatDateTime(new Date(packageVersion.readAt), locale, {}) : '';
     const running = installed && isServiceRunning(svc?.status);
     // The record could not be read and there is no earlier one: nothing is
     // known about this component here. With an earlier one, that record stays

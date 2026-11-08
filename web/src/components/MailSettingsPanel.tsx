@@ -7,6 +7,7 @@ import { decodeMailSetup, mailSetupURL, type MailProtocol } from '../lib/mailSet
 import { invalidate, LOADING, readRemote, useRemote, type Remote } from '../lib/remote';
 import { isStaleWrite, StaleNotice } from './CurrentSettings';
 import { Button, Checking, CouldNotCheck, RemoteGate, inputClass } from './ui';
+import { MailAutoconfigNotice } from './MailAutoconfigNotice';
 
 interface Props {
     domainId: number;
@@ -94,11 +95,14 @@ export function MailSettingsPanel({ domainId, domainName, readOnly = false }: Pr
                         busy={setup.reading}
                     >
                         {({ value }) => (
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                <ProtoCard title="IMAP" sub={t('mail.setup.incoming')} proto={value.imap} />
-                                <ProtoCard title="POP3" sub={t('mail.setup.incomingAlt')} proto={value.pop3} />
-                                <ProtoCard title="SMTP" sub={t('mail.setup.outgoing')} proto={value.smtp} />
-                            </div>
+                            <>
+                                {value.autoconfig && <MailAutoconfigNotice domainId={domainId} autoconfig={value.autoconfig} readOnly={readOnly} />}
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <ProtoCard title="IMAP" sub={t('mail.setup.incoming')} proto={value.imap} />
+                                    <ProtoCard title="POP3" sub={t('mail.setup.incomingAlt')} proto={value.pop3} />
+                                    <ProtoCard title="SMTP" sub={t('mail.setup.outgoing')} proto={value.smtp} />
+                                </div>
+                            </>
                         )}
                     </RemoteGate>
                 </div>

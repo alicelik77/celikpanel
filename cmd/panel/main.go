@@ -98,6 +98,9 @@ type Panel struct {
 	// listenerControl is the running HTTP server's listener set; a panel
 	// port change adds and retires listeners through it (panel_port.go).
 	listenerControl panelListenerControl
+	// mailboxRecoverySends tracks the mailbox recovery mails sent after a
+	// public answer (alpha.130, mailbox_recovery_handlers.go).
+	mailboxRecoverySends sync.WaitGroup
 	// requestIdentities answers a re-sent state-changing request from the row
 	// of its first arrival instead of running it again (D-029). Handler tests
 	// that call a handler directly leave it nil.
@@ -428,6 +431,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail-health", []string{http.MethodGet}
 	case "mail/accounts/password":
 		match.kind, match.methods = "mail", []string{http.MethodPut}
+	case "mail/accounts/recovery":
+		// alpha.130: a mailbox's recovery address (read, set, remove).
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete}
 	case "mail/accounts/empty":
 		// alpha.128 (G20): remove every message of one mailbox.
 		match.kind, match.methods = "mail", []string{http.MethodPost}
@@ -435,6 +441,11 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/quota", "mail/rbl", "mail/setup", "mail/auth":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}
+	case "mail/autoconfig":
+		// alpha.130: "Set up now" for mail programs (the site file again and
+		// the missing DNS records). Without this key the dispatcher answered
+		// 404 and the button on the mailbox screen never worked (lab).
+		match.kind, match.methods = "mail", []string{http.MethodPost, http.MethodOptions}
 	case "mail/forwardings":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
 	case "mail/auth/dkim", "mail/auth/apply", "mail/auth/automatic":
@@ -1559,6 +1570,10 @@ func main() {
 		milterWiringDeferred = panel.wireMailFiltersSynchronouslyAtStartup()
 	}
 
+	// alpha.130: a removed PostgreSQL major's cluster that holds only what
+	// initdb made is removed once after the start (postgresql_leftovers.go).
+	panel.startPGLeftoverCleanup()
+
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.
 	_ = sessions.DeleteExpired(context.Background())
@@ -1573,6 +1588,9 @@ func main() {
 			// Used, voided and expired account links after 30 days (P6).
 			if err := sweepAccountLinks(context.Background(), panel.db.GetDB()); err != nil {
 				log.Printf("[account-links] old rows could not be removed: %v", err)
+			}
+			if err := sweepMailboxRecoveryLinks(context.Background(), panel.db.GetDB()); err != nil {
+				log.Printf("[mailbox-recovery] old links could not be removed: %v", err)
 			}
 		}
 	}()
@@ -1800,6 +1818,8 @@ func main() {
 	http.HandleFunc(osUpdatesOriginsPath, panel.handleOSUpdatesOrigins)
 	http.HandleFunc(osUpdatesModePath, panel.handleOSUpdatesMode)
 	http.HandleFunc(osUpdatesSummaryPath, panel.handleOSUpdatesSummary)
+	// alpha.130: SSH password sign-in, read and changed by the administrator.
+	http.HandleFunc(sshPasswordLoginPath, panel.handleSSHPasswordLogin)
 	// alpha.118: the SSH command line's missing tools, installed by the administrator.
 	http.HandleFunc(fileAccessToolsPath, panel.handleFileAccessTools)
 	// alpha.107 (D-038 §10): services waiting for a restart, a reboot.
@@ -1870,6 +1890,11 @@ func main() {
 	http.HandleFunc("/api/v1/mail/policy", panel.handleMailPolicy)
 	// alpha.128: outgoing mail limits (administrator) and their notices.
 	http.HandleFunc(mailOutgoingPath, panel.handleMailOutgoing)
+	http.HandleFunc(mailRelayPath, panel.handleMailRelay)
+	http.HandleFunc(mailRelayTestPath, panel.handleMailRelay)
+	http.HandleFunc(mailServerSettingsPath, panel.handleMailServerSettings)
+	http.HandleFunc(mailSubaddressingPath, panel.handleMailServerSettings)
+	http.HandleFunc(mailSenderRulesPath, panel.handleMailServerSettings)
 	http.HandleFunc(mailOutgoingReportPath, panel.handleMailOutgoing)
 	http.HandleFunc(mailOutgoingNoticesPath, panel.handleOutgoingNotices)
 	http.HandleFunc(mailOutgoingNoticesPath+"/", panel.handleOutgoingNotices)

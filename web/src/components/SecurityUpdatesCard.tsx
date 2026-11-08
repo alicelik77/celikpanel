@@ -18,9 +18,10 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate } from './ui';
 import { useRemote } from '../lib/remote';
+import { Link } from '../router';
 import { LifeLine, lifeDate, type Tone } from './LifeLine';
 import { VendorLaneDialog } from './VendorLaneDialog';
-import { OSUpdatesChoice, type OSUpdatesAutoConfig } from './OSUpdatesChoice';
+import { OSUpdatesChoice, originPhrases, type OSUpdatesAutoConfig } from './OSUpdatesChoice';
 import { ArchUpdateGuide } from './ArchUpdateGuide';
 import { LANE_FOR_COMPONENT, LANE_SERVICE } from '../lib/vendorLane';
 import { componentName } from '../lib/componentName';
@@ -55,6 +56,14 @@ export function enableCommand(family: string, reason?: string): string {
     if (reason === 'timer_disabled') return 'sudo systemctl enable --now apt-daily-upgrade.timer';
     if (reason === 'config_off') return 'sudo dpkg-reconfigure -plow unattended-upgrades';
     return 'sudo apt-get install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades';
+}
+
+// alpha.130: whether an installed update waits for a reboot (the same reading
+// as Server → Maintenance). Unknown stays silent here; Maintenance says it.
+export function decodeRebootWaiting(raw: unknown): boolean {
+    const body = raw as { state?: string; needs?: { reboot_required?: unknown; reboot_known?: unknown } } | null;
+    if (!body || body.state !== 'read' || !body.needs) throw new Error('shape');
+    return body.needs.reboot_known === true && body.needs.reboot_required === true;
 }
 
 export function SecurityUpdatesCard() {
@@ -93,11 +102,15 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
     // alpha.108 (owner finding: "ne ekleyeyim"): an uncovered or unconfined
     // vendor repository gets its direct action, the lane's missing steps.
     const [laneFor, setLaneFor] = useState<string | null>(null);
+    const reboot = useRemote('/api/v1/maintenance/restarts', decodeRebootWaiting);
+    const rebootWaiting = reboot.remote.state === 'known' && reboot.remote.value;
     const auto = value.automatic;
     const autoTone: Tone = auto.state === 'on' ? 'ok' : auto.state === 'not_applicable' || auto.state === 'unknown' ? 'info' : 'warn';
     const command = enableCommand(value.package_family, auto.reason);
+    // alpha.130: the sources in plain words, not apt's patterns.
+    const sources = value.package_family === 'apt' ? originPhrases(value.auto_config?.covers ?? [], t) : [];
     const autoText = auto.state === 'on'
-        ? t('life.updates.auto.on', { tool: auto.tool ?? '' })
+        ? sources.length > 0 ? t('life.updates.auto.onPlain', { what: sources.join(', ') }) : t('life.updates.auto.on', { tool: auto.tool ?? '' })
         : auto.state === 'off'
           ? t(`life.updates.auto.off.${auto.reason === 'timer_disabled' ? 'timer_disabled' : 'config_off'}` as TranslationKey, { command })
           : auto.state === 'not_installed'
@@ -165,6 +178,12 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
             {/* alpha.127: the command, ready to copy; Check again reads it back. / Kopyalanmaya hazır komut. */}
             {(auto.state === 'off' || auto.state === 'not_installed') && <CopyCommand command={command} />}
             {lastRun && <p className="pl-6 text-sm text-fg-muted" data-os-updates-last-run="">{lastRun}</p>}
+            {rebootWaiting && (
+                <LifeLine tone="warn" attr="reboot-waiting">
+                    <KeepWords text={t('life.updates.reboot.waiting')} />{' '}
+                    <Link to="/maintenance" className="font-semibold text-primary underline decoration-1 underline-offset-[3px] max-sm:min-h-11">{t('nav.maintenance' as TranslationKey)}</Link>
+                </LifeLine>
+            )}
             <LifeLine tone={pendingTone} attr="pending">{pendingText}</LifeLine>
             {pending.state === 'known' && (pending.security_names ?? []).length > 0 && (
                 <p className="pl-6 text-sm text-fg-muted"><KeepWords text={t('life.updates.pending.securityNames', { names: (pending.security_names ?? []).join(', ') })} /></p>
@@ -195,7 +214,7 @@ function UpdatesFacts({ value, onChanged }: { value: OSUpdates; onChanged: () =>
                 </div>
             ))}
             {dropIn?.state === 'present' && (dropIn.origins ?? []).length > 0 && (
-                <LifeLine tone="info" attr="drop-in-present"><KeepWords text={t('life.updates.dropIn.present', { path: dropIn.path, origins: (dropIn.origins ?? []).join(', ') })} /></LifeLine>
+                <LifeLine tone="info" attr="drop-in-present"><KeepWords text={t('life.updates.dropIn.present', { path: dropIn.path, origins: originPhrases(dropIn.origins ?? [], t).join(', ') })} /></LifeLine>
             )}
             {dropIn?.state === 'edited' && <LifeLine tone="warn" attr="drop-in-edited"><KeepWords text={t('life.updates.dropIn.edited', { path: dropIn.path })} /></LifeLine>}
             {dropIn?.proposed && (

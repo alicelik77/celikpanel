@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -54,13 +56,28 @@ var databaseRemoteValidateMariaDBOption = func(path string, content []byte) erro
 // databaseRemoteFail2ban reloads Fail2ban and says whether it, and one of
 // its jails, runs.
 var databaseRemoteFail2ban = struct {
+	// installed: fail2ban-client is on this server (alpha.130: after a
+	// removal its folders stay behind with CelikPanel's files in them).
+	installed  func() bool
 	active     func() bool
 	jailActive func(name string) bool
 	reload     func() error
 }{
+	installed:  func() bool { return false },
 	active:     func() bool { return false },
 	jailActive: func(string) bool { return false },
 	reload:     func() error { return errors.New("Fail2ban is not reachable on this platform") },
+}
+
+// databaseRemoteMariaDBSkipNameResolve is the administrator's agreement
+// carried by the apply in progress (transport.DatabaseRemoteApplyRequest);
+// set and read under databaseRemoteMu.
+var databaseRemoteMariaDBSkipNameResolve bool
+
+// fail2banInstalled: Fail2ban is on this server with its folders.
+func fail2banInstalled() bool {
+	return databaseRemoteFiles.isDir("/etc/fail2ban/jail.d") && databaseRemoteFiles.isDir("/etc/fail2ban/filter.d") &&
+		databaseRemoteFail2ban.installed()
 }
 
 const (
@@ -78,16 +95,19 @@ type mariadbRemoteSettings struct {
 	logError       string
 	logWarnings    int
 	dataDir        string
+	// skipNameResolve: the running MariaDB does not look client host names
+	// up, so a refused sign-in names the client's address (alpha.130).
+	skipNameResolve bool
 }
 
 func (mariadbRemoteInstance) read() (mariadbRemoteSettings, error) {
-	out, err := databaseRemoteMySQLQuery("SELECT @@bind_address, @@skip_networking, @@have_ssl, @@port, @@log_error, @@log_warnings, @@datadir;")
+	out, err := databaseRemoteMySQLQuery("SELECT @@bind_address, @@skip_networking, @@have_ssl, @@port, @@log_error, @@log_warnings, @@datadir, @@skip_name_resolve;")
 	if err != nil {
 		return mariadbRemoteSettings{}, err
 	}
 	fields := strings.Split(strings.TrimSpace(out), "\t")
-	if len(fields) != 7 {
-		return mariadbRemoteSettings{}, fmt.Errorf("MariaDB answered %d values, CelikPanel asked for 7", len(fields))
+	if len(fields) != 8 {
+		return mariadbRemoteSettings{}, fmt.Errorf("MariaDB answered %d values, CelikPanel asked for 8", len(fields))
 	}
 	port, _ := strconv.Atoi(fields[3])
 	bind := fields[0]
@@ -96,7 +116,7 @@ func (mariadbRemoteInstance) read() (mariadbRemoteSettings, error) {
 	}
 	warnings, _ := strconv.Atoi(fields[5])
 	return mariadbRemoteSettings{bind: bind, skipNetworking: fields[1] == "1", haveSSL: fields[2] == "YES", port: port,
-		logError: fields[4], logWarnings: warnings, dataDir: fields[6]}, nil
+		logError: fields[4], logWarnings: warnings, dataDir: fields[6], skipNameResolve: fields[7] == "1"}, nil
 }
 
 // mariadbBindIsLocal: bind-address names this server only. MariaDB without
@@ -285,7 +305,8 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 	}
 	wantOpen := len(target.Rules) > 0
 
-	// 1. The option file (listen address, TLS).
+	// 1. The option file (listen address, TLS, host name lookup).
+	var names mariadbNameResolvePlan
 	path, pathErr := mariadbOptionPath()
 	if pathErr != nil && (wantOpen || ts.Listen) {
 		problem(transport.DatabaseRemoteFailed, pathErr.Error())
@@ -298,17 +319,21 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		switch {
 		case exists && !own:
 			problem(transport.DatabaseRemoteOwnerFile, path+" was changed outside CelikPanel; CelikPanel leaves it as it is")
+			// An owner's file may still turn the lookup off: the running
+			// value decides below.
+			names = mariadbPlanNameResolve(wantOpen, s, false, path)
 		case wantOpen:
+			names = mariadbPlanNameResolve(wantOpen, s, own && dbremote.MariaDBOptionFileSkipsNameResolve(string(current)), path)
 			var content string
 			if s.haveSSL && !(own && strings.Contains(string(current), "ssl_cert")) {
-				content = dbremote.MariaDBOptionFile("", "")
+				content = dbremote.MariaDBOptionFileWith("", "", names.write)
 			} else {
 				cert, key, err := ensureDatabaseRemoteCertificate("mariadb", "mysql", hostName)
 				if err != nil {
 					problem(transport.DatabaseRemoteTLSMissing, err.Error())
-					content = dbremote.MariaDBOptionFile("", "")
+					content = dbremote.MariaDBOptionFileWith("", "", names.write)
 				} else {
-					content = dbremote.MariaDBOptionFile(cert, key)
+					content = dbremote.MariaDBOptionFileWith(cert, key, names.write)
 					ts.TLS = true
 				}
 			}
@@ -319,15 +344,17 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 					problem(transport.DatabaseRemoteFailed, "the option file could not be written: "+err.Error())
 				} else {
 					ts.Listen, ts.ListenPending = true, false
+					ts.SkipNameResolve = names.write
 				}
 			} else {
 				ts.Listen = true
+				ts.SkipNameResolve = names.write
 			}
 		case exists && own:
 			if err := databaseRemoteFiles.remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 				problem(transport.DatabaseRemoteFailed, "the option file could not be removed: "+err.Error())
 			} else {
-				ts.Listen, ts.TLS = false, false
+				ts.Listen, ts.TLS, ts.SkipNameResolve = false, false, false
 				ts.ListenPending = facts.listenRemote
 			}
 		default:
@@ -335,7 +362,19 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 				ts.Listen = false
 				ts.ListenPending = facts.listenRemote
 			}
+			ts.SkipNameResolve = false
 		}
+	}
+	switch {
+	case s.skipNameResolve:
+		result.NameResolve = "off"
+	case ts.SkipNameResolve:
+		result.NameResolve = "pending_restart"
+	default:
+		result.NameResolve = "on"
+	}
+	if wantOpen && !s.skipNameResolve && names.code != "" {
+		problem(names.code, names.detail)
 	}
 	if ts.ListenPending && !facts.listenRemote {
 		ts.ListenPending = false
@@ -343,9 +382,11 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 
 	// 2. Slowing wrong passwords down (review M3): the jail must be running
 	// before any copy exists, and TLS must run before a REQUIRE SSL copy is
-	// of any use. Until both hold, the rules wait and no copy is made.
+	// of any use. alpha.130: and MariaDB must name addresses in refused
+	// sign-ins (host name lookup off), or the jail bans nobody. Until all
+	// three hold, the rules wait and no copy is made.
 	m.applyJail(target, wantOpen, s, ts, &result)
-	ready := s.haveSSL && result.SlowDown == "fail2ban"
+	ready := s.haveSSL && result.SlowDown == "fail2ban" && s.skipNameResolve
 	accountTarget := dbremote.Target{Engine: target.Engine, Port: target.Port}
 	if ready {
 		accountTarget.Rules = target.Rules
@@ -499,9 +540,9 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		problem(transport.DatabaseRemoteRestartNeeded, "MariaDB still listens beyond this server until it restarts; the port stays closed by the address filter meanwhile")
 	case !wantOpen:
 		result.State = transport.DatabaseRemoteStateOff
-	case ts.Listen && (!facts.listenRemote || !s.haveSSL):
+	case ts.Listen && (!facts.listenRemote || !s.haveSSL || (ts.SkipNameResolve && !s.skipNameResolve)):
 		result.State = transport.DatabaseRemoteStateWaitRestart
-		problem(transport.DatabaseRemoteRestartNeeded, "MariaDB reads its listen address and TLS settings only when it starts")
+		problem(transport.DatabaseRemoteRestartNeeded, "MariaDB reads its listen address, TLS and host name lookup settings only when it starts")
 	case len(active) > 0 && ts.Listen:
 		result.State = transport.DatabaseRemoteStateOpen
 	default:
@@ -518,12 +559,7 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 			result.Problems = append(result.Problems, transport.DatabaseRemoteProblem{Code: transport.DatabaseRemoteNoSlowDown, Detail: detail})
 		}
 	}
-	if logError := strings.TrimSpace(s.logError); logError != "" && logError != "stderr" {
-		// Journal only (re-review LOW 1): in a log file a crafted user name
-		// can end a line that blames another address.
-		noSlowDown("MariaDB writes its log to " + logError + " (log_error); the protection against password guessing reads only the journal, where a crafted user name cannot fake a line. Remove log_error from MariaDB's settings, restart MariaDB, then apply again")
-		return
-	}
+	result.Fail2ban = "unavailable"
 	jail, err := dbremote.MariaDBJail(target.Port, mariadbRemoteUnit)
 	if err != nil {
 		noSlowDown(err.Error())
@@ -537,8 +573,10 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 	// CelikPanel's own earlier filter is replaced, not kept as the owner's.
 	filterEarlier := filterExists && dbremote.MariaDBFilterEarlier(string(currentFilter))
 	filterOwn := filterExists && (string(currentFilter) == filter || filterEarlier)
-	installed := databaseRemoteFiles.isDir("/etc/fail2ban/jail.d") && databaseRemoteFiles.isDir("/etc/fail2ban/filter.d")
-	if !want {
+	installed := fail2banInstalled()
+	// No rule, or Fail2ban removed (alpha.130, no leftovers): CelikPanel's
+	// own files go; an owner's version stays.
+	if !want || !installed {
 		changed := false
 		if jailOwn {
 			changed = databaseRemoteFiles.remove(dbremote.MariaDBJailPath) == nil
@@ -546,10 +584,19 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 		if filterOwn {
 			changed = databaseRemoteFiles.remove(dbremote.MariaDBFilterPath) == nil || changed
 		}
-		if changed {
-			ts.Jail = false
+		ts.Jail = false
+		if changed && installed {
 			_ = databaseRemoteFail2ban.reload()
 		}
+		if !want {
+			result.Fail2ban = "off"
+			return
+		}
+	}
+	if logError := strings.TrimSpace(s.logError); logError != "" && logError != "stderr" {
+		// Journal only (re-review LOW 1): in a log file a crafted user name
+		// can end a line that blames another address.
+		noSlowDown("MariaDB writes its log to " + logError + " (log_error); the protection against password guessing reads only the journal, where a crafted user name cannot fake a line. Remove log_error from MariaDB's settings, restart MariaDB, then apply again")
 		return
 	}
 	switch {
@@ -597,6 +644,183 @@ func (mariadbRemoteInstance) applyJail(target dbremote.Target, want bool, s mari
 		return
 	}
 	result.SlowDown = "fail2ban"
+	result.Fail2ban = "on"
+}
+
+// mariadbNameResolvePlan is what CelikPanel does about MariaDB's host name
+// lookup (alpha.130): write turns it off in CelikPanel's option file; code
+// and detail say what keeps it on.
+type mariadbNameResolvePlan struct {
+	write  bool
+	code   string
+	detail string
+}
+
+// mariadbPlanNameResolve decides the lookup for an engine that should carry
+// rules. CelikPanel turns the lookup off only with the administrator's
+// agreement (it changes how every account matches: a program on this server
+// that connects through 127.0.0.1, or an account written with a host name,
+// stops matching), never against an owner's own setting, and never while an
+// account with a host name exists. ownSkip: CelikPanel's file already turns
+// it off.
+func mariadbPlanNameResolve(wantOpen bool, s mariadbRemoteSettings, ownSkip bool, ownPath string) mariadbNameResolvePlan {
+	if !wantOpen {
+		return mariadbNameResolvePlan{}
+	}
+	ownerValue, ownerFile := mariadbOwnerNameResolve(ownPath)
+	switch {
+	case ownerValue == "lookup_on":
+		return mariadbNameResolvePlan{code: transport.DatabaseRemoteOwnerNameResolve,
+			detail: ownerFile + " turns MariaDB's host name lookup on (skip-name-resolve off); CelikPanel does not change your setting"}
+	case s.skipNameResolve && !ownSkip && (ownerValue == "lookup_off" || !databaseRemoteMariaDBSkipNameResolve):
+		// Off already, by the owner's option file (or MariaDB's own build,
+		// without the administrator's agreement): nothing to do. With the
+		// agreement and no owner setting, the running value may still be the
+		// one of CelikPanel's own earlier file (the last rule removed it,
+		// MariaDB keeps the value until it restarts): the line is written
+		// again, or the next restart turns the lookup back on and every
+		// MariaDB rule waits (lab, alpha.130).
+		return mariadbNameResolvePlan{}
+	case !databaseRemoteMariaDBSkipNameResolve:
+		if ownSkip && s.skipNameResolve {
+			// The agreement was withdrawn: the line goes, MariaDB keeps its
+			// running value until the next start.
+			return mariadbNameResolvePlan{}
+		}
+		return mariadbNameResolvePlan{code: transport.DatabaseRemoteNameResolve,
+			detail: "MariaDB looks up the host name of every client and then names the host, not its address, in a refused sign-in, so Fail2ban cannot ban it"}
+	case ownSkip:
+		return mariadbNameResolvePlan{write: true}
+	}
+	accounts, err := mariadbHostNameAccounts()
+	if err != nil {
+		return mariadbNameResolvePlan{code: transport.DatabaseRemoteNameResolve,
+			detail: "the accounts of MariaDB could not be read (" + boundedText(err.Error(), 120) + "), so host name lookup stays on"}
+	}
+	if len(accounts) > 0 {
+		shown := accounts
+		if len(shown) > 5 {
+			shown = append(append([]string(nil), shown[:5]...), fmt.Sprintf("and %d more", len(accounts)-5))
+		}
+		return mariadbNameResolvePlan{code: transport.DatabaseRemoteNameAccounts, detail: strings.Join(shown, ", ")}
+	}
+	return mariadbNameResolvePlan{write: true}
+}
+
+// databaseRemoteMariaDBConfigFiles lists MariaDB's option files on this
+// server (Debian/Ubuntu and Arch layouts); swapped by tests.
+var databaseRemoteMariaDBConfigFiles = func() []string {
+	files := []string{"/etc/mysql/my.cnf", "/etc/mysql/mariadb.cnf", "/etc/my.cnf"}
+	for _, pattern := range []string{"/etc/mysql/conf.d/*.cnf", "/etc/mysql/mariadb.conf.d/*.cnf", "/etc/my.cnf.d/*.cnf"} {
+		matches, _ := filepath.Glob(pattern)
+		sort.Strings(matches)
+		files = append(files, matches...)
+	}
+	return files
+}
+
+// mariadbOwnerNameResolve reads the owner's own setting of the lookup from
+// MariaDB's option files (CelikPanel's own file left out): "lookup_on"
+// (skip-name-resolve set off), "lookup_off" (set on) or "" (not set). The
+// last setting read wins, as in MariaDB.
+func mariadbOwnerNameResolve(ownPath string) (value, file string) {
+	for _, path := range databaseRemoteMariaDBConfigFiles() {
+		if path == ownPath || path == dbremote.MariaDBOptionFileDebian || path == dbremote.MariaDBOptionFileArch {
+			continue
+		}
+		data, err := databaseRemoteFiles.read(path)
+		if err != nil {
+			continue
+		}
+		if v := mariadbNameResolveSetting(string(data)); v != "" {
+			value, file = v, path
+		}
+	}
+	return value, file
+}
+
+// mariadbNameResolveSetting reads skip-name-resolve from the server sections
+// of one option file's text.
+func mariadbNameResolveSetting(text string) string {
+	value := ""
+	server := false
+	for _, raw := range strings.Split(text, "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" || line[0] == '#' || line[0] == ';' {
+			continue
+		}
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			name := strings.ToLower(strings.TrimSpace(line[1 : len(line)-1]))
+			server = strings.HasPrefix(name, "mysqld") || strings.HasPrefix(name, "mariadbd") || name == "server" ||
+				name == "galera" || name == "mariadb" || (strings.HasPrefix(name, "mariadb-") && len(name) > 8 && name[8] >= '0' && name[8] <= '9')
+			continue
+		}
+		if !server {
+			continue
+		}
+		key, val, hasValue := strings.Cut(line, "=")
+		key = strings.ReplaceAll(strings.ToLower(strings.TrimSpace(key)), "-", "_")
+		val = strings.ToLower(strings.Trim(strings.TrimSpace(val), `'"`))
+		switch key {
+		case "skip_name_resolve":
+			if !hasValue || val == "1" || val == "on" || val == "true" {
+				value = "lookup_off"
+			} else if val == "0" || val == "off" || val == "false" {
+				value = "lookup_on"
+			}
+		case "disable_skip_name_resolve", "skip_skip_name_resolve":
+			value = "lookup_on"
+		}
+	}
+	return value
+}
+
+// mariadbHostNameAccounts lists the accounts (user@host) whose host is a
+// name: with the lookup off MariaDB matches clients by address only, so
+// these would stop working. localhost keeps working (the socket).
+func mariadbHostNameAccounts() ([]string, error) {
+	out, err := databaseRemoteMySQLQuery("SELECT User, Host FROM mysql.user;")
+	if err != nil {
+		return nil, err
+	}
+	var named []string
+	for _, row := range pgRows(out) {
+		user, host, ok := strings.Cut(row, "\t")
+		if !ok || mariadbHostIsAddressForm(host) {
+			continue
+		}
+		named = append(named, "'"+user+"'@'"+host+"'")
+	}
+	sort.Strings(named)
+	return named, nil
+}
+
+// mariadbHostIsAddressForm: host matches clients by address (or is the local
+// socket's localhost), not by a host name.
+func mariadbHostIsAddressForm(host string) bool {
+	if host == "localhost" || host == "%" || host == "" {
+		return true
+	}
+	if _, err := netip.ParseAddr(host); err == nil {
+		return true
+	}
+	if address, mask, ok := strings.Cut(host, "/"); ok {
+		_, errA := netip.ParseAddr(address)
+		_, errM := netip.ParseAddr(mask)
+		return errA == nil && errM == nil
+	}
+	ipv4Pattern, ipv6Pattern := true, strings.Contains(host, ":")
+	for _, r := range host {
+		digit := r >= '0' && r <= '9'
+		hex := digit || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+		if !digit && r != '.' && r != '%' && r != '_' {
+			ipv4Pattern = false
+		}
+		if !hex && r != ':' && r != '%' && r != '_' {
+			ipv6Pattern = false
+		}
+	}
+	return ipv4Pattern || ipv6Pattern
 }
 
 // databaseRemoteFollowMariaDBUser keeps CelikPanel's remote copies of one

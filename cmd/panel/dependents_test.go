@@ -193,6 +193,15 @@ func TestVersionFromPackage(t *testing.T) {
 	if v := versionFromPackage(nil, "php8.3-fpm"); v != "" {
 		t.Error("nil service must yield nothing")
 	}
+	// alpha.130 lab: PostgreSQL's pattern has no capture group; removing
+	// one major was refused with "package does not name a removable version".
+	pg := core.GetManagedServiceByID("postgresql")
+	if v := versionFromPackage(pg, "postgresql-16"); v != "16" {
+		t.Errorf("postgresql-16 → %q, want 16", v)
+	}
+	if v := versionFromPackage(pg, "postgresql-client-16"); v != "" {
+		t.Error("a client package is not a removable version")
+	}
 }
 
 // The row's start/stop/restart targets a UNIT, and the unit is not always the

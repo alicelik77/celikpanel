@@ -47,6 +47,11 @@ type settingKeyDef struct {
 	Min, Max int
 	// Presets are the screen's quick choices, smallest first.
 	Presets []int
+	// CustomerValue (alpha.130): a site's owner chooses a value of its own
+	// within the limit (the PHP settings), so the administrator may fix it
+	// ("customers may not change it"). The other keys are limits only:
+	// nothing for a customer to change, so they offer no such choice.
+	CustomerValue bool
 }
 
 var (
@@ -77,11 +82,11 @@ const (
 )
 
 func init() {
-	registerSettingKey(settingKeyDef{Key: settingPHPMemoryMB, Group: "php", Unit: "mb", Min: 16, Max: 16384, Presets: []int{64, 128, 256, 512}})
-	registerSettingKey(settingKeyDef{Key: settingPHPTimeS, Group: "php", Unit: "s", Min: 5, Max: 3600, Presets: []int{30, 60, 120, 300}})
-	registerSettingKey(settingKeyDef{Key: settingPHPUploadMB, Group: "php", Unit: "mb", Min: 1, Max: 10240, Presets: []int{2, 8, 32, 64, 128, 256}})
-	registerSettingKey(settingKeyDef{Key: settingPHPInputVars, Group: "php", Unit: "count", Min: 100, Max: 100000, Presets: []int{1000, 3000, 5000, 10000}})
-	registerSettingKey(settingKeyDef{Key: settingPHPProcesses, Group: "php", Unit: "count", Min: 1, Max: 200, Presets: []int{2, 5, 10, 20}})
+	registerSettingKey(settingKeyDef{Key: settingPHPMemoryMB, Group: "php", CustomerValue: true, Unit: "mb", Min: 16, Max: 16384, Presets: []int{64, 128, 256, 512}})
+	registerSettingKey(settingKeyDef{Key: settingPHPTimeS, Group: "php", CustomerValue: true, Unit: "s", Min: 5, Max: 3600, Presets: []int{30, 60, 120, 300}})
+	registerSettingKey(settingKeyDef{Key: settingPHPUploadMB, Group: "php", CustomerValue: true, Unit: "mb", Min: 1, Max: 10240, Presets: []int{2, 8, 32, 64, 128, 256}})
+	registerSettingKey(settingKeyDef{Key: settingPHPInputVars, Group: "php", CustomerValue: true, Unit: "count", Min: 100, Max: 100000, Presets: []int{1000, 3000, 5000, 10000}})
+	registerSettingKey(settingKeyDef{Key: settingPHPProcesses, Group: "php", CustomerValue: true, Unit: "count", Min: 1, Max: 200, Presets: []int{2, 5, 10, 20}})
 	registerSettingKey(settingKeyDef{Key: settingDBConnections, Group: "db", Unit: "count", Min: 1, Max: 10000, Presets: []int{10, 25, 50, 100}})
 	registerSettingKey(settingKeyDef{Key: settingCronJobs, Group: "cron", Unit: "count", Min: 0, Max: 1000, Presets: []int{5, 10, 25, 50}})
 	registerSettingKey(settingKeyDef{Key: settingCronMinIntervalMin, Group: "cron", Unit: "min", Floor: true, Min: 1, Max: 1440, Presets: []int{1, 5, 15, 60}})
@@ -176,6 +181,9 @@ type settingPolicyRow struct {
 	ServerCeiling    *int   `json:"server_ceiling"`
 	ServerDefault    *int   `json:"server_default"`
 	CustomerEditable bool   `json:"customer_editable"`
+	// CustomerChoice: the key has a value of the customer's own, so
+	// CustomerEditable means something (settingKeyDef.CustomerValue).
+	CustomerChoice bool `json:"customer_choice"`
 }
 
 func nullIntPtr(v sql.NullInt64) *int {
@@ -191,7 +199,7 @@ func nullIntPtr(v sql.NullInt64) *int {
 func loadSettingPolicy(ctx context.Context, q rowQueryer) (map[string]settingPolicyRow, error) {
 	out := map[string]settingPolicyRow{}
 	for _, key := range settingKeyOrder {
-		out[key] = settingPolicyRow{Key: key, CustomerEditable: true}
+		out[key] = settingPolicyRow{Key: key, CustomerEditable: true, CustomerChoice: settingKeyDefs[key].CustomerValue}
 	}
 	rows, err := q.QueryContext(ctx, `SELECT key, server_ceiling, server_default, customer_editable FROM setting_policy`)
 	if err != nil {
@@ -208,7 +216,11 @@ func loadSettingPolicy(ctx context.Context, q rowQueryer) (map[string]settingPol
 		if _, known := settingKeyDefs[key]; !known {
 			continue // a key this release does not know limits nothing
 		}
-		out[key] = settingPolicyRow{Key: key, ServerCeiling: nullIntPtr(ceiling), ServerDefault: nullIntPtr(def), CustomerEditable: editable == 1}
+		choice := settingKeyDefs[key].CustomerValue
+		// A limit-only key has nothing to fix: it reads as editable whatever
+		// an earlier release stored.
+		out[key] = settingPolicyRow{Key: key, ServerCeiling: nullIntPtr(ceiling), ServerDefault: nullIntPtr(def),
+			CustomerEditable: editable == 1 || !choice, CustomerChoice: choice}
 	}
 	return out, rows.Err()
 }

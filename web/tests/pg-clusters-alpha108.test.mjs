@@ -13,17 +13,19 @@ import Renderer, { act } from 'react-test-renderer';
 import { dataModule, reactURL, sharedLayer } from './fixtures/shared-layer.mjs';
 import { enDatabaseClustersScreens } from '../src/i18n/screens/databaseClusters/en.ts';
 import { trDatabaseClustersScreens } from '../src/i18n/screens/databaseClusters/tr.ts';
+import { enPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/en.ts';
+import { trPgLeftoversScreens } from '../src/i18n/screens/pgLeftovers/tr.ts';
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const common = { 'common.cancel': 'Cancel', 'common.retry': 'Try again' };
-const en = { ...enDatabaseClustersScreens, ...common };
-const tr = { ...trDatabaseClustersScreens, 'common.cancel': 'Vazgeç', 'common.retry': 'Tekrar dene' };
+const en = { ...enDatabaseClustersScreens, ...enPgLeftoversScreens, ...common };
+const tr = { ...trDatabaseClustersScreens, ...trPgLeftoversScreens, 'common.cancel': 'Vazgeç', 'common.retry': 'Tekrar dene' };
 const fill = (text, vars = {}) => Object.entries(vars).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
 globalThis.cardWords = en;
 const stub = dataModule(`
   import React from '${reactURL}';
   export const AlertTriangle = () => null, CheckCircle2 = () => null, Info = () => null, XCircle = () => null, X = () => null, Loader2 = () => null;
-  export const ArrowRightLeft = () => null, Database = () => null, DownloadCloud = () => null, Layers = () => null, Network = () => null;
+  export const Trash2 = () => null, ArrowRightLeft = () => null, Database = () => null, DownloadCloud = () => null, Layers = () => null, Network = () => null;
   const fill = (text, vars) => Object.entries(vars || {}).reduce((out, [name, value]) => out.split('{' + name + '}').join(String(value)), text);
   export const useI18n = () => ({ t: (key, vars) => (globalThis.cardWords?.[key] !== undefined ? fill(globalThis.cardWords[key], vars) : key), locale: 'en' });
   export const useNavigate = () => () => true;

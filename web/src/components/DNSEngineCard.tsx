@@ -12,6 +12,7 @@ import {
     ShieldAlert,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { formatDateTime, formatTime } from '../lib/dateFormat';
 import { dnsEngineText, type DNSEngineCopyKey } from '../i18n/dnsEngine';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { dnsEngineIdentityReviewLocked, dnsEngineMutationsHeld, dnsEngineOwnerChanged, dnsEngineSeriesUntested } from '../lib/dnsIdentityPlan';
@@ -302,7 +303,7 @@ function elapsedText(
 }
 
 function operationTimestamp(value: string, locale: 'en' | 'tr'): string {
-    return new Date(value).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US');
+    return formatDateTime(new Date(value), locale, {});
 }
 
 function statusStyle(status: DNSEngineEntry['status']): string {
@@ -780,7 +781,7 @@ export function DNSEngineCard({
             : null;
         const reconcileNote = refused
             || et(decoded === null ? 'dnsEngine.guard.reconcileUnread' : 'dnsEngine.guard.reconcileChecked', {
-                time: new Date().toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
+                time: formatTime(new Date(), locale),
             });
         holdOperationGuard({
             ...settled,

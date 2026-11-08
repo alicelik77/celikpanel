@@ -4,6 +4,7 @@ import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, type ApiError } from '../lib/apiError';
 import type { ConfigFile, ConfigFileHandle } from '../lib/configFile';
+import { plainConfigReason } from '../lib/configRefusalText';
 import { Button, Checking, CouldNotCheck } from './ui';
 
 // What every configuration editor shows around its own fields (9 Oct 2026;
@@ -72,6 +73,34 @@ export const refusalLine = (refusal: ApiError | null) => {
 export const refusalName = (refusal: ApiError | null) =>
     (refusal?.code === 'CONFIG_INVALID' && refusal.reason === 'daemon' ? refusal.vars?.name ?? '' : '');
 
+/** What a refusal is about, as the editor shows it on screen. */
+export interface RefusalTarget {
+    /** What the banner names: "Rule 3 (line 9 of pg_hba.conf)", "Setting max_connections". */
+    label: string;
+    /** The button that brings the field on screen: "Show rule 3". */
+    show: string;
+    /** The DOM id of the form control the refusal is about. */
+    id: string;
+    /** What the button does instead of revealing `id` at once: opening the section that holds it first, say. */
+    onShow?: () => void;
+}
+
+// revealField scrolls the form control with this id to the middle of the
+// window and puts the focus on it (8 Nov 2026: the owner read the refusal at
+// the top of the page and could not find the rule it was about). It answers
+// false when the control is not on screen yet, so a caller can try again after
+// the section that holds it opens.
+// revealField, bu kimlikteki form denetimini pencerenin ortasına kaydırır ve
+// odağı ona verir; denetim henüz ekranda değilse false döner.
+export function revealField(id: string): boolean {
+    const doc = typeof document === 'undefined' ? undefined : document;
+    const node = id && typeof doc?.getElementById === 'function' ? doc.getElementById(id) : null;
+    if (!node) return false;
+    if (typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'center' });
+    if (typeof node.focus === 'function') node.focus({ preventScroll: true });
+    return true;
+}
+
 // FieldRefusal is the service's message next to the field it is about.
 // FieldRefusal, hizmetin iletisini ilgili alanın yanında gösterir.
 export function FieldRefusal({ id, service, refusal }: { id: string; service: string; refusal: ApiError }) {
@@ -136,13 +165,16 @@ export function ConfigSaveNotices({
     file,
     service,
     placed,
+    target,
 }: {
     handle: ConfigFileHandle;
     file: string;
     /** The service's name as the owner knows it: "PostgreSQL". */
     service: string;
-    /** true when the refusal's line is already shown next to a field. */
+    /** true when the refusal's line is also shown next to a field, so the banner offers to show it. */
     placed: boolean;
+    /** The rule or setting the refusal is about, named in the banner. */
+    target?: RefusalTarget;
 }) {
     const { t } = useI18n();
     const { stale, refusal, saved } = handle;
@@ -173,6 +205,19 @@ export function ConfigSaveNotices({
         const said = reloadFailed
             ? t('dbconf.reloadSaid', { unit: refusal.vars?.unit || service })
             : refusal.reason === 'daemon' ? t('dbconf.says', { service }) : t('dbconf.notAccepted');
+        const plain = refusal.code === 'CONFIG_INVALID' ? plainConfigReason(detail) : null;
+        // The rule or setting by the name the screen shows it under, else the
+        // line of the file.
+        // Ekranın gösterdiği adıyla kural ya da ayar, yoksa dosyanın satırı.
+        const where = target ? `${target.label}: ` : line >= 0 ? `${t('dbconf.atLine', { line: line + 1 })} ` : '';
+        // A refusal before the file was replaced, or a reload after which the
+        // previous file is verified back: what the server holds is the file
+        // this screen read, and Discard returns to it.
+        // Dosya değiştirilmeden önceki ret ya da önceki dosyanın geri
+        // konduğu doğrulanmış yeniden yükleme: Vazgeç okunan dosyaya döner.
+        const discardNote: TranslationKey | '' = refusal.code === 'CONFIG_INVALID'
+            ? 'dbconf.refused.unchangedDiscard'
+            : reloadFailed && Object.prototype.hasOwnProperty.call(reloadFailedSentences, refusal.reason ?? '') ? 'dbconf.reloadFailed.discard' : '';
         return (
             <div
                 role="alert"
@@ -184,15 +229,43 @@ export function ConfigSaveNotices({
                 <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${failure ? 'text-danger' : 'text-warning'}`} aria-hidden="true" />
                 <div className="min-w-0">
                     <p className="max-w-[75ch] break-words">{text}</p>
-                    {detail && (!placed || reloadFailed) && (
+                    {/* What was refused and why, here at the top in every case
+                        (8 Nov 2026): the same line under the marked field is
+                        often below the fold. A plain sentence with the fix
+                        leads; the service's own words stay under it.
+                        Neyin neden reddedildiği her durumda burada, en üstte:
+                        önce düzeltmeyi söyleyen düz bir cümle, altında hizmetin
+                        kendi sözleri. */}
+                    {detail && !reloadFailed && (plain ? (
+                        <>
+                            <p className="mt-1.5 max-w-[75ch] break-words font-medium">
+                                {where}{t(plain.key, { ...plain.vars, service })}
+                            </p>
+                            <p className="mt-1 max-w-[75ch] break-words text-xs text-fg-muted">
+                                {said} <span className="font-mono text-fg">{detail}</span>
+                            </p>
+                        </>
+                    ) : (
                         <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">
-                            {said}{' '}
-                            {line >= 0 && !reloadFailed && <span>{t('dbconf.atLine', { line: line + 1 })} </span>}
-                            <span className="font-mono text-fg">{detail}</span>
+                            {where && <span className="font-medium text-fg">{where}</span>}
+                            {said} <span className="font-mono text-fg">{detail}</span>
+                        </p>
+                    ))}
+                    {detail && reloadFailed && (
+                        <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">
+                            {said} <span className="font-mono text-fg">{detail}</span>
                         </p>
                     )}
                     {refusal.code === 'CONFIG_RELOAD_FAILED' && !refusal.reason?.startsWith('restored') && refusal.vars?.name && (
                         <p className="mt-1.5 break-all font-mono text-xs text-fg">{refusal.vars.name}</p>
+                    )}
+                    {/* Nothing on the server changed, and the way back to it.
+                        Sunucuda hiçbir şey değişmedi ve ona dönüş yolu. */}
+                    {discardNote && <p className="mt-1.5 max-w-[75ch] break-words text-fg-muted">{t(discardNote)}</p>}
+                    {placed && target && (
+                        <Button type="button" className="mt-2" onClick={() => (target.onShow ? target.onShow() : void revealField(target.id))}>
+                            {target.show}
+                        </Button>
                     )}
                     {unknown && (
                         <Button type="button" className="mt-2" loading={handle.reading} onClick={() => void handle.reload()}>

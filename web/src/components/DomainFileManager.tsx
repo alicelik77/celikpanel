@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { Button, KnownEmpty, RemoteGate, inputClass } from './ui';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeListIn, useRemote } from '../lib/remote';
@@ -38,7 +39,7 @@ interface DomainFileManagerProps {
 // oluşturma diyaloğu modal değil, satır içi bir paneldir (DNS ekleme-formu
 // kalıbıyla uyumlu).
 export function DomainFileManager({ domainId, readOnly = false }: DomainFileManagerProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [currentPath, setCurrentPath] = useState('/');
     // One read per folder. Another folder is another address, so the rows of
     // the folder just left are never drawn under the new path, and a folder
@@ -380,7 +381,7 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
                                         </td>
                                         <td className="px-4 py-2.5 text-fg-muted">{file.is_dir ? '—' : fmtSize(file.size)}</td>
                                         <td className="px-4 py-2.5 font-mono text-xs text-fg-muted">{file.permissions}</td>
-                                        <td className="px-4 py-2.5 text-fg-muted">{fmtDate(file.mod_time)}</td>
+                                        <td className="px-4 py-2.5 text-fg-muted">{fmtDate(file.mod_time, locale)}</td>
                                         <td className="px-4 py-2.5">
                                             <div className="flex items-center justify-end gap-0.5">
                                                 {!file.is_dir && (
@@ -441,10 +442,6 @@ function fmtSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fmtDate(dateStr: string): string {
-    try {
-        return new Date(dateStr).toLocaleString();
-    } catch {
-        return dateStr;
-    }
+function fmtDate(dateStr: string, locale: string): string {
+    return formatDateTime(new Date(dateStr), locale) || dateStr;
 }

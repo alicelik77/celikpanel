@@ -153,18 +153,22 @@ reject_literal "$CI" 'windows-portability:'
 reject_literal "$CI" 'freebsd-compile:'
 reject_literal "$CI" 'darwin-compile:'
 require_count "$CI" 'go test -race -count=1 -timeout=8m ./cmd/panel' 1
-# Twenty-three disjoint, exhaustive shards (R-020). A letter group split from within
+# Twenty-four disjoint, exhaustive shards (R-020). A letter group split from within
 # keeps its pattern on the complement shard and -skips the carved-out prefix,
 # so the pair covers exactly what the single shard covered before. The D group
 # is carved twice, because measurement put both of its halves within seconds
 # of the 240 s exit line: TestD minus every TestDNS, then TestDNS minus the
 # engine and zone tests, then those two on their own.
-require_count "$CI" 'pattern:' 23
-require_count "$CI" 'skip:' 23
+require_count "$CI" 'pattern:' 24
+require_count "$CI" 'skip:' 24
 require_literal "$CI" "pattern: '^Test($|[A-B]|[^A-Z])'"
 require_literal "$CI" "pattern: '^TestC'"
 require_literal "$CI" "skip: '^TestControlPlane'"
 require_literal "$CI" "pattern: '^TestControlPlane'"
+# alpha.130: the control-plane shard carves out its restore tests (with -race
+# the whole shard passed the 8-minute ceiling).
+require_literal "$CI" "skip: '^TestControlPlaneRestore'"
+require_literal "$CI" "pattern: '^TestControlPlaneRestore'"
 require_literal "$CI" "pattern: '^TestD'"
 require_literal "$CI" "skip: '^TestDNS'"
 require_literal "$CI" "pattern: '^TestDNS'"
@@ -252,8 +256,8 @@ panel_shard_output=$(awk -F "'" '
     END { if (have_pattern) exit 1 }
 ' "$CI") || die "cannot read panel race pattern/skip pairs from ci.yml"
 mapfile -t panel_shard_rows <<< "$panel_shard_output"
-((${#panel_shard_rows[@]} == 23)) ||
-    die "panel race matrix must contain exactly 23 pattern/skip pairs"
+((${#panel_shard_rows[@]} == 24)) ||
+    die "panel race matrix must contain exactly 24 pattern/skip pairs"
 
 panel_shard_membership_count() {
     local test_name=$1 count=0 row pattern skip
@@ -268,7 +272,7 @@ panel_shard_membership_count() {
     printf '%s\n' "$count"
 }
 
-for boundary_name in Test TestA TestC TestControlPlane TestD TestDNS \
+for boundary_name in Test TestA TestC TestControlPlane TestControlPlaneRestore TestControlPlaneArchive TestControlPlaneRestoreFuture TestControlPlaneR TestD TestDNS \
     TestDNSEngine TestDNSZone TestE TestG TestH TestM TestN TestR TestS \
     TestService TestServerSetup TestServerSetupA TestServerSetupG TestServerSetupH TestServerSetupJ TestServerSetupK TestServerSetupz TestServerSetupFuture TestServerFuture \
     TestSite TestSiteConfig TestSiteFuture TestStartup TestStartupFuture \

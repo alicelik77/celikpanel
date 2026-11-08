@@ -256,6 +256,9 @@ type offeredVersionsView struct {
 	// OfferedApps (alpha.118): the catalog applications the administrator
 	// offers (an application is offered only when chosen).
 	OfferedApps []string `json:"offered_apps"`
+	// Item (alpha.130): after a change, the changed item's state as every
+	// gate reads it now.
+	Item *offeredItemState `json:"item,omitempty"`
 }
 
 type offeredVersionChange struct {
@@ -309,12 +312,55 @@ func (p *Panel) changeHiddenOffering(w http.ResponseWriter, r *http.Request, ite
 		}
 		p.auditDetailed(r, "offering.admin_offer:"+item+":"+verb, "panel_settings", 0, details)
 	}
-	policy, err := p.loadOfferedVersions(r.Context())
+	p.writeOfferedAnswer(w, r, item)
+}
+
+const (
+	// errCodeOfferedInCatalog: the item is offered in Catalog management.
+	errCodeOfferedInCatalog = "OFFERED_IN_CATALOG"
+
+	offeredInCatalogAction = "/addons?view=catalog"
+)
+
+// changeOptInOffering offers or withdraws an opt-in permission from the
+// Offered tab: the same store, audit and effect as its own switch.
+func (p *Panel) changeOptInOffering(w http.ResponseWriter, r *http.Request, permission string, offered bool) {
+	if _, err := p.setOfferedOptInPermission(r, permission, offered); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	p.writeOfferedAnswer(w, r, permissionItemHead+permission)
+}
+
+// offeredItemState is the state of the changed item after the change, read
+// back from every store (alpha.130): the screen compares it with what was
+// asked and says so when they differ, never a silent revert.
+type offeredItemState struct {
+	ID      string `json:"id"`
+	Offered bool   `json:"offered"`
+}
+
+// writeOfferedAnswer answers a change of the offered layer with the layer
+// and the changed item's state as the gates now read it.
+func (p *Panel) writeOfferedAnswer(w http.ResponseWriter, r *http.Request, item string) {
+	ctx := r.Context()
+	layer, err := p.loadAdminOfferLayer(ctx)
 	if err != nil {
 		writeServerError(w, err)
 		return
 	}
-	_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: false, HiddenOfferings: hiddenOfferingList(hidden), OfferedApps: p.offeredAppList(r.Context())})
+	view := offeredVersionsView{Hidden: layer.versions.Hidden, Restricted: false,
+		HiddenOfferings: hiddenOfferingList(layer.hidden), OfferedApps: p.offeredAppList(ctx)}
+	if item != "" {
+		state := offeredItemState{ID: item}
+		if permission, ok := strings.CutPrefix(item, permissionItemHead); ok {
+			state.Offered = knownPermission(permission) && layer.permits(permission)
+		} else {
+			state.Offered = layer.offers(item)
+		}
+		view.Item = &state
+	}
+	_ = json.NewEncoder(w).Encode(view)
 }
 
 // handleOfferedVersions: GET (every signed-in person: a customer's own page
@@ -351,7 +397,20 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			parts := strings.SplitN(item, ":", 3)
+			permission, isPermission := strings.CutPrefix(item, permissionItemHead)
 			switch {
+			case isPermission && optInPermissions[permission]:
+				// alpha.130: an opt-in permission is offered in its own
+				// store, the one its switch (remote database access, nginx
+				// directives) changes; the hidden list never holds it.
+				p.changeOptInOffering(w, r, permission, change.Offered)
+				return
+			case offeredInCatalogManagement(item):
+				// Offered with its risk summary in Catalog management only.
+				writeCodedErrorVars(w, http.StatusConflict, errCodeOfferedInCatalog,
+					"Nothing was changed: this item is offered in Catalog management, where its risk summary is shown before it is offered.",
+					offeredInCatalogAction, nil, map[string]string{"item": item})
+				return
 			case len(parts) == 3 && parts[0] == "component" && parts[1] == "php-fpm":
 				change.Component, change.Version = "php", parts[2]
 			case len(parts) == 3 && parts[0] == "component" && parts[1] == "node":
@@ -375,17 +434,39 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, errOfferedVersionsUnreadable) {
 			// The administrator's own change replaces a record nobody can
 			// read; the audit says so.
-			policy, replaced, err = offeredVersions{}.normalized(), true, nil
+			policy, replaced, err = offeredVersions{withdrawn: policy.withdrawn}.normalized(), true, nil
 		}
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
-		before := policy.offered(change.Component, line)
+		if change.Offered && versionWithdrawn(policy.withdrawn, change.Component, line) {
+			// D-043: a version withdrawn for security is offered to nobody
+			// until its emergency is closed; ticking it would change nothing.
+			component := "php-fpm"
+			if change.Component == "node" {
+				component = "node"
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(apiErrorBody{
+				Error: "Nothing was changed: " + name + " " + line + " is withdrawn for security on this server, so it cannot be offered. " +
+					"It can be offered again once the security emergency that withdrew it is closed (on the component's page).",
+				Code: errCodeVersionWithdrawn, Reason: "offer", Action: "/components/" + component,
+				Vars: map[string]string{"name": name + " " + line},
+			})
+			return
+		}
+		// What the administrator's own choice was (a version withdrawn for
+		// security is not offered either, but hiding it is still recorded,
+		// so it stays hidden once the emergency is closed).
+		before := true
 		hidden := []string{}
 		for _, existing := range policy.Hidden[change.Component] {
 			if existing != line {
 				hidden = append(hidden, existing)
+			} else {
+				before = false
 			}
 		}
 		if !change.Offered {
@@ -414,11 +495,7 @@ func (p *Panel) handleOfferedVersions(w http.ResponseWriter, r *http.Request) {
 			}
 			p.auditDetailed(r, "versions.customer_offer:"+change.Component+":"+line+":"+verb, "panel_settings", 0, details)
 		}
-		hiddenItems, err := p.loadHiddenOfferings(r.Context())
-		if err != nil {
-			hiddenItems = map[string]bool{}
-		}
-		_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: !callerIsAdministrator(r), HiddenOfferings: hiddenOfferingList(hiddenItems), OfferedApps: p.offeredAppList(r.Context())})
+		p.writeOfferedAnswer(w, r, versionOfferingID(change.Component, line))
 	default:
 		writeClientError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}

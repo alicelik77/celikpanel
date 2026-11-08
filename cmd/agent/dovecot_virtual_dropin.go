@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -53,7 +55,23 @@ var dovecotVirtualDropInPath = dovecotConfDirPath + "/99-celikpanel.conf"
 
 // dovecotInstalledForRepair reports whether a Dovecot configuration exists to
 // repair; a variable so component tests can state the fact.
-var dovecotInstalledForRepair = func() bool { return fileExistsAgent("/etc/dovecot") }
+var dovecotInstalledForRepair = func() bool { return dovecotProgramPresent() && fileExistsAgent("/etc/dovecot") }
+
+// dovecotProgramPresent reports whether Dovecot's own program is installed
+// (a variable for tests).
+var dovecotProgramPresent = func() bool {
+	for _, name := range []string{"dovecot", "doveconf"} {
+		if _, err := exec.LookPath(name); err == nil {
+			return true
+		}
+	}
+	for _, path := range []string{"/usr/sbin/dovecot", "/usr/bin/doveconf"} {
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return true
+		}
+	}
+	return false
+}
 
 type dovecotVirtualDropInState string
 

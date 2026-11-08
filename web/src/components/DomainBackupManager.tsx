@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { readApiError, refusalText, refusalToast, type ApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
@@ -98,7 +99,7 @@ const problemOf = (error: unknown): ApiError | null => error instanceof Refused 
 // Agent üzerinden gerçek yedekler (/var/backups/celikpanel altında tar/dump).
 // Oluştur, geri yükle, indir, sil — uydurma satır yok.
 export function DomainBackupManager({ domainId, domainName, readOnly = false }: DomainBackupManagerProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     // The backups and the linked databases are read from the server; neither
     // is ever an empty list by default. "No backups yet" and "No linked
     // databases" are said only for an answer. A backup is made, restored or
@@ -437,7 +438,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                                             <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-fg-muted">
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="h-3 w-3" aria-hidden="true" />
-                                                    {fmtDate(backup.created_at)}
+                                                    {fmtDate(backup.created_at, locale)}
                                                 </span>
                                                 <span>{fmtSize(backup.size)}</span>
                                                 <span className="rounded bg-surface-2 px-1.5 py-0.5">
@@ -545,12 +546,8 @@ function fmtSize(bytes: number): string {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function fmtDate(dateStr: string): string {
-    try {
-        return new Date(dateStr).toLocaleString();
-    } catch {
-        return dateStr;
-    }
+function fmtDate(dateStr: string, locale: string): string {
+    return formatDateTime(new Date(dateStr), locale) || dateStr;
 }
 
 interface BackupSchedule {
@@ -582,7 +579,7 @@ function AutoBackupSection({
     databaseCount: number;
     readOnly?: boolean;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     // The schedule as the server holds it. Until it is known the section shows
     // no form: "off / daily / files / 7" on screen after a failed read was one
     // click away from replacing the real schedule.
@@ -712,14 +709,14 @@ function AutoBackupSection({
                         schedule.last_error === 'BACKUP_JOB_TIMED_OUT'
                             ? 'backup.auto.timedOut'
                             : 'backup.auto.failed',
-                        { time: lastAttempt ? new Date(lastAttempt.replace(' ', 'T')).toLocaleString() : '—' },
+                        { time: lastAttempt ? formatDateTime(new Date(lastAttempt.replace(' ', 'T')), locale) : '—' },
                     )}
                 </p>
             )}
 
             {enabled && lastStatus === 'success' && lastRun && (
                 <p className="mt-2 text-xs text-fg-subtle">
-                    {t('backup.auto.lastRun', { time: new Date(lastRun.replace(' ', 'T')).toLocaleString() })}
+                    {t('backup.auto.lastRun', { time: formatDateTime(new Date(lastRun.replace(' ', 'T')), locale) })}
                 </p>
             )}
 

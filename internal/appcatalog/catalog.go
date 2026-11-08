@@ -75,6 +75,14 @@ type Archive struct {
 	Upstream string
 }
 
+// Localized is one language's copy of an entry's reader texts. Product
+// names, versions, digests, dates and file names stay exactly as in English.
+type Localized struct {
+	Summary  string
+	Upstream string
+	Risk     string
+}
+
 // App is one catalog entry.
 type App struct {
 	// Withheld, when set, says why this release does not offer the
@@ -88,6 +96,10 @@ type App struct {
 	Homepage string
 	Summary  string
 	Archive  Archive
+	// TR holds the Turkish Summary, Archive.Upstream and Risk. They live
+	// beside the pinned data so whoever moves a release updates both
+	// languages (a test refuses an entry without them).
+	TR Localized
 	// PHPMin and PHPMax are PHP version lines ("8.3"); PHPMax "" has no
 	// upper bound the upstream declares.
 	PHPMin string

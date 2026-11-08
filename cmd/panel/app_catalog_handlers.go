@@ -94,13 +94,23 @@ type appCatalogEntryView struct {
 	Databases   []string `json:"databases"`
 	DiskMB      int64    `json:"disk_mb"`
 	Risk        string   `json:"risk"`
-	AdminUser   string   `json:"admin_user,omitempty"`
+	// TR is the Turkish description, check and risk note (alpha.130); the
+	// English fields above stay as they were.
+	TR        appCatalogTextView `json:"tr"`
+	AdminUser string             `json:"admin_user,omitempty"`
 	// Offered: the administrator offers it on this server.
 	Offered bool `json:"offered"`
 	// Legacy fields of the WordPress-only catalog (alpha.117 and earlier).
 	Icon        string `json:"icon"`
 	RequiresDB  bool   `json:"requires_db"`
 	RequiresPHP bool   `json:"requires_php"`
+}
+
+// appCatalogTextView is one language's copy of an entry's reader texts.
+type appCatalogTextView struct {
+	Description string `json:"description"`
+	Checked     string `json:"checked"`
+	Risk        string `json:"risk"`
 }
 
 func catalogEntryView(app appcatalog.App, offered bool) appCatalogEntryView {
@@ -110,6 +120,7 @@ func catalogEntryView(app appcatalog.App, offered bool) appCatalogEntryView {
 		Source: app.Archive.URL, Pinned: app.Archive.SHA256 != "", Checked: app.Archive.Upstream,
 		PHP: app.PHPRange(), Extensions: append([]string{}, app.Extensions...),
 		Databases: append([]string{}, app.Databases...), DiskMB: app.MinDiskMB, Risk: app.Risk,
+		TR:        appCatalogTextView{Description: app.TR.Summary, Checked: app.TR.Upstream, Risk: app.TR.Risk},
 		AdminUser: app.AdminUser, Offered: offered,
 		Icon: app.ID, RequiresDB: len(app.Databases) > 0, RequiresPHP: true,
 	}

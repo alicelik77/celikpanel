@@ -42,6 +42,103 @@ export const PERMISSION_IDS = [
 ] as const;
 export type PermissionId = (typeof PERMISSION_IDS)[number];
 
+/**
+ * The topic every permission is shown under (owner, 8 Nov 2026): the same
+ * headings, in the same order, on every rights screen and in every language.
+ * Inside a topic the permissions are sorted by their label in the reader's
+ * language (permissionGroups). A permission a newer server sends that is not
+ * listed here goes under "Other" at the end.
+ * Her izin aynı başlık altında, her ekranda ve her dilde aynı sırada gösterilir.
+ */
+export const PERMISSION_TOPICS = ['dns', 'mail', 'databases', 'sites', 'files', 'apps', 'security', 'backups', 'account'] as const;
+export type PermissionTopic = (typeof PERMISSION_TOPICS)[number] | 'other';
+
+const PERMISSION_TOPIC: Record<string, PermissionTopic> = {
+    dns_edit: 'dns', dnssec: 'dns',
+    mail: 'mail',
+    databases: 'databases', database_remote: 'databases',
+    php_settings: 'sites', php_version: 'sites', nginx_directives: 'sites', site_proxy: 'sites', cron: 'sites',
+    file_manager: 'files', file_access: 'files', ssh: 'files', site_protect_redirects: 'files',
+    app_installer: 'apps', wordpress_tools: 'apps', service_apps: 'apps', program_apps: 'apps', python_apps: 'apps',
+    ssl_acme: 'security', ssl_custom: 'security', malware_scan: 'security', vpn: 'security',
+    backups: 'backups', remote_backup_destinations: 'backups',
+    team_members: 'account', remote_api: 'account',
+};
+
+export const permissionTopic = (id: string): PermissionTopic => PERMISSION_TOPIC[id] ?? 'other';
+
+/** A topic heading's translation key. */
+export const permissionTopicKey = (topic: PermissionTopic): TranslationKey => `rights.topic.${topic}` as TranslationKey;
+
+/** The label of a permission in the reader's language (the id when a newer server sends one without words). */
+export function permissionLabel(id: string, t: T): string {
+    const key = `rights.perm.${id}` as TranslationKey;
+    const text = t(key);
+    return text === key ? id : text;
+}
+
+/**
+ * Permissions under their topics: topics in the fixed order, each sorted by
+ * label with the reader's language's own rules (Intl.Collator: in Turkish
+ * ç after c, ğ after g, ı before i, ö after o, ş after s, ü after u). Empty
+ * topics are left out. One helper for every rights screen.
+ */
+export function permissionGroups(ids: readonly string[], t: T, locale: string): { topic: PermissionTopic; ids: string[] }[] {
+    const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true });
+    const order: PermissionTopic[] = [...PERMISSION_TOPICS, 'other'];
+    return order
+        .map((topic) => ({
+            topic,
+            ids: ids
+                .filter((id) => permissionTopic(id) === topic)
+                .map((id) => ({ id, label: permissionLabel(id, t) }))
+                .sort((a, b) => collator.compare(a.label, b.label) || a.id.localeCompare(b.id))
+                .map((entry) => entry.id),
+        }))
+        .filter((group) => group.ids.length > 0);
+}
+
+/** Every permission the server lists, then any the screen knows it did not send. */
+export function permissionIdsOf(view: { permissions: { id: string }[] }): string[] {
+    const ids = view.permissions.map((item) => item.id);
+    return [...ids, ...PERMISSION_IDS.filter((id) => !ids.includes(id))];
+}
+
+/** Offered in Catalog management with its risk summary, never in the Offered tab. */
+export function offeredInCatalog(id: string): boolean {
+    return id === 'runtime:program' || /^component:python:3\.\d+$/.test(id);
+}
+
+// The applications of the app installer (offered in Users, Offered); every
+// other "app:" item is an AI and automation app (Catalog management).
+const INSTALLER_APPS = new Set(['wordpress', 'prestashop', 'nextcloud', 'drupal', 'joomla', 'mediawiki', 'phpbb']);
+
+/**
+ * Why the administrator cannot give an item, as the key of the sentence that
+ * names the screen where it is offered (alpha.130: one hint per kind).
+ */
+export function notOfferedKey(item: string, grantor: RightsView): TranslationKey {
+    if (offeredInCatalog(item) || (item.startsWith('app:') && !INSTALLER_APPS.has(item.slice(4)))) return 'rights.notOfferedCatalog';
+    if (grantor.software.some((entry) => entry.id === item && entry.withdrawn)) return 'rights.notOfferedWithdrawn';
+    return 'rights.notOffered';
+}
+
+/**
+ * The state of one item of the offered layer as the server answered it
+ * (`item` of PUT /api/v1/offered-versions), or from the catalogue read again;
+ * undefined when neither says.
+ */
+export function offeredStateIn(answer: unknown, item: string): boolean | undefined {
+    if (!isRecord(answer) || !isRecord(answer.item) || answer.item.id !== item || typeof answer.item.offered !== 'boolean') return undefined;
+    return answer.item.offered;
+}
+
+export function offeredStateOf(view: RightsView, item: string): boolean | undefined {
+    const permission = item.startsWith('permission:') ? item.slice('permission:'.length) : null;
+    const found = permission !== null ? view.permissions.find((entry) => entry.id === permission) : view.software.find((entry) => entry.id === item);
+    return found?.granted;
+}
+
 export type RightsState = 'unlimited' | 'plan' | 'custom';
 
 export interface RightsPayload {
@@ -58,6 +155,10 @@ export interface RightsItem {
     /** Which layer closes it: administrator, reseller, subscription or add_on. */
     refused_by?: string;
     grantor?: string;
+    /** alpha.130: a PHP or Node.js version withdrawn for security. */
+    withdrawn?: boolean;
+    /** alpha.130: the server switch of this permission is off (the remote API). */
+    server_off?: boolean;
 }
 
 export interface RightsView {
@@ -70,6 +171,8 @@ export interface RightsView {
     permissions: RightsItem[];
     software: RightsItem[];
     installed_unknown?: boolean;
+    /** alpha.130: the subscription's reseller, when it has one. */
+    reseller_name?: string;
 }
 
 export interface Limits {
@@ -201,6 +304,7 @@ export function decodeRightsView(raw: unknown): RightsView {
         permissions: decodeItems(raw.permissions),
         software: decodeItems(raw.software),
         installed_unknown: raw.installed_unknown === true || undefined,
+        reseller_name: typeof raw.reseller_name === 'string' && raw.reseller_name ? raw.reseller_name : undefined,
     };
 }
 

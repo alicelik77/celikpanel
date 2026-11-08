@@ -20,6 +20,8 @@ export const trMailWorkScreens: Record<MailWorkScreenKey, string> = {
     'opstep.mailEmpty.empty': '{name} iletileri siliniyor (Dovecot)',
     'mail.sendingResumed': 'Güvenlik için durdurulan gönderim yeniden açıldı.',
     'mail.sendingResumePending': 'Güvenlik durdurması kaldırıldı; gönderim birkaç dakika içinde kendiliğinden yeniden açılır.',
+    'mail.sendingStillPaused.manager': 'Gönderim durdurulmuş olarak kalıyor: elle durduruldu ve parola değişikliği onu açmaz. Durduran yönetici ya da bayi yeniden açar.',
+    'mail.sendingStillPaused.customer': 'Gönderim durdurulmuş olarak kalıyor: hizmet sağlayıcınız elle durdurdu ve parola değişikliği onu açmaz. Yeniden açmasını sağlayıcınızdan isteyin.',
     'mail.bulk.selected': '{n} seçili',
     'mail.bulk.select': '{name} seç',
     'mail.bulk.selectAll': 'Bütün posta kutularını seç',

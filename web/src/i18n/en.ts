@@ -6,6 +6,8 @@ import type { MailOutgoingKey } from './mailOutgoing/en';
 import type { DataToolsKey } from './dataTools/en';
 // alpha.129: connections from outside to a database, loaded with their screen (dbRemote.ts).
 import type { DbRemoteKey } from './dbRemote/en';
+// alpha.130: mail programs that set themselves up and the mail relay (mailConfig.ts).
+import type { MailConfigKey } from './mailConfig/en';
 // English catalog. This file is the source of truth for translation keys:
 // its shape defines the TranslationKey type, and every other locale must
 // provide the same keys.
@@ -83,6 +85,8 @@ import type { OpstepsScreenKey } from './screens/opsteps/en';
 import type { LimitsScreenKey } from './screens/limits/en';
 import type { MailWorkScreenKey } from './screens/mailWork/en';
 import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
+import type { DbConfigScreenKey } from './screens/dbConfig/en';
+import type { PgLeftoversScreenKey } from './screens/pgLeftovers/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -596,5 +600,7 @@ export type ScreenKey =
     | OpstepsScreenKey
     | LimitsScreenKey
     | MailWorkScreenKey
-    | FtpLoginsScreenKey;
-export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey;
+    | FtpLoginsScreenKey
+    | DbConfigScreenKey
+    | PgLeftoversScreenKey;
+export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

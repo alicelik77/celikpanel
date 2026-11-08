@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/appcatalog"
@@ -71,48 +73,52 @@ type adminOfferLayer struct {
 // permissions (alpha.128), a JSON list of permission ids.
 const settingOfferedPermissions = "admin_offered_permissions"
 
-func (p *Panel) loadOfferedOptInPermissions(ctx context.Context) (map[string]bool, error) {
-	var raw string
-	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedPermissions).Scan(&raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return map[string]bool{}, nil
+// One store per offer (alpha.130). The opt-in permissions are offered only
+// in admin_offered_permissions; the runtime offerings (uploaded programs and
+// Python lines) and the AI and automation apps only in Catalog management,
+// with their risk summary. Up to alpha.129 the Offered tab wrote any of them
+// into the hidden list instead, where a tick did nothing (or, unticked,
+// closed the item behind the back of the switch that showed it open). Such
+// an entry is "stale": every read treats it as "not offered" (what it did),
+// and the first read folds it into the item's own store - the offer
+// withdrawn there, the entry removed - so every screen agrees again. Nothing
+// is opened by the fold.
+//
+// Her sunumun tek deposu vardır. alpha.129'a kadar gizli listeye yazılmış
+// isteğe bağlı izin ve çalışma ortamı girdileri "sunulmuyor" sayılır ve ilk
+// okumada kendi deposuna geri çekilmiş olarak taşınır; hiçbir şey açılmaz.
+
+// offerStoresMu serialises the writers that touch more than one offer store
+// (the fold and the opt-in offer).
+var offerStoresMu sync.Mutex
+
+// staleHiddenOffering: an entry the hidden list must not hold, because the
+// item's offer lives in a store of its own.
+func staleHiddenOffering(item string) bool {
+	if id, ok := strings.CutPrefix(item, permissionItemHead); ok {
+		return optInPermissions[id]
 	}
-	if err != nil {
-		return nil, err
-	}
-	var list []string
-	if err := json.Unmarshal([]byte(raw), &list); err != nil {
-		return nil, errOfferedVersionsUnreadable
-	}
-	out := map[string]bool{}
-	for _, id := range list {
-		if optInPermissions[id] {
-			out[id] = true
-		}
-	}
-	return out, nil
+	return offeredInCatalogManagement(item)
 }
 
-func (p *Panel) saveOfferedOptInPermissions(ctx context.Context, offered map[string]bool) error {
-	list := []string{}
-	for id, on := range offered {
-		if on && optInPermissions[id] {
-			list = append(list, id)
-		}
+// offeredInCatalogManagement: an item offered in Catalog management (with
+// its risk summary), never in the Offered tab.
+func offeredInCatalogManagement(item string) bool {
+	if item == siteruntime.OfferingProgram {
+		return true
 	}
-	sort.Strings(list)
-	raw, err := json.Marshal(list)
-	if err != nil {
-		return err
+	if _, ok := siteruntime.PythonMinorOfOffering(item); ok {
+		return true
 	}
-	_, err = p.db.GetDB().ExecContext(ctx, `INSERT INTO panel_settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
-		ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`, settingOfferedPermissions, string(raw))
-	return err
+	_, ok := serviceAppOfferingApp(item)
+	return ok
 }
 
-func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
+// readHiddenOfferings reads the hidden list as stored (stale entries
+// included).
+func readHiddenOfferings(ctx context.Context, q rowQueryer) (map[string]bool, error) {
 	var raw string
-	err := p.db.GetDB().QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingHiddenOfferings).Scan(&raw)
+	err := q.QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingHiddenOfferings).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
 		return map[string]bool{}, nil
 	}
@@ -132,19 +138,220 @@ func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error
 	return hidden, nil
 }
 
-func (p *Panel) saveHiddenOfferings(ctx context.Context, hidden map[string]bool) error {
+// readOptInList reads admin_offered_permissions as stored.
+func readOptInList(ctx context.Context, q rowQueryer) (map[string]bool, error) {
+	var raw string
+	err := q.QueryRowContext(ctx, `SELECT value FROM panel_settings WHERE key = ?`, settingOfferedPermissions).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return map[string]bool{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var list []string
+	if err := json.Unmarshal([]byte(raw), &list); err != nil {
+		return nil, errOfferedVersionsUnreadable
+	}
+	out := map[string]bool{}
+	for _, id := range list {
+		if optInPermissions[id] {
+			out[id] = true
+		}
+	}
+	return out, nil
+}
+
+type settingExecer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+// writeSettingList stores a set as a sorted JSON list.
+func writeSettingList(ctx context.Context, x settingExecer, key string, set map[string]bool) error {
 	list := []string{}
-	for item := range hidden {
-		list = append(list, item)
+	for item, on := range set {
+		if on {
+			list = append(list, item)
+		}
 	}
 	sort.Strings(list)
 	raw, err := json.Marshal(list)
 	if err != nil {
 		return err
 	}
-	_, err = p.db.GetDB().ExecContext(ctx, `INSERT INTO panel_settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
-		ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`, settingHiddenOfferings, string(raw))
+	_, err = x.ExecContext(ctx, `INSERT INTO panel_settings(key,value,updated_at) VALUES(?,?,CURRENT_TIMESTAMP)
+		ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP`, key, string(raw))
 	return err
+}
+
+// loadOfferedOptInPermissions: the opt-in permissions the administrator
+// offers. A stale hidden entry closes its permission (what it did up to
+// alpha.129) until the fold removes it.
+func (p *Panel) loadOfferedOptInPermissions(ctx context.Context) (map[string]bool, error) {
+	db := p.db.GetDB()
+	out, err := readOptInList(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	if hidden, err := readHiddenOfferings(ctx, db); err == nil {
+		for id := range out {
+			if hidden[permissionItemHead+id] {
+				delete(out, id)
+			}
+		}
+	}
+	return out, nil
+}
+
+// saveOfferedOptInPermissions writes the opt-in offer. A hidden entry of an
+// opt-in permission is removed in the same transaction, so the offer just
+// written is the one every screen and gate reads.
+func (p *Panel) saveOfferedOptInPermissions(ctx context.Context, offered map[string]bool) error {
+	// alpha.130: the offer of database_remote is the server switch of remote
+	// database access, written from the Offered tab and the Databases page
+	// alike; whichever writes it, a change reaches the server
+	// (database_remote_offer.go).
+	before, _ := p.loadOfferedOptInPermissions(ctx)
+	defer databaseRemoteOfferMaybeChanged(before, offered)
+	offerStoresMu.Lock()
+	defer offerStoresMu.Unlock()
+	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	list := map[string]bool{}
+	for id, on := range offered {
+		if on && optInPermissions[id] {
+			list[id] = true
+		}
+	}
+	if err := writeSettingList(ctx, tx, settingOfferedPermissions, list); err != nil {
+		return err
+	}
+	if hidden, err := readHiddenOfferings(ctx, tx); err == nil {
+		changed := false
+		for id := range optInPermissions {
+			if hidden[permissionItemHead+id] {
+				delete(hidden, permissionItemHead+id)
+				changed = true
+			}
+		}
+		if changed {
+			if err := writeSettingList(ctx, tx, settingHiddenOfferings, hidden); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
+}
+
+// setOfferedOptInPermission offers or withdraws one opt-in permission, with
+// its audit; withdrawing remote database access closes what is open (the
+// offer is that switch). It answers the state before the change.
+func (p *Panel) setOfferedOptInPermission(r *http.Request, id string, offered bool) (bool, error) {
+	ctx := r.Context()
+	current, err := p.loadOfferedOptInPermissions(ctx)
+	if err != nil {
+		return false, err
+	}
+	before := current[id]
+	current[id] = offered
+	if err := p.saveOfferedOptInPermissions(ctx, current); err != nil {
+		return before, err
+	}
+	p.auditDetailed(r, "rights.offer_permission:"+id, "panel_settings", 0,
+		map[string]any{"permission": id, "offered_before": before, "offered": offered})
+	if id == rightDatabaseRemote {
+		p.kickDatabaseRemoteSync()
+	}
+	return before, nil
+}
+
+// loadHiddenOfferings: the hidden list without stale entries. The first read
+// that finds one folds it into its own store; when the fold cannot be
+// written now, the entries stay (closed, as before) and the next read tries
+// again.
+func (p *Panel) loadHiddenOfferings(ctx context.Context) (map[string]bool, error) {
+	hidden, err := readHiddenOfferings(ctx, p.db.GetDB())
+	if err != nil {
+		return nil, err
+	}
+	for item := range hidden {
+		if staleHiddenOffering(item) {
+			if err := p.foldStaleHiddenOfferings(ctx); err != nil {
+				log.Printf("offered items: entries of the hidden list that belong to another store could not be moved yet: %v", err)
+				return hidden, nil
+			}
+			return readHiddenOfferings(ctx, p.db.GetDB())
+		}
+	}
+	return hidden, nil
+}
+
+// foldStaleHiddenOfferings moves every stale entry into its own store as a
+// withdrawn offer, in one transaction, and records it.
+func (p *Panel) foldStaleHiddenOfferings(ctx context.Context) error {
+	offerStoresMu.Lock()
+	defer offerStoresMu.Unlock()
+	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	hidden, err := readHiddenOfferings(ctx, tx)
+	if err != nil {
+		return err
+	}
+	optIn, err := readOptInList(ctx, tx)
+	if err != nil {
+		return err
+	}
+	moved := []string{}
+	for item := range hidden {
+		if !staleHiddenOffering(item) {
+			continue
+		}
+		moved = append(moved, item)
+		delete(hidden, item)
+		if id, ok := strings.CutPrefix(item, permissionItemHead); ok {
+			delete(optIn, id)
+			continue
+		}
+		if appID, ok := serviceAppOfferingApp(item); ok {
+			if _, err := tx.ExecContext(ctx, `UPDATE service_app_offerings SET offered = 0, updated_at = datetime('now') WHERE app_id = ?`, appID); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE runtime_offerings SET offered = 0, updated_at = datetime('now') WHERE offering_id = ?`, item); err != nil {
+			return err
+		}
+	}
+	if len(moved) == 0 {
+		return nil
+	}
+	sort.Strings(moved)
+	if err := writeSettingList(ctx, tx, settingHiddenOfferings, hidden); err != nil {
+		return err
+	}
+	if err := writeSettingList(ctx, tx, settingOfferedPermissions, optIn); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	p.recordAudit(auditRecord{Action: "offering.stale_entries_moved", ResourceType: "panel_settings",
+		Details: auditDetailsText(map[string]any{"items": moved, "offered": false})})
+	for _, item := range moved {
+		if item == permissionItemHead+rightDatabaseRemote {
+			kickDatabaseRemoteSync()
+		}
+	}
+	return nil
+}
+
+func (p *Panel) saveHiddenOfferings(ctx context.Context, hidden map[string]bool) error {
+	return writeSettingList(ctx, p.db.GetDB(), settingHiddenOfferings, hidden)
 }
 
 func (p *Panel) loadAdminOfferLayer(ctx context.Context) (adminOfferLayer, error) {
@@ -385,6 +592,9 @@ type effectiveRightsView struct {
 	// InstalledUnknown: the installed list could not be read now; software
 	// lists only what the sets name.
 	InstalledUnknown bool `json:"installed_unknown,omitempty"`
+	// ResellerName (alpha.130): the subscription's reseller, for "the
+	// reseller does not have it" beside an item its layer closes.
+	ResellerName string `json:"reseller_name,omitempty"`
 }
 
 type effectiveRightsItemView struct {
@@ -393,6 +603,12 @@ type effectiveRightsItemView struct {
 	Granted   bool   `json:"granted"`
 	RefusedBy string `json:"refused_by,omitempty"`
 	Grantor   string `json:"grantor,omitempty"`
+	// Withdrawn (alpha.130): a PHP or Node.js version withdrawn for
+	// security (D-043); nobody can be offered it until the emergency ends.
+	Withdrawn bool `json:"withdrawn,omitempty"`
+	// ServerOff (alpha.130): a permission whose server switch is off (the
+	// remote API), so it does nothing even where it is granted.
+	ServerOff bool `json:"server_off,omitempty"`
 }
 
 // subscriptionEffectiveRights lists the effective set for a screen.
@@ -410,6 +626,7 @@ func (e *effectiveRights) view(candidates []string) effectiveRightsView {
 		SubscriptionID: e.SubscriptionID, State: e.Own.State, PlanID: e.Own.PlanID, PlanName: e.Own.PlanName,
 		Unrestricted: e.Unrestricted, Own: e.Own.Set.payload(),
 		Permissions: []effectiveRightsItemView{}, Software: []effectiveRightsItemView{},
+		ResellerName: e.ResellerName,
 	}
 	for _, id := range rightPermissionIDs {
 		layer := e.permissionRefusal(id)
@@ -433,6 +650,14 @@ func (e *effectiveRights) view(candidates []string) effectiveRightsView {
 		item := effectiveRightsItemView{ID: id, Granted: layer == "", RefusedBy: layer}
 		if layer != "" {
 			item.Grantor = e.grantor(layer)
+		}
+		if parts := strings.SplitN(id, ":", 3); len(parts) == 3 && parts[0] == "component" {
+			switch parts[1] {
+			case "php-fpm":
+				item.Withdrawn = versionWithdrawn(e.admin.versions.withdrawn, "php", parts[2])
+			case "node":
+				item.Withdrawn = versionWithdrawn(e.admin.versions.withdrawn, "node", parts[2])
+			}
 		}
 		v.Software = append(v.Software, item)
 	}

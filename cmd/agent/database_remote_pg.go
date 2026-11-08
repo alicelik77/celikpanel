@@ -347,6 +347,9 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 	}
 	result.Active = toTransportRules(active)
 
+	// alpha.130: Fail2ban as an extra layer; it never holds a rule back.
+	applyPGJail(target, len(candidates) > 0, ts, &result)
+
 	listenRemote := !pgListenIsLocal(after.listen)
 	if !listenRemote && ts.ListenPending {
 		ts.ListenPending = false

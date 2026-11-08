@@ -408,7 +408,7 @@ func TestLivePanelTLSProofMatchesTheServedLeaf(t *testing.T) {
 	serverResult := serveOnce()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	matches, err := livePanelTLSMatches(ctx, block.Bytes)
+	matches, err := livePanelTLSMatches(ctx, block.Bytes, "")
 	if err != nil || !matches {
 		t.Fatalf("live TLS match = %v, %v", matches, err)
 	}
@@ -417,7 +417,7 @@ func TestLivePanelTLSProofMatchesTheServedLeaf(t *testing.T) {
 	}
 
 	serverResult = serveOnce()
-	matches, err = livePanelTLSMatches(ctx, append([]byte(nil), block.Bytes[:len(block.Bytes)-1]...))
+	matches, err = livePanelTLSMatches(ctx, append([]byte(nil), block.Bytes[:len(block.Bytes)-1]...), "")
 	if err != nil || matches {
 		t.Fatalf("changed live TLS leaf match = %v, %v", matches, err)
 	}
@@ -430,7 +430,7 @@ func TestLivePanelTLSProofRefusesNonLoopbackDial(t *testing.T) {
 	t.Setenv("CELIKPANEL_LISTEN", "192.0.2.10:2083")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if _, err := livePanelTLSMatches(ctx, []byte("leaf")); err == nil {
+	if _, err := livePanelTLSMatches(ctx, []byte("leaf"), ""); err == nil {
 		t.Fatal("live TLS proof dialed a non-loopback address")
 	}
 }

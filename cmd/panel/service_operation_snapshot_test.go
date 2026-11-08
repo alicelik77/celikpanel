@@ -1441,6 +1441,14 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the mail relay (migration 77, alpha.130).
+        DROP TABLE mail_sender_rules;
+        DROP TABLE mail_server_options;
+        DROP TABLE mail_relay_settings;
+        -- Reverse the mailbox recovery (migration 76, alpha.130).
+        DROP INDEX idx_mailbox_recovery_links_account;
+        DROP TABLE mailbox_recovery_links;
+        DROP TABLE mailbox_recovery_addresses;
         -- Reverse remote access to databases (migration 74, alpha.129).
         DROP INDEX idx_database_remote_rules_user;
         DROP TABLE database_remote_rules;

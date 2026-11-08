@@ -126,17 +126,7 @@ func (p *Panel) changeOfferedApp(w http.ResponseWriter, r *http.Request, id stri
 			"installed_sites": installed, "sites_changed": 0,
 		})
 	}
-	policy, err := p.loadOfferedVersions(r.Context())
-	if err != nil {
-		writeServerError(w, err)
-		return
-	}
-	hidden, err := p.loadHiddenOfferings(r.Context())
-	if err != nil {
-		hidden = map[string]bool{}
-	}
-	_ = json.NewEncoder(w).Encode(offeredVersionsView{Hidden: policy.Hidden, Restricted: false,
-		HiddenOfferings: hiddenOfferingList(hidden), OfferedApps: p.offeredAppList(r.Context())})
+	p.writeOfferedAnswer(w, r, appcatalog.OfferingID(id))
 }
 
 // liveCatalogAppCount counts the sites that hold an application now.

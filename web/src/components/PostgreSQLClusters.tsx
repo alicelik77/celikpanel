@@ -12,7 +12,7 @@
 //
 // PostgreSQL ana sürümleri yan yana: kümeler, portlar, taşımalar.
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRightLeft, Database, DownloadCloud, Layers, Network } from 'lucide-react';
+import { ArrowRightLeft, Database, DownloadCloud, Layers, Network, Trash2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Dialog, KeepWords, RemoteGate } from './ui';
@@ -21,14 +21,19 @@ import { LifeLine, type Tone } from './LifeLine';
 import { useComponentOperation } from './ComponentOperation';
 import { InstallPreviewNotes, installPreviewAckKey, installPreviewGate } from './InstallPreviewNotes';
 import { decodeInstallPreview, installPreviewURL } from '../lib/installPreview';
+import { apiErrorText, readApiError } from '../lib/apiError';
+import { confirmAction, type OperationEnd, type OperationReport } from '../lib/confirmAction';
+import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import {
     decodePGClusters,
     decodePGPortPreview,
+    pgAnswerBody,
     pgPortPreviewURL,
     pgPortValue,
     pgPost,
     pgRef,
     PG_CLUSTERS_URL,
+    PG_LEFTOVER_URL,
     PG_MOVES_URL,
     type PGCluster,
     type PGClusters,
@@ -70,6 +75,7 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
     const [moveFrom, setMoveFrom] = useState<PGCluster | null>(null);
     const [moveAction, setMoveAction] = useState<{ move: PGMove; action: MoveAction } | null>(null);
     const [syncing, setSyncing] = useState(false);
+    const [archiving, setArchiving] = useState(false);
     // The port shown before an install, kept to compare with the cluster the
     // install made once the operation has finished.
     const expected = useRef<{ major: string; port: number } | null>(null);
@@ -112,6 +118,107 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
             invalidate('databases');
         }
     };
+    // alpha.130: "Archive and remove" of a removed version's leftover cluster.
+    // Asked in the product's own dialogue, then followed through the server's
+    // own steps (check, archive, records); the end names the archive.
+    // Kaldırılmış sürümden kalan kümeyi arşivle ve kaldır: önce sorulur, sonra
+    // sunucunun adımlarıyla izlenir; sonunda arşivin adı söylenir.
+    // alpha.130 lab: one PostgreSQL version is removed from here (the
+    // Components list offers the whole component). The server refuses while
+    // its cluster holds a database, says why, and purges the version with
+    // its cluster's files; the answer names the owner's files it kept.
+    // Tek PostgreSQL sürümü buradan kaldırılır; küme veritabanı tutuyorsa
+    // sunucu nedeniyle reddeder.
+    const installedMajors = Array.from(new Set(value.clusters.filter((cluster) => !cluster.leftover && !cluster.status.includes('binaries_missing')).map((cluster) => cluster.version)));
+    const removeMajor = async (cluster: PGCluster) => {
+        if (archiving) return;
+        const vars = { version: cluster.version, cluster: pgRef(cluster), port: cluster.port };
+        setArchiving(true);
+        try {
+            await confirmAction({
+                title: t('pgc.removeMajor.confirmTitle', vars),
+                message: t('pgc.removeMajor.confirmBody', vars),
+                confirmLabel: t('pgc.removeMajor.action', vars),
+                tone: 'danger',
+                progressTitle: t('pgc.removeMajor.progress', vars),
+                action: async (): Promise<OperationEnd> => {
+                    let end: OperationEnd;
+                    try {
+                        const res = await fetch('/api/v1/service/uninstall', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ service_id: 'postgresql', package: 'postgresql-' + cluster.version }),
+                        });
+                        if (res.ok) {
+                            const body = pgAnswerBody(await res.text());
+                            const kept = Array.isArray(body.owner_files_kept) ? body.owner_files_kept.filter((item): item is string => typeof item === 'string') : [];
+                            end = { state: 'done', message: kept.length > 0 ? t('pgc.removeMajor.doneKept', { ...vars, files: kept.join(', ') }) : t('pgc.removeMajor.done', vars) };
+                        } else {
+                            const problem = await readApiError(res);
+                            end = { state: res.status < 500 ? 'blocked' : 'failed', reason: t('pgc.leftover.unchanged', { reason: apiErrorText(problem, t, 'pgc.removeMajor.failed') }) };
+                        }
+                    } catch {
+                        end = { state: 'unknown', reason: t('pgc.removeMajor.unknown', vars) };
+                    }
+                    setResult(end.state === 'done' ? { tone: 'ok', text: end.message ?? '' } : { tone: end.state === 'blocked' ? 'warn' : 'bad', text: end.reason });
+                    void handle.retry();
+                    invalidate('databases');
+                    invalidate('components');
+                    return end;
+                },
+            });
+        } finally {
+            setArchiving(false);
+        }
+    };
+    const archiveLeftover = async (cluster: PGCluster) => {
+        if (archiving) return;
+        const vars = { cluster: pgRef(cluster), version: cluster.version, name: cluster.name, data: cluster.data_directory, port: cluster.port };
+        setArchiving(true);
+        try {
+            await confirmAction({
+                title: t('pgc.leftover.confirmTitle', vars),
+                message: t('pgc.leftover.confirmBody', vars),
+                confirmLabel: t('pgc.leftover.archive'),
+                tone: 'danger',
+                progressTitle: t('pgc.leftover.progress', vars),
+                action: async (report): Promise<OperationEnd> => {
+                    const end = await sendLeftover(report, cluster, vars);
+                    setResult(end.state === 'done'
+                        ? { tone: 'ok', text: end.message ?? '' }
+                        : { tone: end.state === 'blocked' ? 'warn' : 'bad', text: end.reason });
+                    void handle.retry();
+                    invalidate('databases');
+                    return end;
+                },
+            });
+        } finally {
+            setArchiving(false);
+        }
+    };
+    const sendLeftover = async (report: OperationReport, cluster: PGCluster, vars: Record<string, string | number>): Promise<OperationEnd> => {
+        try {
+            const res = await sendWithSteps(report, flowSteps(t, 'pgLeftover', ['check!', 'archive', 'records'], vars), t, `pgLeftover.${pgRef(cluster)}`,
+                (headers) => fetch(PG_LEFTOVER_URL, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ version: cluster.version, name: cluster.name }) }));
+            // Read once beside the refusal reader: the archive's name travels
+            // in the answer, also when removal stopped after the archive.
+            const body = pgAnswerBody(await res.clone().text());
+            const archive = typeof body.archive === 'string' && body.archive ? body.archive : '/var/backups/celikpanel';
+            if (res.ok) return { state: 'done', message: t('pgc.leftover.done', { ...vars, archive }) };
+            const problem = await readApiError(res);
+            if (body.changed === true) {
+                return { state: 'failed', reason: t('pgc.leftover.partial', { ...vars, archive, reason: problem.message || '—' }) };
+            }
+            // A sentence for the code says itself that nothing was changed;
+            // the server's own words are given that sentence first.
+            // Kodun cümlesi hiçbir şeyin değişmediğini kendisi söyler.
+            const coded = problem.code ? apiErrorText(problem, t, 'pgc.leftover.failed') : '';
+            const reason = coded && coded !== problem.message ? coded : t('pgc.leftover.unchanged', { reason: problem.message || t('pgc.leftover.failed') });
+            return { state: res.status === 409 ? 'blocked' : 'failed', reason };
+        } catch {
+            return { state: 'unknown', reason: t('pgc.leftover.unknown', vars) };
+        }
+    };
     return (
         <div className="space-y-4">
             {value.mismatches.map((mismatch) => (
@@ -133,6 +240,9 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
                         canMove={online.length > 1 && cluster.online && cluster.databases.length > 0}
                         onPort={() => setPortFor(cluster)}
                         onMove={() => setMoveFrom(cluster)}
+                        onArchive={() => void archiveLeftover(cluster)}
+                        onRemoveMajor={installedMajors.length > 1 && installedMajors.includes(cluster.version) ? () => void removeMajor(cluster) : undefined}
+                        archiving={archiving || operation.locked}
                     />
                 ))}
             </ul>
@@ -184,7 +294,7 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
     );
 }
 
-function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PGCluster; records: PGRecord[]; canMove: boolean; onPort: () => void; onMove: () => void }) {
+function ClusterRow({ cluster, records, canMove, onPort, onMove, onArchive, onRemoveMajor, archiving }: { cluster: PGCluster; records: PGRecord[]; canMove: boolean; onPort: () => void; onMove: () => void; onArchive: () => void; onRemoveMajor?: () => void; archiving: boolean }) {
     const { t } = useI18n();
     // alpha.127: a removed major whose data was kept ("down,binaries_missing")
     // cannot be started; it says what it is, where the data is, and how the
@@ -192,6 +302,14 @@ function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PG
     // Programı kaldırılmış, verisi saklanan küme başlatılamaz; ne olduğunu,
     // verinin nerede olduğunu ve sahibin onu nasıl kaldıracağını söyler.
     const removed = !cluster.online && cluster.status.includes('binaries_missing');
+    // alpha.130: a removed version's cluster the server described. It cannot
+    // run, so Port and Move are not offered; one that holds only what initdb
+    // made goes by itself, any other waits for the administrator's "Archive
+    // and remove". An older server's answer has no description and keeps the
+    // alpha.127 hint.
+    // Sunucunun tanımladığı kalıntı küme: Port/Taşı yok; taze olan kendiliğinden
+    // gider, diğeri yöneticinin "Arşivle ve kaldır" seçimini bekler.
+    const leftover = removed ? cluster.leftover : undefined;
     return (
         <li className="rounded-xl border border-border p-4" data-pg-cluster={pgRef(cluster)}>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -199,7 +317,7 @@ function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PG
                     {t('pgc.cluster.name', { version: cluster.version, cluster: pgRef(cluster) })}
                 </p>
                 <span className={`rounded px-2 py-0.5 text-xs font-medium ${cluster.online ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
-                    {cluster.online ? t('pgc.cluster.online') : removed ? t('pgc.cluster.removed') : t('pgc.cluster.down', { status: cluster.status })}
+                    {cluster.online ? t('pgc.cluster.online') : leftover ? t('pgc.leftover.badge', { version: cluster.version }) : removed ? t('pgc.cluster.removed') : t('pgc.cluster.down', { status: cluster.status })}
                 </span>
             </div>
             <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
@@ -222,11 +340,30 @@ function ClusterRow({ cluster, records, canMove, onPort, onMove }: { cluster: PG
                         : records.map((record) => recordLine(record, t)).join('; ')}
                 </dd>
             </dl>
-            <div className="mt-3 flex flex-wrap gap-2">
-                <Button onClick={onPort} disabled={!cluster.online} icon={Network} className="max-sm:min-h-11" data-pg-port-offer="">{t('pgc.port.offer')}</Button>
-                <Button onClick={onMove} disabled={!canMove} icon={ArrowRightLeft} className="max-sm:min-h-11" data-pg-move-offer="">{t('pgc.move.offer')}</Button>
-            </div>
-            {removed
+            {leftover ? (
+                <div className="mt-3 space-y-2 text-sm" data-pg-leftover={leftover.fresh ? 'fresh' : 'kept'}>
+                    {leftover.fresh ? (
+                        <p className="text-fg-muted">{t('pgc.leftover.fresh', { version: cluster.version, port: cluster.port })}</p>
+                    ) : (
+                        <>
+                            <p className="text-fg">{t('pgc.leftover.kept', { version: cluster.version, port: cluster.port })}</p>
+                            {leftover.reason && <p className="text-fg-muted" data-pg-leftover-reason="">{t('pgc.leftover.reason', { reason: leftover.reason })}</p>}
+                            <Button onClick={onArchive} disabled={archiving} icon={Trash2} className="max-sm:min-h-11" data-pg-leftover-archive="">{t('pgc.leftover.archive')}</Button>
+                        </>
+                    )}
+                </div>
+            ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    <Button onClick={onPort} disabled={!cluster.online} icon={Network} className="max-sm:min-h-11" data-pg-port-offer="">{t('pgc.port.offer')}</Button>
+                    <Button onClick={onMove} disabled={!canMove} icon={ArrowRightLeft} className="max-sm:min-h-11" data-pg-move-offer="">{t('pgc.move.offer')}</Button>
+                    {onRemoveMajor && (
+                        <Button onClick={onRemoveMajor} disabled={archiving} icon={Trash2} className="max-sm:min-h-11" data-pg-remove-major={cluster.version}>
+                            {t('pgc.removeMajor.action', { version: cluster.version })}
+                        </Button>
+                    )}
+                </div>
+            )}
+            {leftover ? null : removed
                 ? <p className="mt-2 text-xs text-fg-subtle" data-pg-removed="">{t('pgc.cluster.removedHint', { version: cluster.version, name: cluster.name, data: cluster.data_directory, port: cluster.port })}</p>
                 : !cluster.online && <p className="mt-2 text-xs text-fg-subtle">{t('pgc.cluster.downHint', { unit: `postgresql@${cluster.version}-${cluster.name}` })}</p>}
         </li>

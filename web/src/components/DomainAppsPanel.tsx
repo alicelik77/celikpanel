@@ -8,7 +8,7 @@ import { useNavigate } from '../router';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import {
-    RUNNING_STATES, decodeDomainApps, domainAppInstallURL, domainAppOperationURL, domainAppsURL, phpExtensionsInstallPath,
+    RUNNING_STATES, appText, decodeDomainApps, domainAppInstallURL, domainAppOperationURL, domainAppsURL, phpExtensionsInstallPath,
     type DomainApp, type InstalledApp,
 } from '../lib/appCatalog';
 import type { TranslationKey } from '../i18n/en';
@@ -441,7 +441,7 @@ function Requirements({ app, administrator }: { app: DomainApp; administrator: b
 }
 
 function AppCard({ app, occupied, administrator, installing, disabled, onInstall }: { app: DomainApp; occupied: boolean; administrator: boolean; installing: boolean; disabled: boolean; onInstall: () => void }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [open, setOpen] = useState(false);
     const ready = app.available && !occupied && app.requirements?.state !== 'unmet';
     return (
@@ -450,7 +450,7 @@ function AppCard({ app, occupied, administrator, installing, disabled, onInstall
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><LayoutGrid className="h-5 w-5" /></span>
                 <div className="min-w-0 flex-1">
                     <div className="font-semibold text-fg">{app.name} <span className="text-xs font-normal text-fg-muted">{app.version}</span></div>
-                    <p className="text-xs text-fg-muted">{app.description}</p>
+                    <p className="text-xs text-fg-muted">{appText(app, 'description', locale)}</p>
                 </div>
             </div>
             {occupied ? <p className="text-sm text-fg-muted">{t('apps.siteOccupied')}</p> : <Requirements app={app} administrator={administrator} />}
@@ -465,8 +465,8 @@ function AppCard({ app, occupied, administrator, installing, disabled, onInstall
                     <dt>{t('apps.database')}</dt><dd>{app.databases.join(', ') || '—'}</dd>
                     <dt>{t('apps.disk')}</dt><dd>{app.disk_mb} MB</dd>
                     <dt>{t('apps.source')}</dt><dd className="break-all">{app.source}</dd>
-                    <dt>{t('apps.verified')}</dt><dd className="break-words">{app.pinned ? t('apps.pinnedSha') : ''} {app.checked}</dd>
-                    <dt>{t('apps.risk')}</dt><dd className="break-words">{app.risk}</dd>
+                    <dt>{t('apps.verified')}</dt><dd className="break-words">{app.pinned ? t('apps.pinnedSha') : ''} {appText(app, 'checked', locale)}</dd>
+                    <dt>{t('apps.risk')}</dt><dd className="break-words">{appText(app, 'risk', locale)}</dd>
                 </dl>
             )}
             <div>

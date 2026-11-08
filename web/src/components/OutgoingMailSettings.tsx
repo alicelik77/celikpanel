@@ -199,6 +199,7 @@ export function OutgoingMailSettings() {
                                                     <span className="font-medium text-fg">{item.address}</span>
                                                     <span className="text-fg-muted"> · {t(`mout.paused.reason.${item.reason}` as TranslationKey)} · {time(item.paused_at)}</span>
                                                     {item.detail && <span className="block text-xs text-fg-subtle">{item.detail}</span>}
+                                                    {item.reason === 'manual' && <span className="block text-xs text-fg-subtle">{t('mout.paused.nextManual')}</span>}
                                                 </span>
                                                 {item.domain && <Button type="button" onClick={() => navigate(`/domains/${encodeURIComponent(item.domain!)}?tab=mail`)}>{t('mout.paused.open')}</Button>}
                                             </li>

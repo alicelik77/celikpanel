@@ -17,10 +17,14 @@ import { useRefusal } from '../lib/useRefusal';
 import type { CreatedSecret } from '../lib/generatedPassword';
 import type { TranslationKey } from '../i18n/en';
 import { confirmAction } from '../lib/confirmAction';
+import { EngineMark } from './EngineMark';
+import type { DatabaseEngineName } from '../lib/domainDatabases';
 // alpha.129: the new-password form is shared with the domain's Databases
 // tab; loaded when it is opened, so the entry's list of this page's parts
 // does not grow (the boot path).
 const DatabaseUserPassword = lazy(() => import('./DatabaseUserPassword').then((module) => ({ default: module.DatabaseUserPassword })));
+// alpha.130: the administrator's switch of connections from outside, with each engine's readiness.
+const DatabaseRemoteServerPanel = lazy(() => import('./DatabaseRemoteServerPanel').then((module) => ({ default: module.DatabaseRemoteServerPanel })));
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 
 // One API surface (B1, Jul 18): the former /api/v2 lives under /api/v1 now.
@@ -31,6 +35,9 @@ interface DatabaseServer {
     id: number;
     type_id: number;
     type_name: string;
+    // The server still sends its emoji (🐘, 🦭) for older pages; this page
+    // draws EngineMark instead (alpha.130): an emoji looks different on
+    // every system and did not match the Components page.
     type_icon: string;
     name: string;
     version: string;
@@ -44,6 +51,17 @@ interface DatabaseServer {
     // R-065. Bunlar yalnizca yoneticiye soylenir.
     admin_username?: string;
     is_local?: boolean;
+}
+
+// The engine of a server card, from the engine type's display name
+// ("PostgreSQL", "MariaDB"). A MySQL-family name the panel does not know is
+// drawn with the plain database mark, never called MariaDB.
+// Sunucu kartının motoru, motor türünün görünen adından.
+function serverEngine(typeName: string): DatabaseEngineName {
+    const name = typeName.toLowerCase();
+    if (name.includes('postgres')) return 'postgresql';
+    if (name.includes('maria')) return 'mariadb';
+    return 'mysql';
 }
 
 interface DatabaseItem {
@@ -197,6 +215,11 @@ export function DatabaseManagementV2() {
                 HOSTING from SERVER in its navigation and this page is a
                 hosting page.
                 R-069. Bu sayfa musterilerin veritabanlaridir, yalnizca onlar. */}
+            {isAdmin && (
+                <Suspense fallback={null}>
+                    <DatabaseRemoteServerPanel />
+                </Suspense>
+            )}
             <RemoteGate
                 remote={servers.remote}
                 checking={t('databases.checkingServers')}
@@ -241,7 +264,7 @@ export function DatabaseManagementV2() {
                                     : 'border-border bg-surface hover:bg-surface-2'
                             }`}
                         >
-                            <span className="text-2xl leading-none">{s.type_icon}</span>
+                            <EngineMark engine={serverEngine(s.type_name)} size="sm" />
                             <span>
                                 <span className="flex items-center gap-2 text-base font-semibold text-fg">
                                     {s.name}

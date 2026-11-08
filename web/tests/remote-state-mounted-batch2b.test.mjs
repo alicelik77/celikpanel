@@ -66,6 +66,10 @@ const stub = dataModule(`
   // alpha.128: the outgoing mail sections on the Postfix page read their own addresses; not under test here.
   export const OutgoingMailSettings = () => null;
   export const MailPlanLimits = () => null;
+  // alpha.130: the mail relay and mail program set-up read their own addresses; not under test here.
+  export const MailRelaySettings = () => null;
+  export const MailServerOptions = () => null;
+  export const MailAutoconfigNotice = () => null;
   // alpha.128: bulk mailbox actions run only after a confirmation; not under test here.
   export const runBulk = async () => ({ done: [], refused: [], unknown: null, notStarted: [] });
   // alpha.108: the PostgreSQL clusters card has its own mounted tests.
@@ -90,8 +94,10 @@ const operationURL = lib('components/ComponentOperation.tsx');
 const managedURL = lib('lib/managedServices.ts', { ...beside, '/ComponentOperation': operationURL });
 const mailSetupURL = compileSource('lib/mailSetup.ts', (specifier) => (specifier.endsWith('/webmailAddress') ? webmailAddressLibURL : stub));
 const currentURL = lib('components/CurrentSettings.tsx');
+// alpha.130: the plain sentence a refused configuration save leads with.
+const refusalTextURL = compileSource('lib/configRefusalText.ts', () => stub);
 const own = {
-  '/lib/configFile': configFileURL, '/lib/dbConfigText': textURL, '/lib/managedServices': managedURL,
+  '/lib/configFile': configFileURL, '/lib/dbConfigText': textURL, '/lib/configRefusalText': refusalTextURL, '/lib/managedServices': managedURL,
   '/lib/mailSetup': mailSetupURL, '/CurrentSettings': currentURL,
 };
 const noticesURL = lib('components/ConfigFileNotices.tsx', own);
@@ -676,6 +682,133 @@ test('pg_hba.conf: a refusal that names a line is shown next to the rule on that
     const message = tree.root.findAll((node) => typeof node.type === 'string' && node.props.id === 'hba-new-0-refusal')[0];
     assert.ok(message, 'the server’s line is not next to the new rule');
     assert.match(says(message), /SSL is disabled/);
+  } finally {
+    await cleanup();
+  }
+});
+
+// alpha.130 (8 Nov 2026, the owner): the banner said "a rule you changed or
+// added is not one PostgreSQL accepts" and the reason stood only under the
+// marked rule, below the fold. The banner now names the rule by its number on
+// screen and the reason in plain words, keeps PostgreSQL's words, says the
+// server's file did not change, and takes the page to the rule.
+const banner = () => tree.root.findAll((node) => node.type === 'div' && node.props.role === 'alert')[0];
+function watchReveals() {
+  const revealed = [];
+  globalThis.document.getElementById = (id) => ({
+    scrollIntoView: (options) => revealed.push(['scroll', id, options?.block]),
+    focus: (options) => revealed.push(['focus', id, options?.preventScroll]),
+  });
+  return revealed;
+}
+
+test('pg_hba.conf: the banner names the refused rule by its number and the reason in plain words, and goes to it', async () => {
+  serve({}, { 'POST /api/v1/config': json({ error: 'x', code: 'CONFIG_INVALID', reason: 'syntax', vars: { detail: 'peer authentication is only supported on local sockets', line: '9' } }, 422) });
+  try {
+    await mount(PostgreSQLAccessRules, hbaPath);
+    const shownBefore = tree.root.findAll((node) => node.type === 'li').length;
+    await press(buttons('dbconf.hba.add')[0]);
+    const blank = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'text' && node.props.value === '');
+    await type(blank()[0], 'shop');
+    await type(blank()[0], 'shop');
+    await type(blank()[0], '192.0.2.0/24');
+    const revealed = watchReveals();
+    await press(saveButton());
+    const number = shownBefore + 1;
+    const said = says(banner()).replace(/\s+/g, ' ');
+    assert.ok(said.includes('dbconf.refused.syntax'), said);
+    // The rule by the number the list shows, the line of the file, and the fix.
+    assert.ok(said.includes(`dbconf.target.rule{"n":${number},"line":9,"file":"pg_hba.conf"}: dbconf.why.hba.peerHost`), said);
+    // PostgreSQL's own words stay visible, under the plain sentence.
+    assert.ok(said.includes('dbconf.notAccepted') && said.includes('peer authentication is only supported on local sockets'), said);
+    // Nothing changed on the server, and Discard brings its file back.
+    assert.ok(said.includes('dbconf.refused.unchangedDiscard'), said);
+    assert.equal(buttons('dbconf.discard')[0].props.disabled, false, 'Discard is off after a refusal');
+    // The page went to the new rule once: its first control, centred and focused.
+    const row = tree.root.findAll((node) => node.type === 'select' && node.props['aria-describedby'] === 'hba-new-0-refusal')[0];
+    assert.ok(row, 'the refused rule’s control is not tied to the message under it');
+    assert.equal(row.props['aria-invalid'], true);
+    assert.ok(row.props.id, 'the refused rule’s control has no id to go to');
+    assert.deepEqual(revealed, [['scroll', row.props.id, 'center'], ['focus', row.props.id, true]]);
+    // The banner's button goes there again.
+    const show = buttons(`dbconf.target.ruleShow{"n":${number}}`);
+    assert.equal(show.length, 1, 'the banner has no button that shows the rule');
+    assert.equal(show[0].props.type, 'button');
+    await press(show[0]);
+    assert.deepEqual(revealed.slice(2), [['scroll', row.props.id, 'center'], ['focus', row.props.id, true]]);
+    assert.equal(writesMade().length, 1, 'showing the rule saved again');
+    // Discard: the screen is the server's file again, and the refusal is gone.
+    await press(buttons('dbconf.discard')[0]);
+    assert.ok(!banner(), 'the refusal outlived Discard');
+    assert.equal(tree.root.findAll((node) => node.type === 'li').length, shownBefore);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('pg_hba.conf: a reason the screen does not know is shown in PostgreSQL’s words, after the rule it names', async () => {
+  serve({}, { 'POST /api/v1/config': json({ error: 'x', code: 'CONFIG_INVALID', reason: 'daemon', vars: { detail: 'something PostgreSQL 19 says', line: '9' } }, 422) });
+  try {
+    await mount(PostgreSQLAccessRules, hbaPath);
+    await press(buttons('dbconf.hba.add')[0]);
+    const blank = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'text' && node.props.value === '');
+    await type(blank()[0], 'shop');
+    await type(blank()[0], 'shop');
+    await type(blank()[0], '192.0.2.0/24');
+    await press(saveButton());
+    const said = says(banner()).replace(/\s+/g, ' ');
+    assert.match(said, /dbconf\.target\.rule\{"n":\d+,"line":9,"file":"pg_hba\.conf"\}: /);
+    assert.ok(said.includes('dbconf.says{"service":"PostgreSQL"}') && said.includes('something PostgreSQL 19 says'), said);
+    assert.ok(!said.includes('dbconf.why.'), 'a reason was guessed for a line the screen does not know');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('postgresql.conf: the banner names the refused setting and why, and shows it even when a search hides it', async () => {
+  const refusal = { error: 'x', code: 'CONFIG_INVALID', reason: 'daemon', vars: { detail: 'invalid value for parameter "max_connections": "lots"', name: 'max_connections' } };
+  serve({}, { 'POST /api/v1/config': json(refusal, 422) });
+  try {
+    await mount(PostgreSQLSettings, pgPath);
+    await type(valueOf('max_connections'), 'lots');
+    const search = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'search')[0];
+    await type(search(), 'shared_buffers');
+    assert.equal(valueOf('max_connections'), undefined, 'the search did not hide the setting');
+    const revealed = watchReveals();
+    await press(saveButton());
+    const said = says(banner()).replace(/\s+/g, ' ');
+    assert.ok(said.includes('dbconf.target.setting{"name":"max_connections"}: dbconf.why.setting.invalidValue{"value":"lots","service":"PostgreSQL"}'), said);
+    assert.ok(said.includes('invalid value for parameter "max_connections": "lots"'), 'PostgreSQL’s own words are gone');
+    assert.ok(said.includes('dbconf.refused.unchangedDiscard'), said);
+    // The search that hid it was cleared and the page went to its value field.
+    assert.equal(search().props.value, '');
+    const field = valueOf('max_connections');
+    assert.ok(field && field.props.id, 'the refused setting is not on screen');
+    assert.deepEqual(revealed, [['scroll', field.props.id, 'center'], ['focus', field.props.id, true]]);
+    await press(buttons('dbconf.target.settingShow{"name":"max_connections"}')[0]);
+    assert.deepEqual(revealed.slice(2), [['scroll', field.props.id, 'center'], ['focus', field.props.id, true]]);
+    assert.equal(buttons('dbconf.discard')[0].props.disabled, false, 'Discard is off after a refusal');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('a verified reload failure with the previous file back says Discard returns to it; an unknown answer does not', async () => {
+  serve({}, { 'POST /api/v1/config': json({ error: 'x', code: 'CONFIG_RELOAD_FAILED', reason: 'restored', vars: { detail: 'Error: could not reload' } }, 502) });
+  try {
+    await mount(PostgreSQLSettings, pgPath);
+    await type(valueOf('max_connections'), '300');
+    await press(saveButton());
+    assert.ok(has('dbconf.reloadFailed.discard') && !has('dbconf.refused.unchangedDiscard'));
+  } finally {
+    await cleanup();
+  }
+  serve({}, { 'POST /api/v1/config': () => { throw new TypeError('fetch failed'); } });
+  try {
+    await mount(PostgreSQLSettings, pgPath);
+    await type(valueOf('max_connections'), '300');
+    await press(saveButton());
+    assert.ok(!has('dbconf.reloadFailed.discard') && !has('dbconf.refused.unchangedDiscard'), 'an answer that never came is said to have changed nothing');
   } finally {
     await cleanup();
   }
