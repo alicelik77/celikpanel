@@ -124,4 +124,6 @@ export const trEmergencyScreens: Record<EmergencyScreenKey, string> = {
     'err.VERSION_WITHDRAWN': '{name} bu sunucuda güvenlik için geri çekildi. Başka birini seçin. Hiçbir şey değişmedi.',
     'err.SECURITY_EMERGENCY_WITHDRAWN': 'Hiçbir şey değişmedi: {name} bu sunucuda güvenlik için geri çekildi; kurulmaz ve seçilmez. Yönetici yamalı sürüm çıkınca onu Güvenlik acil durumu ekranından yeniden açar ya da başka bir sürüm kullanır.',
     'err.SECURITY_EMERGENCY_MAINTENANCE': 'Bu uygulama, sürümünde bir güvenlik sorunu olduğu için durduruldu. Siteyi başka bir sürüme geçirin; orada başlar.',
+    'err.VERSION_WITHDRAWN.offer': 'Hiçbir şey değişmedi: {name} bu sunucuda güvenlik nedeniyle geri çekildi, bu yüzden sunulamaz. Bileşenin sayfasındaki güvenlik acil durumu kapandığında yeniden sunulabilir.',
+    'err.VERSION_WITHDRAWN.action': 'Bileşeni aç',
 };

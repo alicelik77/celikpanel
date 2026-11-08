@@ -412,3 +412,42 @@ func TestCatalogWithheldPhpBBIsNeitherListedOfferedNorInstalled(t *testing.T) {
 		t.Fatalf("phpBB install answered %d", recorder.Code)
 	}
 }
+
+// alpha.130: the catalog serves each entry's Turkish texts beside the English
+// ones (additive: the English fields keep their names and values).
+func TestCatalogServesTurkishTextsBesideEnglish(t *testing.T) {
+	f, _ := newCatalogFixture(t)
+	recorder := httptest.NewRecorder()
+	f.panel.handleAppCatalog(recorder, catalogRequest(http.MethodGet, "/api/v1/apps", ""))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("catalog: %d %s", recorder.Code, recorder.Body.String())
+	}
+	var body struct {
+		Apps []struct {
+			ID          string `json:"id"`
+			Description string `json:"description"`
+			Checked     string `json:"checked"`
+			Risk        string `json:"risk"`
+			TR          struct {
+				Description string `json:"description"`
+				Checked     string `json:"checked"`
+				Risk        string `json:"risk"`
+			} `json:"tr"`
+		} `json:"apps"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || len(body.Apps) == 0 {
+		t.Fatalf("catalog body: %v %s", err, recorder.Body.String())
+	}
+	for _, view := range body.Apps {
+		app, ok := appcatalog.Lookup(view.ID)
+		if !ok {
+			t.Fatalf("unknown entry %q", view.ID)
+		}
+		if view.Description != app.Summary || view.Checked != app.Archive.Upstream || view.Risk != app.Risk {
+			t.Fatalf("%s: the English fields changed", view.ID)
+		}
+		if view.TR.Description != app.TR.Summary || view.TR.Checked != app.TR.Upstream || view.TR.Risk != app.TR.Risk || view.TR.Risk == "" {
+			t.Fatalf("%s: Turkish texts not served: %+v", view.ID, view.TR)
+		}
+	}
+}

@@ -1,7 +1,8 @@
 // SCREEN catalogue part "limits" (alpha.128, docs/SITE-LIMITS.md): a site's
 // PHP settings within its limits, the plan form's limits of site settings,
 // overuse policy and overselling choice, the server's limits, the password
-// level and their refusals (limits., err.).
+// level and their refusals (limits., err.); since alpha.130 also the newer
+// rights. sentences of the Offered tab and the rights editor (rights is full).
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -128,6 +129,7 @@ export const enLimitsScreens = {
     'limits.password.failed': 'The password level could not be saved.',
 
     'dashboard.audit.action.rights.offer_permission': 'changed the offer of the permission {target}',
+    'dashboard.audit.action.offering.stale_entries_moved': 'moved items the Offered tab could not change to their own offer, withdrawn ({target})',
     'dashboard.audit.action.settings.limit': 'changed the server limit {target}',
     'dashboard.audit.action.settings.password_level': 'set the password level to {target}',
     'dashboard.audit.action.site.php_settings.refused': 'tried to change the PHP settings of {target}; the web server refused and the previous values were put back',
@@ -156,6 +158,26 @@ export const enLimitsScreens = {
     'err.PHP_VERSION_UNDONE': 'Nothing was changed: the web server did not take the new configuration, so the site was put back on its previous PHP version and keeps working.',
     'err.POOL_OVERSELLING_NOT_ALLOWED': 'Nothing was changed: this reseller hands out only what its pool holds, and these limits go beyond it. Choose smaller limits, or ask the administrator to raise the pool.',
     'err.PASSWORD_WEAK.needs_digit': 'The password must contain a digit (the server’s password level).',
+    'err.SETTING_NOT_CUSTOMER_CHOSEN': 'Nothing was changed: customers do not choose a value for this setting, so it cannot be fixed; only its limit applies.',
+    'limits.server.limitOnly': 'Limit only',
+    'limits.server.saveAll': 'Save changes',
+    'limits.server.pending': 'Will be saved: {keys}.',
+    'limits.server.savedAll': 'The limits were saved: {keys}.',
+    'limits.server.partFailed': 'Not saved: {keys}. The reason is beside each row; the other rows were saved.',
+    'limits.server.invalid': 'Between {min} and {max}.',
+    'limits.server.saving': 'Saving {key}…',
+    // alpha.130: the Offered tab and the rights editor (the rights part is full).
+    'rights.offered.stillHidden': 'Nothing changed: the server still has {name} hidden. Try again; if it stays hidden, this is a fault in CelikPanel, please report it.',
+    'rights.offered.stillOffered': 'Nothing changed: the server still offers {name}. Try again; if it stays offered, this is a fault in CelikPanel, please report it.',
+    'rights.offered.inCatalog': 'Offered in Catalog management, where its risk summary is shown first.',
+    'rights.offered.openCatalog': 'Open Catalog management',
+    'rights.offered.withdrawn': 'Withdrawn for security: it cannot be offered until the security emergency is closed.',
+    'rights.offered.openComponent': 'Open the component',
+    'rights.offered.remoteApiOff': 'The remote API is off on this server: no token works yet, even where this is offered.',
+    'rights.offered.turnOn': 'Turn it on in Settings',
+    'rights.resellerLacks': 'Ticked, but not usable yet: the reseller {name} does not have it. Add it to the reseller’s rights first (Users, the reseller, Rights).',
+    'rights.resellerLacksList': 'In this account’s rights, but not usable yet: the reseller {name} does not have {items}. Add them to the reseller’s rights first (Users, the reseller, Rights).',
+    'rights.notOfferedWithdrawn': 'Withdrawn for security on this server; it cannot be given until the emergency is closed.',
 } as const;
 
 export type LimitsScreenKey = keyof typeof enLimitsScreens;

@@ -482,6 +482,15 @@ func (p *Panel) handleRightsCatalog(w http.ResponseWriter, r *http.Request) {
 	candidates, unknown := p.previewCandidates(ctx, e.Own.Set)
 	view := e.view(candidates)
 	view.InstalledUnknown = unknown
+	// alpha.130: a granted remote API does nothing while the server switch
+	// is off; the screens say so beside it.
+	if enabled, err := p.remoteAPIEnabled(ctx); err == nil && !enabled {
+		for i := range view.Permissions {
+			if view.Permissions[i].ID == rightRemoteAPI {
+				view.Permissions[i].ServerOff = true
+			}
+		}
+	}
 	writeRightsJSON(w, http.StatusOK, map[string]any{"scope": scope, "rights": view})
 }
 
@@ -587,22 +596,12 @@ func (p *Panel) handleOfferedOptInPermissions(w http.ResponseWriter, r *http.Req
 			writeClientError(w, http.StatusBadRequest, "permission must be one of the opt-in permissions")
 			return
 		}
-		offered, err := p.loadOfferedOptInPermissions(ctx)
-		if err != nil {
+		// alpha.129: the remote database offer is the server switch of
+		// remote access; withdrawing it closes what is open. alpha.130: the
+		// Offered tab changes the same store through the same function.
+		if _, err := p.setOfferedOptInPermission(r, req.Permission, req.Offered); err != nil {
 			writeServerError(w, err)
 			return
-		}
-		offered[req.Permission] = req.Offered
-		if err := p.saveOfferedOptInPermissions(ctx, offered); err != nil {
-			writeServerError(w, err)
-			return
-		}
-		p.auditDetailed(r, "rights.offer_permission:"+req.Permission, "panel_settings", 0,
-			map[string]any{"permission": req.Permission, "offered": req.Offered})
-		if req.Permission == rightDatabaseRemote {
-			// alpha.129: this offer is the server switch of remote access;
-			// withdrawing it closes what is open.
-			p.kickDatabaseRemoteSync()
 		}
 	default:
 		rejectRouteMethod(w, []string{http.MethodGet, http.MethodPut})

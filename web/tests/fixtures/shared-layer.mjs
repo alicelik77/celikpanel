@@ -36,6 +36,8 @@ const alpha128LazyParts = {
   './SitePHPLimits': ['SitePHPLimits'],
   './PlanLimitsSection': ['PlanLimitsSection', 'CustomLimitsSection'],
   './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
+  // alpha.130: the Offered tab's applications are their own chunk too.
+  './OfferedAppsSection': ['OfferedAppsSection'],
 };
 
 export function compileSource(path, resolve) {

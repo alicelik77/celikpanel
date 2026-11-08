@@ -134,6 +134,8 @@ export const enEmergencyScreens = {
     'err.VERSION_WITHDRAWN': '{name} is withdrawn for security on this server. Choose another one. Nothing was changed.',
     'err.SECURITY_EMERGENCY_WITHDRAWN': 'Nothing was changed: {name} is withdrawn for security on this server, so it is not installed or chosen. The administrator re-enables it on the Security emergency screen once a patched version exists, or uses another version.',
     'err.SECURITY_EMERGENCY_MAINTENANCE': 'This application was stopped because its version has a security problem. Switch the site to another version; it starts there.',
+    'err.VERSION_WITHDRAWN.offer': 'Nothing was changed: {name} is withdrawn for security on this server, so it cannot be offered. It can be offered again once the security emergency is closed on the component’s page.',
+    'err.VERSION_WITHDRAWN.action': 'Open the component',
 } as const;
 
 export type EmergencyScreenKey = keyof typeof enEmergencyScreens;
