@@ -17,14 +17,14 @@ import (
 // alpha.114 beÅŸ gÃ¶Ã§ taÅŸÄ±r (047â€“051); hepsi eklemelidir, var olan satÄ±r deÄŸiÅŸmez.
 const (
 	panelPortChangeMigrationVersion = 47
-	newestMigrationVersion          = databaseRemoteMigrationVersion
+	newestMigrationVersion          = mailboxRecoveryMigrationVersion
 )
 
 // reservedMigrationVersions (alpha.128): numbers given to workstreams of the
 // same release that are not merged yet. The integrator renumbers merged
 // migrations to be contiguous and removes a number once its migration is in;
 // the count below fails while a reserved number is missing or left listed.
-var reservedMigrationVersions = map[int]bool{}
+var reservedMigrationVersions = map[int]bool{75: true, 76: true, 77: true, 78: true, 79: true}
 
 // requireMigrationsFrom proves that the embedded list ends at the newest
 // migration this release ships and that it holds every version from `from`

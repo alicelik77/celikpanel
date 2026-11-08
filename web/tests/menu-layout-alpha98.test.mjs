@@ -156,6 +156,9 @@ const settingsSections = settingsSource.match(/type SettingsSectionID = ([^;]+);
 const shellAddresses = new Set(['/login', '/activate']);
 function routeExists(pathname) {
     if (shellAddresses.has(pathname)) return true;
+    // alpha.130: the link pages (/account-link/…) are drawn before the
+    // session gate by App's AccountLinkSwitch, not by a route.
+    if (pathname.startsWith('/account-link/') && appSource.includes("location.pathname.startsWith('/account-link/')")) return true;
     const segments = pathname.replace(/\/$/, '').split('/');
     return routes.some((route) => {
         const parts = route.replace(/\/$/, '').split('/');

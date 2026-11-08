@@ -202,20 +202,25 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/maintenance/certificate-requests/": gateTenant, // admin-only in handler
 
 	// alpha.114: forgot password, invitations, address confirmation, recovery codes.
-	"/api/v1/auth/2fa/recovery/regenerate":    gateTenant,  // own account only (signed-in self)
-	"/api/v1/auth/email/verification":         gateTenant,  // own address only
-	"/api/v1/auth/recovery/accept-invitation": gatePublic,  // POST with a single-use link token
-	"/api/v1/auth/recovery/link":              gatePublic,  // POST with a single-use link token
-	"/api/v1/auth/recovery/mail-status":       gatePublic,  // GET: can this panel send mail at all
-	"/api/v1/auth/recovery/request":           gatePublic,  // POST, rate-limited, same answer for every name
-	"/api/v1/auth/recovery/reset":             gatePublic,  // POST with a single-use link token
-	"/api/v1/auth/recovery/verify-email":      gatePublic,  // POST with a single-use link token
-	"/api/v1/invitations":                     gateAccount, // only invitees the caller manages (handler); team members refused
-	"/api/v1/invitations/":                    gateAccount, // resend/void only for invitees the caller manages (handler)
-	"/api/v1/panel/port":                      gateAdmin,
-	"/api/v1/security/os-updates/mode":        gateAdmin,
-	"/api/v1/service/file-access-tools":       gateAdmin,
-	"/api/v1/security/os-updates/summary":     gateAdmin,
+	"/api/v1/auth/2fa/recovery/regenerate":    gateTenant, // own account only (signed-in self)
+	"/api/v1/auth/email/verification":         gateTenant, // own address only
+	"/api/v1/auth/recovery/accept-invitation": gatePublic, // POST with a single-use link token
+	"/api/v1/auth/recovery/link":              gatePublic, // POST with a single-use link token
+	"/api/v1/auth/recovery/mail-status":       gatePublic, // GET: can this panel send mail at all
+	"/api/v1/auth/recovery/request":           gatePublic, // POST, rate-limited, same answer for every name
+	"/api/v1/auth/recovery/reset":             gatePublic, // POST with a single-use link token
+	"/api/v1/auth/recovery/verify-email":      gatePublic, // POST with a single-use link token
+	// alpha.130: a mailbox's forgotten password (mailbox_recovery_handlers.go).
+	"/api/v1/auth/mailbox-recovery/request": gatePublic,  // POST, rate-limited, same answer for every address
+	"/api/v1/auth/mailbox-recovery/confirm": gatePublic,  // POST with a single-use link token
+	"/api/v1/auth/mailbox-recovery/link":    gatePublic,  // POST with a single-use link token
+	"/api/v1/auth/mailbox-recovery/reset":   gatePublic,  // POST with a single-use link token
+	"/api/v1/invitations":                   gateAccount, // only invitees the caller manages (handler); team members refused
+	"/api/v1/invitations/":                  gateAccount, // resend/void only for invitees the caller manages (handler)
+	"/api/v1/panel/port":                    gateAdmin,
+	"/api/v1/security/os-updates/mode":      gateAdmin,
+	"/api/v1/service/file-access-tools":     gateAdmin,
+	"/api/v1/security/os-updates/summary":   gateAdmin,
 
 	// Server, DNS infrastructure, setup and updates: administrator only.
 	"/api/v1/dns/engine":                       gateAdmin,

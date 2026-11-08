@@ -141,6 +141,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
 		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
+		Agent.MailPasswordFingerprintV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
 		Agent.DatabaseRemoteStatusV1
@@ -227,6 +228,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.WireMailFilters Agent.SetMailAutoresponder Agent.SetMailDomainSuspensionV1
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
 		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1 Agent.SetMailDomainOptionsV1
+		Agent.SetMailPasswordIfUnchangedV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -384,8 +386,11 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.AddMailAccount":           agentRPCMutationTimeout,
 	// One sendmail run, bounded at 30 s by the Agent (passwordless mail closed).
 	"Agent.SendAccountMailV1": agentRPCMutationTimeout,
-	"Agent.ApplyFirewallV2":   agentRPCMutationTimeout,
-	"Agent.ApplyVhost":        agentRPCMutationTimeout,
+	// alpha.130: one passwd-file read, one hash and one write.
+	"Agent.SetMailPasswordIfUnchangedV1": agentRPCMutationTimeout,
+	"Agent.MailPasswordFingerprintV1":    agentRPCQuickReadTimeout,
+	"Agent.ApplyFirewallV2":              agentRPCMutationTimeout,
+	"Agent.ApplyVhost":                   agentRPCMutationTimeout,
 	// One nginx -T, at most one file write, nginx -t and one reload.
 	"Agent.ReconcileDefaultHTTPSServerV1": agentRPCMutationTimeout,
 	"Agent.InspectSiteFile":               agentRPCStandardReadTimeout,

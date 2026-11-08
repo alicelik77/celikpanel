@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser } from 'lucide-react';
+import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser, LifeBuoy } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { readApiError, type ApiError } from '../lib/apiError';
@@ -77,6 +77,8 @@ const OutgoingMailboxLimits = lazy(() => import('./OutgoingMailboxLimits'));
 const MailDeliveryLookup = lazy(() => import('./MailDeliveryLookup'));
 // alpha.128 (G25): send only, and the reply unknown addresses get (own chunk).
 const DomainMailOptions = lazy(() => import('./DomainMailOptions'));
+// alpha.130: a mailbox's recovery address (own chunk).
+const MailboxRecoveryDialog = lazy(() => import('./MailboxRecoveryDialog'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
     const { t } = useI18n();
@@ -107,6 +109,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
     const [quotaDraft, setQuotaDraft] = useState(1024);
     const [passwordAccount, setPasswordAccount] = useState<EmailAccount | null>(null);
     const [autoreplyAccount, setAutoreplyAccount] = useState<EmailAccount | null>(null);
+    const [recoveryAccount, setRecoveryAccount] = useState<EmailAccount | null>(null);
     const [newPassword, setNewPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [passwordSaving, setPasswordSaving] = useState(false);
@@ -700,6 +703,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                             </button>
                                                             <button
                                                                 type="button"
+                                                                onClick={() => setRecoveryAccount(a)}
+                                                                disabled={stale}
+                                                                aria-label={t('mail.recoveryFor', { address: a.address })}
+                                                                title={t('mail.recoveryFor', { address: a.address })}
+                                                                className="rounded-md p-1.5 text-fg-subtle hover:bg-surface-2 hover:text-primary"
+                                                            >
+                                                                <LifeBuoy className="h-4 w-4" aria-hidden="true" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
                                                                 onClick={() => setAutoreplyAccount(a)}
                                                                 disabled={stale}
                                                                 aria-label={t('mail.autoreply.openFor', { address: a.address })}
@@ -784,6 +797,16 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                 </>
             )}
 
+            {recoveryAccount && !readOnly && (
+                <Suspense fallback={null}>
+                    <MailboxRecoveryDialog
+                        domainId={domainId}
+                        accountId={recoveryAccount.id}
+                        address={recoveryAccount.address}
+                        onClose={() => setRecoveryAccount(null)}
+                    />
+                </Suspense>
+            )}
             {autoreplyAccount && !readOnly && (
                 <MailAutoresponderDialog
                     domainId={domainId}

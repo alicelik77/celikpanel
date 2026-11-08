@@ -658,6 +658,12 @@ func protectedBuildGateOperations() []buildGateOperation {
 			_ = agent.CertificateRequestDiscardV1(&transport.CertificateRequestDiscardRequest{ExpectedBuildCommit: expected}, &response)
 			return response.Error
 		}},
+		// alpha.130: a mailbox password reset by a recovery link.
+		{name: "SetMailPasswordIfUnchangedV1", run: func(expected string) string {
+			var response transport.SetMailPasswordIfUnchangedResponse
+			_ = agent.SetMailPasswordIfUnchangedV1(&transport.SetMailPasswordIfUnchangedRequest{ExpectedBuildCommit: expected}, &response)
+			return response.Error
+		}},
 	}
 }
 

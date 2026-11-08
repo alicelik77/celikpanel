@@ -72,6 +72,8 @@ func (p *Panel) handleDomainMail(w http.ResponseWriter, r *http.Request) {
 		p.handleEmptyMailbox(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/mail/accounts/password"):
 		p.handleUpdateEmailPassword(w, r, domainID)
+	case strings.HasSuffix(r.URL.Path, "/mail/accounts/recovery"):
+		p.handleMailboxRecovery(w, r, domainID)
 	case strings.HasSuffix(r.URL.Path, "/accounts"):
 		switch r.Method {
 		case http.MethodGet:

@@ -126,6 +126,11 @@ func (p *Panel) registerAccountRecoveryRoutes(mux *http.ServeMux) {
 	mux.HandleFunc(recoveryAcceptInvitePath, p.handleRecoveryAcceptInvitation)
 	mux.HandleFunc(recoveryVerifyEmailPath, p.handleRecoveryVerifyEmail)
 	mux.HandleFunc(ownEmailVerificationPath, p.handleOwnEmailVerification)
+	// alpha.130: a mailbox's recovery address (mailbox_recovery_handlers.go).
+	mux.HandleFunc(mailboxRecoveryRequestPath, p.handleMailboxRecoveryRequest)
+	mux.HandleFunc(mailboxRecoveryConfirmPath, p.handleMailboxRecoveryConfirm)
+	mux.HandleFunc(mailboxRecoveryLinkPath, p.handleMailboxRecoveryLink)
+	mux.HandleFunc(mailboxRecoveryResetPath, p.handleMailboxRecoveryReset)
 	mux.HandleFunc(invitationsPath, p.handleInvitations)
 	mux.HandleFunc(invitationsPath+"/", p.handleInvitationByID)
 }
