@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, HelpCircle, Loader2, RefreshCw, ShieldChec
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Button } from './ui';
+import { formatDateTime } from '../lib/dateFormat';
 
 type AuditStatus = 'pass' | 'warning' | 'fail' | 'unknown';
 
@@ -54,6 +55,10 @@ interface SecurityAuditResponse {
         key_match: AuditCheck;
         is_self_signed: boolean;
         expires_at?: string;
+        /** alpha.130: the names the served certificate covers. */
+        names?: string[];
+        /** alpha.130: whether it covers the address this page was opened with. */
+        hostname?: AuditCheck;
     };
 }
 
@@ -109,6 +114,9 @@ const CODE_KEYS: Record<string, TranslationKey> = {
     panel_tls_not_yet_valid: 'securityAudit.code.tlsNotYetValid',
     panel_tls_key_match: 'securityAudit.code.tlsKeyMatch',
     panel_tls_key_mismatch: 'securityAudit.code.tlsKeyMismatch',
+    panel_tls_hostname_match: 'securityAudit.code.tlsHostnameMatch',
+    panel_tls_hostname_mismatch: 'securityAudit.code.tlsHostnameMismatch',
+    panel_tls_hostname_address: 'securityAudit.code.tlsHostnameAddress',
 };
 
 const CODE_STATUSES: Record<string, AuditStatus> = {
@@ -131,6 +139,7 @@ const CODE_STATUSES: Record<string, AuditStatus> = {
 	panel_tls_not_self_signed: 'pass', panel_tls_chain_unverified: 'unknown', panel_tls_valid: 'pass',
 	panel_tls_expiring: 'warning', panel_tls_expired: 'fail', panel_tls_not_yet_valid: 'fail',
 	panel_tls_key_match: 'pass', panel_tls_key_mismatch: 'fail',
+	panel_tls_hostname_match: 'pass', panel_tls_hostname_mismatch: 'warning', panel_tls_hostname_address: 'unknown',
 };
 
 const CHECK_CODES = {
@@ -145,6 +154,7 @@ const CHECK_CODES = {
     tlsSelfSigned: new Set(['panel_tls_self_signed', 'panel_tls_chain_unverified', 'panel_tls_unknown']),
     tlsExpiry: new Set(['panel_tls_valid', 'panel_tls_expiring', 'panel_tls_expired', 'panel_tls_not_yet_valid', 'panel_tls_unknown']),
     tlsKeyMatch: new Set(['panel_tls_key_match', 'panel_tls_key_mismatch', 'panel_tls_unknown']),
+    tlsHostname: new Set(['panel_tls_hostname_match', 'panel_tls_hostname_mismatch', 'panel_tls_hostname_address', 'panel_tls_unknown']),
 } as const;
 
 const VERSION_PATTERN = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -204,6 +214,8 @@ function isSecurityAuditResponse(value: unknown): value is SecurityAuditResponse
         !isCheckFor(tls.self_signed, CHECK_CODES.tlsSelfSigned) ||
         !isCheckFor(tls.expiry, CHECK_CODES.tlsExpiry) ||
         !isCheckFor(tls.key_match, CHECK_CODES.tlsKeyMatch) ||
+        (tls.hostname !== undefined && !isCheckFor(tls.hostname, CHECK_CODES.tlsHostname)) ||
+        (tls.names !== undefined && (!Array.isArray(tls.names) || tls.names.some((name) => typeof name !== 'string'))) ||
         !isPortList(agent.firewall?.tcp_allowlist) || !isPortList(agent.firewall?.udp_allowlist) ||
         !Array.isArray(agent.listeners?.findings) || agent.listeners.findings.length > 512 ||
         !agent.listeners.findings.every(isListenerFinding)) return false;
@@ -264,6 +276,7 @@ function isSecurityAuditResponse(value: unknown): value is SecurityAuditResponse
     if (agent.reboot.check.status === 'warning' && !agent.reboot.required) return false;
     if (agent.reboot.check.status === 'unknown' && agent.reboot.required) return false;
     if (tls.certificate.status !== 'pass') {
+        if ((tls.names ?? []).length > 0 || (tls.hostname !== undefined && tls.hostname.status !== 'unknown')) return false;
         if (tls.expires_at !== undefined || tls.is_self_signed || tls.self_signed.status !== 'unknown' ||
             tls.expiry.status !== 'unknown' || tls.key_match.status !== 'unknown') return false;
     } else {
@@ -335,6 +348,7 @@ export function SecurityAuditCard() {
         { key: 'tlsSelfSigned', title: t('securityAudit.check.tlsSelfSigned'), check: audit.tls.self_signed },
         { key: 'tlsExpiry', title: t('securityAudit.check.tlsExpiry'), check: audit.tls.expiry },
         { key: 'tlsKeyMatch', title: t('securityAudit.check.tlsKeyMatch'), check: audit.tls.key_match },
+        ...(audit.tls.hostname ? [{ key: 'tlsHostname', title: t('securityAudit.check.tlsHostname'), check: audit.tls.hostname }] : []),
     ] : [], [audit, t]);
 
     const counts = useMemo(() => rows.reduce<Record<AuditStatus, number>>((result, row) => {
@@ -411,7 +425,8 @@ export function SecurityAuditCard() {
                     <dl className="mt-4 grid gap-2 rounded-lg border border-border bg-surface-subtle p-3 text-xs sm:grid-cols-2">
                         <div><dt className="text-fg-muted">{t('securityAudit.tcpAllowlist')}</dt><dd className="mt-0.5 font-mono text-fg">{audit.agent.firewall.tcp_allowlist.join(', ') || t('securityAudit.none')}</dd></div>
                         <div><dt className="text-fg-muted">{t('securityAudit.udpAllowlist')}</dt><dd className="mt-0.5 font-mono text-fg">{audit.agent.firewall.udp_allowlist.join(', ') || t('securityAudit.none')}</dd></div>
-                        <div><dt className="text-fg-muted">{t('securityAudit.generatedAt')}</dt><dd className="mt-0.5 text-fg">{new Date(audit.generated_at).toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-US')}</dd></div>
+                        {(audit.tls.names ?? []).length > 0 && <div className="sm:col-span-2"><dt className="text-fg-muted">{t('securityAudit.tlsNames')}</dt><dd className="mt-0.5 break-all font-mono text-fg" data-tls-names="">{(audit.tls.names ?? []).join(', ')}</dd></div>}
+                        <div><dt className="text-fg-muted">{t('securityAudit.generatedAt')}</dt><dd className="mt-0.5 text-fg">{formatDateTime(audit.generated_at, locale)}</dd></div>
                         <div><dt className="text-fg-muted">{t('securityAudit.build')}</dt><dd className="mt-0.5 break-all font-mono text-fg">{audit.agent.build_version} / {audit.agent.build_commit.slice(0, 12)}</dd></div>
 						{audit.agent.signed_update.key_fingerprint && <div className="sm:col-span-2"><dt className="text-fg-muted">{t('securityAudit.keyFingerprint')}</dt><dd className="mt-0.5 break-all font-mono text-fg">{audit.agent.signed_update.key_fingerprint}</dd></div>}
                     </dl>
