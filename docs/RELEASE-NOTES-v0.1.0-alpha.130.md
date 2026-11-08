@@ -9,9 +9,10 @@ password. Remote access to databases closes the gaps alpha.129 named, and
 everything the owner found on Boston and Frankfurt on 8 November is fixed:
 a false "Postfix is not running", a valid panel certificate called failed,
 English-format dates on Turkish screens, ticks in the Offered tab that did
-nothing, and password sign-in to SSH that the owner could not turn off from
-the panel. **Only the owner updates installed panels, from the panel's own
-update screen.**
+nothing, password sign-in to SSH that the owner could not turn off from the
+panel, and a removed PostgreSQL version that left its settings behind.
+Removals now take CelikPanel's own leftovers with them. **Only the owner
+updates installed panels, from the panel's own update screen.**
 
 ## Mail
 
@@ -98,6 +99,42 @@ update screen.**
 - The application catalog has Turkish descriptions, the download check and
   the risk note in Turkish (docs/PLANS-AND-RIGHTS.md §15).
 
+## PostgreSQL and leftovers
+
+The owner's rule of 8 November: no leftovers, ever; user data is never
+deleted silently.
+
+- **Removing a PostgreSQL version leaves nothing behind** (Debian and
+  Ubuntu). The packages are purged, including the version's client package,
+  and the cluster's configuration, data folder and logs go after the purge.
+  A cluster that holds anything beyond what a fresh installation makes is
+  archived first under `/var/backups/celikpanel/postgresql/`. The removal is
+  still refused while a cluster holds a database. Until now the old
+  version's settings stayed, so a newly installed version got port 5433
+  (Boston, 3 November).
+- **Leftover clusters from earlier releases:** one that holds only what a
+  fresh installation makes is removed by itself once after the panel
+  starts, with an audit entry and a root-only archive kept for 30 days
+  (`…-auto.tar.gz`). Any other is shown as "Not used – old version N" with
+  the reason it was kept and **Archive and remove** (the panel's own
+  confirmation and the server's steps, the archive named at the end). A
+  cluster the panel records databases on is never removed.
+- **Settings edit only clusters that run.** With several running clusters
+  the PostgreSQL page lets the administrator choose whose `postgresql.conf`
+  and `pg_hba.conf` the editors open; a removed version's files are no
+  longer listed.
+- **A refused configuration save says why at the top.** The banner names
+  the rule (its number and line) or the setting, gives the reason in plain
+  words with the fix, keeps PostgreSQL's own words under it, says the file
+  on the server did not change, and "Show rule N" scrolls to the marked row.
+  The same for MariaDB settings.
+- **Mail and Node.js removals take CelikPanel's own files with them:**
+  Dovecot's quota-warning timer and drop-ins, Postfix's CelikPanel maps
+  (also the relay password file) with their indexes, postfwd's drop-in,
+  rule file, lists and saved counters, and the empty Node.js folder after
+  the last version. A file is removed only while it is still CelikPanel's;
+  a file the owner changed is kept and named (docs/LEFTOVERS-AUDIT.md).
+
 ## Server and security
 
 - **SSH password sign-in** is shown as sshd really decides it (the file and
@@ -171,6 +208,20 @@ _To be filled in after the lab round._
     35 seconds); MariaDB accepts single IPv6 addresses only; table, column
     or role grants added by hand to a remote MariaDB account are not
     removed; MariaDB must log to the journal.
+- **Leftovers still to decide (docs/LEFTOVERS-AUDIT.md):** removing
+  MariaDB keeps `/var/lib/mysql` and `/etc/mysql` (packages left in `rc`
+  state); removing Roundcube deletes its database (users' contacts and
+  settings) without an archive; WireGuard keys and peers stay in
+  `/etc/wireguard/wg0.conf`; mail data, mailbox password hashes and DKIM
+  keys stay; on Arch, phpMyAdmin's `celikpanel-phpmyadmin.ini` stays because
+  sites may need `mysqli`, and `/var/lib/postgres/data` stays; Postfix's
+  generic maps without a marker, the shared mail certificate copies and the
+  old DNS engine's files stay. Each needs an owner decision first.
+- **Leftover PostgreSQL clusters:** a cluster counts as "fresh" only from its
+  files; functions, views or comments made in `postgres` or `template1`
+  cannot be seen that way, which is why the automatic removal keeps a
+  30-day archive. Anything the reading cannot judge is never removed
+  automatically. Arch keeps its single cluster as before.
 - **Components:** the Components scan still judges Postfix on Debian and
   Ubuntu by its wrapper unit; Monitoring and "Problems now" read the real
   one.

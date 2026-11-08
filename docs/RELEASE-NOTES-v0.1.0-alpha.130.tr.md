@@ -10,9 +10,10 @@ bağlanmada alpha.129'un açık bıraktığı noktalar kapanıyor. Sahibin 8 Kas
 Boston ve Frankfurt'ta bulduğu her şey de düzeltildi: yanlış "Postfix
 çalışmıyor" uyarısı, geçerli panel sertifikasının başarısız gösterilmesi,
 Türkçe ekranlarda İngilizce biçimli tarihler, Sunulanlar sekmesinde hiçbir
-şeyi değiştirmeyen işaretler ve sahibin panelden kapatamadığı SSH parola
-girişi. **Kurulu panelleri yalnız sahip, panelin kendi güncelleme ekranından
-günceller.**
+şeyi değiştirmeyen işaretler, sahibin panelden kapatamadığı SSH parola
+girişi ve ayarlarını geride bırakan kaldırılmış PostgreSQL sürümü.
+Kaldırmalar artık CelikPanel'in kendi kalıntılarını da götürüyor. **Kurulu
+panelleri yalnız sahip, panelin kendi güncelleme ekranından günceller.**
 
 ## Posta
 
@@ -104,6 +105,43 @@ günceller.**
 - Uygulama kataloğunda açıklamalar, indirme doğrulaması ve risk notu artık
   Türkçe (docs/PLANS-AND-RIGHTS.md §15).
 
+## PostgreSQL ve kalıntılar
+
+Sahibin 8 Kasım kuralı: hiçbir yerde kalıntı yok; kullanıcı verisi asla
+sessizce silinmez.
+
+- **Bir PostgreSQL sürümünü kaldırmak geride hiçbir şey bırakmıyor** (Debian
+  ve Ubuntu). Paketler, sürümün istemci paketiyle birlikte tamamen
+  temizlenir; kümenin yapılandırması, veri klasörü ve günlükleri de ardından
+  silinir. Yeni kurulumun oluşturduğundan fazlasını içeren bir küme önce
+  `/var/backups/celikpanel/postgresql/` altına arşivlenir. Bir küme
+  veritabanı taşıdığı sürece kaldırma yine reddedilir. Şimdiye dek eski
+  sürümün ayarları kalıyor, yeni kurulan sürüm de bu yüzden 5433 portunu
+  alıyordu (Boston, 3 Kasım).
+- **Önceki sürümlerden kalan kümeler:** yalnız yeni kurulumun oluşturduğunu
+  içeren küme, panel açıldıktan sonra bir kez kendiliğinden kaldırılır;
+  kaydı tutulur ve yalnız root'un okuyabildiği bir arşiv 30 gün saklanır
+  (`…-auto.tar.gz`). Diğerleri "Kullanılmıyor – eski sürüm N" olarak, neden
+  korunduğuyla ve **Arşivle ve kaldır** düğmesiyle gösterilir (panelin kendi
+  onay penceresi, sunucunun adımları, sonunda arşivin adı). Panelin üzerinde
+  veritabanı kaydı tuttuğu bir küme asla kaldırılmaz.
+- **Ayarlar yalnız çalışan kümelerde düzenleniyor.** Birden çok küme
+  çalışıyorsa PostgreSQL sayfasında yönetici, düzenleyicilerin hangi
+  kümenin `postgresql.conf` ve `pg_hba.conf` dosyasını açacağını seçer;
+  kaldırılmış sürümün dosyaları artık listelenmez.
+- **Reddedilen yapılandırma kaydı nedenini en üstte söylüyor.** Uyarı,
+  kuralı (ekrandaki numarası ve satırıyla) ya da ayarı adıyla söyler, nedeni
+  ve çözümü düz sözlerle verir, PostgreSQL'in kendi iletisini altında tutar,
+  sunucudaki dosyanın değişmediğini söyler; "N. kuralı göster" işaretli
+  satıra götürür. MariaDB ayarlarında da aynısı.
+- **Posta ve Node.js kaldırmaları CelikPanel'in kendi dosyalarını da
+  götürüyor:** Dovecot'un kota uyarısı zamanlayıcısı ve ek ayar dosyaları,
+  Postfix'teki CelikPanel eşlemeleri (aktarma parolası dosyası dahil) ve
+  dizinleri, postfwd'nin ek ayarı, kural dosyası, listeleri ve kayıtlı
+  sayaçları, son sürümden sonra boş kalan Node.js klasörü. Bir dosya yalnız
+  hâlâ CelikPanel'inse silinir; sahibin değiştirdiği dosya korunur ve adı
+  söylenir (docs/LEFTOVERS-AUDIT.md).
+
 ## Sunucu ve güvenlik
 
 - **SSH parola girişi**, sshd'nin gerçekte nasıl karar verdiğiyle gösterilir
@@ -180,6 +218,21 @@ _Laboratuvar turundan sonra doldurulacak._
     saniyeye kadar); MariaDB yalnız tekil IPv6 adresi kabul eder; uzak
     MariaDB hesabına elle eklenen tablo, sütun ya da rol yetkileri
     kaldırılmaz; MariaDB günlüğünü journal'a yazmalıdır.
+- **Karar bekleyen kalıntılar (docs/LEFTOVERS-AUDIT.md):** MariaDB
+  kaldırılınca `/var/lib/mysql` ve `/etc/mysql` kalır (paketler `rc`
+  durumunda); Roundcube kaldırılınca veritabanı (kullanıcıların kişileri ve
+  ayarları) arşivlenmeden silinir; WireGuard anahtarları ve eşleri
+  `/etc/wireguard/wg0.conf` içinde kalır; posta verisi, posta kutusu parola
+  özetleri ve DKIM anahtarları kalır; Arch'ta siteler `mysqli` isteyebileceği
+  için phpMyAdmin'in `celikpanel-phpmyadmin.ini` dosyası ve
+  `/var/lib/postgres/data` kalır; işaretsiz genel Postfix eşlemeleri, ortak
+  posta sertifikası kopyaları ve eski DNS motorunun dosyaları kalır. Her
+  biri için önce sahibin kararı gerekiyor.
+- **Kalıntı PostgreSQL kümeleri:** bir küme yalnız dosyalarına bakılarak
+  "yeni" sayılır; `postgres` ya da `template1` içinde oluşturulan işlev,
+  görünüm ya da açıklamalar bu yolla görülemez, bu yüzden kendiliğinden
+  kaldırma 30 günlük bir arşiv saklar. Okumanın karar veremediği hiçbir şey
+  kendiliğinden kaldırılmaz. Arch tek kümesini eskisi gibi korur.
 - **Bileşenler:** Bileşenler taraması Debian ve Ubuntu'da Postfix'i hâlâ
   sarmalayıcı biriminden değerlendiriyor; İzleme ve "Şu anki sorunlar"
   gerçek birimi okuyor.
