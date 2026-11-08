@@ -37,6 +37,9 @@ const stub = dataModule(`
   // alpha.128: the outgoing mail sections on the Postfix page read their own addresses; not under test here.
   export const OutgoingMailSettings = () => null;
   export const MailPlanLimits = () => null;
+  // alpha.130: the mail relay and mail program set-up read their own addresses; not under test here.
+  export const MailRelaySettings = () => null;
+  export const MailAutoconfigNotice = () => null;
 `);
 // Since 9 Oct 2026 these three screens stand on the shared remote-state layer,
 // so they are mounted with the real one: lib/remote.ts for the read and the

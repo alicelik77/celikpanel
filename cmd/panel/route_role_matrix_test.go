@@ -94,6 +94,8 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/mail/configure":         gateAdmin,
 	"/api/v1/mail/passwordless":      gateAdmin,
 	"/api/v1/mail/outgoing":          gateAdmin,
+	"/api/v1/mail/relay":             gateAdmin,
+	"/api/v1/mail/relay/test":        gateAdmin,
 	"/api/v1/mail/outgoing/report":   gateAdmin,
 	"/api/v1/mail/plan-limits":       gateAdmin,
 	"/api/v1/mail-outgoing-notices":  gateTenant, // the caller's own notices
