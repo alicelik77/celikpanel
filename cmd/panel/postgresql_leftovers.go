@@ -36,13 +36,24 @@ import (
 // hâlde sahibi "Arşivle ve kaldır" ile açıkça seçer.
 
 const (
-	pgLeftoverAPIPath          = pgClustersAPIPath + "/leftover"
-	pgLeftoverCleanupFirstWait = 2 * time.Minute
+	pgLeftoverAPIPath = pgClustersAPIPath + "/leftover"
+	// alpha.130 lab: optional housekeeping never runs inside an update's
+	// window. Release recovery refuses to roll back while an Agent mutation
+	// is active, so the first attempt waits well past the update's own
+	// health confirmation, and every attempt needs the server idle.
+	pgLeftoverCleanupFirstWait = 10 * time.Minute
 	pgLeftoverCleanupRetry     = 5 * time.Minute
 	pgLeftoverCleanupAttempts  = 12
 )
 
 var requestIdentityRoutePGLeftover = operationStepRoute(pgLeftoverAPIPath)
+
+// backgroundHostQuiet is the Agent's readiness for optional work: no panel
+// operation, no Agent mutation, no host lock, no package manager (a
+// variable for tests).
+var backgroundHostQuiet = func(p *Panel, ctx context.Context) bool {
+	return p.readHostMutationReadinessLogged(ctx, func(string, ...any) {}).Ready
+}
 
 var cleanPGLeftoversThroughAgent = func(p *Panel, ctx context.Context) (transport.PostgreSQLLeftoverCleanupResponse, error) {
 	var response transport.PostgreSQLLeftoverCleanupResponse
@@ -112,6 +123,11 @@ func (p *Panel) tryBackgroundServiceMutation(ctx context.Context) (func(), bool)
 	if active, err := p.serverSetupExecutionMutating(ctx); err != nil || active {
 		return nil, false
 	}
+	// The Agent's own word first (no lock held): no change, no package
+	// manager work, no update; optional work waits for a quiet server.
+	if !backgroundHostQuiet(p, ctx) {
+		return nil, false
+	}
 	if !p.serviceMutationMu.TryLock() {
 		return nil, false
 	}
@@ -146,7 +162,7 @@ func (p *Panel) cleanPGLeftoversOnce(ctx context.Context) (done bool) {
 			fresh = append(fresh, pgRef(cluster.Version, cluster.Name))
 		}
 	}
-	if len(fresh) == 0 {
+	if len(fresh) == 0 && len(clusters.LeftoverPackages) == 0 {
 		return true
 	}
 	release, ok := p.tryBackgroundServiceMutation(ctx)
@@ -167,6 +183,18 @@ func (p *Panel) cleanPGLeftoversOnce(ctx context.Context) (done bool) {
 		}
 	}
 	response, err := cleanPGLeftoversThroughAgent(p, ctx)
+	if len(response.Purged) > 0 || len(response.PurgeNotes) > 0 {
+		action := "postgresql.cluster.leftover.purged:" + strings.Join(response.Purged, ",")
+		if len(response.Purged) == 0 {
+			action = "postgresql.cluster.leftover.failed:" + strings.Join(clusters.LeftoverPackages, ",") + " — " + auditReason(strings.Join(response.PurgeNotes, "; "))
+		}
+		p.recordAudit(auditRecord{
+			Action:       action,
+			ResourceType: "service",
+			Details: auditDetailsText(map[string]any{"component": "postgresql", "purged": response.Purged,
+				"notes": response.PurgeNotes, "automatic": true}),
+		})
+	}
 	for _, removal := range response.Removed {
 		ref := pgRef(removal.Version, removal.Name)
 		p.recordAudit(auditRecord{

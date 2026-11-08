@@ -29,6 +29,7 @@ export const enPgLeftoversScreens = {
     'pgc.leftover.partial': 'Cluster {cluster} was archived in {archive}, but removing its files stopped, so some may still be on the server. The archive is kept. Next: try Archive and remove again, or remove what is left yourself. The server said: {reason}',
     'pgc.leftover.unknown': 'The answer did not arrive, so whether cluster {cluster} was archived and removed is not known. The clusters are read again; nothing is sent a second time.',
     'dashboard.audit.action.postgresql.cluster.leftover.removed': 'removed a leftover PostgreSQL cluster of a removed version ({target})',
+    'dashboard.audit.action.postgresql.cluster.leftover.purged': 'purged the packages a removed PostgreSQL version left ({target})',
     'dashboard.audit.action.postgresql.cluster.leftover.failed': 'could not remove a leftover PostgreSQL cluster ({target})',
     'pgc.pick.label': 'Edit the files of',
     'pgc.pick.cluster': 'PostgreSQL {version} · {name}',

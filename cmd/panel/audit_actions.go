@@ -228,6 +228,7 @@ var auditActionNames = []string{
 	"postgresql.cluster.port.failed",
 	"postgresql.cluster.leftover.removed",
 	"postgresql.cluster.leftover.failed",
+	"postgresql.cluster.leftover.purged",
 	"postgresql.database.copy",
 	"postgresql.database.copy.failed",
 	"postgresql.database.drop.failed",

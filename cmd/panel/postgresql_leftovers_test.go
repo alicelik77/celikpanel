@@ -27,8 +27,11 @@ func pgLeftoverClusters(leftoverPort int, fresh bool) transport.PostgreSQLCluste
 
 func stubPGLeftoverAgent(t *testing.T) (cleanups *int, removes *[]transport.PostgreSQLLeftoverRemoveRequest) {
 	t.Helper()
-	restoreClean, restoreRemove := cleanPGLeftoversThroughAgent, removePGLeftoverThroughAgent
-	t.Cleanup(func() { cleanPGLeftoversThroughAgent, removePGLeftoverThroughAgent = restoreClean, restoreRemove })
+	restoreClean, restoreRemove, restoreQuiet := cleanPGLeftoversThroughAgent, removePGLeftoverThroughAgent, backgroundHostQuiet
+	t.Cleanup(func() {
+		cleanPGLeftoversThroughAgent, removePGLeftoverThroughAgent, backgroundHostQuiet = restoreClean, restoreRemove, restoreQuiet
+	})
+	backgroundHostQuiet = func(*Panel, context.Context) bool { return true }
 	count := 0
 	var requests []transport.PostgreSQLLeftoverRemoveRequest
 	cleanPGLeftoversThroughAgent = func(*Panel, context.Context) (transport.PostgreSQLLeftoverCleanupResponse, error) {
@@ -111,5 +114,29 @@ func TestPGLeftoverArchiveAndRemoveIsExplicitAndAudited(t *testing.T) {
 	action, details := lastAudit(t, panel)
 	if action != "postgresql.cluster.leftover.removed:16/main" || !strings.Contains(details, `"archive":"/var/backups/celikpanel/`) || !strings.Contains(details, `"automatic":false`) {
 		t.Fatalf("audit = %q %s", action, details)
+	}
+}
+
+func TestPGLeftoverPackagesAloneStartTheCleanupAndAreAudited(t *testing.T) {
+	panel, _, database, userID := newServiceStateAtomicPanel(t)
+	pgTestRecords(t, database.GetDB(), userID)
+	clusters := pgTestClusters(false)
+	clusters.LeftoverPackages = []string{"postgresql-16", "postgresql-client-16"}
+	pgStubAgent(t, &clusters)
+	cleanups, _ := stubPGLeftoverAgent(t)
+	cleanPGLeftoversThroughAgent = func(*Panel, context.Context) (transport.PostgreSQLLeftoverCleanupResponse, error) {
+		*cleanups++
+		return transport.PostgreSQLLeftoverCleanupResponse{Purged: []string{"postgresql-16", "postgresql-client-16"}}, nil
+	}
+	if done := panel.cleanPGLeftoversOnce(context.Background()); !done || *cleanups != 1 {
+		t.Fatalf("done=%v cleanups=%d", done, *cleanups)
+	}
+	if action, _ := lastAudit(t, panel); action != "postgresql.cluster.leftover.purged:postgresql-16,postgresql-client-16" {
+		t.Fatalf("audit = %q", action)
+	}
+	// A busy server: nothing is sent, a later attempt is asked for.
+	backgroundHostQuiet = func(*Panel, context.Context) bool { return false }
+	if done := panel.cleanPGLeftoversOnce(context.Background()); done || *cleanups != 1 {
+		t.Fatalf("busy: done=%v cleanups=%d", done, *cleanups)
 	}
 }
