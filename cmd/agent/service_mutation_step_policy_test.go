@@ -82,6 +82,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"remove webmail's own address", mutationPolicyJob("webmail_address_remove", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepRemoveWebmailAddress, "roundcube", "mail.example.com", "remove")},
 		{"change a PostgreSQL cluster's port", mutationPolicyJob("pg_cluster_port", "pg-17-main", "5440"), mutationPolicyClaim(serviceMutationStepSetPGClusterPort, "pg-17-main", "5440", "port")},
 		{"apply remote database access", mutationPolicyJob("database_remote", "database-remote", ""), mutationPolicyClaim(serviceMutationStepApplyDatabaseRemote, "database-remote", "", "apply")},
+		{"narrow remote database access at the filter", mutationPolicyJob("database_remote", "database-remote", ""), mutationPolicyClaim(serviceMutationStepNarrowDatabaseRemote, "database-remote", "", "narrow")},
 		{"copy a PostgreSQL database", mutationPolicyJob("pg_database_copy", "pgdb-shop", "5432-5433"), mutationPolicyClaim(serviceMutationStepCopyPGDatabase, "pgdb-shop", "5432-5433", "copy")},
 		{"drop a moved PostgreSQL database's source", mutationPolicyJob("pg_database_drop", "pgdb-shop", "5432"), mutationPolicyClaim(serviceMutationStepDropPGDatabase, "pgdb-shop", "5432", "drop")},
 		{"add vendor origins to the OS updates", mutationPolicyJob("os_updates_origins", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepWriteVendorOrigins, "unattended-upgrades", "", "origins")},
@@ -196,6 +197,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepEnableWebmailAddress,
 		serviceMutationStepRemoveWebmailAddress,
 		serviceMutationStepApplyDatabaseRemote,
+		serviceMutationStepNarrowDatabaseRemote,
 	}
 	for _, method := range expectedMethods {
 		if !seenMethods[method] {
@@ -459,6 +461,7 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepDropPGDatabase":           true,
 		"serviceMutationStepSetServerHostname":        true,
 		"serviceMutationStepApplyDatabaseRemote":      true,
+		"serviceMutationStepNarrowDatabaseRemote":     true,
 	}
 	seenMethods := make(map[string]string)
 	directAcquire := make(map[string][]string)

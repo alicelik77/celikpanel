@@ -405,6 +405,7 @@ func TestMariaDBRemoteReplacesTheEarlierFilterOnly(t *testing.T) {
 	files := withFakeMariaDB(t, f)
 	earlier := strings.Replace(dbremote.MariaDBFilter(), "failregex = ^ *(", "failregex = ^(", 1)
 	earlier = strings.Replace(earlier, `\) *\n?\Z`, `\) *\Z`, 1)
+	earlier = strings.Replace(earlier, "<ADDR>", "<HOST>", 1) // alpha.129's placeholder
 	if !dbremote.MariaDBFilterEarlier(earlier) {
 		t.Fatalf("test setup: not the earlier filter:\n%s", earlier)
 	}

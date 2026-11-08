@@ -64,6 +64,9 @@ const (
 	serviceMutationStepActivatePanelCertificate serviceMutationStepMethod = "agent.panel-certificate-activation"
 	// alpha.129: remote access to databases, one job for the whole rule set.
 	serviceMutationStepApplyDatabaseRemote serviceMutationStepMethod = "Agent.ApplyDatabaseRemoteV1"
+	// alpha.130 (D5): closing at the address filter only, in the same kind
+	// of job, when the full apply cannot run.
+	serviceMutationStepNarrowDatabaseRemote serviceMutationStepMethod = "Agent.NarrowDatabaseRemoteFilterV1"
 )
 
 const (
@@ -325,6 +328,11 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 	case serviceMutationStepApplyDatabaseRemote:
 		// alpha.129: remote access to databases; one target, no qualifier.
 		return claim.target == databaseRemoteMutationTarget && claim.packageName == "" && claim.action == "apply" &&
+			serviceMutationJobMatches(job, "database_remote", databaseRemoteMutationTarget, "")
+
+	case serviceMutationStepNarrowDatabaseRemote:
+		// alpha.130 (D5): only takes addresses out of the filter.
+		return claim.target == databaseRemoteMutationTarget && claim.packageName == "" && claim.action == "narrow" &&
 			serviceMutationJobMatches(job, "database_remote", databaseRemoteMutationTarget, "")
 
 	case serviceMutationStepSetPanelListen:

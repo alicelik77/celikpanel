@@ -1,7 +1,8 @@
-# Remote access to databases (alpha.129)
+# Remote access to databases (alpha.129, alpha.130)
 
 Status: design accepted by the owner on 7 Nov 2026; implementation in
-alpha.129 (branch `feat/a129-db-remote`). This note says what is built, why,
+alpha.129 (branch `feat/a129-db-remote`); the owner's decisions of 8 Nov 2026
+and the alpha.129 lab findings in alpha.130 (section "alpha.130"). This note says what is built, why,
 and what is still only unit-tested. It is not a statement that every part has
 run on a real server: see "Evidence" at the end.
 
@@ -18,7 +19,7 @@ freedom.
 | Threat | Answer |
 |---|---|
 | Internet-wide scanning of 3306/5432 | The engine keeps listening on the local address until the first rule exists on it. Afterwards an nftables filter of its own drops every packet to the engine's port that does not come from a listed address, at a priority before every other filter, also when the panel firewall is off. |
-| Password guessing | Only listed addresses reach the engine at all, and no rule is in force before wrong passwords are slowed down (review M3): PostgreSQL rules are written only while `auth_delay` (official contrib module) is loaded — it waits 1 s after every failed sign-in; MariaDB copies exist only while CelikPanel's own Fail2ban jail `celikpanel-mariadb-auth` runs (5 failures in 10 minutes ban for an hour). Until then the rules wait and the administrator is told the step. |
+| Password guessing | Only listed addresses reach the engine at all, and no rule is in force before wrong passwords are slowed down (review M3): PostgreSQL rules are written only while `auth_delay` (official contrib module) is loaded — it waits 1 s after every failed sign-in; MariaDB copies exist only while CelikPanel's own Fail2ban jail `celikpanel-mariadb-auth` runs (5 failures in 10 minutes ban for an hour) and, since alpha.130, while MariaDB logs addresses rather than host names. alpha.130 adds Fail2ban for PostgreSQL as an extra layer. Until then the rules wait and the administrator is told the step. |
 | Sniffing | PostgreSQL rules are `hostssl` lines: a connection without TLS matches no line and is refused. MariaDB remote accounts are created `REQUIRE SSL`. |
 | A customer reaching another customer's database | A rule names one database, one database user and one address. The panel only accepts a rule for a database and a user of the caller's own subscription, the user must already hold access to that database, and the engine enforces the triple natively (pg_hba line; MariaDB account with grants on that database only). |
 | The administrator's own accounts | Rules are made only for panel-made database users (`database_users`). The engine superuser (`postgres`, `root`), the panel's own engine account and any role with superuser/replication rights are refused. PostgreSQL lines never name `all`, `replication` or `sameuser`; MariaDB never gets a `%` host. |
@@ -140,46 +141,209 @@ User: as listed; Password: the database user's password; SSL mode: `require`
 
 ## Endpoints
 
-- `GET  /api/v1/database-remote/databases/{id}` — rules, access, engine state,
-  client settings (customer, reseller, administrator; ownership-checked).
-- `POST /api/v1/database-remote/databases/{id}/rules` `{user_id, address}`.
+- `GET  /api/v1/database-remote/databases/{id}` — rules (alpha.130: each with
+  `expires_at`, RFC 3339 UTC, empty = no end), access, engine state
+  (alpha.130: `close_pending`), client settings (customer, reseller,
+  administrator; ownership-checked).
+- `POST /api/v1/database-remote/databases/{id}/rules`
+  `{user_id, address, duration}`; `duration` is `1d` (the default when
+  omitted), `7d` or `permanent`; anything else is refused with
+  `DATABASE_REMOTE_DURATION`.
+- `PUT /api/v1/database-remote/rules/{id}` `{duration}` (alpha.130): a new end,
+  counted from now, without adding the address again. Same right as adding.
 - `DELETE /api/v1/database-remote/rules/{id}`.
-- `GET|PUT /api/v1/database-remote/server` — administrator: the offer switch,
-  per-engine state, "apply again".
+- `GET|PUT /api/v1/database-remote/server` — administrator: the offer switch
+  (`offered`), the agreement on MariaDB's host name lookup
+  (`mariadb_skip_name_resolve`, alpha.130), "apply again" (`apply`). The GET
+  lists every engine instance of this server with its readiness (alpha.130);
+  a PUT answers `changed: false` when nothing changed.
 
-## Known limits (alpha.129)
+## alpha.130
+
+Owner decisions of 8 Nov 2026 and the alpha.129 lab findings. What is
+unit-tested here is listed under "Evidence"; the lab steps are in the
+release's acceptance notes.
+
+### Host name lookup (MariaDB; was the alpha.129 known limit)
+
+MariaDB looks client host names up by default (`skip_name_resolve` off) and
+then names the host, not its address, in a refused sign-in
+(`'user'@'_gateway'` in the lab). Fail2ban could only resolve such a name
+again by DNS when it bans, and whoever controls that name's DNS can point it
+elsewhere by then. Two changes:
+
+- The failregex takes `<ADDR>` (an IP address only), not `<HOST>`: a line
+  naming a host bans nobody, never someone else. The alpha.129 filter is
+  recognised as CelikPanel's earlier version and replaced.
+- MariaDB copies are made only while the running MariaDB has
+  `skip_name_resolve` on, in addition to TLS and a running jail. Until then
+  the rules wait (`NAME_RESOLVE`), and the administrator is offered one
+  action: "Turn off host name lookup". With that agreement (stored as the
+  panel setting `database_remote_mariadb_skip_name_resolve`, sent with every
+  apply) CelikPanel adds `skip-name-resolve` to its own option file — the
+  file that exists only while rules exist — records it
+  (`skip_name_resolve` in the Agent's record) and asks for the MariaDB
+  restart that the first rule needs anyway. The last rule removes the file
+  and with it the setting (it ends at the next restart).
+
+Why an agreement and not automatic: with the lookup off MariaDB matches every
+connection by address. Programs that connect through `localhost` (the
+socket) are unaffected, but a program on the server that connects through
+`127.0.0.1` with a `user@localhost` account, or any account written with a
+host name, stops matching. CelikPanel cannot see how every local program
+connects, so the administrator decides, with that warning. CelikPanel refuses
+on its own when an account names a host (`NAME_ACCOUNTS`, listed), and never
+writes over an owner's own `skip-name-resolve` setting in MariaDB's option
+files (`OWNER_NAME_RESOLVE`, with the file).
+
+### Fail2ban for PostgreSQL (extra layer)
+
+`auth_delay` stays the required gate. When Fail2ban is installed and runs,
+CelikPanel also bans addresses that keep guessing. PostgreSQL's refused
+sign-in carries no client address, so CelikPanel appends
+`celikpanel-client=%h ` to `log_line_prefix` with `ALTER SYSTEM`
+(`postgresql.auto.conf`, a reload, no restart), recorded as `log_prefix` and
+reset with `ALTER SYSTEM RESET` with the cluster's last rule or when Fail2ban
+is removed. It does so only over the two package defaults (`%m [%p] `,
+PostgreSQL's; `%m [%p] %q%u@%d `, Debian's and Ubuntu's); any other prefix,
+or one set with `ALTER SYSTEM` outside CelikPanel, is the owner's logging and
+is left alone (the layer is then not used and the screen says why). It is
+also not used while `log_hostname` is on, `logging_collector` writes files of
+its own, or `lc_messages` is not English. The jail
+(`celikpanel-postgresql-auth-<port>`, file
+`/etc/fail2ban/jail.d/celikpanel-database-remote-postgresql-<port>.conf`,
+filter `celikpanel-postgresql-auth`) reads the pg_ctlcluster log on
+Debian/Ubuntu and the unit's journal elsewhere. The failregex is anchored on
+the whole known line and takes only panel names and an address, so a line
+forged into the log file by a crafted name cannot ban another address: the
+names must match a pg_hba line to reach a password check at all, and a
+startup name is cut at 63 bytes, too short for a whole forged line.
+
+No leftovers: the jail file, the filter (when no CelikPanel PostgreSQL jail
+remains) and the prefix go with the last rule or with Fail2ban. The same now
+holds for the MariaDB jail and filter when Fail2ban is removed (its folders
+stay behind with CelikPanel's files otherwise).
+
+### Timed access (migration 075)
+
+`database_remote_rules.expires_at` (UTC text, NULL = no end; additive; every
+alpha.129 rule keeps no end, so nothing that is open closes by the update).
+A customer chooses 1 day, 7 days or no end when adding an address. One day is
+the default: an address listed for one session (often a home or mobile
+address that changes hands) closes by itself if it is forgotten, and
+extending is one click. A rule past its end is never applied; the sync loop
+removes it within a minute, exactly like a manual removal (the filter, the
+pg_hba line, the MariaDB account), with an audit entry
+`database.remote.expire:<database>`; a rule given a new end meanwhile keeps
+it. The list shows "until <date and time>" in the viewer's language and time
+zone and reads itself again while something can change by itself. Expiry is
+carried out by the panel: while the panel is stopped an ended address stays
+allowed until it runs again (the engines still check the password).
+
+### Closing while the server has not finished starting (D5)
+
+The panel sends a host-changing request only once it knows the host's
+identity, which the Agent reads only after systemd finished starting; a unit
+hanging at start-up therefore refused every apply. Now, when the full apply
+is refused, the panel sends `Agent.NarrowDatabaseRemoteFilterV1` in its own
+`database_remote` job (step `narrow`): the Agent takes every address that is
+no longer wanted out of the address filter (file, record, `nft -f`), never
+adds an address or a port, never removes a port's drop rule, and runs no
+engine client and no package or service manager — so the panel's policy
+allows it without the host identity (effect "access narrowing", capability
+`firewall`). The panel's last answer loses those rules, so the panel firewall
+opens nothing for them. The screen says that the addresses are already
+blocked and the rest (pg_hba line, MariaDB account) follows when the server
+is ready; a failed apply is tried again every minute instead of every fifth.
+
+### The panel firewall after `nft flush ruleset` (D6)
+
+A guard in the running Agent checks every 15 seconds. When the panel
+firewall's table is gone and a saved policy exists ("Save for reboot"), it
+puts the table back from that policy by the same rules as the boot restore —
+the database filter first, and the database ports left out of the restored
+table until that filter is proven loaded. The panel's minute probe sees the
+restore count change and syncs its live policy onto the table. The guard
+never acts against the owner: when the boot restore unit
+(`celikpanel-firewall-restore.service`) is disabled or masked, or
+`nftables.service` is masked, it changes nothing and the administrator's
+section shows why. A firewall that was only turned on live (no saved policy)
+is not restored by the guard; that is the administrator's step, as before.
+
+### The administrator's section on the Databases page
+
+The server switch was only inside a domain's database card. The Databases
+page now has a section of its own with the switch and, per engine instance,
+what is still missing before a listed address could work (Fail2ban, host
+name lookup, `auth_delay`, an owner's pg_hba line, `allow_alter_system`,
+nftables) with the step next to it. The switch is the stored offer
+`admin_offered_permissions` that the Offered tab of plans and rights writes
+too; `saveOfferedOptInPermissions` asks the sync loop for an apply whenever
+the `database_remote` offer changes, from either screen.
+
+### Resilience contract (D-025)
+
+Affected: native service ownership (owner settings detected, never
+overwritten: MariaDB's lookup, PostgreSQL's prefix, the firewall's boot
+restore), recovery (D5 closing without host identity; D6 restoring from the
+saved policy only), persisted evidence (Agent record gains
+`skip_name_resolve`, `log_prefix`, `pg_jail`; record version unchanged, so an
+older Agent reading a record with them fails closed). Schema 74 → 75,
+additive; going back is the pre-update snapshot. None of this is proven on a
+real system yet; the lab steps are listed in the report of this work.
+
+## Known limits (alpha.130)
 
 - Restarting the engine after the first rule is the administrator's step in
-  Components (no automatic restart).
-- Fail2ban for PostgreSQL is not used (its default log lines carry no client
-  address); `auth_delay` is used instead. CelikPanel sets it only when
-  `shared_preload_libraries` is empty; an owner value is never rewritten — the
-  administrator is told the exact value to set.
+  Components (no automatic restart); turning MariaDB's host name lookup off
+  takes effect at that restart too.
+- Turning MariaDB's host name lookup off needs the administrator's agreement
+  (it changes how local programs connecting through 127.0.0.1 match);
+  until then MariaDB rules wait.
+- The PostgreSQL Fail2ban layer works only over a package-default
+  `log_line_prefix`, without `logging_collector`, with English messages.
+- An owner's own `shared_preload_libraries` in PostgreSQL is never rewritten;
+  the administrator is told the exact value to set for `auth_delay`.
 - The engines' units do not depend on the filter unit; the filter loads
   before the network at boot and the guard reloads it within 30 seconds.
 - MariaDB IPv6 ranges are refused (single IPv6 addresses only).
 - Withdrawing the plan permission or the administrator's offer closes access
   at the next apply, which follows the change after coalescing (up to about
   35 seconds), not within the request itself.
+- Expiry is carried out by the panel (within a minute); while the panel is
+  stopped an ended address stays allowed.
+- While the server has not finished starting, a removal closes the address at
+  the filter only; the pg_hba line or MariaDB account goes when the server is
+  ready.
+- After `nft flush ruleset`, a panel firewall that was turned on only live
+  (no "Save for reboot") is not put back by the guard.
 - The copy's grant comparison covers database-wide grants only: table,
   column or role grants an administrator adds to a remote copy by hand are
   not removed by it (only the engine's root can add them).
 - MariaDB must log to the journal (no `log_error` file), otherwise rules
   wait.
-- MariaDB writes the client's host name instead of its address when it can
-  resolve the address (`skip_name_resolve` is off by default); the jail then
-  bans nobody for that client (alpha.129 lab: `'_gateway'`). Wrong passwords
-  from such a client are not slowed down on MariaDB; PostgreSQL is not
-  affected. To be fixed in alpha.130.
-- While systemd is not ready (a unit hangs at start-up) the Agent refuses
-  every apply, so a withdrawn permission keeps access open until start-up
-  finishes, while the rule already shows `not_in_plan` (alpha.129 lab, D5).
-- `nft flush ruleset` typed by hand also removes the panel firewall table;
-  the database filter is restored by the guard within about 15 seconds
-  (the engines still refuse unlisted addresses at sign-in meanwhile), the
-  panel firewall only at the next boot (alpha.129 lab, D6).
 
 ## Evidence
+
+alpha.130 unit tests (internal/dbremote a130_test.go, cmd/agent
+database_remote_a130_test.go, cmd/panel database_remote_a130_test.go,
+internal/db database_remote_migration_test.go): the MariaDB failregex against
+refused sign-ins naming a host (the lab's `'_gateway'`, an ISP name,
+`localhost`) — no ban — and naming an IPv4 or IPv6 address — that address;
+the PostgreSQL failregex against both package-default prefixes from a file and
+the journal, refusing other messages, host names, a forged marker in a
+crafted name and an owner's prefix; the prefix marker only over package
+defaults; MariaDB rules waiting while names are looked up, the agreement
+writing `skip-name-resolve` into CelikPanel's file (and removing it with the
+last rule), host-name accounts and an owner's setting leaving the lookup on;
+Fail2ban files removed when Fail2ban is gone; the PostgreSQL layer added and
+removed with nothing left; narrowing that never adds an address or a port and
+runs no service manager; the firewall guard restoring without unproven
+database ports and leaving a disabled boot restore or masked nftables alone;
+durations, the one-day default, expiry removal with its audit entry, a new
+end, closing at the filter when the apply is refused, the offer kick from
+either screen, the administrator's view and the agreement; migration 75.
+
 
 Unit tests: address validation, pg_hba block rendering and edit detection,
 MariaDB account/grant rendering and grant parsing, nft file rendering, option

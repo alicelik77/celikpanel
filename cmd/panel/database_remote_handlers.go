@@ -18,9 +18,10 @@ import (
 //
 //	GET    /api/v1/database-remote/databases/{id}        rules, access, engine state, client settings
 //	POST   /api/v1/database-remote/databases/{id}/rules  {user_id, address}
+//	PUT    /api/v1/database-remote/rules/{id}            {duration} (alpha.130: a new end)
 //	DELETE /api/v1/database-remote/rules/{id}
 //	GET    /api/v1/database-remote/server                administrator: switch, engines
-//	PUT    /api/v1/database-remote/server                administrator: {offered} or {apply: true}
+//	PUT    /api/v1/database-remote/server                administrator: {offered}, {mariadb_skip_name_resolve} or {apply: true}
 //
 // Every route is ownership-checked (a database of another account answers
 // "not found"); a team member never reaches them (middleware). Reading never
@@ -40,6 +41,7 @@ const (
 	errCodeDatabaseRemoteUser     = "DATABASE_REMOTE_USER"
 	errCodeDatabaseRemoteNotFound = "DATABASE_REMOTE_NOT_FOUND"
 	errCodeDatabaseRemoteAgent    = "DATABASE_REMOTE_AGENT"
+	errCodeDatabaseRemoteDuration = "DATABASE_REMOTE_DURATION"
 )
 
 type databaseRemoteRoute struct {
@@ -66,7 +68,7 @@ func matchDatabaseRemoteRoute(r *http.Request) (databaseRemoteRoute, bool) {
 		}
 	case len(segments) == 2 && segments[0] == "rules":
 		if id, ok := strictPositiveID(segments[1]); ok {
-			return databaseRemoteRoute{kind: "rule", id: id, methods: []string{http.MethodDelete}}, true
+			return databaseRemoteRoute{kind: "rule", id: id, methods: []string{http.MethodPut, http.MethodDelete}}, true
 		}
 	}
 	return databaseRemoteRoute{}, false
@@ -96,6 +98,10 @@ func (p *Panel) handleDatabaseRemote(w http.ResponseWriter, r *http.Request) {
 	case "rules":
 		p.handleDatabaseRemoteAdd(w, r, route.id)
 	case "rule":
+		if r.Method == http.MethodPut {
+			p.handleDatabaseRemoteExtend(w, r, route.id)
+			return
+		}
 		p.handleDatabaseRemoteRemove(w, r, route.id)
 	}
 }
@@ -109,6 +115,8 @@ type databaseRemoteRuleView struct {
 	Status    string                           `json:"status"`
 	Problem   *transport.DatabaseRemoteProblem `json:"problem,omitempty"`
 	CreatedAt string                           `json:"created_at"`
+	// ExpiresAt (alpha.130): the end, RFC 3339 UTC; "" = no end.
+	ExpiresAt string `json:"expires_at"`
 }
 
 // databaseRemoteEngineView is the engine instance as the Agent reads it now.
@@ -125,6 +133,18 @@ type databaseRemoteEngineView struct {
 	ReadError    string                            `json:"read_error,omitempty"`
 	LastError    string                            `json:"last_error,omitempty"`
 	AppliedAt    string                            `json:"applied_at,omitempty"`
+	// ClosePending (alpha.130, D5): the server has not taken the last change
+	// yet, but the removed addresses are already shut out at the address
+	// filter since ClosedAt; the engine's own rules follow when it can.
+	ClosePending bool   `json:"close_pending"`
+	ClosedAt     string `json:"closed_at,omitempty"`
+	// Fail2ban and NameResolve as the Agent reads them (alpha.130).
+	Fail2ban       string `json:"fail2ban,omitempty"`
+	Fail2banDetail string `json:"fail2ban_detail,omitempty"`
+	NameResolve    string `json:"name_resolve,omitempty"`
+	// Readiness: what is still missing before a first rule could be in
+	// force (status only).
+	Readiness []transport.DatabaseRemoteProblem `json:"readiness"`
 }
 
 type databaseRemoteUserView struct {
@@ -135,8 +155,33 @@ type databaseRemoteUserView struct {
 // engineView reads the instance (read only) and adds the last apply's
 // instance problems.
 func (p *Panel) databaseRemoteEngineView(r *http.Request, engine string, port int) databaseRemoteEngineView {
-	view := databaseRemoteEngineView{Problems: []transport.DatabaseRemoteProblem{}}
 	status, err := databaseRemoteStatusFromAgent(p, r.Context(), transport.DatabaseRemoteStatusRequest{Targets: []transport.DatabaseRemoteTarget{{Engine: engine, Port: port}}})
+	return databaseRemoteEngineViewFrom(status, err, engine, port)
+}
+
+// databaseRemoteCustomerEngineView is the engine view for a customer or a
+// reseller (alpha.130): the codes and states stay (the screen words them as
+// "ask your provider"), the server's own details do not — a detail can name
+// another customer's MariaDB account (NAME_ACCOUNTS), an owner's file or a
+// pg_hba line, and the readiness list is the administrator's.
+func databaseRemoteCustomerEngineView(view databaseRemoteEngineView) databaseRemoteEngineView {
+	problems := make([]transport.DatabaseRemoteProblem, 0, len(view.Problems))
+	for _, p := range view.Problems {
+		problems = append(problems, transport.DatabaseRemoteProblem{Code: p.Code})
+	}
+	view.Problems = problems
+	view.Readiness = []transport.DatabaseRemoteProblem{}
+	view.Fail2banDetail, view.LastError = "", ""
+	if view.ReadError != "" {
+		view.ReadError = "the server could not be asked"
+	}
+	return view
+}
+
+// databaseRemoteEngineViewFrom builds one instance's view from a status
+// answer (which may describe several) and the last apply.
+func databaseRemoteEngineViewFrom(status transport.DatabaseRemoteResponse, err error, engine string, port int) databaseRemoteEngineView {
+	view := databaseRemoteEngineView{Problems: []transport.DatabaseRemoteProblem{}, Readiness: []transport.DatabaseRemoteProblem{}}
 	switch {
 	case err != nil:
 		view.ReadError = "the server could not be asked"
@@ -154,6 +199,8 @@ func (p *Panel) databaseRemoteEngineView(r *http.Request, engine string, port in
 				view.Known = true
 				view.State, view.Unit, view.TLS, view.SlowDown, view.ListenRemote = t.State, t.Unit, t.TLS, t.SlowDown, t.ListenRemote
 				view.Problems = append(view.Problems, t.Problems...)
+				view.Fail2ban, view.Fail2banDetail, view.NameResolve = t.Fail2ban, t.Fail2banDetail, t.NameResolve
+				view.Readiness = append(view.Readiness, t.Readiness...)
 			}
 		}
 	}
@@ -175,6 +222,9 @@ func (p *Panel) databaseRemoteEngineView(r *http.Request, engine string, port in
 		view.AppliedAt = appliedAt.UTC().Format(time.RFC3339)
 	}
 	view.LastError = lastError
+	if pending, at := databaseRemoteClosePending(); pending {
+		view.ClosePending, view.ClosedAt = true, at.UTC().Format(time.RFC3339)
+	}
 	return view
 }
 
@@ -239,7 +289,7 @@ func (p *Panel) handleDatabaseRemoteView(w http.ResponseWriter, r *http.Request,
 			address = dbremote.DisplayAddress(prefix)
 		}
 		rules = append(rules, databaseRemoteRuleView{ID: row.ID, UserID: row.UserID, User: row.User, Address: address,
-			Status: status, Problem: problem, CreatedAt: createdAt[row.ID]})
+			Status: status, Problem: problem, CreatedAt: createdAt[row.ID], ExpiresAt: databaseRemoteExpiresISO(row.ExpiresAt)})
 	}
 	users := []databaseRemoteUserView{}
 	list, err := p.db.GetDB().QueryContext(ctx, `
@@ -276,7 +326,11 @@ func (p *Panel) handleDatabaseRemoteView(w http.ResponseWriter, r *http.Request,
 		answer["your_address"] = dbremote.DisplayAddress(mine)
 	}
 	if offered && localDatabaseHost(d.Host) && (len(rules) > 0 || access.MayEdit) {
-		answer["engine_state"] = p.databaseRemoteEngineView(r, d.Engine, d.Port)
+		view := p.databaseRemoteEngineView(r, d.Engine, d.Port)
+		if !c.hasAccountRole(roleAdmin) || c.APIToken != nil {
+			view = databaseRemoteCustomerEngineView(view)
+		}
+		answer["engine_state"] = view
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(answer)
@@ -290,9 +344,16 @@ func (p *Panel) handleDatabaseRemoteAdd(w http.ResponseWriter, r *http.Request, 
 	var request struct {
 		UserID  int    `json:"user_id"`
 		Address string `json:"address"`
+		// Duration (alpha.130): "1d" (default), "7d" or "permanent".
+		Duration string `json:"duration"`
 	}
 	if err := decodeStrictJSON(w, r, &request); err != nil {
-		writeClientError(w, http.StatusBadRequest, "send {\"user_id\": <id>, \"address\": \"203.0.113.7\"}; nothing was changed")
+		writeClientError(w, http.StatusBadRequest, "send {\"user_id\": <id>, \"address\": \"203.0.113.7\", \"duration\": \"1d\"}; nothing was changed")
+		return
+	}
+	expiresAt, validDuration := databaseRemoteExpiresAt(request.Duration, databaseRemoteNow())
+	if !validDuration {
+		writeCodedError(w, http.StatusBadRequest, errCodeDatabaseRemoteDuration, "choose 1 day, 7 days or no end; nothing was changed", "")
 		return
 	}
 	d, err := p.databaseRemoteDatabaseFor(ctx, c, databaseID)
@@ -346,10 +407,10 @@ func (p *Panel) handleDatabaseRemoteAdd(w http.ResponseWriter, r *http.Request, 
 	// so two requests at the same moment cannot both pass a count taken
 	// before either wrote.
 	result, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO database_remote_rules (database_id, user_id, address, created_by)
-		SELECT ?, ?, ?, ?
+		INSERT INTO database_remote_rules (database_id, user_id, address, created_by, expires_at)
+		SELECT ?, ?, ?, ?, NULLIF(?, '')
 		WHERE (SELECT COUNT(DISTINCT address) FROM database_remote_rules WHERE user_id = ? AND address <> ?) < ?`,
-		d.ID, request.UserID, address, c.ID, request.UserID, address, dbremote.MaxAddressesPerUser)
+		d.ID, request.UserID, address, c.ID, expiresAt, request.UserID, address, dbremote.MaxAddressesPerUser)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			writeCodedError(w, http.StatusConflict, errCodeDatabaseRemoteExists, "this address is already listed for this user and database; nothing was changed", "")
@@ -366,7 +427,7 @@ func (p *Panel) handleDatabaseRemoteAdd(w http.ResponseWriter, r *http.Request, 
 	id64, _ := result.LastInsertId()
 	ruleID := int(id64)
 	p.auditDetailed(r, "database.remote.add:"+d.Name, "database_remote_rule", ruleID,
-		map[string]any{"database": d.Name, "user": username, "address": address})
+		map[string]any{"database": d.Name, "user": username, "address": address, "expires_at": expiresAt})
 
 	answer, _, err := p.applyDatabaseRemote(ctx, true)
 	if err != nil {
@@ -468,24 +529,46 @@ func (p *Panel) handleDatabaseRemoteServer(w http.ResponseWriter, r *http.Reques
 		reportOperationStep(ctx, "save")
 		var body struct {
 			Offered *bool `json:"offered"`
-			Apply   bool  `json:"apply"`
+			// alpha.130: the administrator's agreement that CelikPanel turns
+			// MariaDB's host name lookup off while remote rules exist.
+			SkipNameResolve *bool `json:"mariadb_skip_name_resolve"`
+			Apply           bool  `json:"apply"`
 		}
-		if err := decodeStrictJSON(w, r, &body); err != nil || (body.Offered == nil && !body.Apply) {
-			writeClientError(w, http.StatusBadRequest, "send {\"offered\": true|false} or {\"apply\": true}; nothing was changed")
+		if err := decodeStrictJSON(w, r, &body); err != nil || (body.Offered == nil && body.SkipNameResolve == nil && !body.Apply) {
+			writeClientError(w, http.StatusBadRequest, "send {\"offered\": true|false}, {\"mariadb_skip_name_resolve\": true|false} or {\"apply\": true}; nothing was changed")
 			return
 		}
+		changed := false
 		if body.Offered != nil {
 			offered, err := p.loadOfferedOptInPermissions(ctx)
 			if err != nil {
 				writeServerError(w, err)
 				return
 			}
+			changed = offered[rightDatabaseRemote] != *body.Offered
 			offered[rightDatabaseRemote] = *body.Offered
 			if err := p.saveOfferedOptInPermissions(ctx, offered); err != nil {
 				writeServerError(w, err)
 				return
 			}
-			p.auditDetailed(r, "database.remote.offer", "panel_settings", 0, map[string]any{"offered": *body.Offered})
+			if changed {
+				p.auditDetailed(r, "database.remote.offer", "panel_settings", 0, map[string]any{"offered": *body.Offered})
+			}
+		}
+		if body.SkipNameResolve != nil {
+			current, err := p.databaseRemoteMariaDBSkipNameResolve(ctx)
+			if err != nil {
+				writeServerError(w, err)
+				return
+			}
+			if current != *body.SkipNameResolve {
+				if err := p.saveDatabaseRemoteMariaDBSkipNameResolve(ctx, *body.SkipNameResolve); err != nil {
+					writeServerError(w, err)
+					return
+				}
+				changed = true
+				p.auditDetailed(r, "database.remote.mariadb_name_lookup", "panel_settings", 0, map[string]any{"skip_name_resolve": *body.SkipNameResolve})
+			}
 		}
 		if _, _, err := p.applyDatabaseRemote(ctx, true); err != nil {
 			p.kickDatabaseRemoteSync()
@@ -493,8 +576,25 @@ func (p *Panel) handleDatabaseRemoteServer(w http.ResponseWriter, r *http.Reques
 				"the setting was saved but the server did not confirm the change; CelikPanel tries again within minutes", "")
 			return
 		}
+		// A click that changes nothing says so (the switch was already in
+		// that position).
+		p.writeDatabaseRemoteServerView(w, r, &changed)
+		return
 	}
+	p.writeDatabaseRemoteServerView(w, r, nil)
+}
+
+// writeDatabaseRemoteServerView answers the administrator's view: the switch,
+// the agreement on MariaDB's host name lookup, and every engine instance of
+// this server with its readiness (one read of the Agent for all of them).
+func (p *Panel) writeDatabaseRemoteServerView(w http.ResponseWriter, r *http.Request, changed *bool) {
+	ctx := r.Context()
 	offered, err := p.databaseRemoteOffered(ctx)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	skipNameResolve, err := p.databaseRemoteMariaDBSkipNameResolve(ctx)
 	if err != nil {
 		writeServerError(w, err)
 		return
@@ -509,11 +609,106 @@ func (p *Panel) handleDatabaseRemoteServer(w http.ResponseWriter, r *http.Reques
 		writeServerError(w, err)
 		return
 	}
-	engines := []map[string]any{}
+	instances, err := p.databaseRemoteLocalInstances(ctx)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	inForce := map[string]int{}
 	for _, t := range targets {
-		engines = append(engines, map[string]any{"engine": t.Engine, "port": t.Port, "rules": len(t.Rules),
-			"state": p.databaseRemoteEngineView(r, t.Engine, t.Port)})
+		inForce[dbremote.TargetKey(t.Engine, t.Port)] = len(t.Rules)
+		found := false
+		for _, i := range instances {
+			found = found || (i.Engine == t.Engine && i.Port == t.Port)
+		}
+		if !found {
+			instances = append(instances, transport.DatabaseRemoteTarget{Engine: t.Engine, Port: t.Port})
+		}
+	}
+	engines := []map[string]any{}
+	if len(instances) > 0 {
+		status, statusErr := databaseRemoteStatusFromAgent(p, ctx, transport.DatabaseRemoteStatusRequest{Targets: instances})
+		for _, t := range instances {
+			engines = append(engines, map[string]any{"engine": t.Engine, "port": t.Port, "rules": inForce[dbremote.TargetKey(t.Engine, t.Port)],
+				"state": databaseRemoteEngineViewFrom(status, statusErr, t.Engine, t.Port)})
+		}
+	}
+	m := databaseRemoteMemory
+	m.mu.Lock()
+	firewallNote := m.firewallNote
+	m.mu.Unlock()
+	answer := map[string]any{"offered": offered, "rules": rules, "engines": engines,
+		"mariadb_skip_name_resolve": skipNameResolve, "panel_firewall_note": firewallNote}
+	if changed != nil {
+		answer["changed"] = *changed
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"offered": offered, "rules": rules, "engines": engines})
+	_ = json.NewEncoder(w).Encode(answer)
+}
+
+// handleDatabaseRemoteExtend gives a rule a new end (alpha.130): the
+// customer chooses 1 day, 7 days or no end again, counted from now. It
+// needs the same right as adding an address; it changes nothing on the
+// server unless the rule had already ended (it is then applied again).
+func (p *Panel) handleDatabaseRemoteExtend(w http.ResponseWriter, r *http.Request, ruleID int) {
+	ctx := r.Context()
+	reportOperationPlan(ctx, "check", "save")
+	reportOperationStep(ctx, "check")
+	c := currentCaller(r)
+	var request struct {
+		Duration string `json:"duration"`
+	}
+	if err := decodeStrictJSON(w, r, &request); err != nil {
+		writeClientError(w, http.StatusBadRequest, "send {\"duration\": \"1d\"|\"7d\"|\"permanent\"}; nothing was changed")
+		return
+	}
+	expiresAt, ok := databaseRemoteExpiresAt(request.Duration, databaseRemoteNow())
+	if !ok || strings.TrimSpace(request.Duration) == "" {
+		writeCodedError(w, http.StatusBadRequest, errCodeDatabaseRemoteDuration, "choose 1 day, 7 days or no end; nothing was changed", "")
+		return
+	}
+	var databaseID int
+	var address, username, previous string
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT r.database_id, r.address, u.username, COALESCE(r.expires_at, '') FROM database_remote_rules r JOIN database_users u ON u.id = r.user_id
+		WHERE r.id = ?`, ruleID).Scan(&databaseID, &address, &username, &previous)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeCodedError(w, http.StatusNotFound, errCodeDatabaseRemoteNotFound, "rule not found", "")
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	d, err := p.databaseRemoteDatabaseFor(ctx, c, databaseID)
+	if errors.Is(err, errDatabaseRemoteNotFound) {
+		writeCodedError(w, http.StatusNotFound, errCodeDatabaseRemoteNotFound, "rule not found", "")
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	access, err := p.databaseRemoteAccessFor(ctx, c, d)
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if !access.MayEdit {
+		writeCodedErrorDetails(w, http.StatusForbidden, errCodeDatabaseRemoteRefused, databaseRemoteRefusalSentence(access), "", []string{access.Reason, access.Grantor})
+		return
+	}
+	reportOperationStep(ctx, "save")
+	if _, err := p.db.GetDB().ExecContext(ctx, `UPDATE database_remote_rules SET expires_at = NULLIF(?, '') WHERE id = ?`, expiresAt, ruleID); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	p.auditDetailed(r, "database.remote.extend:"+d.Name, "database_remote_rule", ruleID,
+		map[string]any{"database": d.Name, "user": username, "address": address, "expires_at": expiresAt, "previous_expires_at": previous})
+	if databaseRemoteExpired(previous, databaseRemoteNow()) {
+		// It had ended and was left out: it is applied again.
+		p.kickDatabaseRemoteSync()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "expires_at": databaseRemoteExpiresISO(expiresAt)})
 }

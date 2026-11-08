@@ -331,10 +331,18 @@ func TestMariaDBJail(t *testing.T) {
 	}
 }
 
+// fail2banAddr is Fail2ban's <ADDR>: an IPv4 or IPv6 address, never a name
+// (Fail2ban 0.10+: <ADDR> is (?:<IP4>|<IP6>)).
+const fail2banAddr = `(?P<host>(?:(?:\d{1,3}\.){3}\d{1,3})|(?:[0-9A-Fa-f]{0,4}:[0-9A-Fa-f:.]*[0-9A-Fa-f]))`
+
 // failRegexForGo reads the failregex the way Fail2ban's Python re does:
-// \Z (end of the entry) is Go's \z; <HOST> becomes a plain capture.
+// \Z (end of the entry) is Go's \z; <ADDR> becomes an address capture.
 func failRegexForGo(multiline bool) *regexp.Regexp {
-	text := strings.Replace(strings.Replace(MariaDBFailRegex, `\Z`, `\z`, 1), "<HOST>", `(?P<host>[^'\s]+)`, 1)
+	return failRegexOf(MariaDBFailRegex, multiline)
+}
+
+func failRegexOf(failRegex string, multiline bool) *regexp.Regexp {
+	text := strings.Replace(strings.Replace(failRegex, `\Z`, `\z`, 1), "<ADDR>", fail2banAddr, 1)
 	if multiline {
 		text = "(?m)" + text
 	}

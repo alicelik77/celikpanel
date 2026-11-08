@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Globe, Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
@@ -32,7 +32,7 @@ export interface DatabaseRemoteTarget {
 }
 
 interface Problem { code: string; detail: string }
-interface RuleView { id: number; user: string; address: string; status: string; problem: Problem | null }
+interface RuleView { id: number; user: string; address: string; status: string; problem: Problem | null; expiresAt: string }
 interface RemoteView {
     engine: string;
     access: { mayEdit: boolean; reason: string; grantor: string };
@@ -41,7 +41,7 @@ interface RemoteView {
     client: { host: string; port: number; sslMode: string };
     maxAddresses: number;
     yourAddress: string;
-    engineState: { known: boolean; state: string; problems: Problem[]; readError: string } | null;
+    engineState: { known: boolean; state: string; problems: Problem[]; readError: string; closePending: boolean } | null;
 }
 
 const str = (x: unknown) => (typeof x === 'string' ? x : '');
@@ -63,7 +63,7 @@ export function decodeRemoteView(raw: unknown): RemoteView {
         access: { mayEdit: access.may_edit === true, reason: str(access.reason), grantor: str(access.grantor) },
         rules: v.rules.map((r) => {
             const rule = obj(r);
-            return { id: num(rule.id), user: str(rule.user), address: str(rule.address), status: str(rule.status), problem: problemOf(rule.problem) };
+            return { id: num(rule.id), user: str(rule.user), address: str(rule.address), status: str(rule.status), problem: problemOf(rule.problem), expiresAt: str(rule.expires_at) };
         }),
         users: v.users.map((u) => ({ id: num(obj(u).id), username: str(obj(u).username) })),
         client: { host: str(client.host), port: num(client.port), sslMode: str(client.ssl_mode) || 'require' },
@@ -74,18 +74,36 @@ export function decodeRemoteView(raw: unknown): RemoteView {
             state: str(state.state),
             problems: Array.isArray(state.problems) ? state.problems.flatMap((p) => problemOf(p) ?? []) : [],
             readError: str(state.read_error),
+            closePending: state.close_pending === true,
         },
     };
 }
 
 /** The I18nProvider's words with this part's own copy in front (route-scoped). */
-function useDbRemoteWords() {
+export function useDbRemoteWords() {
     const i18n = useI18n();
     return (key: TranslationKey, values?: Record<string, string | number>) => dbRemoteTranslation(i18n.locale, key, values) ?? i18n.t(key, values);
 }
 
+/** How long an address stays allowed (alpha.130). One day is the default: a
+ *  forgotten address closes by itself, and extending is one click. */
+export const DURATIONS = ['1d', '7d', 'permanent'] as const;
+export type Duration = (typeof DURATIONS)[number];
+
+/** A rule's end in the interface language and the viewer's time zone. */
+export function shownUntil(iso: string, locale: string): string {
+    const at = new Date(iso);
+    if (!iso || Number.isNaN(at.getTime())) return '';
+    return at.toLocaleString(locale === 'tr' ? 'tr-TR' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/** How often an open part reads itself again while something can change by
+ *  itself on the server (an end, a waiting rule, a pending close). */
+const REFRESH_MS = 30_000;
+
 export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRemoteTarget; readOnly?: boolean }) {
     const t = useDbRemoteWords();
+    const { locale } = useI18n();
     const { role } = useAuth();
     const navigate = useNavigate();
     const admin = role === 'admin';
@@ -95,6 +113,18 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
     const shown = view.remote.state === 'known' ? view.remote.value : null;
     const [userId, setUserId] = useState(0);
     const [address, setAddress] = useState('');
+    const [duration, setDuration] = useState<Duration>('1d');
+
+    // The list reads itself again while it is open and something on the
+    // server changes by itself: an end passing, a rule being applied, a
+    // closing that waits for the server (no F5).
+    const live = !!shown && (shown.rules.some((r) => r.expiresAt !== '' || r.status === 'waiting') || shown.engineState?.closePending === true);
+    const { retry } = view;
+    useEffect(() => {
+        if (!open || !live) return undefined;
+        const timer = window.setInterval(() => void retry(), REFRESH_MS);
+        return () => window.clearInterval(timer);
+    }, [open, live, retry]);
     const [busy, setBusy] = useState(false);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const engineName = db.type === 'postgresql' ? 'PostgreSQL' : 'MariaDB';
@@ -141,7 +171,7 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
         const typed = value.trim();
         if (!typed || !chosen || busy) return;
         await run(t('dbr.addTitle', { address: typed }), (report) => sendWithSteps(report, steps(['check!', 'save', 'apply', 'firewall']), t, `dbRemoteAdd.${db.id}`,
-            (headers) => fetch(`${url}/rules`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: chosen, address: typed }) })),
+            (headers) => fetch(`${url}/rules`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: chosen, address: typed, duration }) })),
         'dbr.addFailed', (data) => {
             setAddress('');
             showToast('success', t(data.status === 'active' ? 'dbr.added' : 'dbr.addedWaiting', { address: typed, database: db.name, engine: engineName }));
@@ -177,7 +207,19 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
         });
     };
 
-    const serverChange = async (body: Record<string, boolean>, title: TranslationKey, confirm?: TranslationKey) => {
+    // A new end for an address that is already listed (alpha.130): nothing
+    // is added again; the server is asked only when the address had ended.
+    const extend = async (rule: RuleView, chosen: Duration) => {
+        if (busy) return;
+        await run(t('dbr.extendTitle', { address: rule.address }), (report) => sendWithSteps(report, steps(['check!', 'save']), t, `dbRemoteExtend.${rule.id}`,
+            (headers) => fetch(`/api/v1/database-remote/rules/${rule.id}`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ duration: chosen }) })),
+        'dbr.extendFailed', (data) => {
+            const until = shownUntil(str(data.expires_at), locale);
+            showToast('success', until ? t('dbr.extended', { address: rule.address, until }) : t('dbr.extendedPermanent', { address: rule.address }));
+        });
+    };
+
+    const serverChange = async (body: Record<string, boolean>, title: TranslationKey, confirm?: TranslationKey, confirmLabel?: TranslationKey) => {
         const change = async (report: OperationReport) => {
             setBusy(true);
             setRefusal(null);
@@ -196,7 +238,7 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                 void view.retry();
             }
         };
-        if (confirm) await confirmAction({ message: t(confirm), confirmLabel: t('dbr.turnOn'), progressTitle: t(title), action: change });
+        if (confirm) await confirmAction({ message: t(confirm), confirmLabel: t(confirmLabel ?? 'dbr.turnOn'), progressTitle: t(title), action: change });
         else await followOperation({ progressTitle: t(title), action: change });
     };
 
@@ -225,6 +267,11 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
         const text = t(key);
         return text === key ? t('dbr.status.other') : text;
     };
+    const untilText = (rule: RuleView) => {
+        const until = shownUntil(rule.expiresAt, locale);
+        return until ? t('dbr.until', { until }) : t('dbr.noEnd');
+    };
+    const durationLabel = (d: Duration) => t(`dbr.duration.${d}` as TranslationKey);
     const canAdd = !readOnly && !!shown?.access.mayEdit;
 
     return (
@@ -259,6 +306,12 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                 {engineProblems.map((p) => <p key={p.code}>{problemText(p)}</p>)}
                                 {admin && (
                                     <div className="flex flex-wrap gap-2">
+                                        {engineProblems.some((p) => p.code === 'NAME_RESOLVE') && (
+                                            <Button variant="primary" disabled={busy}
+                                                onClick={() => void serverChange({ mariadb_skip_name_resolve: true }, 'dbr.nameLookupTitle', 'dbr.nameLookupConfirm', 'dbr.nameLookupOff')}>
+                                                {t('dbr.nameLookupOff')}
+                                            </Button>
+                                        )}
                                         {engineProblems.some((p) => needsComponents(p.code)) && (
                                             <Button onClick={() => navigate('/components')}>{t('dbr.components')}</Button>
                                         )}
@@ -266,6 +319,11 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                     </div>
                                 )}
                             </div>
+                        )}
+                        {shown.engineState?.closePending && (
+                            <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-fg" role="status">
+                                {t(admin ? 'dbr.closePending.admin' : 'dbr.closePending.other', { engine: engineName })}
+                            </p>
                         )}
                         {refusal && <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-fg" role="alert">{refusal.message}</p>}
                         {!blocker && <p className="text-fg-muted">{t('dbr.intro')}</p>}
@@ -279,7 +337,16 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                             <span className="font-mono text-fg">{rule.address}</span>
                                             <span className="ml-2 text-fg-muted">{t('dbr.user')}: <span className="font-mono">{rule.user}</span></span>
                                             <span className={`block text-xs ${rule.status === 'active' ? 'text-success' : 'text-fg-muted'}`}>{statusText(rule)}</span>
+                                            <span className="block text-xs text-fg-muted">{untilText(rule)}</span>
                                         </span>
+                                        {canAdd && (
+                                            <select aria-label={t('dbr.extendLabel', { address: rule.address })} value="" disabled={busy}
+                                                onChange={(e) => { const chosen = e.target.value as Duration; if (DURATIONS.includes(chosen)) void extend(rule, chosen); }}
+                                                className={`${inputClass} w-auto shrink-0 text-xs`}>
+                                                <option value="">{t('dbr.extend')}</option>
+                                                {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
+                                            </select>
+                                        )}
                                         {!readOnly && (
                                             <button type="button" disabled={busy} onClick={() => void remove(rule)}
                                                 className="rounded p-2 text-danger hover:bg-danger/20 disabled:opacity-40"
@@ -304,9 +371,12 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                     <input type="text" inputMode="text" autoComplete="off" spellCheck={false} aria-label={t('dbr.address')}
                                         value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('dbr.addressPlaceholder')}
                                         className={`${inputClass} w-auto min-w-[12rem] flex-1 font-mono`} />
+                                    <select aria-label={t('dbr.durationLabel')} value={duration} onChange={(e) => setDuration(e.target.value as Duration)} className={`${inputClass} w-auto`}>
+                                        {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
+                                    </select>
                                     <Button type="submit" variant="primary" icon={Plus} disabled={busy || !address.trim()}>{t('dbr.add')}</Button>
                                 </div>
-                                <p className="text-xs text-fg-muted">{t('dbr.addressHint', { n: shown.maxAddresses })}</p>
+                                <p className="text-xs text-fg-muted">{t('dbr.addressHint', { n: shown.maxAddresses })} {t('dbr.durationHint')}</p>
                                 {shown.yourAddress && !shown.rules.some((r) => r.address === shown.yourAddress) && (
                                     <button type="button" disabled={busy} className="text-xs font-semibold text-primary underline" onClick={() => void add(shown.yourAddress)}>
                                         {t('dbr.useMine', { address: shown.yourAddress })}

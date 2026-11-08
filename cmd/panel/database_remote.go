@@ -48,9 +48,36 @@ type databaseRemoteState struct {
 	appliedAt time.Time
 	lastError string
 	kick      chan struct{}
+	// closePending (alpha.130, D5): the full apply did not run, but the
+	// address filter was narrowed to the wanted addresses at closedAt; the
+	// engines' own rules follow at the next full apply.
+	closePending bool
+	closedAt     time.Time
+	// callFailed: the last full apply did not reach the Agent or was
+	// refused before it ran (D5: tried again every minute).
+	callFailed bool
+	// narrowDigest: the wanted set the filter was last narrowed to; the
+	// same set is not sent again while the full apply keeps failing.
+	narrowDigest string
+	// firewallRestores is the Agent's count of panel firewall restores
+	// after a flush (D6), firewallNote why it was not restored.
+	firewallRestores      int
+	firewallRestoresKnown bool
+	firewallNote          string
 }
 
 var databaseRemoteMemory = &databaseRemoteState{kick: make(chan struct{}, 1)}
+
+// databaseRemoteNarrowThroughAgent closes at the address filter (D5), in its
+// own durable job (swapped by tests).
+var databaseRemoteNarrowThroughAgent = func(p *Panel, ctx context.Context, req transport.DatabaseRemoteNarrowRequest) (transport.DatabaseRemoteResponse, error) {
+	var response transport.DatabaseRemoteResponse
+	err := p.withStandaloneAgentMutation(ctx, "database_remote", "database-remote", "", func(callCtx context.Context, binding agentMutationBinding) error {
+		req.ServiceMutationBinding = binding
+		return p.callAgentContext(callCtx, "Agent.NarrowDatabaseRemoteFilterV1", &req, &response)
+	})
+	return response, err
+}
 
 // databaseRemoteApplyThroughAgent sends the rule set in its own durable job
 // (swapped by tests).
@@ -95,12 +122,15 @@ type databaseRemoteRow struct {
 	SubscriptionID int
 	Status         string
 	Granted        bool
+	// ExpiresAt (alpha.130): UTC "YYYY-MM-DD HH:MM:SS", "" = no end.
+	ExpiresAt string
 }
 
 const databaseRemoteRowsSQL = `
 	SELECT r.id, d.id, d.name, u.id, u.username, r.address, dst.name, ds.port, COALESCE(ds.host, ''),
 	       d.subscription_id, COALESCE(s.status, ''),
-	       EXISTS (SELECT 1 FROM database_user_grants g WHERE g.database_id = d.id AND g.user_id = u.id)
+	       EXISTS (SELECT 1 FROM database_user_grants g WHERE g.database_id = d.id AND g.user_id = u.id),
+	       COALESCE(r.expires_at, '')
 	FROM database_remote_rules r
 	JOIN databases_v2 d ON d.id = r.database_id
 	JOIN database_users u ON u.id = r.user_id
@@ -119,7 +149,7 @@ func (p *Panel) databaseRemoteRows(ctx context.Context, where string, args ...an
 		var row databaseRemoteRow
 		var serverType string
 		if err := rows.Scan(&row.ID, &row.DatabaseID, &row.Database, &row.UserID, &row.User, &row.Address, &serverType,
-			&row.Port, &row.Host, &row.SubscriptionID, &row.Status, &row.Granted); err != nil {
+			&row.Port, &row.Host, &row.SubscriptionID, &row.Status, &row.Granted, &row.ExpiresAt); err != nil {
 			return nil, err
 		}
 		row.Engine = apiTypeNameFor(serverType)
@@ -142,6 +172,10 @@ func (p *Panel) databaseRemoteIneligible(ctx context.Context, row databaseRemote
 		return "subscription_" + row.Status, nil
 	case !row.Granted:
 		return "no_access", nil
+	case databaseRemoteExpired(row.ExpiresAt, databaseRemoteNow()):
+		// alpha.130: never applied past its end, even before the sweep
+		// removes it.
+		return "expired", nil
 	}
 	e, ok := rights[row.SubscriptionID]
 	if !ok {
@@ -325,9 +359,14 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 		return previous, false, nil
 	}
 	reportOperationStep(ctx, "apply")
-	req := transport.DatabaseRemoteApplyRequest{Targets: targets, HostName: p.mailHostnameIdentity(ctx).Hostname}
+	skipNameResolve, err := p.databaseRemoteMariaDBSkipNameResolve(ctx)
+	if err != nil {
+		return transport.DatabaseRemoteResponse{}, false, err
+	}
+	req := transport.DatabaseRemoteApplyRequest{Targets: targets, HostName: p.mailHostnameIdentity(ctx).Hostname, MariaDBSkipNameResolve: skipNameResolve}
 	answer, callErr := databaseRemoteApplyThroughAgent(p, ctx, req)
 	m.mu.Lock()
+	m.callFailed = callErr != nil
 	if callErr != nil {
 		m.lastError = callErr.Error()
 		m.digest = ""
@@ -335,12 +374,18 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 		m.answer, m.appliedAt = answer, time.Now()
 		m.lastError = answer.Error
 		m.digest = digest
+		m.closePending = false
+		m.narrowDigest = ""
 		if answer.Error != "" {
 			m.digest = ""
 		}
 	}
 	m.mu.Unlock()
 	if callErr != nil {
+		// D5 (alpha.130): the full apply did not run (the server has not
+		// finished starting, or the Agent refused it): what is no longer
+		// wanted is still closed at the address filter.
+		p.narrowDatabaseRemote(ctx, targets)
 		return transport.DatabaseRemoteResponse{}, true, callErr
 	}
 	// The panel firewall opens or closes the engines' ports.
@@ -460,6 +505,7 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) <-chan struct{} {
 				log.Printf("database remote access: apply: %v", err)
 			}
 		}
+		p.sweepExpiredDatabaseRemoteRules(ctx)
 		run(false)
 		for {
 			select {
@@ -468,8 +514,12 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) <-chan struct{} {
 			case <-ticker.C:
 				ticks++
 				p.probeDatabaseRemoteFilter(ctx)
-				if ticks%databaseRemoteApplyEvery == 0 {
-					run(false)
+				// alpha.130: an address past its end is removed within a
+				// minute (and applied at once); a failed apply is tried
+				// again every minute, not every fifth (D5).
+				expired := p.sweepExpiredDatabaseRemoteRules(ctx) > 0
+				if expired || ticks%databaseRemoteApplyEvery == 0 || databaseRemoteFailing() {
+					run(expired)
 				}
 			case <-databaseRemoteMemory.kick:
 				timer := time.NewTimer(databaseRemoteKickWait(time.Now(), lastForced))
@@ -638,20 +688,37 @@ func databaseRemoteWaiting() bool {
 // panel firewall's port at once and asks for an apply, which loads it again
 // (the Agent's guard timer also does within 30 seconds); a filter that is
 // back reopens the port.
+//
+// alpha.130 (D6): the same read also carries how often the Agent put the
+// panel firewall's table back after a flush; when that number changes the
+// panel syncs its live policy onto the restored table (the restore uses the
+// saved policy and leaves the database ports out until their filter is
+// proven). The read runs every minute, also with no database port open.
 func (p *Panel) probeDatabaseRemoteFilter(ctx context.Context) {
 	m := databaseRemoteMemory
 	m.mu.Lock()
 	expected := len(m.answer.FilterPorts) > 0 && !m.appliedAt.IsZero()
 	was := m.answer.FilterLoaded
 	m.mu.Unlock()
-	if !expected {
-		return
-	}
 	probeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	status, err := databaseRemoteStatusFromAgent(p, probeCtx, transport.DatabaseRemoteStatusRequest{})
+	restored := false
+	if err == nil {
+		m.mu.Lock()
+		restored = m.firewallRestoresKnown && status.PanelFirewallRestores != m.firewallRestores
+		m.firewallRestores, m.firewallRestoresKnown = status.PanelFirewallRestores, true
+		m.firewallNote = status.PanelFirewallNote
+		m.mu.Unlock()
+	}
 	loaded := err == nil && status.Error == "" && status.FilterLoaded
-	if loaded == was {
+	if !expected || loaded == was {
+		if restored {
+			log.Printf("database remote access: the Agent put the panel firewall back after a flush; syncing its live policy")
+			if err := p.syncFirewall(probeCtx); err != nil {
+				log.Printf("database remote access: firewall sync after the restore: %v", err)
+			}
+		}
 		return
 	}
 	m.mu.Lock()
