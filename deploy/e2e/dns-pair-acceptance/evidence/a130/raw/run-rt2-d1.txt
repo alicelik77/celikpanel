@@ -1,0 +1,124 @@
+== d1u 13:23:12
+200 {"agent_commit": "e0811773d1a5a6a2c04d27e45c526cdedce9fb5e", "agent_matches": true, "commit": "e0811773d1a5a6a2c04d27e45c526cdedce9fb5e", "hostname": "host1.d1.test", "ipv4": "192.0.3.201", "schema_version": 77, "version": "v0.1.0-alpha.132"}
+pg dpkg: 
+ls: cannot access /etc/postgresql: No such file or directory ls: cannot access /etc/postgresql-common: No such file or directory ls: cannot access /var/lib/postgresql: No such file or directory ls: cannot access /var/log/postgresql: No such file or directory
+
+postfix dpkg: ii postfix
+   drwxr-xr-x root:root .
+   drwxr-xr-x root:root ..
+   -rw-r--r-- root:celikpanel celikpanel_login_map
+   -rw-r--r-- root:root dynamicmaps.cf
+   -rw-r--r-- root:celikpanel main.cf
+   -rw-r--r-- root:root main.cf.proto
+   -rw-r--r-- root:celikpanel master.cf
+   -rw-r--r-- root:root master.cf.proto
+   -rw-r--r-- root:root owner-notes.txt
+   -rw-r--r-- root:root postfix-files
+   drwxr-xr-x root:root postfix-files.d
+   drwxr-xr-x root:root sasl
+   -rw-r--r-- root:celikpanel virtual
+   -rw-r--r-- root:celikpanel virtual.db
+   -rw-r--r-- root:celikpanel vmailbox
+   -rw-r--r-- root:celikpanel vmailbox.db
+   -rw-r--r-- root:celikpanel vmailbox_domains
+   -rw-r--r-- root:celikpanel vmailbox_domains.db
+drwxr-xr-x  2 root root 4096 Nov  8 12:52 .
+drwxr-xr-x 24 root root 4096 Nov  8 13:19 ..
+-rw-r--r--  1 root root   31 Nov  8 12:52 owner.conf
+active inactive
+dovecot dpkg: ii dovecot-core ii dovecot-imapd ii dovecot-lmtpd ii dovecot-pop3d ii dovecot-sieve
+/etc/dovecot
+/etc/dovecot/private
+/etc/dovecot/private/dovecot.pem
+/etc/dovecot/private/dovecot.key
+/etc/dovecot/dovecot.conf
+/etc/dovecot/conf.d
+/etc/dovecot/conf.d/20-pop3.conf
+/etc/dovecot/conf.d/99-celikpanel.conf
+/etc/dovecot/conf.d/30-dict-server.conf
+/etc/dovecot/conf.d/10-mail.conf
+kept:
+celikpanel-release-recovery.timer celikpanel-release-recovery.service celikpanel-mail-renewal.timer celikpanel-mail-renewal.service celikpanel-quota-warning.timer celikpanel-quota-warning.service
+-- remove postgresql (together: none) 13:23:13
+200 {"all_versions": true, "bundles": [], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "databases", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["postgresql"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "postgresql", "setup_required": f
+200 {"detail": "removed postgresql", "removed": true, "success": true}
+pg dpkg: 
+ls: cannot access /etc/postgresql: No such file or directory ls: cannot access /etc/postgresql-common: No such file or directory ls: cannot access /var/lib/postgresql: No such file or directory ls: cannot access /var/log/postgresql: No such file or directory
+
+kept:
+celikpanel-release-recovery.timer celikpanel-release-recovery.service celikpanel-mail-renewal.timer celikpanel-mail-renewal.service celikpanel-quota-warning.timer celikpanel-quota-warning.service
+-- remove postfix (together: ["rspamd","roundcube"]) 13:23:23
+200 {"all_versions": false, "bundles": [{"id": "mail.core", "name_code": "mail_core"}, {"id": "mail.webmail", "name_code": "mail_webmail"}, {"id": "mail.protected", "name_code": "mail_protected"}], "companion_tools": ["rspamd", "roundcube"], "database_tools_reconfigured": false, "firewall_ports": ["25/tcp", "587/tcp", "465/tcp"], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "mail_addresses", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages"
+428 {"code": "REQUEST_ID_REQUIRED", "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"}
+postfix dpkg: ii postfix
+   drwxr-xr-x root:root .
+   drwxr-xr-x root:root ..
+   -rw-r--r-- root:celikpanel celikpanel_login_map
+   -rw-r--r-- root:root dynamicmaps.cf
+   -rw-r--r-- root:celikpanel main.cf
+   -rw-r--r-- root:root main.cf.proto
+   -rw-r--r-- root:celikpanel master.cf
+   -rw-r--r-- root:root master.cf.proto
+   -rw-r--r-- root:root owner-notes.txt
+   -rw-r--r-- root:root postfix-files
+   drwxr-xr-x root:root postfix-files.d
+   drwxr-xr-x root:root sasl
+   -rw-r--r-- root:celikpanel virtual
+   -rw-r--r-- root:celikpanel virtual.db
+   -rw-r--r-- root:celikpanel vmailbox
+   -rw-r--r-- root:celikpanel vmailbox.db
+   -rw-r--r-- root:celikpanel vmailbox_domains
+   -rw-r--r-- root:celikpanel vmailbox_domains.db
+drwxr-xr-x  2 root root 4096 Nov  8 12:52 .
+drwxr-xr-x 24 root root 4096 Nov  8 13:19 ..
+-rw-r--r--  1 root root   31 Nov  8 12:52 owner.conf
+active inactive
+kept:
+celikpanel-release-recovery.timer celikpanel-release-recovery.service celikpanel-mail-renewal.timer celikpanel-mail-renewal.service celikpanel-quota-warning.timer celikpanel-quota-warning.service
+-- remove dovecot (together: none) 13:23:31
+200 {"all_versions": false, "bundles": [{"id": "mail.core", "name_code": "mail_core"}, {"id": "mail.webmail", "name_code": "mail_webmail"}, {"id": "mail.protected", "name_code": "mail_protected"}], "companion_tools": ["roundcube"], "database_tools_reconfigured": false, "firewall_ports": ["143/tcp", "993/tcp", "110/tcp", "995/tcp"], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "mail_addresses", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "package
+409 {"code": "REMOVAL_NEEDS_TOGETHER", "details": ["Roundcube"], "error": "These are removed together with it, because nothing else uses them and they cannot work without it; confirm them to remove."}
+dovecot dpkg: ii dovecot-core ii dovecot-imapd ii dovecot-lmtpd ii dovecot-pop3d ii dovecot-sieve
+/etc/dovecot
+/etc/dovecot/private
+/etc/dovecot/private/dovecot.pem
+/etc/dovecot/private/dovecot.key
+/etc/dovecot/dovecot.conf
+/etc/dovecot/conf.d
+/etc/dovecot/conf.d/20-pop3.conf
+/etc/dovecot/conf.d/99-celikpanel.conf
+/etc/dovecot/conf.d/30-dict-server.conf
+/etc/dovecot/conf.d/10-mail.conf
+kept:
+celikpanel-release-recovery.timer celikpanel-release-recovery.service celikpanel-mail-renewal.timer celikpanel-mail-renewal.service celikpanel-quota-warning.timer celikpanel-quota-warning.service
+-- Postfix again from Components 13:23:40
+200 {"distribution": "debian", "installs": [], "notable": [], "refusals": [], "removes": [], "requested": [], "state": "known"}
+202 {"operation": {"id": "3b7057c29e993ad02559944b380d97e1", "kind": "service_install", "phase": "queued", "request_id": "29352f9e9bc4faa4611d6bde1203d395", "service_id": "postfix", "started_at": "2026-11-08T13:23:39.819633897Z", "status": "queued"}}
+  op 29352f9e9bc4faa4611d6bde1203d395: succeeded completed "" (13:24:01)
+postfix dpkg: ii postfix
+   drwxr-xr-x root:root .
+   drwxr-xr-x root:root ..
+   -rw-r--r-- root:celikpanel celikpanel_login_map
+   -rw-r--r-- root:root dynamicmaps.cf
+   -rw-r--r-- root:celikpanel main.cf
+   -rw-r--r-- root:root main.cf.proto
+   -rw-r--r-- root:celikpanel master.cf
+   -rw-r--r-- root:root master.cf.proto
+   -rw-r--r-- root:root owner-notes.txt
+   -rw-r--r-- root:root postfix-files
+   drwxr-xr-x root:root postfix-files.d
+   drwxr-xr-x root:root sasl
+   -rw-r--r-- root:celikpanel virtual
+   -rw-r--r-- root:celikpanel virtual.db
+   -rw-r--r-- root:celikpanel vmailbox
+   -rw-r--r-- root:celikpanel vmailbox.db
+   -rw-r--r-- root:celikpanel vmailbox_domains
+   -rw-r--r-- root:celikpanel vmailbox_domains.db
+drwxr-xr-x  2 root root 4096 Nov  8 12:52 .
+drwxr-xr-x 24 root root 4096 Nov  8 13:19 ..
+-rw-r--r--  1 root root   31 Nov  8 12:52 owner.conf
+active inactive
+kept:
+celikpanel-release-recovery.timer celikpanel-release-recovery.service celikpanel-mail-renewal.timer celikpanel-mail-renewal.service celikpanel-quota-warning.timer celikpanel-quota-warning.service
+== rt d1u done 13:24:06
+exit 0

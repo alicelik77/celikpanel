@@ -1,0 +1,29 @@
+{
+ "node": {
+  "cell": "u1u",
+  "node": "main",
+  "os": "ubuntu2404",
+  "ip": "192.0.3.200",
+  "hostname": "frankfurt",
+  "uuid": "cd343eff-6bd9-5eac-9166-8cb0dada2d58",
+  "tap": "cptf957ab78",
+  "mac": "52:54:00:4e:26:2c",
+  "image": "ubuntu-24.04-server-cloudimg-amd64-20260826.img",
+  "image_digest": {
+   "sha256": "d0fe84bb5f80853425fa6be28e2c106f30104c3cfe8611933f2e65c9b63f0e30"
+  },
+  "memory_mb": 3584,
+  "cpus": 2,
+  "started_at": "2026-11-08T12:36:32Z"
+ },
+ "ssh": {
+  "node": "main",
+  "boot_id": "ed39600f-8c4f-49ee-808e-9e8089292bd8",
+  "waited_seconds": 42.9
+ },
+ "lab_trust_and_certbot": "# beta1 lab only: certbot uses the lab ACME server (pebble)\nserver = https://192.0.2.60:14000/dir\nno-verify-ssl = true\n1.1.1.1 via 192.0.3.1 dev lab0 src 192.0.3.200 uid 0 \n    cache \n192.0.2.1 via 192.0.3.1 dev lab0 src 192.0.3.200 uid 0 \n    cache \n\nnameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nVERSION_ID=\"24.04\"\n6.8.0-138-generic\nfrankfurt\n",
+ "rc": 0,
+ "preinstall": "PREINSTALL_PRODUCT_LAYOUT=absent\n",
+ "preinstall_rc": 0,
+ "seconds": 48.1
+}

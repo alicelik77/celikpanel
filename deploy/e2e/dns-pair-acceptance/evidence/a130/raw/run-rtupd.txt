@@ -1,0 +1,20 @@
+v0.1.0-alpha.132
+######## u1u
+--- systemctl --failed (all units)
+  4s 200 running None  | 
+  29s 
+  71s 200 running verifying  | 
+  84s 200 succeeded None  | 
+== after 13:20:53
+200 {"agent_commit": "e0811773d1a5a6a2c04d27e45c526cdedce9fb5e", "agent_matches": true, "commit": "e0811773d1a5a6a2c04d27e45c526cdedce9fb5e", "hostname": "host1.u1.test", "ipv4": "192.0.3.200", "schema_version": 77, "version": "v0.1.0-alpha.132"}
+--- systemctl --failed (all units)
+######## d1u
+--- systemctl --failed (all units)
+  4s 200 running None  | 
+  25s 
+  67s 200 running verifying  | 
+  80s 200 succeeded None  | 
+== after 13:20:48
+200 {"agent_commit": "e0811773d1a5a6a2c04d27e45c526cdedce9fb5e", "agent_matches": true, "commit": "e0811773d1a5a6a2c04d27e45c526cdedce9fb5e", "hostname": "host1.d1.test", "ipv4": "192.0.3.201", "schema_version": 77, "version": "v0.1.0-alpha.132"}
+--- systemctl --failed (all units)
+exit 0

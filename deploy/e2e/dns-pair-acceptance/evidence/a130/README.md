@@ -21,10 +21,27 @@ panel's update API from the lab portal.
 | 3 | Rights | PASS | Offered tab ↔ Databases switch one store (audit both); stale entry moved on B (`offering.stale_entries_moved`); TR grouping/order; programs read-only + Catalog link; Remote API warning; single Save with "Will be saved" list | `K3rights-s0.log`, `B3stale-s0.log`, `shots/` |
 | 4 | Ops | PASS after fixes | Ubuntu Postfix status/Start; Debian 13 false "Postfix is not running" fixed (5889a5e37); panel TLS pass (Pebble); update card wording; TR dates; SSH turn off/on (B) after fix be12c8a42 | `B4postfix-s0.log`, `B4ssh-s0.log`, `K4ops-s0.log` |
 | 5 | PostgreSQL | PASS (one open) | leftover 16 auto-removed + archived; with data kept + "Archive and remove"; port move; single version removal; final: 10 min after start `leftover.purged` libpq5/postgresql-16/client-16, no rc | `B5pg-s0.log`, `C5pg-s0.log`, `R2b-s0.log` |
-| 6 | Leftovers | FAIL (open) | owner drop-in kept and named, but the purge guard restores postinst/CelikPanel files as "owner files" (`/etc/postgresql-common/*`, `/etc/postfix/*`); `/etc/dovecot/users` left after Dovecot removal, then Postfix install fails ("Dovecot version could not be verified") | `R2b-s0.log`, `B6leftovers-s0.log` |
+| 6 | Leftovers | FAIL on 899b40b1f → PASS on 6fc1bbba1 | 899b40b1f restored postinst/CelikPanel files as "owner files" (`/etc/postgresql-common/*`, `/etc/postfix/*`) and left `/etc/dovecot/users`; retest below | `R2b-s0.log`, `RT-*.log` |
 | 7 | Mail | PASS after fix | autoconfig/Autodiscover answers (no password, no LoginName); "Set up now" route (dd859604a); CNAME+SRV on PowerDNS and BIND secondary; certificate with and without the names; relay 587/465 with SASL, wrong password, SASL module missing → command, owner relayhost refused, off leaves nothing; subaddressing kept; sender block 550 / allow 250 / cleanup | `K7mail-s0.log`, `R3a-s0.log` |
 | 8 | Recovery | PASS | confirm, request same answer, reset ends IMAP session, only that hash changes, single use, old link refused after a password change, suspended sends nothing, manual stop survives a password change (postfwd 550) | `K8recovery-s0.log` |
 | 9 | Icons | PASS | teal/blue engine marks, no emoji; component icons distinct | `shots/` |
+
+## Retest of the removals (fix/a130-pg-lab2 6fc1bbba1, lab label 132)
+
+Fresh cells installed at 129 with `get.sh` and one-server setup (web + mail, BIND): `u1u` Ubuntu 24.04 and
+`d1u` Debian 13, each with PostgreSQL 18 from the PGDG lane, an owner drop-in
+`/etc/systemd/system/postfix.service.d/owner.conf` and an owner file `/etc/postfix/owner-notes.txt`.
+
+| Step | Ubuntu 24.04 | Debian 13 |
+|------|--------------|-----------|
+| 129 → 132 pressed once | 84 s, schema 77, no failed unit | 80 s, schema 77, no failed unit |
+| Whole PostgreSQL removal | no PostgreSQL/libpq package in dpkg (ii or rc); `/etc/postgresql`, `/etc/postgresql-common`, `/var/lib/postgresql`, `/var/log/postgresql` gone; PGDG source/key/pin gone | same |
+| Postfix removal (with Rspamd + Roundcube confirmed) | `/etc/postfix` gone; only `owner-notes.txt` copied to `/var/backups/celikpanel/kept/postfix-<UTC>/etc/postfix/`; drop-in kept in place | same |
+| Dovecot removal | packages, `/etc/dovecot` incl. `users`, quota-warning timer/service/script gone | same |
+| Postfix reinstall | succeeds; drop-in still applied | succeeds |
+
+Notes: on Ubuntu the restored drop-in folder became `0750 root:celikpanel` (was `0755 root:root`; Debian kept
+it unchanged); the together-removal operation result does not repeat which files went to `kept/`.
 
 ## Fixes (fix/a130-lab, fix/a130-lab-b)
 
@@ -33,7 +50,6 @@ name-lookup line with the next rule · `5889a5e37` Debian 13 Postfix monitoring.
 
 ## Open
 
-- Purge guard misclassifies maintainer-script and CelikPanel files as owner files (item 6).
 - No screen creates a manual sending stop; the postfwd 550 text tells a manually stopped mailbox to change its password.
 - During a held boot the customer's rule list read is 503, so only an address already on screen can be removed.
 - Lab: the Debian 13 image's cloud-init hangs after a reboot (a129 D5); it was ended by hand.

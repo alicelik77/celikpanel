@@ -1,0 +1,53 @@
+######## u1
+running 14-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_p
+-- u1u/main 12:53:00
+running 15-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_p
+-- u1u/main 12:53:20
+running 17-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_p
+-- u1u/main 12:53:41
+running verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_p
+-- u1u/main 12:54:01
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-access_dns=succeeded 12-mail_certificate=succeeded 13-mail_p
+succeeded complete null
+== components for the removal retest 12:54:02
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-pgdg.pref", "state": "confined", "
+200 {"distribution": "ubuntu", "installs": ["libjson-perl", "postgresql-client-common", "postgresql-common", "libpq5", "postgresql-client-18", "postgresql-18"], "notable": [{"component": "pgdg", "package": "libpq5", "reason": "vendor_shared"}, {"component": "pgdg", "package": "postgresql-client-comm
+202 {"operation": {"id": "1953c961f2f688a9d461f636dcaa6a50", "kind": "service_install", "package_name": "postgresql-18", "phase": "queued", "request_id": "cbef7e7fbe7651fc4e8251afeb0c9f8c", "service_id": "postgresql", "started_at": "2026-11-08T12:54:20.033666757Z", "status": "queued"}}
+  op cbef7e7fbe7651fc4e8251afeb0c9f8c: succeeded completed "" (12:55:12)
+owner-files-ok
+9
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+active active active active == setup129 u1 done 12:55:15
+######## d1
+running 15-mail_profile null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificat
+-- d1u/main 12:50:44
+running 16-mail_dns null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificat
+-- d1u/main 12:51:04
+running 18-main_site null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificat
+-- d1u/main 12:51:25
+running verification null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificat
+-- d1u/main 12:51:45
+succeeded complete null
+01-dns=succeeded 02-service=succeeded 03-service=succeeded 04-firewall=succeeded 05-infrastructure_dns=succeeded 06-access_dns=succeeded 07-panel_certificate=succeeded 08-dns_readiness=succeeded 09-service=succeeded 10-service=succeeded 11-service=succeeded 12-access_dns=succeeded 13-mail_certificat
+succeeded complete null
+== components for the removal retest 12:51:45
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-pgdg.pref", "state": "confined", "
+200 {"distribution": "debian", "installs": ["libjson-perl", "postgresql-client-common", "libio-pty-perl", "libipc-run-perl", "postgresql-common-dev", "postgresql-common", "libpq5", "postgresql-client-18", "postgresql-18"], "notable": [{"component": "pgdg", "package": "libpq5", "reason": "vendor_shar
+202 {"operation": {"id": "6572b9e5497f478ae68fcb674a43252a", "kind": "service_install", "package_name": "postgresql-18", "phase": "queued", "request_id": "591fb9815dcffc43fc96fe72466d8e30", "service_id": "postgresql", "started_at": "2026-11-08T12:51:58.237351892Z", "status": "queued"}}
+  op 591fb9815dcffc43fc96fe72466d8e30: succeeded completed "" (12:52:41)
+owner-files-ok
+11
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+active active active active == setup129 d1 done 12:52:42
+exit 0
