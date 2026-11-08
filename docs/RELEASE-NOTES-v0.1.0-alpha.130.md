@@ -183,6 +183,29 @@ deleted silently.
   it; a client another package still needs stays and is named), with an
   audit entry. The job first runs 10 minutes after the panel starts and
   only on a quiet server, so it never delays an update or a rollback.
+- **One PostgreSQL version can be removed again.** Removing a single
+  version was refused ("package does not name a removable version"); while
+  two versions are installed, each cluster row on the PostgreSQL page now
+  offers "Remove PostgreSQL N".
+- **Removing PostgreSQL entirely leaves nothing:** packages left in `rc`
+  state, every version's client and documentation, `postgresql-common` and
+  `postgresql-client-common`, empty PostgreSQL folders, `libpq5` when
+  nothing else needs it, and CelikPanel's PGDG source, key and pin when no
+  PGDG package remains. A leftover cluster that may hold data stops the
+  removal and is named.
+- **The owner's files survive a purge** (Debian and Ubuntu). Before a
+  purge the Agent copies aside files no removed package owns (for example
+  a systemd drop-in the owner wrote) and changed package configuration
+  files; afterwards a deleted owner file is put back with its owner and
+  mode, and changed configuration files are kept under
+  `/var/backups/celikpanel/kept/`. The answer names them. Components are
+  read again right after a leftover cluster is removed.
+- **SSH password sign-in can be turned off on a joined BIND server.**
+  CelikPanel's own `Match User celikpeer` block (which only turns password
+  sign-in off for the DNS peer account) blocked the change; only a Match
+  block that could turn password sign-in on blocks now. CelikPanel's
+  drop-in is now owned by root alone, so the status reads it and "turn
+  back on" works (before, it could only be undone by hand).
 
 ## Lab results
 
@@ -236,6 +259,10 @@ _To be filled in after the lab round._
   sites may need `mysqli`, and `/var/lib/postgres/data` stays; Postfix's
   generic maps without a marker, the shared mail certificate copies and the
   old DNS engine's files stay. Each needs an owner decision first.
+- **Owner files and purges:** keeping the owner's files across a purge works
+  with apt only (Debian and Ubuntu), not with Arch's pacman. Generic Postfix
+  maps the panel writes (`vmailbox`, `virtual`, `vmailbox_domains`) carry no
+  CelikPanel marker, so they are treated as owner files and put back.
 - **Leftover PostgreSQL clusters:** a cluster counts as "fresh" only from its
   files; functions, views or comments made in `postgres` or `template1`
   cannot be seen that way, which is why the automatic removal keeps a

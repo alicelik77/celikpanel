@@ -195,6 +195,29 @@ sessizce silinmez.
   kalır ve adı söylenir) ve kaydını tutuyor. İş panel açıldıktan 10 dakika
   sonra ve yalnız sunucu sakinken çalışıyor; böylece bir güncellemeyi ya da
   geri almayı asla geciktirmiyor.
+- **Tek bir PostgreSQL sürümü yeniden kaldırılabiliyor.** Tek sürümü
+  kaldırmak reddediliyordu ("paket kaldırılabilir bir sürüm adı
+  taşımıyor"); iki sürüm kuruluyken PostgreSQL sayfasındaki her küme
+  satırında artık "PostgreSQL N'yi kaldır" var.
+- **PostgreSQL'i tamamen kaldırmak geride hiçbir şey bırakmıyor:** `rc`
+  durumunda kalan paketler, her sürümün istemci ve belge paketleri,
+  `postgresql-common` ve `postgresql-client-common`, boş PostgreSQL
+  klasörleri, başka bir şey ihtiyaç duymuyorsa `libpq5` ve hiçbir PGDG
+  paketi kalmadıysa CelikPanel'in PGDG kaynağı, anahtarı ve önceliği.
+  Veri taşıyor olabilecek kalıntı küme kaldırmayı durdurur ve adı söylenir.
+- **Sahibin dosyaları tam temizlemeden sağ çıkıyor** (Debian ve Ubuntu).
+  Temizlemeden önce Ajan, kaldırılan hiçbir paketin sahibi olmadığı
+  dosyaları (örneğin sahibin yazdığı bir systemd ek ayarı) ve değiştirilmiş
+  paket yapılandırma dosyalarını kenara kopyalar; ardından silinen sahip
+  dosyası sahibi ve izinleriyle geri konur, değiştirilmiş yapılandırma
+  dosyaları `/var/backups/celikpanel/kept/` altında saklanır. Yanıt bunları
+  adıyla söyler. Kalıntı küme kaldırılınca Bileşenler hemen yeniden okunur.
+- **Katılmış BIND sunucusunda SSH parola girişi kapatılabiliyor.**
+  CelikPanel'in kendi `Match User celikpeer` bloğu (yalnız DNS eş hesabı
+  için parola girişini kapatır) değişikliği engelliyordu; artık yalnız
+  parola girişini açabilecek bir Match bloğu engeller. CelikPanel'in ek
+  ayar dosyası artık yalnız root'a ait; böylece durum okunuyor ve "yeniden
+  aç" çalışıyor (önceden yalnız elle geri alınabiliyordu).
 
 ## Laboratuvar sonuçları
 
@@ -250,6 +273,11 @@ _Laboratuvar turundan sonra doldurulacak._
   `/var/lib/postgres/data` kalır; işaretsiz genel Postfix eşlemeleri, ortak
   posta sertifikası kopyaları ve eski DNS motorunun dosyaları kalır. Her
   biri için önce sahibin kararı gerekiyor.
+- **Sahip dosyaları ve tam temizleme:** sahibin dosyalarını temizleme
+  sırasında korumak yalnız apt ile (Debian ve Ubuntu) çalışır, Arch'ın
+  pacman'ında çalışmaz. Panelin yazdığı genel Postfix eşlemeleri
+  (`vmailbox`, `virtual`, `vmailbox_domains`) CelikPanel işareti taşımadığı
+  için sahip dosyası sayılır ve geri konur.
 - **Kalıntı PostgreSQL kümeleri:** bir küme yalnız dosyalarına bakılarak
   "yeni" sayılır; `postgres` ya da `template1` içinde oluşturulan işlev,
   görünüm ya da açıklamalar bu yolla görülemez, bu yüzden kendiliğinden
