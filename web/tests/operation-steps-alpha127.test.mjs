@@ -204,6 +204,7 @@ test('application install and WordPress steps follow the durable status', async 
       export const useNavigate = () => () => {};
       export const RUNNING_STATES = [];
       export const decodeDomainApps = () => ({});
+      export const appText = (app, field) => app[field];
       export const domainAppInstallURL = () => '';
       export const domainAppOperationURL = () => '';
       export const domainAppsURL = () => '';

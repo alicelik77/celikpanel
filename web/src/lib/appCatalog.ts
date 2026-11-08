@@ -33,6 +33,15 @@ export interface CatalogApp {
     risk: string;
     admin_user?: string;
     offered: boolean;
+    /** The Turkish description, check and risk note (alpha.130); absent from older panels. */
+    tr?: CatalogAppTexts;
+}
+
+/** One language's copy of an entry's reader texts. */
+export interface CatalogAppTexts {
+    description: string;
+    checked: string;
+    risk: string;
 }
 
 export interface MissingExtension {
@@ -100,6 +109,21 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
+function decodeTexts(raw: unknown): CatalogAppTexts | undefined {
+    if (!isRecord(raw)) return undefined;
+    const texts = { description: str(raw.description), checked: str(raw.checked), risk: str(raw.risk) };
+    return texts.description || texts.checked || texts.risk ? texts : undefined;
+}
+
+/**
+ * The entry's description, check or risk note in the screen's language: the
+ * Turkish text on a Turkish screen when the server sent one, else the English
+ * text the server always sends.
+ */
+export function appText(app: CatalogApp, field: keyof CatalogAppTexts, locale: string): string {
+    return (locale === 'tr' && app.tr?.[field]) || app[field];
+}
+
 function decodeApp(raw: unknown): CatalogApp {
     if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.name !== 'string') throw new Error('shape');
     return {
@@ -108,7 +132,7 @@ function decodeApp(raw: unknown): CatalogApp {
         source: str(raw.source), pinned: raw.pinned === true, checked: str(raw.checked), php: str(raw.php),
         extensions: strings(raw.extensions), databases: strings(raw.databases),
         disk_mb: typeof raw.disk_mb === 'number' ? raw.disk_mb : 0, risk: str(raw.risk),
-        admin_user: str(raw.admin_user) || undefined, offered: raw.offered !== false,
+        admin_user: str(raw.admin_user) || undefined, offered: raw.offered !== false, tr: decodeTexts(raw.tr),
     };
 }
 
