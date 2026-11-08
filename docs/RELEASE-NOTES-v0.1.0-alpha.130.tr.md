@@ -229,6 +229,12 @@ sessizce silinmez.
   satırı olmadan yazılıyordu; yeniden başlatmadan sonra bütün MariaDB
   kuralları yeniden bekliyordu. Yönetici onay verdiyse satır artık her
   zaman yazılıyor; sahibin kendi ayarının üzerine yine asla yazılmıyor.
+- **Debian 13'te de yanlış "Postfix çalışmıyor" uyarısı yok.** Debian
+  13'ün Postfix'i doğrudan `postfix.service` içinde çalışır; Ubuntu'nunki
+  ise bir sarmalayıcının arkasındaki `postfix@-` biriminde. İlk düzeltme
+  yalnız bu birimi okuduğu için Debian 13'te uyarı veriyordu. İzleme artık
+  ikisini de okuyor ve sarmalayıcı kendisi çalışıyorsa onun okumasını
+  alıyor.
 
 ## Laboratuvar sonuçları
 

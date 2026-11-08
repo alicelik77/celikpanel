@@ -217,6 +217,11 @@ deleted silently.
   `skip-name-resolve` line, so after a reboot every MariaDB rule waited
   again. With the administrator's agreement the line is now always written;
   an owner's own setting is still never written over.
+- **No false "Postfix is not running" on Debian 13 either.** Debian 13's
+  Postfix runs in `postfix.service` itself, while Ubuntu's runs in the
+  `postfix@-` instance behind a wrapper; the first fix read only the
+  instance and raised the alarm on Debian 13. Monitoring now reads both and
+  takes the wrapper's reading when the wrapper itself runs.
 
 ## Lab results
 
