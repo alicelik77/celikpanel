@@ -105,7 +105,8 @@ risk that remains.
     gives no new power.
   - The address is shown on the recovery dialog of every mailbox to everyone
     who may manage the mailbox.
-  - The mailbox is told when an address is set, with the masked address.
+  - The mailbox is told when an address becomes active (on confirmation),
+    with the masked address.
   - It is audited (`mail.account.recovery.set` / `.removed` / `.confirmed`).
 - **Remains.** See T4.
 
@@ -297,14 +298,33 @@ Not built in this release, by choice:
   lives at `/account-link/mailbox-recovery` on the panel's address, and the
   confirmation and notice mails name it.
 
-## 6. Where it is built
+## 6. Where it is built (alpha.130)
 
-- **Migration and code.**
-  - Migration `080_mailbox_recovery.sql`.
-  - `cmd/panel/mailbox_recovery*.go`.
-  - `cmd/agent/mail_password_cas.go`, which adds `Agent.MailPasswordFingerprintV1`
-    and `Agent.SetMailPasswordIfUnchangedV1`.
+- **Migration.** `080_mailbox_recovery.sql` adds two tables:
+  `mailbox_recovery_addresses` and `mailbox_recovery_links`. The integrator
+  renumbers it.
+- **Panel.**
+  - `cmd/panel/mailbox_recovery.go` holds the state, the binding and the
+    links.
+  - `mailbox_recovery_handlers.go` holds the routes.
+  - `mailbox_recovery_mail.go` holds the four messages.
+- **Agent.** `cmd/agent/mail_password_cas.go` adds two calls:
+  - `Agent.MailPasswordFingerprintV1`, which reads.
+  - `Agent.SetMailPasswordIfUnchangedV1`, a build-gated compare-and-set.
+- **Signed-in routes.** `GET`, `PUT` and `DELETE` on
+  `/api/v1/domains/{id}/mail/accounts/recovery`, behind the same "mail" gate
+  as a password change. API tokens are not admitted.
+- **Public routes.** `POST` on
+  `/api/v1/auth/mailbox-recovery/{request,confirm,link,reset}`.
 - **Screens.**
-  - The mailbox list's recovery dialog.
-  - The public pages under `/account-link/mailbox-*`.
-- **Tests.** As listed in the release notes.
+  - A recovery button per mailbox opens `MailboxRecoveryDialog`.
+  - The public pages `/account-link/mailbox-recovery`, `-confirm` and
+    `-reset` live in `MailboxRecoveryPage`.
+- **Tests.**
+  - `cmd/panel/mailbox_recovery_test.go`: the whole path, the generic
+    answer, bad addresses, transfer, local domain, suspension, busy and
+    changed password, manual pause, hashing and public routes.
+  - `cmd/agent/mail_password_cas_linux_test.go`.
+  - `internal/db/mailbox_recovery_migration_test.go`.
+  - `web/tests/mailbox-recovery-alpha130.test.mjs`.
+- **Not proven yet.** A run on a real system is the lab's.
