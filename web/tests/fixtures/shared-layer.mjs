@@ -110,6 +110,18 @@ export const phpToolsURL = compileSource('lib/phpTools.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/phpTools.ts')(specifier)
 ));
 
+// alpha.130: the database engines' own marks (an elephant and a sea lion),
+// shared by the Components page and the domain's database cards. Compiled
+// from source; its icon factory is a stand-in that draws nothing, like
+// every stub icon.
+export const engineIconsURL = compileSource('lib/engineIcons.ts', (specifier) => (
+  specifier === 'lucide-react' ? dataModule('export const createLucideIcon = () => () => null;') : unexpected('lib/engineIcons.ts')(specifier)
+));
+// alpha.130: the components' own marks (componentMarks.ts), the same way.
+export const componentMarksURL = compileSource('lib/componentMarks.ts', (specifier) => (
+  specifier === 'lucide-react' ? dataModule('export const createLucideIcon = () => () => null;') : unexpected('lib/componentMarks.ts')(specifier)
+));
+
 // alpha.105: what an install brings, and the component's version reads.
 export const installPreviewLibURL = compileSource('lib/installPreview.ts', unexpected('lib/installPreview.ts'));
 export const componentRepoURL = compileSource('lib/componentRepo.ts', unexpected('lib/componentRepo.ts'));
@@ -241,6 +253,8 @@ export function sharedLayer(stubURL, extra = {}) {
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/lib/passwordPolicy': passwordPolicyURL,
+    '/engineIcons': engineIconsURL,
+    '/componentMarks': componentMarksURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
     ...extra,

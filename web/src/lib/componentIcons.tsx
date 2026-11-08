@@ -7,11 +7,13 @@
 // sayfalar için yanıtta kalır ama hiçbir yerde çizilmez. Kendi girdisi olmayan
 // bileşen bölümünün ikonuyla çizilir.
 import {
-    Activity, ArrowLeftRight, BadgeCheck, Boxes, BrickWall, Clock, Database, Feather, FileCode2, Filter,
-    FolderUp, Globe, Hexagon, Inbox, Lock, Mail, MailOpen, MemoryStick, Network, ScanSearch, Send, Shield,
-    ShieldBan, Table2, Wrench, Zap,
+    Activity, ArrowLeftRight, BadgeCheck, Boxes, Braces, BrickWall, Clock, Database, DatabaseZap, FileCode2,
+    Filter, FolderCog, FolderUp, Gauge, GitBranch, Globe, Inbox, Lock, Mail, MailOpen, Mails, MailWarning,
+    MemoryStick, Network, ScanSearch, Send, Shield, ShieldBan, Signpost, Table2, Wrench, Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { EngineMariaDB, EnginePostgreSQL } from './engineIcons';
+import { MarkGo, MarkKeyValue, MarkNameServer, MarkPython, MarkRust, MarkWebTable } from './componentMarks';
 
 export const categoryIcons: Record<string, LucideIcon> = {
     dns: Network,
@@ -26,37 +28,54 @@ export const categoryIcons: Record<string, LucideIcon> = {
     devtools: Wrench,
 };
 
+// Every catalogue component (internal/core/managed_services.go) has its own
+// entry, and no two share one (alpha.130, owner: "the components do not have
+// proper icons"; tests/component-icons-alpha130.test.mjs keeps it so). A
+// lucide icon where one says what the component does; our own drawing
+// (componentMarks.ts, engineIcons.ts) where none does. Never a project's
+// logo: Apache's feather and Node.js's hexagon left in alpha.130.
+// Her katalog bileşeninin kendi ikonu var; ikisi aynı ikonu paylaşmaz. Hiçbiri
+// bir projenin logosu değildir.
 const componentIconMap: Record<string, LucideIcon> = {
-    'php-fpm': FileCode2,
-    node: Hexagon,
-    python: FileCode2,
+    // Web: the server, the proxy in front of it, and what runs the sites.
     nginx: ArrowLeftRight,
-    apache: Feather,
-    postgresql: Database,
-    mariadb: Database,
+    apache: FolderCog,
+    'php-fpm': FileCode2,
+    node: Braces,
+    python: MarkPython,
+    git: GitBranch,
+    // Databases and their web tools.
+    postgresql: EnginePostgreSQL,
+    mariadb: EngineMariaDB,
     phpmyadmin: Table2,
-    phppgadmin: Table2,
+    phppgadmin: MarkWebTable,
+    // Mail: sending, limits, filters, mailboxes, webmail.
     postfix: Send,
-    exim: Send,
+    exim: Mails,
+    postfwd: Gauge,
     rspamd: Filter,
-    spamassassin: Filter,
-    postfwd: Send,
+    spamassassin: MailWarning,
     dovecot: Inbox,
     roundcube: MailOpen,
+    // Security.
     wireguard: Lock,
     certbot: BadgeCheck,
-    git: FileCode2,
     fail2ban: ShieldBan,
     nftables: BrickWall,
     clamav: ScanSearch,
-    bind: Network,
-    pdns: Network,
+    // DNS: two name servers, each its own.
+    bind: Signpost,
+    pdns: MarkNameServer,
+    // FTP, caches, monitoring, system.
     vsftpd: FolderUp,
-    redis: MemoryStick,
-    valkey: MemoryStick,
+    redis: MarkKeyValue,
+    valkey: DatabaseZap,
     memcached: MemoryStick,
     netdata: Activity,
     cron: Clock,
+    // The administrator's own toolchains.
+    go: MarkGo,
+    rust: MarkRust,
 };
 
 export function componentIcon(id: string, category: string): LucideIcon {
