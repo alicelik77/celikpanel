@@ -1,0 +1,6 @@
+failed 15-mail_profile {"code": "service_install_failed", "component": "roundcube", "detail": "roundcube install: download failed: HTTP 504", "message": "The service could not be installed and verified.", "step": "package_install"}
+succeeded complete null
+               total        used        free      shared  buff/cache   available
+Mem:           15697        6215        2704          16        7082        9482
+runP done 09:49:50
+exit 0

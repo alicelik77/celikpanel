@@ -1,0 +1,27 @@
+== 10:03:12 B clusters now
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:00 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+2026-11-08T09:55:36+00:00 host2.s0.test panel[26337]: 2026/11/08 09:55:36 postgresql: record 2 of subscription 2 named port 5432, where no cluster runs; it now names 18/main on port 5433 (it held no database)
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+    if any(k in a for k in ("postgresql","offering","database.remote")): print("  audit", e.get("created_at"), a[:200], (e.get("details") or "")[:200])
+                                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+KeyError: slice(None, 200, None)
+200 {"clusters": [{"config_path": "/etc/postgresql/18/main/postgresql.conf", "configured_port": 5433, "data_directory": "/var/lib/postgresql/18/main", "databases": ["pgb_s0_test_shopb"], "databases_known": true, "name": "main", "online": true, "owner": "postgres", "port": 5433, "status": "online", "version": "18"}], "creates_cluster": true, "mismatches": [], "moves": [], "next_port": 5432, "offers": [{"candidate": "17.11-1.pgdg24.04+2", "major": "17", "needs_repository": false, "origin": "pgdg", "package": "postgresql-17", "port": 5432}, {"candidate": "16.15-0ubuntu0.24.04.1", "major": "16", "needs_repository": false, "origin": "distribution", "package": "postgresql-16", "port": 5432}, {"candidate": "15.19-1.pgdg24.04+2", "major": "15", "needs_repository": false, "origin": "pgdg", "package": "postgresql-15", "port": 5432}, {"candidate": "14.24-1.pgdg24.04+2", "major": "14", "needs_repository": false, "origin": "pgdg", "package": "postgresql-14", "port": 5432}, {"candidate": "13.23-1.pgdg24.04+1", "major": "13", "needs_repository": false, "origin": "pgdg", "package": "postgresql-13", "port": 5432}, {"candidate": "12.22-3.pgdg24.04+1", "major": "12", "needs_repository": false, "origin": "pgdg", "package": "postgresql-12", "port": 5432}, {"candidate": "11.22-10.pgdg24.04+1", "major": "11", "needs_repository": false, "origin": "pgdg", "package": "postgresql-11", "port": 5432}, {"candidate": "10.23-9.pgdg24.04+1", "major": "10", "needs_repository": false, "origin": "pgdg", "package": 
+== c5pg done 10:03:13

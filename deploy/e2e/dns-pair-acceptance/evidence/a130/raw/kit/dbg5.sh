@@ -1,0 +1,2 @@
+source /mnt/c/Users/alice/AppData/Local/Temp/claude/b4b12836376297e4/ab34f56e-94b5-4834-a9ea-4e8dbe057e7f/scratchpad/a130-lab/kit/env.sh
+timeout 60 python3 -I $L/lab.py ssh r9 main -- "sudo -n sh -c 'systemctl is-active celikpanel-panel celikpanel-agent; journalctl -u celikpanel-panel -u celikpanel-agent --since -20min -o cat --no-pager | grep -iE \"updat|unread|apt|package\" | tail -12 | cut -c1-300'"

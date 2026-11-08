@@ -1,0 +1,140 @@
+
+######## myban 11:20:54
+-- wrong MariaDB passwords from 192.0.3.1
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [100 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [94 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [90 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [86 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [64 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115) [26 ms]
+jails: celikpanel-mariadb-auth  celikpanel-postgresql-auth-5432  sshd
+  celikpanel-mariadb-auth: |  |- Currently failed:	0
+  celikpanel-mariadb-auth: |  |- Total failed:	5
+  celikpanel-mariadb-auth:    |- Currently banned:	1
+  celikpanel-mariadb-auth:    `- Banned IP list:	192.0.3.1
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	1
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	6
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	0
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115) [76 ms]
+unbanned 192.0.3.1
+  my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [45 ms]
+
+######## mylast 11:21:19
+   delete rule 2 (mysql 192.0.3.1)
+200 {"error": "", "success": true}
+  mysql closed after 8 s:   my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8018 ms]
+skip_name_resolve=ON
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+-rw-r--r-- 1 root celikpanel  583 Nov  8 11:19 celikpanel-postgresql-auth.conf
+-rw-r--r-- 1 root celikpanel  485 Nov  8 11:19 celikpanel-database-remote-postgresql-5432.conf
+jails: celikpanel-postgresql-auth-5432  sshd
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	1
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	6
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	0
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+
+######## pglast 11:22:01
+   delete rule 1 (postgresql 192.0.3.1)
+200 {"error": "", "success": true}
+  postgresql closed after 8 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8040 ms]
+port 5432
+%m [%p] %q%u@%d 
+jails: sshd
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+
+######## expiry 11:22:44
+200 {"error": "", "id": 3, "status": "active", "success": true}
+200 {"error": "", "id": 4, "status": "active", "success": true}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"applied_at": "2026-11-08T11:22:46Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:22:42", "expires_at": "2026-11-09T11:22:42Z", "id": 3, "status": "active", "user": "cust1_s0_test_rmy_user", "user_id": 4}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:22:46Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:22:44", "expires_at": "2026-11-15T11:22:44Z", "id": 4, "status": "active", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+  mysql open after 0 s:   my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [28 ms]
+  postgresql open after 0 s:   pg tls -> ok TLSv1.3 [45 ms]
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    for r in c.execute("select id, database_id, address, status, created_at, expires_at from database_remote_rules"): print("  rule", r)
+             ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: status
+-- expire MariaDB rule 3 in the database (lab)
+rule 3 expires_at ('2026-11-08 11:22:18',)
+  mysql closed after 55 s:   my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+   expiry closed in 55 s
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    for r in c.execute("select id, database_id, address, status, created_at, expires_at from database_remote_rules"): print("  rule", r)
+             ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: status
+skip_name_resolve=ON
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+-- extend PostgreSQL rule 4 to no end
+200 {"expires_at": "", "success": true}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:24:04Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:22:44", "expires_at": "", "id": 4, "status": "active", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+
+######## flush 11:24:18
+200 {"error": "", "id": 5, "status": "active", "success": true}
+  mysql open after 0 s:   my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [31 ms]
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+-- nft flush ruleset 11:25:01
+11:24:59
+  +0s tables: 
+  +5s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +10s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +15s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +21s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +26s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +31s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +36s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +42s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +47s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +52s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +58s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +63s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +70s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  mysql open after 2 s:   my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [256 ms]
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 3306, 5432 } accept
+
+######## flushoff 11:26:20
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-firewall-restore.service'.
+11:26:20
+  tables after 60 s: table inet celikpanel_dbremote
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:24:17Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T11:24:17Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": true, "offered": true, "panel_firewall_note": "the panel firewall's table is gone and its boot restore (celikpanel-firewall-restore.service) is disabled outside CelikPanel, so it is left off; turn the firewall on again in the panel to use it", "rules": 2}
+2026/11/08 11:25:02 panel firewall guard: the panel firewall's table was gone (nft flush ruleset?); it was put back from the saved policy
+2026/11/08 11:25:03 database remote access: the Agent put the panel firewall back after a flush; syncing its live policy
+2026/11/08 11:26:32 panel firewall guard: the panel firewall's table is gone and its boot restore (celikpanel-firewall-restore.service) is disabled outside CelikPanel, so it is left off; turn the firewall on again in the panel to use it
+-- the owner turns the restore back on and runs it
+Created symlink '/etc/systemd/system/network-pre.target.requires/celikpanel-firewall-restore.service' → '/etc/systemd/system/celikpanel-firewall-restore.service'.
+table inet celikpanel_dbremote table inet celikpanel_fw
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+== k2 myban mylast pglast expiry flush flushoff done 11:28:04
+exit 0

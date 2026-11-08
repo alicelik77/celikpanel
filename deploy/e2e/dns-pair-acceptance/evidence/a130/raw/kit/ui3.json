@@ -1,0 +1,7 @@
+[
+ {"name": "db-marks", "path": "/databases", "wait": 4000, "actions": [
+   {"probe": "JSON.stringify([...document.querySelectorAll('.engine-mark')].map(e=>({engine:e.dataset.engine, bg:getComputedStyle(e).backgroundColor, color:getComputedStyle(e).color, svg:(e.querySelector('svg')||{}).outerHTML ? e.querySelector('svg').outerHTML.length : 0})))", "label": "engine-marks"},
+   {"probe": "String(/[\\u{1F300}-\\u{1FAFF}]/u.test(document.querySelector('main') ? document.querySelector('main').innerText : document.body.innerText))", "label": "emoji-in-databases-page"}]},
+ {"name": "comp-icons", "path": "/components", "wait": 5000, "actions": [
+   {"probe": "(()=>{const rows=[...document.querySelectorAll('svg')].map(s=>s.innerHTML).filter(h=>h.length>40); const counts={}; rows.forEach(h=>counts[h]=(counts[h]||0)+1); return JSON.stringify({svgs:rows.length, distinct:Object.keys(counts).length, emoji:/[\\u{1F300}-\\u{1FAFF}]/u.test(document.body.innerText)});})()", "label": "component-icons"}]}
+]

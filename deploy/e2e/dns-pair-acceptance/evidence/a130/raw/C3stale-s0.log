@@ -1,0 +1,9 @@
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": ["permission:database_remote"], "offered_apps": ["wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": ["permission:database_remote"], "offered_apps": ["wordpress"], "restricted": false}
+bash: line 1: sqlite3: command not found
+acceptance-fixture-license.json
+celikpanel.db
+celikpanel.db-shm
+celikpanel.db-wal
+secret.key
+tls

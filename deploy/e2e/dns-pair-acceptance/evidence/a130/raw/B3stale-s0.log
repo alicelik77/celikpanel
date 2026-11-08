@@ -1,0 +1,8 @@
+== 10:04:40 offered-versions on B (130)
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+-- audit
+  audit 2026-11-08 10:04:39 offering.stale_entries_moved {"items": ["permission:database_remote"], "offered": false}
+  audit 2026-11-08 09:57:38 offering.admin_offer:permission:database_remote:hidden {"item": "permission:database_remote", "offered": false, "offered_before": true}
+-- database-remote server (offered?)
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5433, "rules": 0, "state": {"close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already s
+== done 10:04:41

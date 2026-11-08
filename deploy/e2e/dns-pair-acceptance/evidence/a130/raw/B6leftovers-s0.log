@@ -1,0 +1,87 @@
+== install Dovecot 10:42:43
+200 {"distribution": "ubuntu", "installs": ["libexttextcat-data", "libexttextcat-2.0-0", "liblua5.4-0", "dovecot-core", "dovecot-imapd", "dovecot-lmtpd", "dovecot-pop3d"], "notable": [], "refusals": [], "removes": [], "requested": ["dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"], "state": "known"}
+202 {"operation": {"id": "30672d3c57eddb5e4d0130359e9fcdd6", "kind": "service_install", "phase": "queued", "request_id": "1edc84a4ce89878c445393f2441ab39f", "service_id": "dovecot", "started_at": "2026-11-08T10:42:44.419141287Z", "status": "queued"}}
+  op 1edc84a4ce89878c445393f2441ab39f: succeeded completed "" (10:43:26)
+-- timers
+celikpanel-release-recovery.timer celikpanel-release-recovery.service
+celikpanel-quota-warning.timer celikpanel-quota-warning.service
+-- unit files
+postfix-resolvconf.path                      disabled        enabled
+celikpanel-quota-warning.service             static          -
+dovecot.service                              enabled         enabled
+postfix-resolvconf.service                   disabled        enabled
+postfix.service                              enabled         enabled
+postfix@.service                             indirect        enabled
+dovecot.socket                               disabled        enabled
+celikpanel-quota-warning.timer               enabled         enabled
+-- celikpanel files
+-rw-r--r--  1 root celikpanel  334 Nov  8 10:43 celikpanel-quota-warning.service
+-rw-r--r--  1 root celikpanel  294 Nov  8 10:43 celikpanel-quota-warning.timer
+/etc/dovecot/conf.d/90-celikpanel-quota.conf
+/etc/dovecot/conf.d/90-quota.conf
+/etc/dovecot/conf.d/99-celikpanel.conf
+/usr/local/libexec/celikpanel-bind-peer-inspect
+/usr/local/libexec/celikpanel-bind-peer-inspect-wrapper
+/usr/local/libexec/celikpanel-quota-warning
+/var/lib/celikpanel
+/var/lib/celikpanel-agent
+/var/lib/celikpanel-agent-private
+/var/lib/celikpanel-imports
+/var/lib/celikpanel-quota-warning
+/var/lib/celikpanel-recovery-observations
+/var/lib/celikpanel-release-state
+/var/lib/celikpanel-release-transaction
+/var/lib/celikpanel-release-transaction.lock-staging
+/var/lib/celikpanel-release-transaction.marker-staging
+/var/lib/celikpanel/celikpanel.db
+/var/lib/celikpanel/celikpanel.db-shm
+/var/lib/celikpanel/celikpanel.db-wal
+-- dirs
+/etc/dovecot /etc/dovecot/conf.d /etc/postfix 
+-- packages
+ii dovecot-core
+ii dovecot-imapd
+ii dovecot-lmtpd
+ii dovecot-pop3d
+ii postfix
+== b_mail install done 10:43:28
+== owner edits 10:43:40
+# owner: keep this note
+total 12
+drwxr-xr-x  2 root root 4096 Nov  8 10:43 .
+drwxr-xr-x 29 root root 4096 Nov  8 10:43 ..
+-rw-r--r--  1 root root   39 Nov  8 10:43 owner.conf
+== removal impact dovecot 10:43:41
+200 {"all_versions": false, "bundles": [{"id": "mail.core", "name_code": "mail_core"}], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": ["143/tcp", "993/tcp", "110/tcp", "995/tcp"], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "mail_addresses", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "dovecot", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "default_runtime": false, "refuses": false, "remove": ["dovecot-imapd", "dovecot-pop3d", "dovecot-lmtpd"], "state": "checked", "traces": [], "traces_state": "checked"}}
+== removal impact postfix 10:43:46
+200 {"all_versions": false, "bundles": [{"id": "mail.core", "name_code": "mail_core"}], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": ["25/tcp", "587/tcp", "465/tcp"], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "mail_addresses", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["postfix"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "postfix", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "default_runtime": false, "refuses": false, "remove": ["postfix", "libnsl2"], "state": "checked", "traces": [], "traces_state": "checked"}}
+== b_mail ownedit impact done 10:43:51
+== remove dovecot 10:43:57
+200 {"detail": "removed dovecot-imapd, dovecot-pop3d, dovecot-lmtpd \u2014 CelikPanel's own files for it were removed too (/etc/systemd/system/celikpanel-quota-warning.timer, /etc/systemd/system/celikpanel-quota-warning.service, /usr/local/libexec/celikpanel-quota-warning, /etc/dovecot/conf.d/99-celikpanel.conf, /var/lib/celikpanel-quota-warning); kept because they were changed outside CelikPanel: /etc/dovecot/conf.d/90-celikpanel-quota.conf", "removed": true, "success": true}
+== remove postfix 10:45:24
+200 {"detail": "removed postfix, dovecot-core, libexttextcat-2.0-0, libexttextcat-data, liblua5.4-0, libnsl2", "removed": true, "success": true}
+-- timers
+celikpanel-release-recovery.timer celikpanel-release-recovery.service
+-- unit files
+-- celikpanel files
+/etc/dovecot/conf.d/90-celikpanel-quota.conf
+/usr/local/libexec/celikpanel-bind-peer-inspect
+/usr/local/libexec/celikpanel-bind-peer-inspect-wrapper
+/var/lib/celikpanel
+/var/lib/celikpanel-agent
+/var/lib/celikpanel-agent-private
+/var/lib/celikpanel-imports
+/var/lib/celikpanel-recovery-observations
+/var/lib/celikpanel-release-state
+/var/lib/celikpanel-release-transaction
+/var/lib/celikpanel-release-transaction.lock-staging
+/var/lib/celikpanel-release-transaction.marker-staging
+/var/lib/celikpanel/celikpanel.db
+/var/lib/celikpanel/celikpanel.db-shm
+/var/lib/celikpanel/celikpanel.db-wal
+-- dirs
+ls: cannot access '/etc/postfix': No such file or directory /etc/dovecot /etc/dovecot/conf.d 
+-- packages
+  audit 2026-11-08 10:46:01 service.uninstall:postfix {"component": "postfix"}
+  audit 2026-11-08 10:45:18 service.uninstall:dovecot {"component": "dovecot"}
+== b_mail remove done 10:46:09

@@ -1,0 +1,35 @@
+== 10:47:27 before
+total 8
+drwxrwxr-x 2 root celikpanel 4096 Nov  8 09:33 .
+drwxr-xr-x 7 root root       4096 Nov  8 09:58 ..
+200 {"releases": [{"name": "Lithium", "version": "26.13.0"}, {"name": "Krypton", "version": "24.22.2"}, {"name": "Jod", "version": "22.23.4"}, {"name": "Iron", "version": "20.20.2"}]}
+version 22
+400 {"error": "not a valid node version"}
+== 11:01:12 before
+total 8
+drwxrwxr-x 2 root celikpanel 4096 Nov  8 09:33 .
+drwxr-xr-x 7 root root       4096 Nov  8 09:58 ..
+200 {"releases": [{"name": "Lithium", "version": "26.13.0"}, {"name": "Krypton", "version": "24.22.2"}, {"name": "Jod", "version": "22.23.4"}, {"name": "Iron", "version": "20.20.2"}]}
+version 22.23.4
+202 {"operation": {"id": "f3710c7169694fc1ab354f5c4505abab", "kind": "runtime_install", "package_name": "22.23.4", "phase": "queued", "request_id": "276846504d1b7fb01abbc45ff38ef693", "service_id": "node", "started_at": "2026-11-08T11:01:12.433576727Z", "status": "queued"}}
+  op 276846504d1b7fb01abbc45ff38ef693: succeeded completed "" (11:01:24)
+/opt/celikpanel/runtimes:
+total 12
+drwxrwxr-x 3 root celikpanel 4096 Nov  8 11:01 .
+drwxr-xr-x 7 root root       4096 Nov  8 09:58 ..
+drwxr-xr-x 3 root celikpanel 4096 Nov  8 11:01 node
+
+/opt/celikpanel/runtimes/node:
+total 12
+drwxr-xr-x 3 root celikpanel 4096 Nov  8 11:01 .
+drwxrwxr-x 3 root celikpanel 4096 Nov  8 11:01 ..
+drwxr-xr-x 6 root celikpanel 4096 Nov  8 11:01 22.23.4
+200 {"installed": ["22.23.4"], "system_version": ""}
+installed version 22.23.4
+200 {"all_versions": false, "bundles": [], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": false, "hosted": {"blocks_removal": false, "count": 0, "kind": "node_sites", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": [], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "runtime_tree", "required_by": [], "service_id": "node", "setup_required": false, "simulation": null, "version": "22.23.4"}
+200 {"success": true}
+total 8
+drwxrwxr-x 2 root celikpanel 4096 Nov  8 11:01 .
+drwxr-xr-x 7 root root       4096 Nov  8 09:58 ..
+ls: cannot access '/opt/celikpanel/runtimes/node': No such file or directory
+== 11:01:28 b_node done

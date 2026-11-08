@@ -1,0 +1,11 @@
+200
+   {"code": "panel_tls_certificate_valid", "status": "pass"}
+   {"code": "panel_tls_valid", "status": "pass"}
+   {"code": "panel_tls_hostname_address", "status": "unknown"}
+   {"code": "panel_tls_key_match", "status": "pass"}
+   {"code": "panel_tls_chain_unverified", "status": "unknown"}
+-- ssh status
+200 {"can_turn_off": false, "can_turn_on": false, "deciders": [{"file": "/etc/ssh/sshd_config.d/50-cloud-init.conf", "line": 1, "setting": "passwordauthentication", "value": "no"}, {"file": "/etc/ssh/sshd_config", "line": 64, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}], "drop_in": {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "state": "absent"}, "kbd_interactive_authentication": "no", "key_accounts": [{"keys": 1, "name": "celik"}], "password_authentication": "[REDACTED]", "permit_root_login": "without-password", "pubkey_authentication": "yes", "reason": "already_off", "state": "read", "unit": "ssh", "unit_active": true}
+-- os updates summary
+200 {"automatic": {"state": "on", "tool": "unattended-upgrades"}, "checked_at": "2026-11-08T11:43:01Z", "package_family": "apt", "pending": {"lists_at": "2026-11-08T09:33:06Z", "security": 14, "state": "known", "total": 41}, "state": "ready"}
+issuer=CN=Pebble Intermediate CA 6737b0 X509v3 Subject Alternative Name: critical     DNS:frankfurt.s0.test 

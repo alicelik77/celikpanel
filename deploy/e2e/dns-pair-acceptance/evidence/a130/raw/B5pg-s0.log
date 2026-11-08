@@ -1,0 +1,342 @@
+== (a) Components reads/edits 18's files 10:05:57
+  postgresql row: {"status": "active (running)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+   config file: /etc/postgresql/16/main/postgresql.conf
+   config file: /etc/postgresql/16/main/pg_hba.conf
+   config file: /etc/postgresql/18/main/postgresql.conf
+   config file: /etc/postgresql/18/main/pg_hba.conf
+  clusters 200
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+== b_pg cfg done 10:05:59
+== Components scan (the page's Rescan) 10:06:31
+200
+  postgresql row: {"status": "active (running)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+   config file: /etc/postgresql/18/main/postgresql.conf
+   config file: /etc/postgresql/18/main/pg_hba.conf
+== b_pg scan done 10:06:33
+== (b) install PostgreSQL 16 through the panel (pgdg) 10:06:39
+200 {"distribution": "ubuntu", "installs": ["libllvm17t64", "postgresql-16"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql-16"], "state": "known"}
+202 {"operation": {"id": "c048c4f9e3989ac0e499e586dbf518fd", "kind": "service_install", "package_name": "postgresql-16", "phase": "queued", "request_id": "d70a2ce134f0ec2dbf8acae3086061dc", "service_id": "postgresql", "started_at": "2026-11-08T10:06:40.197459783Z", "status": "queued"}}
+  op d70a2ce134f0ec2dbf8acae3086061dc: succeeded completed "" (10:07:02)
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 18 
+-- /var/lib/postgresql:
+16 18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:00 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded active   running PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "16", "name": "main", "port": 5432, "status": "online", "online": true, "databases": null, "leftover": null, "config_path": "/etc/postgresql/16/main/postgresql.conf"}
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+== b_pg inst16 done 10:07:03
+== (b) remove version 16 through the panel 10:07:10
+400 {"error": "package does not name a removable version of this service"}
+428 {"code": "REQUEST_ID_REQUIRED", "error": "This page was opened before CelikPanel was updated, so the server did not accept the change and nothing was changed. Reload the page, then make the change again. (A client that is not the CelikPanel page sends the header X-CelikPanel-Request-Id: 32 lowercase hexadecimal characters, a new value for each action.)"}
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 18 
+-- /var/lib/postgresql:
+16 18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:00 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded active   running PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "16", "name": "main", "port": 5432, "status": "online", "online": true, "databases": null, "leftover": null, "config_path": "/etc/postgresql/16/main/postgresql.conf"}
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+  audit 2026-11-08 10:06:56 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["libllvm17t64", "postgresql-16"], "operation": "service_install", "package": "postgresql-16", "support": "supported", "support_until": "2029-05", "version": "16"}
+  audit 2026-11-08 10:00:50 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T100049Z-auto.tar.gz", "automatic": true, "cluster": "16/main", "component": "postgresql", "data_bytes": 40351866, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", "/var/li
+  audit 2026-11-08 09:55:11 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["libjson-perl", "postgresql-client-common", "postgresql-common", "libpq5", "postgresql-client-18", "postgresql-18"], "operation": "service_install", "package": "postgresql-18", "support": "supported", "support_until": "2030-11-14", "version": "18"}
+  audit 2026-11-08 09:54:33 service.uninstall:postgresql {"component": "postgresql"}
+  audit 2026-11-08 09:54:10 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["libjson-perl", "postgresql-client-common", "ssl-cert", "postgresql-common", "libllvm17t64", "libpq5", "postgresql-client-16", "postgresql-16", "postgresql"], "operation": "service_install"}
+== b_pg rm16 done 10:07:16
+== (d) 16 again, owner data in it, owner apt-get remove 10:08:51
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 18 
+-- /var/lib/postgresql:
+16 18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:00 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded active   running PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+16's port: 5432
+ERROR:  syntax error at end of input
+LINE 1: create
+              ^
+Building PostgreSQL dictionaries from installed myspell/hunspell packages...
+Removing obsolete dictionary files:
+Ver Cluster Port Status                Owner    Data directory              Log file
+16  main    5432 down,binaries_missing postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online                postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- trigger the cleanup: restart the panel (lab) 10:08:58
+active
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:11 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead    PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+== b_pg variant done 10:14:52
+== (d) 16 again, owner data in it, owner apt-get remove 10:15:06
+200 {"distribution": "ubuntu", "installs": ["postgresql-16"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql-16"], "state": "known"}
+202 {"operation": {"id": "8e38eac5b74c6d02c796dd05618ad2d9", "kind": "service_install", "package_name": "postgresql-16", "phase": "queued", "request_id": "5802e178373e9e019b09429c0066a381", "service_id": "postgresql", "started_at": "2026-11-08T10:15:07.211214235Z", "status": "queued"}}
+  op 5802e178373e9e019b09429c0066a381: succeeded completed "" (10:15:29)
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 18 
+-- /var/lib/postgresql:
+16 18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:11 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded active   running PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+16 port 5432
+CREATE ROLE
+CREATE DATABASE
+CREATE TABLE
+INSERT 0 1
+1
+Removing obsolete dictionary files:
+Ver Cluster Port Status                Owner    Data directory              Log file
+16  main    5432 down,binaries_missing postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online                postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- trigger the cleanup: restart the panel (lab) 10:15:34
+active
+Ver Cluster Port Status                Owner    Data directory              Log file
+16  main    5432 down,binaries_missing postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online                postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 18 
+-- /var/lib/postgresql:
+16 18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:11 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead    PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "16", "name": "main", "port": 5432, "status": "down,binaries_missing", "online": false, "databases": null, "leftover": {"data_bytes": 48080516, "fresh": false, "reason": "it has a database made after initdb"}, "config_path": "/etc/postgresql/16/main/postgresql.conf"}
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+== b_pg variant done 10:21:29
+== Components scan (the page's Rescan) 10:21:35
+200
+  postgresql row: {"status": "active (running)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+   config file: /etc/postgresql/18/main/postgresql.conf
+   config file: /etc/postgresql/18/main/pg_hba.conf
+== (d) Archive and remove the kept 16/main 10:21:37
+200 {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T102136Z.tar.gz", "cluster": "16/main", "removed": true, "removed_paths": ["/etc/postgresql/16/main", "/var/lib/postgresql/16/main", "/var/log/postgresql/postgresql-16-main.log", "/etc/postgresql/16", "/var/lib/postgresql/16"]}
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:21 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead    PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+  audit 2026-11-08 10:21:37 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T102136Z.tar.gz", "automatic": false, "cluster": "16/main", "code": "", "component": "postgresql", "data_bytes": 48080516, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", 
+  audit 2026-11-08 10:15:23 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["postgresql-16"], "operation": "service_install", "package": "postgresql-16", "support": "supported", "support_until": "2029-05", "version": "16"}
+  audit 2026-11-08 10:11:01 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T101100Z-auto.tar.gz", "automatic": true, "cluster": "16/main", "component": "postgresql", "data_bytes": 40254499, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", "/var/li
+== b_pg scan archive done 10:21:43
+== (c) move 18 to 5432 10:21:49
+200 {"preview": {"cluster": {"config_path": "/etc/postgresql/18/main/postgresql.conf", "configured_port": 0, "data_directory": "/var/lib/postgresql/18/main", "databases": null, "databases_known": false, "name": "main", "online": true, "owner": "postgres", "port": 5433, "status": "online", "version": "18"}, "config_path": "/etc/postgresql/18/main/postgresql.conf", "config_sha256": "90be548e39cc3582fee2b2c1886146abb8012c4cdd0744478ea31a94900511d9", "from": 5433, "line_after": "port = 5432\t\t\t\t# (change requires restart)", "line_before": "port = 5433\t\t\t\t# (change requires restart)", "sessions": null, "sessions_known": true, "to": 5432}, "records": [{"database_id": 1, "domain": "pgb.s0.test", "host": "localhost", "name": "pgb_s0_test_shopb", "port": 5433, "server_id": 2, "subscription_id": 2, "users": ["pgb_s0_test_shopb_user"]}], "state": "read"}
+400 {"error": "the cluster, the port and the confirmed file are required"}
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:21 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead    PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+LISTEN 0 200 127.0.0.1:5433 0.0.0.0:* users:(("postgres",pid=34318,fd=7)) 
+LISTEN 0 200 [::1]:5433 [::]:* users:(("postgres",pid=34318,fd=6)) 
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-08 09:55:37", "engine": "postgresql", "engine_version": "18", "id": 1, "name": "pgb_s0_test_shopb", "type": "postgresql", "user": "pgb_s0_test_shopb_user", "users": [{"access": "owner", "id": 1, "username": "pgb_s0_test_shopb_user"}]}], "domain_id": 1, "domain_name": "pgb.s0.test"}
+== b_pg port done 10:21:54
+== (c) move 18 to 5432 10:22:01
+200 {"preview": {"cluster": {"config_path": "/etc/postgresql/18/main/postgresql.conf", "configured_port": 0, "data_directory": "/var/lib/postgresql/18/main", "databases": null, "databases_known": false, "name": "main", "online": true, "owner": "postgres", "port": 5433, "status": "online", "version": "18"}, "config_path": "/etc/postgresql/18/main/postgresql.conf", "config_sha256": "90be548e39cc3582fee2b2c1886146abb8012c4cdd0744478ea31a94900511d9", "from": 5433, "line_after": "port = 5432\t\t\t\t# (change requires restart)", "line_before": "port = 5433\t\t\t\t# (change requires restart)", "sessions": null, "sessions_known": true, "to": 5432}, "records": [{"database_id": 1, "domain": "pgb.s0.test", "host": "localhost", "name": "pgb_s0_test_shopb", "port": 5433, "server_id": 2, "subscription_id": 2, "users": ["pgb_s0_test_shopb_user"]}], "state": "read"}
+200 {"changed": true, "from": 5433, "proved": true, "records": 1, "to": 5432}
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:21 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead    PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  clusters 200
+    {"version": "18", "name": "main", "port": 5432, "status": "online", "online": true, "databases": ["pgb_s0_test_shopb"], "leftover": null, "config_path": "/etc/postgresql/18/main/postgresql.conf"}
+LISTEN 0 200 127.0.0.1:5432 0.0.0.0:* users:(("postgres",pid=73184,fd=7)) 
+LISTEN 0 200 [::1]:5432 [::]:* users:(("postgres",pid=73184,fd=6)) 
+ERROR:  syntax error at end of input
+LINE 1: select datname from pg_database where datname like pgb%
+                                                               ^
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-08 09:55:37", "engine": "postgresql", "engine_version": "18", "id": 1, "name": "pgb_s0_test_shopb", "type": "postgresql", "user": "pgb_s0_test_shopb_user", "users": [{"access": "owner", "id": 1, "username": "pgb_s0_test_shopb_user"}]}], "domain_id": 1, "domain_name": "pgb.s0.test"}
+== b_pg port done 10:22:09
+== purge: before 11:01:54
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 10:21 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead    PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+200 {"status": "success"}
+200 removal packages packages ['postgresql'] remove ['postgresql-18', 'postgresql-client-18'] removes_clusters ['18/main'] holds None refuses False plan {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}
+200 {"detail": "removed postgresql-18, postgresql-client-18; removed PostgreSQL cluster 18/main; their files were kept first in /var/backups/celikpanel/postgresql/postgresql-18-main-20261108T110206Z.tar.gz", "removed": true, "success": true}
+Ver Cluster Port Status Owner Data directory Log file
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+
+-- /var/lib/postgresql:
+
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 11:02 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+rc postgresql-16
+/etc/postgresql:
+
+/var/lib/postgresql:
+
+/var/log/postgresql:
+  audit 2026-11-08 11:02:12 service.uninstall:postgresql {"component": "postgresql"}
+  audit 2026-11-08 10:46:01 service.uninstall:postfix {"component": "postfix"}
+  audit 2026-11-08 10:45:18 service.uninstall:dovecot {"component": "dovecot"}
+== purge done 11:02:19

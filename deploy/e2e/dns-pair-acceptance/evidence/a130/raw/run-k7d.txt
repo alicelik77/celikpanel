@@ -1,0 +1,55 @@
+
+######## sasl 11:43:04
+-- the owner installs the SASL modules as the refusal says
+rc=0
+ii  libsasl2-modules:amd64 2.1.28+dfsg1-9 amd64        Cyrus SASL - pluggable au
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the relay sign-in is in /etc/postfix/celikpanel-relay-sasl (root only)", "the master.cf service celikpanel-relay signs in over TLS only", "main.cf sends mail for other servers through [192.0.3.1]:587", "Postfix took the change"]}, "saved": true}
+200 {"apply": {"applied_at": "2026-11-08 11:43:09", "state": "applied"}, "server": {"postfix": true, "relayhost": "[192.0.3.1]:587", "sasl_ready": true, "state": "on"}, "settings": {"enabled": true, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 587, "username": "relayuser@relay.lab.test"}}
+default_transport = celikpanel-relay
+recipient_delimiter = +
+relayhost = [192.0.3.1]:587
+smtp_tls_security_level = may
+celikpanel-relay-sasl celikpanel-relay-sasl.db celikpanel_login_map
+-rw-------  1 root celikpanel   191 Nov  8 11:43 celikpanel-relay-sasl
+-rw-------  1 root celikpanel 12288 Nov  8 11:43 celikpanel-relay-sasl.db
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 2BF2042F19
+Nov 08 11:43:31 relay postfix/submission/smtpd[11160]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:43:31 relay postfix/submission/smtpd[11160]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+Nov 08 11:43:33 relay postfix/submission/smtpd[11160]: 2FFB621D6A: client=unknown[192.0.3.190], sasl_method=LOGIN, sasl_username=relayuser@relay.lab.test
+Nov 08 11:43:33 relay postfix/discard[11165]: 2FFB621D6A: to=<someone@example.com>, relay=none, delay=0.05, delays=0.04/0.01/0/0, dsn=2.0.0, status=sent (lab relay sink)
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the relay sign-in is in /etc/postfix/celikpanel-relay-sasl (root only)", "the master.cf service celikpanel-relay signs in over TLS only", "main.cf sends mail for other servers through [192.0.3.1]:465", "Postfix took the change"]}, "saved": true}
+default_transport = celikpanel-relay
+recipient_delimiter = +
+relayhost = [192.0.3.1]:465
+smtp_tls_security_level = may
+celikpanel-relay-sasl celikpanel-relay-sasl.db celikpanel_login_map
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 635F142F2B
+Nov 08 11:43:33 relay postfix/discard[11165]: 2FFB621D6A: to=<someone@example.com>, relay=none, delay=0.05, delays=0.04/0.01/0/0, dsn=2.0.0, status=sent (lab relay sink)
+Nov 08 11:44:10 relay postfix/smtps/smtpd[11242]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:44:10 relay postfix/smtps/smtpd[11242]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["CelikPanel's relay lines, its service and its sign-in file were removed", "Postfix took the change"]}, "saved": true}
+recipient_delimiter = +
+smtp_tls_security_level = may
+celikpanel_login_map
+cyrus_sasl_config_path = /etc/postfix/sasl
+smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination
+-- subaddressing delivery and the sender list allow line
+<-  250 2.0.0 Ok: queued as 7B8F6413F2
+D025242F26: to=<info@cust1.s0.test>, relay=virtual, delay=4.3, delays=4.3/0.01/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+7B8F6413F2: to=<info+lab@cust1.s0.test>, relay=virtual, delay=0.89, delays=0.87/0/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+   celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --since -1min -o cat --no-pager | grep -E "info\\+lab|to=<info" | tail -3 | cut -c1-200'
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (2 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "
+   x:
+<** 550 5.7.1 <x@spam.example>: Sender address rejected: Mail from this sender is not accepted by this server
+   boss:
+<** 450 4.7.1 <info@cust1.s0.test>: Recipient address rejected: Mailbox temporarily unavailable
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["the sender list, its map and its main.cf element were removed", "Postfix took the change"]}, "saved": true, "state": "applied"}
+recipient_delimiter = +
+smtp_tls_security_level = may
+celikpanel_login_map celikpanel_suspended_recipients celikpanel_suspended_recipients.db
+== k7 sasl done 11:45:33
+exit 0

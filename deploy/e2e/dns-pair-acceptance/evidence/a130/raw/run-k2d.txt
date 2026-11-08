@@ -1,0 +1,44 @@
+
+######## starting 11:29:04
+Created symlink '/etc/systemd/system/multi-user.target.wants/lab-hang.service' → '/etc/systemd/system/lab-hang.service'.
+-- reboot with a unit holding the boot 11:29:05
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+  503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+   delete rule  (mysql 192.0.3.1)
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+  +0s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +6s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +11s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +16s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +22s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +27s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +33s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +38s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +44s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +49s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +54s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +60s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +65s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +70s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +76s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +81s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- wait for the boot to finish (up to 6 min)
+  is-system-running: starting 11:30:56
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [], "slow_down": "none", "state": "open", "tls": "off", "unit": "mariadb"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:24:16", "expires_at": "2026-11-09T11:24:16Z", "id": 5, "status": "waiting", "user": "cust1_s0_test_rmy_user", "user_id": 4}
+skip_name_resolve=OFF
+-rw-r--r-- 1 root celikpanel  415 Nov  8 11:24 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+cust1_s0_test_rmy_user	192.0.3.1
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_fw table inet celikpanel_dbremote
+unhung
+== k2 starting done 11:31:39
+exit 0

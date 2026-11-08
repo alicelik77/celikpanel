@@ -1,0 +1,1 @@
+grep -E "install exit|login|schema|PRETTY|failed end|fresh u22 done|== provision" /var/tmp/a130o/logs/C1fresh-u22.log | cut -c1-200; echo ====; sed -n "1,/the owner removes/p" /var/tmp/a130o/logs/C8rb-u22f-main.log | cut -c1-330; echo; journalctl -h >/dev/null; grep -c . /var/tmp/a130o/logs/C8rb-u22f-main.log

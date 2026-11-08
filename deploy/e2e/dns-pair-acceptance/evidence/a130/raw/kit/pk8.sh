@@ -1,0 +1,1 @@
+cat /var/tmp/a130o/logs/C6tok-r9.log 2>/dev/null | cut -c1-400; tail -5 /var/tmp/a130o/logs/C3wp-r9.log | cut -c1-200; grep -E "^== |install exit|terminal rc|schema|failed" /var/tmp/a130o/logs/C1fresh-u22.log 2>/dev/null | tail -8 | cut -c1-200

@@ -1,0 +1,4 @@
+[
+ {"name": "db-cards-zoom", "path": "/databases", "wait": 4000, "actions": [{"eval": "[...document.querySelectorAll('button')].filter(b=>/Skip tour|Turu geç/.test(b.innerText)).forEach(b=>b.click())"}, {"wait": 800}, {"eval": "window.scrollTo(0,0); document.body.style.zoom='2.2'"}, {"eval": "const c=[...document.querySelectorAll('*')].find(e=>/^MariaDB$/.test((e.innerText||'').trim())); if(c) c.scrollIntoView({block:'center'})"}, {"wait": 800}]},
+ {"name": "comp-db-zoom", "path": "/components", "wait": 5000, "actions": [{"eval": "[...document.querySelectorAll('button')].filter(b=>/Skip tour|Turu geç/.test(b.innerText)).forEach(b=>b.click())"}, {"wait": 800}, {"eval": "document.body.style.zoom='2'"}, {"eval": "const c=[...document.querySelectorAll('*')].find(e=>/^phpMyAdmin$/.test((e.innerText||'').trim())); if(c) c.scrollIntoView({block:'center'})"}, {"wait": 800}]}
+]

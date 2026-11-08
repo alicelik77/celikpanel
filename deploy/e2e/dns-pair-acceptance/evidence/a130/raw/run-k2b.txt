@@ -1,0 +1,89 @@
+
+######## pgrestart 11:14:05
+200 {"applied": "restarted", "outcome": "verified", "success": true, "unit": "postgresql@17-main.service"}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:12:04Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "auth_delay_pending_restart", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:05:40", "expires_at": "2026-11-09T11:05:40Z", "id": 1, "status": "waiting", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+  postgresql still not open after 120 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8054 ms]
+port 5432
+%m [%p] %q%u@%d 
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8179 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8177 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [3267 ms]
+
+######## f2binst 11:17:13
+200 {"distribution": "debian", "installs": ["python3-systemd", "fail2ban"], "notable": [], "refusals": [], "removes": [], "requested": ["fail2ban"], "state": "known"}
+202 {"operation": {"id": "cd0996f39f414e3b78d8a1fddee66f8d", "kind": "service_install", "phase": "queued", "request_id": "e69ff3aefa1c5e189c2878386443fb52", "service_id": "fail2ban", "started_at": "2026-11-08T11:17:19.756748882Z", "status": "queued"}}
+  op e69ff3aefa1c5e189c2878386443fb52: succeeded completed "" (11:17:42)
+jails: sshd
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+
+######## myban 11:18:13
+-- wrong MariaDB passwords from 192.0.3.1
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8022 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8013 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8019 ms]
+jails: sshd
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8021 ms]
+unbanned 192.0.3.1
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8021 ms]
+
+######## pgf2b 11:19:33
+-- the PostgreSQL rule with Fail2ban running: prefix + jail
+200 {"changed": false, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:19:32Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness"
+port 5432
+%m [%p] %q%u@%d celikpanel-client=%h 
+135:hostssl "cust1_s0_test_rpg" "cust1_s0_test_rpg_user" 192.0.3.1/32 scram-sha-256
+-rw-r--r-- 1 root celikpanel  381 Nov  8 11:19 celikpanel-mariadb-auth.conf
+-rw-r--r-- 1 root celikpanel  583 Nov  8 11:19 celikpanel-postgresql-auth.conf
+-rw-r--r-- 1 root celikpanel  485 Nov  8 11:19 celikpanel-database-remote-postgresql-5432.conf
+-rw-r--r-- 1 root celikpanel  410 Nov  8 11:19 celikpanel-database-remote.conf
+jails: celikpanel-mariadb-auth  celikpanel-postgresql-auth-5432  sshd
+  celikpanel-mariadb-auth: |  |- Currently failed:	0
+  celikpanel-mariadb-auth: |  |- Total failed:	0
+  celikpanel-mariadb-auth:    |- Currently banned:	0
+  celikpanel-mariadb-auth:    `- Banned IP list:	
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	0
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	0
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	0
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:19:32Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:05:40", "expires_at": "2026-11-09T11:05:40Z", "id": 1, "status": "active", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+-- wrong PostgreSQL passwords
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1047 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1048 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1044 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1043 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1043 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1046 ms]
+jails: celikpanel-mariadb-auth  celikpanel-postgresql-auth-5432  sshd
+  celikpanel-mariadb-auth: |  |- Currently failed:	0
+  celikpanel-mariadb-auth: |  |- Total failed:	0
+  celikpanel-mariadb-auth:    |- Currently banned:	0
+  celikpanel-mariadb-auth:    `- Banned IP list:	
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	1
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	6
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	1
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	192.0.3.1
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  pg tls -> 	Is the server running on that host and accepting TCP/IP connections? [29 ms]
+unbanned 192.0.3.1
+  pg tls -> ok TLSv1.3 [236 ms]
+== k2 pgrestart f2binst myban pgf2b done 11:20:40
+exit 0

@@ -1,0 +1,71 @@
+== versions 12:16:34
+200 {"agent_commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "agent_matches": true, "commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 77, "version": "v0.1.0-alpha.130"}
+== 131 is the portal's latest 12:16:34
+v0.1.0-alpha.131
+CELIKPANEL_LAB_ROLLBACK_PROBE=1
+  request 83bc7f62a6c7925ac32ed234fe72f61a v0.1.0-alpha.130 -> v0.1.0-alpha.131
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-08T12:16:33Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "83bc7f62a6c7925ac32ed234fe72
+  12:16:38 +3s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  12:16:41 +6s 200 running None  | download:done verify:done prepare:running restart:pending confirm:pending
+  12:16:57 +22s 
+  12:17:28 +53s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: | download:done verify:done prepare:pending restart:pending confirm:pending
+== after the refused attempt 12:17:28
+200 {"agent_commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "agent_matches": true, "commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 77, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-08T12:16:33.852200935Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-08T12:16:33Z", "state": "done"}, {"finished_at": "2026-11-08T12:16:37Z", "id": "verify", "state": "done"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "83bc7f62a6c7925ac32ed234fe72f61a", "status": "failed", "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) / panel.env:5 desteklenmeyen anahtar: CELIKPANEL_LAB_ROLLBACK_PROBE (satr silin, sonra yeniden deneyin)", "target": {"arch": "amd64", "archive_sha256": "4982db3e1bbbb007c57b2b283d78823b454a818b1473f4baa3d8a18c02fd06c9", "archive_size": "73161117", "commit": "fc79ec7507f15dfbb86ea05a35311b464ba699a7", "os": "linux", "sequence": "131", "version": "v0.1.0-alpha.131"}, "updated_at": "2026-11-08T12:17:09.866632341Z"}
+-- wait for the recovery runner to finish (up to 3 min)
+--- systemctl --failed
+celikpanel-self-update-83bc7f62a6c7925ac32ed234fe72f61a.service loaded failed failed [systemd-run] /opt/celikpanel/bin/agent --self-update-worker 83bc7f62a6c7925ac32ed234fe72f61a
+cloud-config.service                                            loaded failed failed Cloud-init: Config Stage
+cloud-final.service                                             loaded failed failed Cloud-init: Final Stage
+cloud-init-main.service                                         loaded failed failed Cloud-init: Single Process
+(failed end)
+2026-11-08T12:16:56+00:00 host1.s0.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-08T12:16:56+00:00 host1.s0.test systemd[1]: Stopped celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-08T12:17:10+00:00 host1.s0.test release-recovery[29256]: Recovery dispatch admitted: attempt=1 snapshot=20261108T121652Z-from-unknown-to-fc79ec7507f15dfbb86ea05a35311b464ba699a7-cc787623efe440
+2026-11-08T12:17:13+00:00 host1.s0.test release-recovery[29605]: ==> Verified snapshot / Doğrulanmış snapshot: /var/backups/celikpanel/update-snapshots/20261108T121652Z-from-unknown-to-fc79ec7507f1
+2026-11-08T12:17:25+00:00 host1.s0.test systemd[1]: Started celikpanel-agent.service - CelikPanel privileged agent.
+2026-11-08T12:17:25+00:00 host1.s0.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-08T12:17:26+00:00 host1.s0.test systemd[1]: Stopped celikpanel-panel.service - CelikPanel web panel.
+2026-11-08T12:17:26+00:00 host1.s0.test systemd[1]: Started celikpanel-panel.service - CelikPanel web panel.
+2026-11-08T12:17:28+00:00 host1.s0.test sudo[33207]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -u celikpanel-release-recovery.service --since 12:16:34 -o cat --no-p
+2026-11-08T12:17:33+00:00 host1.s0.test sudo[33851]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -u celikpanel-release-recovery.service --since 12:16:34 -o cat --no-p
+2026-11-08T12:17:34+00:00 host1.s0.test release-recovery[29605]: ==> Rollback complete / Geri alma tamamlandı
+2026-11-08T12:17:38+00:00 host1.s0.test sudo[34061]:    celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl -u celikpanel-release-recovery.service --since 12:16:34 -o cat --no-p
+== the owner removes the line and presses Update again 12:17:40
+0
+  request ca1b9a8ebabec909655a83ce37c0b0ed v0.1.0-alpha.130 -> v0.1.0-alpha.131
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-08T12:17:39Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "ca1b9a8ebabec909655a83ce37c0
+  12:17:42 +2s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  12:17:59 +19s 
+  12:18:34 +54s 200 running verifying  | download:done verify:done prepare:done restart:done confirm:running
+  12:18:45 +65s 200 succeeded None  | download:done verify:done prepare:done restart:done confirm:done
+  press-to-end 65 s
+== after 12:18:56
+200 {"agent_commit": "fc79ec7507f15dfbb86ea05a35311b464ba699a7", "agent_matches": true, "commit": "fc79ec7507f15dfbb86ea05a35311b464ba699a7", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 77, "version": "v0.1.0-alpha.131"}
+release 
+--- systemctl --failed (all units)
+cloud-config.service    loaded failed failed Cloud-init: Config Stage
+cloud-final.service     loaded failed failed Cloud-init: Final Stage
+cloud-init-main.service loaded failed failed Cloud-init: Single Process
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/08 12:17:26 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/08 12:17:26 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/08 12:18:31 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/08 12:18:31 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/08 12:18:43 self-update: cleared the failed mark of celikpanel-self-update-83bc7f62a6c7925ac32ed234fe72f61a.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '0512612ad8a22e3d9e566fdd6c52d9fe.json'] {'request_id': '0512612ad8a22e3d9e566fdd6c52d9fe', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-08T10:01:06.145543152Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+  ['self-update', '6591588e96cb8b553390c672d08423d4.json'] {'request_id': '6591588e96cb8b553390c672d08423d4', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-08T09:59:19.137199841Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+  ['self-update', '83bc7f62a6c7925ac32ed234fe72f61a.json'] {'request_id': '83bc7f62a6c7925ac32ed234fe72f61a', 'status': 'failed', 'phase': None, 'created_at': '2026-11-08T12:16:33.852200935Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.131', 'reason': None, 'code': None}
+  ['self-update', 'ca1b9a8ebabec909655a83ce37c0b0ed.json'] {'request_id': 'ca1b9a8ebabec909655a83ce37c0b0ed', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-08T12:17:39.410375244Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.131', 'reason': None, 'code': None}
+--- systemctl --failed
+cloud-config.service    loaded failed failed Cloud-init: Config Stage
+cloud-final.service     loaded failed failed Cloud-init: Final Stage
+cloud-init-main.service loaded failed failed Cloud-init: Single Process
+(failed end)
+== c8rb done 12:18:57

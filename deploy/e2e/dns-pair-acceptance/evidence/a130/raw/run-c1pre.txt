@@ -1,0 +1,41 @@
+== versions 09:54:38
+200 {"agent_commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "agent_matches": true, "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+200 {"agent_commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "agent_matches": true, "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "hostname": "host2.s0.test", "ipv4": "192.0.3.191", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+-- PostgreSQL from Components on the first server (as the window does it) 09:54:38
+200 {"distribution": "debian", "installs": ["libjson-perl", "postgresql-client-common", "libio-pty-perl", "libipc-run-perl", "postgresql-common-dev", "postgresql-common", "libz3-4", "libllvm19", "libpq5", "postgresql-client-17", "postgresql-17", "postgresql"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql"], "state": "known"}
+202 {"operation": {"id": "cda1b1e2c933d7f5e8aabca2b22b2ab7", "kind": "service_install", "phase": "queued", "request_id": "17a439be1c021f43f7a5796c8d23bf6c", "service_id": "postgresql", "started_at": "2026-11-08T09:54:41.003448684Z", "status": "queued"}}
+  op 17a439be1c021f43f7a5796c8d23bf6c: succeeded completed "" (09:55:52)
+Ver Cluster Port Status Owner    Data directory              Log file
+17  main    5432 online postgres /var/lib/postgresql/17/main /var/log/postgresql/postgresql-17-main.log
+active active -- admin PHP site site1.s0.test 09:55:53
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/2/public_html", "Domain": "site1.s0.test", "DomainID": 2, "FTPPassword": "[REDACTED]", "FTPUser": "site1_s0_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 2, "TempDomain": ""}
+site1 id 2
+200 {"id": 1, "success": true}
+200 {"id": 1, "name": "site1_s0_test_shop", "status": "success", "type": "mysql", "user": "site1_s0_test_shop_user"}
+-- plan Basic + customer cust1 + the customer's domain 09:56:01
+200 {"id": 1, "success": true}
+plan id 1
+200 {"id": 3, "rights": "plan", "success": true}
+cust1 subscription 3
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/3/sites/3/public_html", "Domain": "cust1.s0.test", "DomainID": 3, "FTPPassword": "[REDACTED]", "FTPUser": "cust1_s0_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 3, "TempDomain": ""}
+cust1 site id 3
+200 {"id": 2, "name": "cust1_s0_test_shopm", "status": "success", "type": "mysql", "user": "cust1_s0_test_shopm_user"}
+200 {"id": 3, "name": "cust1_s0_test_shopp", "status": "success", "type": "postgresql", "user": "cust1_s0_test_shopp_user"}
+200 {"id": 2, "success": true}
+200 {"id": 3, "success": true}
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-08 09:56:11", "engine": "postgresql", "engine_version": "17", "id": 3, "name": "cust1_s0_test_shopp", "type": "postgresql", "user": "cust1_s0_test_shopp_user", "users": [{"access": "owner", "id": 3, "username": "cust1_s0_test_shopp_user"}]}, {"created_at": "2026-11-08 09:56:10", "engine": "mariadb", "engine_version": "11.8", "id": 2, "name": "cust1_s0_test_shopm", "type": "mysql", "user": "cust1_s0_test_shopm_user", "users": [{"access": "owner", "id": 2, "username": "cust1_s0_test_shopm_user"}]}], "domain_id": 3, "domain_name": "cust1.s0.test"}
+-- joined server: PHP site bsite.s0.test 09:56:15
+409 {"action": "/domains/bsite.s0.test?tab=dns", "code": "DNS_PUBLICATION_PENDING", "domain": "bsite.s0.test", "domain_id": 2, "error": "the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page", "partial_success": true, "zone_exists": false}
+bsite id 2
+-- snapshot main
+snapshot pre129: 251 entries
+-- snapshot backup
+snapshot pre129: 206 entries
+celikpanel-panel-acme-b078b9a4d28a43f8f60f295f.conf
+celikpanel-panel-acme-c98443193a1f66b07955be11.conf
+cust1.s0.test.conf
+default
+s0.test.conf
+site1.s0.test.conf
+active active active active active == c1pre done 09:56:43
+exit 0

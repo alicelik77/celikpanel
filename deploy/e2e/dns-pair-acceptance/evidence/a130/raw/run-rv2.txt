@@ -1,0 +1,138 @@
+== waiting 467 s until 10.5 min after B's start 12:19:17
+== B >= 10 min after start 12:27:04
+Ver Cluster Port Status Owner Data directory Log file
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+
+-- /var/lib/postgresql:
+
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 12:26 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 4609624 Nov  8 12:26 postgresql-16-main-20261108T122607Z-auto.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+postgresql.service         loaded inactive dead PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead PostgreSQL Cluster 16-main
+  audit 2026-11-08 12:26:28 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T122607Z-auto.tar.gz", "automatic": true, "cluster": "16/main", "component": "postgresql", "data_bytes": 40349108, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", "/var/li
+  audit 2026-11-08 12:26:28 postgresql.cluster.leftover.purged:libpq5,postgresql-16,postgresql-client-16 {"automatic": true, "component": "postgresql", "notes": null, "purged": ["libpq5", "postgresql-16", "postgresql-client-16"]}
+  audit 2026-11-08 10:22:03 postgresql.cluster.port:18/main 5433->5432 {"cluster": "18/main", "code": "", "component": "postgresql", "from": "5433", "records": 1, "rolled_back": false, "to": "5432"}
+  audit 2026-11-08 10:21:37 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T102136Z.tar.gz", "automatic": false, "cluster": "16/main", "code": "", "component": "postgresql", "data_bytes": 48080516, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", 
+  audit 2026-11-08 10:11:01 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T101100Z-auto.tar.gz", "automatic": true, "cluster": "16/main", "component": "postgresql", "data_bytes": 40254499, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", "/var/li
+== one version removed 12:27:06
+200 {"plan": {"enabled": true, "name": "PostgreSQL Global Development Group (PGDG)", "origin": "apt.postgresql.org", "ready": false, "repo_id": "pgdg", "steps": [{"path": "/etc/apt/sources.list.d/celikpan
+200 {"distribution": "ubuntu", "installs": ["libpq5", "postgresql-client-18", "postgresql-18"], "notable": [{"component": "pgdg", "package": "libpq5", "reason": "vendor_shared"}], "refusals": [], "removes": [], "requested": ["postgresql-18", "libpq5=18.6-1.pgdg24.04+2"], "state": "known"}
+202 {"operation": {"id": "b48c8c27405798c9e56682e70d9b96a6", "kind": "service_install", "package_name": "postgresql-18", "phase": "queued", "request_id": "7ac02ab522e01fc71339b4ecbe0b3de6", "service_id": "postgresql", "started_at": "2026-11-08T12:27:09.774308379Z", "status": "queued"}}
+  op 7ac02ab522e01fc71339b4ecbe0b3de6: succeeded completed "" (12:27:42)
+200 {"distribution": "ubuntu", "installs": ["postgresql-client-16", "postgresql-16"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql-16"], "state": "known"}
+202 {"operation": {"id": "f48cb4396af43d0da06aec38034a0a4c", "kind": "service_install", "package_name": "postgresql-16", "phase": "queued", "request_id": "499b3c30ee9b9e852c48d01cf2219df5", "service_id": "postgresql", "started_at": "2026-11-08T12:27:45.30821129Z", "status": "queued"}}
+  op 499b3c30ee9b9e852c48d01cf2219df5: succeeded completed "" (12:28:18)
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5433 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 18 
+-- /var/lib/postgresql:
+16 18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 12:26 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 4609624 Nov  8 12:26 postgresql-16-main-20261108T122607Z-auto.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded active   running PostgreSQL Cluster 16-main
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+200 {"all_versions": false, "bundles": [], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "php_sites", "names": []}, "mail_filter_rewired": false, "package": "postgresql-16", "package_family": "apt", "packages": ["postgresql-16"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "postgresql", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "default_runtime": false, "refuses": false, "remove": ["postgresql-16", "postgresql-client-16", "libllvm17t64"], "removes_clusters": ["16/main"], "state": "checked", "traces": [], "traces_state": "checked"}, "version": "16"}
+200 {"detail": "removed postgresql-16, postgresql-client-16, libllvm17t64; removed PostgreSQL cluster 16/main", "removed": true, "success": true}
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+18 
+-- /var/lib/postgresql:
+18 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 12:26 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 4609624 Nov  8 12:26 postgresql-16-main-20261108T122607Z-auto.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@18-main.service loaded active   running PostgreSQL Cluster 18-main
+  audit 2026-11-08 12:28:50 service.uninstall:postgresql:postgresql-16 {"component": "postgresql", "package": "postgresql-16", "support": "supported", "version": "16"}
+  audit 2026-11-08 12:28:09 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["postgresql-client-16", "postgresql-16"], "operation": "service_install", "package": "postgresql-16", "support": "supported", "support_until": "2029-05", "version": "16"}
+  audit 2026-11-08 12:27:33 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["libpq5", "postgresql-client-18", "postgresql-18"], "operation": "service_install", "package": "postgresql-18", "support": "supported", "support_until": "2030-11-14", "version": "18"}
+  audit 2026-11-08 12:26:28 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T122607Z-auto.tar.gz", "automatic": true, "cluster": "16/main", "component": "postgresql", "data_bytes": 40349108, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", "/var/li
+  audit 2026-11-08 12:26:28 postgresql.cluster.leftover.purged:libpq5,postgresql-16,postgresql-client-16 {"automatic": true, "component": "postgresql", "notes": null, "purged": ["libpq5", "postgresql-16", "postgresql-client-16"]}
+  audit 2026-11-08 12:05:22 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["postgresql-16"], "operation": "service_install", "package": "postgresql-16", "support": "supported", "support_until": "2029-05", "version": "16"}
+  audit 2026-11-08 11:02:12 service.uninstall:postgresql {"component": "postgresql"}
+  audit 2026-11-08 10:23:09 config.write.failed:/etc/postgresql/18/main/pg_hba.conf — validation_failed syntax null
+  audit 2026-11-08 10:23:08 config.read:/etc/postgresql/18/main/pg_hba.conf null
+  audit 2026-11-08 10:22:56 config.write:/etc/postgresql/18/main/pg_hba.conf — reloaded backup /etc/postgresql/18/main/pg_hba.conf.celikpanel-backup-20261108T102256Z null
+  audit 2026-11-08 10:22:55 config.read:/etc/postgresql/18/main/pg_hba.conf null
+  audit 2026-11-08 10:22:54 config.write.failed:/etc/postgresql/18/main/pg_hba.conf — validation_failed lockout null
+  audit 2026-11-08 10:22:54 config.read:/etc/postgresql/18/main/pg_hba.conf null
+  audit 2026-11-08 10:22:40 config.write:/etc/postgresql/18/main/pg_hba.conf — reloaded backup /etc/postgresql/18/main/pg_hba.conf.celikpanel-backup-20261108T102239Z null
+  audit 2026-11-08 10:22:39 config.read:/etc/postgresql/18/main/pg_hba.conf null
+  audit 2026-11-08 10:22:31 config.write.refused:/etc/postgresql/18/main/pg_hba.conf — SETTINGS_VERSION_REQUIRED null
+  audit 2026-11-08 10:22:31 config.read:/etc/postgresql/18/main/pg_hba.conf null
+  audit 2026-11-08 10:22:03 postgresql.cluster.port:18/main 5433->5432 {"cluster": "18/main", "code": "", "component": "postgresql", "from": "5433", "records": 1, "rolled_back": false, "to": "5432"}
+  audit 2026-11-08 10:21:37 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T102136Z.tar.gz", "automatic": false, "cluster": "16/main", "code": "", "component": "postgresql", "data_bytes": 48080516, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", 
+  audit 2026-11-08 10:15:23 service.install:postgresql {"component": "postgresql", "confirmed_installs": ["postgresql-16"], "operation": "service_install", "package": "postgresql-16", "support": "supported", "support_until": "2029-05", "version": "16"}
+  audit 2026-11-08 10:11:01 postgresql.cluster.leftover.removed:16/main {"archive": "/var/backups/celikpanel/postgresql/postgresql-16-main-20261108T101100Z-auto.tar.gz", "automatic": true, "cluster": "16/main", "component": "postgresql", "data_bytes": 40254499, "data_directory": "/var/lib/postgresql/16/main", "port": 5432, "removed": ["/etc/postgresql/16/main", "/var/li
+== whole PostgreSQL removal 12:28:59
+200 {"all_versions": true, "bundles": [], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "databases", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["postgresql"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "postgresql", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "default_runtime": false, "refuses": false, "remove": ["postgresql-18", "postgresql-client-18", "postgresql-client-common", "postgresql-common", "libjson-perl"], "removes_clusters": ["18/main"], "state": "checked", "traces": [], "traces_state": "checked"}}
+200 {"detail": "removed postgresql-18, postgresql-client-18, postgresql-client-common, postgresql-common, libjson-perl; your own files the package's purge deleted were put back: /etc/postgresql-common/createcluster.conf, /etc/postgresql-common/root.crt; removed PostgreSQL cluster 18/main; CelikPanel's PGDG repository (source, key and pin) was removed", "owner_files_kept": ["/etc/postgresql-common/createcluster.conf", "/etc/postgresql-common/root.crt"], "removed": true, "success": true}
+/root/g_pgl.sh: line 3: pg_lsclusters: command not found
+-- /etc/postgresql:
+ls: cannot access '/etc/postgresql': No such file or directory 
+-- /var/lib/postgresql:
+ls: cannot access '/var/lib/postgresql': No such file or directory 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 12:26 .
+drwx------ 6 root root          4096 Nov  8 12:29 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 4609624 Nov  8 12:26 postgresql-16-main-20261108T122607Z-auto.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+ls: cannot access '/etc/postgresql': No such file or directory
+ls: cannot access '/var/lib/postgresql': No such file or directory
+ls: cannot access '/var/log/postgresql': No such file or directory
+== Postfix on Ubuntu: status, owner drop-in kept on removal 12:30:04
+200 {"distribution": "ubuntu", "installs": ["libnsl2", "postfix"], "notable": [], "refusals": [], "removes": [], "requested": ["postfix"], "state": "known"}
+202 {"operation": {"id": "9f483a1b484b742eb9a34be535babbc9", "kind": "service_install", "phase": "queued", "request_id": "21ab03df156c920c75573c6fab93d74d", "service_id": "postfix", "started_at": "2026-11-08T12:30:08.32288363Z", "status": "queued"}}
+  op 21ab03df156c920c75573c6fab93d74d: failed configuring {"code": "service_install_failed", "component": "postfix", "detail": "mail stack configuration: dovecot: Dovecot version could not be verified; inspect the installed dovecot executable and retry the same operation", "message": "The service could not be installed and verified.", "step": "configure"} (12:30:51)
+  problems: [('security_updates', None)]
+total 12
+drwxr-xr-x  2 root root 4096 Nov  8 12:32 .
+drwxr-xr-x 29 root root 4096 Nov  8 12:32 ..
+-rw-r--r--  1 root root   31 Nov  8 12:32 owner.conf
+409 {"code": "HOST_MUTATION_BUSY", "error": "This server's package manager is busy \u2014 a package task is still running on this server. Wait for it to finish, then try again.", "reason": "package_manager_active"}
+total 12
+drwxr-xr-x  2 root root 4096 Nov  8 12:32 .
+drwxr-xr-x 29 root root 4096 Nov  8 12:32 ..
+-rw-r--r--  1 root root   31 Nov  8 12:32 owner.conf
+[Service]
+# owner (lab)
+Nice=5
+ii  postfix        3.8.6-1ubuntu0.1 amd64        High-perfor
+== rv2 all done 12:32:04
+exit 0

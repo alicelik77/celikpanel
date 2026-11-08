@@ -1,0 +1,32 @@
+
+######## oldreset 11:51:52
+429  {"error":"Too many requests from this address, so nothing was sent. Wait 15 minutes, then try again.","code":"account_recovery_too_many"} 
+subject: Reset the mailbox password: info@cust1.s0.test
+link: https://frankfurt.s0.test:1923/account-link/mailbox-reset#t=[REDACTED]
+token length 43
+-- panel password change
+200 {"success": true}
+-- reset with the link made before the change:
+410  {"error":"This link is not valid any more: it was used, replaced by a newer one, expired, or the mailbox changed. Nothing was changed. Ask for a new link.","code":"mailbox_recovery_link_invalid"} 
+-- users lines changed by that reset (expect none):
+
+######## manual 11:52:11
+200 {"distribution": "debian", "installs": ["libhtml-tagset-perl", "liburi-perl", "libhtml-parser-perl", "libcgi-pm-perl", "libdigest-hmac-perl", "libio-multiplex-perl", "libsocket6-perl", "libio-socket-inet6-perl", "perl-openssl-defaults", "libnet-ssleay-perl", "libio-socket-ssl-perl", "libnet-cidr-perl", "libnet-dns-perl", "libnet-server-perl", "postfwd"], "notable": [], "refusals": [], "removes": [], "requested": ["postfwd"], "state": "known"}
+202 {"operation": {"id": "256a59b848c40f3509a4ad3986a2bc73", "kind": "service_install", "phase": "queued", "request_id": "47c3b07ac0e793755fd28813f349b3be", "service_id": "postfwd", "started_at": "2026-11-08T11:52:29.485267236Z", "status": "queued"}}
+  op 47c3b07ac0e793755fd28813f349b3be: succeeded completed "" (11:53:46)
+200 {"called": true, "result": {"applied": true, "changed": true, "status": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"}, "steps": ["postfwd's rules were written and chec
+-- the administrator's manual stop of sales@ (lab: written as the screen's manual stop is stored)
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'python3 -c 'import sqlite3; c=sqlite3.connect("/var/lib/celikpanel/celikpanel.db",timeout=20); c.execute("INSERT INTO mailbox_outgoing (email_account_id, paused_at, paused_reason, paused_detail, updated_at) VALUES (3, datetime('now'), 'manual', 'stopped by the administrator (lab)', datetime('now')) ON CONFLICT(email_account_id) DO UPDATE SET paused_at=excluded.paused_at, paused_reason='manual', paused_detail=excluded.paused_detail"); c.commit(); print(c.execute("select email_account_id, paused_reason from mailbox_outgoing").fetchall())'''
+200 {"apply": {"applied_at": "2026-11-08 11:53:48", "attempted_at": "2026-11-08 11:53:48", "state": "applied", "verified_at": "2026-11-08 11:53:48"}, "paused": [], "plans": [{"id": 1, "limits": {"mailbox_size_mb": null, "outgoing_domain": null, "outgoing_mailbox": null, "outgoing_subscription": null}, "name": "Basic"}], "server": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"}, "settings": {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_
+   send while stopped:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as E2BF242EDC
+-- password change
+200 {"success": true}
+200 {"apply": {"applied_at": "2026-11-08 11:53:48", "attempted_at": "2026-11-08 11:53:48", "state": "applied", "verified_at": "2026-11-08 11:53:48"}, "paused": [], "plans": [{"id": 1, "limits": {"mailbox_size_mb": null, "outgoing_domain": null, "outgoing_mailbox": null, "outgoing_subscription": null}, "name": "Basic"}], "server": {"config_path": "/etc/postfix/postfwd.cf", "config_state": "panel", "family": "apt", "installed": true, "postfix": true, "service_active": true, "verified": true, "wiring": "on"}, "settings": {"domain_per_hour": 750, "enabled": true, "mailbox_per_hour": 500, "new_mailbox_
+   send after the change:
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 24A8342F00
+== k8 oldreset manual done 11:56:24
+exit 0

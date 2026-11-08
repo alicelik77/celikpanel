@@ -1,0 +1,390 @@
+
+######## setup 11:05:22
+401 
+401 
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; b=json.loads(json.load(open(sys.argv[1]))["body"]); l=b.get("plans") if isinstance(b,dict) else b; p=[x for x in l if x.get("name")=="Basic"][0]; r=p.get("rights") or {}
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+KeyError: 'body'
+Traceback (most recent call last):
+  File "/var/tmp/a130o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 542, in <module>
+    sys.exit(main(sys.argv[1:]))
+             ~~~~^^^^^^^^^^^^^^
+  File "/var/tmp/a130o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 536, in main
+    out = globals()[f"cmd_{a.cmd}"](a)
+  File "/var/tmp/a130o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 308, in cmd_api
+    resp = c.request(a.method, a.path, body_arg(a.body), timeout=a.timeout, purpose=a.label)
+                                       ~~~~~~~~^^^^^^^^
+  File "/var/tmp/a130o/h/deploy/e2e/dns-pair-acceptance/beta1/beta1.py", line 292, in body_arg
+    return json.loads(Path(raw[1:]).read_text())
+                      ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/var/tmp/a130o/t-s0/planrights.json'
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    d=json.load(sys.stdin); s=d.get("status"); b=d.get("body") or ""
+  File "/usr/lib/python3.14/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/lib/python3.14/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+200 {"id": 4, "name": "cust1_s0_test_rmy", "status": "success", "type": "mysql", "user": "cust1_s0_test_rmy_user"}
+4 cust1_s0_test_rmy cust1_s0_test_rmy_user 4
+200 {"id": 5, "name": "cust1_s0_test_rpg", "status": "success", "type": "postgresql", "user": "cust1_s0_test_rpg_user"}
+5 cust1_s0_test_rpg cust1_s0_test_rpg_user 5
+401 
+== k2 setup done 11:05:24
+
+######## setup 11:05:34
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 0, "state": {"close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": false, "known": true, "listen_remote": false, "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": false, "offered": false, "panel_firewall_note": "", "rules": 0}
+200 {"changed": true, "engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T11:05:32Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not instal
+200 {"success": true}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T11:05:32Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 0, "state": {"applied_at": "2026-11-08T11:05:32Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": false, "known": true, "listen_remote": false, "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_fir
+== k2 setup done 11:05:35
+
+######## pgopen 11:05:42
+jails: 
+200 {"error": "", "id": 1, "status": "waiting", "success": true}
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    print("   engine", json.dumps({k:e.get(k) for k in ("state","listen_remote","filter_ready","fail2ban","fail2ban_detail","name_resolve","close_pending","problems","last_error")})[:900])
+                                     ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+  200 access {"may_edit": true}
+  postgresql still not open after 120 s:   pg tls -> timeout: failed to run command ‘psql’: No such file or directory [6 ms]
+port 5432
+%m [%p] %q%u@%d 
+  pg wrong -> timeout: failed to run command ‘psql’: No such file or directory [5 ms]
+  pg wrong -> timeout: failed to run command ‘psql’: No such file or directory [4 ms]
+  pg wrong -> timeout: failed to run command ‘psql’: No such file or directory [4 ms]
+
+######## myname 11:08:06
+200 {"error": "", "id": 2, "status": "waiting", "success": true}
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    print("   engine", json.dumps({k:e.get(k) for k in ("state","listen_remote","filter_ready","fail2ban","fail2ban_detail","name_resolve","close_pending","problems","last_error")})[:900])
+                                     ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+  200 access {"may_edit": true}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:08:05Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [{"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client and then names the host, not its address, in a refused sign-in, so Fail2ban cannot ban it", "User": ""}, {"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components, then apply again", "User": ""}, {"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "MariaDB reads its listen address, TLS and host name lookup settings only when it starts", "User": ""}], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "wait_restart", "tls": "on", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T11:08:05Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "PostgreSQL reads its listen address and shared_preload_libraries only when it starts", "User": ""}], "readiness": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "auth_delay (slowing wrong passwords down) loads when PostgreSQL restarts", "User": ""}, {"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "auth_delay_pending_restart", "state": "wait_restart", "tls": "on", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_firewall_note": "", "rules": 2}
+skip_name_resolve=OFF
+-rw-r--r-- 1 root celikpanel  415 Nov  8 11:08 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+  my tls -> timeout: failed to run command ‘mariadb’: No such file or directory [4 ms]
+
+######## myskip 11:08:33
+200 {"changed": true, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:08:33Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": false, "name_resolve": "pending_restart", "nft_available": true, "problems": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components, then apply again", "User": ""}, {"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "MariaDB reads its listen address, TLS and host name lookup settings only 
+skip_name_resolve=OFF
+-rw-r--r-- 1 root celikpanel  576 Nov  8 11:08 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+/etc/mysql/mariadb.conf.d/90-celikpanel-remote-access.cnf:11:skip-name-resolve
+200 {"success": true}
+
+######## pgopen 11:09:50
+jails: 
+409 {"code": "DATABASE_REMOTE_EXISTS", "error": "this address is already listed for this user and database; nothing was changed"}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:08:33Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "auth_delay_pending_restart", "state": "wait_restart", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:05:40", "expires_at": "2026-11-09T11:05:40Z", "id": 1, "status": "waiting", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+  postgresql still not open after 120 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8038 ms]
+port 5432
+%m [%p] %q%u@%d 
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8043 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8038 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8044 ms]
+
+######## myname 11:12:43
+409 {"code": "DATABASE_REMOTE_EXISTS", "error": "this address is already listed for this user and database; nothing was changed"}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"applied_at": "2026-11-08T11:12:04Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "none", "state": "open", "tls": "on", "unit": "mariadb"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:08:04", "expires_at": "2026-11-09T11:08:04Z", "id": 2, "status": "waiting", "user": "cust1_s0_test_rmy_user", "user_id": 4}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:12:04Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components, then apply again", "User": ""}], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}], "slow_down": "none", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T11:12:04Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "PostgreSQL reads its listen address and shared_preload_libraries only when it starts", "User": ""}], "readiness": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "auth_delay (slowing wrong passwords down) loads when PostgreSQL restarts", "User": ""}, {"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "auth_delay_pending_restart", "state": "wait_restart", "tls": "on", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": true, "offered": true, "panel_firewall_note": "", "rules": 2}
+skip_name_resolve=ON
+-rw-r--r-- 1 root celikpanel  576 Nov  8 11:08 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+/etc/mysql/mariadb.conf.d/90-celikpanel-remote-access.cnf:11:skip-name-resolve
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8025 ms]
+== k2 pgopen myname done 11:13:18
+
+######## pgrestart 11:14:05
+200 {"applied": "restarted", "outcome": "verified", "success": true, "unit": "postgresql@17-main.service"}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:12:04Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "auth_delay_pending_restart", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:05:40", "expires_at": "2026-11-09T11:05:40Z", "id": 1, "status": "waiting", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+  postgresql still not open after 120 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8054 ms]
+port 5432
+%m [%p] %q%u@%d 
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8179 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8177 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [3267 ms]
+
+######## f2binst 11:17:13
+200 {"distribution": "debian", "installs": ["python3-systemd", "fail2ban"], "notable": [], "refusals": [], "removes": [], "requested": ["fail2ban"], "state": "known"}
+202 {"operation": {"id": "cd0996f39f414e3b78d8a1fddee66f8d", "kind": "service_install", "phase": "queued", "request_id": "e69ff3aefa1c5e189c2878386443fb52", "service_id": "fail2ban", "started_at": "2026-11-08T11:17:19.756748882Z", "status": "queued"}}
+  op e69ff3aefa1c5e189c2878386443fb52: succeeded completed "" (11:17:42)
+jails: sshd
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+
+######## myban 11:18:13
+-- wrong MariaDB passwords from 192.0.3.1
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8022 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8013 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8019 ms]
+jails: sshd
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8021 ms]
+unbanned 192.0.3.1
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8021 ms]
+
+######## pgf2b 11:19:33
+-- the PostgreSQL rule with Fail2ban running: prefix + jail
+200 {"changed": false, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:19:32Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness"
+port 5432
+%m [%p] %q%u@%d celikpanel-client=%h 
+135:hostssl "cust1_s0_test_rpg" "cust1_s0_test_rpg_user" 192.0.3.1/32 scram-sha-256
+-rw-r--r-- 1 root celikpanel  381 Nov  8 11:19 celikpanel-mariadb-auth.conf
+-rw-r--r-- 1 root celikpanel  583 Nov  8 11:19 celikpanel-postgresql-auth.conf
+-rw-r--r-- 1 root celikpanel  485 Nov  8 11:19 celikpanel-database-remote-postgresql-5432.conf
+-rw-r--r-- 1 root celikpanel  410 Nov  8 11:19 celikpanel-database-remote.conf
+jails: celikpanel-mariadb-auth  celikpanel-postgresql-auth-5432  sshd
+  celikpanel-mariadb-auth: |  |- Currently failed:	0
+  celikpanel-mariadb-auth: |  |- Total failed:	0
+  celikpanel-mariadb-auth:    |- Currently banned:	0
+  celikpanel-mariadb-auth:    `- Banned IP list:	
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	0
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	0
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	0
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:19:32Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:05:40", "expires_at": "2026-11-09T11:05:40Z", "id": 1, "status": "active", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+-- wrong PostgreSQL passwords
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1047 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1048 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1044 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1043 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1043 ms]
+  pg wrong -> psql: error: connection to server at "192.0.3.190", port 5432 failed: FATAL:  password authentication failed for user "cust1_s0_test_rpg_user" [1046 ms]
+jails: celikpanel-mariadb-auth  celikpanel-postgresql-auth-5432  sshd
+  celikpanel-mariadb-auth: |  |- Currently failed:	0
+  celikpanel-mariadb-auth: |  |- Total failed:	0
+  celikpanel-mariadb-auth:    |- Currently banned:	0
+  celikpanel-mariadb-auth:    `- Banned IP list:	
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	1
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	6
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	1
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	192.0.3.1
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  pg tls -> 	Is the server running on that host and accepting TCP/IP connections? [29 ms]
+unbanned 192.0.3.1
+  pg tls -> ok TLSv1.3 [236 ms]
+== k2 pgrestart f2binst myban pgf2b done 11:20:40
+
+######## myban 11:20:54
+-- wrong MariaDB passwords from 192.0.3.1
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [100 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [94 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [90 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [86 ms]
+  my wrong -> ERROR 1045 (28000): Access denied for user 'cust1_s0_test_rmy_user'@'192.0.3.1' (using password: YES) [64 ms]
+  my wrong -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115) [26 ms]
+jails: celikpanel-mariadb-auth  celikpanel-postgresql-auth-5432  sshd
+  celikpanel-mariadb-auth: |  |- Currently failed:	0
+  celikpanel-mariadb-auth: |  |- Total failed:	5
+  celikpanel-mariadb-auth:    |- Currently banned:	1
+  celikpanel-mariadb-auth:    `- Banned IP list:	192.0.3.1
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	1
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	6
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	0
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+  my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (115) [76 ms]
+unbanned 192.0.3.1
+  my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [45 ms]
+
+######## mylast 11:21:19
+   delete rule 2 (mysql 192.0.3.1)
+200 {"error": "", "success": true}
+  mysql closed after 8 s:   my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8018 ms]
+skip_name_resolve=ON
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+-rw-r--r-- 1 root celikpanel  583 Nov  8 11:19 celikpanel-postgresql-auth.conf
+-rw-r--r-- 1 root celikpanel  485 Nov  8 11:19 celikpanel-database-remote-postgresql-5432.conf
+jails: celikpanel-postgresql-auth-5432  sshd
+  celikpanel-postgresql-auth-5432: |  |- Currently failed:	1
+  celikpanel-postgresql-auth-5432: |  |- Total failed:	6
+  celikpanel-postgresql-auth-5432:    |- Currently banned:	0
+  celikpanel-postgresql-auth-5432:    `- Banned IP list:	
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+
+######## pglast 11:22:01
+   delete rule 1 (postgresql 192.0.3.1)
+200 {"error": "", "success": true}
+  postgresql closed after 8 s:   pg tls -> psql: error: connection to server at "192.0.3.190", port 5432 failed: timeout expired [8040 ms]
+port 5432
+%m [%p] %q%u@%d 
+jails: sshd
+  sshd: |  |- Currently failed:	0
+  sshd: |  |- Total failed:	0
+  sshd:    |- Currently banned:	0
+  sshd:    `- Banned IP list:	
+
+######## expiry 11:22:44
+200 {"error": "", "id": 3, "status": "active", "success": true}
+200 {"error": "", "id": 4, "status": "active", "success": true}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"applied_at": "2026-11-08T11:22:46Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:22:42", "expires_at": "2026-11-09T11:22:42Z", "id": 3, "status": "active", "user": "cust1_s0_test_rmy_user", "user_id": 4}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:22:46Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:22:44", "expires_at": "2026-11-15T11:22:44Z", "id": 4, "status": "active", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+  mysql open after 0 s:   my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [28 ms]
+  postgresql open after 0 s:   pg tls -> ok TLSv1.3 [45 ms]
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    for r in c.execute("select id, database_id, address, status, created_at, expires_at from database_remote_rules"): print("  rule", r)
+             ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: status
+-- expire MariaDB rule 3 in the database (lab)
+rule 3 expires_at ('2026-11-08 11:22:18',)
+  mysql closed after 55 s:   my tls -> ERROR 2002 (HY000): Can't connect to server on '192.0.3.190' (110) [8020 ms]
+   expiry closed in 55 s
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    for r in c.execute("select id, database_id, address, status, created_at, expires_at from database_remote_rules"): print("  rule", r)
+             ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: status
+skip_name_resolve=ON
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+-- extend PostgreSQL rule 4 to no end
+200 {"expires_at": "", "success": true}
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_s0_test_rpg", "database_id": 5, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T11:24:04Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:22:44", "expires_at": "", "id": 4, "status": "active", "user": "cust1_s0_test_rpg_user", "user_id": 5}
+
+######## flush 11:24:18
+200 {"error": "", "id": 5, "status": "active", "success": true}
+  mysql open after 0 s:   my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [31 ms]
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+-- nft flush ruleset 11:25:01
+11:24:59
+  +0s tables: 
+  +5s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +10s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +15s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +21s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +26s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +31s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +36s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +42s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +47s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +52s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +58s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +63s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  +70s tables: table inet celikpanel_dbremote table inet celikpanel_fw
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  mysql open after 2 s:   my tls -> ok host1.s0.test TLS_AES_256_GCM_SHA384 [256 ms]
+		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 3306, 5432 } accept
+
+######## flushoff 11:26:20
+Removed '/etc/systemd/system/multi-user.target.wants/celikpanel-firewall-restore.service'.
+11:26:20
+  tables after 60 s: table inet celikpanel_dbremote
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:24:17Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness": [], "slow_down": "fail2ban", "state": "open", "tls": "on", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T11:24:17Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": true, "offered": true, "panel_firewall_note": "the panel firewall's table is gone and its boot restore (celikpanel-firewall-restore.service) is disabled outside CelikPanel, so it is left off; turn the firewall on again in the panel to use it", "rules": 2}
+2026/11/08 11:25:02 panel firewall guard: the panel firewall's table was gone (nft flush ruleset?); it was put back from the saved policy
+2026/11/08 11:25:03 database remote access: the Agent put the panel firewall back after a flush; syncing its live policy
+2026/11/08 11:26:32 panel firewall guard: the panel firewall's table is gone and its boot restore (celikpanel-firewall-restore.service) is disabled outside CelikPanel, so it is left off; turn the firewall on again in the panel to use it
+-- the owner turns the restore back on and runs it
+Created symlink '/etc/systemd/system/network-pre.target.requires/celikpanel-firewall-restore.service' → '/etc/systemd/system/celikpanel-firewall-restore.service'.
+table inet celikpanel_dbremote table inet celikpanel_fw
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+== k2 myban mylast pglast expiry flush flushoff done 11:28:04
+
+######## starting 11:29:04
+Created symlink '/etc/systemd/system/multi-user.target.wants/lab-hang.service' → '/etc/systemd/system/lab-hang.service'.
+-- reboot with a unit holding the boot 11:29:05
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+  503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+   delete rule  (mysql 192.0.3.1)
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+  +0s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +6s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +11s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +16s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +22s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +27s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +33s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +38s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +44s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +49s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +54s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +60s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +65s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +70s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +76s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  +81s is-system-running: starting 		tcp dport 3306 ip saddr 192.0.3.1 accept 		tcp dport 5432 ip saddr 192.0.3.1 accept 
+  503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- wait for the boot to finish (up to 6 min)
+  is-system-running: starting 11:30:56
+  200 {"administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [], "slow_down": "none", "state": "open", "tls": "off", "unit": "mariadb"}, "max_addresses_user": 10, "your_address": "192.0.3.2"}
+   rule {"address": "192.0.3.1", "created_at": "2026-11-08 11:24:16", "expires_at": "2026-11-09T11:24:16Z", "id": 5, "status": "waiting", "user": "cust1_s0_test_rmy_user", "user_id": 4}
+skip_name_resolve=OFF
+-rw-r--r-- 1 root celikpanel  415 Nov  8 11:24 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+cust1_s0_test_rmy_user	192.0.3.1
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_fw table inet celikpanel_dbremote
+unhung
+== k2 starting done 11:31:39

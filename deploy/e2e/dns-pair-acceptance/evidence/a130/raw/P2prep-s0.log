@@ -1,0 +1,80 @@
+== B before 12:04:56
+Ver Cluster Port Status Owner Data directory Log file
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+
+-- /var/lib/postgresql:
+
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 11:02 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+  row {"id": "postgresql", "is_installed": true, "status": "inactive (dead)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+200 {"plan": {"enabled": true, "name": "PostgreSQL Global Development Group (PGDG)", "origin": "apt.postgresql.org", "ready": false, "repo_id": "pgdg", "steps": [{"path": "/etc/apt/sources.list.d/celikpanel-pgdg.list", "state": "done", "step": "repository"}, {"path": "/etc/apt/preferences.d/celikpanel-p
+200 {"distribution": "ubuntu", "installs": ["postgresql-16"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql-16"], "state": "known"}
+202 {"operation": {"id": "e3c5a1b1f0fd4699276a07b4201a4c6a", "kind": "service_install", "package_name": "postgresql-16", "phase": "queued", "request_id": "3efb12f64eee2a09600b77def32d7495", "service_id": "postgresql", "started_at": "2026-11-08T12:05:02.937412373Z", "status": "queued"}}
+  op 3efb12f64eee2a09600b77def32d7495: succeeded completed "" (12:05:25)
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 
+-- /var/lib/postgresql:
+16 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 11:02 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+postgresql.service         loaded inactive dead    PostgreSQL RDBMS
+postgresql@16-main.service loaded active   running PostgreSQL Cluster 16-main
+-- the owner removes PostgreSQL 16 with apt (data kept) 12:05:26
+rc=0
+Ver Cluster Port Status                Owner    Data directory              Log file
+16  main    5432 down,binaries_missing postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+-- /etc/postgresql:
+16 
+-- /var/lib/postgresql:
+16 
+-- archives:
+drwx------ 2 root celikpanel    4096 Nov  8 11:02 .
+drwx------ 6 root root          4096 Nov  8 10:00 ..
+-rw------- 1 root celikpanel 4609472 Nov  8 10:00 postgresql-16-main-20261108T100049Z-auto.tar.gz
+-rw------- 1 root celikpanel 4685600 Nov  8 10:11 postgresql-16-main-20261108T101100Z-auto.tar.gz
+-rw------- 1 root celikpanel 6710207 Nov  8 10:21 postgresql-16-main-20261108T102136Z.tar.gz
+-rw------- 1 root celikpanel 5977018 Nov  8 11:02 postgresql-18-main-20261108T110206Z.tar.gz
+postgresql.service         loaded inactive dead PostgreSQL RDBMS
+postgresql@16-main.service loaded inactive dead PostgreSQL Cluster 16-main
+== A: MariaDB rule active again 12:05:30
+200 {"changed": false, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T12:05:30Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "pending_restart", "nft_available": true, "problems": [{"
+200 {"success": true}
+200 {"changed": false, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T12:06:14Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": tr
+skip_name_resolve=ON
+-rw-r--r-- 1 root celikpanel  576 Nov  8 11:45 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+/etc/mysql/mariadb.conf.d/90-celikpanel-remote-access.cnf:11:skip-name-resolve
+cust1_s0_test_rmy_user	192.0.3.1
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+		tcp dport 3306 drop
+		tcp dport 5432 ip saddr 192.0.3.1 accept
+		tcp dport 5432 drop
+tables: table inet celikpanel_dbremote table inet celikpanel_fw
+  mysql 1 open off []
+  postgresql 1 open None []
+== prep2 done 12:06:37

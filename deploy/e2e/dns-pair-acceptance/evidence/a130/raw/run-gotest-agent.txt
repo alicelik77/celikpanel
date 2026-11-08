@@ -1,0 +1,2 @@
+gofmt: 
+ok  	github.com/alicelik/celikpanel/cmd/agent	0.112s

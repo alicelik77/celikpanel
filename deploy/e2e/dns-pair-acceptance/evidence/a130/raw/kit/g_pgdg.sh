@@ -1,0 +1,1 @@
+ls -la /etc/apt/sources.list.d/ /etc/apt/preferences.d/ | grep -i pgdg; ls /usr/share/keyrings /etc/apt/keyrings 2>/dev/null | grep -i -E "pgdg|postgres"; systemctl list-units --all --no-legend --plain "postgresql*" | cat

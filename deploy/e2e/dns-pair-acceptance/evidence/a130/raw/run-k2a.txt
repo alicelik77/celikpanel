@@ -1,0 +1,38 @@
+
+######## pgopen 11:05:42
+jails: 
+200 {"error": "", "id": 1, "status": "waiting", "success": true}
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    print("   engine", json.dumps({k:e.get(k) for k in ("state","listen_remote","filter_ready","fail2ban","fail2ban_detail","name_resolve","close_pending","problems","last_error")})[:900])
+                                     ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+  200 access {"may_edit": true}
+  postgresql still not open after 120 s:   pg tls -> timeout: failed to run command ‘psql’: No such file or directory [6 ms]
+port 5432
+%m [%p] %q%u@%d 
+  pg wrong -> timeout: failed to run command ‘psql’: No such file or directory [5 ms]
+  pg wrong -> timeout: failed to run command ‘psql’: No such file or directory [4 ms]
+  pg wrong -> timeout: failed to run command ‘psql’: No such file or directory [4 ms]
+
+######## myname 11:08:06
+200 {"error": "", "id": 2, "status": "waiting", "success": true}
+Traceback (most recent call last):
+  File "<string>", line 4, in <module>
+    print("   engine", json.dumps({k:e.get(k) for k in ("state","listen_remote","filter_ready","fail2ban","fail2ban_detail","name_resolve","close_pending","problems","last_error")})[:900])
+                                     ^^^^^
+AttributeError: 'str' object has no attribute 'get'
+  200 access {"may_edit": true}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:08:05Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [{"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client and then names the host, not its address, in a refused sign-in, so Fail2ban cannot ban it", "User": ""}, {"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components, then apply again", "User": ""}, {"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "MariaDB reads its listen address, TLS and host name lookup settings only when it starts", "User": ""}], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "wait_restart", "tls": "on", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T11:08:05Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "PostgreSQL reads its listen address and shared_preload_libraries only when it starts", "User": ""}], "readiness": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "auth_delay (slowing wrong passwords down) loads when PostgreSQL restarts", "User": ""}, {"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "auth_delay_pending_restart", "state": "wait_restart", "tls": "on", "unit": "postgresql@17-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_firewall_note": "", "rules": 2}
+skip_name_resolve=OFF
+-rw-r--r-- 1 root celikpanel  415 Nov  8 11:08 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+  my tls -> timeout: failed to run command ‘mariadb’: No such file or directory [4 ms]
+
+######## myskip 11:08:33
+200 {"changed": true, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:08:33Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": false, "name_resolve": "pending_restart", "nft_available": true, "problems": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components, then apply again", "User": ""}, {"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "MariaDB reads its listen address, TLS and host name lookup settings only 
+skip_name_resolve=OFF
+-rw-r--r-- 1 root celikpanel  576 Nov  8 11:08 90-celikpanel-remote-access.cnf
+/etc/mysql/mariadb.conf.d/50-server.cnf:23:#skip-name-resolve
+/etc/mysql/mariadb.conf.d/90-celikpanel-remote-access.cnf:11:skip-name-resolve
+200 {"success": true}

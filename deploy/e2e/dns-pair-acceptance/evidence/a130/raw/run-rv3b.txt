@@ -1,0 +1,23 @@
+== a held starting boot 12:20:19
+Created symlink '/etc/systemd/system/multi-user.target.wants/lab-hang.service' → '/etc/systemd/system/lab-hang.service'.
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+-- remove the MariaDB address (rule )
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- add an address while starting:
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- create a domain while starting:
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- wait for the boot to finish (up to 7 min)
+   is-system-running: running 12:25:54
+		tcp dport 3306 drop
+		tcp dport 5432 drop
+tables: table inet celikpanel_fw table inet celikpanel_dbremote
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"applied_at": "2026-11-08T12:23:00Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness": [], "slow_down": "none", "state": "open", "tls": "off", "unit": "mariadb"}, "max_addresses_user": 10, "rules": [], "users": [{"id": 4, "username": "cust1_s0_test_rmy_user
+unhung
+running
+== rv3 starting done 12:26:56
+exit 0

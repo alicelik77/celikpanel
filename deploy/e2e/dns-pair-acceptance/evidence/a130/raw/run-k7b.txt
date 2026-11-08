@@ -1,0 +1,81 @@
+
+######## newdom 11:36:10
+-- a new domain with mail: mnew.test
+500 {"code": "INTERNAL", "error": "internal server error"}
+mnew id 
+307 
+  setup 307 null
+  @192.0.3.190: autoconfig.mnew.test CNAME= autodiscover.mnew.test CNAME= _autodiscover._tcp.mnew.test SRV=
+  @192.0.3.191: autoconfig.mnew.test CNAME= autodiscover.mnew.test CNAME= _autodiscover._tcp.mnew.test SRV=
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- http://autoconfig.mnew.test/mail/config-v1.1.xml?emailaddress=x@mnew.test
+[http 404]
+-- https://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+-- http://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 404 ]
+-- Autodiscover POST (https autodiscover.mnew.test, -k)
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+
+LoginName present: 0 ; asked address echoed: 0
+http POST: [http 404]
+
+######## relay 11:36:43
+200 {"apply": {}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": false, "has_password": false, "host": "", "port": 587, "username": ""}}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+-- test sign-in, wrong password (587)
+200 {"detail": "the relay did not accept the user name and password: 5.7.8 Error: authentication failed: authentication failure", "ok": false, "stage": "auth", "verified": false}
+-- test sign-in, right password (587)
+200 {"ok": true, "stage": "done", "verified": false}
+-- save relay 587
+200 {"saved": true, "unknown": "the server did not answer; whether it took the change is not known"}
+200 {"apply": {"detail": "the server did not answer; whether it took the change is not known. Read the state again before saving again", "state": "unknown"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": true, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 587, "username": "relayuser@relay.lab.test"}}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+-- a mail out through the relay (box1 -> someone@example.com, submitted on A:587)
+bash: /root/n_swaks.sh: No such file or directory
+Nov 08 11:36:44 relay postfix/submission/smtpd[10324]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:36:44 relay postfix/submission/smtpd[10324]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: SASL authentication failure: Password verification failed
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: unknown[192.0.3.190]: SASL PLAIN authentication failed: authentication failure, sasl_username=relayuser@relay.lab.test
+-- port 465
+200 {"saved": true, "unknown": "the server did not answer; whether it took the change is not known"}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+bash: /root/n_swaks.sh: No such file or directory
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: SASL authentication failure: Password verification failed
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: unknown[192.0.3.190]: SASL PLAIN authentication failed: authentication failure, sasl_username=relayuser@relay.lab.test
+
+######## relayoff 11:37:55
+200 {"saved": true, "unknown": "the server did not answer; whether it took the change is not known"}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+200 {"apply": {"detail": "the server did not answer; whether it took the change is not known. Read the state again before saving again", "state": "unknown"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": false, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 465, "username": "relayuser@relay.lab.test"}}
+-- the owner's own relayhost: save refused
+postfix/postlog: refreshing the Postfix mail system
+200 {"result": {"applied": false, "changed": false, "code": "MAIL_RELAY_OWNER_CONFIG", "error": "main.cf already has the server owner's relay setting (relayhost = [192.0.3.1]:587). CelikPanel keeps it and does not change it. To let CelikPanel send through a relay, the server owner removes that line (for example `sudo postconf -X relayhost`) and saves again", "state": "owner"}, "saved": true}
+postfix/postlog: refreshing the Postfix mail system
+0
+
+######## subaddr 11:38:10
+200 {"sender": {"apply": {}, "rules": []}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "off", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+-- info+lab@cust1.s0.test from labnet
+
+######## sender 11:38:25
+200 {"sender": {"apply": {}, "rules": []}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "off", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "applied"}
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (2 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "applied"}
+-- own domain refused:
+409 {"code": "MAIL_SENDER_OWN_DOMAIN", "error": "cust1.s0.test belongs to cust1.s0.test, a domain of this server: its mail is protected by sign-in and a list entry would also stop this server's own mailboxes. Nothing was changed", "vars": {"domain": "cust1.s0.test"}}
+exit 15

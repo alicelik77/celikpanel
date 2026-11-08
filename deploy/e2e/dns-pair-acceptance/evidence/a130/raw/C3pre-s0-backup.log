@@ -1,0 +1,50 @@
+== versions 09:53:38
+200 {"agent_commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "agent_matches": true, "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "hostname": "host2.s0.test", "ipv4": "192.0.3.191", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+  row {"id": "postgresql", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+-- install PostgreSQL (distribution version) 09:53:39
+200 {"distribution": "ubuntu", "installs": ["libjson-perl", "postgresql-client-common", "ssl-cert", "postgresql-common", "libllvm17t64", "libpq5", "postgresql-client-16", "postgresql-16", "postgresql"], "notable": [], "refusals": [], "removes": [], "requested": ["postgresql"], "state": "known"}
+202 {"operation": {"id": "f01467ba2a44ad30a0a020e60f309ef5", "kind": "service_install", "phase": "queued", "request_id": "95c07b930cde0b59a47b65b5e1af31f0", "service_id": "postgresql", "started_at": "2026-11-08T09:53:42.761294623Z", "status": "queued"}}
+  op 95c07b930cde0b59a47b65b5e1af31f0: succeeded completed "" (09:54:13)
+Ver Cluster Port Status Owner    Data directory              Log file
+16  main    5432 online postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+ii postgresql 16+257build1.1
+ii postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-common 257build1.1
+ii postgresql-common 257build1.1
+-- remove PostgreSQL (data kept: the removal's default) 09:54:14
+200 {"all_versions": true, "bundles": [], "companion_tools": [], "database_tools_reconfigured": false, "firewall_ports": [], "has_units": true, "hosted": {"blocks_removal": false, "count": 0, "kind": "databases", "names": []}, "mail_filter_rewired": false, "package_family": "apt", "packages": ["postgresql"], "plan": {"blockers": [], "notes": [], "stops": [], "together": [], "withdraw_sets": 0, "withdraws": []}, "removal": "packages", "required_by": [], "service_id": "postgresql", "setup_required": false, "simulation": {"bound_tools": [], "collateral": [], "data_paths": ["/var/lib/postgresql/16"], 
+200 {"detail": "removed postgresql, postgresql-16, libjson-perl, libllvm17t64, postgresql-common", "removed": true, "success": true}
+bash: line 1: pg_lsclusters: command not found
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-common 257build1.1
+rc postgresql-common 257build1.1
+  row {"id": "postgresql", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+-- enable the PostgreSQL project's repository (PGDG lane) 09:54:41
+200 {"plan": {"enabled": false, "name": "PostgreSQL Global Development Group (PGDG)", "origin": "apt.postgresql.org", "ready": true, "repo_id": "pgdg", "sha256": "f5fb2e7b5e37376c38fc12a3ab7322104bef52040fdfe60eea79f4c87629f74b", "steps": [{"path": "/etc/apt/sources.list.d/celikpanel-pgdg.list", "sha256": "7f9c7f4358e311bd83c174b2a8d0dae7f1c77af85953c12677b6ba21aa8d42d3", "state": "todo", "step": "rep
+200 {"completed": ["repository", "confinement", "updates"], "effective": true, "repo": {"available": true, "confinement": {"pin_path": "/etc/apt/preferences.d/celikpanel-pgdg.pref", "state": "confined", "written_at": "2026-11-08T09:54:44Z", "written_by": "lane"}, "detail": "Official PostgreSQL repository \u2014 every current major version, kept up to date.", "enabled": true, "enabled_at": "2026-11-08T09:54:44Z", "id": "pgdg", "key": {"created_at": "2011-10-13T20:19:14Z", "fingerprint": "B97B0AFCAA1A
+-- install PostgreSQL 18 (Components window: preview's packages confirmed) 09:54:45
+200 {"distribution": "ubuntu", "installs": ["libjson-perl", "postgresql-client-common", "postgresql-common", "libpq5", "postgresql-client-18", "postgresql-18"], "notable": [{"component": "pgdg", "from": "16.15-0ubuntu0.24.04.1", "package": "libpq5", "reason": "vendor_shared", "to": "18.6-1.pgdg24.04+2"}, {"component": "pgdg", "from": "257build1.1", "package": "postgresql-client-common", "reason": "vendor_shared", "to": "293.pgdg24.04+1"}, {"component": "pgdg", "package": "postgresql-common", "reason
+202 {"operation": {"id": "d84b287ffe2ada619d09a3d7e3f1a395", "kind": "service_install", "package_name": "postgresql-18", "phase": "queued", "request_id": "ed7cae68f947a7020d7345dccea9baee", "service_id": "postgresql", "started_at": "2026-11-08T09:54:49.004812121Z", "status": "queued"}}
+  op ed7cae68f947a7020d7345dccea9baee: succeeded completed "" (09:55:19)
+Ver Cluster Port Status                Owner    Data directory              Log file
+16  main    5432 down,binaries_missing postgres /var/lib/postgresql/16/main /var/log/postgresql/postgresql-16-main.log
+18  main    5433 online                postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+rc postgresql-16 16.15-0ubuntu0.24.04.1
+ii postgresql-18 18.6-1.pgdg24.04+2
+ii postgresql-client-16 16.15-0ubuntu0.24.04.1
+ii postgresql-client-18 18.6-1.pgdg24.04+2
+ii postgresql-client-common 293.pgdg24.04+1
+ii postgresql-common 293.pgdg24.04+1
+  row {"id": "postgresql", "is_installed": true, "status": "active (running)", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+  row {"id": "phppgadmin", "is_installed": false, "status": "not_installed", "version": null, "package": null, "installed_package": null, "cluster": null, "clusters": null, "notice": null, "kept": null}
+-- a site and a PostgreSQL database on 129 09:55:21
+409 {"action": "/domains/pgb.s0.test?tab=dns", "code": "DNS_PUBLICATION_PENDING", "domain": "pgb.s0.test", "domain_id": 1, "error": "the domain was created, but its DNS setup is incomplete; review it in the domain's DNS management page", "partial_success": true, "zone_exists": false}
+pgb id 1
+200 {"id": 1, "name": "pgb_s0_test_shopb", "status": "success", "type": "postgresql", "user": "pgb_s0_test_shopb_user"}
+200 {"available_types": ["mysql", "postgresql"], "databases": [{"created_at": "2026-11-08 09:55:37", "engine": "postgresql", "engine_version": "18", "id": 1, "name": "pgb_s0_test_shopb", "type": "postgresql", "user": "pgb_s0_test_shopb_user", "users": [{"access": "owner", "id": 1, "username": "pgb_s0_test_shopb_user"}]}], "domain_id": 1, "domain_name": "pgb.s0.test"}
+snapshot pre129pg taken
+== c3pre done 09:55:39

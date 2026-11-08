@@ -1,0 +1,1 @@
+systemctl reset-failed cloud-config.service cloud-final.service cloud-init-main.service 2>/dev/null; systemctl --failed --no-legend --plain | cat; echo "is-system-running: $(systemctl is-system-running)"

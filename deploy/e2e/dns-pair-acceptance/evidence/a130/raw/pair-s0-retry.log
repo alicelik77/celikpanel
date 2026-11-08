@@ -1,0 +1,49 @@
+== press Start again on the first server 09:50:07
+start-main-retry 409 {
+ "code": "server_setup_review_stale",
+ "error": "Server requirements changed. Review the current plan."
+}
+-- s0/main 09:50:07
+failed 15-mail_profile {"code": "service_install_failed", "component": "roundcube", "detail": "roundcube install: download failed: HTTP 504", "message": "The service could not be installed and verified.", "step": "package_install"}
+01-service=succeeded 02-service=succeeded 03-service=succeeded 04-service=succeeded 05-service=succeeded 06-peer_join=succeeded 07-dns=succeeded 08-firewall=succeeded 09-infrastructure_dns=succeeded 10-access_dns=succeeded 11-panel_certificate=succeeded 12-dns_readiness=succeeded 13-access_dns=succeeded 14-mail_certificate=succeeded 15-mail_profile=failed 16-mail_profile=pending 17-mail_dns=pending 18-mail_enrollment=pending 19-main_site=pending 20-verify=pending
+== retry done 09:50:07
+== press Start again on the first server 09:50:15
+plan main retry 200 can_start True blockers [] ['01-peer_join:second', '02-dns:local', '03-firewall:enable_and_persist', '04-infrastructure_dns:s0.test', '05-access_dns:frankfurt.s0.test', '06-dns_readiness:local', '07-mail_profile:webmail', '08-mail_profile:protected-mail', '09-mail_dns:s0.test', '10-access_dns:mail.s0.test', '11-mail_certificate:mail.s0.test', '12-mail_enrollment:mail-renewal', 
+start-main-retry 202 {
+ "id": "7ebe145116620822e60d137ef9fe29f7",
+ "panel_url": "https://frankfurt.s0.test:1923/",
+ "phase": "queued",
+ "plan_id": "a918f6f50abb1c97a3cf86c44914a5bc",
+ "request_id": "7ebe145116620822e60d137ef9fe29f7",
+ "status": "running",
+ "steps": [
+  {
+   "id": "01-peer_join",
+   "kind": "peer_join",
+   "owner_id": "27e23a1c469d04b71f792973a6bf54fc",
+   "request_id": "75f5bebe1d9cdea889eb425d1de6e59
+-- s0/main 09:50:16
+running 03-firewall null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=running 04-infrastructure_dns=pending 05-access_dns=pending 06-dns_readiness=pending 07-mail_profile=pending 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- s0/main 09:50:31
+running 07-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=running 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- s0/main 09:51:31
+running 07-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=pending 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- s0/main 09:51:46
+running 08-mail_profile null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=running 09-mail_dns=pending 10-access_dns=pending 11-mail_certificate=pending 12-mail_enrollment=pending 13-main_site=pending 14-verify=pending
+-- s0/main: bound reached without succeeded failed
+== retry done 09:52:47
+== press Start again on the first server 09:53:00
+-- s0/main 09:53:00
+running 12-mail_enrollment {"code": "server_setup_mail_enrollment_handoff", "message": "The independent worker handoff was accepted. Enrollment is not yet confirmed. Setup will check the same request automatically; the server administrator can inspect celikpanel-mail-enrollment-6b87a6f35cc59eca30da5a20863338bb.service if it stops."}
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=running 13-main_site=pending 14-verify=pending
+-- s0/main 09:53:16
+running 13-main_site null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-main_site=running 14-verify=pending
+-- s0/main 09:53:31
+succeeded complete null
+01-peer_join=succeeded 02-dns=succeeded 03-firewall=succeeded 04-infrastructure_dns=succeeded 05-access_dns=succeeded 06-dns_readiness=succeeded 07-mail_profile=succeeded 08-mail_profile=succeeded 09-mail_dns=succeeded 10-access_dns=succeeded 11-mail_certificate=succeeded 12-mail_enrollment=succeeded 13-main_site=succeeded 14-verify=succeeded
+== retry done 09:53:31

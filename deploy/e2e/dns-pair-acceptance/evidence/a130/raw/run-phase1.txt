@@ -1,0 +1,22 @@
+start 09:29:57
+0
+ls: cannot access '/var/tmp/cp-beta1': No such file or directory
+ls: cannot access '/var/tmp/cp-pair-accept': No such file or directory
+infra-up exit 0 09:31:09
+subject=CN=Pebble Root CA 08a472
+sha256 Fingerprint=3C:C5:28:35:74:70:A0:E7:F8:F4:A8:3A:1F:06:EE:3D:F5:5F:2D:01:1D:4F:BB:44:B6:12:F5:C2:55:75:C2:AF
+INFRA-UP
+labnet-tools-ok
+commit 667dba6ba3e874f556fcf2f031653a88c48a0c6b
+bundle budget check passed
+EXIT 0
+  "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b",
+  "sha256": "f1090b2df7d43dbfd425bb4fecc3fbcf8f9839c46e893f137465d556abaa333e",
+portal129 exit 0
+sequence=129
+version=v0.1.0-alpha.129
+commit=667dba6ba3e874f556fcf2f031653a88c48a0c6b
+v0.1.0-alpha.129
+Mem:           15697        2153       10274          11        3691       13544
+/dev/sde       1007G   28G  928G   3% /
+phase1 done 09:32:22

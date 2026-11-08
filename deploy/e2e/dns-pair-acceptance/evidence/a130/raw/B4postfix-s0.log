@@ -1,0 +1,36 @@
+== 10:23:49 install Postfix from Components
+200 {"distribution": "ubuntu", "installs": ["libnsl2", "postfix"], "notable": [], "refusals": [], "removes": [], "requested": ["postfix"], "state": "known"}
+202 {"operation": {"id": "e151bac2c1095679905c3601c7ea36a3", "kind": "service_install", "phase": "queued", "request_id": "1aa5273a2a4ae6fd27fa0ed2468bec6a", "service_id": "postfix", "started_at": "2026-11-08T10:23:49.947828725Z", "status": "queued"}}
+  op 1aa5273a2a4ae6fd27fa0ed2468bec6a: succeeded completed "" (10:24:22)
+active active ActiveState=active SubState=exited  ActiveState=active SubState=running 
+  problems 200 checked_at 2026-11-08T10:24:21Z unknown [{"reason": "checking", "source": "mail_queue"}]
+    {"action": {"kind": "open", "to": "/security"}, "actor": "administrator", "key": "security_updates", "kind": "security_updates", "observed_at": "2026-11-08T10:15:53Z", "severity": "warning", "value": 111}
+   svc {"id": "postfix", "name": "Postfix", "restarts_last_hour": 0, "unit": "postfix@-"}
+== b_postfix install done 10:24:23
+== 10:24:35 read
+active active ActiveState=active SubState=exited  ActiveState=active SubState=running 
+  problems 200 checked_at 2026-11-08T10:24:34Z unknown []
+    {"action": {"kind": "open", "to": "/security"}, "actor": "administrator", "key": "security_updates", "kind": "security_updates", "observed_at": "2026-11-08T10:15:53Z", "severity": "warning", "value": 111}
+   svc {"id": "postfix", "name": "Postfix", "restarts_last_hour": 0, "unit": "postfix@-"}
+== b_postfix watch done 10:24:36
+== 10:24:36 systemctl stop postfix@- (lab: the daemon stops, the wrapper stays)
+active inactive ActiveState=active SubState=exited  ActiveState=inactive SubState=dead 
+  +10s security_updates:
+  +20s service_stopped:Postfix security_updates:
+  problems 200 checked_at 2026-11-08T10:24:56Z unknown []
+    {"action": {"kind": "start_service", "to": "/components/postfix"}, "actor": "administrator", "key": "service:postfix", "kind": "service_stopped", "name": "Postfix", "observed_at": "2026-11-08T10:24:55Z", "severity": "critical", "subject": "postfix", "unit": "postfix", "value": 0}
+    {"action": {"kind": "open", "to": "/security"}, "actor": "administrator", "key": "security_updates", "kind": "security_updates", "observed_at": "2026-11-08T10:15:53Z", "severity": "warning", "value": 111}
+   svc {"active_state": "inactive", "id": "postfix", "name": "Postfix", "restarts_last_hour": 0, "running": false, "sub_state": "dead", "unit": "postfix@-"}
+== b_postfix stop done 10:24:58
+== 10:25:03 Start from the panel
+200 {"applied": "started", "outcome": "verified", "success": true}
+active active ActiveState=active SubState=exited  ActiveState=active SubState=running 
+  +10s [service_stopped:Postfix security_updates:]
+  +20s [service_stopped:Postfix security_updates:]
+  +30s [service_stopped:Postfix security_updates:]
+  +40s [service_stopped:Postfix security_updates:]
+  +50s [security_updates:]
+  problems 200 checked_at 2026-11-08T10:26:00Z unknown []
+    {"action": {"kind": "open", "to": "/security"}, "actor": "administrator", "key": "security_updates", "kind": "security_updates", "observed_at": "2026-11-08T10:15:53Z", "severity": "warning", "value": 111}
+   svc {"active_since": "2026-11-08T10:25:03Z", "active_state": "active", "cpu": 0, "id": "postfix", "memory_bytes": 6676480, "name": "Postfix", "restarts_last_hour": 0, "running": true, "sub_state": "running", "unit": "postfix@-"}
+== b_postfix start done 10:26:02

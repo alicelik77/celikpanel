@@ -1,0 +1,138 @@
+db /var/lib/celikpanel/celikpanel.db migrations 74 last: [(69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql'), (73, '073_mail_outgoing_resume_baseline.sql'), (74, '074_database_remote_rules.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 0 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(0,)]
+db /var/lib/celikpanel/celikpanel.db migrations 74 last: [(69, '069_site_visitor_stats.sql'), (70, '070_api_tokens.sql'), (71, '071_ftp_logins.sql'), (72, '072_panel_operations.sql'), (73, '073_mail_outgoing_resume_baseline.sql'), (74, '074_database_remote_rules.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 0 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(0,)]
+== B: press Update once 09:57:48
+v0.1.0-alpha.130
+== C2 backup before 09:57:48
+200 {"agent_commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "agent_matches": true, "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "hostname": "host2.s0.test", "ipv4": "192.0.3.191", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -5min: 0
+--- late database check lines (reason / re-read)
+  request 2a924e98729743c557009ebfe4880943 v0.1.0-alpha.129 -> v0.1.0-alpha.130
+== press Update once 09:57:50
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-08T09:57:50Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "2a924e98729743c557009ebfe4880943", "status": "queued", "target": {"arch": "amd64", "archive_sha256": "541b4ed8eb2524d93b7baabe6ddcf4304bea525eb0f3181fdb316d15ddc96767", "archive_size": "73124515", "commit": "2739ae3e9e2755676b45
+  4s 200 running None  | 
+  25s 
+  62s 200 running verifying  | 
+  75s 200 succeeded None  | 
+== after 09:59:17
+200 {"agent_commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "agent_matches": true, "commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "hostname": "host2.s0.test", "ipv4": "192.0.3.191", "schema_version": 77, "version": "v0.1.0-alpha.130"}
+200 {"created_at": "2026-11-08T09:57:50.100803845Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-08T09:57:50Z", "state": "done"}, {"finished_at": "2026-11-08T09:57:54Z", "id": "verify", "state": "done"}, {"id": "prepare", "started_at": "2026-11-08T09:57:54Z", "state": "done"}, {"finished_at": "2026-11-08T09:58:49Z", "id": "restart", "state": "done"}, {"elapsed_seconds": 12, "finished_at": "2026-11-08T09:59:01Z", "id": "confirm", "started_at": "2026-11-08T09:58:49Z", "state": "done"}]}, "request_id": "2a924e98729743c557009ebfe4880943", "status": "succeeded", "target": {"arch": "amd64", "archive_sha256": "541b4ed8eb2524d93b7baabe6ddcf4304bea525eb0f3181fdb316d15ddc96767", "archive_size": "73124515", "commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-08T09:59:01.976588516Z"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/08 09:58:49 certificate startup reconcile: mail TLS publication skipped: no mail server (Postfix) is installed on this server, so there is nothing to publish and nothing needs to be done
+--- agent journal (self-update / cleared)
+--- attempt records
+  ['self-update', '2a924e98729743c557009ebfe4880943.json'] {'request_id': '2a924e98729743c557009ebfe4880943', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-08T09:57:50.100803845Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+== C2 backup done 09:59:18
+== A: forced failure, rollback, second press 09:59:18
+== versions 09:59:18
+200 {"agent_commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "agent_matches": true, "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+== 130 is the portal's latest 09:59:19
+v0.1.0-alpha.130
+CELIKPANEL_LAB_ROLLBACK_PROBE=1
+  request 6591588e96cb8b553390c672d08423d4 v0.1.0-alpha.129 -> v0.1.0-alpha.130
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-08T09:59:19Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "6591588e96cb8b553390c672d084
+  09:59:23 +3s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  09:59:26 +6s 200 running None  | download:done verify:done prepare:running restart:pending confirm:pending
+  09:59:42 +22s 
+  10:00:54 +94s 200 failed None !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: | download:done verify:done prepare:pending restart:pending confirm:pending
+== after the refused attempt 10:00:55
+200 {"agent_commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "agent_matches": true, "commit": "667dba6ba3e874f556fcf2f031653a88c48a0c6b", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 74, "version": "v0.1.0-alpha.129"}
+200 {"created_at": "2026-11-08T09:59:19.137199841Z", "found": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-08T09:59:19Z", "state": "done"}, {"finished_at": "2026-11-08T09:59:23Z", "id": "verify", "state": "done"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "6591588e96cb8b553390c672d08423d4", "status": "failed", "summary": "!! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) detail=ERROR / HATA: panel.env line 5 has an unsupported key: CELIKPANEL_LAB_ROLLBACK_PROBE (remove the line, then retry) / panel.env:5 desteklenmeyen anahtar: CELIKPANEL_LAB_ROLLBACK_PROBE (satr silin, sonra yeniden deneyin)", "target": {"arch": "amd64", "archive_sha256": "541b4ed8eb2524d93b7baabe6ddcf4304bea525eb0f3181fdb316d15ddc96767", "archive_size": "73124515", "commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "os": "linux", "sequence": "130", "version": "v0.1.0-alpha.130"}, "updated_at": "2026-11-08T09:59:56.946120502Z"}
+-- wait for the recovery runner to finish (up to 3 min)
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'echo '--- systemctl --failed (direct)'; systemctl list-units --failed --all --no-legend --plain | cat; echo '(failed end)'; journalctl --since 09:59:19 -o short-iso --no-pager | grep -iE 'rollback|rolled back|restor|recovery_required|release recovery|CELIKPANEL_UPDATE|Recovery dispatch|Verified snapshot' | cut -c1-280 | tail -30; cat /opt/celikpanel/release.commit''
+== the owner removes the line and presses Update again 10:01:06
+0
+  request 0512612ad8a22e3d9e566fdd6c52d9fe v0.1.0-alpha.129 -> v0.1.0-alpha.130
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-08T10:01:06Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "state": "pending"}, {"id": "confirm", "state": "pending"}]}, "request_id": "0512612ad8a22e3d9e566fdd6c52
+  10:01:09 +2s 200 running None  | download:done verify:running prepare:pending restart:pending confirm:pending
+  10:01:28 +21s 
+  10:02:05 +58s 200 running verifying  | download:done verify:done prepare:done restart:done confirm:running
+  10:02:16 +69s 200 succeeded None  | download:done verify:done prepare:done restart:done confirm:done
+  press-to-end 70 s
+== after 10:02:27
+200 {"agent_commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "agent_matches": true, "commit": "2739ae3e9e2755676b4508002d0ed641d04dbdc5", "hostname": "host1.s0.test", "ipv4": "192.0.3.190", "schema_version": 77, "version": "v0.1.0-alpha.130"}
+release 
+--- systemctl --failed (all units)
+(end)
+--- self-update units
+--- 'database publication is unverified' in the journal since -15min: 0
+--- late database check lines (reason / re-read)
+--- waits (nothing needs to be done)
+2026/11/08 10:00:51 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/08 10:00:51 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+2026/11/08 10:02:03 certificate startup reconcile: certificate dependents: publish full mail SNI snapshot: another server change or package-manager task is still running; preserve pending outbox: <nil>; the Panel retries this by itself every 30 seconds for up 
+2026/11/08 10:02:03 milter wiring at startup: another server change or package-manager task is still running; the Panel retries this by itself every 30 seconds for up to 10 minutes once no other server change is running; nothing needs to be done now
+--- agent journal (self-update / cleared)
+2026/11/08 10:02:15 self-update: cleared the failed mark of celikpanel-self-update-6591588e96cb8b553390c672d08423d4.service; a later update succeeded and the attempt's record is kept
+--- attempt records
+  ['self-update', '0512612ad8a22e3d9e566fdd6c52d9fe.json'] {'request_id': '0512612ad8a22e3d9e566fdd6c52d9fe', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-08T10:01:06.145543152Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+  ['self-update', '6591588e96cb8b553390c672d08423d4.json'] {'request_id': '6591588e96cb8b553390c672d08423d4', 'status': 'failed', 'phase': None, 'created_at': '2026-11-08T09:59:19.137199841Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.130', 'reason': None, 'code': None}
+bash: -c: line 1: syntax error near unexpected token `('
+bash: -c: line 1: `sudo -n bash -c 'echo '--- systemctl --failed (direct, after the second press)'; systemctl list-units --failed --all --no-legend --plain | cat; echo '(failed end)'''
+== c8rb done 10:02:28
+== backup after 10:02:28
+db /var/lib/celikpanel/celikpanel.db migrations 77 last: [(72, '072_panel_operations.sql'), (73, '073_mail_outgoing_resume_baseline.sql'), (74, '074_database_remote_rules.sql'), (75, '075_database_remote_rule_expiry.sql'), (76, '076_mailbox_recovery.sql'), (77, '077_mail_relay.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 0 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(0,)]
+snapshot post130: 206 entries
+--- differences pre129 -> post130 (excluding systemd self-update/runtime units)
+(end)
+(postconf -P policy lines end)
+(failed end)
+cat: /opt/celikpanel/release.commit: No such file or directory
+active
+active
+active
+== main after 10:02:30
+db /var/lib/celikpanel/celikpanel.db migrations 77 last: [(72, '072_panel_operations.sql'), (73, '073_mail_outgoing_resume_baseline.sql'), (74, '074_database_remote_rules.sql'), (75, '075_database_remote_rule_expiry.sql'), (76, '076_mailbox_recovery.sql'), (77, '077_mail_relay.sql')]
+   setting_policy 13 rows
+   mail_outgoing_settings 1 rows
+   site_web_settings 0 rows
+   api_tokens 0 rows
+   site_visitor_stats_daily 0 rows
+   remote api / outgoing enabled: [(0,)]
+snapshot post130: 250 entries
+--- differences pre129 -> post130 (excluding systemd self-update/runtime units)
+< 726672e573368b6c /etc/nginx/sites-available/cust1.s0.test.conf
+> 981b1287e1f046a1 /etc/nginx/sites-available/cust1.s0.test.conf
+< e2aa06a1151543f8 /etc/nginx/sites-available/s0.test.conf
+> f732efbc5c9925b3 /etc/nginx/sites-available/s0.test.conf
+(end)
+(postconf -P policy lines end)
+(failed end)
+cat: /opt/celikpanel/release.commit: No such file or directory
+active
+active
+active
+-- sites answer after the update
+  site1.s0.test: 200
+  cust1.s0.test: 200
+  bsite.s0.test: 200
+== c1upd done 10:02:32
+exit 0

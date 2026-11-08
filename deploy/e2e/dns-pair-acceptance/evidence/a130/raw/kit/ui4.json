@@ -1,0 +1,14 @@
+[
+ {"name": "limits-save", "path": "/users", "wait": 2500, "actions": [
+   {"eval": "[...document.querySelectorAll('button')].filter(b=>/Skip the tour|Turu geç/.test(b.innerText)).forEach(b=>b.click())"},
+   {"clickText": ["button,[role=tab],a", "Offered|Sunulanlar"]}, {"wait": 3000},
+   {"eval": "(()=>{const rows=[...document.querySelectorAll('tr,div')].filter(e=>/PHP run time|PHP çalışma süresi/.test(e.innerText||'') && e.querySelector('input[type=number],input[type=text],input:not([type])')); const r=rows[rows.length-1]; if(r) r.querySelector('input[type=number],input[type=text],input:not([type])').id='lab-in1'; const rows2=[...document.querySelectorAll('tr,div')].filter(e=>/PHP input fields|PHP form alanı/.test(e.innerText||'') && e.querySelector('input[type=number],input[type=text],input:not([type])')); const r2=rows2[rows2.length-1]; if(r2) r2.querySelector('input[type=number],input[type=text],input:not([type])').id='lab-in2';})()"},
+   {"type": ["#lab-in1", "301"]}, {"type": ["#lab-in2", "10001"]}, {"wait": 800},
+   {"probe": "(()=>{const m=document.body.innerText.match(/(Will be saved|Kaydedilecek)[^\\n]*/); return m?m[0]:'no pending line';})()", "label": "pending"},
+   {"probe": "String([...document.querySelectorAll('button')].filter(b=>/^(Save changes|Değişiklikleri kaydet)$/.test(b.innerText.trim())).length)", "label": "save-buttons"},
+   {"eval": "document.getElementById('lab-in2').scrollIntoView({block:'center'})"}, {"shot": "pending"},
+   {"clickText": ["button", "Save changes|Değişiklikleri kaydet"]}, {"wait": 3500},
+   {"probe": "(()=>{const m=document.body.innerText.match(/(Will be saved|Kaydedilecek)[^\\n]*/); return m?m[0]:'no pending line after save';})()", "label": "after-save"},
+   {"probe": "[document.getElementById('lab-in1')&&document.getElementById('lab-in1').value, document.getElementById('lab-in2')&&document.getElementById('lab-in2').value].join(',')", "label": "values"}
+ ]}
+]

@@ -1,0 +1,9 @@
+[
+ {"name": "users-offered", "path": "/users", "wait": 2500, "actions": [{"clickText": ["button,[role=tab],a", "Offered|Sunulanlar"]}, {"wait": 3000}]},
+ {"name": "databases", "path": "/databases", "wait": 4000},
+ {"name": "components", "path": "/components", "wait": 5000},
+ {"name": "security", "path": "/security", "wait": 6000},
+ {"name": "monitoring", "path": "/monitoring", "wait": 6000},
+ {"name": "maintenance", "path": "/maintenance", "wait": 4000},
+ {"name": "audit", "path": "/audit", "wait": 3000}
+]

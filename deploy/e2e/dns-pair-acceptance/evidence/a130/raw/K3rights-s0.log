@@ -1,0 +1,35 @@
+== 11:39:08 start
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+  databases switch offered = True
+-- Offered tab: untick remote access
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "item": {"id": "permission:database_remote", "offered": false}, "offered_apps": ["wordpress"], "restricted": false}
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+  databases switch offered = False
+-- Offered tab: tick remote access
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "item": {"id": "permission:database_remote", "offered": true}, "offered_apps": ["wordpress"], "restricted": false}
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+  databases switch offered = True
+-- Databases switch off
+200 {"changed": true, "engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T11:39:13Z", "close_pending": false, "fail2ban": "off", "filter_ready": true, "known": tr
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+  databases switch offered = False
+-- Databases switch on
+200 {"changed": true, "engines": [{"engine": "mysql", "port": 3306, "rules": 1, "state": {"applied_at": "2026-11-08T11:39:17Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": tru
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+  databases switch offered = True
+-- nginx directives: tick, read, untick
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "item": {"id": "permission:nginx_directives", "offered": true}, "offered_apps": ["wordpress"], "restricted": false}
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+200 {"hidden": {"node": [], "php": []}, "hidden_offerings": [], "item": {"id": "permission:nginx_directives", "offered": false}, "offered_apps": ["wordpress"], "restricted": false}
+  offered-versions 200 {"hidden_offerings": [], "offered_apps": ["wordpress"], "restricted": false}
+-- a program/Python row is read-only here
+400 {"error": "offering_id must be an offering id or permission:<id>"}
+400 {"error": "offering_id must be an offering id or permission:<id>"}
+-- the audit
+  audit 2026-11-08 11:39:19 rights.offer_permission:nginx_directives {"offered": false, "offered_before": true, "permission": "nginx_directives"}
+  audit 2026-11-08 11:39:18 rights.offer_permission:nginx_directives {"offered": true, "offered_before": false, "permission": "nginx_directives"}
+  audit 2026-11-08 11:39:14 database.remote.offer {"offered": true}
+  audit 2026-11-08 11:39:09 database.remote.offer {"offered": false}
+  audit 2026-11-08 11:39:09 rights.offer_permission:database_remote {"offered": true, "offered_before": false, "permission": "database_remote"}
+  audit 2026-11-08 11:39:08 rights.offer_permission:database_remote {"offered": false, "offered_before": true, "permission": "database_remote"}
+== k3 done 11:39:20

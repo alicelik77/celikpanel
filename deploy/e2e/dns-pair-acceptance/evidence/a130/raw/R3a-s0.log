@@ -1,0 +1,78 @@
+== Postfix status on Debian 13 12:19:32
+  service postfix postfix@- active running True 17182720
+  service dovecot dovecot active running True 14290944
+  problems: [('security_updates', None)]
+== rv3 postfix done 12:19:33
+== Set up now: cust1.s0.test (3) 12:19:34
+200 {"dns": "added", "publication": "published", "success": true}
+200 {"autoconfig": {"can_fix": false, "dns": "local", "mail_host": "mail.s0.test", "names": ["autoconfig.cust1.s0.test", "autodiscover.cust1.s0.test"], "records": [{"content": "mail.cust1.s0.test", "name": "autoconfig.cust1.s0.test", "state": "present", "type": "CNAME"}, {"content": "mail.cust1.s0.test", "name": "autodiscover.cust1.s0.test", "state": "present", "type": "CNAME"}, {"content": "0 443 autodiscover.cust1.s0.test", "name": "_autodiscover._tcp.cust1.s0.test", "state": "present", "type": "SRV"}], "secure": "unknown", "served": "yes", "state": "partial"}, "imap": {"host": "mail.s0.test", "port": 993, "security": "SSL/TLS"}, "mail_host": "mail.s0.test", "pop3": {"host": "mail.s0.test", "port": 995, "security": "SSL/TLS"}, "smtp": {"auth_required": true, "host": "mail.s0.test", "port": 587, "security": "STARTTLS"}, "username_is_full_email": true, "webmail_available": false, "webmail_re
+== Set up now: mnew.test (4) 12:19:40
+200 {"dns": "present", "success": true}
+200 {"autoconfig": {"can_fix": false, "dns": "local", "mail_host": "mail.s0.test", "names": ["autoconfig.mnew.test", "autodiscover.mnew.test"], "records": [{"content": "mail.mnew.test", "name": "autoconfig.mnew.test", "state": "present", "type": "CNAME"}, {"content": "mail.mnew.test", "name": "autodiscover.mnew.test", "state": "present", "type": "CNAME"}, {"content": "0 443 autodiscover.mnew.test", "name": "_autodiscover._tcp.mnew.test", "state": "present", "type": "SRV"}], "secure": "unknown", "served": "yes", "state": "partial"}, "imap": {"host": "mail.s0.test", "port": 993, "security": "SSL/TLS"}, "mail_host": "mail.s0.test", "pop3": {"host": "mail.s0.test", "port": 995, "security": "SSL/TLS"}, "smtp": {"auth_required": true, "host": "mail.s0.test", "port": 587, "security": "STARTTLS"}, "username_is_full_email": true, "webmail_available": false, "webmail_reason": "no_address", "webmail_ur
+  @192.0.3.190: autoconfig.cust1.s0.test CNAME=mail.cust1.s0.test. autodiscover.cust1.s0.test CNAME=mail.cust1.s0.test. SRV=0 0 443 autodiscover.cust1.s0.test.
+  @192.0.3.191: autoconfig.cust1.s0.test CNAME=mail.cust1.s0.test. autodiscover.cust1.s0.test CNAME=mail.cust1.s0.test. SRV=0 0 443 autodiscover.cust1.s0.test.
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+-- http://autoconfig.mnew.test/mail/config-v1.1.xml?emailaddress=x@mnew.test
+[http 200]
+-- https://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 000]
+-- http://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 200 ]
+-- Autodiscover POST (https autodiscover.mnew.test, -k)
+[http 000]
+LoginName present: 0 ; asked address echoed: 0
+http POST: [http 200]
+== certificate again for cust1.s0.test with the names resolving 12:20:03
+200 {"expires_at": "2031-11-08T12:20:04Z", "status": "success"}
+X509v3 Subject Alternative Name: critical
+    DNS:cust1.s0.test, DNS:www.cust1.s0.test, DNS:autoconfig.cust1.s0.test, DNS:autodiscover.cust1.s0.test
+-- http://autoconfig.cust1.s0.test/mail/config-v1.1.xml?emailaddress=x@cust1.s0.test
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="cust1.s0.test"><domain>cust1.s0.test</domain><displayName>cust1.s0.test</displayName><displayShortName>cust1.s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- https://cust1.s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="cust1.s0.test"><domain>cust1.s0.test</domain><displayName>cust1.s0.test</displayName><displayShortName>cust1.s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- http://cust1.s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 200 ]
+-- Autodiscover POST (https autodiscover.cust1.s0.test, -k)
+[http 200]
+<Type>IMAP <Server>mail.s0.test <Port>993 <SSL>on <Type>SMTP <Server>mail.s0.test <Port>465 <SSL>on
+LoginName present: 0 ; asked address echoed: 0
+== rv3 mail done 12:20:07
+== a held starting boot 12:20:19
+Created symlink '/etc/systemd/system/multi-user.target.wants/lab-hang.service' → '/etc/systemd/system/lab-hang.service'.
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+-- remove the MariaDB address (rule )
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- add an address while starting:
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- create a domain while starting:
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+-- wait for the boot to finish (up to 7 min)
+== 12:22:53 held boot, direct id
+is-system-running: starting
+		tcp dport 3306 ip saddr 192.0.3.1 accept
+200 {"closed_at_filter": true, "error": "The change is saved. The panel is still starting: the address is blocked at the firewall now and its database access is removed when the panel has started.", "starting": true, "success": true}
+   3306 address gone after 0 s
+is-system-running: starting
+503 {"code": "PANEL_STARTING", "error": "Panel management is still starting. Read-only connection and recovery status remain available."}
+2026/11/08 12:19:15 startup mail work, attempt 1 of 20: mail certificate publication completed (mail SNI from 0 active secure-mail certificates); mail filter wiring completed (milters="inet:127.0.0.1:8891, inet:127.0.0.1
+Starting celikpanel-panel.service - CelikPanel web panel...
+Started celikpanel-panel.service - CelikPanel web panel.
+2026/11/08 12:20:51 Starting CelikPanel Backend...
+2026/11/08 12:20:51 Panel startup listener active on :1923 (HTTPS; application gated)
+2026/11/08 12:20:55 startup: this server is still starting (its system manager, systemd, does not report it ready yet), so the Panel's startup reconciliation (site configuration files, certificate lineages, interrupted o
+   is-system-running: running 12:25:54
+		tcp dport 3306 drop
+		tcp dport 5432 drop
+tables: table inet celikpanel_fw table inet celikpanel_dbremote
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.s0.test", "port": 3306, "ssl_mode": "require"}, "database": "cust1_s0_test_rmy", "database_id": 4, "engine": "mysql", "engine_state": {"applied_at": "2026-11-08T12:23:00Z", "close_pending": false, "fail2ban": "on", "filter_ready": true, "known": true, "listen_remote": true, "name_resolve": "off", "nft_available": true, "problems": [], "readiness": [], "slow_down": "none", "state": "open", "tls": "off", "unit": "mariadb"}, "max_addresses_user": 10, "rules": [], "users": [{"id": 4, "username": "cust1_s0_test_rmy_user
+unhung
+running
+== rv3 starting done 12:26:56

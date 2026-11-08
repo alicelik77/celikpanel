@@ -1,0 +1,1 @@
+pkill -f "runUK.sh u22"; pkill -f "runK.sh u22"; sleep 1; for p in $(pgrep -f "k[0-9a-z]*\.sh"); do tr "\0" " " < /proc/$p/environ | grep -q "S=u22" && kill $p; done; sleep 2; pgrep -af "k[0-9]" | grep -v pgrep | cut -c1-150

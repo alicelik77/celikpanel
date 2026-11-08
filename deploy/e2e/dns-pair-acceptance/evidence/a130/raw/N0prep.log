@@ -1,0 +1,4 @@
+apt rc 0
+/usr/bin/psql /usr/bin/mariadb /usr/sbin/postconf /usr/sbin/saslpasswd2
+192.0.3.1:465 192.0.2.25:25 192.0.3.1:587
+relay user: relayuser@relay.lab.test

@@ -1,0 +1,46 @@
+read 200 ['Content', 'Parsed', 'Version']
+removed lines: []
+-- save without the local postgres peer line
+409 {"code": "SETTINGS_VERSION_REQUIRED", "error": "This request did not say which settings it was built from, so nothing was changed. Reload the page so it reads the current settings, then make the change again.", "reason": "config_file"}
+118:local   all             postgres                                peer
+123:local   all             all                                     peer
+130:local   replication     all                                     peer
+read 200 ['Content', 'Parsed', 'Version']
+removed lines: ['local   all             postgres                                peer']
+-- save without the local postgres peer line
+200 {"applied": "reloaded", "backup": "/etc/postgresql/18/main/pg_hba.conf.celikpanel-backup-20261108T102239Z", "daemon_check": "accepted", "restart_required": [], "success": true, "unchanged": false, "version": "cf1-c282b9adc398dd10c7ca7a66b7a0a451967757605fc71d6cdafb9b1729d833d8"}
+122:local   all             all                                     peer
+129:local   replication     all                                     peer
+== 10:22:55 save without any local rule
+lines 132 -> 130
+422 {"code": "CONFIG_INVALID", "error": "Nothing was saved: this change would take away the local administrator access to PostgreSQL (the rule that lets the server's own postgres account connect over the local socket). CelikPanel and the owner's console both use it. Keep a `local all postgres peer` rule above any rule that would refuse it, then save again.", "reason": "lockout", "vars": {"name": "denied"}}
+== 10:22:56 the postgres peer line back
+lines 132 -> 133
+200 {"applied": "reloaded", "backup": "/etc/postgresql/18/main/pg_hba.conf.celikpanel-backup-20261108T102256Z", "daemon_check": "accepted", "restart_required": [], "success": true, "unchanged": false, "version": "cf1-2a95a48915a6b83bd4682dac83f878d893729dbe51c8683f1d0d45234f6b28a7"}
+122:local   all             postgres                                peer
+123:local   all             all                                     peer
+130:local   replication     all                                     peer
+conf.d
+environment
+pg_ctl.conf
+pg_hba.conf
+pg_hba.conf.celikpanel-backup-20261108T102239Z
+pg_hba.conf.celikpanel-backup-20261108T102256Z
+pg_ident.conf
+postgresql.conf
+start.conf
+== 10:23:09 save with an invalid address rule
+lines 133 -> 134
+422 {"code": "CONFIG_INVALID", "error": "Nothing was saved: a line that was changed or added is not one the service accepts. Correct the line named below and save again.", "reason": "syntax", "vars": {"detail": "specifying both host name and CIDR mask is invalid: \"999.1.1.1/32\"", "line": "133"}}
+122:local   all             postgres                                peer
+123:local   all             all                                     peer
+130:local   replication     all                                     peer
+conf.d
+environment
+pg_ctl.conf
+pg_hba.conf
+pg_hba.conf.celikpanel-backup-20261108T102239Z
+pg_hba.conf.celikpanel-backup-20261108T102256Z
+pg_ident.conf
+postgresql.conf
+start.conf

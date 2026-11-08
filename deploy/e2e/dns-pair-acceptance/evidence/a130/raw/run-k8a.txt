@@ -1,0 +1,108 @@
+
+######## set 11:44:00
+messages in box1@site1.s0.test: 2
+date.received: 2026-11-08 11:39:38
+hdr.subject: Undelivered Mail Returned to Sender
+date.received: 2026-11-08 11:40:22
+hdr.subject: Undelivered Mail Returned to Sender
+200 {"recovery": {"address": "box1@site1.s0.test", "mail": {"available": true}, "mailbox": "info@cust1.s0.test", "request_page": "https://frankfurt.s0.test:1923/account-link/mailbox-recovery", "set_at": "2026-11-08T11:44:00Z", "state": "pending"}, "sent": true}
+-- self refused:
+400 {"code": "mailbox_recovery_address_self", "error": "A mailbox cannot be its own recovery address, so nothing was changed. Use an address at another mailbox the person can read."}
+messages in box1@site1.s0.test: 3
+date.received: 2026-11-08 11:39:38
+hdr.subject: Undelivered Mail Returned to Sender
+date.received: 2026-11-08 11:40:22
+hdr.subject: Undelivered Mail Returned to Sender
+date.received: 2026-11-08 11:44:04
+hdr.subject: =?utf-8?q?Kurtarma_adresi_olarak_onaylay=C4=B1n:_info@cust1.s0.test?=
+subject: =?utf-8?q?Kurtarma_adresi_olarak_onaylay=C4=B1n:_info@cust1.s0.test?=
+link: https://frankfurt.s0.test:1923/account-link/mailbox-confirm#t=[REDACTED]
+token length 43
+-- confirm
+200  {"mailbox":"info@cust1.s0.test"} 
+200 {"address": "box1@site1.s0.test", "confirmed_at": "2026-11-08T11:44:17Z", "mail": {"available": true}, "mailbox": "info@cust1.s0.test", "request_page": "https://frankfurt.s0.test:1923/account-link/mailbox-recovery", "set_at": "2026-11-08T11:44:00Z", "state": "confirmed"}
+-- the same confirmation link again:
+410  {"error":"This link is not valid any more: it was used, replaced by a newer one, expired, or the mailbox changed. Nothing was changed. Ask for a new link.","code":"mailbox_recovery_link_invalid"} 
+
+######## request 11:44:18
+messages in box1@site1.s0.test: 3
+date.received: 2026-11-08 11:39:38
+hdr.subject: Undelivered Mail Returned to Sender
+date.received: 2026-11-08 11:40:22
+hdr.subject: Undelivered Mail Returned to Sender
+date.received: 2026-11-08 11:44:04
+hdr.subject: =?utf-8?q?Kurtarma_adresi_olarak_onaylay=C4=B1n:_info@cust1.s0.test?=
+-- known:
+202  {"accepted":true} 
+-- unknown:
+202  {"accepted":true} 
+-- unknown domain:
+202  {"accepted":true} 
+messages in box1@site1.s0.test: 4
+date.received: 2026-11-08 11:40:22
+hdr.subject: Undelivered Mail Returned to Sender
+date.received: 2026-11-08 11:44:04
+hdr.subject: =?utf-8?q?Kurtarma_adresi_olarak_onaylay=C4=B1n:_info@cust1.s0.test?=
+date.received: 2026-11-08 11:44:25
+hdr.subject: Reset the mailbox password: info@cust1.s0.test
+
+######## reset 11:44:35
+box1@site1.s0.test 4c535b345845
+info@cust1.s0.test 6e4e80c3e2c7
+sales@cust1.s0.test 98419475c5f3
+info@mnew.test 7cb0db8cd0f3
+subject: Reset the mailbox password: info@cust1.s0.test
+link: https://frankfurt.s0.test:1923/account-link/mailbox-reset#t=[REDACTED]
+token length 43
+-- link
+200  {"mailbox":"info@cust1.s0.test"} 
+username           # service (pids)  (ips)                      
+info@cust1.s0.test 1 imap    (10132) (192.0.3.1)                
+-- reset
+200  {"success":true} 
+username # service (pids) (ips)                        
+-- users lines changed:
+< info@cust1.s0.test 6e4e80c3e2c7
+> info@cust1.s0.test 903c89479ce0
+-- the same link again (single use):
+410  {"error":"This link is not valid any more: it was used, replaced by a newer one, expired, or the mailbox changed. Nothing was changed. Ask for a new link.","code":"mailbox_recovery_link_invalid"} 
+-- new password works over IMAP:
+OK
+messages in info@cust1.s0.test: 6
+date.received: 2026-11-08 11:44:21
+hdr.subject: Posta kutunuzun kurtarma adresi etkin
+date.received: 2026-11-08 11:44:45
+hdr.subject: =?utf-8?q?Posta_kutunuzun_parolas=C4=B1_s=C4=B1f=C4=B1rland=C4=B1?=
+date.received: 2026-11-08 11:44:49
+hdr.subject: a130 lab 1794138280981514510
+
+######## oldlink 11:44:50
+202  {"accepted":true} 
+subject: Reset the mailbox password: info@cust1.s0.test
+link: https://frankfurt.s0.test:1923/account-link/mailbox-reset#t=[REDACTED]
+token length 43
+-- panel password change
+200 {"success": true}
+-- the older link:
+200  {"mailbox":"info@cust1.s0.test"} 
+
+######## suspended 11:45:06
+messages in box1@site1.s0.test: 5
+date.received: 2026-11-08 11:44:04
+hdr.subject: =?utf-8?q?Kurtarma_adresi_olarak_onaylay=C4=B1n:_info@cust1.s0.test?=
+date.received: 2026-11-08 11:44:25
+hdr.subject: Reset the mailbox password: info@cust1.s0.test
+date.received: 2026-11-08 11:44:53
+hdr.subject: Reset the mailbox password: info@cust1.s0.test
+202 {"can_resume": true, "can_suspend": false, "causes": {"disk": false, "expired": false, "manual": true}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-08 11:45:05", "effects": [{"kind": "web", "state": "pending", "target": "cust1.s0.test"}, {"kind": "site_account", "state": "pe
+202  {"accepted":true} 
+messages in box1@site1.s0.test: 5
+date.received: 2026-11-08 11:44:04
+hdr.subject: =?utf-8?q?Kurtarma_adresi_olarak_onaylay=C4=B1n:_info@cust1.s0.test?=
+date.received: 2026-11-08 11:44:25
+hdr.subject: Reset the mailbox password: info@cust1.s0.test
+date.received: 2026-11-08 11:44:53
+hdr.subject: Reset the mailbox password: info@cust1.s0.test
+202 {"can_resume": false, "can_suspend": true, "causes": {"disk": false, "expired": false, "manual": false}, "ends_at": null, "operation": {"attempts": 0, "created_at": "2026-11-08 11:45:27", "effects": [{"kind": "web", "state": "pending", "target": "cust1.s0.test"}, {"kind": "site_account", "state": "p
+== k8 set request reset oldlink suspended done 11:45:28
+exit 0

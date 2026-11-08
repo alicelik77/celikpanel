@@ -1,0 +1,239 @@
+== prep 10:26:47
+total 16
+drwxr-xr-x 2 root root 4096 Nov  8 09:32 .
+drwxr-xr-x 5 root root 4096 Nov  8 09:39 ..
+-rw------- 1 root root   27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root   26 Nov  8 10:26 60-cloudimg-settings.conf
+Exception ignored while flushing sys.stdout:
+BrokenPipeError: [Errno 32] Broken pipe
+password set for labpw
+total 16
+drwxr-xr-x 2 root root 4096 Nov  8 09:32 .
+drwxr-xr-x 5 root root 4096 Nov  8 09:39 ..
+-rw------- 1 root root   27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root   26 Nov  8 10:26 60-cloudimg-settings.conf
+--- /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication yes
+--- /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+PasswordAuthentication no
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication yes
+kbdinteractiveauthentication no
+active active 
+== status 10:26:51
+  status 200 {"state": "read", "reason": "match_block", "detail": "/etc/bind-peer-inspector/sshd-match.conf:4", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": false}
+  deciders [{"file": "/etc/ssh/sshd_config.d/50-cloud-init.conf", "line": 1, "setting": "passwordauthentication", "value": "yes"}, {"file": "/etc/ssh/sshd_config", "line": 71, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}]
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "state": "absent"}
+  key_accounts [{"keys": 1, "name": "celik"}]
+== password login from labnet 10:26:51
+PASSWORD-LOGIN-OK
+rc 0
+== key login 10:26:52
+KEY-LOGIN-OK as celik
+== b_ssh prep status pw key done 10:26:52
+== lab: the peer inspector Include hidden (stand-in for the fix) 10:40:27
+133:# LAB Include /etc/bind-peer-inspector/sshd-match.conf
+  status 200 {"state": "read", "reason": null, "detail": null, "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": true, "can_turn_on": false}
+  deciders [{"file": "/etc/ssh/sshd_config.d/50-cloud-init.conf", "line": 1, "setting": "passwordauthentication", "value": "yes"}, {"file": "/etc/ssh/sshd_config", "line": 71, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}]
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "state": "absent"}
+  key_accounts [{"keys": 1, "name": "celik"}]
+== turn off 10:40:28
+200 {"kbd_interactive_authentication": "no", "outcome": "turned_off", "password_authentication": "[REDACTED]", "reloaded": true, "unit": "ssh"}
+total 20
+drwxr-xr-x 2 root root       4096 Nov  8 10:40 .
+drwxr-xr-x 5 root root       4096 Nov  8 10:40 ..
+-rw-r--r-- 1 root celikpanel  373 Nov  8 10:40 00-celikpanel.conf
+-rw------- 1 root root         27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root         26 Nov  8 10:26 60-cloudimg-settings.conf
+--- /etc/ssh/sshd_config.d/00-celikpanel.conf
+# Written by CelikPanel at the administrator's request: SSH password sign-in is off.
+# sshd uses the first value it reads; this file is read before the others in this folder.
+# To allow passwords again without CelikPanel: delete this file, then run
+#   systemctl reload ssh      (Arch Linux: systemctl reload sshd)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+--- /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication yes
+--- /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+PasswordAuthentication no
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+active active 
+  status 200 {"state": "unreadable", "reason": "config_unreadable", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": true}
+  deciders []
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "c40e7c0fda2b9187673ceec6281010abf0e498474effbb76337a3c0500acae74", "state": "panel"}
+  key_accounts []
+== password login from labnet 10:40:29
+labpw@192.0.3.191: Permission denied (publickey).
+rc 255
+== key login 10:40:30
+KEY-LOGIN-OK as celik
+== b_ssh peerhide off pw key done 10:40:30
+== turn on 10:41:29
+409 {"code": "SSH_PASSWORD_REFUSED", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "error": "the SSH configuration could not be read, so nothing was changed", "outcome": "refused", "reason": "config_unreadable"}
+total 20
+drwxr-xr-x 2 root root       4096 Nov  8 10:40 .
+drwxr-xr-x 5 root root       4096 Nov  8 10:40 ..
+-rw-r--r-- 1 root celikpanel  373 Nov  8 10:40 00-celikpanel.conf
+-rw------- 1 root root         27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root         26 Nov  8 10:26 60-cloudimg-settings.conf
+--- /etc/ssh/sshd_config.d/00-celikpanel.conf
+# Written by CelikPanel at the administrator's request: SSH password sign-in is off.
+# sshd uses the first value it reads; this file is read before the others in this folder.
+# To allow passwords again without CelikPanel: delete this file, then run
+#   systemctl reload ssh      (Arch Linux: systemctl reload sshd)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+--- /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication yes
+--- /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+PasswordAuthentication no
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+active active 
+  status 200 {"state": "unreadable", "reason": "config_unreadable", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": true}
+  deciders []
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "c40e7c0fda2b9187673ceec6281010abf0e498474effbb76337a3c0500acae74", "state": "panel"}
+  key_accounts []
+== password login from labnet 10:41:30
+labpw@192.0.3.191: Permission denied (publickey).
+rc 255
+== turn off 10:41:31
+409 {"code": "SSH_PASSWORD_REFUSED", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "error": "the SSH configuration could not be read, so nothing was changed", "outcome": "refused", "reason": "config_unreadable"}
+total 20
+drwxr-xr-x 2 root root       4096 Nov  8 10:40 .
+drwxr-xr-x 5 root root       4096 Nov  8 10:40 ..
+-rw-r--r-- 1 root celikpanel  373 Nov  8 10:40 00-celikpanel.conf
+-rw------- 1 root root         27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root         26 Nov  8 10:26 60-cloudimg-settings.conf
+--- /etc/ssh/sshd_config.d/00-celikpanel.conf
+# Written by CelikPanel at the administrator's request: SSH password sign-in is off.
+# sshd uses the first value it reads; this file is read before the others in this folder.
+# To allow passwords again without CelikPanel: delete this file, then run
+#   systemctl reload ssh      (Arch Linux: systemctl reload sshd)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+--- /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication yes
+--- /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+PasswordAuthentication no
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+active active 
+  status 200 {"state": "unreadable", "reason": "config_unreadable", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": true}
+  deciders []
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "c40e7c0fda2b9187673ceec6281010abf0e498474effbb76337a3c0500acae74", "state": "panel"}
+  key_accounts []
+== owner edits 00-celikpanel.conf 10:41:32
+KbdInteractiveAuthentication no
+# owner note
+  status 200 {"state": "unreadable", "reason": "config_unreadable", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": false}
+  deciders []
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "363adfc595ae47ed5727c91893d2d2f0c8b92bbfea190595052c3793a4b4a41a", "state": "edited"}
+  key_accounts []
+409 {"code": "SSH_PASSWORD_REFUSED", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "error": "the SSH configuration could not be read, so nothing was changed", "outcome": "refused", "reason": "config_unreadable"}
+409 {"code": "SSH_PASSWORD_REFUSED", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "error": "the SSH configuration could not be read, so nothing was changed", "outcome": "refused", "reason": "config_unreadable"}
+# Written by CelikPanel at the administrator's request: SSH password sign-in is off.
+# sshd uses the first value it reads; this file is read before the others in this folder.
+# To allow passwords again without CelikPanel: delete this file, then run
+#   systemctl reload ssh      (Arch Linux: systemctl reload sshd)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+== turn on 10:41:34
+409 {"code": "SSH_PASSWORD_REFUSED", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "error": "the SSH configuration could not be read, so nothing was changed", "outcome": "refused", "reason": "config_unreadable"}
+total 20
+drwxr-xr-x 2 root root       4096 Nov  8 10:41 .
+drwxr-xr-x 5 root root       4096 Nov  8 10:40 ..
+-rw-r--r-- 1 root celikpanel  373 Nov  8 10:41 00-celikpanel.conf
+-rw------- 1 root root         27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root         26 Nov  8 10:26 60-cloudimg-settings.conf
+--- /etc/ssh/sshd_config.d/00-celikpanel.conf
+# Written by CelikPanel at the administrator's request: SSH password sign-in is off.
+# sshd uses the first value it reads; this file is read before the others in this folder.
+# To allow passwords again without CelikPanel: delete this file, then run
+#   systemctl reload ssh      (Arch Linux: systemctl reload sshd)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+--- /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication yes
+--- /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+PasswordAuthentication no
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+active active 
+  status 200 {"state": "unreadable", "reason": "config_unreadable", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf could not be read safely: SSH config metadata is unsafe", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": true}
+  deciders []
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "c40e7c0fda2b9187673ceec6281010abf0e498474effbb76337a3c0500acae74", "state": "panel"}
+  key_accounts []
+== b_ssh on pw off ownedit on done 10:41:35
+== lab: the drop-in to root:root (stand-in for the writer fix) 10:41:47
+-rw-r--r-- 1 root root 373 Nov  8 10:41 /etc/ssh/sshd_config.d/00-celikpanel.conf
+  status 200 {"state": "read", "reason": "already_off", "detail": null, "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": true}
+  deciders [{"file": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "line": 5, "setting": "passwordauthentication", "value": "no"}, {"file": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "line": 6, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}]
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "c40e7c0fda2b9187673ceec6281010abf0e498474effbb76337a3c0500acae74", "state": "panel"}
+  key_accounts [{"keys": 1, "name": "celik"}]
+== owner edits 00-celikpanel.conf 10:41:49
+KbdInteractiveAuthentication no
+# owner note
+  status 200 {"state": "read", "reason": "already_off", "detail": null, "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": false}
+  deciders [{"file": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "line": 5, "setting": "passwordauthentication", "value": "no"}, {"file": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "line": 6, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}]
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "sha256": "363adfc595ae47ed5727c91893d2d2f0c8b92bbfea190595052c3793a4b4a41a", "state": "edited"}
+  key_accounts [{"keys": 1, "name": "celik"}]
+409 {"code": "SSH_PASSWORD_REFUSED", "detail": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "error": "/etc/ssh/sshd_config.d/00-celikpanel.conf is not CelikPanel's text any more, so CelikPanel does not remove it", "outcome": "refused", "reason": "drop_in_edited"}
+200 {"kbd_interactive_authentication": "no", "outcome": "unchanged", "password_authentication": "[REDACTED]", "reloaded": false, "unit": "ssh"}
+# Written by CelikPanel at the administrator's request: SSH password sign-in is off.
+# sshd uses the first value it reads; this file is read before the others in this folder.
+# To allow passwords again without CelikPanel: delete this file, then run
+#   systemctl reload ssh      (Arch Linux: systemctl reload sshd)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+== turn on 10:41:51
+200 {"kbd_interactive_authentication": "no", "outcome": "turned_on", "password_authentication": "[REDACTED]", "reloaded": true, "unit": "ssh"}
+total 16
+drwxr-xr-x 2 root root 4096 Nov  8 10:41 .
+drwxr-xr-x 5 root root 4096 Nov  8 10:40 ..
+-rw------- 1 root root   27 Nov  8 10:26 50-cloud-init.conf
+-rw-r--r-- 1 root root   26 Nov  8 10:26 60-cloudimg-settings.conf
+--- /etc/ssh/sshd_config.d/50-cloud-init.conf
+PasswordAuthentication yes
+--- /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+PasswordAuthentication no
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication yes
+kbdinteractiveauthentication no
+active active 
+  status 200 {"state": "read", "reason": null, "detail": null, "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": true, "can_turn_on": false}
+  deciders [{"file": "/etc/ssh/sshd_config.d/50-cloud-init.conf", "line": 1, "setting": "passwordauthentication", "value": "yes"}, {"file": "/etc/ssh/sshd_config", "line": 71, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}]
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "state": "absent"}
+  key_accounts [{"keys": 1, "name": "celik"}]
+== password login from labnet 10:41:52
+PASSWORD-LOGIN-OK
+rc 0
+== b_ssh chgrp ownedit on pw done 10:41:53
+== lab: the peer inspector Include back 10:42:01
+133:Include /etc/bind-peer-inspector/sshd-match.conf
+e3a46bbac992bc0b
+passwordauthentication no
+forcecommand /usr/local/libexec/celikpanel-bind-peer-inspect-wrapper
+  status 200 {"state": "read", "reason": "match_block", "detail": "/etc/bind-peer-inspector/sshd-match.conf:4", "unit": "ssh", "unit_active": true, "password_authentication": "[REDACTED]", "kbd_interactive_authentication": "no", "can_turn_off": false, "can_turn_on": false}
+  deciders [{"file": "/etc/ssh/sshd_config.d/50-cloud-init.conf", "line": 1, "setting": "passwordauthentication", "value": "yes"}, {"file": "/etc/ssh/sshd_config", "line": 71, "setting": "kbdinteractiveauthentication", "value": "no"}, {"default": true, "setting": "permitrootlogin", "value": "without-password"}]
+  drop_in {"path": "/etc/ssh/sshd_config.d/00-celikpanel.conf", "state": "absent"}
+  key_accounts [{"keys": 1, "name": "celik"}]
+== restore the VM's sshd config 10:42:02
+total 16
+drwxr-xr-x 2 root root 4096 Nov  8 10:42 .
+drwxr-xr-x 5 root root 4096 Nov  8 10:40 ..
+-rw------- 1 root root   26 Nov  8 09:32 50-cloud-init.conf
+-rw-r--r-- 1 root root   26 Aug 26 12:57 60-cloudimg-settings.conf
+passwordauthentication no
+== b_ssh peerback restore done 10:42:02

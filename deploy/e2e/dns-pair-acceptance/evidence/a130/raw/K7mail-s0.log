@@ -1,0 +1,347 @@
+
+######## ac 11:21:01
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- s0.test
+  setup 200 {"can_fix": true, "dns": "local", "mail_host": "mail.s0.test", "names": ["autoconfig.s0.test", "autodiscover.s0.test"], "records": [{"content": "mail.s0.test", "name": "autoconfig.s0.test", "state": "missing", "type": "CNAME"}, {"content": "mail.s0.test", "name": "autodiscover.s0.test", "state": "missing", "type": "CNAME"}, {"content": "0 443 autodiscover.s0.test", "name": "_autodiscover._tcp.s0.test", "state": "missing", "type": "SRV"}], "secure": "unknown", "served": "yes", "state": "partial"}
+-- site1.s0.test
+  setup 200 {"can_fix": false, "dns": "", "names": ["autoconfig.site1.s0.test", "autodiscover.site1.s0.test"], "reason": "subdomain", "records": [], "secure": "unknown", "served": "unknown", "state": "unavailable"}
+-- cust1.s0.test
+  setup 200 {"can_fix": true, "dns": "local", "mail_host": "mail.s0.test", "names": ["autoconfig.cust1.s0.test", "autodiscover.cust1.s0.test"], "records": [{"content": "mail.cust1.s0.test", "name": "autoconfig.cust1.s0.test", "state": "missing", "type": "CNAME"}, {"content": "mail.cust1.s0.test", "name": "autodiscover.cust1.s0.test", "state": "missing", "type": "CNAME"}, {"content": "0 443 autodiscover.cust1.s0.test", "name": "_autodiscover._tcp.cust1.s0.test", "state": "missing", "type": "SRV"}], "secure": "unknown", "served": "yes", "state": "partial"}
+-- s0.test answers
+-- http://autoconfig.s0.test/mail/config-v1.1.xml?emailaddress=x@s0.test
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="s0.test"><domain>s0.test</domain><displayName>s0.test</displayName><displayShortName>s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- https://s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="s0.test"><domain>s0.test</domain><displayName>s0.test</displayName><displayShortName>s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- http://s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 200 ]
+-- Autodiscover POST (https autodiscover.s0.test, -k)
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+
+LoginName present: 0 ; asked address echoed: 0
+http POST: [http 200]
+  @192.0.3.190: autoconfig.s0.test CNAME= autodiscover.s0.test CNAME= _autodiscover._tcp.s0.test SRV=
+  @192.0.3.191: autoconfig.s0.test CNAME= autodiscover.s0.test CNAME= _autodiscover._tcp.s0.test SRV=
+-- cust1.s0.test answers
+-- http://autoconfig.cust1.s0.test/mail/config-v1.1.xml?emailaddress=x@cust1.s0.test
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="cust1.s0.test"><domain>cust1.s0.test</domain><displayName>cust1.s0.test</displayName><displayShortName>cust1.s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- https://cust1.s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+-- http://cust1.s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 200 ]
+-- Autodiscover POST (https autodiscover.cust1.s0.test, -k)
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+
+LoginName present: 0 ; asked address echoed: 0
+http POST: [http 200]
+  @192.0.3.190: autoconfig.cust1.s0.test CNAME= autodiscover.cust1.s0.test CNAME= _autodiscover._tcp.cust1.s0.test SRV=
+  @192.0.3.191: autoconfig.cust1.s0.test CNAME= autodiscover.cust1.s0.test CNAME= _autodiscover._tcp.cust1.s0.test SRV=
+== k7 ac done 11:21:14
+
+######## acnow 11:21:29
+-- Set up now: site1.s0.test
+404 404 page not found
+
+  setup 200 {"can_fix": false, "dns": "", "names": ["autoconfig.site1.s0.test", "autodiscover.site1.s0.test"], "reason": "subdomain", "records": [], "secure": "unknown", "served": "unknown", "state": "unavailable"}
+-- Set up now: cust1.s0.test
+404 404 page not found
+
+  setup 200 {"can_fix": true, "dns": "local", "mail_host": "mail.s0.test", "names": ["autoconfig.cust1.s0.test", "autodiscover.cust1.s0.test"], "records": [{"content": "mail.cust1.s0.test", "name": "autoconfig.cust1.s0.test", "state": "missing", "type": "CNAME"}, {"content": "mail.cust1.s0.test", "name": "autodiscover.cust1.s0.test", "state": "missing", "type": "CNAME"}, {"content": "0 443 autodiscover.cust1.s0.test", "name": "_autodiscover._tcp.cust1.s0.test", "state": "missing", "type": "SRV"}], "secure": "unknown", "served": "yes", "state": "partial"}
+  @192.0.3.190: autoconfig.cust1.s0.test CNAME= autodiscover.cust1.s0.test CNAME= _autodiscover._tcp.cust1.s0.test SRV=
+  @192.0.3.191: autoconfig.cust1.s0.test CNAME= autodiscover.cust1.s0.test CNAME= _autodiscover._tcp.cust1.s0.test SRV=
+  @192.0.3.190 mail.cust1.s0.test A=192.0.3.190
+  @192.0.3.191 mail.cust1.s0.test A=192.0.3.190
+== k7 acnow done 11:21:51
+
+######## newdom 11:36:10
+-- a new domain with mail: mnew.test
+500 {"code": "INTERNAL", "error": "internal server error"}
+mnew id 
+307 
+  setup 307 null
+  @192.0.3.190: autoconfig.mnew.test CNAME= autodiscover.mnew.test CNAME= _autodiscover._tcp.mnew.test SRV=
+  @192.0.3.191: autoconfig.mnew.test CNAME= autodiscover.mnew.test CNAME= _autodiscover._tcp.mnew.test SRV=
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- http://autoconfig.mnew.test/mail/config-v1.1.xml?emailaddress=x@mnew.test
+[http 404]
+-- https://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+-- http://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 404 ]
+-- Autodiscover POST (https autodiscover.mnew.test, -k)
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+
+LoginName present: 0 ; asked address echoed: 0
+http POST: [http 404]
+
+######## relay 11:36:43
+200 {"apply": {}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": false, "has_password": false, "host": "", "port": 587, "username": ""}}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+-- test sign-in, wrong password (587)
+200 {"detail": "the relay did not accept the user name and password: 5.7.8 Error: authentication failed: authentication failure", "ok": false, "stage": "auth", "verified": false}
+-- test sign-in, right password (587)
+200 {"ok": true, "stage": "done", "verified": false}
+-- save relay 587
+200 {"saved": true, "unknown": "the server did not answer; whether it took the change is not known"}
+200 {"apply": {"detail": "the server did not answer; whether it took the change is not known. Read the state again before saving again", "state": "unknown"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": true, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 587, "username": "relayuser@relay.lab.test"}}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+-- a mail out through the relay (box1 -> someone@example.com, submitted on A:587)
+bash: /root/n_swaks.sh: No such file or directory
+Nov 08 11:36:44 relay postfix/submission/smtpd[10324]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:36:44 relay postfix/submission/smtpd[10324]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: SASL authentication failure: Password verification failed
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: unknown[192.0.3.190]: SASL PLAIN authentication failed: authentication failure, sasl_username=relayuser@relay.lab.test
+-- port 465
+200 {"saved": true, "unknown": "the server did not answer; whether it took the change is not known"}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+bash: /root/n_swaks.sh: No such file or directory
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: SASL authentication failure: Password verification failed
+Nov 08 11:36:45 relay postfix/submission/smtpd[10324]: warning: unknown[192.0.3.190]: SASL PLAIN authentication failed: authentication failure, sasl_username=relayuser@relay.lab.test
+
+######## relayoff 11:37:55
+200 {"saved": true, "unknown": "the server did not answer; whether it took the change is not known"}
+recipient_delimiter = +
+relayhost =
+smtp_tls_security_level = may
+celikpanel_login_map
+200 {"apply": {"detail": "the server did not answer; whether it took the change is not known. Read the state again before saving again", "state": "unknown"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": false, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 465, "username": "relayuser@relay.lab.test"}}
+-- the owner's own relayhost: save refused
+postfix/postlog: refreshing the Postfix mail system
+200 {"result": {"applied": false, "changed": false, "code": "MAIL_RELAY_OWNER_CONFIG", "error": "main.cf already has the server owner's relay setting (relayhost = [192.0.3.1]:587). CelikPanel keeps it and does not change it. To let CelikPanel send through a relay, the server owner removes that line (for example `sudo postconf -X relayhost`) and saves again", "state": "owner"}, "saved": true}
+postfix/postlog: refreshing the Postfix mail system
+0
+
+######## subaddr 11:38:10
+200 {"sender": {"apply": {}, "rules": []}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "off", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+-- info+lab@cust1.s0.test from labnet
+
+######## sender 11:38:25
+200 {"sender": {"apply": {}, "rules": []}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "off", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "applied"}
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (2 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "applied"}
+-- own domain refused:
+409 {"code": "MAIL_SENDER_OWN_DOMAIN", "error": "cust1.s0.test belongs to cust1.s0.test, a domain of this server: its mail is protected by sign-in and a list entry would also stop this server's own mailboxes. Nothing was changed", "vars": {"domain": "cust1.s0.test"}}
+
+######## newdom 11:38:30
+-- a new domain with mail: mnew.test
+200 {"DocumentRoot": "/var/www/celikpanel/subscriptions/2/sites/4/public_html", "Domain": "mnew.test", "DomainID": 4, "FTPPassword": "[REDACTED]", "FTPUser": "mnew_test", "PHPVersion": "8.4", "ProjectType": "php", "SiteID": 4, "TempDomain": ""}
+mnew id 4
+200 {"id": 4, "success": true}
+  setup 200 {"can_fix": true, "dns": "local", "mail_host": "mail.s0.test", "names": ["autoconfig.mnew.test", "autodiscover.mnew.test"], "records": [{"content": "mail.mnew.test", "name": "autoconfig.mnew.test", "state": "present", "type": "CNAME"}, {"content": "mail.mnew.test", "name": "autodiscover.mnew.test", "state": "present", "type": "CNAME"}, {"content": "0 443 autodiscover.mnew.test", "name": "_autodiscover._tcp.mnew.test", "state": "present", "type": "SRV"}], "secure": "no", "served": "no", "state": "partial"}
+  @192.0.3.190: autoconfig.mnew.test CNAME=mail.mnew.test. autodiscover.mnew.test CNAME=mail.mnew.test. _autodiscover._tcp.mnew.test SRV=0 0 443 autodiscover.mnew.test.
+  @192.0.3.191: autoconfig.mnew.test CNAME=mail.mnew.test. autodiscover.mnew.test CNAME=mail.mnew.test. _autodiscover._tcp.mnew.test SRV=0 0 443 autodiscover.mnew.test.
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+-- http://autoconfig.mnew.test/mail/config-v1.1.xml?emailaddress=x@mnew.test
+[http 404]
+-- https://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+-- http://mnew.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 200 ]
+-- Autodiscover POST (https autodiscover.mnew.test, -k)
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+[http 000]
+
+LoginName present: 0 ; asked address echoed: 0
+http POST: [http 404]
+
+######## relay 11:39:10
+200 {"apply": {"code": "MAIL_RELAY_OWNER_CONFIG", "detail": "main.cf already has the server owner's relay setting (relayhost = [192.0.3.1]:587). CelikPanel keeps it and does not change it. To let CelikPanel send through a relay, the server owner removes that line (for example `sudo postconf -X relayhost`) and saves again", "state": "refused"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": true, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 587, "username": "relayuser@relay.lab.test"}}
+recipient_delimiter = +
+smtp_tls_security_level = may
+smtpd_sender_restrictions = check_sender_access hash:/etc/postfix/celikpanel_sender_access
+celikpanel_login_map celikpanel_sender_access celikpanel_sender_access.db
+-- test sign-in, wrong password (587)
+200 {"detail": "the relay did not accept the user name and password: 5.7.8 Error: authentication failed: authentication failure", "ok": false, "stage": "auth", "verified": false}
+-- test sign-in, right password (587)
+200 {"ok": true, "stage": "done", "verified": false}
+-- save relay 587
+200 {"result": {"applied": false, "changed": false, "code": "MAIL_RELAY_SASL_MISSING", "error": "Postfix cannot sign in to another server yet: its SASL login modules are not installed. The server administrator installs them from the distribution (Debian and Ubuntu: `sudo apt install libsasl2-modules`; Arch: `sudo pacman -S libsasl`) and saves again; nothing was changed", "state": "off"}, "saved": true}
+200 {"apply": {"code": "MAIL_RELAY_SASL_MISSING", "detail": "Postfix cannot sign in to another server yet: its SASL login modules are not installed. The server administrator installs them from the distribution (Debian and Ubuntu: `sudo apt install libsasl2-modules`; Arch: `sudo pacman -S libsasl`) and saves again; nothing was changed", "state": "refused"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": true, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 587, "username": "relayuser@relay.lab.test"}}
+recipient_delimiter = +
+smtp_tls_security_level = may
+smtpd_sender_restrictions = check_sender_access hash:/etc/postfix/celikpanel_sender_access
+celikpanel_login_map celikpanel_sender_access celikpanel_sender_access.db
+-- a mail out through the relay (box1 -> someone@example.com, submitted on A:587)
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 6534A42129
+Nov 08 11:39:11 relay postfix/submission/smtpd[10760]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:39:11 relay postfix/submission/smtpd[10760]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+Nov 08 11:39:13 relay postfix/submission/smtpd[10760]: warning: SASL authentication failure: Password verification failed
+Nov 08 11:39:13 relay postfix/submission/smtpd[10760]: warning: unknown[192.0.3.190]: SASL PLAIN authentication failed: authentication failure, sasl_username=relayuser@relay.lab.test
+-- port 465
+200 {"result": {"applied": false, "changed": false, "code": "MAIL_RELAY_SASL_MISSING", "error": "Postfix cannot sign in to another server yet: its SASL login modules are not installed. The server administrator installs them from the distribution (Debian and Ubuntu: `sudo apt install libsasl2-modules`; Arch: `sudo pacman -S libsasl`) and saves again; nothing was changed", "state": "off"}, "saved": true}
+recipient_delimiter = +
+smtp_tls_security_level = may
+smtpd_sender_restrictions = check_sender_access hash:/etc/postfix/celikpanel_sender_access
+celikpanel_login_map celikpanel_sender_access celikpanel_sender_access.db
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 758C842F05
+Nov 08 11:39:13 relay postfix/submission/smtpd[10760]: warning: SASL authentication failure: Password verification failed
+Nov 08 11:39:13 relay postfix/submission/smtpd[10760]: warning: unknown[192.0.3.190]: SASL PLAIN authentication failed: authentication failure, sasl_username=relayuser@relay.lab.test
+
+######## relayoff 11:40:39
+200 {"result": {"applied": true, "changed": false, "state": "off"}, "saved": true}
+recipient_delimiter = +
+smtp_tls_security_level = may
+smtpd_sender_restrictions = check_sender_access hash:/etc/postfix/celikpanel_sender_access
+celikpanel_login_map celikpanel_sender_access celikpanel_sender_access.db
+200 {"apply": {"applied_at": "2026-11-08 11:40:39", "state": "applied"}, "server": {"postfix": true, "sasl_ready": false, "state": "off"}, "settings": {"enabled": false, "has_password": false, "host": "192.0.3.1", "port": 465, "username": "relayuser@relay.lab.test"}}
+-- the owner's own relayhost: save refused
+postfix/postlog: refreshing the Postfix mail system
+200 {"result": {"applied": false, "changed": false, "code": "MAIL_RELAY_OWNER_CONFIG", "error": "main.cf already has the server owner's relay setting (relayhost = [192.0.3.1]:587). CelikPanel keeps it and does not change it. To let CelikPanel send through a relay, the server owner removes that line (for example `sudo postconf -X relayhost`) and saves again", "state": "owner"}, "saved": true}
+postfix/postlog: refreshing the Postfix mail system
+0
+
+######## subaddr 11:41:01
+200 {"sender": {"apply": {"state": "applied"}, "rules": [{"action": "block", "created_at": "2026-11-08 11:38:24", "id": 1, "value": "spam.example"}, {"action": "allow", "created_at": "2026-11-08 11:38:27", "id": 2, "value": "boss@spam.example"}]}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "on", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+-- info+lab@cust1.s0.test from labnet
+
+######## sender 11:41:18
+200 {"sender": {"apply": {"state": "applied"}, "rules": [{"action": "block", "created_at": "2026-11-08 11:38:24", "id": 1, "value": "spam.example"}, {"action": "allow", "created_at": "2026-11-08 11:38:27", "id": 2, "value": "boss@spam.example"}]}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "on", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server admin
+409 {"code": "MAIL_SENDER_EXISTS", "error": "spam.example is already on the list; nothing was changed"}
+409 {"code": "MAIL_SENDER_EXISTS", "error": "boss@spam.example is already on the list; nothing was changed"}
+-- own domain refused:
+409 {"code": "MAIL_SENDER_OWN_DOMAIN", "error": "cust1.s0.test belongs to cust1.s0.test, a domain of this server: its mail is protected by sign-in and a list entry would also stop this server's own mailboxes. Nothing was changed", "vars": {"domain": "cust1.s0.test"}}
+200 {"sender": {"apply": {"state": "applied"}, "rules": [{"action": "block", "created_at": "2026-11-08 11:38:24", "id": 1, "value": "spam.example"}, {"action": "allow", "created_at": "2026-11-08 11:38:27", "id": 2, "value": "boss@spam.example"}]}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "on", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+recipient_delimiter = +
+smtp_tls_security_level = may
+smtpd_sender_restrictions = check_sender_access hash:/etc/postfix/celikpanel_sender_access
+celikpanel_login_map celikpanel_sender_access celikpanel_sender_access.db
+-- x@spam.example -> info@cust1
+<** 550 5.7.1 <x@spam.example>: Sender address rejected: Mail from this sender is not accepted by this server
+-- boss@spam.example -> info@cust1
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "applied"}
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["the sender list, its map and its main.cf element were removed", "Postfix took the change"]}, "saved": true, "state": "applied"}
+200 {"sender": {"apply": {"state": "applied"}, "rules": []}, "server": {"dovecot_delimiter": "+", "postfix": true, "recipient_delimiter": "+", "sender_list": "off", "subaddressing": "owner", "subaddressing_detail": "main.cf already has recipient_delimiter = +, set outside CelikPanel (Debian and Ubuntu set it by default), so user+tag@ already reaches user@. CelikPanel keeps the line; to turn it off, the server administrator removes it (`sudo postconf -X recipient_delimiter`, then `sudo postfix reload`)"}, "subaddressing": {"apply": {}, "enabled": false}}
+recipient_delimiter = +
+smtp_tls_security_level = may
+celikpanel_login_map
+-rw-r--r--  1 root celikpanel    14 Nov  8 09:52 celikpanel_login_map
+-rw-r--r--  1 root celikpanel  3555 Nov  8 11:41 main.cf
+-rw-r--r--  1 root celikpanel  8351 Nov  8 09:52 master.cf
+-rw-r--r--  1 root celikpanel     0 Nov  8 09:39 virtual
+-rw-r--r--  1 root celikpanel 12288 Nov  8 09:39 virtual.db
+-rw-r--r--  1 root celikpanel   150 Nov  8 11:38 vmailbox
+-rw-r--r--  1 root celikpanel 12288 Nov  8 11:38 vmailbox.db
+-rw-r--r--  1 root celikpanel    47 Nov  8 11:38 vmailbox_domains
+-rw-r--r--  1 root celikpanel 12288 Nov  8 11:38 vmailbox_domains.db
+
+######## certwith 11:42:14
+-- certificate for cust1.s0.test (autoconfig names resolve here)
+200 {"expires_at": "2031-11-08T11:42:16Z", "mail_setup_note": "autoconfig.cust1.s0.test and autodiscover.cust1.s0.test do not point to this server yet, so they were left out of the certificate. Mail programs still set themselves up over plain HTTP; once the names point here, request the certificate again to add them.", "status": "success"}
+tr: missing operand after ‘n’
+Two strings must be given when translating.
+Try 'tr --help' for more information.
+
+-- http://autoconfig.cust1.s0.test/mail/config-v1.1.xml?emailaddress=x@cust1.s0.test
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="cust1.s0.test"><domain>cust1.s0.test</domain><displayName>cust1.s0.test</displayName><displayShortName>cust1.s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- https://cust1.s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+<?xml version="1.0" encoding="UTF-8"?><clientConfig version="1.1"><emailProvider id="cust1.s0.test"><domain>cust1.s0.test</domain><displayName>cust1.s0.test</displayName><displayShortName>cust1.s0.test</displayShortName><incomingServer type="imap"><hostname>mail.s0.test</hostname><port>993</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></incomingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>465</port><socketType>SSL</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer><outgoingServer type="smtp"><hostname>mail.s0.test</hostname><port>587</port><socketType>STARTTLS</socketType><authentication>password-cleartext</authentication><username>%EMAILADDRESS%</username></outgoingServer></emailProvider></clientConfig>
+[http 200]
+-- http://cust1.s0.test/.well-known/autoconfig/mail/config-v1.1.xml
+[http 200 ]
+curl: (35) TLS connect error: error:0A000458:SSL routines::tlsv1 unrecognized name
+xargs: echo: terminated by signal 13
+== k7 newdom relay relayoff subaddr sender certwith done 11:42:21
+
+######## sasl 11:43:04
+-- the owner installs the SASL modules as the refusal says
+rc=0
+ii  libsasl2-modules:amd64 2.1.28+dfsg1-9 amd64        Cyrus SASL - pluggable au
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the relay sign-in is in /etc/postfix/celikpanel-relay-sasl (root only)", "the master.cf service celikpanel-relay signs in over TLS only", "main.cf sends mail for other servers through [192.0.3.1]:587", "Postfix took the change"]}, "saved": true}
+200 {"apply": {"applied_at": "2026-11-08 11:43:09", "state": "applied"}, "server": {"postfix": true, "relayhost": "[192.0.3.1]:587", "sasl_ready": true, "state": "on"}, "settings": {"enabled": true, "has_password": "[REDACTED]", "host": "192.0.3.1", "port": 587, "username": "relayuser@relay.lab.test"}}
+default_transport = celikpanel-relay
+recipient_delimiter = +
+relayhost = [192.0.3.1]:587
+smtp_tls_security_level = may
+celikpanel-relay-sasl celikpanel-relay-sasl.db celikpanel_login_map
+-rw-------  1 root celikpanel   191 Nov  8 11:43 celikpanel-relay-sasl
+-rw-------  1 root celikpanel 12288 Nov  8 11:43 celikpanel-relay-sasl.db
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 2BF2042F19
+Nov 08 11:43:31 relay postfix/submission/smtpd[11160]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:43:31 relay postfix/submission/smtpd[11160]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+Nov 08 11:43:33 relay postfix/submission/smtpd[11160]: 2FFB621D6A: client=unknown[192.0.3.190], sasl_method=LOGIN, sasl_username=relayuser@relay.lab.test
+Nov 08 11:43:33 relay postfix/discard[11165]: 2FFB621D6A: to=<someone@example.com>, relay=none, delay=0.05, delays=0.04/0.01/0/0, dsn=2.0.0, status=sent (lab relay sink)
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the relay sign-in is in /etc/postfix/celikpanel-relay-sasl (root only)", "the master.cf service celikpanel-relay signs in over TLS only", "main.cf sends mail for other servers through [192.0.3.1]:465", "Postfix took the change"]}, "saved": true}
+default_transport = celikpanel-relay
+recipient_delimiter = +
+relayhost = [192.0.3.1]:465
+smtp_tls_security_level = may
+celikpanel-relay-sasl celikpanel-relay-sasl.db celikpanel_login_map
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 635F142F2B
+Nov 08 11:43:33 relay postfix/discard[11165]: 2FFB621D6A: to=<someone@example.com>, relay=none, delay=0.05, delays=0.04/0.01/0/0, dsn=2.0.0, status=sent (lab relay sink)
+Nov 08 11:44:10 relay postfix/smtps/smtpd[11242]: error: open database /etc/aliases.db: No such file or directory
+Nov 08 11:44:10 relay postfix/smtps/smtpd[11242]: warning: dict_nis_init: NIS domain name not set - NIS lookups disabled
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["CelikPanel's relay lines, its service and its sign-in file were removed", "Postfix took the change"]}, "saved": true}
+recipient_delimiter = +
+smtp_tls_security_level = may
+celikpanel_login_map
+cyrus_sasl_config_path = /etc/postfix/sasl
+smtpd_relay_restrictions = permit_sasl_authenticated, defer_unauth_destination
+-- subaddressing delivery and the sender list allow line
+<-  250 2.0.0 Ok: queued as 7B8F6413F2
+D025242F26: to=<info@cust1.s0.test>, relay=virtual, delay=4.3, delays=4.3/0.01/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+7B8F6413F2: to=<info+lab@cust1.s0.test>, relay=virtual, delay=0.89, delays=0.87/0/0/0.01, dsn=2.0.0, status=sent (delivered to maildir)
+   celik : PWD=/home/celik ; USER=root ; COMMAND=/usr/bin/bash -c 'journalctl --since -1min -o cat --no-pager | grep -E "info\\+lab|to=<info" | tail -3 | cut -c1-200'
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (2 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "
+   x:
+<** 550 5.7.1 <x@spam.example>: Sender address rejected: Mail from this sender is not accepted by this server
+   boss:
+<** 450 4.7.1 <info@cust1.s0.test>: Recipient address rejected: Mailbox temporarily unavailable
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Postfix took the change"]}, "saved": true, "state": "
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["the sender list, its map and its main.cf element were removed", "Postfix took the change"]}, "saved": true, "state": "applied"}
+recipient_delimiter = +
+smtp_tls_security_level = may
+celikpanel_login_map celikpanel_suspended_recipients celikpanel_suspended_recipients.db
+== k7 sasl done 11:45:33
+
+######## r465 11:49:13
+Connecting to 192.0.3.1
+Can't use SSL_get_servername
+200 {"ok": true, "stage": "done", "verified": false}
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the relay sign-in is in /etc/postfix/celikpanel-relay-sasl (root only)", "the master.cf service celikpanel-relay signs in over TLS only", "main.cf sends mail for other servers through [192.0.3.1]:465", "Postfix took the change"]}, "saved": true}
+celikpanel-relay/unix/smtp_sasl_auth_enable = yes
+celikpanel-relay/unix/smtp_sasl_password_maps = hash:/etc/postfix/celikpanel-relay-sasl
+celikpanel-relay/unix/smtp_sasl_security_options = noanonymous
+celikpanel-relay/unix/smtp_sasl_tls_security_options = noanonymous
+celikpanel-relay/unix/smtp_tls_security_level = encrypt
+celikpanel-relay/unix/smtp_tls_wrappermode = yes
+Nov 08 11:49:24 relay postfix/smtps/smtpd[11683]: EBB4421D66: client=unknown[192.0.3.190], sasl_method=LOGIN, sasl_username=relayuser@relay.lab.test
+Nov 08 11:49:24 relay postfix/discard[11690]: EBB4421D66: to=<other@example.com>, relay=none, delay=0.02, delays=0.02/0.01/0/0, dsn=2.0.0, status=sent (lab relay sink)
+  <~  235 2.7.0 Authentication successful
+  <~  250 2.0.0 Ok: queued as 2CBBB42F2E
+Nov 08 11:49:58 relay postfix/discard[11690]: 310E621D66: to=<third@example.com>, relay=none, delay=0.01, delays=0.01/0/0/0, dsn=2.0.0, status=sent (lab relay sink)
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["CelikPanel's relay lines, its service and its sign-in file were removed", "Postfix took the change"]}, "saved": true}
+0
+0
+0
+-- boss allowed
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Pos
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (2 entries) is in /etc/postfix/celikpanel_sender_access", "Pos
+<-  354 End data with <CR><LF>.<CR><LF>
+<-  250 2.0.0 Ok: queued as A146642EDC
+<-  221 2.0.0 Bye
+200 {"result": {"applied": true, "changed": true, "state": "on", "steps": ["the sender list (1 entries) is in /etc/postfix/celikpanel_sender_access", "Pos
+200 {"result": {"applied": true, "changed": true, "state": "off", "steps": ["the sender list, its map and its main.cf element were removed", "Postfix took
+== k7 r465 done 11:50:47

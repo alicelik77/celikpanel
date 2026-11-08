@@ -1,0 +1,2 @@
+lab: resolver had no answer for frankfurt.s0.test while ns1 answers; delegation re-run (flush) 09:33:22
+lab: resolver had no answer for frankfurt.s0.test while ns1 answers; delegation re-run (flush) 09:39:12
