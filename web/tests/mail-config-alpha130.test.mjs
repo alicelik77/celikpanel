@@ -56,6 +56,18 @@ test('the set-up notice sits above the manual settings and finishes with one con
   assert.match(notice, /autoconfig\.reason === 'mail_host_unknown' && !isAdmin \? 'mail_host_unknownCustomer'/);
 });
 
+test('subaddressing and the sender list ask first, show the owner state and refresh by themselves', () => {
+  const options = read('../src/components/MailServerOptions.tsx');
+  assert.doesNotMatch(options, /window\.(confirm|alert)|\balert\(/);
+  assert.equal((options.match(/await confirmAction\(\{/g) ?? []).length, 2);
+  assert.match(options, /flowSteps\(t, 'mailSubaddressing', \['check!', 'save', 'apply'\]\)/);
+  assert.match(options, /flowSteps\(t, 'mailSender', \['check!', 'save', 'apply'\]\)/);
+  assert.match(options, /server\?\.subaddressing === 'owner'/);
+  assert.match(options, /server\?\.sender_list === 'edited'/);
+  assert.equal((options.match(/refreshRemote\(MAIL_SERVER_SETTINGS_URL\)/g) ?? []).length, 2);
+  assert.match(read('../src/components/PostfixManagement.tsx'), /<MailServerOptions \/>/);
+});
+
 test('the mail setup decoder reads autoconfig and fails closed on anything else', async () => {
   const url = compileSource('lib/mailSetup.ts', (specifier) => (specifier === './webmailAddress' ? webmailAddressLibURL : null));
   const { decodeMailSetup, decodeMailAutoconfig } = await import(url);

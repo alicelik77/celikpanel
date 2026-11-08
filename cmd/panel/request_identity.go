@@ -231,6 +231,17 @@ var requestIdentityRouteMailAutoconfig = requestIdentityRoute{
 	timeout: agentRPCMutationTimeout + dnsPublishTimeout + time.Minute,
 }
 
+// requestIdentityRouteMailSubaddressing and requestIdentityRouteMailSenderRules
+// (alpha.130): the other mail server settings write Postfix's settings; the
+// progress window follows their steps.
+var requestIdentityRouteMailSubaddressing = requestIdentityRoute{
+	pattern: mailSubaddressingPath, optional: true, timeout: agentRPCMutationTimeout + time.Minute,
+}
+
+var requestIdentityRouteMailSenderRules = requestIdentityRoute{
+	pattern: mailSenderRulesPath, optional: true, timeout: agentRPCMutationTimeout + time.Minute,
+}
+
 // requestIdentityRouteMailRelay (alpha.130): saving the mail relay writes
 // Postfix's settings; guarded when the page sends an identity, so the
 // progress window follows its steps.
@@ -272,6 +283,10 @@ func requestIdentityRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 		return requestIdentityRouteMailOutgoing, true
 	case path == mailRelayPath:
 		return requestIdentityRouteMailRelay, true
+	case path == mailSubaddressingPath:
+		return requestIdentityRouteMailSubaddressing, true
+	case path == mailSenderRulesPath:
+		return requestIdentityRouteMailSenderRules, true
 	case path == apiTokensPath:
 		// alpha.128 (G15): the answer carries the new API token once.
 		return requestIdentityRouteAPITokenCreate, true

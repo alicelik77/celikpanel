@@ -68,6 +68,7 @@ const stub = dataModule(`
   export const MailPlanLimits = () => null;
   // alpha.130: the mail relay and mail program set-up read their own addresses; not under test here.
   export const MailRelaySettings = () => null;
+  export const MailServerOptions = () => null;
   export const MailAutoconfigNotice = () => null;
   // alpha.128: bulk mailbox actions run only after a confirmation; not under test here.
   export const runBulk = async () => ({ done: [], refused: [], unknown: null, notStarted: [] });

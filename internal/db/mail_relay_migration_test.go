@@ -51,9 +51,19 @@ func TestMailRelaySettingsHoldOneRowThatStartsOff(t *testing.T) {
 	if enabled != 0 || host != "" || port != 587 || sealed != "" {
 		t.Fatalf("seeded row = %d %q %d %q", enabled, host, port, sealed)
 	}
+	var subaddressing int
+	if err := db.QueryRow(`SELECT subaddressing FROM mail_server_options WHERE id = 1`).Scan(&subaddressing); err != nil || subaddressing != 0 {
+		t.Fatalf("mail_server_options = %d %v", subaddressing, err)
+	}
+	if _, err := db.Exec(`INSERT INTO mail_sender_rules (value, action) VALUES ('spam.example', 'block')`); err != nil {
+		t.Fatal(err)
+	}
 	for _, stmt := range []string{
 		`INSERT INTO mail_relay_settings (id) VALUES (2)`,
 		`UPDATE mail_relay_settings SET enabled = 2 WHERE id = 1`,
+		`INSERT INTO mail_server_options (id) VALUES (2)`,
+		`INSERT INTO mail_sender_rules (value, action) VALUES ('spam.example', 'allow')`,
+		`INSERT INTO mail_sender_rules (value, action) VALUES ('other.example', 'permit')`,
 	} {
 		if _, err := db.Exec(stmt); err == nil {
 			t.Fatalf("accepted: %s", stmt)
