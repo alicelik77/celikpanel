@@ -107,6 +107,7 @@ export const enMailDatabasesScreens = {
     'mail.passwordDialog.title': 'Change mailbox password',
     // ---- alpha.114 out-of-office reply ----
     'mail.autoreply.openFor': 'Out-of-office reply for {address}',
+    'mail.recoveryFor': 'Recovery address of {address}',
     'mail.autoreply.title': 'Out-of-office reply',
     'mail.autoreply.account': 'Mailbox',
     'mail.autoreply.loading': 'Reading the reply from the server…',

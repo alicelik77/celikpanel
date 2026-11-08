@@ -11073,3 +11073,39 @@ changes keep their two or three real steps; no step is drawn by the screen
 alone. A reload does not yet reopen the window for these (the change goes on
 on the server and the page shows its result); domain deletion keeps its own
 step store and the deletion_already_running rule.
+
+## A mailbox's recovery address and a forgotten mailbox password (alpha.130, 2026-11-08)
+
+The security review came first and sets the rules
+(docs/MAILBOX-RECOVERY-REVIEW.md). What each state says, who acts and how it
+continues:
+
+- **No address:** the mailbox list's recovery dialog says a forgotten
+  password is changed only by whoever manages the mailbox (the existing
+  password dialog).
+- **Waiting for confirmation (unmet prerequisite):** the dialog names the
+  address and when the link was sent; the person who reads that address opens
+  the link within 24 hours. "Send confirmation again" replaces the link.
+- **This server cannot send panel mail (unmet prerequisite):** the dialog says
+  so at the top and next to the disabled Send button; the administrator makes
+  the server's mail service answer on this server, a reseller or customer asks
+  the provider. Nothing was saved.
+- **The mail system refused the confirmation (verified failure):** the address
+  is saved and still waiting; Send again in a few minutes, or the
+  administrator checks the mail service.
+- **Not active any more:** after a transfer to another subscription or owner,
+  or when the address's own domain on this server was removed and added
+  again. Whoever manages the mailbox sets it again; nothing is sent until then.
+- **Forgot the mailbox password (public page `/account-link/mailbox-recovery`):**
+  always the same answer, whatever the address; a link goes only to a
+  confirmed, still valid address, at most three an hour per mailbox.
+- **Reset page:** a weak password or a busy mail server keeps the link usable
+  and says so; a used, replaced, expired or out-of-date link (the password was
+  changed another way) says "ask for a new link"; a suspended mailbox names the
+  provider; a lost answer is "not known" with the next step (try the new
+  password, otherwise a new link). The fingerprint makes a second attempt
+  harmless.
+- **After a reset:** open IMAP/POP3 sessions end (when they cannot, the page
+  says programs stop when they reconnect); a security pause of sending ends, an
+  administrator's manual pause stays and the page names who opens it; the
+  mailbox is told.

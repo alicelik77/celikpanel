@@ -244,6 +244,9 @@ const (
 	// subscription's end date, and other features' notices); its subject and
 	// body are written by account_notices.go.
 	accountMailAccountNotice accountMailKind = "account_notice"
+	// accountMailMailboxRecovery (alpha.130): a mailbox recovery message; its
+	// subject and body are written by mailbox_recovery_mail.go.
+	accountMailMailboxRecovery accountMailKind = "mailbox_recovery"
 )
 
 type accountMailContent struct {
@@ -271,7 +274,7 @@ func accountMailText(content accountMailContent, host string) (string, string) {
 	tr := content.lang == "tr"
 	user, inviter, link := content.username, content.inviter, content.link
 	switch content.kind {
-	case accountMailSecurityNotice, accountMailUsageNotice, accountMailAlert, accountMailAccountNotice:
+	case accountMailSecurityNotice, accountMailUsageNotice, accountMailAlert, accountMailAccountNotice, accountMailMailboxRecovery:
 		return content.subject, content.body
 	case accountMailReset:
 		if tr {

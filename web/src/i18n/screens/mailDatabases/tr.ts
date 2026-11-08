@@ -100,6 +100,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.changePasswordFor': '{address} için parolayı değiştir',
     'mail.passwordDialog.title': 'Posta kutusu parolasını değiştir',
     'mail.autoreply.openFor': '{address} için otomatik yanıt',
+    'mail.recoveryFor': '{address} için kurtarma adresi',
     'mail.autoreply.title': 'Otomatik yanıt (ofis dışında)',
     'mail.autoreply.account': 'Posta kutusu',
     'mail.autoreply.loading': 'Yanıt sunucudan okunuyor…',

@@ -428,6 +428,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail-health", []string{http.MethodGet}
 	case "mail/accounts/password":
 		match.kind, match.methods = "mail", []string{http.MethodPut}
+	case "mail/accounts/recovery":
+		// alpha.130: a mailbox's recovery address (read, set, remove).
+		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPut, http.MethodDelete}
 	case "mail/accounts/empty":
 		// alpha.128 (G20): remove every message of one mailbox.
 		match.kind, match.methods = "mail", []string{http.MethodPost}
@@ -1573,6 +1576,9 @@ func main() {
 			// Used, voided and expired account links after 30 days (P6).
 			if err := sweepAccountLinks(context.Background(), panel.db.GetDB()); err != nil {
 				log.Printf("[account-links] old rows could not be removed: %v", err)
+			}
+			if err := sweepMailboxRecoveryLinks(context.Background(), panel.db.GetDB()); err != nil {
+				log.Printf("[mailbox-recovery] old links could not be removed: %v", err)
 			}
 		}
 	}()
