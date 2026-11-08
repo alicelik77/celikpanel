@@ -425,6 +425,12 @@ func pgClustersRead(ctx context.Context, host pgClusterHost) transport.PostgreSQ
 	resp.Supported = true
 	resp.Clusters = parsePGLsClusters(out)
 	fillPGClusterFacts(ctx, host, resp.Clusters)
+	// alpha.130: a removed major's cluster says what its files hold.
+	for i := range resp.Clusters {
+		if pgClusterIsLeftover(resp.Clusters[i]) {
+			resp.Clusters[i].Leftover = classifyPGLeftover(resp.Clusters[i])
+		}
+	}
 	configured := pgConfiguredPorts(host, resp.Clusters)
 	listening := host.listening()
 	resp.NextPort = nextFreePGPort(configured, listening)

@@ -188,6 +188,9 @@ type serviceRemovalSimulation struct {
 	// purged; DataPaths are where its data stays on this server.
 	KeepsData bool     `json:"keeps_data,omitempty"`
 	DataPaths []string `json:"data_paths,omitempty"`
+	// RemovesClusters (alpha.130): the PostgreSQL clusters whose files go
+	// with their purged packages.
+	RemovesClusters []string `json:"removes_clusters,omitempty"`
 	// HoldsDatabases / DatabasesUnknown (alpha.108, D-038 §2): the
 	// PostgreSQL clusters of this removal that still hold databases, by name,
 	// or could not be asked; the removal is refused while either is not empty.
@@ -232,6 +235,7 @@ func removalSimulationFrom(serviceID string, preview transport.ServiceRemovalPre
 		len(simulation.HoldsDatabases) > 0 || len(simulation.DatabasesUnknown) > 0
 	simulation.KeepsData = preview.KeepsData
 	simulation.DataPaths = append([]string{}, preview.DataPaths...)
+	simulation.RemovesClusters = append([]string{}, preview.RemovesClusters...)
 	simulation.Traces = append(simulation.Traces, preview.Traces...)
 	simulation.TracesState = preview.TracesState
 	simulation.TracesUnread = append([]string{}, preview.TracesUnread...)

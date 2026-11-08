@@ -47,6 +47,8 @@ const (
 	serviceMutationStepRemoveWebmailAddress     serviceMutationStepMethod = "Agent.RemoveWebmailAddressV1"
 	serviceMutationStepMoveAppFilesOwner        serviceMutationStepMethod = "Agent.MoveAppFilesOwnerV1"
 	serviceMutationStepSetPGClusterPort         serviceMutationStepMethod = "Agent.SetPostgreSQLClusterPortV1"
+	serviceMutationStepCleanPGLeftovers         serviceMutationStepMethod = "Agent.PostgreSQLLeftoverCleanupV1"
+	serviceMutationStepRemovePGLeftover         serviceMutationStepMethod = "Agent.RemovePostgreSQLLeftoverV1"
 	serviceMutationStepSetPanelListen           serviceMutationStepMethod = "Agent.SetPanelListenPortV1"
 	serviceMutationStepCopyPGDatabase           serviceMutationStepMethod = "Agent.CopyPostgreSQLDatabaseV1"
 	serviceMutationStepDropPGDatabase           serviceMutationStepMethod = "Agent.DropPostgreSQLDatabaseV1"
@@ -320,6 +322,18 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// qualifier is the new port.
 		return strings.HasPrefix(claim.target, "pg-") && claim.packageName != "" && claim.action == "port" &&
 			serviceMutationJobMatches(job, "pg_cluster_port", claim.target, claim.packageName)
+
+	case serviceMutationStepCleanPGLeftovers:
+		// alpha.130: every leftover cluster that holds only what initdb
+		// made, in one job; one target, no qualifier.
+		return claim.target == pgLeftoversMutationTarget && claim.packageName == "" && claim.action == "clean" &&
+			serviceMutationJobMatches(job, "pg_leftover_cleanup", pgLeftoversMutationTarget, "")
+
+	case serviceMutationStepRemovePGLeftover:
+		// alpha.130: one leftover cluster archived and removed, by the
+		// owner's explicit choice.
+		return strings.HasPrefix(claim.target, "pg-") && claim.packageName == "" && claim.action == "remove" &&
+			serviceMutationJobMatches(job, "pg_leftover_remove", claim.target, "")
 
 	case serviceMutationStepApplyDatabaseRemote:
 		// alpha.129: remote access to databases; one target, no qualifier.

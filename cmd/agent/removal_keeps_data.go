@@ -92,3 +92,16 @@ func existingEngineData(svc *core.ManagedService, family, pkg string) []transpor
 	}
 	return out
 }
+
+// removalKeepsDataOn (alpha.130, no leftovers): PostgreSQL on Debian and
+// Ubuntu is purged like every other component. Its removal is refused while
+// a cluster holds a database (pgRemovalHolds), and its clusters are archived
+// when they hold anything else and removed with it (UninstallService), so
+// nothing of a removed major stays in dpkg state "rc" or on disk. MariaDB,
+// and PostgreSQL elsewhere, still keep their data (alpha.107).
+func removalKeepsDataOn(svc *core.ManagedService, family string) bool {
+	if svc != nil && svc.ID == "postgresql" && family == "apt" {
+		return false
+	}
+	return removalKeepsData(svc)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -825,6 +826,14 @@ type serviceUninstallOps struct {
 	// major) that hold user databases, and those that could not be asked
 	// (alpha.108).
 	postgresqlHolds func(major string) (held, unknown []string)
+	// alpha.130 (no leftovers): the clusters of a PostgreSQL removal, kept
+	// in an archive first when they hold anything beyond what initdb made
+	// (their files, after the units stopped), and their own files removed
+	// after the packages are purged. nil keeps the data (tests, previews).
+	postgresqlClusters      func(major string) ([]transport.PostgreSQLCluster, error)
+	preparePGClusterRemoval func(transport.PostgreSQLCluster) (archive string, err error)
+	removePGClusterFiles    func(transport.PostgreSQLCluster) ([]string, error)
+	discardPGArchive        func(path string)
 }
 
 func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error) {
@@ -879,6 +888,14 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 		postgresqlHolds: func(major string) ([]string, []string) {
 			return pgRemovalHolds(ctx, pgClusterHostActive(), major)
 		},
+		postgresqlClusters: func(major string) ([]transport.PostgreSQLCluster, error) {
+			return pgClustersOfMajor(ctx, pgClusterHostActive(), major)
+		},
+		preparePGClusterRemoval: func(cluster transport.PostgreSQLCluster) (string, error) {
+			return preparePGClusterRemoval(cluster, pgClusterHostActive().freeBytes)
+		},
+		removePGClusterFiles: removePGLeftoverFiles,
+		discardPGArchive:     func(path string) { _ = os.Remove(path) },
 	}, nil
 }
 
@@ -1135,12 +1152,13 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 		if prefix == "" {
 			prefix = packageName
 		}
+		pkgs = append(pkgs, pgVersionClientPackages(svc, []string{packageName}, ops.packageInstalled)...)
 		pkgs = uniquePackageNames(pkgs)
 		work.request = packageRemovalRequest{
 			Packages:           pkgs,
 			VersionPrefixes:    []string{prefix},
 			ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
-			KeepData:           removalKeepsData(svc),
+			KeepData:           removalKeepsDataOn(svc, family),
 		}
 		if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
 			work.boundTools = ops.boundPHPTools(strings.TrimPrefix(versionPrefix, "php"))
@@ -1187,6 +1205,8 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 				prefixes = append(prefixes, match[0])
 			}
 		}
+		pkgs = append(pkgs, pgVersionClientPackages(svc, repoPackages, ops.packageInstalled)...)
+		pkgs = append(pkgs, pgMovingPackages(svc, ops.packageInstalled)...)
 	}
 	pkgs = uniquePackageNames(pkgs)
 
@@ -1219,7 +1239,7 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 		Packages:           pkgs,
 		VersionPrefixes:    prefixes,
 		ProtectedComponent: catalogueProtectedComponent(family, packageNameSet(pkgs)),
-		KeepData:           removalKeepsData(svc),
+		KeepData:           removalKeepsDataOn(svc, family),
 	}
 	if svc.ID == "php-fpm" && ops.boundPHPTools != nil {
 		work.boundTools = ops.boundPHPTools("")
@@ -1294,11 +1314,37 @@ func (a *Agent) uninstallServiceWithOps(
 	}
 	// A PostgreSQL major whose cluster still holds databases is not removed
 	// (alpha.108, D-038 §2): they are named, and moved or removed first.
+	// alpha.130 (no leftovers): the clusters of the removed major(s) go
+	// with their packages. The check above proved they hold no database;
+	// whatever else they hold beyond what initdb made is archived first.
+	var pgDrop []transport.PostgreSQLCluster
+	pgClustersGo := false
 	if major, ok := pgRemovalMajor(svc, req.Package); ok && work.family == "apt" && ops.postgresqlHolds != nil {
 		if code, message := pgRemovalRefusal(ops.postgresqlHolds(major)); code != "" {
 			resp.Error, resp.ErrorCode = message, code
 			return nil
 		}
+		if ops.postgresqlClusters != nil && ops.preparePGClusterRemoval != nil && ops.removePGClusterFiles != nil {
+			clusters, err := ops.postgresqlClusters(major)
+			if err != nil {
+				resp.Error = fmt.Sprintf("the PostgreSQL clusters could not be read, so nothing was changed: %v", err)
+				return nil
+			}
+			pgDrop, pgClustersGo = clusters, true
+		}
+	}
+	if !pgClustersGo && svc.ID == "postgresql" && work.family == "apt" {
+		// Without the clusters' own steps the data stays (alpha.107).
+		work.request.KeepData = true
+	}
+	var pgArchives []string
+	discardArchives := func() {
+		for _, path := range pgArchives {
+			if ops.discardPGArchive != nil {
+				ops.discardPGArchive(path)
+			}
+		}
+		pgArchives = nil
 	}
 
 	// Each unit's state as the owner left it, read before anything stops,
@@ -1319,6 +1365,26 @@ func (a *Agent) uninstallServiceWithOps(
 	var disableErr error
 	disableFailedUnit := ""
 	var stopped []string
+	restartStopped := func() error {
+		if ops.restoreUnit == nil {
+			return nil
+		}
+		var failures []string
+		for _, unit := range stopped {
+			state, ok := states[unit]
+			if !ok {
+				failures = append(failures, unit+": its earlier state was not read")
+				continue
+			}
+			if err := ops.restoreUnit(state); err != nil {
+				failures = append(failures, err.Error())
+			}
+		}
+		if len(failures) > 0 {
+			return errors.New(strings.Join(failures, "; "))
+		}
+		return nil
+	}
 	plan, _, err := ops.removePackages(work.family, work.request, removalHooks{
 		stop: func() error {
 			for _, unit := range work.units {
@@ -1328,27 +1394,34 @@ func (a *Agent) uninstallServiceWithOps(
 				}
 				stopped = append(stopped, unit)
 			}
+			// The clusters' files are read once their units stopped, and
+			// kept in an archive before apt purges anything.
+			for _, cluster := range pgDrop {
+				archive, err := ops.preparePGClusterRemoval(cluster)
+				if err != nil {
+					discardArchives()
+					refusal := &packageRemovalRefusal{
+						Code:      errCodeRemovalArchiveFailed,
+						Message:   fmt.Sprintf("cluster %s could not be archived before its removal (%v); nothing was removed", pgClusterRef(cluster.Version, cluster.Name), err),
+						AfterStop: true,
+					}
+					if restartErr := restartStopped(); restartErr != nil {
+						refusal.RestartFailed = restartErr.Error()
+						refusal.Message += fmt.Sprintf("; the services stopped for it could not be started again (%v): start them in Components", restartErr)
+					} else {
+						refusal.Message += "; the services stopped for it were started again"
+					}
+					return refusal
+				}
+				if archive != "" {
+					pgArchives = append(pgArchives, archive)
+				}
+			}
 			return nil
 		},
 		restart: func() error {
-			if ops.restoreUnit == nil {
-				return nil
-			}
-			var failures []string
-			for _, unit := range stopped {
-				state, ok := states[unit]
-				if !ok {
-					failures = append(failures, unit+": its earlier state was not read")
-					continue
-				}
-				if err := ops.restoreUnit(state); err != nil {
-					failures = append(failures, err.Error())
-				}
-			}
-			if len(failures) > 0 {
-				return errors.New(strings.Join(failures, "; "))
-			}
-			return nil
+			discardArchives()
+			return restartStopped()
 		},
 	})
 	mutationApplied := len(stopped) > 0
@@ -1370,6 +1443,9 @@ func (a *Agent) uninstallServiceWithOps(
 			return nil
 		}
 		failUninstallRemoval(resp, err, mutationApplied)
+		if len(pgArchives) > 0 {
+			resp.Error += fmt.Sprintf("; the PostgreSQL clusters' files were archived first in %s", strings.Join(pgArchives, ", "))
+		}
 		return nil
 	}
 
@@ -1379,6 +1455,24 @@ func (a *Agent) uninstallServiceWithOps(
 	}
 	resp.Removed = true
 	resp.Detail = fmt.Sprintf("removed %s", strings.Join(removed, ", "))
+	// The clusters' own files go after their packages (alpha.130): nothing
+	// of the removed major stays to claim its port or to be edited.
+	for _, cluster := range pgDrop {
+		ref := pgClusterRef(cluster.Version, cluster.Name)
+		files, err := ops.removePGClusterFiles(cluster)
+		resp.PostgreSQLClustersRemoved = append(resp.PostgreSQLClustersRemoved, ref)
+		if err != nil {
+			resp.Detail += fmt.Sprintf("; cluster %s was not removed completely (%v; removed: %s): remove the rest on the server", ref, err, strings.Join(files, ", "))
+		}
+	}
+	if len(pgDrop) > 0 {
+		refs := append([]string{}, resp.PostgreSQLClustersRemoved...)
+		resp.Detail += "; removed PostgreSQL cluster " + strings.Join(refs, ", ")
+	}
+	if len(pgArchives) > 0 {
+		resp.PostgreSQLArchives = append([]string{}, pgArchives...)
+		resp.Detail += "; their files were kept first in " + strings.Join(pgArchives, ", ")
+	}
 	return nil
 }
 

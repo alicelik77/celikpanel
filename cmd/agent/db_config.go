@@ -213,7 +213,31 @@ var (
 		out, err := cmd.Output()
 		return string(out), err
 	}
+
+	// dbConfigPostgreSQLClusterQuery asks one Debian cluster ("18/main") by
+	// name through pg_wrapper's --cluster (alpha.130): with several
+	// clusters, psql's default one is not necessarily the one whose file
+	// was written.
+	dbConfigPostgreSQLClusterQuery = func(cluster, statement string) (string, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "sudo", "-u", "postgres", "psql", "--cluster", cluster,
+			"--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--no-align", "--tuples-only", "--quiet")
+		cmd.Stdin = strings.NewReader(statement + "\n")
+		cmd.Env = append(dbConfigCleanEnv(os.Environ()), "LC_ALL=C", "LANGUAGE=C")
+		out, err := cmd.Output()
+		return string(out), err
+	}
 )
+
+// dbConfigAskPostgreSQL asks the PostgreSQL whose file path is: the Debian
+// cluster the path names, else the server psql reaches by default.
+func dbConfigAskPostgreSQL(path, statement string) (string, error) {
+	if match := dbConfigDebianPostgreSQL.FindStringSubmatch(filepath.ToSlash(path)); match != nil {
+		return dbConfigPostgreSQLClusterQuery(match[1]+"/"+match[2], statement)
+	}
+	return dbConfigPostgreSQLQuery(statement)
+}
 
 func dbConfigCleanEnv(env []string) []string {
 	kept := make([]string, 0, len(env))
@@ -662,8 +686,8 @@ const (
 // moment of the query, without a reload. "Not checked" when the server cannot
 // be asked or the answer is about another cluster's file.
 func dbConfigAskPostgreSQLAboutHBA(path string) (verdict, detail string, line int) {
-	out, err := dbConfigPostgreSQLQuery(
-		"SELECT 'file=' || current_setting('hba_file');\n" +
+	out, err := dbConfigAskPostgreSQL(path,
+		"SELECT 'file=' || current_setting('hba_file');\n"+
 			"SELECT 'error=' || line_number || ':' || error FROM pg_hba_file_rules WHERE error IS NOT NULL ORDER BY line_number LIMIT 1;")
 	if err != nil {
 		log.Printf("config write: PostgreSQL could not be asked about %s: %s", path, hostcmd.Bounded(strings.Join(strings.Fields(hostcmd.Stderr(err)), " "), 300))
@@ -684,11 +708,11 @@ func dbConfigAskPostgreSQLAboutHBA(path string) (verdict, detail string, line in
 // dbConfigAskPostgreSQLAboutSettings asks the reloaded server which entries of
 // postgresql.conf it could not take, and which settings now wait for a restart.
 func dbConfigAskPostgreSQLAboutSettings(path string) (verdict, detail string, line int, name string, restart []string) {
-	out, err := dbConfigPostgreSQLQuery(
-		"SELECT 'file=' || current_setting('config_file');\n" +
-			"SELECT 'error=' || sourceline || ':' || coalesce(name, '') || ':' || error FROM pg_file_settings " +
-			"WHERE error IS NOT NULL AND sourcefile = current_setting('config_file') " +
-			"AND coalesce(name, '') NOT IN (SELECT name FROM pg_settings WHERE pending_restart) ORDER BY seqno LIMIT 1;\n" +
+	out, err := dbConfigAskPostgreSQL(path,
+		"SELECT 'file=' || current_setting('config_file');\n"+
+			"SELECT 'error=' || sourceline || ':' || coalesce(name, '') || ':' || error FROM pg_file_settings "+
+			"WHERE error IS NOT NULL AND sourcefile = current_setting('config_file') "+
+			"AND coalesce(name, '') NOT IN (SELECT name FROM pg_settings WHERE pending_restart) ORDER BY seqno LIMIT 1;\n"+
 			"SELECT 'restart=' || name FROM pg_settings WHERE pending_restart ORDER BY name LIMIT 50;")
 	if err != nil {
 		log.Printf("config write: PostgreSQL could not be asked about %s: %s", path, hostcmd.Bounded(strings.Join(strings.Fields(hostcmd.Stderr(err)), " "), 300))
@@ -772,14 +796,14 @@ func dbConfigPostgreSQLRereadVerified(kind dbConfigKind, path string) bool {
 		setting = "hba_file"
 		firstError = "SELECT 'error=' || line_number || ':' || error FROM pg_hba_file_rules WHERE error IS NOT NULL ORDER BY line_number LIMIT 1;"
 	}
-	out, err := dbConfigPostgreSQLQuery(
-		"SELECT 'file=' || current_setting('" + setting + "');\n" +
-			"SELECT 'before=' || extract(epoch from clock_timestamp());\n" +
-			"SELECT 'signal=' || pg_reload_conf();\n" +
+	out, err := dbConfigAskPostgreSQL(path,
+		"SELECT 'file=' || current_setting('"+setting+"');\n"+
+			"SELECT 'before=' || extract(epoch from clock_timestamp());\n"+
+			"SELECT 'signal=' || pg_reload_conf();\n"+
 			// The session takes up the re-read between statements; one second
 			// is far more than the postmaster needs to pass the signal on.
-			"SELECT 'waited=' || count(*) FROM (SELECT pg_sleep(1)) AS waited;\n" +
-			"SELECT 'loaded=' || extract(epoch from pg_conf_load_time());\n" +
+			"SELECT 'waited=' || count(*) FROM (SELECT pg_sleep(1)) AS waited;\n"+
+			"SELECT 'loaded=' || extract(epoch from pg_conf_load_time());\n"+
 			firstError)
 	if err != nil {
 		log.Printf("config write: PostgreSQL could not be asked to read %s again: %s", path, hostcmd.Bounded(strings.Join(strings.Fields(hostcmd.Stderr(err)), " "), 300))

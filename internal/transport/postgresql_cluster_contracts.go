@@ -30,6 +30,68 @@ type PostgreSQLCluster struct {
 	Databases      []string `json:"databases"`
 	DatabasesKnown bool     `json:"databases_known"`
 	DatabasesError string   `json:"databases_error,omitempty"`
+	// Leftover (alpha.130) is set for a cluster whose PostgreSQL program
+	// was removed and whose files stayed (pg_lsclusters
+	// "down,binaries_missing"): what its data directory holds.
+	Leftover *PostgreSQLLeftover `json:"leftover,omitempty"`
+}
+
+// PostgreSQLLeftover is what a removed major's cluster left on disk, read
+// from its files (alpha.130; the owner's rule of 8 Nov 2026: "no leftovers,
+// ever"). Fresh is true only when the data directory holds nothing but what
+// initdb made: the template0, template1 and postgres databases with only
+// their own catalogue files, no tablespace, no role other than PostgreSQL's
+// own and CelikPanel's account. Such a cluster is removed by the Agent
+// itself. Anything else may hold the owner's data: Reason says what, and
+// the owner chooses "Archive and remove" explicitly.
+type PostgreSQLLeftover struct {
+	Fresh     bool   `json:"fresh"`
+	Reason    string `json:"reason,omitempty"`
+	DataBytes int64  `json:"data_bytes"`
+}
+
+// PostgreSQLLeftoverRemoval is one leftover cluster removed: its config
+// directory, data directory and logs; Archive is where its files were kept
+// first (empty when it held only what initdb made).
+type PostgreSQLLeftoverRemoval struct {
+	Version       string   `json:"version"`
+	Name          string   `json:"name"`
+	Port          int      `json:"port"`
+	DataDirectory string   `json:"data_directory"`
+	DataBytes     int64    `json:"data_bytes"`
+	Removed       []string `json:"removed"`
+	Archive       string   `json:"archive,omitempty"`
+}
+
+// PostgreSQLLeftoverCleanupRequest removes every leftover cluster that holds
+// only what initdb made (the Panel asks once after it starts).
+type PostgreSQLLeftoverCleanupRequest struct {
+	ServiceMutationBinding
+}
+
+// PostgreSQLLeftoverCleanupResponse names what was removed and the leftovers
+// kept because they may hold data (left to the owner).
+type PostgreSQLLeftoverCleanupResponse struct {
+	Removed []PostgreSQLLeftoverRemoval `json:"removed"`
+	Kept    []PostgreSQLCluster         `json:"kept"`
+	Error   string                      `json:"error,omitempty"`
+}
+
+// PostgreSQLLeftoverRemoveRequest archives one leftover cluster under
+// /var/backups/celikpanel and then removes it (the owner's explicit choice).
+type PostgreSQLLeftoverRemoveRequest struct {
+	ServiceMutationBinding
+	PostgreSQLClusterRef
+}
+
+// PostgreSQLLeftoverRemoveResponse: Removed with the archive path, or a
+// typed refusal (nothing changed unless Changed says otherwise).
+type PostgreSQLLeftoverRemoveResponse struct {
+	Removed   bool                      `json:"removed"`
+	Removal   PostgreSQLLeftoverRemoval `json:"removal"`
+	Changed   bool                      `json:"changed,omitempty"`
+	ErrorCode string                    `json:"error_code,omitempty"`
+	Error     string                    `json:"error,omitempty"`
 }
 
 // PostgreSQLMajorOffer is one PostgreSQL major that is not installed and

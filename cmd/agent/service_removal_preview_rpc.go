@@ -99,6 +99,15 @@ func serviceRemovalPreviewWithOps(
 	}
 	if major, ok := pgRemovalMajor(svc, req.Package); ok && work.family == "apt" && ops.postgresqlHolds != nil {
 		resp.HoldsDatabases, resp.DatabasesUnknown = ops.postgresqlHolds(major)
+		// alpha.130: the clusters go with the packages (UninstallService).
+		if ops.postgresqlClusters != nil {
+			clusters, err := ops.postgresqlClusters(major)
+			if err == nil {
+				for _, cluster := range clusters {
+					resp.RemovesClusters = append(resp.RemovesClusters, pgClusterRef(cluster.Version, cluster.Name))
+				}
+			}
+		}
 	}
 	// alpha.108 (D-038 §13): the system's own traces of use outside
 	// CelikPanel, bounded and read-only; warnings, never a refusal.
