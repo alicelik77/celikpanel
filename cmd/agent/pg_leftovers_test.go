@@ -36,6 +36,12 @@ func newPGLeftoverFixture(t *testing.T) *pgLeftoverFixture {
 	root := t.TempDir()
 	oldConf, oldLib, oldData, oldLog, oldArchive := pgConfRoot, pgLibRoot, pgDataRoot, pgLogRoot, pgArchiveRoot
 	oldReset, oldNow := pgLeftoverUnitReset, pgLeftoverNow
+	oldStates, oldPurge := readDpkgStates, pgLeftoverPurge
+	readDpkgStates = func() ([]dpkgPackageState, error) { return nil, nil }
+	pgLeftoverPurge = func(context.Context, packageRemovalRequest) (packageRemovalPlan, error) {
+		t.Fatal("a purge ran without a test's own package manager")
+		return packageRemovalPlan{}, nil
+	}
 	pgConfRoot = filepath.Join(root, "etc", "postgresql")
 	pgLibRoot = filepath.Join(root, "usr", "lib", "postgresql")
 	pgDataRoot = filepath.Join(root, "var", "lib", "postgresql")
@@ -46,6 +52,7 @@ func newPGLeftoverFixture(t *testing.T) *pgLeftoverFixture {
 	t.Cleanup(func() {
 		pgConfRoot, pgLibRoot, pgDataRoot, pgLogRoot, pgArchiveRoot = oldConf, oldLib, oldData, oldLog, oldArchive
 		pgLeftoverUnitReset, pgLeftoverNow = oldReset, oldNow
+		readDpkgStates, pgLeftoverPurge = oldStates, oldPurge
 	})
 	return &pgLeftoverFixture{t: t, root: root}
 }

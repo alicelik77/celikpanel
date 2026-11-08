@@ -560,6 +560,23 @@ func cleanPGLeftovers(ctx context.Context, host pgClusterHost, resp *transport.P
 			return
 		}
 	}
+	// The removed majors' package state goes too (no cluster of them left).
+	if host.family() != "apt" {
+		return
+	}
+	clusters, err := pgClustersOfMajor(ctx, host, "")
+	if err != nil {
+		resp.PurgeNotes = append(resp.PurgeNotes, "the leftover packages were not purged: "+err.Error())
+		return
+	}
+	states, err := readDpkgStates()
+	if err != nil {
+		resp.PurgeNotes = append(resp.PurgeNotes, "the leftover packages were not purged: dpkg's status could not be read: "+boundedText(err.Error(), 160))
+		return
+	}
+	if sets := pgLeftoverPackageSets(states, clusters); len(sets) > 0 {
+		resp.Purged, resp.PurgeNotes = purgePGLeftoverPackages(ctx, sets)
+	}
 }
 
 // PostgreSQLLeftoverCleanupV1 removes every leftover cluster that holds only

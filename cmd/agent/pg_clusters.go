@@ -431,6 +431,9 @@ func pgClustersRead(ctx context.Context, host pgClusterHost) transport.PostgreSQ
 			resp.Clusters[i].Leftover = classifyPGLeftover(resp.Clusters[i])
 		}
 	}
+	if states, err := readDpkgStates(); err == nil {
+		resp.LeftoverPackages = pgLeftoverPackageNames(pgLeftoverPackageSets(states, resp.Clusters))
+	}
 	configured := pgConfiguredPorts(host, resp.Clusters)
 	listening := host.listening()
 	resp.NextPort = nextFreePGPort(configured, listening)

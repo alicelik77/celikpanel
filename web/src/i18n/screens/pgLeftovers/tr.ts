@@ -17,6 +17,7 @@ export const trPgLeftoversScreens: Record<PgLeftoversScreenKey, string> = {
     'pgc.leftover.partial': '{cluster} kümesi {archive} arşivine alındı, ama dosyaları silinirken iş yarıda kaldı; bazıları hâlâ sunucuda olabilir. Arşiv yerinde duruyor. Sonraki adım: Arşivle ve kaldır’ı yeniden deneyin ya da kalanları kendiniz silin. Sunucunun yanıtı: {reason}',
     'pgc.leftover.unknown': 'Yanıt gelmedi; bu yüzden {cluster} kümesinin arşivlenip kaldırıldığı bilinmiyor. Kümeler yeniden okunuyor; hiçbir şey ikinci kez gönderilmez.',
     'dashboard.audit.action.postgresql.cluster.leftover.removed': 'kaldırılmış bir PostgreSQL sürümünden kalan kümeyi kaldırdı ({target})',
+    'dashboard.audit.action.postgresql.cluster.leftover.purged': 'kaldırılmış bir PostgreSQL sürümünün bıraktığı paketleri temizledi ({target})',
     'dashboard.audit.action.postgresql.cluster.leftover.failed': 'kaldırılmış bir PostgreSQL sürümünden kalan kümeyi kaldıramadı ({target})',
     'pgc.pick.label': 'Dosyaları düzenlenen küme',
     'pgc.pick.cluster': 'PostgreSQL {version} · {name}',
