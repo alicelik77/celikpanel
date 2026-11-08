@@ -579,6 +579,10 @@ func (p *Panel) handlePGPortChange(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, recordErr := p.updatePGRecordsPort(r.Context(), ref, response.From, req.Port)
 	details["records"] = updated
+	// alpha.131: remote database access follows the cluster to its new port
+	// (the address filter, pg_hba block and panel firewall), after the
+	// committed record change.
+	kickDatabaseRemoteSync()
 	p.auditDetailed(r, "postgresql.cluster.port:"+ref+" "+strconv.Itoa(response.From)+"->"+strconv.Itoa(req.Port), "service", 0, details)
 	body := map[string]any{"changed": true, "proved": true, "from": response.From, "to": req.Port, "records": updated}
 	if recordErr != nil {
@@ -628,6 +632,7 @@ func (p *Panel) handlePGRecordsSync(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
+	kickDatabaseRemoteSync() // alpha.131: remote database access follows the records' port
 	p.auditDetailed(r, "postgresql.records.port:"+ref+" "+strconv.Itoa(found.RecordPort)+"->"+strconv.Itoa(found.ClusterPort), "service", 0, map[string]any{
 		"component": "postgresql", "cluster": ref, "from": strconv.Itoa(found.RecordPort), "to": strconv.Itoa(found.ClusterPort), "records": updated,
 	})
@@ -985,6 +990,7 @@ func (p *Panel) handlePGMoveAction(w http.ResponseWriter, r *http.Request, id in
 			writeServerError(w, err)
 			return
 		}
+		kickDatabaseRemoteSync() // alpha.131: the database's remote access follows it to the other cluster
 		auditName := "postgresql.database.switch"
 		if action == "switch-back" {
 			auditName = "postgresql.database.switch_back"

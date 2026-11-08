@@ -258,6 +258,7 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 	// The owner's own pg_hba.conf lines decide first (review M2): one that
 	// lets a network address in means the owner manages network access, and
 	// CelikPanel opens nothing (and closes what it opened).
+	ownerHBA := false
 	if len(candidates) > 0 {
 		current, err := databaseRemoteReadHBA(s.hbaFile)
 		if err != nil {
@@ -267,6 +268,7 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 			problem(transport.DatabaseRemoteOwnerHBA, s.hbaFile+" already lets network connections in before CelikPanel's lines (\""+
 				boundedText(foreign[0], 120)+"\"); remove or narrow that line to 127.0.0.1/32 or ::1/128, then apply again")
 			candidates = nil
+			ownerHBA = true
 		}
 	}
 
@@ -302,7 +304,13 @@ func (p pgRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts, ts 
 				ts.AuthDelay = true
 			}
 		}
-	} else if ts.Listen {
+	} else if ts.Listen && (!databaseRemoteServerOffered || ownerHBA) {
+		// alpha.131 (owner, 8 Nov): only the administrator's server switch
+		// turned off takes the listen address back. While it is on, the last
+		// address leaving keeps it (and TLS and auth_delay), so the next
+		// customer's address needs no restart; the filter keeps dropping the
+		// port and the pg_hba block is empty, so no address gets in. Behind
+		// an owner's own network line (review M2) it still goes back.
 		statements = append(statements, "ALTER SYSTEM RESET listen_addresses;")
 		ts.Listen = false
 		ts.ListenPending = true
