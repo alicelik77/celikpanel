@@ -505,6 +505,10 @@ func (p *Panel) handleDatabaseRemoteRemove(w http.ResponseWriter, r *http.Reques
 	}
 	p.auditDetailed(r, "database.remote.remove:"+d.Name, "database_remote_rule", ruleID,
 		map[string]any{"database": d.Name, "user": username, "address": address})
+	if databaseRemoteStarting(ctx) {
+		p.writeDatabaseRemoteClosedWhileStarting(w, ctx)
+		return
+	}
 	answer, _, err := p.applyDatabaseRemote(ctx, true)
 	if err != nil {
 		p.kickDatabaseRemoteSync()
@@ -538,6 +542,11 @@ func (p *Panel) handleDatabaseRemoteServer(w http.ResponseWriter, r *http.Reques
 			writeClientError(w, http.StatusBadRequest, "send {\"offered\": true|false}, {\"mariadb_skip_name_resolve\": true|false} or {\"apply\": true}; nothing was changed")
 			return
 		}
+		if databaseRemoteStarting(ctx) && (body.Offered == nil || *body.Offered || body.SkipNameResolve != nil || body.Apply) {
+			// While the panel starts only turning the switch off is taken.
+			writeDatabaseRemoteStartingRefusal(w)
+			return
+		}
 		changed := false
 		if body.Offered != nil {
 			offered, err := p.loadOfferedOptInPermissions(ctx)
@@ -554,6 +563,10 @@ func (p *Panel) handleDatabaseRemoteServer(w http.ResponseWriter, r *http.Reques
 			if changed {
 				p.auditDetailed(r, "database.remote.offer", "panel_settings", 0, map[string]any{"offered": *body.Offered})
 			}
+		}
+		if databaseRemoteStarting(ctx) {
+			p.writeDatabaseRemoteClosedWhileStarting(w, ctx)
+			return
 		}
 		if body.SkipNameResolve != nil {
 			current, err := p.databaseRemoteMariaDBSkipNameResolve(ctx)
@@ -667,6 +680,7 @@ func (p *Panel) handleDatabaseRemoteExtend(w http.ResponseWriter, r *http.Reques
 		writeCodedError(w, http.StatusBadRequest, errCodeDatabaseRemoteDuration, "choose 1 day, 7 days or no end; nothing was changed", "")
 		return
 	}
+	starting := databaseRemoteStarting(ctx)
 	var databaseID int
 	var address, username, previous string
 	err := p.db.GetDB().QueryRowContext(ctx, `
@@ -696,6 +710,11 @@ func (p *Panel) handleDatabaseRemoteExtend(w http.ResponseWriter, r *http.Reques
 	}
 	if !access.MayEdit {
 		writeCodedErrorDetails(w, http.StatusForbidden, errCodeDatabaseRemoteRefused, databaseRemoteRefusalSentence(access), "", []string{access.Reason, access.Grantor})
+		return
+	}
+	if starting && !databaseRemoteEndIsNotLater(expiresAt, previous) {
+		// While the panel starts an end may only come sooner.
+		writeDatabaseRemoteStartingRefusal(w)
 		return
 	}
 	reportOperationStep(ctx, "save")
