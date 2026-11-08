@@ -105,6 +105,17 @@ MIGRATIONS = {
     # alpha.129: 74 remote access to databases (one table, one index; no old
     # table or row changed).
     74: 'd021b35c13946479796d0c7e7449ffcc1e6868c054a62cfb836bf94ac0741777',
+    # alpha.130: 75 timed remote database access (one NULL column and one
+    # partial index on database_remote_rules, a table of 74, not an old one;
+    # no table added, no old row changed).
+    75: '7145528fd1a40957303bfe74f4004a645ac439ce129207057ca629ad4d10daf7',
+    # alpha.130: 76 mailbox recovery (two tables, one index; no old table or
+    # row changed).
+    76: '5cee162e561fa3be27614ef5a4d7de0b1838d1be749e00f582f18a2aecd28ad5',
+    # alpha.130: 77 mail relay and other mail server settings (three tables;
+    # the two single-row settings tables get their row; no old table or row
+    # changed).
+    77: '9bf25b1c18b8b3c48c0bc73d85625a39a9c2511a178a2acd4b76704159d899df',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -143,6 +154,9 @@ SCHEMAS = {
     72: 'aef97a118e579242ad865d58612597af1c67d64c37b0f14d3d3eb95f985432af',
     73: '5ccf98cff7b6f952e48a7e91d60ce764579f2220cd963bbe77e837be00eb8bdb',
     74: 'afd9d98927955deb2c47f1baaa54555697ec6a00f14ec3b9c5928cc91b82d5e4',
+    75: 'd556def4ac31f14d6464e09df447bad2a421ae486f66eb331d2293881393d54a',
+    76: '74c13a781b3df839b414dd130d103985236246518f7820a2aa1c8e8f36d18450',
+    77: '0ae2d053d88806d865572bacb0efc8d3bb65a09194ccec1543e2ccb26123208e',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'
@@ -192,6 +206,10 @@ NEW_TABLES_72 = NEW_TABLES_71 | {'notification_preferences', 'account_notices', 
 # Migration 73 adds no table: two columns on mailbox_outgoing (a table of 67).
 NEW_TABLES_73 = NEW_TABLES_72
 NEW_TABLES_74 = NEW_TABLES_73 | {'database_remote_rules'}
+# Migration 75 adds no table: one column on database_remote_rules (a table of 74).
+NEW_TABLES_75 = NEW_TABLES_74
+NEW_TABLES_76 = NEW_TABLES_75 | {'mailbox_recovery_addresses', 'mailbox_recovery_links'}
+NEW_TABLES_77 = NEW_TABLES_76 | {'mail_relay_settings', 'mail_server_options', 'mail_sender_rules'}
 # Columns a pinned schema added to an old table, left out of the old-row
 # proof and required to be NULL in every old row (52 leaves ends_at NULL even
 # where the unused expires_at is set).
@@ -221,7 +239,8 @@ NEW_TABLES = {42: NEW_TABLES_42, 43: NEW_TABLES_43, 44: NEW_TABLES_44, 45: NEW_T
               61: NEW_TABLES_61, 62: NEW_TABLES_62, 63: NEW_TABLES_63, 64: NEW_TABLES_64,
               65: NEW_TABLES_65, 66: NEW_TABLES_66, 67: NEW_TABLES_67, 68: NEW_TABLES_68, 69: NEW_TABLES_69,
               70: NEW_TABLES_70, 71: NEW_TABLES_71,
-              72: NEW_TABLES_72, 73: NEW_TABLES_73, 74: NEW_TABLES_74}
+              72: NEW_TABLES_72, 73: NEW_TABLES_73, 74: NEW_TABLES_74,
+              75: NEW_TABLES_75, 76: NEW_TABLES_76, 77: NEW_TABLES_77}
 # Migration 57 resets bandwidth_quota_mb of these old tables to 0. The old
 # value is only inside the sealed row digest, so a reset row is accepted only
 # when its digest is reproduced with one of these old values (NULL in 001's
