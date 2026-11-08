@@ -1,4 +1,4 @@
-# Remote access to databases (alpha.129, alpha.130)
+# Remote access to databases (alpha.129, alpha.130, alpha.131)
 
 Status: design accepted by the owner on 7 Nov 2026; implementation in
 alpha.129 (branch `feat/a129-db-remote`); the owner's decisions of 8 Nov 2026
@@ -49,7 +49,8 @@ database user on one engine, checked in the insert itself; a user over it (rows
 written around the panel) loses only its own rules.
 
 **Listen address.** It changes only when the first rule exists on that engine
-(PostgreSQL: that cluster) and goes back with the last one. Both engines read
+(PostgreSQL: that cluster) and goes back with the last one (alpha.131: only
+when the administrator turns the server switch off; see "alpha.131"). Both engines read
 it only at start, so the change waits for a restart, which is the
 administrator's decision: the screen says so and points to Components. Closing
 does not wait: the last rule's removal removes the lines/accounts and the
@@ -323,6 +324,94 @@ saved policy only), persisted evidence (Agent record gains
 older Agent reading a record with them fails closed). Schema 74 → 75,
 additive; going back is the pre-update snapshot. None of this is proven on a
 real system yet; the lab steps are listed in the report of this work.
+
+## alpha.131
+
+Fix release for a defect the owner met on Boston (Ubuntu 24.04) on 8 Nov 2026,
+and the owner's decision of the same day.
+
+### A PostgreSQL cluster that changes port keeps CelikPanel's record
+
+What happened: cluster 18/main ran on 5433 with remote access on (CelikPanel
+had set `listen_addresses = '*'` and `auth_delay`). The owner moved it to
+5432 with "Change port". The Agent's record (`/etc/celikpanel/database-remote.json`)
+is keyed by port, so it still said `postgresql:5433`; on 5432 CelikPanel's own
+settings looked like the owner's (`OWNER_LISTEN`, `NO_SLOWDOWN`), every rule
+was refused, the filter kept `tcp dport 5433 drop` where nothing listened any
+more, and the panel firewall opened nothing. It failed closed, but remote
+access was dead and the stale entry never went away.
+
+Now:
+
+- The record of a PostgreSQL cluster also names its data directory
+  (`data_dir`, record version 2). A version-1 record is read and migrated; its
+  `applied` digest is dropped, so the first apply after the update runs in
+  full. An older Agent refuses a version-2 record and changes nothing (fails
+  closed, as for any unreadable record).
+- The Agent's port change (`SetPostgreSQLClusterPortV1`), once the cluster is
+  proved on its new port, moves the record and the cluster's filter port in
+  the same step (the old port's rule disappears, the new port is filtered at
+  once) and removes CelikPanel's Fail2ban jail of the old port. The panel then
+  asks for a forced apply (`kickDatabaseRemoteSync`), which brings the pg_hba
+  block and the panel firewall to the new port. "Update CelikPanel's records"
+  (a port changed outside the panel) and a database switched to another
+  cluster ask for the same apply.
+- Every apply (and, read only, every status) first heals: a record whose port
+  has lost its cluster moves to the port where that cluster runs now — found
+  by its data directory, or, for a version-1 record, by CelikPanel's own
+  settings in that cluster's `postgresql.auto.conf` (`listen_addresses = '*'`,
+  `shared_preload_libraries = 'auth_delay'`) when exactly one running cluster
+  carries them, no other record claims its port, and `pg_lsclusters` does not
+  list a (stopped) cluster on the old port. Anything ambiguous stays closed.
+  A record that is already right only gains its data directory: no setting
+  changes and no restart.
+- MariaDB: the panel offers no port change for MariaDB; an apply refuses an
+  engine that runs on another port than the panel's record (unchanged).
+
+Boston's own record was re-keyed by hand with the owner's authorisation on 8
+Nov (18:49Z); the update leaves such a record as it is.
+
+### Addresses coming and going never ask for a restart (owner, 8 Nov)
+
+While the administrator's server switch (the offered `database_remote`
+permission) is on, an engine CelikPanel prepared keeps its listen address,
+TLS and `auth_delay` (MariaDB: CelikPanel's option file, with the agreement on
+host name lookup) when its last address leaves or ends. The address filter
+keeps dropping the port, the pg_hba block is empty and the MariaDB copies are
+gone, so no address gets in, and the panel firewall keeps the port closed. The
+next customer's address works at once, without a restart. Only turning the
+switch off takes the settings back; the screen then says the engines stop
+listening at their next restart. The panel sends the switch with every apply
+(`ServerOffered`); it is part of the applied digest (`RequestDigestOffered`),
+so a restarted panel never mistakes an apply made with the switch on for one
+made with it off. An owner's own pg_hba network line still takes the listen
+address back (review M2). An older panel sends no switch: alpha.130
+behaviour.
+
+### The customer's card
+
+- Each address is one row: address and user, then its state and its end as
+  ordinary text, then a compact end selector and the remove button; it
+  stacks on a phone.
+- A new end is saved only with "Apply" ("Discard" returns); picking an option
+  changes nothing on the server.
+- "Settings for your program" names the server's own host name (its full
+  host name, else the panel certificate's name), never the mail name.
+- A customer whose database cannot be opened because of an owner's setting
+  reads a calm sentence without technical detail ("not available right now;
+  your provider can set it up").
+- The Databases list has no manual refresh button: every change on that page
+  reads the list again by itself.
+
+### Resilience contract (D-025)
+
+Affected: persisted evidence (Agent record version 1 → 2, migrated on read,
+an older Agent fails closed), native service ownership (CelikPanel's settings
+follow the cluster rather than being taken for the owner's; nothing is taken
+over without proof). No schema change. Recovery: going back to alpha.130
+leaves a version-2 record unreadable for that Agent (remote access changes
+nothing, the filter stays loaded by its guard) until the update is applied
+again or the record is restored from the pre-update snapshot.
 
 ## Known limits (alpha.130)
 

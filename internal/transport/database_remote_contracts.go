@@ -38,6 +38,13 @@ type DatabaseRemoteApplyRequest struct {
 	// address and the Fail2ban jail can ban it. Without it, MariaDB rules
 	// wait while MariaDB looks host names up.
 	MariaDBSkipNameResolve bool
+	// ServerOffered (alpha.131): the administrator's server switch is on.
+	// An engine CelikPanel already prepared (listen address, TLS, the slowing
+	// of wrong passwords; MariaDB's option file) keeps it when its last rule
+	// goes, so a customer's next address needs no restart; the address filter
+	// and the engine's own rules still close every address. Only the switch
+	// turned off undoes it. An older panel sends false: alpha.130 behaviour.
+	ServerOffered bool
 }
 
 // DatabaseRemoteNarrowRequest (alpha.130, D5) narrows the address filter to

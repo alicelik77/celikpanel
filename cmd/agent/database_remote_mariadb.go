@@ -316,14 +316,20 @@ func (m mariadbRemoteInstance) apply(target dbremote.Target, facts dbRemoteFacts
 		current, readErr := databaseRemoteFiles.read(path)
 		exists := readErr == nil
 		own := exists && dbremote.IsOwnMariaDBOptionFile(string(current), certPath, keyPath)
+		// alpha.131 (owner, 8 Nov): while the administrator's server switch
+		// is on, CelikPanel's option file (listen address, TLS, host name
+		// lookup) stays when the last rule goes, so the next customer's
+		// address needs no restart. The accounts and the filter still close
+		// every address. It is never made without a rule.
+		prepared := wantOpen || (databaseRemoteServerOffered && own)
 		switch {
 		case exists && !own:
 			problem(transport.DatabaseRemoteOwnerFile, path+" was changed outside CelikPanel; CelikPanel leaves it as it is")
 			// An owner's file may still turn the lookup off: the running
 			// value decides below.
 			names = mariadbPlanNameResolve(wantOpen, s, false, path)
-		case wantOpen:
-			names = mariadbPlanNameResolve(wantOpen, s, own && dbremote.MariaDBOptionFileSkipsNameResolve(string(current)), path)
+		case prepared:
+			names = mariadbPlanNameResolve(prepared, s, own && dbremote.MariaDBOptionFileSkipsNameResolve(string(current)), path)
 			var content string
 			if s.haveSSL && !(own && strings.Contains(string(current), "ssl_cert")) {
 				content = dbremote.MariaDBOptionFileWith("", "", names.write)

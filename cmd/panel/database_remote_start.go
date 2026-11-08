@@ -71,6 +71,10 @@ func (p *Panel) seedDatabaseRemoteFromStatus(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
+	offered, err := p.databaseRemoteOffered(ctx)
+	if err != nil {
+		return false
+	}
 	readCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	status, err := databaseRemoteStatusFromAgent(p, readCtx, transport.DatabaseRemoteStatusRequest{Targets: desired})
@@ -97,7 +101,7 @@ func (p *Panel) seedDatabaseRemoteFromStatus(ctx context.Context) bool {
 		targets = append(targets, dbremote.Target{Engine: t.Engine, Port: t.Port, Rules: fromTransportRemoteRules(t.Rules)})
 	}
 	same := (len(desired) == 0 && len(status.FilterPorts) == 0) ||
-		(status.AppliedDigest != "" && status.AppliedDigest == dbremote.RequestDigest(targets, skip))
+		(status.AppliedDigest != "" && status.AppliedDigest == dbremote.RequestDigestOffered(targets, skip, offered))
 	m := databaseRemoteMemory
 	m.mu.Lock()
 	defer m.mu.Unlock()

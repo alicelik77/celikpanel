@@ -37,6 +37,15 @@ func (t Target) Key() string { return TargetKey(t.Engine, t.Port) }
 // changed. A target that cannot be normalized makes the digest empty (never
 // equal to a recorded one).
 func RequestDigest(targets []Target, skipNameResolve bool) string {
+	return RequestDigestOffered(targets, skipNameResolve, false)
+}
+
+// RequestDigestOffered (alpha.131) also covers the administrator's server
+// switch: while it is on, an engine keeps listening (and its TLS and the
+// slowing of wrong passwords) with no rule left, so the same rules with the
+// switch on or off are different wanted states. With the switch off the
+// digest is RequestDigest's, unchanged from alpha.130.
+func RequestDigestOffered(targets []Target, skipNameResolve, serverOffered bool) string {
 	var normalized []Target
 	for _, t := range targets {
 		if len(t.Rules) == 0 {
@@ -51,6 +60,9 @@ func RequestDigest(targets []Target, skipNameResolve bool) string {
 	sort.Slice(normalized, func(i, j int) bool { return normalized[i].Key() < normalized[j].Key() })
 	h := sha256.New()
 	fmt.Fprintf(h, "skip-name-resolve=%v\n", skipNameResolve)
+	if serverOffered {
+		fmt.Fprint(h, "server-offered=true\n")
+	}
 	for _, t := range normalized {
 		fmt.Fprintf(h, "%s\n", t.Key())
 		for _, r := range t.Rules {

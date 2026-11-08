@@ -688,6 +688,11 @@ func (a *Agent) SetPostgreSQLClusterPortV1(req *transport.PostgreSQLSetPortReque
 	}
 	defer finishStep()
 	setPGClusterPort(ctx, pgClusterHostActive(), req, resp)
+	if resp.Proved && resp.From != resp.To {
+		// alpha.131: remote database access follows the cluster (its record
+		// and address filter); the panel's apply does the rest.
+		databaseRemoteFollowPGPort(resp.From, resp.To)
+	}
 	return nil
 }
 

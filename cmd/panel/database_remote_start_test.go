@@ -90,7 +90,13 @@ func TestDatabaseRemoteDigestSeededFromStatus(t *testing.T) {
 	recorder := &databaseRemoteRecorder{}
 	recorder.install(t)
 	desired := dbrSeededRule(t, p)
-	digest := dbremote.RequestDigest([]dbremote.Target{{Engine: "mysql", Port: 3306, Rules: fromTransportRemoteRules(desired[0].Rules)}}, false)
+	// alpha.131: the digest covers the server switch (on here).
+	digest := dbremote.RequestDigestOffered([]dbremote.Target{{Engine: "mysql", Port: 3306, Rules: fromTransportRemoteRules(desired[0].Rules)}}, false, true)
+	dbrStatus(t, dbrRecordedStatus(desired, dbremote.RequestDigest([]dbremote.Target{{Engine: "mysql", Port: 3306, Rules: fromTransportRemoteRules(desired[0].Rules)}}, false)))
+	if p.seedDatabaseRemoteFromStatus(context.Background()) {
+		t.Fatal("a record applied without the switch was taken for the wanted state")
+	}
+	databaseRemoteMemory.appliedAt = time.Time{}
 	dbrStatus(t, dbrRecordedStatus(desired, digest))
 	if !p.seedDatabaseRemoteFromStatus(context.Background()) {
 		t.Fatal("a matching record was not recognised")

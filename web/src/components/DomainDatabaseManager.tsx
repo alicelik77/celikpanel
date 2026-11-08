@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Database, Plus, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Database, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
 import { formatDate } from '../lib/dateFormat';
@@ -394,15 +394,8 @@ export function DomainDatabaseManager({
                             </span>
                         )}
                     </div>
-                    <button
-                        onClick={() => void list.retry()}
-                        disabled={list.reading}
-                        className="p-2 text-fg-muted hover:text-fg transition-colors"
-                        title={t('files.refresh')}
-                        aria-label={t('files.refresh')}
-                    >
-                        <RefreshCw className={`w-4 h-4 ${list.reading ? 'animate-spin' : ''}`} />
-                    </button>
+                    {/* alpha.131 (owner: no manual refresh): every change on this
+                        page reads the list again by itself (invalidate). */}
                 </div>
 
                 <div className="p-4">

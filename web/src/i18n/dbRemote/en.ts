@@ -30,9 +30,9 @@ export const enDbRemote = {
     'dbr.problem.RESTART_NEEDED.admin': '{engine} must restart once before it takes connections from outside. Restart it in Components; sites lose their database for a few seconds.',
     'dbr.problem.RESTART_NEEDED.other': 'Waiting for your provider to restart {engine}. You do not need to do anything; the address works after that.',
     'dbr.problem.OWNER_LISTEN.admin': '{engine}’s network address was set on the server by hand ({detail}), so CelikPanel leaves it alone and lists no address. Remove that setting to let CelikPanel manage connections from outside.',
-    'dbr.problem.OWNER_LISTEN.other': '{engine} on this server is set up by hand, so addresses cannot be listed here. Ask your provider.',
+    'dbr.problem.OWNER_LISTEN.other': 'Connections from outside are not available for this database right now. Your provider can set them up for you.',
     'dbr.problem.OWNER_HBA.admin': 'PostgreSQL already lets network connections in through a line of its own: {detail}. Until that line is removed or narrowed, CelikPanel opens nothing, so no customer can connect without encryption through it.',
-    'dbr.problem.OWNER_HBA.other': 'PostgreSQL on this server is set up by hand for network connections, so addresses cannot be opened here. Ask your provider.',
+    'dbr.problem.OWNER_HBA.other': 'Connections from outside are not available for this database right now. Your provider can set them up for you.',
     'dbr.problem.OWNER_FILE.admin': 'A CelikPanel file was changed by hand ({detail}); CelikPanel leaves it as it is. Put it back or remove it, then press “Apply again”.',
     'dbr.problem.NFT_MISSING.admin': 'The firewall (nftables) is not installed, so the database port cannot be limited to the listed addresses. Install the firewall in Components first.',
     'dbr.problem.FIREWALL_UNCHANGED.admin': 'The address filter of the database port could not be written: {detail}.',
@@ -93,8 +93,8 @@ export const enDbRemote = {
     'dbr.tool.heidisql': 'HeidiSQL: Network type MariaDB or MySQL (TCP/IP); host, user, port; Advanced: Use SSL ticked, certificate fields empty.',
 
     // alpha.130: timed access.
-    'dbr.until': 'Allowed until {until}',
-    'dbr.noEnd': 'Allowed with no end date',
+    'dbr.until': 'until {until}',
+    'dbr.noEnd': 'no end date',
     'dbr.duration.1d': 'For 1 day',
     'dbr.duration.7d': 'For 7 days',
     'dbr.duration.permanent': 'No end date',
@@ -106,6 +106,9 @@ export const enDbRemote = {
     'dbr.extended': '{address} is allowed until {until}.',
     'dbr.extendedPermanent': '{address} is allowed with no end date.',
     'dbr.extendFailed': 'The end was not changed.',
+    // alpha.131: a new end is saved only with Apply.
+    'dbr.extendApply': 'Apply',
+    'dbr.extendDiscard': 'Discard',
     'dbr.status.expired': 'Ended; being removed',
 
     // alpha.130: a closing that waits for the server (D5).
@@ -122,7 +125,7 @@ export const enDbRemote = {
     'dbr.problem.PG_FAIL2BAN.admin': 'The extra protection with Fail2ban is not used for PostgreSQL: {detail}. Wrong passwords are still slowed down (auth_delay).',
     'dbr.nameLookupOff': 'Turn off host name lookup',
     'dbr.nameLookupTitle': 'Turning off MariaDB host name lookup',
-    'dbr.nameLookupConfirm': 'Turn off host name lookup in MariaDB? MariaDB then recognises every connection by its address. Programs on this server that connect through “localhost” keep working; a program that connects through 127.0.0.1 or a host name needs an account for that address. It takes effect when you restart MariaDB in Components, and it is undone when the last outside address is removed.',
+    'dbr.nameLookupConfirm': 'Turn off host name lookup in MariaDB? MariaDB then recognises every connection by its address. Programs on this server that connect through “localhost” keep working; a program that connects through 127.0.0.1 or a host name needs an account for that address. It takes effect when you restart MariaDB in Components, and it is undone when connections from outside are turned off for this server.',
 
     // alpha.130: the administrator's section on the Databases page.
     'dbrs.title': 'Connections from outside',
@@ -131,7 +134,7 @@ export const enDbRemote = {
     'dbrs.off': 'Off for this server: no database can be reached from outside.',
     'dbrs.turnOn': 'Turn on for this server',
     'dbrs.turnOff': 'Turn off',
-    'dbrs.turnOffConfirm': 'Turn off connections from outside for this server? Every listed address is closed now. The addresses are kept and work again when you turn this back on.',
+    'dbrs.turnOffConfirm': 'Turn off connections from outside for this server? Every listed address is closed now. The database engines stop listening for outside connections at their next restart; until then their ports stay closed. The addresses are kept and work again when you turn this back on.',
     'dbrs.turnOffTitle': 'Turning off connections from outside',
     'dbrs.unchanged': 'Nothing changed: it was already like this.',
     'dbrs.saved': 'Saved.',
@@ -148,7 +151,7 @@ export const enDbRemote = {
     'dbrs.fail2ban.pgOff': 'Fail2ban is set up for PostgreSQL with the first address, as extra protection.',
     'dbrs.nameLookup.off': 'MariaDB logs addresses (host name lookup is off).',
     'dbrs.nameLookup.pending': 'Host name lookup goes off when MariaDB restarts.',
-    'dbrs.nameLookupAgreed': 'You agreed that CelikPanel turns host name lookup off while addresses are listed.',
+    'dbrs.nameLookupAgreed': 'You agreed that CelikPanel turns host name lookup off while connections from outside are on.',
     'dbrs.nameLookupWithdraw': 'Withdraw',
     'dbrs.nameLookupWithdrawTitle': 'Withdrawing the agreement on host name lookup',
     'dbrs.firewallNote': 'Panel firewall: {detail}.',
