@@ -1,0 +1,365 @@
+
+######## move5433 20:04:32
+   cluster {"version": "18", "name": "main", "port": 5432, "status": "online", "online": true}
+-- the panel's Change port: 18/main -> 5433 20:04:32
+200 {"preview": {"cluster": {"config_path": "/etc/postgresql/18/main/postgresql.conf", "configured_port": 0, "data_directory": "/var/lib/postgresql/18/main", "databases": null, "databases_known": false, "name": "main", "online": true, "owner": "postgres", "port": 5432, "status": "online", "version": "18"}, "config_path": "/etc/postgresql/18/main/postgresql.conf", "config_sha256": "9be471346dabeb3ea2872346c11af1fc6f58c29f11258074b360d0a5b29cebfa", "from": 5432, "line_after": "port = 5433\t\t\t\t# (change requires restart)", "line_before": "port = 5432\t\t\t\t# (change requires restart)", "sessions": null, "sessions_known": true, "to": 5433}, "records": [], "state": "read"}
+200 {"changed": true, "from": 5432, "proved": true, "records": 0, "to": 5433}
+   port change answered 20:04:36
+   cluster {"version": "18", "name": "main", "port": 5433, "status": "online", "online": true}
+-- 20:04:36 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+127.0.0.1:5433 [::1]:5433
+-- record /etc/celikpanel/database-remote.json
+  record unreadable: [Errno 2] No such file or directory: '/etc/celikpanel/database-remote.json'
+-- nft inet celikpanel_dbremote
+  Error: No such file or directory
+  list table inet celikpanel_dbremote
+                  ^^^^^^^^^^^^^^^^^^^
+-- pg_hba CelikPanel block
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw 543x lines: 0
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923 } accept
+-- postgresql.auto.conf (0874e665ecf5c0a6)
+-- port in postgresql.conf: port = 5433				# (change requires restart)
+-- live settings (port 5433)
+  start=2026-11-08 20:04:33.445123+00 | listen=localhost | port=5433 | spl= | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+
+######## setup 20:04:37
+200 {"engines": [], "mariadb_skip_name_resolve": false, "offered": false, "panel_firewall_note": "", "rules": 0}
+200 {"changed": true, "engines": [], "mariadb_skip_name_resolve": false, "offered": true, "panel_firewall_note": "", "rules": 0}
+  plan rights before: {"all_permissions": true, "all_software": true, "permissions": [], "software": []}
+  plan rights sent: {"all_permissions": true, "all_software": true, "permissions": ["database_remote"], "software": []}
+200 {"success": true}
+200 {"id": 1, "name": "cust1_u1_test_rpg", "status": "success", "type": "postgresql", "user": "cust1_u1_test_rpg_user"}
+ db 1 cust1_u1_test_rpg cust1_u1_test_rpg_user 1 port None
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T20:04:37Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5433, "rules": 0, "state": {"applied_at": "2026-11-08T20:04:37Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": false, "known": true, "listen_remote": false, "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "postgresql@18-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_fir
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.u1.test", "port": 5433, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:04:37Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "nft_available": true, "problems": [], "readiness": [], "slow_down": "none", "state": "off", "tls": "off", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+== a131 move5433 setup done 20:04:41
+
+######## open 20:04:50
+200 {"error": "", "id": 1, "status": "waiting", "success": true}
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.u1.test", "port": 5433, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:04:52Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": false, "nft_available": true, "problems": [{"Address": "", "Code": "RESTART_NEEDED", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "auth_delay_pending_restart", "state": "wait_restart", "tls": "on", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:04:50", "expires_at": "", "id": 1, "status": "waiting", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+-- 20:05:23 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+127.0.0.1:5433 [::1]:5433
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "3822328bbf3d560738fa153aa2e3a2fb4b64b063767ccbef3caa16ffb8399a81", "targets": {"postgresql:5433": {"auth_delay": true, "engine": "postgresql", "listen": true, "port": 5433}}, "version": 1}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5433 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw 543x lines: 0
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5433				# (change requires restart)
+-- live settings (port 5433)
+  start=2026-11-08 20:04:33.445123+00 | listen=localhost | port=5433 | spl= | ssl=on | pending_restart=listen_addresses,shared_preload_libraries
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:04:38+00:00 host1.u1.test panel[18862]: 2026/11/08 20:04:38 postgresql: record 2 of subscription 3 named port 5432, where no cluster runs; it now names 18/main on port 5433 (it held no database)
+-- restart PostgreSQL once from Components 20:05:24
+200 {"applied": "restarted", "outcome": "verified", "success": true, "unit": "postgresql@18-main.service"}
+  5433 open after 98 s:   pg tls -> ok TLSv1.3 [5174 ms]
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.u1.test", "port": 5433, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:07:34Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:04:50", "expires_at": "", "id": 1, "status": "active", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+-- 20:07:36 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5433 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+0.0.0.0:5433 [::]:5433
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "3822328bbf3d560738fa153aa2e3a2fb4b64b063767ccbef3caa16ffb8399a81", "targets": {"postgresql:5433": {"active": [{"address": "192.0.3.1/32", "database": "cust1_u1_test_rpg", "user": "cust1_u1_test_rpg_user"}], "addresses": ["192.0.3.1/32"], "auth_delay": true, "engine": "postgresql", "listen": true, "port": 5433}}, "version": 1}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5433 ip saddr 192.0.3.1 accept
+  		tcp dport 5433 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+  # BEGIN CELIKPANEL REMOTE DATABASE ACCESS (managed by CelikPanel; your own lines go outside this block)
+  hostssl "cust1_u1_test_rpg" "cust1_u1_test_rpg_user" 192.0.3.1/32 scram-sha-256
+  # END CELIKPANEL REMOTE DATABASE ACCESS sha256=8bc7dd659809311f
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw: 9:		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5433 } accept
+  fw 543x lines: 1
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5433 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5433				# (change requires restart)
+-- live settings (port 5433)
+  start=2026-11-08 20:05:24.923653+00 | listen=* | port=5433 | spl=auth_delay | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:04:38+00:00 host1.u1.test panel[18862]: 2026/11/08 20:04:38 postgresql: record 2 of subscription 3 named port 5432, where no cluster runs; it now names 18/main on port 5433 (it held no database)
+  pg plain -> psql: error: connection to server at "192.0.3.200", port 5433 failed: FATAL:  no pg_hba.conf entry for host "192.0.3.1", user "cust1_u1_test_rpg_user", database "cust1_u1_test_rpg", no encryption [35 ms]
+== a131 open done 20:07:38
+
+######## repro 20:07:45
+-- the panel's Change port: 18/main -> 5432 20:07:45
+200 {"preview": {"cluster": {"config_path": "/etc/postgresql/18/main/postgresql.conf", "configured_port": 0, "data_directory": "/var/lib/postgresql/18/main", "databases": null, "databases_known": false, "name": "main", "online": true, "owner": "postgres", "port": 5433, "status": "online", "version": "18"}, "config_path": "/etc/postgresql/18/main/postgresql.conf", "config_sha256": "6ee7967987c1c64f83e16a9aa17cbb7fafb78507ab2a8d6fe35afd1c4346bc42", "from": 5433, "line_after": "port = 5432\t\t\t\t# (change requires restart)", "line_before": "port = 5433\t\t\t\t# (change requires restart)", "sessions": null, "sessions_known": true, "to": 5432}, "records": [{"database_id": 1, "domain": "cust1.u1.test", "host": "localhost", "name": "cust1_u1_test_rpg", "port": 5433, "server_id": 2, "subscription_id"
+200 {"changed": true, "from": 5433, "proved": true, "records": 1, "to": 5432}
+   port change answered 20:07:49
+   cluster {"version": "18", "name": "main", "port": 5432, "status": "online", "online": true}
+-- 130 after the port change 20:08:34
+-- 20:08:34 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+0.0.0.0:5432 [::]:5432
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "3822328bbf3d560738fa153aa2e3a2fb4b64b063767ccbef3caa16ffb8399a81", "targets": {"postgresql:5433": {"active": [{"address": "192.0.3.1/32", "database": "cust1_u1_test_rpg", "user": "cust1_u1_test_rpg_user"}], "addresses": ["192.0.3.1/32"], "auth_delay": true, "engine": "postgresql", "listen": true, "port": 5433}}, "version": 1}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5433 ip saddr 192.0.3.1 accept
+  		tcp dport 5433 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+  # BEGIN CELIKPANEL REMOTE DATABASE ACCESS (managed by CelikPanel; your own lines go outside this block)
+  hostssl "cust1_u1_test_rpg" "cust1_u1_test_rpg_user" 192.0.3.1/32 scram-sha-256
+  # END CELIKPANEL REMOTE DATABASE ACCESS sha256=8bc7dd659809311f
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw: 9:		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5433 } accept
+  fw 543x lines: 1
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5433 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5432				# (change requires restart)
+-- live settings (port 5432)
+  start=2026-11-08 20:07:45.942388+00 | listen=* | port=5432 | spl=auth_delay | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:04:38+00:00 host1.u1.test panel[18862]: 2026/11/08 20:04:38 postgresql: record 2 of subscription 3 named port 5432, where no cluster runs; it now names 18/main on port 5433 (it held no database)
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.u1.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:07:34Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": true, "nft_available": true, "problems": [{"Address": "", "Code": "OWNER_LISTEN", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "none", "state": "owner_managed", "tls": "off", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:04:50", "expires_at": "", "id": 1, "status": "waiting", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T20:07:34Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T20:07:34Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": false, "known": true, "listen_remote": true, "nft_available": true, "problems": [{"Address": "", "Code": "OWNER_LISTEN", "Database": "", "Detail": "listen_addresses = '*' (/var/lib/postgresql/18/main/postgresql.auto.conf) was set outside CelikPanel", "User": ""}], "readiness": [{"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "none", "state": "owner_managed", "tls": "off", "unit": "postgresql@18-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_firewall_note": "", "rules": 1}
+  pg tls -> psql: error: connection to server at "192.0.3.200", port 5432 failed: timeout expired [8056 ms]
+  pg tls -> 	Is the server running on that host and accepting TCP/IP connections? [42 ms]
+-- wait 6 minutes (the panel's 5-minute loop) 20:08:44
+20:14:45 port=5432 key=v1 postgresql:5433(port=5433,data_dir=None,listen=True,addr=0)  nft=[tcp dport 5433 drop;] fw543x= hba=1
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "mail.u1.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:12:35Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": true, "nft_available": true, "problems": [{"Address": "", "Code": "OWNER_LISTEN", "Database": "", "Detail": "", "User": ""}], "readiness": [], "slow_down": "none", "state": "owner_managed", "tls": "off", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:04:50", "expires_at": "", "id": 1, "status": "waiting", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+  pg tls -> psql: error: connection to server at "192.0.3.200", port 5432 failed: timeout expired [8041 ms]
+== a131 repro done 20:14:54
+
+######## update 20:15:06
+v0.1.0-alpha.131
+start=2026-11-08 20:07:45.942388+00 | listen=* | port=5432 | spl=auth_delay | ssl=on | 
+  update script returned after 116 s (20:17:03)
+200 {"agent_commit": "67d6131d59ca327bcc60931f7f02488d3e397e63", "agent_matches": true, "commit": "67d6131d59ca327bcc60931f7f02488d3e397e63", "hostname": "host1.u1.test", "ipv4": "192.0.3.200", "schema_version": 77, "version": "v0.1.0-alpha.130"}
+  request c632b22d6fe9f9963adb8a18f618c25b v0.1.0-alpha.130 -> v0.1.0-alpha.131
+202 {"accepted": true, "plan": {"expected_restart_seconds": 90, "restart_bound_seconds": 360, "steps": [{"elapsed_seconds": 0, "id": "download", "started_at": "2026-11-08T20:15:08Z", "state": "running"}, {"id": "verify", "state": "pending"}, {"id": "prepare", "state": "pending"}, {"id": "restart", "
+  4s 200 running None  | 
+  34s 
+  85s 200 running verifying  | 
+  99s 200 succeeded None  | 
+== after 20:17:01
+200 {"agent_commit": "99fee558bd613c1201719fb1ce68a87fb20c3863", "agent_matches": true, "commit": "99fee558bd613c1201719fb1ce68a87fb20c3863", "hostname": "host1.u1.test", "ipv4": "192.0.3.200", "schema_version": 77, "version": "v0.1.0-alpha.131"}
+200 {"created_at": "2026-11-08T20:15:08.187704004Z", "found": true, "plan": {"expected_restart_seconds": 120, "restart_bound_seconds": 360, "steps": [{"id": "download", "started_at": "2026-11-08T20:15:08Z", "state": "done"}, {"finished_at": "2026-11-08T20:15:13Z", "id": "verify", "state": "done"}, {
+  ['self-update', 'c632b22d6fe9f9963adb8a18f618c25b.json'] {'request_id': 'c632b22d6fe9f9963adb8a18f618c25b', 'status': 'succeeded', 'phase': None, 'created_at': '2026-11-08T20:15:08.187704004Z', 'from_version': None, 'target_version': 'v0.1.0-alpha.131', 'reason': None, 'code': None}
+200 {"agent_commit": "99fee558bd613c1201719fb1ce68a87fb20c3863", "agent_matches": true, "commit": "99fee558bd613c1201719fb1ce68a87fb20c3863", "hostname": "host1.u1.test", "ipv4": "192.0.3.200", "schema_version": 77, "version": "v0.1.0-alpha.131"}
+-- heal watch: no other action (every 15 s, up to 14 min) 20:17:04
+  +9s (update+126s) port=5432 key=v1 postgresql:5433(port=5433,data_dir=None,listen=True,addr=0)  nft=[tcp dport 5433 drop;] fw543x= hba=1 | psql5432:no
+  +271s (update+388s) port=5432 key=v1 postgresql:5433(port=5433,data_dir=None,listen=True,addr=0)  nft=[tcp dport 5433 drop;] fw543x= hba=1 | psql5432:ok
+  +287s (update+404s) port=5432 key=v2 postgresql:5432(port=5432,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5432 ip saddr 192.0.3.1 accept;tcp dport 5432 drop;] fw543x=5432 hba=1 | psql5432:ok
+  HEALED 287 s after the update script returned, 404 s after Update was pressed
+== a131 update done 20:21:51
+
+######## after 20:22:08
+-- 20:22:07 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+0.0.0.0:5432 [::]:5432
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "83d47a34e2fa177b77440a7d196100e68ca16868d149031c1c1ba726fd221e2d", "targets": {"postgresql:5432": {"active": [{"address": "192.0.3.1/32", "database": "cust1_u1_test_rpg", "user": "cust1_u1_test_rpg_user"}], "addresses": ["192.0.3.1/32"], "auth_delay": true, "data_dir": "/var/lib/postgresql/18/main", "engine": "postgresql", "listen": true, "port": 5432}}, "version": 2}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5432 ip saddr 192.0.3.1 accept
+  		tcp dport 5432 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+  # BEGIN CELIKPANEL REMOTE DATABASE ACCESS (managed by CelikPanel; your own lines go outside this block)
+  hostssl "cust1_u1_test_rpg" "cust1_u1_test_rpg_user" 192.0.3.1/32 scram-sha-256
+  # END CELIKPANEL REMOTE DATABASE ACCESS sha256=8bc7dd659809311f
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw: 9:		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5432 } accept
+  fw 543x lines: 1
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5432 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5432				# (change requires restart)
+-- live settings (port 5432)
+  start=2026-11-08 20:07:45.942388+00 | listen=* | port=5432 | spl=auth_delay | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:21:33+00:00 host1.u1.test agent[72658]: 2026/11/08 20:21:33 database remote access: the PostgreSQL cluster recorded on port 5433 runs on port 5432 now; CelikPanel's record follows it
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "host1.u1.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:21:34Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:04:50", "expires_at": "", "id": 1, "status": "active", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T20:21:34Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 1, "state": {"applied_at": "2026-11-08T20:21:34Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_firewall_note": "", "rules": 1}
+  pg tls -> ok TLSv1.3 [43 ms]
+  pg plain -> psql: error: connection to server at "192.0.3.200", port 5432 failed: FATAL:  no pg_hba.conf entry for host "192.0.3.1", user "cust1_u1_test_rpg_user", database "cust1_u1_test_rpg", no encryption [33 ms]
+  pg tls -> psql: error: connection to server at "192.0.3.200", port 5433 failed: timeout expired [8036 ms]
+== a131 after done 20:22:17
+
+######## remove 20:22:26
+start=2026-11-08 20:07:45.942388+00 | listen=* | port=5432 | spl=auth_delay | ssl=on | 
+   delete rule 1 (192.0.3.1)
+200 {"error": "", "success": true}
+-- 20:23:14 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+0.0.0.0:5432 [::]:5432
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "029d6e0b6965465a2d85c20eccd7f353c30173d058d96d746eaadc1de3713ae3", "targets": {"postgresql:5432": {"auth_delay": true, "data_dir": "/var/lib/postgresql/18/main", "engine": "postgresql", "listen": true, "port": 5432}}, "version": 2}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5432 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw 543x lines: 0
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5432				# (change requires restart)
+-- live settings (port 5432)
+  start=2026-11-08 20:07:45.942388+00 | listen=* | port=5432 | spl=auth_delay | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:21:33+00:00 host1.u1.test agent[72658]: 2026/11/08 20:21:33 database remote access: the PostgreSQL cluster recorded on port 5433 runs on port 5432 now; CelikPanel's record follows it
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "host1.u1.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:22:27Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+200 {"engines": [{"engine": "mysql", "port": 3306, "rules": 0, "state": {"applied_at": "2026-11-08T20:22:27Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": false, "known": true, "listen_remote": false, "name_resolve": "on", "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "NO_SLOWDOWN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components", "User": ""}, {"Address": "", "Code": "NAME_RESOLVE", "Database": "", "Detail": "MariaDB looks up the host name of every client, so a refused sign-in names a host and Fail2ban cannot ban it", "User": ""}], "slow_down": "none", "state": "off", "tls": "off", "unit": "mariadb"}}, {"engine": "postgresql", "port": 5432, "rules": 0, "state": {"applied_at": "2026-11-08T20:22:27Z", "close_pending": false, "fail2ban": "unavailable", "fail2ban_detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [{"Address": "", "Code": "PG_FAIL2BAN", "Database": "", "Detail": "Fail2ban is not installed; install it in Components to also ban addresses that keep guessing (auth_delay already slows every wrong password down)", "User": ""}], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}}], "mariadb_skip_name_resolve": false, "offered": true, "panel_firewall_note": "", "rules": 0}
+  pg tls -> psql: error: connection to server at "192.0.3.200", port 5432 failed: timeout expired [8038 ms]
+
+######## readd 20:23:23
+200 {"error": "", "id": 2, "status": "active", "success": true}
+  5432 open after 1 s:   pg tls -> ok TLSv1.3 [51 ms]
+-- 20:23:25 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5432 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+0.0.0.0:5432 [::]:5432
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "83d47a34e2fa177b77440a7d196100e68ca16868d149031c1c1ba726fd221e2d", "targets": {"postgresql:5432": {"active": [{"address": "192.0.3.1/32", "database": "cust1_u1_test_rpg", "user": "cust1_u1_test_rpg_user"}], "addresses": ["192.0.3.1/32"], "auth_delay": true, "data_dir": "/var/lib/postgresql/18/main", "engine": "postgresql", "listen": true, "port": 5432}}, "version": 2}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5432 ip saddr 192.0.3.1 accept
+  		tcp dport 5432 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+  # BEGIN CELIKPANEL REMOTE DATABASE ACCESS (managed by CelikPanel; your own lines go outside this block)
+  hostssl "cust1_u1_test_rpg" "cust1_u1_test_rpg_user" 192.0.3.1/32 scram-sha-256
+  # END CELIKPANEL REMOTE DATABASE ACCESS sha256=8bc7dd659809311f
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw: 9:		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5432 } accept
+  fw 543x lines: 1
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5432 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5432				# (change requires restart)
+-- live settings (port 5432)
+  start=2026-11-08 20:07:45.942388+00 | listen=* | port=5432 | spl=auth_delay | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:21:33+00:00 host1.u1.test agent[72658]: 2026/11/08 20:21:33 database remote access: the PostgreSQL cluster recorded on port 5433 runs on port 5432 now; CelikPanel's record follows it
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "host1.u1.test", "port": 5432, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:23:24Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:23:23", "expires_at": "", "id": 2, "status": "active", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+  pg tls -> ok TLSv1.3 [45 ms]
+== a131 remove readd done 20:23:27
+
+######## port5434 20:23:36
+-- the panel's Change port: 18/main -> 5434 20:23:36
+200 {"preview": {"cluster": {"config_path": "/etc/postgresql/18/main/postgresql.conf", "configured_port": 0, "data_directory": "/var/lib/postgresql/18/main", "databases": null, "databases_known": false, "name": "main", "online": true, "owner": "postgres", "port": 5432, "status": "online", "version": "18"}, "config_path": "/etc/postgresql/18/main/postgresql.conf", "config_sha256": "9be471346dabeb3ea2872346c11af1fc6f58c29f11258074b360d0a5b29cebfa", "from": 5432, "line_after": "port = 5434\t\t\t\t# (change requires restart)", "line_before": "port = 5432\t\t\t\t# (change requires restart)", "sessions": null, "sessions_known": true, "to": 5434}, "records": [{"database_id": 1, "domain": "cust1.u1.test", "host": "localhost", "name": "cust1_u1_test_rpg", "port": 5432, "server_id": 2, "subscription_id"
+200 {"changed": true, "from": 5432, "proved": true, "records": 1, "to": 5434}
+   port change answered 20:23:39
+   cluster {"version": "18", "name": "main", "port": 5434, "status": "online", "online": true}
+  +0s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5432 hba=1
+  +6s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +12s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +17s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +23s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +28s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +34s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +39s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +45s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +51s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +56s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  +62s port=5434 key=v2 postgresql:5434(port=5434,data_dir=/var/lib/postgresql/18/main,listen=True,addr=1)  nft=[tcp dport 5434 ip saddr 192.0.3.1 accept;tcp dport 5434 drop;] fw543x=5434 hba=1
+  5434 open after 1 s:   pg tls -> ok TLSv1.3 [49 ms]
+-- 20:24:46 pg_lsclusters
+Ver Cluster Port Status Owner    Data directory              Log file
+18  main    5434 online postgres /var/lib/postgresql/18/main /var/log/postgresql/postgresql-18-main.log
+-- listening
+0.0.0.0:5434 [::]:5434
+-- record /etc/celikpanel/database-remote.json
+  {"applied": "87505dbe893808d8fb127ba60a049c899a5da15659c913d61ece79a3a1c779d0", "targets": {"postgresql:5434": {"active": [{"address": "192.0.3.1/32", "database": "cust1_u1_test_rpg", "user": "cust1_u1_test_rpg_user"}], "addresses": ["192.0.3.1/32"], "auth_delay": true, "data_dir": "/var/lib/postgresql/18/main", "engine": "postgresql", "listen": true, "port": 5434}}, "version": 2}
+-- nft inet celikpanel_dbremote
+  table inet celikpanel_dbremote {
+  	chain input {
+  		type filter hook input priority filter - 10; policy accept;
+  		iif "lo" accept
+  		tcp dport 5434 ip saddr 192.0.3.1 accept
+  		tcp dport 5434 drop
+  	}
+  }
+-- pg_hba CelikPanel block
+  # BEGIN CELIKPANEL REMOTE DATABASE ACCESS (managed by CelikPanel; your own lines go outside this block)
+  hostssl "cust1_u1_test_rpg" "cust1_u1_test_rpg_user" 192.0.3.1/32 scram-sha-256
+  # END CELIKPANEL REMOTE DATABASE ACCESS sha256=8bc7dd659809311f
+-- panel firewall (celikpanel_fw) PostgreSQL ports
+  fw: 9:		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5434 } accept
+  fw 543x lines: 1
+  fw set: 		tcp dport { 22, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 1923, 5434 } accept
+-- postgresql.auto.conf (d72f21677c0c6be3)
+  listen_addresses = '*'
+  shared_preload_libraries = 'auth_delay'
+  auth_delay.milliseconds = '1000'
+-- port in postgresql.conf: port = 5434				# (change requires restart)
+-- live settings (port 5434)
+  start=2026-11-08 20:23:36.369335+00 | listen=* | port=5434 | spl=auth_delay | ssl=on | 
+-- fail2ban jails: 
+-- agent/panel journal (dbremote, last 10 min)
+2026-11-08T20:21:33+00:00 host1.u1.test agent[72658]: 2026/11/08 20:21:33 database remote access: the PostgreSQL cluster recorded on port 5433 runs on port 5432 now; CelikPanel's record follows it
+200 {"access": {"may_edit": true}, "administrator": false, "client": {"host": "host1.u1.test", "port": 5434, "ssl_mode": "require"}, "database": "cust1_u1_test_rpg", "database_id": 1, "engine": "postgresql", "engine_state": {"applied_at": "2026-11-08T20:23:44Z", "close_pending": false, "fail2ban": "unavailable", "filter_ready": true, "known": true, "listen_remote": true, "nft_available": true, "problems": [], "readiness": [], "slow_down": "auth_delay", "state": "open", "tls": "on", "unit": "postgresql@18-main"}, "max_addresses_user": 10, "rules": [{"address": "192.0.3.1", "created_at": "2026-11-08 20:23:23", "expires_at": "", "id": 2, "status": "active", "user": "cust1_u1_test_rpg_user", "user_id": 1}], "users": [{"id": 1, "username": "cust1_u1_test_rpg_user"}], "your_address": "192.0.3.2"}
+  pg tls -> psql: error: connection to server at "192.0.3.200", port 5432 failed: timeout expired [8033 ms]
+== a131 port5434 done 20:24:56
