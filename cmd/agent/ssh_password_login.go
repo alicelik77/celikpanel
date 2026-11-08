@@ -612,9 +612,9 @@ func sshTurnOffAllowed(env sshPasswordLoginEnv, status transport.SSHPasswordLogi
 	if err != nil {
 		return false, "config_unreadable", boundedSSHDetail(err.Error())
 	}
-	first, match := sshdDeciders(directives, sshPasswordSettings)
+	first, _ := sshdDeciders(directives, sshPasswordSettings)
 	for _, setting := range sshPasswordSettings {
-		if line := match[setting]; line != nil {
+		if line := enablingMatchDirective(directives, setting); line != nil {
 			return false, "match_block", directiveDetail(line)
 		}
 		if line := first[setting]; line == nil || line.file != env.dropInPath() {
@@ -625,6 +625,25 @@ func sshTurnOffAllowed(env sshPasswordLoginEnv, status transport.SSHPasswordLogi
 		return false, "no_key_account", ""
 	}
 	return true, "", ""
+}
+
+// enablingMatchDirective is the first Match-block line that can turn the
+// setting on for some connections. A Match block that only says "no" narrows
+// and never opens: on every BIND secondary CelikPanel's own peer-inspector
+// account (/etc/bind-peer-inspector/sshd-match.conf, "Match User celikpeer",
+// PasswordAuthentication no) is such a block, and an owner's restriction is
+// another. Neither blocks the change (lab, alpha.130: a joined Ubuntu 24.04
+// server answered match_block and could never turn passwords off).
+//
+// Yalnız "no" diyen bir Match bloğu daraltır, açmaz; değişikliği engellemez.
+func enablingMatchDirective(directives []sshdDirective, setting string) *sshdDirective {
+	for i := range directives {
+		d := &directives[i]
+		if d.inMatch && d.key == setting && d.value != "no" {
+			return d
+		}
+	}
+	return nil
 }
 
 // --- The change -------------------------------------------------------------------

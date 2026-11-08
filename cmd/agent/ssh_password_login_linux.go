@@ -146,6 +146,15 @@ func publishSSHDropIn(path string, content []byte) error {
 		file.Close()
 		return err
 	}
+	// root:root, like every file sshd reads: the Agent's own group would
+	// otherwise be inherited, and the pinned reader (and the security audit)
+	// refuses a group-owned sshd file, so the status after "turn off" read
+	// "could not be read safely" (lab, alpha.130, Ubuntu 24.04).
+	// root:root: aksi hâlde Agent'ın grubu devralınır ve okuyucu reddeder.
+	if err := file.Chown(0, 0); err != nil {
+		file.Close()
+		return err
+	}
 	if err := file.Chmod(0o644); err != nil {
 		file.Close()
 		return err
