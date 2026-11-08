@@ -10,6 +10,8 @@ import { decodeList, useRemote } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent, type Current } from './CurrentSettings';
 import { PasswordlessMailNotice } from './PasswordlessMailNotice';
 import { OutgoingMailSettings } from './OutgoingMailSettings';
+import { MailRelaySettings } from './MailRelaySettings';
+import { MailServerOptions } from './MailServerOptions';
 import { MailPlanLimits } from './MailPlanLimits';
 import { confirmAction } from '../lib/confirmAction';
 
@@ -215,6 +217,8 @@ export function PostfixManagement({ onBack }: PostfixManagementProps) {
                 </div>
             )}
             <OutgoingMailSettings />
+            <MailRelaySettings />
+            <MailServerOptions />
             <MailPlanLimits />
             <MailPolicySection />
         </ServiceShell>

@@ -122,6 +122,7 @@ func (p *Panel) buildVhostRequest(
 		seenChallengeName[name] = true
 		acmeChallengeNames = append(acmeChallengeNames, name)
 	}
+	var certificateNames []string
 	if sslEnabled && certPath != nil && keyPath != nil && *certPath != "" && *keyPath != "" {
 		info, inspectErr := p.inspectInstalledCertificate(ctx, *certPath, *keyPath)
 		if inspectErr != nil {
@@ -130,6 +131,7 @@ func (p *Panel) buildVhostRequest(
 				inspectErr,
 			)
 		}
+		certificateNames = info.DNSNames
 		if certificateCoversHostname(info.DNSNames, mailName) && !seenChallengeName[mailName] {
 			acmeChallengeNames = append(acmeChallengeNames, mailName)
 		}
@@ -196,6 +198,14 @@ func (p *Panel) buildVhostRequest(
 		return applyVhostRPCRequest{}, fmt.Errorf("read the subscription's traffic limit: %w", err)
 	}
 	req.TrafficLimited = limited
+	// alpha.130: mail programs set themselves up from the site's file when
+	// the domain's mail is on this server (mail_autoconfig.go).
+	if !suspended {
+		req.MailAutoconfig = p.mailAutoconfigRequest(ctx, domainID, certificateNames)
+		if req.MailAutoconfig != nil && req.SSLType == "none" {
+			req.MailAutoconfig.TLS = false
+		}
+	}
 
 	if appPort != nil {
 		req.AppPort = *appPort

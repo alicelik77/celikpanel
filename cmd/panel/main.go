@@ -1878,6 +1878,11 @@ func main() {
 	http.HandleFunc("/api/v1/mail/policy", panel.handleMailPolicy)
 	// alpha.128: outgoing mail limits (administrator) and their notices.
 	http.HandleFunc(mailOutgoingPath, panel.handleMailOutgoing)
+	http.HandleFunc(mailRelayPath, panel.handleMailRelay)
+	http.HandleFunc(mailRelayTestPath, panel.handleMailRelay)
+	http.HandleFunc(mailServerSettingsPath, panel.handleMailServerSettings)
+	http.HandleFunc(mailSubaddressingPath, panel.handleMailServerSettings)
+	http.HandleFunc(mailSenderRulesPath, panel.handleMailServerSettings)
 	http.HandleFunc(mailOutgoingReportPath, panel.handleMailOutgoing)
 	http.HandleFunc(mailOutgoingNoticesPath, panel.handleOutgoingNotices)
 	http.HandleFunc(mailOutgoingNoticesPath+"/", panel.handleOutgoingNotices)

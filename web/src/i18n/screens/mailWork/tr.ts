@@ -4,6 +4,15 @@ import type { MailWorkScreenKey } from './en';
 
 export const trMailWorkScreens: Record<MailWorkScreenKey, string> = {
     'audit.resource.mail_outgoing': 'Giden posta sınırları',
+    'audit.resource.mail_relay': 'Posta aktarma sunucusu',
+    'audit.resource.mail_server_options': 'Posta sunucusu ayarları',
+    'dashboard.audit.action.mail.subaddressing': 'alt adreslemeyi değiştirdi',
+    'dashboard.audit.action.mail.sender.add': 'gönderen listesine kayıt ekledi',
+    'dashboard.audit.action.mail.sender.remove': 'gönderen listesinden kayıt çıkardı',
+    'dashboard.audit.action.mail.relay.settings': 'posta aktarma ayarını değiştirdi',
+    'dashboard.audit.action.mail.relay.test': 'posta aktarmada oturum açmayı denedi',
+    'dashboard.audit.action.mail.autoconfig.site': 'posta programı ayarını açtı',
+    'dashboard.audit.action.mail.autoconfig.dns': 'posta programı DNS kayıtlarını ekledi',
     'dashboard.audit.action.mail.outgoing.mailbox': 'bir posta kutusunun saatlik gönderim sınırını değiştirdi',
     'dashboard.audit.action.mail.outgoing.settings': 'giden posta sınırlarını değiştirdi',
     'dashboard.audit.action.mail.plan.limits': 'bir planın posta sınırlarını değiştirdi',

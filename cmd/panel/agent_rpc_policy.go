@@ -150,7 +150,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.NodePatchesV1 Agent.OSReleaseFactsV1 Agent.RepoConfinePreviewV1 Agent.VendorLanePlanV1
 		Agent.PostgreSQLClustersV1 Agent.PostgreSQLClusterPortPreviewV1 Agent.PostgreSQLSourceCheckV1
 		Agent.SiteCertificateRenewalStateV1 Agent.PanelListenConfigV1 Agent.MailAutoresponderState
-		Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
+		Agent.MailRelayStatusV1 Agent.MailServerSettingsStatusV1 Agent.PasswordlessMailReportV1 Agent.OutgoingMailLimitsStatusV1 Agent.OutgoingMailActivityV1 Agent.MailDeliveryLookupV1
 		Agent.MailPasswordFingerprintV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
@@ -240,6 +240,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.EndMailSessionsV1 Agent.ReconcileMailQuotaV1 Agent.SendAccountMailV1
 		Agent.ApplyOutgoingMailLimitsV1 Agent.EmptyMailboxV1 Agent.SetMailDomainOptionsV1
 		Agent.SetMailPasswordIfUnchangedV1
+		Agent.MailRelayApplyV1 Agent.MailSubaddressingV1 Agent.MailSenderListV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityFilesystem, `
 		Agent.ChmodFile Agent.ClearLogs Agent.CreateFileOrDir Agent.DeleteFileOrDir
@@ -376,6 +377,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.MailDeliveryLookupV1":          agentRPCStandardReadTimeout,
 	"Agent.OutgoingMailActivityV1":        agentRPCStandardReadTimeout,
 	"Agent.OutgoingMailLimitsStatusV1":    agentRPCQuickReadTimeout,
+	"Agent.MailRelayStatusV1":             agentRPCQuickReadTimeout,
+	"Agent.MailServerSettingsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
@@ -448,6 +451,9 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetMailPolicy":                 agentRPCMutationTimeout,
 	"Agent.SetMailDomainOptionsV1":        agentRPCMutationTimeout,
 	"Agent.ApplyOutgoingMailLimitsV1":     agentRPCMutationTimeout,
+	"Agent.MailRelayApplyV1":              agentRPCMutationTimeout,
+	"Agent.MailSubaddressingV1":           agentRPCMutationTimeout,
+	"Agent.MailSenderListV1":              agentRPCMutationTimeout,
 	// alpha.128: doveadm expunge of one mailbox (the Agent bounds it at 9 min).
 	"Agent.EmptyMailboxV1":               agentRPCDatabaseTimeout,
 	"Agent.TogglePHPExtension":           agentRPCMutationTimeout,

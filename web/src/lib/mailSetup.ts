@@ -35,6 +35,59 @@ export interface MailSetup {
     // is available or an older Panel did not say.
     // Web postası bağlantısının neden olmadığı.
     webmail_reason: WebmailReason | null;
+    // Whether mail programs set themselves up (alpha.130); null when an older
+    // Panel did not say or the answer did not read as one.
+    // Posta programlarının kendini ayarlayıp ayarlamadığı.
+    autoconfig: MailAutoconfig | null;
+}
+
+export interface MailAutoconfigRecord {
+    name: string;
+    type: string;
+    content: string;
+    prio?: number;
+    state: 'present' | 'missing' | 'different' | 'unknown';
+}
+
+export interface MailAutoconfig {
+    state: 'on' | 'partial' | 'off' | 'unavailable';
+    reason: string;
+    names: string[];
+    mail_host: string;
+    served: 'yes' | 'no' | 'unknown';
+    secure: 'yes' | 'no' | 'unknown';
+    dns: 'local' | 'remote' | 'external' | '';
+    records: MailAutoconfigRecord[];
+    can_fix: boolean;
+}
+
+const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+    typeof value === 'string' && (allowed as readonly string[]).includes(value) ? value as T : fallback;
+
+export function decodeMailAutoconfig(raw: unknown): MailAutoconfig | null {
+    const value = raw as Record<string, unknown> | null;
+    if (!value || typeof value !== 'object' || typeof value.state !== 'string') return null;
+    const state = oneOf(value.state, ['on', 'partial', 'off', 'unavailable'] as const, 'unavailable');
+    const records = Array.isArray(value.records) ? value.records.flatMap((item): MailAutoconfigRecord[] => {
+        const record = item as Record<string, unknown> | null;
+        if (!record || typeof record.name !== 'string' || typeof record.type !== 'string' || typeof record.content !== 'string') return [];
+        return [{
+            name: record.name, type: record.type, content: record.content,
+            ...(typeof record.prio === 'number' ? { prio: record.prio } : {}),
+            state: oneOf(record.state, ['present', 'missing', 'different', 'unknown'] as const, 'unknown'),
+        }];
+    }) : [];
+    return {
+        state,
+        reason: typeof value.reason === 'string' ? value.reason : '',
+        names: Array.isArray(value.names) ? value.names.filter((n): n is string => typeof n === 'string') : [],
+        mail_host: typeof value.mail_host === 'string' ? value.mail_host : '',
+        served: oneOf(value.served, ['yes', 'no', 'unknown'] as const, 'unknown'),
+        secure: oneOf(value.secure, ['yes', 'no', 'unknown'] as const, 'unknown'),
+        dns: oneOf(value.dns, ['local', 'remote', 'external', ''] as const, ''),
+        records,
+        can_fix: value.can_fix === true,
+    };
 }
 
 export type WebmailReason = 'not_installed' | 'no_address' | 'not_answering';
@@ -62,5 +115,6 @@ export function decodeMailSetup(raw: unknown): MailSetup {
         webmail: setup.webmail_available === true ? webmailLinkOrNull(setup.webmail_url) : null,
         webmail_reason: typeof setup.webmail_reason === 'string' && WEBMAIL_REASONS.includes(setup.webmail_reason)
             ? setup.webmail_reason as WebmailReason : null,
+        autoconfig: decodeMailAutoconfig(setup.autoconfig),
     };
 }

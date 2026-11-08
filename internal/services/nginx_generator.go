@@ -148,6 +148,10 @@ type VhostData struct {
 	// nginx serves itself before handing an address to the application; ""
 	// sends every address to the application, as before.
 	NodePublicRoot string
+	// MailAutoconfig (alpha.130): the domain's mail programs set themselves
+	// up from this site's file (mail_autoconfig.go). Nil renders the file
+	// exactly as before.
+	MailAutoconfig *MailAutoconfig
 }
 
 // Render executes the vhost template over prepared data, deriving the
@@ -229,6 +233,9 @@ func prepareVhostData(data VhostData) (VhostData, error) {
 	if data.NodePublicRoot != "" && (data.ProjectType != "node" ||
 		data.NodePublicRoot != strings.TrimSuffix(data.DocumentRoot, "/")+"/public") {
 		return VhostData{}, fmt.Errorf("the public folder must be the Node.js site's own public/ folder")
+	}
+	if err := prepareMailAutoconfig(&data); err != nil {
+		return VhostData{}, err
 	}
 	data.OwnerIncludeDir = OwnerIncludeDir(data.Domain)
 	data.PanelManagedDir = PanelManagedDir(data.Domain)

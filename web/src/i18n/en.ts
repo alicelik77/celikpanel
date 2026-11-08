@@ -6,6 +6,8 @@ import type { MailOutgoingKey } from './mailOutgoing/en';
 import type { DataToolsKey } from './dataTools/en';
 // alpha.129: connections from outside to a database, loaded with their screen (dbRemote.ts).
 import type { DbRemoteKey } from './dbRemote/en';
+// alpha.130: mail programs that set themselves up and the mail relay (mailConfig.ts).
+import type { MailConfigKey } from './mailConfig/en';
 // English catalog. This file is the source of truth for translation keys:
 // its shape defines the TranslationKey type, and every other locale must
 // provide the same keys.
@@ -597,4 +599,4 @@ export type ScreenKey =
     | LimitsScreenKey
     | MailWorkScreenKey
     | FtpLoginsScreenKey;
-export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey;
+export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;
