@@ -206,6 +206,17 @@ deleted silently.
   block that could turn password sign-in on blocks now. CelikPanel's
   drop-in is now owned by root alone, so the status reads it and "turn
   back on" works (before, it could only be undone by hand).
+- **"Set up now" for mail programs works.** The mailbox screen's button
+  answered "404 page not found" for every domain, so missing autoconfig and
+  Autodiscover records, and the site file of an existing domain, could not
+  be added from the panel. The route now reaches its handler, behind the
+  same mail permission as the other mail changes.
+- **MariaDB's host name lookup stays off after a restart.** When the last
+  remote rule had been removed and a new one added before MariaDB
+  restarted, CelikPanel's option file was written without the agreed
+  `skip-name-resolve` line, so after a reboot every MariaDB rule waited
+  again. With the administrator's agreement the line is now always written;
+  an owner's own setting is still never written over.
 
 ## Lab results
 

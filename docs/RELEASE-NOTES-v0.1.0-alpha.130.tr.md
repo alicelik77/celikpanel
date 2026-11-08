@@ -218,6 +218,17 @@ sessizce silinmez.
   parola girişini açabilecek bir Match bloğu engeller. CelikPanel'in ek
   ayar dosyası artık yalnız root'a ait; böylece durum okunuyor ve "yeniden
   aç" çalışıyor (önceden yalnız elle geri alınabiliyordu).
+- **Posta programları için "Şimdi ayarla" çalışıyor.** Posta kutusu
+  ekranındaki düğme her alan adı için "404 page not found" yanıtı alıyordu;
+  bu yüzden eksik autoconfig ve Autodiscover kayıtları ve var olan bir alan
+  adının site dosyası panelden eklenemiyordu. İstek artık doğru yere
+  ulaşıyor; diğer posta değişiklikleriyle aynı posta iznine bağlı.
+- **MariaDB'nin ad çözmesi yeniden başlatmadan sonra da kapalı kalıyor.**
+  Son dış kural kaldırılıp MariaDB yeniden başlamadan yeni bir kural
+  eklendiğinde CelikPanel'in seçenek dosyası onaylanan `skip-name-resolve`
+  satırı olmadan yazılıyordu; yeniden başlatmadan sonra bütün MariaDB
+  kuralları yeniden bekliyordu. Yönetici onay verdiyse satır artık her
+  zaman yazılıyor; sahibin kendi ayarının üzerine yine asla yazılmıyor.
 
 ## Laboratuvar sonuçları
 
