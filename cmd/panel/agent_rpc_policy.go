@@ -264,6 +264,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.CreateDatabase Agent.DeleteDatabase Agent.ImportCpmoveDatabase
 		Agent.ProvisionDatabaseAdminAccount Agent.RemoveDatabaseAdminAccount
 		Agent.SetPostgreSQLClusterPortV1 Agent.CopyPostgreSQLDatabaseV1 Agent.DropPostgreSQLDatabaseV1
+		Agent.PostgreSQLLeftoverCleanupV1 Agent.RemovePostgreSQLLeftoverV1
 		Agent.SetDatabaseUserSuspensionV1 Agent.RotateDatabaseUserPasswordV1
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
@@ -521,18 +522,21 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.SetPostgreSQLClusterPortV1":     agentRPCDatabaseTimeout,
 	"Agent.CopyPostgreSQLDatabaseV1":       agentRPCDeploymentTimeout,
 	"Agent.DropPostgreSQLDatabaseV1":       agentRPCDatabaseTimeout,
-	"Agent.DeleteSite":                     agentRPCDatabaseTimeout,
-	"Agent.EnsureDKIMKey":                  agentRPCDatabaseTimeout,
-	"Agent.ImportMailAccount":              agentRPCDatabaseTimeout,
-	"Agent.ApplySitePool":                  agentRPCDatabaseTimeout,
-	"Agent.ApplySiteSettingsIncludeV1":     agentRPCDatabaseTimeout,
-	"Agent.SecureDNSZoneV2":                agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV2":                  agentRPCDatabaseTimeout,
-	"Agent.SyncDNSZoneV3":                  agentRPCDatabaseTimeout,
-	"Agent.RecoverDNSZoneV3":               agentRPCDatabaseTimeout,
-	"Agent.SyncMailTLSV2":                  agentRPCMutationTimeout,
-	"Agent.CreateSystemSQLiteSnapshot":     agentRPCDatabaseTimeout,
-	"Agent.OptimizeSystemSQLiteDatabase":   agentRPCDatabaseTimeout,
+	// alpha.130: leftover clusters of removed majors (archive may be large).
+	"Agent.PostgreSQLLeftoverCleanupV1":  agentRPCDatabaseTimeout,
+	"Agent.RemovePostgreSQLLeftoverV1":   agentRPCDeploymentTimeout,
+	"Agent.DeleteSite":                   agentRPCDatabaseTimeout,
+	"Agent.EnsureDKIMKey":                agentRPCDatabaseTimeout,
+	"Agent.ImportMailAccount":            agentRPCDatabaseTimeout,
+	"Agent.ApplySitePool":                agentRPCDatabaseTimeout,
+	"Agent.ApplySiteSettingsIncludeV1":   agentRPCDatabaseTimeout,
+	"Agent.SecureDNSZoneV2":              agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV2":                agentRPCDatabaseTimeout,
+	"Agent.SyncDNSZoneV3":                agentRPCDatabaseTimeout,
+	"Agent.RecoverDNSZoneV3":             agentRPCDatabaseTimeout,
+	"Agent.SyncMailTLSV2":                agentRPCMutationTimeout,
+	"Agent.CreateSystemSQLiteSnapshot":   agentRPCDatabaseTimeout,
+	"Agent.OptimizeSystemSQLiteDatabase": agentRPCDatabaseTimeout,
 
 	// Operations that legitimately run package/application installers.
 	"Agent.ApplyVhosts":                 agentRPCDeploymentTimeout,

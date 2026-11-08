@@ -4523,6 +4523,8 @@ export interface RemovalSimulation {
     /** alpha.108 (D-038 §2): PostgreSQL clusters of this removal that still hold databases, or could not be asked. */
     holds_databases?: string[];
     databases_unknown?: string[];
+    /** alpha.130: PostgreSQL clusters ("16/main") removed with it: their configuration, data and logs. */
+    removes_clusters?: string[];
     /** alpha.108 (D-038 §13): the system's own traces of use outside CelikPanel. */
     traces?: RemovalTraces;
 }
@@ -4552,6 +4554,7 @@ function decodeRemovalSimulation(value: unknown): RemovalSimulation | null {
         ...(v.keeps_data === true ? { keeps_data: true, data_paths: isStrings(v.data_paths) ? v.data_paths : [] } : {}),
         ...(isStrings(v.holds_databases) && v.holds_databases.length > 0 ? { holds_databases: v.holds_databases } : {}),
         ...(isStrings(v.databases_unknown) && v.databases_unknown.length > 0 ? { databases_unknown: v.databases_unknown } : {}),
+        ...(isStrings(v.removes_clusters) && v.removes_clusters.length > 0 ? { removes_clusters: v.removes_clusters } : {}),
         traces: decodeRemovalTraces(v),
     };
 }
@@ -4708,6 +4711,8 @@ export function removalSentences(impact: RemovalImpact): { removed: TranslationK
     } else {
         removed.push('services.removal.removed.packages');
     }
+    // alpha.130: its PostgreSQL clusters go with it, so none stays to claim a port.
+    if (impact.simulation?.removes_clusters?.length) removed.push('services.removal.removed.pgClusters');
     if (impact.all_versions) removed.push('services.removal.removed.allVersions');
     if (impact.mail_filter_rewired) removed.push('services.removal.removed.mailFilter');
     if (impact.database_tools_reconfigured) removed.push('services.removal.removed.databaseTools');
@@ -5092,7 +5097,7 @@ function RemovalImpactSection({
     const removedPart = impact.removal === 'unsupported' ? null : (
         <div data-removal-removed="">
             <p className="font-semibold text-fg">{t(refused ? 'services.removal.wouldTitle' : 'services.removal.removedTitle')}</p>
-            {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name })}</p>)}
+            {sentences.removed.map((key) => <p key={key} className="mt-1 text-fg-muted" data-removal-sentence={key}>{t(key, { name, clusters: simulation?.removes_clusters?.join(', ') ?? '' })}</p>)}
             {findings.details.map((item) => <p key={item.key} className="mt-1 text-fg-muted"><RemovalItemText item={item} /></p>)}
             <div className="mt-2">
                 {simulation?.state === 'checked' && simulation.remove.length > 0

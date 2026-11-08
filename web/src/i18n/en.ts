@@ -85,6 +85,8 @@ import type { OpstepsScreenKey } from './screens/opsteps/en';
 import type { LimitsScreenKey } from './screens/limits/en';
 import type { MailWorkScreenKey } from './screens/mailWork/en';
 import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
+import type { DbConfigScreenKey } from './screens/dbConfig/en';
+import type { PgLeftoversScreenKey } from './screens/pgLeftovers/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -598,5 +600,7 @@ export type ScreenKey =
     | OpstepsScreenKey
     | LimitsScreenKey
     | MailWorkScreenKey
-    | FtpLoginsScreenKey;
+    | FtpLoginsScreenKey
+    | DbConfigScreenKey
+    | PgLeftoversScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

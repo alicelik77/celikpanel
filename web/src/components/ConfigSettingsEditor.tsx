@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useConfigFile, type ConfigFile, type ConfigFileHandle } from '../lib/configFile';
 import type { ConfigItem, ConfigSection, ItemEdit } from '../lib/dbConfigText';
-import { ConfigFileGate, ConfigSaveBar, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, refusalName } from './ConfigFileNotices';
+import { ConfigFileGate, ConfigSaveBar, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, refusalName, revealField, type RefusalTarget } from './ConfigFileNotices';
 import { inputClass } from './ui';
 
 // The settings of one configuration file as a searchable list: each setting
@@ -87,16 +87,50 @@ function SettingsForm({
     const refusedName = refusalName(refusal);
     const refused = (item: ConfigItem) => !!refusal && !!refusalDetail(refusal)
         && (refusedLine >= 0 ? item.line === refusedLine : !!refusedName && item.key === refusedName && (edits.has(item.line) || item.enabled));
-    const placed = sections.some((section) => section.items.some(refused));
+    const holder = sections.find((section) => section.items.some(refused));
+    const refusedItem = holder?.items.find(refused);
+    const placed = !!refusedItem;
 
-    // The section that holds the refused setting opens, so the message next to
-    // the field is on screen.
-    // Reddedilen ayarı tutan bölüm açılır.
+    const term = search.trim().toLowerCase();
+    const matches = (item: ConfigItem) => item.key.toLowerCase().includes(term) || item.description.toLowerCase().includes(term);
+
+    // The refused setting by its name, and its value field (8 Nov 2026: the
+    // reason stood only next to the field, often in a closed section below the
+    // fold). Showing it opens the section that holds it, clears a search that
+    // hides it, and then takes the page there: once for each refusal, and again
+    // from the banner's button. The field is reached after the section has
+    // rendered, so the request waits until the field is on screen.
+    // Reddedilen ayar adıyla ve değer alanı. Göstermek, onu tutan bölümü açar,
+    // onu gizleyen aramayı temizler, sonra sayfayı oraya götürür.
+    const uid = useId();
+    const fieldId = (item: ConfigItem) => `${uid}setting-${item.line}`;
+    const [reveal, setReveal] = useState(0);
+    const revealed = useRef(0);
+    const showRefused = () => {
+        if (!holder || !refusedItem) return;
+        if (term && !matches(refusedItem)) setSearch('');
+        setOpen((before) => ({ ...before, [holder.title]: true }));
+        setReveal((before) => before + 1);
+    };
+    const target: RefusalTarget | undefined = refusedItem
+        ? {
+            label: t('dbconf.target.setting', { name: refusedItem.key }),
+            show: t('dbconf.target.settingShow', { name: refusedItem.key }),
+            id: fieldId(refusedItem),
+            onShow: showRefused,
+        }
+        : undefined;
+    const targetId = target?.id ?? '';
     useEffect(() => {
-        if (!refusal) return;
-        const holder = sections.find((section) => section.items.some(refused));
-        if (holder) setOpen((before) => ({ ...before, [holder.title]: true }));
+        if (refusal) showRefused();
     }, [refusal]);
+    useEffect(() => {
+        if (reveal === revealed.current) return;
+        // A request that outlived its refusal is dropped, so the page never
+        // jumps later when a section is opened by hand.
+        // Reddinden uzun yaşayan istek bırakılır.
+        if (!refusal || !targetId || revealField(targetId)) revealed.current = reveal;
+    }, [reveal, open, search, refusal, targetId]);
 
     const change = (item: ConfigItem, next: ItemEdit) => {
         handle.clearRefusal();
@@ -108,12 +142,11 @@ function SettingsForm({
         });
     };
 
-    const term = search.trim().toLowerCase();
     const shown = term
         ? sections
             .map((section) => ({
                 ...section,
-                items: section.items.filter((item) => item.key.toLowerCase().includes(term) || item.description.toLowerCase().includes(term)),
+                items: section.items.filter(matches),
             }))
             .filter((section) => section.items.length > 0)
         : sections;
@@ -128,7 +161,7 @@ function SettingsForm({
 
     return (
         <>
-            <ConfigSaveNotices handle={handle} file={file} service={service} placed={placed} />
+            <ConfigSaveNotices handle={handle} file={file} service={service} placed={placed} target={target} />
             <input
                 type="search"
                 value={search}
@@ -165,6 +198,7 @@ function SettingsForm({
                                         {section.items.map((item) => (
                                             <SettingRow
                                                 key={item.line}
+                                                id={fieldId(item)}
                                                 item={item}
                                                 edit={edits.get(item.line)}
                                                 onChange={(next) => change(item, next)}
@@ -192,6 +226,7 @@ function SettingsForm({
 }
 
 function SettingRow({
+    id,
     item,
     edit,
     onChange,
@@ -199,6 +234,8 @@ function SettingRow({
     service,
     refusal,
 }: {
+    /** The id of the value field, where a refusal of this setting takes the focus. */
+    id: string;
     item: ConfigItem;
     edit: ItemEdit | undefined;
     onChange: (next: ItemEdit) => void;
@@ -208,7 +245,6 @@ function SettingRow({
 }) {
     const { t } = useI18n();
     const current = edit ?? { value: item.value, enabled: item.enabled };
-    const id = `setting-${item.line}`;
     return (
         <li className={`grid gap-x-4 gap-y-1.5 py-2.5 sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] ${edit ? 'bg-surface-2/60' : ''}`}>
             <label className="flex min-h-[2.75rem] cursor-pointer items-start gap-2.5 py-1 sm:min-h-0">
@@ -228,6 +264,7 @@ function SettingRow({
             </label>
             <div className="min-w-0">
                 <input
+                    id={id}
                     type="text"
                     value={current.value}
                     disabled={disabled || !current.enabled}

@@ -81,6 +81,8 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"enable webmail's own address", mutationPolicyJob("webmail_address", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepEnableWebmailAddress, "roundcube", "mail.example.com", "enable")},
 		{"remove webmail's own address", mutationPolicyJob("webmail_address_remove", "roundcube", "mail.example.com"), mutationPolicyClaim(serviceMutationStepRemoveWebmailAddress, "roundcube", "mail.example.com", "remove")},
 		{"change a PostgreSQL cluster's port", mutationPolicyJob("pg_cluster_port", "pg-17-main", "5440"), mutationPolicyClaim(serviceMutationStepSetPGClusterPort, "pg-17-main", "5440", "port")},
+		{"clean leftover PostgreSQL clusters", mutationPolicyJob("pg_leftover_cleanup", "pg-leftovers", ""), mutationPolicyClaim(serviceMutationStepCleanPGLeftovers, "pg-leftovers", "", "clean")},
+		{"archive and remove a leftover PostgreSQL cluster", mutationPolicyJob("pg_leftover_remove", "pg-16-main", ""), mutationPolicyClaim(serviceMutationStepRemovePGLeftover, "pg-16-main", "", "remove")},
 		{"apply remote database access", mutationPolicyJob("database_remote", "database-remote", ""), mutationPolicyClaim(serviceMutationStepApplyDatabaseRemote, "database-remote", "", "apply")},
 		{"narrow remote database access at the filter", mutationPolicyJob("database_remote", "database-remote", ""), mutationPolicyClaim(serviceMutationStepNarrowDatabaseRemote, "database-remote", "", "narrow")},
 		{"copy a PostgreSQL database", mutationPolicyJob("pg_database_copy", "pgdb-shop", "5432-5433"), mutationPolicyClaim(serviceMutationStepCopyPGDatabase, "pgdb-shop", "5432-5433", "copy")},
@@ -191,6 +193,8 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepUpdateRoundcube,
 		serviceMutationStepMoveAppFilesOwner,
 		serviceMutationStepSetPGClusterPort,
+		serviceMutationStepCleanPGLeftovers,
+		serviceMutationStepRemovePGLeftover,
 		serviceMutationStepCopyPGDatabase,
 		serviceMutationStepDropPGDatabase,
 		serviceMutationStepActivatePanelCertificate,
@@ -457,6 +461,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepRemoveWebmailAddress":     true,
 		"serviceMutationStepMoveAppFilesOwner":        true,
 		"serviceMutationStepSetPGClusterPort":         true,
+		"serviceMutationStepCleanPGLeftovers":         true,
+		"serviceMutationStepRemovePGLeftover":         true,
 		"serviceMutationStepCopyPGDatabase":           true,
 		"serviceMutationStepDropPGDatabase":           true,
 		"serviceMutationStepSetServerHostname":        true,
@@ -521,8 +527,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 50 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=50", len(seenMethods))
+	if len(seenMethods) != 52 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=52", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {

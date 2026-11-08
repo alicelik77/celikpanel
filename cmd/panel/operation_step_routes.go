@@ -94,6 +94,8 @@ func operationStepRouteFor(r *http.Request) (requestIdentityRoute, bool) {
 			return requestIdentityRouteServerReboot, true
 		case sshPasswordLoginPath: // alpha.130: always with an identity
 			return requestIdentityRouteSSHPasswordLogin, true
+		case pgLeftoverAPIPath: // alpha.130: archive and remove a leftover cluster
+			return requestIdentityRoutePGLeftover, true
 		}
 		// alpha.128 ops: G31, installing a request's issued certificate.
 		if rest, ok := strings.CutPrefix(path, certificateRequestsPath+"/"); ok {

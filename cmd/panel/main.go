@@ -1562,6 +1562,10 @@ func main() {
 		milterWiringDeferred = panel.wireMailFiltersSynchronouslyAtStartup()
 	}
 
+	// alpha.130: a removed PostgreSQL major's cluster that holds only what
+	// initdb made is removed once after the start (postgresql_leftovers.go).
+	panel.startPGLeftoverCleanup()
+
 	// Purge expired sessions on startup and then hourly.
 	// Başlangıçta ve sonra saatlik olarak süresi dolmuş oturumları temizle.
 	_ = sessions.DeleteExpired(context.Background())

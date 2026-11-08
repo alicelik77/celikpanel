@@ -25,6 +25,7 @@ import (
 //	GET  /api/v1/service/postgresql/clusters/port-preview who connects and what changes (?version=&name=&port=)
 //	POST /api/v1/service/postgresql/clusters/port         change a cluster's port (pg_cluster_port job)
 //	POST /api/v1/service/postgresql/clusters/records      set the panel's records to a cluster's current port
+//	POST /api/v1/service/postgresql/clusters/leftover     archive and remove a removed major's cluster (alpha.130)
 //	POST /api/v1/service/postgresql/moves                 copy a database to another cluster (pg_database_copy job)
 //	POST /api/v1/service/postgresql/moves/{id}/{action}   switch | switch-back | drop-source | drop-copy
 //
@@ -450,6 +451,8 @@ func (p *Panel) handlePostgreSQLService(w http.ResponseWriter, r *http.Request) 
 		p.handlePGPortChange(w, r)
 	case path == pgClustersAPIPath+"/records" && r.Method == http.MethodPost:
 		p.handlePGRecordsSync(w, r)
+	case path == pgLeftoverAPIPath && r.Method == http.MethodPost:
+		p.handlePGLeftoverRemove(w, r)
 	case path == pgServiceAPIPrefix+"moves" && r.Method == http.MethodPost:
 		p.handlePGCopy(w, r)
 	case pgMovePath.MatchString(path) && r.Method == http.MethodPost:

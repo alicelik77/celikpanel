@@ -240,3 +240,24 @@ func hostFreeBytes(path string) (int64, error) {
 	}
 	return int64(fs.Bavail) * int64(fs.Bsize), nil
 }
+
+// hostPGLeftoverUnitReset makes systemd forget a removed cluster's unit: its
+// failed state and the generator's view of /etc/postgresql (alpha.130).
+// Best effort: a unit that was never loaded has nothing to forget.
+func hostPGLeftoverUnitReset(version, name string) {
+	if !validPGClusterRef(version, name) {
+		return
+	}
+	profile, err := detectHostPlatform()
+	if err != nil {
+		return
+	}
+	systemctl, err := executableForProfile(profile, string(profile.PackageManager), "systemctl")
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, _ = runServiceMutationCombinedOutput(ctx, systemctl, "daemon-reload")
+	_, _ = runServiceMutationCombinedOutput(ctx, systemctl, "reset-failed", "postgresql@"+version+"-"+name+".service")
+}

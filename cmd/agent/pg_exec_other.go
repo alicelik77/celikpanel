@@ -38,3 +38,5 @@ func defaultPGClusterHost() pgClusterHost {
 		freeBytes: func(string) (int64, error) { return 0, errPGClustersLinuxOnly },
 	}
 }
+
+func hostPGLeftoverUnitReset(string, string) {}

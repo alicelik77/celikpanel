@@ -757,6 +757,11 @@ func main() {
 	// service starts, so a deletion re-checked after the update already
 	// meets the new tool.
 	reconcileDNSPeerInspectorToolsAtStartup()
+	// alpha.130: the automatic removal's archives of leftover PostgreSQL
+	// clusters expire after 30 days (pg_leftovers.go).
+	if pruned := pruneExpiredPGAutoArchives(); len(pruned) > 0 {
+		log.Printf("postgresql leftovers: removed expired archives %v", pruned)
+	}
 
 	go runMailHostCertificateRenewalWorker()
 	// alpha.118 (D-044): read the per-site traffic logs every minute.

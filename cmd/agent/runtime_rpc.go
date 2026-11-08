@@ -309,8 +309,24 @@ func (a *Agent) removeNodeVersion(req *NodeRemoveRequest, resp *NodeRemoveRespon
 		resp.Error = fmt.Sprintf("could not remove %s: %v", req.Version, err)
 		return nil
 	}
+	// alpha.130 (no leftovers): the last version takes its empty parent
+	// folder with it; an install makes it again.
+	removeEmptyDir(filepath.Join(runtimesBaseDir, "node"))
 	resp.Removed = true
 	return nil
+}
+
+// removeEmptyDir removes dir when it is a real, empty directory (never a
+// link, never one with anything in it).
+func removeEmptyDir(dir string) bool {
+	info, err := os.Lstat(dir)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	if entries, err := os.ReadDir(dir); err != nil || len(entries) > 0 {
+		return false
+	}
+	return os.Remove(dir) == nil
 }
 
 type NodeLTSRelease = transport.NodeLTSRelease

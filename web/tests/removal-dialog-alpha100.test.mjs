@@ -533,3 +533,26 @@ test('every component is listed on the first visit; a folded category is remembe
     assert.equal(stored['celikpanel.components.collapsed'], '["cache"]');
   } finally { await unmount(); }
 });
+
+// alpha.130: removing PostgreSQL purges its clusters too (configuration, data
+// directory, logs), so none stays behind claiming a port; the dialogue names them.
+test('a PostgreSQL removal names the clusters it removes with it', async () => {
+  const simulation = (removes) => ({ state: 'checked', remove: ['postgresql-16'], collateral: [], bound_tools: [], default_runtime: false, refuses: false, ...(removes ? { removes_clusters: removes } : {}) });
+  const withClusters = decodeRemovalImpact(impact({ packages: ['postgresql-16'], simulation: simulation(['16/main', '16/shop']) }));
+  assert.deepEqual(withClusters.simulation.removes_clusters, ['16/main', '16/shop']);
+  assert.deepEqual(removalSentences(withClusters).removed, ['services.removal.removed.stopUnits', 'services.removal.removed.apt', 'services.removal.removed.pgClusters']);
+  for (const none of [undefined, []]) {
+    const plain = decodeRemovalImpact(impact({ packages: ['postgresql-16'], simulation: simulation(none) }));
+    assert.equal(plain.simulation.removes_clusters, undefined);
+    assert.ok(!removalSentences(plain).removed.includes('services.removal.removed.pgClusters'));
+  }
+  for (const catalogue of [enComponents, trComponents]) assert.match(catalogue['services.removal.removed.pgClusters'], /\{clusters\}.*\/var\/backups\/celikpanel/s);
+  await mount({ impacts: { ...IMPACTS, postgresql: impact({ packages: ['postgresql-16'], simulation: simulation(['16/main', '16/shop']) }) } });
+  try {
+    await openRemoval('postgresql');
+    const sentence = dialog().findAll((node) => node.props && node.props['data-removal-sentence'] === 'services.removal.removed.pgClusters')[0];
+    assert.ok(sentence, 'the clusters sentence is shown');
+    assert.equal(label(sentence), fill(words['services.removal.removed.pgClusters'], { clusters: '16/main, 16/shop' }));
+    assert.ok(dialog().findAll((node) => node.props && node.props['data-removal-sentence'] === 'services.removal.removed.apt').length === 1, 'the purge sentence stays');
+  } finally { await unmount(); }
+});
