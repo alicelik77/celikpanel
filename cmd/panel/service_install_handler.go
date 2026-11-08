@@ -1036,6 +1036,10 @@ func (p *Panel) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	if len(resp.OwnerFilesKept) > 0 {
 		answer["owner_files_kept"] = resp.OwnerFilesKept
 	}
+	if len(resp.OwnerFilesCopied) > 0 {
+		answer["owner_files_copied"] = resp.OwnerFilesCopied
+		answer["owner_files_copy_dir"] = resp.OwnerFilesCopyDir
+	}
 	if len(movedTools) > 0 {
 		answer["moved"] = movedTools
 		answer["moved_to"] = req.MoveToolsTo

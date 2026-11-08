@@ -44,16 +44,22 @@ kept, and the removal's answer names it.
   package manager's simulation shows nothing else needs it (PHP's pgsql
   module does), and CelikPanel's PGDG source, key and pin go when no package
   from PGDG is left.
-- **Owner files are never lost to a purge.** Before any purge (Debian/Ubuntu)
-  the Agent copies aside the owner's files where the purge reaches: the
-  systemd drop-in folders of the component's units and the component's own
-  folders under `/etc` (files no removed package owns and that are not
-  CelikPanel's), and the package configuration files the owner changed. After
-  the purge an owner file the package's script deleted is put back where it
-  was; changed package files are purged as purge means, with a copy kept in
-  `/var/backups/celikpanel/kept/<component>-<time>/`. The answer names them.
-  Arch's `pacman -Rns` (which does not save changed configuration files) is
-  not covered yet.
+- **Owner files are never lost to a purge** (re-verified rule). Only the
+  units' systemd drop-in folders (`/etc/systemd/system/<unit>.service.d`),
+  where owners customise and packages never put their own files, get an
+  owner's file put back after the purge deleted it. The component's own
+  folders (`/etc/postfix`, `/etc/dovecot`, `/etc/postgresql-common`, only
+  when a removed package owns files in them) are emptied and removed:
+  package files, ucf-registered files, the files the maintainer scripts and
+  CelikPanel write (main.cf, master.cf, dynamicmaps.cf, *.proto, virtual,
+  vmailbox, Dovecot's users, createcluster.conf, root.crt, ...) go without a
+  copy; any other file (it may be the owner's) is copied first to
+  `/var/backups/celikpanel/kept/<component>-<time>/` (root only) and the
+  answer says "a copy of N files you may have added is in ...". Package files
+  the owner changed are purged with a copy there. A purge that failed empties
+  nothing. Arch's `pacman -Rns` is not covered yet.
+- Postfix's mail setup checks for Dovecot by its program, not by a leftover
+  `/etc/dovecot` folder.
 
 ## Remaining leftovers (owner decisions)
 

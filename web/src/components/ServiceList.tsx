@@ -1238,12 +1238,18 @@ export function ServiceList({ onManageService }: ServiceListProps) {
             closeUninstallDialog();
             // alpha.130 lab: the owner's own files next to a purged package
             // that were kept are named.
-            const answer = (await answerBody(res)) as { owner_files_kept?: unknown } | null;
+            const answer = (await answerBody(res)) as { owner_files_kept?: unknown; owner_files_copied?: unknown; owner_files_copy_dir?: unknown } | null;
             const ownerKept = Array.isArray(answer?.owner_files_kept) ? answer.owner_files_kept.filter((item): item is string => typeof item === 'string') : [];
+            // Files that may be the owner's in the folders the purge emptied
+            // are not put back; a copy is kept and its folder named.
+            const ownerCopied = Array.isArray(answer?.owner_files_copied) ? answer.owner_files_copied.filter((item): item is string => typeof item === 'string') : [];
+            const copyDir = typeof answer?.owner_files_copy_dir === 'string' ? answer.owner_files_copy_dir : '';
             showToast(
                 'success',
                 nextCleanupAttempt !== null
                     ? t('services.webmailCleanupCompleted')
+                    : ownerCopied.length > 0 && copyDir
+                        ? t('services.uninstalledOwnerCopied', { name: componentName(service, t), n: ownerCopied.length, dir: copyDir, files: ownerKept.join(', ') || '—' })
                     : ownerKept.length > 0
                         ? t('services.uninstalledOwnerKept', { name: componentName(service, t), files: ownerKept.join(', ') })
                         : t('services.uninstalled', { name: componentName(service, t) }),

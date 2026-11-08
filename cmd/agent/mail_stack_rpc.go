@@ -77,7 +77,10 @@ func (a *Agent) ConfigureMailStack(req *ConfigureMailStackRequest, resp *Configu
 	if _, err := exec.LookPath("postconf"); err != nil {
 		hasPostfix = false
 	}
-	hasDovecot := fileExistsAgent("/etc/dovecot")
+	// alpha.130 lab: Dovecot is there when its program is, not when a folder
+	// a removal left behind is (a Postfix install after a Dovecot removal
+	// failed with "Dovecot version could not be verified").
+	hasDovecot := dovecotProgramPresent()
 	if !hasPostfix && !hasDovecot {
 		resp.Error = "no mail server is installed"
 		return nil
