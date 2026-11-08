@@ -189,15 +189,13 @@ func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.Da
 		// The Agent names the instances it closed at the filter.
 		m.closePending, m.closedAt = true, time.Now()
 	}
-	now := filterOpenPorts(m.answer)
-	m.mu.Unlock()
-	if !portSetsEqual(previous, now) {
-		// The panel firewall may refuse while the host is starting too; the
-		// address filter already drops the closed addresses.
-		if err := p.syncFirewall(ctx); err != nil {
-			log.Printf("database remote access: firewall sync after closing at the filter: %v", err)
-		}
+	if !portSetsEqual(previous, filterOpenPorts(m.answer)) {
+		// The panel firewall's port closes at the next full apply, not here:
+		// its sync is a mutation with a lease (alpha.130 lab), and the
+		// address filter already drops every closed address.
+		m.firewallStale = true
 	}
+	m.mu.Unlock()
 }
 
 // databaseRemoteClosePending answers whether the filter was narrowed while

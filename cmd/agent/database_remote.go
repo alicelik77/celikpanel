@@ -159,6 +159,7 @@ func (a *Agent) DatabaseRemoteStatusV1(req *transport.DatabaseRemoteStatusReques
 		instance := dbRemoteInstanceFor(target.Engine)
 		facts := instance.inspect(target, ts)
 		result := describeDBRemoteTarget(target, facts, ts)
+		result.Active = toTransportRules(ts.Active)
 		if facts.running {
 			instance.readiness(target, ts, &result)
 		}
@@ -168,6 +169,7 @@ func (a *Agent) DatabaseRemoteStatusV1(req *transport.DatabaseRemoteStatusReques
 		resp.Targets = append(resp.Targets, result)
 	}
 	resp.PanelFirewallRestores, resp.PanelFirewallNote = panelFirewallGuardReport()
+	resp.AppliedDigest = state.Applied
 	for _, ts := range state.Targets {
 		if len(ts.Addresses) > 0 || ts.Listen || ts.ListenPending {
 			resp.FilterPorts = append(resp.FilterPorts, ts.Port)
@@ -278,6 +280,8 @@ var databaseRemoteHBAReload func(string) error
 
 func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func(string) error, resp *transport.DatabaseRemoteResponse) {
 	databaseRemoteHBAReload = reload
+	// alpha.130: what was asked for, recorded after a clean apply.
+	requested := dbremote.RequestDigest(targets, databaseRemoteMariaDBSkipNameResolve)
 	if err := healDatabaseRemoteCertRoot(); err != nil {
 		log.Printf("database remote access: the certificate folder %s could not be made readable for the engines: %v", databaseRemoteCertRoot, err)
 	}
@@ -372,6 +376,10 @@ func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func
 				ts.Addresses = append(ts.Addresses, p.String())
 			}
 		}
+		ts.Active = fromTransportRules(result.Active)
+		if len(ts.Active) == 0 {
+			ts.Active = nil
+		}
 		state.Targets[t.Key()] = ts
 		if err := saveDatabaseRemoteState(state); err != nil {
 			log.Printf("database remote access: the record could not be saved: %v", err)
@@ -386,6 +394,18 @@ func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func
 	if err := filter(true); err != nil {
 		resp.ErrorCode = transport.DatabaseRemoteFirewallUnchanged
 		resp.Error = "the engines were changed but the address filter could not be updated afterwards (" + err.Error() + "); it still allows only addresses that were listed"
+	}
+	// alpha.130: a restarted panel reads this to send nothing when nothing
+	// changed. Only a clean apply of every named instance counts.
+	applied := ""
+	if resp.Error == "" {
+		applied = requested
+	}
+	if state.Applied != applied {
+		state.Applied = applied
+		if err := saveDatabaseRemoteState(state); err != nil {
+			log.Printf("database remote access: the record could not be saved: %v", err)
+		}
 	}
 }
 
