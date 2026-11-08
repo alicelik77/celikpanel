@@ -179,12 +179,12 @@ func TestServiceHealthGivesCPUShareRestartsAndALiveStatus(t *testing.T) {
 	if len(problems) != 1 || problems[0].Kind != "service_restarting" || problems[0].Value != 4 {
 		t.Fatalf("problems %+v", problems)
 	}
-	observed := overlayLiveServiceStatus([]serviceObservation{{ID: "nginx", IsInstalled: true, Status: "active (running)", Unit: "nginx"}}, now.Add(3*time.Minute))
+	observed, _ := overlayLiveServiceStatus([]serviceObservation{{ID: "nginx", IsInstalled: true, Status: "active (running)", Unit: "nginx"}}, "apt", now.Add(3*time.Minute))
 	if observed[0].Status != "activating (running)" {
 		t.Fatalf("live status %q", observed[0].Status)
 	}
 	// A reading older than three minutes is not used.
-	observed = overlayLiveServiceStatus([]serviceObservation{{ID: "nginx", IsInstalled: true, Status: "active (running)", Unit: "nginx"}}, now.Add(10*time.Minute))
+	observed, _ = overlayLiveServiceStatus([]serviceObservation{{ID: "nginx", IsInstalled: true, Status: "active (running)", Unit: "nginx"}}, "apt", now.Add(10*time.Minute))
 	if observed[0].Status != "active (running)" {
 		t.Fatal("a stale reading replaced the scan")
 	}

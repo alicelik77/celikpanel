@@ -45,6 +45,7 @@ export const enMonitoringScreens = {
     'pnow.reason.checking': 'being read',
     'pnow.reason.unreadable': 'could not be read',
     'pnow.reason.not_scanned': 'not checked yet',
+    'pnow.reason.stale': 'only an old reading, waiting for a new one',
     'pnow.unknownResult': 'Whether {name} started is not known yet. Nothing is sent twice; this list reads its state again.',
     'pnow.startFailed': 'It could not be started. Nothing else was changed. Its page on Components shows the service’s own reason.',
 

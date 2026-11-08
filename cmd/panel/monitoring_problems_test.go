@@ -234,7 +234,10 @@ func TestServiceProblemsListOnlyStoppedDaemonsWithTheirUnit(t *testing.T) {
 		{ID: "bind", IsInstalled: true, Status: "failed", Unit: "named"},
 		{ID: "postfix", IsInstalled: false, Status: "inactive (dead)"},
 	}
-	problems := serviceProblems(observations, core.ManagedServiceHostProfile{PackageFamily: "apt"}, time.Now())
+	problems, unknown := serviceProblems(observations, core.ManagedServiceHostProfile{PackageFamily: "apt"}, time.Now(), nil, time.Now())
+	if unknown != nil {
+		t.Fatalf("a fresh scan is not checked: %+v", unknown)
+	}
 	if len(problems) != 1 || problems[0].Subject != "bind" || problems[0].Unit != "named" ||
 		problems[0].Action.Kind != "start_service" || problems[0].Severity != "critical" {
 		t.Fatalf("problems = %+v", problems)

@@ -40,6 +40,7 @@ export const trMonitoringScreens: Record<MonitoringScreenKey, string> = {
     'pnow.reason.checking': 'okunuyor',
     'pnow.reason.unreadable': 'okunamadı',
     'pnow.reason.not_scanned': 'henüz bakılmadı',
+    'pnow.reason.stale': 'yalnız eski bir okuma var, yenisi bekleniyor',
     'pnow.unknownResult': '{name} hizmetinin başlayıp başlamadığı henüz bilinmiyor. Hiçbir şey iki kez gönderilmez; liste durumunu yeniden okur.',
     'pnow.startFailed': 'Başlatılamadı. Başka hiçbir şey değiştirilmedi. Bileşenler’deki sayfası hizmetin kendi nedenini gösterir.',
 

@@ -300,6 +300,8 @@ interface ServiceRow {
     restarts_last_hour: number;
     memory_bytes?: number;
     cpu?: number;
+    /** alpha.130: the server's own rule (a oneshot "active (exited)" is up). */
+    running?: boolean;
 }
 
 interface ServicesReport {
@@ -346,7 +348,7 @@ export function ServicesSection() {
                             )}
                             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
                                 {value.services.map((service) => {
-                                    const running = service.active_state === 'active';
+                                    const running = typeof service.running === 'boolean' ? service.running : service.active_state === 'active';
                                     const stateText = !known || !service.active_state
                                         ? ''
                                         : running
