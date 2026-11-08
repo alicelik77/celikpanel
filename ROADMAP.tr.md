@@ -142,7 +142,21 @@ bu bölümde öyle yazılır.
    yolu olduğu için önce güvenlik incelemesi; inceleme geçmezse yapılmaz ve
    nedeni yazılır.
 
-**alpha.131 — Uygulama sınırları ve sertleştirme**
+**alpha.131 — Port değişikliğinden sonra veritabanına dışarıdan bağlantı (küçük düzeltme sürümü)**
+Sahip Boston'da PostgreSQL'i 5433'ten 5432'ye taşıdı ve dışarıdan bağlantı durdu (kapalı kaldı,
+hiçbir şey açığa çıkmadı). Kayıt artık kümeyi izliyor, port değişince onunla taşınıyor; sunucu
+anahtarı açıkken müşterilerin adresleri hiçbir zaman yeniden başlatma gerektirmiyor. Bkz. satır 54.
+
+**alpha.132 — Her yerde tek kaydetme biçimi (sahip, 8 Kasım 2026)**
+1. Hiçbir ayar ekranı tıklayınca kaydetmez: bir şey değişince Kaydet açılır, değişen satırlar
+   işaretlenir, Vazgeç geri alır, kaydetmeden çıkarken panelin kendi penceresi sorar.
+2. Veritabanına dışarıdan bağlantı, yönetici sunucuda açtığında hazırlanır ve orada onaylı tek bir
+   yeniden başlatma yapılır; müşteri hiçbir zaman sağlayıcısını beklemez.
+3. Daha anlaşılır ekranlar: PostgreSQL ayarları (geçerli değerler, CelikPanel'in satırları
+   işaretli), Mağaza katalog yönetimi, bir iznin neden eksik olduğu, lisans hizmeti kesintisinin
+   adıyla söylenmesi.
+
+**alpha.133 — Uygulama sınırları ve sertleştirme**
 1. Node.js, Python ve hizmet uygulamaları için bellek ve işlemci sınırı,
    planın tavanları içinde.
 2. Gerçek kullanımdan sınır önerileri (bir site sürekli sınıra dayanıyorsa

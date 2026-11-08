@@ -144,7 +144,20 @@ back, it moves to the next one and is written down here.
    password, so a security review first; if the review does not pass, it is
    not built and the reason is written down.
 
-**alpha.131 — Application limits and hardening**
+**alpha.131 — Remote database access after a port change (small fix release)**
+The owner moved PostgreSQL from 5433 to 5432 on Boston and remote access stopped (closed, nothing
+exposed). The record follows the cluster, a port change moves it, and customers' addresses never
+need a restart while the server switch is on. See row 54.
+
+**alpha.132 — One way of saving everywhere (owner, 8 November 2026)**
+1. No settings screen saves on click: Save turns on when something changed, changed rows are
+   marked, Discard returns, leaving with unsaved changes asks in the panel's own dialog.
+2. Remote database access is prepared when the administrator turns it on for the server, with one
+   confirmed restart there; customers never wait for their provider.
+3. Clearer screens: PostgreSQL settings (effective values, CelikPanel's lines marked), Store
+   catalogue management, the reason a permission is missing, a licence-service outage named as such.
+
+**alpha.133 — Application limits and hardening**
 1. Memory and CPU limits for Node.js, Python and service applications,
    within the plan's ceilings.
 2. Limit hints from real use (a site that keeps hitting a limit is reported
