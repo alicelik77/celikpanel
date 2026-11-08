@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.130.md)
 
+> **Yayımlandı**, 8 Kasım 2026 (UTC): sürüm commit'i `67d6131d5`, GitHub ön sürümü 16:43:42Z, indirme portalı yaklaşık 16:49Z (dış denetim 27/27).
+
 Posta, yol haritasında söz verilen işlere kavuşuyor: kendiliğinden ayarlanan
 posta programları, postayı başka bir sunucu üzerinden gönderme, alt
 adresleme, sunucu genelinde gönderen listesi ve parolası unutulan posta

@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.130.tr.md)
 
+> **Published** on 2026-11-08 (UTC): release commit `67d6131d5`, GitHub pre-release at 16:43:42Z, download portal at about 16:49Z (public check 27/27).
+
 Mail gets the work the roadmap promised: mail programs that set themselves
 up, sending through another server, subaddressing, a server-wide sender
 list, and a recovery address with a reset link for a forgotten mailbox
