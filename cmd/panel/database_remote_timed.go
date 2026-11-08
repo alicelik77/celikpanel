@@ -144,7 +144,7 @@ func databaseRemoteFailing() bool {
 // narrowDatabaseRemote closes at the address filter what targets no longer
 // name (D5). The last answer's rules in force shrink to the wanted ones, so
 // the panel firewall never keeps a port open for an address that left.
-func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.DatabaseRemoteTarget) {
+func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.DatabaseRemoteTarget) bool {
 	// Also with nothing in memory (a Panel that started while the server was
 	// still starting): the Agent's record says what the filter holds, and a
 	// filter that already holds only wanted addresses is left untouched.
@@ -154,7 +154,7 @@ func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.Da
 	already := digest == m.narrowDigest
 	m.mu.Unlock()
 	if already {
-		return
+		return true
 	}
 	answer, err := databaseRemoteNarrowThroughAgent(p, ctx, transport.DatabaseRemoteNarrowRequest{Targets: targets})
 	if err != nil || answer.Error != "" {
@@ -163,7 +163,7 @@ func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.Da
 			detail = err.Error()
 		}
 		log.Printf("database remote access: closing at the address filter did not finish: %s", detail)
-		return
+		return false
 	}
 	wanted := map[string]bool{}
 	for _, t := range targets {
@@ -196,6 +196,7 @@ func (p *Panel) narrowDatabaseRemote(ctx context.Context, targets []transport.Da
 		m.firewallStale = true
 	}
 	m.mu.Unlock()
+	return true
 }
 
 // databaseRemoteClosePending answers whether the filter was narrowed while
