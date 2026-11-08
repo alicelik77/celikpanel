@@ -380,8 +380,12 @@ func TestServerSetupJoinPinnedTLSSendsNothingToAnotherKey(t *testing.T) {
 	if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); err != nil || !bytes.Equal(observed, serverSetupSPKI(leaf)) || bearers.Load() != 2 {
 		t.Fatalf("full pin: %v %x %d", err, observed, bearers.Load())
 	}
-	// Another key gets no bearer and there is no fallback of any kind.
-	for _, pin := range [][]byte{serverSetupSPKIPin(other), serverSetupSPKI(other), append(serverSetupSPKIPin(leaf)[:9:9], 0)} {
+	// Another key gets no bearer and there is no fallback of any kind. The
+	// last pin differs from the right one in its final byte (flipped, not
+	// set to zero: a random leaf ends in zero once in 256 runs).
+	nearPin := append([]byte{}, serverSetupSPKIPin(leaf)...)
+	nearPin[len(nearPin)-1] ^= 0xff
+	for _, pin := range [][]byte{serverSetupSPKIPin(other), serverSetupSPKI(other), nearPin} {
 		target = serverSetupLinkTarget{Address: target.Address, Pin: pin}
 		if err := caller.serverSetupLinkJSON(context.Background(), target, serverSetupPeerNamesPath, "x.y", map[string]string{}, &answer); !errors.Is(err, errServerSetupLinkPinMismatch) || received.Load() != 2 || bearers.Load() != 2 {
 			t.Fatalf("another key must get nothing: %v %d %d", err, received.Load(), bearers.Load())

@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.129.md)
 
+> **Yayımlandı**, 7 Kasım 2026 (UTC): sürüm commit'i `667dba6ba`, GitHub ön sürümü 23:17:29Z, indirme portalı yaklaşık 23:22Z (dış denetim 27/27).
+
 Veritabanları eksik kalan günlük işlerine kavuşuyor: veritabanı kullanıcısı
 için yeni parola, yalnız okuyan ya da okuyup yazan ek kullanıcılar,
 masaüstü araçları için bağlantı rehberi ve daha açık kartlar. Plan izin
