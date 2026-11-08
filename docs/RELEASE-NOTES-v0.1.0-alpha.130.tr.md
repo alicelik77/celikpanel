@@ -186,6 +186,13 @@ sessizce silinmez.
   yapılmıyor. Süresi biten ya da geri çekilen bir adres yine hemen, kilit
   gerektirmeden CelikPanel'in kendi güvenlik duvarı süzgecinden çıkarılarak
   kapatılıyor.
+- **Veritabanına dışarıdan bağlanma panel hâlâ açılırken kapatılabiliyor.**
+  Uzun bir açılış sırasında her değişiklik "panel açılıyor" diye
+  reddediliyordu; kimse bir adresi kaldıramıyor ya da dışarıdan erişimi
+  kapatamıyordu. Bir adresi kaldırmak, ona daha erken bir bitiş vermek ve
+  yöneticinin anahtarı kapatması artık hemen geçiyor ve adresi güvenlik
+  duvarı süzgecinden çıkarıyor; bir şeyi açmak yine açılışın bitmesini
+  bekliyor.
 - **Kendiliğinden kalıntı temizliği kaldırılan PostgreSQL sürümünün
   paketlerini de temizliyor.** Boston benzeri bir Ubuntu sunucusunda eski
   kümenin dosyaları gitmişti ama `dpkg` hâlâ `rc postgresql-16` ve kurulu
@@ -274,6 +281,10 @@ _Laboratuvar turundan sonra doldurulacak._
     izinli kalır (motorlar parolayı yine denetler);
   - sunucu açılışını bitirmemişken bir kaldırma adresi yalnız süzgeçte
     kapatır;
+  - panel hâlâ açılırken plan ya da haklar ekranından erişimi geri çekmek
+    ve süresi biten adreslerin kaldırılması açılışın bitmesini bekler
+    (adresi kaldırmak, daha erken bitiş ve yöneticinin anahtarı kapatması
+    hemen çalışır);
   - `nft flush ruleset` sonrasında yalnız canlı açılmış ("Yeniden başlatma
     için kaydet" yapılmamış) güvenlik duvarı geri kurulmaz;
   - izni geri çekmek erişimi bir sonraki uygulamada kapatır (yaklaşık 35

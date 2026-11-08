@@ -175,6 +175,13 @@ deleted silently.
   when it matches; for 3 minutes after start, and while the server is busy,
   no full apply runs. An ended or withdrawn address is still closed at once
   by removing it from CelikPanel's own firewall filter, which needs no lock.
+- **Remote database access can be closed while the panel is still
+  starting.** During a long start-up every change was refused with "the
+  panel is starting", so nobody could remove an address or turn remote
+  access off. Removing an address, giving it an earlier end and the
+  administrator's switch to off now go through at once and take the
+  address out of the firewall filter; opening anything still waits until
+  the start finishes.
 - **The automatic leftover cleanup also purges the removed PostgreSQL
   version's packages.** On an Ubuntu server like Boston the old cluster's
   files went, but `dpkg` still listed `rc postgresql-16` and an installed
@@ -260,6 +267,10 @@ _To be filled in after the lab round._
     stays allowed (the engines still check the password);
   - while the server has not finished starting, a removal closes the address
     at the filter only;
+  - while the panel is still starting, withdrawing access from the plan or
+    rights screens and the removal of ended addresses wait until the start
+    finishes (removing an address, an earlier end and the administrator's
+    switch to off work at once);
   - after `nft flush ruleset`, a firewall turned on only live (no "Save for
     reboot") is not put back;
   - withdrawing the permission closes access at the next apply (up to about
