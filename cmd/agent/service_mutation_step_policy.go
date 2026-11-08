@@ -41,6 +41,7 @@ const (
 	serviceMutationStepConfineRepo              serviceMutationStepMethod = "Agent.ConfineRepoV1"
 	serviceMutationStepWriteVendorOrigins       serviceMutationStepMethod = "Agent.WriteVendorUpdateOriginsV1"
 	serviceMutationStepSetOSUpdatesMode         serviceMutationStepMethod = "Agent.SetOSUpdatesModeV1"
+	serviceMutationStepSSHPasswordLogin         serviceMutationStepMethod = "Agent.SetSSHPasswordLoginV1"
 	serviceMutationStepVendorLane               serviceMutationStepMethod = "Agent.EnableVendorLaneV1"
 	serviceMutationStepUpdateRoundcube          serviceMutationStepMethod = "Agent.UpdateRoundcubeV1"
 	serviceMutationStepEnableWebmailAddress     serviceMutationStepMethod = "Agent.EnableWebmailAddressV1"
@@ -381,6 +382,13 @@ func serviceMutationStepAllowed(job *ServiceMutationJob, claim serviceMutationSt
 		// alpha.114: the owner's automatic/manual choice for the OS updates.
 		return claim.target == "unattended-upgrades" && claim.packageName == "" && claim.action == "mode" &&
 			serviceMutationJobMatches(job, "os_updates_mode", "unattended-upgrades", "")
+
+	case serviceMutationStepSSHPasswordLogin:
+		// alpha.130: SSH password sign-in turned off or on with CelikPanel's
+		// one drop-in, in its own job; the action is the claim's.
+		return claim.target == sshPasswordLoginTarget && claim.packageName == "" &&
+			(claim.action == "turn_off" || claim.action == "turn_on") &&
+			serviceMutationJobMatches(job, "ssh_password_login", sshPasswordLoginTarget, "")
 
 	case serviceMutationStepVendorLane:
 		// alpha.108: a vendor repository's lane (repository, confinement,

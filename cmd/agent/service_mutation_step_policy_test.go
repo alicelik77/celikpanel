@@ -86,6 +86,8 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		{"drop a moved PostgreSQL database's source", mutationPolicyJob("pg_database_drop", "pgdb-shop", "5432"), mutationPolicyClaim(serviceMutationStepDropPGDatabase, "pgdb-shop", "5432", "drop")},
 		{"add vendor origins to the OS updates", mutationPolicyJob("os_updates_origins", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepWriteVendorOrigins, "unattended-upgrades", "", "origins")},
 		{"choose automatic or manual OS updates", mutationPolicyJob("os_updates_mode", "unattended-upgrades", ""), mutationPolicyClaim(serviceMutationStepSetOSUpdatesMode, "unattended-upgrades", "", "mode")},
+		{"turn SSH password sign-in off", mutationPolicyJob("ssh_password_login", "openssh", ""), mutationPolicyClaim(serviceMutationStepSSHPasswordLogin, "openssh", "", "turn_off")},
+		{"turn SSH password sign-in on", mutationPolicyJob("ssh_password_login", "openssh", ""), mutationPolicyClaim(serviceMutationStepSSHPasswordLogin, "openssh", "", "turn_on")},
 		{"change the panel's own listen port", mutationPolicyJob("panel_port_change", panelListenMutationTarget, "1923"), mutationPolicyClaim(serviceMutationStepSetPanelListen, panelListenMutationTarget, "1923", "port")},
 		{"install node", mutationPolicyJob("runtime_install", "node", "22.14.0"), mutationPolicyClaim(serviceMutationStepInstallNodeVersion, "node", "22.14.0", "install")},
 		{"remove node", mutationPolicyJob("runtime_remove", "node:22.14.0", ""), mutationPolicyClaim(serviceMutationStepRemoveNodeVersion, "node", "22.14.0", "remove")},
@@ -182,6 +184,7 @@ func TestServiceMutationStepPolicyAllowsEveryDeclaredWorkflowRow(t *testing.T) {
 		serviceMutationStepConfineRepo,
 		serviceMutationStepWriteVendorOrigins,
 		serviceMutationStepSetOSUpdatesMode,
+		serviceMutationStepSSHPasswordLogin,
 		serviceMutationStepSetPanelListen,
 		serviceMutationStepVendorLane,
 		serviceMutationStepUpdateRoundcube,
@@ -443,6 +446,7 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		"serviceMutationStepConfineRepo":              true,
 		"serviceMutationStepWriteVendorOrigins":       true,
 		"serviceMutationStepSetOSUpdatesMode":         true,
+		"serviceMutationStepSSHPasswordLogin":         true,
 		"serviceMutationStepInstallJailTools":         true,
 		"serviceMutationStepSetPanelListen":           true,
 		"serviceMutationStepVendorLane":               true,
@@ -514,8 +518,8 @@ func TestServiceMutationPrivilegedCallsitesCarryTypedClaims(t *testing.T) {
 		}
 	}
 
-	if len(seenMethods) != 48 {
-		t.Errorf("production requiredServiceMutationStep claim count=%d want=48", len(seenMethods))
+	if len(seenMethods) != 49 {
+		t.Errorf("production requiredServiceMutationStep claim count=%d want=49", len(seenMethods))
 	}
 	for method := range expectedMethods {
 		if seenMethods[method] == "" {

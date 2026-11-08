@@ -19,6 +19,8 @@ import { isServiceRunning } from '../lib/serviceStatus';
 // alpha.128 ops (G4): panel access and every account's sessions, in their own chunk.
 const PanelAccessCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.PanelAccessCard })));
 const AllSessionsCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.AllSessionsCard })));
+// alpha.130: SSH password sign-in, with its own words, in its own chunk.
+const SSHPasswordLoginCard = lazy(() => import('./SSHPasswordLoginCard').then((module) => ({ default: module.SSHPasswordLoginCard })));
 
 // Server → Security (D-037, owner 2026-10-22): one page that answers "is my
 // server safe?". Nothing here is new: the firewall box that used to open from
@@ -73,6 +75,7 @@ export function SecurityPage() {
                 </div>
                 {/* alpha.107 (D-038 §4): the operating system's own security updates. */}
                 <SecurityUpdatesCard />
+                <Suspense fallback={null}><SSHPasswordLoginCard /></Suspense>
                 <Suspense fallback={null}><PanelAccessCard /></Suspense>
                 <Suspense fallback={null}><AllSessionsCard /></Suspense>
                 <Fail2banStatus />
