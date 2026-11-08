@@ -12,6 +12,7 @@ import {
     ShieldBan, Table2, Wrench, Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { EngineMariaDB, EnginePostgreSQL } from './engineIcons';
 
 export const categoryIcons: Record<string, LucideIcon> = {
     dns: Network,
@@ -32,8 +33,8 @@ const componentIconMap: Record<string, LucideIcon> = {
     python: FileCode2,
     nginx: ArrowLeftRight,
     apache: Feather,
-    postgresql: Database,
-    mariadb: Database,
+    postgresql: EnginePostgreSQL,
+    mariadb: EngineMariaDB,
     phpmyadmin: Table2,
     phppgadmin: Table2,
     postfix: Send,
