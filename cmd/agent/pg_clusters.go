@@ -778,9 +778,21 @@ func pgRemovalHolds(ctx context.Context, host pgClusterHost, major string) (held
 	clusters := parsePGLsClusters(out)
 	selected := clusters[:0]
 	for _, cluster := range clusters {
-		if major == "" || cluster.Version == major {
-			selected = append(selected, cluster)
+		if major != "" && cluster.Version != major {
+			continue
 		}
+		// alpha.130 lab: a removed major's cluster cannot be asked. One
+		// that holds only what initdb made goes with the removal; any other
+		// keeps the owner's data and is archived and removed by the owner's
+		// own choice first.
+		if pgClusterIsLeftover(cluster) {
+			if leftover := classifyPGLeftover(cluster); !leftover.Fresh {
+				held = append(held, pgClusterRef(cluster.Version, cluster.Name)+": data kept from removed PostgreSQL "+cluster.Version+
+					" ("+leftover.Reason+"); archive and remove it on the PostgreSQL page first")
+			}
+			continue
+		}
+		selected = append(selected, cluster)
 	}
 	fillPGClusterFacts(ctx, host, selected)
 	for _, cluster := range selected {

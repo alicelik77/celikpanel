@@ -192,3 +192,104 @@ func purgePGLeftoverPackages(ctx context.Context, sets map[string][]dpkgPackageS
 	sort.Strings(purged)
 	return purged, notes
 }
+
+var (
+	pgWholeRemovalShared = map[string]bool{"postgresql-common": true, "postgresql-client-common": true}
+	pgAnyPackageRe       = regexp.MustCompile(`^postgresql(-[a-z0-9.+-]+)?$`)
+	pgClientOrDocRe      = regexp.MustCompile(`^postgresql-(client|doc)-([0-9]{1,3})$`)
+)
+
+// pgWholeRemovalExtras (alpha.130 lab): a removal of the whole PostgreSQL
+// component also names what earlier removals and installs left: every
+// PostgreSQL package in dpkg state rc, every major's client and
+// documentation, and the shared postgresql-common / postgresql-client-common
+// (a PGDG install names them exactly, which marks them as manually
+// installed, so APT never took them as unused). libpq5 is not named: other
+// programs (PHP's pgsql module) use it. The package manager's simulation
+// still decides: anything else it would take refuses the removal.
+func pgWholeRemovalExtras(states []dpkgPackageState) (packages, prefixes []string) {
+	for _, state := range states {
+		switch {
+		case state.State == "rc" && pgAnyPackageRe.MatchString(state.Name):
+			packages = append(packages, state.Name)
+			if m := pgVersionPackageRe.FindStringSubmatch(state.Name); m != nil {
+				prefixes = append(prefixes, state.Name)
+			}
+		case state.State == "ii" && (pgClientOrDocRe.MatchString(state.Name) || pgWholeRemovalShared[state.Name]):
+			packages = append(packages, state.Name)
+		}
+	}
+	sort.Strings(packages)
+	sort.Strings(prefixes)
+	return packages, prefixes
+}
+
+// pgVendorLibraryPackage is the client library a PGDG install names exactly.
+const pgVendorLibraryPackage = "libpq5"
+
+// pgWholeRemovalFinish runs after the whole PostgreSQL component was purged
+// (alpha.130 lab): the empty /etc/postgresql, /var/lib/postgresql and
+// /var/log/postgresql go (a folder with anything left in it stays, named);
+// the PGDG client library goes when nothing else needs it (the guarded
+// purge refuses otherwise); and when no package from PGDG is left, the
+// PGDG source, key and pin CelikPanel wrote go too. It returns sentences
+// for the removal's answer (a variable for tests).
+var pgWholeRemovalFinish = func(ctx context.Context) []string {
+	var notes []string
+	for _, dir := range []string{pgConfRoot, pgDataRoot, pgLogRoot} {
+		if !realDirectory(dir) {
+			continue
+		}
+		if removeEmptyDir(dir) {
+			continue
+		}
+		if entries, err := os.ReadDir(dir); err == nil {
+			names := make([]string, 0, len(entries))
+			for _, entry := range entries {
+				names = append(names, entry.Name())
+			}
+			notes = append(notes, fmt.Sprintf("%s was kept: it still holds %s", dir, boundedText(strings.Join(names, ", "), 200)))
+		}
+	}
+	installed, err := readDpkgStatusVersions(dpkgStatusPath)
+	if err != nil {
+		return append(notes, "the PGDG repository was kept: the installed packages could not be read")
+	}
+	fromPGDG := func() []string {
+		var names []string
+		for name, versions := range installed {
+			for _, version := range versions {
+				if strings.Contains(version, "pgdg") {
+					names = append(names, name)
+					break
+				}
+			}
+		}
+		sort.Strings(names)
+		return names
+	}
+	if versions := installed[pgVendorLibraryPackage]; len(versions) > 0 && strings.Contains(strings.Join(versions, " "), "pgdg") {
+		request := packageRemovalRequest{Packages: []string{pgVendorLibraryPackage}, ProtectedComponent: catalogueProtectedComponent("apt", packageNameSet([]string{pgVendorLibraryPackage}))}
+		if _, err := pgLeftoverPurge(ctx, request); err != nil {
+			notes = append(notes, "libpq5 from PGDG was kept: "+boundedText(err.Error(), 200))
+		} else if installed, err = readDpkgStatusVersions(dpkgStatusPath); err != nil {
+			return append(notes, "the PGDG repository was kept: the installed packages could not be read")
+		}
+	}
+	if left := fromPGDG(); len(left) > 0 {
+		return append(notes, "the PGDG repository was kept: "+strings.Join(left, ", ")+" still come from it")
+	}
+	if !pathExists(repoSourcePath("pgdg")) {
+		return notes
+	}
+	var resp RepoStatusResponse
+	disableManagedRepo(ctx, "pgdg", &resp)
+	if resp.Error != "" {
+		return append(notes, "the PGDG repository could not be removed: "+boundedText(resp.Error, 200))
+	}
+	note := "CelikPanel's PGDG repository (source, key and pin) was removed"
+	if resp.Confinement != nil {
+		note += "; its pin " + resp.Confinement.PinPath + " was changed outside CelikPanel and was kept"
+	}
+	return append(notes, note)
+}

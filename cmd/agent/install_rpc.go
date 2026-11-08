@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"sort"
@@ -830,10 +831,24 @@ type serviceUninstallOps struct {
 	// in an archive first when they hold anything beyond what initdb made
 	// (their files, after the units stopped), and their own files removed
 	// after the packages are purged. nil keeps the data (tests, previews).
-	postgresqlClusters      func(major string) ([]transport.PostgreSQLCluster, error)
+	postgresqlClusters func(major string) ([]transport.PostgreSQLCluster, error)
+	// dpkgStates reads dpkg's installed and config-files-only packages.
+	dpkgStates              func() ([]dpkgPackageState, error)
 	preparePGClusterRemoval func(transport.PostgreSQLCluster) (archive string, err error)
 	removePGClusterFiles    func(transport.PostgreSQLCluster) ([]string, error)
 	discardPGArchive        func(path string)
+	// ctx bounds the steps after the removal (nil: background).
+	ctx context.Context
+	// keepOwnerFiles copies the owner's files a purge may reach aside
+	// (alpha.130 lab; nil: none, tests and previews).
+	keepOwnerFiles func(component string, packages, units []string) (*ownerFilesKeep, error)
+}
+
+func (o serviceUninstallOps) context() context.Context {
+	if o.ctx == nil {
+		return context.Background()
+	}
+	return o.ctx
 }
 
 func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error) {
@@ -895,7 +910,17 @@ func defaultServiceUninstallOps(ctx context.Context) (serviceUninstallOps, error
 			return preparePGClusterRemoval(cluster, pgClusterHostActive().freeBytes)
 		},
 		removePGClusterFiles: removePGLeftoverFiles,
-		discardPGArchive:     func(path string) { _ = os.Remove(path) },
+		dpkgStates:           func() ([]dpkgPackageState, error) { return readDpkgStates() },
+		ctx:                  ctx,
+		keepOwnerFiles: func(component string, packages, units []string) (*ownerFilesKeep, error) {
+			status, err := os.Open(dpkgStatusPath)
+			if err != nil {
+				return nil, err
+			}
+			defer status.Close()
+			return keepOwnerFiles(component, packages, units, io.LimitReader(status, repoListsReadCap))
+		},
+		discardPGArchive: func(path string) { _ = os.Remove(path) },
 	}, nil
 }
 
@@ -1217,6 +1242,15 @@ func planServiceRemovalWork(svc *core.ManagedService, packageName string, ops se
 		}
 		pkgs = append(pkgs, pgVersionClientPackages(svc, repoPackages, ops.packageInstalled)...)
 		pkgs = append(pkgs, pgMovingPackages(svc, ops.packageInstalled)...)
+		// alpha.130 lab: what earlier removals and a PGDG install left goes
+		// too (rc packages, clients, the shared postgresql-common pair).
+		if svc.ID == "postgresql" && family == "apt" && ops.dpkgStates != nil {
+			if states, err := ops.dpkgStates(); err == nil {
+				extra, extraPrefixes := pgWholeRemovalExtras(states)
+				pkgs = append(pkgs, extra...)
+				prefixes = append(prefixes, extraPrefixes...)
+			}
+		}
 	}
 	pkgs = uniquePackageNames(pkgs)
 
@@ -1347,8 +1381,13 @@ func (a *Agent) uninstallServiceWithOps(
 		// Without the clusters' own steps the data stays (alpha.107).
 		work.request.KeepData = true
 	}
+	var ownerKeep *ownerFilesKeep
+	purges := work.family == "apt" && !work.request.KeepData && ops.keepOwnerFiles != nil
+	keepUnits := append(append(append([]string{}, work.units...), svc.SystemNames...), svc.HelperUnits...)
 	var pgArchives []string
 	discardArchives := func() {
+		ownerKeep.discard()
+		ownerKeep = nil
 		for _, path := range pgArchives {
 			if ops.discardPGArchive != nil {
 				ops.discardPGArchive(path)
@@ -1427,6 +1466,26 @@ func (a *Agent) uninstallServiceWithOps(
 					pgArchives = append(pgArchives, archive)
 				}
 			}
+			// The owner's files where the purge reaches are kept aside.
+			if purges {
+				keep, err := ops.keepOwnerFiles(svc.ID, work.request.Packages, keepUnits)
+				if err != nil {
+					discardArchives()
+					refusal := &packageRemovalRefusal{
+						Code:      errCodeRemovalArchiveFailed,
+						Message:   fmt.Sprintf("your own files next to %s could not be kept aside before the purge (%v); nothing was removed", svc.Name, err),
+						AfterStop: true,
+					}
+					if restartErr := restartStopped(); restartErr != nil {
+						refusal.RestartFailed = restartErr.Error()
+						refusal.Message += fmt.Sprintf("; the services stopped for it could not be started again (%v): start them in Components", restartErr)
+					} else {
+						refusal.Message += "; the services stopped for it were started again"
+					}
+					return refusal
+				}
+				ownerKeep = keep
+			}
 			return nil
 		},
 		restart: func() error {
@@ -1453,6 +1512,12 @@ func (a *Agent) uninstallServiceWithOps(
 			return nil
 		}
 		failUninstallRemoval(resp, err, mutationApplied)
+		if ownerKeep != nil {
+			restored, inPlace, copies, notes := ownerKeep.restore()
+			if detail := keptOwnerFilesDetail(ownerKeep.root, restored, inPlace, copies, notes); detail != "" {
+				resp.Error += "; " + detail
+			}
+		}
 		if len(pgArchives) > 0 {
 			resp.Error += fmt.Sprintf("; the PostgreSQL clusters' files were archived first in %s", strings.Join(pgArchives, ", "))
 		}
@@ -1465,6 +1530,13 @@ func (a *Agent) uninstallServiceWithOps(
 	}
 	resp.Removed = true
 	resp.Detail = fmt.Sprintf("removed %s", strings.Join(removed, ", "))
+	if ownerKeep != nil {
+		restored, inPlace, copies, notes := ownerKeep.restore()
+		resp.OwnerFilesKept = append(append([]string{}, restored...), inPlace...)
+		if detail := keptOwnerFilesDetail(ownerKeep.root, restored, inPlace, copies, notes); detail != "" {
+			resp.Detail += "; " + detail
+		}
+	}
 	// The clusters' own files go after their packages (alpha.130): nothing
 	// of the removed major stays to claim its port or to be edited.
 	for _, cluster := range pgDrop {
@@ -1482,6 +1554,11 @@ func (a *Agent) uninstallServiceWithOps(
 	if len(pgArchives) > 0 {
 		resp.PostgreSQLArchives = append([]string{}, pgArchives...)
 		resp.Detail += "; their files were kept first in " + strings.Join(pgArchives, ", ")
+	}
+	if pgClustersGo && req.Package == "" {
+		for _, note := range pgWholeRemovalFinish(ops.context()) {
+			resp.Detail += "; " + note
+		}
 	}
 	return nil
 }

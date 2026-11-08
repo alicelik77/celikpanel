@@ -123,6 +123,54 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
     // own steps (check, archive, records); the end names the archive.
     // Kaldırılmış sürümden kalan kümeyi arşivle ve kaldır: önce sorulur, sonra
     // sunucunun adımlarıyla izlenir; sonunda arşivin adı söylenir.
+    // alpha.130 lab: one PostgreSQL version is removed from here (the
+    // Components list offers the whole component). The server refuses while
+    // its cluster holds a database, says why, and purges the version with
+    // its cluster's files; the answer names the owner's files it kept.
+    // Tek PostgreSQL sürümü buradan kaldırılır; küme veritabanı tutuyorsa
+    // sunucu nedeniyle reddeder.
+    const installedMajors = Array.from(new Set(value.clusters.filter((cluster) => !cluster.leftover && !cluster.status.includes('binaries_missing')).map((cluster) => cluster.version)));
+    const removeMajor = async (cluster: PGCluster) => {
+        if (archiving) return;
+        const vars = { version: cluster.version, cluster: pgRef(cluster), port: cluster.port };
+        setArchiving(true);
+        try {
+            await confirmAction({
+                title: t('pgc.removeMajor.confirmTitle', vars),
+                message: t('pgc.removeMajor.confirmBody', vars),
+                confirmLabel: t('pgc.removeMajor.action', vars),
+                tone: 'danger',
+                progressTitle: t('pgc.removeMajor.progress', vars),
+                action: async (): Promise<OperationEnd> => {
+                    let end: OperationEnd;
+                    try {
+                        const res = await fetch('/api/v1/service/uninstall', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ service_id: 'postgresql', package: 'postgresql-' + cluster.version }),
+                        });
+                        if (res.ok) {
+                            const body = pgAnswerBody(await res.text());
+                            const kept = Array.isArray(body.owner_files_kept) ? body.owner_files_kept.filter((item): item is string => typeof item === 'string') : [];
+                            end = { state: 'done', message: kept.length > 0 ? t('pgc.removeMajor.doneKept', { ...vars, files: kept.join(', ') }) : t('pgc.removeMajor.done', vars) };
+                        } else {
+                            const problem = await readApiError(res);
+                            end = { state: res.status < 500 ? 'blocked' : 'failed', reason: t('pgc.leftover.unchanged', { reason: apiErrorText(problem, t, 'pgc.removeMajor.failed') }) };
+                        }
+                    } catch {
+                        end = { state: 'unknown', reason: t('pgc.removeMajor.unknown', vars) };
+                    }
+                    setResult(end.state === 'done' ? { tone: 'ok', text: end.message ?? '' } : { tone: end.state === 'blocked' ? 'warn' : 'bad', text: end.reason });
+                    void handle.retry();
+                    invalidate('databases');
+                    invalidate('components');
+                    return end;
+                },
+            });
+        } finally {
+            setArchiving(false);
+        }
+    };
     const archiveLeftover = async (cluster: PGCluster) => {
         if (archiving) return;
         const vars = { cluster: pgRef(cluster), version: cluster.version, name: cluster.name, data: cluster.data_directory, port: cluster.port };
@@ -193,6 +241,7 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
                         onPort={() => setPortFor(cluster)}
                         onMove={() => setMoveFrom(cluster)}
                         onArchive={() => void archiveLeftover(cluster)}
+                        onRemoveMajor={installedMajors.length > 1 && installedMajors.includes(cluster.version) ? () => void removeMajor(cluster) : undefined}
                         archiving={archiving || operation.locked}
                     />
                 ))}
@@ -245,7 +294,7 @@ function ClustersBody({ value, handle }: { value: PGClusters; handle: RemoteHand
     );
 }
 
-function ClusterRow({ cluster, records, canMove, onPort, onMove, onArchive, archiving }: { cluster: PGCluster; records: PGRecord[]; canMove: boolean; onPort: () => void; onMove: () => void; onArchive: () => void; archiving: boolean }) {
+function ClusterRow({ cluster, records, canMove, onPort, onMove, onArchive, onRemoveMajor, archiving }: { cluster: PGCluster; records: PGRecord[]; canMove: boolean; onPort: () => void; onMove: () => void; onArchive: () => void; onRemoveMajor?: () => void; archiving: boolean }) {
     const { t } = useI18n();
     // alpha.127: a removed major whose data was kept ("down,binaries_missing")
     // cannot be started; it says what it is, where the data is, and how the
@@ -307,6 +356,11 @@ function ClusterRow({ cluster, records, canMove, onPort, onMove, onArchive, arch
                 <div className="mt-3 flex flex-wrap gap-2">
                     <Button onClick={onPort} disabled={!cluster.online} icon={Network} className="max-sm:min-h-11" data-pg-port-offer="">{t('pgc.port.offer')}</Button>
                     <Button onClick={onMove} disabled={!canMove} icon={ArrowRightLeft} className="max-sm:min-h-11" data-pg-move-offer="">{t('pgc.move.offer')}</Button>
+                    {onRemoveMajor && (
+                        <Button onClick={onRemoveMajor} disabled={archiving} icon={Trash2} className="max-sm:min-h-11" data-pg-remove-major={cluster.version}>
+                            {t('pgc.removeMajor.action', { version: cluster.version })}
+                        </Button>
+                    )}
                 </div>
             )}
             {leftover ? null : removed
