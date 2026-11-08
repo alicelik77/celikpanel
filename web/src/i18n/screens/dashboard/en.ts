@@ -547,6 +547,17 @@ export const enDashboardScreens = {
     'dashboard.audit.action.vpn.peer.remove': 'removed the VPN peer {target}',
     'dashboard.audit.action.vpn.setup': 'set up the VPN',
     'dashboard.audit.action.vpn.sync': 'synchronised the VPN peers',
+    // alpha.130: the mail server settings' audit words (moved out of the
+    // mailWork part, which is at its budget).
+    'audit.resource.mail_relay': 'Mail relay',
+    'audit.resource.mail_server_options': 'Mail server settings',
+    'dashboard.audit.action.mail.subaddressing': 'changed subaddressing',
+    'dashboard.audit.action.mail.sender.add': 'added a sender list entry',
+    'dashboard.audit.action.mail.sender.remove': 'removed a sender list entry',
+    'dashboard.audit.action.mail.relay.settings': 'changed the mail relay',
+    'dashboard.audit.action.mail.relay.test': 'tested the sign-in to the mail relay',
+    'dashboard.audit.action.mail.autoconfig.site': 'turned on mail program set-up',
+    'dashboard.audit.action.mail.autoconfig.dns': 'added mail program set-up DNS records',
 } as const;
 
 export type DashboardScreenKey = keyof typeof enDashboardScreens;

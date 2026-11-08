@@ -4,15 +4,6 @@
 // A part of its own so the dashboard and mail parts keep their budgets.
 export const enMailWorkScreens = {
     'audit.resource.mail_outgoing': 'Outgoing mail limits',
-    'audit.resource.mail_relay': 'Mail relay',
-    'audit.resource.mail_server_options': 'Mail server settings',
-    'dashboard.audit.action.mail.subaddressing': 'changed subaddressing',
-    'dashboard.audit.action.mail.sender.add': 'added a sender list entry',
-    'dashboard.audit.action.mail.sender.remove': 'removed a sender list entry',
-    'dashboard.audit.action.mail.relay.settings': 'changed the mail relay',
-    'dashboard.audit.action.mail.relay.test': 'tested the sign-in to the mail relay',
-    'dashboard.audit.action.mail.autoconfig.site': 'turned on mail program set-up',
-    'dashboard.audit.action.mail.autoconfig.dns': 'added mail program set-up DNS records',
     'dashboard.audit.action.mail.outgoing.mailbox': 'changed a mailbox’s hourly sending limit',
     'dashboard.audit.action.mail.outgoing.settings': 'changed the outgoing mail limits',
     'dashboard.audit.action.mail.plan.limits': 'changed a plan’s mail limits',

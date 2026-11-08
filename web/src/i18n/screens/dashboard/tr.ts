@@ -528,4 +528,15 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.vpn.peer.remove': '{target} VPN eşini kaldırdı',
     'dashboard.audit.action.vpn.setup': 'VPN’i kurdu',
     'dashboard.audit.action.vpn.sync': 'VPN eşlerini eşitledi',
+    // alpha.130: the mail server settings' audit words (moved out of the
+    // mailWork part, which is at its budget).
+    'audit.resource.mail_relay': 'Posta aktarma sunucusu',
+    'audit.resource.mail_server_options': 'Posta sunucusu ayarları',
+    'dashboard.audit.action.mail.subaddressing': 'alt adreslemeyi değiştirdi',
+    'dashboard.audit.action.mail.sender.add': 'gönderen listesine kayıt ekledi',
+    'dashboard.audit.action.mail.sender.remove': 'gönderen listesinden kayıt çıkardı',
+    'dashboard.audit.action.mail.relay.settings': 'posta aktarma ayarını değiştirdi',
+    'dashboard.audit.action.mail.relay.test': 'posta aktarmada oturum açmayı denedi',
+    'dashboard.audit.action.mail.autoconfig.site': 'posta programı ayarını açtı',
+    'dashboard.audit.action.mail.autoconfig.dns': 'posta programı DNS kayıtlarını ekledi',
 };
