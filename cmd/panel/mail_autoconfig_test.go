@@ -185,3 +185,19 @@ func TestMailSetupAnswerCarriesTheAutoconfigStateAndTheSameMailHost(t *testing.T
 		t.Fatalf("all served = %+v", view)
 	}
 }
+
+// Lab, alpha.130: "Set up now" answered 404 because the dispatcher's list of
+// domain sub-routes did not name mail/autoconfig.
+func TestMailAutoconfigRouteReachesTheHandler(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/domains/7/mail/autoconfig", nil)
+	match, ok := matchDomainSubroute(request)
+	if !ok || match.kind != "mail" || match.domainID != 7 || !routeAllows(http.MethodPost, match.methods) {
+		t.Fatalf("POST mail/autoconfig matched %+v, %v", match, ok)
+	}
+	if routeAllows(http.MethodGet, match.methods) {
+		t.Fatalf("GET mail/autoconfig is allowed: %+v", match.methods)
+	}
+	if _, guarded := requestIdentityRouteFor(request); !guarded {
+		t.Fatal("POST mail/autoconfig is not a guarded operation route")
+	}
+}
