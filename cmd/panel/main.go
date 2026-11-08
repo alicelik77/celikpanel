@@ -438,6 +438,11 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}
 	case "mail/quota", "mail/rbl", "mail/setup", "mail/auth":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodOptions}
+	case "mail/autoconfig":
+		// alpha.130: "Set up now" for mail programs (the site file again and
+		// the missing DNS records). Without this key the dispatcher answered
+		// 404 and the button on the mailbox screen never worked (lab).
+		match.kind, match.methods = "mail", []string{http.MethodPost, http.MethodOptions}
 	case "mail/forwardings":
 		match.kind, match.methods = "mail", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
 	case "mail/auth/dkim", "mail/auth/apply", "mail/auth/automatic":
