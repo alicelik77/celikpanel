@@ -80,9 +80,11 @@ func (h *fakeSSHHost) env() sshPasswordLoginEnv {
 			info, err := os.Stat(m(path))
 			return err == nil && info.IsDir()
 		},
-		unit:   "ssh",
-		passwd: func() ([]byte, error) { return []byte("root:x:0:0:root:/root:/bin/bash\nubuntu:x:1000:1000::/home/ubuntu:/bin/bash\nwww-data:x:33:33::/var/www:/usr/sbin/nologin\n"), nil },
-		group:  func() ([]byte, error) { return []byte("root:x:0:\nsudo:x:27:ubuntu\nubuntu:x:1000:\n"), nil },
+		unit: "ssh",
+		passwd: func() ([]byte, error) {
+			return []byte("root:x:0:0:root:/root:/bin/bash\nubuntu:x:1000:1000::/home/ubuntu:/bin/bash\nwww-data:x:33:33::/var/www:/usr/sbin/nologin\n"), nil
+		},
+		group: func() ([]byte, error) { return []byte("root:x:0:\nsudo:x:27:ubuntu\nubuntu:x:1000:\n"), nil },
 		keyFile: func(file, home string, uid int, strict bool) ([]byte, bool) {
 			if file != filepath.Join(home, ".ssh/authorized_keys") {
 				return nil, false
@@ -178,7 +180,7 @@ func (h *fakeSSHHost) leftovers() []string {
 func TestCloudInitPasswordYesIsShownWithTheFileThatDecides(t *testing.T) {
 	// Boston: 50-cloud-init.conf says yes and is read before 60's no.
 	h := newFakeSSHHost(t, debianMain, map[string]string{
-		"50-cloud-init.conf":         "PasswordAuthentication yes\n",
+		"50-cloud-init.conf":        "PasswordAuthentication yes\n",
 		"60-cloudimg-settings.conf": "PasswordAuthentication no\n",
 	})
 	status := sshPasswordLoginStatus(context.Background(), h.env())
