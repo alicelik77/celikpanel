@@ -50,10 +50,10 @@ updates installed panels, from the panel's own update screen.**
   answer to a request is the same for every address. A transfer of the
   domain, or a domain deleted and added again, voids the address. A written
   security review came first (docs/MAILBOX-RECOVERY-REVIEW.md).
-- **A manual sending stop outlives a password change.** Until now any
-  password change reopened a stopped mailbox, also one the administrator or
-  reseller had stopped by hand. Only a security stop (spike, refusals) ends
-  with a password change now; the screen says who reopens a manual stop.
+- **A manual sending stop will outlive a password change.** No screen sets a
+  manual stop yet, but the rule was wrong in waiting: any password change
+  would have reopened it. Only a security stop (spike, refusals) ends with a
+  password change now; the screen says who reopens a manual stop.
 
 ## Connecting to a database from outside
 

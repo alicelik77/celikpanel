@@ -53,11 +53,11 @@ panelleri yalnız sahip, panelin kendi güncelleme ekranından günceller.**
   verilen yanıt her adres için aynıdır. Alan adının devri ya da silinip
   yeniden eklenmesi kurtarma adresini geçersiz kılar. Önce yazılı bir
   güvenlik incelemesi yapıldı (docs/MAILBOX-RECOVERY-REVIEW.md).
-- **Elle durdurulan gönderim parola değişikliğiyle açılmıyor.** Şimdiye dek
-  her parola değişikliği durdurulmuş bir kutuyu yeniden açıyordu; yöneticinin
-  ya da bayinin elle durdurduğu kutuyu da. Artık parola değişikliği yalnız
-  güvenlik durdurmasını (ani artış, retler) kaldırır; ekran elle durdurulan
-  gönderimi kimin açacağını söyler.
+- **Elle durdurulan gönderim parola değişikliğiyle açılmayacak.** Elle
+  durdurma henüz hiçbir ekrandan yapılamıyor, ama kural ileriye dönük
+  yanlıştı: her parola değişikliği onu da açardı. Artık parola değişikliği
+  yalnız güvenlik durdurmasını (ani artış, retler) kaldırır; ekran elle
+  durdurulan gönderimi kimin açacağını söyler.
 
 ## Veritabanına dışarıdan bağlanma
 
