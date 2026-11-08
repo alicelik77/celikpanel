@@ -672,8 +672,14 @@ func mariadbPlanNameResolve(wantOpen bool, s mariadbRemoteSettings, ownSkip bool
 	case ownerValue == "lookup_on":
 		return mariadbNameResolvePlan{code: transport.DatabaseRemoteOwnerNameResolve,
 			detail: ownerFile + " turns MariaDB's host name lookup on (skip-name-resolve off); CelikPanel does not change your setting"}
-	case s.skipNameResolve && !ownSkip:
-		// Off already, by the owner (or MariaDB's own build): nothing to do.
+	case s.skipNameResolve && !ownSkip && (ownerValue == "lookup_off" || !databaseRemoteMariaDBSkipNameResolve):
+		// Off already, by the owner's option file (or MariaDB's own build,
+		// without the administrator's agreement): nothing to do. With the
+		// agreement and no owner setting, the running value may still be the
+		// one of CelikPanel's own earlier file (the last rule removed it,
+		// MariaDB keeps the value until it restarts): the line is written
+		// again, or the next restart turns the lookup back on and every
+		// MariaDB rule waits (lab, alpha.130).
 		return mariadbNameResolvePlan{}
 	case !databaseRemoteMariaDBSkipNameResolve:
 		if ownSkip && s.skipNameResolve {

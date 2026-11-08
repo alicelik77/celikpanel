@@ -63,6 +63,34 @@ func TestMariaDBHostNameLookupGoesOffWithTheAgreement(t *testing.T) {
 	}
 }
 
+// Lab, alpha.130: the last rule removed CelikPanel's file while MariaDB kept
+// the lookup off until its next start; a rule added then found the running
+// value off and wrote the file without the line, so after the next restart
+// the lookup was on again and every MariaDB rule waited, although the
+// administrator had agreed. With the agreement the line is written again.
+func TestMariaDBHostNameLookupLineComesBackWithTheNextRule(t *testing.T) {
+	f := &fakeMariaDB{accounts: map[string]bool{"shop_u@localhost": true}, nameLookup: "1"}
+	files := withFakeMariaDB(t, f)
+	databaseRemoteMariaDBSkipNameResolve = true
+	ts := dbremote.TargetState{Engine: "mysql", Port: 3306}
+	result := mariadbRemoteInstance{}.apply(mariadbShopRule(), dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if !dbremote.MariaDBOptionFileSkipsNameResolve(string(files[dbremote.MariaDBOptionFileDebian])) || !ts.SkipNameResolve {
+		t.Fatalf("the line was not written again: option file = %q, record %+v", files[dbremote.MariaDBOptionFileDebian], ts)
+	}
+	if result.NameResolve != "off" || len(result.Active) != 1 {
+		t.Fatalf("state %s, name %s, active %v, problems %+v", result.State, result.NameResolve, result.Active, result.Problems)
+	}
+	// Without the agreement a running value that is already off (MariaDB's
+	// build or an earlier file) is left alone and nothing is written.
+	delete(files, dbremote.MariaDBOptionFileDebian)
+	databaseRemoteMariaDBSkipNameResolve = false
+	ts = dbremote.TargetState{Engine: "mysql", Port: 3306}
+	mariadbRemoteInstance{}.apply(mariadbShopRule(), dbRemoteFacts{running: true, listenRemote: true}, &ts, "")
+	if dbremote.MariaDBOptionFileSkipsNameResolve(string(files[dbremote.MariaDBOptionFileDebian])) || ts.SkipNameResolve {
+		t.Fatal("the lookup line was written without the administrator's agreement")
+	}
+}
+
 // An account written with a host name would stop working: the lookup stays
 // on and the administrator is shown which accounts.
 func TestMariaDBHostNameLookupStaysOnForHostNameAccounts(t *testing.T) {
