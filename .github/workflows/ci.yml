@@ -255,8 +255,18 @@ jobs:
           - shard: C, except the control-plane tests
             pattern: '^TestC'
             skip: '^TestControlPlane'
+          # Control plane was split (alpha.130): with -race its job took
+          # 371 s on alpha.129 and passed the 8-minute ceiling on the alpha.130
+          # candidate (three more migrations for every database the tests
+          # build). Measured without -race on one machine (40 tests, 83 s):
+          # the restore tests 47 s, the archive tests 36 s, the rest under
+          # 1 s. The complement keeps the status-check name "Control plane"
+          # and the broad pattern.
           - shard: Control plane
             pattern: '^TestControlPlane'
+            skip: '^TestControlPlaneRestore'
+          - shard: Control plane, restore
+            pattern: '^TestControlPlaneRestore'
             skip: ''
           - shard: D, except every DNS test
             pattern: '^TestD'
