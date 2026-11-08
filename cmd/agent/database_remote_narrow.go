@@ -44,15 +44,13 @@ func (a *Agent) NarrowDatabaseRemoteFilterV1(req *transport.DatabaseRemoteNarrow
 		resp.ErrorCode, resp.Error = transport.DatabaseRemoteFailed, err.Error()+"; nothing was changed"
 		return nil
 	}
-	_, finishStep, err := a.requiredServiceMutationStep(
-		req.ServiceMutationBinding,
-		newServiceMutationStepClaim(serviceMutationStepNarrowDatabaseRemote, databaseRemoteMutationTarget, "", "narrow"),
-	)
-	if err != nil {
-		resp.ErrorCode, resp.Error = transport.DatabaseRemoteFailed, "closing at the filter is blocked: "+err.Error()
-		return nil
-	}
-	defer finishStep()
+	// No service-mutation lease (alpha.130 lab: a lease held at panel start
+	// made a release recovery's idle check refuse its rollback). This only
+	// takes addresses out of CelikPanel's own nft table and record, under
+	// the same lock as every remote access apply and the guard script's
+	// flock: it touches nothing a release update, rollback or package
+	// operation reads or writes, and an interruption leaves either the old
+	// or the new file (atomic replace), which the guard loads again.
 	databaseRemoteMu.Lock()
 	defer databaseRemoteMu.Unlock()
 	narrowDatabaseRemoteFilter(targets, resp)
@@ -130,6 +128,15 @@ func narrowDatabaseRemoteFilter(targets []dbremote.Target, resp *transport.Datab
 				}
 			}
 			ts.Addresses = kept
+			if narrowed {
+				var active []dbremote.Rule
+				for _, r := range ts.Active {
+					if p, err := netip.ParsePrefix(r.Address); err == nil && allowed[key][p] {
+						active = append(active, r)
+					}
+				}
+				ts.Active = active
+			}
 			state.Targets[key] = ts
 			if narrowed {
 				// Named in the answer: closed at the filter, the engine's
@@ -147,6 +154,8 @@ func narrowDatabaseRemoteFilter(targets []dbremote.Target, resp *transport.Datab
 		resp.FilterLoaded = databaseRemoteFilterLoaded(nftPath)
 		return
 	}
+	// A partial change: the record no longer matches a full apply.
+	state.Applied = ""
 	text, err := dbremote.NFTFile(ports)
 	if err == nil && text == "" {
 		err = errors.New("the narrowed filter would be empty")

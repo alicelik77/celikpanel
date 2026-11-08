@@ -603,6 +603,8 @@ func TestDatabaseRemoteKicksAreCoalesced(t *testing.T) {
 	previousDelay, previousGap := databaseRemoteKickDelay, databaseRemoteForcedGap
 	databaseRemoteKickDelay, databaseRemoteForcedGap = 100*time.Millisecond, time.Hour
 	t.Cleanup(func() { databaseRemoteKickDelay, databaseRemoteForcedGap = previousDelay, previousGap })
+	// alpha.130: past the start-up window, on a quiet server.
+	dbrStartWindow(t, 0, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := p.startDatabaseRemoteSync(ctx)
 	// Cleanups run last-in first-out: the loop has stopped before the

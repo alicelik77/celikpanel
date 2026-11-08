@@ -59,6 +59,9 @@ type databaseRemoteState struct {
 	// narrowDigest: the wanted set the filter was last narrowed to; the
 	// same set is not sent again while the full apply keeps failing.
 	narrowDigest string
+	// firewallStale: a narrowing changed the ports with rules in force; the
+	// next full apply syncs the panel firewall.
+	firewallStale bool
 	// firewallRestores is the Agent's count of panel firewall restores
 	// after a flush (D6), firewallNote why it was not restored.
 	firewallRestores      int
@@ -68,14 +71,13 @@ type databaseRemoteState struct {
 
 var databaseRemoteMemory = &databaseRemoteState{kick: make(chan struct{}, 1)}
 
-// databaseRemoteNarrowThroughAgent closes at the address filter (D5), in its
-// own durable job (swapped by tests).
+// databaseRemoteNarrowThroughAgent closes at the address filter (D5). It
+// takes no durable job and no service-mutation lease (alpha.130 lab: a lease
+// held at panel start made a release recovery refuse its rollback): the Agent
+// only takes addresses out of CelikPanel's own nft table (swapped by tests).
 var databaseRemoteNarrowThroughAgent = func(p *Panel, ctx context.Context, req transport.DatabaseRemoteNarrowRequest) (transport.DatabaseRemoteResponse, error) {
 	var response transport.DatabaseRemoteResponse
-	err := p.withStandaloneAgentMutation(ctx, "database_remote", "database-remote", "", func(callCtx context.Context, binding agentMutationBinding) error {
-		req.ServiceMutationBinding = binding
-		return p.callAgentContext(callCtx, "Agent.NarrowDatabaseRemoteFilterV1", &req, &response)
-	})
+	err := p.callAgentContext(ctx, "Agent.NarrowDatabaseRemoteFilterV1", &req, &response)
 	return response, err
 }
 
@@ -392,7 +394,11 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 	reportOperationStep(ctx, "firewall")
 	// Only when the open ports changed (re-review): a forced apply alone
 	// never re-syncs the firewall.
-	if !portSetsEqual(filterOpenPorts(previous), filterOpenPorts(answer)) {
+	m.mu.Lock()
+	stale := m.firewallStale
+	m.firewallStale = false
+	m.mu.Unlock()
+	if stale || !portSetsEqual(filterOpenPorts(previous), filterOpenPorts(answer)) {
 		if err := p.syncFirewall(ctx); err != nil {
 			log.Printf("database remote access: firewall sync: %v", err)
 			answer.Error = strings.TrimSpace(answer.Error + " The panel firewall could not be updated (" + err.Error() + "); the database port may stay closed until it is.")
@@ -478,9 +484,20 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) <-chan struct{} {
 		defer ticker.Stop()
 		ticks := 0
 		var lastForced time.Time
+		startedAt := databaseRemoteNow()
 		run := func(force bool) {
 			runCtx, cancel := context.WithTimeout(ctx, agentRPCMutationTimeout+time.Minute)
 			defer cancel()
+			// alpha.130 lab: at start (and while the server is busy) the
+			// loop takes no service-mutation lease; a release recovery's idle
+			// check must never wait on it. What must close (an ended rule, a
+			// withdrawn permission) closes at the address filter, which takes
+			// no lease; opening and the engines' own changes follow once the
+			// start-up window is over and the server is quiet.
+			if !p.databaseRemoteMayMutate(runCtx, startedAt) {
+				p.closeDatabaseRemoteWithoutLease(runCtx)
+				return
+			}
 			rows := 0
 			_ = p.db.GetDB().QueryRowContext(runCtx, `SELECT COUNT(*) FROM database_remote_rules`).Scan(&rows)
 			m := databaseRemoteMemory
@@ -506,6 +523,9 @@ func (p *Panel) startDatabaseRemoteSync(ctx context.Context) <-chan struct{} {
 			}
 		}
 		p.sweepExpiredDatabaseRemoteRules(ctx)
+		// Read only: a server that already carries the wanted set is
+		// recognised, so nothing is sent at start.
+		p.seedDatabaseRemoteFromStatus(ctx)
 		run(false)
 		for {
 			select {

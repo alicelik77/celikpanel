@@ -41,12 +41,12 @@ type DatabaseRemoteApplyRequest struct {
 }
 
 // DatabaseRemoteNarrowRequest (alpha.130, D5) narrows the address filter to
-// the addresses of Targets' rules: an address or port leaves it, nothing is
-// ever added. It runs no engine client and no package or service manager,
-// so it also works while the server has not finished starting, when the
-// full apply is refused; the engines' own rules follow at the next apply.
+// the addresses of Targets' rules: an address leaves it, nothing is ever
+// added. It runs no engine client and no package or service manager, takes
+// no service-mutation lease (so it never holds back a release recovery's
+// idle check) and also works while the server has not finished starting;
+// the engines' own rules follow at the next full apply.
 type DatabaseRemoteNarrowRequest struct {
-	ServiceMutationBinding
 	Targets []DatabaseRemoteTarget
 }
 
@@ -162,4 +162,8 @@ type DatabaseRemoteResponse struct {
 	// owner turned the firewall's boot restore or nftables off), or the
 	// last restore failure.
 	PanelFirewallNote string
+	// AppliedDigest (alpha.130, status): dbremote.RequestDigest of the last
+	// clean apply, "" when none; Targets' Active then are the rules in
+	// force by the Agent's record.
+	AppliedDigest string
 }

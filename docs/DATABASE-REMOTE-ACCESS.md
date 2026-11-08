@@ -281,6 +281,38 @@ nftables) with the step next to it. The switch is the stored offer
 too; `saveOfferedOptInPermissions` asks the sync loop for an apply whenever
 the `database_remote` offer changes, from either screen.
 
+### Panel start and release recovery (alpha.130 lab)
+
+A forced failing 129→130 update went to release recovery; its first rollback
+attempt was refused because the new panel's start-up apply held a
+`database_remote` service-mutation lease (the panel's memory of the last
+apply is empty after a restart), and a refused apply then sent the D5
+narrowing as a second job. Services stayed down about 80 s instead of 25 s.
+Now the panel's remote access loop never holds a lease around a start:
+
+- At start it reads the Agent's status only. The Agent records, after every
+  apply without an error, the digest of the wanted set
+  (`dbremote.RequestDigest`: the rules and the administrator's agreement on
+  MariaDB's host name lookup) and each instance's rules in force; when the
+  digest is the panel's, nothing is sent. With no rule and nothing in the
+  filter nothing is sent at all.
+- For the first 3 minutes after start, and whenever the server is not quiet
+  (a panel operation, an Agent mutation, the host lock, the package manager,
+  an update just admitted), the loop takes no lease. What must close — an
+  ended rule, a withdrawn permission, offer or suspension — closes at once at
+  the address filter: `NarrowDatabaseRemoteFilterV1` now takes no lease and no
+  durable job. It only removes addresses from CelikPanel's own nft table and
+  record, under the remote access lock and the guard script's flock; a
+  release update, rollback or package operation reads or writes none of that,
+  and an interruption leaves the old or the new file (atomic replace), which
+  the guard loads again. The panel firewall's port for a closed rule is
+  closed at the next full apply (its sync is a leased job); the address
+  filter already drops the address meanwhile.
+- Opening, the engines' own rules and the panel firewall sync follow when the
+  window is over and the server is quiet.
+- The Agent's panel firewall guard (D6) takes the firewall's own lock, not
+  the service-mutation lock, and acts only when the panel table is gone.
+
 ### Resilience contract (D-025)
 
 Affected: native service ownership (owner settings detected, never
