@@ -4,7 +4,7 @@ import type { PgLeftoversScreenKey } from './en';
 
 export const trPgLeftoversScreens: Record<PgLeftoversScreenKey, string> = {
     'pgc.leftover.badge': 'Kullanılmıyor — eski sürüm {version}',
-    'pgc.leftover.fresh': 'PostgreSQL {version} bu sunucudan kaldırıldı. Bu kümede yalnız PostgreSQL’in kurulurken oluşturdukları var; bu yüzden CelikPanel onu açıldıktan kısa süre sonra kendisi kaldırır ve port {port} boşa çıkar. Sizin bir şey yapmanız gerekmiyor.',
+    'pgc.leftover.fresh': 'PostgreSQL {version} bu sunucudan kaldırıldı. Bu kümede yalnız PostgreSQL’in kurulurken oluşturdukları var; bu yüzden CelikPanel onu açıldıktan kısa süre sonra kendisi kaldırır ve port {port} boşa çıkar. Dosyalarının bir kopyası 30 gün boyunca /var/backups/celikpanel/postgresql altında saklanır. Sizin bir şey yapmanız gerekmiyor.',
     'pgc.leftover.kept': 'PostgreSQL {version} bu sunucudan kaldırıldı, ama bu kümenin dosyaları verilerinizi içerebileceği için yerinde bırakıldı. CelikPanel burada yöneticiye sormadan hiçbir şey silmez. Küme çalışamaz ve hiçbir site onu kullanmaz; yalnız port {port} hâlâ onun adına ayrılmış durumda. Artık gerekmiyorsa Arşivle ve kaldır, önce bütün dosyalarının bir kopyasını saklar.',
     'pgc.leftover.reason': 'Neden saklandı: {reason}.',
     'pgc.leftover.archive': 'Arşivle ve kaldır',

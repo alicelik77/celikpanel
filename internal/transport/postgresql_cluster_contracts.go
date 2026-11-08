@@ -52,7 +52,8 @@ type PostgreSQLLeftover struct {
 
 // PostgreSQLLeftoverRemoval is one leftover cluster removed: its config
 // directory, data directory and logs; Archive is where its files were kept
-// first (empty when it held only what initdb made).
+// first (for one that held only what initdb made, an archive named
+// "-auto" that the Agent deletes 30 days later).
 type PostgreSQLLeftoverRemoval struct {
 	Version       string   `json:"version"`
 	Name          string   `json:"name"`

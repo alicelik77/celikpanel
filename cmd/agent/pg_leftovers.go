@@ -64,7 +64,7 @@ const (
 var (
 	pgDataRoot     = "/var/lib/postgresql"
 	pgLogRoot      = "/var/log/postgresql"
-	pgArchiveRoot  = "/var/backups/celikpanel"
+	pgArchiveRoot  = "/var/backups/celikpanel/postgresql"
 	pgRelationFile = regexp.MustCompile(`^([0-9]+)(_(fsm|vm|init))?(\.[0-9]+)?$`)
 	// pgLeftoverUnitReset forgets a removed cluster's unit (reset-failed and
 	// daemon-reload; a variable for tests).
@@ -348,6 +348,12 @@ func removePGLeftoverFiles(cluster transport.PostgreSQLCluster) ([]string, error
 // by root only, and returns its path. Links are kept as links, never
 // followed. The archive is read back before it is trusted.
 func archivePGLeftover(cluster transport.PostgreSQLCluster, freeBytes func(string) (int64, error)) (string, error) {
+	return archivePGLeftoverNamed(cluster, freeBytes, "")
+}
+
+// archivePGLeftoverNamed is archivePGLeftover with a name suffix ("-auto"
+// for the automatic removal's archive, which expires).
+func archivePGLeftoverNamed(cluster transport.PostgreSQLCluster, freeBytes func(string) (int64, error), suffix string) (string, error) {
 	paths := pgLeftoverFiles(cluster)
 	sources := []string{}
 	for _, path := range []string{paths.config, paths.data} {
@@ -378,7 +384,7 @@ func archivePGLeftover(cluster transport.PostgreSQLCluster, freeBytes func(strin
 			return "", fmt.Errorf("%s has %d MB free; the archive needs up to %d MB", pgArchiveRoot, free>>20, (need>>20)+64)
 		}
 	}
-	final := filepath.Join(pgArchiveRoot, fmt.Sprintf("postgresql-%s-%s-%s.tar.gz", cluster.Version, cluster.Name, pgLeftoverNow().UTC().Format("20060102T150405Z")))
+	final := filepath.Join(pgArchiveRoot, fmt.Sprintf("postgresql-%s-%s-%s%s.tar.gz", cluster.Version, cluster.Name, pgLeftoverNow().UTC().Format("20060102T150405Z"), suffix))
 	temp, err := os.CreateTemp(pgArchiveRoot, ".postgresql-archive-*")
 	if err != nil {
 		return "", fmt.Errorf("the archive could not be started: %v", err)
@@ -535,6 +541,15 @@ func cleanPGLeftovers(ctx context.Context, host pgClusterHost, resp *transport.P
 			continue
 		}
 		removal := pgLeftoverRemoval(cluster)
+		// A small archive is kept for 30 days even of a cluster that holds
+		// only what initdb made: functions or views made without storage
+		// cannot be seen in the files (docs/LEFTOVERS-AUDIT.md).
+		archive, err := archivePGLeftoverNamed(cluster, host.freeBytes, pgAutoArchiveSuffix)
+		if err != nil {
+			resp.Error = fmt.Sprintf("cluster %s could not be archived (%v); it was not removed", pgClusterRef(cluster.Version, cluster.Name), err)
+			return
+		}
+		removal.Archive = archive
 		removed, err := removePGLeftoverFiles(cluster)
 		removal.Removed = append(removal.Removed, removed...)
 		if len(removal.Removed) > 0 {
@@ -702,4 +717,40 @@ func preparePGClusterRemoval(cluster transport.PostgreSQLCluster, freeBytes func
 		return "", nil
 	}
 	return archivePGLeftover(cluster, freeBytes)
+}
+
+// The automatic removal's archives expire: pgAutoArchiveSuffix names them,
+// and the Agent deletes them at a start 30 days or more after they were made.
+const (
+	pgAutoArchiveSuffix = "-auto"
+	pgAutoArchiveKeep   = 30 * 24 * time.Hour
+)
+
+var pgAutoArchiveName = regexp.MustCompile(`^postgresql-[0-9]{1,3}-[A-Za-z0-9_][A-Za-z0-9_.-]{0,62}-[0-9]{8}T[0-9]{6}Z-auto\.tar\.gz$`)
+
+// pruneExpiredPGAutoArchives deletes the automatic removal's archives older
+// than 30 days (only files of exactly that name; the administrator's own
+// "Archive and remove" archives are kept until the administrator deletes
+// them).
+func pruneExpiredPGAutoArchives() []string {
+	entries, err := os.ReadDir(pgArchiveRoot)
+	if err != nil {
+		return nil
+	}
+	var pruned []string
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() || !pgAutoArchiveName.MatchString(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || pgLeftoverNow().Sub(info.ModTime()) < pgAutoArchiveKeep {
+			continue
+		}
+		path := filepath.Join(pgArchiveRoot, entry.Name())
+		if os.Remove(path) == nil {
+			pruned = append(pruned, path)
+		}
+	}
+	removeEmptyDir(pgArchiveRoot)
+	return pruned
 }

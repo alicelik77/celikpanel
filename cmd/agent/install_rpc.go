@@ -1065,6 +1065,16 @@ func (a *Agent) UninstallService(req *InstallServiceRequest, resp *UninstallServ
 			resp.Detail += " — " + note
 		}
 	}
+	// alpha.130 (no leftovers): a mail component's removal takes the files
+	// CelikPanel wrote for it, never one the owner changed.
+	if err == nil && resp.Removed && packageName == "" {
+		if cleanup := removalCleanupFor(svc.ID, ops.detectPackageFamily()); len(cleanup.files)+len(cleanup.dirs) > 0 {
+			removed, kept, notes := runRemovalCleanup(ctx, cleanup, hostRemovalCleanupOps())
+			if detail := removalCleanupDetail(removed, kept, notes); detail != "" {
+				resp.Detail += " — " + detail
+			}
+		}
+	}
 	if err == nil && resp.Removed && svc.ID == "clamav" {
 		if systemctl, resolveErr := serviceMutationSystemctlResolver(); resolveErr == nil {
 			if note := clamAVRetireFirstStart(ctx, systemctl); note != "" {

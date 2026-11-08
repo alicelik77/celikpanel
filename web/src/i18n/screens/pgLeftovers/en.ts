@@ -16,7 +16,7 @@
 
 export const enPgLeftoversScreens = {
     'pgc.leftover.badge': 'Not used — old version {version}',
-    'pgc.leftover.fresh': 'PostgreSQL {version} was removed from this server. This cluster holds only what PostgreSQL made when it was installed, so CelikPanel removes it by itself shortly after it starts, and port {port} becomes free. You do not need to do anything.',
+    'pgc.leftover.fresh': 'PostgreSQL {version} was removed from this server. This cluster holds only what PostgreSQL made when it was installed, so CelikPanel removes it by itself shortly after it starts, and port {port} becomes free. A copy of its files is kept under /var/backups/celikpanel/postgresql for 30 days. You do not need to do anything.',
     'pgc.leftover.kept': 'PostgreSQL {version} was removed from this server, but this cluster’s files stayed because they may hold your data. CelikPanel deletes nothing here without the administrator. It cannot run and no site uses it; it only keeps port {port} claimed. If you no longer need it, Archive and remove keeps a copy of all its files first.',
     'pgc.leftover.reason': 'Why it was kept: {reason}.',
     'pgc.leftover.archive': 'Archive and remove',

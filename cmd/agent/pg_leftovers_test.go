@@ -250,7 +250,8 @@ func TestPGLeftoverCleanupRemovesOnlyFreshLeftoversAndTheirOwnFiles(t *testing.T
 		filepath.Join(pgLogRoot, "postgresql-16-main.log"), filepath.Join(pgLogRoot, "postgresql-16-main.log.1.gz"),
 		filepath.Join(pgConfRoot, "16"), filepath.Join(pgDataRoot, "16"),
 	}
-	if !reflect.DeepEqual(removal.Removed, want) || removal.Archive != "" || removal.Port != 5432 {
+	wantArchive := filepath.Join(pgArchiveRoot, "postgresql-16-main-20261108T120000Z-auto.tar.gz")
+	if !reflect.DeepEqual(removal.Removed, want) || removal.Archive != wantArchive || removal.Port != 5432 {
 		t.Fatalf("removal = %+v, want %v", removal, want)
 	}
 	for _, gone := range want {
@@ -265,6 +266,24 @@ func TestPGLeftoverCleanupRemovesOnlyFreshLeftoversAndTheirOwnFiles(t *testing.T
 	}
 	if !reflect.DeepEqual(resets, []string{"16/main"}) {
 		t.Fatalf("unit resets = %v", resets)
+	}
+	if names := tarNames(t, wantArchive); !containsSuffix(names, "global/1260") {
+		t.Fatalf("the automatic archive misses the cluster: %v", names)
+	}
+	// It expires after 30 days at an Agent start; an explicit archive stays.
+	explicit := filepath.Join(pgArchiveRoot, "postgresql-15-main-20261001T000000Z.tar.gz")
+	os.WriteFile(explicit, []byte("x"), 0o600)
+	old := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	os.Chtimes(explicit, old, old)
+	if pruned := pruneExpiredPGAutoArchives(); len(pruned) != 0 {
+		t.Fatalf("a fresh archive was pruned: %v", pruned)
+	}
+	os.Chtimes(wantArchive, old, old)
+	if pruned := pruneExpiredPGAutoArchives(); !reflect.DeepEqual(pruned, []string{wantArchive}) {
+		t.Fatalf("pruned = %v", pruned)
+	}
+	if _, err := os.Stat(explicit); err != nil {
+		t.Fatal("the administrator's own archive was pruned")
 	}
 	// The next run finds nothing more to do.
 	host.lsclusters = func(context.Context) (string, error) { return pgLsLine(held) + pgLsLine(live), nil }
