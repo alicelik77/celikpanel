@@ -95,12 +95,13 @@ var (
 	invitationMailLimiter  = newRateLimiter(10, time.Hour)      // per invited account: invitation mails
 )
 
+// resetAccountRecoveryLimiters clears the limiters in place; the variables
+// are never reassigned, because background mail sends read them.
 func resetAccountRecoveryLimiters() {
-	recoveryRequestLimiter = newRateLimiter(5, 15*time.Minute)
-	recoveryAccountLimiter = newRateLimiter(3, time.Hour)
-	recoveryLinkLimiter = newRateLimiter(30, 15*time.Minute)
-	verificationLimiter = newRateLimiter(3, time.Hour)
-	invitationMailLimiter = newRateLimiter(10, time.Hour)
+	for _, limiter := range []*rateLimiter{recoveryRequestLimiter, recoveryAccountLimiter, recoveryLinkLimiter,
+		verificationLimiter, invitationMailLimiter} {
+		limiter.reset()
+	}
 }
 
 // accountRecoveryPublicPaths: exact paths, each with its one method.

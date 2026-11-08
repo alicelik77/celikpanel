@@ -116,6 +116,9 @@ func newMailboxRecoveryFixture(t *testing.T) *mailboxRecoveryFixture {
 
 	oldHost, oldProbe, oldSend, oldCommit := accountLinkPanelHost, accountMailProbe, accountMailSend, buildCommit
 	t.Cleanup(func() {
+		// Every send started after a public answer finishes before the
+		// fixture's hooks, limiters and database go away.
+		f.panel.waitMailboxRecoverySends()
 		accountLinkPanelHost, accountMailProbe, accountMailSend, buildCommit = oldHost, oldProbe, oldSend, oldCommit
 		resetAccountMailCache()
 		resetMailboxRecoveryLimiters()
@@ -149,12 +152,15 @@ func (f *mailboxRecoveryFixture) waitMail(t *testing.T) recoveryTestMail {
 
 func (f *mailboxRecoveryFixture) noMail(t *testing.T) {
 	t.Helper()
+	// The send runs after the answer: wait for it to finish, then nothing
+	// may have been handed over.
+	f.panel.waitMailboxRecoverySends()
 	select {
 	case <-f.in:
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		t.Fatalf("a message was handed over: %+v", f.mails[len(f.mails)-1])
-	case <-time.After(300 * time.Millisecond):
+	default:
 	}
 }
 

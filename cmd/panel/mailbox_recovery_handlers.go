@@ -70,13 +70,28 @@ var (
 	mailboxRecoverySetterLimiter  = newRateLimiter(20, time.Hour)      // per signed-in person: confirmation mails
 )
 
+// resetMailboxRecoveryLimiters clears the limiters in place; the variables
+// are never reassigned, because the background sends read them.
 func resetMailboxRecoveryLimiters() {
-	mailboxRecoveryRequestLimiter = newRateLimiter(5, 15*time.Minute)
-	mailboxRecoveryMailboxLimiter = newRateLimiter(3, time.Hour)
-	mailboxRecoveryLinkLimiter = newRateLimiter(30, 15*time.Minute)
-	mailboxRecoveryConfirmLimiter = newRateLimiter(3, time.Hour)
-	mailboxRecoverySetterLimiter = newRateLimiter(20, time.Hour)
+	for _, limiter := range []*rateLimiter{mailboxRecoveryRequestLimiter, mailboxRecoveryMailboxLimiter,
+		mailboxRecoveryLinkLimiter, mailboxRecoveryConfirmLimiter, mailboxRecoverySetterLimiter} {
+		limiter.reset()
+	}
 }
+
+// goMailboxRecovery runs a send that happens after the public answer, tracked
+// so the panel (and its tests) can wait for every one to finish.
+func (p *Panel) goMailboxRecovery(send func()) {
+	p.mailboxRecoverySends.Add(1)
+	go func() {
+		defer p.mailboxRecoverySends.Done()
+		send()
+	}()
+}
+
+// waitMailboxRecoverySends waits until no send started by goMailboxRecovery
+// is still running.
+func (p *Panel) waitMailboxRecoverySends() { p.mailboxRecoverySends.Wait() }
 
 func init() {
 	// The public routes join the account routes' exact list (path and its
@@ -362,7 +377,7 @@ func (p *Panel) handleMailboxRecoveryRequest(w http.ResponseWriter, r *http.Requ
 	// answer nor its time tells whether the mailbox or an address exists.
 	background := r.Clone(context.WithoutCancel(r.Context()))
 	lang := req.Lang
-	go p.sendMailboxResetLink(background, setup, strings.ToLower(mailbox), lang)
+	p.goMailboxRecovery(func() { p.sendMailboxResetLink(background, setup, strings.ToLower(mailbox), lang) })
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	_ = json.NewEncoder(w).Encode(map[string]bool{"accepted": true})
@@ -521,7 +536,7 @@ func (p *Panel) handleMailboxRecoveryConfirm(w http.ResponseWriter, r *http.Requ
 			requestPage: setup.baseURL + mailboxRecoveryRequestPage,
 		}
 		background := r.Clone(context.WithoutCancel(ctx))
-		go p.sendMailboxNotice(background, setup, link.mailbox.mailbox, link.accountID, mail)
+		p.goMailboxRecovery(func() { p.sendMailboxNotice(background, setup, link.mailbox.mailbox, link.accountID, mail) })
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"mailbox": link.mailbox.mailbox})
@@ -688,7 +703,7 @@ func (p *Panel) handleMailboxRecoveryReset(w http.ResponseWriter, r *http.Reques
 			mailbox: link.mailbox.mailbox, masked: maskedRecoveryAddress(link.address),
 		}
 		background := r.Clone(context.WithoutCancel(ctx))
-		go p.sendMailboxNotice(background, setup, link.mailbox.mailbox, link.accountID, mail)
+		p.goMailboxRecovery(func() { p.sendMailboxNotice(background, setup, link.mailbox.mailbox, link.accountID, mail) })
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(answer)

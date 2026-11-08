@@ -31,6 +31,15 @@ func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	}
 }
 
+// reset forgets every recorded attempt, under the limiter's own lock, so a
+// limiter shared with running goroutines is never replaced underneath them.
+func (l *rateLimiter) reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.hits = make(map[string][]time.Time)
+	l.lastSweep = time.Time{}
+}
+
 // allow records an attempt for key and reports whether it is within the
 // limit. Timestamps older than the window are pruned on each call.
 // allow, key için bir deneme kaydeder ve limitin içinde olup olmadığını

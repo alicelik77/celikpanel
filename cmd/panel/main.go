@@ -98,6 +98,9 @@ type Panel struct {
 	// listenerControl is the running HTTP server's listener set; a panel
 	// port change adds and retires listeners through it (panel_port.go).
 	listenerControl panelListenerControl
+	// mailboxRecoverySends tracks the mailbox recovery mails sent after a
+	// public answer (alpha.130, mailbox_recovery_handlers.go).
+	mailboxRecoverySends sync.WaitGroup
 	// requestIdentities answers a re-sent state-changing request from the row
 	// of its first arrival instead of running it again (D-029). Handler tests
 	// that call a handler directly leave it nil.
