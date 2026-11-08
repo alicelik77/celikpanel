@@ -3,6 +3,8 @@
 import type { ErrorsScreenKey } from './en';
 
 export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
+    // ---- alpha.130: a change sent while the server is still booting ----
+    'err.HOST_STARTING': 'Bu sunucu hâlâ açılıyor: sistem yöneticisi (systemd) onu henüz hazır bildirmiyor, bu yüzden CelikPanel bu değişikliği göndermedi ve hiçbir şey değişmedi. Şu an kimsenin bir şey yapması gerekmiyor: bir dakika bekleyip yeniden deneyin. Sunucu 10 dakika sonra hâlâ açılıyorsa sunucu sahibi sunucuda systemctl is-system-running ve systemctl --failed komutlarını çalıştırıp açılışı bitirmeyen sorunu giderir.',
     // ---- alpha.108 slice d ----
     'err.VERSION_NOT_OFFERED': 'Hiçbir şey değiştirilmedi: {name} {version} bu sunucuda müşterilere sunulmuyor. Sunulan sürümlerden birini seçin ya da yöneticinizden bunu sunmasını isteyin; hangi sürümlerin sunulacağına yönetici karar verir.',
     'err.NO_VERSION_OFFERED': 'Hiçbir şey oluşturulmadı: bu sunucuda müşterilere hiçbir {name} sürümü sunulmuyor. Yöneticinizden birini sunmasını isteyin, sonra siteyi yeniden oluşturun.',

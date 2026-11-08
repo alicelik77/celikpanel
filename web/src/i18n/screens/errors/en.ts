@@ -11,6 +11,8 @@
 // sözleri. Kabuğun ekranlardan önce gösterebileceği kodlar ../../en.ts içinde kalır.
 
 export const enErrorsScreens = {
+    // ---- alpha.130: a change sent while the server is still booting ----
+    'err.HOST_STARTING': 'This server is still starting: its system manager (systemd) does not report it ready yet, so CelikPanel did not send this change and nothing was changed. Nobody needs to act now: wait a minute and try again. If the server is still starting after 10 minutes, the server owner runs systemctl is-system-running and systemctl --failed on the server and fixes what keeps the boot from finishing.',
     // ---- alpha.108 slice d ----
     'err.VERSION_NOT_OFFERED': 'Nothing was changed: {name} {version} is not offered to customers on this server. Choose one of the offered versions, or ask your administrator to offer this one — the administrator decides which versions are offered.',
     'err.NO_VERSION_OFFERED': 'Nothing was created: no {name} version is offered to customers on this server. Ask your administrator to offer one, then create the site again.',
