@@ -66,7 +66,7 @@ const load = (path, extra) => dataURL(`import React from '${reactURL}';\n` + com
 const blockingURL = load('../src/components/BlockingProblems.tsx');
 const planProblemsURL = load('../src/components/SetupPlanProblems.tsx', { setupProblems: problemsLibURL, BlockingProblems: blockingURL });
 const { BlockingProblems, BlockedReason } = await import(blockingURL);
-const libs = { remoteDNS: remoteURL, componentName: componentNameURL, serverSetupComponents: componentLibURL, setupDNS: dnsCopyURL, visibleReads: visibleReadsURL, panelHandover: handoverURL, serverSetupGuidance: guidanceURL, serverSetupOperation: operationURL, serverSetup: setupURL, setupProblems: problemsLibURL, SetupPlanProblems: planProblemsURL, BlockingProblems: blockingURL };
+const libs = { dateFormat: dataURL(compile('../src/lib/dateFormat.ts')), remoteDNS: remoteURL, componentName: componentNameURL, serverSetupComponents: componentLibURL, setupDNS: dnsCopyURL, visibleReads: visibleReadsURL, panelHandover: handoverURL, serverSetupGuidance: guidanceURL, serverSetupOperation: operationURL, serverSetup: setupURL, setupProblems: problemsLibURL, SetupPlanProblems: planProblemsURL, BlockingProblems: blockingURL };
 const wizardStepsURL = load('../src/components/ServerSetupWizardSteps.tsx', { ...libs, remote: dataURL(compile('../src/lib/remote.ts').replace(/from ['"]([^'"]+)['"]/g, (_, from) => `from '${from === 'react' ? reactURL : dataURL(compile('../src/lib/apiError.ts'))}'`)) });
 const componentUIURL = load('../src/components/ServerSetupComponents.tsx', libs);
 const stepsURL = load('../src/components/ServerSetupSteps.tsx');

@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { ScrollText } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { auditActionParts, auditActionText, auditActorName, auditDetailParts, auditResourceText } from '../lib/auditAction';
 import type { TranslationKey } from '../i18n/en';
 import { useRemote, decodeListIn } from '../lib/remote';
@@ -65,7 +66,7 @@ export function AuditLogPage() {
 }
 
 function ServerAuditLog() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const audit = useRemote('/api/v1/audit-logs?limit=200', decodeAudit);
 
     return (
@@ -108,7 +109,7 @@ function ServerAuditLog() {
                                 return (
                                     <tr key={e.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
                                         <td className="whitespace-nowrap px-4 py-3 text-fg-muted">
-                                            {new Date(e.created_at.replace(' ', 'T') + 'Z').toLocaleString()}
+                                            {formatDateTime(new Date(e.created_at.replace(' ', 'T') + 'Z'), locale)}
                                         </td>
                                         <td className="px-4 py-3 text-base font-medium text-fg">
                                             {auditActorName(e.username, t)}

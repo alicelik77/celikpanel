@@ -7,6 +7,7 @@ import {
     ShieldAlert,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { formatDate, formatTime } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { sslTier, sslTierLabelFor, type SSLTier } from '../lib/sslTier';
 import { Button } from './ui';
@@ -130,12 +131,12 @@ export function DomainSSLOverviewCard({
             detail = cert.days_until_expiry < 0
                 ? t('domain.overview.ssl.certificateExpired', {
                     issuer: cert.issuer,
-                    date: new Date(cert.expires_at).toLocaleDateString(),
+                    date: formatDate(new Date(cert.expires_at), locale),
                     n: -cert.days_until_expiry,
                 })
                 : t('domain.overview.ssl.certificate', {
                     issuer: cert.issuer,
-                    date: new Date(cert.expires_at).toLocaleDateString(),
+                    date: formatDate(new Date(cert.expires_at), locale),
                     days: t('ssl.days', { n: cert.days_until_expiry }),
                 });
         }
@@ -166,7 +167,7 @@ export function DomainSSLOverviewCard({
                     {stale && shown && (
                         <p className="mt-1 text-xs leading-relaxed text-fg">
                             {t('domain.overview.ssl.stale', {
-                                time: new Date(shown.observedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+                                time: formatTime(new Date(shown.observedAt), locale),
                             })}
                         </p>
                     )}

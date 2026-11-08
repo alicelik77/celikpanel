@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileCode, Files, Hexagon, ArrowLeftRight, ExternalLink, Play, StopCircle, RotateCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatTime } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, RemoteGate, ResultUnknown, StatusDot, inputClass } from './ui';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
@@ -510,7 +511,7 @@ function AppPanel({ domainId }: { domainId: number }) {
                 <CouldNotCheck
                     className="mb-3"
                     text={earlier
-                        ? t('hosting.app.stale', { time: new Date(earlier.observedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) })
+                        ? t('hosting.app.stale', { time: formatTime(new Date(earlier.observedAt), locale) })
                         : t('hosting.app.unknown')}
                     onRetry={refresh}
                     busy={status.reading || logs.reading}

@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatTime } from '../lib/dateFormat';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
 import type { TranslationKey } from '../i18n/en';
@@ -930,7 +931,7 @@ function decodeMailHealth(raw: unknown): MailHealth {
 }
 
 function DeliverabilityCard({ domainId }: { domainId: number }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     // The checks are read from the server. While they are read the card says
     // so; when they could not be read it says that, with Retry, instead of
     // vanishing as it did before 9 Oct 2026.
@@ -965,7 +966,7 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
             {/* The last verified check while it runs again: said, with its time. */}
             {data.rechecking && data.checked_at && (
                 <p role="status" className="mb-2 text-xs text-fg-muted">
-                    {t('mail.health.rechecking', { time: new Date(data.checked_at).toLocaleTimeString() })}
+                    {t('mail.health.rechecking', { time: formatTime(new Date(data.checked_at), locale, { timeStyle: 'medium' }) })}
                 </p>
             )}
             <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">

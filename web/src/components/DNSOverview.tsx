@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
+import { formatTime } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { Link } from '../router';
 import { apiErrorText, readApiError } from '../lib/apiError';
@@ -123,7 +124,7 @@ export function DNSOverview({ advanced }: { advanced: ReactNode }) {
         }
     }
     const failed = remote.remote.state === 'unknown';
-    const time = (at: string) => new Date(at).toLocaleTimeString(i18n.locale);
+    const time = (at: string) => formatTime(new Date(at), i18n.locale, {});
     return <div className="space-y-6" data-dns-overview="">
         {!value ? <p role="status" className="text-sm text-fg-muted" data-dns-overview-state={failed ? 'unknown' : 'loading'}>{t(failed ? 'dnsov.readFailed' : 'dnsov.loading')}</p>
             : <OverviewBody value={value} t={t} checkNow={() => void checkNow()} reading={remote.reading || forcing} freshIn={freshIn} failedNote={failed ? t('dnsov.readFailedKept', { time: time(value.checked_at) }) : ''} checkedAt={t('dnsov.checkedAt', { time: time(value.checked_at) })} rereadOverview={remote.retry} />}

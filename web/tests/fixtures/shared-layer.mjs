@@ -198,6 +198,8 @@ export function replaceLazyImport(moduleURL, specifier, replacementURL) {
   return dataModule(replaced);
 }
 
+// 8 Nov 2026: every date and time follows the interface language through the one formatter (no imports of its own).
+export const dateFormatURL = compileSource('lib/dateFormat.ts', unexpected('lib/dateFormat.ts'));
 // alpha.127: the owner's password rule, read by every password field and form.
 export const passwordPolicyURL = compileSource('lib/passwordPolicy.ts', unexpected('lib/passwordPolicy.ts'));
 
@@ -241,6 +243,7 @@ export function sharedLayer(stubURL, extra = {}) {
     // alpha.123: ServiceList sends the removal's own request identity header.
     '/lib/requestIdentity': requestIdentityURL,
     '/lib/passwordPolicy': passwordPolicyURL,
+    '/lib/dateFormat': dateFormatURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
     ...extra,

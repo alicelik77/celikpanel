@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
+import { formatDateTime, formatTime } from '../lib/dateFormat';
 import { setupDNSTranslation } from '../i18n/setupDNS';
 import type { TranslationKey } from '../i18n/en';
 import { componentName } from '../lib/componentName';
@@ -471,7 +472,7 @@ export function SetupJoinedSummary({ link }: { link: SetupPeerLink }) {
 // the link open until the second server reports its setup ready (Beta-1
 // re-run P7); the card then says so, and offers to stop waiting.
 export function SetupJoinCard({ joinPending = true, finished = false, onPending }: { joinPending?: boolean; finished?: boolean; onPending?: (pending: boolean) => void } = {}) {
-    const { t } = useSetupWizardI18n();
+    const { t, locale } = useSetupWizardI18n();
     const remote = useRemote('/api/v1/setup/peer', decodeSetupPeerView);
     useRefreshEvery(remote, 10_000);
     const [made, setMade] = useState<{ code: string; address: string; expires_at: string; attempts_left: number } | null>(null);
@@ -495,7 +496,7 @@ export function SetupJoinCard({ joinPending = true, finished = false, onPending 
             setProblem(t('setup.v5.card.error.other'));
         } finally { inFlight.current = false; setBusy(false); void remote.retry(); }
     }
-    const time = (value: string) => new Date(value).toLocaleString();
+    const time = (value: string) => formatDateTime(new Date(value), locale);
     const joined = view?.joined;
     // The ready headline counts this card as one open item while the joined server is still setting up.
     const peerSetupPending = finished && view?.peer_setup === 'pending';
@@ -634,7 +635,7 @@ const delegationState: Record<string, TranslationKey> = { ok: 'setup.v4.state.ok
 // server already answers the domain, otherwise refused with the reason.
 // Alan adi firmasi karti: degerler ve internetin canli durumu.
 export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSetupDraft; mainDomain: string; now: boolean }) {
-    const { t } = useSetupWizardI18n();
+    const { t, locale } = useSetupWizardI18n();
     const domain = mainDomain || draft.infrastructure_dns?.zone || '';
     const remote = useRemote(domain ? `/api/v1/setup/delegation?zone=${encodeURIComponent(domain)}` : null, decodeSetupDelegation);
     const [early, setEarly] = useState(false);
@@ -712,7 +713,7 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
                     {itemWhy(item) && <span className="text-xs leading-5 text-fg-muted">{itemWhy(item)}</span>}
                 </li>)}</ul>}
             </div>
-            {live && <p className="text-xs text-fg-muted">{t('setup.v4.checkedAt', { time: new Date(live.checked_at).toLocaleTimeString() })}</p>}
+            {live && <p className="text-xs text-fg-muted">{t('setup.v4.checkedAt', { time: formatTime(new Date(live.checked_at), locale, { timeStyle: 'medium' }) })}</p>}
             <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.registrar.spread')}</p>
         </div>
     </section>;
@@ -742,7 +743,7 @@ const providerState: Record<string, TranslationKey> = { ok: 'setup.v2.provider.o
 // The records to add at an external DNS provider, each with what the internet
 // answers now. The page only reads; the server shares one answer per minute.
 export function SetupProviderRecordsCard() {
-    const { t } = useSetupWizardI18n();
+    const { t, locale } = useSetupWizardI18n();
     // Read through the shared layer: loading, known and unknown stay apart;
     // the poll only reads (the server answers from its one-minute share).
     const remote = useRemote('/api/v1/setup/provider-records', decodeSetupProviderRecords);
@@ -763,7 +764,7 @@ export function SetupProviderRecordsCard() {
                     </li>)}</ul>}
             {failed && value && <p role="status" className="text-sm text-fg-muted">{t('setup.v2.provider.failed')}</p>}
             <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.provider.cloudflare')}</p>
-            {value && <p className="text-xs text-fg-muted">{t('setup.v2.provider.checkedAt', { time: new Date(value.checked_at).toLocaleTimeString() })}</p>}
+            {value && <p className="text-xs text-fg-muted">{t('setup.v2.provider.checkedAt', { time: formatTime(new Date(value.checked_at), locale, { timeStyle: 'medium' }) })}</p>}
         </div>
     </section>;
 }

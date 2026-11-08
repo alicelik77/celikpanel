@@ -1,5 +1,6 @@
 import { Layers } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { formatDate } from '../lib/dateFormat';
 import type { TranslationKey } from '../i18n/en';
 import { RemoteGate, UsageBar } from './ui';
 import { useRemote } from '../lib/remote';
@@ -101,10 +102,10 @@ function UploadNotes({ disk }: { disk: NonNullable<MyPlanSubscription['usage']['
 }
 
 function SubscriptionBlock({ sub, interval }: { sub: MyPlanSubscription; interval: number }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const u = sub.usage;
     const mb = 1024 * 1024;
-    const suspendOn = u.disk?.suspend_on ? new Date(u.disk.suspend_on).toLocaleDateString() : '';
+    const suspendOn = u.disk?.suspend_on ? formatDate(new Date(u.disk.suspend_on), locale) : '';
     return (
         <div className="rounded-lg border border-border p-4" data-my-plan-subscription={sub.id}>
             {/* The state by its name (D-042 P3): Unlimited, Plan: <name>, or Custom. */}

@@ -7,6 +7,7 @@ import { Settings, Play, StopCircle, RotateCw, RefreshCw, ScanSearch, DownloadCl
 import type { LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
+import { formatDateTime } from '../lib/dateFormat';
 import { Button, Checking, CouldNotCheck, Dialog, EmptyState, ErrorBanner, KeepWords, SearchInput, Spinner, StatusDot } from './ui';
 import { PageHeader } from './PageHeader';
 import { readApiError, apiErrorText, type ApiError } from '../lib/apiError';
@@ -494,7 +495,7 @@ function unknownCategories(list: ManagedService[]) {
 // managed-services'ten gelir (güvenilir kaynak), yanlış raporlayan
 // wrapper-unit uç noktasından değil.
 export function ServiceList({ onManageService }: ServiceListProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
     const componentOperation = useComponentOperation();
@@ -1733,7 +1734,7 @@ export function ServiceList({ onManageService }: ServiceListProps) {
                             {scannedAt && <span>{t('services.showingLastSeen')}</span>}
                         </>
                     ) : scannedAt ? (
-                        t('services.lastScan', { time: new Date(scannedAt).toLocaleString() })
+                        t('services.lastScan', { time: formatDateTime(new Date(scannedAt), locale) })
                     ) : (
                         t('services.neverScannedShort')
                     )}
