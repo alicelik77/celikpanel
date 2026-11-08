@@ -40,7 +40,16 @@ at the end of each message on 587/465, before the message leaves.
 ## Turning it off
 
 Removes `relayhost`, `default_transport`, the service, the map and its index
-(no leftovers), and forgets the sealed password in the panel.
+(no leftovers), and forgets the sealed password in the panel. Debian's and
+Ubuntu's `main.cf` carry an empty `relayhost =` line; CelikPanel's value
+replaces it and turning off removes the line (an absent `relayhost` is the
+same as an empty one for Postfix).
+
+Measured with the real `postconf` (Postfix 3.10, Debian 13, private
+configuration directory): `postconf -F` prints the `-o` options inside the
+command field, `postconf -n -h` prints nothing for a setting `main.cf` does
+not set, `postconf -M` replaces a whole entry with its options, and `-X`/`-PX`
+of an absent name exit 0. The Agent reads all four that way.
 
 ## Prerequisite
 

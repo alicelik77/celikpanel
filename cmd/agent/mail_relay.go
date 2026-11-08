@@ -143,11 +143,28 @@ func mailRelayPostconfValue(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("postconf -n -h %s: %s", name, boundedNativeDetail(firstNonEmpty(string(out), err.Error())))
 	}
+	// A setting main.cf does not set prints nothing at all with -n (measured
+	// with Postfix 3.10 on Debian 13): that is "not set", not an unknown.
+	if mailRelayOnlyPostconfMessages(out) {
+		return "", nil
+	}
 	value, known := postconfOneValue(out)
 	if !known {
 		return "", fmt.Errorf("postconf -n -h %s did not answer one value", name)
 	}
 	return value, nil
+}
+
+// mailRelayOnlyPostconfMessages: the output holds no line other than
+// postconf's own warnings (or nothing).
+func mailRelayOnlyPostconfMessages(out []byte) bool {
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if line != "" && !postconfOwnMessage.MatchString(line) {
+			return false
+		}
+	}
+	return true
 }
 
 func readMailRelayFacts(ctx context.Context) (mailRelayFacts, error) {
@@ -222,8 +239,16 @@ func mailRelayServiceParams(mapType string, port int) map[string]string {
 // forms CelikPanel writes (with or without TLS from the first byte, any map
 // type over CelikPanel's map path).
 func mailRelayServiceIsOurs(fields, params map[string]string) bool {
-	if fields["command"] != "smtp" || fields["chroot"] != "n" {
+	// postconf -F shows the -o options inside the command field ("smtp -o
+	// a=b -o c=d"); the options themselves are compared through -P below.
+	command := strings.Fields(fields["command"])
+	if len(command) == 0 || command[0] != "smtp" || len(command)%2 == 0 || fields["chroot"] != "n" {
 		return false
+	}
+	for i := 1; i < len(command); i += 2 {
+		if command[i] != "-o" {
+			return false
+		}
 	}
 	maps := params["smtp_sasl_password_maps"]
 	mapType, path, found := strings.Cut(maps, ":")

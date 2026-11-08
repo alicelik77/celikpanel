@@ -49,7 +49,13 @@ func (h *relayHost) run(_ context.Context, name string, args ...string) ([]byte,
 	}
 	switch args[0] {
 	case "-n":
-		return []byte(h.main[args[2]] + "\n"), nil
+		// As the real postconf: a setting main.cf does not set prints
+		// nothing at all; a set one (even empty) prints its line.
+		value, set := h.main[args[2]]
+		if !set {
+			return nil, nil
+		}
+		return []byte(value + "\n"), nil
 	case "-A":
 		if h.saslReady {
 			return []byte("cyrus\n"), nil
@@ -60,7 +66,7 @@ func (h *relayHost) run(_ context.Context, name string, args ...string) ([]byte,
 			return nil, nil
 		}
 		e := mailRelayServiceEntry + "/"
-		return []byte(e + "service = celikpanel-relay\n" + e + "type = unix\n" + e + "chroot = n\n" + e + "command = " + h.command + "\n"), nil
+		return []byte(e + "service = celikpanel-relay\n" + e + "type = unix\n" + e + "chroot = n\n" + e + "command = " + h.commandLine() + "\n"), nil
 	case "-P":
 		if args[1] == mailRelayServiceEntry {
 			var out strings.Builder
@@ -85,6 +91,20 @@ func (h *relayHost) run(_ context.Context, name string, args ...string) ([]byte,
 		delete(h.main, args[1])
 	}
 	return nil, nil
+}
+
+// commandLine is what postconf -F prints: the command with its -o options.
+func (h *relayHost) commandLine() string {
+	keys := make([]string, 0, len(h.params))
+	for k := range h.params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	line := h.command
+	for _, k := range keys {
+		line += " -o " + k + "=" + h.params[k]
+	}
+	return line
 }
 
 type relayMasterImage struct {
@@ -285,6 +305,9 @@ func TestMailRelayNeverOverwritesTheOwnersRelay(t *testing.T) {
 func TestMailRelayTurnsOffWithoutLeftovers(t *testing.T) {
 	h := newRelayHost()
 	h.main["smtp_tls_security_level"] = "may"
+	// Debian's and Ubuntu's main.cf carry an empty `relayhost =`: not the
+	// owner's relay.
+	h.main["relayhost"] = ""
 	useRelayHost(t, h)
 	if resp := relayApply(relayOn(587)); !resp.Applied {
 		t.Fatal(resp)
