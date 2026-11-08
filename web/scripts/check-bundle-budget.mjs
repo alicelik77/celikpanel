@@ -306,6 +306,12 @@ const screenPartBudgets = {
   // folder (ftpLogins., err.FTP_LOGIN_, opstep.ftplogin.). A new part, set
   // with at least 25% headroom from its Turkish file.
   ftpLogins: kib(13, 4.5),
+  // v0.1.0-alpha.130: the database configuration editors (dbconf.), split out
+  // of "mailDatabases" when the plain reasons of a refused save took it over
+  // its ceiling (Turkish 46.04 / 12.83 KiB; 34.27 / 9.82 KiB after). A new
+  // part, set with at least 25% headroom from its Turkish file: 11.81 / 3.70
+  // KiB.
+  dbConfig: kib(17.5, 5.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the
