@@ -174,6 +174,28 @@ sessizce silinmez.
   aslanıyla gösteriliyor (projelerin logoları değil); Veritabanları
   sayfasındaki sunucu kartlarında ve Bileşenler sayfasında. Emoji yok.
 
+## Laboratuvarda bulunan düzeltmeler
+
+- **Güncellemenin kendiliğinden geri alınması artık veritabanına dışarıdan
+  bağlanmayı beklemiyor.** Bilerek başarısız bırakılan bir 129 → 130
+  güncellemesinde ilk geri alma denemesi reddedildi; çünkü yeni panelin
+  açılışta dışarıdan bağlanma ayarlarını uygulaması bir hizmet kilidi
+  tutuyordu (panel yaklaşık 80 saniye kullanılamadı). Panel artık açılışta
+  yalnız Ajan'ın en son uyguladığını okuyor, aynıysa hiçbir şey göndermiyor;
+  açılıştan sonraki 3 dakika boyunca ve sunucu meşgulken tam uygulama
+  yapılmıyor. Süresi biten ya da geri çekilen bir adres yine hemen, kilit
+  gerektirmeden CelikPanel'in kendi güvenlik duvarı süzgecinden çıkarılarak
+  kapatılıyor.
+- **Kendiliğinden kalıntı temizliği kaldırılan PostgreSQL sürümünün
+  paketlerini de temizliyor.** Boston benzeri bir Ubuntu sunucusunda eski
+  kümenin dosyaları gitmişti ama `dpkg` hâlâ `rc postgresql-16` ve kurulu
+  bir `postgresql-client-16` gösteriyordu. Aynı iş artık bunları her zamanki
+  güvenli kaldırma yoluyla temizliyor (başka bir şeyi de kaldıracak bir
+  benzetim işi reddeder; başka bir paketin hâlâ ihtiyaç duyduğu istemci
+  kalır ve adı söylenir) ve kaydını tutuyor. İş panel açıldıktan 10 dakika
+  sonra ve yalnız sunucu sakinken çalışıyor; böylece bir güncellemeyi ya da
+  geri almayı asla geciktirmiyor.
+
 ## Laboratuvar sonuçları
 
 _Laboratuvar turundan sonra doldurulacak._

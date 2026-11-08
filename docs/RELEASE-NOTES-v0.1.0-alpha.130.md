@@ -165,6 +165,25 @@ deleted silently.
   engine colours (not the projects' logos), on the Databases page server
   cards and the Components page; no more emoji.
 
+## Fixes found in the lab
+
+- **An update's automatic rollback no longer waits for remote database
+  access.** In a forced failing 129 → 130 update the first rollback attempt
+  was refused, because the new panel's start-up apply of remote database
+  access held a service lock (about 80 seconds without the panel). At start
+  the panel now only reads what the Agent last applied and sends nothing
+  when it matches; for 3 minutes after start, and while the server is busy,
+  no full apply runs. An ended or withdrawn address is still closed at once
+  by removing it from CelikPanel's own firewall filter, which needs no lock.
+- **The automatic leftover cleanup also purges the removed PostgreSQL
+  version's packages.** On an Ubuntu server like Boston the old cluster's
+  files went, but `dpkg` still listed `rc postgresql-16` and an installed
+  `postgresql-client-16`. The same job now purges them through the usual
+  safe removal path (a simulation that would remove anything else refuses
+  it; a client another package still needs stays and is named), with an
+  audit entry. The job first runs 10 minutes after the panel starts and
+  only on a quiet server, so it never delays an update or a rollback.
+
 ## Lab results
 
 _To be filled in after the lab round._
