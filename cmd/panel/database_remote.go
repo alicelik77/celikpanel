@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/dbremote"
+	"github.com/alicelik/celikpanel/internal/hostname"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -365,7 +366,12 @@ func (p *Panel) applyDatabaseRemote(ctx context.Context, force bool) (transport.
 	if err != nil {
 		return transport.DatabaseRemoteResponse{}, false, err
 	}
-	req := transport.DatabaseRemoteApplyRequest{Targets: targets, HostName: p.mailHostnameIdentity(ctx).Hostname, MariaDBSkipNameResolve: skipNameResolve}
+	offered, err := p.databaseRemoteOffered(ctx)
+	if err != nil {
+		return transport.DatabaseRemoteResponse{}, false, err
+	}
+	req := transport.DatabaseRemoteApplyRequest{Targets: targets, HostName: p.mailHostnameIdentity(ctx).Hostname, MariaDBSkipNameResolve: skipNameResolve,
+		ServerOffered: offered}
 	answer, callErr := databaseRemoteApplyThroughAgent(p, ctx, req)
 	m.mu.Lock()
 	m.callFailed = callErr != nil
@@ -686,7 +692,23 @@ type databaseRemoteClient struct {
 }
 
 func (p *Panel) databaseRemoteClientFor(ctx context.Context, d databaseRemoteDatabase) databaseRemoteClient {
-	return databaseRemoteClient{Host: p.mailHostnameIdentity(ctx).Hostname, Port: d.Port, SSLMode: "require"}
+	return databaseRemoteClient{Host: p.databaseRemoteServerHost(ctx), Port: d.Port, SSLMode: "require"}
+}
+
+// databaseRemoteServerHost is the name a customer's program connects to
+// (alpha.131, owner): the server's own public host name, never the mail
+// name. The server's host name when it is a full name, else the name of the
+// panel's certificate, else the mail identity's (which falls back further).
+func (p *Panel) databaseRemoteServerHost(ctx context.Context) string {
+	if name, err := localServerName(); err == nil {
+		if canonical, err := hostname.CanonicalFQDN(strings.TrimSuffix(strings.TrimSpace(name), ".")); err == nil && strings.Contains(canonical, ".") {
+			return canonical
+		}
+	}
+	if name := panelCertificateHostname(); name != "" {
+		return name
+	}
+	return p.mailHostnameIdentity(ctx).Hostname
 }
 
 // databaseRemoteWaiting: the last answer has an instance whose rules wait

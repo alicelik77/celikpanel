@@ -12,6 +12,10 @@ import { useRemote } from '../lib/remote';
 import { showToast } from './Toast';
 import { Button, inputClass } from './ui';
 
+// alpha.131: the add form's controls take their own width (inputClass is
+// full width), so the address field grows and the selectors stay compact.
+const fieldClass = inputClass.replace('w-full ', '');
+
 // Connections from outside to one database (alpha.129,
 // docs/DATABASE-REMOTE-ACCESS.md): off by default; the customer lists the
 // addresses that may connect (with TLS), each for one user of the database.
@@ -114,6 +118,15 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
     const [userId, setUserId] = useState(0);
     const [address, setAddress] = useState('');
     const [duration, setDuration] = useState<Duration>('1d');
+    // alpha.131 (owner, 8 Nov: explicit save): a new end chosen for a listed
+    // address waits here until "Apply" is pressed; nothing changes on the
+    // server before that, and "Discard" returns to the current end.
+    const [newEnd, setNewEnd] = useState<Record<number, Duration>>({});
+    const discardEnd = (id: number) => setNewEnd((all) => {
+        const next = { ...all };
+        delete next[id];
+        return next;
+    });
 
     // The list reads itself again while it is open and something on the
     // server changes by itself: an end passing, a rule being applied, a
@@ -214,6 +227,7 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
         await run(t('dbr.extendTitle', { address: rule.address }), (report) => sendWithSteps(report, steps(['check!', 'save']), t, `dbRemoteExtend.${rule.id}`,
             (headers) => fetch(`/api/v1/database-remote/rules/${rule.id}`, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ duration: chosen }) })),
         'dbr.extendFailed', (data) => {
+            discardEnd(rule.id);
             const until = shownUntil(str(data.expires_at), locale);
             showToast('success', until ? t('dbr.extended', { address: rule.address, until }) : t('dbr.extendedPermanent', { address: rule.address }));
         });
@@ -275,13 +289,13 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
     const canAdd = !readOnly && !!shown?.access.mayEdit;
 
     return (
-        <details className="text-xs text-fg-muted" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)} data-db-remote={db.id}>
-            <summary className="cursor-pointer">
+        <details className="mt-4 border-t border-border pt-3 text-xs text-fg-muted" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)} data-db-remote={db.id}>
+            <summary className="cursor-pointer py-1 text-sm font-medium text-fg hover:text-primary">
                 <Globe className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
                 {t('dbr.title')}
                 {shown && `: ${shown.rules.length === 0 ? t('dbr.summary.off') : shown.rules.length === 1 ? t('dbr.summary.one') : t('dbr.summary.count', { n: shown.rules.length })}`}
             </summary>
-            <div className="mt-2 space-y-3 text-sm">
+            <div className="mt-3 space-y-3 text-sm">
                 {view.remote.state === 'loading' && <p className="text-fg-muted">{t('dbr.reading')}</p>}
                 {view.remote.state === 'unknown' && (
                     <p className="text-fg-muted">
@@ -331,31 +345,53 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                         {shown.rules.length === 0 && !blocker && <p className="text-fg-muted">{t('dbr.empty')}</p>}
                         {shown.rules.length > 0 && (
                             <ul className="divide-y divide-border rounded-lg border border-border">
-                                {shown.rules.map((rule) => (
-                                    <li key={rule.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                                        <span className="min-w-0">
-                                            <span className="font-mono text-fg">{rule.address}</span>
-                                            <span className="ml-2 text-fg-muted">{t('dbr.user')}: <span className="font-mono">{rule.user}</span></span>
-                                            <span className={`block text-xs ${rule.status === 'active' ? 'text-success' : 'text-fg-muted'}`}>{statusText(rule)}</span>
-                                            <span className="block text-xs text-fg-muted">{untilText(rule)}</span>
-                                        </span>
-                                        {canAdd && (
-                                            <select aria-label={t('dbr.extendLabel', { address: rule.address })} value="" disabled={busy}
-                                                onChange={(e) => { const chosen = e.target.value as Duration; if (DURATIONS.includes(chosen)) void extend(rule, chosen); }}
-                                                className={`${inputClass} w-auto shrink-0 text-xs`}>
-                                                <option value="">{t('dbr.extend')}</option>
-                                                {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
-                                            </select>
-                                        )}
-                                        {!readOnly && (
-                                            <button type="button" disabled={busy} onClick={() => void remove(rule)}
-                                                className="rounded p-2 text-danger hover:bg-danger/20 disabled:opacity-40"
-                                                title={t('dbr.remove', { address: rule.address })} aria-label={t('dbr.remove', { address: rule.address })}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        )}
-                                    </li>
-                                ))}
+                                {shown.rules.map((rule) => {
+                                    const chosen = newEnd[rule.id];
+                                    return (
+                                        <li key={rule.id} data-db-remote-rule={rule.id}
+                                            className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                                            <div className="min-w-0">
+                                                <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                                    <span className="break-all font-mono text-fg">{rule.address}</span>
+                                                    <span className="text-xs text-fg-muted">{t('dbr.user')}: <span className="font-mono">{rule.user}</span></span>
+                                                </p>
+                                                <p className="mt-0.5 text-xs">
+                                                    <span className={rule.status === 'active' ? 'font-medium text-success' : 'text-fg-muted'}>{statusText(rule)}</span>
+                                                    <span className="text-fg-muted"><span className="mx-1.5" aria-hidden="true">·</span>{untilText(rule)}</span>
+                                                </p>
+                                            </div>
+                                            {!readOnly && (
+                                                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                                                    {canAdd && (
+                                                        <select aria-label={t('dbr.extendLabel', { address: rule.address })} value={chosen ?? ''} disabled={busy}
+                                                            onChange={(e) => {
+                                                                const picked = e.target.value as Duration;
+                                                                if (DURATIONS.includes(picked)) setNewEnd((all) => ({ ...all, [rule.id]: picked }));
+                                                                else discardEnd(rule.id);
+                                                            }}
+                                                            className="h-8 max-w-[11rem] rounded-md border border-border-strong bg-surface px-2 text-xs text-fg outline-none focus:border-primary disabled:opacity-60">
+                                                            <option value="">{t('dbr.extend')}</option>
+                                                            {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
+                                                        </select>
+                                                    )}
+                                                    {canAdd && chosen && (
+                                                        <>
+                                                            <Button variant="primary" className="!px-2.5 !py-1 !text-xs" disabled={busy} onClick={() => void extend(rule, chosen)}>
+                                                                {t('dbr.extendApply')}
+                                                            </Button>
+                                                            <Button className="!px-2.5 !py-1 !text-xs" disabled={busy} onClick={() => discardEnd(rule.id)}>{t('dbr.extendDiscard')}</Button>
+                                                        </>
+                                                    )}
+                                                    <button type="button" disabled={busy} onClick={() => void remove(rule)}
+                                                        className="rounded p-2 text-danger hover:bg-danger/20 disabled:opacity-40"
+                                                        title={t('dbr.remove', { address: rule.address })} aria-label={t('dbr.remove', { address: rule.address })}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         )}
 
@@ -364,14 +400,14 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                 <p className="font-semibold text-fg">{t('dbr.addHeading')}</p>
                                 <div className="flex flex-wrap gap-2">
                                     {shown.users.length > 1 && (
-                                        <select aria-label={t('dbr.user')} value={userId || shown.users[0].id} onChange={(e) => setUserId(Number(e.target.value))} className={`${inputClass} w-auto`}>
+                                        <select aria-label={t('dbr.user')} value={userId || shown.users[0].id} onChange={(e) => setUserId(Number(e.target.value))} className={`${fieldClass} w-auto`}>
                                             {shown.users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
                                         </select>
                                     )}
                                     <input type="text" inputMode="text" autoComplete="off" spellCheck={false} aria-label={t('dbr.address')}
                                         value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('dbr.addressPlaceholder')}
-                                        className={`${inputClass} w-auto min-w-[12rem] flex-1 font-mono`} />
-                                    <select aria-label={t('dbr.durationLabel')} value={duration} onChange={(e) => setDuration(e.target.value as Duration)} className={`${inputClass} w-auto`}>
+                                        className={`${fieldClass} min-w-[12rem] flex-1 font-mono`} />
+                                    <select aria-label={t('dbr.durationLabel')} value={duration} onChange={(e) => setDuration(e.target.value as Duration)} className={`${fieldClass} w-auto`}>
                                         {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
                                     </select>
                                     <Button type="submit" variant="primary" icon={Plus} disabled={busy || !address.trim()}>{t('dbr.add')}</Button>

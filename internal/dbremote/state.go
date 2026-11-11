@@ -17,9 +17,15 @@ import (
 //
 // Agent'ın uzak erişim için yaptığı değişikliklerin kaydı; yalnız kendi
 // değişikliklerini geri alır.
+//
+// Version 2 (alpha.131): a PostgreSQL target also records its cluster's data
+// directory (DataDir), so CelikPanel's settings follow the cluster when its
+// port changes. A version-1 record is read and migrated (its Applied digest is
+// dropped, so the next apply runs in full and can re-key a moved cluster). An
+// older Agent refuses a version-2 record and changes nothing (fails closed).
 const (
 	StatePath    = "/etc/celikpanel/database-remote.json"
-	StateVersion = 1
+	StateVersion = 2
 	maxStateSize = 256 << 10
 )
 
@@ -68,6 +74,11 @@ type TargetState struct {
 	// Active (alpha.130): the rules in force after the last apply, read
 	// back by the status so a restarted panel knows which ports to open.
 	Active []Rule `json:"active,omitempty"`
+	// DataDir (alpha.131, PostgreSQL): the data directory of the cluster this
+	// record belongs to. The record is keyed by port; when the cluster moves
+	// to another port the record moves with it (MovePostgreSQLTarget), so
+	// CelikPanel's own settings are never taken for the owner's.
+	DataDir string `json:"data_dir,omitempty"`
 }
 
 // Empty: nothing CelikPanel changed is left on this target.
@@ -121,7 +132,15 @@ func DecodeState(data []byte) (State, error) {
 	if err := decoder.Decode(&extra); err != io.EOF {
 		return State{}, errors.New("the remote access record has trailing data")
 	}
-	if state.Version != StateVersion {
+	switch state.Version {
+	case StateVersion:
+	case 1:
+		// alpha.129/130 record: same fields without DataDir. Its Applied
+		// digest was taken by an Agent that could not follow a cluster's
+		// port change (alpha.130, Boston), so it is not trusted: the next
+		// apply runs in full.
+		state.Version, state.Applied = StateVersion, ""
+	default:
 		return State{}, fmt.Errorf("the remote access record has version %d, this release reads %d", state.Version, StateVersion)
 	}
 	if state.Targets == nil {
@@ -131,6 +150,48 @@ func DecodeState(data []byte) (State, error) {
 		if key != TargetKey(target.Engine, target.Port) || (target.Engine != EngineMySQL && target.Engine != EnginePostgreSQL) {
 			return State{}, fmt.Errorf("the remote access record names an unknown target %q", key)
 		}
+		if target.DataDir != "" && (target.Engine != EnginePostgreSQL || !ValidDataDir(target.DataDir)) {
+			return State{}, fmt.Errorf("the remote access record names an unusable data directory for %q", key)
+		}
 	}
 	return state, nil
+}
+
+// ValidDataDir: an absolute path without control characters, as PostgreSQL
+// reports its data_directory.
+func ValidDataDir(dir string) bool {
+	if len(dir) < 2 || len(dir) > 1024 || dir[0] != '/' {
+		return false
+	}
+	for _, r := range dir {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+// MovePostgreSQLTarget moves the record of the PostgreSQL cluster that ran on
+// port from to port to (alpha.131: the cluster's port changed). It refuses
+// when there is nothing to move, or when to already holds a record of its
+// own (two clusters are never merged). The moved record keeps everything
+// CelikPanel changed on that cluster; the applied digest is dropped so the
+// next apply runs in full.
+func MovePostgreSQLTarget(state *State, from, to int) bool {
+	if state == nil || from == to || to < 1 || to > 65535 {
+		return false
+	}
+	fromKey, toKey := TargetKey(EnginePostgreSQL, from), TargetKey(EnginePostgreSQL, to)
+	moved, ok := state.Targets[fromKey]
+	if !ok || moved.Empty() {
+		return false
+	}
+	if existing, taken := state.Targets[toKey]; taken && !existing.Empty() {
+		return false
+	}
+	delete(state.Targets, fromKey)
+	moved.Port = to
+	state.Targets[toKey] = moved
+	state.Applied = ""
+	return true
 }

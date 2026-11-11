@@ -43,6 +43,11 @@ import (
 
 var databaseRemoteMu sync.Mutex
 
+// databaseRemoteServerOffered is the administrator's server switch carried
+// by the apply in progress (alpha.131, transport.DatabaseRemoteApplyRequest
+// ServerOffered); set and read under databaseRemoteMu.
+var databaseRemoteServerOffered bool
+
 // Swapped by tests.
 var (
 	databaseRemoteStatePath = dbremote.StatePath
@@ -150,6 +155,13 @@ func (a *Agent) DatabaseRemoteStatusV1(req *transport.DatabaseRemoteStatusReques
 		return nil
 	}
 	resp.FilterLoaded = nftErr == nil && databaseRemoteFilterLoaded(nftPath)
+	// alpha.131: read as the next apply will see it (a cluster that changed
+	// port keeps CelikPanel's record); nothing is saved or removed here.
+	var named []dbremote.Target
+	for _, raw := range req.Targets {
+		named = append(named, dbremote.Target{Engine: raw.Engine, Port: raw.Port})
+	}
+	healDatabaseRemotePGPorts(&state, named, false)
 	for _, raw := range req.Targets {
 		target := dbremote.Target{Engine: raw.Engine, Port: raw.Port}
 		if _, err := target.Normalize(); err != nil {
@@ -238,6 +250,7 @@ func (a *Agent) ApplyDatabaseRemoteV1(req *transport.DatabaseRemoteApplyRequest,
 	databaseRemoteMu.Lock()
 	defer databaseRemoteMu.Unlock()
 	databaseRemoteMariaDBSkipNameResolve = req.MariaDBSkipNameResolve
+	databaseRemoteServerOffered = req.ServerOffered
 	applyDatabaseRemote(targets, req.HostName, a.databaseRemoteReload(), resp)
 	return nil
 }
@@ -281,7 +294,7 @@ var databaseRemoteHBAReload func(string) error
 func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func(string) error, resp *transport.DatabaseRemoteResponse) {
 	databaseRemoteHBAReload = reload
 	// alpha.130: what was asked for, recorded after a clean apply.
-	requested := dbremote.RequestDigest(targets, databaseRemoteMariaDBSkipNameResolve)
+	requested := dbremote.RequestDigestOffered(targets, databaseRemoteMariaDBSkipNameResolve, databaseRemoteServerOffered)
 	if err := healDatabaseRemoteCertRoot(); err != nil {
 		log.Printf("database remote access: the certificate folder %s could not be made readable for the engines: %v", databaseRemoteCertRoot, err)
 	}
@@ -291,6 +304,13 @@ func applyDatabaseRemote(targets []dbremote.Target, hostName string, reload func
 	if err != nil {
 		resp.ErrorCode, resp.Error = transport.DatabaseRemoteRecordUnreadable, err.Error()+"; nothing was changed"
 		return
+	}
+	// alpha.131: a cluster whose port changed takes CelikPanel's record
+	// with it (before anything is read against the record).
+	if moved := healDatabaseRemotePGPorts(&state, targets, true); len(moved) > 0 {
+		if err := saveDatabaseRemoteState(state); err != nil {
+			log.Printf("database remote access: the record could not be saved after following a cluster's port: %v", err)
+		}
 	}
 	// Targets CelikPanel changed before and the panel did not name are
 	// closed.
