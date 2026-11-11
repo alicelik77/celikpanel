@@ -2,6 +2,9 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.131.md)
 
+> **Yayımlandı**, 11 Kasım 2026 (UTC): sürüm commit'i `b0bc1393b`, GitHub ön sürümü 18:12:58Z, indirme portalı yaklaşık 18:17Z (dış denetim 27/27).
+> Sürüm commit'i, sürüm PR'ı #311'in (`871350c75`) üstüne gelen ve yalnız CI'yi değiştiren #312'dir: 11 Kasım'da GitHub'ın test makineleri Ubuntu paket sunucusuna ulaşamadığı için üyelik denetimi artık makinedeki PHP 8.3'ü kullanıyor. İki commit arasında ürün dosyalarında fark yoktur.
+
 Tek bir düzeltme içeren küçük bir sürüm. Sahip Boston'da PostgreSQL'i 5433
 portundan 5432'ye taşıdı ve veritabanına dışarıdan bağlanma çalışmaz oldu.
 Güvenli tarafta kaldı: hiçbir şey dışarıya açılmadı, ama hiçbir müşteri

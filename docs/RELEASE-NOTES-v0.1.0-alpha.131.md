@@ -2,6 +2,9 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.131.tr.md)
 
+> **Published** on 2026-11-11 (UTC): release commit `b0bc1393b`, GitHub pre-release at 18:12:58Z, download portal at about 18:17Z (public check 27/27).
+> The release commit is the CI-only follow-up #312 on top of the release PR #311 (`871350c75`): on 11 November GitHub's runners could not reach the Ubuntu package mirror, so the membership check now uses the runner's own PHP 8.3. No product file differs between the two commits.
+
 A small release with one fix. On Boston the owner moved PostgreSQL from port
 5433 to 5432, and remote access to databases stopped working. It failed
 closed: nothing was exposed, but no customer could connect from outside any
