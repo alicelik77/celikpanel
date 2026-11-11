@@ -443,8 +443,64 @@ jobs:
           cache: true
       - name: Verify exact Go toolchain
         run: test "$(go env GOVERSION)" = go1.26.5
-      - name: Install PHP SQLite support
-        run: sudo apt-get update && sudo apt-get install -y php-cli php-sqlite3
+      # The ubuntu-24.04 runner image already ships PHP 8.3 with everything
+      # this job uses. On 11 Nov 2026 an Ubuntu mirror outage failed the job
+      # before any test ran (run 43046061677), while apt had only two empty
+      # meta packages left to add. Use the runner's PHP when it is complete;
+      # go to the package mirror only for a piece that is really missing. The
+      # job promises PHP 8.3: any other version fails here, never silently.
+      # The pieces: PDO + pdo_sqlite (the membership store), sodium (license
+      # signing and key storage), openssl (the SMTPS client test), pcntl (the
+      # concurrent-activation test, skipped without it), session, filter, json.
+      - name: Use the runner's PHP 8.3 with SQLite support (mirror only if missing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_modules=(PDO pdo_sqlite sodium openssl pcntl session filter json)
+          missing_pieces() {
+            local version modules module
+            local -a missing=()
+            if ! command -v php >/dev/null 2>&1; then
+              printf '%s\n' 'the php command'
+              return 0
+            fi
+            version=$(php -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;' 2>/dev/null) || version=unknown
+            [[ "$version" == 8.3 ]] || missing+=("PHP 8.3 (php is $version)")
+            modules=$(php -m 2>/dev/null) || modules=
+            for module in "${required_modules[@]}"; do
+              grep -Fxiq -- "$module" <<< "$modules" || missing+=("PHP extension $module")
+            done
+            (( ${#missing[@]} == 0 )) || printf '%s\n' "${missing[@]}"
+          }
+          show_php() {
+            php -v
+            printf 'php binary: %s\n' "$(command -v php)"
+            printf 'required modules loaded:\n'
+            php -m | grep -Fxi -f <(printf '%s\n' "${required_modules[@]}") | sed 's/^/  /'
+          }
+          missing=$(missing_pieces)
+          if [[ -z "$missing" ]]; then
+            printf '%s\n' 'PHP 8.3 and every required extension are on the runner; the package mirror is not used.'
+            show_php
+            exit 0
+          fi
+          printf 'Not on the runner image:\n%s\nInstalling PHP 8.3 from the Ubuntu package mirror.\n' "$missing"
+          if ! { sudo apt-get -o Acquire::Retries=3 update &&
+                 sudo apt-get -o Acquire::Retries=3 install -y php8.3-cli php8.3-sqlite3; }; then
+            printf '::error title=PHP 8.3 unavailable::The runner image lacks %s and the Ubuntu package mirror could not supply it (see the apt output above). No membership test ran. Re-run this job once the mirror answers.\n' \
+              "$(paste -sd ';' <<< "$missing")"
+            exit 1
+          fi
+          if [[ -x /usr/bin/php8.3 ]] && update-alternatives --query php >/dev/null 2>&1; then
+            sudo update-alternatives --set php /usr/bin/php8.3
+          fi
+          missing=$(missing_pieces)
+          if [[ -n "$missing" ]]; then
+            printf '::error title=PHP 8.3 incomplete::Still missing after installing php8.3-cli and php8.3-sqlite3: %s. The membership tests need PHP 8.3 with these.\n' \
+              "$(paste -sd ';' <<< "$missing")"
+            exit 1
+          fi
+          show_php
       - name: Verify membership and server license protocol
         run: bash deploy/test-membership.sh
       - name: Verify fresh and resumed installer license entry with real panel
