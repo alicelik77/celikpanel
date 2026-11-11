@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react';
-import { Save, Plus, Trash2, Globe } from 'lucide-react';
+import { Plus, Trash2, Globe } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, FormActions, FormSection, RemoteGate, ResultUnknown, ToggleRow, inputClass } from './ui';
+import { Button, FormSection, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { decodeList, useRemote } from '../lib/remote';
+import { decodeList, lastKnown, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { confirmAction } from '../lib/confirmAction';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 interface DomainGeneralSettingsProps {
     domainId: number;
@@ -49,59 +52,53 @@ function decodeGeneralSettings(raw: unknown): GeneralSettings {
 
 export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSettingsProps) {
     const { t } = useI18n();
+    const say = useSaveWords();
     const general = useRemote(`/api/v1/domains/${domainId}/general`, decodeGeneralSettings);
     const answer = useLostAnswer(() => general.retry());
-    const [saving, setSaving] = useState(false);
+    // alpha.132: the switch is a draft over the settings last read. Nothing is
+    // sent until Save; Discard puts the server's value back; leaving with the
+    // switch changed asks first. A newer answer keeps the person's change and
+    // marks it when the server changed the same setting meanwhile. A save
+    // whose answer was lost keeps it too, and the settings read again decide
+    // (useDraft drops the change once the server holds it).
+    // Anahtar, son okunan ayarların üzerindeki bir taslaktır; Kaydet'e dek
+    // hiçbir şey gönderilmez.
+    const draft = useDraft(lastKnown(general.remote)?.value);
     const [changingAlias, setChangingAlias] = useState(false);
     const [newAlias, setNewAlias] = useState('');
     const aliasTyped = useRef('');
     aliasTyped.current = newAlias;
-    // What was switched and sent, when its answer was lost and the settings
-    // read again do not show it: the switch keeps it over that newer answer,
-    // so what the person chose is not replaced by the server's value unseen.
-    // Yanıtı yiten ve yeniden okunan ayarlarda görünmeyen seçim: anahtar onu,
-    // o yeni yanıtın üzerinde tutar.
-    const [draft, setDraft] = useState<{ from: number; redirect_www: boolean } | null>(null);
     // A change is sent only for settings the server sent and is not being
     // asked about again.
     // Değişiklik yalnız sunucunun gönderdiği ve yeniden sorulmayan ayarlar
     // için gönderilir.
     const settled = general.remote.state === 'known' && !general.reading && !answer.holding;
 
-    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (general.remote.state !== 'known' || !settled) return;
-        const fd = new FormData(e.currentTarget);
-        const redirectWww = fd.get('redirect_www') === 'on';
-        setSaving(true);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/general`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    document_root: general.remote.value.document_root,
-                    web_server: 'nginx',
-                    redirect_www: redirectWww,
-                }),
-            }, {
-                // The settings read again either hold the switch as it was
-                // sent, or they do not.
-                // Yeniden okunan ayarlar anahtarı ya gönderildiği gibi tutar ya da tutmaz.
-                shows: (read) => (read[0].value as GeneralSettings).redirect_www === redirectWww,
-                notMade: (read) => setDraft({ from: read[0].observedAt, redirect_www: redirectWww }),
-            });
-            if (!res) return;
-            if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t, 'general.saveFailed'));
-                return;
-            }
-            showToast('success', t('general.saved'));
-            answer.settle();
-            await general.retry();
-        } finally {
-            setSaving(false);
+    const handleSave = () => void draft.save(async (_changes, values) => {
+        const res = await answer.send(`/api/v1/domains/${domainId}/general`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                document_root: values.document_root,
+                web_server: 'nginx',
+                redirect_www: values.redirect_www,
+            }),
+        }, {
+            // The settings read again either hold the switch as it was
+            // sent, or they do not.
+            // Yeniden okunan ayarlar anahtarı ya gönderildiği gibi tutar ya da tutmaz.
+            shows: (read) => (read[0].value as GeneralSettings).redirect_www === values.redirect_www,
+        });
+        if (!res) return 'unknown';
+        if (!res.ok) {
+            showToast('error', apiErrorText(await readApiError(res), t, 'general.saveFailed'));
+            return 'refused';
         }
-    };
+        showToast('success', t('general.saved'));
+        answer.settle();
+        await general.retry();
+        return 'saved';
+    });
 
     const handleAddAlias = async () => {
         const alias = newAlias.trim();
@@ -222,19 +219,12 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
             {(shown) => {
                 const settings = shown.value;
                 const canChange = settled && !shown.stale;
-                const kept = draft && draft.from === shown.observedAt ? draft : null;
+                const redirectWww = draft.values?.redirect_www ?? settings.redirect_www;
+                const redirectChanged = draft.isChanged('redirect_www');
                 return (
                     <div>
                         <ResultUnknown answer={answer} className="mb-4" />
-                        {/* The switch holds what the server sent; a newer
-                            answer builds the form again. The one exception is a
-                            choice whose answer was lost and that the newer
-                            answer does not show: it is kept, and the notice
-                            above says so.
-                            Anahtar sunucunun gönderdiğini tutar; daha yeni
-                            yanıt formu yeniden kurar. Tek istisna, yanıtı yiten
-                            ve yeni yanıtta görünmeyen seçimdir: o korunur. */}
-                        <form key={`${shown.observedAt}${kept ? ':kept' : ''}`} onSubmit={handleSave}>
+                        <div>
                             <FormSection title={t('general.docRoot')} description={t('general.docRootHint')}>
                                 <p className="break-all rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-sm text-fg">
                                     {settings.document_root}
@@ -255,12 +245,28 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
 
                             <FormSection title={t('general.redirects')}>
                                 {settings.redirect_www_available ? (
-                                    <ToggleRow
-                                        name="redirect_www"
-                                        defaultChecked={kept ? kept.redirect_www : settings.redirect_www}
-                                        label={t('general.redirectWww')}
-                                        hint={`${domainName} → www.${domainName}`}
-                                    />
+                                    <div className={`-mx-3 rounded-r px-3 py-2 ${redirectChanged ? changedRowClass : ''}`}>
+                                        <label className="flex cursor-pointer items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                name="redirect_www"
+                                                checked={redirectWww}
+                                                disabled={draft.saving}
+                                                onChange={(event) => draft.set('redirect_www', event.target.checked)}
+                                                className="mt-0.5 h-4 w-4 accent-primary"
+                                            />
+                                            <span>
+                                                <span className="block text-sm text-fg">
+                                                    {t('general.redirectWww')}
+                                                    {redirectChanged && <ChangedMark switched={redirectWww} />}
+                                                </span>
+                                                <span className="block text-xs text-fg-subtle">{`${domainName} → www.${domainName}`}</span>
+                                            </span>
+                                        </label>
+                                        {draft.isMoved('redirect_www') && draft.base && (
+                                            <ServerMovedNote value={say(draft.base.redirect_www ? 'on' : 'off')} onTake={() => draft.take('redirect_www')} />
+                                        )}
+                                    </div>
                                 ) : (
                                     <p className="text-sm text-fg-muted">{t('general.redirectWwwUnavailable')}</p>
                                 )}
@@ -269,12 +275,14 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                                 </p>
                             </FormSection>
 
-                            <FormActions>
-                                <Button type="submit" variant="primary" icon={Save} disabled={saving || !canChange}>
-                                    {saving ? t('general.saving') : t('general.save')}
-                                </Button>
-                            </FormActions>
-                        </form>
+                            <SaveBar
+                                count={draft.count}
+                                saving={draft.saving}
+                                blockedBy={answer.holding ? t('common.lostStateReading') : !canChange ? say('stale') : undefined}
+                                onSave={handleSave}
+                                onDiscard={draft.reset}
+                            />
+                        </div>
 
                         <div className="mt-6 border-t border-border pt-5">
                             <h3 className="text-sm font-semibold text-fg">{t('general.aliases')}</h3>

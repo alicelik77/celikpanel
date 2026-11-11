@@ -510,33 +510,6 @@ export function Field({
 export const inputClass =
     'w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-fg outline-none transition-shadow focus:border-primary';
 
-export function ToggleRow({
-    label,
-    hint,
-    name,
-    defaultChecked,
-}: {
-    label: string;
-    hint?: string;
-    name: string;
-    defaultChecked?: boolean;
-}) {
-    return (
-        <label className="flex cursor-pointer items-start gap-3">
-            <input
-                type="checkbox"
-                name={name}
-                defaultChecked={defaultChecked}
-                className="mt-0.5 h-4 w-4 accent-primary"
-            />
-            <span>
-                <span className="block text-sm text-fg">{label}</span>
-                {hint && <span className="block text-xs text-fg-subtle">{hint}</span>}
-            </span>
-        </label>
-    );
-}
-
 export function FormActions({ children }: { children: ReactNode }) {
     return <div className="flex justify-end gap-2 pt-5">{children}</div>;
 }

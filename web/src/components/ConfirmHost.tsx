@@ -3,7 +3,7 @@ import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { Button, Dialog } from './ui';
 import { useI18n } from '../i18n';
 import { captureToasts, type CapturedToast } from './Toast';
-import { registerConfirmHost, type ConfirmRequest, type OperationEnd, type OperationStep } from '../lib/confirmAction';
+import { registerConfirmHost, typedNameMatches, type ConfirmRequest, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 
 // The product's own confirmation and progress window (owner, 6 Nov 2026):
 // mounted once at the application root, it answers every confirmAction() with
@@ -19,6 +19,11 @@ import { registerConfirmHost, type ConfirmRequest, type OperationEnd, type Opera
 // kilitlidir.
 
 const OperationProgress = lazy(() => import('./OperationProgress'));
+// What is lost and what stays, the heavier choice and the typed name
+// (alpha.132): fetched only for a question that has one of them.
+// Ne kaybolur, ne değişmez, ağır seçim ve yazılan ad: yalnız bunlardan birini
+// taşıyan soru için getirilir.
+const ConfirmDetails = lazy(() => import('./kit/save/ConfirmDetails'));
 
 const CANCEL = 'confirm-action-cancel';
 const CONFIRM = 'confirm-action-confirm';
@@ -90,6 +95,11 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
     const answered = useRef(false);
     const mounted = useRef(true);
     const danger = request.tone === 'danger';
+    const [option, setOption] = useState(false);
+    const [typed, setTyped] = useState('');
+    const typedName = request.typedName ?? (option ? request.option?.typedName : undefined);
+    // The confirm button is off until the name is typed exactly.
+    const ready = !typedName || typedNameMatches(typed, typedName);
 
     // Focus the safe choice for a destructive question, the action otherwise;
     // give focus back to whatever asked when the dialogue closes.
@@ -140,7 +150,7 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
         const release = captureToasts((toast) => said.push(toast));
         let result: OperationEnd | void;
         try {
-            result = await action({ steps: (next) => { if (mounted.current) setSteps(next); } });
+            result = await action({ steps: (next) => { if (mounted.current) setSteps(next); } }, { option, typed });
         } catch (error) {
             // The action could not tell how it ended: the result is not known.
             console.error(error);
@@ -171,7 +181,7 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
     }, []);
 
     const confirm = () => {
-        if (answered.current) return;
+        if (answered.current || !ready) return;
         answered.current = true;
         void run();
     };
@@ -196,15 +206,21 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
                 <>
                     {!request.follow && (
                         <Button id={CANCEL} type="button" disabled={phase !== 'ask'} onClick={cancel}>
-                            {t('common.cancel')}
+                            {request.cancelLabel ?? t('common.cancel')}
                         </Button>
                     )}
-                    <Button id={CONFIRM} type="button" variant={danger ? 'danger' : 'primary'} loading={phase !== 'ask'} onClick={confirm} data-confirm-action="">
+                    <Button id={CONFIRM} type="button" variant={danger ? 'danger' : 'primary'} loading={phase !== 'ask'} disabled={!ready} onClick={confirm} data-confirm-action="">
                         {request.follow ? t('operation.working') : request.confirmLabel ?? t('common.continue')}
                     </Button>
                 </>
             }
-        />
+        >
+            {(request.lost || request.kept || request.option || request.typedName) && (
+                <Suspense fallback={null}>
+                    <ConfirmDetails request={request} option={option} onOption={setOption} typed={typed} onTyped={setTyped} disabled={phase !== 'ask'} />
+                </Suspense>
+            )}
+        </Dialog>
     );
 
     return (
