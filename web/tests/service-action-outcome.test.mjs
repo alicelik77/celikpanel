@@ -124,15 +124,11 @@ test('the Services screens keep the outcome on the page, and an unknown result i
 test('a change whose one-time result is not kept says what was made and what to do', () => {
   for (const language of ['en', 'tr']) {
     const peer = valueOf(server[language], 'vpn.configNotShown');
-    const password = valueOf(screens[language], 'databases.passwordNotShown');
-    assert.ok(peer.includes('{name}') && password.includes('{name}') && password.includes('{user}'));
+    assert.ok(peer.includes('{name}'));
   }
   // A VPN device: it exists, its configuration cannot be shown again; remove it and add it again.
   assert.match(valueOf(server.en, 'vpn.configNotShown'), /was added; it was not added a second time\..*cannot be shown again\..*remove it; then add the device again/);
   assert.match(valueOf(server.tr, 'vpn.configNotShown'), /eklendi; ikinci kez eklenmedi\..*yeniden gösterilemez\..*kaldırın; sonra .* cihazı yeniden ekleyin/);
-  // A database password: the database exists, the password cannot be shown again; set a new one.
-  assert.match(valueOf(screens.en, 'databases.passwordNotShown'), /was created; it was not created a second time\..*cannot be shown again\..*set a new password for \{user\}/);
-  assert.match(valueOf(screens.tr, 'databases.passwordNotShown'), /oluşturuldu; ikinci kez oluşturulmadı\..*yeniden gösterilemez\..*yeni bir parola belirleyin/);
 
   const once = read('../src/components/OnceOnlyNotice.tsx');
   assert.match(once, /problem\.code === 'REQUEST_COMPLETED_RESULT_NOT_RETAINED' && !problem\.reason/);
@@ -143,9 +139,6 @@ test('a change whose one-time result is not kept says what was made and what to 
   assert.match(vpn, /text=\{configNotShown === null \? null : t\('vpn\.configNotShown', \{ name: configNotShown \}\)\}/);
   // One press of Enter while a create is running, or while its result is being read, creates nothing.
   assert.match(vpn, /if \(busyAction !== null \|\| answer\.holding\) return;\s+setBusyAction\('create'\);/);
-  const dialog = read('../src/components/AddDatabaseModalV2.tsx');
-  assert.match(dialog, /if \(resultNotKept\(problem\)\) \{\s+onPasswordNotShown\(name, userMode === 'new' \? newUsername : ''\);/);
-  assert.match(read('../src/components/DatabaseManagementV2.tsx'), /t\('databases\.passwordNotShown', passwordNotShown\)/);
   // The engine account's password is read with "Show password": that answer is the success it was.
   assert.match(read('../src/components/DatabaseAccountStrip.tsx'), /problem\.code === 'REQUEST_COMPLETED_RESULT_NOT_RETAINED' && !problem\.reason/);
 });

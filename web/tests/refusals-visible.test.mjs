@@ -90,7 +90,7 @@ export const Button = ({ loading, ...props }) => React.createElement('button', p
     assert.equal(one.length, 20);
     assert.notEqual(one, two);
     assert.match(one, /^[A-Za-z0-9._-]+$/);
-    assert.doesNotMatch(read('../src/lib/passwordPolicy.ts') + read('../src/components/PasswordInput.tsx') + read('../src/components/AddDatabaseModalV2.tsx') + read('../src/components/AddUserModalV2.tsx'), /Math\.random/);
+    assert.doesNotMatch(read('../src/lib/passwordPolicy.ts') + read('../src/components/PasswordInput.tsx') + read('../src/components/DatabaseUserPassword.tsx'), /Math\.random/);
 });
 
 // Each screen named in the follow-up keeps a refusal on the page where it
@@ -99,7 +99,7 @@ test('refusals stay where they happened, with the server reason, on the named sc
     const screens = {
         'DomainMailManager.tsx': 'mail.quotaFailed', 'UsersPage.tsx': 'users.createFailed', 'DomainSSLSettings.tsx': 'ssl.uploadFailed',
         'DomainDNSManager.tsx': 'dns.recordAddFailed', 'Domains.tsx': 'domains.deleteFailed', 'DomainAppsPanel.tsx': 'apps.installFailed',
-        'DatabaseManagementV2.tsx': 'databases.deleteDbFailed', 'DomainBackupManager.tsx': 'backup.restoreFailed', 'MailAuthPanel.tsx': 'mailauth.keyFailed',
+        'databases/DatabasesPage.tsx': 'databases.deleteDbFailed', 'DomainBackupManager.tsx': 'backup.restoreFailed', 'MailAuthPanel.tsx': 'mailauth.keyFailed',
         'TeamMembersPage.tsx': 'team.saveFailed', 'DomainDatabaseManager.tsx': 'ddb.deleteFailed', 'AddonsPage.tsx': 'addons.grantFailed',
     };
     for (const [file, key] of Object.entries(screens)) {
@@ -126,7 +126,7 @@ test('refusals stay where they happened, with the server reason, on the named sc
 });
 
 test('the database screens and forms speak the catalogue, in both languages', () => {
-    for (const file of ['DomainDatabaseManager.tsx', 'AddDatabaseModalV2.tsx', 'AddUserModalV2.tsx']) {
+    for (const file of ['DomainDatabaseManager.tsx', 'databases/DatabasesPage.tsx', 'DatabaseUserPassword.tsx']) {
         const source = read(`../src/components/${file}`);
         // No English sentence between tags, in a title, a placeholder or a toast.
         assert.doesNotMatch(source, />\s*[A-Z][a-z]+(?: [a-zA-Z]+)+\s*</, `${file} has English between tags`);
