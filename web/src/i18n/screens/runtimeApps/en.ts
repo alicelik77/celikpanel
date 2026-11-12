@@ -96,8 +96,8 @@ export const enRuntimeAppsScreens = {
     'runtime.health.hint': 'After each start CelikPanel asks this path; a success or client status (below 500) counts as healthy. The site switches to the program only when it answers.',
     'runtime.settings.title': 'Settings',
     'runtime.settings.edit': 'Settings',
-    'runtime.settings.save': 'Save',
     'runtime.settings.saved': 'Saved. It applies on the next deploy.',
+    'runtime.settings.invalid': 'Correct the field marked above to save.',
     'runtime.settings.applies': 'Changes apply on the next Deploy; the running program is not changed.',
     // The program.
     'runtime.app.entry': 'app/bin/{entry}',

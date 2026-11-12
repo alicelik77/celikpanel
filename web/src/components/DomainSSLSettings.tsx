@@ -1365,11 +1365,9 @@ export function DomainSSLSettings({
                 count={draft.count}
                 saving={draft.saving}
                 blockedBy={
-                    stale
+                    stale || locked
                         ? say('stale')
-                        : locked
-                          ? t('common.lostStateReading')
-                          : settings.hsts_enabled && !settings.force_https
+                        : settings.hsts_enabled && !settings.force_https
                             ? t('ssl.forceHttpsRequiredByHsts')
                             : undefined
                 }

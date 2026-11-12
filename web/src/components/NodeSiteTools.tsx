@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyRound, Play, Plus, Trash2 } from 'lucide-react';
 import { Button, inputClass } from './ui';
 import { PasswordInput } from './PasswordInput';
@@ -9,6 +9,10 @@ import { followRequestProgress } from '../lib/requestProgress';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { useWebWords, type WebWords } from '../i18n/webSettings';
 import type { TranslationKey } from '../i18n/en';
+import { SaveBar, changedRowClass } from './kit/save/SaveBar';
+import { useLeaveGuard } from './kit/save/leaveGuard';
+import { useSaveRun } from './kit/save/saveRun';
+import { useSaveWords } from './kit/save/words';
 
 // A Node.js site's environment variables and package scripts (alpha.128,
 // PLESK-GAP G19), on its Hosting tab once the application runs in the site
@@ -61,29 +65,38 @@ export function NodeSiteTools({ domainId, domainName }: { domainId: number; doma
     );
 }
 
+// alpha.132: the variables are edited as a list and sent only by Save. The
+// list is free text, so the bar says that changes are not saved without a
+// count; Discard puts the server's list back and leaving with changes asks.
+// Değişkenler bir liste olarak düzenlenir ve yalnız Kaydet ile gönderilir.
 function NodeEnv({ domainId, domainName }: { domainId: number; domainName: string }) {
     const { t } = useWebWords();
+    const say = useSaveWords();
     const url = `/api/v1/domains/${domainId}/app/env`;
     const env = useRemote(url, decodeEnv);
     const answer = useLostAnswer(() => env.retry());
+    const saving = useSaveRun();
     const [rows, setRows] = useState<Row[] | null>(null);
-    const [problem, setProblem] = useState('');
-    if (env.remote.state !== 'known') return null;
-    const view = env.remote.value;
-    const shown: Row[] = rows ?? view.entries.map((e) => ({ key: e.key, value: e.value ?? '', secret: e.secret, saved: e.secret }));
+    useEffect(() => setRows(null), [domainId]);
+    const view = env.remote.state === 'known' ? env.remote.value : null;
+    const serverRows: Row[] = view ? view.entries.map((e) => ({ key: e.key, value: e.value ?? '', secret: e.secret, saved: e.secret })) : [];
+    const shown: Row[] = rows ?? serverRows;
+    const differs = (row: Row, at: number) => JSON.stringify(row) !== JSON.stringify(serverRows[at]);
+    const changed = rows !== null && (rows.length !== serverRows.length || rows.some(differs));
+    useLeaveGuard(changed ? 'some' : 0);
+    if (!view) return null;
     const set = (next: Row[]) => setRows(next);
+    // A row that can be saved: a name, and a value unless a saved secret is kept.
+    const problem = changed && shown.some((row) => {
+        const keeps = row.secret && row.saved && row.value === '';
+        return !KEY.test(row.key.trim()) || (!keeps && (row.value === '' || /[\u0000-\u001f\u007f]/.test(row.value))) ||
+            (row.secret && !keeps && row.value.length < view.min_secret);
+    }) ? t('node.env.problem', { min: view.min_secret }) : '';
 
-    const save = async () => {
-        for (const row of shown) {
-            const keeps = row.secret && row.saved && row.value === '';
-            if (!KEY.test(row.key.trim()) || (!keeps && (row.value === '' || /[\u0000-\u001f\u007f]/.test(row.value))) ||
-                (row.secret && !keeps && row.value.length < view.min_secret)) {
-                setProblem(t('node.env.problem', { min: view.min_secret }));
-                return;
-            }
-        }
-        setProblem('');
+    const save = () => void saving.run(async () => {
+        if (problem || !changed) return 'refused';
         const entries = shown.map((row) => ({ key: row.key.trim(), value: row.value, secret: row.secret }));
+        const ended: { outcome: 'saved' | 'refused' | 'unknown' } = { outcome: 'refused' };
         await followOperation({
             progressTitle: t('node.env.progress', { name: domainName }),
             action: async (report): Promise<OperationEnd> => {
@@ -93,11 +106,13 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
                     { id: 'unit', label: t('node.env.step.unit') },
                     { id: 'restart', label: t('node.env.step.restart') },
                 ], asWords(t), `nodeenv.${domainId}`);
+                ended.outcome = 'unknown';
                 try {
                     const res = await answer.send(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...progress.headers }, body: JSON.stringify({ entries }) });
                     progress.settle(res);
                     if (!res) return { state: 'unknown', reason: t('node.env.failed') };
                     if (!res.ok) {
+                        ended.outcome = 'refused';
                         const error: ApiError = await readApiError(res);
                         await env.retry();
                         return { state: res.status === 409 ? 'blocked' : 'failed', reason: `${apiErrorText(error, asWords(t))}${error.message ? ` (${error.message})` : ''}` };
@@ -109,6 +124,7 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
                     } catch {
                         restarted = false;
                     }
+                    ended.outcome = 'saved';
                     answer.settle();
                     setRows(null);
                     await env.retry();
@@ -118,8 +134,10 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
                 }
             },
         });
-    };
+        return ended.outcome;
+    });
 
+    const locked = saving.saving;
     return (
         <div className="rounded-xl border border-border bg-surface p-4">
             <div className="flex items-center gap-2">
@@ -129,25 +147,31 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
             <p className="mt-0.5 text-xs text-fg-muted">{t('node.env.desc')}</p>
             <div className="mt-3 space-y-2">
                 {shown.map((row, at) => (
-                    <div key={at} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <input value={row.key} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, key: e.target.value.toUpperCase() } : r))} placeholder={t('node.env.key')} aria-label={t('node.env.key')} spellCheck={false} className={`${inputClass} font-mono sm:w-64`} />
+                    <div key={at} className={`-mx-2 flex flex-col gap-2 rounded-r px-2 py-1 sm:flex-row sm:items-center ${rows !== null && differs(row, at) ? changedRowClass : ''}`} data-env-row="">
+                        <input value={row.key} disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, key: e.target.value.toUpperCase() } : r))} placeholder={t('node.env.key')} aria-label={t('node.env.key')} spellCheck={false} className={`${inputClass} font-mono sm:w-64`} />
                         {row.secret ? (
-                            <PasswordInput value={row.value} autoComplete="new-password" generate={false} onChange={(value) => set(shown.map((r, i) => i === at ? { ...r, value } : r))}
+                            <PasswordInput value={row.value} autoComplete="new-password" generate={false} disabled={locked} onChange={(value) => set(shown.map((r, i) => i === at ? { ...r, value } : r))}
                                 placeholder={row.saved ? t('node.env.secretKept') : t('node.env.value')} aria-label={t('node.env.value')} className="font-mono" />
                         ) : (
-                            <input value={row.value} type="text" autoComplete="off" onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, value: e.target.value } : r))}
+                            <input value={row.value} type="text" autoComplete="off" disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, value: e.target.value } : r))}
                                 placeholder={t('node.env.value')} aria-label={t('node.env.value')} spellCheck={false} className={`${inputClass} font-mono`} />
                         )}
-                        <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" className="accent-primary" checked={row.secret} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, secret: e.target.checked, saved: false } : r))} />{t('node.env.secret')}</label>
-                        <Button type="button" icon={Trash2} onClick={() => set(shown.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>
+                        <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" className="accent-primary" checked={row.secret} disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, secret: e.target.checked, saved: false } : r))} />{t('node.env.secret')}</label>
+                        <Button type="button" icon={Trash2} disabled={locked} onClick={() => set(shown.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>
                     </div>
                 ))}
             </div>
-            {problem && <p role="alert" className="mt-2 text-sm text-danger">{problem}</p>}
-            <div className="mt-3 flex flex-wrap justify-between gap-2">
-                <Button type="button" icon={Plus} onClick={() => set([...shown, { key: '', value: '', secret: false, saved: false }])}>{t('node.env.add')}</Button>
-                <Button type="button" variant="primary" disabled={rows === null || answer.holding} onClick={() => void save()}>{t('node.env.save')}</Button>
+            <div className="mt-3">
+                <Button type="button" icon={Plus} disabled={locked} onClick={() => set([...shown, { key: '', value: '', secret: false, saved: false }])}>{t('node.env.add')}</Button>
             </div>
+            <SaveBar
+                className="-mx-4 rounded-b-xl px-4 pb-0"
+                count={changed ? 'some' : 0}
+                saving={saving.saving}
+                blockedBy={answer.holding || env.reading ? say('stale') : problem || undefined}
+                onSave={save}
+                onDiscard={() => setRows(null)}
+            />
         </div>
     );
 }

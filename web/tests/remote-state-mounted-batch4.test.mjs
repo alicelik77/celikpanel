@@ -191,11 +191,11 @@ const screens = [
   { name: 'DNS, the zone', element: el(DomainDNSManager), read: `${D}/dns/zone`, negative: ['dns.zoneMissing', 'dns.noRecords'], changes: ['dns.enableZone', 'dns.addRecord', 'dns.republish', 'dns.confirmDelete'], checking: 'dns.checking', unknown: 'dns.zoneUnknown' },
   { name: 'DNS, the records', element: el(DomainDNSManager), read: `${D}/dns/records`, negative: ['dns.noRecords', 'common.itemsTotal{"n":"0"}'], changes: ['dns.addRecord', 'dns.confirmDelete', 'dns.save'], checking: 'dns.records.checking', unknown: 'dns.records.unknown', empty: 'dns.noRecords' },
   { name: 'DNS, whether the zone is signed', element: el(DomainDNSManager), read: `${D}/dnssec`, negative: ['dnssec.offHint'], changes: ['dnssec.sign'], checking: 'dnssec.checking', unknown: 'dnssec.unknown', negativeAnswer: [{ secured: false, ds: null }, 'dnssec.offHint'] },
-  { name: 'Hosting type, the saved settings', element: el(HostingTypePanel), read: `${D}/hosting`, negative: ['hosting.app.state.inactive'], changes: ['hosting.save', 'services.start', 'services.stop', 'services.restart'], formFields: true, checking: 'hosting.checking', unknown: 'hosting.unknown' },
+  { name: 'Hosting type, the saved settings', element: el(HostingTypePanel), read: `${D}/hosting`, negative: ['hosting.app.state.inactive'], changes: ['hosting.applyChanges', 'services.start', 'services.stop', 'services.restart'], formFields: true, checking: 'hosting.checking', unknown: 'hosting.unknown' },
   { name: 'Hosting type, the installed Node.js versions', element: el(HostingTypePanel), read: '/api/v1/runtimes/node', negative: [], changes: [], options: ['22.3.0'], checking: 'hosting.nodeChecking', unknown: 'hosting.nodeUnknown' },
   { name: 'Hosting type, the application’s state', element: el(HostingTypePanel), read: `${D}/app/status`, negative: ['hosting.app.state.inactive', 'hosting.app.state.failed'], changes: ['services.start', 'services.stop', 'services.restart'], checking: 'hosting.app.checking', unknown: 'hosting.app.unknown', negativeAnswer: [{ exists: true, active: 'inactive', pid: 0, memory_mb: 0 }, 'hosting.app.state.inactive'] },
   { name: 'Hosting type, the application’s logs', element: el(HostingTypePanel), read: `${D}/app/logs`, negative: ['hosting.app.empty'], changes: [], checking: 'hosting.app.logsChecking', unknown: 'hosting.app.unknown', empty: 'hosting.app.empty' },
-  { name: 'PHP settings', element: php, read: `${D}/php`, negative: ['php.poolUnavailable', 'php.applyFirst'], changes: ['php.apply', 'php.savePool'], formFields: true, checking: 'php.checking', unknown: 'php.unknown', negativeAnswer: [{ php_version: '8.3', pool_name: 'example_com', available_versions: [] }, 'php.poolUnavailable'] },
+  { name: 'PHP settings', element: php, read: `${D}/php`, negative: ['php.poolUnavailable', 'php.applyFirst'], changes: ['php.apply', 'Save'], formFields: true, checking: 'php.checking', unknown: 'php.unknown', negativeAnswer: [{ php_version: '8.3', pool_name: 'example_com', available_versions: [] }, 'php.poolUnavailable'] },
   { name: 'General settings', element: el(DomainGeneralSettings), read: `${D}/general`, negative: ['general.noAliases', 'general.redirectWwwUnavailable'], changes: ['Save', 'general.add', 'common.remove'], formFields: true, checking: 'general.checking', unknown: 'general.unknown', negativeAnswer: [{ ...good[`${D}/general`], aliases: null }, 'general.noAliases'] },
   { name: 'Applications', element: el(DomainAppsPanel), read: `${D}/apps`, negative: ['apps.empty'], changes: ['apps.install'], checking: 'apps.checking', unknown: 'apps.unknown', empty: 'apps.empty' },
   { name: 'Mail authentication', element: el(MailAuthPanel), read: `${D}/mail/auth`, negative: ['mailauth.status.missing', 'mailauth.status.no_key', 'mailauth.signingMissing'], changes: ['mailauth.apply', 'mailauth.generateKey'], checking: 'mailauth.checking', unknown: 'mailauth.unknown', negativeAnswer: [{ ...good[`${D}/mail/auth`], spf: authRecord('missing') }, 'mailauth.status.missing'] },
@@ -311,13 +311,19 @@ const lost = [
   { name: 'DNS, deleting a record', element: el(DomainDNSManager), change: `DELETE ${D}/dns/records`, path: `${D}/dns/records`, start: () => press('dns.confirmDelete'), reread: `${D}/dns/records`, held: ['dns.addRecord', 'dns.confirmDelete', 'dns.republish'] },
   { name: 'DNS, publishing the zone', element: el(DomainDNSManager), change: `POST ${D}/dns/zone`, path: `${D}/dns/zone`, start: () => press('dns.republish'), reread: `${D}/dns/zone`, held: ['dns.addRecord', 'dns.confirmDelete', 'dns.republish'] },
   { name: 'DNS, signing the zone', element: el(DomainDNSManager), with: { [`${D}/dnssec`]: { secured: false, ds: null } }, change: `POST ${D}/dnssec`, path: `${D}/dnssec`, start: () => press('dnssec.sign'), reread: `${D}/dnssec`, held: ['dnssec.sign'] },
-  { name: 'Hosting type, applying', element: el(HostingTypePanel), change: `PUT ${D}/hosting`, path: `${D}/hosting`, start: () => press('hosting.save'), reread: `${D}/hosting`, held: ['hosting.save'], after: 'made' },
+  // alpha.132: nothing is applied until something changed; the change names its button.
+  { name: 'Hosting type, applying', element: el(HostingTypePanel), change: `PUT ${D}/hosting`, path: `${D}/hosting`, start: async () => {
+    const command = fields().find((node) => node.props.placeholder === 'node server.js');
+    await act(async () => { command.props.onChange({ target: { value: 'node other.js' } }); });
+    await press('hosting.applyChanges');
+  }, reread: `${D}/hosting`, held: ['hosting.applyChanges'], after: 'not-made' },
   { name: 'Hosting type, stopping the application', element: el(HostingTypePanel), change: `POST ${D}/app/stop`, path: `${D}/app/stop`, start: () => press('services.stop'), reread: `${D}/app/status`, held: ['services.start', 'services.stop', 'services.restart'] },
+  // alpha.132: a changed pool value is sent by the save bar's Save.
   { name: 'PHP, saving the pool', element: php, change: `POST ${D}/php/pool`, path: `${D}/php/pool`, start: async () => {
-    const form = tree.root.findByType('form');
-    await act(async () => { await form.props.onSubmit({ preventDefault() {}, currentTarget: {} }); });
-    await settle();
-  }, reread: `${D}/php`, held: ['php.savePool', 'php.apply'], after: 'not-made' },
+    const field = fields().find((node) => node.props.id === 'php-pool-pm_max_children');
+    await act(async () => { field.props.onChange({ target: { value: '7' } }); });
+    await press('Save');
+  }, reread: `${D}/php`, held: ['Save', 'php.apply'], after: 'not-made' },
   { name: 'General settings, adding an alias', element: el(DomainGeneralSettings), change: `POST ${D}/aliases`, path: `${D}/aliases`, start: async () => {
     const input = fields().find((node) => node.props.type === 'text');
     await act(async () => { input.props.onChange({ target: { value: 'more.example.net' } }); });
@@ -331,14 +337,9 @@ const lost = [
   { name: 'Backups, restoring', element: el(DomainBackupManager), change: `POST ${D}/backups/restore`, path: `${D}/backups/restore`, start: () => press('backup.restore'), reread: `${D}/backups`, held: ['backup.files', 'backup.create', 'backup.full', 'backup.restore', 'backup.delete'], asked: true },
   { name: 'Backups, deleting', element: el(DomainBackupManager), change: `DELETE ${D}/backups`, path: `${D}/backups`, start: () => press('backup.delete'), reread: `${D}/backups`, held: ['backup.files', 'backup.create', 'backup.full', 'backup.restore', 'backup.delete'] },
 ];
-globalThis.FormData ??= class {};
-const realFormData = globalThis.FormData;
-
 for (const row of lost) {
   for (const [how, reply] of [['the connection drops', DROP], ['a gateway answers in the Panel’s place', GATEWAY]]) {
     test(`${row.name}: ${how} → result unknown, nothing sent twice, a read-only re-read, controls held`, async () => {
-      // The pool form is read through FormData; the test supplies the fields.
-      globalThis.FormData = class { get(name) { return { pm: 'ondemand', user: 'site1', group: 'site1' }[name] ?? '5'; } };
       let rereadHeld = null;
       let changing = false;
       const isChange = (init) => init.method && init.method !== 'GET';
@@ -409,7 +410,6 @@ for (const row of lost) {
         await press('common.close');
         assert.ok(!text().includes('common.resultUnknown') && !text().includes('common.lost'), 'the notice stayed after Close');
       } finally {
-        globalThis.FormData = realFormData;
         await unmount();
       }
     });
@@ -574,12 +574,12 @@ test('the PHP pool form holds the server’s values, not defaults', async () => 
   serve();
   await mount(php());
   try {
-    const value = (name) => fields().find((node) => node.props.name === name).props.defaultValue;
+    const value = (name) => fields().find((node) => node.props.id === `php-pool-${name}`).props.value;
     assert.equal(value('pm'), 'ondemand');
-    assert.equal(value('pm_max_children'), 9);
+    assert.equal(value('pm_max_children'), '9');
     assert.equal(value('user'), 'site1');
   } finally { await unmount(); }
-  assert.doesNotMatch(source('components/DomainPHPSettings.tsx'), /defaultValue=\{pc\.\w+ \|\|/, 'a pool field falls back to a default');
+  assert.doesNotMatch(source('components/DomainPHPSettings.tsx'), /value=\{pc\.\w+ \|\||value=\{pc\[name\] \|\|/, 'a pool field falls back to a default');
 });
 
 test('the hosting form shows the saved settings again after Apply, and the draft before it', async () => {
@@ -594,7 +594,7 @@ test('the hosting form shows the saved settings again after Apply, and the draft
     assert.equal(target().props.value, 'http://127.0.0.1:9000');
     await act(async () => { target().props.onChange({ target: { value: 'http://typed' } }); });
     assert.equal(target().props.value, 'http://typed', 'what was typed is not kept');
-    await press('hosting.save');
+    await press('hosting.applyChanges');
     assert.equal(target().props.value, 'http://127.0.0.1:9001', 'the form goes on showing the draft as if it were saved');
   } finally { await unmount(); }
 });
@@ -870,7 +870,7 @@ test('General settings: the switch is sent only by Save; Discard puts the server
   } finally { await unmount(); }
 });
 
-test('Hosting type, Apply whose answer was lost: what was typed is put back when the settings read again are still the earlier ones', async () => {
+test('Hosting type, Apply whose answer was lost: the change stays unapplied unless the settings read again hold it', async () => {
   const command = () => fields().find((node) => node.props.placeholder === 'node server.js');
   for (const taken of [true, false]) {
     let lostOne = false;
@@ -881,15 +881,17 @@ test('Hosting type, Apply whose answer was lost: what was typed is put back when
     await mount(el(HostingTypePanel)());
     try {
       await act(async () => { command().props.onChange({ target: { value: 'node other.js' } }); });
-      await press('hosting.save');
+      await press('hosting.applyChanges');
       await settle();
       assert.deepEqual(noticeState(), [taken ? 'made' : 'not-made']);
       assert.equal(command().props.value, 'node other.js', taken ? 'the form does not show the saved command' : 'what was typed was replaced by the server’s value unseen');
       assert.equal(requests.filter((line) => line === `PUT ${D}/hosting`).length, 1);
-      assert.equal(enabled(['hosting.save']).length, 1);
+      // Held by the server: nothing is left to apply. Not held: still offered.
+      assert.equal(enabled(['hosting.applyChanges']).length, taken ? 0 : 1);
     } finally { await unmount(); }
   }
   // Something else changed: neither the sent settings nor the earlier ones.
+  // The typed command stays, and the server's value is shown beside it.
   let lostOne = false;
   serve({ [`${D}/hosting`]: (init) => {
     if (init.method === 'PUT') { lostOne = true; return DROP(); }
@@ -898,36 +900,39 @@ test('Hosting type, Apply whose answer was lost: what was typed is put back when
   await mount(el(HostingTypePanel)());
   try {
     await act(async () => { command().props.onChange({ target: { value: 'node other.js' } }); });
-    await press('hosting.save');
+    await press('hosting.applyChanges');
     await settle();
     assert.deepEqual(noticeState(), ['read']);
-    assert.equal(command().props.value, 'node third.js');
+    assert.equal(command().props.value, 'node other.js', 'what was typed was replaced unseen');
+    assert.ok(text().includes('node third.js'), 'the server’s value is not shown beside the change');
   } finally { await unmount(); }
 });
 
-test('PHP, the pool whose answer was lost: the form keeps the sent values when the pool read again does not hold them', async () => {
-  globalThis.FormData = class { get(name) { return { pm: 'ondemand', user: 'site1', group: 'site1' }[name] ?? '5'; } };
+test('PHP, the pool whose answer was lost: the form keeps the changed values when the pool read again does not hold them', async () => {
   const sentPool = { pm: 'ondemand', pm_max_children: 5, pm_start_servers: 5, pm_min_spare_servers: 5, pm_max_spare_servers: 5, user: 'site1', group: 'site1' };
-  try {
-    for (const taken of [true, false]) {
-      let lostOne = false;
-      serve({
-        [`${D}/php/pool`]: () => { lostOne = true; return DROP(); },
-        [`${D}/php`]: () => answer(lostOne && taken ? { ...good[`${D}/php`], pool_config: sentPool } : good[`${D}/php`]),
-      });
-      await mount(php());
-      try {
-        const value = (name) => fields().find((node) => node.props.name === name).props.defaultValue;
-        assert.equal(value('pm_max_children'), 9);
-        const form = tree.root.findByType('form');
-        await act(async () => { await form.props.onSubmit({ preventDefault() {}, currentTarget: {} }); });
-        await settle();
-        assert.deepEqual(noticeState(), [taken ? 'made' : 'not-made']);
-        assert.equal(value('pm_max_children'), 5, taken ? 'the form does not show the saved pool' : 'what was entered was replaced by the server’s value unseen');
-        assert.equal(requests.filter((line) => line === `POST ${D}/php/pool`).length, 1);
-      } finally { await unmount(); }
-    }
-  } finally { globalThis.FormData = realFormData; }
+  for (const taken of [true, false]) {
+    let lostOne = false;
+    serve({
+      [`${D}/php/pool`]: () => { lostOne = true; return DROP(); },
+      [`${D}/php`]: () => answer(lostOne && taken ? { ...good[`${D}/php`], pool_config: sentPool } : good[`${D}/php`]),
+    });
+    await mount(php());
+    try {
+      const field = (name) => fields().find((node) => node.props.id === `php-pool-${name}`);
+      assert.equal(field('pm_max_children').props.value, '9');
+      for (const [name, value] of Object.entries(sentPool)) {
+        await act(async () => { field(name).props.onChange({ target: { value: String(value) } }); });
+      }
+      await press('Save');
+      await settle();
+      assert.deepEqual(noticeState(), [taken ? 'made' : 'not-made']);
+      assert.equal(field('pm_max_children').props.value, '5', taken ? 'the form does not show the saved pool' : 'what was entered was replaced by the server’s value unseen');
+      // Held by the server: nothing is left to save. Not held: still unsaved, and marked.
+      assert.equal(buttons().some((node) => node.props['data-save'] !== undefined), !taken);
+      assert.equal(tree.root.findAll((node) => node.props['data-changed-mark'] !== undefined).length > 0, !taken);
+      assert.equal(requests.filter((line) => line === `POST ${D}/php/pool`).length, 1);
+    } finally { await unmount(); }
+  }
 });
 
 test('PHP, the version whose answer was lost: applied when the settings read again name it, still picked when they do not', async () => {
