@@ -35,17 +35,17 @@ test('a route names its topic; an address the guide does not know names none', (
 
 test('the page\'s own topic wins, then its route, then the first chapter', async () => {
     const customer = await chunk('customer', 'en');
-    // A domain's Access tab publishes domain.access: the files chapter at FTP.
-    assert.deepEqual(routes.placeFor(customer, ['domain.access', 'domains']), { chapter: 'files-access', anchor: 'ftp-sftp', fallback: false });
+    // A domain's FTP, SFTP and SSH part publishes domain.files.access: the files chapter at FTP.
+    assert.deepEqual(routes.placeFor(customer, ['domain.files.access', 'domains']), { chapter: 'files-access', anchor: 'ftp-sftp', fallback: false });
     assert.deepEqual(routes.placeFor(customer, [null, 'dashboard']), { chapter: 'getting-started', anchor: '', fallback: false });
     assert.deepEqual(routes.placeFor(customer, [null, 'account']), { chapter: 'getting-started', anchor: 'your-account', fallback: false });
-    // The tab's topic wins over the route's: the Mail tab opens the mail chapter.
+    // The section's topic wins over the route's: the Mail section opens the mail chapter.
     assert.deepEqual(routes.placeFor(customer, ['domain.mail', 'domains']), { chapter: 'mail', anchor: 'mailboxes', fallback: false });
     // No chapter claims the topic: the guide's start, marked as such.
     assert.deepEqual(routes.placeFor(customer, ['no.such.topic']), { chapter: 'getting-started', anchor: '', fallback: true });
-    // The administrator also uses the domain's Access tab, so its guide has the files chapter.
+    // The administrator also uses the domain's FTP, SFTP and SSH part, so its guide has the files chapter.
     const admin = await chunk('admin', 'en');
-    assert.deepEqual(routes.placeFor(admin, ['domain.access']), { chapter: 'files-access', anchor: 'ftp-sftp', fallback: false });
+    assert.deepEqual(routes.placeFor(admin, ['domain.files.access']), { chapter: 'files-access', anchor: 'ftp-sftp', fallback: false });
 });
 
 test('every page topic is a well-formed name, and every chunk claims the same topics in both languages', async () => {
@@ -143,7 +143,8 @@ test('the shell carries the guide lazily, after the screen copy, with tour ancho
     const app = read('../src/App.tsx');
     assert.match(app, /<Route path="\/help" element=\{<PageWithLayout><GuidePage \/><\/PageWithLayout>\} \/>/);
     assert.match(app, /<Route path="\/help\/:chapter" element=\{<PageWithLayout><GuidePage \/><\/PageWithLayout>\} \/>/);
-    assert.match(read('../src/components/DomainDetail.tsx'), /useEffect\(\(\) => publishGuideTopic\(`domain\.\$\{activeTab\}`\), \[activeTab\]\);/);
+    // alpha.132: the section (or its part) on screen names the chapter.
+    assert.match(read('../src/components/DomainDetail.tsx'), /const topic = current \? guideTopic\(current\.id, shownPart\) : null;\s*useEffect\(\(\) => publishGuideTopic\(topic\), \[topic\]\);/);
     // The service help texts are untouched (their budget is nearly used).
     assert.doesNotMatch(read('../src/help/serviceHelp.ts'), /guide/i);
 });

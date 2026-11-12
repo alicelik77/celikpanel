@@ -2,17 +2,17 @@
 id: ai-apps
 title: Yapay zekâ ve otomasyon uygulamaları
 roles: [admin, reseller, customer]
-topics: [domain.ai#ai-apps]
+topics: [domain.site.ai#ai-apps]
 keywords: [yapay zekâ, yapay zeka, n8n, open webui, otomasyon, iş akışı, sohbet, openai, api anahtarı, güvenlik beklemesi]
 ---
 
-**Yapay zekâ ve otomasyon** sekmesi bir alan adında n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır.
+Alan adının **Site** bölümündeki **Yapay zekâ ve otomasyon** parçası n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır.
 
 ## Kurmadan önce {#ai-apps}
 
-Sekme hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:
+Sayfa hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:
 
-- **Web sitesi ve sertifika.** Uygulamalar yalnız HTTPS ile açılır. Alan adının sertifikası yoksa önce **Barındırma** sekmesinde **SSL/TLS** bölümünden alın.
+- **Web sitesi ve sertifika.** Uygulamalar yalnız HTTPS ile açılır. Alan adının sertifikası yoksa önce **Güvenlik** bölümünden alın.
 - **Ayrı bir alt alan adı**, örneğin `n8n.example.com`, en iyisidir: alan adı web sitesi yerine uygulamayı gösterir. Sitenin dosyaları yerinde kalır ve uygulama kaldırılınca geri gelir.
 - **Sunulmuş olması.** Yönetici uygulamayı sunmadan hiçbir şey kurulamaz; planınız da onu kapsamalıdır. Kapsamıyorsa satır kime başvuracağınızı yazar.
 - **Sunucu.** n8n, yöneticinin kuracağı Node.js 24'ü ister. Open WebUI yalnız bazı sistemlerde çalışır; burada çalışamıyorsa satır bunu söyler.
@@ -24,7 +24,7 @@ Sekme hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:
 3. Open WebUI için isterseniz **Yapay zekâ sağlayıcı anahtarları (isteğe bağlı)** ekleyin. Anahtarlar yalnız uygulamanın kendi ayar dosyasında tutulur ve bir daha gösterilmez.
 4. Uygulamanın neler yapabildiğini ve hangi risklerin kaldığını okuduğunuzu işaretleyip onaylayın.
 
-Kurulum sunucuda çalışır ve birkaç dakika sürebilir; Open WebUI birkaç GB'tır. Sayfayı kapatabilirsiniz; döndüğünüzde sekme her adımı gösterir. Bir adım başarısız olursa ileti nedenini ve kimin ne yapacağını yazar; ayrıntılar kurulum günlüğündedir.
+Kurulum sunucuda çalışır ve birkaç dakika sürebilir; Open WebUI birkaç GB'tır. Sayfayı kapatabilirsiniz; döndüğünüzde sayfa her adımı gösterir. Bir adım başarısız olursa ileti nedenini ve kimin ne yapacağını yazar; ayrıntılar kurulum günlüğündedir.
 
 ## Uygulamayı kullanmak {#running}
 
@@ -44,4 +44,4 @@ n8n'in lisansı onu başkalarına barındırılan hizmet olarak sunmayı kısıt
 
 **Uygulamayı kaldır** hizmeti ve program dosyalarını kaldırır; alan adı yeniden web sitesini gösterir. Uygulamanın verileri (iş akışları, sohbetler, veritabanı) siz **Uygulamanın verilerini de sil** seçeneğini işaretleyip alan adını yazmadıkça kendi klasöründe kalır.
 
-Uygulama panele bağlı değildir. Sunucuda sıradan bir sistem hizmetidir; sekme adını yazar ve sunucunun sahibi onu `sudo systemctl stop` ve ardından o adla durdurabilir.
+Uygulama panele bağlı değildir. Sunucuda sıradan bir sistem hizmetidir; sayfa adını yazar ve sunucunun sahibi onu `sudo systemctl stop` ve ardından o adla durdurabilir.

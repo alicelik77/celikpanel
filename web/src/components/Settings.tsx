@@ -13,6 +13,7 @@ import { readApiError, type ApiError } from '../lib/apiError';
 import { readRemote, lastKnown, useRemote } from '../lib/remote';
 import { decodePanelCertificate, panelCertificateName, PANEL_CERTIFICATE_URL } from '../lib/panelCertificate';
 import { availablePanelUpdate, usePanelUpdateDiscovery, wholeVersion } from '../lib/panelUpdateDiscovery';
+import { nextTabIndex, revealTabInRow } from '../lib/tablist';
 
 const LicensePanel = lazy(() => import('./LicensePanel').then((module) => ({ default: module.LicensePanel })));
 const PanelUpdateCard = lazy(() => import('./PanelUpdateCard').then((module) => ({ default: module.PanelUpdateCard })));
@@ -108,20 +109,8 @@ export function Settings() {
     };
 
     const moveSection = (event: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
-        const keyOffsets: Record<string, number> = {
-            ArrowRight: 1,
-            ArrowDown: 1,
-            ArrowLeft: -1,
-            ArrowUp: -1,
-        };
-        let nextIndex = currentIndex;
-        if (event.key === 'Home') nextIndex = 0;
-        else if (event.key === 'End') nextIndex = sections.length - 1;
-        else if (event.key in keyOffsets) {
-            nextIndex = (currentIndex + keyOffsets[event.key] + sections.length) % sections.length;
-        } else {
-            return;
-        }
+        const nextIndex = nextTabIndex(event.key, currentIndex, sections.length);
+        if (nextIndex === null) return;
         event.preventDefault();
         const nextSection = sections[nextIndex];
         selectSection(nextSection.id);
@@ -210,15 +199,9 @@ function SettingsSectionTabs({
 }) {
     const tabRefs = useRef<Partial<Record<SettingsSectionID, HTMLButtonElement | null>>>({});
 
-    useEffect(() => {
-        const activeTab = tabRefs.current[activeID];
-        if (!activeTab || typeof window.matchMedia !== 'function' ||
-            !window.matchMedia('(max-width: 1023px)').matches) return undefined;
-        const frame = window.requestAnimationFrame(() => {
-            activeTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        });
-        return () => window.cancelAnimationFrame(frame);
-    }, [activeID]);
+    // On a narrow screen the row scrolls sideways; the active section is kept
+    // in view inside it (lib/tablist.ts, shared with a domain's page).
+    useEffect(() => revealTabInRow(tabRefs.current[activeID]), [activeID]);
 
     return (
         <nav

@@ -99,9 +99,12 @@ test('the audit words cover the twelve actions and the resource', () => {
 });
 
 test('the tab, the screen part and its budget are wired', () => {
-  const detail = read('../src/components/DomainDetail.tsx');
-  assert.match(detail, /!isTeamMember && !isDnsOnly && \(open\('program_apps'\) \|\| open\('python_apps'\) \|\| projectType === 'runtime_app'\) \? \[\{ id: 'programs', labelKey: 'runtime\.tab', icon: Cpu/);
-  assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\/DomainRuntimeApps'\)/);
+  // alpha.132: Programs is a part of a domain's Site section.
+  const registry = read('../src/components/domain/sections.ts');
+  assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\) && \(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\) \|\| v\.type === 'runtime_app'\)/);
+  assert.match(registry, /programs: 'runtime\.tab',/);
+  const detail = read('../src/components/domain/sections/SiteSection.tsx');
+  assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\.\/\.\.\/DomainRuntimeApps'\)/);
   assert.doesNotMatch(detail, /^import \{[^}]*DomainRuntimeApps[^}]*\} from/m);
   const addons = read('../src/components/AddonsPage.tsx');
   assert.match(addons, /const AdminRuntimeApps = lazy\(\(\) => import\('\.\/AdminRuntimeApps'\)/);

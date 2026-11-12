@@ -42,7 +42,7 @@ What your plan includes, for example whether you may use SSH or how many mailbox
 
 - **Administrator:** finish **Server setup**, check **Components**, then add the first domain. The server setup screen says what is still missing and why.
 - **Reseller:** open **Users** to create a plan and your first customer.
-- **Customer:** open **Domains**, choose your domain, and look at its tabs: **Hosting** for the website, **Mail** for mailboxes, **Files** for the site's files.
+- **Customer:** open **Domains**, choose your domain, and look at its sections: **Site** for the website, **Mail** for mailboxes, **Files** for the site's files.
 - **User:** open **Domains**. You see the domains your team opened for you.
 
 ## Your account {#your-account}

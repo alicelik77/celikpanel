@@ -23,8 +23,8 @@
 <article class="guide-article"><h1>Databases</h1>
 <p class="guide-audience">For everyone</p>
 <p>A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each.</p>
-<h2 id="domain-databases">On the domain's Databases tab</h2>
-<p>The quickest way is from the domain itself. Open the domain, then <strong>Databases</strong>, and press <strong>Create database</strong>:</p>
+<h2 id="domain-databases">In the domain's Databases section</h2>
+<p>The quickest way is from the domain itself. Open the domain, then its <strong>Databases</strong> section, and press <strong>Create database</strong>:</p>
 <ol><li>Type a <strong>Database name</strong>. The panel puts the domain in front of it: for <code>example.com</code> and <code>shop</code>, the full name is <code>example_com_shop</code>.</li><li>Choose the <strong>Database engine</strong>.</li><li>Choose a <strong>Password</strong>.</li><li>Press <strong>Create database</strong>.</li></ol>
 <p>A user with the same name and <code>_user</code> at the end, here <code>example_com_shop_user</code>, is created with full access. Your application connects to <code>localhost</code> with that name, user and password.</p>
 <h2 id="databases-page">The Databases page</h2>
@@ -32,11 +32,11 @@
 <ul><li>the <strong>Database name</strong>: letters, digits and underscores only;</li><li>the <strong>Website</strong> it belongs to, or <strong>No website (standalone database)</strong>. A database that belongs to a website is deleted with it;</li><li>the <strong>Database user</strong>: a <strong>New user</strong> or an <strong>Existing user</strong>. <strong>Make a strong password</strong> fills one in for you;</li><li>the <strong>Permissions</strong>: <strong>ALL (full access)</strong> or <strong>SELECT (read only)</strong>.</li></ul>
 <p><strong>Create user</strong> adds a user on its own. To give a user a new password, use its key button. Programs that use the old password stop connecting until they get the new one; an application CelikPanel installed gets it automatically.</p>
 <h2 id="web-tools">phpMyAdmin and phpPgAdmin</h2>
-<p><strong>Database web tools</strong> on the domain's <strong>Databases</strong> tab has <strong>Open phpMyAdmin</strong> (MariaDB) or <strong>Open phpPgAdmin</strong> (PostgreSQL). The tool opens through the panel and is never open to the internet. Sign in with the database user and its password; you see only your own databases.</p>
+<p><strong>Database web tools</strong> in the domain's <strong>Databases</strong> section has <strong>Open phpMyAdmin</strong> (MariaDB) or <strong>Open phpPgAdmin</strong> (PostgreSQL). The tool opens through the panel and is never open to the internet. Sign in with the database user and its password; you see only your own databases.</p>
 <p>If the button says to install the tool from <strong>Components</strong>, the administrator installs it.</p>
 <h2 id="passwords">Passwords</h2>
 <p>CelikPanel does not keep database passwords and cannot show them again. If you lost one, give the user a new password and put it into your application's configuration file. When your plan's database count or the disk is full, new databases are refused; see <a href="limits.html#disk">Limits and suspension</a>.</p>
-<aside class="guide-callout guide-warning"><p class="guide-callout-label">Warning</p><p>Deleting a database deletes all its data. Take a backup first under <strong>Advanced</strong>, then <strong>Backups</strong>.</p></aside>
+<aside class="guide-callout guide-warning"><p class="guide-callout-label">Warning</p><p>Deleting a database deletes all its data. Take a backup first in the domain's <strong>Backups</strong> section.</p></aside>
 <nav class="guide-pager" aria-label="Chapters"><a rel="prev" href="mail.html"><span>Previous</span>Mail and webmail</a><a rel="next" href="apps-wordpress.html"><span>Next</span>Applications, WordPress tools and malware scan</a></nav>
 </article></div>
 </main><footer class="site-footer"><div class="container footer-main">

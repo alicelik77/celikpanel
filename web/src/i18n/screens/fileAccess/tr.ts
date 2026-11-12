@@ -3,7 +3,6 @@
 import type { FileAccessScreenKey } from './en';
 
 export const trFileAccessScreens: Record<FileAccessScreenKey, string> = {
-    'fileAccess.tab': 'Erişim',
     'fileAccess.title': 'FTP, SFTP ve SSH',
     'fileAccess.desc': 'Bu sitenin dosyalarına FileZilla gibi bir programla bağlanın. Sitenin kendi hesabıyla girersiniz ve yalnız bu aboneliğin klasörünü görürsünüz; sunucunun geri kalanı kapalı kalır.',
     'fileAccess.checking': 'Bu sitenin erişimi sunucudan okunuyor…',

@@ -7,7 +7,7 @@ const chapter = {
   id: "backups",
   title: "Yedekler, uzak kopyalar ve zamanlanmış görevler",
   blocks: [
-    ["p",["Alan adının ",["b","Gelişmiş"]," sekmesinde ",["b","Yedekler"],", ",["b","Zamanlanmış görevler"],", ",["b","Loglar"]," ve zararlı yazılım taraması bulunur (bkz. ",["g","apps-wordpress","malware","Zararlı yazılım taraması"],")."]],
+    ["p",["Alan adının yedekleri ",["b","Yedekler"]," bölümündedir. ",["b","Zamanlanmış görevler"]," ve ",["b","Günlükler"]," ",["b","Gelişmiş"]," bölümünde, zararlı yazılım taraması ",["b","Güvenlik"]," bölümündedir (bkz. ",["g","apps-wordpress","malware","Zararlı yazılım taraması"],")."]],
     ["h",2,"backups","Yedek almak"],
     ["p",[["b","Yeni yedek oluştur"]," altında şunlardan birini seçin:"]],
     ["ul",[[["b","Dosya yedeği"],": yalnız sitenin dosyaları;"],[["b","Veritabanı yedeği"],": alan adına bağlı bir veritabanı;"],[["b","Tam yedek"],": dosyalar ve bağlı bütün veritabanları."]]],

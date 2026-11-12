@@ -1,21 +1,11 @@
-import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ReactNode } from 'react';
+import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react';
 import { useSearchParams } from '../router';
 import { publishGuideTopic } from '../help/guide/context';
-import {
-    ArrowLeft, Globe, Lock, ExternalLink,
-    LayoutGrid, Server, Network, Mail, Database, Folder, Wrench, AppWindow, KeyRound, Bot, Cpu,
-} from 'lucide-react';
-import { DomainPHPSettings } from './DomainPHPSettings';
-import { DomainGeneralSettings } from './DomainGeneralSettings';
-import { DomainSSLSettings, decodeSSLData, type SSLRuntimeSummary } from './DomainSSLSettings';
-import { DomainSSLOverviewCard } from './DomainSSLOverviewCard';
+import { ArrowLeft, Globe, Lock, ExternalLink } from 'lucide-react';
+import { decodeSSLData, type SSLRuntimeSummary } from './DomainSSLSettings';
 import { DomainConnection } from './DomainConnection';
-import { DomainFileManager } from './DomainFileManager';
-import { DomainDNSManager } from './DomainDNSManager';
-import { HostingTypePanel } from './HostingTypePanel';
 import { useI18n } from '../i18n';
 import { formatTime } from '../lib/dateFormat';
-import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner, StatusDot } from './ui';
 import { useAuth } from '../auth/AuthContext';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
@@ -25,107 +15,47 @@ import {
     hasDomainAccess,
     normalizeDomainAccess,
     type DomainAccess,
-    type DomainAccessMode,
     type DomainCapability,
 } from '../auth/domainAccess';
+import {
+    buildSections,
+    guideTopic,
+    isOpenPlace,
+    legacyPlace,
+    requestedPlace,
+    withPlace,
+    type Place,
+    type SectionId,
+} from './domain/sections';
+import { SectionRow, SECTION_PANEL_ID, sectionTabId } from './domain/SectionRow';
+import type { DomainSectionProps } from './domain/SectionParts';
 
-const DomainAppsPanel = lazy(() => import('./DomainAppsPanel').then((module) => ({
-    default: module.DomainAppsPanel,
+// The nine sections of the page (alpha.132), each in a file of its own and
+// fetched when it is opened: the page's own bundle stays the shell (the row,
+// the header, the facts) and the screens of a section load with it. The page
+// bundle had less than 1 KiB under its limit, and the limit is not raised.
+// Sayfanın dokuz bölümü, her biri kendi dosyasında ve açılınca getirilir;
+// sayfa paketi yalnız kabuktur. Sınır yükseltilmez.
+const SECTION_VIEWS: Record<SectionId, LazyExoticComponent<ComponentType<DomainSectionProps>>> = {
+    overview: lazy(() => import('./domain/sections/OverviewSection').then((module) => ({ default: module.OverviewSection }))),
+    site: lazy(() => import('./domain/sections/SiteSection').then((module) => ({ default: module.SiteSection }))),
+    files: lazy(() => import('./domain/sections/FilesSection').then((module) => ({ default: module.FilesSection }))),
+    mail: lazy(() => import('./domain/sections/MailSection').then((module) => ({ default: module.MailSection }))),
+    databases: lazy(() => import('./domain/sections/DatabasesSection').then((module) => ({ default: module.DatabasesSection }))),
+    dns: lazy(() => import('./domain/sections/DnsSection').then((module) => ({ default: module.DnsSection }))),
+    security: lazy(() => import('./domain/sections/SecuritySection').then((module) => ({ default: module.SecuritySection }))),
+    backups: lazy(() => import('./domain/sections/BackupsSection').then((module) => ({ default: module.BackupsSection }))),
+    advanced: lazy(() => import('./domain/sections/AdvancedSection').then((module) => ({ default: module.AdvancedSection }))),
+};
+// A section the plan does not include opens this one-block page instead.
+// Planın içermediği bölüm bunun yerine bu tek bloklu sayfayı açar.
+const NotInPlanSection = lazy(() => import('./domain/sections/NotInPlanSection').then((module) => ({
+    default: module.NotInPlanSection,
 })));
-// alpha.118: the WordPress tools (a section of the Applications tab, beside
-// the catalogue) and the malware scan (an Advanced sub-tab), fetched when
-// opened. The administrator sees both on every site; a customer when the
-// right is open.
-// WordPress araçları ve zararlı yazılım taraması; açılınca getirilir.
-const WordPressToolsPanel = lazy(() => import('./WordPressToolsPanel').then((module) => ({
-    default: module.WordPressToolsPanel,
-})));
-const DomainMalwareScan = lazy(() => import('./DomainMalwareScan').then((module) => ({
-    default: module.DomainMalwareScan,
-})));
-
-// The three panels of the Advanced tab are fetched when one of them is opened,
-// like the Applications panel above. They are the least visited part of a
-// domain's page and were a quarter of its bundle; the page had 0.72 KiB left
-// under its size limit, and the limit is not raised (9 Oct 2026). The tab
-// content already waits inside one Suspense boundary.
-// Gelişmiş sekmesinin üç bölümü, yukarıdaki Uygulamalar bölümü gibi, biri
-// açıldığında getirilir. Alan adı sayfasının en az ziyaret edilen kısmıdır ve
-// paketinin dörtte biriydi; sayfanın boyut sınırına 0,72 KiB payı kalmıştı ve
-// sınır yükseltilmez. Sekme içeriği zaten tek bir Suspense sınırında bekler.
-const DomainBackupManager = lazy(() => import('./DomainBackupManager').then((module) => ({
-    default: module.DomainBackupManager,
-})));
-const DomainCronManager = lazy(() => import('./DomainCronManager').then((module) => ({
-    default: module.DomainCronManager,
-})));
-// alpha.128: the mail tab with its outgoing limits, bulk actions and domain
-// options grew past the DomainDetail chunk budget; it loads with its tab.
-// The budget is not raised. Posta sekmesi kendi sekmesiyle yüklenir.
-const DomainMailManager = lazy(() => import('./DomainMailManager').then((module) => ({
-    default: module.DomainMailManager,
-})));
-// The Databases tab is fetched when it is opened (alpha.127): the merged
-// alpha.127 work put the page 0.40 KiB over its size limit, and the limit is
-// not raised. The tab content already waits inside one Suspense boundary.
-// Veritabanları sekmesi açıldığında getirilir; sayfa sınırı yükseltilmez.
-const DomainDatabaseManager = lazy(() => import('./DomainDatabaseManager').then((module) => ({
-    default: module.DomainDatabaseManager,
-})));
-const DomainLogsViewer = lazy(() => import('./DomainLogsViewer').then((module) => ({
-    default: module.DomainLogsViewer,
-})));
-// A domain's protected folders and redirects (alpha.114), fetched when one of
-// the two sub-tabs is opened.
-// Alan adının korumalı klasörleri ve yönlendirmeleri; alt sekme açılınca getirilir.
-const DomainSiteProtect = lazy(() => import('./DomainSiteFeatures').then((module) => ({
-    default: module.DomainSiteProtect,
-})));
-const DomainSiteRedirects = lazy(() => import('./DomainSiteFeatures').then((module) => ({
-    default: module.DomainSiteRedirects,
-})));
-// How long the site's logs are kept (alpha.128), beside the Logs viewer.
-const LogRetentionCard = lazy(() => import('./LogRetentionCard').then((module) => ({
-    default: module.LogRetentionCard,
-})));
-// Git deploy of the site (alpha.128), fetched when opened.
-const GitDeployPanel = lazy(() => import('./GitDeployPanel').then((module) => ({
-    default: module.GitDeployPanel,
-})));
-// Copying the website into another site (alpha.128), fetched when opened.
-const SiteCopyPanel = lazy(() => import('./SiteCopyPanel').then((module) => ({
-    default: module.SiteCopyPanel,
-})));
-// The site's web server settings (alpha.128), fetched when the sub-tab opens.
-const DomainWebSettings = lazy(() => import('./DomainWebSettings').then((module) => ({
-    default: module.DomainWebSettings,
-})));
-// The site's configuration file (D-031), for an administrator; fetched when
-// it is needed, like the panels above.
-// Sitenin yapılandırma dosyası; gerektiğinde getirilir.
-const DomainSiteConfig = lazy(() => import('./DomainSiteConfig').then((module) => ({
-    default: module.DomainSiteConfig,
-})));
+// The site's configuration file notice (D-031), for an administrator.
+// Sitenin yapılandırma dosyası bildirimi; gerektiğinde getirilir.
 const SiteConfigNotice = lazy(() => import('./DomainSiteConfig').then((module) => ({
     default: module.SiteConfigNotice,
-})));
-// The site's FTP, SFTP and SSH access (alpha.117), fetched when the tab opens.
-const DomainFileAccess = lazy(() => import('./DomainFileAccess').then((module) => ({
-    default: module.DomainFileAccess,
-})));
-// alpha.128: the site's other FTP/SFTP logins, each closed into one folder,
-// below the access settings; a chunk of its own.
-const FTPLogins = lazy(() => import('./FTPLogins').then((module) => ({
-    default: module.FTPLogins,
-})));
-// AI and automation apps of the site (alpha.118), fetched when the tab opens.
-// Kept apart from the PHP app catalogue of the Apps tab.
-const DomainServiceApps = lazy(() => import('./DomainServiceApps').then((module) => ({
-    default: module.DomainServiceApps,
-})));
-// Uploaded programs of the site (alpha.119), fetched when the Programs tab opens.
-const DomainRuntimeApps = lazy(() => import('./DomainRuntimeApps').then((module) => ({
-    default: module.DomainRuntimeApps,
 })));
 // alpha.128 ops (G22): the health strip, with its own copy, in its own chunk.
 const DomainHealthStrip = lazy(() => import('./DomainHealthStrip').then((module) => ({
@@ -246,25 +176,24 @@ interface DomainDetailProps {
     onBack: () => void;
 }
 
-// Domain detail hub. A quiet one-line fact strip under the title (PHP, SSL,
-// disk, traffic) and full-width task-grouped tabs. The facts used to live in
-// a 260px side card that wasted a column and misaligned the tabs — the page
-// belongs to the content, not to a summary. Related tools nest under one tab
-// (Hosting → General/PHP/SSL; Advanced → Backups/Cron/Logs) so the top bar
-// stays short.
+
+// A domain's page (alpha.132): the header with a quiet line of facts, one row
+// of nine sections named by what the person wants to do, and the open
+// section below. Which sections and parts are drawn is decided in one place
+// (domain/sections.ts); each section's screens are in its own lazy file. The
+// place on the page is in the address, so a reload, Back and a shared link
+// keep it; every older ?tab= link still leads to the same screen.
 //
-// Alan adı detay hub'ı. Başlığın altında tek satırlık sessiz bir bilgi
-// şeridi (PHP, SSL, disk, trafik) ve tam genişlikte görev-gruplu sekmeler.
-// Bu bilgiler eskiden bir sütunu israf eden ve sekmeleri hizadan kaydıran
-// 260px'lik yan karttaydı — sayfa özete değil içeriğe aittir. İlgili araçlar
-// tek sekme altında toplanır (Barındırma → Genel/PHP/SSL; Gelişmiş →
-// Yedekler/Cron/Loglar); böylece üst çubuk kısa kalır.
+// Alan adı sayfası: başlık ve tek satırlık bilgiler, işe göre adlandırılmış
+// dokuz bölümlük tek satır ve altında açık bölüm. Hangi bölümün çizileceğine
+// tek yerde karar verilir; sayfadaki yer adreste durur, eski ?tab=
+// bağlantıları aynı ekrana götürür.
 export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const { t, locale } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
-    const [searchParams] = useSearchParams();
-    const requestedTab = searchParams.get('tab');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const requested = requestedPlace(searchParams);
     // The list is the same address the Domains page and the navigation read,
     // so this page shares their request. What this page changed itself (the
     // PHP version, whether a certificate is active) lies over the row until
@@ -278,37 +207,16 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // kullanılır ve ikinci kez istek gönderilmez.
     const list = useRemote('/api/v1/domains', decodeList<unknown>, { freshFor: LIST_FRESH_FOR_MS });
     const [changed, setChanged] = useState<Partial<Domain>>({});
-    // ?tab=dns and ?tab=ssl open that part of the page: the first when a DNS
-    // setup needs attention, the second after Add domain asked for a
-    // certificate (its outcome tells the person to look here).
-    // ?tab=dns ve ?tab=ssl sayfanın o bölümünü açar.
-    // ?tab=config opens the site's Configuration file (alpha.126: from the
-    // plan-limit card's "Open <site>"); it is a part of the hosting tab.
-    // ?tab=config sitenin Yapılandırma dosyasını açar.
-    // alpha.128: ?tab=php opens the site's PHP settings (a lowered limit's notice).
-    const hostingPart = requestedTab === 'ssl' || requestedTab === 'config' || requestedTab === 'php' ? requestedTab : null;
-    const [activeTab, setActiveTab] = useState(requestedTab === 'dns' ? 'dns' : requestedTab === 'mail' ? 'mail' : hostingPart ? 'hosting' : 'overview');
-    const [activeSub, setActiveSub] = useState<Record<string, string>>(hostingPart ? { hosting: hostingPart } : {});
-    // The guide's "?" opens the chapter of the tab on screen (alpha.119).
-    // Kılavuzun "?" düğmesi ekrandaki sekmenin bölümünü açar.
-    useEffect(() => publishGuideTopic(`domain.${activeTab}`), [activeTab]);
 
     const handleCertificateChange = useCallback((status: SSLRuntimeSummary) => {
         setChanged((current) => ({ ...current, ssl_enabled: status.activated }));
     }, []);
+    const handlePhpVersionChange = useCallback((version: string) => {
+        setChanged((current) => ({ ...current, php_version: version }));
+    }, []);
     // The Configuration file page ended a certificate reason: the line above
-    // the tabs and the list's badge are read from the list, so read it again.
-    const rereadList = () => void list.retry();
-
-    useEffect(() => {
-        if (requestedTab === 'dns') setActiveTab('dns');
-        // The Dashboard's mail card opens the mailboxes of a site directly.
-        if (requestedTab === 'mail') setActiveTab('mail');
-        if (requestedTab === 'ssl' || requestedTab === 'config' || requestedTab === 'php') {
-            setActiveTab('hosting');
-            setActiveSub((current) => ({ ...current, hosting: requestedTab }));
-        }
-    }, [domainId, requestedTab]);
+    // the sections and the list's badge are read from the list, so read it again.
+    const rereadList = useCallback(() => void list.retry(), [list]);
 
     const listed = lastKnown(list.remote);
     const lookup = listed ? lookUp(listed.value, domainId, isTeamMember) : null;
@@ -328,53 +236,98 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
 
     // The certificate line of the strip under the title reads the certificate
     // itself, at the address and with the decoder the overview card and the
-    // SSL/TLS tab use, so the three share one request and cannot disagree
-    // (10 Oct 2026). It used to wait for one of those two to report: after a
-    // read that failed, and on every tab that mounts neither, it said
-    // "checking status" without end. Now it is one of three things: being
-    // checked, could not be checked (with the read again), or what the server
-    // said. After a refresh that failed the earlier answer stays; the card and
-    // the tab say that it is the earlier one.
+    // certificate part of Security use, so the three share one request and
+    // cannot disagree (10 Oct 2026). It is one of three things: being checked,
+    // could not be checked (with the read again), or what the server said.
+    // After a refresh that failed the earlier answer stays; the card and the
+    // certificate part say that it is the earlier one.
     // Başlığın altındaki şeridin sertifika satırı, sertifikayı kendisi okur;
-    // genel bakış kartının ve SSL/TLS sekmesinin kullandığı adresten ve
-    // çözücüyle, böylece üçü tek isteği paylaşır. Eskiden o ikisinden birinin
-    // bildirmesini beklerdi: başarısız okumadan sonra ve ikisini de takmayan
-    // her sekmede sonsuza dek "durum kontrol ediliyor" derdi. Artık üç şeyden
-    // biridir: kontrol ediliyor, kontrol edilemedi (yeniden okumayla) ya da
-    // sunucunun söylediği.
+    // genel bakış kartıyla ve Güvenlik'in sertifika parçasıyla tek isteği
+    // paylaşır. Üç şeyden biridir: kontrol ediliyor, kontrol edilemedi
+    // (yeniden okumayla) ya da sunucunun söylediği.
     const showsCertificate = domain !== null
         && (domain.project_type || 'php') !== 'dnsonly'
         && (!isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, 'ssl')));
     const ssl = useRemote(showsCertificate ? `/api/v1/domains/${domainId}/ssl` : null, decodeSSLData);
     const certificate = showsCertificate ? lastKnown(ssl.remote) : undefined;
 
-    // What the server can actually do — tabs for services that are not
+    // What the server can actually do — sections for services that are not
     // installed would be settings pages for ghosts. One shared read
-    // (lib/hostingCapabilities.ts); the panels under the tabs use the same
+    // (lib/hostingCapabilities.ts); the screens of a section use the same
     // answer. `caps` is the KNOWN answer or null, and the three states mean:
-    //   - being checked:      every tab stays; nothing is hidden on a guess;
-    //   - could not be checked: every tab stays; the panel that needs the
+    //   - being checked:      every section stays; nothing is hidden on a guess;
+    //   - could not be checked: every section stays; the screen that needs the
     //                         answer says so itself and offers the read again;
-    //   - known:              only now is a tab for a missing service removed.
+    //   - known:              only now is a section for a missing service removed.
     // A team member is never asked: the server-wide inventory is not theirs.
-    // Sunucunun gerçekten yapabildiği — kurulu olmayan servislerin sekmeleri,
-    // hayaletlerin ayar sayfaları olurdu. Tek ortak okuma; sekmelerin altındaki
-    // bölümler aynı yanıtı kullanır. `caps` BİLİNEN yanıttır ya da null:
-    // kontrol edilirken ve kontrol edilemediğinde her sekme kalır (yanıta
-    // ihtiyacı olan bölüm bunu kendisi söyler); ancak bilindiğinde eksik
-    // servisin sekmesi kaldırılır. Ekip üyesi için hiç sorulmaz.
+    // Sunucunun gerçekten yapabildiği. Kontrol edilirken ve kontrol
+    // edilemediğinde her bölüm kalır; ancak bilindiğinde eksik servisin bölümü
+    // kaldırılır. Ekip üyesi için hiç sorulmaz.
     const capabilities = useHostingCapabilities({ enabled: !isTeamMember });
     const caps = !isTeamMember && capabilities.remote.state === 'known' ? capabilities.remote.value : null;
-    // Which tabs exist follows the last answer the server gave. A refresh that
-    // failed is not a reason to bring back a tab the server ruled out, nor to
-    // take one away.
-    // Hangi sekmelerin var olduğu, sunucunun verdiği son yanıtı izler. Başarısız
-    // bir yenileme, sunucunun elediği sekmeyi geri getirmez; var olanı da almaz.
-    const tabCaps = isTeamMember ? null : lastKnown(capabilities.remote)?.value ?? null;
+    // Which sections exist follows the last answer the server gave. A refresh
+    // that failed is not a reason to bring back a section the server ruled
+    // out, nor to take one away.
+    // Hangi bölümlerin var olduğu, sunucunun verdiği son yanıtı izler.
+    const sectionCaps = isTeamMember ? null : lastKnown(capabilities.remote)?.value ?? null;
+
+    // The sections of this domain for this viewer (domain/sections.ts): its
+    // role, its grants as a team member, the plan's closed rights (D-042) and
+    // the server's engines.
+    // Bu izleyici için bu alan adının bölümleri.
+    const sections = domain ? buildSections({
+        role,
+        projectType: domain.project_type || 'php',
+        closedRights: domain.rights_closed ?? [],
+        access: isTeamMember ? domain.access : undefined,
+        server: sectionCaps ? { mail: sectionCaps.mail_server, databases: sectionCaps.database_servers.length > 0 } : null,
+    }) : [];
+    // The section the address asks for when it is drawn, otherwise the first.
+    // Adresin istediği bölüm çiziliyse o, değilse ilki.
+    const current = (requested && sections.find((section) => section.id === requested.section)) || sections[0];
+    const shownPart = current && requested?.section === current.id && requested.part && current.parts.some((part) => part.id === requested.part)
+        ? requested.part
+        : null;
+    // The settled answer: a team member's sections never wait for the server;
+    // everyone else's wait for its engines before one is ruled out.
+    const settled = isTeamMember || sectionCaps !== null;
+
+    // The guide's "?" opens the chapter of the section (or part) on screen.
+    // Kılavuzun "?" düğmesi ekrandaki bölümün bölümünü açar.
+    const topic = current ? guideTopic(current.id, shownPart) : null;
+    useEffect(() => publishGuideTopic(topic), [topic]);
+
+    // The address says where the person is. An older ?tab= link, or a place
+    // that is not on this page any more, is written over (replacing the
+    // entry, so Back does not return to it) once the page knows what it has.
+    // The person is moved only off a section that is not there; one that
+    // comes back later (a service installed since) does not pull them to it.
+    // Adres kişinin nerede olduğunu söyler. Eski ?tab= bağlantısı ya da artık
+    // sayfada olmayan yer, sayfa ne olduğunu bilince değiştirilir.
+    const canonical = current
+        && (searchParams.has('tab') || searchParams.has('section') || searchParams.has('part'))
+        && (settled || !requested || requested.section === current.id)
+        ? withPlace(searchParams, { section: current.id, part: shownPart ?? undefined }).toString()
+        : null;
+    useEffect(() => {
+        if (canonical === null || canonical === searchParams.toString()) return;
+        setSearchParams(new URLSearchParams(canonical), { replace: true });
+    }, [canonical, searchParams, setSearchParams]);
+
+    // Moving to a section, or to a part of one. Every switch of section (the
+    // row, the Overview's tiles, the health strip's fixes, the configuration
+    // file notice) passes through here and nowhere else: what must hold the
+    // person on the section they are leaving is asked at this one place.
+    // Bir bölüme ya da bölümün bir parçasına geçiş; bölüm değiştiren her yol
+    // yalnız buradan geçer.
+    const go = async (place: Place, options: { replace?: boolean } = {}) => {
+        if (current && place.section === current.id && (place.part ?? null) === shownPart && !options.replace) return;
+        setSearchParams(withPlace(searchParams, place), { replace: options.replace });
+    };
 
     if (list.remote.state === 'loading') {
         return (
-            <div className="p-6 md:p-8">
+            <div className="p-4 sm:p-6 md:p-8">
                 <Checking label={t('domain.checking')} />
             </div>
         );
@@ -384,7 +337,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
         // Gösterilmez, nedeni söylenir ve geri dönüş bir seçenek olarak sunulur.
         const back = <Button type="button" icon={ArrowLeft} onClick={onBack}>{t('nav.domains')}</Button>;
         return (
-            <div className="p-6 md:p-8">
+            <div className="p-4 sm:p-6 md:p-8">
                 {!listed || !lookup ? (
                     <>
                         <CouldNotCheck text={t('domain.unknown')} onRetry={() => void list.retry()} busy={list.reading} />
@@ -402,17 +355,8 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
             </div>
         );
     }
+    if (!current) return null;
 
-    // Tab tree — honest to the domain's role and the server's capabilities.
-    // A DNS-only domain has no files, no PHP, no vhost: showing those tabs
-    // would be settings pages for ghosts. Likewise Mail/Databases only exist
-    // when the matching server is actually installed (caps=null while loading
-    // keeps them visible rather than flashing tabs in and out).
-    // Sekme ağacı — domain'in rolüne ve sunucunun yeteneklerine dürüst.
-    // Yalnız-DNS domain'in dosyası, PHP'si, vhost'u yok: o sekmeleri
-    // göstermek hayaletlere ayar sayfası olurdu. Mail/Veritabanı da ancak
-    // ilgili sunucu gerçekten kuruluyken vardır (caps yüklenirken null →
-    // sekmeler girip çıkarak titremesin diye görünür kalırlar).
     const projectType = domain.project_type || 'php';
     const isDnsOnly = projectType === 'dnsonly';
     const sslUsable = certificate?.value.certificate?.usable === true;
@@ -420,118 +364,14 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const canView = (capability: DomainCapability) => (
         !isTeamMember || Boolean(domain.access && hasDomainAccess(domain.access, capability))
     );
-    // What the subscription's rights close (alpha.117, D-042): its tab is not
-    // drawn, and DNS records stay visible but cannot be changed. The server
+    // What the subscription's rights close (alpha.117, D-042). The server
     // refuses all of it anyway; the page does not offer what it would refuse.
-    // Aboneliğin haklarının kapattığı: sekmesi çizilmez; DNS kayıtları görünür
-    // kalır ama değiştirilemez.
+    // Aboneliğin haklarının kapattığı; sunucu zaten hepsini reddeder.
     const closed = new Set(domain.rights_closed ?? []);
     const open = (permission: string) => !closed.has(permission);
-    const wpTools = role === 'admin' || open('wordpress_tools');
-    const combinedAccessMode = (capabilities: DomainCapability[]): DomainAccessMode => {
-        if (!isTeamMember) return 'manage';
-        const modes = capabilities.map((capability) => domain.access?.[capability] ?? 'none');
-        if (modes.some((mode) => mode === 'none')) return 'none';
-        if (modes.some((mode) => mode === 'view')) return 'view';
-        return 'manage';
-    };
-    const hostingSubs: SubDef[] = [
-        ...(!isTeamMember && canView('files') ? [
-            { id: 'general', labelKey: 'domain.sub.general', capabilities: ['files'], render: () => <DomainGeneralSettings domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
-            { id: 'type', labelKey: 'domain.sub.hostingType', capabilities: ['files'], render: () => <HostingTypePanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef,
-        ] : []),
-        ...(canView('files') && open('site_protect_redirects') && (projectType === 'php' || projectType === 'static') ? [
-            { id: 'protect', labelKey: 'siteFeatures.protect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteProtect domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
-        ] : []),
-        ...(canView('files') && open('site_protect_redirects') && projectType !== 'forwarding' ? [
-            { id: 'redirects', labelKey: 'siteFeatures.redirect.title', capabilities: ['files'], render: (readOnly) => <DomainSiteRedirects domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
-        ] : []),
-        ...(canView('files') && projectType !== 'forwarding' ? [
-            { id: 'web', labelKey: 'siteFeatures.web.title', capabilities: ['files'], render: (readOnly) => <DomainWebSettings domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef,
-        ] : []),
-        ...(role === 'admin' ? [
-            { id: 'config', labelKey: 'siteConfig.tab', capabilities: ['files'], render: () => <DomainSiteConfig domainId={domain.id} domainName={domain.domain_name} onReasonEnded={rereadList} /> } satisfies SubDef,
-        ] : []),
-        ...(projectType === 'php' && canView('php') ? [
-            { id: 'php', labelKey: 'domain.sub.php', capabilities: ['php'], render: (readOnly) => <DomainPHPSettings domainId={domain.id} domainName={domain.domain_name} currentVersion={domain.php_version ?? ''} onVersionChange={(v) => setChanged((current) => ({ ...current, php_version: v }))} readOnly={readOnly} isAdditionalUser={isTeamMember} isAdmin={role === 'admin'} /> } satisfies SubDef,
-        ] : []),
-        ...(canView('ssl') ? [{
-            id: 'ssl',
-            labelKey: 'domain.sub.ssl',
-            capabilities: ['ssl'],
-            render: (readOnly) => (
-                <DomainSSLSettings
-                    domainId={domain.id}
-                    domainName={domain.domain_name}
-                    mailAvailable={isTeamMember ? canView('mail') : (caps?.mail_server ?? null)}
-                    onCertificateChange={handleCertificateChange}
-                    readOnly={readOnly || (!open('ssl_acme') && !open('ssl_custom'))}
-                    acmeOpen={open('ssl_acme')}
-                    customOpen={open('ssl_custom')}
-                />
-            ),
-        } satisfies SubDef] : []),
-    ];
-    const advancedSubs: SubDef[] = [
-        ...(canView('backups') && open('backups') ? [{ id: 'backups', labelKey: 'domain.sub.backups', capabilities: ['backups'], render: (readOnly) => <DomainBackupManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
-        ...(canView('cron') && open('cron') ? [{ id: 'cron', labelKey: 'domain.sub.cron', capabilities: ['cron'], render: (readOnly) => <DomainCronManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies SubDef] : []),
-        ...(canView('statistics') ? [{ id: 'logs', labelKey: 'domain.sub.logs', capabilities: ['statistics'], render: (readOnly) => <div className="space-y-4">{!isTeamMember && <LogRetentionCard domainId={domain.id} />}<DomainLogsViewer domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /></div> } satisfies SubDef] : []),
-        ...(!isTeamMember && (projectType === 'php' || projectType === 'static' || projectType === 'node') && open('file_manager') ? [{ id: 'git', labelKey: 'siteFeatures.git.title', render: () => <GitDeployPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
-        ...(!isTeamMember && !isDnsOnly && projectType !== 'forwarding' && open('file_manager') ? [{ id: 'copy', labelKey: 'siteFeatures.copy.title', render: () => <SiteCopyPanel domainId={domain.id} domainName={domain.domain_name} /> } satisfies SubDef] : []),
-        ...(!isTeamMember && !isDnsOnly && (role === 'admin' || open('malware_scan')) ? [{ id: 'malware', labelKey: 'mscan.title', render: () => <DomainMalwareScan domainId={domain.id} /> } satisfies SubDef] : []),
-    ];
-    const tabs: TabDef[] = [
-        ...(!isTeamMember ? [{
-            // The connection card leads the Overview: it is the precondition for
-            // the site, the certificate and the mail records, and it was the one
-            // thing the panel never said out loud.
-            // Bağlantı kartı Genel Bakış'ı açar: site, sertifika ve posta
-            // kayıtlarının ön koşuludur ve panelin hiç yüksek sesle söylemediği
-            // tek şeydi.
-            id: 'overview', labelKey: 'domain.tab.overview', icon: LayoutGrid,
-        } satisfies TabDef] : []),
-        ...(!isDnsOnly && hostingSubs.length > 0 ? [{
-            id: 'hosting', labelKey: 'domain.tab.hosting', icon: Server,
-            subs: hostingSubs,
-        } satisfies TabDef] : []),
-        ...(canView('dns') ? [{ id: 'dns', labelKey: 'domain.tab.dns', icon: Network, capabilities: ['dns'], render: (readOnly) => <DomainDNSManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly || !open('dns_edit')} isAdditionalUser={isTeamMember} dnssecHidden={!open('dnssec')} /> } satisfies TabDef] : []),
-        ...(canView('mail') && open('mail') && (isTeamMember || !tabCaps || tabCaps.mail_server) ? [{ id: 'mail', labelKey: 'domain.tab.mail', icon: Mail, capabilities: ['mail'], render: (readOnly) => <DomainMailManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
-        ...(canView('databases') && open('databases') && (isTeamMember || !tabCaps || tabCaps.database_servers.length > 0) ? [{ id: 'databases', labelKey: 'domain.tab.databases', icon: Database, capabilities: ['databases'], render: (readOnly) => <DomainDatabaseManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} isAdditionalUser={isTeamMember} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && projectType === 'php' && canView('files') && canView('php') && (open('app_installer') || wpTools) ? [{ id: 'apps', labelKey: 'domain.tab.apps', icon: AppWindow, capabilities: ['files', 'php'], render: () => <>{open('app_installer') && <DomainAppsPanel domainId={domain.id} domainName={domain.domain_name} />}{wpTools && <WordPressToolsPanel domainId={domain.id} />}</> } satisfies TabDef] : []),
-        // alpha.118: an app that runs stays manageable (stop, log, removal)
-        // even when the right was closed later (D-042 P5).
-        ...(!isTeamMember && !isDnsOnly && (open('service_apps') || projectType === 'service_app') ? [{ id: 'ai', labelKey: 'svcapps.tab', icon: Bot, render: () => <DomainServiceApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
-        // alpha.119: a program that runs stays manageable after the right closes.
-        ...(!isTeamMember && !isDnsOnly && (open('program_apps') || open('python_apps') || projectType === 'runtime_app') ? [{ id: 'programs', labelKey: 'runtime.tab', icon: Cpu, render: () => <DomainRuntimeApps domainId={domain.id} domainName={domain.domain_name} /> } satisfies TabDef] : []),
-        ...(!isDnsOnly && canView('files') && open('file_manager') ? [{ id: 'files', labelKey: 'domain.tab.files', icon: Folder, capabilities: ['files'], render: (readOnly) => <DomainFileManager domainId={domain.id} domainName={domain.domain_name} readOnly={readOnly} /> } satisfies TabDef] : []),
-        ...(!isTeamMember && !isDnsOnly && (open('file_access') || open('ssh')) ? [{ id: 'access', labelKey: 'fileAccess.tab', icon: KeyRound, render: () => <div className="space-y-6"><DomainFileAccess domainId={domain.id} domainName={domain.domain_name} isAdmin={role === 'admin'} /><Suspense fallback={null}><FTPLogins domainId={domain.id} isAdmin={role === 'admin'} /></Suspense></div> } satisfies TabDef] : []),
-        ...(!isDnsOnly && advancedSubs.length > 0 ? [{
-            id: 'advanced', labelKey: 'domain.tab.advanced', icon: Wrench,
-            subs: advancedSubs,
-        } satisfies TabDef] : []),
-    ];
+    const View = SECTION_VIEWS[current.id];
+    const configShown = current.id === 'advanced' && current.parts.some((part) => part.id === 'config');
 
-    // A tab can disappear when capabilities load (or the type changes) —
-    // never crash on a stale selection, fall back to the overview.
-    // Yetenekler yüklenince (ya da tip değişince) bir sekme kaybolabilir —
-    // bayat seçimde asla çökme, genel bakışa düş.
-    const current = tabs.find((tb) => tb.id === activeTab) ?? tabs[0];
-    if (!current) return null;
-    // The person is moved only off a tab that is not there any more, and the
-    // stored choice follows at once, so a tab that comes back later (a service
-    // installed since) does not pull them to it. A tab that exists is never
-    // left on their behalf: the list above is the one place that decides.
-    // Kişi yalnız artık var olmayan sekmeden alınır ve saklanan seçim hemen
-    // onu izler; sonradan geri gelen sekme kişiyi kendine çekmez. Var olan
-    // sekme onun adına terk edilmez: buna yalnız yukarıdaki liste karar verir.
-    if (current.id !== activeTab && (isTeamMember || tabCaps)) setActiveTab(current.id);
-    const requestedSubId = current.subs ? activeSub[current.id] : undefined;
-    const currentSub = current.subs
-        ? current.subs.find((sub) => sub.id === requestedSubId) ?? current.subs[0]
-        : undefined;
-    const subId = currentSub?.id;
-    const currentMode = combinedAccessMode(currentSub?.capabilities ?? current.capabilities ?? []);
-    const readOnly = isTeamMember && currentMode === 'view';
     const facts: Array<{ key: string; content: ReactNode }> = [];
     if (!isTeamMember || canView('files') || canView('php')) {
         facts.push({
@@ -560,8 +400,8 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                         </span>
                     ) : ssl.remote.state === 'unknown' ? (
                         // Not "off" and not "checking": the read failed. The
-                        // way to read again is beside the words, because on
-                        // most tabs nothing else on the page offers it.
+                        // way to read again is beside the words, because in
+                        // most sections nothing else on the page offers it.
                         // "Kapalı" da değil "kontrol ediliyor" da: okuma
                         // başarısız. Yeniden okuma sözün yanındadır.
                         <span className="inline-flex flex-wrap items-baseline gap-x-2" data-ssl-fact="unknown">
@@ -600,7 +440,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     }
 
     return (
-        <div className="p-6 md:p-8">
+        <div className="min-w-0 p-4 sm:p-6 md:p-8">
             {/* The list could not be read again: the page stays, and says that
                 what it shows about this domain is the earlier answer.
                 Liste yeniden okunamadı: sayfa kalır ve bu alan adı hakkında
@@ -615,17 +455,14 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                     busy={list.reading}
                 />
             )}
-            {role === 'admin' && !isDnsOnly && domain.site_config && !(current.id === 'hosting' && subId === 'config') && (
+            {role === 'admin' && !isDnsOnly && domain.site_config && !configShown && (
                 <Suspense fallback={null}>
                     <SiteConfigNotice
                         state={domain.site_config.state}
                         keptByChoice={domain.site_config.kept_by_choice}
                         pendingReason={domain.site_config.pending_reason}
                         kind={domain.site_config.kind}
-                        onOpen={() => {
-                            setActiveSub((currentSubs) => ({ ...currentSubs, hosting: 'config' }));
-                            setActiveTab('hosting');
-                        }}
+                        onOpen={() => void go({ section: 'advanced', part: 'config' })}
                     />
                 </Suspense>
             )}
@@ -639,7 +476,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         {canView('ssl') && sslUsable ? <Lock className="h-5 w-5" /> : <Globe className="h-5 w-5" />}
                     </span>
-                    <h1 className="text-2xl font-bold tracking-tight">{domain.domain_name}</h1>
+                    <h1 className="min-w-0 break-all text-2xl font-bold tracking-tight">{domain.domain_name}</h1>
                     <span className="inline-flex items-center gap-1.5 text-sm text-fg-muted">
                         <StatusDot ok={domain.status === 'active'} />
                         {domain.status === 'active' ? t('domains.status.active') : domain.status}
@@ -672,194 +509,80 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                 )}
             </div>
 
-            <div className="min-w-0">
-                    <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-                        {tabs.map((tb) => {
-                            const Icon = tb.icon;
-                            const active = tb.id === current.id;
-                            return (
-                                <button
-                                    key={tb.id}
-                                    onClick={() => setActiveTab(tb.id)}
-                                    className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-                                        active ? 'border-primary text-primary' : 'border-transparent text-fg-muted hover:text-fg'
-                                    }`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {t(tb.labelKey)}
-                                </button>
-                            );
-                        })}
+            <SectionRow sections={sections} active={current.id} onSelect={(id) => void go({ section: id })} />
+
+            <div id={SECTION_PANEL_ID} role="tabpanel" aria-labelledby={sectionTabId(current.id)} className="min-w-0">
+                {/* The connection check leads the Overview: it is the
+                    precondition for everything below it (operator, 25 Jul).
+                    Bağlantı kontrolü Genel Bakış'ın başındadır. */}
+                {current.id === 'overview' && (
+                    <div className="mb-4">
+                        <DomainConnection domainId={domain.id} domainName={domain.domain_name} />
                     </div>
+                )}
 
-                    {/* Sub-tabs (for grouped areas) */}
-                    {current.subs && (
-                        <div className="mb-4 flex flex-wrap gap-1">
-                            {current.subs.map((s) => {
-                                const active = s.id === subId;
-                                return (
-                                    <button
-                                        key={s.id}
-                                        onClick={() => setActiveSub((m) => ({ ...m, [current.id]: s.id }))}
-                                        className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                                            active ? 'bg-primary/10 text-primary' : 'text-fg-muted hover:bg-surface-2'
-                                        }`}
-                                    >
-                                        {t(s.labelKey)}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                {/* alpha.128 ops (G22): the health strip leads the Overview;
+                    a team member, who has no Overview, sees it in the first
+                    section, with only the checks of its own grants. A fix
+                    names an older tab; it leads to the section that holds it
+                    now, or, when that is not open here, to whom to ask.
+                    Sağlık şeridi Genel Bakış'ta; ekip üyesi ilk bölümde görür. */}
+                {(current.id === 'overview' || (isTeamMember && current.id === sections[0]?.id)) && (
+                    <Suspense fallback={null}>
+                        <DomainHealthStrip
+                            domainId={domain.id}
+                            showsConnection={current.id === 'overview'}
+                            hasTab={(tab, sub) => {
+                                const place = legacyPlace(tab, sub);
+                                return place !== null && isOpenPlace(sections, place);
+                            }}
+                            onGo={(tab, sub) => {
+                                const place = legacyPlace(tab, sub);
+                                if (place) void go(place);
+                            }}
+                        />
+                    </Suspense>
+                )}
+
+                {/* Add domain created the site but could not publish its DNS
+                    (DNS_PUBLICATION_PENDING): the page it opened says what
+                    needs attention, who acts, what to do and how it resumes,
+                    not only the toast that sent the person here (alpha.114).
+                    Site olustu ama DNS yayimlanamadi: sayfa dikkat gerekeni soyler. */}
+                {current.id === 'dns' && searchParams.get('attention') === 'dns-publication' && (
+                    <section role="status" data-dns-publication-attention="" className="mb-4 space-y-2 rounded-lg border border-warning-mark/50 bg-warning-mark/10 p-4 text-sm leading-6 text-fg">
+                        <h2 className="font-semibold">{t('domains.attention.dnsTitle', { name: domain.domain_name })}</h2>
+                        <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
+                            <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd>{t('domains.attention.dnsWhy')}</dd>
+                            <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd>{t('domains.attention.dnsWho')}</dd>
+                            <dt className="text-fg-muted">{t('setup.v2.next')}</dt><dd>{t('domains.attention.dnsNext')}</dd>
+                            <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd>{t('domains.attention.dnsThen')}</dd>
+                        </dl>
+                    </section>
+                )}
+
+                <Suspense fallback={<Spinner />}>
+                    {current.notInPlan ? (
+                        <NotInPlanSection key={current.id} section={current.id} rights={current.notInPlan} role={role} />
+                    ) : (
+                        <View
+                            key={current.id}
+                            domain={domain}
+                            parts={current.parts}
+                            part={shownPart}
+                            sections={sections}
+                            role={role}
+                            isTeamMember={isTeamMember}
+                            open={open}
+                            canView={canView}
+                            mailAvailable={caps?.mail_server ?? null}
+                            go={go}
+                            onCertificateChange={handleCertificateChange}
+                            onPhpVersionChange={handlePhpVersionChange}
+                            onReasonEnded={rereadList}
+                        />
                     )}
-
-                    {/* The connection check sits ABOVE the card, on the Overview,
-                        because it is the precondition for everything inside it:
-                        no site, certificate or mail record can work until the
-                        domain points here. The panel knew this and never said it
-                        (operator, 25 Jul). / Bağlantı kontrolü Genel Bakış'ta
-                        kartın ÜSTÜNDE durur, çünkü içindeki her şeyin ön
-                        koşuludur: alan adı buraya bakmadan ne site, ne sertifika,
-                        ne posta kaydı çalışır. Panel bunu biliyor ve hiç
-                        söylemiyordu (operatör, 25 Tem). */}
-                    {current.id === 'overview' && (
-                        <div className="mb-4">
-                            <DomainConnection domainId={domain.id} domainName={domain.domain_name} />
-                        </div>
-                    )}
-
-                    {/* alpha.128 ops (G22): the health strip leads the Overview;
-                        a team member, who has no Overview, sees it on the first
-                        tab, with only the checks of its own grants.
-                        Sağlık şeridi Genel Bakış'ta; ekip üyesi ilk sekmede görür. */}
-                    {(current.id === 'overview' || (isTeamMember && current.id === tabs[0]?.id)) && (
-                        <Suspense fallback={null}>
-                            <DomainHealthStrip
-                                domainId={domain.id}
-                                showsConnection={current.id === 'overview'}
-                                hasTab={(tabId, subTab) => {
-                                    const tab = tabs.find((tb) => tb.id === tabId);
-                                    if (!tab) return false;
-                                    return !subTab || Boolean(tab.subs?.some((sub) => sub.id === subTab));
-                                }}
-                                onGo={(tabId, subTab) => {
-                                    if (subTab) setActiveSub((currentSubs) => ({ ...currentSubs, [tabId]: subTab }));
-                                    setActiveTab(tabId);
-                                }}
-                            />
-                        </Suspense>
-                    )}
-
-                    {/* Add domain created the site but could not publish its DNS
-                        (DNS_PUBLICATION_PENDING): the page it opened says what
-                        needs attention, who acts, what to do and how it resumes,
-                        not only the toast that sent the person here (alpha.114).
-                        Site olustu ama DNS yayimlanamadi: sayfa dikkat gerekeni soyler. */}
-                    {current.id === 'dns' && searchParams.get('attention') === 'dns-publication' && (
-                        <section role="status" data-dns-publication-attention="" className="mb-4 space-y-2 rounded-lg border border-warning-mark/50 bg-warning-mark/10 p-4 text-sm leading-6 text-fg">
-                            <h2 className="font-semibold">{t('domains.attention.dnsTitle', { name: domain.domain_name })}</h2>
-                            <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
-                                <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd>{t('domains.attention.dnsWhy')}</dd>
-                                <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd>{t('domains.attention.dnsWho')}</dd>
-                                <dt className="text-fg-muted">{t('setup.v2.next')}</dt><dd>{t('domains.attention.dnsNext')}</dd>
-                                <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd>{t('domains.attention.dnsThen')}</dd>
-                            </dl>
-                        </section>
-                    )}
-
-                    {readOnly && (
-                        <div className="mb-3 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-sm text-fg">
-                            View-only access / Salt görüntüleme yetkisi
-                        </div>
-                    )}
-
-                    <div className="rounded-xl border border-border bg-surface p-5">
-                        <Suspense fallback={<Spinner />}>
-                            {current.id === 'overview' ? (
-                                <Overview
-                                    domainId={domain.id}
-                                    tabs={tabs}
-                                    onCertificateChange={handleCertificateChange}
-                                    onGo={(tabId, subId) => {
-                                        if (subId) {
-                                            setActiveSub((currentSubs) => ({
-                                                ...currentSubs,
-                                                [tabId]: subId,
-                                            }));
-                                        }
-                                        setActiveTab(tabId);
-                                    }}
-                                />
-                            ) : currentSub ? (
-                                currentSub.render(readOnly)
-                            ) : (
-                                current.render!(readOnly)
-                            )}
-                        </Suspense>
-                    </div>
-            </div>
-        </div>
-    );
-}
-
-interface SubDef {
-    id: string;
-    labelKey: TranslationKey;
-    render: (readOnly: boolean) => ReactNode;
-    capabilities?: DomainCapability[];
-}
-interface TabDef {
-    id: string;
-    labelKey: TranslationKey;
-    icon: typeof Server;
-    render?: (readOnly: boolean) => ReactNode;
-    subs?: SubDef[];
-    capabilities?: DomainCapability[];
-}
-
-// Overview is a compact launcher — tiles for each area, task-oriented and
-// few, rather than Plesk's wall of icons.
-// Genel Bakış kompakt bir başlatıcıdır — her bölüm için kutucuklar; Plesk'in
-// ikon duvarı yerine görev-odaklı ve az.
-function Overview({
-    domainId,
-    tabs,
-    onGo,
-    onCertificateChange,
-}: {
-    domainId: number;
-    tabs: TabDef[];
-    onGo: (id: string, subId?: string) => void;
-    onCertificateChange: (status: SSLRuntimeSummary) => void;
-}) {
-    const { t } = useI18n();
-    const areas = tabs.filter((tb) => tb.id !== 'overview');
-    const hasHosting = areas.some((tb) => tb.id === 'hosting');
-    return (
-        <div>
-            {hasHosting && (
-                <DomainSSLOverviewCard
-                    domainId={domainId}
-                    onOpen={() => onGo('hosting', 'ssl')}
-                    onCertificateChange={onCertificateChange}
-                />
-            )}
-            <p className="mb-4 text-sm text-fg-muted">{t('domain.overview.hint')}</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {areas.map((tb) => {
-                    const Icon = tb.icon;
-                    return (
-                        <button
-                            key={tb.id}
-                            onClick={() => onGo(tb.id)}
-                            className="group flex items-center gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-primary/40 hover:bg-surface-2"
-                        >
-                            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-2 text-fg-muted transition-colors group-hover:bg-primary group-hover:text-primary-fg">
-                                <Icon className="h-5 w-5" />
-                            </span>
-                            <span className="text-sm font-semibold text-fg">{t(tb.labelKey)}</span>
-                        </button>
-                    );
-                })}
+                </Suspense>
             </div>
         </div>
     );

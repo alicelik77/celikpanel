@@ -8,9 +8,9 @@ keywords: [database, mysql, mariadb, postgresql, user, password, phpmyadmin, php
 
 A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each.
 
-## On the domain's Databases tab {#domain-databases}
+## In the domain's Databases section {#domain-databases}
 
-The quickest way is from the domain itself. Open the domain, then **Databases**, and press **Create database**:
+The quickest way is from the domain itself. Open the domain, then its **Databases** section, and press **Create database**:
 
 1. Type a **Database name**. The panel puts the domain in front of it: for `example.com` and `shop`, the full name is `example_com_shop`.
 2. Choose the **Database engine**.
@@ -32,7 +32,7 @@ A user with the same name and `_user` at the end, here `example_com_shop_user`, 
 
 ## phpMyAdmin and phpPgAdmin {#web-tools}
 
-**Database web tools** on the domain's **Databases** tab has **Open phpMyAdmin** (MariaDB) or **Open phpPgAdmin** (PostgreSQL). The tool opens through the panel and is never open to the internet. Sign in with the database user and its password; you see only your own databases.
+**Database web tools** in the domain's **Databases** section has **Open phpMyAdmin** (MariaDB) or **Open phpPgAdmin** (PostgreSQL). The tool opens through the panel and is never open to the internet. Sign in with the database user and its password; you see only your own databases.
 
 If the button says to install the tool from **Components**, the administrator installs it.
 
@@ -41,5 +41,5 @@ If the button says to install the tool from **Components**, the administrator in
 CelikPanel does not keep database passwords and cannot show them again. If you lost one, give the user a new password and put it into your application's configuration file. When your plan's database count or the disk is full, new databases are refused; see [Limits and suspension](guide:limits#disk).
 
 :::warning
-Deleting a database deletes all its data. Take a backup first under **Advanced**, then **Backups**.
+Deleting a database deletes all its data. Take a backup first in the domain's **Backups** section.
 :::
