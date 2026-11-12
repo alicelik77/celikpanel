@@ -257,7 +257,7 @@ test('a proof timeout says what is already true, that CelikPanel checks again by
   assert.match(tr_, /bu sunucuda DNS'ten kaldırıldı/);
   assert.match(tr_, /henüz doğrulanmadı/);
   assert.match(tr_, /kimsenin bir şey yapması gerekmiyor/);
-  assert.match(tr_, /yöneticisine panelde/);
+  assert.match(tr_, /yöneticisine ne yapması gerektiğini/);
   for (const text of [en_, tr_]) {
     assert.doesNotMatch(text, /Nothing was changed|değiştirilmedi|DNS answers are unaffected|etkilenmez/);
     assert.doesNotMatch(text, /SSH|port|bağlantı noktası|journalctl|overloaded|aşırı yüklü/);

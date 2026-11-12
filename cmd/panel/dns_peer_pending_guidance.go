@@ -25,7 +25,7 @@ const dnsPeerJournalUnknownEnglish = "The DNS change is saved and in effect on t
 // here. The Panel re-checks by itself (a press meanwhile starts nothing);
 // after dnsPendingPublicationStuckAfter such checks the administrator gets a
 // notification with the next step (dns_pending_publication.go).
-const dnsPeerProofTimeoutEnglish = "The domain is removed from DNS on this server; that the backup DNS server removed it too is not confirmed yet, because the check did not finish in time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less often, at most every 5 minutes), continues from where it stopped, and then finishes the deletion by itself. If it stays like this for about a quarter of an hour, the server's administrator gets a notification in the panel saying what to do."
+const dnsPeerProofTimeoutEnglish = "The domain is removed from DNS on this server; that the backup DNS server removed it too is not confirmed yet, because the check did not finish in time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself (at most every 5 minutes) and then finishes the deletion by itself. If it stays like this for about a quarter of an hour, the server's administrator gets a notification saying what to do."
 
 // dnsPeerProofTimeoutDetailEnglish names which side ran out of time.
 func dnsPeerProofTimeoutDetailEnglish(detail string) string {
