@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useRef } from 'react';
 import { useI18n } from '../../../i18n';
 import { confirmAction } from '../../../lib/confirmAction';
 import { setLeaveAsker } from './leaveAsker';
@@ -29,10 +29,20 @@ import { saveWord } from './words';
 
 type Unsaved = number | 'some';
 
+/**
+ * A part of a page that can be put away on its own (a closable part of a
+ * domain section, alpha.132): the drafts mounted inside it belong to it, so
+ * closing it asks only about them and gives up only them.
+ * Kendi başına kapatılabilen sayfa parçası; içindeki taslaklar ona aittir.
+ */
+export const LeaveScope = createContext<object | null>(null);
+
 const registered = new Map<object, Unsaved>();
+const scopes = new Map<object, object | null>();
 let locale: string | undefined;
 
-const open = () => [...registered.values()].filter((count) => count !== 0);
+const inScope = (scope?: object) => [...registered.keys()].filter((key) => scope === undefined || scopes.get(key) === scope);
+const open = (scope?: object) => inScope(scope).map((key) => registered.get(key) ?? 0).filter((count) => count !== 0);
 
 function onBeforeUnload(event: BeforeUnloadEvent) {
     if (open().length === 0) return;
@@ -51,8 +61,8 @@ function sync() {
     else window.removeEventListener('beforeunload', onBeforeUnload);
 }
 
-function ask(): Promise<boolean> | null {
-    const unsaved = open();
+function ask(scope?: object): Promise<boolean> | null {
+    const unsaved = open(scope);
     if (unsaved.length === 0) return null;
     const n = unsaved.reduce<Unsaved>((sum, count) => (sum === 'some' || count === 'some' ? 'some' : sum + count), 0);
     const lost = n === 'some' ? saveWord(locale, 'leaveLostSome') : n === 1 ? saveWord(locale, 'leaveLostOne') : saveWord(locale, 'leaveLost', { n });
@@ -67,7 +77,7 @@ function ask(): Promise<boolean> | null {
         cancelLabel: saveWord(locale, 'stay'),
     }).then((leave) => {
         if (leave) {
-            for (const key of registered.keys()) registered.set(key, 0);
+            for (const key of inScope(scope)) registered.set(key, 0);
             sync();
         }
         return leave;
@@ -77,10 +87,10 @@ function ask(): Promise<boolean> | null {
 /**
  * Asks before a switch the router does not see. Resolves true when nothing is
  * unsaved or the person chose to leave (the changes are then given up), false
- * when they stay.
+ * when they stay. With a scope (LeaveScope), only that part's changes count.
  */
-export function confirmLeaveIfDirty(): Promise<boolean> {
-    return ask() ?? Promise.resolve(true);
+export function confirmLeaveIfDirty(scope?: object): Promise<boolean> {
+    return ask(scope) ?? Promise.resolve(true);
 }
 
 /**
@@ -90,13 +100,16 @@ export function confirmLeaveIfDirty(): Promise<boolean> {
 export function useLeaveGuard(unsaved: Unsaved): void {
     const { locale: current } = useI18n();
     const key = useRef({}).current;
+    const scope = useContext(LeaveScope);
     locale = current;
     useEffect(() => {
         registered.set(key, unsaved);
+        scopes.set(key, scope);
         sync();
-    }, [key, unsaved]);
+    }, [key, unsaved, scope]);
     useEffect(() => () => {
         registered.delete(key);
+        scopes.delete(key);
         sync();
     }, [key]);
 }

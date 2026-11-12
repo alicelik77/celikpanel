@@ -258,7 +258,7 @@ test('arrow keys, Home and End move along the row and wrap; other keys do not mo
 
 const source = (path) => read(`../src/${path}`);
 const icons = new Set(['AlertTriangle', 'XCircle']);
-for (const file of ['components/ui.tsx', 'components/DomainDetail.tsx', 'components/domain/SectionRow.tsx', 'lib/domainSectionIcons.ts']) {
+for (const file of ['components/ui.tsx', 'components/DomainDetail.tsx', 'components/domain/SectionRow.tsx', 'components/domain/SectionParts.tsx', 'lib/domainSectionIcons.ts']) {
   for (const match of source(file).matchAll(/import\s*\{([^}]+)\}\s*from 'lucide-react'/g)) {
     for (const item of match[1].split(',')) {
       const name = item.replace(/\btype\b/, '').trim();
@@ -536,4 +536,130 @@ test('mounted: another part of the open section asks nothing, even with unsaved 
       assert.equal(shown().part, 'logs');
     });
   } finally { await close(); }
+});
+
+// --- Long sections: parts that open and close (owner review, 12 Nov 2026) -----------
+
+const openings = (list, id) => list.find((section) => section.id === id)?.parts.map((part) => `${part.id}:${part.startsOpen}`);
+
+test('Site and Advanced start their parts open or closed by the site kind; the other sections keep every part open', () => {
+  assert.deepEqual(openings(build({ role: 'admin' }), 'site'), ['type:true', 'apps:true', 'ai:false', 'programs:false', 'php:true', 'redirects:true']);
+  assert.deepEqual(openings(build({ role: 'admin', projectType: 'service_app' }), 'site'), ['type:true', 'ai:true', 'programs:false', 'redirects:true']);
+  assert.deepEqual(openings(build({ role: 'admin', projectType: 'runtime_app' }), 'site'), ['type:true', 'ai:false', 'programs:true', 'redirects:true']);
+  assert.deepEqual(openings(build({ role: 'admin' }), 'advanced'), ['cron:true', 'logs:false', 'git:false', 'copy:false', 'web:false', 'config:false']);
+  for (const section of build({ role: 'admin' }).filter((item) => item.id !== 'site' && item.id !== 'advanced')) {
+    for (const part of section.parts) assert.equal(part.startsOpen, undefined, `${section.id}/${part.id} is not a closable card`);
+  }
+  // Every closable part says in one sentence what it is, in both languages.
+  for (const section of build({ role: 'admin' }).filter((item) => item.id === 'site' || item.id === 'advanced')) {
+    for (const part of section.parts) assert.ok(englishScreens[`domain.about.${part.id}`] && turkishScreens[`domain.about.${part.id}`], part.id);
+  }
+  assert.deepEqual([turkishScreens['domain.part.toggleOpen'], turkishScreens['domain.part.toggleClose']], ['Aç', 'Kapat']);
+});
+
+const { SectionParts } = await import(shared.compile('components/domain/SectionParts.tsx', { '/sections': sectionsURL }));
+const { useLeaveGuard: partGuard } = await import(shared.resolve('/leaveGuard'));
+// A part's screen as a probe: it says it was mounted, and holds unsaved changes when told to.
+const mountedParts = [];
+function PartProbe({ id }) {
+  React.useEffect(() => { mountedParts.push(id); }, [id]);
+  partGuard(globalThis.a132Dirty?.includes(id) ? 1 : 0);
+  return React.createElement('p', { 'data-probe': id });
+}
+async function partsPage({ section = 'advanced', projectType = 'php', part = null } = {}) {
+  mountedParts.length = 0;
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible', getElementById: () => null };
+  const went = [];
+  const parts = build({ role: 'admin', projectType }).find((item) => item.id === section).parts;
+  let page;
+  await act(async () => {
+    page = Renderer.create(React.createElement(SectionParts, {
+      section, parts, part, go: (place, options) => { went.push({ place, options }); },
+      render: (item) => React.createElement(PartProbe, { id: item.id }),
+    }));
+  });
+  await act(async () => { await settled(); });
+  const probes = () => page.root.findAll((node) => node.type === 'p' && node.props['data-probe']).map((node) => node.props['data-probe']);
+  const toggle = (id) => page.root.find((node) => node.type === 'button' && node.props['data-part-toggle'] === id);
+  const press = async (id) => { await act(async () => { await toggle(id).props.onClick(); await settled(); }); };
+  return { page, probes, toggle, press, went, done: async () => act(async () => page.unmount()) };
+}
+
+test('mounted: a closed part mounts nothing and reads nothing; Open mounts it; the toggle is a real disclosure', async () => {
+  const view = await partsPage();
+  try {
+    assert.deepEqual(view.probes(), ['cron'], 'a closed part was drawn');
+    assert.deepEqual(mountedParts, ['cron'], 'a closed part was mounted');
+    assert.equal(view.toggle('logs').props['aria-expanded'], false);
+    assert.equal(view.toggle('cron').props['aria-expanded'], true);
+    assert.equal(view.toggle('logs').props['aria-controls'], 'domain-part-logs-body');
+    await view.press('logs');
+    assert.deepEqual(view.probes(), ['cron', 'logs']);
+    assert.equal(view.toggle('logs').props['aria-expanded'], true);
+    await view.press('logs');
+    assert.deepEqual(view.probes(), ['cron'], 'Close kept the part');
+  } finally { await view.done(); }
+});
+
+test('mounted: a part the address names is open, also when an older link names it (?tab=config, ?tab=php)', async () => {
+  for (const [tab, section] of [['config', 'advanced'], ['php', 'site'], ['logs', 'advanced']]) {
+    const place = sections.legacyPlace(tab);
+    assert.equal(place.section, section, tab);
+    const view = await partsPage({ section, part: place.part });
+    try {
+      assert.ok(view.probes().includes(place.part), `${tab}: the named part stayed closed`);
+    } finally { await view.done(); }
+  }
+  // In Site the AI and program parts stay closed on a PHP site.
+  const site = await partsPage({ section: 'site' });
+  try {
+    assert.deepEqual(site.probes(), ['type', 'apps', 'php', 'redirects']);
+  } finally { await site.done(); }
+});
+
+test('mounted: the index opens the part it points to', async () => {
+  const view = await partsPage();
+  try {
+    const link = view.page.root.findAll((node) => node.type === 'a' && node.props.href === '#domain-part-git')[0];
+    await act(async () => { link.props.onClick({ preventDefault() {} }); await settled(); });
+    assert.deepEqual(view.went.at(-1), { place: { section: 'advanced', part: 'git' }, options: { replace: true } });
+  } finally { await view.done(); }
+  // The address now names it: the section is drawn again with that part, and it is open.
+  const named = await partsPage({ part: 'git' });
+  try {
+    assert.ok(named.probes().includes('git'));
+  } finally { await named.done(); }
+});
+
+test('mounted: closing a part with unsaved changes asks about that part only; Stay keeps it open', async () => {
+  const asked = [];
+  globalThis.a132Dirty = ['logs', 'cron'];
+  const view = await partsPage({ part: 'logs' });
+  try {
+    globalThis.confirm = (text, request) => { asked.push(request); return false; };
+    await view.press('logs');
+    assert.equal(asked.length, 1, 'closing a part with unsaved changes did not ask');
+    assert.deepEqual(asked[0].lost, ['1 change on this page that was not saved'], 'the question counted another part’s changes');
+    assert.ok(view.probes().includes('logs'), 'Stay closed the part');
+    globalThis.confirm = (text, request) => { asked.push(request); return true; };
+    await view.press('logs');
+    assert.ok(!view.probes().includes('logs'), 'Leave kept the part open');
+    // The other part's changes are still there: closing cron asks again.
+    globalThis.confirm = (text, request) => { asked.push(request); return false; };
+    await view.press('cron');
+    assert.equal(asked.length, 3, 'giving up one part’s changes gave up another’s');
+    globalThis.a132Dirty = [];
+    asked.length = 0;
+  } finally {
+    await view.done();
+    delete globalThis.a132Dirty;
+  }
+  // Nothing unsaved: closing asks nothing.
+  const quiet = await partsPage();
+  try {
+    globalThis.confirm = (text, request) => { asked.push(request); return false; };
+    await quiet.press('cron');
+    assert.equal(asked.length, 0);
+    assert.deepEqual(quiet.probes(), []);
+  } finally { await quiet.done(); }
 });

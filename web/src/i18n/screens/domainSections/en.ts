@@ -34,6 +34,10 @@ export const enDomainSectionsScreens = {
     'domain.part.certificate': 'Certificate (HTTPS)',
     'domain.part.cron': 'Scheduled tasks',
     'domain.part.logs': 'Logs',
+    // alpha.132 (owner review, 12 Nov 2026): the parts of Site and Advanced are cards that open and close;
+    // each card's one sentence (domain.about.*) is in the "sites" part.
+    'domain.part.toggleOpen': 'Open',
+    'domain.part.toggleClose': 'Close',
     'domain.readOnly': 'You can only view this. To change it, ask the account owner for permission.',
     'domain.notInPlan.title': '{section} is not in your plan',
     'domain.notInPlan.titleDomain': '{section} is not in this domain’s plan',

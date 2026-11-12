@@ -38,7 +38,7 @@ const screenFiles = [
   'ProblemsNow',
 ];
 // alpha.132: the domain page's row of sections and its parts draw these.
-const icons = new Set(['AlertTriangle', 'XCircle', 'Lock', 'Eye', 'LayoutGrid', 'AppWindow', 'Folder', 'Mail', 'Database', 'Network', 'ShieldCheck', 'Archive', 'Wrench']);
+const icons = new Set(['AlertTriangle', 'XCircle', 'Lock', 'Eye', 'ChevronDown', 'LayoutGrid', 'AppWindow', 'Folder', 'Mail', 'Database', 'Network', 'ShieldCheck', 'Archive', 'Wrench']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'PHPToolVersion', 'PanelPortCard', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',

@@ -22,7 +22,7 @@ test('additional-user domain surfaces stay fail-closed without disabling the acc
   assert.doesNotMatch(detailSource, /<fieldset/);
   assert.doesNotMatch(detailSource, /setAttribute\('inert'/);
   // Each part gets its own view-only flag from the registry, and says so.
-  assert.match(detailSource, /return \{ id: rule\.id, readOnly: teamMember && weakest === 'view' \};/);
+  assert.match(detailSource, /const view: PartView = \{ id: rule\.id, readOnly: teamMember && weakest === 'view' \};/);
   assert.match(detailSource, /\{item\.readOnly && \(/);
   assert.match(detailSource, /<Suspense fallback=\{<Spinner \/>\}>\{render\(item\)\}<\/Suspense>/);
 

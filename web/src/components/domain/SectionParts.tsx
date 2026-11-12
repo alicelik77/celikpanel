@@ -8,9 +8,21 @@
 // Bir bölümün gövdesi: parçaları tek sayfada alt alta, her biri kendi
 // kartında; birden çok parça varsa "Bu sayfada" dizini onlara kaydırır.
 // Adresin adlandırdığı parça bölüm açılınca görünür kılınır.
-import { Suspense, useEffect, useRef, type ReactNode } from 'react';
-import { Eye } from 'lucide-react';
+//
+// In a long section (Site, Advanced: owner review, 12 Nov 2026) every part is
+// a card that opens and closes: its title, one sentence saying what it is,
+// and "Open" / "Close". The registry says which start open (PartView
+// startsOpen). A closed part mounts nothing, so it reads nothing; a part the
+// address or the index names is opened. Closing a part that holds unsaved
+// changes asks first, about that part's changes only. Open and closed are
+// not written to the address and not remembered across a reload.
+// Uzun bölümde her parça açılıp kapanan bir karttır; kapalı parça hiçbir şey
+// okumaz; kaydedilmemiş değişiklikli parça kapatılırken önce sorulur.
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, Eye } from 'lucide-react';
 import { useI18n } from '../../i18n';
+import type { TranslationKey } from '../../i18n/en';
+import { LeaveScope, confirmLeaveIfDirty } from '../kit/save/leaveGuard';
 import type { DomainCapability } from '../../auth/domainAccess';
 import type { SSLRuntimeSummary } from '../DomainSSLSettings';
 import { Spinner } from '../ui';
@@ -63,6 +75,35 @@ export function SectionParts({ section, parts, part, go, render, unframed = [] }
     const { t } = useI18n();
     const named = part && parts.some((item) => item.id === part) ? part : null;
     const body = useRef<HTMLDivElement | null>(null);
+    // Which closable parts are open: the registry's defaults, and the part the
+    // address names. Parts that are not closable are always open.
+    const [opened, setOpened] = useState<ReadonlySet<PartId>>(() => new Set(
+        parts.filter((item) => item.startsOpen || item.id === named).map((item) => item.id),
+    ));
+    const isOpen = (item: PartView) => item.startsOpen === undefined || opened.has(item.id);
+    const openPart = (id: PartId) => setOpened((now) => (now.has(id) ? now : new Set(now).add(id)));
+    // One leave scope per part: closing it asks about its own drafts only.
+    const scopes = useRef(new Map<PartId, object>()).current;
+    const scopeOf = (id: PartId) => {
+        if (!scopes.has(id)) scopes.set(id, {});
+        return scopes.get(id)!;
+    };
+    const toggle = async (item: PartView) => {
+        if (!opened.has(item.id)) {
+            openPart(item.id);
+            return;
+        }
+        if (!(await confirmLeaveIfDirty(scopeOf(item.id)))) return;
+        setOpened((now) => {
+            const next = new Set(now);
+            next.delete(item.id);
+            return next;
+        });
+    };
+    // A part the address names (a link, the index, a reload) is opened.
+    useEffect(() => {
+        if (named) openPart(named);
+    }, [named]);
     // A part chosen from the index glides into view; one an address names
     // (a link, a reload, Back) is shown at once.
     const fromIndex = useRef(false);
@@ -105,6 +146,7 @@ export function SectionParts({ section, parts, part, go, render, unframed = [] }
                             onClick={(event) => {
                                 event.preventDefault();
                                 if (item.id === named) {
+                                    openPart(item.id);
                                     scrollToPart(item.id, true);
                                     return;
                                 }
@@ -118,23 +160,57 @@ export function SectionParts({ section, parts, part, go, render, unframed = [] }
                     ))}
                 </nav>
             )}
-            {parts.map((item) => (
-                <section
-                    key={item.id}
-                    id={partElementId(item.id)}
-                    aria-label={t(PART_LABELS[item.id])}
-                    className={unframed.includes(item.id) ? 'scroll-mt-4' : 'scroll-mt-4 rounded-xl border border-border bg-surface p-5'}
-                    data-part={item.id}
-                >
-                    {item.readOnly && (
-                        <p className="mb-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-sm text-fg" data-read-only="">
-                            <Eye className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
-                            {t('domain.readOnly')}
-                        </p>
-                    )}
-                    <Suspense fallback={<Spinner />}>{render(item)}</Suspense>
-                </section>
-            ))}
+            {parts.map((item) => {
+                const content = (
+                    <>
+                        {item.readOnly && (
+                            <p className="mb-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-sm text-fg" data-read-only="">
+                                <Eye className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+                                {t('domain.readOnly')}
+                            </p>
+                        )}
+                        <Suspense fallback={<Spinner />}>{render(item)}</Suspense>
+                    </>
+                );
+                const frame = unframed.includes(item.id) ? 'scroll-mt-4' : 'scroll-mt-4 rounded-xl border border-border bg-surface p-5';
+                if (item.startsOpen === undefined) {
+                    return (
+                        <section key={item.id} id={partElementId(item.id)} aria-label={t(PART_LABELS[item.id])} className={frame} data-part={item.id}>
+                            {content}
+                        </section>
+                    );
+                }
+                const open = isOpen(item);
+                const panel = `${partElementId(item.id)}-body`;
+                return (
+                    <section key={item.id} id={partElementId(item.id)} aria-label={t(PART_LABELS[item.id])} className={frame} data-part={item.id} data-part-open={open ? 'yes' : 'no'}>
+                        <h2 className="text-base font-semibold text-fg">
+                            <button
+                                type="button"
+                                aria-expanded={open}
+                                aria-controls={panel}
+                                onClick={() => void toggle(item)}
+                                className="flex w-full items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                data-part-toggle={item.id}
+                            >
+                                <span className="min-w-0 flex-1">
+                                    <span className="block">{t(PART_LABELS[item.id])}</span>
+                                    <span className="mt-0.5 block text-sm font-normal text-fg-muted">{t(`domain.about.${item.id}` as TranslationKey)}</span>
+                                </span>
+                                <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {t(open ? 'domain.part.toggleClose' : 'domain.part.toggleOpen')}
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                </span>
+                            </button>
+                        </h2>
+                        {open && (
+                            <div id={panel} className="mt-4">
+                                <LeaveScope.Provider value={scopeOf(item.id)}>{content}</LeaveScope.Provider>
+                            </div>
+                        )}
+                    </section>
+                );
+            })}
         </div>
     );
 }

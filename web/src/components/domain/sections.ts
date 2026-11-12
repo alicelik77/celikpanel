@@ -113,6 +113,12 @@ export interface PartView {
     id: PartId;
     /** A team member who may only view what this part shows. */
     readOnly: boolean;
+    /**
+     * Present only in a long section (Site, Advanced): the part is a card that
+     * opens and closes, and this is whether it starts open. A closed part
+     * loads nothing until it is opened.
+     */
+    startsOpen?: boolean;
 }
 
 export interface SectionView {
@@ -147,6 +153,11 @@ interface PartRule {
     id: PartId;
     capabilities: DomainCapability[];
     shown: (v: Viewer) => boolean;
+    /**
+     * Site and Advanced only (owner review, 12 Nov 2026: with real content
+     * they were about 5,000 px long): whether the part starts open.
+     */
+    startsOpen?: (v: Viewer) => boolean;
 }
 
 interface Viewer {
@@ -171,23 +182,30 @@ const RULES: Record<SectionId, PartRule[]> = {
         { id: 'overview', capabilities: [], shown: (v) => !v.teamMember },
     ],
     site: [
-        { id: 'type', capabilities: ['files'], shown: (v) => site(v) && !v.teamMember && v.view('files') },
+        { id: 'type', capabilities: ['files'], shown: (v) => site(v) && !v.teamMember && v.view('files'), startsOpen: () => true },
         {
             id: 'apps', capabilities: ['files', 'php'],
             shown: (v) => !v.teamMember && php(v) && v.view('files') && v.view('php')
                 && (v.open('app_installer') || v.admin || v.open('wordpress_tools')),
+            // Ready apps and WordPress tools are for PHP sites, the only kind this part is shown for.
+            startsOpen: php,
         },
         // An app or a program that runs stays manageable after its right
         // closed (D-042 P5).
-        { id: 'ai', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('service_apps') || v.type === 'service_app') },
+        {
+            id: 'ai', capabilities: [], shown: (v) => !v.teamMember && site(v) && (v.open('service_apps') || v.type === 'service_app'),
+            startsOpen: (v) => v.type === 'service_app',
+        },
         {
             id: 'programs', capabilities: [],
             shown: (v) => !v.teamMember && site(v) && (v.open('program_apps') || v.open('python_apps') || v.type === 'runtime_app'),
+            startsOpen: (v) => v.type === 'runtime_app',
         },
-        { id: 'php', capabilities: ['php'], shown: (v) => site(v) && php(v) && v.view('php') },
+        { id: 'php', capabilities: ['php'], shown: (v) => site(v) && php(v) && v.view('php'), startsOpen: () => true },
         {
             id: 'redirects', capabilities: ['files'],
             shown: (v) => site(v) && v.view('files') && v.open('site_protect_redirects') && v.type !== 'forwarding',
+            startsOpen: () => true,
         },
     ],
     files: [
@@ -226,15 +244,16 @@ const RULES: Record<SectionId, PartRule[]> = {
         { id: 'backups', capabilities: ['backups'], shown: (v) => site(v) && v.view('backups') && v.open('backups') },
     ],
     advanced: [
-        { id: 'cron', capabilities: ['cron'], shown: (v) => site(v) && v.view('cron') && v.open('cron') },
-        { id: 'logs', capabilities: ['statistics'], shown: (v) => site(v) && v.view('statistics') },
+        { id: 'cron', capabilities: ['cron'], shown: (v) => site(v) && v.view('cron') && v.open('cron'), startsOpen: () => true },
+        { id: 'logs', capabilities: ['statistics'], shown: (v) => site(v) && v.view('statistics'), startsOpen: () => false },
         {
             id: 'git', capabilities: [],
             shown: (v) => !v.teamMember && (v.type === 'php' || v.type === 'static' || v.type === 'node') && v.open('file_manager'),
+            startsOpen: () => false,
         },
-        { id: 'copy', capabilities: [], shown: (v) => !v.teamMember && site(v) && v.type !== 'forwarding' && v.open('file_manager') },
-        { id: 'web', capabilities: ['files'], shown: (v) => site(v) && v.view('files') && v.type !== 'forwarding' },
-        { id: 'config', capabilities: ['files'], shown: (v) => site(v) && v.admin },
+        { id: 'copy', capabilities: [], shown: (v) => !v.teamMember && site(v) && v.type !== 'forwarding' && v.open('file_manager'), startsOpen: () => false },
+        { id: 'web', capabilities: ['files'], shown: (v) => site(v) && v.view('files') && v.type !== 'forwarding', startsOpen: () => false },
+        { id: 'config', capabilities: ['files'], shown: (v) => site(v) && v.admin, startsOpen: () => false },
     ],
 };
 
@@ -291,7 +310,9 @@ export function buildSections(input: SectionInput): SectionView[] {
                 (low, capability) => (ORDER[mode(capability)] < ORDER[low] ? mode(capability) : low),
                 'manage',
             );
-            return { id: rule.id, readOnly: teamMember && weakest === 'view' };
+            const view: PartView = { id: rule.id, readOnly: teamMember && weakest === 'view' };
+            if (rule.startsOpen) view.startsOpen = rule.startsOpen(viewer);
+            return view;
         });
         if (parts.length > 0) {
             sections.push({ id, parts });

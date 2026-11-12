@@ -26,6 +26,8 @@ export const trDomainSectionsScreens: Record<DomainSectionsScreenKey, string> = 
     'domain.part.certificate': 'Sertifika (HTTPS)',
     'domain.part.cron': 'Zamanlanmış görevler',
     'domain.part.logs': 'Günlükler',
+    'domain.part.toggleOpen': 'Aç',
+    'domain.part.toggleClose': 'Kapat',
     'domain.readOnly': 'Burayı yalnız görebilirsiniz. Değiştirmek için hesap sahibinden yetki isteyin.',
     'domain.notInPlan.title': '{section} planınızda yok',
     'domain.notInPlan.titleDomain': '{section} bu alan adının planında yok',
