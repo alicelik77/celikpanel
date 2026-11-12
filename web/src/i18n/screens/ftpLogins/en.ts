@@ -41,6 +41,8 @@ export const enFtpLoginsScreens = {
     'ftpLogins.newPassword': 'New password (leave empty to keep the current one)',
     'ftpLogins.newFolder': 'Folder (leave as it is to keep it)',
     'ftpLogins.saveChange': 'Save the change',
+    'ftpLogins.folderMissing': 'Write the folder the login sees.',
+    'ftpLogins.passwordWeak': 'The new password does not meet the rules below it. Fix it, or empty the field to keep the current one.',
     'ftpLogins.remove': 'Remove',
     'ftpLogins.confirmAddTitle': 'Add the login {login}?',
     'ftpLogins.confirmAdd': '{login} will see only the folder {folder} of {domain}, over SFTP and over FTP with encryption. The server makes an account and a closed folder for it; it cannot open a command line.',

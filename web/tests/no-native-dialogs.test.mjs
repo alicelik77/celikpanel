@@ -84,6 +84,12 @@ const plainQuestions = {
   // Discarding unsaved edits sends nothing.
   'components/AddonsPage.tsx': 1,
   'components/StoreCatalogAdmin.tsx': 2,
+  // alpha.132: closing an edit form or the file editor with unsaved changes,
+  // and opening the server's text of a file over unsaved changes.
+  'components/DomainFileManager.tsx': 2,
+  'components/MailAutoresponderDialog.tsx': 1,
+  'components/FTPLogins.tsx': 1,
+  'components/DomainCronManager.tsx': 1,
   // Installing a version past its support: the install then runs under the
   // component operation's own lock (OperationOverlay).
   'components/ServiceList.tsx': 1,

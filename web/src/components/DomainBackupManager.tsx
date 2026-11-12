@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
     Archive, RefreshCw, Download, Trash2, RotateCcw,
     HardDrive, Database, Clock, Info, UploadCloud, type LucideIcon,
@@ -19,6 +19,10 @@ import { saveDownload } from '../lib/download';
 import { decodeSiteOverview, remoteEligibleBackupName, siteRemoteURL } from '../lib/remoteBackup';
 import { confirmAction, followOperation } from '../lib/confirmAction';
 import { backupCreateSteps, backupRestoreSteps, followRequestProgress, resumeRequestProgress } from '../lib/requestProgress';
+import { answerWasLost } from '../lib/requestIdentity';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // Remote copies (alpha.118): their own screen, fetched with this tab.
 // Uzak kopyalar: kendi ekranı, bu sekmeyle birlikte getirilir.
@@ -564,12 +568,21 @@ interface BackupSchedule {
     version: string;
 }
 
+type AutoFields = { enabled: boolean; frequency: 'daily' | 'weekly'; backup_type: 'files' | 'full'; retention: number };
+
 // Automatic backups: turn a daily/weekly schedule on for this domain and pick
 // how many copies to keep. The panel runs it in the background; older copies
 // beyond the retention are pruned. Reads and writes the schedule endpoint.
+//
+// alpha.132: the settings are a draft over the schedule last read. Nothing is
+// sent until Save; Discard puts the server's values back; leaving with a
+// change asks first. Save writes the schedule (or turns it off) with the
+// version it was read at; a schedule changed meanwhile is refused and said,
+// and a lost answer keeps the draft and holds Save until it is read again.
+//
 // Otomatik yedekler: bu domain için günlük/haftalık zamanlamayı aç ve kaç
-// kopya tutulacağını seç. Panel arka planda koşar; saklamayı aşan eski
-// kopyalar budanır.
+// kopya tutulacağını seç. Ayarlar son okunan zamanlamanın üzerinde bir
+// taslaktır; Kaydet'e dek hiçbir şey gönderilmez.
 function AutoBackupSection({
     domainId,
     databaseCount,
@@ -580,34 +593,37 @@ function AutoBackupSection({
     readOnly?: boolean;
 }) {
     const { t, locale } = useI18n();
+    const say = useSaveWords();
     // The schedule as the server holds it. Until it is known the section shows
     // no form: "off / daily / files / 7" on screen after a failed read was one
     // click away from replacing the real schedule.
     // Sunucunun tuttuğu zamanlama. Bilinene kadar bölüm form göstermez.
     const [current, setCurrent] = useState<Current<BackupSchedule>>({ state: 'loading' });
-    const [frequency, setFrequency] = useState<'daily' | 'weekly'>('daily');
-    const [backupType, setBackupType] = useState<'files' | 'full'>('files');
-    const [retention, setRetention] = useState(7);
-    const [saving, setSaving] = useState(false);
     const [scheduleRefusal, setScheduleRefusal] = useState<ApiError | null>(null);
     const [stale, setStale] = useState(false);
     const url = `/api/v1/domains/${domainId}/backups/schedule`;
     const schedule = current.state === 'known' ? current.value : null;
+    // A schedule that is off carries no choices; turning it on starts from
+    // daily, files, 7 copies.
+    // Kapalı zamanlama seçim taşımaz; açmak günlük, dosyalar, 7 kopyadan başlar.
+    const known = useMemo<AutoFields | null>(() => schedule && {
+        enabled: Boolean(schedule.enabled),
+        frequency: schedule.frequency || 'daily',
+        backup_type: schedule.backup_type || 'files',
+        retention: schedule.retention || 7,
+    }, [schedule]);
+    const draft = useDraft(known);
+    const values = draft.values;
     const enabled = Boolean(schedule?.enabled);
     const lastStatus = schedule?.last_status;
     const lastAttempt = schedule?.last_attempt;
     const lastRun = schedule?.last_run;
-    const busy = saving || readOnly;
+    const busy = draft.saving || readOnly;
 
     const load = async () => {
         setCurrent({ state: 'loading' });
         const next = await readCurrent<BackupSchedule>(url);
-        if (next.state === 'known') {
-            setFrequency(next.value.frequency || 'daily');
-            setBackupType(next.value.backup_type || 'files');
-            setRetention(next.value.retention || 7);
-            setStale(false);
-        }
+        if (next.state === 'known') setStale(false);
         setCurrent(next);
     };
 
@@ -618,42 +634,81 @@ function AutoBackupSection({
     // Both writes carry the version the schedule was read at; the server
     // refuses them when the schedule is no longer that one.
     // İki yazı da zamanlamanın okunduğu sürümü taşır.
-    const write = async (off: boolean) => {
-        if (readOnly || !schedule) return;
-        setSaving(true);
+    const save = () => void draft.save(async (_changes, next) => {
+        if (readOnly || !schedule) return 'refused';
+        const off = !next.enabled;
+        let r: Response;
         try {
-            const r = off
+            r = off
                 ? await fetch(`${url}?version=${encodeURIComponent(schedule.version)}`, { method: 'DELETE' })
                 : await fetch(url, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ frequency, backup_type: backupType, retention, version: schedule.version }),
+                    body: JSON.stringify({ frequency: next.frequency, backup_type: next.backup_type, retention: next.retention, version: schedule.version }),
                 });
-            if (!r.ok) {
-                const error = await readApiError(r);
-                if (isStaleWrite(error)) setStale(true);
-                else setScheduleRefusal(error); // said once, in its banner
-                return;
-            }
-            const { version } = await r.json();
-            setCurrent({
-                state: 'known',
-                value: off
-                    ? { enabled: false, version }
-                    : { ...schedule, enabled: true, frequency, backup_type: backupType, retention, version },
-            });
-            setScheduleRefusal(null);
-            showToast('success', t(off ? 'backup.auto.off' : 'backup.auto.saved'));
         } catch {
             // No answer: whether the schedule changed is not known.
-            showToast('error', t('common.resultUnknown'));
-        } finally {
-            setSaving(false);
+            return 'unknown';
         }
+        if (answerWasLost(r)) return 'unknown';
+        if (!r.ok) {
+            const error = await readApiError(r);
+            if (isStaleWrite(error)) setStale(true);
+            else setScheduleRefusal(error); // said once, in its banner
+            return 'refused';
+        }
+        let version: unknown;
+        try {
+            version = ((await r.json()) as { version?: unknown }).version;
+        } catch {
+            version = undefined;
+        }
+        if (typeof version !== 'string') {
+            // Accepted, but what the server holds now is not known: read it.
+            void load();
+            return 'unknown';
+        }
+        setCurrent({
+            state: 'known',
+            value: off
+                ? { enabled: false, version }
+                : { ...schedule, enabled: true, frequency: next.frequency, backup_type: next.backup_type, retention: next.retention, version },
+        });
+        setScheduleRefusal(null);
+        showToast('success', t(off ? 'backup.auto.off' : 'backup.auto.saved'));
+        return 'saved';
+    });
+
+    // Turning the schedule off gives up the choices made under it: they would
+    // not be saved.
+    // Zamanlamayı kapatmak altındaki seçimlerden vazgeçer: kaydedilmezlerdi.
+    const turn = (on: boolean) => {
+        draft.set('enabled', on);
+        if (!on) for (const field of ['frequency', 'backup_type', 'retention'] as const) draft.take(field);
     };
 
+    const words = {
+        frequency: (value: string) => t(value === 'weekly' ? 'backup.auto.weekly' : 'backup.auto.daily'),
+        backup_type: (value: string) => t(value === 'full' ? 'backup.type.full' : 'backup.type.files'),
+        retention: (value: number) => String(value),
+    };
+    const field = (name: 'frequency' | 'backup_type' | 'retention', label: string, control: ReactNode) => (
+        <div className={`rounded-r px-2 py-1 text-sm ${draft.isChanged(name) ? changedRowClass : ''}`}>
+            <label>
+                <span className="mb-1 block text-xs text-fg-muted">
+                    {label}
+                    {draft.isChanged(name) && <ChangedMark />}
+                </span>
+                {control}
+            </label>
+            {draft.isMoved(name) && draft.base && (
+                <ServerMovedNote value={words[name](draft.base[name] as never)} onTake={() => draft.take(name)} />
+            )}
+        </div>
+    );
+
     return (
-        <section className="rounded-xl border border-border bg-surface p-5" aria-busy={current.state === 'loading' || saving}>
+        <section className="rounded-xl border border-border bg-surface p-5" aria-busy={current.state === 'loading' || draft.saving}>
             <div className="mb-1 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" aria-hidden="true" />
                 <h3 className="text-sm font-semibold text-fg">{t('backup.auto.title')}</h3>
@@ -666,32 +721,41 @@ function AutoBackupSection({
             <p className="mb-4 text-sm text-fg-muted">{t('backup.auto.desc')}</p>
 
             <CurrentGate state={current.state} unknownKey="backup.auto.unknown" onRetry={load} />
-            {schedule && <>
+            {schedule && values && <>
             {stale && <StaleNotice textKey="backup.auto.stale" onReload={load} />}
             <ErrorBanner error={scheduleRefusal} sentence="backup.auto.saveFailed" />
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <label className="text-sm">
-                    <span className="mb-1 block text-xs text-fg-muted">{t('backup.auto.frequency')}</span>
-                    <select disabled={busy} value={frequency} onChange={(e) => setFrequency(e.target.value as 'daily' | 'weekly')} className={inputClass}>
-                        <option value="daily">{t('backup.auto.daily')}</option>
-                        <option value="weekly">{t('backup.auto.weekly')}</option>
-                    </select>
+            <div className={`mb-3 rounded-r px-2 py-1 ${draft.isChanged('enabled') ? changedRowClass : ''}`}>
+                <label className="flex cursor-pointer items-center gap-3 text-sm text-fg">
+                    <input type="checkbox" checked={values.enabled} disabled={busy} onChange={(e) => turn(e.target.checked)} className="h-4 w-4 accent-primary" />
+                    <span>
+                        {t('backup.auto.switch')}
+                        {draft.isChanged('enabled') && <ChangedMark switched={values.enabled} />}
+                    </span>
                 </label>
-                <label className="text-sm">
-                    <span className="mb-1 block text-xs text-fg-muted">{t('backup.auto.type')}</span>
-                    <select disabled={busy} value={backupType} onChange={(e) => setBackupType(e.target.value as 'files' | 'full')} className={inputClass}>
-                        <option value="files">{t('backup.type.files')}</option>
-                        <option value="full">{t('backup.type.full')}</option>
-                    </select>
-                </label>
-                <label className="text-sm">
-                    <span className="mb-1 block text-xs text-fg-muted">{t('backup.auto.retention')}</span>
-                    <input disabled={busy} type="number" min={1} max={60} value={retention} onChange={(e) => setRetention(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))} className={inputClass} />
-                </label>
+                {draft.isMoved('enabled') && draft.base && (
+                    <ServerMovedNote value={say(draft.base.enabled ? 'on' : 'off')} onTake={() => draft.take('enabled')} />
+                )}
             </div>
 
-            {backupType === 'full' && (
+            {values.enabled && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {field('frequency', t('backup.auto.frequency'),
+                        <select disabled={busy} value={values.frequency} onChange={(e) => draft.set('frequency', e.target.value as 'daily' | 'weekly')} className={inputClass}>
+                            <option value="daily">{t('backup.auto.daily')}</option>
+                            <option value="weekly">{t('backup.auto.weekly')}</option>
+                        </select>)}
+                    {field('backup_type', t('backup.auto.type'),
+                        <select disabled={busy} value={values.backup_type} onChange={(e) => draft.set('backup_type', e.target.value as 'files' | 'full')} className={inputClass}>
+                            <option value="files">{t('backup.type.files')}</option>
+                            <option value="full">{t('backup.type.full')}</option>
+                        </select>)}
+                    {field('retention', t('backup.auto.retention'),
+                        <input disabled={busy} type="number" min={1} max={60} value={values.retention} onChange={(e) => draft.set('retention', Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))} className={inputClass} />)}
+                </div>
+            )}
+
+            {values.enabled && values.backup_type === 'full' && (
                 <p className="mt-2 text-xs text-fg-subtle">
                     {t('backup.auto.fullHint', { count: databaseCount })}
                 </p>
@@ -720,20 +784,16 @@ function AutoBackupSection({
                 </p>
             )}
 
-            {!readOnly && (
-                <div className="mt-3 flex gap-2">
-                    <Button type="button" variant="primary" disabled={saving || stale} onClick={() => void write(false)}>
-                        {enabled ? t('backup.auto.update') : t('backup.auto.enable')}
-                    </Button>
-                    {enabled && (
-                        <Button type="button" variant="secondary" disabled={saving || stale} onClick={() => void write(true)}>
-                            {t('backup.auto.turnOff')}
-                        </Button>
-                    )}
-                </div>
-            )}
+            <SaveBar
+                className="-mx-5 px-5 pb-0"
+                count={draft.count}
+                saving={draft.saving}
+                blockedBy={stale ? say('stale') : undefined}
+                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: false, onCheck: () => void load() } : undefined}
+                onSave={save}
+                onDiscard={draft.reset}
+            />
             </>}
-            {saving && <span className="sr-only" role="status" aria-live="polite">{t('common.loading')}</span>}
         </section>
     );
 }
