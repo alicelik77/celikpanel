@@ -138,7 +138,7 @@ func TestNativePeerProofAcceptedLateInWaveCompletesUnderFreshContext(t *testing.
 }
 
 // A deadline during the SSH exchange, before any answer, is the reviewed
-// dns_peer_proof_timeout: consume never runs. The enrollment's transport
+// dns_peer_proof_timeout naming the secondary's exchange: consume never runs. The enrollment's transport
 // bound, when tighter, is the step's own deadline, so the transport can never
 // outlive the step and misreport its timeout as an inspection failure.
 func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
@@ -168,16 +168,17 @@ func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
 	}
 	err := completeDNSV3PrimaryPropagationWithNativeAt(context.Background(), plan, soa, localAXFR,
 		peerCatalog, peerZone, native)
-	if pendingDNSPeerCode(err) != transport.DNSPeerPendingProofTimeout || consumed {
+	exchangeTimeout := transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange)
+	if pendingDNSPeerCode(err) != exchangeTimeout || consumed {
 		t.Fatalf("exchange deadline: code=%q consumed=%t err=%v", pendingDNSPeerCode(err), consumed, err)
 	}
-	if dnsZoneV3PendingLedgerCode(pendingDNSPeerCode(err)) != transport.DNSPeerPendingProofTimeout {
-		t.Fatal("the ledger does not keep dns_peer_proof_timeout")
+	if dnsZoneV3PendingLedgerCode(pendingDNSPeerCode(err)) != exchangeTimeout {
+		t.Fatal("the ledger does not keep dns_peer_proof_timeout:peer_exchange")
 	}
 	text := logs.String()
 	for _, want := range []string{
-		"stopped at step exchange as dns_peer_proof_timeout: peer_inspection_unavailable",
-		"outcome pending dns_peer_proof_timeout",
+		"stopped at step exchange as dns_peer_proof_timeout:peer_exchange: peer_inspection_unavailable",
+		"outcome pending dns_peer_proof_timeout:peer_exchange",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("log lacks %q:\n%s", want, text)

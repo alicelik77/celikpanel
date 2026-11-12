@@ -18,6 +18,27 @@ const dnsPeerCatchingUpEnglish = "The DNS change is saved and in effect on this 
 // administrator to the Agent log.
 const dnsPeerJournalUnknownEnglish = "The DNS change is saved and in effect on this server; only the confirmation that the backup DNS server removed the zone is not complete: this server could not write or match its single-use check challenge this time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself with a new challenge, first after about 15 seconds and then less often (at most every 5 minutes); Server → DNS and peer servers shows the next check, and it continues from where it stopped. A retry is safe because each challenge can be used only once and a retry starts a new one; this server's owner can also retry now with “Retry this deletion”. Only if this message stays after several checks does this server's administrator read the Agent log lines for this deletion with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason."
 
+// dnsPeerProofTimeoutEnglish: a step of the proof of the backup ran out of
+// time. The zone is already removed on this server and the backup most
+// likely followed (its zone list comes from this server); only the
+// confirmation is open. Never "nothing was changed": the removal is done
+// here. The Panel re-checks by itself (a press meanwhile starts nothing);
+// after dnsPendingPublicationStuckAfter such checks the administrator gets a
+// notification with the next step (dns_pending_publication.go).
+const dnsPeerProofTimeoutEnglish = "The domain is removed from DNS on this server; that the backup DNS server removed it too is not confirmed yet, because the check did not finish in time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less often, at most every 5 minutes), continues from where it stopped, and then finishes the deletion by itself. If it stays like this for about a quarter of an hour, the server's administrator gets a notification in the panel saying what to do."
+
+// dnsPeerProofTimeoutDetailEnglish names which side ran out of time.
+func dnsPeerProofTimeoutDetailEnglish(detail string) string {
+	switch detail {
+	case transport.DNSPeerProofTimeoutLocalCheck:
+		return "It was this server's own part of the check that ran out of time, not the backup DNS server."
+	case transport.DNSPeerProofTimeoutPeerExchange:
+		return "It was the backup DNS server's answer that did not come in time: it may be switched off, restarting or not reachable from this server."
+	default:
+		return ""
+	}
+}
+
 // dnsPeerPendingRetriesAutomatically reports whether the Panel re-checks a
 // pending publication with this code by itself. Only transient causes are
 // re-checked: the backup catching up, a proof step that ran out of time, a
@@ -69,7 +90,10 @@ func dnsPeerPendingEnglish(code string) string {
 	case transport.DNSPeerPendingProofInternal:
 		return "The DNS change is saved on this server, but the deletion is not verified yet: this server could not run its own check of the secondary. No change by either server's owner was found, and nothing on either server needs to be undone. The server owner checks the CelikPanel Agent log on this server with sudo journalctl -u celikpanel-agent | grep peer and reports those lines to CelikPanel. Retrying does not help until the CelikPanel Agent is updated with a fix; after that update, use “Retry this deletion” to retry the same publication; it continues from where it stopped. Until then the deletion stays pending and DNS answers are unaffected. Nothing retries by itself."
 	case transport.DNSPeerPendingProofTimeout:
-		return "The DNS change is saved on this server, but the deletion is not verified yet: the check of the secondary did not finish within its time. Nothing was changed on either server; the deletion stays pending and DNS answers are unaffected. CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less often, at most every 5 minutes) and it continues from where it stopped. This server's owner can also retry now with “Retry this deletion”. If it keeps happening, either server's owner checks that this server can reach the secondary's SSH port and that neither server is overloaded."
+		// alpha.133 (incident of 12 Nov 2026): the deletion is already in
+		// effect on this server; only the backup's confirmation is open.
+		// The side that ran out of time is the detail sentence.
+		return dnsPeerProofTimeoutEnglish
 	case transport.DNSPeerPendingCatchingUp:
 		return dnsPeerCatchingUpEnglish
 	default:
@@ -137,13 +161,16 @@ func dnsPeerOwnerEditDetailEnglish(check string) string {
 }
 
 // dnsPeerPendingDetailEnglish selects the detail sentence by the reason the
-// detail refines: an inspector reason or an owner-edit check.
+// detail refines: an inspector reason, an owner-edit check or the side of a
+// proof timeout.
 func dnsPeerPendingDetailEnglish(reason, detail string) string {
 	switch reason {
 	case transport.DNSPeerPendingInspectionUnknown:
 		return dnsPeerInspectorDetailEnglish(detail)
 	case transport.DNSPeerPendingOwnerEditUnknown:
 		return dnsPeerOwnerEditDetailEnglish(detail)
+	case transport.DNSPeerPendingProofTimeout:
+		return dnsPeerProofTimeoutDetailEnglish(detail)
 	default:
 		return ""
 	}

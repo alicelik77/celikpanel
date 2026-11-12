@@ -256,30 +256,40 @@ func TestDNSPeerPendingGuidanceSplitsOwnerEditCheck(t *testing.T) {
 	}
 }
 
-// pair6 P6-1: a step of the proof ran out of its time before the peer's
-// answer was accepted. The text says nothing changed, who retries now, what
-// to check if it repeats, and never claims an owner change or a fixed Agent.
+// pair6 P6-1, corrected in alpha.133 (incident of 12 Nov 2026): a step of
+// the proof ran out of its time before the peer's answer was accepted. The
+// zone is already removed on this server, so the text never says nothing was
+// changed; it says CelikPanel checks again by itself and when the
+// administrator is told, and the detail names the side that ran out of time.
+// A customer-visible text names no port or command.
 func TestDNSPeerProofTimeoutGuidanceNamesRetryAndChecks(t *testing.T) {
-	reason, detail, message, ok := dnsPeerPendingGuidance(transport.DNSPeerPendingProofTimeout)
-	if !ok || reason != transport.DNSPeerPendingProofTimeout || detail != "" {
-		t.Fatalf("timeout code: %q %q %t", reason, detail, ok)
-	}
-	for _, want := range []string{
-		"did not finish within its time",
-		"Nothing was changed on either server",
-		"deletion stays pending and DNS answers are unaffected",
-		"retry now with “Retry this deletion”",
-		"same publication",
-		"SSH port",
-		"overloaded",
+	for code, side := range map[string]string{
+		transport.DNSPeerPendingProofTimeout:                                                      "",
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutLocalCheck):   "this server's own part of the check that ran out of time, not the backup DNS server",
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange): "backup DNS server's answer that did not come in time",
 	} {
-		if !strings.Contains(message, want) {
-			t.Fatalf("timeout guidance lacks %q: %s", want, message)
+		reason, detail, message, ok := dnsPeerPendingGuidance(code)
+		if !ok || reason != transport.DNSPeerPendingProofTimeout || (side == "") != (detail == "") {
+			t.Fatalf("%s: %q %q %t", code, reason, detail, ok)
 		}
-	}
-	for _, not := range []string{"evidence changed", "reconcile", "Retrying does not help"} {
-		if strings.Contains(message, not) {
-			t.Fatalf("timeout guidance says %q: %s", not, message)
+		for _, want := range []string{
+			"The domain is removed from DNS on this server",
+			"not confirmed yet, because the check did not finish in time",
+			"Nobody needs to do anything now",
+			"re-checks this same publication by itself",
+			"finishes the deletion by itself",
+			"the server's administrator gets a notification",
+			side,
+		} {
+			if !strings.Contains(message, want) {
+				t.Fatalf("%s guidance lacks %q: %s", code, want, message)
+			}
+		}
+		for _, not := range []string{"Nothing was changed", "DNS answers are unaffected", "SSH", "port",
+			"overloaded", "journalctl", "evidence changed", "Retrying does not help"} {
+			if strings.Contains(message, not) {
+				t.Fatalf("%s guidance says %q: %s", code, not, message)
+			}
 		}
 	}
 	_, _, journal, _ := dnsPeerPendingGuidance(transport.DNSPeerPendingJournalUnknown)

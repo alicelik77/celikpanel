@@ -91,10 +91,11 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			},
 			local: func(ctx context.Context) error { return recheckNativePeerLocalEvidence(ctx, plan, record) },
 		}
-		if err := checks.at(ctx)(); err != nil {
-			return err
-		}
-		if err := checks.journalOp(ctx, "previous challenge reconciliation", func(verify func() error) error {
+		// An earlier, terminal operation's challenge is retired first,
+		// under the held checks only (nativePeerCurrentChecks.retireOp):
+		// it completes in milliseconds and stays retired even if the full
+		// local recheck below runs out of this step's time.
+		if err := checks.prepareJournal(ctx, func(verify func() error) error {
 			return reconcileHistoricalBINDPeerChallenge(m, plan, verify)
 		}); err != nil {
 			return err
@@ -199,6 +200,20 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 // must not block a later independent deletion. The current operation holds the
 // host and publication locks. Only an exact historical published result may
 // retire old evidence; anything else remains unknown and cannot mint a request.
+//
+// verifyCurrent is the held recheck (nativePeerCurrentChecks.held): both
+// external locks, the exact active ledger attempt of this operation and the
+// unchanged enrollment, plus, in verifyTerminal, the earlier operation's
+// exact terminal ledger result. That is the same authority the terminal
+// retirement after a successful publication uses
+// (retireTerminalBINDPeerChallenge: locks and the exact terminal ledger).
+// The local DNS evidence of the current deletion is not part of it:
+// retiring a challenge whose operation is terminal authorizes nothing for
+// this deletion, whose own challenge is minted only after the full recheck
+// and published under it. Until alpha.133 the full recheck ran here seven
+// times (once before, once before Retire, four times inside it, once after);
+// at 1-1.5 s each it overran prepare's 8 s on every attempt, so the
+// retirement never completed and every retry repeated it (12 Nov 2026).
 func reconcileHistoricalBINDPeerChallenge(
 	m *serviceMutationManager, plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error,
 ) error {
@@ -248,7 +263,12 @@ func reconcileHistoricalBINDPeerChallengeAt(
 	if _, err := read(); !dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
 		return errors.New("previous native BIND challenge retirement is unverified")
 	}
-	return verifyCurrent()
+	if err := verifyCurrent(); err != nil {
+		return err
+	}
+	log.Printf("DNS peer proof for %s retired the challenge of an earlier finished deletion (%s, ledger attempt %d) before minting its own",
+		plan.Changed.Domain, previous.Request.DeletedZone, previous.LedgerAttempt)
+	return nil
 }
 
 func historicalBINDPeerChallengeMatchesLedger(previous dnspeerjournal.RecordV1, ledger *serviceMutationLedger) bool {

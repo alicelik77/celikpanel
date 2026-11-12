@@ -12,7 +12,8 @@ const reviewedDNSPeerReasons = new Set([
     // change was found. A retry waits for a fixed Agent.
     'dns_peer_proof_internal',
     // A step of the proof of the secondary ran out of its time before the
-    // peer's answer was accepted; nothing changed. Retrying now is the action.
+    // peer's answer was accepted. The zone is already removed on this server;
+    // the Panel re-checks by itself (alpha.133: the detail names the side).
     'dns_peer_proof_timeout',
     // The backup DNS server has not caught up with this server yet; the
     // Panel re-checks the same publication by itself.
@@ -56,10 +57,15 @@ const reviewedOwnerEditChecks = new Set([
     'zone_answered',
 ]);
 
+// Which side of the proof ran out of time (alpha.133): this server's own
+// checks, or the backup DNS server's answer.
+const reviewedProofTimeoutSides = new Set(['local_check', 'peer_exchange']);
+
 // The reviewed detail tokens of each reason that carries one.
 const reviewedDetailsByReason: Record<string, Set<string>> = {
     dns_peer_inspection_unknown: reviewedInspectorDetails,
     dns_peer_owner_edit_unknown: reviewedOwnerEditChecks,
+    dns_peer_proof_timeout: reviewedProofTimeoutSides,
 };
 
 // The translation key of a reviewed detail sentence, or null.
@@ -70,6 +76,9 @@ export function domainDeletionDetailKey(reason: string, detail: string): string 
     }
     if (reason === 'dns_peer_owner_edit_unknown' && reviewedOwnerEditChecks.has(detail)) {
         return `domains.peerOwnerEditDetail.${detail}`;
+    }
+    if (reason === 'dns_peer_proof_timeout' && reviewedProofTimeoutSides.has(detail)) {
+        return `err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout.${detail}`;
     }
     return null;
 }

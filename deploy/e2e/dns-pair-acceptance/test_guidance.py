@@ -230,7 +230,7 @@ class DeletionAndGateTest(unittest.TestCase):
             self.assertNotIn("evidence changed", item["shown"]["en"][0])
             self.assertIn("aynı yayını", item["shown"]["tr"][0])
 
-    def test_proof_timeout_is_reviewed_with_retry_now(self) -> None:
+    def test_proof_timeout_is_reviewed_as_rechecked_by_itself(self) -> None:
         for status, saved in ((202, False), (200, True)):
             item = gd.deletion_pending_guidance(T, status, {
                 "status": "deletion_pending", "stage": "dns_cleanup", "message": "m",
@@ -238,10 +238,11 @@ class DeletionAndGateTest(unittest.TestCase):
             self.assertTrue(item["actionable"], item)
             self.assertEqual(item["message_keys"], ["err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout"])
             self.assertEqual(item["actor"],
-                             "this server's owner (retry now; if it repeats, either owner checks SSH reachability and load)")
-            self.assertIn("did not finish within its time", item["shown"]["en"][0])
-            self.assertIn("Nothing was changed on either server", item["shown"]["en"][0])
-            self.assertIn("SSH port", item["shown"]["en"][0])
+                             "nobody now (CelikPanel re-checks by itself); after about 15 minutes the administrator is notified")
+            self.assertIn("removed from DNS on this server", item["shown"]["en"][0])
+            self.assertIn("did not finish in time", item["shown"]["en"][0])
+            self.assertNotIn("Nothing was changed", item["shown"]["en"][0])
+            self.assertNotIn("SSH", item["shown"]["en"][0])
             self.assertNotIn("evidence changed", item["shown"]["en"][0])
             self.assertIn("aynı yayını", item["shown"]["tr"][0])
 

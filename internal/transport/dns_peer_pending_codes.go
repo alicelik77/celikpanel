@@ -23,10 +23,14 @@ const (
 	// Retrying does not help until the Agent is corrected.
 	DNSPeerPendingProofInternal = "dns_peer_proof_internal"
 	// DNSPeerPendingProofTimeout: a step of the native proof of the secondary
-	// (writing the challenge, the SSH exchange with the inspector, or the DNS
-	// checks after it) did not finish within its bound, before the peer's
-	// answer was accepted. Nothing was changed on either server and nothing
-	// was consumed; the same publication is retried as a new attempt.
+	// (this server's own checks before the exchange, the SSH exchange with the
+	// inspector, or the DNS checks after it) did not finish within its bound,
+	// before the peer's answer was accepted. The deletion itself is already
+	// committed on this server; nothing of the proof was consumed and the
+	// same publication is retried as a new attempt. Since alpha.133 the code
+	// may carry which side ran out of time (DNSPeerProofTimeoutLocalCheck,
+	// DNSPeerProofTimeoutPeerExchange); the plain code is a step that
+	// involves both servers, or an older Agent.
 	DNSPeerPendingProofTimeout = "dns_peer_proof_timeout"
 	// DNSPeerPendingCatchingUp: the change is applied on this server, but
 	// within the propagation check's time the backup (secondary) did not
@@ -107,6 +111,33 @@ const (
 	DNSPeerOwnerEditCheckZoneAnswered = "zone_answered"
 )
 
+// Reviewed details of dns_peer_proof_timeout (alpha.133, incident of 12 Nov
+// 2026): which side of the proof ran out of time. They travel only as these
+// tokens; the Agent log names the step and its cause.
+const (
+	// This server's own checks before any contact with the secondary
+	// (prepare, challenge write) ran out of time.
+	DNSPeerProofTimeoutLocalCheck = "local_check"
+	// The authenticated exchange with the secondary's inspector did not
+	// answer within its time.
+	DNSPeerProofTimeoutPeerExchange = "peer_exchange"
+)
+
+// ValidDNSPeerProofTimeoutDetail reports a reviewed proof-timeout detail.
+func ValidDNSPeerProofTimeoutDetail(detail string) bool {
+	return detail == DNSPeerProofTimeoutLocalCheck || detail == DNSPeerProofTimeoutPeerExchange
+}
+
+// DNSPeerPendingProofTimeoutWithDetail returns the composite code naming the
+// side that ran out of time, for example "dns_peer_proof_timeout:local_check".
+// An unreviewed detail keeps the plain reason.
+func DNSPeerPendingProofTimeoutWithDetail(detail string) string {
+	if !ValidDNSPeerProofTimeoutDetail(detail) {
+		return DNSPeerPendingProofTimeout
+	}
+	return DNSPeerPendingProofTimeout + dnsPeerPendingDetailSeparator + detail
+}
+
 // ValidDNSPeerOwnerEditCheck reports a reviewed owner-edit check token.
 func ValidDNSPeerOwnerEditCheck(check string) bool {
 	switch check {
@@ -156,8 +187,9 @@ func DNSPeerPendingInspectionUnknownWithDetail(reason string) string {
 
 // SplitDNSPeerPendingCode returns the reviewed reason and optional reviewed
 // detail of a pending code: an inspector reason for
-// dns_peer_inspection_unknown, or an owner-edit check for
-// dns_peer_owner_edit_unknown. ok is false for anything unreviewed.
+// dns_peer_inspection_unknown, an owner-edit check for
+// dns_peer_owner_edit_unknown, or the side that ran out of time for
+// dns_peer_proof_timeout. ok is false for anything unreviewed.
 func SplitDNSPeerPendingCode(code string) (reason, detail string, ok bool) {
 	reason, detail, composite := strings.Cut(code, dnsPeerPendingDetailSeparator)
 	if !composite {
@@ -171,6 +203,10 @@ func SplitDNSPeerPendingCode(code string) (reason, detail string, ok bool) {
 		}
 	case DNSPeerPendingOwnerEditUnknown:
 		if !ValidDNSPeerOwnerEditCheck(detail) {
+			return "", "", false
+		}
+	case DNSPeerPendingProofTimeout:
+		if !ValidDNSPeerProofTimeoutDetail(detail) {
 			return "", "", false
 		}
 	default:

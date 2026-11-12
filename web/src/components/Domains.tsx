@@ -386,7 +386,7 @@ export function Domains() {
                         show(index, { state: 'done', note: result.note });
                     } else {
                         unfinished++;
-                        show(index, result.kind === 'pending' && domainDeletionBlocksRetry(result.reason)
+                        show(index, result.kind === 'pending' && (domainDeletionBlocksRetry(result.reason) || RECHECKED_BY_ITSELF.has(result.reason))
                             ? { state: 'waiting', note: t('domains.step.continuesAlone') }
                             : { state: 'failed', note: deleteResultText(result) });
                     }
@@ -462,6 +462,10 @@ export function Domains() {
             remote_dns_removal_confirming: t('domains.step.note.confirming'),
             dns_peer_catching_up: t('domains.step.note.catchingUp'),
             remote_dns_main_unreachable: t('domains.step.note.mainUnreachable'),
+            // alpha.133: removed here; the backup's confirmation is re-checked
+            // by CelikPanel itself. Waiting, not failed.
+            dns_peer_proof_timeout: t('domains.step.note.verifying'),
+            dns_peer_journal_unknown: t('domains.step.note.verifying'),
         };
         // The joined server's DNS removal is done once the main server confirmed it.
         const step = reason === 'remote_dns_removed_finishing' ? 'finish' : STAGE_STEP[stage];
@@ -474,10 +478,18 @@ export function Domains() {
             certificates: t('domains.step.certificates'),
             finish: t('domains.step.finish'),
         };
+        // A finished step says what is done, not what is being done.
+        const doneLabels = {
+            mail: t('domains.step.done.mail'),
+            site: t('domains.step.done.site'),
+            dns: t('domains.step.done.dns', { name }),
+            certificates: t('domains.step.done.certificates'),
+            finish: t('domains.step.done.finish'),
+        };
         const current: OperationStep['state'] = failed ? 'failed' : waitNote[reason] ? 'waiting' : 'running';
         return STEP_ORDER.map((id, index) => ({
             id,
-            label: labels[id],
+            label: index < at ? doneLabels[id] : labels[id],
             state: index < at ? 'done' : index > at ? 'pending' : current,
             ...(index === at ? { since, note: failed ? undefined : waitNote[reason] } : {}),
         }));
@@ -488,10 +500,20 @@ export function Domains() {
     // can be closed (the row keeps saying "Being deleted").
     const FOLLOW_LIMIT_MS = 10 * 60_000;
 
+    // Reasons of this server's DNS step that the Panel re-checks by itself,
+    // while a press of "Retry this deletion" stays possible.
+    const RECHECKED_BY_ITSELF = new Set(['dns_peer_proof_timeout', 'dns_peer_journal_unknown']);
+
     // How a pending answer ends the window when CelikPanel does not carry it
     // on by itself: the step it stopped at is marked, and the reason (who
     // acts, the next step) is said.
     const pendingEnd = (name: string, report: OperationReport, stage: string, reason: string, detail: string | undefined, since: number): OperationEnd => {
+        if (RECHECKED_BY_ITSELF.has(reason)) {
+            // Nothing failed: the removal is done here and CelikPanel checks
+            // the backup's confirmation again by itself (alpha.133).
+            report.steps(deletionSteps(name, stage, reason, since));
+            return { state: 'blocked', reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
+        }
         report.steps(deletionSteps(name, stage, reason, since, true));
         return { state: reason ? 'failed' : 'unknown', reason: pendingMessage(reason, detail) };
     };
