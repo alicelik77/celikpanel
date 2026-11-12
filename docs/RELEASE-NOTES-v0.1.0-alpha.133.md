@@ -65,22 +65,29 @@ the screen. A test keeps it that way, with no exceptions.
 
 ### A domain deletion no longer stays "waiting" on a DNS pair
 
-- On the main server of a two-server DNS pair, deleting a domain after an
-  earlier deletion could stay "being deleted" for ever: before checking the
-  backup DNS server, the server first cleaned up the earlier deletion's
-  one-time check, and that clean-up repeated this server's own DNS check
-  seven times, so the step always ran out of time. The clean-up now runs
-  once, under the same safety checks, and the deletion finishes.
+- On the main server of a two-server DNS pair, deleting a domain could stay
+  "being deleted" for ever. To prove that the backup DNS server removed the
+  zone too, the server ran its own full DNS check twelve times in one
+  attempt, inside tight time limits; on a busy server the attempt always
+  ran out of time, and after an earlier deletion it also had to clean up
+  that deletion's one-time check first. The full check now runs four
+  times, only where the proof depends on it; the writes in between check
+  only what authorizes them (both locks, the exact attempt, the pairing).
+  The earlier deletion's clean-up runs once. A deletion is expected to
+  take about 9–12 seconds instead of 20–27 (TO CONFIRM after the lab run).
 - When the backup's confirmation is late, the window says the truth: the
   domain is already removed from DNS on this server, only the backup's
   confirmation is open, **nobody needs to act** and CelikPanel checks again
   by itself (at most every 5 minutes). It shows as waiting, not failed, and
   finished steps read as done ("Mail removed", …). It also says which side
   ran out of time: this server's own check or the backup's answer.
-- If the same cause repeats six times in a row (about a quarter of an
-  hour), the administrators get **one** notification with the reason, who
-  acts and the next step; the re-checks continue, and "Retry this deletion"
-  is a real retry again.
+- The message follows the state: it continues by itself; it is stuck and
+  the administrators were notified; or the automatic checks have ended. If
+  the same cause repeats six times in a row (about a quarter of an hour),
+  the administrators get **one** notification with the reason, who acts and
+  the next step; the re-checks continue, and "Retry this deletion" is a
+  real retry again. A re-check the panel stopped waiting for is not counted
+  as a repeat, so no false "stuck" is reported.
 
 ### Other corrections
 
@@ -140,6 +147,16 @@ the screen. A test keeps it that way, with no exceptions.
   deletion is still kept (the last 128 operations are kept). If it has
   dropped out, the deletion stays waiting; this case has no automatic way
   forward yet.
+- A deletion on a DNS pair also waits with no automatic way forward if,
+  between two attempts, another zone is added or removed outside CelikPanel
+  on the server, or if the process is stopped in the middle of a write.
+  Both were possible before this release too.
+- A re-check that is held back by a DNS change made outside CelikPanel can
+  still outlast the agent's lease; its result is then not counted and the
+  next re-check decides.
+- If a DNS change outside CelikPanel lands in the last one to three seconds
+  of the proof, it is found afterwards: the deletion stays waiting and is
+  retried, and it is never reported as done.
 - A team member's Databases list is empty; their databases are on the
   pages of the domains they were given, as before.
 - TO CONFIRM after the lab run: real-system check (update from alpha.132

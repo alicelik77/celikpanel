@@ -65,12 +65,17 @@ Bir test bunu istisnasız korur.
 
 ### Alan adı silme, DNS çiftinde artık "bekliyor"da kalmıyor
 
-- İki sunuculu bir DNS çiftinin ana sunucusunda, daha önceki bir silmeden
-  sonra bir alan adını silmek sonsuza dek "siliniyor" durumunda kalabiliyordu:
-  sunucu, yedek DNS sunucusunu denetlemeden önce önceki silmenin tek
-  kullanımlık denetim kaydını temizliyordu ve bu temizlik bu sunucunun kendi
-  DNS denetimini yedi kez yineliyordu; adımın süresi hep doluyordu. Temizlik
-  artık aynı güvenlik denetimleri altında bir kez yapılıyor ve silme bitiyor.
+- İki sunuculu bir DNS çiftinin ana sunucusunda bir alan adını silmek
+  sonsuza dek "siliniyor" durumunda kalabiliyordu. Yedek DNS sunucusunun da
+  bölgeyi kaldırdığını kanıtlamak için sunucu kendi tam DNS denetimini tek
+  denemede on iki kez, dar süre sınırları içinde çalıştırıyordu; yoğun bir
+  sunucuda deneme hep süresini dolduruyordu, önceki bir silmeden sonra da
+  önce o silmenin tek kullanımlık denetim kaydını temizlemesi gerekiyordu.
+  Tam denetim artık yalnız kanıtın ona dayandığı yerlerde, dört kez
+  çalışıyor; aradaki yazmalar yalnız onlara yetki verenleri denetliyor (iki
+  kilit, tam deneme, eşleşme). Önceki silmenin temizliği bir kez yapılıyor.
+  Bir silmenin 20–27 saniye yerine yaklaşık 9–12 saniye sürmesi bekleniyor
+  (LAB DENEMESİNDEN SONRA DOĞRULANACAK).
 - Yedek sunucunun doğrulaması geciktiğinde pencere doğruyu söyler: alan adı
   bu sunucuda DNS'ten zaten kaldırıldı, açık olan yalnız yedek sunucunun
   doğrulaması, **kimsenin bir şey yapması gerekmiyor** ve CelikPanel
@@ -78,10 +83,13 @@ Bir test bunu istisnasız korur.
   bekliyor olarak görünür; biten adımlar bitti olarak okunur ("Posta
   kaldırıldı", …). Sürenin hangi tarafta dolduğunu da söyler: bu sunucunun
   kendi denetiminde mi, yedek sunucunun yanıtında mı.
-- Aynı neden üst üste altı kez yinelenirse (yaklaşık çeyrek saat)
-  yöneticilere neden, kimin yapacağı ve sonraki adımla **tek** bir bildirim
-  gider; yeniden denetimler sürer ve "Bu silme işlemini tekrar dene" yeniden
-  gerçek bir yeniden denemedir.
+- İleti duruma göre değişir: kendiliğinden sürüyor; takıldı ve yöneticilere
+  bildirildi; ya da kendiliğinden denetimler bitti. Aynı neden üst üste altı
+  kez yinelenirse (yaklaşık çeyrek saat) yöneticilere neden, kimin yapacağı
+  ve sonraki adımla **tek** bir bildirim gider; yeniden denetimler sürer ve
+  "Bu silme işlemini tekrar dene" yeniden gerçek bir yeniden denemedir.
+  Panelin beklemeyi bıraktığı bir denetim yineleme sayılmaz; bu yüzden
+  yanlış "takıldı" bildirilmez.
 
 ### Diğer düzeltmeler
 
@@ -143,6 +151,16 @@ Bir test bunu istisnasız korur.
   sonra kendiliğinden biter; yeter ki önceki silmenin kaydı hâlâ tutuluyor
   olsun (son 128 işlem tutulur). Kayıt düşmüşse silme beklemede kalır; bu
   durumun henüz kendiliğinden bir çıkış yolu yok.
+- DNS çiftinde bir silme, iki deneme arasında sunucuda CelikPanel dışında
+  başka bir bölge eklenir ya da kaldırılırsa veya süreç bir yazmanın
+  ortasında durdurulursa da kendiliğinden bir çıkış yolu olmadan bekler. İkisi
+  bu sürümden önce de olabiliyordu.
+- CelikPanel dışında yapılan bir DNS değişikliğinin geri tuttuğu bir yeniden
+  denetim, yönetim hizmetinin süre kirasını yine aşabilir; o zaman sonucu
+  sayılmaz ve bir sonraki yeniden denetim karar verir.
+- CelikPanel dışında yapılan bir DNS değişikliği kanıtın son bir-üç
+  saniyesine denk gelirse sonradan bulunur: silme bekler ve yeniden denenir,
+  asla bitti diye bildirilmez.
 - Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi
   kendisine verilen alan adlarının sayfalarındadır.
 - LAB DENEMESİNDEN SONRA DOĞRULANACAK: gerçek sistem denetimi (alpha.132'den
