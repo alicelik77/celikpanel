@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/binddns"
@@ -103,9 +104,14 @@ func TestDNSPrimaryPairReadyProvesEveryMemberOnBothAuthorities(t *testing.T) {
 		{name: "both authorities share stale serial", localSerial: 40, peerSerial: 40},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			// The member probes run concurrently (probeDNSMemberSerials), so
+			// the record of calls is guarded.
+			var mu sync.Mutex
 			calls := map[string]int{}
 			soa := func(_ context.Context, network, address, domain string) (dnsSOAProbeResult, error) {
+				mu.Lock()
 				calls[address+"/"+network+"/"+domain]++
+				mu.Unlock()
 				serial := uint32(9)
 				if domain == "example.test" {
 					serial = test.localSerial
