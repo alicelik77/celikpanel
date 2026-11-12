@@ -348,7 +348,7 @@ function Journal({ unit }: { unit: string }) {
                             onChange={(e) => setFilter(e.target.value)}
                             placeholder={t('component.logsFilter')}
                             aria-label={t('component.logsFilter')}
-                            className="w-40 rounded-lg border border-border bg-surface-2 py-1 pl-7 pr-2 text-xs text-fg placeholder:text-fg-subtle max-sm:min-h-11"
+                            className="field-sm rounded-lg border border-border bg-surface-2 py-1 pl-7 pr-2 text-xs text-fg placeholder:text-fg-subtle max-sm:min-h-11"
                         />
                     </div>
                     <button

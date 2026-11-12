@@ -112,7 +112,7 @@ export function LicensePanel({ locked = false, onContinue }: { locked?: boolean;
         {status && !unavailable && !(setup && status.can_provision) && <form noValidate onSubmit={event => { event.preventDefault(); void request('activate'); }} className="space-y-3">
             <label htmlFor="license-key" className="block text-sm font-medium">{t('license.key')}</label>
             <div className="flex items-stretch gap-2">
-                <input id="license-key" name="license_key" type={showKey ? 'text' : 'password'} autoComplete="off" autoCapitalize="off" spellCheck={false} value={key} onChange={event => { setKey(event.target.value); setKeyError(''); }} className={`${inputClass} min-w-0 flex-1`} aria-invalid={!!keyError} aria-describedby={keyError ? 'license-key-help license-key-error' : 'license-key-help'} disabled={busy} />
+                <input id="license-key" name="license_key" type={showKey ? 'text' : 'password'} autoComplete="off" autoCapitalize="off" spellCheck={false} value={key} onChange={event => { setKey(event.target.value); setKeyError(''); }} className={`${inputClass} min-w-0 field-lg`} aria-invalid={!!keyError} aria-describedby={keyError ? 'license-key-help license-key-error' : 'license-key-help'} disabled={busy} />
                 <Button type="button" variant="secondary" disabled={busy} aria-label={t(showKey ? 'license.hideKey' : 'license.showKey')} aria-pressed={showKey} onClick={() => setShowKey(value => !value)}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
             </div>
             <p id="license-key-help" className="text-sm text-fg-muted">{t('license.keyHelp')}</p>

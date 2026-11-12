@@ -141,7 +141,7 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                                         value={recoveryCode}
                                         onChange={(e) => setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 19))}
                                         placeholder="XXXX-XXXX-XXXX-XXXX"
-                                        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-widest text-fg outline-none transition-shadow focus:border-primary"
+                                        className="field-lg rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-widest outline-none focus:border-primary"
                                         required
                                     />
                                     <p className="mt-1.5 text-xs text-fg-subtle">{t('login.recoveryHint')}</p>
@@ -160,7 +160,7 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                                         value={totpCode}
                                         onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                         placeholder="000000"
-                                        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-[0.4em] text-fg outline-none transition-shadow focus:border-primary"
+                                        className="field-sm rounded-lg border border-border bg-surface-2 px-3 py-2 text-center font-mono text-lg tracking-[0.4em] outline-none focus:border-primary"
                                         required
                                     />
                                     <p className="mt-1.5 text-xs text-fg-subtle">{t('login.totpHint')}</p>
@@ -212,7 +212,7 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                             autoComplete="username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-fg outline-none transition-shadow focus:border-primary"
+                            className="field-lg rounded-lg border border-border bg-surface-2 px-3 py-2 outline-none focus:border-primary"
                             required
                         />
                     </div>
@@ -228,7 +228,7 @@ export function Login({ onSuccess, sessionEnded = false }: { onSuccess: (user: C
                                 autoComplete="current-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 pr-10 text-fg outline-none transition-shadow focus:border-primary"
+                                className="field-lg rounded-lg border border-border bg-surface-2 px-3 py-2 pr-10 outline-none focus:border-primary"
                                 required
                             />
                             {/* tabIndex -1: the eye must not steal Tab order

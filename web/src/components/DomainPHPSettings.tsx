@@ -290,7 +290,7 @@ export function DomainPHPSettings({
                                     value={selectedVersion}
                                     onChange={(e) => setPicked(e.target.value)}
                                     disabled={readOnly || (isAdditionalUser && versions.length === 0)}
-                                    className={inputClass}
+                                    className={`${inputClass} field-lg`}
                                 >
                                     {displayedVersions.map((v) => {
                                         const mark = supportFor(support, 'php', v);
@@ -353,7 +353,7 @@ export function DomainPHPSettings({
                                 // kaydedilmemiş değişiklikleri tutar.
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <PoolField name="pm" label={t('php.pmMode')} draft={pool}>
-                                        <select id="php-pool-pm" value={pc.pm} disabled={readOnly || pool.saving} onChange={(e) => pool.set('pm', e.target.value)} className={inputClass}>
+                                        <select id="php-pool-pm" value={pc.pm} disabled={readOnly || pool.saving} onChange={(e) => pool.set('pm', e.target.value)} className={`${inputClass} field-sm`}>
                                             <option value="dynamic">dynamic</option>
                                             <option value="static">static</option>
                                             <option value="ondemand">ondemand</option>
@@ -375,7 +375,7 @@ export function DomainPHPSettings({
                                                 readOnly={readOnly}
                                                 disabled={pool.saving}
                                                 onChange={(e) => pool.set(name, e.target.value)}
-                                                className={inputClass}
+                                                className={`${inputClass} ${poolNumbers.includes(name) ? 'field-xs' : 'field-md'}`}
                                             />
                                         </PoolField>
                                     ))}

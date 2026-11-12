@@ -306,7 +306,7 @@ function AddressFacts({ value, onChanged }: { value: WebmailAddressRead; onChang
                         <input
                             id="webmail-address-host"
                             type="text"
-                            className={inputClass}
+                            className={`${inputClass} field-lg`}
                             value={host}
                             onChange={(event) => setTypedHost(event.target.value)}
                             placeholder="mail.example.com"

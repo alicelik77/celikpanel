@@ -513,7 +513,7 @@ function PortDialog({ cluster, onClose }: { cluster: PGCluster; onClose: (done: 
                     <label className="flex flex-col gap-1 text-xs font-medium text-fg-subtle">
                         {t('pgc.port.label')}
                         <input
-                            className="w-32 rounded-lg border border-border bg-surface px-3 py-2 font-mono text-sm text-fg"
+                            className="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-sm text-fg field-xs"
                             inputMode="numeric"
                             value={text}
                             onChange={(event) => { setText(event.target.value); setAsked(null); }}
@@ -648,13 +648,13 @@ function MoveDialog({ source, targets, records, onClose }: { source: PGCluster; 
                 <div className="flex flex-wrap gap-3">
                     <label className="flex flex-col gap-1 text-xs font-medium text-fg-subtle">
                         {t('pgc.move.database')}
-                        <select className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg" value={database} onChange={(event) => setDatabase(event.target.value)} disabled={busy}>
+                        <select className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg field-md" value={database} onChange={(event) => setDatabase(event.target.value)} disabled={busy}>
                             {source.databases.map((name) => <option key={name} value={name}>{name}</option>)}
                         </select>
                     </label>
                     <label className="flex flex-col gap-1 text-xs font-medium text-fg-subtle">
                         {t('pgc.move.target')}
-                        <select className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg" value={target} onChange={(event) => setTarget(event.target.value)} disabled={busy}>
+                        <select className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg field-md" value={target} onChange={(event) => setTarget(event.target.value)} disabled={busy}>
                             {targets.map((cluster) => <option key={pgRef(cluster)} value={pgRef(cluster)}>{t('pgc.move.targetOption', { cluster: pgRef(cluster), port: cluster.port })}</option>)}
                         </select>
                     </label>

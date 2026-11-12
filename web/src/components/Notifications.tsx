@@ -243,7 +243,7 @@ export function NotificationPreferencesCard() {
                                 {draft.isMoved('mode') && draft.base && <ServerMovedNote value={t(MODE_WORDS[draft.base.mode][0])} onTake={() => draft.take('mode')} />}
                                 <label className={`mt-1 grid gap-1 text-sm ${draft.isChanged('extra') ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
                                     <span className="font-semibold text-fg">{t('notif.prefs.extra')}{draft.isChanged('extra') && <ChangedMark />}</span>
-                                    <input type="email" className={inputClass} value={extra} onChange={(event) => draft.set('extra', event.target.value)} maxLength={254} autoComplete="email" aria-invalid={extraBad || undefined} data-notification-extra />
+                                    <input type="email" className={`${inputClass} field-lg`} value={extra} onChange={(event) => draft.set('extra', event.target.value)} maxLength={254} autoComplete="email" aria-invalid={extraBad || undefined} data-notification-extra />
                                     <span className={`text-xs ${extraBad ? 'text-danger' : 'text-fg-muted'}`}>{extraBad ? t('notif.badEmail') : t('notif.prefs.extraHint')}</span>
                                 </label>
                                 {draft.isMoved('extra') && draft.base && <ServerMovedNote value={draft.base.extra || '—'} onTake={() => draft.take('extra')} />}
@@ -309,7 +309,7 @@ export function NotificationSettingsCard() {
                                 <div className={changedClass('expiry')}>
                                     <label className="grid gap-1 text-sm">
                                         <span className="font-semibold text-fg">{t('notif.admin.expiry')}{draft.isChanged('expiry') && <ChangedMark />}</span>
-                                        <select className={inputClass} value={form.expiry} onChange={(event) => draft.set('expiry', Number(event.target.value))} data-notification-expiry-days>
+                                        <select className={`${inputClass} field-sm`} value={form.expiry} onChange={(event) => draft.set('expiry', Number(event.target.value))} data-notification-expiry-days>
                                             {value.expiry_choices.map((n) => <option key={n} value={n}>{t('notif.admin.days', { n })}</option>)}
                                         </select>
                                         <span className="text-xs text-fg-muted">{t('notif.admin.expiryHint')}</span>
@@ -323,7 +323,7 @@ export function NotificationSettingsCard() {
                                         <div key={group} className={changedClass(group)}>
                                             <label className="grid gap-1 text-sm">
                                                 <span className="text-fg">{t(`notif.admin.group.${group}` as NotificationsKey)}{draft.isChanged(group) && <ChangedMark />}</span>
-                                                <input type="email" className={inputClass} value={form[group]} onChange={(event) => draft.set(group, event.target.value)} maxLength={254}
+                                                <input type="email" className={`${inputClass} field-lg`} value={form[group]} onChange={(event) => draft.set(group, event.target.value)} maxLength={254}
                                                     aria-invalid={bad.includes(group) || undefined} data-notification-group={group} />
                                                 {bad.includes(group) && <span className="text-xs text-danger">{t('notif.badEmail')}</span>}
                                             </label>

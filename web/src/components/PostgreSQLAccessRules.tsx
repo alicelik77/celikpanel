@@ -222,7 +222,7 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
     );
 }
 
-const cell = 'w-full rounded-lg border border-border-strong bg-surface px-2.5 py-2 font-mono text-sm text-fg outline-none focus:border-primary disabled:bg-surface-2 disabled:text-fg-muted';
+const cell = 'rounded-lg border border-border-strong bg-surface px-2.5 py-2 font-mono text-sm text-fg outline-none focus:border-primary disabled:bg-surface-2 disabled:text-fg-muted';
 
 function RuleFields({
     number,
@@ -269,7 +269,7 @@ function RuleFields({
                 onChange={(event) => onChange({ ...fields, [field]: event.target.value })}
                 spellCheck={false}
                 autoComplete="off"
-                className={cell}
+                className={`${cell} ${field === 'address' ? 'field-lg' : 'field-md'}`}
             />
         </label>
     );
@@ -286,7 +286,7 @@ function RuleFields({
                         aria-invalid={refusalId ? true : undefined}
                         aria-describedby={refusalId}
                         onChange={(event) => onChange({ ...fields, type: event.target.value, address: event.target.value === 'local' ? '' : fields.address })}
-                        className={cell}
+                        className={`${cell} field-sm`}
                     >
                         {types.map((type) => <option key={type} value={type}>{type}</option>)}
                     </select>
@@ -305,7 +305,7 @@ function RuleFields({
                         value={fields.method}
                         disabled={disabled}
                         onChange={(event) => onChange({ ...fields, method: event.target.value })}
-                        className={cell}
+                        className={`${cell} field-md`}
                     >
                         {methods.map((method) => <option key={method} value={method}>{method}</option>)}
                     </select>

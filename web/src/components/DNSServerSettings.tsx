@@ -976,7 +976,7 @@ function DNSInfrastructureSettings({
                         <Field label={t('dnssrv.ns1Label')} htmlFor="dns-ns1">
                             <input
                                 id="dns-ns1"
-                                className={inputClass}
+                                className={`${inputClass} field-lg`}
                                 value={draft.ns1}
                                 onChange={(e) => {
                                     setNeedsClusterRetry(false);
@@ -992,7 +992,7 @@ function DNSInfrastructureSettings({
                         <Field label={t('dnssrv.ns2Label')} htmlFor="dns-ns2">
                             <input
                                 id="dns-ns2"
-                                className={inputClass}
+                                className={`${inputClass} field-lg`}
                                 value={draft.ns2}
                                 onChange={(e) => {
                                     setNeedsClusterRetry(false);
@@ -1069,12 +1069,12 @@ function DNSInfrastructureSettings({
                                     </p>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <Field label={t('dnssrv.ipv4Label')} htmlFor="dns-local-ip">
-                                            <input id="dns-local-ip" className={inputClass} value={saved.server_ip} readOnly />
+                                            <input id="dns-local-ip" className={`${inputClass} field-md`} value={saved.server_ip} readOnly />
                                         </Field>
                                         <Field label={t('dnssrv.localNsLabel')} hint={t('dnssrv.localNsHint')} htmlFor="dns-local-ns">
                                             <select
                                                 id="dns-local-ns"
-                                                className={inputClass}
+                                                className={`${inputClass} field-lg`}
                                                 value={effectiveLocalNS}
                                                 disabled={!namesReadyForSetup}
                                                 onChange={(e) => selectLocalNameserver(e.target.value)}
@@ -1106,7 +1106,7 @@ function DNSInfrastructureSettings({
                                             <input
                                                 id="dns-peer-ip"
                                                 data-testid="dns-peer-ip"
-                                                className={inputClass}
+                                                className={`${inputClass} field-lg`}
                                                 value={draft.peer_ip}
                                                 onChange={(e) => {
                                                     setNeedsClusterRetry(false);
@@ -1138,7 +1138,7 @@ function DNSInfrastructureSettings({
                                             )}
                                         </Field>
                                         <Field label={t('dnssrv.peerNsLabel')} hint={t('dnssrv.peerNameAutomatic')} htmlFor="dns-peer-ns">
-                                            <input id="dns-peer-ns" className={inputClass} value={effectivePeerNS} readOnly />
+                                            <input id="dns-peer-ns" className={`${inputClass} field-lg`} value={effectivePeerNS} readOnly />
                                         </Field>
                                     </div>
                                 </div>

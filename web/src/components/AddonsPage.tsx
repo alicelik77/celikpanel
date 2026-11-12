@@ -336,7 +336,7 @@ export function AddonsPage() {
                                 value={selected ?? ''}
                                 disabled={busyItemIDs.size > 0}
                                 onChange={(event) => setSelected(Number(event.target.value))}
-                                className={`${inputClass} sm:max-w-md`}
+                                className={`${inputClass} field-lg`}
                             >
                                 {subscriptions.map((subscription) => (
                                     <option key={subscription.id} value={subscription.id}>

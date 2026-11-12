@@ -192,7 +192,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                     <select
                         value={logType}
                         onChange={(e) => setLogType(e.target.value as LogType)}
-                        className={`${inputClass} w-auto`}
+                        className={`${inputClass} field-md`}
                     >
                         {logTypes.map((l) => (
                             <option key={l.value} value={l.value}>
@@ -207,7 +207,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                     <select
                         value={lines}
                         onChange={(e) => setLines(Number(e.target.value))}
-                        className={`${inputClass} w-auto`}
+                        className={`${inputClass} field-sm`}
                     >
                         {[50, 100, 200, 500, 1000].map((n) => (
                             <option key={n} value={n}>
@@ -217,7 +217,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                     </select>
                 </label>
 
-                <label className="block min-w-[200px] flex-1">
+                <label className="block min-w-0">
                     <span className="mb-1.5 block text-sm font-medium text-fg-muted">{t('logs.filter')}</span>
                     <div className="relative">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
@@ -227,7 +227,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                             onChange={(e) => setFilter(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && void loadLogs()}
                             placeholder={t('logs.filterPlaceholder')}
-                            className={`${inputClass} pl-9`}
+                            className={`${inputClass} pl-9 field-lg`}
                         />
                     </div>
                 </label>
@@ -297,7 +297,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                     <fieldset id="log-time-range" className="rounded-xl border border-border bg-surface-2/40 p-3">
                         <legend className="sr-only">{t('logs.timeRangeOptional')}</legend>
                         <div className="flex flex-wrap items-end gap-3">
-                            <label className="block min-w-[230px] flex-1">
+                            <label className="block min-w-0">
                                 <span className="mb-1.5 block text-sm font-medium text-fg-muted">{t('logs.timeStart')}</span>
                                 <input
                                     type="datetime-local"
@@ -310,10 +310,10 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                                     onKeyDown={(event) => event.key === 'Enter' && void loadLogs()}
                                     aria-invalid={timeError ? true : undefined}
                                     aria-describedby={timeError ? 'log-time-error' : undefined}
-                                    className={inputClass}
+                                    className={`${inputClass} field-md`}
                                 />
                             </label>
-                            <label className="block min-w-[230px] flex-1">
+                            <label className="block min-w-0">
                                 <span className="mb-1.5 block text-sm font-medium text-fg-muted">{t('logs.timeEnd')}</span>
                                 <input
                                     type="datetime-local"
@@ -326,7 +326,7 @@ export function DomainLogsViewer({ domainId, domainName, readOnly = false }: Dom
                                     onKeyDown={(event) => event.key === 'Enter' && void loadLogs()}
                                     aria-invalid={timeError ? true : undefined}
                                     aria-describedby={timeError ? 'log-time-error' : undefined}
-                                    className={inputClass}
+                                    className={`${inputClass} field-md`}
                                 />
                             </label>
                             <button

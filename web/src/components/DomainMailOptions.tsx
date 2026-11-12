@@ -82,7 +82,7 @@ export function DomainMailOptions({ domainId, domainName, readOnly }: { domainId
                                         <span className="block text-xs text-fg-subtle">{t('mailopt.catchAll')}</span>
                                     ) : (
                                         <input type="text" maxLength={200} value={shown.unknown_reply} disabled={readOnly || stale} placeholder={t('mailopt.replyPlaceholder')}
-                                            onChange={(event) => set({ unknown_reply: event.target.value })} className={inputClass} />
+                                            onChange={(event) => set({ unknown_reply: event.target.value })} className={`${inputClass} field-xl`} />
                                     )}
                                     <span className="mt-1 block text-xs text-fg-subtle">{t('mailopt.replyHint')}</span>
                                 </label>

@@ -142,19 +142,19 @@ function WithdrawForm({ component, name, versions, alternatives, onDone }: { com
             {versions.length > 0 && (
                 <label className="block text-sm">
                     <span className="text-fg-muted">{t('emg.version')}</span>
-                    <select className="mt-1 block w-full max-w-xs rounded-md border border-border bg-surface px-2 py-1.5" value={chosen} onChange={(e) => setVersion(e.target.value)} data-emergency-version="">
+                    <select className="mt-1 block rounded-md border border-border bg-surface px-2 py-1.5 field-md" value={chosen} onChange={(e) => setVersion(e.target.value)} data-emergency-version="">
                         {versions.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
                 </label>
             )}
             <label className="block text-sm">
                 <span className="text-fg-muted">{t('emg.reason')}</span>
-                <input className="mt-1 block w-full rounded-md border border-border bg-surface px-2 py-1.5" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} data-emergency-reason="" />
+                <input className="mt-1 block rounded-md border border-border bg-surface px-2 py-1.5 field-xl" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} data-emergency-reason="" />
             </label>
             {versions.length > 0 && (
                 <label className="block text-sm">
                     <span className="text-fg-muted">{t('emg.recommended')}</span>
-                    <select className="mt-1 block w-full max-w-xs rounded-md border border-border bg-surface px-2 py-1.5" value={recommended} onChange={(e) => setRecommended(e.target.value)} data-emergency-recommended="">
+                    <select className="mt-1 block rounded-md border border-border bg-surface px-2 py-1.5 field-md" value={recommended} onChange={(e) => setRecommended(e.target.value)} data-emergency-recommended="">
                         <option value="">{t('emg.recommendedNone')}</option>
                         {alternatives.filter((item) => item !== chosen).map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
@@ -348,7 +348,7 @@ function ConfirmDialog({ detail, step, onClose, onDone }: { detail: EmergencyDet
                     <label className="block">
                         <span className="text-fg-muted">{t('emg.confirm.target')}</span>
                         {detail.alternatives.length === 0 ? <p className="text-warning">{t('emg.confirm.targetNone')}</p> : (
-                            <select className="mt-1 block w-full max-w-xs rounded-md border border-border bg-surface px-2 py-1.5" value={target} onChange={(ev) => setTarget(ev.target.value)} data-emergency-target="">
+                            <select className="mt-1 block rounded-md border border-border bg-surface px-2 py-1.5 field-md" value={target} onChange={(ev) => setTarget(ev.target.value)} data-emergency-target="">
                                 {detail.alternatives.map((item) => <option key={item} value={item}>{item}</option>)}
                             </select>
                         )}
@@ -356,7 +356,7 @@ function ConfirmDialog({ detail, step, onClose, onDone }: { detail: EmergencyDet
                 )}
                 <label className="block">
                     <span className="text-fg-muted">{t('emg.confirm.reason')}</span>
-                    <input className="mt-1 block w-full rounded-md border border-border bg-surface px-2 py-1.5" value={reason} maxLength={500} onChange={(ev) => setReason(ev.target.value)} data-emergency-confirm-reason="" />
+                    <input className="mt-1 block rounded-md border border-border bg-surface px-2 py-1.5 field-xl" value={reason} maxLength={500} onChange={(ev) => setReason(ev.target.value)} data-emergency-confirm-reason="" />
                 </label>
                 {needsName && (
                     <TypedNameField id={`emergency-${step}-name`} label={typedName.label} value={typed} onChange={setTyped} data-emergency-confirm-name="" />

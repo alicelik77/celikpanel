@@ -148,13 +148,13 @@ function NodeEnv({ domainId, domainName }: { domainId: number; domainName: strin
             <div className="mt-3 space-y-2">
                 {shown.map((row, at) => (
                     <div key={at} className={`-mx-2 flex flex-col gap-2 rounded-r px-2 py-1 sm:flex-row sm:items-center ${rows !== null && differs(row, at) ? changedRowClass : ''}`} data-env-row="">
-                        <input value={row.key} disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, key: e.target.value.toUpperCase() } : r))} placeholder={t('node.env.key')} aria-label={t('node.env.key')} spellCheck={false} className={`${inputClass} font-mono sm:w-64`} />
+                        <input value={row.key} disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, key: e.target.value.toUpperCase() } : r))} placeholder={t('node.env.key')} aria-label={t('node.env.key')} spellCheck={false} className={`${inputClass} font-mono field-md`} />
                         {row.secret ? (
                             <PasswordInput value={row.value} autoComplete="new-password" generate={false} disabled={locked} onChange={(value) => set(shown.map((r, i) => i === at ? { ...r, value } : r))}
                                 placeholder={row.saved ? t('node.env.secretKept') : t('node.env.value')} aria-label={t('node.env.value')} className="font-mono" />
                         ) : (
                             <input value={row.value} type="text" autoComplete="off" disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, value: e.target.value } : r))}
-                                placeholder={t('node.env.value')} aria-label={t('node.env.value')} spellCheck={false} className={`${inputClass} font-mono`} />
+                                placeholder={t('node.env.value')} aria-label={t('node.env.value')} spellCheck={false} className={`${inputClass} font-mono field-lg`} />
                         )}
                         <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" className="accent-primary" checked={row.secret} disabled={locked} onChange={(e) => set(shown.map((r, i) => i === at ? { ...r, secret: e.target.checked, saved: false } : r))} />{t('node.env.secret')}</label>
                         <Button type="button" icon={Trash2} disabled={locked} onClick={() => set(shown.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>
@@ -245,7 +245,7 @@ function NodeScripts({ domainId, domainName }: { domainId: number; domainName: s
                 <p className="mt-2 text-sm text-fg-subtle">{t('node.scripts.none')}</p>
             ) : (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <select value={script} onChange={(e) => setPicked(e.target.value)} className={`${inputClass} font-mono sm:w-72`} aria-label={t('node.scripts.title')}>
+                    <select value={script} onChange={(e) => setPicked(e.target.value)} className={`${inputClass} font-mono field-md`} aria-label={t('node.scripts.title')}>
                         {scripts.map((name) => <option key={name} value={name}>{name}</option>)}
                     </select>
                     <Button type="button" icon={Play} onClick={() => void run()}>{t('node.scripts.run')}</Button>

@@ -113,7 +113,7 @@ export function MailPlanLimits() {
                                                 <input type="number" min={field === 'mailbox_size_mb' ? 1 : 0} value={values[key(plan, field)] ?? ''} placeholder="—"
                                                     aria-label={`${plan.name}: ${labels[field]}`} disabled={draft.saving}
                                                     onChange={(event) => draft.set(key(plan, field), event.target.value)}
-                                                    className={`${inputClass} w-28 py-1`} />
+                                                    className={`${inputClass} py-1 field-xs`} />
                                             </td>
                                         ))}
                                     </tr>

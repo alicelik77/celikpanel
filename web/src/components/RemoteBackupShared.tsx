@@ -226,7 +226,7 @@ export function ScheduleEditor({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-sm" htmlFor={id('destination')}>
                     <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.destination')}</span>
-                    <select id={id('destination')} className={inputClass} value={destination} disabled={busy || !!initial}
+                    <select id={id('destination')} className={`${inputClass} field-lg`} value={destination} disabled={busy || !!initial}
                         onChange={(event) => setDestination(event.target.value)}>
                         {initial && !destinations.some((d) => d.id === initial.destinationId) && (
                             <option value={initial.destinationId}>{initial.destinationName}</option>
@@ -236,7 +236,7 @@ export function ScheduleEditor({
                 </label>
                 <label className="text-sm" htmlFor={id('frequency')}>
                     <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.frequency')}</span>
-                    <select id={id('frequency')} className={inputClass} value={frequency} disabled={busy}
+                    <select id={id('frequency')} className={`${inputClass} field-sm`} value={frequency} disabled={busy}
                         onChange={(event) => setFrequency(event.target.value === 'weekly' ? 'weekly' : 'daily')}>
                         <option value="daily">{t('rbak.sched.daily')}</option>
                         <option value="weekly">{t('rbak.sched.weekly')}</option>
@@ -244,7 +244,7 @@ export function ScheduleEditor({
                 </label>
                 <label className="text-sm" htmlFor={id('type')}>
                     <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.type')}</span>
-                    <select id={id('type')} className={inputClass} value={backupType} disabled={busy}
+                    <select id={id('type')} className={`${inputClass} field-md`} value={backupType} disabled={busy}
                         onChange={(event) => setBackupType(event.target.value === 'full' ? 'full' : 'files')}>
                         <option value="files">{t('rbak.sched.files')}</option>
                         <option value="full">{t('rbak.sched.full')}</option>
@@ -254,14 +254,14 @@ export function ScheduleEditor({
                     <label className="text-sm" htmlFor={id('daily')}>
                         <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.keepDaily', { max: MAX_KEEP_DAILY })}</span>
                         <input id={id('daily')} type="number" inputMode="numeric" min={0} max={MAX_KEEP_DAILY} step={1}
-                            className={inputClass} value={keepDaily} disabled={busy}
+                            className={`${inputClass} field-xs`} value={keepDaily} disabled={busy}
                             aria-invalid={problem === 'rbak.sched.keepDailyRange' || undefined}
                             onChange={(event) => setKeepDaily(event.target.value)} />
                     </label>
                     <label className="text-sm" htmlFor={id('weekly')}>
                         <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.keepWeekly', { max: MAX_KEEP_WEEKLY })}</span>
                         <input id={id('weekly')} type="number" inputMode="numeric" min={0} max={MAX_KEEP_WEEKLY} step={1}
-                            className={inputClass} value={keepWeekly} disabled={busy}
+                            className={`${inputClass} field-xs`} value={keepWeekly} disabled={busy}
                             aria-invalid={problem === 'rbak.sched.keepWeeklyRange' || undefined}
                             onChange={(event) => setKeepWeekly(event.target.value)} />
                     </label>

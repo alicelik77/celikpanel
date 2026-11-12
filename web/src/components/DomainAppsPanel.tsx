@@ -518,7 +518,7 @@ function RemoveForm({ domainId, domainName, app, send, onClose }: {
                     <span>{t('apps.removeData', { folder: app.data_dir })}</span></label>
             )}
             <label className="mt-2 block text-fg-muted">{t('apps.typeDomain', { domain: domainName })}
-                <input type="text" value={confirmName} onChange={(e) => setConfirmName(e.target.value)} className="mt-1 block w-full max-w-sm rounded-lg border border-border bg-surface px-2 py-1.5 text-fg" />
+                <input type="text" value={confirmName} onChange={(e) => setConfirmName(e.target.value)} className="mt-1 block rounded-lg border border-border bg-surface px-2 py-1.5 text-fg field-lg" />
             </label>
             <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="danger" icon={Trash2} disabled={sending || confirmName.trim().toLowerCase() !== domainName.toLowerCase()} onClick={() => void remove()}>{t('apps.removeConfirm')}</Button>

@@ -615,7 +615,7 @@ function MemberEditor({
                             <input
                                 value={draft.username}
                                 onChange={(event) => onChange({ ...draft, username: event.target.value })}
-                                className={inputClass}
+                                className={`${inputClass} field-md`}
                                 autoComplete='off'
                                 required
                                 autoFocus
@@ -627,7 +627,7 @@ function MemberEditor({
                                 type='email'
                                 value={draft.email}
                                 onChange={(event) => onChange({ ...draft, email: event.target.value })}
-                                className={inputClass}
+                                className={`${inputClass} field-lg`}
                                 autoComplete='off'
                                 required
                             />
@@ -663,7 +663,7 @@ function MemberEditor({
                                     ...draft,
                                     status: event.target.value as TeamMemberStatus,
                                 })}
-                                className={inputClass}
+                                className={`${inputClass} field-sm`}
                             >
                                 <option value='active'>{t('team.status.active')}</option>
                                 <option value='suspended'>{t('team.status.suspended')}</option>
@@ -829,7 +829,7 @@ function PermissionMatrix({
                                                 capability,
                                                 event.target.value as PermissionChoice,
                                             )}
-                                            className='rounded-md border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-primary'
+                                            className='rounded-md border border-border bg-surface px-2 py-1 text-xs text-fg outline-none focus:border-primary field-sm'
                                             aria-label={resource.label + ' — ' + t(capabilityKey(capability))}
                                         >
                                             <option value='none'>{t('team.mode.none')}</option>

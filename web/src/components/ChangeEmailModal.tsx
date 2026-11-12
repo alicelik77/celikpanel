@@ -172,7 +172,7 @@ export function ChangeEmailModal({
                         spellCheck={false}
                         disabled={saving}
                         maxLength={254}
-                        className={`${inputClass} max-sm:min-h-11`}
+                        className={`${inputClass} max-sm:min-h-11 field-lg`}
                         autoFocus
                     />
                 </label>

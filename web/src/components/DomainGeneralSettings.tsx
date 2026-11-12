@@ -298,7 +298,7 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAlias())}
                                     placeholder={t('general.aliasPlaceholder')}
                                     aria-label={t('general.aliasPlaceholder')}
-                                    className={inputClass}
+                                    className={`${inputClass} field-lg`}
                                 />
                                 <Button variant="primary" icon={Plus} onClick={handleAddAlias} disabled={!canChange || changingAlias}>
                                     {t('general.add')}

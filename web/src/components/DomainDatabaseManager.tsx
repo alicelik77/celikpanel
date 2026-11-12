@@ -324,7 +324,7 @@ export function DomainDatabaseManager({
                                 value={dbName}
                                 onChange={(e) => setDbName(e.target.value)}
                                 placeholder="myapp"
-                                className="w-full bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary"
+                                className="bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary field-md"
                                 required
                             />
                             <p className="text-xs text-fg-subtle mt-1">
@@ -337,7 +337,7 @@ export function DomainDatabaseManager({
                             <select
                                 value={dbType ?? ''}
                                 onChange={(e) => setDbType(e.target.value as DatabaseType)}
-                                className="w-full bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary"
+                                className="bg-surface border border-border rounded px-4 py-2 text-fg focus:border-primary field-sm"
                             >
                                 {engines.map((eng) => (
                                     <option key={eng.value} value={eng.value}>{eng.label}</option>

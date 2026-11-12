@@ -357,7 +357,7 @@ export function DatabaseTools({ domainId, db, readOnly, onRefusal, onClear, isAd
                     <p className="text-xs text-fg-muted">{t('dbt.copyHint')}</p>
                     <label className="block text-xs text-fg-muted">
                         {t('dbt.copyName')}
-                        <input type="text" value={copyName} onChange={(e) => setCopyName(e.target.value)} placeholder="test" className={`${inputClass} mt-1`} />
+                        <input type="text" value={copyName} onChange={(e) => setCopyName(e.target.value)} placeholder="test" className={`${inputClass} mt-1 field-md`} />
                     </label>
                     <PasswordInput field="database_user" value={copyPassword} onChange={setCopyPassword} maxLength={128} />
                     <Button variant="primary" icon={CopyPlus} disabled={busy || !copyName.trim() || !passwordAcceptable(copyPassword, 'database_user')} onClick={() => void runCopy()}>

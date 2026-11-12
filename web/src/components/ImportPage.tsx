@@ -414,7 +414,7 @@ export function ImportPage() {
                             onChange={(e) => setPath(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && path && inspect()}
                             placeholder="/var/lib/celikpanel-imports/cpmove-user.tar.gz"
-                            className={`${inputClass} font-mono`}
+                            className={`${inputClass} font-mono field-xl`}
                             autoFocus
                         />
                         <span className="mt-1.5 block text-xs text-fg-subtle">{t('import.pathHint')}</span>
@@ -462,7 +462,7 @@ export function ImportPage() {
 
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('import.targetDomain')}</span>
-                            <select value={targetDomain} onChange={(e) => setTargetDomain(e.target.value)} className={inputClass} disabled={frozen}>
+                            <select value={targetDomain} onChange={(e) => setTargetDomain(e.target.value)} className={`${inputClass} field-lg`} disabled={frozen}>
                                 {preview.domains.map((d) => (
                                     <option key={d} value={d}>
                                         {d}
@@ -474,7 +474,7 @@ export function ImportPage() {
                         <div>
                             <label className="block">
                                 <span className="mb-1 block text-xs text-fg-muted">{t('import.targetSub')}</span>
-                                <select value={subID} onChange={(e) => setSubID(Number(e.target.value))} className={inputClass} disabled={frozen || !subsKnown}>
+                                <select value={subID} onChange={(e) => setSubID(Number(e.target.value))} className={`${inputClass} field-lg`} disabled={frozen || !subsKnown}>
                                     <option value={0}>{t('import.subChoose')}</option>
                                     {subOptions.map((s) => (
                                         <option key={s.id} value={s.id}>

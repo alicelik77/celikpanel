@@ -261,25 +261,25 @@ export function ApiTokensCard() {
                             )}
                             {state.canCreate && !made && (
                                 <form
-                                    className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end"
+                                    className="grid gap-3 sm:grid-cols-[auto_auto_auto] sm:items-end sm:justify-start"
                                     onSubmit={(event) => { event.preventDefault(); void create(state); }}
                                     noValidate
                                 >
                                     <label className="grid gap-1 text-sm text-fg">
                                         {w('apitok.name')}
-                                        <input className={inputClass} value={name} maxLength={64} placeholder={w('apitok.namePlaceholder')}
+                                        <input className={`${inputClass} field-md`} value={name} maxLength={64} placeholder={w('apitok.namePlaceholder')}
                                             onChange={(event) => setName(event.target.value)} disabled={busy} />
                                     </label>
                                     <label className="grid gap-1 text-sm text-fg">
                                         {w('apitok.scope')}
-                                        <select className={inputClass} value={scope} onChange={(event) => setScope(event.target.value === 'manage' ? 'manage' : 'read')} disabled={busy}>
+                                        <select className={`${inputClass} field-md`} value={scope} onChange={(event) => setScope(event.target.value === 'manage' ? 'manage' : 'read')} disabled={busy}>
                                             <option value="read">{w('apitok.scope.read')}</option>
                                             <option value="manage">{w('apitok.scope.manage')}</option>
                                         </select>
                                     </label>
                                     <label className="grid gap-1 text-sm text-fg">
                                         {w('apitok.expiry')}
-                                        <select className={inputClass} value={days} onChange={(event) => setDays(Number(event.target.value))} disabled={busy}>
+                                        <select className={`${inputClass} field-md`} value={days} onChange={(event) => setDays(Number(event.target.value))} disabled={busy}>
                                             {state.lifetimes.map((n) => <option key={n} value={n}>{w('apitok.days', { n })}</option>)}
                                         </select>
                                     </label>
@@ -291,7 +291,7 @@ export function ApiTokensCard() {
                                         <label className="grid gap-1 text-sm text-fg">
                                             {w('apitok.code')}
                                             <input
-                                                className={`${inputClass} font-mono tracking-[0.3em]`}
+                                                className={`${inputClass} font-mono tracking-[0.3em] field-sm`}
                                                 value={code}
                                                 onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
                                                 inputMode="numeric"

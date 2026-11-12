@@ -283,7 +283,7 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
                 {app.owner_login && (
                     <div className="grid gap-3 sm:grid-cols-2">
                         <Field label={t('svcapps.ownerEmail')} htmlFor="svcapps-owner-email">
-                            <input id="svcapps-owner-email" type="email" autoComplete="off" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
+                            <input id="svcapps-owner-email" type="email" autoComplete="off" className={`${inputClass} field-lg`} value={email} onChange={(e) => setEmail(e.target.value)} />
                         </Field>
                         <Field label={t('svcapps.ownerPassword')} htmlFor="svcapps-owner-password">
                             <PasswordInput id="svcapps-owner-password" field="service_app_owner" maxLength={128} value={password} onChange={setPassword} />
@@ -300,7 +300,7 @@ function InstallDialog({ app, domain, url, onClose, after }: { app: DomainServic
                                     <PasswordInput id={'svcapps-secret-' + secret.key}
                                         value={secrets[secret.key] ?? ''} onChange={(value) => setSecrets((s) => ({ ...s, [secret.key]: value }))} />
                                 ) : (
-                                    <input id={'svcapps-secret-' + secret.key} type="text" autoComplete="off" className={inputClass}
+                                    <input id={'svcapps-secret-' + secret.key} type="text" autoComplete="off" className={`${inputClass} field-lg`}
                                         value={secrets[secret.key] ?? ''} onChange={(e) => setSecrets((s) => ({ ...s, [secret.key]: e.target.value }))} />
                                 )}
                             </Field>

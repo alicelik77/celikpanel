@@ -504,8 +504,8 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.username')}</span>
-                                <div className="flex items-center rounded-lg border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
-                                    <input value={user} onChange={(e) => setUser(e.target.value)} placeholder="info" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-fg outline-none" />
+                                <div className="field-lg flex items-center rounded-lg border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
+                                    <input value={user} onChange={(e) => setUser(e.target.value)} placeholder="info" className="field-full min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-fg outline-none" />
                                     <span className="whitespace-nowrap px-2 text-sm text-fg-subtle">@{domainName}</span>
                                 </div>
                             </label>
@@ -515,18 +515,18 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             </label>
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.quota')}</span>
-                                <input type="number" value={quota} onChange={(e) => setQuota(parseInt(e.target.value))} className={inputClass} />
+                                <input type="number" value={quota} onChange={(e) => setQuota(parseInt(e.target.value))} className={`${inputClass} field-sm`} />
                             </label>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.source')}</span>
-                                <input value={fwdSource} onChange={(e) => setFwdSource(e.target.value)} placeholder={`info@${domainName}`} className={inputClass} />
+                                <input value={fwdSource} onChange={(e) => setFwdSource(e.target.value)} placeholder={`info@${domainName}`} className={`${inputClass} field-lg`} />
                             </label>
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.destination')}</span>
-                                <input value={fwdDest} onChange={(e) => setFwdDest(e.target.value)} placeholder="personal@gmail.com" className={inputClass} />
+                                <input value={fwdDest} onChange={(e) => setFwdDest(e.target.value)} placeholder="personal@gmail.com" className={`${inputClass} field-lg`} />
                             </label>
                         </div>
                     )}
@@ -573,14 +573,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                 <Button type="button" onClick={() => setSelected(new Set())}>{t('mail.cancel')}</Button>
                                 {bulkLimitOpen && (
                                     <span className="flex w-full flex-wrap items-center gap-2">
-                                        <select className={`${inputClass} w-auto`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
+                                        <select className={`${inputClass} field-sm`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
                                             <option value="default">{t('mail.bulk.modeDefault')}</option>
                                             <option value="custom">{t('mail.bulk.modeCustom')}</option>
                                             <option value="unlimited">{t('mail.bulk.modeUnlimited')}</option>
                                         </select>
                                         {bulkMode === 'custom' && (
                                             <input type="number" min={1} value={bulkPerHour} aria-label={t('mail.bulk.perHour')}
-                                                onChange={(event) => setBulkPerHour(Math.max(1, parseInt(event.target.value, 10) || 1))} className={`${inputClass} w-28`} />
+                                                onChange={(event) => setBulkPerHour(Math.max(1, parseInt(event.target.value, 10) || 1))} className={`${inputClass} field-xs`} />
                                         )}
                                         <Button type="button" variant="primary" onClick={() => void bulkLimit(accounts)}>{t('mail.bulk.apply')}</Button>
                                     </span>
@@ -646,7 +646,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                                 value={quotaDraft}
                                                                 onChange={(e) => setQuotaDraft(parseInt(e.target.value))}
                                                                 onKeyDown={(e) => e.key === 'Enter' && saveQuota(a.id)}
-                                                                className={`${inputClass} w-24 py-1`}
+                                                                className={`${inputClass} py-1 field-xs`}
                                                                 autoFocus
                                                             />
                                                             <span className="text-xs">MB</span>

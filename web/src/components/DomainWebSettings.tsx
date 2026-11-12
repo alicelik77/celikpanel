@@ -339,7 +339,7 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
                     </div>
                     {customIndex && (
                         <div>
-                            <input value={form.index.files} onChange={(e) => set('index', { ...form.index, files: e.target.value })} disabled={fieldDisabled} placeholder={t('web.index.placeholder')} spellCheck={false} autoComplete="off" className={`${inputClass} font-mono`} aria-label={t('web.index.title')} />
+                            <input value={form.index.files} onChange={(e) => set('index', { ...form.index, files: e.target.value })} disabled={fieldDisabled} placeholder={t('web.index.placeholder')} spellCheck={false} autoComplete="off" className={`${inputClass} font-mono field-lg`} aria-label={t('web.index.title')} />
                             <p className="mt-1 text-xs text-fg-subtle">{t('web.index.hint')}</p>
                         </div>
                     )}
@@ -348,7 +348,7 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
             )}
             <FormSection title={t('web.cache.title')} description={t('web.cache.desc')}>
                 <Marked changed={draft.isChanged('cache')} moved={moved('cache')}>
-                <select value={form.cache} onChange={(e) => set('cache', Number(e.target.value))} disabled={fieldDisabled} className={`${inputClass} sm:w-60`} aria-label={t('web.cache.title')}>
+                <select value={form.cache} onChange={(e) => set('cache', Number(e.target.value))} disabled={fieldDisabled} className={`${inputClass} field-sm`} aria-label={t('web.cache.title')}>
                     {state.cache_choices.map((days) => (
                         <option key={days} value={days}>{days === 0 ? t('web.cache.off') : days === 1 ? t('web.cache.day') : t('web.cache.days', { n: days })}</option>
                     ))}
@@ -359,8 +359,8 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
                 <Marked changed={draft.isChanged('mimes')} moved={moved('mimes')}>
                 {mimes.map((row, at) => (
                     <div key={at} className="flex flex-col gap-2 sm:flex-row">
-                        <input value={row.type} onChange={(e) => set('mimes', mimes.map((m, i) => i === at ? { ...m, type: e.target.value } : m))} disabled={fieldDisabled} placeholder={t('web.mime.type')} aria-label={t('web.mime.type')} spellCheck={false} className={`${inputClass} font-mono`} />
-                        <input value={row.exts} onChange={(e) => set('mimes', mimes.map((m, i) => i === at ? { ...m, exts: e.target.value } : m))} disabled={fieldDisabled} placeholder={t('web.mime.ext')} aria-label={t('web.mime.ext')} spellCheck={false} className={`${inputClass} font-mono`} />
+                        <input value={row.type} onChange={(e) => set('mimes', mimes.map((m, i) => i === at ? { ...m, type: e.target.value } : m))} disabled={fieldDisabled} placeholder={t('web.mime.type')} aria-label={t('web.mime.type')} spellCheck={false} className={`${inputClass} font-mono field-md`} />
+                        <input value={row.exts} onChange={(e) => set('mimes', mimes.map((m, i) => i === at ? { ...m, exts: e.target.value } : m))} disabled={fieldDisabled} placeholder={t('web.mime.ext')} aria-label={t('web.mime.ext')} spellCheck={false} className={`${inputClass} font-mono field-md`} />
                         {!readOnly && <Button type="button" icon={Trash2} disabled={fieldDisabled} onClick={() => set('mimes', mimes.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>}
                     </div>
                 ))}
@@ -371,8 +371,8 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
                 <Marked changed={draft.isChanged('headers')} moved={moved('headers')}>
                 {headers.map((row, at) => (
                     <div key={at} className="flex flex-col gap-2 sm:flex-row">
-                        <input value={row.name} onChange={(e) => set('headers', headers.map((h, i) => i === at ? { ...h, name: e.target.value } : h))} disabled={fieldDisabled} placeholder={t('web.headers.name')} aria-label={t('web.headers.name')} spellCheck={false} className={`${inputClass} font-mono`} />
-                        <input value={row.value} onChange={(e) => set('headers', headers.map((h, i) => i === at ? { ...h, value: e.target.value } : h))} disabled={fieldDisabled} placeholder={t('web.headers.value')} aria-label={t('web.headers.value')} spellCheck={false} className={`${inputClass} font-mono`} />
+                        <input value={row.name} onChange={(e) => set('headers', headers.map((h, i) => i === at ? { ...h, name: e.target.value } : h))} disabled={fieldDisabled} placeholder={t('web.headers.name')} aria-label={t('web.headers.name')} spellCheck={false} className={`${inputClass} font-mono field-md`} />
+                        <input value={row.value} onChange={(e) => set('headers', headers.map((h, i) => i === at ? { ...h, value: e.target.value } : h))} disabled={fieldDisabled} placeholder={t('web.headers.value')} aria-label={t('web.headers.value')} spellCheck={false} className={`${inputClass} font-mono field-lg`} />
                         {!readOnly && <Button type="button" icon={Trash2} disabled={fieldDisabled} onClick={() => set('headers', headers.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>}
                     </div>
                 ))}
@@ -381,7 +381,7 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
             </FormSection>
             <FormSection title={t('web.access.title')} description={t('web.access.desc')}>
                 <Marked changed={draft.isChanged('access')} moved={moved('access')}>
-                <select value={mode} onChange={(e) => set('access', { ...form.access, mode: e.target.value as '' | 'allow' | 'deny' })} disabled={fieldDisabled} className={`${inputClass} sm:w-96`} aria-label={t('web.access.title')}>
+                <select value={mode} onChange={(e) => set('access', { ...form.access, mode: e.target.value as '' | 'allow' | 'deny' })} disabled={fieldDisabled} className={`${inputClass} field-lg`} aria-label={t('web.access.title')}>
                     <option value="">{t('web.access.everybody')}</option>
                     <option value="allow">{t('web.access.allow')}</option>
                     <option value="deny">{t('web.access.deny')}</option>
@@ -400,10 +400,10 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
                     <Marked changed={draft.isChanged('pages')} moved={moved('pages')}>
                     {pages.map((row, at) => (
                         <div key={at} className="flex flex-col gap-2 sm:flex-row">
-                            <select value={row.code} onChange={(e) => set('pages', pages.map((p, i) => i === at ? { ...p, code: Number(e.target.value) } : p))} disabled={fieldDisabled} className={`${inputClass} sm:w-32`} aria-label={t('web.errors.code')}>
+                            <select value={row.code} onChange={(e) => set('pages', pages.map((p, i) => i === at ? { ...p, code: Number(e.target.value) } : p))} disabled={fieldDisabled} className={`${inputClass} field-xs`} aria-label={t('web.errors.code')}>
                                 {(state.error_codes ?? []).map((code) => <option key={code} value={code}>{code}</option>)}
                             </select>
-                            <input value={row.path} onChange={(e) => set('pages', pages.map((p, i) => i === at ? { ...p, path: e.target.value } : p))} disabled={fieldDisabled} placeholder="/errors/404.html" aria-label={t('web.errors.path')} spellCheck={false} className={`${inputClass} font-mono`} />
+                            <input value={row.path} onChange={(e) => set('pages', pages.map((p, i) => i === at ? { ...p, path: e.target.value } : p))} disabled={fieldDisabled} placeholder="/errors/404.html" aria-label={t('web.errors.path')} spellCheck={false} className={`${inputClass} font-mono field-lg`} />
                             {!readOnly && <Button type="button" icon={Trash2} disabled={fieldDisabled} onClick={() => set('pages', pages.filter((_, i) => i !== at))} aria-label={t('web.remove')}>{t('web.remove')}</Button>}
                         </div>
                     ))}
@@ -418,7 +418,7 @@ function WebFields({ domainId, state, disabled, readOnly, t, onSave, onClearCach
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <label className="flex items-center gap-2 text-sm text-fg"><input type="checkbox" className="accent-primary" checked={pageCache} disabled={fieldDisabled} onChange={(e) => set('page_cache', { ...form.page_cache, on: e.target.checked })} />{t('web.pageCache.on')}</label>
                             {pageCache && (
-                                <select value={form.page_cache.minutes} onChange={(e) => set('page_cache', { ...form.page_cache, minutes: Number(e.target.value) })} disabled={fieldDisabled} className={`${inputClass} sm:w-48`} aria-label={t('web.pageCache.minutes')}>
+                                <select value={form.page_cache.minutes} onChange={(e) => set('page_cache', { ...form.page_cache, minutes: Number(e.target.value) })} disabled={fieldDisabled} className={`${inputClass} field-sm`} aria-label={t('web.pageCache.minutes')}>
                                     {CACHE_MINUTES.map((m) => <option key={m} value={m}>{t('web.pageCache.keep', { n: m })}</option>)}
                                 </select>
                             )}
