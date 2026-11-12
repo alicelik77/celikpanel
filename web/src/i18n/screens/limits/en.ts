@@ -56,6 +56,7 @@ export const enLimitsScreens = {
     'limits.php.serverAbove': 'The server’s own value ({server}) is above the server limit; sites that choose nothing get it, and a site can choose up to the limit.',
     'limits.php.ownerFile': 'The web server’s limit for this is set in {file}, which was changed by hand on the server; CelikPanel leaves that file as it is and its value applies to the web server.',
     'limits.php.save': 'Save PHP settings',
+    'limits.php.fixValues': 'Correct the value outside its limit, then save.',
     'limits.php.saved': 'The PHP settings of {name} were saved.',
     'limits.php.saveFailed': 'The PHP settings could not be saved.',
     'limits.php.closed': 'Changing PHP settings is not part of this subscription; they are shown as they are. Ask {who} to include “PHP settings of a site”.',

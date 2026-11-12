@@ -49,6 +49,7 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.php.serverAbove': 'Sunucunun kendi değeri ({server}) sunucu sınırının üstünde; değer seçmeyen siteler onu alır, bir site sınıra kadar seçebilir.',
     'limits.php.ownerFile': 'Web sunucusunun bu sınırı, sunucuda elle değiştirilmiş {file} dosyasında ayarlı; CelikPanel o dosyaya dokunmaz ve web sunucusu için oradaki değer geçerlidir.',
     'limits.php.save': 'PHP ayarlarını kaydet',
+    'limits.php.fixValues': 'Sınırının dışındaki değeri düzeltin, sonra kaydedin.',
     'limits.php.saved': '{name} PHP ayarları kaydedildi.',
     'limits.php.saveFailed': 'PHP ayarları kaydedilemedi.',
     'limits.php.closed': 'PHP ayarlarını değiştirmek bu aboneliğe dahil değil; ayarlar olduğu gibi gösteriliyor. “Sitenin PHP ayarları” iznini eklemesi için şuna başvurun: {who}.',

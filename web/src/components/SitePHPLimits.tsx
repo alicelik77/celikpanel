@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
-import { RotateCcw, Save } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { showToast } from './Toast';
-import { Button, Field, FormActions, FormSection, RemoteGate, inputClass } from './ui';
+import { Field, FormSection, RemoteGate, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { invalidate, useRemote } from '../lib/remote';
+import { invalidate, lastKnown, useRemote } from '../lib/remote';
 import { confirmAction } from '../lib/confirmAction';
 import { followRequestProgress, resumeRequestProgress, type StepLabel } from '../lib/requestProgress';
 import { answerBody, sendSettings, unitText, whoText } from '../lib/settingLimits';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // A site's PHP settings within its limits (alpha.128, docs/SITE-LIMITS.md):
 // GET/PUT /api/v1/domains/{id}/php/settings. Each limited field is a choice of
@@ -16,7 +19,9 @@ import { answerBody, sendSettings, unitText, whoText } from '../lib/settingLimit
 // custom value, and "Reset to default" when the site has its own value; the
 // limit and who set it are said beside it. "Values PHP uses now" shows what
 // PHP really uses and where each value comes from (what a phpinfo page is
-// opened for, without publishing one). A save follows the server's steps.
+// opened for, without publishing one). The values are a draft (alpha.132): a
+// changed field is marked and only Save in the bar sends them, following the
+// server's steps; Discard puts the site's values back.
 //
 // Sitenin sınırlar içindeki PHP ayarları: hazır değerler, "(Varsayılan)",
 // özel değer, "Varsayılana dön"; sınır ve koyan yanında yazar. Kayıt
@@ -153,8 +158,22 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
     const { t } = useI18n();
     const url = `/api/v1/domains/${domainId}/php/settings`;
     const view = useRemote(url, decodeView);
-    const [draft, setDraft] = useState<Record<string, number | string | null> | null>(null);
-    const [busy, setBusy] = useState(false);
+    const say = useSaveWords();
+    // The site's own values as the server last gave them: the draft's base.
+    const answer = lastKnown(view.remote)?.value;
+    const known = useMemo(() => {
+        if (!answer) return null;
+        const own: Record<string, number | string | null> = {};
+        for (const name of FIELD_ORDER) {
+            const f = answer.limits.find((item) => item.field === name);
+            if (f) own[f.field] = f.own;
+        }
+        for (const f of answer.free) own[f.field] = f.own || null;
+        return own;
+    }, [answer]);
+    const draft = useDraft<Record<string, number | string | null>>(known);
+    // Discard also resets each field's own "custom value" choice.
+    const [resets, setResets] = useState(0);
 
     useEffect(() => {
         resumeRequestProgress({
@@ -173,9 +192,8 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
                 const current: Record<string, number | string | null> = {};
                 for (const f of fields) current[f.field] = f.own;
                 for (const f of v.free) current[f.field] = f.own || null;
-                const values = draft ?? current;
-                const disabled = readOnly || !v.can_change || busy;
-                const changed = JSON.stringify(values) !== JSON.stringify(current);
+                const values = draft.values ?? current;
+                const disabled = readOnly || !v.can_change || draft.saving;
                 const invalid = fields.some((f) => {
                     const value = values[f.field] as number | null;
                     return value !== null && (value < f.min || value > (f.ceiling ?? f.max));
@@ -185,35 +203,39 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
                 const memoryNow = (values.memory as number | null) ?? memory?.default ?? null;
                 const processesNow = (values.processes as number | null) ?? processes?.effective ?? null;
 
-                const save = async () => {
+                const save = () => void draft.save(async (_changes, values) => {
                     const body: Record<string, number | string> = {};
                     for (const f of fields) body[bodyKey[f.field]] = (values[f.field] as number | null) ?? 0;
                     for (const f of v.free) body[f.field] = (values[f.field] as string | null) ?? '';
+                    const end: { outcome: 'saved' | 'refused' | 'unknown' } = { outcome: 'refused' };
                     await confirmAction({
                         message: t('limits.php.save') + ' — ' + domainName,
                         progressTitle: t('limits.step.title', { name: domainName }),
                         action: async (report) => {
-                            setBusy(true);
                             const progress = followRequestProgress(report, stepLabels(t), t, `phplimits.${domainId}`);
                             let res: Response | null = null;
                             try {
                                 res = await sendSettings(url, 'PUT', body, progress.headers);
                                 progress.settle(res);
-                                if (!res) return { state: 'unknown', reason: t('common.resultUnknown') };
+                                if (!res) {
+                                    end.outcome = 'unknown';
+                                    return { state: 'unknown', reason: t('common.resultUnknown') };
+                                }
                                 if (!res.ok) return { state: 'failed', reason: apiErrorText(await readApiError(res), t, 'limits.php.saveFailed') };
                                 const answer = await answerBody(res);
-                                setDraft(null);
+                                end.outcome = 'saved';
                                 invalidate('domains');
-                                void view.retry();
                                 if (answer.nginx === 'kept') showToast('info', t('limits.php.keptNginx'));
                                 return { state: 'done', message: t('limits.php.saved', { name: domainName }) };
                             } finally {
                                 progress.settle(res);
-                                setBusy(false);
                             }
                         },
                     });
-                };
+                    if (end.outcome === 'saved') await view.retry();
+                    return end.outcome;
+                });
+                const marked = (field: string) => (draft.isChanged(field) ? `-ml-2 rounded-r pl-2 ${changedRowClass}` : '');
 
                 return (
                     <div data-php-limits="">
@@ -225,16 +247,19 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
                             )}
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 {fields.map((f) => (
-                                    <Field key={f.field} label={t(`limits.php.field.${f.field}` as TranslationKey)}>
-                                        <LimitInput key={`${shown.observedAt}-${f.field}`} f={f} t={t} disabled={disabled || (!!f.fixed && !v.admin)}
+                                    <div key={f.field} className={marked(f.field)}>
+                                    <Field label={t(`limits.php.field.${f.field}` as TranslationKey)}>
+                                        <LimitInput key={`${shown.observedAt}-${resets}-${f.field}`} f={f} t={t} disabled={disabled || (!!f.fixed && !v.admin)}
                                             value={values[f.field] as number | null}
-                                            onChange={(next) => setDraft({ ...values, [f.field]: next })} />
+                                            onChange={(next) => draft.set(f.field, next)} />
+                                        {draft.isChanged(f.field) && <p className="mt-1 -ml-2"><ChangedMark /></p>}
                                         {f.field === 'upload' && <p className="mt-1 text-xs text-fg-subtle">{t('limits.php.hint.upload')}</p>}
                                         {f.field === 'time' && <p className="mt-1 text-xs text-fg-subtle">{t('limits.php.hint.time')}</p>}
                                         {f.field === 'processes' && memoryNow && processesNow && (
                                             <p className="mt-1 text-xs text-fg-subtle">{t('limits.php.processesHint', { n: processesNow, memory: unitText(t, 'mb', memoryNow), total: unitText(t, 'mb', memoryNow * processesNow) })}</p>
                                         )}
                                     </Field>
+                                    </div>
                                 ))}
                             </div>
                         </FormSection>
@@ -244,12 +269,13 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
                                     const value = (values[f.field] as string | null) ?? '';
                                     const serverOption = f.server ? t('limits.php.opt.server', { value: f.server }) : t('limits.php.opt.serverUnset');
                                     return (
-                                        <Field key={f.field} label={t(`limits.php.free.${f.field}` as TranslationKey)}>
+                                        <div key={f.field} className={marked(f.field)}>
+                                        <Field label={t(`limits.php.free.${f.field}` as TranslationKey)}>
                                             {f.field === 'timezone' ? (
                                                 <input value={value} disabled={disabled} placeholder={t('limits.php.timezonePlaceholder')} className={inputClass}
-                                                    onChange={(e) => setDraft({ ...values, [f.field]: e.target.value.trim() || null })} />
+                                                    onChange={(e) => draft.set(f.field, e.target.value.trim() || null)} />
                                             ) : (
-                                                <select value={value} disabled={disabled} className={inputClass} onChange={(e) => setDraft({ ...values, [f.field]: e.target.value || null })}>
+                                                <select value={value} disabled={disabled} className={inputClass} onChange={(e) => draft.set(f.field, e.target.value || null)}>
                                                     <option value="">{serverOption}</option>
                                                     {(f.values ?? []).map((option) => (
                                                         <option key={option} value={option}>
@@ -258,16 +284,20 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
                                                     ))}
                                                 </select>
                                             )}
+                                            {draft.isChanged(f.field) && <p className="mt-1 -ml-2"><ChangedMark /></p>}
                                         </Field>
+                                        </div>
                                     );
                                 })}
                             </div>
                             {!readOnly && v.can_change && (
-                                <FormActions>
-                                    <Button type="button" variant="primary" icon={Save} disabled={!changed || invalid || busy || shown.stale} loading={busy} onClick={() => void save()} data-php-limits-save="">
-                                        {t('limits.php.save')}
-                                    </Button>
-                                </FormActions>
+                                <SaveBar
+                                    count={draft.count}
+                                    saving={draft.saving}
+                                    blockedBy={shown.stale ? say('stale') : invalid ? t('limits.php.fixValues') : undefined}
+                                    onSave={save}
+                                    onDiscard={() => { draft.reset(); setResets((n) => n + 1); }}
+                                />
                             )}
                         </FormSection>
                         <FormSection title={t('limits.php.effective.title')} description={t('limits.php.effective.intro')}>
