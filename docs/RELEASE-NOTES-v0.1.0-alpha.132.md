@@ -29,11 +29,18 @@ screen.**
   web server settings and directives, a Node.js site's variables, a
   program's settings and environment, the site type, the www redirect,
   automatic backups, mailbox sending limits, the out-of-office reply, a
-  site's other logins, scheduled tasks and the file editor; for the
-  administrator Offered (permissions, software, applications), offered PHP
-  and Node.js versions, PHP extensions, the automatic update check, the
-  server mail policy, notifications, service and reseller plan forms,
-  server limits and the password level.
+  site's other logins, scheduled tasks, the site's PHP settings and the
+  file editor; for the administrator Offered (permissions, software,
+  applications), offered PHP and Node.js versions, PHP extensions, the
+  automatic update check, the server mail policy, outgoing mail limits,
+  subaddressing, the plans' mail limits, notifications, service and reseller
+  plan forms, server limits and the password level.
+- **Every question a save needs is asked before anything is sent.** When
+  Save in Offered asks about offering an application, answering no sends
+  nothing at all and keeps every change. While a save runs the bar says
+  so, and it closes when the save has ended.
+- **One word for going back in Turkish:** every dialog and form says
+  "Vazgeç" (it said "İptal" in some places).
 - **Saving several changes says what happened to each one:** what was
   saved, what was refused and why, and what is not known. A save whose
   answer was lost is never sent a second time; the panel reads the server
@@ -52,6 +59,12 @@ screen.**
   Backups · Advanced.** Every screen that existed is still there, unchanged
   inside, in the section that holds it now. A section with several parts
   lists them under "On this page".
+- **Site and Advanced are shorter:** each part is a card with its name, one
+  sentence saying what it is, and Open / Close. The parts that apply start
+  open (the site type, ready apps and PHP for a PHP site, redirects,
+  scheduled tasks); the others start closed and load nothing until they are
+  opened. A link to a part opens it. Closing a part that holds unsaved
+  changes asks first.
 - **The place on the page is in the address,** so a reload, Back and a
   shared link keep it. Every older link still opens the same screen: links
   the server builds, notices stored earlier, and the health checks' fixes.
@@ -88,6 +101,11 @@ screen.**
 - Offered, the offered versions and the offered applications: on a changed
   row the state word says what the server has now; the "Changed" mark says
   what Save will do.
+- The domain page's header writes sizes in your language's number format,
+  as the list does ("3,2 KB" in Turkish).
+- Customers and resellers no longer ask the server, on every page, for the
+  administrator's running component operation (it answered "not allowed"
+  each time).
 
 ## Known limits
 
@@ -106,10 +124,18 @@ screen.**
   follow with their sections' redesign.
 - Moving to another part of the same section asks nothing, because every
   part stays on the same page; moving to another section asks.
-- Component tests and real-browser screenshots against a stand-in server do
-  not replace a real-system update check.
-  **[Lab check: to be filled after the lab round — systems, update path,
-  what was tried, what was not.]**
+- **Domain & DNS › Names still shows the document root and the web server
+  lines,** which belong to Site; they move when that section is rebuilt.
+- The mail relay form on the Postfix page keeps its own Save (it needs the
+  password and a sign-in test); it is converted with the Mail release.
+- [TO CONFIRM after the final lab run] Checked on a real system (Ubuntu
+  24.04, one server, lab): update from alpha.131 through the panel's own
+  update screen; sites, mailboxes, databases, DNS records, certificates,
+  scheduled tasks and changed settings were still in place; the nine
+  sections, old links, the row menu and the save bars were tried by hand in
+  a browser as administrator, reseller and customer. Not checked on a real
+  system: Debian and Arch, a two-server pair, a public certificate
+  authority.
 - Earlier limits still apply (see alpha.131).
 
 ## Evidence
@@ -123,4 +149,4 @@ page; after a rollback to 131 everything saved reads as before. Release
 sequence 131 → 132. Web: component tests, mounted tests of the save bar, the
 leave question (router links, Back/Forward, section switches), every
 converted screen and the nine sections; bundle budgets unchanged (critical
-boot path 109.94 of 110 KiB gzip).
+boot path 109.91 of 110 KiB gzip).

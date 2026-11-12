@@ -29,11 +29,18 @@ günceller.**
   ayarları ve yönergeleri, Node.js sitesinin değişkenleri, bir programın
   ayarları ve ortamı, site türü, www yönlendirmesi, otomatik yedekler, posta
   kutusu gönderim sınırları, otomatik yanıt, sitenin diğer girişleri,
-  zamanlanmış görevler ve dosya düzenleyici; yönetici için Sunulanlar
-  (izinler, yazılımlar, uygulamalar), sunulan PHP ve Node.js sürümleri, PHP
-  eklentileri, otomatik güncelleme denetimi, sunucunun posta kuralları,
-  bildirimler, servis ve bayi planı formları, sunucu sınırları ve parola
-  düzeyi.
+  zamanlanmış görevler, sitenin PHP ayarları ve dosya düzenleyici; yönetici
+  için Sunulanlar (izinler, yazılımlar, uygulamalar), sunulan PHP ve Node.js
+  sürümleri, PHP eklentileri, otomatik güncelleme denetimi, sunucunun posta
+  kuralları, giden posta sınırları, alt adresleme, planların posta
+  sınırları, bildirimler, servis ve bayi planı formları, sunucu sınırları ve
+  parola düzeyi.
+- **Kaydetmenin gerektirdiği her soru, hiçbir şey gönderilmeden önce
+  sorulur.** Sunulanlar'da Kaydet bir uygulamayı sunmayı sorduğunda
+  "hayır" demek hiçbir şey göndermez ve her değişikliği korur. Kayıt
+  sürerken çubuk bunu söyler; kayıt bitince kapanır.
+- **Geri dönmek için tek sözcük:** her pencere ve form "Vazgeç" der (bazı
+  yerlerde "İptal" yazıyordu).
 - **Birkaç değişiklik birden kaydedilince her birine ne olduğu söylenir:**
   neyin kaydedildiği, neyin neden reddedildiği ve neyin bilinmediği. Yanıtı
   kaybolan bir kayıt ikinci kez gönderilmez; panel önce sunucuyu yeniden
@@ -52,6 +59,12 @@ günceller.**
   DNS · Güvenlik · Yedekler · Gelişmiş.** Var olan her ekran duruyor, içi
   değişmeden, artık onu tutan bölümde. Birden çok parçası olan bölüm
   parçalarını "Bu sayfada:" altında sıralar.
+- **Site ve Gelişmiş artık kısa:** her parça adı, ne olduğunu söyleyen tek
+  bir cümle ve Aç / Kapat ile bir karttır. Geçerli olan parçalar açık
+  başlar (site türü, PHP sitesinde hazır uygulamalar ve PHP, yönlendirmeler,
+  zamanlanmış görevler); ötekiler kapalı başlar ve açılana dek hiçbir şey
+  yüklemez. Bir parçaya giden bağlantı onu açar. Kaydedilmemiş değişiklik
+  taşıyan parçayı kapatmak önce sorar.
 - **Sayfadaki yer adreste durur;** yenileme, Geri ve paylaşılan bağlantı onu
   korur. Eski her bağlantı aynı ekranı açar: sunucunun kurduğu bağlantılar,
   daha önce saklanan bildirimler ve sağlık denetimlerinin düzeltmeleri.
@@ -88,6 +101,10 @@ günceller.**
 - Sunulanlar, sunulan sürümler ve sunulan uygulamalar: değişen satırdaki
   durum sözcüğü sunucuda şu an olanı söyler; "Değişti" işareti Kaydet'in ne
   yapacağını söyler.
+- Alan adı sayfasının başlığı boyutları, liste gibi, dilinizin sayı
+  biçimiyle yazar (Türkçede "3,2 KB").
+- Müşteriler ve bayiler, yöneticinin çalışan bileşen işlemini artık her
+  sayfada sunucuya sormuyor (sunucu her seferinde "izin yok" diyordu).
 
 ## Bilinen sınırlar
 
@@ -106,10 +123,19 @@ günceller.**
   bölümlerinin yeniden tasarımıyla gelir.
 - Aynı bölümün başka bir parçasına geçmek hiçbir şey sormaz, çünkü bütün
   parçalar aynı sayfada durur; başka bir bölüme geçmek sorar.
-- Bileşen testleri ve vekil sunucuya karşı gerçek tarayıcı görüntüleri gerçek
-  sistemde güncelleme denemesinin yerini tutmaz.
-  **[Laboratuvar denemesi: deneme turundan sonra doldurulacak — sistemler,
-  güncelleme yolu, neyin denendiği, neyin denenmediği.]**
+- **Alan adı ve DNS › Adlar hâlâ belge kök dizinini ve web sunucusu
+  satırlarını gösteriyor;** bunlar Site'ye aittir ve o bölüm yeniden
+  kurulurken taşınır.
+- Postfix sayfasındaki posta aktarma formu kendi Kaydet düğmesini koruyor
+  (parola ve giriş denemesi gerektiriyor); E-posta sürümünde dönüştürülür.
+- [SON LABORATUVAR DENEMESİNDEN SONRA DOĞRULANACAK] Gerçek sistemde
+  denendi (Ubuntu 24.04, tek sunucu, laboratuvar): alpha.131'den panelin
+  kendi güncelleme ekranıyla güncelleme; siteler, posta kutuları,
+  veritabanları, DNS kayıtları, sertifikalar, zamanlanmış görevler ve
+  değiştirilmiş ayarlar yerinde kaldı; dokuz bölüm, eski bağlantılar, satır
+  menüsü ve kaydetme çubukları tarayıcıda yönetici, bayi ve müşteri olarak
+  elle denendi. Gerçek sistemde denenmeyenler: Debian ve Arch, iki sunuculu
+  çift, herkese açık bir sertifika yetkilisi.
 - Önceki sınırlar sürüyor (bkz. alpha.131).
 
 ## Kanıt
@@ -124,4 +150,4 @@ kaydedilmiş her şey eskisi gibi okunur. Sürüm sırası 131 → 132. Web: bil
 testleri; kaydetme çubuğunun, çıkış sorusunun (yönlendirici bağlantıları,
 Geri/İleri, bölüm değişimi), dönüştürülen her ekranın ve dokuz bölümün
 bağlı testleri; paket bütçeleri yükseltilmedi (kritik açılış yolu 110
-KiB'nin 109,94 KiB'ı, gzip).
+KiB'nin 109,91 KiB'ı, gzip).
