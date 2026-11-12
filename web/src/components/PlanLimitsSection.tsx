@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { Checking, CouldNotCheck, inputClass } from './ui';
@@ -31,10 +31,22 @@ function decodeLimits(raw: unknown): { scope: string; limits: GrantorLimit[] } {
     return raw as { scope: string; limits: GrantorLimit[] };
 }
 
-export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = false, base }: {
+/** A field of the limits whose value is outside what it may be: its input's id and its name. */
+export interface OutsideField { id: string; name: string }
+
+const NOTIFY_FIELDS = ['notify_percent_disk', 'notify_percent_traffic'] as const;
+const notifyOutside = (value: number) => value < 50 || value > 95;
+
+export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = false, base, onOutside }: {
     kind: PlanKind; plan: EditedPlan; onPlan: (next: EditedPlan) => void; idPrefix: string; ceilingsOff?: boolean;
     /** alpha.132: the plan as it was opened; given, what differs from it is marked as an unsaved change. */
     base?: EditedPlan;
+    /**
+     * alpha.133: the first field whose value is outside its range or above
+     * the level above (null: none). The form names it beside Save and keeps
+     * Save off until it is corrected, as the site's PHP limits do.
+     */
+    onOutside?: (field: OutsideField | null) => void;
 }) {
     const { t } = useI18n();
     const marked = (changed: boolean) => (base && changed ? `-mx-2 rounded-r px-2 ${changedRowClass}` : '');
@@ -48,6 +60,28 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
     };
     const policy = plan.overuse_policy || 'close';
     const overselling = plan.overselling || 'allowed';
+    const ceilingId = (key: string) => `${idPrefix}-ceiling-${key.replace(/\W/g, '-')}`;
+    const ceilingOutside = (limit: GrantorLimit, value: number | undefined) => value !== undefined && (value < limit.min || value > limit.max ||
+        (limit.ceiling !== null && (limit.floor ? value < limit.ceiling : value > limit.ceiling)));
+    // The bound the value passes, in words: the level above when it sets
+    // one, else the key's own range ("at most 1000", never "at most no limit").
+    const outsideWords = (limit: GrantorLimit, value: number) => {
+        if (value < limit.min) return t('limits.php.belowMin', { min: unitText(t, limit.unit, limit.min) });
+        if (value > limit.max) return t('limits.php.aboveLimit', { limit: unitText(t, limit.unit, limit.max) });
+        const level = unitText(t, limit.unit, limit.ceiling ?? 0);
+        return limit.floor ? t('limits.php.belowMin', { min: level }) : t('limits.php.aboveLimit', { limit: level });
+    };
+    const notifyName = (field: (typeof NOTIFY_FIELDS)[number]) => t(field === 'notify_percent_disk' ? 'limits.plan.notifyDisk' : 'limits.plan.notifyTraffic');
+    // The first field out of range, in the order shown: the limits, then the notice levels.
+    const known = !ceilingsOff && grantor.remote.state === 'known' ? grantor.remote.value.limits : [];
+    const ceilingOut = known.find((limit) => ceilingOutside(limit, ceilings[limit.key]));
+    const notifyOut = kind === 'customer' ? NOTIFY_FIELDS.find((field) => notifyOutside(plan[field] ?? 80)) : undefined;
+    const outside: OutsideField | null = ceilingOut
+        ? { id: ceilingId(ceilingOut.key), name: t(`limits.key.${ceilingOut.key}` as TranslationKey) }
+        : notifyOut ? { id: `${idPrefix}-${notifyOut}`, name: notifyName(notifyOut) } : null;
+    useEffect(() => { onOutside?.(outside); }, [outside?.id, outside?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Gone with the form (a Custom set switched to a plan): nothing is outside any more.
+    useEffect(() => () => onOutside?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
     return (
         <fieldset className="mt-4 rounded-lg border border-border p-3" data-plan-limits="">
             <legend className="px-1 text-sm font-semibold text-fg">{t(ceilingsOff ? 'limits.plan.overselling.title' : 'limits.plan.title')}</legend>
@@ -60,18 +94,17 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {grantor.remote.value.limits.map((limit) => {
-                            const id = `${idPrefix}-ceiling-${limit.key.replace(/\W/g, '-')}`;
+                            const id = ceilingId(limit.key);
                             const above = limit.ceiling !== null ? unitText(t, limit.unit, limit.ceiling) : t('limits.plan.none');
                             const value = ceilings[limit.key];
-                            const outside = value !== undefined && (value < limit.min || value > limit.max ||
-                                (limit.ceiling !== null && (limit.floor ? value < limit.ceiling : value > limit.ceiling)));
+                            const outside = ceilingOutside(limit, value);
                             return (
                                 <label key={limit.key} htmlFor={id} className={`block ${marked(value !== (base?.ceilings ?? {})[limit.key])}`}>
                                     <span className="mb-1 block text-xs text-fg-muted">{t(`limits.key.${limit.key}` as TranslationKey)}{base && value !== (base.ceilings ?? {})[limit.key] && <ChangedMark />}</span>
                                     <input id={id} type="number" min={limit.min} max={limit.ceiling ?? limit.max} value={value ?? ''}
                                         placeholder={t('limits.plan.upTo', { value: above })} onChange={(e) => setCeiling(limit.key, e.target.value)}
                                         className={inputClass} aria-invalid={outside || undefined} />
-                                    {outside && <span className="mt-1 block text-xs text-danger">{limit.floor ? t('limits.php.belowMin', { min: above }) : t('limits.php.aboveLimit', { limit: above })}</span>}
+                                    {outside && value !== undefined && <span className="mt-1 block text-xs text-danger">{outsideWords(limit, value)}</span>}
                                 </label>
                             );
                         })}
@@ -88,15 +121,22 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                         </label>
                     ))}
                     <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {(['notify_percent_disk', 'notify_percent_traffic'] as const).map((field) => (
-                            <label key={field} className={`block ${marked((plan[field] ?? 80) !== (base?.[field] ?? 80))}`}>
-                                <span className="mb-1 block text-xs text-fg-muted">{t(field === 'notify_percent_disk' ? 'limits.plan.notifyDisk' : 'limits.plan.notifyTraffic')}{base && (plan[field] ?? 80) !== (base[field] ?? 80) && <ChangedMark />}</span>
-                                <input type="number" min={50} max={95} value={plan[field] ?? 80} className={inputClass}
-                                    onChange={(e) => onPlan({ ...plan, [field]: Math.min(95, Math.max(50, Number(e.target.value) || 80)) })} />
-                            </label>
-                        ))}
+                        {NOTIFY_FIELDS.map((field) => {
+                            // The number as typed (an empty field is 0): a value
+                            // out of 50-95 is marked, keeps Save off and is never
+                            // changed under the typing.
+                            const value = plan[field] ?? 80;
+                            const out = notifyOutside(value);
+                            return (
+                                <label key={field} htmlFor={`${idPrefix}-${field}`} className={`block ${marked(value !== (base?.[field] ?? 80))}`}>
+                                    <span className="mb-1 block text-xs text-fg-muted">{notifyName(field)}{base && value !== (base[field] ?? 80) && <ChangedMark />}</span>
+                                    <input id={`${idPrefix}-${field}`} type="number" min={50} max={95} value={value || ''} className={inputClass} aria-invalid={out || undefined}
+                                        onChange={(e) => onPlan({ ...plan, [field]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
+                                </label>
+                            );
+                        })}
                     </div>
-                    <p className="mt-1 text-xs text-fg-subtle">{t('limits.plan.notifyRange')}</p>
+                    <p className={`mt-1 text-xs ${NOTIFY_FIELDS.some((field) => notifyOutside(plan[field] ?? 80)) ? 'text-danger' : 'text-fg-subtle'}`}>{t('limits.plan.notifyRange')}</p>
                 </div>
             ) : (
                 <div className="mt-4">
@@ -135,9 +175,10 @@ function ownOf(kind: PlanKind) {
  * account's effective limits. `onChange` gets only what was touched, so an
  * untouched form sends nothing and keeps what is stored.
  */
-export function CustomLimitsSection({ kind, subscriptionId, resellerId, idPrefix, onChange }: {
+export function CustomLimitsSection({ kind, subscriptionId, resellerId, idPrefix, onChange, onOutside }: {
     kind: PlanKind; subscriptionId?: number; resellerId?: number; idPrefix: string;
     onChange: (extras: Record<string, unknown> | null) => void;
+    onOutside?: (field: OutsideField | null) => void;
 }) {
     const url = kind === 'customer'
         ? (subscriptionId ? `/api/v1/rights/setting-limits?subscription_id=${subscriptionId}` : null)
@@ -149,7 +190,7 @@ export function CustomLimitsSection({ kind, subscriptionId, resellerId, idPrefix
         ceilings: own.remote.value.ceilings, overselling: own.remote.value.overselling };
     const plan = edited ?? base;
     return (
-        <PlanLimitsSection kind={kind} plan={plan} idPrefix={idPrefix} onPlan={(next) => {
+        <PlanLimitsSection kind={kind} plan={plan} idPrefix={idPrefix} onOutside={onOutside} onPlan={(next) => {
             setEdited(next);
             const extras: Record<string, unknown> = { ceilings: next.ceilings ?? {} };
             if (kind === 'customer') {

@@ -16,6 +16,7 @@ import {
     type ResellerRights as ResellerRightsAnswer, type RightsPreview, type RightsSelection, type RightsState, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
+import type { OutsideField } from './PlanLimitsSection';
 // alpha.128: a Custom set's limits of site settings, a chunk of its own.
 const CustomLimitsSection = lazy(() => import('./PlanLimitsSection').then((module) => ({ default: module.CustomLimitsSection })));
 
@@ -86,6 +87,9 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     // alpha.128: limits, overuse policy, overselling of a Custom set; only what was touched.
     const [extras, setExtras] = useState<Record<string, unknown> | null>(null);
+    // alpha.133: a limit of the Custom set typed outside its range; named
+    // beside the button, which stays off until it is corrected.
+    const [outside, setOutside] = useState<OutsideField | null>(null);
 
     const body = (): Record<string, unknown> => {
         if (mode === 'unlimited') return { state: 'unlimited' };
@@ -97,6 +101,7 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
     // A preview belongs to the exact values it was answered for.
     const shown = pending && pending.body === bodyText ? pending.preview : null;
     const blocked = mode === 'plan' && (plans.length === 0 || planID === 0);
+    const limitOutside = mode === 'custom' ? outside : null;
 
     const save = async (confirm: boolean) => {
         setBusy(true);
@@ -175,7 +180,7 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
             )}
             {mode === 'custom' && (
                 <Suspense fallback={null}>
-                    <CustomLimitsSection kind={reseller ? 'reseller' : 'customer'} subscriptionId={target.current.subscription_id} resellerId={target.resellerId} idPrefix={idPrefix} onChange={setExtras} />
+                    <CustomLimitsSection kind={reseller ? 'reseller' : 'customer'} subscriptionId={target.current.subscription_id} resellerId={target.resellerId} idPrefix={idPrefix} onChange={setExtras} onOutside={setOutside} />
                 </Suspense>
             )}
 
@@ -186,6 +191,9 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
                 {blocked && (
                     <BlockedReason id={`${idPrefix}-reason`} target={plans.length === 0 ? `${idPrefix}-noplan` : `${idPrefix}-plan`} text={t(plans.length === 0 ? (reseller ? 'rights.noResellerPlan' : 'rights.noPlan') : 'rights.choosePlan')} className="mr-auto" />
                 )}
+                {limitOutside && (
+                    <BlockedReason id={`${idPrefix}-reason`} target={limitOutside.id} text={t('limits.plan.outside', { name: limitOutside.name })} className="mr-auto" />
+                )}
                 <Button type="button" icon={X} onClick={onDone}>{t('common.cancel')}</Button>
                 {shown ? (
                     <>
@@ -195,8 +203,8 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
                         </Button>
                     </>
                 ) : (
-                    <Button type="button" variant="primary" icon={Save} onClick={() => void save(false)} loading={busy} disabled={blocked}
-                        aria-describedby={blocked ? `${idPrefix}-reason` : undefined}>
+                    <Button type="button" variant="primary" icon={Save} onClick={() => void save(false)} loading={busy} disabled={blocked || !!limitOutside}
+                        aria-describedby={blocked || limitOutside ? `${idPrefix}-reason` : undefined}>
                         {t('rights.review')}
                     </Button>
                 )}

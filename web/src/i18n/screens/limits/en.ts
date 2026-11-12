@@ -100,6 +100,7 @@ export const enLimitsScreens = {
     'limits.plan.notifyDisk': 'Notify at (disk, %)',
     'limits.plan.notifyTraffic': 'Notify at (traffic, %)',
     'limits.plan.notifyRange': 'Between 50 and 95.',
+    'limits.plan.outside': '“{name}” is outside its limit. Correct it, then save.',
     'limits.plan.overselling.title': 'Handing out more than the pool',
     'limits.plan.overselling.allowed': 'Allowed: customers’ limits may add up to more; their real use is limited by the pool (default)',
     'limits.plan.overselling.not_allowed': 'Not allowed: hand out only what the pool still holds',

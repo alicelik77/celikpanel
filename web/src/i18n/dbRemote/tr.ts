@@ -11,7 +11,7 @@ export const trDbRemote: Record<DbRemoteKey, string> = {
     'dbr.intro': 'Kendi bilgisayarınızdan pgAdmin, DBeaver ya da HeidiSQL ile bağlanın. Yalnız burada listelediğiniz adresler bağlanabilir, yalnız şifreli bağlantıyla.',
     'dbr.reading': 'Dışarıdan bağlantılar okunuyor…',
     'dbr.unread': 'Dışarıdan bağlantılar şu an okunamadı. Hiçbir şey değişmedi; biraz sonra yeniden deneyin.',
-    'dbr.retry': 'Yeniden dene',
+    'dbr.retry': 'Tekrar dene',
 
     'dbr.off.admin': 'Bu sunucuda dışarıdan bağlantılar kapalı. Güvenlik › Dışarıya açık olanlar’dan açarsınız; açınca planında “Veritabanlarına dışarıdan erişim” olan her müşteri kendi adreslerini listeleyebilir.',
     'dbr.openSwitch': 'Güvenlik’te ayarı aç',

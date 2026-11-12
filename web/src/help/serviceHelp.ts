@@ -166,12 +166,12 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
             tips: [
                 'Kullanıcılar aniden giriş yapamaz olduysa üstteki düğmelerden yeniden başlatma çoğu takılmayı çözer — yeniden başlatma asla posta silmez.',
                 'Açık portlar bölümüne bakın: posta uygulamalarının bağlanabilmesi için 143/993 (IMAP) ve 110/995 (POP3) listede olmalı.',
-                'Başarısız girişler aşağıdaki günlükte görünür — şifre mi yanlış, başka bir sorun mu var; e-posta adresine göre filtreleyip görebilirsiniz.',
-                'Panelden posta kutusu şifresi değiştirdiğinizde yeniden başlatma gerekmez; Dovecot yeni şifreyi bir sonraki girişte kullanır.',
+                'Başarısız girişler aşağıdaki günlükte görünür — parola mı yanlış, başka bir sorun mu var; e-posta adresine göre filtreleyip görebilirsiniz.',
+                'Panelden posta kutusu parolası değiştirdiğinizde yeniden başlatma gerekmez; Dovecot yeni parolayı bir sonraki girişte kullanır.',
                 'Webmail (Roundcube) de postaları Dovecot üzerinden okur — webmail hata veriyorsa önce buraya bakın.',
             ],
             troubleshoot: [
-                { symptom: 'Posta uygulaması giriş başarısız diyor ama şifre doğru.', fix: 'Aşağıdaki günlüğü e-posta adresine göre filtreleyin. Kimlik doğrulama hatası görüyorsanız panelden posta kutusunun şifresini yeniden belirleyip deneyin. Uygulamada kullanıcı adı olarak e-posta adresinin tamamının yazıldığından da emin olun.' },
+                { symptom: 'Posta uygulaması giriş başarısız diyor ama parola doğru.', fix: 'Aşağıdaki günlüğü e-posta adresine göre filtreleyin. Kimlik doğrulama hatası görüyorsanız panelden posta kutusunun parolasını yeniden belirleyip deneyin. Uygulamada kullanıcı adı olarak e-posta adresinin tamamının yazıldığından da emin olun.' },
                 { symptom: 'Posta uygulamaları hiç bağlanamıyor ya da zaman aşımı veriyor.', fix: 'Dovecot\'un çalıştığını ve açık portlarda 993 ile 995\'in göründüğünü doğrulayın. Çalışıyor ama portlar listede yoksa yeniden başlatın; düzelmezse günlükteki ilk hata satırları nedenini söyleyecektir.' },
                 { symptom: 'Posta uygulaması sertifika uyarısı gösteriyor.', fix: 'Uygulama büyük olasılıkla sertifikayla eşleşmeyen bir sunucu adıyla bağlanıyor. Uygulamayı posta sunucu adınıza (örn. mail.alanadiniz.com) yönlendirin ve panelden bu ad için sertifika çıkarıldığından emin olun.' },
             ],
@@ -194,15 +194,15 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
     },
     'fail2ban': {
         tr: {
-            what: 'Fail2ban, sunucunun kayıtlarını izler ve art arda hatalı giriş deneyen internet adreslerini geçici olarak engeller — örneğin SSH ya da e-posta şifresi deneyen botları. Arka planda sessizce çalışır ve sunucudaki tüm servisleri korur. Ona nadiren dokunmanız gerekir; bütün görevi çalışır kalmaktır.',
+            what: 'Fail2ban, sunucunun kayıtlarını izler ve art arda hatalı giriş deneyen internet adreslerini geçici olarak engeller — örneğin SSH ya da e-posta parolası deneyen botları. Arka planda sessizce çalışır ve sunucudaki tüm servisleri korur. Ona nadiren dokunmanız gerekir; bütün görevi çalışır kalmaktır.',
             tips: [
                 'Ara sıra aşağıdaki günlüğe göz atın — her \'Ban\' satırı durdurulmuş bir saldırıdır. Çok olması kötü değil, iyi işarettir.',
-                'Engeller tasarım gereği geçicidir. Şifresini yanlış yazıp kendini kilitleyen biri için çoğu zaman biraz beklemek yeterlidir.',
+                'Engeller tasarım gereği geçicidir. Parolasını yanlış yazıp kendini kilitleyen biri için çoğu zaman biraz beklemek yeterlidir.',
                 'Listeden bir yapılandırma dosyasını düzenlerseniz, değişikliğin geçerli olması için servisi yeniden başlatın.',
-                'Her zaman çalışır tutun. Durdurmak gözle görülür bir şey değiştirmez ama sunucuyu aralıksız şifre denemelerine açık bırakır.',
+                'Her zaman çalışır tutun. Durdurmak gözle görülür bir şey değiştirmez ama sunucuyu aralıksız parola denemelerine açık bırakır.',
             ],
             troubleshoot: [
-                { symptom: 'Siz ya da bir müşteri birkaç yanlış şifreden sonra engellendiniz.', fix: 'Bekleyin — engeller kendiliğinden kalkar; genelde dakikalar ile saatler içinde. Başka bir ağdan (örneğin mobil veriden) bağlanmak da işe yarar. Acilse bir uzman engeli elle kaldırabilir.' },
+                { symptom: 'Siz ya da bir müşteri birkaç yanlış paroladan sonra engellendiniz.', fix: 'Bekleyin — engeller kendiliğinden kalkar; genelde dakikalar ile saatler içinde. Başka bir ağdan (örneğin mobil veriden) bağlanmak da işe yarar. Acilse bir uzman engeli elle kaldırabilir.' },
                 { symptom: 'Yapılandırma değişikliğinden sonra servis \'başarısız\' görünüyor.', fix: 'Aşağıdaki günlüğü açın — beğenmediği ayarı tam olarak yazar. Düzenleyicide son değişikliğinizi geri alın ve yeniden başlatın.' },
                 { symptom: 'Günlükte aynı adres tekrar tekrar engelleniyor.', fix: 'Bu normaldir: botlar geri gelir, fail2ban da her seferinde yeniden engeller. Yapmanız gereken bir şey yok.' },
             ],
@@ -454,14 +454,14 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
         tr: {
             what: 'phpMyAdmin, MariaDB veritabanlarınızın içinde çalışmanızı sağlayan bir web sayfasıdır: tablolara göz atın, satırları düzenleyin, sorgu çalıştırın, yedek alın ya da geri yükleyin — hepsi tarayıcıdan. Bir arka plan servisi değildir; onu web sunucusu ve PHP sunar, bu yüzden burada başlatılacak ya da durdurulacak bir şey yoktur. Ara sıra yapılacak veritabanı işleri için komut satırı gerektirmeyen rahat bir yoldur.',
             tips: [
-                'Giriş için panel hesabınızı değil, panelin veritabanı sayfalarında oluşturduğunuz veritabanı kullanıcı adı ve şifresini kullanın.',
+                'Giriş için panel hesabınızı değil, panelin veritabanı sayfalarında oluşturduğunuz veritabanı kullanıcı adı ve parolasını kullanın.',
                 'Riskli değişikliklerden önce Dışa Aktar (Export) sekmesinden yedek indirmek en kolay sigortadır. Alışkanlık edinin.',
                 'Drop ve Delete\'e saygılı yaklaşın: veritabanında çöp kutusu yoktur. Yedeğiniz yoksa silinen, gitmiştir.',
                 'Sayfa açılmıyorsa sorun genelde phpMyAdmin\'in kendisi değil, web sunucusu ya da PHP\'dir — panelden o servisleri kontrol edin.',
             ],
             troubleshoot: [
                 { symptom: 'Sayfa hata veriyor ya da hiç açılmıyor.', fix: 'phpMyAdmin\'in yeniden başlatılacak kendi servisi yoktur. Panelden web sunucusu ve PHP servislerinin çalıştığını kontrol edip onları yeniden başlatın; asıl nedeni onların günlükleri gösterir.' },
-                { symptom: 'Girişte \'Access denied\' (erişim reddedildi) hatası.', fix: 'Panel bilgileriyle değil, veritabanı bilgileriyle giriş yaptığınızdan emin olun. Veritabanı kullanıcısının şifresini panelin veritabanı sayfalarından sıfırlayabilirsiniz.' },
+                { symptom: 'Girişte \'Access denied\' (erişim reddedildi) hatası.', fix: 'Panel bilgileriyle değil, veritabanı bilgileriyle giriş yaptığınızdan emin olun. Veritabanı kullanıcısının parolasını panelin veritabanı sayfalarından sıfırlayabilirsiniz.' },
                 { symptom: 'Büyük bir yedek dosyası içe aktarılırken yarıda kesiliyor.', fix: 'Dosya, PHP\'nin yükleme sınırından büyük. Yapılandırma dosyası listesinden PHP\'nin yükleme sınırlarını artırın (sonra PHP\'yi yeniden başlatın) ya da yedeği daha küçük parçalara bölerek aktarın.' },
             ],
         },
@@ -484,14 +484,14 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
         tr: {
             what: 'phpPgAdmin, PostgreSQL veritabanlarınızın içinde çalışmanızı sağlayan bir web sayfasıdır — tablolara göz atın, SQL çalıştırın, veri alıp verin; hepsi tarayıcıdan. MariaDB\'deki karşılığı phpMyAdmin gibi o da bir arka plan servisi değildir: onu web sunucusu ve PHP sunar, burada başlatılacak ya da durdurulacak bir şey yoktur. Komut satırı olmadan ara sıra PostgreSQL işi yapmak için kullanışlıdır.',
             tips: [
-                'Giriş için panel hesabınızı değil, panelin veritabanı sayfalarından oluşturulmuş PostgreSQL kullanıcı adı ve şifresini kullanın.',
+                'Giriş için panel hesabınızı değil, panelin veritabanı sayfalarından oluşturulmuş PostgreSQL kullanıcı adı ve parolasını kullanın.',
                 'Büyük değişikliklerden önce veritabanının bir kopyasını dışa aktarın — bir dakikalık yedek, çok kötü bir günü kurtarabilir.',
                 'Tablo ya da satır silmek kalıcıdır; veritabanlarında geri al yoktur. Tereddütteyseniz önce dışa aktarın.',
                 'Sayfa açılmıyorsa panelden web sunucusu, PHP ve PostgreSQL servislerine bakın — neden neredeyse her zaman bu üçünden biridir.',
             ],
             troubleshoot: [
                 { symptom: 'Sayfa hata veriyor ya da açılmıyor.', fix: 'Yeniden başlatılacak bir phpPgAdmin servisi yoktur. Panelden web sunucusu ve PHP servislerini kontrol edip yeniden başlatın; gerçek hatayı onların günlüklerinde okuyun.' },
-                { symptom: 'Giriş reddediliyor.', fix: 'Panelin veritabanı sayfalarındaki PostgreSQL bilgilerini kullanın ve PostgreSQL servisinin çalıştığından emin olun. Şifre sıfırlama da yine o sayfalardan yapılır.' },
+                { symptom: 'Giriş reddediliyor.', fix: 'Panelin veritabanı sayfalarındaki PostgreSQL bilgilerini kullanın ve PostgreSQL servisinin çalıştığından emin olun. Parola sıfırlama da yine o sayfalardan yapılır.' },
                 { symptom: 'Sayfa açılıyor ama veritabanı sunucusuna bağlanamadığını söylüyor.', fix: 'PostgreSQL büyük olasılıkla durmuş — panelin servis listesinden bulun, günlüğüne bakın ve başlatın.' },
             ],
         },
@@ -584,7 +584,7 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
                 'Sunucu belleği sürekli doluyorsa yapılandırma dosyasında bir bellek sınırı (\'maxmemory\' ayarı) belirleyin ve yeniden başlatın.',
             ],
             troubleshoot: [
-                { symptom: 'Bir web sitesi Redis\'e bağlanamadığını söylüyor.', fix: 'Servisin çalıştığını kontrol edin, gerekirse yeniden başlatın. Sonra uygulamanın 127.0.0.1 adresine ve 6379 portuna ayarlı olduğunu doğrulayın; siz ayarlamadıysanız şifre de olmamalı.' },
+                { symptom: 'Bir web sitesi Redis\'e bağlanamadığını söylüyor.', fix: 'Servisin çalıştığını kontrol edin, gerekirse yeniden başlatın. Sonra uygulamanın 127.0.0.1 adresine ve 6379 portuna ayarlı olduğunu doğrulayın; siz ayarlamadıysanız parola de olmamalı.' },
                 { symptom: 'Sunucunun bellek kullanımı sürekli artıyor.', fix: 'Redis, aksi söylenmedikçe büyümeye devam eder. Listeden yapılandırma dosyasını açın, makul bir \'maxmemory\' sınırı belirleyin ve yeniden başlatın.' },
                 { symptom: 'Günlükte \'memory overcommit\' ile ilgili bir uyarı var.', fix: 'Bu uyarı yeni sunucularda yaygındır ve önbellek kullanımı için zararsızdır. Bir sistem ayarıyla susturulabilir — bir uzman için ufak bir iş, ama ortada bozuk bir şey yok.' },
             ],
@@ -616,7 +616,7 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
             ],
             troubleshoot: [
                 { symptom: '/webmail/ boş sayfa ya da hata gösteriyor.', fix: 'Web sunucusunu ve PHP\'yi kendi sayfalarından yeniden başlatın, sonra web sunucusunun günlüğüne bakın. Boş sayfa neredeyse her zaman PHP tarafındaki bir sorundan kaynaklanır, Roundcube\'un kendisinden değil.' },
-                { symptom: 'Webmail\'de giriş olmuyor ama aynı şifre posta uygulamasında çalışıyor.', fix: 'Roundcube girişi bu sunucudaki Dovecot üzerinden yapar. Dovecot\'un çalıştığını kontrol edin — başarısız denemeyi ve nedenini Dovecot\'un günlüğünde görürsünüz.' },
+                { symptom: 'Webmail\'de giriş olmuyor ama aynı parola posta uygulamasında çalışıyor.', fix: 'Roundcube girişi bu sunucudaki Dovecot üzerinden yapar. Dovecot\'un çalıştığını kontrol edin — başarısız denemeyi ve nedenini Dovecot\'un günlüğünde görürsünüz.' },
                 { symptom: 'Webmail\'den posta okunuyor ama gönderilemiyor.', fix: 'Gönderme Postfix üzerinden gider. Postfix\'in çalıştığını kontrol edin ve bir gönderme denemesinin hemen ardından günlüğüne bakın — ret nedeni orada görünür.' },
                 { symptom: '/webmail/ \'bulunamadı\' (404) hatası veriyor.', fix: 'Web sunucusuna webmail yolu henüz tanıtılmamış demektir. Roundcube\'u panelden kaldırıp yeniden kurmak bu bağlantıyı yeniden oluşturur; sorun sürerse bir uzmana danışmak gerekir.' },
             ],
@@ -786,7 +786,7 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
     },
     'vsftpd': {
         tr: {
-            what: 'vsftpd bir FTP sunucusudur: insanların FileZilla gibi bir FTP programıyla bu sunucuya dosya yükleyip indirmesini sağlar. Site sahiplerine dosya erişimi vermenin klasik yoludur. Yalnız şunu bilin: düz FTP şifreleri şifrelemeden gönderir; bu yüzden yalnızca kullanıcılarınız gerçekten FTP istiyorsa çalıştırın — bugünlerde çoğu kişi SFTP\'yi tercih ediyor.',
+            what: 'vsftpd bir FTP sunucusudur: insanların FileZilla gibi bir FTP programıyla bu sunucuya dosya yükleyip indirmesini sağlar. Site sahiplerine dosya erişimi vermenin klasik yoludur. Yalnız şunu bilin: düz FTP parolaları şifrelemeden gönderir; bu yüzden yalnızca kullanıcılarınız gerçekten FTP istiyorsa çalıştırın — bugünlerde çoğu kişi SFTP\'yi tercih ediyor.',
             tips: [
                 'FTP\'nin erişilebilir olduğunu doğrulamak için açık portlar ekranında 21 numaralı portu kontrol edin.',
                 'FTP, asıl dosya aktarımı için ayrıca bir \'pasif\' port aralığına ihtiyaç duyar — bu portlar sağlayıcınızın güvenlik duvarında açık değilse giriş çalışır ama aktarımlar takılır.',
@@ -795,7 +795,7 @@ export const SERVICE_HELP: Record<string, LocalizedHelp> = {
             ],
             troubleshoot: [
                 { symptom: 'Giriş oluyor ama dosya listesi hiç gelmiyor ya da aktarımlar takılıyor.', fix: 'Bu klasik pasif mod sorunudur: yapılandırmadaki pasif port aralığının sunucu güvenlik duvarında ya da sağlayıcı panelinde de açık olması gerekir. Portlar ve güvenlik duvarları size yabancıysa bu işi bir uzmana bırakmak yerinde olur.' },
-                { symptom: 'Şifre doğru olduğu halde giriş reddediliyor.', fix: 'Başarısız bir denemenin hemen ardından aşağıdaki günlüğe bakın — nedeni genelde yazar; çoğu zaman o kullanıcının ev klasörü eksik ya da yanlış ayarlıdır.' },
+                { symptom: 'Parola doğru olduğu halde giriş reddediliyor.', fix: 'Başarısız bir denemenin hemen ardından aşağıdaki günlüğe bakın — nedeni genelde yazar; çoğu zaman o kullanıcının ev klasörü eksik ya da yanlış ayarlıdır.' },
                 { symptom: 'FTP programı bağlantının güvensiz olduğu uyarısını veriyor.', fix: 'Haklı: düz FTP şifrelenmemiştir. Kullanıcılara SFTP\'ye geçmelerini önerin ya da bir uzmana yapılandırmada FTPS\'yi (şifreli FTP) açtırın.' },
             ],
         },

@@ -2345,6 +2345,23 @@ test('Domains: "Host a website" on a DNS-only zone opens Add domain with the nam
   }
 });
 
+// alpha.133: on a phone the plan cards stood above the page's title. The
+// title comes first, then the plan cards, on every width.
+test('Domains: the page title comes before the plan cards', async () => {
+  serve({
+    '/api/v1/domains': json([]),
+    '/api/v1/subscriptions': json({ subscriptions: [{ id: 1, name: 'Main', owner: 'admin', usage: { disk_used_bytes: 1, disk_limit_bytes: 0, domains: 1, domains_limit: 1, databases: 0, databases_limit: 1, mail_accounts: 0, mail_limit: 1 } }] }),
+  });
+  try {
+    await mount(Domains);
+    const shown = text();
+    assert.ok(shown.indexOf('nav.domains') >= 0 && shown.indexOf('quota.unlimited') >= 0, 'the title or the plan card is not shown');
+    assert.ok(shown.indexOf('nav.domains') < shown.indexOf('quota.unlimited'), 'the plan cards come before the page title');
+  } finally {
+    await cleanup();
+  }
+});
+
 test('Domains: one confirmation for a bulk delete, and the rows change without a refresh', async () => {
   const live = liveDomains({ domains: [siteRow(4, 'celikhost.com'), siteRow(5, 'example.org')], zones: [infraZone({ domain_id: 4 })] });
   serve(live.table, 'admin', {
@@ -2354,13 +2371,16 @@ test('Domains: one confirmation for a bulk delete, and the rows change without a
   const asked = [];
   try {
     await mount(Domains);
-    globalThis.confirm = (message) => { asked.push(message); return true; };
+    let question = null;
+    globalThis.confirm = (message, request) => { asked.push(message); question = request; return true; };
     const boxes = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox');
     await act(async () => { boxes[0].props.onChange(); await settled(); });
     const remove = hostButtons().find((node) => [].concat(node.props.children).flat(Infinity).includes('common.remove'));
     assert.ok(remove, 'the bulk remove button is not shown');
     await press(remove);
     assert.deepEqual(asked, ['domains.confirmBulkDelete'], 'a bulk delete asked more than once, or not by count and names');
+    assert.equal(question.lost.length, 4, 'a bulk delete does not say what goes');
+    assert.equal(question.kept.length, 4, 'a bulk delete does not say what stays');
     assert.equal(calls.filter((call) => call.method === 'DELETE').length, 2);
     await act(async () => { await settled(); await settled(); });
     assert.ok(!has('example.org'), 'a deleted domain stayed on screen');
@@ -2400,11 +2420,17 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
   const asked = [];
   try {
     await mount(Domains);
-    globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone, request.progressTitle]); return true; };
+    let question = null;
+    globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone, request.progressTitle]); question = request; return true; };
     await openRowMenu('alicelik.com.tr');
     await press(rowItem('delete'));
     await act(async () => { await settled(); await settled(); });
     assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
+    // alpha.133: what goes and what stays, as the server's deletion does it,
+    // and the name typed before Delete turns on.
+    assert.deepEqual(question.lost, ['domains.delete.lost.site', 'domains.delete.lost.mail', 'domains.delete.lost.dns', 'domains.delete.lost.schedule']);
+    assert.deepEqual(question.kept, ['domains.delete.kept.databases', 'domains.delete.kept.backups', 'domains.delete.kept.mail', 'domains.delete.kept.dns']);
+    assert.deepEqual(question.typedName, { value: 'alicelik.com.tr', label: 'domains.delete.typeName', ignoreCase: true }, 'deleting a domain does not ask for its name');
     assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
     const shown = globalThis.operationSteps.map((steps) => steps.map((step) => `${step.id}=${step.state}`).join(' '));
     assert.equal(shown[0], 'request=running finish=pending');
