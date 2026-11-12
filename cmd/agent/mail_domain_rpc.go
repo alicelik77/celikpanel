@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -100,7 +102,38 @@ func (a *Agent) DeleteMailDomain(
 	}
 	resp.Applied = true
 	resp.Quarantined = quarantined
+	if quarantined {
+		// alpha.134: the answer says where the stored mail stays and how
+		// large it is, so the deletion's result can name it.
+		if path := quarantinedMailDomainPath(domain, req.DomainID); path != "" {
+			resp.QuarantinePath = path
+			resp.QuarantineBytes = treeBytes(path)
+		}
+	}
 	return nil
+}
+
+// treeBytes sums the sizes of the regular files under path, without
+// following links; -1 when it could not be read to the end.
+func treeBytes(path string) int64 {
+	var total int64
+	err := filepath.WalkDir(path, func(_ string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() {
+			info, infoErr := entry.Info()
+			if infoErr != nil {
+				return infoErr
+			}
+			total += info.Size()
+		}
+		return nil
+	})
+	if err != nil {
+		return -1
+	}
+	return total
 }
 
 func readExistingMailDomainMap(path string) ([]byte, bool, error) {

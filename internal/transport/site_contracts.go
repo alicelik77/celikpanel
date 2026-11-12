@@ -17,4 +17,17 @@ type DeleteSiteRequest struct {
 type DeleteSiteResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error,omitempty"`
+	// KeptBackups (alpha.134, additive): the deleted site's backups, which a
+	// deletion keeps on purpose: where, how many files, how many bytes. Nil
+	// when there are none.
+	KeptBackups *KeptBackups `json:"kept_backups,omitempty"`
+}
+
+// KeptBackups describes backup files a deletion left in place.
+type KeptBackups struct {
+	Path  string `json:"path"`
+	Files int    `json:"files"`
+	Bytes int64  `json:"bytes"`
+	// Unknown: the folder exists but could not be read to the end.
+	Unknown bool `json:"unknown,omitempty"`
 }

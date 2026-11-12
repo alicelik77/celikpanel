@@ -724,6 +724,14 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	if !p.requireAPITokenDomainConfirmation(w, r, domainID) {
 		return
 	}
+	// alpha.134: the person's choice for the domain's databases ("keep", the
+	// default, or "delete"); the same accounts that may delete the domain
+	// choose it (domain_delete_cleanup.go).
+	requestedDatabases, validChoice := requestedDomainDeletionDatabases(r)
+	if !validChoice {
+		writeClientError(w, http.StatusBadRequest, "databases must be keep or delete")
+		return
+	}
 	// Another press while this domain's deletion request is still running:
 	// answered at once, nothing is started (domain_deletion_already_running.go).
 	if p.deletionsRunning.isRunning(domainID) {
@@ -751,6 +759,12 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if continues {
 		writeDomainDeletionAlreadyRunning(w, domainID, name)
+		return
+	}
+	// A retry repeats the accepted plan: one that names the other database
+	// choice is refused before anything changes.
+	if err := p.checkDomainDeletionPlan(ctx, domainID, domain.Name, requestedDatabases); err != nil {
+		writeDomainDeletionPlanFixed(w, err)
 		return
 	}
 	// A person's press runs the deletion again: a kept run of finishing
@@ -867,6 +881,28 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The accepted plan is saved with the marker; a retry reads it back.
+	plan, err := p.acceptDomainDeletionPlan(ctx, domainID, domain.Name, requestedDatabases)
+	if err != nil {
+		p.mailMutationMu.Unlock()
+		if errors.Is(err, errDomainDeletionPlanFixed) {
+			writeDomainDeletionPlanFixed(w, err)
+			return
+		}
+		if firstDeletionAttempt {
+			if restoreErr := p.restoreDomainDeletionStart(ctx, domainID); restoreErr != nil {
+				err = fmt.Errorf("%v; restore domain status: %w", err, restoreErr)
+			}
+		}
+		writeServerError(w, err)
+		return
+	}
+	var kept domainDeletionKept
+	kept.planDatabases(plan)
+	pending := func(stage string, cause error) {
+		p.writeDomainDeletionPendingKept(w, r, domainID, domain.Name, stage, cause, &kept)
+	}
+
 	_, err = p.prepareDomainMailTLSRemoval(ctx, domainID)
 	if err != nil {
 		if !firstDeletionAttempt {
@@ -896,19 +932,13 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	// The mail stage runs only when the panel's own records show a mail
 	// runtime for this domain on this server (domain_delete_mail_stage.go).
 	step(domainDeletionStageMailRuntime)
-	mailRan, err := p.runDomainDeletionMailStageLocked(ctx, domainID, domain.Name)
+	mailRan, keptMail, err := p.runDomainDeletionMailStageLocked(ctx, domainID, domain.Name)
 	if err != nil {
 		p.mailMutationMu.Unlock()
-		p.writeDomainDeletionPending(
-			w,
-			r,
-			domainID,
-			domain.Name,
-			domainDeletionStageMailRuntime,
-			err,
-		)
+		pending(domainDeletionStageMailRuntime, err)
 		return
 	}
+	kept.Mail = keptMail
 	// The DKIM key CelikPanel made for this domain goes with it; a key or
 	// table line it did not make is kept and named. This never stops the
 	// deletion (domain_dkim_automatic.go).
@@ -925,6 +955,14 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	if !mailRan {
 		log.Printf("domain deletion for %s: mail runtime cleanup skipped: no mail runtime for this domain on this server", domain.Name)
 		p.audit(r, "domain.delete.mail_runtime_absent:"+domain.Name, "domain", domainID)
+	}
+	// alpha.134: the server's sender-limit lists and per-domain mail options
+	// are written again without this domain (domain_delete_cleanup.go).
+	step(domainDeletionStageMailLists)
+	if err := p.runDomainDeletionMailListsStage(ctx); err != nil {
+		pending(domainDeletionStageMailLists,
+			p.recordDomainDeletionStageFailure(ctx, domainID, domain.Name, domainDeletionStageMailLists, err, false))
+		return
 	}
 
 	// Tear down the system side first — vhost, PHP pool, app unit, system
@@ -960,22 +998,27 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 			SiteHome:            siteHome,
 		}
 		if err := p.callAgentContext(ctx, "Agent.DeleteSite", &agentReq, &agentResp); err != nil {
-			p.writeDomainDeletionPending(
-				w, r, domainID, domain.Name, "site_cleanup", err,
-			)
+			pending(domainDeletionStageSite,
+				p.recordDomainDeletionStageFailure(ctx, domainID, domain.Name, domainDeletionStageSite, err, false))
 			return
 		}
+		kept.Backups = agentResp.KeptBackups
 		if !agentResp.Success {
-			p.writeDomainDeletionPending(
-				w,
-				r,
-				domainID,
-				domain.Name,
-				"site_cleanup",
-				fmt.Errorf("agent did not confirm complete site cleanup: %s", agentResp.Error),
-			)
+			// The Agent answered which parts are still there: a verified
+			// failure, kept with the marker (D-024).
+			pending(domainDeletionStageSite,
+				p.recordDomainDeletionStageFailure(ctx, domainID, domain.Name, domainDeletionStageSite,
+					errors.New(agentResp.Error), true))
 			return
 		}
+	}
+
+	// alpha.134: the domain's databases, as the accepted plan says: unbound
+	// and kept, or deleted with their own users.
+	step(domainDeletionStageDatabases)
+	if err := p.runDomainDeletionDatabaseStage(ctx, domainID, domain.Name, plan); err != nil {
+		pending(domainDeletionStageDatabases, err)
+		return
 	}
 
 	step("dns_cleanup")
@@ -984,16 +1027,12 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		// removal on the main DNS server to its end by itself, even when this
 		// request stops waiting (remote_dns_deletion_resume.go).
 		if err := p.recordRemoteDNSDeletionStage(ctx, domainID, domain.Name); err != nil {
-			p.writeDomainDeletionPending(
-				w, r, domainID, domain.Name, "dns_cleanup", err,
-			)
+			pending("dns_cleanup", err)
 			return
 		}
 	}
 	if err := p.removeDomainDNSForDeletion(ctx, domain.Name, parentDomainName); err != nil {
-		p.writeDomainDeletionPending(
-			w, r, domainID, domain.Name, "dns_cleanup", err,
-		)
+		pending("dns_cleanup", err)
 		return
 	}
 	step("certificate_cleanup")
@@ -1007,9 +1046,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 			p.recordDomainDeletionFinishFailure(ctx, domainID, domain.Name,
 				&domainDeletionFinishStageError{Stage: "certificate_cleanup", Err: err})
 		}
-		p.writeDomainDeletionPending(
-			w, r, domainID, domain.Name, "certificate_cleanup", err,
-		)
+		pending("certificate_cleanup", err)
 		return
 	}
 	step("ledger_delete")
@@ -1018,9 +1055,7 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 			p.recordDomainDeletionFinishFailure(ctx, domainID, domain.Name,
 				&domainDeletionFinishStageError{Stage: "ledger_delete", Err: err})
 		}
-		p.writeDomainDeletionPending(
-			w, r, domainID, domain.Name, "ledger_delete", err,
-		)
+		pending("ledger_delete", err)
 		return
 	}
 	p.clearDomainDeletionFinish(ctx, domainID)
@@ -1040,6 +1075,9 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	if dkimCleanup.worthReporting() {
 		answer["dkim"] = dkimCleanup
+	}
+	if !kept.empty() {
+		answer["kept"] = kept
 	}
 	json.NewEncoder(w).Encode(answer)
 }

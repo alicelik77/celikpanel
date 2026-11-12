@@ -200,6 +200,10 @@ func loadOutgoingMailboxes(ctx context.Context, q sqlQueryer, domainID int) ([]o
 	if domainID > 0 {
 		query += ` WHERE d.id = ?`
 		args = append(args, domainID)
+	} else {
+		// alpha.134: a domain being deleted leaves the server's lists at its
+		// deletion's mail step (domain_delete_cleanup.go).
+		query += ` WHERE NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = d.id)`
 	}
 	query += ` ORDER BY a.address`
 	rows, err := q.QueryContext(ctx, query, args...)

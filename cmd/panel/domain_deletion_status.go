@@ -258,7 +258,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
 			Status: domainDeletionStatusFailed, Stage: snapshot.failure.Stage,
 			Reason: snapshot.failure.Reason, ErrorLine: snapshot.failure.ErrorLine,
-			Message: domainMailCleanupFailedEnglish,
+			Message: domainDeletionStageFailureEnglish(snapshot.failure.Stage),
 		})
 		return
 	}

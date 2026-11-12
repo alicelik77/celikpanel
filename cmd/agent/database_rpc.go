@@ -581,10 +581,20 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
-	// Drop user
+	// Drop user. An absent user is fine (IF EXISTS); a user that could not
+	// be dropped fails the call only when the caller requires the user's
+	// cleanup (alpha.134: a domain deletion that deletes its databases says
+	// so instead of leaving the role behind).
 	if userIdent, err := services.QuotePGIdentifier(req.User); err == nil {
-		// Don't fail if user doesn't exist
-		_, _ = run(fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent))
+		if output, dropErr := run(fmt.Sprintf("DROP USER IF EXISTS %s;", userIdent)); dropErr != nil && req.RequireUserCleanup {
+			resp.Success = false
+			resp.Error = hostcmd.Fail("failed to drop database user", output, dropErr, databaseClientMeaning).Error()
+			return nil
+		}
+	} else if req.User != "" && req.RequireUserCleanup {
+		resp.Success = false
+		resp.Error = "invalid database user for required cleanup"
+		return nil
 	}
 
 	resp.Success = true

@@ -129,7 +129,9 @@ func TestDomainDeleteHandlerRecordsStagesInOrder(t *testing.T) {
 	pairs := [][2]string{
 		{`step("mail_tls_cleanup")`, `p.prepareDomainMailTLSRemoval(ctx, domainID)`},
 		{`step(domainDeletionStageMailRuntime)`, `p.runDomainDeletionMailStageLocked(ctx, domainID, domain.Name)`},
+		{`step(domainDeletionStageMailLists)`, `p.runDomainDeletionMailListsStage(ctx)`},
 		{`step("site_cleanup")`, `"Agent.DeleteSite"`},
+		{`step(domainDeletionStageDatabases)`, `p.runDomainDeletionDatabaseStage(ctx, domainID, domain.Name, plan)`},
 		{`step("dns_cleanup")`, `p.removeDomainDNSForDeletion(ctx, domain.Name, parentDomainName)`},
 		{`step("certificate_cleanup")`, `p.removeManagedDomainCertificates(`},
 		{`step("ledger_delete")`, `p.finalizeDomainDeletion(ctx, domainID)`},

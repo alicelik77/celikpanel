@@ -59,6 +59,11 @@ type DeleteMailDomainRequest struct {
 type DeleteMailDomainResponse struct {
 	Applied     bool `json:"applied"`
 	Quarantined bool `json:"quarantined"`
+	// QuarantinePath and QuarantineBytes (alpha.134, additive): where the
+	// domain's stored mail was moved aside and its size; QuarantineBytes is
+	// -1 when the size could not be read. Empty when nothing was kept.
+	QuarantinePath  string `json:"quarantine_path,omitempty"`
+	QuarantineBytes int64  `json:"quarantine_bytes,omitempty"`
 }
 
 type UpdateMailForwardingRequest struct {

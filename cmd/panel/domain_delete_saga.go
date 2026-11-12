@@ -130,6 +130,9 @@ func (p *Panel) restoreDomainDeletionStart(ctx context.Context, domainID int) er
 	if changed != 1 {
 		return fmt.Errorf("remove domain deletion marker: expected one marker, changed %d", changed)
 	}
+	if err := clearDomainDeletionPlan(ctx, tx, domainID); err != nil {
+		return fmt.Errorf("remove domain deletion plan: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit domain deletion restoration: %w", err)
 	}
@@ -173,7 +176,7 @@ func (p *Panel) removeDomainMailRuntimeLocked(
 	ctx context.Context,
 	domainID int,
 	domain string,
-) error {
+) (*domainDeletionKeptMail, error) {
 	var storedDomain string
 	err := p.db.GetDB().QueryRowContext(ctx, `
 		SELECT d.name
@@ -183,11 +186,11 @@ func (p *Panel) removeDomainMailRuntimeLocked(
 		domainID, domainDeletionLedgerStatus,
 	).Scan(&storedDomain)
 	if err != nil {
-		return fmt.Errorf("verify domain deletion marker before mail cleanup: %w", err)
+		return nil, fmt.Errorf("verify domain deletion marker before mail cleanup: %w", err)
 	}
 	storedDomain = strings.ToLower(strings.TrimSpace(storedDomain))
 	if !strings.EqualFold(storedDomain, strings.TrimSpace(domain)) {
-		return fmt.Errorf("mail cleanup domain identity changed")
+		return nil, fmt.Errorf("mail cleanup domain identity changed")
 	}
 
 	var response transport.DeleteMailDomainResponse
@@ -197,12 +200,16 @@ func (p *Panel) removeDomainMailRuntimeLocked(
 		Domain:              storedDomain,
 	}, &response)
 	if err != nil {
-		return fmt.Errorf("remove mail domain runtime: %w", err)
+		return nil, fmt.Errorf("remove mail domain runtime: %w", err)
 	}
 	if !response.Applied {
-		return errDomainMailCleanupNotConfirmed
+		return nil, errDomainMailCleanupNotConfirmed
 	}
-	return nil
+	// alpha.134: where the stored mail was moved aside, for the answer.
+	if response.Quarantined && response.QuarantinePath != "" {
+		return &domainDeletionKeptMail{Path: response.QuarantinePath, Bytes: response.QuarantineBytes}, nil
+	}
+	return nil, nil
 }
 
 func (p *Panel) writeDomainDeletionPending(
@@ -212,6 +219,20 @@ func (p *Panel) writeDomainDeletionPending(
 	domain string,
 	stage string,
 	cause error,
+) {
+	p.writeDomainDeletionPendingKept(w, r, domainID, domain, stage, cause, nil)
+}
+
+// writeDomainDeletionPendingKept also names, when known, what the deletion
+// keeps and which databases it deleted so far (alpha.134).
+func (p *Panel) writeDomainDeletionPendingKept(
+	w http.ResponseWriter,
+	r *http.Request,
+	domainID int,
+	domain string,
+	stage string,
+	cause error,
+	kept *domainDeletionKept,
 ) {
 	log.Printf("domain deletion pending for %s at %s: %v", domain, stage, cause)
 	p.audit(r, "domain.delete.pending:"+domain+":"+stage, "domain", domainID)
@@ -256,9 +277,18 @@ func (p *Panel) writeDomainDeletionPending(
 		// and the reason names what failed on this server.
 		response["reason"] = stageFailure.Reason
 		response["error_line"] = stageFailure.ErrorLine
-		response["message"] = domainMailCleanupFailedEnglish
+		response["message"] = domainDeletionStageFailureEnglish(stage)
 	}
 	w.WriteHeader(http.StatusAccepted)
+	if kept != nil && !kept.empty() {
+		answer := make(map[string]any, len(response)+1)
+		for key, value := range response {
+			answer[key] = value
+		}
+		answer["kept"] = kept
+		_ = json.NewEncoder(w).Encode(answer)
+		return
+	}
 	_ = json.NewEncoder(w).Encode(response)
 }
 
@@ -382,8 +412,25 @@ func (p *Panel) removeManagedDomainCertificates(
 	return nil
 }
 
+// finalizeDomainDeletion removes the domain row. In the same transaction
+// (alpha.134) every database still bound to the domain is unbound, so the
+// row's ON DELETE CASCADE never removes the panel's record of a database that
+// still exists in its engine (a deletion an older release started, or one
+// finished by CelikPanel by itself), and the deletion's plan record goes.
 func (p *Panel) finalizeDomainDeletion(ctx context.Context, domainID int) error {
-	result, err := p.db.GetDB().ExecContext(ctx, `
+	tx, err := p.db.GetDB().BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin domain ledger deletion: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE databases_v2 SET domain_id = NULL, updated_at = datetime('now')
+		WHERE domain_id = ?
+		  AND EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = ?)`,
+		domainID, domainID); err != nil {
+		return fmt.Errorf("unbind the domain's databases: %w", err)
+	}
+	result, err := tx.ExecContext(ctx, `
 		DELETE FROM domains
 		WHERE id = ? AND status = ?
 		  AND EXISTS (
@@ -404,5 +451,14 @@ func (p *Panel) finalizeDomainDeletion(ctx context.Context, domainID int) error 
 	if changed != 1 {
 		return fmt.Errorf("delete domain ledger row: expected one pending domain, changed %d", changed)
 	}
+	if err := clearDomainDeletionPlan(ctx, tx, domainID); err != nil {
+		return fmt.Errorf("remove domain deletion plan: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit domain ledger deletion: %w", err)
+	}
+	// The sender-limit lists follow the removed mailboxes (they already left
+	// at the mail step; this is the routine re-check).
+	p.requestOutgoingApply()
 	return nil
 }

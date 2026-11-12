@@ -299,3 +299,14 @@ func restoreQuarantinedMailDomain(domain string, domainID int) error {
 	}
 	return nil
 }
+
+// quarantinedMailDomainPath is where a deleted domain's stored mail was moved
+// aside (alpha.134: the deletion's answer names it), or "" when the mail
+// root cannot be named.
+func quarantinedMailDomainPath(domain string, domainID int) string {
+	root, err := managedMailRootPath()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(root, mailDomainQuarantineDirectory, mailDomainQuarantineName(domain, domainID))
+}

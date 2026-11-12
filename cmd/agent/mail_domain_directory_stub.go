@@ -15,3 +15,5 @@ func secureEnsureMailRoot(string) error {
 func quarantineMailDomainDirectory(string, int) (func() error, bool, error) {
 	return nil, false, fmt.Errorf("secure mail quarantine requires Linux openat2")
 }
+
+func quarantinedMailDomainPath(string, int) string { return "" }
