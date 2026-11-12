@@ -226,14 +226,14 @@ export function MailRelaySettings() {
                                     <label className="block">
                                         <span className="mb-1 block text-xs text-fg-muted">{t('mcfg.relay.host')}{draft.isChanged('host') && <ChangedMark />}</span>
                                         <input type="text" inputMode="url" autoComplete="off" spellCheck={false} placeholder="smtp.example.com" value={form.host} disabled={!form.enabled || locked}
-                                            onChange={(event) => set('host', event.target.value)} className={inputClass} data-mail-relay-field="host" />
+                                            onChange={(event) => set('host', event.target.value)} className={`${inputClass} field-lg`} data-mail-relay-field="host" />
                                     </label>
                                     {moved('host', base.host)}
                                 </div>
                                 <div className={`text-sm ${marked('port')}`}>
                                     <label className="block">
                                         <span className="mb-1 block text-xs text-fg-muted">{t('mcfg.relay.port')}{draft.isChanged('port') && <ChangedMark from={portWords(base.port)} to={portWords(form.port)} />}</span>
-                                        <select className={inputClass} value={form.port} disabled={!form.enabled || locked} onChange={(event) => set('port', Number(event.target.value))} data-mail-relay-field="port">
+                                        <select className={`${inputClass} field-md`} value={form.port} disabled={!form.enabled || locked} onChange={(event) => set('port', Number(event.target.value))} data-mail-relay-field="port">
                                             {PORTS.map((port) => <option key={port} value={port}>{portWords(port)}</option>)}
                                         </select>
                                     </label>
@@ -243,7 +243,7 @@ export function MailRelaySettings() {
                                     <label className="block">
                                         <span className="mb-1 block text-xs text-fg-muted">{t('mcfg.relay.username')}{draft.isChanged('username') && <ChangedMark />}</span>
                                         <input type="text" autoComplete="off" spellCheck={false} value={form.username} disabled={!form.enabled || locked}
-                                            onChange={(event) => set('username', event.target.value)} className={inputClass} data-mail-relay-field="username" />
+                                            onChange={(event) => set('username', event.target.value)} className={`${inputClass} field-lg`} data-mail-relay-field="username" />
                                     </label>
                                     {moved('username', base.username)}
                                 </div>

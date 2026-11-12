@@ -67,7 +67,7 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                 inputMode="numeric"
                 value={numbers[key]}
                 onChange={(e) => onNumbers({ ...numbers, [key]: quantity(e.target.value) })}
-                className={inputClass}
+                className={`${inputClass} field-xs`}
                 data-rights-quantity={key}
             />
             <span className="mt-0.5 block text-xs text-fg-subtle">{numbers[key] > 0 ? ' ' : t('rights.unlimitedShort')}</span>

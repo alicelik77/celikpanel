@@ -334,7 +334,7 @@ function DatabaseList({ shown, isAdmin, engineWord, sizeText, actionsFor }: {
 
     return (
         <div className="rounded-xl border border-border-strong bg-surface p-4">
-            <div className="mb-4 sm:max-w-md [&_input]:w-full">
+            <div className="mb-4">
                 <SearchInput value={query} onChange={setQuery} placeholder={t('databases.search')} />
             </div>
             {rows.length === 0 ? (

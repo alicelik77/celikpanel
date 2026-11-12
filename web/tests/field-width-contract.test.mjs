@@ -21,31 +21,6 @@ import { fileURLToPath } from 'node:url';
 const components = fileURLToPath(new URL('../src/components/', import.meta.url));
 const css = readFileSync(fileURLToPath(new URL('../src/index.css', import.meta.url)), 'utf8');
 
-// Files other alpha.133 lanes were editing while the sizes were applied. The
-// integrator gives their fields the sizes listed in the alpha.133 report and
-// removes each line; an entry whose fields are all sized fails below, so the
-// list only shrinks. Entries without a field today stay until those lanes land.
-// alpha.133'te başka şeritlerin düzenlediği dosyalar; birleştiren boyutları
-// verip satırı siler.
-const notYetSized = new Set([
-    'AddDatabaseModalV2.tsx', // lane dblist-fe
-    'AddUserModalV2.tsx', // lane dblist-fe
-    'DatabaseManagementV2.tsx', // lane dblist-fe
-    'DatabaseAccountStrip.tsx', // lane dbserver
-    'DatabaseRemoteAccess.tsx', // lane dbserver
-    'DatabaseRemoteServerPanel.tsx', // lane dbserver
-    'MariaDBManagement.tsx', // lane dbserver
-    'PostgreSQLManagement.tsx', // lane dbserver
-    'SecurityPage.tsx', // lane dbserver
-    'PlanLimitsSection.tsx', // lane leftovers (plan forms)
-    'PlanRights.tsx', // lane leftovers (plan forms)
-    'AccountRights.tsx', // lane leftovers (plan choice of an account)
-    'RightsSetEditor.tsx', // plan forms
-    'PostfixManagement.tsx', // Postfix page
-    'MailRelaySettings.tsx', // Postfix page: its relay form
-    'Domains.tsx', // lane leftovers
-]);
-const notYetSizedDirs = ['databases/', 'kit/'];
 
 function sources(dir) {
     return readdirSync(dir).flatMap((name) => {
@@ -110,7 +85,6 @@ test('every text, number and date field and every select declares its size', () 
     const missing = [];
     for (const file of sources(components)) {
         const name = relative(components, file).split('\\').join('/');
-        if (notYetSized.has(name) || notYetSizedDirs.some((dir) => name.startsWith(dir))) continue;
         for (const tag of fieldTags(code(readFileSync(file, 'utf8')))) {
             if (tag.kind === 'PasswordInput' || tag.kind === 'SetupWizardInput') {
                 // Shared fields: lg unless the form names another size.
@@ -122,16 +96,6 @@ test('every text, number and date field and every select declares its size', () 
         }
     }
     assert.deepEqual(missing, [], 'give each field a width class: field-xs | field-sm | field-md | field-lg | field-xl | field-full (src/index.css)');
-});
-
-test('the list of files not yet sized only shrinks', () => {
-    for (const name of notYetSized) {
-        const file = join(components, name);
-        if (!existsSync(file)) continue;
-        const tags = fieldTags(code(readFileSync(file, 'utf8'))).filter((tag) => tag.kind !== 'PasswordInput' && tag.kind !== 'SetupWizardInput' && needsSize(tag));
-        // A file with no field yet (another lane may add one) stays listed.
-        if (tags.length > 0) assert.ok(tags.some((tag) => !declared.test(tag.text)), `${name} has every field sized: remove it from notYetSized`);
-    }
 });
 
 test('the shared fields default to a deliberate size', () => {

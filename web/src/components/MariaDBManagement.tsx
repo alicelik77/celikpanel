@@ -43,7 +43,7 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
         : undefined;
     const selected = chosen && known?.includes(chosen) ? chosen : preferred;
 
-    const tips = [t('mariadb.tip.bind'), t('mariadb.tip.buffer'), t('mariadb.tip.logs')];
+    const tips = [t('mariadb.tip.buffer'), t('mariadb.tip.logs')];
 
     return (
         <ServiceShell serviceId="mariadb" name="MariaDB" icon={Database} onBack={onBack}>
@@ -69,7 +69,7 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
                                 id="mariadb-config-file"
                                 value={selected ?? ''}
                                 onChange={(e) => setChosen(e.target.value)}
-                                className={`${inputClass} font-mono`}
+                                className={`${inputClass} field-xl font-mono`}
                             >
                                 {known.map((path) => (
                                     <option key={path} value={path}>

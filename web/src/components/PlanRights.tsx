@@ -185,7 +185,7 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                 <div className={`min-w-0 max-w-md flex-1 ${nameChanged ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}{nameChanged && !isNew && <ChangedMark />}</span>
-                        <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={inputClass} autoFocus />
+                        <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={`${inputClass} field-md`} autoFocus />
                     </label>
                 </div>
                 <Button type="button" icon={X} onClick={() => void close()} disabled={busy} data-plan-close="">{t('common.close')}</Button>

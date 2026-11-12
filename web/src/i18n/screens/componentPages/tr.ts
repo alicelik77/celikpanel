@@ -110,7 +110,6 @@ export const trComponentPagesScreens: Record<ComponentPagesScreenKey, string> = 
     'pdns.readOnlyNote': 'Bu dosyanın sahibi panel — elle yapılan değişiklikler bir sonraki onarım veya eşitlemede üzerine yazılır.',
 
     'mariadb.tips': 'MariaDB ipuçları',
-    'mariadb.tip.bind': 'Uzaktan bağlantılara izin vermek için bind-address = 0.0.0.0 kullanın.',
     'mariadb.tip.buffer': 'Performans için innodb_buffer_pool_size değerini ayarlayın (yaklaşık RAM\'in %70\'i).',
     'mariadb.tip.logs': 'Servis başlamazsa hata günlüklerini kontrol edin.',
 

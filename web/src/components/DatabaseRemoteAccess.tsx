@@ -377,7 +377,7 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                                                 if (DURATIONS.includes(picked)) setNewEnd((all) => ({ ...all, [rule.id]: picked }));
                                                                 else discardEnd(rule.id);
                                                             }}
-                                                            className="h-8 max-w-[11rem] rounded-md border border-border-strong bg-surface px-2 text-xs text-fg outline-none focus:border-primary disabled:opacity-60">
+                                                            className="field-sm h-8 rounded-md border border-border-strong bg-surface px-2 text-xs text-fg outline-none focus:border-primary disabled:opacity-60">
                                                             <option value="">{t('dbr.extend')}</option>
                                                             {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
                                                         </select>
@@ -411,14 +411,14 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
                                     phone the controls stack at full width. */}
                                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" data-db-remote-add-row="">
                                     {shown.users.length > 1 && (
-                                        <select aria-label={t('dbr.user')} value={userId || shown.users[0].id} onChange={(e) => setUserId(Number(e.target.value))} className={`${fieldClass} w-full sm:w-auto`}>
+                                        <select aria-label={t('dbr.user')} value={userId || shown.users[0].id} onChange={(e) => setUserId(Number(e.target.value))} className={`${fieldClass} field-md`}>
                                             {shown.users.map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
                                         </select>
                                     )}
                                     <input type="text" inputMode="text" autoComplete="off" spellCheck={false} aria-label={t('dbr.address')}
                                         value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('dbr.addressPlaceholder')}
-                                        className={`${fieldClass} w-full font-mono sm:w-96`} />
-                                    <select aria-label={t('dbr.durationLabel')} value={duration} onChange={(e) => setDuration(e.target.value as Duration)} className={`${fieldClass} w-full sm:w-auto`}>
+                                        className={`${fieldClass} field-lg font-mono`} />
+                                    <select aria-label={t('dbr.durationLabel')} value={duration} onChange={(e) => setDuration(e.target.value as Duration)} className={`${fieldClass} field-sm`}>
                                         {DURATIONS.map((d) => <option key={d} value={d}>{durationLabel(d)}</option>)}
                                     </select>
                                     <Button type="submit" variant="primary" icon={Plus} disabled={busy || !address.trim()} className="max-sm:min-h-11 max-sm:w-full max-sm:justify-center">{t('dbr.add')}</Button>

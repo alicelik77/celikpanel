@@ -378,3 +378,14 @@ test('the Security page loads the card lazily, next to Fail2ban; the component p
     assert.match(text, new RegExp(`<EngineAccountBlock engine="${engine}" />`));
   }
 });
+
+// The MariaDB page no longer recommends listening on every address for
+// outside connections: that opens the server to the world, and outside
+// connections are managed on Security › Open to the outside.
+// MariaDB sayfası dışarıdan bağlantı için bind-address = 0.0.0.0 önermez.
+test('the MariaDB page gives no tip to listen on every address', () => {
+  assert.doesNotMatch(source('components/MariaDBManagement.tsx'), /mariadb\.tip\.bind/);
+  for (const file of ['i18n/screens/componentPages/en.ts', 'i18n/screens/componentPages/tr.ts']) {
+    assert.doesNotMatch(source(file), /mariadb\.tip\.bind|bind-address\s*=\s*0\.0\.0\.0/, file);
+  }
+});

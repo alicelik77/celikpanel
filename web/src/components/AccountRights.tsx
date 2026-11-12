@@ -158,7 +158,7 @@ export function RightsChangeForm({ target, grantor, plans, grantorIsReseller, on
             ) : (
                 <label className="block max-w-sm">
                     <span className="mb-1 block text-xs text-fg-muted">{t('rights.choice.plan')}</span>
-                    <select id={`${idPrefix}-plan`} value={planID} onChange={(e) => setPlanID(Number(e.target.value))} className={inputClass}>
+                    <select id={`${idPrefix}-plan`} value={planID} onChange={(e) => setPlanID(Number(e.target.value))} className={`${inputClass} field-md`}>
                         {planID === 0 && <option value={0}>{t('rights.choosePlan')}</option>}
                         {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
                     </select>
@@ -336,7 +336,7 @@ function CustomerSubscriptions({ user, list, grantor, isAdmin, onClose, onCreate
             {list.length > 1 && (
                 <label className="block max-w-sm">
                     <span className="mb-1 block text-xs text-fg-muted">{t('rights.subscription')}</span>
-                    <select value={chosen} onChange={(e) => setChosen(Number(e.target.value))} className={inputClass}>
+                    <select value={chosen} onChange={(e) => setChosen(Number(e.target.value))} className={`${inputClass} field-lg`}>
                         {list.map((entry) => (
                             <option key={entry.id} value={entry.id}>{`${entry.name} · ${stateName(entry.state, entry.plan_name, t)}`}</option>
                         ))}
@@ -441,7 +441,7 @@ function EndDateField({ subscriptionId, endsAt }: { subscriptionId: number; ends
             <p className="font-medium">{t('rights.endsAt.title')}</p>
             <p className="text-fg-muted">{stored ? t('rights.endsAt.current', { date: stored }) : t('rights.endsAt.never')}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-                <input type="date" className={inputClass} value={value} min="2000-01-01" onChange={(e) => setValue(e.target.value)} aria-label={t('rights.endsAt.title')} />
+                <input type="date" className={`${inputClass} field-sm`} value={value} min="2000-01-01" onChange={(e) => setValue(e.target.value)} aria-label={t('rights.endsAt.title')} />
                 <Button disabled={busy || value === '' || value === stored} onClick={() => void save(value)}>
                     <Save className="h-4 w-4" /> {t('rights.endsAt.save')}
                 </Button>
@@ -517,7 +517,7 @@ export function NewAccountRightsSection({ role, choice, onChoice, customerPlans,
             ) : (
                 <label className="mt-3 block max-w-sm">
                     <span className="mb-1 block text-xs text-fg-muted">{t(reseller ? 'rights.choice.resellerPlan' : 'rights.choice.plan')}</span>
-                    <select value={choice.planID} onChange={(e) => set({ planID: Number(e.target.value) })} className={inputClass} data-new-rights-plan="">
+                    <select value={choice.planID} onChange={(e) => set({ planID: Number(e.target.value) })} className={`${inputClass} field-md`} data-new-rights-plan="">
                         {choice.planID === 0 && <option value={0}>{t('rights.choosePlan')}</option>}
                         {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
                     </select>

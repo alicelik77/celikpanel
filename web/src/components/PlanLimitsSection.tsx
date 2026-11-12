@@ -103,7 +103,7 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                                     <span className="mb-1 block text-xs text-fg-muted">{t(`limits.key.${limit.key}` as TranslationKey)}{base && value !== (base.ceilings ?? {})[limit.key] && <ChangedMark />}</span>
                                     <input id={id} type="number" min={limit.min} max={limit.ceiling ?? limit.max} value={value ?? ''}
                                         placeholder={t('limits.plan.upTo', { value: above })} onChange={(e) => setCeiling(limit.key, e.target.value)}
-                                        className={inputClass} aria-invalid={outside || undefined} />
+                                        className={`${inputClass} field-sm`} aria-invalid={outside || undefined} />
                                     {outside && value !== undefined && <span className="mt-1 block text-xs text-danger">{outsideWords(limit, value)}</span>}
                                 </label>
                             );
@@ -130,7 +130,7 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                             return (
                                 <label key={field} htmlFor={`${idPrefix}-${field}`} className={`block ${marked(value !== (base?.[field] ?? 80))}`}>
                                     <span className="mb-1 block text-xs text-fg-muted">{notifyName(field)}{base && value !== (base[field] ?? 80) && <ChangedMark />}</span>
-                                    <input id={`${idPrefix}-${field}`} type="number" min={50} max={95} value={value || ''} className={inputClass} aria-invalid={out || undefined}
+                                    <input id={`${idPrefix}-${field}`} type="number" min={50} max={95} value={value || ''} className={`${inputClass} field-xs`} aria-invalid={out || undefined}
                                         onChange={(e) => onPlan({ ...plan, [field]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
                                 </label>
                             );
