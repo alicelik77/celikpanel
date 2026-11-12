@@ -35,6 +35,8 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'ftpLogins.newPassword': 'Yeni şifre (şimdikini korumak için boş bırakın)',
     'ftpLogins.newFolder': 'Klasör (korumak için olduğu gibi bırakın)',
     'ftpLogins.saveChange': 'Değişikliği kaydet',
+    'ftpLogins.folderMissing': 'Girişin göreceği klasörü yazın.',
+    'ftpLogins.passwordWeak': 'Yeni parola altındaki kurallara uymuyor. Düzeltin ya da şimdikini korumak için alanı boşaltın.',
     'ftpLogins.remove': 'Kaldır',
     'ftpLogins.confirmAddTitle': '{login} girişi eklensin mi?',
     'ftpLogins.confirmAdd': '{login}, {domain} sitesinin yalnız {folder} klasörünü SFTP ve şifreli FTP ile görecek. Sunucu onun için bir hesap ve kapalı bir klasör oluşturur; komut satırı açamaz.',

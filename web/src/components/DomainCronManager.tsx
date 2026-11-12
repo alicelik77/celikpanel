@@ -12,6 +12,8 @@ import type { Observed } from '../lib/remote';
 import { CurrentGate, StaleNotice, isStaleWrite, readCurrent } from './CurrentSettings';
 import { confirmAction } from '../lib/confirmAction';
 import { AdminInstallLink } from './AdminInstallLink';
+import { useLeaveGuard } from './kit/save/leaveGuard';
+import { useSaveWords } from './kit/save/words';
 
 interface CronJob {
     id: string;
@@ -58,6 +60,7 @@ const unreadableCauses: Record<string, TranslationKey> = {
 // hazır kalıplarla.
 export function DomainCronManager({ domainId, readOnly = false }: DomainCronManagerProps) {
     const { t } = useI18n();
+    const say = useSaveWords();
     const [jobs, setJobs] = useState<CronJob[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -132,6 +135,16 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         setLoading(false);
     };
 
+    // alpha.132: a task's edit form. Save is on only when the schedule, the
+    // command or the note differs from the task as it was opened and the
+    // command is there; what is missing is named beside it. Discard closes
+    // it; closing it, or opening another task, with changes asks first, and
+    // so does leaving the page. Pausing and resuming stay actions.
+    // Görev düzenleme formu. Kaydet yalnız bir şey değiştiyse ve komut
+    // yazılıysa açıktır; kapatmak ve çıkmak sorar. Duraklatmak eylem kalır.
+    const editChanged = !!editingJob && (schedule !== editingJob.schedule || command !== editingJob.command || comment !== (editingJob.comment || ''));
+    useLeaveGuard(editChanged ? 'some' : 0);
+
     const resetForm = () => {
         setSchedule('0 * * * *');
         setCommand('');
@@ -139,21 +152,34 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         setEditingJob(null);
         setShowForm(false);
     };
+    // Closes the form; an edit with unsaved changes asks first.
+    // Formu kapatır; kaydedilmemiş değişikliği olan düzenleme önce sorar.
+    const leaveForm = async () => {
+        if (editChanged && !(await confirmAction({
+            title: t('domain.unsaved.title'),
+            lost: [t('domain.unsaved.lost')],
+            kept: [say('leaveKept')],
+            confirmLabel: t('domain.unsaved.close'),
+            cancelLabel: t('domain.unsaved.back'),
+            tone: 'danger',
+        }))) return false;
+        resetForm();
+        return true;
+    };
 
     const submitForm = async () => {
-        if (readOnly) return;
-        if (!command.trim()) {
-            showToast('error', t('cron.commandRequired'));
-            return;
-        }
+        if (readOnly || !command.trim()) return;
         setSaving(true);
         try {
+            // A pause or resume made while the form was open stays as it is now.
+            // Form açıkken yapılan duraklatma ya da sürdürme şimdiki hâliyle kalır.
+            const enabled = editingJob ? (jobs.find((job) => job.id === editingJob.id) ?? editingJob).enabled : true;
             const res = await fetch(`/api/v1/domains/${domainId}/cron`, {
                 method: editingJob ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(
                     editingJob
-                        ? { id: editingJob.id, schedule, command, enabled: editingJob.enabled, comment, version }
+                        ? { id: editingJob.id, schedule, command, enabled, comment, version }
                         : { schedule, command, comment, version },
                 ),
             });
@@ -218,8 +244,8 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
         });
     };
 
-    const startEdit = (job: CronJob) => {
-        if (readOnly) return;
+    const startEdit = async (job: CronJob) => {
+        if (readOnly || !(await leaveForm())) return;
         setEditingJob(job);
         setSchedule(job.schedule);
         setCommand(job.command);
@@ -247,7 +273,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                         <h3 className="text-sm font-semibold text-fg">
                             {editingJob ? t('cron.editTitle') : t('cron.addTitle')}
                         </h3>
-                        <button onClick={resetForm} className="rounded-md p-1 text-fg-muted hover:bg-surface-2 hover:text-fg">
+                        <button onClick={() => void leaveForm()} title={t('common.close')} aria-label={t('common.close')} className="rounded-md p-1 text-fg-muted hover:bg-surface-2 hover:text-fg">
                             <X className="h-4 w-4" />
                         </button>
                     </div>
@@ -300,10 +326,17 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                             />
                         </div>
 
-                        <div className="flex justify-end gap-2">
-                            <Button onClick={resetForm}>{t('cron.cancel')}</Button>
-                            <Button variant="primary" icon={Save} onClick={submitForm} disabled={saving || loading || stale || !command.trim()}>
-                                {saving ? t('cron.saving') : editingJob ? t('cron.update') : t('cron.save')}
+                        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                            {editingJob && (
+                                <p data-form-reason="" aria-live="polite"
+                                    className={`min-w-0 basis-full text-sm sm:mr-auto sm:basis-0 sm:grow ${editChanged && !command.trim() ? 'text-danger' : 'text-fg-muted'}`}>
+                                    {!editChanged ? t('domain.unsaved.none') : !command.trim() ? t('cron.commandRequired') : stale ? say('stale') : say('pendingSome')}
+                                </p>
+                            )}
+                            <Button onClick={resetForm} data-form-discard="">{editingJob ? say('discard') : t('cron.cancel')}</Button>
+                            <Button variant="primary" icon={Save} onClick={submitForm} loading={saving} data-form-save=""
+                                disabled={saving || loading || stale || !command.trim() || (!!editingJob && !editChanged)}>
+                                {saving ? say('saving') : editingJob ? say('save') : t('cron.save')}
                             </Button>
                         </div>
                     </div>
@@ -399,7 +432,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                                 {job.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                                             </button>
                                             <button
-                                                onClick={() => startEdit(job)}
+                                                onClick={() => void startEdit(job)}
                                                 title={t('cron.edit')}
                                                 className="rounded-md p-2 text-fg-muted hover:bg-surface-2 hover:text-fg"
                                             >

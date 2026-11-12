@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
     Folder, File, ChevronRight, ChevronUp, RefreshCw,
-    Trash2, Edit, Download, Upload, Save, X,
-    FolderPlus, FilePlus,
+    Trash2, Edit, Download, Upload, X,
+    FolderPlus, FilePlus, AlertTriangle,
 } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -12,6 +12,10 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { decodeListIn, useRemote } from '../lib/remote';
 import { saveDownload } from '../lib/download';
 import { confirmAction } from '../lib/confirmAction';
+import { answerWasLost } from '../lib/requestIdentity';
+import { useSaveRun } from './kit/save/saveRun';
+import { useLeaveGuard } from './kit/save/leaveGuard';
+import { ChangedMark, SaveBar } from './kit/save/SaveBar';
 
 interface FileItem {
     name: string;
@@ -58,9 +62,9 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
     // yapılır.
     const folderKnown = listing.remote.state === 'known' && !listing.reading;
 
-    const [editingFile, setEditingFile] = useState<string | null>(null);
-    const [editContent, setEditContent] = useState('');
-    const [saving, setSaving] = useState(false);
+    // The open file and the text it was opened with.
+    // Açık dosya ve açıldığı metin.
+    const [editing, setEditing] = useState<{ path: string; text: string } | null>(null);
 
     const [createType, setCreateType] = useState<'file' | 'folder' | null>(null);
     const [newName, setNewName] = useState('');
@@ -73,15 +77,22 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
     // Ret, sunucunun nedenini taşır. Kopan bağlantı ret değildir: değişikliğin
     // yapılıp yapılmadığı bilinmez; klasör yeniden okunur, hiçbir şey ikinci
     // kez gönderilmez.
-    const act = async (path: string, body: Record<string, unknown>): Promise<Response | null> => {
-        let res: Response;
+    // post sends one file action; null when no answer arrived.
+    // post tek bir dosya eylemi gönderir; yanıt gelmezse null.
+    const post = async (path: string, body: Record<string, unknown>): Promise<Response | null> => {
         try {
-            res = await fetch(`/api/v1/domains/${domainId}/files?path=${encodeURIComponent(path)}`, {
+            return await fetch(`/api/v1/domains/${domainId}/files?path=${encodeURIComponent(path)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             });
         } catch {
+            return null;
+        }
+    };
+    const act = async (path: string, body: Record<string, unknown>): Promise<Response | null> => {
+        const res = await post(path, body);
+        if (!res) {
             showToast('error', t('common.resultUnknown'));
             loadFiles();
             return null;
@@ -106,7 +117,6 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
 
     const navigateTo = (path: string) => {
         setCurrentPath(path);
-        setEditingFile(null);
         setCreateType(null);
     };
 
@@ -151,23 +161,7 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
             showToast('error', t('files.contentUnknown'));
             return;
         }
-        setEditingFile(file.path);
-        setEditContent(data.content);
-    };
-
-    const saveFile = async () => {
-        if (readOnly || !editingFile) return;
-        setSaving(true);
-        try {
-            // On a refusal or a lost answer the editor stays open with what
-            // was typed.
-            if (!(await act(editingFile, { action: 'write', content: editContent }))) return;
-            showToast('success', t('files.saved'));
-            setEditingFile(null);
-            loadFiles();
-        } finally {
-            setSaving(false);
-        }
+        setEditing({ path: file.path, text: data.content });
     };
 
     const createItem = async () => {
@@ -232,33 +226,17 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
 
     // Inline text editor takes over the whole panel while a file is open.
     // Bir dosya açıkken satır içi metin düzenleyici panelin tamamını kaplar.
-    if (editingFile) {
+    if (editing && !readOnly) {
         return (
-            <div className="flex h-[540px] flex-col">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <button onClick={() => setEditingFile(null)} className="rounded-md p-1.5 text-fg-muted hover:bg-surface-2 hover:text-fg">
-                            <X className="h-4 w-4" />
-                        </button>
-                        <div className="min-w-0">
-                            <h3 className="truncate text-sm font-semibold text-fg">{editingFile.split('/').pop()}</h3>
-                            <p className="truncate font-mono text-xs text-fg-subtle">{editingFile}</p>
-                        </div>
-                    </div>
-                    {!readOnly && (
-                        <Button variant="primary" icon={Save} onClick={saveFile} disabled={saving}>
-                            {saving ? t('files.saving') : t('files.save')}
-                        </Button>
-                    )}
-                </div>
-                <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    readOnly={readOnly}
-                    className="flex-1 w-full resize-none rounded-lg border border-border bg-surface-2 p-4 font-mono text-sm text-fg outline-none focus:border-primary"
-                    spellCheck={false}
-                />
-            </div>
+            <FileEditor
+                key={editing.path}
+                path={editing.path}
+                opened={editing.text}
+                post={post}
+                refusalText={fileErrorText}
+                onSaved={loadFiles}
+                onClose={() => setEditing(null)}
+            />
         );
     }
 
@@ -400,6 +378,218 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
                 </div>
             ))}
             </RemoteGate>
+        </div>
+    );
+}
+
+// The text editor of one file (alpha.132; owner, 8 Nov 2026: nothing is saved
+// without Save, unsaved changes show, and they are not dropped unseen).
+//
+//   - Save is offered only while the text differs from the file as it was
+//     opened (or last saved); the bar says so and the name carries the mark.
+//   - Closing with unsaved text asks in the panel's dialogue; leaving the page
+//     asks through the shared leave guard.
+//   - The file is never overwritten unseen: before writing, the file is read
+//     again. When it changed on the server since it was opened, nothing is
+//     written; the editor says so and the person chooses to open the server's
+//     text (their changes are dropped) or to write theirs over it (asked).
+//     The write itself carries no version, so a change made in the moment
+//     between that read and the write is not seen (a server-side check would
+//     close it).
+//   - A write whose answer was lost is not sent again: Save stays off until
+//     the file is read again, and that read says whether it was saved.
+//
+// Tek bir dosyanın metin düzenleyicisi. Kaydet yalnız metin değiştiyse açılır;
+// kapatmak ve sayfadan çıkmak sorar; yazmadan önce dosya yeniden okunur, sunucuda
+// değiştiyse hiçbir şey yazılmaz ve kişi seçer; yanıtı yiten yazı yinelenmez.
+function FileEditor({ path, opened, post, refusalText, onSaved, onClose }: {
+    path: string;
+    opened: string;
+    post: (path: string, body: Record<string, unknown>) => Promise<Response | null>;
+    refusalText: (err: ApiError) => string;
+    onSaved: () => void;
+    onClose: () => void;
+}) {
+    const { t } = useI18n();
+    const name = path.split('/').pop() || path;
+    // The file's text as the server last held it to this editor's knowledge.
+    // Bu düzenleyicinin bildiği kadarıyla dosyanın sunucudaki metni.
+    const [base, setBase] = useState(opened);
+    const [text, setText] = useState(opened);
+    // The server's text when it differs from `base`: a change made elsewhere.
+    // Sunucudaki metin `base`ten farklıysa: başka yerde yapılmış değişiklik.
+    const [server, setServer] = useState<string | null>(null);
+    // The text whose write lost its answer; Save stays off until a read decides.
+    // Yazısının yanıtı yiten metin; bir okuma karar verene dek Kaydet kapalıdır.
+    const [lost, setLost] = useState<string | null>(null);
+    const [checking, setChecking] = useState(false);
+    const runner = useSaveRun();
+    const changed = text !== base;
+    useLeaveGuard(changed ? 'some' : 0);
+
+    // The file as the server holds it now; null (said in a toast) when it
+    // could not be read. Reading changes nothing.
+    // Dosyanın sunucudaki şimdiki hâli; okunamazsa null. Okumak bir şey değiştirmez.
+    const readNow = async (): Promise<string | null> => {
+        const res = await post(path, { action: 'read' });
+        if (res && res.ok) {
+            let content: unknown;
+            try {
+                content = ((await res.json()) as { content?: unknown }).content;
+            } catch {
+                content = undefined; // not the contract: said below
+            }
+            if (typeof content === 'string') return content;
+        }
+        showToast('error', res && !res.ok && !answerWasLost(res) ? refusalText(await readApiError(res)) : t('files.checkFailed'));
+        return null;
+    };
+
+    const write = (expected: string) => runner.run(async () => {
+        // A write whose answer was lost is never sent again unread.
+        // Yanıtı yiten yazı okunmadan bir daha gönderilmez.
+        if (lost !== null) return 'unknown';
+        const sent = text;
+        const now = await readNow();
+        if (now === null) return 'refused';
+        if (now !== expected) {
+            setServer(now);
+            return 'refused';
+        }
+        const res = await post(path, { action: 'write', content: sent });
+        if (!res || answerWasLost(res)) {
+            setLost(sent);
+            return 'unknown';
+        }
+        if (!res.ok) {
+            showToast('error', refusalText(await readApiError(res)));
+            return 'refused';
+        }
+        setBase(sent);
+        showToast('success', t('files.saved'));
+        onSaved();
+        return 'saved';
+    });
+    const save = (expected: string) => void write(expected);
+
+    // After a lost answer: the file read again says what happened.
+    // Yanıt yittikten sonra: yeniden okunan dosya ne olduğunu söyler.
+    const check = async () => {
+        if (lost === null) return;
+        setChecking(true);
+        const now = await readNow();
+        setChecking(false);
+        if (now === null) return;
+        setLost(null);
+        runner.clear();
+        if (now === lost) {
+            setBase(lost);
+            showToast('success', t('files.saved'));
+            onSaved();
+        } else if (now === base) {
+            showToast('info', t('files.notSaved'));
+        } else {
+            setServer(now);
+        }
+    };
+
+    const takeServer = async () => {
+        if (server === null) return;
+        if (changed && !(await confirmAction({
+            title: t('files.takeServer'),
+            lost: [t('files.yourChanges', { name })],
+            confirmLabel: t('files.takeServer'),
+            cancelLabel: t('domain.unsaved.back'),
+            tone: 'danger',
+        }))) return;
+        setBase(server);
+        setText(server);
+        setServer(null);
+    };
+
+    const overwrite = async () => {
+        if (server === null) return;
+        const expected = server;
+        // The write runs in the locked progress window; it is checked against
+        // the server's text once more first.
+        // Yazı kilitli ilerleme penceresinde çalışır; önce sunucudaki metinle
+        // bir kez daha karşılaştırılır.
+        await confirmAction({
+            title: t('files.overwrite'),
+            lost: [t('files.overwriteLost', { name })],
+            confirmLabel: t('files.overwrite'),
+            cancelLabel: t('domain.unsaved.back'),
+            tone: 'danger',
+            action: async () => {
+                setServer(null);
+                setBase(expected);
+                await write(expected);
+            },
+        });
+    };
+
+    const close = async () => {
+        if (changed && !(await confirmAction({
+            title: t('domain.unsaved.title'),
+            lost: [t('files.yourChanges', { name })],
+            kept: [t('files.closeKept')],
+            confirmLabel: t('domain.unsaved.close'),
+            cancelLabel: t('domain.unsaved.back'),
+            tone: 'danger',
+        }))) return;
+        onClose();
+    };
+
+    // Discard: the editor shows the file as the server holds it, the newer
+    // text when one was found.
+    // Vazgeç: düzenleyici dosyanın sunucudaki hâlini gösterir.
+    const discard = () => {
+        const shown = server ?? base;
+        setServer(null);
+        setBase(shown);
+        setText(shown);
+    };
+
+    const busy = runner.saving || checking;
+    return (
+        <div className="flex min-h-[540px] flex-col">
+            <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h3 className="break-all text-sm font-semibold text-fg">
+                        {name}
+                        {changed && <ChangedMark />}
+                    </h3>
+                    <p className="break-all font-mono text-xs text-fg-subtle">{path}</p>
+                </div>
+                <Button icon={X} onClick={() => void close()} disabled={busy}>{t('common.close')}</Button>
+            </div>
+            {server !== null && (
+                <div role="alert" data-file-moved="" className="mb-3 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-fg">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+                    <p className="min-w-0 max-w-[75ch] flex-1">{t('files.serverChanged', { name })}</p>
+                    <div className="flex flex-wrap gap-2">
+                        <Button onClick={() => void takeServer()} disabled={busy}>{t('files.takeServer')}</Button>
+                        <Button variant="danger" onClick={() => void overwrite()} disabled={busy || !changed}>{t('files.overwrite')}</Button>
+                    </div>
+                </div>
+            )}
+            <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                readOnly={busy}
+                aria-label={name}
+                className="min-h-[24rem] w-full flex-1 resize-y rounded-lg border border-border bg-surface-2 p-4 font-mono text-sm text-fg outline-none focus:border-primary"
+                spellCheck={false}
+            />
+            <SaveBar
+                className="-mx-5 px-5"
+                count={changed ? 'some' : 0}
+                saving={runner.saving}
+                blockedBy={server !== null ? t('files.chooseFirst') : undefined}
+                unknown={lost !== null ? { held: true, checking, onCheck: () => void check() } : undefined}
+                onSave={() => save(base)}
+                onDiscard={discard}
+            />
         </div>
     );
 }
