@@ -144,8 +144,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'ssl.save.refused': 'Kaydedilmedi: {part}. {reason}',
     'ssl.save.unknown': 'Yanıt gelmedi: {part}. Kaydedildiği bilinmiyor; ikinci kez gönderilmedi.',
     'ssl.save.notSent': 'Gönderilmedi: {parts}; kaydedilmemiş olarak duruyor.',
-    'ssl.save.next': 'Sonraki adım: nedeni düzeltip Kaydet’e yeniden basın; yalnız kaydedilmemiş olanlar gönderilir.',
-    'ssl.save.nextUnknown': 'Sonraki adım: ayarlar yeniden okunuyor; güncel hâline bakıp gerekirse Kaydet’e yeniden basın.',
+    'ssl.save.next': 'Nedeni düzeltip Kaydet’e yeniden basın; yalnız kaydedilmemiş olanlar gönderilir.',
     'ssl.usableCertificateRequired': 'Tüm yönetilen adları kapsayan etkin ve güvenilir bir sertifika gerekir.',
 
     'dns.zoneMissing': 'DNS bölgesi aktif değil',

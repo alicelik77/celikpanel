@@ -1399,7 +1399,8 @@ function SettingsSaveReport({ report }: { report: SettingsReport }) {
             )}
             {report.unknown && <p className="text-warning">{t('ssl.save.unknown', { part: t(PART_WORDS[report.unknown]) })}</p>}
             {report.notSent.length > 0 && <p>{t('ssl.save.notSent', { parts: names(report.notSent) })}</p>}
-            <p className="text-fg-muted">{t(report.unknown ? 'ssl.save.nextUnknown' : 'ssl.save.next')}</p>
+            {/* A lost answer's next step is the save bar's own sentence. */}
+            {!report.unknown && <p className="text-fg-muted">{t('ssl.save.next')}</p>}
         </div>
     );
 }

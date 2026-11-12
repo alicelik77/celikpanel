@@ -238,7 +238,7 @@ test('certificate settings: a lost answer is unknown, nothing is sent twice, and
     const shown = text();
     assert.ok(shown.includes('ssl.save.unknown{"part":"ssl.save.part.https"}'), shown.slice(0, 600));
     assert.ok(shown.includes('ssl.save.notSent{"parts":"ssl.save.part.mail"}'));
-    assert.ok(shown.includes('ssl.save.nextUnknown'));
+    assert.ok(!shown.includes('ssl.save.next'), 'a lost answer is told to fix a reason');
     assert.ok(shown.includes(saveWords.en.unknown.slice(0, 40)), 'the bar does not say the result is unknown');
     assert.ok(!globalThis.toasts.some(([tone]) => tone === 'success'), 'an unknown result was reported as saved');
     assert.equal(marks(), 2, 'the changes were dropped although the result is not known');
