@@ -205,3 +205,58 @@ func (p *Panel) canAccessDBServer(ctx context.Context, c *Caller, serverID int) 
 	}
 	return p.canAccessSubscription(ctx, c, subID)
 }
+
+// databaseRecordOwner is the account a database record (or a database user
+// record) belongs to: the owner of the record's own subscription.
+type databaseRecordOwner struct {
+	ID       int
+	Username string
+}
+
+// visibleDatabaseRecordOwner authorizes an action on one database record or
+// database user record by the visibility of its owner (alpha.133): the
+// owner of the record's own subscription must be visible to the caller
+// (visibleOwnerIDs), and the record's server must belong to that same
+// subscription. Anything else - a missing record, an owner the caller may
+// not see, a record whose server is another subscription's - is errNotFound,
+// so ownership cannot be probed. This never depends on which subscription the
+// caller owns first.
+//
+// visibleDatabaseRecordOwner, bir veritabanı (ya da veritabanı kullanıcısı)
+// kaydındaki işlemi kaydın sahibinin görünürlüğüyle yetkilendirir.
+func (p *Panel) visibleDatabaseRecordOwner(
+	ctx context.Context,
+	c *Caller,
+	subscriptionID int,
+	serverID int,
+) (databaseRecordOwner, error) {
+	var owner databaseRecordOwner
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT u.id, u.username
+		FROM subscriptions s
+		JOIN users u ON u.id = s.owner_id
+		JOIN database_servers ds ON ds.subscription_id = s.id
+		WHERE s.id = ? AND ds.id = ?`,
+		subscriptionID, serverID,
+	).Scan(&owner.ID, &owner.Username)
+	if errors.Is(err, sql.ErrNoRows) {
+		return databaseRecordOwner{}, errNotFound
+	}
+	if err != nil {
+		return databaseRecordOwner{}, err
+	}
+	if err := p.ownerAllowed(ctx, c, owner.ID); err != nil {
+		return databaseRecordOwner{}, err
+	}
+	return owner, nil
+}
+
+// databaseSubscriptionOwner names the owner of a subscription for an audit
+// entry; ok is false when it cannot be read.
+func (p *Panel) databaseSubscriptionOwner(ctx context.Context, subscriptionID int) (databaseRecordOwner, bool) {
+	var owner databaseRecordOwner
+	err := p.db.GetDB().QueryRowContext(ctx, `
+		SELECT u.id, u.username FROM subscriptions s JOIN users u ON u.id = s.owner_id WHERE s.id = ?`,
+		subscriptionID).Scan(&owner.ID, &owner.Username)
+	return owner, err == nil
+}

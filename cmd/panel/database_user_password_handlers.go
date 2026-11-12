@@ -60,8 +60,13 @@ func (p *Panel) handleSetDatabaseUserPassword(w http.ResponseWriter, r *http.Req
 		writeClientError(w, http.StatusNotFound, "database user not found")
 		return
 	}
-	if err := p.canAccessDBServer(ctx, currentCaller(r), user.ServerID); err != nil {
+	// alpha.133: authorized by the visibility of the user's owner, never by
+	// the caller's first subscription; missing and foreign answer the same.
+	if _, err := p.visibleDatabaseRecordOwner(ctx, currentCaller(r), user.SubscriptionID, user.ServerID); errors.Is(err, errNotFound) {
 		writeClientError(w, http.StatusNotFound, "database user not found")
+		return
+	} else if err != nil {
+		writeServerError(w, err)
 		return
 	}
 	p.applyDatabaseUserPassword(w, r, user, password)
@@ -219,8 +224,12 @@ func (p *Panel) applyDatabaseUserPassword(w http.ResponseWriter, r *http.Request
 		}
 		answer["sessions_ended"] = false
 	}
-	p.auditDetailed(r, "database.user.password:"+user.Username, "database_user", user.ID,
-		map[string]any{"made_up": minted, "app_updated": answer["app_updated"] == true})
+	details := map[string]any{"made_up": minted, "app_updated": answer["app_updated"] == true}
+	// alpha.133: the row names whose user it is as well as who acted.
+	if owner, ok := p.databaseSubscriptionOwner(ctx, user.SubscriptionID); ok {
+		details["owner"], details["owner_id"] = owner.Username, owner.ID
+	}
+	p.auditDetailed(r, "database.user.password:"+user.Username, "database_user", user.ID, details)
 	if minted {
 		// Shown once; the request identity keeps no copy (secret route).
 		doNotRetainRequestAnswer(ctx)

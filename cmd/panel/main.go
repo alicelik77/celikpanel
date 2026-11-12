@@ -1948,6 +1948,10 @@ func main() {
 		panel.handleDatabaseSubroute(w, r, "/api/v1/database-servers/")
 	})
 
+	// alpha.133: every database the caller may see (the left-menu Databases
+	// page); the exact path wins over the /api/v1/databases/ prefix below.
+	http.HandleFunc(databasesVisiblePath, panel.handleVisibleDatabases)
+
 	// Database operations
 	http.HandleFunc("/api/v1/databases/", func(w http.ResponseWriter, r *http.Request) {
 		panel.handleDatabaseSubroute(w, r, "/api/v1/databases/")

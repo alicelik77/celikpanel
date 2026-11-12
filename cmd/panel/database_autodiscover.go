@@ -112,15 +112,9 @@ func reconcileInstalledDBServers(
 	// Kurulu bir motorun tip adını, tespit edilen systemd unit'ine eşle.
 	detected := map[string]core.Service{}
 	for _, svc := range allServices {
-		name := strings.ToLower(svc.Name)
-		switch {
-		case strings.HasPrefix(name, "postgresql"):
-			if _, ok := detected["postgresql"]; !ok {
-				detected["postgresql"] = svc
-			}
-		case strings.HasPrefix(name, "mariadb"), strings.HasPrefix(name, "mysql"):
-			if _, ok := detected["mariadb"]; !ok {
-				detected["mariadb"] = svc
+		if engine := databaseEngineOfUnit(svc.Name); engine != "" {
+			if _, ok := detected[engine]; !ok {
+				detected[engine] = svc
 			}
 		}
 	}
