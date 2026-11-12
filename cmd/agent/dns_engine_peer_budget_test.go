@@ -290,7 +290,8 @@ func TestNativePeerConsumeOutcomes(t *testing.T) {
 		t.Fatalf("consume failure cause not logged:\n%s", logs)
 	}
 
-	slow := newChecks(func(ctx context.Context) error { return sleepUnder(ctx, budget.consume) })
+	// The final recheck alone outlasts the fresh consume bound.
+	slow := newChecks(func(ctx context.Context) error { return sleepUnder(ctx, 2*budget.consume) })
 	run = newDNSPeerProofRun(context.Background(), budget, "gone.example.test", "test")
 	err = run.consume(func() error { return consume(slow, run) })
 	if code := pendingDNSPeerCode(err); code != transport.DNSPeerPendingJournalUnknown {
