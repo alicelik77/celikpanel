@@ -192,7 +192,7 @@ func TestNativeBINDPeerCrashGapRetiresHistoricalChallengeForNextDeletion(t *test
 		return nil
 	}
 	if err := reconcileHistoricalBINDPeerChallengeAt(nextPlan, verifyCurrent,
-		load, read, retire); err != nil || !retired || reads != 2 {
+		load, cleanBINDJournal, read, retire); err != nil || !retired || reads != 2 {
 		t.Fatalf("terminal crash gap retained: retired=%v reads=%d err=%v", retired, reads, err)
 	}
 	// A second independent deletion sees no stale challenge and need not
@@ -200,7 +200,7 @@ func TestNativeBINDPeerCrashGapRetiresHistoricalChallengeForNextDeletion(t *test
 	other := nextPlan
 	other.Operation.RequestID = strings.Repeat("9", 32)
 	if err := reconcileHistoricalBINDPeerChallengeAt(other, func() error { return nil },
-		load, read, retire); err != nil || reads != 3 {
+		load, cleanBINDJournal, read, retire); err != nil || reads != 3 {
 		t.Fatalf("retired journal blocked later deletion: reads=%d err=%v", reads, err)
 	}
 }
@@ -246,7 +246,7 @@ func TestNativeBINDPeerCrashGapKeepsUnknownOrNonterminalEvidence(t *testing.T) {
 				return nil
 			}
 			err := reconcileHistoricalBINDPeerChallengeAt(nextPlan, func() error { return nil },
-				func() (serviceMutationLedger, error) { return changed, nil }, read, retire)
+				func() (serviceMutationLedger, error) { return changed, nil }, cleanBINDJournal, read, retire)
 			if err == nil || retired {
 				t.Fatalf("unsafe prior evidence retired=%v err=%v", retired, err)
 			}
@@ -327,4 +327,19 @@ func historicalBINDPeerChallengeFixture(t *testing.T) (dnspeerjournal.RecordV1, 
 			Generation: 3, Qualifier: qualifier},
 	}
 	return previous, ledger, plan
+}
+
+// cleanBINDJournal is dnspeerjournal.Recover on a journal with nothing to
+// finish: it runs the held check once, as Recover does.
+func cleanBINDJournal(verify dnspeerjournal.VerifyCurrent, _ dnspeerjournal.FinishedCheck) (dnspeerjournal.Repair, error) {
+	if verify() != nil {
+		return dnspeerjournal.RepairNone, dnspeerjournal.StateError{Code: dnspeerjournal.Unknown}
+	}
+	return dnspeerjournal.RepairNone, nil
+}
+
+// alpha132NoRecover stands for the missing recovery step when a test replays
+// alpha.132's prepare sequence.
+func alpha132NoRecover(dnspeerjournal.VerifyCurrent, dnspeerjournal.FinishedCheck) (dnspeerjournal.Repair, error) {
+	return dnspeerjournal.RepairNone, nil
 }

@@ -40,6 +40,15 @@ const (
 	// backup has caught up. Applies to additions, record changes and
 	// deletions alike.
 	DNSPeerPendingCatchingUp = "dns_peer_catching_up"
+	// DNSPeerPendingJournalUnresolved (alpha.133, lab of 12 Nov 2026): this
+	// server's single-use check record of the peer proof is in a state the
+	// Agent cannot attribute to an interrupted write or retirement of its
+	// own (it finishes those by itself, in the same attempt), or it holds
+	// the record of another operation the ledger does not show finished.
+	// Waiting does not change it: unlike dns_peer_journal_unknown it is not
+	// re-checked automatically and names the server administrator. The
+	// deletion itself is committed on this server; nothing is undone.
+	DNSPeerPendingJournalUnresolved = "dns_peer_journal_unresolved"
 )
 
 // Reviewed reasons the owner-enrolled secondary inspector may report for an
@@ -226,7 +235,8 @@ func validDNSPeerPendingReason(code string) bool {
 		DNSPeerPendingCatalogTransferRefused,
 		DNSPeerPendingProofInternal,
 		DNSPeerPendingProofTimeout,
-		DNSPeerPendingCatchingUp:
+		DNSPeerPendingCatchingUp,
+		DNSPeerPendingJournalUnresolved:
 		return true
 	default:
 		return false

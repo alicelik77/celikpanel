@@ -91,26 +91,16 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			},
 			local: func(ctx context.Context) error { return recheckNativePeerLocalEvidence(ctx, plan, record) },
 		}
-		// An earlier, terminal operation's challenge is retired first,
-		// under the held checks only (nativePeerCurrentChecks.prepareJournal):
-		// it completes in milliseconds and stays retired even if the full
-		// local recheck below runs out of this step's time.
-		if err := checks.prepareJournal(ctx, func(verify func() error) error {
+		// An interrupted change of the journal is finished and an earlier,
+		// terminal operation's challenge is retired first, under the held
+		// checks only (nativePeerCurrentChecks.prepareJournal): it completes
+		// in milliseconds and stays done even if the full local recheck
+		// runs out of this step's time.
+		next, err := nextBINDPeerChallengeAttempt(ctx, checks, func(verify func() error) error {
 			return reconcileHistoricalBINDPeerChallenge(m, plan, verify)
-		}); err != nil {
+		}, dnspeerjournal.Read)
+		if err != nil {
 			return err
-		}
-		next := uint64(1)
-		previous, err := dnspeerjournal.Read()
-		if err == nil {
-			if previous.Request.Attempt == ^uint64(0) {
-				return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
-					errors.New("challenge journal attempt counter is exhausted"))
-			}
-			next = previous.Request.Attempt + 1
-		} else if !dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
-			return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
-				fmt.Errorf("challenge journal read: %w", err))
 		}
 		// A daemon re-stamp admitted by the rechecks above moved the recorded
 		// catalog past the serial the wave proved: no challenge is minted;
@@ -167,6 +157,31 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	})
 }
 
+// nextBINDPeerChallengeAttempt is the journal part of prepare: reconcile
+// (recovery of an interrupted change, retirement of an earlier operation's
+// challenge) under the held checks, the full local recheck, then the next
+// proof attempt number from the journal.
+func nextBINDPeerChallengeAttempt(ctx context.Context, checks *nativePeerCurrentChecks,
+	reconcile func(verify func() error) error, read func() (dnspeerjournal.RecordV1, error),
+) (uint64, error) {
+	if err := checks.prepareJournal(ctx, reconcile); err != nil {
+		return 0, err
+	}
+	previous, err := read()
+	if err == nil {
+		if previous.Request.Attempt == ^uint64(0) {
+			return 0, pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+				errors.New("challenge journal attempt counter is exhausted"))
+		}
+		return previous.Request.Attempt + 1, nil
+	}
+	if !dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
+		return 0, pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
+			fmt.Errorf("challenge journal read: %w", err))
+	}
+	return 1, nil
+}
+
 // A crash after terminal ledger publication but before challenge retirement
 // must not block a later independent deletion. The current operation holds the
 // host and publication locks. Only an exact historical published result may
@@ -189,17 +204,47 @@ func reconcileHistoricalBINDPeerChallenge(
 	m *serviceMutationManager, plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error,
 ) error {
 	return reconcileHistoricalBINDPeerChallengeAt(plan, verifyCurrent,
-		m.loadLedgerFromDisk, dnspeerjournal.Read, dnspeerjournal.Retire)
+		m.loadLedgerFromDisk, dnspeerjournal.Recover, dnspeerjournal.Read, dnspeerjournal.Retire)
 }
 
+// An interrupted change of the journal is finished first (alpha.133, lab of
+// 12 Nov 2026: alpha.132 left a 0-byte journal beside the retired record of
+// a finished deletion and the next deletion never finished). Recover runs
+// under the same held recheck and asks the same terminal ledger question as
+// the retirement below; what it cannot prove, and a journal holding another
+// operation's record that the ledger read under the held locks does not show
+// finished, are dns_peer_journal_unresolved: waiting does not change them.
 func reconcileHistoricalBINDPeerChallengeAt(
 	plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error,
 	loadLedger func() (serviceMutationLedger, error),
+	recoverJournal func(dnspeerjournal.VerifyCurrent, dnspeerjournal.FinishedCheck) (dnspeerjournal.Repair, error),
 	read func() (dnspeerjournal.RecordV1, error),
 	retire func(dnspeerproof.RequestV1, string, string, uint64, dnspeerjournal.VerifyCurrent) error,
 ) error {
-	if verifyCurrent == nil || loadLedger == nil || read == nil || retire == nil {
+	if verifyCurrent == nil || loadLedger == nil || recoverJournal == nil || read == nil || retire == nil {
 		return errors.New("native BIND challenge reconciliation is unavailable")
+	}
+	finished := func(record dnspeerjournal.RecordV1) (bool, error) {
+		if err := verifyCurrent(); err != nil {
+			return false, err
+		}
+		ledger, err := loadLedger()
+		if err != nil {
+			return false, err
+		}
+		return historicalBINDPeerChallengeMatchesLedger(record, &ledger), nil
+	}
+	repair, err := recoverJournal(verifyCurrent, finished)
+	if dnspeerjournal.IsCode(err, dnspeerjournal.Unresolved) {
+		return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+			errors.New("native BIND challenge journal holds files no interrupted write or retirement leaves; they are kept for review"))
+	}
+	if err != nil {
+		return errors.New("native BIND challenge journal could not be checked for an interrupted change")
+	}
+	if repair != dnspeerjournal.RepairNone {
+		log.Printf("DNS peer proof for %s finished an interrupted change of its check record (%s) before minting its own",
+			plan.Changed.Domain, repair)
 	}
 	previous, err := read()
 	if dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
@@ -224,8 +269,12 @@ func reconcileHistoricalBINDPeerChallengeAt(
 		}
 		return nil
 	}
-	if err := verifyTerminal(); err != nil {
+	if done, err := finished(previous); err != nil {
 		return err
+	} else if !done {
+		return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+			fmt.Errorf("native BIND challenge journal holds the record of another operation (%s, ledger attempt %d) that the ledger does not show finished",
+				previous.Request.DeletedZone, previous.LedgerAttempt))
 	}
 	if err := retire(previous.Request, previous.EnrollmentSHA256,
 		previous.RequestSHA256, previous.LedgerAttempt, verifyTerminal); err != nil {

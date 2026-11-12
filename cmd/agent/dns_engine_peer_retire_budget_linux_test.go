@@ -31,12 +31,18 @@ import (
 const observedLocalRecheck = 1500 * time.Millisecond
 
 // retireCallsPerRetirement is how often dnspeerjournal.Retire calls its
-// verifier on success (TestRetireVerifiesTerminalFourTimes there).
-const retireCallsPerRetirement = 4
+// verifier on success (TestRetireVerifiesTerminalTwice there; four times,
+// two after the exchange, until alpha.133 made a retirement one rename).
+const retireCallsPerRetirement = 2
+
+// alpha132RetireCalls is how often alpha.132's Retire called its verifier.
+const alpha132RetireCalls = 4
 
 type staleChallengeJournal struct {
 	stored  *dnspeerjournal.RecordV1
 	retires int
+	// verifies: the verifier calls of one retirement (0: this release's).
+	verifies int
 }
 
 func (j *staleChallengeJournal) read() (dnspeerjournal.RecordV1, error) {
@@ -47,14 +53,18 @@ func (j *staleChallengeJournal) read() (dnspeerjournal.RecordV1, error) {
 }
 
 // retire mirrors dnspeerjournal.Retire: exact identity, the verifier before
-// and around the exchange, then the canonical name is gone.
+// its one rename, then the canonical name is gone.
 func (j *staleChallengeJournal) retire(request dnspeerproof.RequestV1, enrollment, digest string, attempt uint64, verify dnspeerjournal.VerifyCurrent) error {
 	j.retires++
 	if j.stored == nil || j.stored.Request != request || j.stored.EnrollmentSHA256 != enrollment ||
 		j.stored.RequestSHA256 != digest || j.stored.LedgerAttempt != attempt {
 		return dnspeerjournal.StateError{Code: dnspeerjournal.Mismatch}
 	}
-	for i := 0; i < retireCallsPerRetirement; i++ {
+	calls := j.verifies
+	if calls == 0 {
+		calls = retireCallsPerRetirement
+	}
+	for i := 0; i < calls; i++ {
 		if verify() != nil {
 			return dnspeerjournal.StateError{Code: dnspeerjournal.Unknown}
 		}
@@ -89,7 +99,7 @@ func TestStaleChallengeRetirementFitsPrepareBudget(t *testing.T) {
 	// full recheck, then the reconciliation under the same full recheck.
 	alpha132 := budget
 	alpha132.prepare = 8 * time.Second
-	journal := &staleChallengeJournal{stored: &previous}
+	journal := &staleChallengeJournal{stored: &previous, verifies: alpha132RetireCalls}
 	locals := 0
 	checks := staleChallengeChecks(observedLocalRecheck, &locals)
 	run := newDNSPeerProofRun(context.Background(), alpha132, nextPlan.Changed.Domain, "BIND")
@@ -99,7 +109,8 @@ func TestStaleChallengeRetirementFitsPrepareBudget(t *testing.T) {
 			return err
 		}
 		return checks.journalOpWith(checks.at(ctx), "previous challenge reconciliation", func(verify func() error) error {
-			return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, journal.read, journal.retire)
+			// alpha.132 had no recovery step.
+			return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, alpha132NoRecover, journal.read, journal.retire)
 		})
 	})
 	if code := pendingDNSPeerCode(err); code != "dns_peer_proof_timeout:local_check" || journal.stored == nil {
@@ -119,7 +130,7 @@ func TestStaleChallengeRetirementFitsPrepareBudget(t *testing.T) {
 	started = time.Now()
 	err = run.step(dnsPeerProofStepPrepare, func(ctx context.Context) error {
 		return checks.prepareJournal(ctx, func(verify func() error) error {
-			return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, journal.read, journal.retire)
+			return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, cleanBINDJournal, journal.read, journal.retire)
 		})
 	})
 	elapsed := time.Since(started)
@@ -146,7 +157,7 @@ func TestStaleChallengeRetirementPersistsAcrossTimedOutAttempt(t *testing.T) {
 	budget := scaledPeerProofBudget()
 	journal := &staleChallengeJournal{stored: &previous}
 	reconcile := func(verify func() error) error {
-		return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, journal.read, journal.retire)
+		return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, cleanBINDJournal, journal.read, journal.retire)
 	}
 
 	locals := 0
@@ -198,7 +209,7 @@ func TestStaleChallengeRetirementKeepsItsAuthority(t *testing.T) {
 				local:      func(context.Context) error { locals++; return nil },
 			}
 			err := checks.prepareJournal(context.Background(), func(verify func() error) error {
-				return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, journal.read, journal.retire)
+				return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, cleanBINDJournal, journal.read, journal.retire)
 			})
 			if pendingDNSPeerCode(err) != tc.want || journal.stored == nil || locals != 0 {
 				t.Fatalf("code=%q retired=%t rechecks=%d", pendingDNSPeerCode(err), journal.stored == nil, locals)
@@ -213,9 +224,10 @@ func TestStaleChallengeRetirementKeepsItsAuthority(t *testing.T) {
 	checks := staleChallengeChecks(time.Millisecond, new(int))
 	err := checks.prepareJournal(context.Background(), func(verify func() error) error {
 		return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify,
-			func() (serviceMutationLedger, error) { return changed, nil }, journal.read, journal.retire)
+			func() (serviceMutationLedger, error) { return changed, nil }, cleanBINDJournal, journal.read, journal.retire)
 	})
-	if pendingDNSPeerCode(err) != transport.DNSPeerPendingJournalUnknown || journal.stored == nil {
+	// Waiting does not change that (alpha.133): it is unresolved, for a person.
+	if pendingDNSPeerCode(err) != transport.DNSPeerPendingJournalUnresolved || journal.stored == nil {
 		t.Fatalf("nonterminal prior operation: code=%q retired=%t", pendingDNSPeerCode(err), journal.stored == nil)
 	}
 }

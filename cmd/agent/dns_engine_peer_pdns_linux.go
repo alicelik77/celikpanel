@@ -179,22 +179,11 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 		}
 		// As in verifyEnrolledBINDPeerDeletion: an earlier terminal
 		// operation's challenge is retired first, under the held checks.
-		if err := checks.prepareJournal(ctx, func(verify func() error) error {
+		next, err := nextPDNSPeerChallengeAttempt(ctx, checks, func(verify func() error) error {
 			return reconcileHistoricalPDNSPeerChallenge(m, plan, verify)
-		}); err != nil {
+		}, pdnspeerjournal.Read)
+		if err != nil {
 			return err
-		}
-		next := uint64(1)
-		previous, err := pdnspeerjournal.Read()
-		if err == nil {
-			if previous.Request.Attempt == ^uint64(0) {
-				return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
-					errors.New("challenge journal attempt counter is exhausted"))
-			}
-			next = previous.Request.Attempt + 1
-		} else if !pdnspeerjournal.IsCode(err, pdnspeerjournal.Missing) {
-			return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
-				fmt.Errorf("challenge journal read: %w", err))
 		}
 		// See verifyEnrolledBINDPeerDeletion: a re-stamp admitted since the
 		// wave proved the pair is proved again before any challenge exists.
@@ -257,20 +246,69 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	})
 }
 
+// nextPDNSPeerChallengeAttempt is nextBINDPeerChallengeAttempt for the
+// PowerDNS secondary's journal.
+func nextPDNSPeerChallengeAttempt(ctx context.Context, checks *nativePeerCurrentChecks,
+	reconcile func(verify func() error) error, read func() (pdnspeerjournal.RecordV1, error),
+) (uint64, error) {
+	if err := checks.prepareJournal(ctx, reconcile); err != nil {
+		return 0, err
+	}
+	previous, err := read()
+	if err == nil {
+		if previous.Request.Attempt == ^uint64(0) {
+			return 0, pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+				errors.New("challenge journal attempt counter is exhausted"))
+		}
+		return previous.Request.Attempt + 1, nil
+	}
+	if !pdnspeerjournal.IsCode(err, pdnspeerjournal.Missing) {
+		return 0, pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
+			fmt.Errorf("challenge journal read: %w", err))
+	}
+	return 1, nil
+}
+
 // reconcileHistoricalPDNSPeerChallenge is reconcileHistoricalBINDPeerChallenge
 // for the PowerDNS secondary's journal; verifyCurrent is the held recheck.
 func reconcileHistoricalPDNSPeerChallenge(m *serviceMutationManager, plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error) error {
 	return reconcileHistoricalPDNSPeerChallengeAt(plan, verifyCurrent,
-		m.loadLedgerFromDisk, pdnspeerjournal.Read, pdnspeerjournal.Retire)
+		m.loadLedgerFromDisk, pdnspeerjournal.Recover, pdnspeerjournal.Read, pdnspeerjournal.Retire)
 }
 
+// As reconcileHistoricalBINDPeerChallengeAt: an interrupted change of the
+// journal is finished first, and what cannot be proved is
+// dns_peer_journal_unresolved.
 func reconcileHistoricalPDNSPeerChallengeAt(plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error,
 	loadLedger func() (serviceMutationLedger, error),
+	recoverJournal func(pdnspeerjournal.VerifyCurrent, pdnspeerjournal.FinishedCheck) (pdnspeerjournal.Repair, error),
 	read func() (pdnspeerjournal.RecordV1, error),
 	retire func(pdnspeerproof.RequestV1, string, string, uint64, pdnspeerjournal.VerifyCurrent) error,
 ) error {
-	if verifyCurrent == nil || loadLedger == nil || read == nil || retire == nil {
+	if verifyCurrent == nil || loadLedger == nil || recoverJournal == nil || read == nil || retire == nil {
 		return errors.New("PowerDNS challenge reconciliation unavailable")
+	}
+	finished := func(record pdnspeerjournal.RecordV1) (bool, error) {
+		if err := verifyCurrent(); err != nil {
+			return false, err
+		}
+		ledger, err := loadLedger()
+		if err != nil {
+			return false, err
+		}
+		return historicalPDNSPeerChallengeMatchesLedger(record, &ledger), nil
+	}
+	repair, err := recoverJournal(verifyCurrent, finished)
+	if pdnspeerjournal.IsCode(err, pdnspeerjournal.Unresolved) {
+		return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+			errors.New("PowerDNS challenge journal holds files no interrupted write or retirement leaves; they are kept for review"))
+	}
+	if err != nil {
+		return errors.New("PowerDNS challenge journal could not be checked for an interrupted change")
+	}
+	if repair != pdnspeerjournal.RepairNone {
+		log.Printf("DNS peer proof for %s finished an interrupted change of its check record (%s) before minting its own",
+			plan.Changed.Domain, repair)
 	}
 	previous, err := read()
 	if pdnspeerjournal.IsCode(err, pdnspeerjournal.Missing) {
@@ -295,8 +333,12 @@ func reconcileHistoricalPDNSPeerChallengeAt(plan dnsV3PrimaryPropagationPlan, ve
 		}
 		return nil
 	}
-	if verifyTerminal() != nil {
+	if done, err := finished(previous); err != nil {
 		return errors.New("historical PowerDNS challenge is unverified")
+	} else if !done {
+		return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+			fmt.Errorf("PowerDNS challenge journal holds the record of another operation (%s, ledger attempt %d) that the ledger does not show finished",
+				previous.Request.DeletedZone, previous.LedgerAttempt))
 	}
 	if retire(previous.Request, previous.EnrollmentSHA256, previous.RequestSHA256,
 		previous.LedgerAttempt, verifyTerminal) != nil {
