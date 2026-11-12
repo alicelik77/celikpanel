@@ -10,7 +10,7 @@ Yedekler site başına alınır. Sunucunun kendi diskindeki kopya, sunucu kaybol
 
 ## Sunucuda {#local}
 
-Her alan adının **Gelişmiş** sekmesinde **Yedekler** bölümü vardır: dosyalar, veritabanları ya da ikisi, elle ya da zamanlanmış. Geri yükleme önce bir güvenlik yedeği alır. Panelde sunucunun tamamının tek bir yedeği yoktur; her siteyi uzak hedefe giden bir tüm siteler zamanlamasıyla koruyun, sistemin kendisi için sağlayıcınızın anlık görüntülerini kullanın.
+Her alan adının sayfasında bir **Yedekler** bölümü vardır: dosyalar, veritabanları ya da ikisi, elle ya da zamanlanmış. Geri yükleme önce bir güvenlik yedeği alır. Panelde sunucunun tamamının tek bir yedeği yoktur; her siteyi uzak hedefe giden bir tüm siteler zamanlamasıyla koruyun, sistemin kendisi için sağlayıcınızın anlık görüntülerini kullanın.
 
 ## Uzak hedefler {#destination}
 

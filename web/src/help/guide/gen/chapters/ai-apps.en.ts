@@ -7,13 +7,13 @@ const chapter = {
   id: "ai-apps",
   title: "AI and automation apps",
   blocks: [
-    ["p",["The ",["b","AI & automation"]," tab runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS."]],
+    ["p",[["b","AI & automation"],", in a domain's ",["b","Site"]," section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS."]],
     ["h",2,"ai-apps","Before you install"],
-    ["p","The tab says what is still needed, and who provides it:"],
-    ["ul",[[["b","A website and a certificate."]," Apps open only over HTTPS. If the domain has no certificate yet, get one first under ",["b","Hosting"],", then ",["b","SSL/TLS"],"."],[["b","A separate subdomain"],", such as ",["c","n8n.example.com"],", is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed."],[["b","The offer."]," Nothing can be installed until the administrator offers the app, and your plan must include it. Otherwise the row says whom to ask."],[["b","The server."]," n8n needs Node.js 24, which the administrator installs. Open WebUI runs only on some systems; the row says so when it cannot run here."]]],
+    ["p","The page says what is still needed, and who provides it:"],
+    ["ul",[[["b","A website and a certificate."]," Apps open only over HTTPS. If the domain has no certificate yet, get one first in the ",["b","Security"]," section."],[["b","A separate subdomain"],", such as ",["c","n8n.example.com"],", is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed."],[["b","The offer."]," Nothing can be installed until the administrator offers the app, and your plan must include it. Otherwise the row says whom to ask."],[["b","The server."]," n8n needs Node.js 24, which the administrator installs. Open WebUI runs only on some systems; the row says so when it cannot run here."]]],
     ["h",2,"installing","Installing"],
     ["ol",[["Press ",["b","Install"]," beside the app."],["Enter the ",["b","App administrator’s e-mail"]," and ",["b","App administrator’s password"]," (12 to 128 characters). You sign in to the app with these, so nobody else can claim it first. CelikPanel does not keep the password."],["For Open WebUI you may add ",["b","AI provider keys (optional)"],". They are kept only in the app's own settings file and are never shown again."],"Tick that you have read what the app can do and what remains a risk, and confirm."]],
-    ["p","The install runs on the server and may take several minutes; Open WebUI is several GB. You can close the page; the tab shows each step when you come back. If a step fails, the message says why and who acts; the install log shows details."],
+    ["p","The install runs on the server and may take several minutes; Open WebUI is several GB. You can close the page; the page shows each step when you come back. If a step fails, the message says why and who acts; the install log shows details."],
     ["h",2,"running","Using the app"],
     ["p",[["b","Open the app"]," opens it in a new tab. The row shows whether it is ",["b","Running"],", ",["b","Stopped"]," or ",["b","Running, but not answering yet"],", and how much memory it uses. You can ",["b","Start"],", ",["b","Stop"],", ",["b","Restart"]," it and read its ",["b","Log"],". ",["b","Change keys"]," replaces the provider keys or sets a new administrator password."]],
     ["p",["Memory, processor and process limits are set by the administrator for every install. When a newer version comes with a panel release, ",["b","Update to …"]," installs it beside the running one and switches over only when it is ready."]],
@@ -23,7 +23,7 @@ const chapter = {
     ["p","n8n's licence restricts offering it to others as a hosted service. It is therefore closed to resellers and their customers, and only the administrator's own customers can use it. The row says so; there is nothing for you to do. Open WebUI is not affected."],
     ["h",2,"removing","Removing the app"],
     ["p",[["b","Remove the app"]," removes the service and its program files; the domain shows its website again. The app's data (workflows, chats, its database) stays in its folder unless you tick ",["b","Also delete the app’s data"]," and type the domain."]],
-    ["p",["The app does not depend on the panel. It is an ordinary system service on the server; the tab names it, and the server's owner can stop it with ",["c","sudo systemctl stop"]," followed by that name."]],
+    ["p",["The app does not depend on the panel. It is an ordinary system service on the server; the page names it, and the server's owner can stop it with ",["c","sudo systemctl stop"]," followed by that name."]],
   ],
 } as unknown as GuideChapter;
 

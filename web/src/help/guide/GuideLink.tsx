@@ -3,7 +3,7 @@ import { BookOpen } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { openGuideTopic } from './context';
 
-// A link from a screen into the guide: <GuideLink topic="domain.access" />
+// A link from a screen into the guide: <GuideLink topic="domain.files.access" />
 // opens the guide drawer at the chapter that claims the topic. It carries no
 // guide data (the drawer fetches it), so any screen can use it. The build
 // (web/scripts/build-guide.mjs) fails when a topic named here is claimed by

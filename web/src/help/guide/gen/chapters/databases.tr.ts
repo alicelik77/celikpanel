@@ -8,8 +8,8 @@ const chapter = {
   title: "Veritabanları",
   blocks: [
     ["p","WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda MariaDB (MySQL) ve PostgreSQL veritabanları ve her biri için bir kullanıcı oluşturur."],
-    ["h",2,"domain-databases","Alan adının Veritabanları sekmesinde"],
-    ["p",["En kısa yol alan adının kendisidir. Alan adını, sonra ",["b","Veritabanları"]," sekmesini açıp ",["b","Veritabanı oluştur"]," düğmesine basın:"]],
+    ["h",2,"domain-databases","Alan adının Veritabanları bölümünde"],
+    ["p",["En kısa yol alan adının kendisidir. Alan adını, sonra ",["b","Veritabanları"]," bölümünü açıp ",["b","Veritabanı oluştur"]," düğmesine basın:"]],
     ["ol",[["Bir ",["b","Veritabanı adı"]," yazın. Panel adın önüne alan adını ekler: ",["c","example.com"]," ve ",["c","magaza"]," için tam ad ",["c","example_com_magaza"]," olur."],[["b","Veritabanı motoru"]," seçin."],["Bir ",["b","Parola"]," belirleyin."],[["b","Veritabanı oluştur"]," düğmesine basın."]]],
     ["p",["Aynı adın sonuna ",["c","_user"]," eklenmiş, tam yetkili bir kullanıcı da oluşturulur; burada ",["c","example_com_magaza_user"],". Uygulamanız ",["c","localhost"]," adresine bu ad, kullanıcı ve parolayla bağlanır."]],
     ["h",2,"databases-page","Veritabanları sayfası"],
@@ -17,11 +17,11 @@ const chapter = {
     ["ul",[[["b","Veritabanı adı"],": yalnız harf, rakam ve alt çizgi;"],["bağlı olduğu ",["b","Web sitesi"]," ya da ",["b","Web sitesi yok (bağımsız veritabanı)"],". Bir siteye bağlı veritabanı site silinince onunla silinir;"],[["b","Veritabanı kullanıcısı"],": ",["b","Yeni kullanıcı"]," ya da ",["b","Var olan kullanıcı"],". ",["b","Güçlü bir parola üret"]," sizin için parola yazar;"],[["b","İzinler"],": ",["b","ALL (tam erişim)"]," ya da ",["b","SELECT (yalnızca okuma)"],"."]]],
     ["p",[["b","Kullanıcı oluştur"]," tek başına bir kullanıcı ekler. Bir kullanıcıya yeni parola vermek için anahtar düğmesini kullanın. Eski parolayı kullanan programlar yenisini alana dek bağlanamaz; CelikPanel'in kurduğu uygulama yenisini kendiliğinden alır."]],
     ["h",2,"web-tools","phpMyAdmin ve phpPgAdmin"],
-    ["p",["Alan adının ",["b","Veritabanları"]," sekmesindeki ",["b","Veritabanı web araçları"]," kutusunda ",["b","phpMyAdmin aç"]," (MariaDB) ya da ",["b","phpPgAdmin aç"]," (PostgreSQL) düğmesi bulunur. Araç panel üzerinden açılır, internete hiçbir zaman açık değildir. Veritabanı kullanıcısı ve parolasıyla giriş yapın; yalnız kendi veritabanlarınızı görürsünüz."]],
+    ["p",["Alan adının ",["b","Veritabanları"]," bölümündeki ",["b","Veritabanı web araçları"]," kutusunda ",["b","phpMyAdmin aç"]," (MariaDB) ya da ",["b","phpPgAdmin aç"]," (PostgreSQL) düğmesi bulunur. Araç panel üzerinden açılır, internete hiçbir zaman açık değildir. Veritabanı kullanıcısı ve parolasıyla giriş yapın; yalnız kendi veritabanlarınızı görürsünüz."]],
     ["p",["Düğme aracın ",["b","Bileşenler"]," sayfasından kurulmasını söylüyorsa onu yönetici kurar."]],
     ["h",2,"passwords","Parolalar"],
     ["p",["CelikPanel veritabanı parolalarını saklamaz ve yeniden gösteremez. Birini kaybettiyseniz kullanıcıya yeni parola verin ve onu uygulamanızın yapılandırma dosyasına yazın. Planınızdaki veritabanı sayısı ya da disk dolunca yeni veritabanı reddedilir; bkz. ",["g","limits","disk","Sınırlar ve askıya alma"],"."]],
-    ["warn",[["p",["Veritabanını silmek bütün verisini siler. Önce ",["b","Gelişmiş"]," sekmesinde ",["b","Yedekler"]," bölümünden yedek alın."]]]],
+    ["warn",[["p",["Veritabanını silmek bütün verisini siler. Önce alan adının ",["b","Yedekler"]," bölümünden yedek alın."]]]],
   ],
 } as unknown as GuideChapter;
 

@@ -2,17 +2,17 @@
 id: ai-apps
 title: AI and automation apps
 roles: [admin, reseller, customer]
-topics: [domain.ai#ai-apps]
+topics: [domain.site.ai#ai-apps]
 keywords: [ai, n8n, open webui, automation, workflow, chat, openai, api key, security hold]
 ---
 
-The **AI & automation** tab runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS.
+**AI & automation**, in a domain's **Site** section, runs an app such as n8n (workflow automation) or Open WebUI (a chat screen for AI models) on a domain. The app runs as the site's own account in a closed sandbox, listens only inside the server, and opens at the domain's address over HTTPS.
 
 ## Before you install {#ai-apps}
 
-The tab says what is still needed, and who provides it:
+The page says what is still needed, and who provides it:
 
-- **A website and a certificate.** Apps open only over HTTPS. If the domain has no certificate yet, get one first under **Hosting**, then **SSL/TLS**.
+- **A website and a certificate.** Apps open only over HTTPS. If the domain has no certificate yet, get one first in the **Security** section.
 - **A separate subdomain**, such as `n8n.example.com`, is best: the domain shows the app instead of its website. The website's files stay and come back when the app is removed.
 - **The offer.** Nothing can be installed until the administrator offers the app, and your plan must include it. Otherwise the row says whom to ask.
 - **The server.** n8n needs Node.js 24, which the administrator installs. Open WebUI runs only on some systems; the row says so when it cannot run here.
@@ -24,7 +24,7 @@ The tab says what is still needed, and who provides it:
 3. For Open WebUI you may add **AI provider keys (optional)**. They are kept only in the app's own settings file and are never shown again.
 4. Tick that you have read what the app can do and what remains a risk, and confirm.
 
-The install runs on the server and may take several minutes; Open WebUI is several GB. You can close the page; the tab shows each step when you come back. If a step fails, the message says why and who acts; the install log shows details.
+The install runs on the server and may take several minutes; Open WebUI is several GB. You can close the page; the page shows each step when you come back. If a step fails, the message says why and who acts; the install log shows details.
 
 ## Using the app {#running}
 
@@ -44,4 +44,4 @@ n8n's licence restricts offering it to others as a hosted service. It is therefo
 
 **Remove the app** removes the service and its program files; the domain shows its website again. The app's data (workflows, chats, its database) stays in its folder unless you tick **Also delete the app’s data** and type the domain.
 
-The app does not depend on the panel. It is an ordinary system service on the server; the tab names it, and the server's owner can stop it with `sudo systemctl stop` followed by that name.
+The app does not depend on the panel. It is an ordinary system service on the server; the page names it, and the server's owner can stop it with `sudo systemctl stop` followed by that name.

@@ -7,7 +7,7 @@ const chapter = {
   id: "backups",
   title: "Backups, remote copies and scheduled tasks",
   blocks: [
-    ["p",["A domain's ",["b","Advanced"]," tab holds its ",["b","Backups"],", ",["b","Scheduled tasks"]," and ",["b","Logs"],", and the malware scan (see ",["g","apps-wordpress","malware","Malware scan"],")."]],
+    ["p",["A domain's backups are in its ",["b","Backups"]," section. ",["b","Scheduled tasks"]," and ",["b","Logs"]," are in its ",["b","Advanced"]," section, and the malware scan is in ",["b","Security"]," (see ",["g","apps-wordpress","malware","Malware scan"],")."]],
     ["h",2,"backups","Taking a backup"],
     ["p",["Under ",["b","Create a new backup"],", choose:"]],
     ["ul",[[["b","Files backup"],": the website's files only;"],[["b","Database backup"],": one database linked to the domain;"],[["b","Full backup"],": the files and every linked database."]]],

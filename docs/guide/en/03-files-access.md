@@ -2,7 +2,7 @@
 id: files-access
 title: Files: file manager, FTP, SFTP and SSH
 roles: [admin, reseller, customer]
-topics: [domain.files#file-manager, domain.access#ftp-sftp]
+topics: [domain.files#file-manager, domain.files.access#ftp-sftp]
 keywords: [ftp, sftp, ssh, filezilla, upload, download, public_html, key, command line, terminal]
 ---
 
@@ -10,16 +10,16 @@ There are three ways to reach your site's files: the file manager in the panel, 
 
 ## Where to find them {#where}
 
-Open **Domains** and choose the domain. Two of its tabs are about files:
+Open **Domains**, choose the domain and open its **Files** section. It has two parts:
 
-- **Files** is the file manager.
-- **Access** turns on FTP, SFTP and SSH, and shows how to connect.
+- **File manager** works on the files in the browser.
+- **FTP, SFTP and SSH** turns on access from outside, and shows how to connect.
 
-Your website's files are in the `public_html` folder. A team member (user) sees **Files** if the customer opened it for them, but never **Access**.
+Your website's files are in the `public_html` folder. A team member (user) sees the file manager if the customer opened it for them, but never **FTP, SFTP and SSH**.
 
 ## The file manager {#file-manager}
 
-The **Files** tab lists the site's folders and files. With it you can:
+The **File manager** lists the site's folders and files. With it you can:
 
 - open a folder, and go back with **Go up**;
 - **Upload** files from your computer;
@@ -30,12 +30,12 @@ The **Files** tab lists the site's folders and files. With it you can:
 Pictures, archives and other binary files can be uploaded and downloaded, but not edited in the panel. For many files at once, FTP or SFTP is quicker.
 
 :::warning
-A deleted file is gone. Before you change or delete something important, download a copy, or take a backup under **Advanced** → **Backups** on the domain's page.
+A deleted file is gone. Before you change or delete something important, download a copy, or take a backup in the **Backups** section of the domain's page.
 :::
 
 ## FTP and SFTP {#ftp-sftp}
 
-On the **Access** tab:
+In **FTP, SFTP and SSH**:
 
 1. Turn on **File access (FTP and SFTP)**.
 2. Under **Set a password**, choose a password of 8 to 128 characters, or add an SSH key (see [SSH keys](#keys)).
@@ -47,7 +47,7 @@ The box **Connect with FileZilla** then shows your server name, user name and fo
 CelikPanel does not store your password and cannot show it again. If you forget it, set a new one in the same place.
 
 :::note
-The first time you connect over FTP, FileZilla may ask whether to trust the server's certificate. Trust it only if the SHA-256 fingerprint is the one shown on the **Access** tab.
+The first time you connect over FTP, FileZilla may ask whether to trust the server's certificate. Trust it only if the SHA-256 fingerprint is the one shown in **FTP, SFTP and SSH**.
 :::
 
 ## SSH keys {#keys}
@@ -58,7 +58,7 @@ A key is safer than a password. Under **SSH keys**, paste one public key, the co
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA… you@laptop
 ```
 
-Never paste the private key, the file without `.pub`. Some servers accept only keys for SFTP and SSH; the **Access** tab tells you when that is the case, and FTP then still uses the password.
+Never paste the private key, the file without `.pub`. Some servers accept only keys for SFTP and SSH; **FTP, SFTP and SSH** tells you when that is the case, and FTP then still uses the password.
 
 ## The command line (SSH) {#ssh}
 
@@ -68,25 +68,25 @@ Never paste the private key, the file without `.pub`. Some servers accept only k
 ssh -p 22 user@server.example.com
 ```
 
-Use the host, port and user name the **Access** tab shows; they may differ from this example. If **Command line (SSH)** is not part of your subscription's plan, the tab says so. File access is not affected, and your provider can add it.
+Use the host, port and user name **FTP, SFTP and SSH** shows; they may differ from this example. If **Command line (SSH)** is not part of your subscription's plan, the page says so. File access is not affected, and your provider can add it.
 
 ## When SSH cannot be turned on yet {#ssh-tools}
 
-The command line takes its tools from the server. If the server lacks some of them, the **Access** tab says which ones, and the SSH option stays hidden until they are there. FTP and SFTP keep working meanwhile.
+The command line takes its tools from the server. If the server lacks some of them, **FTP, SFTP and SSH** says which ones, and the SSH option stays hidden until they are there. FTP and SFTP keep working meanwhile.
 
-- **Customers:** the server administrator has to install the tools. Ask your provider; the option appears on the tab once they are installed.
+- **Customers:** the server administrator has to install the tools. Ask your provider; the option appears there once they are installed.
 - **The administrator** sees the missing tools with their official package names and an **Install the tools** button. The option appears as soon as they are installed.
 
 An account that already had the command line keeps it meanwhile, without the missing tools.
 
 ## Common messages {#messages}
 
-| The tab says | What to do |
+| The page says | What to do |
 |---|---|
 | File access is not part of this subscription's plan | Use the file manager, or ask your provider to add file access. |
 | This subscription is not active | Access can only be closed now. Your provider renews the subscription. |
 | This server accepts only SSH keys | Add a key under **SSH keys**. FTP still uses your password. |
 | FTP is not installed on this server | Use SFTP; it works with the same user name and password. |
-| This domain has no website files | Give the domain a website on the **Hosting** tab first. |
+| This domain has no website files | Give the domain a website in its **Site** section first. |
 
 For any other message, read it as [Reading a state and getting help](guide:reading-states#problem) explains: it says who has to act and what to do next.

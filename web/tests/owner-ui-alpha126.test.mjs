@@ -83,8 +83,8 @@ test('a website whose traffic is not counted is named, with the step and no file
   assert.match(card, /status\.traffic\.unknown_sites_more/);
   assert.match(card, /navigate\(`\/domains\/\$\{encodeURIComponent\(domain\)\}\?tab=config`\)/);
   assert.match(card, /<summary className="cursor-pointer">\{t\('common\.technicalDetails'\)\}<\/summary>/);
-  const detail = read('components/DomainDetail.tsx');
-  assert.match(detail, /requestedTab === 'ssl' \|\| requestedTab === 'config'/);
+  // alpha.132: ?tab=config opens the configuration file in Advanced.
+  assert.match(read('components/domain/sections.ts'), /config: \{ section: 'advanced', part: 'config' \},/);
   for (const locale of ['en', 'tr']) {
     const copy = readFileSync(new URL(`../src/i18n/screens/planUsage/${locale}.ts`, import.meta.url), 'utf8');
     for (const key of ['usage.status.trafficUnknown', 'usage.status.trafficUnknownOne', 'usage.status.trafficSite', 'usage.status.trafficFix.vhost_kept', 'usage.status.trafficFix.include_missing', 'usage.status.trafficFix.format_file_kept', 'usage.status.trafficFix.log_unreadable', 'usage.status.trafficFix.other', 'usage.measured.body', 'usage.measured.todo']) {

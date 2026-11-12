@@ -9,7 +9,7 @@ const chapter = {
   blocks: [
     ["p","Yedekler site başına alınır. Sunucunun kendi diskindeki kopya, sunucu kaybolursa onunla birlikte gider; bu yüzden kopyaları başka bir yere de gönderin."],
     ["h",2,"local","Sunucuda"],
-    ["p",["Her alan adının ",["b","Gelişmiş"]," sekmesinde ",["b","Yedekler"]," bölümü vardır: dosyalar, veritabanları ya da ikisi, elle ya da zamanlanmış. Geri yükleme önce bir güvenlik yedeği alır. Panelde sunucunun tamamının tek bir yedeği yoktur; her siteyi uzak hedefe giden bir tüm siteler zamanlamasıyla koruyun, sistemin kendisi için sağlayıcınızın anlık görüntülerini kullanın."]],
+    ["p",["Her alan adının sayfasında bir ",["b","Yedekler"]," bölümü vardır: dosyalar, veritabanları ya da ikisi, elle ya da zamanlanmış. Geri yükleme önce bir güvenlik yedeği alır. Panelde sunucunun tamamının tek bir yedeği yoktur; her siteyi uzak hedefe giden bir tüm siteler zamanlamasıyla koruyun, sistemin kendisi için sağlayıcınızın anlık görüntülerini kullanın."]],
     ["h",2,"destination","Uzak hedefler"],
     ["p",[["b","Ayarlar"]," sayfasının ",["b","Uzak yedekler"]," sekmesinde ",["b","Hedef ekle"]," düğmesine basın: HTTPS üzerinden ",["b","S3 uyumlu depolama"]," ya da parmak izini onayladığınız bir ",["b","SFTP sunucusu"],". Bir parola cümlesi seçin ya da ",["b","Güçlü bir parola cümlesi üret"]," düğmesini kullanın. ",["b","Dene ve kaydet"],", kaydetmeden önce bir deneme dosyası yazar, okur ve siler. ",["b","Hesaplara sun"],", hedefi bayilerin ve müşterilerin kullanımına açar."]],
     ["warn",[["p","Parola cümlesini bir yere yazın ve bu sunucudan uzakta saklayın. O olmadan yedekleri kimse açamaz; sonradan değiştirilemez ve bir daha gösterilmez."]]],

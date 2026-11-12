@@ -7,7 +7,7 @@ const chapter = {
   id: "mail",
   title: "E-posta ve web postası",
   blocks: [
-    ["p",["Posta kutuları bir alan adına aittir. Alan adını, sonra ",["b","E-posta"]," sekmesini açın. Sekme, sunucuda posta hizmeti varsa ve planınız e-postayı kapsıyorsa görünür."]],
+    ["p",["Posta kutuları bir alan adına aittir. Alan adını, sonra ",["b","E-posta"]," bölümünü açın. Bölüm, sunucuda posta hizmeti varsa görünür. Planınız e-postayı kapsamıyorsa soluk görünür ve kimin ekleyebileceğini söyler."]],
     ["h",2,"mailboxes","Posta kutuları"],
     ["p",[["b","Hesaplar"]," sekmesinde ",["b","Adres oluştur"]," düğmesine basın:"]],
     ["ol",[[["c","@"]," işaretinden önceki kısmı ",["b","Kullanıcı adı"]," olarak yazın."],["Bir ",["b","Parola"]," belirleyin."],["Posta kutusunun boyutunu ",["b","Kota (MB)"]," olarak girin. 1024 ile başlar."],[["b","Oluştur"]," düğmesine basın."]]],

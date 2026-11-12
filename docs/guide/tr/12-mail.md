@@ -6,7 +6,7 @@ topics: [domain.mail#mailboxes]
 keywords: [e-posta, posta kutusu, kota, dolu, yönlendirme, yönlendirici, web postası, webmail, roundcube, imap, smtp, outlook, thunderbird, otomatik yanıt, catch-all]
 ---
 
-Posta kutuları bir alan adına aittir. Alan adını, sonra **E-posta** sekmesini açın. Sekme, sunucuda posta hizmeti varsa ve planınız e-postayı kapsıyorsa görünür.
+Posta kutuları bir alan adına aittir. Alan adını, sonra **E-posta** bölümünü açın. Bölüm, sunucuda posta hizmeti varsa görünür. Planınız e-postayı kapsamıyorsa soluk görünür ve kimin ekleyebileceğini söyler.
 
 ## Posta kutuları {#mailboxes}
 

@@ -8,7 +8,6 @@
 // (Erişim sekmesi) ve ret kodları.
 
 export const enFileAccessScreens = {
-    'fileAccess.tab': 'Access',
     'fileAccess.title': 'FTP, SFTP and SSH',
     'fileAccess.desc': 'Connect to this site’s files with a program such as FileZilla. You sign in as the site’s own account and see only this subscription’s folder; the rest of the server stays closed.',
     'fileAccess.checking': 'Reading this site’s access from the server…',

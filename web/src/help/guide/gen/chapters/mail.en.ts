@@ -7,7 +7,7 @@ const chapter = {
   id: "mail",
   title: "Mail and webmail",
   blocks: [
-    ["p",["Mailboxes belong to a domain. Open the domain, then its ",["b","Mail"]," tab. The tab appears when the server has a mail service and your plan includes mail."]],
+    ["p",["Mailboxes belong to a domain. Open the domain, then its ",["b","Mail"]," section. The section is there when the server has a mail service. If your plan does not include mail, it is shown faded and says who can add it."]],
     ["h",2,"mailboxes","Mailboxes"],
     ["p",["On ",["b","Accounts"],", press ",["b","Create address"],":"]],
     ["ol",[["Type the ",["b","Username"],", the part before ",["c","@"],"."],["Choose a ",["b","Password"],"."],["Set the ",["b","Quota (MB)"],", the mailbox's size. It starts at 1024."],["Press ",["b","Create"],"."]]],

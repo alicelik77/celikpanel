@@ -4,7 +4,8 @@ import test from 'node:test';
 import { englishCatalogue, turkishCatalogue } from './locale-catalogue.mjs';
 
 const mailSource = readFileSync(new URL('../src/components/DomainMailManager.tsx', import.meta.url), 'utf8');
-const detailSource = readFileSync(new URL('../src/components/DomainDetail.tsx', import.meta.url), 'utf8');
+// alpha.132: the mail screen is the Mail section of a domain's page.
+const detailSource = readFileSync(new URL('../src/components/domain/sections/MailSection.tsx', import.meta.url), 'utf8');
 const enSource = englishCatalogue;
 const trSource = turkishCatalogue;
 

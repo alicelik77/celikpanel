@@ -24,7 +24,7 @@
 <p class="guide-audience">For administrators</p>
 <p>Backups are taken per site. A copy on the server's own disk does not survive losing the server, so send copies elsewhere too.</p>
 <h2 id="local">On the server</h2>
-<p>Each domain has <strong>Backups</strong> on its <strong>Advanced</strong> tab: files, databases or both, by hand or on a schedule. A restore first takes a safety backup. There is no whole-server backup in the panel; cover every site with an every-site schedule to a remote destination, and use your provider's snapshots for the system itself.</p>
+<p>Each domain has a <strong>Backups</strong> section on its page: files, databases or both, by hand or on a schedule. A restore first takes a safety backup. There is no whole-server backup in the panel; cover every site with an every-site schedule to a remote destination, and use your provider's snapshots for the system itself.</p>
 <h2 id="destination">Remote destinations</h2>
 <p>In <strong>Settings</strong>, tab <strong>Remote backups</strong>, press <strong>Add a destination</strong>: <strong>S3-compatible storage</strong> over HTTPS, or an <strong>SFTP server</strong> after you confirm its fingerprint. Choose a passphrase or <strong>Generate a strong passphrase</strong>. <strong>Test and save</strong> writes, reads and deletes a test file before saving. <strong>Offer to accounts</strong> lets resellers and customers use it.</p>
 <aside class="guide-callout guide-warning"><p class="guide-callout-label">Warning</p><p>Write the passphrase down and keep it away from this server. Without it nobody can open the backups; it cannot be changed and is never shown again.</p></aside>

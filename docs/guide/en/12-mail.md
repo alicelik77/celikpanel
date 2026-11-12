@@ -6,7 +6,7 @@ topics: [domain.mail#mailboxes]
 keywords: [email, mailbox, quota, full, forward, forwarder, webmail, roundcube, imap, smtp, outlook, thunderbird, out of office, catch-all]
 ---
 
-Mailboxes belong to a domain. Open the domain, then its **Mail** tab. The tab appears when the server has a mail service and your plan includes mail.
+Mailboxes belong to a domain. Open the domain, then its **Mail** section. The section is there when the server has a mail service. If your plan does not include mail, it is shown faded and says who can add it.
 
 ## Mailboxes {#mailboxes}
 

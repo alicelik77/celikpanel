@@ -30,7 +30,7 @@ Every file starts with exactly these five fields between two `---` lines:
 id: files-access
 title: Files: file manager, FTP, SFTP and SSH
 roles: [customer]
-topics: [domain.files#file-manager, domain.access#ftp-sftp]
+topics: [domain.files#file-manager, domain.files.access#ftp-sftp]
 keywords: [ftp, sftp, ssh, filezilla, upload, key]
 ---
 ```
@@ -48,9 +48,10 @@ claims the page's topic, at its anchor. These topics exist today (from
 `web/src/help/guide/routes.ts`); a page whose topic no chapter claims opens the first
 chapter of the reader's guide and says that the page has no chapter yet:
 
-`dashboard`, `domains`, `domain.overview`, `domain.hosting`, `domain.dns`,
-`domain.mail`, `domain.databases`, `domain.apps`, `domain.ai`, `domain.files`,
-`domain.access`, `domain.advanced`, `dns.infrastructure`, `databases`, `users`,
+`dashboard`, `domains`, `domain.overview`, `domain.site`, `domain.site.apps`,
+`domain.site.ai`, `domain.files`, `domain.files.access`, `domain.mail`,
+`domain.databases`, `domain.dns`, `domain.security`, `domain.security.malware`,
+`domain.backups`, `domain.advanced`, `dns.infrastructure`, `databases`, `users`,
 `team`, `store`, `vpn`, `components`, `server-setup`, `dns.servers`, `monitoring`,
 `security`, `maintenance`, `import`, `audit`, `settings`, `account`, `help`.
 

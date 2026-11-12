@@ -352,12 +352,14 @@ test('menus and tabs follow what the server says is closed', async () => {
   assert.ok(ids({ accountType: 'account' }).includes('databases'), 'an older server that does not say keeps the page');
   assert.ok(nav.navItemsForRole('admin', { databases: false }).some((item) => item.id === 'databases'));
   assert.match(source('lib/api.ts'), /databases: rawFeatures\.databases !== false,/);
-  const detail = source('components/DomainDetail.tsx');
-  for (const [permission, where] of [['mail', "canView('mail') && open('mail')"], ['databases', "canView('databases') && open('databases')"],
-    ['cron', "canView('cron') && open('cron')"], ['backups', "canView('backups') && open('backups')"], ['file_manager', "open('file_manager')"],
-    ['app_installer', "open('app_installer')"], ['site_protect_redirects', "open('site_protect_redirects')"], ['dns_edit', "readOnly={readOnly || !open('dns_edit')}"],
+  // alpha.132: the rights decide in the registry of a domain's sections and
+  // in the section files that hand them to their screens.
+  const detail = ['domain/sections.ts', 'domain/sections/DnsSection.tsx', 'domain/sections/SecuritySection.tsx'].map((file) => source(`components/${file}`)).join('\n');
+  for (const [permission, where] of [['mail', "v.view('mail') && v.open('mail')"], ['databases', "v.view('databases') && v.open('databases')"],
+    ['cron', "v.view('cron') && v.open('cron')"], ['backups', "v.view('backups') && v.open('backups')"], ['file_manager', "v.open('file_manager')"],
+    ['app_installer', "v.open('app_installer')"], ['site_protect_redirects', "v.open('site_protect_redirects')"], ['dns_edit', "readOnly={readOnly || !open('dns_edit')}"],
     ['dnssec', "dnssecHidden={!open('dnssec')}"], ['ssl_custom', "customOpen={open('ssl_custom')}"], ['ssl_acme', "acmeOpen={open('ssl_acme')}"],
-    ['file_access', "(open('file_access') || open('ssh'))"]]) {
+    ['file_access', "(v.open('file_access') || v.open('ssh'))"]]) {
     assert.ok(detail.includes(where), `${permission}: ${where}`);
   }
 });

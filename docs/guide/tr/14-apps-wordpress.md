@@ -2,19 +2,19 @@
 id: apps-wordpress
 title: Uygulamalar, WordPress araçları ve zararlı yazılım taraması
 roles: [admin, reseller, customer]
-topics: [domain.apps#catalogue]
+topics: [domain.site.apps#catalogue, domain.security.malware#malware]
 keywords: [wordpress, prestashop, nextcloud, drupal, joomla, mediawiki, kurulum, eklenti, güncelleme, deneme sitesi, zararlı yazılım, virüs, clamav, karantina]
 ---
 
-Bir PHP sitesinin **Uygulamalar** sekmesi hazır bir uygulama kurar ve WordPress için araçlar sunar. Zararlı yazılım taraması **Gelişmiş** sekmesindedir.
+Bir PHP sitesinin **Site** bölümündeki **Uygulamalar** parçası hazır bir uygulama kurar ve WordPress için araçlar sunar. Zararlı yazılım taraması **Güvenlik** bölümündedir.
 
 ## Uygulama kurmak {#catalogue}
 
 Katalogda WordPress, PrestaShop, Nextcloud, Drupal, Joomla ve MediaWiki bulunabilir; hangilerinin sunulacağına yönetici karar verir. Her biri resmî sürümdür ve açılmadan önce doğrulanır.
 
-Bir sitede tek uygulama olur ve yalnız boş siteye kurulur; böylece hiçbir dosyanızın üzerine yazılmaz. Sekme her uygulamanın altında sitenin hazır olup olmadığını ya da neyin eksik olduğunu yazar:
+Bir sitede tek uygulama olur ve yalnız boş siteye kurulur; böylece hiçbir dosyanızın üzerine yazılmaz. Sayfa her uygulamanın altında sitenin hazır olup olmadığını ya da neyin eksik olduğunu yazar:
 
-- **PHP … gerekir**: sitenin PHP sürümünü **Barındırma** sekmesinde **PHP** bölümünden değiştirin.
+- **PHP … gerekir**: sitenin PHP sürümünü aynı **Site** bölümündeki **PHP ayarları** parçasından değiştirin.
 - PHP uzantıları eksik: adı yazılan paketleri yönetici kurar.
 - Sitenin genel klasöründe zaten dosyalar var: onları taşıyın ya da silin veya `magaza.example.com` gibi yeni bir alt alan adı kullanın.
 - Bu sitede kullanılamaz: sağlayıcınızdan uygulamayı sunmasını isteyin.
@@ -23,7 +23,7 @@ Bir sitede tek uygulama olur ve yalnız boş siteye kurulur; böylece hiçbir do
 
 ## Bir kez gösterilen yönetici parolası {#password-once}
 
-Kurulum bitince sekme uygulamanın **Yönetici** ve **Parola** bilgisini gösterir. Parolayı hemen bir yere kaydedin, sonra **Kaydettim** düğmesine basın: CelikPanel ondan sonra parolayı saklamaz. **Yönetimi aç** uygulamanın giriş sayfasını açar. Parolayı görmeden sayfa kapandıysa **Parolayı göster (bir kez)** onu bir kez daha gösterir.
+Kurulum bitince sayfa uygulamanın **Yönetici** ve **Parola** bilgisini gösterir. Parolayı hemen bir yere kaydedin, sonra **Kaydettim** düğmesine basın: CelikPanel ondan sonra parolayı saklamaz. **Yönetimi aç** uygulamanın giriş sayfasını açar. Parolayı görmeden sayfa kapandıysa **Parolayı göster (bir kez)** onu bir kez daha gösterir.
 
 WordPress farklıdır: kendi kurulum sayfasını açar; sitenin adını ve yöneticinizi orada belirlersiniz.
 
@@ -43,7 +43,7 @@ WordPress farklıdır: kendi kurulum sayfasını açar; sitenin adını ve yöne
 
 - **… sürümüne güncelle** WordPress'i, **Seçili eklentileri güncelle** işaretli eklentileri günceller.
 - Her güncellemeden önce yedek alınır. Güncelleme başarısız olursa site eski hâline getirilir.
-- Sonuç bilinmiyorsa siteyi açın. Çalışmıyorsa iletide adı geçen yedeği **Gelişmiş** sekmesinde **Yedekler** bölümünden geri yükleyin.
+- Sonuç bilinmiyorsa siteyi açın. Çalışmıyorsa iletide adı geçen yedeği **Yedekler** bölümünden geri yükleyin.
 - Temaları yedek aldıktan sonra WordPress'in kendi yönetim ekranından güncelleyin. wordpress.org temalar için sağlama değeri yayımlamadığından CelikPanel temaları kurmaz.
 - **WordPress’in güvenlik ve bakım sürümlerini kendiliğinden kur** günde bir kez bakar. Büyük sürümler her zaman sizin seçiminizdir.
 
@@ -51,7 +51,7 @@ WordPress farklıdır: kendi kurulum sayfasını açar; sitenin adını ve yöne
 
 ## Zararlı yazılım taraması {#malware}
 
-**Gelişmiş** sekmesindeki **Zararlı yazılım taraması** sitenin dosyalarını ClamAV ile tarar. **Bu siteyi tara** ya da **Aboneliğin tüm sitelerini tara** düğmesine basın. Sunucuda bir seferde tek tarama, düşük öncelikle çalışır; sayfa ilerlemeyi gösterir.
+**Güvenlik** bölümündeki **Zararlı yazılım taraması** sitenin dosyalarını ClamAV ile tarar. **Bu siteyi tara** ya da **Aboneliğin tüm sitelerini tara** düğmesine basın. Sunucuda bir seferde tek tarama, düşük öncelikle çalışır; sayfa ilerlemeyi gösterir.
 
 Hiçbir şey kendiliğinden silinmez. Her virüslü dosya **Karantinaya al** ile taşınabilir, **Geri koy** ile geri getirilebilir ya da **Kalıcı olarak sil** ile silinebilir. Bir şey bulunduysa sitenin parolalarını değiştirin ve yazılımını güncelleyin.
 

@@ -9,7 +9,7 @@ const chapter = {
   blocks: [
     ["p","Backups are taken per site. A copy on the server's own disk does not survive losing the server, so send copies elsewhere too."],
     ["h",2,"local","On the server"],
-    ["p",["Each domain has ",["b","Backups"]," on its ",["b","Advanced"]," tab: files, databases or both, by hand or on a schedule. A restore first takes a safety backup. There is no whole-server backup in the panel; cover every site with an every-site schedule to a remote destination, and use your provider's snapshots for the system itself."]],
+    ["p",["Each domain has a ",["b","Backups"]," section on its page: files, databases or both, by hand or on a schedule. A restore first takes a safety backup. There is no whole-server backup in the panel; cover every site with an every-site schedule to a remote destination, and use your provider's snapshots for the system itself."]],
     ["h",2,"destination","Remote destinations"],
     ["p",["In ",["b","Settings"],", tab ",["b","Remote backups"],", press ",["b","Add a destination"],": ",["b","S3-compatible storage"]," over HTTPS, or an ",["b","SFTP server"]," after you confirm its fingerprint. Choose a passphrase or ",["b","Generate a strong passphrase"],". ",["b","Test and save"]," writes, reads and deletes a test file before saving. ",["b","Offer to accounts"]," lets resellers and customers use it."]],
     ["warn",[["p","Write the passphrase down and keep it away from this server. Without it nobody can open the backups; it cannot be changed and is never shown again."]]],

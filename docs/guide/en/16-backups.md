@@ -2,11 +2,11 @@
 id: backups
 title: Backups, remote copies and scheduled tasks
 roles: [admin, reseller, customer]
-topics: [domain.advanced#backups]
+topics: [domain.backups#backups, domain.advanced#cron-logs]
 keywords: [backup, restore, remote, s3, sftp, backblaze, wasabi, gpg, passphrase, cron, scheduled task, logs]
 ---
 
-A domain's **Advanced** tab holds its **Backups**, **Scheduled tasks** and **Logs**, and the malware scan (see [Malware scan](guide:apps-wordpress#malware)).
+A domain's backups are in its **Backups** section. **Scheduled tasks** and **Logs** are in its **Advanced** section, and the malware scan is in **Security** (see [Malware scan](guide:apps-wordpress#malware)).
 
 ## Taking a backup {#backups}
 

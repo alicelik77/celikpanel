@@ -30,7 +30,7 @@ Erişim alan alan verilir: **Dosyalar**, **Veritabanları**, **E-posta**, **DNS*
 
 İzinler birleşir: verilenlerin en güçlüsü geçerlidir. Yalnız görüntüleyebilen üye sayfalarda "Salt görüntüleme yetkisi" notunu görür ve hiçbir şeyi değiştiremez.
 
-Bazı bölümler ekip üyelerine hiç açılmaz: alan adının **Genel Bakış** sekmesi, **Erişim** (FTP, SFTP ve SSH), **Uygulamalar**, **Yapay zekâ ve otomasyon**, zararlı yazılım taraması, WordPress araçları ve uzak yedek hedefleri.
+Bazı bölümler ekip üyelerine hiç açılmaz: alan adının **Genel Bakış** bölümü, **FTP, SFTP ve SSH**, **Uygulamalar**, **Yapay zekâ ve otomasyon**, **Programlar**, zararlı yazılım taraması, WordPress araçları ve uzak yedek hedefleri. Ekip üyesi bir alan adının yalnız kendisine açılan bölümlerini görür.
 
 ## Üyeyi değiştirmek ya da kaldırmak {#changing}
 
