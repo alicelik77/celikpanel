@@ -140,7 +140,7 @@ test('a change whose one-time result is not kept says what was made and what to 
   // One press of Enter while a create is running, or while its result is being read, creates nothing.
   assert.match(vpn, /if \(busyAction !== null \|\| answer\.holding\) return;\s+setBusyAction\('create'\);/);
   // The engine account's password is read with "Show password": that answer is the success it was.
-  assert.match(read('../src/components/DatabaseAccountStrip.tsx'), /problem\.code === 'REQUEST_COMPLETED_RESULT_NOT_RETAINED' && !problem\.reason/);
+  assert.match(read('../src/components/DatabaseRemoteServerPanel.tsx'), /problem\.code === 'REQUEST_COMPLETED_RESULT_NOT_RETAINED' && !problem\.reason/);
 });
 
 test('a configuration reload whose result is unknown is not a failure, and the line is labelled by its source', () => {

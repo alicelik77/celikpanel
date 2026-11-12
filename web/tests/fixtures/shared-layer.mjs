@@ -39,9 +39,10 @@ const alpha128LazyParts = {
   './ServerSettingLimits': ['ServerSettingLimits', 'PasswordLevelCard'],
   // alpha.130: the Offered tab's applications are their own chunk too.
   './OfferedAppsSection': ['OfferedAppsSection'],
-  // alpha.130: the administrator's switch of connections from outside on the
-  // Databases page reads its own address (its own chunk).
-  './DatabaseRemoteServerPanel': ['DatabaseRemoteServerPanel'],
+  // alpha.130: the administrator's switch of connections from outside reads
+  // its own address (its own chunk; on the Security page since alpha.133,
+  // with CelikPanel's own account on the MariaDB and PostgreSQL pages).
+  './DatabaseRemoteServerPanel': ['DatabaseRemoteServerPanel', 'EngineAccountBlock'],
 };
 
 export function compileSource(path, resolve) {

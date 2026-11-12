@@ -67,6 +67,9 @@ const stubbedComponents = [
   'DatabaseUsers', 'DatabaseUserPassword', 'EngineMark',
   // alpha.129: connections from outside read their own address when opened.
   'DatabaseRemoteAccess',
+  // alpha.133: CelikPanel's account on an engine belongs to the MariaDB and
+  // PostgreSQL pages (tests/database-server-alpha133.test.mjs).
+  'DatabaseAccountStrip',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.

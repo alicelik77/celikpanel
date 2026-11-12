@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
-import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 
 // R-065. R-057 gave the panel an account of its own on a database engine so it
 // never has to touch the operator's root. That is only true for the operator
@@ -18,27 +17,37 @@ import { englishScreens, turkishScreens } from './locale-catalogue.mjs';
 // sozdur ve hicbir seyin denetlemedigi boyle bir soz, sessizce dogru olmaktan
 // cikan turdendir.
 const strip = readFileSync(
-  new URL('../src/components/DatabaseAccountStrip.tsx', import.meta.url),
+  new URL('../src/components/DatabaseRemoteServerPanel.tsx', import.meta.url),
   'utf8',
 );
-const en = englishScreens;
-const tr = turkishScreens;
+// alpha.133: the account lives with Security › Open to the outside in one lazily
+// loaded part; its words are that part's route-scoped copy (src/i18n/dbServer).
+// alpha.133: hesabın metni o parçanın kendi kopyasındadır.
+const en = readFileSync(new URL('../src/i18n/dbServer/en.ts', import.meta.url), 'utf8');
+const tr = readFileSync(new URL('../src/i18n/dbServer/tr.ts', import.meta.url), 'utf8');
+const line = (catalogue, key) => catalogue.split('\n').find((l) => l.includes(`'${key}'`));
+
+// A tenant has nothing to do with the account the panel connects as, and the
+// server list does not even tell them its name. The block must not render
+// controls whose every action would be refused.
+// Bir kiracinin, panelin bagli oldugu hesapla isi yoktur.
+test('the account is administrator business on the screen as well as in the panel', () => {
+  assert.match(
+    strip,
+    /export function EngineAccountBlock[\s\S]{0,200}?if \(role !== 'admin'\) return null;/,
+    'the account block is rendered without checking that the caller is an administrator',
+  );
+});
 
 // The panel can only open an account through the machine's own privileged
-// door, which exists on the machine the agent runs on. Offering the button for
-// an engine somewhere else would be offering something that cannot work.
+// door, which exists on the machine the agent runs on. A component page is
+// this machine's service, so only this machine's records are shown there.
 // Panel, hesabi yalnizca makinenin kendi ayricalikli kapisindan acabilir.
 test('an engine on another machine is not offered a button that cannot work', () => {
-  const missingState = strip.slice(strip.indexOf('if (!account)'), strip.indexOf('return (\n        <>'));
   assert.match(
-    missingState,
-    /\{server\.is_local && \(\s*<Button/,
-    'the open-account button is offered without checking the engine is on this machine',
-  );
-  assert.match(
-    missingState,
-    /server\.is_local\s*\?\s*'databases\.account\.missingHint'\s*:\s*'databases\.account\.missingRemote'/,
-    'a remote engine is not told what to do instead',
+    strip,
+    /filter\(\(s\) => s\.is_local && engineOfServer\(s\.type_name\) === engine\)/,
+    'the component page lists a record of an engine on another machine',
   );
 });
 
@@ -49,19 +58,13 @@ test('an engine on another machine is not offered a button that cannot work', ()
 test('the operator is told that opening the password is recorded, because it is', () => {
   assert.match(
     strip,
-    /description=\{t\('databases\.account\.passwordRecorded'\)\}/,
+    /description=\{t\('dbacc\.passwordRecorded'\)\}/,
     'the password dialogue does not say that reading it is recorded',
   );
   for (const [name, catalogue] of [['English', en], ['Turkish', tr]]) {
-    const line = catalogue
-      .split('\n')
-      .find((l) => l.includes("'databases.account.passwordRecorded'"));
-    assert.ok(line, `the ${name} catalogue has no sentence about the recording`);
-    assert.match(
-      line,
-      /audit|denetim/i,
-      `the ${name} sentence does not name the record it is about`,
-    );
+    for (const key of ['dbacc.passwordRecorded', 'dbacc.recorded']) {
+      assert.match(line(catalogue, key) ?? '', /audit|denetim/i, `the ${name} ${key} does not name the record it is about`);
+    }
   }
 });
 
@@ -91,27 +94,25 @@ test('the password is drawn only inside the dialogue that asking opens', () => {
 // is not what is being removed.
 // Hesabi kaldirmak, panelin burada veritabani yonetmesini durdurur.
 test('removing the account says what stops and what does not', () => {
+  assert.match(strip, /lost: \[t\('dbacc\.removeLostAdd'\), t\('dbacc\.removeLostUsers'\)\]/);
+  assert.match(strip, /kept: \[t\('dbacc\.removeKeptData'\), t\('dbacc\.removeKeptSites'\), t\('dbacc\.removeKeptOwn'\)\]/);
   for (const [name, catalogue, mustSay] of [
-    ['English', en, [/stop working|will not be able/i, /your own access/i]],
-    ['Turkish', tr, [/çalışmayacak/i, /kendi erişiminiz/i]],
+    ['English', en, [['dbacc.removeLostAdd', /adding and deleting databases/i], ['dbacc.removeKeptOwn', /your own access/i]]],
+    ['Turkish', tr, [['dbacc.removeLostAdd', /veritabanı ekleme ve silme/i], ['dbacc.removeKeptOwn', /kendi erişiminiz/i]]],
   ]) {
-    const line = catalogue
-      .split('\n')
-      .find((l) => l.includes("'databases.account.confirmRemove'"));
-    assert.ok(line, `the ${name} catalogue has no confirmation for removing the account`);
-    for (const pattern of mustSay) {
-      assert.match(line, pattern, `the ${name} confirmation does not say ${pattern}`);
+    for (const [key, pattern] of mustSay) {
+      assert.match(line(catalogue, key) ?? '', pattern, `the ${name} ${key} does not say ${pattern}`);
     }
   }
 });
 
-// Every string the strip reaches for exists in both catalogues. A missing key
+// Every string the block reaches for exists in both catalogues. A missing key
 // renders as the key, and a screen about a credential is a bad place to find
 // that out.
 // Seridin kullandigi her dizge iki katalogda da vardir.
 test('every sentence the strip uses exists in both languages', () => {
-  const keys = [...strip.matchAll(/'(databases\.account\.[a-zA-Z]+)'/g)].map((m) => m[1]);
-  assert.ok(keys.length >= 12, `the strip uses only ${keys.length} of its own sentences`);
+  const keys = [...strip.matchAll(/'(dbacc\.[a-zA-Z]+)'/g)].map((m) => m[1]);
+  assert.ok(keys.length >= 20, `the block uses only ${keys.length} of its own sentences`);
   for (const key of new Set(keys)) {
     assert.ok(en.includes(`'${key}'`), `the English catalogue is missing ${key}`);
     assert.ok(tr.includes(`'${key}'`), `the Turkish catalogue is missing ${key}`);

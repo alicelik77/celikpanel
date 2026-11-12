@@ -245,7 +245,7 @@ test('a notice never says "nothing was sent a second time" for a change that was
     ['DomainBackupManager.tsx', /answer\.send\(`\/api\/v1\/domains\/\$\{domainId\}\/backups`/],
     ['DomainSSLSettings.tsx', /issueAnswer\.send\(`\/api\/v1\/domains\/\$\{domainId\}\/ssl\/letsencrypt`/],
     ['DomainDatabaseManager.tsx', /answer\.send\(`\/api\/v1\/domains\/\$\{domainId\}\/databases`/],
-    ['DatabaseAccountStrip.tsx', /answer\.send\(`\$\{API_BASE\}\/database-servers\/\$\{server\.id\}\/admin-account`, \{\s+method: 'POST'/],
+    ['DatabaseRemoteServerPanel.tsx', /answer\.send\(`\/api\/v1\/database-servers\/\$\{server\.id\}\/admin-account`, \{\s+method: 'POST'/],
     ['VPNPage.tsx', /answer\.send\('\/api\/v1\/vpn\/peers'/],
     ['ImportPage.tsx', /await unansweredCause\('POST', '\/api\/v1\/import\/cpanel\/apply', res\)/],
   ]) assert.match(read(`../src/components/${file}`), pattern, `${file} sends its identified change around the shared lost-answer handling`);

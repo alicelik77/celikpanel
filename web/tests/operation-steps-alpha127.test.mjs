@@ -295,7 +295,7 @@ test('the other confirmed changes follow the server steps', () => {
         ['components/DomainDNSManager.tsx', "'dns'"], ['components/PowerDNSManagement.tsx', "'pdns'"], ['components/PHPExtendedConfig.tsx', "'phpIni'"],
         ['components/HostingTypePanel.tsx', "'hosting'"], ['components/ServiceShell.tsx', "'service'"], ['components/DomainMalwareScan.tsx', "'malware'"],
         ['components/databases/DatabasesPage.tsx', "'dbDelete'"], ['components/DomainDatabaseManager.tsx', "'dbDelete'"],
-        ['components/DatabaseAccountStrip.tsx', "'adminRemove'"], ['components/UsersPage.tsx', "'userDelete'"],
+        ['components/DatabaseRemoteServerPanel.tsx', "'adminRemove'"], ['components/UsersPage.tsx', "'userDelete'"],
     ]) {
         const text = source(path);
         assert.ok(text.includes(`flowSteps(t, ${flow}`) && text.includes('sendWithSteps(report'), `${path} does not follow ${flow}`);
