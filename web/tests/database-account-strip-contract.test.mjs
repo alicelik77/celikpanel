@@ -21,24 +21,8 @@ const strip = readFileSync(
   new URL('../src/components/DatabaseAccountStrip.tsx', import.meta.url),
   'utf8',
 );
-const screen = readFileSync(
-  new URL('../src/components/DatabaseManagementV2.tsx', import.meta.url),
-  'utf8',
-);
 const en = englishScreens;
 const tr = turkishScreens;
-
-// A tenant has nothing to do with the account the panel connects as, and the
-// server list does not even tell them its name. The screen must not render a
-// strip whose every control would be refused.
-// Bir kiracinin, panelin bagli oldugu hesapla isi yoktur.
-test('the account is administrator business on the screen as well as in the panel', () => {
-  assert.match(
-    screen,
-    /\{selectedServer && isAdmin && \(\s*<DatabaseAccountStrip/,
-    'the account strip is rendered without checking that the caller is an administrator',
-  );
-});
 
 // The panel can only open an account through the machine's own privileged
 // door, which exists on the machine the agent runs on. Offering the button for

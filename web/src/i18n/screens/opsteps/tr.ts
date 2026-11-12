@@ -100,8 +100,6 @@ export const trOpstepsScreens: Record<OpstepsScreenKey, string> = {
 
     'opstep.dbDelete.check': 'Veritabanı denetleniyor',
     'opstep.dbDelete.delete': '{name} veritabanı sunucusunda siliniyor',
-    'opstep.dbUserDelete.check': 'Veritabanı kullanıcısı denetleniyor',
-    'opstep.dbUserDelete.delete': '{name} kullanıcısı veritabanı sunucusunda siliniyor',
     'opstep.adminRemove.check': 'CelikPanel hesabı denetleniyor',
     'opstep.adminRemove.remove': 'CelikPanel hesabı veritabanı sunucusundan kaldırılıyor',
     'opstep.userDelete.delete': '{name} hesabının hiçbir şeye sahip olmadığı denetleniyor ve hesap siliniyor',

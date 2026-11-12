@@ -51,7 +51,7 @@ const Dashboard = lazyNamed(() => import('./components/Dashboard'), 'Dashboard')
 const Domains = lazyNamed(() => import('./components/Domains'), 'Domains');
 const DomainDetailByName = lazyNamed(() => import('./components/DomainDetail'), 'DomainDetailByName');
 const InfrastructureZonePage = lazyNamed(() => import('./components/InfrastructureZone'), 'InfrastructureZonePage');
-const DatabaseManagementV2 = lazyNamed(() => import('./components/DatabaseManagementV2'), 'DatabaseManagementV2');
+const DatabasesPage = lazyNamed(() => import('./components/databases/DatabasesPage'), 'DatabasesPage');
 const ServiceList = lazyNamed(() => import('./components/ServiceList'), 'ServiceList');
 const MonitoringPage = lazyNamed(() => import('./components/MonitoringPage'), 'MonitoringPage');
 const ConfigEditor = lazyNamed(() => import('./components/ConfigEditor'), 'ConfigEditor');
@@ -403,7 +403,7 @@ function AppRoutes() {
         <Route path="/domains/infrastructure/:zone" element={<InfrastructureZoneRoute />} />
 
         {/* Databases */}
-        <Route path="/databases" element={<PageWithLayout><DatabaseManagementV2 /></PageWithLayout>} />
+        <Route path="/databases" element={<PageWithLayout><DatabasesPage /></PageWithLayout>} />
 
         {/* Components (alpha.120: the address follows the page's name; the
             old /services addresses lead here with their path and query). */}

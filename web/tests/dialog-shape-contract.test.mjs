@@ -157,9 +157,7 @@ test('every dialogue in the product is the shared one', () => {
   assert.deepEqual(Object.fromEntries([...users].sort()), {
     'AccessGuidance.tsx': 1,
     'AccessHold.tsx': 1,
-    'AddDatabaseModalV2.tsx': 1,
     'AddDomainModal.tsx': 1,
-    'AddUserModalV2.tsx': 1,
     'ChangePasswordModal.tsx': 1,
     // The product's own confirmation (6 Nov 2026), answering confirmAction().
     'ConfirmHost.tsx': 1,

@@ -1047,7 +1047,7 @@ test('row actions stay at the table’s edge on a phone: one rule, and the table
   assert.match(rule[1], /inset-inline-end: 0;/);
   assert.match(rule[1], /white-space: nowrap;/, 'a named action may break into two lines in its fixed cell ("Yasağı kaldır" at 390 px)');
   assert.match(rule[1], /background-color: rgb\(var\(--row-ground, var\(--surface\)\)\);/, 'the cell is not opaque: the columns would show through it');
-  for (const [file, cells] of [['DomainDNSManager', 2], ['Fail2banManagement', 2], ['DatabaseManagementV2', 3]]) {
+  for (const [file, cells] of [['DomainDNSManager', 2], ['Fail2banManagement', 2]]) {
     const found = source(`components/${file}.tsx`).split('row-actions').length - 1;
     assert.ok(found >= cells, `${file}: ${found} row-actions cells, expected at least ${cells}`);
   }
@@ -1057,6 +1057,10 @@ test('row actions stay at the table’s edge on a phone: one rule, and the table
   assert.doesNotMatch(domains, /row-actions/);
   assert.match(domains, /<table className="w-full text-sm max-sm:block">/);
   assert.equal(domains.split('<RowActions').length - 1, 2, 'both kinds of row carry the row actions');
+  // alpha.133: the Databases page's list does the same.
+  const databases = source('components/databases/DatabasesPage.tsx');
+  assert.doesNotMatch(databases, /row-actions/);
+  assert.match(databases, /<table className="w-full text-sm max-sm:block">/);
 });
 
 // --- The ratchet -----------------------------------------------------------------------------

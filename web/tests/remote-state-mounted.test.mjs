@@ -22,7 +22,7 @@ import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } fr
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const screenFiles = [
-  'AddDomainModal', 'Domains', 'DatabaseManagementV2', 'DatabaseAccountStrip', 'DomainDatabaseManager',
+  'AddDomainModal', 'Domains', 'databases/DatabasesPage', 'DomainDatabaseManager',
   'DomainConnection', 'DomainDNSManager', 'DomainPHPSettings', 'HostingTypePanel',
   // The second batch.
   'Settings', 'UsersPage', 'DomainFileManager', 'DomainSSLSettings', 'ImportPage', 'LicenseNotice', 'MonitoringPage',
@@ -100,8 +100,6 @@ const stub = dataModule(`
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const PageHeader = (props) => React.createElement('header', null, props.title, props.subtitle, props.actions);
   export const HelpButton = () => null;
-  export const AddDatabaseModalV2 = () => React.createElement('aside', null, 'add-database-dialog');
-  export const AddUserModalV2 = () => React.createElement('aside', null, 'add-user-dialog');
   export const useSearchParams = () => [new URLSearchParams(globalThis.currentTest.search ?? 'section=' + (globalThis.currentTest.section ?? 'panel')), () => {}];
   // The fail-closed decoder is ComponentOperation's; here it is the same test
   // on the one field these screens read. The operation tracker is not mounted.
@@ -173,11 +171,11 @@ own['/CertificateReachNotice'] = shared.compile('components/CertificateReachNoti
 // alpha.114: the names a new site found pointing elsewhere, the shipped card.
 own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
-const stripURL = shared.compile('components/DatabaseAccountStrip.tsx', own);
 const load = async (name, more = {}) => (await import(shared.compile(`components/${name}.tsx`, { ...own, ...more })))[name];
 const AddDomainModal = (await import(modalURL)).AddDomainModal;
 const Domains = await load('Domains', { '/AddDomainModal': modalURL });
-const DatabaseManagementV2 = await load('DatabaseManagementV2', { '/DatabaseAccountStrip': stripURL });
+// alpha.133: the left menu's Databases page and its one decoder (lib/visibleDatabases.ts).
+const DatabasesPage = (await import(shared.compile('components/databases/DatabasesPage.tsx', { ...own, '/lib/visibleDatabases': compileSource('lib/visibleDatabases.ts', () => stub) }))).DatabasesPage;
 const DomainDatabaseManager = await load('DomainDatabaseManager');
 const DomainConnection = await load('DomainConnection');
 const DomainDNSManager = await load('DomainDNSManager');
@@ -249,10 +247,12 @@ const caps = (overrides = {}) => ({
   database_servers: ['mariadb'], db_tools: [], ...overrides,
 });
 const domainRow = { id: 1, domain_name: 'example.com', status: 'active', created_at: '2026-01-01T00:00:00Z', project_type: 'php', php_version: '8.3' };
-const engine = {
-  id: 1, type_id: 1, type_name: 'mariadb', type_icon: 'M', name: 'MariaDB', version: '11.4', host: 'localhost', port: 3306,
-  is_default: true, status: 'active', created_at: '', admin_username: 'celikpanel', is_local: true,
+// alpha.133: what GET /api/v1/databases/visible answers (one visibility rule).
+const visibleDatabase = {
+  id: 5, name: 'shop', engine: 'mariadb', owner: { id: 3, username: 'customer1', role: 'customer', parent: null, self: false },
+  domain: { id: 1, name: 'example.com' }, size_bytes: 14_900_000, created_at: '2026-11-11T10:00:00Z', users: [{ id: 7, username: 'shop' }],
 };
+const visibleAnswer = (overrides = {}) => ({ databases: [visibleDatabase], engines: [{ engine: 'mariadb', installed: true, running: true }], may_create: true, ...overrides });
 const connection = (overrides = {}) => ({
   domain: 'example.com', server_ip: '192.0.2.4', nameservers: ['ns1.example.net', 'ns2.example.net'],
   live_nameservers: ['ns1.example.net', 'ns2.example.net'], live_ips: ['192.0.2.4'], status: 'delegated', ssl_ready: true,
@@ -265,9 +265,7 @@ const healthy = {
   '/api/v1/subscriptions': json({ subscriptions: [] }),
   // An administrator's Domains page also reads the infrastructure zones (2026-10-16).
   '/api/v1/dns/infrastructure-zones': json({ zones: [] }),
-  '/api/v1/database-servers': json([engine]),
-  '/api/v1/database-servers/1/databases': json([{ id: 5, name: 'shop', users: ['shop'], created_at: '' }]),
-  '/api/v1/database-servers/1/users': json([{ id: 7, username: 'shop', databases: ['shop'], created_at: '' }]),
+  '/api/v1/databases/visible': json(visibleAnswer()),
   '/api/v1/domains/1/databases': json({ databases: [{ id: 3, name: 'example_com_app', type: 'mysql', user: 'app', created_at: '2026-01-01T00:00:00Z' }], available_types: ['mysql'] }),
   '/api/v1/domains/1/connection': json(connection()),
   '/api/v1/domains/1/dns/zone': json({ type: 'NATIVE', management: 'local' }),
@@ -451,28 +449,12 @@ const table = [
     known: [json({ subscriptions: [{ id: 1, name: 'Main', owner: 'admin', usage: { disk_used_bytes: 1, disk_limit_bytes: 0, domains: 1, domains_limit: 1, databases: 0, databases_limit: 1, mail_accounts: 0, mail_limit: 1 } }] }), 'quota.unlimited'],
   },
   {
-    screen: 'Databases page (engines)', Component: DatabaseManagementV2,
-    read: '/api/v1/database-servers',
-    negative: ['databases.noServers', 'databases.noServersHint', 'domains.goServices', 'databases.account.missing'],
-    checking: 'databases.checkingServers', unknown: 'databases.serversUnknown',
-    known: [json([]), 'databases.noServers'],
-  },
-  {
-    screen: 'Databases page (databases of an engine)', Component: DatabaseManagementV2,
-    read: '/api/v1/database-servers/1/databases',
-    negative: ['databases.empty.databases', 'databases.empty.databasesHint'],
-    checking: 'databases.checkingDatabases', unknown: 'databases.databasesUnknown',
-    known: [json([]), 'databases.empty.databases'],
-  },
-  {
-    screen: 'Databases page (users of an engine)', Component: DatabaseManagementV2,
-    read: '/api/v1/database-servers/1/users',
-    // The users tab is not open, so its own lines are not on screen; what must
-    // hold is that "Add database", whose dialogue offers the users, is off.
-    negative: ['databases.empty.users'],
-    checking: '', unknown: '',
-    known: null,
-    alsoDisabled: 'databases.addDatabase',
+    screen: 'Databases page (the databases one may see)', Component: DatabasesPage,
+    read: '/api/v1/databases/visible',
+    // "Add database" is not drawn until the answer says one may be added.
+    negative: ['databases.empty.admin', 'databases.noEngine.title', 'databases.openComponents', 'databases.noMatch', 'databases.addDatabase'],
+    checking: 'databases.checking', unknown: 'databases.unknown',
+    known: [json(visibleAnswer({ databases: [] })), 'databases.empty.admin'],
   },
   {
     screen: 'Domain databases (the list)', Component: DomainDatabaseManager, props: domain,
@@ -881,77 +863,28 @@ test('Domains: a pending row whose saved deletion could not be read says exactly
   }
 });
 
-// --- Databases: the account strip follows the latest answer ---------------------
+// --- Databases: a list that could not be read again -------------------------------
 
-test('Databases: after the panel account is removed the strip shows the new answer, not the row it was mounted with', async () => {
-  let account = 'celikpanel';
-  serve({ '/api/v1/database-servers': () => Response.json([{ ...engine, admin_username: account }]) });
-  try {
-    await mount(DatabaseManagementV2);
-    assert.ok(has('databases.account.present'));
-    assert.equal(buttons('databases.account.rotate').length, 1);
-    account = '';
-    await press(buttons('databases.account.remove')[0]);
-    assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.endsWith('/admin-account')).length, 1);
-    assert.ok(!has('databases.account.present'), 'the strip still shows the account that was just removed');
-    assert.equal(buttons('databases.account.rotate').length, 0, '"New password" is still offered for a removed account');
-    assert.ok(has('databases.account.missing'));
-  } finally {
-    await cleanup();
-  }
-});
-
-test('Databases: while the engine list is being read again, or could not be, the account controls are off', async () => {
-  let mode = 'ok';
-  let release;
-  serve({ '/api/v1/database-servers': () => {
-    if (mode === 'hang') return new Promise((resolve) => { release = () => resolve(Response.json([engine])); });
-    if (mode === 'fail') return failures['refused by the server']();
-    return Response.json([engine]);
-  } });
-  try {
-    await mount(DatabaseManagementV2);
-    const account = () => ['databases.account.show', 'databases.account.rotate', 'databases.account.remove'].flatMap(buttons);
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [false, false, false]);
-    mode = 'hang';
-    await press(buttons('databases.account.rotate')[0]);
-    assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [true, true, true], 'the row is being read again');
-    await act(async () => { release(); await settled(); await settled(); });
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [false, false, false], 'the row is current again');
-    mode = 'fail';
-    await press(buttons('databases.account.rotate')[0]);
-    assert.equal(calls.filter((call) => call.method === 'POST').length, 2);
-    assert.ok(has('common.staleNotice'));
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [true, true, true], 'the row could not be read again');
-    assert.deepEqual(enabledDangerousControls().filter((label) => label.includes('account')), []);
-  } finally {
-    await cleanup();
-  }
-});
-
-test('Databases: a list that could not be read again keeps its rows and withdraws delete; counts are never invented', async () => {
+test('Databases: after a refused delete the list that could not be read again keeps its rows and withdraws every change', async () => {
   let fail = false;
-  serve({ '/api/v1/database-servers/1/databases': (request) => (fail ? failures['dropped connection']() : healthy['/api/v1/database-servers/1/databases'](request)) });
+  serve({ '/api/v1/databases/visible': (request) => (fail ? failures['dropped connection']() : healthy['/api/v1/databases/visible'](request)) }, 'admin', {
+    '/api/v1/databases/5': () => { fail = true; return Response.json({ error: 'busy', code: 'INTERNAL' }, { status: 409 }); },
+  });
   try {
-    await mount(DatabaseManagementV2);
-    assert.ok(has('shop'));
-    const remove = () => buttons('databases.deleteDatabase');
-    assert.equal(Boolean(remove()[0].props.disabled), false);
-    fail = true;
-    await press(remove()[0]);
-    assert.ok(has('shop') && has('common.staleNotice'));
-    assert.equal(remove()[0].props.disabled, true);
-    assert.ok(buttons('databases.addDatabase').every((node) => node.props.disabled));
-  } finally {
-    await cleanup();
-  }
-  serve({ '/api/v1/database-servers/1/databases': failures['still on its way'], '/api/v1/database-servers/1/users': failures['dropped connection'] });
-  try {
-    await mount(DatabaseManagementV2);
-    const badges = tree.root.findAll((node) => node.type === 'span' && /min-w-\[1\.5rem\]/.test(node.props.className ?? '')).map((node) => node.props.children);
-    assert.deepEqual(badges, ['…', '–'], 'a count is shown for a list that is not known');
-    assert.ok(!has('common.itemsTotal'));
+    await mount(DatabasesPage);
+    assert.ok(has('shop') && has('customer1'));
+    assert.equal(buttons('databases.addDatabase').length, 1);
+    await openRowMenu('shop');
+    assert.equal(Boolean(rowItem('delete').props['aria-disabled']), false);
+    await press(rowItem('delete'));
+    await act(async () => { await settled(); await settled(); });
+    assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url === '/api/v1/databases/5').length, 1);
+    assert.ok(has('databases.deleteDbFailed'), 'the refusal is not on the page');
+    assert.ok(has('shop') && has('common.staleNotice'), 'the rows are gone, or not marked as the earlier answer');
+    await openRowMenu('shop');
+    assert.equal(rowItem('delete').props['aria-disabled'], true, 'delete is offered on an answer that could not be read again');
+    assert.equal(rowItem('password').props['aria-disabled'], true);
+    assert.equal(buttons('databases.addDatabase').length, 0);
   } finally {
     await cleanup();
   }
@@ -1654,9 +1587,9 @@ test('readRemote never throws and never invents a value', async () => {
 });
 
 test('every text of the three states exists in both languages, and the could-not-check ones say nothing was changed', () => {
-  const failed = new Set(['common.staleNotice', 'domains.pendingUnknown', 'databases.usersUnknown']);
+  const failed = new Set(['common.staleNotice', 'domains.pendingUnknown']);
   const other = new Set(['common.retry', 'conn.notChecked', 'conn.unknownHelp', 'conn.routeAUnknown', 'conn.sslUnknown',
-    'databases.checkingUsers', 'databases.deleteDatabase', 'databases.deleteUser',
+    'databases.deleteDatabase',
     // The second batch: sentences that are not a row's checking or could-not-check line.
     'common.resultUnknown', 'settings.2fa.resultUnknown', 'panelCert.notReadable', 'panelCert.unconfirmed', 'panelCert.notRecorded',
     'panelCert.failedDetail', 'panelCert.failedPlain', 'panelCert.failedTechnical', 'panelCert.checkAgain', 'panelCert.openSecure', 'panelCert.reopen.title',
@@ -2521,14 +2454,15 @@ test('Domains: a deletion still running after a reload is followed again and nev
   }
 });
 
-test('Databases with no engine: an administrator is sent to Components; anyone else is told to ask the provider', async () => {
-  for (const role of ['admin', 'customer']) {
-    serve({ '/api/v1/database-servers': json([]) }, role);
+test('Databases with no engine: an administrator is sent to Components; anyone else is told their provider offers none', async () => {
+  for (const role of ['admin', 'reseller', 'customer']) {
+    serve({ '/api/v1/databases/visible': json(visibleAnswer({ databases: [], engines: [{ engine: 'mariadb', installed: false, running: false }] })) }, role);
     try {
-      await mount(DatabaseManagementV2);
-      assert.ok(has('databases.noServers'));
-      assert.equal(buttons('domains.goServices').length, role === 'admin' ? 1 : 0, role);
-      assert.equal(has('databases.noServersHintCustomer'), role !== 'admin', role);
+      await mount(DatabasesPage);
+      assert.equal(has('databases.noEngine.title'), role === 'admin', role);
+      assert.equal(buttons('databases.openComponents').length, role === 'admin' ? 1 : 0, role);
+      assert.equal(has('databases.noEngine.tenant'), role !== 'admin', role);
+      assert.equal(buttons('databases.addDatabase').length, 0, `${role}: nothing can be added without an engine`);
     } finally {
       await cleanup();
     }
