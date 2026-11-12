@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.132.md)
 
+> **Yayımlandı**, 12 Kasım 2026 (UTC): sürüm commit'i `8c9c9ce64`, GitHub ön sürümü 07:31:20Z, indirme portalı yaklaşık 08:21Z (dış denetim 27/27).
+
 Sahibin 12 Kasım 2026'da onayladığı küçük tasarım sürümlerinin ilki. Paneli
 kullanan herkes için üç şey değişiyor: bir ayar yalnız Kaydet'e basınca
 kaydedilir, bir alan adının sayfası on bir sekme yerine dokuz bölümdür ve
