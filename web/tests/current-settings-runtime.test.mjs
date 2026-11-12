@@ -101,6 +101,9 @@ const press = async (node) => {
   });
 };
 const click = (label) => press(button(label));
+// alpha.132: the mail policy is saved with the shared save bar (components/kit/save).
+const saveBar = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0];
+const policySave = () => press(saveBar());
 const writes = () => calls.filter((call) => call.method !== 'GET');
 const scenario = (name, routes, Component, props, body) => test(name, async () => {
   fixture(routes);
@@ -125,7 +128,7 @@ for (const [name, answer] of [
 ]) {
   scenario(`mail policy ${name}: no form, no defaults, no Save`, [['GET', '/mail/policy', answer]], PostfixManagement, { onBack() {} }, async () => {
     assert.equal(policyInputs().length, 0, 'no policy field may be shown before the policy is known');
-    assert.equal(buttons('mailpolicy.save').length, 0);
+    assert.equal(saveBar(), undefined);
     assert.doesNotMatch(text(), /mailpolicy\.(dnsbl|rate|maxSize)"/);
     if (answer === 'pending') {
       assert.match(text(), /current\.checking/);
@@ -154,14 +157,30 @@ test('mail policy: Retry reads again and only then shows the server values', asy
   }
 });
 
-scenario('mail policy: a save carries the version and the loaded values it did not change',
+scenario('mail policy: nothing is sent before Save; a save carries the version and the loaded values it did not change',
   [['GET', '/mail/policy', () => Response.json(stockPolicy)],
     ['PUT', '/mail/policy', ({ body }) => Response.json({ success: true, policy: { ...stockPolicy, ...body, version: 'mp1-b' } })]],
   PostfixManagement, { onBack() {} }, async () => {
-    await click('mailpolicy.save');
-    assert.deepEqual(writes()[0].body, { message_size_mb: 9, dnsbl_zones: [], outbound_rate_limit: 0, version: 'mp1-a' });
-    await click('mailpolicy.save');
+    assert.equal(saveBar(), undefined, 'Save is shown with nothing changed');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    assert.equal(writes().length, 0, 'typing saved');
+    assert.equal(tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-changed-mark'] !== undefined).length, 1, 'the changed field is not marked');
+    await policySave();
+    assert.deepEqual(writes()[0].body, { message_size_mb: 12, dnsbl_zones: [], outbound_rate_limit: 0, version: 'mp1-a' });
+    assert.equal(saveBar(), undefined, 'the saved change is still unsaved');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '14' } }));
+    await policySave();
     assert.equal(writes()[1].body.version, 'mp1-b', 'the next save uses the version the server answered');
+  });
+
+scenario('mail policy: Discard gives the changes up and sends nothing',
+  [['GET', '/mail/policy', () => Response.json(stockPolicy)]],
+  PostfixManagement, { onBack() {} }, async () => {
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0]);
+    assert.equal(policyInputs()[0].props.value, 9);
+    assert.equal(saveBar(), undefined);
+    assert.equal(writes().length, 0);
   });
 
 for (const code of ['SETTINGS_CHANGED', 'SETTINGS_VERSION_REQUIRED']) {
@@ -171,16 +190,19 @@ for (const code of ['SETTINGS_CHANGED', 'SETTINGS_VERSION_REQUIRED']) {
     try {
       await mount(PostfixManagement, { onBack() {} });
       await act(async () => policyInputs()[0].props.onChange({ target: { value: '50' } }));
-      await click('mailpolicy.save');
+      await policySave();
       assert.match(text(), /mailpolicy\.stale/);
       assert.equal(policyInputs()[0].props.value, 50, 'the typed size stays on screen');
-      assert.equal(button('mailpolicy.save').props.disabled, true, 'a stale form cannot be saved again');
+      assert.equal(saveBar().props.disabled, true, 'a stale form cannot be saved again');
       assert.deepEqual(globalThis.currentTest.toasts, [], 'the guidance is on screen, not a passing toast');
       served = { ...stockPolicy, message_size_mb: 20, version: 'mp1-c' };
       await click('current.reload');
       assert.doesNotMatch(text(), /mailpolicy\.stale/);
-      assert.equal(policyInputs()[0].props.value, 20);
-      assert.equal(button('mailpolicy.save').props.disabled, false);
+      // alpha.132: the typed value is kept over the newer policy and the
+      // server's value is said beside it, to take or to overwrite.
+      assert.equal(policyInputs()[0].props.value, 50);
+      assert.equal(tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-server-moved'] !== undefined).length, 1);
+      assert.equal(saveBar().props.disabled, false);
     } finally {
       await cleanup();
     }
@@ -194,17 +216,20 @@ scenario('mail policy: restrictions CelikPanel will not rewrite withdraw the DNS
     assert.match(text(), /mailpolicy\.dnsblLocked\.other/, 'the reason is on screen (the stub has no words for the reason)');
     assert.match(text(), /mailpolicy\.dnsblLockedAction/);
     assert.doesNotMatch(text(), /mailpolicy\.zones|mailpolicy\.dnsbl"/);
-    await click('mailpolicy.save');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    await policySave();
     assert.deepEqual(writes()[0].body.dnsbl_zones, ['bl.example.org']);
   });
 
 scenario('mail policy: another refusal is the error toast and the form stays',
   [['GET', '/mail/policy', () => Response.json(stockPolicy)], ['PUT', '/mail/policy', refusal(400, 'MAIL_POLICY_INVALID', 'zone sentence')]],
   PostfixManagement, { onBack() {} }, async () => {
-    await click('mailpolicy.save');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    await policySave();
     assert.deepEqual(globalThis.currentTest.toasts, [['error', 'zone sentence']]);
     assert.doesNotMatch(text(), /mailpolicy\.stale/);
-    assert.equal(button('mailpolicy.save').props.disabled, false);
+    assert.equal(policyInputs()[0].props.value, 12, 'the refused change stays');
+    assert.equal(saveBar().props.disabled, false);
   });
 
 // --- Automatic backup schedule ---

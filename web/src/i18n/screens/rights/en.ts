@@ -164,8 +164,9 @@ export const enRightsScreens = {
     'rights.offered.yes': 'Offered',
     'rights.offered.no': 'Hidden',
     'rights.offered.toggle': 'Offer {name}',
-    'rights.offered.saving': 'Saving {name}…',
-    'rights.offered.failed': 'What is offered could not be changed.',
+    'rights.offered.failed': 'The server did not accept it.',
+    'rights.offered.notSaved': 'Not saved: {what}. {reason}',
+    'rights.offered.savedSome': 'Saved: {what}.',
 
     'rights.notice.migratedOne': '1 account became Unlimited with this update',
     'rights.notice.migratedMany': '{n} accounts became Unlimited with this update',

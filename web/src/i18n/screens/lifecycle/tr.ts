@@ -15,9 +15,9 @@ export const trLifecycleScreens: Record<LifecycleScreenKey, string> = {
     'life.offer.notInstalled': '(artık kurulu değil)',
     'life.offer.checking': 'Müşterilere hangi sürümlerin sunulduğu okunuyor…',
     'life.offer.unknown': 'Müşterilere hangi sürümlerin sunulduğu okunamadı. Hiçbir şey değiştirilmedi. Yeniden deneyin.',
-    'life.offer.saving': '{name} {version} sürümünün müşterilere sunulup sunulmadığı kaydediliyor…',
-    'life.offer.failed': 'Değişiklik kaydedilmedi. Başka hiçbir şey değiştirilmedi; yeniden deneyin.',
-    'life.offer.lost': 'Bu değişiklik için yanıt gelmedi. Yukarıdaki liste yeniden okundu ve sunucuda kayıtlı olanı gösteriyor; yalnız istediğiniz gibi değilse yeniden değiştirin.',
+    'life.offer.failed': 'Sunucu bunu kabul etmedi.',
+    'life.offer.notSaved': 'Kaydedilmedi: {what}. {reason}',
+    'life.offer.savedSome': 'Kaydedildi: {what}.',
     'life.offer.customerKept': '{name} {version} artık yeni seçimler için sunulmuyor. Siteniz onu korur ve çalışmayı sürdürür; başka bir sürüme geçmeden önce yöneticinize danışın.',
     'life.offer.adminKept': '{name} {version} müşterilerden gizli. Bu site onu korur ve çalışmayı sürdürür; sahibi bu sürümün yeni seçimler için artık sunulmadığını görür.',
     // ---- alpha.108 web ----

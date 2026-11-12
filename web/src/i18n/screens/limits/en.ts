@@ -116,8 +116,6 @@ export const enLimitsScreens = {
     'limits.server.ceiling': 'Server limit',
     'limits.server.none': 'No limit',
     'limits.server.editable': 'Customers may change it',
-    'limits.server.save': 'Save',
-    'limits.server.saved': 'The limit of {key} was saved.',
     'limits.server.failed': 'The limit could not be saved.',
 
     'limits.password.title': 'Minimum password level',
@@ -160,12 +158,10 @@ export const enLimitsScreens = {
     'err.PASSWORD_WEAK.needs_digit': 'The password must contain a digit (the server’s password level).',
     'err.SETTING_NOT_CUSTOMER_CHOSEN': 'Nothing was changed: customers do not choose a value for this setting, so it cannot be fixed; only its limit applies.',
     'limits.server.limitOnly': 'Limit only',
-    'limits.server.saveAll': 'Save changes',
-    'limits.server.pending': 'Will be saved: {keys}.',
     'limits.server.savedAll': 'The limits were saved: {keys}.',
     'limits.server.partFailed': 'Not saved: {keys}. The reason is beside each row; the other rows were saved.',
     'limits.server.invalid': 'Between {min} and {max}.',
-    'limits.server.saving': 'Saving {key}…',
+    'limits.server.fixFirst': 'Save is off until every changed value is within its range.',
     // alpha.130: the Offered tab and the rights editor (the rights part is full).
     'rights.offered.stillHidden': 'Nothing changed: the server still has {name} hidden. Try again; if it stays hidden, this is a fault in CelikPanel, please report it.',
     'rights.offered.stillOffered': 'Nothing changed: the server still offers {name}. Try again; if it stays offered, this is a fault in CelikPanel, please report it.',

@@ -21,13 +21,11 @@ import {
 import { decodePreviousUpdateAttempt, previousAttemptPackageManagerBusy, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 import { BuildCommit } from './BuildCommit';
+import { PanelUpdateAutoCheck } from './PanelUpdateAutoCheck';
 import {
-    PANEL_UPDATE_DISCOVERY_URL,
     clockTime,
-    decodePanelUpdateDiscovery,
     panelUpdateDiscoveryState,
     panelUpdateOpenCheckDue,
-    publishPanelUpdateDiscovery,
     readPanelUpdateAttemptSummary,
     refreshPanelUpdateDiscovery,
     refreshPanelUpdateDiscoveryOnOpen,
@@ -161,8 +159,6 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
     const [starting, setStarting] = useState(false);
     const [message, setMessage] = useState('');
     const [messageTone, setMessageTone] = useState<MessageTone>('warning');
-    const [savingAuto, setSavingAuto] = useState(false);
-    const [autoError, setAutoError] = useState(false);
     const actionInFlight = useRef(false);
     const lifecycleGeneration = useRef(0);
     const readinessAbort = useRef<AbortController | null>(null);
@@ -546,34 +542,6 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
         } finally {
             if (lifecycleGeneration.current === generation) setStarting(false);
             actionInFlight.current = false;
-        }
-    }
-
-    // The owner's switch for the automatic check. Saving it changes this
-    // setting only; the answer is the stored result again.
-    // Sahibin otomatik kontrol anahtari; yalniz bu ayari degistirir.
-    async function saveAutoCheck(next: boolean) {
-        if (savingAuto) return;
-        const generation = lifecycleGeneration.current;
-        setSavingAuto(true);
-        setAutoError(false);
-        try {
-            const response = await fetch(PANEL_UPDATE_DISCOVERY_URL, {
-                method: 'PUT', cache: 'no-store', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ auto_check: next }),
-            });
-            if (!response.ok) throw new Error(String(response.status));
-            const value = decodePanelUpdateDiscovery(await response.json(), Date.now());
-            if (!value) throw new Error('invalid');
-            publishPanelUpdateDiscovery(value);
-            // The Panel sets the next check right after saving; one read
-            // shortly after shows its time.
-            if (next) window.setTimeout(() => { void refreshPanelUpdateDiscovery(); }, 1500);
-        } catch {
-            if (lifecycleGeneration.current === generation) setAutoError(true);
-        } finally {
-            if (lifecycleGeneration.current === generation) setSavingAuto(false);
         }
     }
 
@@ -961,27 +929,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             {/* The owner's switch lives in Settings; the licence page offers
                 the update only (a locked panel accepts no setting change).
                 Anahtar Ayarlar'dadir; lisans sayfasi yalniz guncellemeyi sunar. */}
-            {!activation && <div className="mt-5 border-t border-border pt-4" data-update-auto="">
-                <label className="flex cursor-pointer items-start gap-3">
-                    <input
-                        type="checkbox"
-                        role="switch"
-                        className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                        checked={stored?.autoCheck === true}
-                        disabled={!stored || savingAuto}
-                        aria-checked={stored ? stored.autoCheck : false}
-                        onChange={(event) => void saveAutoCheck(event.currentTarget.checked)}
-                    />
-                    <span className="min-w-0">
-                        <span className="block text-sm font-medium text-fg">{t('panelUpdate.auto.label')}</span>
-                        <span className="mt-0.5 block text-sm text-fg-muted">{t('panelUpdate.auto.help')}</span>
-                        {/* Not "on" before the setting was read: unknown is said as unknown. */}
-                        {!stored && <span className="mt-0.5 block text-sm text-fg-muted" data-update-auto-unknown="">{t('panelUpdate.auto.unknown')}</span>}
-                    </span>
-                </label>
-                {savingAuto && <p className="mt-2 flex items-center gap-2 text-sm text-fg-muted" role="status"><Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />{t('panelUpdate.auto.saving')}</p>}
-                {autoError && !savingAuto && <p className="mt-2 text-sm text-fg" role="alert" data-update-auto-error="">{t('panelUpdate.auto.failed')}</p>}
-            </div>}
+            {!activation && <PanelUpdateAutoCheck stored={stored} />}
         </section>
     );
 }

@@ -109,8 +109,6 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.server.ceiling': 'Sunucu sınırı',
     'limits.server.none': 'Sınır yok',
     'limits.server.editable': 'Müşteriler değiştirebilir',
-    'limits.server.save': 'Kaydet',
-    'limits.server.saved': '{key} sınırı kaydedildi.',
     'limits.server.failed': 'Sınır kaydedilemedi.',
 
     'limits.password.title': 'En düşük parola düzeyi',
@@ -153,12 +151,10 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'err.PASSWORD_WEAK.needs_digit': 'Parolada bir rakam olmalı (sunucunun parola düzeyi).',
     'err.SETTING_NOT_CUSTOMER_CHOSEN': 'Hiçbir şey değişmedi: müşteriler bu ayar için kendi değerini seçmez, bu yüzden sabitlenemez; yalnız sınırı uygulanır.',
     'limits.server.limitOnly': 'Yalnız sınır',
-    'limits.server.saveAll': 'Değişiklikleri kaydet',
-    'limits.server.pending': 'Kaydedilecek: {keys}.',
     'limits.server.savedAll': 'Sınırlar kaydedildi: {keys}.',
     'limits.server.partFailed': 'Kaydedilmedi: {keys}. Nedeni her satırın yanında; diğer satırlar kaydedildi.',
     'limits.server.invalid': '{min} ile {max} arasında olmalı.',
-    'limits.server.saving': '{key} kaydediliyor…',
+    'limits.server.fixFirst': 'Değişen her değer kendi aralığına girene dek Kaydet kapalı.',
     // alpha.130: the Offered tab and the rights editor (the rights part is full).
     'rights.offered.stillHidden': 'Hiçbir şey değişmedi: {name} sunucuda hâlâ gizli. Yeniden deneyin; gizli kalırsa bu bir CelikPanel hatasıdır, lütfen bildirin.',
     'rights.offered.stillOffered': 'Hiçbir şey değişmedi: {name} sunucuda hâlâ sunuluyor. Yeniden deneyin; sunulmaya devam ederse bu bir CelikPanel hatasıdır, lütfen bildirin.',

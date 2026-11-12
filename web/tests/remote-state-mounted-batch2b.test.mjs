@@ -911,7 +911,7 @@ test('mail policy: written but not reloaded stays on screen as a failure, above 
     await mount(PostfixManagement, { onBack() {} });
     const size = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
     await type(size(), '50');
-    await press(buttons('mailpolicy.save')[0]);
+    await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0]);
     assert.ok(has('err.MAIL_POLICY_NOT_RELOADED') && has('Job for postfix.service failed'));
     assert.equal(size().props.value, 50, 'the form does not show what main.cf holds now');
     assert.deepEqual(globalThis.currentTest.toasts.filter(([kind]) => kind === 'success'), [], 'a save that was not loaded is announced as applied');
@@ -965,7 +965,7 @@ test('mail policy: the not-reloaded answer carries the saved values, so they are
       const size = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
       const before = reads('/api/v1/mail/policy');
       await type(size(), '50');
-      await press(buttons('mailpolicy.save')[0]);
+      await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0]);
       assert.ok(has('err.' + code) && has(label) && has('postfix: fatal: bad numerical configuration'), code + ' is not shown with its line');
       // A verified failure is drawn as one; an outcome that could not be
       // established is not (its sentence says "this is not a verified
@@ -999,7 +999,7 @@ test('mail policy: "applied" is said only for a verified reload; a stopped Postf
       await mount(PostfixManagement, { onBack() {} });
       const size = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
       await type(size(), '50');
-      await press(buttons('mailpolicy.save')[0]);
+      await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0]);
       assert.deepEqual(globalThis.currentTest.toasts, [['success', key]], 'applied=' + applied);
     } finally {
       await cleanup();

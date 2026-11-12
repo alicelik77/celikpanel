@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { Copy, Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
@@ -7,8 +7,8 @@ import { showToast } from './Toast';
 import { Button, Checking, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, inputClass } from './ui';
 import { BlockedReason } from './BlockingProblems';
 import type { ApiError } from '../lib/apiError';
-import { refusalText, refusalToast } from '../lib/apiError';
-import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
+import { apiErrorActionLabel, refusalText, refusalToast } from '../lib/apiError';
+import { countText, invalidate, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import {
     NEW_PLAN, OFFERED_URL, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateIn, offeredStateOf,
     permissionGroups, permissionIdsOf, permissionTopicKey, planBody, rightsSummary, selectionOf, sendRights, softwareGroupKey, softwareGroupName,
@@ -17,6 +17,10 @@ import {
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
 import { confirmAction } from '../lib/confirmAction';
+import { APP_CATALOG_URL, appText, decodeCatalog as decodeAppCatalog } from '../lib/appCatalog';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
 // alpha.128: the plan's limits of site settings, a chunk of its own.
@@ -314,60 +318,118 @@ function RowLink({ to, label }: { to: string; label: string }) {
  * Python in Catalog management) are shown with their state and a way there,
  * not with a box that cannot change them. Permissions stand under the same
  * topics as on every rights screen, sorted in the reader's language.
+ *
+ * alpha.132 (owner, 8 Nov 2026): ticking no longer saves. The permissions,
+ * the software and the applications below are one list of offers (one
+ * endpoint, one kind of change), so they are one draft with one save bar at
+ * the end of the list; the server's limits further down are a separate
+ * setting with their own bar. Save sends one request per changed item, one
+ * after another; what the server did not take is named with its reason and
+ * stays a marked change. Offering an application asks first, with its risk.
  */
 export function OfferedItemsTab() {
     const { t, locale } = useI18n();
+    const say = useSaveWords();
     const catalog = useGrantorCatalog();
-    const [pending, setPending] = useState<string | null>(null);
-    const [failure, setFailure] = useState<ApiError | null>(null);
-
-    const change = async (item: string, offered: boolean) => {
-        if (pending) return;
-        setPending(item);
-        setFailure(null);
-        try {
-            const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: item, offered });
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            if (result.kind === 'refused') setFailure(result.error);
-            if (result.kind === 'done') {
-                // The answer names the item's state now; an older answer
-                // without it is checked against the list read again.
-                let now = offeredStateIn(result.body, item);
-                if (now === undefined) {
-                    const reread = await catalog.retry();
-                    now = reread && reread.state === 'known' ? offeredStateOf(reread.value, item) : undefined;
-                }
-                if (now === undefined) showToast('error', t('common.resultUnknown'));
-                else if (now !== offered) {
-                    setFailure({ message: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: offeredLabel(item, t) }) });
-                }
-            }
-            // Every chooser, plan and account screen follows the offer.
-            invalidate('rights', 'components');
-        } finally {
-            setPending(null);
+    // The applications are read here so that they are part of the one draft;
+    // their long descriptions stay in their own chunk.
+    const apps = useRemote(APP_CATALOG_URL, decodeAppCatalog);
+    const rightsView = lastKnown(catalog.remote)?.value;
+    const appList = lastKnown(apps.remote)?.value;
+    const known = useMemo(() => {
+        if (!rightsView && !appList) return null;
+        const offers: Record<string, boolean> = {};
+        if (rightsView) {
+            for (const id of permissionIdsOf(rightsView)) offers[`permission:${id}`] = rightsView.permissions.find((item) => item.id === id)?.granted ?? false;
+            for (const item of rightsView.software) if (!item.id.startsWith('app:') && !offeredInCatalog(item.id)) offers[item.id] = item.granted;
         }
-    };
+        for (const app of appList ?? []) offers[app.offering_id] = app.offered;
+        return offers;
+    }, [rightsView, appList]);
+    const draft = useDraft<Record<string, boolean>>(known);
+    const navigate = useNavigate();
+    // What the last save did not do (with a refusal's own fix), and what it did.
+    const [report, setReport] = useState<{ saved: string[]; failed: { text: string; fix?: ApiError }[] } | null>(null);
+    const appOf = (id: string) => appList?.find((app) => app.offering_id === id);
+    const nameOf = (id: string) => appOf(id)?.name ?? offeredLabel(id, t);
+    // Save is off while a list a change was made on is an earlier answer.
+    const stale = draft.changed.some((id) => (appOf(id) ? apps.remote.state !== 'known' : catalog.remote.state !== 'known'));
+
+    const save = () => void draft.save(async (changes) => {
+        setReport(null);
+        const entries = Object.entries(changes) as [string, boolean][];
+        const offeredApps = entries.filter(([id, offered]) => offered && appOf(id)).map(([id]) => appOf(id)!);
+        if (offeredApps.length > 0) {
+            const go = await confirmAction({
+                message: offeredApps.map((app) => t('appOffer.confirm', { name: app.name, risk: appText(app, 'risk', locale) })).join('\n\n'),
+                confirmLabel: say('save'),
+            });
+            if (!go) return 'refused';
+        }
+        const saved: string[] = [];
+        const failed: { text: string; fix?: ApiError }[] = [];
+        const notSaved = (id: string, reason: string, fix?: ApiError) => failed.push({ text: t('rights.offered.notSaved', { what: nameOf(id), reason }), fix: fix?.action ? fix : undefined });
+        const still = (id: string, offered: boolean) => failed.push({ text: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: nameOf(id) }) });
+        const unsure: [string, boolean][] = [];
+        let lost = false;
+        for (const [id, offered] of entries) {
+            const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: id, offered });
+            if (result.kind === 'lost') {
+                lost = true;
+                notSaved(id, t('common.resultUnknown'));
+            } else if (result.kind === 'refused') {
+                notSaved(id, refusalText(readableRefusal(result.error, t), t, 'rights.offered.failed'), result.error);
+            } else {
+                // The answer names the item's state now; an older answer
+                // without it is checked against the lists read again below.
+                const now = offeredStateIn(result.body, id);
+                if (now === undefined) unsure.push([id, offered]);
+                else if (now !== offered) still(id, offered);
+                else saved.push(nameOf(id));
+            }
+        }
+        // Every chooser, plan and account screen follows the offer.
+        invalidate('rights', 'components');
+        const [rights, applications] = await Promise.all([catalog.retry(), apps.retry()]);
+        for (const [id, offered] of unsure) {
+            const app = appOf(id);
+            const now = app
+                ? (applications.state === 'known' ? applications.value.find((entry) => entry.offering_id === id)?.offered : undefined)
+                : (rights.state === 'known' ? offeredStateOf(rights.value, id) : undefined);
+            if (now === undefined) {
+                lost = true;
+                notSaved(id, t('common.resultUnknown'));
+            } else if (now !== offered) still(id, offered);
+            else saved.push(nameOf(id));
+        }
+        if (failed.length === 0) return 'saved';
+        setReport({ saved, failed });
+        return lost ? 'unknown' : 'refused';
+    });
 
     const row = (item: string, state: RightsItem | undefined) => {
-        const offered = state?.granted ?? false;
         const name = offeredLabel(item, t);
         const inCatalog = offeredInCatalog(item);
+        const offered = (inCatalog ? undefined : draft.values?.[item]) ?? state?.granted ?? false;
+        const changed = !inCatalog && draft.isChanged(item);
         const withdrawn = state?.withdrawn === true;
         const component = item.startsWith('component:node:') ? 'node' : 'php-fpm';
         return (
-            <li key={item} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2" data-offered-item={item} data-offered={offered ? 'yes' : 'no'}>
+            <li key={item} className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 ${changed ? changedRowClass : ''}`} data-offered-item={item} data-offered={offered ? 'yes' : 'no'}>
                 {inCatalog ? (
                     <span className="min-w-0 flex-1 text-sm font-medium text-fg">{name}</span>
                 ) : (
                     <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 max-sm:min-h-11">
-                        <input type="checkbox" checked={offered} disabled={pending !== null || catalog.reading || (withdrawn && !offered)}
-                            onChange={(e) => void change(item, e.target.checked)}
+                        <input type="checkbox" checked={offered} disabled={draft.saving || catalog.remote.state !== 'known' || (withdrawn && !state?.granted)}
+                            onChange={(e) => draft.set(item, e.target.checked)}
                             className="h-4 w-4 shrink-0 accent-primary" aria-label={t('rights.offered.toggle', { name })} />
-                        <span className="min-w-0 text-sm font-medium text-fg">{name}</span>
+                        <span className="min-w-0 text-sm font-medium text-fg">{name}{changed && <ChangedMark switched={offered} />}</span>
                     </label>
                 )}
                 <span className={`text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>{t(offered ? 'rights.offered.yes' : 'rights.offered.no')}</span>
+                {draft.isMoved(item) && draft.base && (
+                    <div className="w-full"><ServerMovedNote value={t(draft.base[item] ? 'rights.offered.yes' : 'rights.offered.no')} onTake={() => draft.take(item)} /></div>
+                )}
                 {inCatalog && (
                     <span className="flex w-full flex-wrap items-center gap-x-2 text-xs text-fg-muted" data-offered-elsewhere={item}>
                         {t('rights.offered.inCatalog')} <RowLink to="/addons?view=catalog" label={t('rights.offered.openCatalog')} />
@@ -390,22 +452,19 @@ export function OfferedItemsTab() {
     return (
         <div data-offered-layer="">
             <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('rights.offered.intro')}</p>
-            {catalog.remote.state === 'loading' && <Checking label={t('rights.catalogChecking')} />}
-            {catalog.remote.state === 'unknown' && <CouldNotCheck text={t('rights.catalogUnknown')} onRetry={() => void catalog.retry()} busy={catalog.reading} />}
-            {pending && <Checking className="mb-2" label={t('rights.offered.saving', { name: offeredLabel(pending, t) })} />}
-            <ErrorBanner className="mb-3" error={failure} sentence="rights.offered.failed" />
-            {catalog.remote.state === 'known' && (() => {
-                const view = catalog.remote.value;
-                return (
+            <div data-offered-draft="">
+                {catalog.remote.state === 'loading' && <Checking label={t('rights.catalogChecking')} />}
+                {catalog.remote.state === 'unknown' && <CouldNotCheck text={t('rights.catalogUnknown')} onRetry={() => void catalog.retry()} busy={catalog.reading} />}
+                {rightsView && (
                     <div className="grid gap-4 lg:grid-cols-2">
                         <section>
                             <h3 className="mb-2 text-sm font-semibold text-fg">{t('rights.part.permissions')}</h3>
                             <div className="grid gap-3">
-                                {permissionGroups(permissionIdsOf(view), t, locale).map(({ topic, ids }) => (
+                                {permissionGroups(permissionIdsOf(rightsView), t, locale).map(({ topic, ids }) => (
                                     <div key={topic} data-offered-topic={topic}>
                                         <p className="mb-1 text-xs font-semibold text-fg-muted">{t(permissionTopicKey(topic))}</p>
                                         <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
-                                            {ids.map((id) => row(`permission:${id}`, view.permissions.find((item) => item.id === id)))}
+                                            {ids.map((id) => row(`permission:${id}`, rightsView.permissions.find((item) => item.id === id)))}
                                         </ul>
                                     </div>
                                 ))}
@@ -413,10 +472,10 @@ export function OfferedItemsTab() {
                         </section>
                         <section>
                             <h3 className="mb-2 text-sm font-semibold text-fg">{t('rights.part.software')}</h3>
-                            {view.installed_unknown && <p className="mb-2 text-xs text-warning">{t('rights.installedUnknown')}</p>}
-                            {view.software.length === 0 ? <p className="text-sm text-fg-muted">{t('rights.softwareNone')}</p> : (
+                            {rightsView.installed_unknown && <p className="mb-2 text-xs text-warning">{t('rights.installedUnknown')}</p>}
+                            {rightsView.software.length === 0 ? <p className="text-sm text-fg-muted">{t('rights.softwareNone')}</p> : (
                                 <div className="grid gap-3">
-                                    {groupSoftware(view.software.filter((item) => !item.id.startsWith('app:'))).map(({ group, items }) => {
+                                    {groupSoftware(rightsView.software.filter((item) => !item.id.startsWith('app:'))).map(({ group, items }) => {
                                         const heading = softwareGroupName(group);
                                         return (
                                             <div key={group}>
@@ -429,11 +488,32 @@ export function OfferedItemsTab() {
                             )}
                         </section>
                     </div>
-                );
-            })()}
-            <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
-                <OfferedAppsSection />
-            </Suspense>
+                )}
+                <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
+                    <OfferedAppsSection catalog={apps} draft={draft} />
+                </Suspense>
+                {report && (
+                    <div className="mt-4 rounded-lg border border-danger/40 bg-danger/5 px-3 py-2 text-sm leading-6 text-fg" role="alert" data-offered-report="">
+                        {report.saved.length > 0 && <p>{t('rights.offered.savedSome', { what: report.saved.join(', ') })}</p>}
+                        {report.failed.map((line) => (
+                            <p key={line.text} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <span className="min-w-0 max-w-[75ch]">{line.text}</span>
+                                {line.fix && <Button type="button" onClick={() => navigate(line.fix!.action!)}>{apiErrorActionLabel(line.fix, t)}</Button>}
+                            </p>
+                        ))}
+                    </div>
+                )}
+                <SaveBar
+                    count={draft.count}
+                    saving={draft.saving}
+                    blockedBy={stale ? say('stale') : undefined}
+                    unknown={draft.outcome === 'unknown'
+                        ? { held: draft.held, checking: catalog.reading || apps.reading, onCheck: () => { void catalog.retry(); void apps.retry(); } }
+                        : undefined}
+                    onSave={save}
+                    onDiscard={() => { setReport(null); draft.reset(); }}
+                />
+            </div>
             {/* alpha.128: the server's limits of site settings, every key. */}
             <div className="mt-6"><Suspense fallback={null}><ServerSettingLimits /></Suspense></div>
         </div>

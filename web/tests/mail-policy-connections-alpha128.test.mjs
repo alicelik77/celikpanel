@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('../src/components/PostfixManagement.tsx', import.meta.url), 'utf8');
 
 test('the connection limit is read from the server and sent back only when it was read', () => {
-  assert.match(source, /setConnections\(typeof policy\.connection_limit === 'number' \? policy\.connection_limit : null\)/);
-  assert.match(source, /connection_limit: connections \?\? undefined/);
-  assert.match(source, /\{connections !== null && \(/);
+  assert.match(source, /connections: typeof policy\.connection_limit === 'number' \? policy\.connection_limit : null/);
+  assert.match(source, /connection_limit: values\.connections \?\? undefined/);
+  assert.match(source, /\{form\.connections !== null && \(/);
 });

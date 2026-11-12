@@ -26,16 +26,6 @@ const components = fileURLToPath(new URL('../src/components/', import.meta.url))
 // file (under src/components) → the handler expressions that still save on
 // change there, each with how many controls use it.
 const stillSavingOnChange = {
-    // :365 offered item; `change` :324
-    'PlanRights.tsx': { 'change(item, e.target.checked)': 1 },
-    // :71 offered application
-    'OfferedAppsSection.tsx': { 'change(app, e.target.checked)': 1 },
-    // :94 offered version line
-    'OfferedVersionsCard.tsx': { 'change(line, event.target.checked)': 1 },
-    // :134 PHP extension on/off (`toggleExt` :61)
-    'PHPManagement.tsx': { 'toggleExt(ext)': 1 },
-    // :973 automatic update check (`saveAutoCheck` :555)
-    'PanelUpdateCard.tsx': { 'saveAutoCheck(event.currentTarget.checked)': 1 },
     // :926 auto-renew, :1177 force HTTPS, :1204 HSTS, :1231 HSTS duration, :1256 protect mail
     'DomainSSLSettings.tsx': {
         handleAutoRenewChange: 1,

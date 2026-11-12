@@ -106,7 +106,6 @@ export const enSettingsScreens = {
     'panelUpdate.before.follow': 'You can follow every step on this page; it reconnects by itself after the restart.',
     'panelUpdate.auto.label': 'Check for updates automatically',
     'panelUpdate.auto.help': 'Once every 12 hours the panel asks celikpanel.net whether a newer signed release exists. Nothing is installed by itself.',
-    'panelUpdate.auto.saving': 'Saving…',
     'panelUpdate.auto.unknown': 'The current setting is not known yet.',
     'panelUpdate.auto.failed': 'The setting could not be saved and is unchanged. Try again.',
     'settings.2fa.title': 'Two-factor authentication',

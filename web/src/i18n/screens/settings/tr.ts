@@ -93,7 +93,6 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'panelUpdate.before.follow': 'Her adımı bu sayfada izleyebilirsiniz; sayfa yeniden başlatmadan sonra kendiliğinden yeniden bağlanır.',
     'panelUpdate.auto.label': 'Güncellemeleri otomatik denetle',
     'panelUpdate.auto.help': 'Panel 12 saatte bir celikpanel.net’e daha yeni imzalı bir sürüm olup olmadığını sorar. Hiçbir şey kendiliğinden kurulmaz.',
-    'panelUpdate.auto.saving': 'Kaydediliyor…',
     'panelUpdate.auto.unknown': 'Ayarın değeri henüz bilinmiyor.',
     'panelUpdate.auto.failed': 'Ayar kaydedilemedi ve değişmedi. Yeniden deneyin.',
     'settings.2fa.title': 'İki faktörlü doğrulama',

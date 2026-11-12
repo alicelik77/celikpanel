@@ -103,7 +103,23 @@ const admissionURL = moduleURL(`
     export function fetchHostMutationReadiness() { globalThis.discoveryFixture.readinessReads += 1; return Promise.resolve(globalThis.discoveryFixture.readiness); }
     export async function runHostMutationAdmission(read, onReady) { const r = await read(); if (r.ready) await onReady(); return r; }
 `);
+// alpha.132: the automatic-check switch is saved with the shared save bar
+// (components/kit/save), compiled for real here.
+const confirmActionURL = compileURL('../src/lib/confirmAction.ts');
+const wordsURL = compileURL('../src/components/kit/save/words.ts', { '../../../i18n': stubURL });
+const leaveAskerURL = compileURL('../src/components/kit/save/leaveAsker.ts');
+const leaveGuardURL = compileURL('../src/components/kit/save/leaveGuard.ts', { '../../../i18n': stubURL, '../../../lib/confirmAction': confirmActionURL, './leaveAsker': leaveAskerURL, './words': wordsURL });
+const saveRunURL = compileURL('../src/components/kit/save/saveRun.ts');
+const autoCheckURL = compileURL('../src/components/PanelUpdateAutoCheck.tsx', {
+    '../i18n': stubURL,
+    '../lib/requestIdentity': compileURL('../src/lib/requestIdentity.ts'),
+    '../lib/panelUpdateDiscovery': discoveryURL,
+    './kit/save/draft': compileURL('../src/components/kit/save/draft.ts', { './leaveGuard': leaveGuardURL, './saveRun': saveRunURL }),
+    './kit/save/SaveBar': compileURL('../src/components/kit/save/SaveBar.tsx', { '../../../i18n': stubURL, '../../ui': stubURL, './words': wordsURL }),
+    './kit/save/words': wordsURL,
+});
 const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpdateCard.tsx', {
+    './PanelUpdateAutoCheck': autoCheckURL,
     'lucide-react': stubURL, './ui': stubURL, '../i18n': stubURL,
     '../lib/apiError': moduleURL('export async function readApiError() { return {}; } export function apiErrorText() { return "api-error"; }'),
     '../lib/panelUpdateAdmission': admissionURL,
@@ -395,22 +411,33 @@ test('only the explicit button asks the release server, and its result is stored
     });
 });
 
-test('the switch is saved with PUT and the card follows the answer; a failed save says so and keeps the setting', async () => {
+test('the switch is saved by Save with PUT and the card follows the answer; a failed save says so and keeps the change', async () => {
+    const saveButton = (renderer) => renderer.root.findAll(node => node.type === 'button' && node.props['data-save'] !== undefined)[0];
+    const toggle = (renderer) => renderer.root.find(node => node.type === 'input' && node.props.role === 'switch');
     await withMounted(React.createElement(PanelUpdateCard), { stored: storedCurrent() }, async (renderer, fixture) => {
-        const input = renderer.root.find(node => node.type === 'input' && node.props.role === 'switch');
-        await act(async () => { input.props.onChange({ currentTarget: { checked: false } }); await flush(); });
+        assert.equal(saveButton(renderer), undefined, 'Save is shown with nothing changed');
+        await act(async () => { toggle(renderer).props.onChange({ currentTarget: { checked: false } }); await flush(); });
+        assert.ok(!fixture.requests.includes('PUT ' + discovery.PANEL_UPDATE_DISCOVERY_URL), 'the switch saved at once');
+        assert.equal(toggle(renderer).props.checked, false);
+        assert.equal(renderer.root.findAll(node => node.props && node.props['data-changed-mark'] !== undefined && typeof node.type === 'string').length, 1, 'the change is not marked');
+        await act(async () => { saveButton(renderer).props.onClick(); await flush(); });
         await act(async () => { await flush(); });
-        assert.ok(fixture.requests.includes('PUT ' + discovery.PANEL_UPDATE_DISCOVERY_URL));
-        assert.equal(renderer.root.find(node => node.type === 'input' && node.props.role === 'switch').props.checked, false);
+        assert.equal(fixture.requests.filter(line => line === 'PUT ' + discovery.PANEL_UPDATE_DISCOVERY_URL).length, 1);
+        assert.equal(toggle(renderer).props.checked, false);
+        assert.equal(saveButton(renderer), undefined, 'the bar stayed after the setting was saved');
         assert.ok(textOf(renderer.root.find(node => node.props && node.props['data-update-next'] !== undefined)).includes(say('panelUpdate.status.off')));
     });
     await withMounted(React.createElement(PanelUpdateCard), { stored: storedCurrent() }, async (renderer) => {
         const failing = globalThis.fetch;
-        globalThis.fetch = async (input, options = {}) => (options.method === 'PUT' ? new Response('{}', { status: 500 }) : failing(input, options));
-        const input = renderer.root.find(node => node.type === 'input' && node.props.role === 'switch');
-        await act(async () => { input.props.onChange({ currentTarget: { checked: false } }); await flush(); });
+        globalThis.fetch = async (input, options = {}) => (options.method === 'PUT' ? Response.json({ error: 'no' }, { status: 500 }) : failing(input, options));
+        await act(async () => { toggle(renderer).props.onChange({ currentTarget: { checked: false } }); await flush(); });
+        await act(async () => { saveButton(renderer).props.onClick(); await flush(); });
+        await act(async () => { await flush(); });
         assert.equal(renderer.root.findAll(node => node.props && node.props['data-update-auto-error'] !== undefined).length, 1);
-        assert.equal(renderer.root.find(node => node.type === 'input' && node.props.role === 'switch').props.checked, true);
+        assert.equal(toggle(renderer).props.checked, false, 'the refused change is kept on screen');
+        assert.ok(saveButton(renderer), 'the refused change is no longer unsaved');
+        await act(async () => { renderer.root.findAll(node => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0].props.onClick(); });
+        assert.equal(toggle(renderer).props.checked, true, 'Discard shows the stored setting again');
     });
 });
 

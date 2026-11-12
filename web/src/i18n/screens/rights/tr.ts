@@ -156,8 +156,9 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.offered.yes': 'Sunuluyor',
     'rights.offered.no': 'Gizli',
     'rights.offered.toggle': '{name} sunulsun',
-    'rights.offered.saving': '{name} kaydediliyor…',
-    'rights.offered.failed': 'Sunulanlar değiştirilemedi.',
+    'rights.offered.failed': 'Sunucu bunu kabul etmedi.',
+    'rights.offered.notSaved': 'Kaydedilmedi: {what}. {reason}',
+    'rights.offered.savedSome': 'Kaydedildi: {what}.',
 
     'rights.notice.migratedOne': 'Bu güncellemeyle 1 hesap Sınırsız oldu',
     'rights.notice.migratedMany': 'Bu güncellemeyle {n} hesap Sınırsız oldu',
