@@ -9,7 +9,7 @@ import type { TranslationKey } from '../i18n/en';
 import { invalidate, lastKnown, useRemote, useRereadWhileRechecking, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
-import { MailSettingsPanel } from './MailSettingsPanel';
+import { MailSettingsPanel, rblSentence } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 import { confirmAction } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
@@ -475,12 +475,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
             {activeTab === 'auth' ? (
                 <>
-                    <DeliverabilityCard domainId={domainId} />
+                    <DeliverabilityCard domainId={domainId} admin={role === 'admin'} />
                     <MailAuthPanel domainId={domainId} readOnly={readOnly} />
                 </>
             ) : activeTab === 'settings' ? (
                 <>
-                    <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                    <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} admin={role === 'admin'} />
                     <Suspense fallback={null}><DomainMailOptions domainId={domainId} domainName={domainName} readOnly={readOnly} /></Suspense>
                 </>
             ) : (
@@ -947,7 +947,7 @@ interface MailHealth {
     overall: string;
     server_ip: string;
     expected_ptr: string;
-    checks: { id: string; status: string; detail?: string }[];
+    checks: { id: string; status: string; detail?: string; items?: string[] }[];
     /** alpha.127: when this check ran; rechecking = it runs again behind the card. */
     checked_at?: string;
     rechecking?: boolean;
@@ -959,7 +959,7 @@ function decodeMailHealth(raw: unknown): MailHealth {
     return health as MailHealth;
 }
 
-function DeliverabilityCard({ domainId }: { domainId: number }) {
+function DeliverabilityCard({ domainId, admin }: { domainId: number; admin: boolean }) {
     const { t, locale } = useI18n();
     // The checks are read from the server. While they are read the card says
     // so; when they could not be read it says that, with Retry, instead of
@@ -985,6 +985,10 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
         ok: 'bg-success', warn: 'bg-warning', fail: 'bg-danger', unknown: 'bg-fg-subtle',
     };
     const ptr = data.checks.find((c) => c.id === 'ptr');
+    // alpha.133: the blocklist line says listed, or could not be checked and
+    // why (a grey dot that never colours the card), in words, not codes.
+    const rbl = data.checks.find((c) => c.id === 'rbl');
+    const rblSays = rbl ? rblSentence(t, { status: rbl.status, code: rbl.detail, items: rbl.items }, admin) : null;
 
     return (
         <section className="mb-5 rounded-xl border border-border bg-surface p-5">
@@ -1003,13 +1007,18 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
                     <div key={c.id} className="flex items-center gap-2 text-sm">
                         <span className={`h-2 w-2 shrink-0 rounded-full ${tone[c.status] ?? 'bg-fg-subtle'}`} />
                         <span className="text-fg">{t(`mail.health.${c.id}` as Parameters<typeof t>[0])}</span>
-                        {c.detail && <span className="truncate text-xs text-fg-subtle">{c.detail}</span>}
+                        {c.detail && c.id !== 'rbl' && <span className="truncate text-xs text-fg-subtle">{c.detail}</span>}
                     </div>
                 ))}
             </div>
             {ptr && ptr.status !== 'ok' && (
                 <p className="mt-3 rounded-lg bg-warning-mark/20 px-3 py-2 text-xs text-fg-muted">
                     {t('mail.health.ptrFix', { ip: data.server_ip, host: data.expected_ptr })}
+                </p>
+            )}
+            {rblSays && (
+                <p className={`mt-3 rounded-lg px-3 py-2 text-xs text-fg-muted ${rbl?.status === 'fail' ? 'bg-warning-mark/20' : 'border border-border'}`} data-rbl-say={rbl?.status}>
+                    {rblSays}
                 </p>
             )}
         </section>

@@ -30,6 +30,9 @@ type healthCheck struct {
 	ID     string `json:"id"`
 	Status string `json:"status"` // ok | warn | fail | unknown
 	Detail string `json:"detail,omitempty"`
+	// Items: the names the detail is about (alpha.133: the blocklists of
+	// the "rbl" check).
+	Items []string `json:"items,omitempty"`
 }
 
 // mailDNSSECSecured reports PowerDNS signing state only when PowerDNS is the
@@ -215,21 +218,7 @@ func (p *Panel) mailHealthReport(ctx context.Context, domainID int, domain, mode
 			add(id, "fail", "")
 		}
 	}
-	if rblErr == nil && rbl.Error == "" && len(rbl.Results) > 0 {
-		listed := 0
-		for _, res := range rbl.Results {
-			if res.Listed {
-				listed++
-			}
-		}
-		if listed == 0 {
-			add("rbl", "ok", "")
-		} else {
-			add("rbl", "fail", "")
-		}
-	} else {
-		add("rbl", "unknown", "")
-	}
+	checks = append(checks, mailHealthRBLCheck(rbl, rblErr))
 
 	// --- Mail certificate / Posta sertifikası
 	var secureMail int
@@ -247,16 +236,166 @@ func (p *Panel) mailHealthReport(ctx context.Context, domainID int, domain, mode
 		add("dnssec", "warn", "")
 	}
 
-	// Overall: worst status wins. / Genel: en kötü durum kazanır.
+	return mailHealthReport{ServerIP: mh.ServerIP, Myhostname: mh.Myhostname, Overall: mailHealthOverall(checks), Checks: checks}, nil
+}
+
+// mailHealthOverall: the worst status wins, except that blocklists which
+// could not be asked never colour the card (alpha.133): that says nothing
+// about the address.
+// Genel: en kötü durum kazanır; sorulamayan kara listeler kartı boyamaz.
+func mailHealthOverall(checks []healthCheck) string {
 	overall := "ok"
 	for _, c := range checks {
 		if c.Status == "fail" {
-			overall = "fail"
-			break
+			return "fail"
 		}
-		if c.Status == "warn" || c.Status == "unknown" {
+		if c.Status == "warn" || (c.Status == "unknown" && c.ID != "rbl") {
 			overall = "warn"
 		}
 	}
-	return mailHealthReport{ServerIP: mh.ServerIP, Myhostname: mh.Myhostname, Overall: overall, Checks: checks}, nil
+	return overall
+}
+
+// --- Blocklists (alpha.133) / Kara listeler
+//
+// Each list's answer is listed, not listed, or could not be checked with a
+// reason (transport.RBLResult). An answer from an Agent older than alpha.133
+// carries no outcome: its "listed" may be a refused question (Spamhaus's
+// 127.255.255.254 to a public resolver) and its "not listed" a failed lookup,
+// so it is said as could not be checked (RBLReasonOlderAgent), never as a
+// listing. Both screens (the deliverability card and "Check now") and the
+// domain health strip read the same view.
+//
+// Her listenin yanıtı listede, listede değil ya da nedeniyle denetlenemedi
+// olur. alpha.133'ten eski Agent'ın yanıtı denetlenemedi sayılır, asla
+// listeleme değil.
+
+// rblListView is one list's answer as the screens show it.
+type rblListView struct {
+	Zone    string `json:"zone"`
+	Name    string `json:"name"`
+	Listed  bool   `json:"listed"`
+	Outcome string `json:"outcome"`
+	Reason  string `json:"reason,omitempty"`
+	// Sublists and Policy: the documented parts of a listing; Policy when
+	// every part is a policy entry (Spamhaus PBL), not a spam report.
+	Sublists []string `json:"sublists,omitempty"`
+	Policy   bool     `json:"policy,omitempty"`
+	Detail   string   `json:"detail,omitempty"`
+}
+
+// rblSummary is the whole answer in one: Status ok | fail | unknown; Code
+// clean, listed, policy or the reason a list could not be checked; Items the
+// names of the lists the code is about.
+type rblSummary struct {
+	Status string   `json:"status"`
+	Code   string   `json:"code"`
+	Items  []string `json:"items,omitempty"`
+}
+
+type rblReportView struct {
+	IP      string        `json:"ip"`
+	Results []rblListView `json:"results"`
+	Summary rblSummary    `json:"summary"`
+}
+
+var rblListNames = map[string]string{
+	"zen.spamhaus.org":       "Spamhaus",
+	"bl.spamcop.net":         "SpamCop",
+	"b.barracudacentral.org": "Barracuda",
+}
+
+// rblReasonRank orders the reasons by how much they tell the administrator.
+var rblReasonRank = map[string]int{
+	transport.RBLReasonPublicResolver: 5,
+	transport.RBLReasonTooManyQueries: 4,
+	transport.RBLReasonOlderAgent:     3,
+	transport.RBLReasonUnknownAnswer:  2,
+	transport.RBLReasonLookupFailed:   1,
+}
+
+func rblView(resp transport.CheckRBLResponse) rblReportView {
+	view := rblReportView{IP: resp.IP, Results: make([]rblListView, 0, len(resp.Results))}
+	for _, res := range resp.Results {
+		name := rblListNames[res.Zone]
+		if name == "" {
+			name = res.Zone
+		}
+		list := rblListView{Zone: res.Zone, Name: name, Outcome: res.Outcome, Reason: res.Reason}
+		switch res.Outcome {
+		case transport.RBLListed:
+			list.Listed, list.Detail = true, res.Detail
+			list.Sublists = append([]string(nil), res.Sublists...)
+			list.Policy = len(res.Sublists) > 0
+			for _, part := range res.Sublists {
+				if part != "pbl" {
+					list.Policy = false
+				}
+			}
+		case transport.RBLNotListed:
+			list.Reason = ""
+		case "":
+			// An Agent older than alpha.133. / alpha.133'ten eski Agent.
+			list.Outcome, list.Reason = transport.RBLNotChecked, transport.RBLReasonOlderAgent
+		default:
+			list.Outcome = transport.RBLNotChecked
+			if rblReasonRank[list.Reason] == 0 {
+				list.Reason = transport.RBLReasonUnknownAnswer
+			}
+		}
+		view.Results = append(view.Results, list)
+	}
+	view.Summary = summarizeRBL(view.Results)
+	return view
+}
+
+// rblItemName names a list in a sentence, with the parts of its listing.
+func rblItemName(list rblListView) string {
+	if len(list.Sublists) == 0 {
+		return list.Name
+	}
+	return list.Name + " (" + strings.ToUpper(strings.Join(list.Sublists, ", ")) + ")"
+}
+
+func summarizeRBL(lists []rblListView) rblSummary {
+	var spam, policy, unchecked []string
+	reason := ""
+	for _, list := range lists {
+		switch {
+		case list.Outcome == transport.RBLListed && list.Policy:
+			policy = append(policy, rblItemName(list))
+		case list.Outcome == transport.RBLListed:
+			spam = append(spam, rblItemName(list))
+		case list.Outcome == transport.RBLNotChecked:
+			unchecked = append(unchecked, list.Name)
+			if rblReasonRank[list.Reason] > rblReasonRank[reason] {
+				reason = list.Reason
+			}
+		}
+	}
+	switch {
+	case len(spam) > 0:
+		return rblSummary{Status: "fail", Code: transport.RBLListed, Items: append(spam, policy...)}
+	case len(policy) > 0:
+		return rblSummary{Status: "fail", Code: "policy", Items: policy}
+	case len(unchecked) > 0:
+		return rblSummary{Status: "unknown", Code: reason, Items: unchecked}
+	case len(lists) == 0:
+		return rblSummary{Status: "unknown"}
+	}
+	return rblSummary{Status: "ok", Code: "clean"}
+}
+
+// mailHealthRBLCheck is the card's blocklist line. A list that could not be
+// asked is "unknown" with its reason, never "fail".
+func mailHealthRBLCheck(resp transport.CheckRBLResponse, err error) healthCheck {
+	if err != nil || resp.Error != "" {
+		return healthCheck{ID: "rbl", Status: "unknown"}
+	}
+	summary := rblView(resp).Summary
+	check := healthCheck{ID: "rbl", Status: summary.Status, Detail: summary.Code, Items: summary.Items}
+	if summary.Status == "ok" {
+		check.Detail = ""
+	}
+	return check
 }
