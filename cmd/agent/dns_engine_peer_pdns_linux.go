@@ -210,83 +210,50 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	}); err != nil {
 		return err
 	}
-	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
+	return runNativePeerProofTail(run, checks, nativePeerProofTail{
 		// The journal accepts a later challenge of this same operation at a
 		// higher catalog serial only over the identical member set, which it
 		// verifies from these members (the daemon's re-stamp).
-		err := checks.writeChallenge(ctx, func(verify func() error) error {
+		publish: func(verify func() error) error {
 			return pdnspeerjournal.Publish(request, plan.Evidence.Members, enrollment.RecordSHA256, attempt, verify)
-		})
-		// The publication's own rechecks may admit a daemon re-stamp (final
+		},
+		// The recheck after the publish may admit a daemon re-stamp (final
 		// alpha.113 acceptance run 4, D7): the challenge then binds a serial
 		// the record has left and is not sent. The wave proves the
 		// re-stamped pair and mints the next challenge, which supersedes
 		// this one in the journal.
-		if restampedSinceChallenge(record, request.CatalogSerial, err) {
-			return errDNSProducerCatalogRestampedBeforeExchange
-		}
-		if err != nil {
+		restamped: func(err error) bool {
+			return restampedSinceChallenge(record, request.CatalogSerial, err)
+		},
+		recheckEnrollment: func() error { return pdnspeerenrollment.Recheck(enrollment) },
+		exchangeLimit:     enrollment.Transport.Timeout,
+		inspect: func(ctx context.Context) error {
+			var err error
+			response, authenticated, err = pdnspeertransport.Inspect(ctx, enrollment.Transport, request, pdnspeertransport.SSH{})
+			if err != nil {
+				return pendingDNSPeerCause(pdnsInspectionPendingCode(err), err)
+			}
+			return nil
+		},
+		afterInspection: func(ctx context.Context, verifyCurrent func() error) error {
+			return verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
+				nativePeerAfterInspectionProbes{
+					soa: probeDNSZoneSOA, localCatalog: localCatalogProbe,
+					peerCatalog: peerCatalogProbe, peerZone: probeDNSBoundZoneAXFR,
+				}, verifyCurrent)
+		},
+		// The PowerDNS inspector's outcome fields, bounded (pair 6 could
+		// only infer them).
+		verifyAnswer: func(consume func(string) error) error {
+			accepted := false
+			_, err := pdnspeerproof.Verify(request, response, authenticated, time.Now(),
+				func(digest string) bool { accepted = true; return consume(digest) == nil })
+			run.logAnswer(response.CatalogState, response.MemberState, response.NativeState, accepted, err)
 			return err
-		}
-		if err := pdnspeerenrollment.Recheck(enrollment); err != nil {
-			return pendingDNSPeerCause(transport.DNSPeerPendingEnrollmentChanged, err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	if err := run.stepWithin(dnsPeerProofStepExchange, enrollment.Transport.Timeout, func(ctx context.Context) error {
-		var err error
-		response, authenticated, err = pdnspeertransport.Inspect(ctx, enrollment.Transport, request, pdnspeertransport.SSH{})
-		if err != nil {
-			return pendingDNSPeerCause(pdnsInspectionPendingCode(err), err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	if err := run.step(dnsPeerProofStepPostInspection, func(ctx context.Context) error {
-		verifyCurrent := checks.at(ctx)
-		if err := verifyCurrent(); err != nil {
-			return err
-		}
-		if err := verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
-			nativePeerAfterInspectionProbes{
-				soa: probeDNSZoneSOA, localCatalog: localCatalogProbe,
-				peerCatalog: peerCatalogProbe, peerZone: probeDNSBoundZoneAXFR,
-			}, verifyCurrent); err != nil {
-			return err
-		}
-		// No second full recheck here: consume's final recheck, after
-		// consume-once and before success, makes the same comparison
-		// (nativePeerCurrentChecks, "Where the full local recheck runs").
-		return nil
-	}); err != nil {
-		return err
-	}
-	return run.consume(func() error {
-		accepted := false
-		var consumeErr error
-		_, err := pdnspeerproof.Verify(request, response, authenticated, time.Now(), func(digest string) bool {
-			// The answer is accepted: consume-once runs under the fresh
-			// consume context, never under an earlier step's clock.
-			accepted = true
-			consumeErr = checks.journalOpHeld("consume-once", func(verify func() error) error {
-				return pdnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256,
-					digest, attempt, verify)
-			})
-			return consumeErr == nil
-		})
-		// The PowerDNS inspector's outcome fields, bounded (pair 6 could only
-		// infer them).
-		run.logAnswer(response.CatalogState, response.MemberState, response.NativeState, accepted, err)
-		if consumeErr != nil {
-			return consumeErr
-		}
-		if err != nil {
-			return pendingDNSPeerCause(transport.DNSPeerPendingNativeUnknown, err)
-		}
-		return checks.at(run.accepted())()
+		},
+		consume: func(digest string, verify func() error) error {
+			return pdnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256, digest, attempt, verify)
+		},
 	})
 }
 

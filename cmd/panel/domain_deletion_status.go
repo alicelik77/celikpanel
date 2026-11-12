@@ -335,10 +335,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 			); ok {
 				result.Reason = reason
 				result.Detail = detail
-				result.Message = message
-				if dnsPeerPendingRetriesAutomatically(dnsZoneV3PendingCodeFromJob(job)) {
-					result.Message += " " + domainDeletionFinishesByItselfEnglish
-				}
+				result.Message = p.domainDeletionDNSMessage(snapshot.lease, dnsZoneV3PendingCodeFromJob(job), message)
 			}
 		}
 	}
@@ -368,10 +365,8 @@ func (p *Panel) domainDeletionAheadStatus(ctx context.Context, domainID int, sna
 			result = domainDeletionStatusResponse{
 				Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
 				Reason: reason, Detail: detail,
-				Message: "An earlier DNS change of this domain is still waiting, and its removal from DNS is published right after it. " + message,
-			}
-			if dnsPeerPendingRetriesAutomatically(code) {
-				result.Message += " " + domainDeletionFinishesByItselfEnglish
+				Message: "An earlier DNS change of this domain is still waiting, and its removal from DNS is published right after it. " +
+					p.domainDeletionDNSMessage(snapshot.lease, code, message),
 			}
 		}
 	}
@@ -417,13 +412,41 @@ func (p *Panel) domainDeletionRecheckRunningStatus(lease dnsZoneEngineLease) (do
 	if !known {
 		return domainDeletionStatusResponse{}, false
 	}
-	if dnsPeerPendingRetriesAutomatically(entry.Code) {
-		message += " " + domainDeletionFinishesByItselfEnglish
-	}
+	message = p.domainDeletionDNSMessage(lease, entry.Code, message)
 	return domainDeletionStatusResponse{
 		Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
 		Reason: reason, Detail: detail, Message: message,
 	}, true
+}
+
+// After a reviewed pending reason of this server's DNS step, what happens
+// next, from the reconciler's state of that exact publication (alpha.133): it
+// continues by itself; it is stuck on the same cause and the administrators
+// were notified (dns_pending_publication.go); or its automatic checks ended.
+const domainDeletionDNSStuckEnglish = "CelikPanel still checks this DNS step by itself every 5 minutes, but it has failed the same way for about a quarter of an hour, so it needs the server administrator, who was notified in the panel with what to check. “Retry this deletion” checks again at once; once the step completes, the deletion finishes by itself."
+
+const domainDeletionDNSChecksEndedEnglish = "CelikPanel's automatic checks of this DNS step ended after repeated failures, so nothing more happens by itself. The server administrator checks Server → DNS and peer servers, then uses “Retry this deletion”."
+
+// domainDeletionDNSMessage completes message, the guidance of the reviewed
+// pending code, with that sentence. When the automatic checks ended, a
+// reason text that promises them is replaced, so the answer never says both.
+// Memory only.
+func (p *Panel) domainDeletionDNSMessage(lease dnsZoneEngineLease, code, message string) string {
+	if entry, ok := p.dnsPendingPublications().entry(lease.RequestID); ok && entry.Lease == lease {
+		switch {
+		case entry.Stopped && dnsPeerPendingRetriesAutomatically(code):
+			return "This domain is removed from DNS on this server, but the confirmation that the backup DNS server removed it too is not complete. " +
+				domainDeletionDNSChecksEndedEnglish
+		case entry.Stopped:
+			return message + " " + domainDeletionDNSChecksEndedEnglish
+		case entry.Stuck:
+			return message + " " + domainDeletionDNSStuckEnglish
+		}
+	}
+	if dnsPeerPendingRetriesAutomatically(code) {
+		return message + " " + domainDeletionFinishesByItselfEnglish
+	}
+	return message
 }
 
 func domainDeletionChangingStatus() domainDeletionStatusResponse {

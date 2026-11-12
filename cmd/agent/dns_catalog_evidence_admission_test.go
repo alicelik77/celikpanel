@@ -329,8 +329,10 @@ func (f *fakeRestampPair) plan(domain string) dnsV3PrimaryPropagationPlan {
 // fakeNativePeerProof follows verifyEnrolled*PeerDeletion's contract with the
 // production helpers: the current-evidence recheck judges the producer
 // against the shared record (admitting a re-stamp), no challenge is minted
-// when the record moved past the proved pair, and after the inspection the
-// shared post-inspection checks run.
+// when the record moved past the proved pair, and from the challenge write on
+// the production post-mint sequence (runNativePeerProofTail) runs with the
+// PowerDNS-secondary path's re-stamp rule; only the journal, the SSH exchange
+// and the answer's signature are fakes (alpha.133 review).
 type fakeNativePeerProof struct {
 	pair     *fakeRestampPair
 	enrolled bool
@@ -372,29 +374,43 @@ func (p *fakeNativePeerProof) proof(ctx context.Context, authority dnsPeerAXFRAu
 		return errors.New("challenge minted from a serial the pair did not prove")
 	}
 	p.minted = append(p.minted, authority.catalogSerial)
-	if p.duringPublish != nil {
-		p.duringPublish(len(p.minted))
-		// The publication's recheck and its outcome, as in
-		// verifyEnrolledPDNSPeerDeletion's challenge_write step.
-		err := verifyCurrent()
-		if restampedSinceChallenge(record, authority.catalogSerial, err) {
-			return errDNSProducerCatalogRestampedBeforeExchange
-		}
-		if err != nil {
+	checks := &nativePeerCurrentChecks{
+		attempt: ok, enrollment: ok,
+		local: func(context.Context) error {
+			_, err := record.Admit(p.pair.db())
 			return err
-		}
+		},
 	}
-	if p.afterMint != nil {
-		p.afterMint()
-	}
-	if err := verifyCurrent(); err != nil {
-		return err
-	}
-	if err := verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
-		p.pair.probes(), verifyCurrent); err != nil {
-		return err
-	}
-	return verifyCurrent()
+	run := newDNSPeerProofRun(ctx, dnsPeerProofSteps, plan.Changed.Domain, "PowerDNS")
+	return runNativePeerProofTail(run, checks, nativePeerProofTail{
+		publish: func(verify func() error) error {
+			if p.duringPublish != nil {
+				p.duringPublish(len(p.minted))
+			}
+			for i := 0; i < 4; i++ { // the journal verifies four times per write
+				if err := verify(); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		restamped: func(err error) bool {
+			return restampedSinceChallenge(record, authority.catalogSerial, err)
+		},
+		recheckEnrollment: ok,
+		inspect: func(context.Context) error {
+			if p.afterMint != nil {
+				p.afterMint()
+			}
+			return nil
+		},
+		afterInspection: func(ctx context.Context, verifyCurrent func() error) error {
+			return verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
+				p.pair.probes(), verifyCurrent)
+		},
+		verifyAnswer: func(consume func(string) error) error { return consume("accepted") },
+		consume:      func(string, func() error) error { return nil },
+	})
 }
 
 func (p *fakeNativePeerProof) complete(t *testing.T, plan dnsV3PrimaryPropagationPlan) error {

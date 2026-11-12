@@ -12,7 +12,10 @@
 // after ConsumeOnce before terminal success), not at every boundary.
 // Publish must finish before any network exchange. Only an authenticated,
 // validated native peer response may invoke ConsumeOnce. The caller then
-// rechecks current ledger, enrollment and native state before terminal success.
+// rechecks current ledger, enrollment and native state before terminal success;
+// a difference found there leaves the operation pending, and the next attempt's
+// challenge supersedes the consumed record (admissibleSuccessor does not
+// compare State).
 //
 // After a process restart or restored backup, the caller always mints a fresh
 // cryptographically random nonce and increasing proof attempt under the active

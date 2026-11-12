@@ -639,3 +639,30 @@ func TestUpdatedAgentRetiresEarlierReleaseChallenge(t *testing.T) {
 		t.Fatalf("first challenge of the next deletion: %v", err)
 	}
 }
+
+// A difference found by the caller's final recheck after ConsumeOnce leaves
+// the operation pending; its next attempt publishes over the consumed record
+// of the same operation (admissibleSuccessor does not compare State), and a
+// late answer to the consumed challenge stays refused (alpha.133 review).
+func TestConsumedChallengeIsSupersededByTheNextAttempt(t *testing.T) {
+	s, request, digest := fixture(t)
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.consume(request, enrollment, digest, 1, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	next := request
+	next.Attempt = 2
+	next.Nonce = strings.Repeat("9", 64)
+	if err := s.publish(next, fixtureMembers, enrollment, 2, allow, nil); err != nil {
+		t.Fatalf("next attempt over a consumed challenge: %v", err)
+	}
+	stored, err := s.read()
+	if err != nil || stored.State != StateOutstanding || stored.Request.Attempt != 2 {
+		t.Fatalf("stored=%+v err=%v", stored, err)
+	}
+	if err := s.consume(request, enrollment, digest, 1, allow, nil); !IsCode(err, Mismatch) {
+		t.Fatalf("late answer to the consumed challenge: %v", err)
+	}
+}
