@@ -126,16 +126,21 @@ günceller.**
 - **Alan adı ve DNS › Adlar hâlâ belge kök dizinini ve web sunucusu
   satırlarını gösteriyor;** bunlar Site'ye aittir ve o bölüm yeniden
   kurulurken taşınır.
-- Postfix sayfasındaki posta aktarma formu kendi Kaydet düğmesini koruyor
-  (parola ve giriş denemesi gerektiriyor); E-posta sürümünde dönüştürülür.
-- [SON LABORATUVAR DENEMESİNDEN SONRA DOĞRULANACAK] Gerçek sistemde
-  denendi (Ubuntu 24.04, tek sunucu, laboratuvar): alpha.131'den panelin
-  kendi güncelleme ekranıyla güncelleme; siteler, posta kutuları,
-  veritabanları, DNS kayıtları, sertifikalar, zamanlanmış görevler ve
-  değiştirilmiş ayarlar yerinde kaldı; dokuz bölüm, eski bağlantılar, satır
-  menüsü ve kaydetme çubukları tarayıcıda yönetici, bayi ve müşteri olarak
-  elle denendi. Gerçek sistemde denenmeyenler: Debian ve Arch, iki sunuculu
-  çift, herkese açık bir sertifika yetkilisi.
+- **Postfix sayfasındaki "başka bir sunucu üzerinden gönder" formu henüz
+  yeni kaydetmeye dönüştürülmedi:** kendi Kaydet düğmesini koruyor (parola
+  ve giriş denemesi gerektiriyor); E-posta sürümünde dönüştürülür.
+- **Plan düzenleyici:** izin verilen en yüksek değerin üstünde bir değer
+  girilince Kaydet açık kalır; sunucu onu reddeder.
+- Gerçek sistemde denendi (Ubuntu 24.04, tek sunucu, laboratuvar): aday
+  `ce0dcd467`, alpha.131'den panelin kendi güncelleme ekranıyla üç kez
+  kuruldu; son deneme 68 saniye sürdü ve sayfa kendiliğinden geri geldi.
+  Siteler, posta kutuları, veritabanları, DNS kayıtları, sertifikalar,
+  zamanlanmış görevler, FTP girişleri ve bilerek değiştirilen ayarlar önce
+  ve sonra aynıydı. Dokuz bölüm, eski bağlantılar, satır menüsü, kaydetme
+  çubukları, çıkış sorusu, planda olmayan bölüm, dosya düzenleyicinin
+  çakışma uyarısı, Sunulanlar ve PHP eklentileri tarayıcıda yönetici, bayi
+  ve müşteri olarak elle denendi. Gerçek sistemde denenmeyenler: Debian ve
+  Arch, iki sunuculu çift, herkese açık bir sertifika yetkilisi.
 - Önceki sınırlar sürüyor (bkz. alpha.131).
 
 ## Kanıt

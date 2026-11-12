@@ -126,14 +126,20 @@ screen.**
   part stays on the same page; moving to another section asks.
 - **Domain & DNS › Names still shows the document root and the web server
   lines,** which belong to Site; they move when that section is rebuilt.
-- The mail relay form on the Postfix page keeps its own Save (it needs the
+- **The "send through another server" form on the Postfix page is not
+  converted to the new saving yet:** it keeps its own Save (it needs the
   password and a sign-in test); it is converted with the Mail release.
-- [TO CONFIRM after the final lab run] Checked on a real system (Ubuntu
-  24.04, one server, lab): update from alpha.131 through the panel's own
-  update screen; sites, mailboxes, databases, DNS records, certificates,
-  scheduled tasks and changed settings were still in place; the nine
-  sections, old links, the row menu and the save bars were tried by hand in
-  a browser as administrator, reseller and customer. Not checked on a real
+- **Plan editor:** Save stays enabled when a value is above the allowed
+  maximum; the server refuses it.
+- Checked on a real system (Ubuntu 24.04, one server, lab): the candidate
+  `ce0dcd467` was installed three times from alpha.131 through the panel's
+  own update screen; the last run took 68 seconds and the page came back by
+  itself. Sites, mailboxes, databases, DNS records, certificates, scheduled
+  tasks, FTP logins and the deliberately changed settings were the same
+  before and after. The nine sections, old links, the row menu, the save
+  bars, the leave question, the section not in the plan, the file editor's
+  conflict notice, Offered and the PHP extensions were tried by hand in a
+  browser as administrator, reseller and customer. Not checked on a real
   system: Debian and Arch, a two-server pair, a public certificate
   authority.
 - Earlier limits still apply (see alpha.131).
