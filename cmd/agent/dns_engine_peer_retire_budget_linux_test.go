@@ -83,20 +83,22 @@ func TestStaleChallengeRetirementFitsPrepareBudget(t *testing.T) {
 	logs := captureAgentLog(t)
 	previous, ledger, nextPlan := historicalBINDPeerChallengeFixture(t)
 	load := func() (serviceMutationLedger, error) { return ledger, nil }
-	budget := dnsPeerProofSteps // the production bounds: prepare 8 s
+	budget := dnsPeerProofSteps // the production bounds
 
-	// The alpha.132 order and authority, reproduced: full recheck, then the
-	// reconciliation under the same full recheck.
+	// The alpha.132 order, authority and prepare bound (8 s), reproduced:
+	// full recheck, then the reconciliation under the same full recheck.
+	alpha132 := budget
+	alpha132.prepare = 8 * time.Second
 	journal := &staleChallengeJournal{stored: &previous}
 	locals := 0
 	checks := staleChallengeChecks(observedLocalRecheck, &locals)
-	run := newDNSPeerProofRun(context.Background(), budget, nextPlan.Changed.Domain, "BIND")
+	run := newDNSPeerProofRun(context.Background(), alpha132, nextPlan.Changed.Domain, "BIND")
 	started := time.Now()
 	err := run.step(dnsPeerProofStepPrepare, func(ctx context.Context) error {
 		if err := checks.at(ctx)(); err != nil {
 			return err
 		}
-		return checks.journalOp(ctx, "previous challenge reconciliation", func(verify func() error) error {
+		return checks.journalOpWith(checks.at(ctx), "previous challenge reconciliation", func(verify func() error) error {
 			return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, journal.read, journal.retire)
 		})
 	})

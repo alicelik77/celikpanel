@@ -86,6 +86,11 @@ func dnsZoneV3PendingCodeFromJob(job *agentMutationJob) string {
 	return ""
 }
 
+// errDNSZoneV3RecoveryStillRunning: the Panel stopped waiting while the
+// exact recovery attempt was still running on the Agent. Its result is not
+// known yet; it is not another result of the earlier attempt (alpha.133).
+var errDNSZoneV3RecoveryStillRunning = errors.New("exact DNS V3 recovery remains active")
+
 var errDNSZoneV3PropagationDeferred = errors.New(
 	"DNS zone V3 paired propagation recovery is deferred",
 )
@@ -838,8 +843,8 @@ func (p *Panel) recoverPendingDNSZoneV3(
 			if job != nil &&
 				validateDNSZoneSyncV3RecoveringJob(job, identity) == nil {
 				return false, &dnsAgentPublicationError{Err: fmt.Errorf(
-					"%w: exact recovering attempt remains active: %v",
-					errDNSZoneV3PropagationDeferred,
+					"%w: %w: %v",
+					errDNSZoneV3PropagationDeferred, errDNSZoneV3RecoveryStillRunning,
 					errors.Join(callErr, waitErr),
 				)}
 			}
@@ -877,7 +882,7 @@ func (p *Panel) recoverPendingDNSZoneV3(
 	if agentMutationActive(job.Status) {
 		return false, &dnsAgentPublicationError{Err: errors.Join(
 			callErr,
-			errors.New("exact DNS V3 recovery remains active"),
+			errDNSZoneV3RecoveryStillRunning,
 		)}
 	}
 	return false, &dnsAgentPublicationError{Err: errors.Join(

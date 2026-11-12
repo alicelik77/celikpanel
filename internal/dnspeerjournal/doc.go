@@ -5,9 +5,17 @@
 // The caller must hold and verify the external host and publication locks and
 // prove an active running/recovering ledger admission with the exact request,
 // owner and ledger attempt. Pending with no ActiveRequestID is not authority.
+// That, with the unchanged enrollment, is what the VerifyCurrent callback of
+// Publish and ConsumeOnce checks at each write boundary. The native DNS
+// evidence of the proof is the caller's to recheck once around each write
+// (since alpha.133: before minting, after Publish before the exchange, and
+// after ConsumeOnce before terminal success), not at every boundary.
 // Publish must finish before any network exchange. Only an authenticated,
 // validated native peer response may invoke ConsumeOnce. The caller then
-// rechecks current ledger, enrollment and native state before terminal success.
+// rechecks current ledger, enrollment and native state before terminal success;
+// a difference found there leaves the operation pending, and the next attempt's
+// challenge supersedes the consumed record (admissibleSuccessor does not
+// compare State).
 //
 // After a process restart or restored backup, the caller always mints a fresh
 // cryptographically random nonce and increasing proof attempt under the active

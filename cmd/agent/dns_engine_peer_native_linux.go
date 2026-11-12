@@ -92,7 +92,7 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			local: func(ctx context.Context) error { return recheckNativePeerLocalEvidence(ctx, plan, record) },
 		}
 		// An earlier, terminal operation's challenge is retired first,
-		// under the held checks only (nativePeerCurrentChecks.retireOp):
+		// under the held checks only (nativePeerCurrentChecks.prepareJournal):
 		// it completes in milliseconds and stays retired even if the full
 		// local recheck below runs out of this step's time.
 		if err := checks.prepareJournal(ctx, func(verify func() error) error {
@@ -127,72 +127,43 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	}); err != nil {
 		return err
 	}
-	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
-		if err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
-			// The members bind the request's catalog digest; a challenge
-			// written before a PowerDNS daemon re-stamp of the same member
-			// set is superseded, not a mismatch (dnspeerjournal).
+	return runNativePeerProofTail(run, checks, nativePeerProofTail{
+		// The members bind the request's catalog digest; a challenge written
+		// before a PowerDNS daemon re-stamp of the same member set is
+		// superseded, not a mismatch (dnspeerjournal).
+		publish: func(verify func() error) error {
 			return dnspeerjournal.Publish(request, plan.Evidence.Members, enrollment.RecordSHA256, attempt, verify)
-		}); err != nil {
+		},
+		recheckEnrollment: func() error { return dnspeerenrollment.Recheck(enrollment) },
+		exchangeLimit:     enrollment.Transport.Timeout,
+		inspect: func(ctx context.Context) error {
+			var err error
+			response, authenticated, err = dnspeertransport.Inspect(ctx, enrollment.Transport, request, dnspeertransport.SSH{})
+			if err != nil {
+				return pendingDNSPeerCause(inspectionPendingCode(dnspeertransport.InspectorReason(err)), err)
+			}
+			return nil
+		},
+		// The source-bound catalog and no-transfer evidence must still
+		// match after the network round trip. A contradictory positive DNS
+		// answer stays fatal.
+		afterInspection: func(ctx context.Context, verifyCurrent func() error) error {
+			return verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
+				nativePeerAfterInspectionProbes{
+					soa: probeDNSZoneSOA, localCatalog: localCatalogProbe,
+					peerCatalog: peerCatalogProbe, peerZone: probeDNSBoundZoneAXFR,
+				}, verifyCurrent)
+		},
+		verifyAnswer: func(consume func(string) error) error {
+			accepted := false
+			_, err := dnspeerproof.Verify(request, response, authenticated, time.Now(),
+				func(digest string) bool { accepted = true; return consume(digest) == nil })
+			run.logAnswer(response.CatalogState, response.MemberState, response.NativeState, accepted, err)
 			return err
-		}
-		if err := dnspeerenrollment.Recheck(enrollment); err != nil {
-			return pendingDNSPeerCause(transport.DNSPeerPendingEnrollmentChanged, err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	if err := run.stepWithin(dnsPeerProofStepExchange, enrollment.Transport.Timeout, func(ctx context.Context) error {
-		var err error
-		response, authenticated, err = dnspeertransport.Inspect(ctx, enrollment.Transport, request, dnspeertransport.SSH{})
-		if err != nil {
-			return pendingDNSPeerCause(inspectionPendingCode(dnspeertransport.InspectorReason(err)), err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	// The source-bound catalog and no-transfer evidence must still match after
-	// the network round trip. A contradictory positive DNS answer stays fatal.
-	if err := run.step(dnsPeerProofStepPostInspection, func(ctx context.Context) error {
-		verifyCurrent := checks.at(ctx)
-		if err := verifyCurrent(); err != nil {
-			return err
-		}
-		if err := verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
-			nativePeerAfterInspectionProbes{
-				soa: probeDNSZoneSOA, localCatalog: localCatalogProbe,
-				peerCatalog: peerCatalogProbe, peerZone: probeDNSBoundZoneAXFR,
-			}, verifyCurrent); err != nil {
-			return err
-		}
-		return verifyCurrent()
-	}); err != nil {
-		return err
-	}
-	return run.consume(func() error {
-		accepted := false
-		var consumeErr error
-		_, err := dnspeerproof.Verify(request, response, authenticated, time.Now(),
-			func(digest string) bool {
-				// The answer is accepted: consume-once runs under the fresh
-				// consume context, never under an earlier step's clock.
-				accepted = true
-				consumeErr = checks.journalOp(run.accepted(), "consume-once", func(verify func() error) error {
-					return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256,
-						digest, attempt, verify)
-				})
-				return consumeErr == nil
-			})
-		run.logAnswer(response.CatalogState, response.MemberState, response.NativeState, accepted, err)
-		if consumeErr != nil {
-			return consumeErr
-		}
-		if err != nil {
-			return pendingDNSPeerCause(transport.DNSPeerPendingNativeUnknown, err)
-		}
-		return checks.at(run.accepted())()
+		},
+		consume: func(digest string, verify func() error) error {
+			return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256, digest, attempt, verify)
+		},
 	})
 }
 
@@ -362,8 +333,9 @@ const pdnsPeerLocalRecheckDelay = 250 * time.Millisecond
 
 // The PowerDNS producer, exact V3 deletion receipt and native daemon must
 // continue to describe the same state captured before peer inspection. This
-// check runs before minting, after the SSH round trip, during consume-once and
-// once more before reporting success. The producer catalog is judged against
+// check runs before minting, after the challenge is durable, after the SSH
+// round trip and once more after consume-once before reporting success
+// (nativePeerCurrentChecks, "Where the full local recheck runs"). The producer catalog is judged against
 // the attempt's recorded evidence by classifyProducerCatalogEvidence; an
 // admitted daemon re-stamp re-stamps the record once the whole recheck held.
 func recheckPDNSPeerLocalEvidence(ctx context.Context, plan dnsV3PrimaryPropagationPlan, record *dnsRecordedProducerCatalog) error {

@@ -581,6 +581,29 @@ func TestRetireVerifiesTerminalFourTimes(t *testing.T) {
 	}
 }
 
+// The agent's step budget models publish and consume-once by these counts
+// (cmd/agent journalVerifiesPerWrite): each calls its verifier four times on
+// success. alpha.133 passes the held checks as that verifier and runs the
+// full local recheck once around the write instead (lab of 12 Nov 2026).
+func TestPublishAndConsumeVerifyFourTimes(t *testing.T) {
+	s, request, digest := fixture(t)
+	calls := 0
+	count := func() error { calls++; return nil }
+	if err := s.publish(request, fixtureMembers, enrollment, 1, count, nil); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 4 {
+		t.Fatalf("publish verified %d times, want 4", calls)
+	}
+	calls = 0
+	if err := s.consume(request, enrollment, digest, 1, count, nil); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 4 {
+		t.Fatalf("consume verified %d times, want 4", calls)
+	}
+}
+
 // alpha132ConsumedJournal is a consumed challenge exactly as alpha.132 (and
 // every release since the v1 sidecar) writes it: the state an updated Agent
 // finds on a server whose earlier deletion finished (Frankfurt, 6 Nov 2026).
@@ -614,5 +637,32 @@ func TestUpdatedAgentRetiresEarlierReleaseChallenge(t *testing.T) {
 	_, request, _ := fixture(t) // a new operation's request
 	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatalf("first challenge of the next deletion: %v", err)
+	}
+}
+
+// A difference found by the caller's final recheck after ConsumeOnce leaves
+// the operation pending; its next attempt publishes over the consumed record
+// of the same operation (admissibleSuccessor does not compare State), and a
+// late answer to the consumed challenge stays refused (alpha.133 review).
+func TestConsumedChallengeIsSupersededByTheNextAttempt(t *testing.T) {
+	s, request, digest := fixture(t)
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.consume(request, enrollment, digest, 1, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	next := request
+	next.Attempt = 2
+	next.Nonce = strings.Repeat("9", 64)
+	if err := s.publish(next, fixtureMembers, enrollment, 2, allow, nil); err != nil {
+		t.Fatalf("next attempt over a consumed challenge: %v", err)
+	}
+	stored, err := s.read()
+	if err != nil || stored.State != StateOutstanding || stored.Request.Attempt != 2 {
+		t.Fatalf("stored=%+v err=%v", stored, err)
+	}
+	if err := s.consume(request, enrollment, digest, 1, allow, nil); !IsCode(err, Mismatch) {
+		t.Fatalf("late answer to the consumed challenge: %v", err)
 	}
 }

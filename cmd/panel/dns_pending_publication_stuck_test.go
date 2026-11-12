@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -181,5 +182,43 @@ func TestDNSPublicationStuckNoticeWords(t *testing.T) {
 			strings.Contains(words.TextEN, "Nothing was changed") {
 			t.Fatalf("%s:%s words=%+v", tc.reason, tc.detail, words)
 		}
+	}
+}
+
+// alpha.133 review: a re-check the Panel stopped waiting for while the exact
+// Agent job was still running has no result yet. It is neither another repeat
+// of the earlier cause (six of them raised a false "stuck" notification) nor
+// a failure; its result is read again shortly.
+func TestDNSPendingPublicationAbandonedRecheckIsNotARepeat(t *testing.T) {
+	for _, err := range []error{
+		&dnsAgentPublicationError{Err: fmt.Errorf("%w: %w: %v",
+			errDNSZoneV3PropagationDeferred, errDNSZoneV3RecoveryStillRunning, errors.New("wait ended"))},
+		&dnsAgentPublicationError{Err: errors.Join(errors.New("call ended"), errDNSZoneV3RecoveryStillRunning)},
+	} {
+		if outcome, _, _ := classifyDNSPendingPublicationAttempt(err); outcome != dnsPendingPublicationInFlight {
+			t.Fatalf("%v classified as %d", err, outcome)
+		}
+	}
+	clock := &pendingPublicationClock{now: time.Date(2026, 11, 12, 14, 0, 0, 0, time.UTC)}
+	scheduler := useTestPendingScheduler(&Panel{}, clock)
+	lease := dnsZoneEngineLease{RequestID: strings.Repeat("b", 32), ZoneName: "sil7.test"}
+	code := transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutLocalCheck)
+	scheduler.syncLeases([]dnsZoneEngineLease{lease})
+	for i := 0; i < dnsPendingPublicationStuckAfter-1; i++ {
+		scheduler.recordAttempt(lease, dnsPendingPublicationStillPending, code, true)
+	}
+	before, _ := scheduler.entry(lease.RequestID)
+	for i := 0; i < 3; i++ {
+		entry := scheduler.recordAttempt(lease, dnsPendingPublicationInFlight, "", false)
+		if entry.Repeats != before.Repeats || entry.Failures != 0 || entry.Stuck || entry.Attempts != before.Attempts ||
+			entry.NextAt.Sub(clock.Now()) != dnsPendingPublicationFirstDelay {
+			t.Fatalf("abandoned re-check %d counted: %+v", i, entry)
+		}
+	}
+	// The re-check waits longer than the Agent's own bound for a recovery:
+	// the propagation wave (15 s) and the native proof (60 s).
+	if dnsPendingPublicationAttemptLimit != panelMutationRecoveryTimeout ||
+		dnsPendingPublicationAttemptLimit < 15*time.Second+60*time.Second+10*time.Second {
+		t.Fatalf("re-check limit %s", dnsPendingPublicationAttemptLimit)
 	}
 }

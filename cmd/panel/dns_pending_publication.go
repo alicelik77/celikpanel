@@ -55,12 +55,20 @@ import (
 
 // Variables only so tests can shorten them.
 var (
-	dnsPendingPublicationFirstDelay    = 15 * time.Second
-	dnsPendingPublicationMaxDelay      = 5 * time.Minute
-	dnsPendingPublicationScanInterval  = 5 * time.Second
-	dnsPendingPublicationOwnerRecheck  = time.Minute
-	dnsPendingPublicationHeldDebounce  = 10 * time.Second
-	dnsPendingPublicationAttemptLimit  = 45 * time.Second
+	dnsPendingPublicationFirstDelay   = 15 * time.Second
+	dnsPendingPublicationMaxDelay     = 5 * time.Minute
+	dnsPendingPublicationScanInterval = 5 * time.Second
+	dnsPendingPublicationOwnerRecheck = time.Minute
+	dnsPendingPublicationHeldDebounce = 10 * time.Second
+	// dnsPendingPublicationAttemptLimit: how long one automatic re-check
+	// waits for its exact recovery. The Agent's recovery runs the
+	// propagation wave (dnsPairProofLimit, 15 s) and then at most one native
+	// proof (dnsPeerProofSteps, 60 s in all): 75 s, so the re-check waits
+	// panelMutationRecoveryTimeout (90 s). It heartbeats the Agent's 20 s
+	// lease while it waits; until alpha.133 it gave up at 45 s, the
+	// heartbeats stopped and the lease expiry cancelled a proof still
+	// within its own bound about 20 s later.
+	dnsPendingPublicationAttemptLimit  = 90 * time.Second
 	dnsPendingPublicationHeldAttempt   = 25 * time.Second
 	dnsPendingPublicationFailureLimit  = 6
 	dnsPendingPublicationRepublishWait = 30 * time.Second
@@ -230,11 +238,18 @@ const (
 	dnsPendingPublicationResolved dnsPendingPublicationOutcome = iota
 	dnsPendingPublicationStillPending
 	dnsPendingPublicationFailed
+	// dnsPendingPublicationInFlight: the Panel stopped waiting while the
+	// exact recovery was still running on the Agent. Its result is unknown:
+	// neither a repeat of the earlier cause nor a failure.
+	dnsPendingPublicationInFlight
 )
 
 func classifyDNSPendingPublicationAttempt(err error) (dnsPendingPublicationOutcome, string, bool) {
 	if err == nil {
 		return dnsPendingPublicationResolved, "", false
+	}
+	if errors.Is(err, errDNSZoneV3RecoveryStillRunning) {
+		return dnsPendingPublicationInFlight, "", false
 	}
 	if errors.Is(err, errDNSZoneV3PropagationDeferred) {
 		var pending *dnsZoneV3PropagationPendingError
@@ -264,6 +279,11 @@ func (s *dnsPendingPublicationScheduler) recordAttempt(
 	if entry == nil {
 		entry = &dnsPendingPublicationEntry{Lease: lease, Automatic: true}
 		s.entries[lease.RequestID] = entry
+	}
+	if outcome == dnsPendingPublicationInFlight {
+		// Nothing is counted; its result is read again shortly.
+		entry.NextAt = now.Add(s.jitter(dnsPendingPublicationFirstDelay))
+		return *entry
 	}
 	entry.Attempts++
 	entry.LastAttempt = now
@@ -520,6 +540,9 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 			p.publishZoneAfterPendingLocked(publishCtx, lease)
 			cancelPublish()
 		}
+	case dnsPendingPublicationInFlight:
+		log.Printf("pending DNS publication %s: its re-check is still running on the Agent; its result is read again in %s",
+			lease.ZoneName, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
 	case dnsPendingPublicationStillPending:
 		log.Printf("pending DNS publication %s still waits (reason=%s, %d in a row); next automatic re-check in %s",
 			lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
