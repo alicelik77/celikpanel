@@ -73,8 +73,8 @@ test('the field\'s words exist in both languages, sentence for sentence with the
     assert.ok(enScreens['err.PASSWORD_WEAK.' + rule] && trScreens['err.PASSWORD_WEAK.' + rule], rule);
   }
   for (const key of keys) assert.ok(trScreens[key], `${key} in Turkish`);
-  assert.equal(trScreens['pw.show'], 'Şifreyi göster');
-  assert.equal(trScreens['pw.generate'], 'Güçlü şifre üret');
+  assert.equal(trScreens['pw.show'], 'Parolayı göster');
+  assert.equal(trScreens['pw.generate'], 'Güçlü parola üret');
   // The server's own sentence for each rule (internal/passwordpolicy/policy.go).
   const goSource = readFileSync(new URL('../../internal/passwordpolicy/policy.go', import.meta.url), 'utf8');
   assert.ok(goSource.includes('"Password must contain an uppercase letter."'));

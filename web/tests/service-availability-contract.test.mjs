@@ -175,7 +175,7 @@ test('partial webmail uninstall keeps an idempotent cleanup retry reachable', ()
   assert.match(dialogComponent, /cleanupAttempt === 'retry' \? 'services\.retryingWebmailCleanup' : 'services\.cleaningWebmail'/);
   assert.doesNotMatch(dialogComponent, /error \? 'services\.retryingWebmailCleanup'/);
   assert.match(english, /'services\.retryWebmailCleanup': 'Retry webmail cleanup'/);
-  assert.match(turkish, /'services\.retryWebmailCleanup': 'Web posta temizliğini yeniden dene'/);
+  assert.match(turkish, /'services\.retryWebmailCleanup': 'Web posta temizliğini tekrar dene'/);
   assert.match(english, /Use Retry webmail cleanup in this dialog/);
   const englishPartial = english.match(/'err\.WEBMAIL_UNINSTALL_PARTIAL': '([^']+)'/)?.[1] ?? '';
   const turkishPartial = turkish.match(/'err\.WEBMAIL_UNINSTALL_PARTIAL': '([^']+)'/)?.[1] ?? '';

@@ -26,7 +26,7 @@ test('toast variants use the foreground paired with their semantic background', 
 test('toast close control has an explicit accessible name', () => {
   assert.match(
     toastSource,
-    /type=\{'button'\}\s+aria-label=\{'Dismiss notification'\}/,
+    /type=\{'button'\}\s+aria-label=\{t\('common\.close'\)\}/,
   );
   assert.match(toastSource, /text-inherit/);
   assert.match(toastSource, /focus-visible:ring-current/);

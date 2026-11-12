@@ -8,7 +8,7 @@ export const trMonitoringAlerts: Record<MonitoringAlertsKey, string> = {
     'malert.none': 'Son 30 günde uyarı yok. {n} dakikadan uzun süren bir sorun burada listelenir.',
     'malert.checking': 'Uyarılar okunuyor…',
     'malert.readFailed': 'Uyarılar okunamadı, bu yüzden gösterilmiyor. Bu, uyarı olmadığı anlamına gelmez. Hiçbir şey değiştirilmedi.',
-    'malert.retry': 'Yeniden dene',
+    'malert.retry': 'Tekrar dene',
     'malert.openMonitoring': 'İzlemeyi aç',
     'malert.ongoing': '{time} saatinden beri sürüyor',
     'malert.ended': '{start} – {end}',

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -62,6 +63,7 @@ export function showToast(type: ToastType, message: string, extra?: ToastExtra) 
 }
 
 export function ToastContainer() {
+    const { t } = useI18n();
     const [toasts, setToasts] = useState<Toast[]>([]);
 
     useEffect(() => {
@@ -147,7 +149,7 @@ export function ToastContainer() {
                     </div>
                     <button
                         type={'button'}
-                        aria-label={'Dismiss notification'}
+                        aria-label={t('common.close')}
                         onClick={() => removeToast(toast.id)}
                         className={'rounded p-1 text-inherit transition-colors hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current'}
                     >

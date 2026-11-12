@@ -41,7 +41,7 @@ test('a refusal says the screen sentence with the server reason, or the coded se
 });
 
 test('a toast carries the fix button and the code under Technical details', async () => {
-    const lucide = dataURL('export const CheckCircle = () => null, XCircle = () => null, Info = () => null, AlertTriangle = () => null, X = () => null;');
+    const lucide = dataURL('export const CheckCircle = () => null, XCircle = () => null, Info = () => null, AlertTriangle = () => null, X = () => null, useI18n = () => ({ t: (key) => key });');
     const { ToastContainer, showToast } = await import(dataURL(`import React from '${reactURL}';\n` + compile('../src/components/Toast.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, from) => `from '${from === 'react' ? reactURL : lucide}'`)));
     let view, ran = 0;
     await act(async () => { view = Renderer.create(React.createElement(ToastContainer)); });
