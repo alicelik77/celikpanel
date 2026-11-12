@@ -10998,3 +10998,22 @@ açılış yolunu büyütmemek için tek genel adımı korur). Kısa değişikli
 korur; ekran tek başına adım çizmez. Bunlarda sayfa yenilenince pencere henüz
 yeniden açılmaz (değişiklik sunucuda sürer, sayfa sonucunu gösterir); alan adı
 silme kendi adım deposunu ve deletion_already_running kuralını korur.
+
+### Kara liste denetimi: listede, listede değil ya da denetlenemedi (alpha.133, 12 Kasım 2026)
+
+Sahibe posta sunucusunun adresinin bir spam kara listesinde olduğu söylendi.
+Değildi: Spamhaus, herkese açık bir DNS sunucusu üzerinden gelen soruları
+reddeder (`127.255.255.254` yanıtı) ve her adres yanıtı "listede" diye
+okunuyordu. Bir ret adres hakkında kanıt değildir; denetimin artık her
+listenin belgelediği kodlara göre okunan üç sonucu vardır:
+
+| Sonuç | Gösterim | Kim yapar | Sonraki adım |
+|---|---|---|---|
+| Listede (belgelenmiş listeleme kodu) | listenin adı, kırmızı | yönetici (müşteri için sağlayıcı) | adresi listenin kendi sitesinde sorgulayın, çıkarılma isteyin, yeniden denetleyin |
+| Politika listesi (Spamhaus PBL) | "politika listesi", spam şikâyeti değil | barındırma sağlayıcısı ya da listenin çıkarma sayfası | sağlayıcıdan aralığı listeden çıkarmasını isteyin, yeniden denetleyin |
+| Listede değil (NXDOMAIN) | temiz | kimse | — |
+| Denetlenemedi: herkese açık DNS sunucusu reddetti, çok fazla soru, belgelenmemiş yanıt, zamanında yanıt yok ya da reddi listelemeden ayıramayan eski bir yönetim hizmeti | kartı ve alan adını hiç boyamayan, adres hakkında bir şey söylemediğini belirten gri satır | DNS sunucusu için yönetici (sağlayıcının ya da sunucudaki bir DNS sunucusu), aksi hâlde kimse | daha sonra yeniden denetleyin; eski hizmet durumunda panel güncellemesinden sonra |
+
+Müşteri ve bayi, sunucu ayrıntısı olmadan kısa cümleyi görür. "Denetlenemedi"
+kendiliğinden "listede" ya da "temiz" olmaz; onu yalnız yeni bir denetim
+değiştirir.

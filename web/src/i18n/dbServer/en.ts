@@ -104,7 +104,7 @@ export const enDbServer = {
     'dbsv.problem.PRIVILEGED_USER.why': 'A database user has rights over the whole service, and such a user is never opened to the outside.',
     'dbsv.problem.PRIVILEGED_USER.next': 'Use an ordinary user of that database for connections from outside.',
     'dbsv.problem.NO_ACCESS.why': 'A database user has no access to the database its address was listed for.',
-    'dbsv.problem.NO_ACCESS.next': 'Give the user access to that database on the Databases page, then press “Apply again”.',
+    'dbsv.problem.NO_ACCESS.next': 'Give the user access to that database in its domain’s Databases section, then press “Apply again”.',
     'dbsv.problem.USER_MISSING.why': 'A database user does not exist on {engine} any more.',
     'dbsv.problem.USER_MISSING.next': 'Remove that address or create the user again, then press “Apply again”.',
     'dbsv.problem.ACCOUNT_CONFLICT.why': 'An account with the same name and address already exists on {engine} and was not made by CelikPanel.',

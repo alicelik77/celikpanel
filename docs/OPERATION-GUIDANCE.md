@@ -11109,3 +11109,22 @@ continues:
   says programs stop when they reconnect); a security pause of sending ends, an
   administrator's manual pause stays and the page names who opens it; the
   mailbox is told.
+
+### Blocklist check: listed, not listed, or could not check (alpha.133, 2026-11-12)
+
+The owner was told his mail server's address was on a spam blocklist. It was
+not: Spamhaus refuses questions that arrive through a public DNS resolver
+(answer `127.255.255.254`), and every address answer was read as "listed".
+A refusal is not evidence about the address, so the check now has three
+outcomes, read against each list's documented codes:
+
+| Outcome | Shown as | Who acts | Next step |
+|---|---|---|---|
+| Listed (documented listing code) | the list named, red | administrator (customers: the provider) | look the address up on the list's own site, ask for removal, check again |
+| Policy listing (Spamhaus PBL) | "policy list", not a spam complaint | hosting provider or the list's removal page | ask the provider to delist the range, check again |
+| Not listed (NXDOMAIN) | clean | nobody | — |
+| Could not check: public resolver refused, too many queries, an undocumented answer, no answer in time, or an older Agent that cannot tell a refusal from a listing | a grey line that never colours the card or the domain and says it tells nothing about the address | administrator for the resolver (use the provider's or a local resolver), otherwise nobody | check again later; after the panel update for the older-Agent case |
+
+Customers and resellers get the short sentence without server details. A
+"could not check" never turns into "listed" or "clean" by itself; only a new
+check replaces it.
