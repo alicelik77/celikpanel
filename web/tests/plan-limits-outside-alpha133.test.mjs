@@ -89,6 +89,8 @@ test('a plan limit above its range is named beside Save, which stays off until i
     const ftp = 'plan-customer-4-ceiling-ftp-max_logins';
     await view.type(ftp, '999999');
     assert.equal(view.input(ftp).props['aria-invalid'], true, 'the field is not marked');
+    // With no level above, the bound named is the key's own maximum, never "at most no limit".
+    assert.ok(view.text().includes('limits.php.aboveLimit{"limit":"1000"}'), view.text());
     assert.ok(view.text().includes('limits.plan.outside{"name":"limits.key.ftp.max_logins"}'), `the field is not named beside Save: ${view.text()}`);
     assert.equal(view.save().props.disabled, true, 'Save is on with a value outside its range');
     assert.equal(view.writes().length, 0, 'typing sent something');

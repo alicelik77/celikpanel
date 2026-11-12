@@ -63,6 +63,14 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
     const ceilingId = (key: string) => `${idPrefix}-ceiling-${key.replace(/\W/g, '-')}`;
     const ceilingOutside = (limit: GrantorLimit, value: number | undefined) => value !== undefined && (value < limit.min || value > limit.max ||
         (limit.ceiling !== null && (limit.floor ? value < limit.ceiling : value > limit.ceiling)));
+    // The bound the value passes, in words: the level above when it sets
+    // one, else the key's own range ("at most 1000", never "at most no limit").
+    const outsideWords = (limit: GrantorLimit, value: number) => {
+        if (value < limit.min) return t('limits.php.belowMin', { min: unitText(t, limit.unit, limit.min) });
+        if (value > limit.max) return t('limits.php.aboveLimit', { limit: unitText(t, limit.unit, limit.max) });
+        const level = unitText(t, limit.unit, limit.ceiling ?? 0);
+        return limit.floor ? t('limits.php.belowMin', { min: level }) : t('limits.php.aboveLimit', { limit: level });
+    };
     const notifyName = (field: (typeof NOTIFY_FIELDS)[number]) => t(field === 'notify_percent_disk' ? 'limits.plan.notifyDisk' : 'limits.plan.notifyTraffic');
     // The first field out of range, in the order shown: the limits, then the notice levels.
     const known = !ceilingsOff && grantor.remote.state === 'known' ? grantor.remote.value.limits : [];
@@ -96,7 +104,7 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                                     <input id={id} type="number" min={limit.min} max={limit.ceiling ?? limit.max} value={value ?? ''}
                                         placeholder={t('limits.plan.upTo', { value: above })} onChange={(e) => setCeiling(limit.key, e.target.value)}
                                         className={inputClass} aria-invalid={outside || undefined} />
-                                    {outside && <span className="mt-1 block text-xs text-danger">{limit.floor ? t('limits.php.belowMin', { min: above }) : t('limits.php.aboveLimit', { limit: above })}</span>}
+                                    {outside && value !== undefined && <span className="mt-1 block text-xs text-danger">{outsideWords(limit, value)}</span>}
                                 </label>
                             );
                         })}
