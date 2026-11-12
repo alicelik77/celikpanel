@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.132.tr.md)
 
+> **Published** on 2026-11-12 (UTC): release commit `8c9c9ce64`, GitHub pre-release at 07:31:20Z, download portal at about 08:21Z (public check 27/27).
+
 The first of the small design releases the owner approved on 12 November
 2026. Three things change for everyone who uses the panel: a setting is saved
 only when you press Save, a domain's page has nine sections instead of eleven
