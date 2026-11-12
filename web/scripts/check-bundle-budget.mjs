@@ -332,7 +332,7 @@ const screenPartBudgets = {
   deletionGuidePeer: kib(10, 2.5),
   // v0.1.0-alpha.134 (docs/SITE-BACKUP-CONTENTS-DESIGN.md): what a
   // site backup holds and what a restore did with the program (bkc.). A new
-  // part, set with at least 25% headroom from its Turkish file: 5.38 / 1.99 KiB.
+  // part, set with at least 25% headroom from its Turkish file: 5.57 / 2.04 KiB.
   siteBackup: kib(7, 2.6),
 }
 
