@@ -304,6 +304,22 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
 				result = domainDeletionChangingStatus()
 			}
+		} else if recheck, ok := p.domainDeletionRecheckRunningStatus(snapshot.lease); ok && statusErr == nil &&
+			job != nil && job.Status == agentMutationRunning &&
+			validateAgentMutationIdentity(job, snapshot.lease.identity()) == nil {
+			// A re-check of the exact pending DNS removal is running now
+			// (the Panel's own, or a person's retry): while it runs the job is
+			// running, not pending. alpha.133 lab: every such poll answered
+			// "stopped, nothing more happens by itself" between two truthful
+			// answers. The reason the reconciler last read stays shown while
+			// it is re-checked (D-024: a known state is kept while its outcome
+			// is reconciled). A running job the reconciler does not track
+			// keeps the conservative answer below.
+			result = recheck
+			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)
+			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
+				result = domainDeletionChangingStatus()
+			}
 		} else if statusErr == nil && validateDNSZoneSyncV3PendingJob(job, snapshot.lease.identity()) == nil {
 			// The exact DNS removal is pending; only a reviewed code of its
 			// job names a reason (a raw job error is never shown).
@@ -386,6 +402,28 @@ func domainDeletionIncompleteStatus() domainDeletionStatusResponse {
 		Status: domainDeletionPendingStatus, Stage: domainDeletionIncompleteStage,
 		Reason: domainDeletionIncompleteReason, Message: domainDeletionIncompleteEnglish,
 	}
+}
+
+// domainDeletionRecheckRunningStatus is the answer while the reconciler
+// re-checks the exact pending DNS removal of lease: the reviewed reason it
+// last read from the exact job, with its guidance. ok is false when the
+// reconciler has no reviewed reason for it. Memory only; it starts nothing.
+func (p *Panel) domainDeletionRecheckRunningStatus(lease dnsZoneEngineLease) (domainDeletionStatusResponse, bool) {
+	entry, ok := p.dnsPendingPublications().entry(lease.RequestID)
+	if !ok || entry.Lease != lease || entry.Code == "" {
+		return domainDeletionStatusResponse{}, false
+	}
+	reason, detail, message, known := dnsPeerPendingGuidance(entry.Code)
+	if !known {
+		return domainDeletionStatusResponse{}, false
+	}
+	if dnsPeerPendingRetriesAutomatically(entry.Code) {
+		message += " " + domainDeletionFinishesByItselfEnglish
+	}
+	return domainDeletionStatusResponse{
+		Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
+		Reason: reason, Detail: detail, Message: message,
+	}, true
 }
 
 func domainDeletionChangingStatus() domainDeletionStatusResponse {

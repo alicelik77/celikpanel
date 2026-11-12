@@ -21,7 +21,8 @@ import (
 var processMu sync.Mutex
 
 // VerifyCurrent must check both held host/publication locks, the current
-// accepted ledger request/owner, and unchanged native/enrollment evidence.
+// accepted ledger request/owner, and the unchanged enrollment; the native DNS
+// evidence is rechecked by the caller once around each write (doc.go).
 // The caller holds those locks across this method. A nil verifier is refused.
 // Cross-process exclusion comes from the caller's external locks, not this
 // package's process-local mutex.

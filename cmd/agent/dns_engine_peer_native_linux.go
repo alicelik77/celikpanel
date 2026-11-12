@@ -92,7 +92,7 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			local: func(ctx context.Context) error { return recheckNativePeerLocalEvidence(ctx, plan, record) },
 		}
 		// An earlier, terminal operation's challenge is retired first,
-		// under the held checks only (nativePeerCurrentChecks.retireOp):
+		// under the held checks only (nativePeerCurrentChecks.prepareJournal):
 		// it completes in milliseconds and stays retired even if the full
 		// local recheck below runs out of this step's time.
 		if err := checks.prepareJournal(ctx, func(verify func() error) error {
@@ -128,7 +128,7 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 		return err
 	}
 	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
-		if err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
+		if err := checks.writeChallenge(ctx, func(verify func() error) error {
 			// The members bind the request's catalog digest; a challenge
 			// written before a PowerDNS daemon re-stamp of the same member
 			// set is superseded, not a mismatch (dnspeerjournal).
@@ -167,7 +167,10 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			}, verifyCurrent); err != nil {
 			return err
 		}
-		return verifyCurrent()
+		// No second full recheck here: consume's final recheck, after
+		// consume-once and before success, makes the same comparison
+		// (nativePeerCurrentChecks, "Where the full local recheck runs").
+		return nil
 	}); err != nil {
 		return err
 	}
@@ -179,7 +182,7 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 				// The answer is accepted: consume-once runs under the fresh
 				// consume context, never under an earlier step's clock.
 				accepted = true
-				consumeErr = checks.journalOp(run.accepted(), "consume-once", func(verify func() error) error {
+				consumeErr = checks.journalOpHeld("consume-once", func(verify func() error) error {
 					return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256,
 						digest, attempt, verify)
 				})

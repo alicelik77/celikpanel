@@ -581,6 +581,29 @@ func TestRetireVerifiesTerminalFourTimes(t *testing.T) {
 	}
 }
 
+// The agent's step budget models publish and consume-once by these counts
+// (cmd/agent journalVerifiesPerWrite): each calls its verifier four times on
+// success. alpha.133 passes the held checks as that verifier and runs the
+// full local recheck once around the write instead (lab of 12 Nov 2026).
+func TestPublishAndConsumeVerifyFourTimes(t *testing.T) {
+	s, request, digest := fixture(t)
+	calls := 0
+	count := func() error { calls++; return nil }
+	if err := s.publish(request, fixtureMembers, enrollment, 1, count, nil); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 4 {
+		t.Fatalf("publish verified %d times, want 4", calls)
+	}
+	calls = 0
+	if err := s.consume(request, enrollment, digest, 1, count, nil); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 4 {
+		t.Fatalf("consume verified %d times, want 4", calls)
+	}
+}
+
 // alpha132ConsumedJournal is a consumed challenge exactly as alpha.132 (and
 // every release since the v1 sidecar) writes it: the state an updated Agent
 // finds on a server whose earlier deletion finished (Frankfurt, 6 Nov 2026).

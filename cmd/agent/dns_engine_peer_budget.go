@@ -23,12 +23,12 @@ import (
 // now runs from the request context, not the wave's, and each step has its
 // own bound:
 //
-//	step             measured (pair 5/6, batch 11)   bound
-//	prepare          about 1-3 s                     8 s
+//	step             measured (pair 5/6, batch 11)   bound (alpha.133: dnsPeerProofSteps)
+//	prepare          about 1-3 s                     8 s (10 s)
 //	challenge_write  3.5-4.1 s                       12 s
 //	exchange         2.5-4 s                         10 s (dnspeertransport.ExchangeLimit)
 //	post_inspection  about 2-3 s                     10 s
-//	consume          3 rechecks + write, 3-4 s       20 s, fresh context
+//	consume          3 rechecks + write, 3-4 s       20 s (18 s), fresh context
 //
 // Total wall bound 60 s. Once a challenge is minted, every step before
 // acceptance also ends expiryReserve before the challenge expires, so that
@@ -61,12 +61,24 @@ type dnsPeerProofBudget struct {
 }
 
 // dnsPeerProofSteps is the production budget. Tests scale it down.
+//
+// alpha.133 (lab of 12 Nov 2026, PowerDNS primary with a BIND backup, idle):
+// prepare 1.6-2.6 s, challenge_write 6.8-7.5 s (once 11.5 s, once timed out
+// at 12.2 s), exchange 0.5-0.8 s, post_inspection 3.1-4.0 s, consume
+// 8.1-9.9 s; loaded host: prepare 3.1-5.8 s (once 8.1 s) and challenge_write
+// over 12 s six times in a row. With one full local recheck per step
+// (nativePeerCurrentChecks, "Where the full local recheck runs") the expected
+// idle cost is about one recheck plus the journal write: prepare,
+// challenge_write and consume about 2 s, post_inspection about 3 s. Every
+// bound is at least three times that; prepare takes 10 s (its loaded cost
+// reached 5.8-8.1 s) and consume gives up 2 s for it (18 s, nine times its
+// new idle cost). The hard upper bound stays the 60 s total.
 var dnsPeerProofSteps = dnsPeerProofBudget{
-	prepare:        8 * time.Second,
+	prepare:        10 * time.Second,
 	challengeWrite: 12 * time.Second,
 	exchange:       10 * time.Second, // = dnspeertransport.ExchangeLimit (linux test)
 	postInspection: 10 * time.Second,
-	consume:        20 * time.Second,
+	consume:        18 * time.Second,
 	expiryReserve:  5 * time.Second,
 }
 
@@ -323,31 +335,63 @@ func (c *nativePeerCurrentChecks) held() error {
 	return err
 }
 
-// journalOp runs one private challenge journal operation whose rechecks run
-// under ctx. A recheck that found a reviewed difference keeps its own code;
-// a recheck that ran out of time stays a deadline for the step runner;
-// anything else is dns_peer_journal_unknown with its cause logged.
-func (c *nativePeerCurrentChecks) journalOp(ctx context.Context, what string, op func(func() error) error) error {
-	return c.journalOpWith(c.at(ctx), what, op)
-}
+// Where the full local recheck runs (alpha.133, lab of 12 Nov 2026).
+//
+// A full local recheck (at) re-reads this server's DNS evidence: the engine
+// state receipt twice, the native binding (unit processes, database file)
+// twice, that only the managed DNS service is active, the exact deletion
+// receipt and the producer catalog; about 1.5-2 s on an idle PowerDNS
+// primary and 3 s or more on a loaded one. Until alpha.133 every journal
+// write ran it at each of its internal boundaries: publish 4 times
+// (challenge_write 7 s idle, over 12 s loaded: the lab's timeouts), consume
+// 4 times plus once after (9-10 s idle), post_inspection twice: 12 per
+// attempt.
+//
+// The journal operations need the held checks at their boundaries: both
+// external locks and the exact active ledger attempt (what authorizes any
+// journal write) and the unchanged enrollment. The local evidence is a
+// property of the proof, judged against the attempt's recorded plan, not of
+// the write; it is checked once at each point the proof depends on it:
+//
+//	prepare          before the challenge is minted (prepareJournal)
+//	challenge_write  after the challenge is durable, before it is sent
+//	                 (writeChallenge; it also admits a daemon re-stamp, so
+//	                 a re-stamped challenge is not sent)
+//	post_inspection  after the network round trip, before the catalog and
+//	                 zone probes (and again on a probe retry)
+//	consume          after consume-once, before terminal success (final)
+//
+// Each compares with the same recorded evidence, so a lasting change at any
+// moment between mint and success is seen by the next one; the dropped
+// rechecks re-sampled the same comparison milliseconds apart. Four per
+// attempt instead of twelve.
 
-// retireOp runs the reconciliation that may retire an earlier, terminal
-// operation's challenge before this proof mints its own. Its rechecks are
-// the held ones (dns_engine_peer_native_linux.go explains why the local DNS
-// evidence of this deletion is not part of that authority), so retiring is a
-// few file operations that complete regardless of the step's remaining time
-// (incident of 12 Nov 2026: seven full local rechecks overran prepare's 8 s
-// on every attempt and the retirement never completed).
-func (c *nativePeerCurrentChecks) retireOp(what string, op func(func() error) error) error {
+// journalOpHeld runs one private challenge journal operation whose rechecks
+// are the held ones. A recheck that found a reviewed difference keeps its own
+// code; anything else is dns_peer_journal_unknown with its cause logged.
+func (c *nativePeerCurrentChecks) journalOpHeld(what string, op func(func() error) error) error {
 	return c.journalOpWith(c.held, what, op)
 }
 
 // prepareJournal is the journal part of a native proof's prepare step:
 // reconcile retires an earlier terminal operation's challenge under the held
-// checks (retireOp), then the full current-evidence recheck runs under ctx
-// before any challenge is minted.
+// checks (incident of 12 Nov 2026: seven full local rechecks overran
+// prepare's 8 s on every attempt and the retirement never completed), then
+// the full current-evidence recheck runs under ctx before any challenge is
+// minted. A challenge of this same operation left by an earlier attempt
+// costs nothing here: the next publish supersedes it.
 func (c *nativePeerCurrentChecks) prepareJournal(ctx context.Context, reconcile func(func() error) error) error {
-	if err := c.retireOp("previous challenge reconciliation", reconcile); err != nil {
+	if err := c.journalOpHeld("previous challenge reconciliation", reconcile); err != nil {
+		return err
+	}
+	return c.at(ctx)()
+}
+
+// writeChallenge is the challenge_write step's journal work: publish under
+// the held checks, then one full recheck under ctx once the challenge is
+// durable and before it is sent.
+func (c *nativePeerCurrentChecks) writeChallenge(ctx context.Context, publish func(func() error) error) error {
+	if err := c.journalOpHeld("challenge publish", publish); err != nil {
 		return err
 	}
 	return c.at(ctx)()

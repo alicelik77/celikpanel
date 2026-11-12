@@ -214,7 +214,7 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 		// The journal accepts a later challenge of this same operation at a
 		// higher catalog serial only over the identical member set, which it
 		// verifies from these members (the daemon's re-stamp).
-		err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
+		err := checks.writeChallenge(ctx, func(verify func() error) error {
 			return pdnspeerjournal.Publish(request, plan.Evidence.Members, enrollment.RecordSHA256, attempt, verify)
 		})
 		// The publication's own rechecks may admit a daemon re-stamp (final
@@ -257,7 +257,10 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			}, verifyCurrent); err != nil {
 			return err
 		}
-		return verifyCurrent()
+		// No second full recheck here: consume's final recheck, after
+		// consume-once and before success, makes the same comparison
+		// (nativePeerCurrentChecks, "Where the full local recheck runs").
+		return nil
 	}); err != nil {
 		return err
 	}
@@ -268,7 +271,7 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			// The answer is accepted: consume-once runs under the fresh
 			// consume context, never under an earlier step's clock.
 			accepted = true
-			consumeErr = checks.journalOp(run.accepted(), "consume-once", func(verify func() error) error {
+			consumeErr = checks.journalOpHeld("consume-once", func(verify func() error) error {
 				return pdnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256,
 					digest, attempt, verify)
 			})
