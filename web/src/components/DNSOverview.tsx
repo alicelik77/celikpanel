@@ -22,6 +22,7 @@ import {
     type DNSRecordRow,
 } from '../lib/dnsOverview';
 import { Button } from './ui';
+import { Guidance } from './kit/rows/Guidance';
 import { SetupJoinCard } from './ServerSetupWizardSteps';
 import { useServerSetup } from './ServerSetupGate';
 
@@ -44,12 +45,8 @@ const MailSetupDialog = lazy(() => import('./MailSetupDialog').then(module => ({
 
 type T = (key: string, values?: Record<string, string | number>) => string;
 
-const toneClass = {
-    bad: 'border-danger/40 bg-danger/5',
-    task: 'border-warning-mark/50 bg-warning-mark/10',
-    done: 'border-success/40 bg-success/5',
-    neutral: 'border-border bg-surface',
-} as const;
+// The page's lead is the shared guidance block (alpha.132); its tone by the sentence's state.
+const GUIDANCE_TONE = { bad: 'failed', task: 'blocked', done: 'success', neutral: 'neutral' } as const;
 
 const stateClass = (state: string) => state === 'ok' ? 'text-success' : state === 'different' || state === 'not_serving' ? 'text-danger' : 'text-fg-muted';
 
@@ -163,17 +160,18 @@ function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checke
         previous.current = state;
     }, [value.sentence.state]);
     return <>
-        <section aria-labelledby="dns-overview-lead" className={`rounded-lg border p-4 sm:p-5 ${toneClass[tone]}`} data-dns-sentence={value.sentence.code} data-state={value.sentence.state}>
-            <div role={alerting ? 'alert' : 'status'} data-dns-sentence-live={alerting ? 'alert' : 'status'}>
-                <h2 id="dns-overview-lead" className="text-lg font-semibold">{say('title', value.sentence.reason)}</h2>
-            </div>
-            <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm leading-6 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
-                <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd className="min-w-0 break-words">{say('why', value.sentence.reason)}</dd>
-                <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd className="min-w-0 break-words">{say('who', value.sentence.who)}</dd>
-                <dt className="text-fg-muted">{t('setup.v2.next')}</dt><dd className="min-w-0 break-words">{say('next', value.sentence.next)}</dd>
-                <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd className="min-w-0 break-words">{say('then', value.sentence.then)}</dd>
-            </dl>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Guidance
+            tone={GUIDANCE_TONE[tone]}
+            titleAs="h2"
+            title={say('title', value.sentence.reason)}
+            why={say('why', value.sentence.reason)}
+            who={say('who', value.sentence.who)}
+            next={say('next', value.sentence.next)}
+            then={say('then', value.sentence.then)}
+            live={alerting ? 'alert' : 'status'}
+            data-dns-sentence={value.sentence.code}
+            data-state={value.sentence.state}
+            action={<>
                 <Button type="button" variant="secondary" disabled={reading || freshIn > 0} loading={reading} onClick={checkNow}>{t('dnsov.checkNow')}</Button>
                 <span className="text-xs text-fg-muted">{freshIn > 0 ? t('dnsov.checkNowIn', { seconds: freshIn }) : checkedAt}</span>
                 {value.sentence.code === 'dns_overview_dkim_pending'
@@ -181,10 +179,11 @@ function OverviewBody({ value, t, checkNow, reading, freshIn, failedNote, checke
                         : <Link to="/setup?purpose=dkim" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link>
                     : ['dns_overview_setup_running', 'dns_overview_setup_not_done'].includes(value.sentence.code)
                         ? <Link to="/setup" className="text-sm font-medium text-primary underline underline-offset-4">{t('dnsov.join.openSetup')}</Link> : null}
-            </div>
-            {failedNote && <p className="mt-2 text-sm text-fg-muted">{failedNote}</p>}
+            </>}
+        >
+            {failedNote && <p className="text-sm text-fg-muted">{failedNote}</p>}
             {dkimOpen && <Suspense fallback={null}><MailSetupDialog onClose={() => { setDkimOpen(false); void rereadOverview(); }} /></Suspense>}
-        </section>
+        </Guidance>
         {value.home === 'own' ? <ServersCard value={value} t={t} /> : value.home !== 'none' && <HomeCard value={value} t={t} />}
         {value.join.state !== 'bound' && <JoinEntry value={value} t={t} />}
         <NamesCard value={value} t={t} />

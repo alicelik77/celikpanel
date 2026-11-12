@@ -8,6 +8,7 @@ import { setupComponentClosure, setupRolePreset, type SetupComponentCatalog, typ
 import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupJoinedMailTaken, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord, type SetupJoinedNames } from '../lib/serverSetup';
 import { useRefreshEvery, useRemote } from '../lib/remote';
 import { Button, inputClass, KeepWords } from './ui';
+import { Guidance } from './kit/rows/Guidance';
 
 // Setup wizard v2 (alpha.111): the editing steps and the guidance cards of the
 // progress screen. The wizard itself (ServerSetup.tsx) owns the draft, the
@@ -527,7 +528,7 @@ export function SetupJoinCard({ joinPending = true, finished = false, onPending 
         </>;
         return <section aria-labelledby="setup-peer-setup-title" className="max-w-3xl space-y-3" data-setup-peer-setup="pending">
             <h3 id="setup-peer-setup-title" className="sr-only">{t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })}</h3>
-            <SetupLead title={t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })} why={t('setup.v5.peerSetup.why')} who={t('setup.v5.peerSetup.who', { server })} next={t('setup.v5.peerSetup.next', { server })} then={t('setup.v5.peerSetup.then')} />
+            <Guidance tone="neutral" titleAs="h3" title={t(joined?.short_name ? 'setup.v5.peerSetup.title' : 'setup.v5.peerSetup.titleUnnamed', { server })} why={t('setup.v5.peerSetup.why')} who={t('setup.v5.peerSetup.who', { server })} next={t('setup.v5.peerSetup.next', { server })} then={t('setup.v5.peerSetup.then')} />
             {stopping === 'idle' ? <button type="button" className="min-h-11 py-2 text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary" onClick={() => setStopping('confirm')}>{t('setup.v5.peerSetup.stop')}</button>
                 : <div className="space-y-3 rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-4 text-sm leading-6" data-setup-peer-stop="">
                     <p>{t('setup.v5.peerSetup.stopHelp', { server })}</p>
@@ -544,7 +545,7 @@ export function SetupJoinCard({ joinPending = true, finished = false, onPending 
     if (!joinPending && !changed) return null;
     return <section aria-labelledby="setup-join-card-title" className="mt-5 space-y-4" data-setup-join-card="">
         <h3 id="setup-join-card-title" className="sr-only">{t('setup.v5.card.title')}</h3>
-        <SetupLead title={t('setup.v5.card.title')} why={t('setup.v5.card.why')} who={t('setup.v5.card.who')} next={t('setup.v5.card.next')} then={t('setup.v5.card.then')} />
+        <Guidance tone="neutral" titleAs="h3" title={t('setup.v5.card.title')} why={t('setup.v5.card.why')} who={t('setup.v5.card.who')} next={t('setup.v5.card.next')} then={t('setup.v5.card.then')} />
         {changed && <p role="status" className="rounded-lg border border-warning-mark/40 bg-warning-mark/10 p-3 text-sm leading-6" data-setup-join-changed="">{t('setup.v5.wait.server_setup_peer_join_changed')}</p>}
         {joinedText && <p role="status" className="text-sm leading-6" data-setup-join-joined="">{joinedText}</p>}
         {made && <div className="space-y-2 rounded-lg border border-border bg-surface p-4" data-setup-join-code="">
@@ -558,21 +559,6 @@ export function SetupJoinCard({ joinPending = true, finished = false, onPending 
         {problem && <p role="alert" className="text-sm leading-6 text-danger">{problem}</p>}
         {(!joined?.panel_domain || changed) && <Button type="button" variant={made ? 'secondary' : 'primary'} disabled={busy} loading={busy} onClick={() => void create()}>{t(busy ? 'setup.v5.card.creating' : made || view?.code ? 'setup.v5.card.createAgain' : 'setup.v5.card.create')}</Button>}
     </section>;
-}
-
-// What D-024 asks first: the reason, who acts, the next action and how the
-// work resumes.
-export function SetupLead({ title, why, who, next, then, tone = 'neutral' }: { title: string; why: ReactNode; who: string; next: ReactNode; then: string; tone?: 'neutral' | 'done' }) {
-    const { t } = useSetupWizardI18n();
-    return <div role="status" className={`rounded-lg border p-4 sm:p-5 ${tone === 'done' ? 'border-success/40 bg-success/5' : 'border-border bg-surface'}`}>
-        <h3 className="font-semibold">{title}</h3>
-        <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm leading-6 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
-            <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd className="min-w-0 break-words">{why}</dd>
-            <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd className="min-w-0">{who}</dd>
-            <dt className="text-fg-muted">{t('setup.v2.next')}</dt><dd className="min-w-0 break-words">{next}</dd>
-            <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd className="min-w-0">{then}</dd>
-        </dl>
-    </div>;
 }
 
 export function SetupCopyRow({ label, value }: { label: string; value: string }) {
@@ -677,9 +663,9 @@ export function SetupRegistrarCard({ draft, mainDomain, now }: { draft: ServerSe
         return '';
     };
     return <section aria-labelledby="setup-registrar-title" className="mt-5 space-y-4" data-setup-registrar={shown ? 'now' : 'later'}>
-        {done ? <SetupLead tone="done" title={t('setup.v4.doneTitle')} why={t('setup.v4.doneWhy')} who={t('setup.v2.provider.whoNone')} next={t('setup.v4.doneNext')} then={t('setup.v2.registrar.then')} />
-            : registrarDone ? <SetupLead title={t('setup.v2.registrar.alreadyTitle')} why={t('setup.v2.registrar.alreadyWhy', { domain: domain || '—' })} who={t('setup.v2.provider.whoNone')} next={t('setup.v2.registrar.alreadyNext')} then={t('setup.v2.registrar.then')} />
-            : <SetupLead title={t(shown ? 'setup.v2.registrar.nowTitle' : 'setup.v2.registrar.laterTitle')}
+        {done ? <Guidance tone="success" titleAs="h3" title={t('setup.v4.doneTitle')} why={t('setup.v4.doneWhy')} who={t('setup.v2.provider.whoNone')} next={t('setup.v4.doneNext')} then={t('setup.v2.registrar.then')} />
+            : registrarDone ? <Guidance tone="neutral" titleAs="h3" title={t('setup.v2.registrar.alreadyTitle')} why={t('setup.v2.registrar.alreadyWhy', { domain: domain || '—' })} who={t('setup.v2.provider.whoNone')} next={t('setup.v2.registrar.alreadyNext')} then={t('setup.v2.registrar.then')} />
+            : <Guidance tone="neutral" titleAs="h3" title={t(shown ? 'setup.v2.registrar.nowTitle' : 'setup.v2.registrar.laterTitle')}
                 why={t(shown ? 'setup.v2.registrar.nowWhy' : 'setup.v2.registrar.laterWhy', { domain: domain || '—', name: draft.panel_domain || '—' })}
                 who={t('setup.v2.registrar.who')} next={t(glue.length ? 'setup.v2.registrar.nextGlue' : 'setup.v2.registrar.next')} then={t('setup.v2.registrar.then')} />}
         {!ready && !registrarDone && <div className="space-y-2 text-sm leading-6">
@@ -753,7 +739,7 @@ export function SetupProviderRecordsCard() {
     const rows = value?.servers.flatMap(server => server.rows) || [];
     const allOK = rows.length > 0 && rows.every(row => row.state === 'ok' || row.state === 'kept');
     return <section aria-labelledby="setup-provider-title" className="mt-5 space-y-4" data-setup-provider-records="">
-        <SetupLead tone={allOK ? 'done' : 'neutral'} title={t(allOK ? 'setup.v2.provider.doneTitle' : 'setup.v2.provider.leadTitle')} why={t('setup.v2.provider.why')} who={t(allOK ? 'setup.v2.provider.whoNone' : 'setup.v2.provider.who')} next={t(allOK ? 'setup.v2.provider.nextNone' : 'setup.v2.provider.next')} then={t('setup.v2.provider.then')} />
+        <Guidance tone={allOK ? 'success' : 'neutral'} titleAs="h3" title={t(allOK ? 'setup.v2.provider.doneTitle' : 'setup.v2.provider.leadTitle')} why={t('setup.v2.provider.why')} who={t(allOK ? 'setup.v2.provider.whoNone' : 'setup.v2.provider.who')} next={t(allOK ? 'setup.v2.provider.nextNone' : 'setup.v2.provider.next')} then={t('setup.v2.provider.then')} />
         <div className="space-y-3 rounded-lg border border-border bg-surface p-4 sm:p-5">
             <h3 id="setup-provider-title" className="font-semibold">{t('setup.v2.provider.title')}</h3>
             {!value ? <p role="status" className="text-sm text-fg-muted">{t(failed ? 'setup.v2.provider.failed' : 'setup.v2.provider.loading')}</p>
@@ -983,7 +969,7 @@ export function SetupMailStep({ draft, update, mainDomain, ip4, ip6, joined }: {
 export function SetupOpenTasks({ lines }: { lines: string[] }) {
     const { t } = useSetupWizardI18n();
     return <div className="mt-5" data-setup-open-tasks="">
-        <SetupLead title={t('setup.v3.tasks.title')} why={t('setup.v3.tasks.why')} who={t('setup.v3.tasks.who')}
+        <Guidance tone="neutral" titleAs="h3" title={t('setup.v3.tasks.title')} why={t('setup.v3.tasks.why')} who={t('setup.v3.tasks.who')}
             next={<ul className="list-disc space-y-1 pl-5">{lines.map((line, index) => <li key={index}>{line}</li>)}</ul>} then={t('setup.v3.tasks.then')} />
     </div>;
 }

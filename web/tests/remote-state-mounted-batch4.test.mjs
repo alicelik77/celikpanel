@@ -1042,10 +1042,16 @@ test('row actions stay at the table’s edge on a phone: one rule, and the table
   assert.match(rule[1], /inset-inline-end: 0;/);
   assert.match(rule[1], /white-space: nowrap;/, 'a named action may break into two lines in its fixed cell ("Yasağı kaldır" at 390 px)');
   assert.match(rule[1], /background-color: rgb\(var\(--row-ground, var\(--surface\)\)\);/, 'the cell is not opaque: the columns would show through it');
-  for (const [file, cells] of [['DomainDNSManager', 2], ['Fail2banManagement', 2], ['DatabaseManagementV2', 3], ['Domains', 2]]) {
+  for (const [file, cells] of [['DomainDNSManager', 2], ['Fail2banManagement', 2], ['DatabaseManagementV2', 3]]) {
     const found = source(`components/${file}.tsx`).split('row-actions').length - 1;
     assert.ok(found >= cells, `${file}: ${found} row-actions cells, expected at least ${cells}`);
   }
+  // alpha.132: the domain list's rows become cards on a phone instead, with
+  // their actions as words under the facts (components/kit/rows/RowActions.tsx).
+  const domains = source('components/Domains.tsx');
+  assert.doesNotMatch(domains, /row-actions/);
+  assert.match(domains, /<table className="w-full text-sm max-sm:block">/);
+  assert.equal(domains.split('<RowActions').length - 1, 2, 'both kinds of row carry the row actions');
 });
 
 // --- The ratchet -----------------------------------------------------------------------------

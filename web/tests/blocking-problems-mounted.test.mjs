@@ -17,6 +17,7 @@ import Renderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
 import { setupCatalogFixture } from './fixtures/server-setup-components.mjs';
 import { enScreens, trScreens } from './locale-catalogue.mjs';
+import { kitModules } from './fixtures/kit.mjs';
 
 const require = createRequire(import.meta.url);
 const reactURL = pathToFileURL(require.resolve('react')).href;
@@ -66,7 +67,8 @@ const load = (path, extra) => dataURL(`import React from '${reactURL}';\n` + com
 const blockingURL = load('../src/components/BlockingProblems.tsx');
 const planProblemsURL = load('../src/components/SetupPlanProblems.tsx', { setupProblems: problemsLibURL, BlockingProblems: blockingURL });
 const { BlockingProblems, BlockedReason } = await import(blockingURL);
-const libs = { dateFormat: dataURL(compile('../src/lib/dateFormat.ts')), remoteDNS: remoteURL, componentName: componentNameURL, serverSetupComponents: componentLibURL, setupDNS: dnsCopyURL, visibleReads: visibleReadsURL, panelHandover: handoverURL, serverSetupGuidance: guidanceURL, serverSetupOperation: operationURL, serverSetup: setupURL, setupProblems: problemsLibURL, SetupPlanProblems: planProblemsURL, BlockingProblems: blockingURL };
+// alpha.132: the setup leads are the shared guidance block (components/kit/rows/Guidance.tsx).
+const libs = { Guidance: kitModules(stub, stub).guidance, dateFormat: dataURL(compile('../src/lib/dateFormat.ts')), remoteDNS: remoteURL, componentName: componentNameURL, serverSetupComponents: componentLibURL, setupDNS: dnsCopyURL, visibleReads: visibleReadsURL, panelHandover: handoverURL, serverSetupGuidance: guidanceURL, serverSetupOperation: operationURL, serverSetup: setupURL, setupProblems: problemsLibURL, SetupPlanProblems: planProblemsURL, BlockingProblems: blockingURL };
 const wizardStepsURL = load('../src/components/ServerSetupWizardSteps.tsx', { ...libs, remote: dataURL(compile('../src/lib/remote.ts').replace(/from ['"]([^'"]+)['"]/g, (_, from) => `from '${from === 'react' ? reactURL : dataURL(compile('../src/lib/apiError.ts'))}'`)) });
 const componentUIURL = load('../src/components/ServerSetupComponents.tsx', libs);
 const stepsURL = load('../src/components/ServerSetupSteps.tsx');

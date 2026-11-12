@@ -9,14 +9,6 @@
 // EKRAN katalogu parçası "siteTools": WordPress araçları ve zararlı yazılım taraması.
 
 export const enSiteToolsScreens = {
-    // Guidance block: the current reason first, then who acts, the next step and how it goes on.
-    'wpt.guide.who': 'Who acts',
-    'wpt.guide.next': 'Next',
-    'wpt.guide.resumes': 'How it goes on',
-    'wpt.who.you': 'You',
-    'wpt.who.administrator': 'The server administrator',
-    'wpt.who.nobody': 'Nobody — you do not need to do anything',
-
     'wpt.title': 'WordPress tools',
     'wpt.checking': 'Reading the WordPress site…',
     'wpt.unknown': 'The WordPress site could not be read now. Nothing was changed; read it again.',

@@ -16,7 +16,11 @@ export const enProblemsScreens = {
     "operation.blocked": "Waiting for someone to act",
     "operation.unknown": "The result is not known",
     "operation.ok": "OK",
-    "problem.details": "Technical details",
+    "problem.details": "Details",
+    // alpha.132: a refusal whose only words are the server's own (ErrorBanner): a plain sentence,
+    // the server's text under Details, or who can read it when it names server internals.
+    "kit.detail.generic": "The server could not do this.",
+    "kit.detail.adminOnly": "The server administrator can see the server's details.",
     "problem.failedBecause": "{sentence}. The server said: {reason}",
     "problem.show": "Show",
     "problem.blocked.one": "Can't continue yet: 1 problem above.",

@@ -359,6 +359,17 @@ const submits = (node) => node.props.type === 'submit';
 const removes = (node) => destructiveWords.test(labelOf(node)) || /text-danger|hover:text-danger/.test(node.props.className ?? '');
 const enabled = (which) => hostButtons().filter((node) => !node.props.disabled && which(node)).map(labelOf);
 const enabledDangerousControls = () => enabled((node) => submits(node) || removes(node));
+// alpha.132: a row's rare actions are words in its "More" menu (components/kit/rows/RowActions.tsx);
+// Delete is the menu's last item. A menu item that cannot be used now is aria-disabled
+// (it stays readable with its reason) and does nothing when pressed.
+const openRowMenu = async (name) => {
+  const more = hostButtons().find((node) => node.props['data-row-more'] === name);
+  assert.ok(more, `no More menu on the row ${name}`);
+  if (more.props['aria-expanded']) return;
+  await act(async () => { more.props.onClick({}); });
+};
+const rowItem = (id) => hostButtons().find((node) => node.props.role === 'menuitem' && node.props['data-row-action'] === id);
+const rowButton = (id) => hostButtons().filter((node) => node.props.role !== 'menuitem' && node.props['data-row-action'] === id);
 
 // --- The table -----------------------------------------------------------------
 // screen:   what is mounted, with which props and role
@@ -786,22 +797,22 @@ test('Domains: after a failed refresh the earlier list stays, marked, and nothin
   serve({ '/api/v1/domains': (request) => (fail ? failures['refused by the server']() : healthy['/api/v1/domains'](request)) });
   try {
     await mount(Domains);
-    const remove = () => buttons('domains.action.delete');
-    assert.equal(remove().length, 1);
-    assert.equal(Boolean(remove()[0].props.disabled), false);
+    const remove = async () => { await openRowMenu('example.com'); return rowItem('delete'); };
+    assert.ok(await remove());
+    assert.equal(Boolean((await remove()).props['aria-disabled']), false);
     fail = true;
     globalThis.confirm = () => true;
-    await press(remove()[0]);
+    await press(await remove());
     assert.ok(has('example.com'), 'the earlier list was dropped');
     assert.ok(has('common.staleNotice'), 'the earlier list is not marked as the earlier list');
     assert.ok(!has('domains.empty'));
-    assert.equal(remove()[0].props.disabled, true, 'a domain can be removed from a list that is not current');
+    assert.equal((await remove()).props['aria-disabled'], true, 'a domain can be removed from a list that is not current');
     assert.deepEqual(enabledDangerousControls(), []);
     assert.equal(buttons('common.retry').length, 1);
     fail = false;
     await press(buttons('common.retry')[0]);
     assert.ok(!has('common.staleNotice'));
-    assert.equal(Boolean(remove()[0].props.disabled), false);
+    assert.equal(Boolean((await remove()).props['aria-disabled']), false);
   } finally {
     await cleanup();
   }
@@ -2169,7 +2180,9 @@ test('Domains: an administrator sees the infrastructure zone as a DNS-only entry
   try {
     await mount(Domains);
     assert.ok(has('celikhost.com') && has('domains.infrastructure.badge') && has('domains.infrastructure.status'));
-    assert.equal(buttons('domains.action.delete').length, 1, 'the infrastructure zone can be removed from the list');
+    await openRowMenu('example.com');
+    assert.ok(rowItem('delete'), 'the website row lost its Delete');
+    assert.equal(hostButtons().filter((node) => node.props['data-row-more'] === 'celikhost.com').length, 0, 'the infrastructure zone can be removed from the list');
     assert.equal(buttons('domains.infrastructure.manage').length, 1);
     await press(buttons('domains.infrastructure.manage')[0]);
     assert.deepEqual(globalThis.currentTest.navigated, ['/domains/infrastructure/celikhost.com']);
@@ -2419,8 +2432,8 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
   try {
     await mount(Domains);
     globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone, request.progressTitle]); return true; };
-    const rowDelete = () => hostButtons().find((node) => node.props.title === 'domains.action.delete' || node.props.title === 'domains.status.beingDeleted');
-    await press(rowDelete());
+    await openRowMenu('alicelik.com.tr');
+    await press(rowItem('delete'));
     await act(async () => { await settled(); await settled(); });
     assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
     assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
@@ -2458,9 +2471,12 @@ test('Domains: a deletion still running after a reload is followed again and nev
     assert.ok(has('domains.beingDeletedLine'), 'the waiting deletion is not said in one line');
     assert.ok(!has('domains.deletionReason.remote_dns_removal_confirming'), 'the long waiting text is still shown');
     assert.ok(has('domains.status.beingDeleted'), 'the row does not say it is being deleted');
-    const again = hostButtons().find((node) => node.props.title === 'domains.status.beingDeleted');
-    assert.equal(again.props.disabled, true, 'the row still offers delete');
+    await openRowMenu('alicelik.com.tr');
+    const again = rowItem('delete');
+    assert.equal(again.props['aria-disabled'], true, 'the row still offers delete');
+    assert.ok(has('domains.status.beingDeleted'), 'the menu does not say why Delete is off');
     await press(again);
+    assert.equal(rowButton('manage')[0].props.disabled, true, 'a domain being deleted can still be opened for changes');
     const box = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox').at(-1);
     assert.equal(box.props.disabled, true, 'a domain being deleted can still be selected for Remove');
     assert.equal(calls.filter((call) => call.method === 'DELETE').length, 0, 'a DELETE was sent');

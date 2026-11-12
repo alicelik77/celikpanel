@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import { kitTable } from './kit.mjs';
 
 // The shared remote-state layer, compiled from source for a mounted test:
 // lib/remote.ts, lib/hostingCapabilities.ts, lib/apiError.ts and the REAL
@@ -268,6 +269,8 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/updateOrigins': updateOriginsURL,
     '/ui': uiURL,
     '/CopyCommand': copyCommandURL,
+    // alpha.132: the shared kit (row actions, guidance block, words) is the shipped code.
+    ...kitTable(stubURL, uiURL),
     ...extra,
   };
   const resolve = (specifier) => {

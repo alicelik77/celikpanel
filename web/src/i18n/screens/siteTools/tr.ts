@@ -3,13 +3,6 @@
 import type { SiteToolsScreenKey } from './en';
 
 export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
-    'wpt.guide.who': 'Kim yapar',
-    'wpt.guide.next': 'Sonraki adım',
-    'wpt.guide.resumes': 'Nasıl devam eder',
-    'wpt.who.you': 'Siz',
-    'wpt.who.administrator': 'Sunucu yöneticisi',
-    'wpt.who.nobody': 'Kimse — bir şey yapmanız gerekmiyor',
-
     'wpt.title': 'WordPress araçları',
     'wpt.checking': 'WordPress sitesi okunuyor…',
     'wpt.unknown': 'WordPress sitesi şu an okunamadı. Hiçbir şey değişmedi; yeniden okuyun.',

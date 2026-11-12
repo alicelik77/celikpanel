@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from '../router';
 import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network } from 'lucide-react';
+import { RowActions, type RowAction } from './kit/rows/RowActions';
+import { StateLabel } from './kit/rows/StateLabel';
+import { siteKindWord } from './kit/words';
+import { localeTag } from '../lib/dateFormat';
 import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
 import { KeptSiteRecords } from './KeptSiteRecords';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { useI18n } from '../i18n';
-import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, Spinner, StatusDot, UsageBar } from './ui';
+import { Button, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, Spinner, UsageBar } from './ui';
 import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
@@ -24,17 +28,6 @@ import {
     type DomainAccess,
     type DomainCapability,
 } from '../auth/domainAccess';
-
-// Type badge colours: categorical, readable in both themes.
-// Tip rozeti renkleri: kategorik, iki temada da okunur.
-const typeBadge: Record<string, string> = {
-    php: 'bg-primary/10 text-primary',
-    static: 'bg-surface-2 text-fg-muted',
-    node: 'bg-success/10 text-success',
-    proxy: 'bg-warning/15 text-warning',
-    forwarding: 'bg-warning/15 text-warning',
-    dnsonly: 'bg-surface-2 text-fg-muted',
-};
 
 interface Domain {
     id: number;
@@ -139,7 +132,7 @@ function visibleDomains(items: unknown[], teamMember: boolean): { rows: Domain[]
 // bir veri tablosu ve sayfalama alt bilgisi.
 export function Domains() {
     const navigate = useNavigate();
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
     const [searchParams, setSearchParams] = useSearchParams();
@@ -321,6 +314,29 @@ export function Domains() {
     const inFlight = useRef(new Set<number>());
     const beingDeleted = (id: number) =>
         deleting.includes(id) || pendingDeletions.some((item) => item.id === id && item.blocksRetry);
+
+    // A row's two visible actions, as words (P3).
+    // Satırın iki görünür işlemi, sözcükle.
+    const manageAction = (d: Domain): RowAction => ({
+        id: 'manage',
+        label: t('domains.action.manage'),
+        icon: Settings,
+        onSelect: () => navigate(`/domains/${encodeURIComponent(d.domain_name)}`),
+        disabled: beingDeleted(d.id),
+        disabledReason: t('domains.status.beingDeleted'),
+    });
+    const visitAction = (d: Domain): RowAction => ({
+        id: 'visit',
+        label: t('domains.action.visit'),
+        icon: ExternalLink,
+        href: `https://${d.domain_name}`,
+    });
+    const zoneManage = (zone: string): RowAction => ({
+        id: 'manage',
+        label: t('domains.infrastructure.manage'),
+        icon: Settings,
+        onSelect: () => navigate(infrastructureZonePath(zone)),
+    });
 
     // The question names the domain and what goes with it. Once confirmed the
     // same window shows the deletion's steps, locked, until it ends: this
@@ -770,10 +786,12 @@ export function Domains() {
                         ) : null;
                     })()}
 
+                    {/* On a phone every row is a card: its facts one under the
+                        other and its actions, as words, under them (P3). */}
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-border text-left text-xs font-semibold text-fg-muted">
+                        <table className="w-full text-sm max-sm:block">
+                            <thead className={isTeamMember ? 'max-sm:hidden' : 'max-sm:block'}>
+                                <tr className="border-b border-border text-left text-xs font-semibold text-fg-muted max-sm:flex">
                                     {!isTeamMember && <th className="w-10 px-4 py-2.5">
                                         <input
                                             type="checkbox"
@@ -785,18 +803,18 @@ export function Domains() {
                                             className="h-4 w-4 accent-primary"
                                         />
                                     </th>}
-                                    <th className="px-4 py-2.5">{t('domains.col.name')}</th>
-                                    <th className="px-4 py-2.5">{t('domains.col.php')}</th>
-                                    <th className="px-4 py-2.5 text-right">{t('domains.col.disk')}</th>
-                                    <th className="px-4 py-2.5 text-right">{t('domains.col.traffic')}</th>
-                                    <th className="px-4 py-2.5">{t('domains.col.status')}</th>
-                                    <th className="row-actions px-4 py-2.5" />
+                                    <th className="px-4 py-2.5 max-sm:hidden">{t('domains.col.name')}</th>
+                                    <th className="px-4 py-2.5 max-sm:hidden">{t('domains.col.php')}</th>
+                                    <th className="px-4 py-2.5 text-right max-sm:hidden">{t('domains.col.disk')}</th>
+                                    <th className="px-4 py-2.5 text-right max-sm:hidden">{t('domains.col.traffic')}</th>
+                                    <th className="px-4 py-2.5 max-sm:hidden">{t('domains.col.status')}</th>
+                                    <th className="px-4 py-2.5 max-sm:hidden" />
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="max-sm:block">
                                 {filtered.map((d) => (
-                                    <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-2/60">
-                                        {!isTeamMember && <td className="px-4 py-3">
+                                    <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-2/60 max-sm:flex max-sm:flex-wrap max-sm:items-start max-sm:gap-x-3 max-sm:gap-y-1.5 max-sm:p-4">
+                                        {!isTeamMember && <td className="px-4 py-3 max-sm:p-0 max-sm:pt-0.5">
                                             <input
                                                 type="checkbox"
                                                 checked={selected.includes(d.id)}
@@ -809,7 +827,7 @@ export function Domains() {
                                                 className="h-4 w-4 accent-primary"
                                             />
                                         </td>}
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 max-sm:min-w-0 max-sm:flex-1 max-sm:p-0">
                                             {/* The badges drop below the name on a narrow screen;
                                                 the icon stays with the name. */}
                                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -848,11 +866,12 @@ export function Domains() {
                                                 })()}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 max-sm:basis-full max-sm:p-0">
                                             {canView(d, 'php') ? (
                                                 <>
-                                                    <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${typeBadge[d.project_type || 'php'] ?? 'bg-surface-2 text-fg-muted'}`}>
-                                                        {d.project_type || 'php'}
+                                                    {/* The kind in words, as plain text; an unknown kind's code only for an administrator. */}
+                                                    <span className="text-fg-muted" data-site-kind={d.project_type || 'php'}>
+                                                        {siteKindWord(t, d.project_type, { admin: isAdmin })}
                                                     </span>
                                                     {(d.project_type || 'php') === 'php' && d.php_version && (
                                                         <span className="ml-1.5 text-xs text-fg-subtle">{d.php_version}</span>
@@ -860,51 +879,39 @@ export function Domains() {
                                                 </>
                                             ) : '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-fg-muted">
-                                            {canView(d, 'statistics') ? fmtBytes(d.disk_usage) : '—'}
+                                        <td className="whitespace-nowrap px-4 py-3 text-right text-fg-muted max-sm:basis-full max-sm:p-0 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-fg-subtle max-sm:before:content-[attr(data-label)]" data-label={t('domains.col.disk')}>
+                                            {canView(d, 'statistics') ? fmtBytes(d.disk_usage, locale) : '—'}
                                         </td>
-                                        <td className="px-4 py-3 text-right text-fg-muted">
-                                            {canView(d, 'statistics') ? `${fmtBytes(d.bandwidth)}/mo` : '—'}
+                                        <td className="whitespace-nowrap px-4 py-3 text-right text-fg-muted max-sm:basis-full max-sm:p-0 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-fg-subtle max-sm:before:content-[attr(data-label)]" data-label={t('domains.col.traffic')}>
+                                            {canView(d, 'statistics') ? t('domains.perMonth', { size: fmtBytes(d.bandwidth, locale) }) : '—'}
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 max-sm:basis-full max-sm:p-0">
                                             {beingDeleted(d.id) ? (
                                                 <span className="inline-flex items-center gap-1.5 text-fg-muted" data-domain-row-deleting="">
                                                     <Spinner size="xs" />
                                                     {t('domains.status.beingDeleted')}
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1.5 text-fg-muted">
-                                                    <StatusDot ok={d.status === 'active'} />
-                                                    {d.status === 'active' ? t('domains.status.active') : d.status}
-                                                </span>
+                                                <StateLabel status={d.status} admin={isAdmin} className="text-fg-muted" />
                                             )}
                                         </td>
-                                        <td className="row-actions px-4 py-3">
-                                            <div className="flex items-center justify-end gap-0.5">
-                                                {canView(d, 'files') && <IconAction
-                                                    href={`https://${d.domain_name}`}
-                                                    title={t('domains.action.visit')}
-                                                >
-                                                    <ExternalLink className="h-4 w-4" />
-                                                </IconAction>}
-                                                <IconAction
-                                                    onClick={() =>
-                                                        navigate(`/domains/${encodeURIComponent(d.domain_name)}`)
-                                                    }
-                                                    title={t('domains.action.manage')}
-                                                    disabled={beingDeleted(d.id)}
-                                                >
-                                                    <Settings className="h-4 w-4" />
-                                                </IconAction>
-                                                {!isTeamMember && <IconAction
-                                                    onClick={() => handleDelete(d.id, d.domain_name)}
-                                                    title={beingDeleted(d.id) ? t('domains.status.beingDeleted') : t('domains.action.delete')}
-                                                    danger
-                                                    disabled={shown.stale || beingDeleted(d.id)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </IconAction>}
-                                            </div>
+                                        <td className="px-4 py-3 max-sm:basis-full max-sm:p-0 max-sm:pt-2">
+                                            {/* Manage first, Open site beside it, Delete last under
+                                                More, in red (P3, D1/X01). A domain without a
+                                                website has nothing to open. */}
+                                            <RowActions
+                                                name={d.domain_name}
+                                                actions={canView(d, 'files') && d.project_type !== 'dnsonly' ? [manageAction(d), visitAction(d)] : [manageAction(d)]}
+                                                more={isTeamMember ? [] : [{
+                                                    id: 'delete',
+                                                    label: t('domains.action.delete'),
+                                                    icon: Trash2,
+                                                    danger: true,
+                                                    onSelect: () => handleDelete(d.id, d.domain_name),
+                                                    disabled: shown.stale || beingDeleted(d.id),
+                                                    disabledReason: beingDeleted(d.id) ? t('domains.status.beingDeleted') : t('common.staleNotice'),
+                                                }]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -912,9 +919,9 @@ export function Domains() {
                                     visit, no removal; its one action opens the records.
                                     Altyapi bolgesi: yalniz DNS; tek eylemi kayitlari acar. */}
                                 {infrastructureRows.map((zone) => (
-                                    <tr key={`infrastructure-${zone.zone}`} className="border-b border-border last:border-0 hover:bg-surface-2/60" data-infrastructure-zone={zone.zone}>
-                                        {!isTeamMember && <td className="px-4 py-3" />}
-                                        <td className="px-4 py-3">
+                                    <tr key={`infrastructure-${zone.zone}`} className="border-b border-border last:border-0 hover:bg-surface-2/60 max-sm:flex max-sm:flex-wrap max-sm:items-start max-sm:gap-x-3 max-sm:gap-y-1.5 max-sm:p-4" data-infrastructure-zone={zone.zone}>
+                                        {!isTeamMember && <td className="px-4 py-3 max-sm:hidden" />}
+                                        <td className="px-4 py-3 max-sm:min-w-0 max-sm:flex-1 max-sm:p-0">
                                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                                 <span className="inline-flex min-w-0 items-center gap-2">
                                                     <Network className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
@@ -930,40 +937,31 @@ export function Domains() {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-fg-subtle">—</td>
-                                        <td className="px-4 py-3 text-right text-fg-subtle">—</td>
-                                        <td className="px-4 py-3 text-right text-fg-subtle">—</td>
-                                        <td className="px-4 py-3 text-fg-muted">
+                                        <td className="px-4 py-3 text-fg-subtle max-sm:hidden">—</td>
+                                        <td className="px-4 py-3 text-right text-fg-subtle max-sm:hidden">—</td>
+                                        <td className="px-4 py-3 text-right text-fg-subtle max-sm:hidden">—</td>
+                                        <td className="px-4 py-3 text-fg-muted max-sm:basis-full max-sm:p-0">
                                             {t('domains.infrastructure.status')}
                                             <span className="block text-xs text-fg-subtle" data-no-website="">{t('domains.infrastructure.noWebsite')}</span>
                                         </td>
-                                        <td className="row-actions px-4 py-3">
-                                            <div className="flex items-center justify-end gap-1">
-                                                {/* The zone has no website: the one step that
-                                                    gives it one, with the name filled in.
-                                                    Bolgenin web sitesi yok: adi dolu tek adim. */}
-                                                {!isTeamMember && (
-                                                    <span title={dnsRequirementText ?? t('domains.infrastructure.hostWebsiteHelp', { zone: zone.zone })}>
-                                                        <Button
-                                                            variant="secondary"
-                                                            icon={Plus}
-                                                            // The same gate as Add domain: the dialog
-                                                            // also refuses until DNS can publish it.
-                                                            disabled={Boolean(dnsBlocked)}
-                                                            onClick={() => openAdd(zone.zone)}
-                                                            data-host-website={zone.zone}
-                                                        >
-                                                            {t('domains.infrastructure.hostWebsite')}
-                                                        </Button>
-                                                    </span>
-                                                )}
-                                                <IconAction
-                                                    onClick={() => navigate(infrastructureZonePath(zone.zone))}
-                                                    title={t('domains.infrastructure.manage')}
-                                                >
-                                                    <Settings className="h-4 w-4" />
-                                                </IconAction>
-                                            </div>
+                                        <td className="px-4 py-3 max-sm:basis-full max-sm:p-0 max-sm:pt-2">
+                                            {/* Its records first. The zone has no website: the
+                                                second action gives it one with the name filled in,
+                                                behind the same gate as Add domain (the dialog also
+                                                refuses until DNS can publish it).
+                                                Once kayitlari; bolgenin web sitesi yok, ikinci
+                                                eylem adi dolu olarak bir tane ekler. */}
+                                            <RowActions
+                                                name={zone.zone}
+                                                actions={isTeamMember ? [zoneManage(zone.zone)] : [zoneManage(zone.zone), {
+                                                    id: 'host-website',
+                                                    label: t('domains.infrastructure.hostWebsite'),
+                                                    icon: Plus,
+                                                    onSelect: () => openAdd(zone.zone),
+                                                    disabled: Boolean(dnsBlocked),
+                                                    disabledReason: dnsRequirementText ?? undefined,
+                                                }]}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -999,49 +997,19 @@ export function Domains() {
     );
 }
 
-function IconAction({
-    children,
-    title,
-    href,
-    onClick,
-    danger,
-    disabled,
-}: {
-    children: React.ReactNode;
-    title: string;
-    href?: string;
-    onClick?: () => void;
-    danger?: boolean;
-    disabled?: boolean;
-}) {
-    const cls = `rounded-md p-1.5 text-fg-subtle transition-colors hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-40 ${
-        danger ? 'hover:text-danger' : 'hover:text-primary'
-    }`;
-    if (href) {
-        return (
-            <a href={href} target="_blank" rel="noopener noreferrer" title={title} className={cls}>
-                {children}
-            </a>
-        );
-    }
-    return (
-        <button onClick={onClick} title={title} disabled={disabled} className={cls}>
-            {children}
-        </button>
-    );
-}
-
-function fmtBytes(bytes: number = 0): string {
+function fmtBytes(bytes: number = 0, locale: string): string {
     // Honest sizes: a 627-byte site reads "627 B", never a fake-looking
-    // "0.0 MB". / Dürüst boyutlar: 627 baytlık site "627 B" okunur, sahte
-    // görünen "0.0 MB" asla.
+    // "0.0 MB"; the number in the reader's locale ("3,6 KB" in Turkish).
+    // Dürüst boyutlar: 627 baytlık site "627 B" okunur, sahte görünen
+    // "0.0 MB" asla; sayı okurun dilinde.
+    const number = (value: number, digits: number) => value.toLocaleString(localeTag(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits });
     if (!bytes) return '0 B';
     if (bytes < 1024) return `${bytes} B`;
     const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`;
+    if (kb < 1024) return `${number(kb, kb < 10 ? 1 : 0)} KB`;
     const mb = kb / 1024;
-    if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
-    return `${(mb / 1024).toFixed(2)} GB`;
+    if (mb < 1024) return `${number(mb, mb < 10 ? 1 : 0)} MB`;
+    return `${number(mb / 1024, 2)} GB`;
 }
 
 
@@ -1060,7 +1028,7 @@ export function subscriptionTitle(s: { name: string; owner: string }, viewer: st
 // ölçülen disk ve kaynak sayıları. Oluşturmayı kapılayan kota sisteminden
 // gelen gerçek sayılar — gördüğün, uygulanandır.
 function SubscriptionUsage() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { user } = useAuth();
     const viewer = user?.username;
     const usage = useRemote(SUBSCRIPTIONS_URL, decodeSubscriptions);
@@ -1102,13 +1070,13 @@ function SubscriptionUsage() {
                         {s.owner && s.owner !== viewer && <p className="-mt-1 mb-2 text-xs text-fg-subtle" data-subscription-owner="">{t('quota.accountOf', { owner: s.owner })}</p>}
                         {unlimited ? (
                             <p className="text-sm text-fg-muted">
-                                {fmtBytes(u.disk_used_bytes)} · {t('quota.unlimited')}
+                                {fmtBytes(u.disk_used_bytes, locale)} · {t('quota.unlimited')}
                             </p>
                         ) : (
                             <>
                                 <UsageBar percent={pct} />
                                 <p className="mt-1.5 text-xs text-fg-muted">
-                                    {t('quota.diskOf', { used: fmtBytes(u.disk_used_bytes), total: fmtBytes(u.disk_limit_bytes) })}
+                                    {t('quota.diskOf', { used: fmtBytes(u.disk_used_bytes, locale), total: fmtBytes(u.disk_limit_bytes, locale) })}
                                 </p>
                             </>
                         )}

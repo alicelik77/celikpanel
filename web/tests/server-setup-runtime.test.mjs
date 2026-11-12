@@ -8,6 +8,7 @@ import Renderer, { act } from 'react-test-renderer';
 import ts from 'typescript';
 import { setupCatalogFixture } from './fixtures/server-setup-components.mjs';
 import { enScreens, trScreens } from './locale-catalogue.mjs';
+import { kitModules } from './fixtures/kit.mjs';
 
 const require = createRequire(import.meta.url);
 const reactURL = pathToFileURL(require.resolve('react')).href;
@@ -57,8 +58,10 @@ const { ServerSetupComponents: ComponentPicker } = await import(componentUIURL);
 const apiErrorURL = dataURL(compile('../src/lib/apiError.ts'));
 const remoteLibURL = dataURL(compile('../src/lib/remote.ts').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : apiErrorURL}'`));
 const dateFormatURL = dataURL(compile('../src/lib/dateFormat.ts'));
+// alpha.132: the setup leads are the shared guidance block.
+const guidanceBlockURL = kitModules(stub, stub).guidance;
 const wizardStepsURL = dataURL(`import React from '${reactURL}';
-` + compile('../src/components/ServerSetupWizardSteps.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/lib/remote') ? remoteLibURL : path.endsWith('/serverSetup') ? setupURL : path.endsWith('/dateFormat') ? dateFormatURL : stub}'`));
+` + compile('../src/components/ServerSetupWizardSteps.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, path) => `from '${path === 'react' ? reactURL : path.endsWith('/kit/rows/Guidance') ? guidanceBlockURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/lib/remote') ? remoteLibURL : path.endsWith('/serverSetup') ? setupURL : path.endsWith('/dateFormat') ? dateFormatURL : stub}'`));
 async function loadComponent(name, exported = name) {
     const source = compile(`../src/components/${name}.tsx`).replace(/from ['"]([^'"]+)['"]/g, (_, path) => {
         const url = path === 'react' ? reactURL : path.endsWith('/ServerSetupSteps') ? stepsURL : path.endsWith('/remoteDNS') ? remoteURL : path.endsWith('/ServerSetupComponents') ? componentUIURL : path.endsWith('/ServerSetupWizardSteps') ? wizardStepsURL : path.endsWith('/componentName') ? componentNameURL : path.endsWith('/serverSetupComponents') ? componentLibURL : path.endsWith('/ServerSetupChoice') ? choiceURL : path.endsWith('/setupDNS') ? dnsCopyURL : path.endsWith('/visibleReads') ? visibleReadsURL : path.endsWith('/panelHandover') ? handoverURL : path.endsWith('/serverSetupGuidance') ? guidanceURL : path.endsWith('/serverSetupOperation') ? operationURL : path.endsWith('/apiError') ? apiErrorURL : path.endsWith('/serverSetup') ? setupURL : stub;

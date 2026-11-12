@@ -108,7 +108,7 @@ test('all good: the sentence first, both servers by the page\'s own names, the n
   try {
     const lead = byProp('data-dns-sentence', 'dns_overview_ok')[0];
     assert.equal(lead.props['data-state'], 'ok');
-    assert.equal(byProp('data-dns-sentence-live', 'status').length, 1, 'only the title is the live region, polite');
+    assert.equal(byProp('data-guidance-live', 'status').length, 1, 'only the title is the live region, polite');
     const text = textOf();
     assert.ok(text.includes('All good') && text.includes('This server (alpha)') && text.includes('Joined server (beta)'));
     assert.ok(text.indexOf('All good') < text.indexOf('Your DNS servers'), 'the sentence comes before the servers');
@@ -130,11 +130,11 @@ test('a verified failure is announced once, when it starts, in Turkish, naming t
   let current = paired();
   await mount(() => json(current), { words: trScreens });
   try {
-    assert.equal(byProp('data-dns-sentence-live', 'status').length, 1);
+    assert.equal(byProp('data-guidance-live', 'status').length, 1);
     current = failing;
     await act(async () => button('Şimdi bak').props.onClick());
     await settle();
-    assert.equal(byProp('data-dns-sentence-live', 'alert').length, 1, 'the change to a verified failure is an alert');
+    assert.equal(byProp('data-guidance-live', 'alert').length, 1, 'the change to a verified failure is an alert');
     assert.equal(byProp('data-dns-sentence', 'dns_overview_backup_not_serving')[0].props.role, undefined, 'the rest of the sentence is not a live region');
     assert.ok(requests.some((request) => request.url === '/api/v1/dns/overview?fresh=1'), 'Check now asks for a real new check');
     const text = textOf();
@@ -274,7 +274,7 @@ test('a failure already there on opening is not an alert; servers without a shor
   value.servers = value.servers.map((server) => ({ ...server, short_name: undefined }));
   await mount(value);
   try {
-    assert.equal(byProp('data-dns-sentence-live', 'alert').length, 0);
+    assert.equal(byProp('data-guidance-live', 'alert').length, 0);
     const text = textOf();
     assert.ok(text.includes('Joined server (198.51.100.20) did not answer this check'), text.slice(0, 400));
   } finally { await unmount(); }
