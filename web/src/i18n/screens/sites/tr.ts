@@ -196,6 +196,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domain.info.on': 'Açık',
     'domain.info.off': 'Kapalı',
     'domain.overview.hint': 'Bu alan adını yönetmek için bir bölüm seçin.',
+    'domain.overview.siteRuns': '{kind} çalışıyor',
     'domain.overview.ssl.title': 'SSL/TLS sertifikası',
     'domain.overview.ssl.checking': 'Durum kontrol ediliyor',
     'domain.overview.ssl.loading': 'Geçerli sertifika durumu yükleniyor.',

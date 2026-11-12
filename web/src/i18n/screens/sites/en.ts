@@ -202,6 +202,7 @@ export const enSitesScreens = {
     'domain.info.on': 'On',
     'domain.info.off': 'Off',
     'domain.overview.hint': 'Choose an area to manage this domain.',
+    'domain.overview.siteRuns': '{kind} runs here',
     'domain.overview.ssl.title': 'SSL/TLS certificate',
     'domain.overview.ssl.checking': 'Checking status',
     'domain.overview.ssl.loading': 'Loading the current certificate state.',
