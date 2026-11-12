@@ -15,7 +15,7 @@ import {
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { useDraft } from './kit/save/draft';
 import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
 import { useSaveWords } from './kit/save/words';
@@ -392,7 +392,14 @@ export interface OfferedPart {
     unknown: boolean;
     held: boolean;
     checking: boolean;
-    save: () => Promise<unknown>;
+    /**
+     * Asks every question its save needs (offering an application asks with
+     * its risk) and sends nothing: true when there is none or the answer was
+     * yes. The tab asks it before anything at all is sent.
+     */
+    ask: () => Promise<boolean>;
+    /** Sends the changes without asking, each one a step in `report`; null when nothing was sent. */
+    save: (report: OperationReport) => Promise<OffersApplied | null>;
     reset: () => void;
     check: () => void;
 }
@@ -455,27 +462,62 @@ export function OfferedItemsTab() {
     // The applications' part (its own chunk) once it has been fetched.
     const [apps, setApps] = useState<OfferedPart | null>(null);
 
-    const saveItems = () => draft.save(async (changes) => {
+    const saveItems = async (report: OperationReport) => {
+        let result: OffersApplied | null = null;
+        await draft.save(async (changes) => {
+            result = await applyOffers(Object.entries(changes) as [string, boolean][], {
+                t,
+                report,
+                nameOf: (id) => offeredLabel(id, t),
+                reread: async () => {
+                    // Every chooser, plan and account screen follows the offer.
+                    invalidate('rights', 'components');
+                    const reread = await catalog.retry();
+                    return (id) => (reread.state === 'known' ? offeredStateOf(reread.value, id) : undefined);
+                },
+            });
+            if (result.failed.length === 0) return 'saved';
+            setReport(result);
+            return result.lost ? 'unknown' : 'refused';
+        });
+        return result;
+    };
+    // One bar for the whole list. Every question the save needs is asked
+    // first (offering an application asks with its risk); a "no" sends
+    // nothing and keeps every change. Then the permissions and software and
+    // the applications run in one progress window, a step per item.
+    // Tek çubuk: kaydetmenin gerektirdiği her soru önce sorulur; "hayır"
+    // hiçbir şey göndermez. Sonra hepsi tek ilerleme penceresinde çalışır.
+    const save = async () => {
+        const items = draft.count > 0;
+        const part = apps && apps.count > 0 ? apps : null;
+        if (!items && !part) return;
+        if (part && !(await part.ask())) return;
         setReport(null);
-        const result = await applyOffers(Object.entries(changes) as [string, boolean][], {
-            t,
-            nameOf: (id) => offeredLabel(id, t),
-            reread: async () => {
-                // Every chooser, plan and account screen follows the offer.
-                invalidate('rights', 'components');
-                const reread = await catalog.retry();
-                return (id) => (reread.state === 'known' ? offeredStateOf(reread.value, id) : undefined);
+        await followOperation({
+            progressTitle: t('rights.offered.applying'),
+            action: async (report) => {
+                // Both lists end with their own read step; ids stay unique in the window.
+                let first: OperationStep[] = [];
+                let second: OperationStep[] = [];
+                const show = () => report.steps([...first, ...second.map((step) => ({ ...step, id: `apps-${step.id}` }))]);
+                const results: OffersApplied[] = [];
+                if (items) {
+                    const result = await saveItems({ steps: (steps) => { first = steps; show(); } });
+                    if (result) results.push(result);
+                }
+                if (part) {
+                    const result = await part.save({ steps: (steps) => { second = steps; show(); } });
+                    if (result) results.push(result);
+                }
+                const failed = results.flatMap((result) => result.failed);
+                if (failed.length === 0) return { state: 'done' };
+                return {
+                    state: results.some((result) => result.lost) ? 'unknown' : 'failed',
+                    reason: `${failed.map((line) => line.text).join(' ')} ${t('rights.offered.next')}`,
+                };
             },
         });
-        if (result.failed.length === 0) return 'saved';
-        setReport(result);
-        return result.lost ? 'unknown' : 'refused';
-    });
-    // One bar for the whole list: the permissions and software, then the
-    // applications (which ask first when one is being offered).
-    const save = async () => {
-        if (draft.count > 0) await saveItems();
-        if (apps && apps.count > 0) await apps.save();
     };
     const itemsUnknown = draft.outcome === 'unknown';
     const unknown = itemsUnknown || apps?.unknown;

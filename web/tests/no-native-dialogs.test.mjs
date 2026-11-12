@@ -97,6 +97,10 @@ const plainQuestions = {
   // version or tab with unsaved extension switches, closing a plan form.
   'components/PHPManagement.tsx': 1,
   'components/PlanRights.tsx': 1,
+  // alpha.132 lab: offering an application is asked before anything is sent;
+  // the Offered tab then runs every change in its one progress window
+  // (followOperation in PlanRights.tsx).
+  'components/OfferedAppsSection.tsx': 1,
 };
 
 function calls(text, name) {

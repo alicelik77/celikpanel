@@ -41,7 +41,11 @@ export function SaveBar({ count, saving, onSave, onDiscard, blockedBy, unknown, 
     const { t } = useI18n();
     const say = useSaveWords();
     if (count === 0 && !saving && !unknown) return null;
-    const line = unknown
+    // While a save runs the bar says so, never a count that is already
+    // going down; it closes once the save has ended.
+    const line = saving
+        ? say('savingNow')
+        : unknown
         ? say('unknown')
         : blockedBy || (count === 'some' ? say('pendingSome') : count === 1 ? say('pendingOne') : say('pending', { n: count }));
     return (
@@ -50,7 +54,7 @@ export function SaveBar({ count, saving, onSave, onDiscard, blockedBy, unknown, 
             className={`sticky bottom-0 z-10 mt-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-border bg-surface py-3 ${className}`}
         >
             <p className="flex min-w-0 basis-full items-start gap-2 text-sm text-fg sm:mr-auto sm:basis-0 sm:grow" aria-live="polite">
-                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${unknown || blockedBy ? 'bg-warning' : 'bg-primary'}`} aria-hidden="true" />
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!saving && (unknown || blockedBy) ? 'bg-warning' : 'bg-primary'}`} aria-hidden="true" />
                 <span className="min-w-0 max-w-[75ch]">{line}</span>
             </p>
             {unknown && (

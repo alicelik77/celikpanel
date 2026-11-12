@@ -6,7 +6,7 @@ import { apiErrorActionLabel } from '../lib/apiError';
 import { useNavigate } from '../router';
 import { invalidate, lastKnown, useRemote } from '../lib/remote';
 import { APP_CATALOG_URL, appText, decodeCatalog } from '../lib/appCatalog';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, type OperationReport } from '../lib/confirmAction';
 import { applyOffers, type OffersApplied } from '../lib/rights';
 import type { OfferedPart } from './PlanRights';
 import { useDraft } from './kit/save/draft';
@@ -40,54 +40,53 @@ export function OfferedAppsSection({ onPart }: { onPart: (part: OfferedPart | nu
     const [report, setReport] = useState<OffersApplied | null>(null);
     const appOf = (id: string) => list?.find((app) => app.offering_id === id);
 
-    const save = () => draft.save(async (changes) => {
-        setReport(null);
-        const entries = Object.entries(changes) as [string, boolean][];
-        const send = (report?: Parameters<typeof applyOffers>[1]['report']) => applyOffers(entries, {
-            t,
-            report,
-            nameOf: (id) => appOf(id)?.name ?? id,
-            reread: async () => {
-                invalidate('rights');
-                const reread = await catalog.retry();
-                return (id) => (reread.state === 'known' ? reread.value.find((app) => app.offering_id === id)?.offered : undefined);
-            },
+    // Offering an application asks first, with its risk. The tab asks this
+    // before anything at all is sent; a "no" sends nothing and keeps the ticks.
+    // Bir uygulamayı sunmak önce riskiyle sorulur; sekme bunu hiçbir şey
+    // gönderilmeden önce sorar.
+    const ask = async () => {
+        const values = draft.values ?? {};
+        const offered = Object.keys(values).filter((id) => draft.isChanged(id) && values[id]).map(appOf).filter((app) => app !== undefined);
+        if (offered.length === 0) return true;
+        return confirmAction({
+            message: offered.map((app) => t('appOffer.confirm', { name: app.name, risk: appText(app, 'risk', locale) })).join('\n\n'),
+            confirmLabel: say('save'),
         });
-        const offered = entries.filter(([, on]) => on).map(([id]) => appOf(id)).filter((app) => app !== undefined);
-        const done: { result?: OffersApplied } = {};
-        if (offered.length > 0) {
-            // Offering asks first, with the risk; the changes then run in the
-            // progress window.
-            await confirmAction({
-                message: offered.map((app) => t('appOffer.confirm', { name: app.name, risk: appText(app, 'risk', locale) })).join('\n\n'),
-                confirmLabel: say('save'),
-                progressTitle: t('rights.offered.applying'),
-                action: async (report) => {
-                    const result = await send(report);
-                    done.result = result;
-                    if (result.failed.length === 0) return { state: 'done' };
-                    return { state: result.lost ? 'unknown' : 'failed', reason: `${result.failed.map((line) => line.text).join(' ')} ${t('rights.offered.next')}` };
+    };
+    // Sends without asking, each application a step of the tab's progress window.
+    const save = async (report: OperationReport) => {
+        let result: OffersApplied | null = null;
+        await draft.save(async (changes) => {
+            setReport(null);
+            result = await applyOffers(Object.entries(changes) as [string, boolean][], {
+                t,
+                report,
+                nameOf: (id) => appOf(id)?.name ?? id,
+                reread: async () => {
+                    invalidate('rights');
+                    const reread = await catalog.retry();
+                    return (id) => (reread.state === 'known' ? reread.value.find((app) => app.offering_id === id)?.offered : undefined);
                 },
             });
-            // Declined: nothing was sent and the ticks stay.
-            if (!done.result) return 'refused';
-        } else done.result = await send();
-        if (done.result.failed.length === 0) return 'saved';
-        setReport(done.result);
-        return done.result.lost ? 'unknown' : 'refused';
-    });
+            if (result.failed.length === 0) return 'saved';
+            setReport(result);
+            return result.lost ? 'unknown' : 'refused';
+        });
+        return result;
+    };
 
     // The tab's bar gets stable functions over this render's draft.
-    const latest = useRef({ save, reset: draft.reset, check: () => void catalog.retry() });
-    latest.current = { save, reset: () => { setReport(null); draft.reset(); }, check: () => void catalog.retry() };
-    const partSave = useCallback(() => latest.current.save(), []);
+    const latest = useRef({ ask, save, reset: draft.reset, check: () => void catalog.retry() });
+    latest.current = { ask, save, reset: () => { setReport(null); draft.reset(); }, check: () => void catalog.retry() };
+    const partAsk = useCallback(() => latest.current.ask(), []);
+    const partSave = useCallback((report: OperationReport) => latest.current.save(report), []);
     const partReset = useCallback(() => latest.current.reset(), []);
     const partCheck = useCallback(() => latest.current.check(), []);
     const blocked = draft.count > 0 && catalog.remote.state !== 'known';
     const unknown = draft.outcome === 'unknown';
     useEffect(() => {
-        onPart({ count: draft.count, saving: draft.saving, blocked, unknown, held: draft.held, checking: catalog.reading, save: partSave, reset: partReset, check: partCheck });
-    }, [onPart, draft.count, draft.saving, blocked, unknown, draft.held, catalog.reading, partSave, partReset, partCheck]);
+        onPart({ count: draft.count, saving: draft.saving, blocked, unknown, held: draft.held, checking: catalog.reading, ask: partAsk, save: partSave, reset: partReset, check: partCheck });
+    }, [onPart, draft.count, draft.saving, blocked, unknown, draft.held, catalog.reading, partAsk, partSave, partReset, partCheck]);
     useEffect(() => () => onPart(null), [onPart]);
 
     return (

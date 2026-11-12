@@ -187,7 +187,7 @@ test('the Offered tab: ticking sends nothing; Save sends each change once; a ref
   }
 });
 
-test('offered applications share the tab’s one bar; offering asks with the risk, then runs in the progress window; declining sends nothing', async () => {
+test('offered applications share the tab’s one bar; every question is asked before anything is sent; declining sends nothing at all', async () => {
   let joomla = false;
   let ssh = false;
   const view = await mount(React.createElement(OfferedTabWithApps), ({ url, method, body }) => {
@@ -205,20 +205,24 @@ test('offered applications share the tab’s one bar; offering asks with the ris
     assert.equal(view.writes().length, 0, 'ticking saved');
     assert.equal(view.tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined).length, 1, 'one save bar for the whole list');
     assert.ok(view.text().includes('2 changes not saved.'), view.text());
-    // Declined: the permission is saved, the application is not sent and stays marked.
+    // Declined (lab, 12 Nov 2026: the permission had been saved before the
+    // question): nothing at all is sent and both changes stay as they were.
     const asked = [];
     globalThis.confirm = (text) => { asked.push(text); return false; };
     await view.press(view.save());
-    assert.deepEqual(view.writes().map((call) => call.body), [{ offering_id: 'permission:ssh', offered: true }]);
+    assert.equal(view.writes().length, 0, 'a change was sent before the question was answered');
     assert.ok(asked[0].includes('appOffer.confirm') && asked[0].includes('Extensions need care.'), asked[0]);
-    assert.equal(view.marks(), 1, 'the declined application is no longer marked');
-    assert.ok(view.text().includes('1 change not saved.'));
+    assert.equal(view.marks(), 2, 'declining dropped a change');
+    assert.equal(app().props.checked, true);
+    assert.equal(sshBox().props.checked, true);
+    assert.ok(view.text().includes('2 changes not saved.'));
+    // Accepted: both run in one progress window, a step per item.
     globalThis.confirm = () => true;
     globalThis.operationSteps = [];
     globalThis.operationEnds = [];
     await view.press(view.save());
-    assert.deepEqual(view.writes().map((call) => call.body)[1], { offering_id: 'app:joomla', offered: true });
-    assert.deepEqual(globalThis.operationSteps.at(-1).map((step) => [step.id, step.state]), [['app:joomla', 'done'], ['read', 'done']]);
+    assert.deepEqual(view.writes().map((call) => call.body), [{ offering_id: 'permission:ssh', offered: true }, { offering_id: 'app:joomla', offered: true }]);
+    assert.deepEqual(globalThis.operationSteps.at(-1).map((step) => [step.id, step.state]), [['permission:ssh', 'done'], ['read', 'done'], ['apps-app:joomla', 'done'], ['apps-read', 'done']]);
     assert.equal(globalThis.operationEnds.at(-1).state, 'done');
     assert.equal(app().props.checked, true);
     assert.equal(view.marks(), 0);

@@ -77,6 +77,18 @@ test('a draft counts what differs from the server, Discard drops it, and setting
   });
 });
 
+test('while a save runs the bar says it is saving, never a count, and closes when the save has ended', async () => {
+  const bar = (props) => React.createElement(SaveBar, { onSave() {}, onDiscard() {}, ...props });
+  await mounted(bar({ count: 0, saving: true }), async (tree) => {
+    assert.ok(text(tree).includes('Your changes are being saved.'), text(tree));
+    assert.ok(!text(tree).includes('0 changes'), 'the bar counted while saving');
+    await act(async () => { tree.update(bar({ count: 2, saving: true })); });
+    assert.ok(!text(tree).includes('2 changes not saved'), 'the bar counted while saving');
+    await act(async () => { tree.update(bar({ count: 0, saving: false })); });
+    assert.equal(tree.toJSON(), null, 'the bar stayed after the save ended');
+  });
+});
+
 test('a newer server answer keeps the person’s edit, flags a field the server changed too, and drops an edit it now holds', async () => {
   let known = { a: 1, b: 1, c: 1 };
   const element = () => React.createElement(Probe, { known });
