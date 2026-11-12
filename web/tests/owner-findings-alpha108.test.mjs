@@ -156,7 +156,8 @@ test('C11: the note exists in both languages, as the owner worded it', () => {
   assert.equal(en['common.sudoNote'], 'If you are signed in as root, leave out sudo.');
   assert.equal(tr['common.sudoNote'], 'root olarak oturum açtıysanız sudo yazmayın.');
   assert.match(ui, /export function SudoNote/);
-  assert.match(ui, /\{mentionsSudo\(errorText\) && <SudoNote \/>\}/, 'every banner that shows a sudo command carries it');
+  // alpha.132: the server's own words under Details count too.
+  assert.match(ui, /\{mentionsSudo\(errorText \+ rawShown\) && <SudoNote \/>\}/, 'every banner that shows a sudo command carries it');
 });
 
 test('C11: the recovery page, the update outcome, the restarts list and the offline page carry the note beside their commands', () => {

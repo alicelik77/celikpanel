@@ -238,15 +238,9 @@ export function refusalParts(e: ApiError, t: T, sentenceKey?: TranslationKey): {
 // server internals: no file path, no service unit and no command. Otherwise
 // only an administrator reads them (ErrorBanner); others are told who can.
 // Sunucunun sözü yalnız yol, birim adı ya da komut içermiyorsa herkese gösterilir.
-const SERVER_INTERNALS = [
-    /(^|[\s'"(=:,])~?\/[A-Za-z0-9._-]/, // an absolute path (/etc/…, /var/www/…), not the slashes inside a URL
-    /\b[\w@.-]+\.(service|socket|timer|target|mount|path|slice)\b/, // a systemd unit
-    /\b(sudo|systemctl|journalctl|apt-get|apt|dpkg|dnf|yum|pacman|certbot|chmod|chown|rndc|pdnsutil|postconf|doveadm|mysqladmin|psql|nginx\s+-t)\b/, // a command
-    /`/, // a quoted command line
-];
-export function serverTextForEveryone(raw: string): boolean {
-    return !SERVER_INTERNALS.some((pattern) => pattern.test(raw));
-}
+// Any slash (a path; addresses count too), a quoted command line, a service unit or a command.
+const SERVER_INTERNALS = /[/`]|\.(service|timer)\b|\b(sudo|systemctl|journalctl|apt)\b/;
+export const serverTextForEveryone = (raw: string) => !SERVER_INTERNALS.test(raw);
 
 // refusalText: what a refused change says in one string (a toast, a progress
 // window's reason). The screen's sentence keeps the server's reason beside it

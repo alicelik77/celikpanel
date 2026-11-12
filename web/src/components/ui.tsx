@@ -924,7 +924,7 @@ export function ErrorBanner({ error, className, sentence }: {
                 tıklamanın neyi kıracağını görmeli. "+N" kuyruğu üreticinin
                 dürüst kesme işaretidir. */}
             {raw && !rawShown && <p className="mt-1 text-xs text-fg-muted">{t('kit.detail.adminOnly')}</p>}
-            {mentionsSudo(errorText) && <SudoNote />}
+            {mentionsSudo(errorText + rawShown) && <SudoNote />}
             {error.details && error.details.length > 0 && (
                 <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto border-t border-danger/20 pt-2 font-mono text-xs">
                     {error.details.map((d) => (
@@ -933,10 +933,9 @@ export function ErrorBanner({ error, className, sentence }: {
                 </ul>
             )}
             {(rawShown || code) && (
-                <details className="mt-1 text-xs text-fg-muted" data-error-details="">
+                <details className="mt-1 text-xs text-fg-muted">
                     <summary className="cursor-pointer">{t('problem.details')}</summary>
                     {rawShown && <p className="whitespace-pre-wrap break-words">{rawShown}</p>}
-                    {rawShown && mentionsSudo(rawShown) && <SudoNote />}
                     {code && <code className="break-words">{code}</code>}
                 </details>
             )}

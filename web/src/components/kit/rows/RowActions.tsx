@@ -8,7 +8,8 @@ import { Button } from '../../ui';
 // buttons with text for the most frequent actions, then one "More" menu whose
 // items are words too. An action that destroys something is last in that
 // menu, in red, after a line. Every action carries its word; an icon may
-// accompany it, never replace it.
+// accompany it, never replace it. An action that asks before it acts (a
+// confirmation or a form) ends its word with an ellipsis: "Sil…", "Delete…".
 //
 // The menu is the product's only one: role="menu", arrow keys, Home/End,
 // Escape and Tab close it and give the focus back to its button; it closes on

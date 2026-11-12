@@ -4,6 +4,7 @@ import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network }
 import { RowActions, type RowAction } from './kit/rows/RowActions';
 import { StateLabel } from './kit/rows/StateLabel';
 import { siteKindWord } from './kit/words';
+import { localeTag } from '../lib/dateFormat';
 import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
 import { KeptSiteRecords } from './KeptSiteRecords';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
@@ -27,17 +28,6 @@ import {
     type DomainAccess,
     type DomainCapability,
 } from '../auth/domainAccess';
-
-// Type badge colours: categorical, readable in both themes.
-// Tip rozeti renkleri: kategorik, iki temada da okunur.
-const typeBadge: Record<string, string> = {
-    php: 'bg-primary/10 text-primary',
-    static: 'bg-surface-2 text-fg-muted',
-    node: 'bg-success/10 text-success',
-    proxy: 'bg-warning/15 text-warning',
-    forwarding: 'bg-warning/15 text-warning',
-    dnsonly: 'bg-surface-2 text-fg-muted',
-};
 
 interface Domain {
     id: number;
@@ -142,7 +132,7 @@ function visibleDomains(items: unknown[], teamMember: boolean): { rows: Domain[]
 // bir veri tablosu ve sayfalama alt bilgisi.
 export function Domains() {
     const navigate = useNavigate();
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
     const [searchParams, setSearchParams] = useSearchParams();
@@ -879,8 +869,8 @@ export function Domains() {
                                         <td className="px-4 py-3 max-sm:basis-full max-sm:p-0">
                                             {canView(d, 'php') ? (
                                                 <>
-                                                    {/* The kind in words; an unknown kind's code only for an administrator. */}
-                                                    <span className={`inline-block max-w-[14rem] rounded-md px-2 py-0.5 text-xs font-medium ${typeBadge[d.project_type || 'php'] ?? 'bg-surface-2 text-fg-muted'}`} data-site-kind={d.project_type || 'php'}>
+                                                    {/* The kind in words, as plain text; an unknown kind's code only for an administrator. */}
+                                                    <span className="text-fg-muted" data-site-kind={d.project_type || 'php'}>
                                                         {siteKindWord(t, d.project_type, { admin: isAdmin })}
                                                     </span>
                                                     {(d.project_type || 'php') === 'php' && d.php_version && (
@@ -890,10 +880,10 @@ export function Domains() {
                                             ) : '—'}
                                         </td>
                                         <td className="whitespace-nowrap px-4 py-3 text-right text-fg-muted max-sm:basis-full max-sm:p-0 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-fg-subtle max-sm:before:content-[attr(data-label)]" data-label={t('domains.col.disk')}>
-                                            {canView(d, 'statistics') ? fmtBytes(d.disk_usage) : '—'}
+                                            {canView(d, 'statistics') ? fmtBytes(d.disk_usage, locale) : '—'}
                                         </td>
                                         <td className="whitespace-nowrap px-4 py-3 text-right text-fg-muted max-sm:basis-full max-sm:p-0 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-fg-subtle max-sm:before:content-[attr(data-label)]" data-label={t('domains.col.traffic')}>
-                                            {canView(d, 'statistics') ? `${fmtBytes(d.bandwidth)}/mo` : '—'}
+                                            {canView(d, 'statistics') ? t('domains.perMonth', { size: fmtBytes(d.bandwidth, locale) }) : '—'}
                                         </td>
                                         <td className="px-4 py-3 max-sm:basis-full max-sm:p-0">
                                             {beingDeleted(d.id) ? (
@@ -1007,17 +997,19 @@ export function Domains() {
     );
 }
 
-function fmtBytes(bytes: number = 0): string {
+function fmtBytes(bytes: number = 0, locale: string): string {
     // Honest sizes: a 627-byte site reads "627 B", never a fake-looking
-    // "0.0 MB". / Dürüst boyutlar: 627 baytlık site "627 B" okunur, sahte
-    // görünen "0.0 MB" asla.
+    // "0.0 MB"; the number in the reader's locale ("3,6 KB" in Turkish).
+    // Dürüst boyutlar: 627 baytlık site "627 B" okunur, sahte görünen
+    // "0.0 MB" asla; sayı okurun dilinde.
+    const number = (value: number, digits: number) => value.toLocaleString(localeTag(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits });
     if (!bytes) return '0 B';
     if (bytes < 1024) return `${bytes} B`;
     const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`;
+    if (kb < 1024) return `${number(kb, kb < 10 ? 1 : 0)} KB`;
     const mb = kb / 1024;
-    if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
-    return `${(mb / 1024).toFixed(2)} GB`;
+    if (mb < 1024) return `${number(mb, mb < 10 ? 1 : 0)} MB`;
+    return `${number(mb / 1024, 2)} GB`;
 }
 
 
@@ -1036,7 +1028,7 @@ export function subscriptionTitle(s: { name: string; owner: string }, viewer: st
 // ölçülen disk ve kaynak sayıları. Oluşturmayı kapılayan kota sisteminden
 // gelen gerçek sayılar — gördüğün, uygulanandır.
 function SubscriptionUsage() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { user } = useAuth();
     const viewer = user?.username;
     const usage = useRemote(SUBSCRIPTIONS_URL, decodeSubscriptions);
@@ -1078,13 +1070,13 @@ function SubscriptionUsage() {
                         {s.owner && s.owner !== viewer && <p className="-mt-1 mb-2 text-xs text-fg-subtle" data-subscription-owner="">{t('quota.accountOf', { owner: s.owner })}</p>}
                         {unlimited ? (
                             <p className="text-sm text-fg-muted">
-                                {fmtBytes(u.disk_used_bytes)} · {t('quota.unlimited')}
+                                {fmtBytes(u.disk_used_bytes, locale)} · {t('quota.unlimited')}
                             </p>
                         ) : (
                             <>
                                 <UsageBar percent={pct} />
                                 <p className="mt-1.5 text-xs text-fg-muted">
-                                    {t('quota.diskOf', { used: fmtBytes(u.disk_used_bytes), total: fmtBytes(u.disk_limit_bytes) })}
+                                    {t('quota.diskOf', { used: fmtBytes(u.disk_used_bytes, locale), total: fmtBytes(u.disk_limit_bytes, locale) })}
                                 </p>
                             </>
                         )}

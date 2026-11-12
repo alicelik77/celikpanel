@@ -132,7 +132,7 @@ const rowProps = () => ({
     { id: 'visit', label: 'Open site', href: 'https://kahvedukkani.dr.test' },
   ],
   more: [
-    { id: 'delete', label: 'Delete', danger: true, onSelect: () => ran.push('delete') },
+    { id: 'delete', label: 'Delete…', danger: true, onSelect: () => ran.push('delete') },
     { id: 'copy', label: 'Copy', onSelect: () => ran.push('copy') },
     { id: 'export', label: 'Export', disabled: true, disabledReason: 'Nothing to export yet', onSelect: () => ran.push('export') },
   ],
@@ -302,8 +302,9 @@ test('a refusal whose only words are the server\'s is said plainly, with them un
   assert.equal(coded.main, t('err.SITE_HAS_NO_PHP', { domain: 'a.test' }));
   assert.equal(coded.details, `${t('problem.details')}SITE_HAS_NO_PHP`);
   assert.ok(!coded.text.includes('raw english'));
-  // An address is not a path.
-  assert.equal(apiError.serverTextForEveryone('could not reach https://example.com/health'), true);
+  // Plain words are everyone's; any slash (a path, also an address) is not.
+  assert.equal(apiError.serverTextForEveryone('quota reached for this plan'), true);
+  assert.equal(apiError.serverTextForEveryone('could not reach https://example.com/health'), false);
   assert.equal(apiError.serverTextForEveryone('disk full on /var'), false);
   // The one-string form keeps the reason beside the sentence (toasts, progress windows).
   assert.equal(apiError.refusalText({ message: 'quota reached' }, t, 'users.createFailed'), `${t('users.createFailed')}. The server said: quota reached`);
@@ -333,4 +334,10 @@ test('the replaced pieces are gone: icon-only row actions, the old guidance bloc
   assert.doesNotMatch(domains, /^\s*\{d\.project_type \|\| 'php'\}\s*$|: d\.status\}/m, 'the list prints a raw code');
   assert.match(domains, /siteKindWord\(t, d\.project_type/);
   assert.match(domains, /<StateLabel status=\{d\.status\}/);
+  // The traffic's "per month" is the reader's words, and the kind is plain text, not a pill.
+  assert.doesNotMatch(domains, /\/mo`|typeBadge/);
+  assert.match(domains, /t\('domains\.perMonth', \{ size: fmtBytes\(d\.bandwidth, locale\) \}\)/);
+  assert.deepEqual([enScreens['domains.perMonth'], trScreens['domains.perMonth']], ['{size}/mo', '{size}/ay']);
+  // An action that asks before it acts carries an ellipsis (RowActions' convention).
+  assert.deepEqual([enScreens['domains.action.delete'], trScreens['domains.action.delete']], ['Delete…', 'Sil…']);
 });
