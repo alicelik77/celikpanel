@@ -199,7 +199,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domain.overview.ssl.notUsable': 'Kurulu sertifika henüz tüm yönetilen adlar için güvenilir, etkin ve eksiksiz değil.',
     'domain.overview.ssl.unavailable': 'Durum alınamadı',
     'domain.overview.ssl.unavailableHint': 'Sertifika durumu sunucudan okunamadı. Bu, sertifika olmadığı anlamına gelmez. Hiçbir şey değiştirilmedi. Tekrar deneyin.',
-    'domain.overview.ssl.open': 'SSL/TLS bölümünü aç',
+    'domain.overview.ssl.open': 'Güvenlik bölümünü aç',
 
     'general.docRoot': 'Belge kök dizini',
     'general.docRootHint': 'Panelin yönettiği ve bu sitenin kimliğine sabitlenmiş dizin',

@@ -204,7 +204,7 @@ export const enSitesScreens = {
     'domain.overview.ssl.notUsable': 'The installed certificate is not yet trusted, active and complete for every managed hostname.',
     'domain.overview.ssl.unavailable': 'Status unavailable',
     'domain.overview.ssl.unavailableHint': 'The certificate state could not be read from the server. This does not mean there is no certificate. Nothing was changed. Try again.',
-    'domain.overview.ssl.open': 'Open SSL/TLS',
+    'domain.overview.ssl.open': 'Open Security',
 
     'general.docRoot': 'Document root',
     'general.docRootHint': 'The panel-managed directory fixed to this site\'s identity',
