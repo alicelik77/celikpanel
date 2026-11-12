@@ -362,7 +362,8 @@ test('a domain’s remote access tells the administrator where the switch is and
 test('the address field is sized for an address, with its choices beside it', () => {
   const card = source('components/DatabaseRemoteAccess.tsx');
   const row = card.slice(card.lastIndexOf('<div', card.indexOf('data-db-remote-add-row')), card.indexOf("{t('dbr.add')}"));
-  assert.match(row, /sm:w-96/, 'the address field grows with the card again');
+  // alpha.133 integration: the field sizes (src/index.css): an address field is lg (26rem), never as wide as the card.
+  assert.match(row, /className=\{`\$\{fieldClass\} field-lg font-mono`\}/, 'the address field grows with the card again');
   assert.doesNotMatch(row, /flex-1/);
   assert.match(row, /flex flex-col gap-2 sm:flex-row/, 'on a phone the controls do not stack');
 });
