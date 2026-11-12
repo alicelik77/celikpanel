@@ -99,9 +99,12 @@ test('the audit words cover the twelve actions and the resource', () => {
 });
 
 test('the tab, the screen part and its budget are wired', () => {
-  const detail = read('../src/components/DomainDetail.tsx');
-  assert.match(detail, /!isTeamMember && !isDnsOnly && \(open\('program_apps'\) \|\| open\('python_apps'\) \|\| projectType === 'runtime_app'\) \? \[\{ id: 'programs', labelKey: 'runtime\.tab', icon: Cpu/);
-  assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\/DomainRuntimeApps'\)/);
+  // alpha.132: Programs is a part of a domain's Site section.
+  const registry = read('../src/components/domain/sections.ts');
+  assert.match(registry, /id: 'programs', capabilities: \[\],\s*shown: \(v\) => !v\.teamMember && site\(v\) && \(v\.open\('program_apps'\) \|\| v\.open\('python_apps'\) \|\| v\.type === 'runtime_app'\)/);
+  assert.match(registry, /programs: 'runtime\.tab',/);
+  const detail = read('../src/components/domain/sections/SiteSection.tsx');
+  assert.match(detail, /const DomainRuntimeApps = lazy\(\(\) => import\('\.\.\/\.\.\/DomainRuntimeApps'\)/);
   assert.doesNotMatch(detail, /^import \{[^}]*DomainRuntimeApps[^}]*\} from/m);
   const addons = read('../src/components/AddonsPage.tsx');
   assert.match(addons, /const AdminRuntimeApps = lazy\(\(\) => import\('\.\/AdminRuntimeApps'\)/);
@@ -219,10 +222,16 @@ test('a secret value is never on screen and a kept secret is sent without a valu
     assert.equal(secretInput.length, 1);
     assert.equal(secretInput[0].props.value, '');
     const form = tree.root.findAll((n) => n.type === 'form' && typeof n.props.onSubmit === 'function').at(-1);
+    // alpha.132: Save is offered only for a change.
+    await act(async () => { form.props.onSubmit({ preventDefault() {} }); await settle(); });
+    assert.equal(requests.filter((r) => r.method === 'PUT').length, 0, 'an unchanged list was sent');
+    const mode = tree.root.find((n) => n.type === 'input' && n.props.value === 'prod');
+    await act(async () => { mode.props.onChange({ target: { value: 'staging' } }); await settle(); });
+    assert.ok(tree.root.findAll((n) => n.props['data-changed-mark'] !== undefined).length === 1, 'the changed row is not marked');
     await act(async () => { form.props.onSubmit({ preventDefault() {} }); await settle(); });
     const put = requests.find((r) => r.method === 'PUT');
     assert.equal(put.url, '/api/v1/domains/1/runtime-apps/env');
-    assert.deepEqual(put.body, { entries: [{ key: 'API_TOKEN', secret: true }, { key: 'MODE', value: 'prod', secret: false }] });
+    assert.deepEqual(put.body, { entries: [{ key: 'API_TOKEN', secret: true }, { key: 'MODE', value: 'staging', secret: false }] });
   } finally { await unmount(); }
 });
 

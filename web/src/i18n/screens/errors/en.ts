@@ -175,7 +175,7 @@ export const enErrorsScreens = {
     'err.CERTIFICATE_VALIDATION_UNKNOWN': 'CelikPanel could not check whether this site’s nginx configuration file lets the certificate validation run, because nginx on this server did not answer, so no certificate was requested and nothing was changed. The server administrator checks that nginx is running; then request the certificate again.',
     'err.panel_certificate_contact_email_invalid': 'The administrator account has no valid email address, which the certificate authority needs as a contact. Nothing was requested. Set your email on My account (top-right menu), then try again.',
     'err.panel_certificate_contact_email_invalid.action': 'Open My account',
-    'err.ssl_contact_email_required': 'No contact email address was given and your account has no valid one, which the certificate authority needs. No certificate was requested; if you were adding a site, it was created. Set your email on My account (top-right menu), then request the certificate under SSL/TLS in the domain’s settings.',
+    'err.ssl_contact_email_required': 'No contact email address was given and your account has no valid one, which the certificate authority needs. No certificate was requested; if you were adding a site, it was created. Set your email on My account (top-right menu), then request the certificate in the domain’s Security section.',
     'err.ssl_contact_email_required.action': 'Open My account',
     // v0.1.0-alpha.99: changing one's own email (cmd/panel/account_email_handler.go).
     'err.account_email_request_invalid': 'The request could not be read, so nothing was changed. Reload the page and try again.',
@@ -218,7 +218,7 @@ export const enErrorsScreens = {
     "err.DB_IMPORT_CLIENT_UNSAFE": "This server's MariaDB client is too old to load a file safely (it has no sandbox mode). Nothing was loaded. The administrator updates the server's MariaDB packages; then import again.",
     "err.DB_IMPORT_FILE_REFUSED": "The file contains a command CelikPanel does not run (the line is named below), so nothing was loaded and the database is unchanged. Remove that line from the file, then import again.",
     "err.DB_IMPORT_LOAD_FAILED": "Loading the file stopped at an error, and the database was put back as it was before. The server's reason and the line are below. Correct the file, then import again.",
-    "err.DB_IMPORT_ROLLBACK_FAILED": "Loading the file stopped, and putting the database back did not finish. The safety copy taken just before is kept: restore it from the Backups tab to return to the state before. The reason is below.",
+    "err.DB_IMPORT_ROLLBACK_FAILED": "Loading the file stopped, and putting the database back did not finish. The safety copy taken just before is kept: restore it from the Backups section to return to the state before. The reason is below.",
     "err.DB_IMPORT_UPLOAD_MISSING": "The uploaded file is missing or incomplete on the server. Nothing was loaded. Choose the file and import again.",
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "This domain has no hosting account to load the file under, so nothing was loaded. Add hosting to the domain, then import again.",
     "err.DB_TOOLS_RESTORE_RUNNING": "A restore or import of this site is still running, so nothing was started. Wait until it ends, then try again.",

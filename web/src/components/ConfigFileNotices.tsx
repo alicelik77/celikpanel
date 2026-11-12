@@ -300,37 +300,3 @@ export function ConfigSaveNotices({
     }
     return null;
 }
-
-// The row under an editor: what will be saved, and the one primary action.
-// Save is enabled only for a file that is known, changed and not stale.
-// Düzenleyicinin altındaki satır: neyin kaydedileceği ve tek birincil eylem.
-export function ConfigSaveBar({
-    handle,
-    changes,
-    blockedBy,
-    onSave,
-    onDiscard,
-}: {
-    handle: ConfigFileHandle;
-    changes: number;
-    /** Why Save is off although something changed, shown beside it. */
-    blockedBy?: string;
-    onSave: () => void;
-    onDiscard: () => void;
-}) {
-    const { t } = useI18n();
-    const ready = handle.remote.state === 'known' && changes > 0 && !handle.stale && !blockedBy;
-    return (
-        <div className="sticky bottom-0 -mx-5 mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-border bg-surface px-5 py-3">
-            <p className="min-w-0 basis-full text-xs text-fg-muted sm:mr-auto sm:basis-auto" aria-live="polite">
-                {blockedBy || (changes > 0 ? t('dbconf.changes', { n: changes }) : t('dbconf.noChanges'))}
-            </p>
-            <Button type="button" onClick={onDiscard} disabled={changes === 0 || handle.saving}>
-                {t('dbconf.discard')}
-            </Button>
-            <Button type="button" variant="primary" onClick={onSave} disabled={!ready} loading={handle.saving}>
-                {handle.saving ? t('dbconf.saving') : t('dbconf.save')}
-            </Button>
-        </div>
-    );
-}

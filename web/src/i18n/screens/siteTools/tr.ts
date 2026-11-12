@@ -3,13 +3,6 @@
 import type { SiteToolsScreenKey } from './en';
 
 export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
-    'wpt.guide.who': 'Kim yapar',
-    'wpt.guide.next': 'Sonraki adım',
-    'wpt.guide.resumes': 'Nasıl devam eder',
-    'wpt.who.you': 'Siz',
-    'wpt.who.administrator': 'Sunucu yöneticisi',
-    'wpt.who.nobody': 'Kimse — bir şey yapmanız gerekmiyor',
-
     'wpt.title': 'WordPress araçları',
     'wpt.checking': 'WordPress sitesi okunuyor…',
     'wpt.unknown': 'WordPress sitesi şu an okunamadı. Hiçbir şey değişmedi; yeniden okuyun.',
@@ -18,7 +11,7 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'wpt.notPHP': 'WordPress araçları yalnız PHP sitelerinde çalışır.',
     'wpt.phpMissing': 'Bu sitenin PHP sürümünün komut satırı kurulu değil; bu yüzden WordPress okunamıyor.',
     'wpt.phpMissingNext': 'Yönetici PHP sürümünü Bileşenler’den yeniden kurar (komut satırını da getirir).',
-    'wpt.phpMissingResumes': 'Sonra bu sekmeyi yeniden açın.',
+    'wpt.phpMissingResumes': 'Sonra bu sayfayı yeniden açın.',
     'wpt.core': 'WordPress {version}',
     'wpt.coreLatest': 'Güncel',
     'wpt.coreUpdate': 'WordPress {version} çıktı',
@@ -34,6 +27,8 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'wpt.check': 'Yeniden denetle',
     'wpt.autoMinor': 'WordPress’in güvenlik ve bakım sürümlerini kendiliğinden kur',
     'wpt.autoMinorHint': 'Günde bir kez; önce yedek alınır, güncelleme başarısız olursa geri yüklenir. Büyük sürümler her zaman sizin seçiminizdir.',
+    'wpt.autoMinorSaved': 'Kendiliğinden güncelleme ayarı kaydedildi.',
+    'wpt.autoMinorFailed': 'Kendiliğinden güncelleme ayarı kaydedilmedi.',
     'wpt.plugins': 'Eklentiler',
     'wpt.themes': 'Temalar',
     'wpt.none': 'Yok',
@@ -155,6 +150,8 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'mscan.schedule': 'Her siteyi haftada bir tara (tüm abonelikler, düşük öncelikle)',
     'mscan.scheduleHint': 'Yalnız yönetici içindir. Bir şey bulununca müşteriye, bayisine ve yöneticilere bildirilir.',
     'mscan.scheduleLast': 'Son haftalık tur: {when}',
+    'mscan.scheduleSaved': 'Haftalık tarama ayarı kaydedildi.',
+    'mscan.scheduleFailed': 'Haftalık tarama ayarı kaydedilmedi.',
 
     'err.MALWARE_SCAN_ALREADY_QUEUED': 'Bu sitenin taraması zaten bekliyor ya da sürüyor; ikincisi sıraya alınmadı. İlerlemesi bu ekranda görünür.',
     'err.MALWARE_DELETE_CONFIRMATION_REQUIRED': 'Silmek, dosyayı adıyla belirten açık bir onay ister. Hiçbir şey silinmedi.',

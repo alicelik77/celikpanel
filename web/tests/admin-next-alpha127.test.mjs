@@ -166,7 +166,7 @@ test('an install note’s link opens the tool’s page in place through the root
 });
 
 test('WordPress tools without the site’s PHP command line link the administrator to PHP-FPM', () => {
-  assert.match(read('components/WordPressToolsPanel.tsx'), /reason=\{t\('wpt\.phpMissing'\)\}[\s\S]{0,200}<AdminInstallLink to="\/components\/php-fpm" label=\{t\('adminNext\.openPHPFPM'\)\} \/>/);
+  assert.match(read('components/WordPressToolsPanel.tsx'), /title=\{t\('wpt\.phpMissing'\)\}[\s\S]{0,200}<AdminInstallLink to="\/components\/php-fpm" label=\{t\('adminNext\.openPHPFPM'\)\} \/>/);
 });
 
 test('a reseller pool notice: the administrator raises it from the reseller’s rights; the reseller is told the administrator does', () => {

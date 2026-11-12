@@ -1,8 +1,8 @@
-import { useEffect, useRef, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, type FormEvent, type ReactNode } from 'react';
 import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
-import { apiErrorActionLabel, apiErrorText, refusalText, type ApiError } from '../lib/apiError';
+import { apiErrorActionLabel, refusalParts, serverTextForEveryone, type ApiError } from '../lib/apiError';
 import type { TranslationKey } from '../i18n/en';
 import type { Observed, Remote } from '../lib/remote';
 import type { LostAnswerHandle } from '../lib/lostAnswer';
@@ -510,33 +510,6 @@ export function Field({
 export const inputClass =
     'w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-fg outline-none transition-shadow focus:border-primary';
 
-export function ToggleRow({
-    label,
-    hint,
-    name,
-    defaultChecked,
-}: {
-    label: string;
-    hint?: string;
-    name: string;
-    defaultChecked?: boolean;
-}) {
-    return (
-        <label className="flex cursor-pointer items-start gap-3">
-            <input
-                type="checkbox"
-                name={name}
-                defaultChecked={defaultChecked}
-                className="mt-0.5 h-4 w-4 accent-primary"
-            />
-            <span>
-                <span className="block text-sm text-fg">{label}</span>
-                {hint && <span className="block text-xs text-fg-subtle">{hint}</span>}
-            </span>
-        </label>
-    );
-}
-
 export function FormActions({ children }: { children: ReactNode }) {
     return <div className="flex justify-end gap-2 pt-5">{children}</div>;
 }
@@ -851,6 +824,12 @@ function CheckMark() {
     );
 }
 
+// Whether the viewer may read the server's own words when they name server
+// internals (a path, a unit, a command): an administrator. AuthProvider says
+// it; outside it (the sign-in screen) nobody may.
+// Sunucunun iç ayrıntı içeren sözünü okuyabilir mi: yalnız yönetici.
+export const ServerDetailAccess = createContext(false);
+
 // ErrorBanner: the ONE renderer of the API error contract. Shows the
 // localized text of a coded refusal and, when the refusal carries an
 // in-panel fix path, a button that goes there. Every new error display
@@ -864,8 +843,8 @@ export function ErrorBanner({ error, className, sentence }: {
     className?: string;
     /**
      * The screen's own sentence for this refusal (owner feedback 2026-10-31):
-     * an uncoded refusal then says it with the server's reason beside it
-     * (refusalText), and a code stands under Technical details.
+     * an uncoded refusal then says it, with the server's reason and the
+     * code under Details (refusalParts).
      */
     sentence?: TranslationKey;
 }) {
@@ -883,9 +862,16 @@ export function ErrorBanner({ error, className, sentence }: {
         const rect = element.getBoundingClientRect();
         if (rect.top < 0 || rect.bottom > window.innerHeight) element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }, [error, sentence]);
+    const admin = useContext(ServerDetailAccess);
     if (!error) return null;
     const actionLabel = apiErrorActionLabel(error, t);
-    const errorText = sentence ? refusalText(error, t, sentence) : apiErrorText(error, t);
+    // The sentence a person reads; the server's own words, when they are all
+    // there is, go under a closed Details (alpha.132, P5): an administrator
+    // always reads them there, anybody else only when they name no path,
+    // unit or command - otherwise they are told who can.
+    const { text: errorText, raw } = refusalParts(error, t, sentence);
+    const rawShown = raw && (admin || serverTextForEveryone(raw)) ? raw : '';
+    const code = sentence || raw ? error.code : undefined;
     return (
         <div
             ref={box}
@@ -910,7 +896,8 @@ export function ErrorBanner({ error, className, sentence }: {
                 Retin kanıtı (B3d): kimin engellediği, satır satır — admin
                 tıklamanın neyi kıracağını görmeli. "+N" kuyruğu üreticinin
                 dürüst kesme işaretidir. */}
-            {mentionsSudo(errorText) && <SudoNote />}
+            {raw && !rawShown && <p className="mt-1 text-xs text-fg-muted">{t('kit.detail.adminOnly')}</p>}
+            {mentionsSudo(errorText + rawShown) && <SudoNote />}
             {error.details && error.details.length > 0 && (
                 <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto border-t border-danger/20 pt-2 font-mono text-xs">
                     {error.details.map((d) => (
@@ -918,10 +905,11 @@ export function ErrorBanner({ error, className, sentence }: {
                     ))}
                 </ul>
             )}
-            {sentence && error.code && (
+            {(rawShown || code) && (
                 <details className="mt-1 text-xs text-fg-muted">
                     <summary className="cursor-pointer">{t('problem.details')}</summary>
-                    <code className="break-words">{error.code}</code>
+                    {rawShown && <p className="whitespace-pre-wrap break-words">{rawShown}</p>}
+                    {code && <code className="break-words">{code}</code>}
                 </details>
             )}
         </div>

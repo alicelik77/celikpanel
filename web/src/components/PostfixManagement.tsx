@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Mail, Activity, Trash2, RefreshCw, RotateCw, AlertTriangle } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { showToast } from './Toast';
@@ -14,6 +14,10 @@ import { MailRelaySettings } from './MailRelaySettings';
 import { MailServerOptions } from './MailServerOptions';
 import { MailPlanLimits } from './MailPlanLimits';
 import { confirmAction } from '../lib/confirmAction';
+import { answerWasLost } from '../lib/requestIdentity';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 interface PostfixManagementProps {
     onBack: () => void;
@@ -269,23 +273,40 @@ interface MailPolicy {
     dnsbl_locked?: string;
 }
 
+// The form's values, read from the server's policy. The rate and the zones
+// keep a starting value while their switch is off.
+// Formun değerleri, sunucunun politikasından okunur.
+interface PolicyForm {
+    sizeMB: number;
+    dnsblOn: boolean;
+    zones: string;
+    // Outbound rate limit: messages per minute per sending client. 0 = off.
+    // Guards against becoming a spam source (a compromised customer account).
+    // Giden hız sınırı: gönderen istemci başına dakikadaki mesaj. 0 = kapalı.
+    rateOn: boolean;
+    rate: number;
+    connections: number | null;
+}
+
+function formOf(policy: MailPolicy): PolicyForm {
+    const z = policy.dnsbl_zones || [];
+    return {
+        sizeMB: policy.message_size_mb,
+        dnsblOn: z.length > 0,
+        zones: z.length > 0 ? z.join(', ') : 'zen.spamhaus.org',
+        rateOn: policy.outbound_rate_limit > 0,
+        rate: policy.outbound_rate_limit > 0 ? policy.outbound_rate_limit : 30,
+        connections: typeof policy.connection_limit === 'number' ? policy.connection_limit : null,
+    };
+}
+
 function MailPolicySection() {
     const { t } = useI18n();
+    const say = useSaveWords();
     // The form holds nothing until the server's policy has been read: a form
     // filled with defaults was one Save away from replacing the real one.
     // Sunucunun politikası okunana kadar form hiçbir şey tutmaz.
     const [current, setCurrent] = useState<Current<MailPolicy>>({ state: 'loading' });
-    const [sizeMB, setSizeMB] = useState(0);
-    const [dnsblOn, setDnsblOn] = useState(false);
-    const [zones, setZones] = useState('');
-    // Outbound rate limit: messages per minute per sending client. 0 = off.
-    // Guards against becoming a spam source (a compromised customer account).
-    // Giden hız sınırı: gönderen istemci başına dakikadaki mesaj. 0 = kapalı.
-    // Spam kaynağı olmaya (ele geçirilmiş müşteri hesabı) karşı koruma.
-    const [rateOn, setRateOn] = useState(false);
-    const [rate, setRate] = useState(30);
-    const [connections, setConnections] = useState<number | null>(null);
-    const [busy, setBusy] = useState(false);
     const [stale, setStale] = useState(false);
     // The policy was written to main.cf and Postfix was not seen to take it: a
     // verified failure after a change (9 Oct 2026), or, when the server could
@@ -296,17 +317,16 @@ function MailPolicySection() {
     // değişiklik sonrası doğrulanmış hata ya da bilinmeyen sonuç. Ekranda,
     // kaydedilen değerlerin üstünde kalır.
     const [notReloaded, setNotReloaded] = useState<ApiError | null>(null);
+    const policy = current.state === 'known' ? current.value : null;
+    // alpha.132: the form is a draft over the policy last read; a changed
+    // field is marked and only Save writes (owner, 8 Nov 2026).
+    const known = useMemo(() => (policy ? formOf(policy) : null), [policy]);
+    const draft = useDraft(known);
+    const form = draft.values;
 
-    const show = (policy: MailPolicy) => {
-        const z = policy.dnsbl_zones || [];
-        setSizeMB(policy.message_size_mb);
-        setDnsblOn(z.length > 0);
-        setZones(z.length > 0 ? z.join(', ') : 'zen.spamhaus.org');
-        setRateOn(policy.outbound_rate_limit > 0);
-        setRate(policy.outbound_rate_limit > 0 ? policy.outbound_rate_limit : 30);
-        setConnections(typeof policy.connection_limit === 'number' ? policy.connection_limit : null);
+    const show = (next: MailPolicy) => {
         setStale(false);
-        setCurrent({ state: 'known', value: policy });
+        setCurrent({ state: 'known', value: next });
     };
 
     const load = async () => {
@@ -321,72 +341,74 @@ function MailPolicySection() {
         void load();
     }, []);
 
-    const policy = current.state === 'known' ? current.value : null;
     const dnsblLocked = policy?.dnsbl_locked || '';
 
-    const save = async () => {
-        if (!policy) return;
-        setBusy(true);
+    const save = () => void draft.save(async (_changes, values) => {
+        if (!policy) return 'refused';
+        let r: Response;
         try {
-            const r = await fetch('/api/v1/mail/policy', {
+            r = await fetch('/api/v1/mail/policy', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message_size_mb: sizeMB,
+                    message_size_mb: values.sizeMB,
                     dnsbl_zones: dnsblLocked
                         ? policy.dnsbl_zones || []
-                        : dnsblOn ? zones.split(',').map((z) => z.trim()).filter(Boolean) : [],
-                    outbound_rate_limit: rateOn ? rate : 0,
+                        : values.dnsblOn ? values.zones.split(',').map((z) => z.trim()).filter(Boolean) : [],
+                    outbound_rate_limit: values.rateOn ? values.rate : 0,
                     // Sent only when the server said its value; otherwise it is left.
-                    connection_limit: connections ?? undefined,
+                    connection_limit: values.connections ?? undefined,
                     version: policy.version,
                 }),
             });
-            if (!r.ok) {
-                // A stale save keeps what was typed on screen and says how to
-                // go on; nothing was written.
-                // Eskimiş kayıt, yazılanı ekranda tutar ve nasıl sürüleceğini söyler.
-                // The body is read once more beside the error: after a write
-                // that Postfix did not take, it also carries the policy that
-                // is in main.cf now.
-                // Gövde hatanın yanında bir kez daha okunur: Postfix'in
-                // almadığı bir yazıdan sonra main.cf'teki politikayı da taşır.
-                const raw = await r.text();
-                const written = writtenPolicy(raw);
-                const error = await readApiError(new Response(raw, { status: r.status }));
-                if (isStaleWrite(error)) setStale(true);
-                else if (error.code === 'MAIL_POLICY_NOT_RELOADED' || error.code === 'MAIL_POLICY_RELOAD_UNKNOWN') {
-                    // main.cf holds the new values: show them, with the version
-                    // the next save carries, and say what is known about
-                    // Postfix. Only an answer without them is read again.
-                    // main.cf yeni değerleri tutuyor: göster ve Postfix
-                    // hakkında bilineni söyle.
-                    if (written) show(written);
-                    else await load();
-                    setNotReloaded(error);
-                } else showToast('error', apiErrorText(error, t));
-                return;
-            }
-            setNotReloaded(null);
-            const answer = (await r.json()) as { policy?: MailPolicy; applied?: string };
-            const saved = answer.policy;
-            // "Applied" is said only when the server verified the reload. A
-            // stopped Postfix was left stopped, and an unchanged policy wrote
-            // nothing: each says so. A save without a change still reloads a
-            // running Postfix (after "not reloaded" that is the save the owner
-            // presses once main.cf is corrected), and says that too.
-            // "Uygulandı", yalnız sunucu yeniden yüklemeyi doğruladığında
-            // söylenir. Değişiklik içermeyen kayıt da çalışan Postfix'i yeniden
-            // yükler ve bunu söyler.
-            showToast('success', t(savedSentences[answer.applied ?? ''] ?? 'mailpolicy.saved'));
-            if (saved?.version) show(saved);
-            else void load();
         } catch {
-            showToast('error', t('common.error'));
-        } finally {
-            setBusy(false);
+            return 'unknown';
         }
-    };
+        if (answerWasLost(r)) return 'unknown';
+        if (!r.ok) {
+            // A stale save keeps what was typed on screen and says how to
+            // go on; nothing was written.
+            // Eskimiş kayıt, yazılanı ekranda tutar ve nasıl sürüleceğini söyler.
+            // The body is read once more beside the error: after a write
+            // that Postfix did not take, it also carries the policy that
+            // is in main.cf now.
+            // Gövde hatanın yanında bir kez daha okunur: Postfix'in
+            // almadığı bir yazıdan sonra main.cf'teki politikayı da taşır.
+            const raw = await r.text();
+            const written = writtenPolicy(raw);
+            const error = await readApiError(new Response(raw, { status: r.status }));
+            if (isStaleWrite(error)) setStale(true);
+            else if (error.code === 'MAIL_POLICY_NOT_RELOADED' || error.code === 'MAIL_POLICY_RELOAD_UNKNOWN') {
+                // main.cf holds the new values: show them, with the version
+                // the next save carries, and say what is known about
+                // Postfix. Only an answer without them is read again.
+                // main.cf yeni değerleri tutuyor: göster ve Postfix
+                // hakkında bilineni söyle.
+                if (written) show(written);
+                else await load();
+                setNotReloaded(error);
+            } else showToast('error', apiErrorText(error, t));
+            return 'refused';
+        }
+        setNotReloaded(null);
+        let answer: { policy?: MailPolicy; applied?: string };
+        try {
+            answer = (await r.json()) as { policy?: MailPolicy; applied?: string };
+        } catch {
+            // Accepted, but the answer could not be read: read the policy again.
+            await load();
+            return 'unknown';
+        }
+        // "Applied" is said only when the server verified the reload. A
+        // stopped Postfix was left stopped, and an unchanged policy wrote
+        // nothing: each says so.
+        // "Uygulandı", yalnız sunucu yeniden yüklemeyi doğruladığında
+        // söylenir.
+        showToast('success', t(savedSentences[answer.applied ?? ''] ?? 'mailpolicy.saved'));
+        if (answer.policy?.version) show(answer.policy);
+        else await load();
+        return 'saved';
+    });
 
     const lockedCause = () => {
         const key = `mailpolicy.dnsblLocked.${dnsblLocked}` as TranslationKey;
@@ -394,12 +416,21 @@ function MailPolicySection() {
         return text === key ? t('mailpolicy.dnsblLocked.other') : text;
     };
 
+    // A changed field: its row is marked, and a value the server changed
+    // meanwhile is said under it.
+    const row = (field: keyof PolicyForm) => (draft.isChanged(field) ? `-mx-2 rounded-r px-2 ${changedRowClass}` : '');
+    const mark = (field: keyof PolicyForm) => draft.isChanged(field) && <ChangedMark />;
+    const moved = (field: keyof PolicyForm, words: (value: PolicyForm) => string) => draft.isMoved(field) && draft.base && (
+        <ServerMovedNote value={words(draft.base)} onTake={() => draft.take(field)} />
+    );
+    const onOff = (on: boolean) => say(on ? 'on' : 'off');
+
     return (
-        <section className="mt-5 rounded-xl border border-border bg-surface p-5" aria-busy={current.state === 'loading' || busy}>
+        <section className="mt-5 rounded-xl border border-border bg-surface p-5" aria-busy={current.state === 'loading' || draft.saving}>
             <h3 className="mb-1 text-sm font-semibold text-fg">{t('mailpolicy.title')}</h3>
             <p className="mb-4 text-sm text-fg-muted">{t('mailpolicy.desc')}</p>
             <CurrentGate state={current.state} unknownKey="mailpolicy.unreadable" onRetry={load} />
-            {policy && (
+            {policy && form && (
                 <>
                     {notReloaded && (
                         <div role="alert" className="mb-4" data-policy-outcome={notReloaded.code === 'MAIL_POLICY_RELOAD_UNKNOWN' ? 'unknown' : 'not-reloaded'}>
@@ -431,67 +462,99 @@ function MailPolicySection() {
                         </div>
                     )}
                     {stale && <StaleNotice textKey="mailpolicy.stale" onReload={load} />}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="text-sm">
-                            <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.maxSize')}</span>
-                            <input type="number" min={1} max={200} value={sizeMB}
-                                onChange={(e) => setSizeMB(Math.max(1, Math.min(200, parseInt(e.target.value) || 25)))}
-                                className={inputClass} />
-                        </label>
-                        {!dnsblLocked && (
-                            <label className="text-sm">
-                                <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.zones')}</span>
-                                <input value={zones} onChange={(e) => setZones(e.target.value)}
-                                    disabled={!dnsblOn} className={inputClass} placeholder="zen.spamhaus.org" />
-                            </label>
-                        )}
-                    </div>
-                    {dnsblLocked ? (
-                        // The DNSBL entries on this server are the owner's own
-                        // arrangement: say why they are not offered and what
-                        // changes them, instead of showing them as "off".
-                        // Bu sunucudaki DNSBL girdileri sahibin kendi düzenidir.
-                        <div role="note" className="mt-3 max-w-[75ch] space-y-1 break-words rounded-lg border border-border bg-surface-2/50 p-3 text-sm leading-relaxed text-fg-muted">
-                            <p className="text-fg">{lockedCause()}</p>
-                            <p>{t('mailpolicy.dnsblLockedAction')}</p>
+                    <fieldset disabled={draft.saving} className="min-w-0">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className={row('sizeMB')}>
+                                <label className="block text-sm">
+                                    <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.maxSize')}{mark('sizeMB')}</span>
+                                    <input type="number" min={1} max={200} value={form.sizeMB}
+                                        onChange={(e) => draft.set('sizeMB', Math.max(1, Math.min(200, parseInt(e.target.value) || 25)))}
+                                        className={inputClass} />
+                                </label>
+                                {moved('sizeMB', (value) => String(value.sizeMB))}
+                            </div>
+                            {!dnsblLocked && (
+                                <div className={row('zones')}>
+                                    <label className="block text-sm">
+                                        <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.zones')}{mark('zones')}</span>
+                                        <input value={form.zones} onChange={(e) => draft.set('zones', e.target.value)}
+                                            disabled={!form.dnsblOn} className={inputClass} placeholder="zen.spamhaus.org" />
+                                    </label>
+                                    {moved('zones', (value) => value.zones)}
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <>
-                            <label className="mt-3 flex min-h-[1.75rem] items-center gap-2 text-sm text-fg">
-                                <input type="checkbox" checked={dnsblOn} onChange={(e) => setDnsblOn(e.target.checked)} className="h-4 w-4" />
-                                {t('mailpolicy.dnsbl')}
+                        {dnsblLocked ? (
+                            // The DNSBL entries on this server are the owner's own
+                            // arrangement: say why they are not offered and what
+                            // changes them, instead of showing them as "off".
+                            // Bu sunucudaki DNSBL girdileri sahibin kendi düzenidir.
+                            <div role="note" className="mt-3 max-w-[75ch] space-y-1 break-words rounded-lg border border-border bg-surface-2/50 p-3 text-sm leading-relaxed text-fg-muted">
+                                <p className="text-fg">{lockedCause()}</p>
+                                <p>{t('mailpolicy.dnsblLockedAction')}</p>
+                            </div>
+                        ) : (
+                            <div className={`mt-3 ${row('dnsblOn')}`}>
+                                <label className="flex min-h-[1.75rem] items-center gap-2 text-sm text-fg">
+                                    <input type="checkbox" checked={form.dnsblOn} className="h-4 w-4" onChange={(e) => {
+                                        draft.set('dnsblOn', e.target.checked);
+                                        // Turned off: the zones are not sent, so they are no change either.
+                                        if (!e.target.checked && draft.base) draft.set('zones', draft.base.zones);
+                                    }} />
+                                    {t('mailpolicy.dnsbl')}
+                                    {draft.isChanged('dnsblOn') && <ChangedMark switched={form.dnsblOn} />}
+                                </label>
+                                <p className="mt-1 text-xs text-fg-subtle">{t('mailpolicy.dnsblHint')}</p>
+                                {moved('dnsblOn', (value) => onOff(value.dnsblOn))}
+                            </div>
+                        )}
+
+                        <div className={`mt-4 ${row('rateOn')}`}>
+                            <label className="flex min-h-[1.75rem] items-center gap-2 text-sm text-fg">
+                                <input type="checkbox" checked={form.rateOn} className="h-4 w-4" onChange={(e) => {
+                                    draft.set('rateOn', e.target.checked);
+                                    if (!e.target.checked && draft.base) draft.set('rate', draft.base.rate);
+                                }} />
+                                {t('mailpolicy.rate')}
+                                {draft.isChanged('rateOn') && <ChangedMark switched={form.rateOn} />}
                             </label>
-                            <p className="mt-1 text-xs text-fg-subtle">{t('mailpolicy.dnsblHint')}</p>
-                        </>
-                    )}
+                            <p className="mt-1 text-xs text-fg-subtle">{t('mailpolicy.rateHint')}</p>
+                            {moved('rateOn', (value) => onOff(value.rateOn))}
+                        </div>
+                        {form.rateOn && (
+                            <div className={`mt-2 max-w-xs ${row('rate')}`}>
+                                <label className="block text-sm">
+                                    <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.rateLabel')}{mark('rate')}</span>
+                                    <input type="number" min={1} max={10000} value={form.rate}
+                                        onChange={(e) => draft.set('rate', Math.max(1, Math.min(10000, parseInt(e.target.value) || 30)))}
+                                        className={inputClass} />
+                                </label>
+                                {moved('rate', (value) => String(value.rate))}
+                            </div>
+                        )}
 
-                    <label className="mt-4 flex min-h-[1.75rem] items-center gap-2 text-sm text-fg">
-                        <input type="checkbox" checked={rateOn} onChange={(e) => setRateOn(e.target.checked)} className="h-4 w-4" />
-                        {t('mailpolicy.rate')}
-                    </label>
-                    <p className="mt-1 text-xs text-fg-subtle">{t('mailpolicy.rateHint')}</p>
-                    {rateOn && (
-                        <label className="mt-2 block max-w-xs text-sm">
-                            <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.rateLabel')}</span>
-                            <input type="number" min={1} max={10000} value={rate}
-                                onChange={(e) => setRate(Math.max(1, Math.min(10000, parseInt(e.target.value) || 30)))}
-                                className={inputClass} />
-                        </label>
-                    )}
-
-                    {connections !== null && (
-                        <label className="mt-4 block max-w-xs text-sm">
-                            <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.connections')}</span>
-                            <input type="number" min={0} max={1000} value={connections}
-                                onChange={(e) => setConnections(Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
-                                className={inputClass} />
-                            <span className="mt-1 block text-xs text-fg-subtle">{t('mailpolicy.connectionsHint')}</span>
-                        </label>
-                    )}
-
-                    <div className="mt-4">
-                        <Button variant="primary" disabled={busy || stale} onClick={save}>{t('mailpolicy.save')}</Button>
-                    </div>
+                        {form.connections !== null && (
+                            <div className={`mt-4 max-w-xs ${row('connections')}`}>
+                                <label className="block text-sm">
+                                    <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.connections')}{mark('connections')}</span>
+                                    <input type="number" min={0} max={1000} value={form.connections}
+                                        onChange={(e) => draft.set('connections', Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
+                                        className={inputClass} />
+                                    <span className="mt-1 block text-xs text-fg-subtle">{t('mailpolicy.connectionsHint')}</span>
+                                </label>
+                                {moved('connections', (value) => String(value.connections ?? ''))}
+                            </div>
+                        )}
+                    </fieldset>
+                    <SaveBar
+                        className="-mx-5 px-5 pb-0"
+                        count={draft.count}
+                        saving={draft.saving}
+                        blockedBy={stale ? say('stale') : undefined}
+                        unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: current.state === 'loading', onCheck: () => void load() } : undefined}
+                        onSave={save}
+                        onDiscard={draft.reset}
+                    />
                 </>
             )}
         </section>

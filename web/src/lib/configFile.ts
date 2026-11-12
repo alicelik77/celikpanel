@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import { readApiError, type ApiError } from './apiError';
 import { useRemote, type Remote } from './remote';
+import { useSaveRun } from '../components/kit/save/saveRun';
 
 // A managed configuration file as the server holds it, and the one way a
 // screen writes it back (9 Oct 2026; D-022, D-024).
@@ -113,11 +114,13 @@ export interface ConfigFileHandle {
 
 // useConfigFile is the state every configuration editor shares: the read in
 // its three states, and a save that carries the version, keeps what was typed
-// when it is refused and reads the file again when it is accepted.
+// when it is refused and reads the file again when it is accepted. The save
+// runs through the one save core of the settings screens (alpha.132,
+// components/kit/save/saveRun.ts): a second press while it runs sends nothing.
 // useConfigFile, her yapılandırma düzenleyicisinin paylaştığı durumdur.
 export function useConfigFile(path: string): ConfigFileHandle {
     const { remote, reading, retry } = useRemote(configFileURL(path), decodeConfigFile);
-    const [saving, setSaving] = useState(false);
+    const { saving, run } = useSaveRun();
     const [stale, setStale] = useState(false);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const [saved, setSaved] = useState<ConfigSaved | null>(null);
@@ -137,29 +140,34 @@ export function useConfigFile(path: string): ConfigFileHandle {
 
     const save = useCallback(async (content: string) => {
         if (remote.state !== 'known') return false;
-        setSaving(true);
-        setRefusal(null);
-        setSaved(null);
-        const result = await saveConfigFile(path, content, remote.value.version);
-        if (result.ok) {
-            // The file is read again, so the editor stands on what the server
-            // holds now and the next save carries its version.
-            // Dosya yeniden okunur; düzenleyici sunucunun şimdi tuttuğu hâlin
-            // üzerinde durur.
-            await retry();
-            setSaved(result.saved);
-        } else if (isStaleConfigWrite(result.error)) {
-            setStale(true);
-        } else {
+        const version = remote.value.version;
+        const outcome = await run(async () => {
+            setRefusal(null);
+            setSaved(null);
+            const result = await saveConfigFile(path, content, version);
+            if (result.ok) {
+                // The file is read again, so the editor stands on what the server
+                // holds now and the next save carries its version.
+                // Dosya yeniden okunur; düzenleyici sunucunun şimdi tuttuğu hâlin
+                // üzerinde durur.
+                await retry();
+                setSaved(result.saved);
+                return 'saved';
+            }
+            if (isStaleConfigWrite(result.error)) {
+                setStale(true);
+                return 'refused';
+            }
             setRefusal(result.error);
             // After a reload that failed the server put the previous file back,
             // or could not: either way what is on disk is read again.
             // Başarısız yeniden yüklemeden sonra diskteki dosya yeniden okunur.
             if (result.error.code === 'CONFIG_RELOAD_FAILED' && result.error.reason === 'not_restored') await retry();
-        }
-        setSaving(false);
-        return result.ok;
-    }, [path, remote, retry]);
+            // A refusal without a code is an answer that never arrived.
+            return result.error.code ? 'refused' : 'unknown';
+        });
+        return outcome === 'saved';
+    }, [path, remote, retry, run]);
 
     const clearRefusal = useCallback(() => setRefusal(null), []);
 

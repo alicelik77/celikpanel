@@ -22,8 +22,7 @@ export const enDbRemote = {
     'dbr.turnOn': 'Turn on for this server',
     'dbr.turnOnConfirm': 'Turn on connections from outside for this server? Nothing opens yet: a database is reachable only after an address is listed for it, and only from that address.',
     'dbr.turnOnTitle': 'Turning on connections from outside',
-    'dbr.notInPlan': 'Your plan does not include connections from outside. Ask {grantor} to include “Remote access to databases”.',
-    'dbr.grantor.admin': 'the administrator',
+    'dbr.notInPlan': 'Your plan does not include connections from outside. Ask {grantor} to add “Remote access to databases” to your plan.',
     'dbr.remoteServer': 'This database is on another server; CelikPanel opens only the databases of this server.',
     'dbr.subscriptionInactive': 'This subscription is not active, so no address can be listed now.',
 

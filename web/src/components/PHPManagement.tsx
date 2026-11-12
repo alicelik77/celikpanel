@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { FileCode, Puzzle, FileText, type LucideIcon } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { RepoCard } from './RepoCard';
@@ -6,9 +6,15 @@ import { OfferedVersionsCard } from './OfferedVersionsCard';
 import { SecurityEmergencySection } from './SecurityEmergency';
 import { PHPExtendedConfig } from './PHPExtendedConfig';
 import { KnownEmpty, RemoteGate } from './ui';
-import { decodeList, useRemote } from '../lib/remote';
-import { showToast } from './Toast';
+import { decodeList, lastKnown, useRemote } from '../lib/remote';
 import { useI18n } from '../i18n';
+import { apiErrorText, readApiError } from '../lib/apiError';
+import { answerWasLost } from '../lib/requestIdentity';
+import { confirmAction, followOperation, type OperationStep } from '../lib/confirmAction';
+import { useDraft } from './kit/save/draft';
+import type { SaveOutcome } from './kit/save/saveRun';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // alpha.128: the server's limits of PHP settings for customers' sites.
 const ServerSettingLimits = lazy(() => import('./ServerSettingLimits').then((module) => ({ default: module.ServerSettingLimits })));
@@ -33,6 +39,7 @@ interface PHPExtension {
 // kurulumdan gelir.
 export function PHPManagement({ versions, onBack }: PHPManagementProps) {
     const { t } = useI18n();
+    const say = useSaveWords();
     // versions[] now carries only REAL versions (B3b: the "default" sentinel
     // is dead — on Arch the single php-fpm reports its true version too).
     // Empty means PHP is not installed; the shell's install button handles it.
@@ -53,46 +60,108 @@ export function PHPManagement({ versions, onBack }: PHPManagementProps) {
         version ? `/api/v1/php/extensions?version=${encodeURIComponent(version)}` : null,
         decodeList<PHPExtension>,
     );
-    // The switch a person has just pressed, until the server's answer to it
-    // has been read back.
-    // Kişinin az önce bastığı anahtar; sunucunun yanıtı geri okunana dek.
-    const [pending, setPending] = useState<{ name: string; enabled: boolean } | null>(null);
+    // alpha.132 (owner, 8 Nov 2026): a switch no longer changes the server.
+    // The switched extensions are marked and saved together with the save
+    // bar; each change is a server change, so Save applies them one after
+    // another in the panel's progress window and then reads the list again.
+    // A change that was not made stays a marked change. Choosing another
+    // version or tab with unsaved switches asks first.
+    // Anahtar sunucuyu değiştirmez; değişen eklentiler işaretlenir ve Kaydet
+    // onları ilerleme penceresinde tek tek uygular.
+    const list = lastKnown(extensions.remote)?.value;
+    const known = useMemo(() => (list ? Object.fromEntries(list.map((ext) => [ext.name, ext.enabled])) : null), [list]);
+    const draft = useDraft<Record<string, boolean>>(known);
 
-    const toggleExt = async (ext: PHPExtension) => {
-        if (pending) return;
-        const enabled = !ext.enabled;
-        setPending({ name: ext.name, enabled });
-        try {
-            const res = await fetch('/api/v1/php/extensions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ version, extension: ext.name, enabled }),
-            });
-            if (!res.ok) throw new Error();
-        } catch {
-            showToast('error', t('php.toggleFailed'));
-        }
-        // What the server now says is what the switch shows, whether the
-        // change was accepted or refused.
-        // Değişiklik kabul edilse de reddedilse de anahtar sunucunun şimdi
-        // söylediğini gösterir.
-        await extensions.retry();
-        setPending(null);
+    // Only this page's switches are asked about: the cards below keep theirs.
+    const leaveSwitches = async () => draft.count === 0 || confirmAction({
+        title: say('leaveTitle'),
+        tone: 'danger',
+        lost: [draft.count === 1 ? say('leaveLostOne') : say('leaveLost', { n: draft.count })],
+        kept: [say('leaveKept')],
+        confirmLabel: say('leave'),
+        cancelLabel: say('stay'),
+    });
+    const switchTo = async (next: { version?: string; tab?: 'extensions' | 'config' }) => {
+        if (!(await leaveSwitches())) return;
+        draft.reset();
+        if (next.version !== undefined) setVersion(next.version);
+        if (next.tab) setTab(next.tab);
     };
+
+    const save = () => void draft.save(async (changes) => {
+        const changed = Object.entries(changes) as [string, boolean][];
+        // Nothing is sent unless the progress window runs it.
+        let outcome: SaveOutcome = 'refused';
+        await followOperation({
+            progressTitle: t('php.ext.applying', { version }),
+            action: async (report) => {
+                const steps: OperationStep[] = [
+                    ...changed.map(([name, enabled]): OperationStep => ({ id: 'ext-' + name, label: t(enabled ? 'php.ext.turnOn' : 'php.ext.turnOff', { name }), state: 'pending' })),
+                    { id: 'read', label: t('php.ext.reading', { version }), state: 'pending' },
+                ];
+                const step = (at: number, next: Partial<OperationStep>) => {
+                    steps[at] = { ...steps[at], ...next };
+                    report.steps(steps.map((item) => ({ ...item })));
+                };
+                const done: string[] = [];
+                let stop: { state: 'failed' | 'unknown'; reason: string } | null = null;
+                for (const [at, [name, enabled]] of changed.entries()) {
+                    step(at, { state: 'running', since: Date.now() });
+                    let res: Response | null;
+                    try {
+                        res = await fetch('/api/v1/php/extensions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ version, extension: name, enabled }),
+                        });
+                    } catch {
+                        res = null;
+                    }
+                    if (!res || answerWasLost(res)) {
+                        // Not known whether it changed: nothing more is sent.
+                        step(at, { state: 'failed', note: t('common.resultUnknown') });
+                        stop = { state: 'unknown', reason: t('php.ext.unknown', { name }) };
+                        break;
+                    }
+                    if (!res.ok) {
+                        const reason = apiErrorText(await readApiError(res), t, 'php.toggleFailed');
+                        step(at, { state: 'failed', note: reason });
+                        stop = { state: 'failed', reason: t('php.ext.failed', { name }) };
+                        break;
+                    }
+                    step(at, { state: 'done' });
+                    done.push(name);
+                }
+                // What the server now says is what the switches show.
+                const read = steps.length - 1;
+                step(read, { state: 'running', since: Date.now() });
+                const reread = await extensions.retry();
+                step(read, reread.state === 'known' ? { state: 'done' } : { state: 'failed', note: t('php.extensions.unknown', { version }) });
+                if (!stop) {
+                    outcome = 'saved';
+                    return { state: 'done', message: t('php.ext.done') };
+                }
+                outcome = stop.state === 'unknown' ? 'unknown' : 'refused';
+                const before = done.length > 0 ? ' ' + t('php.ext.doneBefore', { names: done.join(', ') }) : '';
+                return { state: stop.state, reason: stop.reason + before + ' ' + t('php.ext.next') };
+            },
+        });
+        return outcome;
+    });
 
     return (
         <ServiceShell serviceId="php-fpm" name="PHP-FPM" icon={FileCode} onBack={onBack}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-1 border-b border-border">
-                    <Tab active={tab === 'extensions'} onClick={() => setTab('extensions')} icon={Puzzle} label={t('php.tab.extensions')} />
-                    <Tab active={tab === 'config'} onClick={() => setTab('config')} icon={FileText} label={t('php.tab.config')} />
+                    <Tab active={tab === 'extensions'} onClick={() => void switchTo({ tab: 'extensions' })} icon={Puzzle} label={t('php.tab.extensions')} />
+                    <Tab active={tab === 'config'} onClick={() => void switchTo({ tab: 'config' })} icon={FileText} label={t('php.tab.config')} />
                 </div>
                 {versions.length > 1 && (
                     <label className="flex items-center gap-2 text-sm text-fg-muted">
                         {t('php.version')}
                         <select
                             value={version}
-                            onChange={(e) => setVersion(e.target.value)}
+                            onChange={(e) => void switchTo({ version: e.target.value })}
                             className="rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium text-fg outline-none focus:border-primary"
                         >
                             {versions.map((v) => (
@@ -121,22 +190,40 @@ export function PHPManagement({ versions, onBack }: PHPManagementProps) {
                             <div className="rounded-xl border border-border bg-surface p-5">
                                 <h3 className="mb-4 text-sm font-semibold text-fg">{t('php.installedExtensions')}</h3>
                                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                                    {shown.value.map((ext) => (
-                                        <label
-                                            key={ext.name}
-                                            className="flex min-h-[2.75rem] cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/50 px-3 py-2 hover:bg-surface-2"
-                                        >
-                                            <span className="truncate font-mono text-sm text-fg-muted">{ext.name}</span>
-                                            <input
-                                                type="checkbox"
-                                                checked={pending?.name === ext.name ? pending.enabled : ext.enabled}
-                                                disabled={shown.stale || pending !== null}
-                                                onChange={() => void toggleExt(ext)}
-                                                className="h-4 w-8 shrink-0 cursor-pointer appearance-none rounded-full bg-surface-3 transition-colors checked:bg-primary relative before:absolute before:top-0.5 before:left-0.5 before:h-3 before:w-3 before:rounded-full before:bg-white before:transition-transform checked:before:translate-x-4 disabled:cursor-default disabled:opacity-60"
-                                            />
-                                        </label>
-                                    ))}
+                                    {shown.value.map((ext) => {
+                                        const enabled = draft.values?.[ext.name] ?? ext.enabled;
+                                        const changed = draft.isChanged(ext.name);
+                                        return (
+                                            <div key={ext.name} className={`rounded-lg border border-border bg-surface-2/50 ${changed ? changedRowClass : ''}`} data-php-extension={ext.name}>
+                                                <label className="flex min-h-[2.75rem] cursor-pointer items-center justify-between gap-3 px-3 py-2 hover:bg-surface-2">
+                                                    <span className="flex min-w-0 flex-wrap items-center text-sm text-fg-muted">
+                                                        <span className="min-w-0 truncate font-mono">{ext.name}</span>
+                                                        {changed && <ChangedMark switched={enabled} />}
+                                                    </span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={enabled}
+                                                        disabled={shown.stale || draft.saving}
+                                                        onChange={(e) => draft.set(ext.name, e.target.checked)}
+                                                        className="h-4 w-8 shrink-0 cursor-pointer appearance-none rounded-full bg-surface-3 transition-colors checked:bg-primary relative before:absolute before:top-0.5 before:left-0.5 before:h-3 before:w-3 before:rounded-full before:bg-white before:transition-transform checked:before:translate-x-4 disabled:cursor-default disabled:opacity-60"
+                                                    />
+                                                </label>
+                                                {draft.isMoved(ext.name) && draft.base && (
+                                                    <div className="px-3 pb-2"><ServerMovedNote value={say(draft.base[ext.name] ? 'on' : 'off')} onTake={() => draft.take(ext.name)} /></div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
+                                <SaveBar
+                                    className="-mx-5 px-5 pb-0"
+                                    count={draft.count}
+                                    saving={draft.saving}
+                                    blockedBy={shown.stale ? say('stale') : undefined}
+                                    unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: extensions.reading, onCheck: () => void extensions.retry() } : undefined}
+                                    onSave={save}
+                                    onDiscard={draft.reset}
+                                />
                             </div>
                         ))}
                     </RemoteGate>

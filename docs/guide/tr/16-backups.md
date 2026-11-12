@@ -2,11 +2,11 @@
 id: backups
 title: Yedekler, uzak kopyalar ve zamanlanmış görevler
 roles: [admin, reseller, customer]
-topics: [domain.advanced#backups]
+topics: [domain.backups#backups, domain.advanced#cron-logs]
 keywords: [yedek, geri yükleme, uzak yedek, s3, sftp, backblaze, wasabi, gpg, parola cümlesi, cron, zamanlanmış görev, günlük, log]
 ---
 
-Alan adının **Gelişmiş** sekmesinde **Yedekler**, **Zamanlanmış görevler**, **Loglar** ve zararlı yazılım taraması bulunur (bkz. [Zararlı yazılım taraması](guide:apps-wordpress#malware)).
+Alan adının yedekleri **Yedekler** bölümündedir. **Zamanlanmış görevler** ve **Günlükler** **Gelişmiş** bölümünde, zararlı yazılım taraması **Güvenlik** bölümündedir (bkz. [Zararlı yazılım taraması](guide:apps-wordpress#malware)).
 
 ## Yedek almak {#backups}
 

@@ -7,13 +7,13 @@ const chapter = {
   id: "ai-apps",
   title: "Yapay zekâ ve otomasyon uygulamaları",
   blocks: [
-    ["p",[["b","Yapay zekâ ve otomasyon"]," sekmesi bir alan adında n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır."]],
+    ["p",["Alan adının ",["b","Site"]," bölümündeki ",["b","Yapay zekâ ve otomasyon"]," parçası n8n (iş akışı otomasyonu) ya da Open WebUI (yapay zekâ modelleri için sohbet ekranı) gibi bir uygulama çalıştırır. Uygulama sitenin kendi hesabıyla kapalı bir korumalı alanda çalışır, yalnız sunucunun içinde dinler ve alan adının adresinde HTTPS ile açılır."]],
     ["h",2,"ai-apps","Kurmadan önce"],
-    ["p","Sekme hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:"],
-    ["ul",[[["b","Web sitesi ve sertifika."]," Uygulamalar yalnız HTTPS ile açılır. Alan adının sertifikası yoksa önce ",["b","Barındırma"]," sekmesinde ",["b","SSL/TLS"]," bölümünden alın."],[["b","Ayrı bir alt alan adı"],", örneğin ",["c","n8n.example.com"],", en iyisidir: alan adı web sitesi yerine uygulamayı gösterir. Sitenin dosyaları yerinde kalır ve uygulama kaldırılınca geri gelir."],[["b","Sunulmuş olması."]," Yönetici uygulamayı sunmadan hiçbir şey kurulamaz; planınız da onu kapsamalıdır. Kapsamıyorsa satır kime başvuracağınızı yazar."],[["b","Sunucu."]," n8n, yöneticinin kuracağı Node.js 24'ü ister. Open WebUI yalnız bazı sistemlerde çalışır; burada çalışamıyorsa satır bunu söyler."]]],
+    ["p","Sayfa hâlâ neyin gerektiğini ve onu kimin sağlayacağını yazar:"],
+    ["ul",[[["b","Web sitesi ve sertifika."]," Uygulamalar yalnız HTTPS ile açılır. Alan adının sertifikası yoksa önce ",["b","Güvenlik"]," bölümünden alın."],[["b","Ayrı bir alt alan adı"],", örneğin ",["c","n8n.example.com"],", en iyisidir: alan adı web sitesi yerine uygulamayı gösterir. Sitenin dosyaları yerinde kalır ve uygulama kaldırılınca geri gelir."],[["b","Sunulmuş olması."]," Yönetici uygulamayı sunmadan hiçbir şey kurulamaz; planınız da onu kapsamalıdır. Kapsamıyorsa satır kime başvuracağınızı yazar."],[["b","Sunucu."]," n8n, yöneticinin kuracağı Node.js 24'ü ister. Open WebUI yalnız bazı sistemlerde çalışır; burada çalışamıyorsa satır bunu söyler."]]],
     ["h",2,"installing","Kurmak"],
     ["ol",[["Uygulamanın yanındaki ",["b","Kur"]," düğmesine basın."],[["b","Uygulama yöneticisinin e-posta adresi"]," ve ",["b","Uygulama yöneticisinin parolası"]," (12 ile 128 karakter) girin. Uygulamaya bunlarla girersiniz; böylece uygulamayı sizden önce kimse üstlenemez. CelikPanel parolayı saklamaz."],["Open WebUI için isterseniz ",["b","Yapay zekâ sağlayıcı anahtarları (isteğe bağlı)"]," ekleyin. Anahtarlar yalnız uygulamanın kendi ayar dosyasında tutulur ve bir daha gösterilmez."],"Uygulamanın neler yapabildiğini ve hangi risklerin kaldığını okuduğunuzu işaretleyip onaylayın."]],
-    ["p","Kurulum sunucuda çalışır ve birkaç dakika sürebilir; Open WebUI birkaç GB'tır. Sayfayı kapatabilirsiniz; döndüğünüzde sekme her adımı gösterir. Bir adım başarısız olursa ileti nedenini ve kimin ne yapacağını yazar; ayrıntılar kurulum günlüğündedir."],
+    ["p","Kurulum sunucuda çalışır ve birkaç dakika sürebilir; Open WebUI birkaç GB'tır. Sayfayı kapatabilirsiniz; döndüğünüzde sayfa her adımı gösterir. Bir adım başarısız olursa ileti nedenini ve kimin ne yapacağını yazar; ayrıntılar kurulum günlüğündedir."],
     ["h",2,"running","Uygulamayı kullanmak"],
     ["p",[["b","Uygulamayı aç"]," onu yeni bir sekmede açar. Satır uygulamanın ",["b","Çalışıyor"],", ",["b","Durdu"]," ya da ",["b","Çalışıyor ama henüz yanıt vermiyor"]," durumunu ve ne kadar bellek kullandığını gösterir. ",["b","Başlat"],", ",["b","Durdur"],", ",["b","Yeniden başlat"]," düğmeleri ve ",["b","Günlük"]," buradadır. ",["b","Anahtarları değiştir"]," sağlayıcı anahtarlarını değiştirir ya da yeni yönetici parolası belirler."]],
     ["p",["Bellek, işlemci ve işlem sınırlarını her kurulum için yönetici belirler. Bir panel sürümüyle daha yeni bir sürüm gelince ",["b","… sürümüne güncelle"]," onu çalışanın yanına kurar ve yalnız hazır olunca geçiş yapar."]],
@@ -23,7 +23,7 @@ const chapter = {
     ["p","n8n'in lisansı onu başkalarına barındırılan hizmet olarak sunmayı kısıtlıyor. Bu yüzden bayilere ve onların müşterilerine kapalıdır; yalnız yöneticinin kendi müşterileri kullanabilir. Satır bunu yazar; yapmanız gereken bir şey yok. Open WebUI bundan etkilenmez."],
     ["h",2,"removing","Uygulamayı kaldırmak"],
     ["p",[["b","Uygulamayı kaldır"]," hizmeti ve program dosyalarını kaldırır; alan adı yeniden web sitesini gösterir. Uygulamanın verileri (iş akışları, sohbetler, veritabanı) siz ",["b","Uygulamanın verilerini de sil"]," seçeneğini işaretleyip alan adını yazmadıkça kendi klasöründe kalır."]],
-    ["p",["Uygulama panele bağlı değildir. Sunucuda sıradan bir sistem hizmetidir; sekme adını yazar ve sunucunun sahibi onu ",["c","sudo systemctl stop"]," ve ardından o adla durdurabilir."]],
+    ["p",["Uygulama panele bağlı değildir. Sunucuda sıradan bir sistem hizmetidir; sayfa adını yazar ve sunucunun sahibi onu ",["c","sudo systemctl stop"]," ve ardından o adla durdurabilir."]],
   ],
 } as unknown as GuideChapter;
 

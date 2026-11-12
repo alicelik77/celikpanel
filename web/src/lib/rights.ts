@@ -1,7 +1,8 @@
 import type { TranslationKey } from '../i18n/en';
 import type { ServicePlan } from './api';
 import type { ApiError } from './apiError';
-import { readApiError } from './apiError';
+import { readApiError, refusalText } from './apiError';
+import type { OperationStep } from './confirmAction';
 
 // Plans and rights (alpha.117, D-042, docs/PLANS-AND-RIGHTS.md). Every
 // account's rights are Unlimited, bound to a plan, or Custom; a rights set is
@@ -137,6 +138,84 @@ export function offeredStateOf(view: RightsView, item: string): boolean | undefi
     const permission = item.startsWith('permission:') ? item.slice('permission:'.length) : null;
     const found = permission !== null ? view.permissions.find((entry) => entry.id === permission) : view.software.find((entry) => entry.id === item);
     return found?.granted;
+}
+
+/** What a save of offers did: what was saved, what was not (with a refusal's own fix), and whether an answer was lost. */
+export interface OffersApplied {
+    saved: string[];
+    failed: { text: string; fix?: ApiError }[];
+    lost: boolean;
+}
+
+/**
+ * Sends changes of what is offered one by one (one audited request each),
+ * then reads the list again (`reread` answers each item's state as the server
+ * now holds it; the caller also tells every chooser, plan and account screen
+ * to read again). With a progress window (`report`) every item is a step.
+ * Shared by the Offered tab's permissions and software (PlanRights.tsx) and
+ * its applications (OfferedAppsSection.tsx), alpha.132.
+ */
+export async function applyOffers(entries: [string, boolean][], { t, nameOf, reread, report }: {
+    t: T;
+    nameOf: (id: string) => string;
+    reread: () => Promise<(id: string) => boolean | undefined>;
+    report?: { steps: (steps: OperationStep[]) => void };
+}): Promise<OffersApplied> {
+    const steps: OperationStep[] = [
+        ...entries.map(([id, offered]): OperationStep => ({ id, label: t(offered ? 'rights.offered.stepOffer' : 'rights.offered.stepHide', { name: nameOf(id) }), state: 'pending' })),
+        { id: 'read', label: t('rights.offered.stepRead'), state: 'pending' },
+    ];
+    const step = (at: number, next: Partial<OperationStep>) => {
+        steps[at] = { ...steps[at], ...next };
+        report?.steps(steps.map((item) => ({ ...item })));
+    };
+    const saved: string[] = [];
+    const failed: OffersApplied['failed'] = [];
+    let lost = false;
+    const notSaved = (at: number, id: string, reason: string, fix?: ApiError) => {
+        failed.push({ text: t('rights.offered.notSaved', { what: nameOf(id), reason }), fix: fix?.action ? fix : undefined });
+        step(at, { state: 'failed', note: reason });
+    };
+    const still = (at: number, id: string, offered: boolean) => {
+        const text = t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: nameOf(id) });
+        failed.push({ text });
+        step(at, { state: 'failed', note: text });
+    };
+    const done = (at: number, id: string) => {
+        saved.push(nameOf(id));
+        step(at, { state: 'done' });
+    };
+    const unsure: [number, string, boolean][] = [];
+    for (const [at, [id, offered]] of entries.entries()) {
+        step(at, { state: 'running', since: Date.now() });
+        const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: id, offered });
+        if (result.kind === 'lost') {
+            lost = true;
+            notSaved(at, id, t('common.resultUnknown'));
+        } else if (result.kind === 'refused') {
+            notSaved(at, id, refusalText(result.error, t, 'rights.offered.failed'), result.error);
+        } else {
+            // The answer names the item's state now; an older answer
+            // without it is checked against the list read again below.
+            const now = offeredStateIn(result.body, id);
+            if (now === undefined) unsure.push([at, id, offered]);
+            else if (now !== offered) still(at, id, offered);
+            else done(at, id);
+        }
+    }
+    const read = steps.length - 1;
+    step(read, { state: 'running', since: Date.now() });
+    const stateOf = await reread();
+    step(read, { state: 'done' });
+    for (const [at, id, offered] of unsure) {
+        const now = stateOf(id);
+        if (now === undefined) {
+            lost = true;
+            notSaved(at, id, t('common.resultUnknown'));
+        } else if (now !== offered) still(at, id, offered);
+        else done(at, id);
+    }
+    return { saved, failed, lost };
 }
 
 export type RightsState = 'unlimited' | 'plan' | 'custom';

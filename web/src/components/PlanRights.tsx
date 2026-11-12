@@ -1,22 +1,25 @@
-import { Suspense, lazy, useState } from 'react';
-import { Copy, Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Suspense, lazy, useMemo, useState } from 'react';
+import { Copy, Layers, Lock, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { showToast } from './Toast';
 import { Button, Checking, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, inputClass } from './ui';
-import { BlockedReason } from './BlockingProblems';
 import type { ApiError } from '../lib/apiError';
-import { refusalText, refusalToast } from '../lib/apiError';
-import { countText, invalidate, mapRemote, useRemote } from '../lib/remote';
+import { apiErrorActionLabel, refusalText, refusalToast } from '../lib/apiError';
+import { countText, invalidate, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import {
-    NEW_PLAN, OFFERED_URL, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateIn, offeredStateOf,
+    NEW_PLAN, RESELLER_PLANS_URL, applyOffers, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateOf,
     permissionGroups, permissionIdsOf, permissionTopicKey, planBody, rightsSummary, selectionOf, sendRights, softwareGroupKey, softwareGroupName,
-    type EditedPlan, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
+    type EditedPlan, type Numbers, type OffersApplied, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationReport, type OperationStep } from '../lib/confirmAction';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
+import { useLeaveGuard } from './kit/save/leaveGuard';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
 // alpha.128: the plan's limits of site settings, a chunk of its own.
@@ -38,7 +41,40 @@ const OfferedAppsSection = lazy(() => import('./OfferedAppsSection').then((modul
 
 type Say = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
-/** The editor of one plan, with its narrowing preview. */
+const sameItems = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join('\n') === [...b].sort().join('\n');
+
+/**
+ * What differs from the plan as it was opened, one entry per changed field
+ * (alpha.132): the name, each quantity, the permissions, the software, each
+ * limit of site settings and the over-limit choices. Exported for the tests.
+ */
+export function planChanges(kind: PlanKind, plan: EditedPlan, initial: EditedPlan, selection: RightsSelection, initialSelection: RightsSelection): string[] {
+    const changed: string[] = [];
+    if (plan.name !== initial.name) changed.push('name');
+    for (const key of Object.keys(plan.numbers) as (keyof Numbers)[]) {
+        if ((kind === 'reseller' || key !== 'max_customers') && plan.numbers[key] !== initial.numbers[key]) changed.push(key);
+    }
+    if (!sameItems(selection.permissions, initialSelection.permissions)) changed.push('permissions');
+    if (!sameItems(selection.software, initialSelection.software)) changed.push('software');
+    const ceilings = plan.ceilings ?? {};
+    const before = initial.ceilings ?? {};
+    for (const key of new Set([...Object.keys(ceilings), ...Object.keys(before)])) if (ceilings[key] !== before[key]) changed.push(`ceiling:${key}`);
+    if (kind === 'customer') {
+        if ((plan.overuse_policy || 'close') !== (initial.overuse_policy || 'close')) changed.push('overuse_policy');
+        if ((plan.notify_percent_disk ?? 80) !== (initial.notify_percent_disk ?? 80)) changed.push('notify_percent_disk');
+        if ((plan.notify_percent_traffic ?? 80) !== (initial.notify_percent_traffic ?? 80)) changed.push('notify_percent_traffic');
+    } else if ((plan.overselling || 'allowed') !== (initial.overselling || 'allowed')) changed.push('overselling');
+    return changed;
+}
+
+/**
+ * The editor of one plan, with its narrowing preview.
+ * alpha.132 (owner, 8 Nov 2026): one way of saving. A changed field is
+ * marked, the shared save bar counts the changes and Save is shown only
+ * when there is one (a new plan: until it is created); Discard puts the
+ * plan back as it was opened (a new plan: closes the form); closing or
+ * leaving with unsaved changes asks first.
+ */
 export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose }: {
     kind: PlanKind;
     initial: EditedPlan;
@@ -47,14 +83,18 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
     onClose: () => void;
 }) {
     const { t } = useI18n();
+    const say = useSaveWords();
     const isNew = initial.id === 0;
     const [plan, setPlan] = useState(initial);
-    const [selection, setSelection] = useState<RightsSelection>(() =>
+    const [initialSelection] = useState<RightsSelection>(() =>
         selectionOf(initial.rights ?? { all_permissions: true, all_software: true, permissions: [], software: [] }, grantor));
+    const [selection, setSelection] = useState<RightsSelection>(initialSelection);
     // An existing plan's set is sent only once it was changed here: an
     // untouched "everything offered" stays as it is.
     const [touched, setTouched] = useState(isNew);
     const [busy, setBusy] = useState(false);
+    // The answer of the last save did not arrive: Save waits for a check.
+    const [lost, setLost] = useState(false);
     const [pending, setPending] = useState<{ preview: RightsPreview; sentence: string; body: string } | null>(null);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const url = kind === 'reseller'
@@ -65,15 +105,44 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
     const shown = pending && pending.body === bodyText ? pending : null;
     const nameMissing = !plan.name.trim();
     const idPrefix = `plan-${kind}-${plan.id}`;
+    const changes = planChanges(kind, plan, initial, selection, initialSelection);
+    useLeaveGuard(changes.length);
+
+    const discard = () => {
+        setPlan(initial);
+        setSelection(initialSelection);
+        setTouched(isNew);
+        setPending(null);
+        setRefusal(null);
+    };
+    // Closing with unsaved changes asks, in the words of leaving a page.
+    const close = async () => {
+        if (changes.length > 0) {
+            const leave = await confirmAction({
+                title: say('leaveTitle'),
+                tone: 'danger',
+                lost: [changes.length === 1 ? say('leaveLostOne') : say('leaveLost', { n: changes.length })],
+                kept: [say('leaveKept')],
+                confirmLabel: say('leave'),
+                cancelLabel: say('stay'),
+            });
+            if (!leave) return;
+        }
+        onClose();
+    };
 
     const save = async (confirm: boolean) => {
+        if (busy) return;
         setBusy(true);
         setRefusal(null);
         try {
             const overUsage = confirm && (shown?.preview.over_limit.length ?? 0) > 0;
             const result = await sendRights(url, isNew ? 'POST' : 'PUT', planBody(kind, plan, chosen, { narrowing: confirm, overUsage }));
             if (result.kind === 'lost') {
-                showToast('error', t('common.resultUnknown'));
+                // Not known whether it was saved: nothing is sent again
+                // until the list has been read again.
+                setLost(true);
+                setPending(null);
                 invalidate('plans', 'rights');
                 return;
             }
@@ -105,12 +174,18 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
         }
     };
 
+    const nameChanged = changes.includes('name');
     return (
         <section className="mb-4 rounded-xl border border-border bg-surface-2/50 p-4" data-plan-editor={kind}>
-            <label className="block max-w-md">
-                <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}</span>
-                <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={inputClass} autoFocus />
-            </label>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className={`min-w-0 max-w-md flex-1 ${nameChanged ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
+                    <label className="block">
+                        <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}{nameChanged && !isNew && <ChangedMark />}</span>
+                        <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={inputClass} autoFocus />
+                    </label>
+                </div>
+                <Button type="button" icon={X} onClick={() => void close()} disabled={busy} data-plan-close="">{t('common.close')}</Button>
+            </div>
             <div className="mt-4">
                 <RightsSetEditor
                     grantor={grantor}
@@ -121,33 +196,36 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                     reseller={kind === 'reseller'}
                     grantorIsReseller={grantorIsReseller}
                     idPrefix={idPrefix}
+                    base={isNew ? undefined : { numbers: initial.numbers, selection: initialSelection }}
                 />
             </div>
             <Suspense fallback={<Checking label={t('limits.checking')} />}>
-                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} />
+                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} base={isNew ? undefined : initial} />
             </Suspense>
             {!isNew && !touched && initial.rights?.all_permissions && initial.rights.all_software && (
                 <p className="mt-3 text-xs text-fg-muted">{t('rights.plan.everythingKept')}</p>
             )}
             {shown && <div className="mt-4"><RightsPreviewBox id={`${idPrefix}-preview`} preview={shown.preview} sentence={shown.sentence} /></div>}
             <ErrorBanner className="mt-3" error={readableRefusal(refusal, t)} sentence="plans.saveFailed" />
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                {nameMissing && <BlockedReason id={`${idPrefix}-reason`} target={`${idPrefix}-name`} text={t('acct.plan.missing')} className="mr-auto" />}
-                <Button type="button" icon={X} onClick={onClose}>{t('common.cancel')}</Button>
-                {shown ? (
-                    <>
-                        <Button type="button" onClick={() => setPending(null)} disabled={busy}>{t('rights.back')}</Button>
-                        <Button type="button" variant="primary" onClick={() => void save(true)} loading={busy} data-plan-confirm="">
-                            {t(shown.preview.over_limit.length > 0 && kind === 'customer' ? 'plans.saveAnyway' : 'rights.plan.confirm')}
-                        </Button>
-                    </>
-                ) : (
-                    <Button type="button" variant="primary" icon={Save} onClick={() => void save(false)} loading={busy} disabled={nameMissing}
-                        aria-describedby={nameMissing ? `${idPrefix}-reason` : undefined}>
-                        {t('plans.save')}
+            {shown ? (
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                    <Button type="button" onClick={() => setPending(null)} disabled={busy}>{t('rights.back')}</Button>
+                    <Button type="button" variant="primary" onClick={() => void save(true)} loading={busy} data-plan-confirm="">
+                        {t(shown.preview.over_limit.length > 0 && kind === 'customer' ? 'plans.saveAnyway' : 'rights.plan.confirm')}
                     </Button>
-                )}
-            </div>
+                </div>
+            ) : (
+                <SaveBar
+                    className="-mx-4 px-4 pb-0"
+                    // A new plan is created only by Save: the bar stays until then.
+                    count={isNew ? 'some' : changes.length}
+                    saving={busy}
+                    blockedBy={nameMissing ? t('acct.plan.missing') : undefined}
+                    unknown={lost ? { held: true, checking: false, onCheck: () => { invalidate('plans', 'rights'); setLost(false); } } : undefined}
+                    onSave={() => void save(false)}
+                    onDiscard={isNew ? onClose : discard}
+                />
+            )}
         </section>
     );
 }
@@ -302,6 +380,49 @@ function RowLink({ to, label }: { to: string; label: string }) {
 }
 
 /**
+ * What the applications' part (OfferedAppsSection.tsx, its own chunk) hands
+ * the Offered tab's one save bar: its unsaved count and state, and its save,
+ * discard and check. Stable functions; a new object only when a value changes.
+ */
+export interface OfferedPart {
+    count: number;
+    saving: boolean;
+    /** Save is off until the list has been read again. */
+    blocked: boolean;
+    unknown: boolean;
+    held: boolean;
+    checking: boolean;
+    /**
+     * Asks every question its save needs (offering an application asks with
+     * its risk) and sends nothing: true when there is none or the answer was
+     * yes. The tab asks it before anything at all is sent.
+     */
+    ask: () => Promise<boolean>;
+    /** Sends the changes without asking, each one a step in `report`; null when nothing was sent. */
+    save: (report: OperationReport) => Promise<OffersApplied | null>;
+    reset: () => void;
+    check: () => void;
+}
+
+/** What a save of offers did not do, beside the list, with each refusal's own fix. */
+function OffersReport({ report, className = '' }: { report: OffersApplied | null; className?: string }) {
+    const { t } = useI18n();
+    const navigate = useNavigate();
+    if (!report || report.failed.length === 0) return null;
+    return (
+        <div className={`rounded-lg border border-danger/40 bg-danger/5 px-3 py-2 text-sm leading-6 text-fg ${className}`} role="alert" data-offered-report="">
+            {report.saved.length > 0 && <p>{t('rights.offered.savedSome', { what: report.saved.join(', ') })}</p>}
+            {report.failed.map((line) => (
+                <p key={line.text} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="min-w-0 max-w-[75ch]">{line.text}</span>
+                    {line.fix && <Button type="button" onClick={() => navigate(line.fix!.action!)}>{apiErrorActionLabel(line.fix, t)}</Button>}
+                </p>
+            ))}
+        </div>
+    );
+}
+
+/**
  * What the administrator offers on this server: every permission and every
  * installed piece of software, each shown or hidden for resellers and
  * customers. Hiding changes nothing that runs; the item can no longer be
@@ -314,60 +435,123 @@ function RowLink({ to, label }: { to: string; label: string }) {
  * Python in Catalog management) are shown with their state and a way there,
  * not with a box that cannot change them. Permissions stand under the same
  * topics as on every rights screen, sorted in the reader's language.
+ *
+ * alpha.132 (owner, 8 Nov 2026): ticking no longer saves. The permissions,
+ * the software and the applications are one list with one save bar under
+ * it. The applications stay their own chunk with their own read and draft
+ * (the catalogue module stays off the Users route) and hand the bar their
+ * count and save (OfferedPart). The server's limits further down are a
+ * separate setting with their own bar. Save sends one request per changed
+ * item; what the server did not take is named with its reason and stays a
+ * marked change; offering an application asks first, with its risk.
  */
 export function OfferedItemsTab() {
     const { t, locale } = useI18n();
+    const say = useSaveWords();
     const catalog = useGrantorCatalog();
-    const [pending, setPending] = useState<string | null>(null);
-    const [failure, setFailure] = useState<ApiError | null>(null);
+    const rightsView = lastKnown(catalog.remote)?.value;
+    const known = useMemo(() => {
+        if (!rightsView) return null;
+        const offers: Record<string, boolean> = {};
+        for (const id of permissionIdsOf(rightsView)) offers[`permission:${id}`] = rightsView.permissions.find((item) => item.id === id)?.granted ?? false;
+        for (const item of rightsView.software) if (!item.id.startsWith('app:') && !offeredInCatalog(item.id)) offers[item.id] = item.granted;
+        return offers;
+    }, [rightsView]);
+    const draft = useDraft<Record<string, boolean>>(known);
+    const [report, setReport] = useState<OffersApplied | null>(null);
+    // The applications' part (its own chunk) once it has been fetched.
+    const [apps, setApps] = useState<OfferedPart | null>(null);
 
-    const change = async (item: string, offered: boolean) => {
-        if (pending) return;
-        setPending(item);
-        setFailure(null);
-        try {
-            const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: item, offered });
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            if (result.kind === 'refused') setFailure(result.error);
-            if (result.kind === 'done') {
-                // The answer names the item's state now; an older answer
-                // without it is checked against the list read again.
-                let now = offeredStateIn(result.body, item);
-                if (now === undefined) {
+    const saveItems = async (report: OperationReport) => {
+        let result: OffersApplied | null = null;
+        await draft.save(async (changes) => {
+            result = await applyOffers(Object.entries(changes) as [string, boolean][], {
+                t,
+                report,
+                nameOf: (id) => offeredLabel(id, t),
+                reread: async () => {
+                    // Every chooser, plan and account screen follows the offer.
+                    invalidate('rights', 'components');
                     const reread = await catalog.retry();
-                    now = reread && reread.state === 'known' ? offeredStateOf(reread.value, item) : undefined;
-                }
-                if (now === undefined) showToast('error', t('common.resultUnknown'));
-                else if (now !== offered) {
-                    setFailure({ message: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: offeredLabel(item, t) }) });
-                }
-            }
-            // Every chooser, plan and account screen follows the offer.
-            invalidate('rights', 'components');
-        } finally {
-            setPending(null);
-        }
+                    return (id) => (reread.state === 'known' ? offeredStateOf(reread.value, id) : undefined);
+                },
+            });
+            if (result.failed.length === 0) return 'saved';
+            setReport(result);
+            return result.lost ? 'unknown' : 'refused';
+        });
+        return result;
     };
+    // One bar for the whole list. Every question the save needs is asked
+    // first (offering an application asks with its risk); a "no" sends
+    // nothing and keeps every change. Then the permissions and software and
+    // the applications run in one progress window, a step per item.
+    // Tek çubuk: kaydetmenin gerektirdiği her soru önce sorulur; "hayır"
+    // hiçbir şey göndermez. Sonra hepsi tek ilerleme penceresinde çalışır.
+    const save = async () => {
+        const items = draft.count > 0;
+        const part = apps && apps.count > 0 ? apps : null;
+        if (!items && !part) return;
+        if (part && !(await part.ask())) return;
+        setReport(null);
+        await followOperation({
+            progressTitle: t('rights.offered.applying'),
+            action: async (report) => {
+                // Both lists end with their own read step; ids stay unique in the window.
+                let first: OperationStep[] = [];
+                let second: OperationStep[] = [];
+                const show = () => report.steps([...first, ...second.map((step) => ({ ...step, id: `apps-${step.id}` }))]);
+                const results: OffersApplied[] = [];
+                if (items) {
+                    const result = await saveItems({ steps: (steps) => { first = steps; show(); } });
+                    if (result) results.push(result);
+                }
+                if (part) {
+                    const result = await part.save({ steps: (steps) => { second = steps; show(); } });
+                    if (result) results.push(result);
+                }
+                const failed = results.flatMap((result) => result.failed);
+                if (failed.length === 0) return { state: 'done', title: t('rights.offered.savedTitle') };
+                const lost = results.some((result) => result.lost);
+                return {
+                    state: lost ? 'unknown' : 'failed',
+                    title: t(lost ? 'rights.offered.unknownTitle' : 'rights.offered.failedTitle'),
+                    reason: `${failed.map((line) => line.text).join(' ')} ${t('rights.offered.next')}`,
+                };
+            },
+        });
+    };
+    const itemsUnknown = draft.outcome === 'unknown';
+    const unknown = itemsUnknown || apps?.unknown;
 
     const row = (item: string, state: RightsItem | undefined) => {
-        const offered = state?.granted ?? false;
         const name = offeredLabel(item, t);
         const inCatalog = offeredInCatalog(item);
+        const offered = (inCatalog ? undefined : draft.values?.[item]) ?? state?.granted ?? false;
+        const changed = !inCatalog && draft.isChanged(item);
+        // The word on the right says what the server has now; a changed row's
+        // mark already says what Save will make of it.
+        // Sağdaki sözcük sunucuda şu an olanı söyler; değişiklik işareti
+        // Kaydet'in ne yapacağını zaten söyler.
+        const live = (inCatalog ? undefined : draft.base?.[item]) ?? state?.granted ?? false;
         const withdrawn = state?.withdrawn === true;
         const component = item.startsWith('component:node:') ? 'node' : 'php-fpm';
         return (
-            <li key={item} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2" data-offered-item={item} data-offered={offered ? 'yes' : 'no'}>
+            <li key={item} className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 ${changed ? changedRowClass : ''}`} data-offered-item={item} data-offered={offered ? 'yes' : 'no'}>
                 {inCatalog ? (
                     <span className="min-w-0 flex-1 text-sm font-medium text-fg">{name}</span>
                 ) : (
                     <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 max-sm:min-h-11">
-                        <input type="checkbox" checked={offered} disabled={pending !== null || catalog.reading || (withdrawn && !offered)}
-                            onChange={(e) => void change(item, e.target.checked)}
+                        <input type="checkbox" checked={offered} disabled={draft.saving || catalog.remote.state !== 'known' || (withdrawn && !state?.granted)}
+                            onChange={(e) => draft.set(item, e.target.checked)}
                             className="h-4 w-4 shrink-0 accent-primary" aria-label={t('rights.offered.toggle', { name })} />
-                        <span className="min-w-0 text-sm font-medium text-fg">{name}</span>
+                        <span className="min-w-0 text-sm font-medium text-fg">{name}{changed && <ChangedMark switched={offered} />}</span>
                     </label>
                 )}
-                <span className={`text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>{t(offered ? 'rights.offered.yes' : 'rights.offered.no')}</span>
+                <span className={`text-xs ${live ? 'text-fg-muted' : 'font-semibold text-warning'}`} data-offered-now={live ? 'yes' : 'no'}>{t(live ? 'rights.offered.yes' : 'rights.offered.no')}</span>
+                {draft.isMoved(item) && draft.base && (
+                    <div className="w-full"><ServerMovedNote value={t(draft.base[item] ? 'rights.offered.yes' : 'rights.offered.no')} onTake={() => draft.take(item)} /></div>
+                )}
                 {inCatalog && (
                     <span className="flex w-full flex-wrap items-center gap-x-2 text-xs text-fg-muted" data-offered-elsewhere={item}>
                         {t('rights.offered.inCatalog')} <RowLink to="/addons?view=catalog" label={t('rights.offered.openCatalog')} />
@@ -390,22 +574,19 @@ export function OfferedItemsTab() {
     return (
         <div data-offered-layer="">
             <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('rights.offered.intro')}</p>
-            {catalog.remote.state === 'loading' && <Checking label={t('rights.catalogChecking')} />}
-            {catalog.remote.state === 'unknown' && <CouldNotCheck text={t('rights.catalogUnknown')} onRetry={() => void catalog.retry()} busy={catalog.reading} />}
-            {pending && <Checking className="mb-2" label={t('rights.offered.saving', { name: offeredLabel(pending, t) })} />}
-            <ErrorBanner className="mb-3" error={failure} sentence="rights.offered.failed" />
-            {catalog.remote.state === 'known' && (() => {
-                const view = catalog.remote.value;
-                return (
+            <div data-offered-draft="">
+                {catalog.remote.state === 'loading' && <Checking label={t('rights.catalogChecking')} />}
+                {catalog.remote.state === 'unknown' && <CouldNotCheck text={t('rights.catalogUnknown')} onRetry={() => void catalog.retry()} busy={catalog.reading} />}
+                {rightsView && (
                     <div className="grid gap-4 lg:grid-cols-2">
                         <section>
                             <h3 className="mb-2 text-sm font-semibold text-fg">{t('rights.part.permissions')}</h3>
                             <div className="grid gap-3">
-                                {permissionGroups(permissionIdsOf(view), t, locale).map(({ topic, ids }) => (
+                                {permissionGroups(permissionIdsOf(rightsView), t, locale).map(({ topic, ids }) => (
                                     <div key={topic} data-offered-topic={topic}>
                                         <p className="mb-1 text-xs font-semibold text-fg-muted">{t(permissionTopicKey(topic))}</p>
                                         <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
-                                            {ids.map((id) => row(`permission:${id}`, view.permissions.find((item) => item.id === id)))}
+                                            {ids.map((id) => row(`permission:${id}`, rightsView.permissions.find((item) => item.id === id)))}
                                         </ul>
                                     </div>
                                 ))}
@@ -413,10 +594,10 @@ export function OfferedItemsTab() {
                         </section>
                         <section>
                             <h3 className="mb-2 text-sm font-semibold text-fg">{t('rights.part.software')}</h3>
-                            {view.installed_unknown && <p className="mb-2 text-xs text-warning">{t('rights.installedUnknown')}</p>}
-                            {view.software.length === 0 ? <p className="text-sm text-fg-muted">{t('rights.softwareNone')}</p> : (
+                            {rightsView.installed_unknown && <p className="mb-2 text-xs text-warning">{t('rights.installedUnknown')}</p>}
+                            {rightsView.software.length === 0 ? <p className="text-sm text-fg-muted">{t('rights.softwareNone')}</p> : (
                                 <div className="grid gap-3">
-                                    {groupSoftware(view.software.filter((item) => !item.id.startsWith('app:'))).map(({ group, items }) => {
+                                    {groupSoftware(rightsView.software.filter((item) => !item.id.startsWith('app:'))).map(({ group, items }) => {
                                         const heading = softwareGroupName(group);
                                         return (
                                             <div key={group}>
@@ -429,11 +610,26 @@ export function OfferedItemsTab() {
                             )}
                         </section>
                     </div>
-                );
-            })()}
-            <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
-                <OfferedAppsSection />
-            </Suspense>
+                )}
+                <OffersReport className="mt-4" report={report} />
+                <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
+                    <OfferedAppsSection onPart={setApps} />
+                </Suspense>
+                <SaveBar
+                    count={draft.count + (apps?.count ?? 0)}
+                    saving={draft.saving || !!apps?.saving}
+                    blockedBy={(draft.count > 0 && catalog.remote.state !== 'known') || apps?.blocked ? say('stale') : undefined}
+                    unknown={unknown
+                        ? {
+                            held: (itemsUnknown && draft.held) || !!apps?.held,
+                            checking: catalog.reading || !!apps?.checking,
+                            onCheck: () => { void catalog.retry(); apps?.check(); },
+                        }
+                        : undefined}
+                    onSave={() => void save()}
+                    onDiscard={() => { setReport(null); draft.reset(); apps?.reset(); }}
+                />
+            </div>
             {/* alpha.128: the server's limits of site settings, every key. */}
             <div className="mt-6"><Suspense fallback={null}><ServerSettingLimits /></Suspense></div>
         </div>

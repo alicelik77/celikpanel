@@ -22,9 +22,9 @@ export const enLifecycleScreens = {
     'life.offer.notInstalled': '(no longer installed)',
     'life.offer.checking': 'Reading which versions customers are offered…',
     'life.offer.unknown': 'Which versions customers are offered could not be read. Nothing was changed. Try again.',
-    'life.offer.saving': 'Saving whether {name} {version} is offered to customers…',
-    'life.offer.failed': 'The change was not saved. Nothing else was changed; try again.',
-    'life.offer.lost': 'No answer came for this change. The list above was read again and shows what the server holds; change it again only if it is not what you wanted.',
+    'life.offer.failed': 'The server did not accept it.',
+    'life.offer.notSaved': 'Not saved: {what}. {reason}',
+    'life.offer.savedSome': 'Saved: {what}.',
     'life.offer.customerKept': '{name} {version} is no longer offered for new choices. Your site keeps it and keeps running; ask your administrator before moving it to another version.',
     'life.offer.adminKept': '{name} {version} is hidden from customers. This site keeps it and keeps running; its owner sees that it is no longer offered for new choices.',
     // ---- alpha.108 web ----

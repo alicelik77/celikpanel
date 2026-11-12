@@ -84,9 +84,23 @@ const plainQuestions = {
   // Discarding unsaved edits sends nothing.
   'components/AddonsPage.tsx': 1,
   'components/StoreCatalogAdmin.tsx': 2,
+  // alpha.132: closing an edit form or the file editor with unsaved changes,
+  // and opening the server's text of a file over unsaved changes.
+  'components/DomainFileManager.tsx': 2,
+  'components/MailAutoresponderDialog.tsx': 1,
+  'components/FTPLogins.tsx': 1,
+  'components/DomainCronManager.tsx': 1,
   // Installing a version past its support: the install then runs under the
   // component operation's own lock (OperationOverlay).
   'components/ServiceList.tsx': 1,
+  // alpha.132: giving up unsaved changes sends nothing: switching the PHP
+  // version or tab with unsaved extension switches, closing a plan form.
+  'components/PHPManagement.tsx': 1,
+  'components/PlanRights.tsx': 1,
+  // alpha.132 lab: offering an application is asked before anything is sent;
+  // the Offered tab then runs every change in its one progress window
+  // (followOperation in PlanRights.tsx).
+  'components/OfferedAppsSection.tsx': 1,
 };
 
 function calls(text, name) {

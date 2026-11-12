@@ -18,7 +18,7 @@ export const trNodeSandboxScreens: Record<NodeSandboxScreenKey, string> = {
     'nodesandbox.putBack': 'Kanıt başarısız olduğu için önceki korumada bırakıldı; önceki birimleriyle yeniden çalışıyorlar: {sites}. Site sahibi uygulamanın yalnız kendi portunu dinlemesini ve yalnız kendi klasörüne yazmasını sağlar; sonra yeniden taşıyın.',
     'nodesandbox.skipped': 'Taşınmadı, hiçbir şey değişmedi: {sites}.',
     'nodesandbox.edited': 'Sunucuda değiştirilmiş; olduğu gibi korunuyor ve taşınmıyor: {sites}. Taşımak için kendi ayarlarınızı birimin drop-in klasörüne alın (ya da sitenin yapılandırma sayfasında CelikPanel’in metnini geri koyun).',
-    'nodesandbox.shared': 'Ortak web hesabıyla çalıştıkları için henüz taşınamıyor: {sites}. Önce her sitenin Barındırma sekmesinde “Sitenin kendi kullanıcısıyla çalıştır”ı kullanın.',
+    'nodesandbox.shared': 'Ortak web hesabıyla çalıştıkları için henüz taşınamıyor: {sites}. Önce her sitenin Site bölümünde “Sitenin kendi kullanıcısıyla çalıştır”ı kullanın.',
     'nodesandbox.unknown': 'Site koruması sunucudan okunamadı. Bu sayfa açıldığında yeniden okunur.',
     'nodesandbox.busy': 'Node.js siteleri şu anda taşınıyor. Bu sayfa kendiliğinden güncellenir.',
     'nodesandbox.lost': 'Yanıt kayboldu. Düğmeye yeniden basın: aynı istek ilk yanıtı döndürür, hiçbir şeyi iki kez taşımaz.',

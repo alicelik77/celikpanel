@@ -6,7 +6,7 @@
 let published: string | null = null;
 
 /**
- * A page names what it shows now (a domain's tab: "domain.access"). Call it
+ * A page names what it shows now (a domain's section or part: "domain.files.access"). Call it
  * from an effect and return what it returns, so the topic goes with the page:
  * useEffect(() => publishGuideTopic(topic), [topic]).
  */

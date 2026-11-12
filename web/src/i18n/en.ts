@@ -87,6 +87,7 @@ import type { MailWorkScreenKey } from './screens/mailWork/en';
 import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
 import type { DbConfigScreenKey } from './screens/dbConfig/en';
 import type { PgLeftoversScreenKey } from './screens/pgLeftovers/en';
+import type { DomainSectionsScreenKey } from './screens/domainSections/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -164,7 +165,6 @@ export const en = {
     'recovery.failure.candidate_panel_startup_check_failed.recovered': "The new version's panel failed its start check before anything was switched on, so the server was returned to the previous version automatically. The previous version keeps running and nothing needs to be done on the server. When you report this, include the reason line shown for this update on the update page.",
     'recovery.failure.panel_start_unverified.pending': "The update was applied, but the new version's panel did not come up. The server owner should read the panel log on the server with sudo journalctl -u celikpanel-panel -n 50. Completion is retried automatically up to its limit; after that, the recovery log shows a one-time retry command. There is no supported return to the previous version from this point.",
     'recovery.failure.update_finishing_scheduler.pending': "The new version is installed and running. One final step, turning automatic certificate renewal back on, did not confirm on the first try, and the server is repeating it by itself. Nothing needs to be done.",
-    'app.tagline': 'Control Panel',
     'app.pageLoadFailed': 'This section could not be loaded. CelikPanel may have been updated while this tab was open.',
     'app.reload': 'Reload CelikPanel',
 
@@ -413,8 +413,6 @@ export const en = {
     // Plural by the count: '1 item', '{n} items' (alpha.92 Domains: "1 items total").
     'common.itemsTotalOne': '1 item',
     'common.itemsTotal': '{n} items',
-    'common.perPage': 'Entries per page',
-    'common.search': 'Search…',
     'common.remove': 'Remove',
     'common.home': 'Home',
     // "Not checked yet" is not "not installed". The panel says which of the
@@ -602,5 +600,6 @@ export type ScreenKey =
     | MailWorkScreenKey
     | FtpLoginsScreenKey
     | DbConfigScreenKey
-    | PgLeftoversScreenKey;
+    | PgLeftoversScreenKey
+    | DomainSectionsScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

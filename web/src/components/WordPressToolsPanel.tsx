@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, RefreshCw, Download } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -6,10 +6,16 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate } from './ui';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { useRemote, useRefreshEvery } from '../lib/remote';
-import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
+import { Guidance } from './kit/rows/Guidance';
+import { whoWord } from './kit/words';
+import { sendSiteTool } from '../lib/siteTool';
 import { AdminInstallLink } from './AdminInstallLink';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { forget, remember, remembered } from '../lib/requestProgress';
+import { answerWasLost } from '../lib/requestIdentity';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // WordPress tools of one site (alpha.118, docs/WORDPRESS-TOOLS.md): status,
 // verified updates with a backup first, the switch for automatic minor
@@ -80,31 +86,31 @@ function OperationGuidance({ op }: { op: WPOperation }) {
         const reason = op.kind === 'clone' && op.status !== 'queued'
             ? t('wpt.op.cloning', { target: op.target_domain ?? '' })
             : t(`wpt.op.${op.status}` as TranslationKey);
-        return <SiteToolGuidance tone="progress" reason={reason} who="nobody" resumes={t('wpt.op.runningResumes')} />;
+        return <Guidance tone="progress" title={reason} who={whoWord(t, 'nobody')} then={t('wpt.op.runningResumes')} />;
     }
     const backup = op.backup_name ? <p className="text-xs text-fg-muted">{t('wpt.op.backup', { backup: op.backup_name })}</p> : null;
     const coded = op.code ? t(`err.${op.code}` as TranslationKey) : '';
     const why = coded && coded !== `err.${op.code}` ? coded : detail;
     switch (op.status) {
         case 'applied':
-            return <SiteToolGuidance tone="success" reason={t('wpt.op.applied', { detail })}>{backup}</SiteToolGuidance>;
+            return <Guidance tone="success" title={t('wpt.op.applied', { detail })}>{backup}</Guidance>;
         case 'failed':
-            return <SiteToolGuidance tone="failure" reason={t('wpt.op.failed', { detail: why })} who="you" next={t('wpt.op.failedNext')}>{backup}</SiteToolGuidance>;
+            return <Guidance tone="failed" title={t('wpt.op.failed', { detail: why })} who={whoWord(t, 'you')} next={t('wpt.op.failedNext')}>{backup}</Guidance>;
         case 'rolled_back':
-            return <SiteToolGuidance tone="failure" reason={t('wpt.op.rolled_back', { detail })} who="you" next={t('wpt.op.rolledBackNext')}>{backup}</SiteToolGuidance>;
+            return <Guidance tone="failed" title={t('wpt.op.rolled_back', { detail })} who={whoWord(t, 'you')} next={t('wpt.op.rolledBackNext')}>{backup}</Guidance>;
         default:
             // alpha.127: a restore refused for a PostgreSQL prerequisite says
             // which one (its own coded sentence, the server administrator acts),
             // with the facts underneath; nothing of the backup was written.
             if (op.code?.startsWith('WORDPRESS_RESTORE_PG_') && coded && coded !== `err.${op.code}`) {
                 return (
-                    <SiteToolGuidance tone="failure" reason={coded} who="administrator" next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}>
+                    <Guidance tone="failed" title={coded} who={whoWord(t, 'administrator')} next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}>
                         {detail && <p className="text-xs text-fg-muted">{detail}</p>}
-                    </SiteToolGuidance>
+                    </Guidance>
                 );
             }
             return (
-                <SiteToolGuidance tone="unknown" reason={t('wpt.op.needs_review', { detail })} who="you"
+                <Guidance tone="unknown" title={t('wpt.op.needs_review', { detail })} who={whoWord(t, 'you')}
                     next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })} />
             );
     }
@@ -155,7 +161,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
 
     // Starts an update or a copy; answers the operation the server accepted
     // (its id, or '' when the answer named none), or null when it was refused.
-    const start = async (path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void): Promise<string | null> => {
+    const start = async (path: string, method: 'POST', body: unknown, done?: () => void): Promise<string | null> => {
         if (busy) return null;
         setBusy(true);
         setFailure(null);
@@ -253,7 +259,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
         }
     };
 
-    const startAndFollow = async (report: OperationReport, path: 'update' | 'clone', method: 'POST' | 'PUT', body: unknown, done?: () => void, target = '') => {
+    const startAndFollow = async (report: OperationReport, path: 'update' | 'clone', method: 'POST', body: unknown, done?: () => void, target = '') => {
         const since = Date.now();
         report.steps(wordpressSteps(t, path, 'start', since, null, false, target));
         const id = await start(path, method, body, done);
@@ -301,12 +307,12 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                     if (s.code === 'WORDPRESS_PHP_CLI_MISSING') {
                         // alpha.127: the administrator opens PHP-FPM's page, where the site's version is installed again.
                         return (
-                            <SiteToolGuidance tone="prerequisite" reason={t('wpt.phpMissing')} who="administrator" next={t('wpt.phpMissingNext')} resumes={t('wpt.phpMissingResumes')}>
+                            <Guidance tone="blocked" title={t('wpt.phpMissing')} who={whoWord(t, 'administrator')} next={t('wpt.phpMissingNext')} then={t('wpt.phpMissingResumes')}>
                                 <AdminInstallLink to="/components/php-fpm" label={t('adminNext.openPHPFPM')} />
-                            </SiteToolGuidance>
+                            </Guidance>
                         );
                     }
-                    if (!s.detected) return <SiteToolGuidance tone="prerequisite" reason={t('wpt.notDetected')} who="you" next={t('wpt.notDetectedNext')} />;
+                    if (!s.detected) return <Guidance tone="blocked" title={t('wpt.notDetected')} who={whoWord(t, 'you')} next={t('wpt.notDetectedNext')} />;
                     const latest = value.operations[0];
                     const locked = busy || stale || running;
                     const coreTarget = s.core_minor || s.core_update;
@@ -315,7 +321,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                         <div className="space-y-4">
                             {latest && <OperationGuidance op={latest} />}
                             <ErrorBanner error={failure} sentence="wpt.startFailed" />
-                            {!s.updates_checked && <SiteToolGuidance tone="unknown" reason={t('wpt.updatesNotChecked')} who="you" next={t('wpt.check')} />}
+                            {!s.updates_checked && <Guidance tone="unknown" title={t('wpt.updatesNotChecked')} who={whoWord(t, 'you')} next={t('wpt.check')} />}
 
                             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3">
                                 <div>
@@ -332,16 +338,9 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                     </Button>
                                 )}
                             </div>
-                            {value.database_linked === false && <SiteToolGuidance tone="prerequisite" reason={t('wpt.dbNotLinked')} />}
+                            {value.database_linked === false && <Guidance tone="blocked" title={t('wpt.dbNotLinked')} />}
 
-                            <label className="flex cursor-pointer items-start gap-3">
-                                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={value.auto_minor_core} disabled={busy || stale}
-                                    onChange={(e) => void start('auto-update', 'PUT', { minor_core: e.target.checked })} />
-                                <span>
-                                    <span className="block text-sm text-fg">{t('wpt.autoMinor')}</span>
-                                    <span className="block text-xs text-fg-subtle">{t('wpt.autoMinorHint')}</span>
-                                </span>
-                            </label>
+                            <AutoMinorSetting url={url} value={value} stale={stale} reading={state.reading} onSaved={() => state.retry()} />
 
                             <div>
                                 <h4 className="mb-2 text-sm font-semibold text-fg">{t('wpt.plugins')}</h4>
@@ -413,5 +412,63 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                 }}
             </RemoteGate>
         </section>
+    );
+}
+
+// alpha.132: automatic minor releases are a setting saved by Save, not by
+// ticking it (owner, 8 Nov 2026). The tick is a draft over the state last
+// read; the update and copy above stay actions.
+// Küçük sürümlerin kendiliğinden kurulması Kaydet ile kaydedilen bir ayardır.
+function AutoMinorSetting({ url, value, stale, reading, onSaved }: {
+    url: string; value: WPState; stale: boolean; reading: boolean; onSaved: () => Promise<unknown>;
+}) {
+    const { t } = useI18n();
+    const say = useSaveWords();
+    const known = useMemo(() => ({ auto_minor_core: value.auto_minor_core }), [value]);
+    const draft = useDraft(known);
+    const on = draft.values?.auto_minor_core ?? value.auto_minor_core;
+    const changed = draft.isChanged('auto_minor_core');
+    const save = () => void draft.save(async (changes) => {
+        let res: Response | null = null;
+        try {
+            res = await sendSiteTool(`${url}/auto-update`, 'PUT', { minor_core: changes.auto_minor_core });
+        } catch {
+            res = null;
+        }
+        if (!res || answerWasLost(res)) return 'unknown';
+        if (!res.ok) {
+            showToast('error', refusalText(await readApiError(res), t, 'wpt.autoMinorFailed'));
+            return 'refused';
+        }
+        showToast('success', t('wpt.autoMinorSaved'));
+        await onSaved();
+        return 'saved';
+    });
+    return (
+        <div className="rounded-lg border border-border px-3">
+            <label className={`-mx-3 flex cursor-pointer items-start gap-3 px-3 py-3 ${changed ? changedRowClass : ''}`}>
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={on} disabled={draft.saving}
+                    onChange={(e) => draft.set('auto_minor_core', e.target.checked)} />
+                <span>
+                    <span className="block text-sm text-fg">
+                        {t('wpt.autoMinor')}
+                        {changed && <ChangedMark switched={on} />}
+                    </span>
+                    <span className="block text-xs text-fg-subtle">{t('wpt.autoMinorHint')}</span>
+                </span>
+            </label>
+            {draft.isMoved('auto_minor_core') && draft.base && (
+                <ServerMovedNote value={say(draft.base.auto_minor_core ? 'on' : 'off')} onTake={() => draft.take('auto_minor_core')} />
+            )}
+            <SaveBar
+                className="-mx-3 mt-0 rounded-b-lg px-3"
+                count={draft.count}
+                saving={draft.saving}
+                blockedBy={stale ? say('stale') : undefined}
+                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: reading, onCheck: () => void onSaved() } : undefined}
+                onSave={save}
+                onDiscard={draft.reset}
+            />
+        </div>
     );
 }

@@ -9,14 +9,6 @@
 // EKRAN katalogu parçası "siteTools": WordPress araçları ve zararlı yazılım taraması.
 
 export const enSiteToolsScreens = {
-    // Guidance block: the current reason first, then who acts, the next step and how it goes on.
-    'wpt.guide.who': 'Who acts',
-    'wpt.guide.next': 'Next',
-    'wpt.guide.resumes': 'How it goes on',
-    'wpt.who.you': 'You',
-    'wpt.who.administrator': 'The server administrator',
-    'wpt.who.nobody': 'Nobody — you do not need to do anything',
-
     'wpt.title': 'WordPress tools',
     'wpt.checking': 'Reading the WordPress site…',
     'wpt.unknown': 'The WordPress site could not be read now. Nothing was changed; read it again.',
@@ -25,7 +17,7 @@ export const enSiteToolsScreens = {
     'wpt.notPHP': 'WordPress tools work on PHP sites only.',
     'wpt.phpMissing': 'The PHP command line for this site’s PHP version is not installed, so WordPress cannot be read.',
     'wpt.phpMissingNext': 'The administrator installs the PHP version again from Components (it brings its command line).',
-    'wpt.phpMissingResumes': 'Open this tab again afterwards.',
+    'wpt.phpMissingResumes': 'Open this page again afterwards.',
     'wpt.core': 'WordPress {version}',
     'wpt.coreLatest': 'Up to date',
     'wpt.coreUpdate': 'WordPress {version} is available',
@@ -41,6 +33,8 @@ export const enSiteToolsScreens = {
     'wpt.check': 'Check again',
     'wpt.autoMinor': 'Install security and maintenance releases of WordPress automatically',
     'wpt.autoMinorHint': 'Once a day; a backup is made first and restored if the update fails. Major releases are always your choice.',
+    'wpt.autoMinorSaved': 'The automatic update setting was saved.',
+    'wpt.autoMinorFailed': 'The automatic update setting was not saved.',
     'wpt.plugins': 'Plugins',
     'wpt.themes': 'Themes',
     'wpt.none': 'None',
@@ -165,6 +159,8 @@ export const enSiteToolsScreens = {
     'mscan.schedule': 'Scan every site weekly (all subscriptions, at low priority)',
     'mscan.scheduleHint': 'Only for the administrator. Customers, their resellers and administrators are told when something is found.',
     'mscan.scheduleLast': 'Last weekly round: {when}',
+    'mscan.scheduleSaved': 'The weekly scan setting was saved.',
+    'mscan.scheduleFailed': 'The weekly scan setting was not saved.',
 
     'err.MALWARE_SCAN_ALREADY_QUEUED': 'A scan of this site is already waiting or running, so no second one was queued. This screen shows its progress.',
     'err.MALWARE_DELETE_CONFIRMATION_REQUIRED': 'Deleting needs an explicit confirmation naming the file. Nothing was deleted.',

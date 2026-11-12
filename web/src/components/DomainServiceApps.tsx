@@ -18,6 +18,7 @@ import { AdminInstallLink } from './AdminInstallLink';
 import { ServiceAppRisk } from './ServiceAppRisk';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
+import { confirmAction } from '../lib/confirmAction';
 
 // The domain's "AI & automation" tab (alpha.118, docs/AI-APPS.md): the apps
 // the administrator offers, each with its risk summary; the installed app with
@@ -330,7 +331,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
     const [logs, setLogs] = useState<{ install: boolean; lines: string[] } | null>(null);
     const [logsFailure, setLogsFailure] = useState<ApiError | null>(null);
     const [keysOpen, setKeysOpen] = useState(false);
-    const [removeOpen, setRemoveOpen] = useState(false);
+    const [removeID, setRemoveID] = useState(newOperationID);
     const [opID, setOpID] = useState(newOperationID);
     const app = view.apps.find((a) => a.id === install.app_id);
 
@@ -340,6 +341,27 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
         setActing('');
         if (await after(res, done)) showToast('success', t('svcapps.actionDone'));
     };
+    // Removing the app asks in the product's own confirmation (alpha.132; it
+    // was a dialogue of its own): what stays, the heavier choice of deleting
+    // the app's data too, and for that choice the domain typed out. A lost
+    // answer keeps the identity, so asking again is the same removal.
+    // Uygulamayı kaldırmak ürünün kendi onay penceresinde sorulur; verileri de
+    // silmek için alan adı yazılır.
+    const remove = () => void confirmAction({
+        title: t('svcapps.uninstallTitle', { name: install.name, domain: view.domain }),
+        message: t('svcapps.uninstallKeep'),
+        tone: 'danger',
+        confirmLabel: t('svcapps.uninstall'),
+        option: {
+            label: t('svcapps.removeData'),
+            typedName: { value: view.domain, label: t('svcapps.confirmDomain', { domain: view.domain }), ignoreCase: true },
+        },
+        action: async (_report, answer) => {
+            const { res } = await sendJSON(base + '/uninstall', 'POST', { operation_id: removeID, remove_data: answer.option, confirm_domain: answer.option ? answer.typed : '' });
+            if (res) setRemoveID(newOperationID());
+            await after(res);
+        },
+    });
     const readLogs = async (installLog: boolean) => {
         setActing(installLog ? 'installLog' : 'logs');
         setLogsFailure(null);
@@ -404,7 +426,7 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                 {retryKind === 'update' && (
                     <Button icon={RotateCw} loading={acting === 'update'} disabled={!!acting} onClick={() => void act('/update', { operation_id: opID }, 'update', () => setOpID(newOperationID()))}>{t('svcapps.op.retry')}</Button>
                 )}
-                <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={() => setRemoveOpen(true)}>{t('svcapps.uninstall')}</Button>
+                <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('svcapps.uninstall')}</Button>
             </div>
             <p className="text-xs text-fg-subtle">{t('svcapps.independent', { unit: install.unit, folder: install.folder })}</p>
             <ErrorBanner error={logsFailure} />
@@ -415,7 +437,6 @@ function InstalledApp({ view, install, base, after, onReinstall }: {
                 </div>
             )}
             {keysOpen && app && <KeysDialog app={app} base={base} onClose={() => setKeysOpen(false)} after={after} />}
-            {removeOpen && <RemoveDialog install={install} domain={view.domain} base={base} onClose={() => setRemoveOpen(false)} after={after} />}
         </div>
     );
 }
@@ -465,40 +486,6 @@ function KeysDialog({ app, base, onClose, after }: { app: DomainServiceAppEntry;
                     </Field>
                 )}
                 <p className="text-xs text-fg-subtle">{t('svcapps.keyHint')}</p>
-            </div>
-        </Dialog>
-    );
-}
-
-function RemoveDialog({ install, domain, base, onClose, after }: { install: ServiceAppInstall; domain: string; base: string; onClose: () => void; after: After }) {
-    const { t } = useI18n();
-    const [removeData, setRemoveData] = useState(false);
-    const [typed, setTyped] = useState('');
-    const [busy, setBusy] = useState(false);
-    const [operationID] = useState(newOperationID);
-    const ready = !removeData || typed.trim().toLowerCase() === domain.toLowerCase();
-    const submit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!ready) return;
-        setBusy(true);
-        const { res } = await sendJSON(base + '/uninstall', 'POST', { operation_id: operationID, remove_data: removeData, confirm_domain: typed });
-        setBusy(false);
-        if (await after(res)) onClose();
-    };
-    return (
-        <Dialog id="svcapps-remove" tone="danger" title={t('svcapps.uninstallTitle', { name: install.name, domain })} icon={Trash2} busy={busy} onDismiss={onClose} onSubmit={submit} noValidate
-            actions={<><Button type="button" onClick={onClose} disabled={busy}>{t('common.cancel')}</Button><Button type="submit" variant="danger" loading={busy} disabled={!ready}>{t('svcapps.uninstall')}</Button></>}>
-            <div className="space-y-3 text-sm">
-                <p className="text-fg-muted">{t('svcapps.uninstallKeep')}</p>
-                <label className="flex items-start gap-2 text-fg">
-                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={removeData} onChange={(e) => setRemoveData(e.target.checked)} />
-                    {t('svcapps.removeData')}
-                </label>
-                {removeData && (
-                    <Field label={t('svcapps.confirmDomain', { domain })} htmlFor="svcapps-confirm-domain">
-                        <input id="svcapps-confirm-domain" className={inputClass} autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
-                    </Field>
-                )}
             </div>
         </Dialog>
     );

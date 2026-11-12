@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { matchRoute, type RouteParams } from './router-core';
 import { replaceRouterHistoryURL } from './router-history';
+import { askToLeave } from './components/kit/save/leaveAsker';
 
 export { matchRoute } from './router-core';
 
@@ -98,6 +99,12 @@ export function replaceCurrentRouterURL(to: string): boolean {
 
 export function BrowserRouter({ children }: { children: ReactNode }) {
   const historyIndexRef = useRef(0);
+  // The browser was sent back to this page's entry while the person is asked
+  // about unsaved changes: the popstate of that return is not a new request.
+  // Tarayıcı, kaydedilmemiş değişiklik sorulurken bu sayfanın girdisine geri
+  // gönderildi: o dönüşün popstate'i yeni bir istek değildir.
+  const returningRef = useRef(false);
+  const navigateRef = useRef<NavigateFunction>(() => false);
   const acceptedEntryRef = useRef({
     state: window.history.state,
     url: currentBrowserURL(),
@@ -126,6 +133,32 @@ export function BrowserRouter({ children }: { children: ReactNode }) {
         }
         return;
       }
+      if (returningRef.current) {
+        returningRef.current = false;
+        return;
+      }
+      // Unsaved changes on this page (alpha.132): the browser goes back to
+      // this page's entry, the panel's own dialog asks, and only "leave"
+      // moves on. A running operation's blocker above refuses without asking.
+      // Bu sayfada kaydedilmemiş değişiklik: tarayıcı bu sayfanın girdisine
+      // döner, panelin kendi penceresi sorar; yalnız "çık" ilerletir.
+      const asking = askToLeave();
+      if (asking) {
+        const url = currentBrowserURL();
+        const away = target && target.index !== historyIndexRef.current ? target.index - historyIndexRef.current : 0;
+        if (away) {
+          returningRef.current = true;
+          window.history.go(-away);
+        } else {
+          window.history.replaceState(acceptedEntryRef.current.state, '', acceptedEntryRef.current.url);
+        }
+        void asking.then((leave) => {
+          if (!leave) return;
+          if (away) window.history.go(away);
+          else navigateRef.current(url);
+        });
+        return;
+      }
       if (target) historyIndexRef.current = target.index;
       acceptedEntryRef.current = {
         state: window.history.state,
@@ -144,6 +177,14 @@ export function BrowserRouter({ children }: { children: ReactNode }) {
       throw new Error('cross-origin navigation is not allowed');
     }
     const next = `${target.pathname}${target.search}${target.hash}`;
+    // Leaving a page with unsaved changes asks first, in the panel's own
+    // dialog; "leave" navigates, "stay" does nothing.
+    // Kaydedilmemiş değişiklikli sayfadan çıkmadan önce panelin penceresi sorar.
+    const asking = next === currentBrowserURL() ? null : askToLeave();
+    if (asking) {
+      void asking.then((leave) => { if (leave) navigateRef.current(to, options); });
+      return false;
+    }
     const index = options.replace ? historyIndexRef.current : historyIndexRef.current + 1;
     const state = wrappedHistoryState(index, options.state ?? null);
     if (options.replace) window.history.replaceState(state, '', next);
@@ -153,6 +194,7 @@ export function BrowserRouter({ children }: { children: ReactNode }) {
     setLocation(browserLocation());
     return true;
   }, []);
+  navigateRef.current = navigate;
 
   const replaceCurrentURL = useCallback<CurrentURLReplacer>((to) => {
     const replaced = replaceRouterHistoryURL({

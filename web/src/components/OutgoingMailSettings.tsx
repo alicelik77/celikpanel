@@ -1,20 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useMailOutgoingWords } from '../i18n/mailOutgoing';
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction } from '../lib/confirmAction';
-import { refreshRemote, useRemote } from '../lib/remote';
+import { lastKnown, refreshRemote, useRemote } from '../lib/remote';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { useNavigate } from '../router';
 import { AdminInstallLink } from './AdminInstallLink';
 import { Button, RemoteGate, inputClass } from './ui';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // The administrator's outgoing mail limits (alpha.128, gap G1). The state
 // comes first, with its fix beside it (install the limiter, the owner's file
 // kept, the reason a save did not take); then the settings; then who is
-// stopped for security and who sent mail. Save runs on the server with its
-// real steps.
+// stopped for security and who sent mail. The settings are a draft
+// (alpha.132): a changed field is marked, the save bar's Save asks and then
+// runs on the server with its real steps, Discard puts the server's values back.
 //
 // Yöneticinin giden posta sınırları: önce durum ve yanındaki çözüm, sonra
 // ayarlar, sonra güvenlik için durdurulanlar ve kimin gönderdiği.
@@ -108,13 +112,13 @@ function stateWords(view: AdminView): StateWords {
     return { tone: 'warn', key: 'mout.state.pending' };
 }
 
-function NumberField({ label, value, onChange, min = 0, max = 1000000, hint }: {
-    label: string; value: number; onChange: (n: number) => void; min?: number; max?: number; hint?: string;
+function NumberField({ label, value, onChange, min = 0, max = 1000000, hint, changed, disabled }: {
+    label: string; value: number; onChange: (n: number) => void; min?: number; max?: number; hint?: string; changed?: boolean; disabled?: boolean;
 }) {
     return (
-        <label className="block text-sm">
-            <span className="mb-1 block text-xs text-fg-muted">{label}</span>
-            <input type="number" min={min} max={max} value={value}
+        <label className={`block rounded-r text-sm ${changed ? `${changedRowClass} -ml-2 pl-2` : ''}`}>
+            <span className="mb-1 block text-xs text-fg-muted">{label}{changed && <ChangedMark />}</span>
+            <input type="number" min={min} max={max} value={value} disabled={disabled}
                 onChange={(event) => onChange(Math.max(min, Math.min(max, parseInt(event.target.value, 10) || 0)))}
                 className={inputClass} />
             {hint && <span className="mt-1 block text-xs text-fg-subtle">{hint}</span>}
@@ -126,24 +130,23 @@ export function OutgoingMailSettings() {
     const { t, locale } = useMailOutgoingWords();
     const navigate = useNavigate();
     const read = useRemote(MAIL_OUTGOING_URL, decodeView);
-    const [draft, setDraft] = useState<Settings | null>(null);
+    const say = useSaveWords();
+    const draft = useDraft<Settings>(lastKnown(read.remote)?.value.settings);
     const [days, setDays] = useState<1 | 7 | 30>(1);
     const report = useRemote(`${REPORT_URL}?days=${days}`, decodeReport);
-    const known = read.remote.state === 'known' ? read.remote.value : null;
-    useEffect(() => {
-        if (known && !draft) setDraft(known.settings);
-    }, [known, draft]);
-    const set = <K extends keyof Settings>(key: K, value: Settings[K]) => setDraft((d) => (d ? { ...d, [key]: value } : d));
+    const set = <K extends keyof Settings>(key: K, value: Settings[K]) => draft.set(key, value);
     const time = (text: string) => {
         const at = Date.parse(text.includes('T') ? text : `${text.replace(' ', 'T')}Z`);
         return Number.isFinite(at) ? new Date(at).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' }) : text;
     };
 
-    const save = async () => {
-        if (!draft) return;
+    // Save asks (turning the limits on or off is a server change), then runs
+    // with its real steps. A "no" sends nothing and keeps the changes.
+    const save = () => void draft.save(async (_changes, values) => {
+        const end: { outcome: 'saved' | 'refused' | 'unknown' } = { outcome: 'refused' };
         await confirmAction({
             title: t('mout.title'),
-            message: draft.enabled ? t('mout.confirmOn') : t('mout.confirmOff'),
+            message: values.enabled ? t('mout.confirmOn') : t('mout.confirmOff'),
             confirmLabel: t('mout.save'),
             progressTitle: t('mout.progressTitle'),
             action: async (report) => {
@@ -152,12 +155,15 @@ export function OutgoingMailSettings() {
                         (headers) => fetch(MAIL_OUTGOING_URL, {
                             method: 'POST',
                             headers: { ...headers, 'Content-Type': 'application/json' },
-                            body: JSON.stringify(draft),
+                            body: JSON.stringify(values),
                         }));
                     if (!res.ok) return { state: 'failed', reason: apiErrorText(await readApiError(res), t) };
                     const answer = await res.json() as { unknown?: string; result?: { applied?: boolean; code?: string; error?: string } };
+                    // The settings are stored once the server answered; whether the
+                    // limiter took them is said in the window and in the state above.
+                    end.outcome = 'saved';
                     if (answer.unknown) return { state: 'unknown', reason: t('mout.state.unknown') };
-                    if (!draft.enabled) return { state: 'done', message: t('mout.savedOff') };
+                    if (!values.enabled) return { state: 'done', message: t('mout.savedOff') };
                     if (answer.result?.applied) return { state: 'done', message: t('mout.done') };
                     if (answer.result?.code === 'OUTGOING_MAIL_NOT_INSTALLED') {
                         return { state: 'blocked', reason: t('mout.state.notInstalled'), fix: { label: t('mout.state.install'), run: () => navigate('/components?component=postfwd&install=') } };
@@ -165,13 +171,17 @@ export function OutgoingMailSettings() {
                     if (answer.result?.code === 'OUTGOING_MAIL_BUSY') return { state: 'blocked', reason: t('mout.state.busy') };
                     return { state: 'failed', reason: t('mout.state.failed', { detail: answer.result?.error ?? '' }) };
                 } catch {
+                    end.outcome = 'unknown';
                     return { state: 'unknown', reason: t('common.resultUnknown') };
                 } finally {
                     refreshRemote(MAIL_OUTGOING_URL);
                 }
             },
         });
-    };
+        if (end.outcome === 'saved') await read.retry();
+        return end.outcome;
+    });
+    const values = draft.values;
 
     return (
         <section className="mt-5 rounded-xl border border-border bg-surface p-5" data-outgoing-settings>
@@ -208,33 +218,47 @@ export function OutgoingMailSettings() {
                                     <p className="mt-2 text-xs text-fg-muted">{t('mout.paused.next')}</p>
                                 </div>
                             )}
-                            {draft && (
+                            {values && (
                                 <>
-                                    <label className="flex min-h-[1.75rem] items-center gap-2 text-sm text-fg">
-                                        <input type="checkbox" className="h-4 w-4" checked={draft.enabled} onChange={(event) => set('enabled', event.target.checked)} />
+                                    <label className={`flex min-h-[1.75rem] items-center gap-2 rounded-r text-sm text-fg ${draft.isChanged('enabled') ? `${changedRowClass} -ml-2 pl-2` : ''}`}>
+                                        <input type="checkbox" className="h-4 w-4" checked={values.enabled} disabled={draft.saving} onChange={(event) => set('enabled', event.target.checked)} />
                                         {t('mout.enabled')}
+                                        {draft.isChanged('enabled') && <ChangedMark switched={values.enabled} />}
                                     </label>
                                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                        <NumberField label={`${t('mout.mailbox')} (${t('mout.perHour')})`} value={draft.mailbox_per_hour} onChange={(n) => set('mailbox_per_hour', n)} />
-                                        <NumberField label={`${t('mout.domain')} (${t('mout.perHour')})`} value={draft.domain_per_hour} onChange={(n) => set('domain_per_hour', n)} />
-                                        <NumberField label={`${t('mout.subscription')} (${t('mout.perHour')})`} value={draft.subscription_per_hour} onChange={(n) => set('subscription_per_hour', n)} />
+                                        <NumberField label={`${t('mout.mailbox')} (${t('mout.perHour')})`} value={values.mailbox_per_hour} changed={draft.isChanged('mailbox_per_hour')} disabled={draft.saving} onChange={(n) => set('mailbox_per_hour', n)} />
+                                        <NumberField label={`${t('mout.domain')} (${t('mout.perHour')})`} value={values.domain_per_hour} changed={draft.isChanged('domain_per_hour')} disabled={draft.saving} onChange={(n) => set('domain_per_hour', n)} />
+                                        <NumberField label={`${t('mout.subscription')} (${t('mout.perHour')})`} value={values.subscription_per_hour} changed={draft.isChanged('subscription_per_hour')} disabled={draft.saving} onChange={(n) => set('subscription_per_hour', n)} />
                                     </div>
                                     <p className="mt-1 text-xs text-fg-subtle">{t('mout.zeroHint')}</p>
                                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                        <NumberField label={`${t('mout.newMailbox')} (${t('mout.perHour')})`} value={draft.new_mailbox_per_hour} onChange={(n) => set('new_mailbox_per_hour', n)} />
-                                        <NumberField label={t('mout.newHours')} value={draft.new_mailbox_hours} max={720} onChange={(n) => set('new_mailbox_hours', n)} />
+                                        <NumberField label={`${t('mout.newMailbox')} (${t('mout.perHour')})`} value={values.new_mailbox_per_hour} changed={draft.isChanged('new_mailbox_per_hour')} disabled={draft.saving} onChange={(n) => set('new_mailbox_per_hour', n)} />
+                                        <NumberField label={t('mout.newHours')} value={values.new_mailbox_hours} changed={draft.isChanged('new_mailbox_hours')} disabled={draft.saving} max={720} onChange={(n) => set('new_mailbox_hours', n)} />
                                     </div>
                                     <h4 className="mt-4 text-sm font-medium text-fg">{t('mout.spike')}</h4>
                                     <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                        <NumberField label={t('mout.spikeFactor')} value={draft.spike_factor} min={2} max={100} onChange={(n) => set('spike_factor', n)} />
-                                        <NumberField label={t('mout.spikeMinimum')} value={draft.spike_minimum} min={10} onChange={(n) => set('spike_minimum', n)} />
-                                        <NumberField label={t('mout.refusalPause')} value={draft.refusal_pause} onChange={(n) => set('refusal_pause', n)} />
+                                        <NumberField label={t('mout.spikeFactor')} value={values.spike_factor} changed={draft.isChanged('spike_factor')} disabled={draft.saving} min={2} max={100} onChange={(n) => set('spike_factor', n)} />
+                                        <NumberField label={t('mout.spikeMinimum')} value={values.spike_minimum} changed={draft.isChanged('spike_minimum')} disabled={draft.saving} min={10} onChange={(n) => set('spike_minimum', n)} />
+                                        <NumberField label={t('mout.refusalPause')} value={values.refusal_pause} changed={draft.isChanged('refusal_pause')} disabled={draft.saving} onChange={(n) => set('refusal_pause', n)} />
                                     </div>
                                     <p className="mt-1 max-w-[75ch] text-xs text-fg-subtle">{t('mout.spikeHint')}</p>
                                     <p className="mt-1 max-w-[75ch] text-xs text-fg-subtle">{t('mout.counters')} {t('mout.ubuntu')}</p>
-                                    <div className="mt-4">
-                                        <Button variant="primary" disabled={stale} onClick={() => void save()}>{t('mout.save')}</Button>
-                                    </div>
+                                    {draft.base && (Object.keys(draft.base) as (keyof Settings)[]).filter((key) => draft.isMoved(key)).map((key) => (
+                                        <ServerMovedNote
+                                            key={key}
+                                            value={typeof draft.base![key] === 'boolean' ? say(draft.base![key] ? 'on' : 'off') : String(draft.base![key])}
+                                            onTake={() => draft.take(key)}
+                                        />
+                                    ))}
+                                    <SaveBar
+                                        className="-mx-5 px-5"
+                                        count={draft.count}
+                                        saving={draft.saving}
+                                        blockedBy={stale ? say('stale') : undefined}
+                                        unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: read.reading, onCheck: () => void read.retry() } : undefined}
+                                        onSave={save}
+                                        onDiscard={draft.reset}
+                                    />
                                 </>
                             )}
                         </>

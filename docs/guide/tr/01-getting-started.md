@@ -42,7 +42,7 @@ Planınızda nelerin olduğunu, örneğin SSH kullanıp kullanamayacağınızı 
 
 - **Yönetici:** önce **Sunucu kurulumu** sayfasını bitirin, **Bileşenler** sayfasına bakın, sonra ilk alan adını ekleyin. Sunucu kurulumu ekranı neyin eksik kaldığını ve nedenini söyler.
 - **Bayi:** ilk planınızı ve ilk müşterinizi oluşturmak için **Kullanıcılar** sayfasını açın.
-- **Müşteri:** **Alan Adları** sayfasını açıp alan adınızı seçin ve sekmelerine bakın: web sitesi için **Barındırma**, posta kutuları için **E-posta**, sitenin dosyaları için **Dosyalar**.
+- **Müşteri:** **Alan Adları** sayfasını açıp alan adınızı seçin ve bölümlerine bakın: web sitesi için **Site**, posta kutuları için **E-posta**, sitenin dosyaları için **Dosyalar**.
 - **Kullanıcı:** **Alan Adları** sayfasını açın. Ekibinizin size açtığı alan adlarını orada görürsünüz.
 
 ## Hesabınız {#your-account}

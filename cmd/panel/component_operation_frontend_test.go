@@ -176,7 +176,10 @@ func TestComponentOperationActiveDiscoveryUnlocksOnlyVerifiedAbsence(t *testing.
 func TestComponentOperationInitialDiscoveryLocksMutationsWithoutBlockingPage(t *testing.T) {
 	source := componentOperationSource(t)
 	for _, required := range []string{
-		"() => initialSession.operation === null && initialSession.recoveryMarker === null",
+		// alpha.132: only the administrator discovers a running operation (others get 403).
+		"() => discovers && initialSession.operation === null && initialSession.recoveryMarker === null",
+		"const discovers = useAuth().role === 'admin';",
+		"if (!discovers) return undefined;",
 		"const interactionBlocksRef = useRef(new Map<object, InteractionBlockView>());",
 		"const acquireInteractionBlock = useCallback((view: InteractionBlockView): InteractionBlockLease => {",
 		"interactionBlocksRef.current.set(id, view);",

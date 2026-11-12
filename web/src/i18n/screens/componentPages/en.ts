@@ -116,7 +116,7 @@ export const enComponentPagesScreens = {
     'pdns.step.port': 'Free port 53 (stub listener)',
     'pdns.step.restart': 'Restart service',
     'pdns.managed': 'Configured by the panel',
-    'pdns.managedDesc': 'There are deliberately no hand-edited PowerDNS settings: the panel writes and maintains the configuration itself (SQLite backend, port 53, DNSSEC). The actual DNS work — records — is managed per domain on its DNS tab.',
+    'pdns.managedDesc': 'There are deliberately no hand-edited PowerDNS settings: the panel writes and maintains the configuration itself (SQLite backend, port 53, DNSSEC). The actual DNS work — records — is managed per domain in its Domain & DNS section.',
     'pdns.goDomainRecords': 'Manage DNS records',
     'pdns.readOnly': 'read-only',
     'pdns.readOnlyNote': 'The panel owns this file — manual edits would be overwritten on the next repair or sync.',

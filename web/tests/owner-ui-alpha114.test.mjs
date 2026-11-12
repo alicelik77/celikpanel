@@ -60,7 +60,8 @@ test('install buttons lead to the right place, in the panel, without a page load
   const dashboard = source('components/Dashboard.tsx');
   assert.match(dashboard, /to=\{mailCardTarget\(domains\)\}/);
   assert.match(dashboard, /\?tab=mail/);
-  assert.match(source('components/DomainDetail.tsx'), /requestedTab === 'mail'/);
+  // alpha.132: ?tab=mail opens the Mail section (domain/sections.ts).
+  assert.match(source('components/domain/sections.ts'), /mail: \{ section: 'mail' \},/);
 });
 
 test('the webmail cleanup link always ends in a dialog that says why, or a sentence', () => {

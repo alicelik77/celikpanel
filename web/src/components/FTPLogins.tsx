@@ -12,6 +12,8 @@ import { passwordAcceptable } from '../lib/passwordPolicy';
 import { confirmAction, type OperationEnd, type OperationReport } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { AdminInstallLink } from './AdminInstallLink';
+import { useLeaveGuard } from './kit/save/leaveGuard';
+import { useSaveWords } from './kit/save/words';
 
 // A site's other FTP/SFTP logins (alpha.128, gap G16, docs/FTP-LOGINS.md).
 // Each login sees one folder of the site and uploads as the site. The server
@@ -124,9 +126,14 @@ function Notice({ tone, children }: { tone: 'warning' | 'danger' | 'info'; child
 }
 
 const LOGIN_NAME = /^[a-z][a-z0-9_-]{1,30}[a-z0-9]$/;
+const folderShown = (f: string) => (f === '/' ? '/' : f.replace(/^\//, ''));
+// A folder as the server names it, however it was typed.
+// Bir klasör, nasıl yazılırsa yazılsın sunucunun adlandırdığı gibi.
+const folderPath = (f: string) => '/' + f.trim().replace(/^\/+/, '');
 
 export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: boolean }) {
     const { t } = useI18n();
+    const say = useSaveWords();
     const navigate = useNavigate();
     const url = `/api/v1/domains/${domainId}/access/logins`;
     const logins = useRemote(url, decodeLogins);
@@ -134,9 +141,43 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
     const [name, setName] = useState('');
     const [folder, setFolder] = useState('public_html');
     const [password, setPassword] = useState('');
+    // alpha.132: a login's change form. Save is on only when the folder or the
+    // password differs from what the form opened with and both can be saved;
+    // what is missing is named beside it. Discard closes it; closing it or
+    // opening another login's form with changes asks first, and so does
+    // leaving the page.
+    // Bir girişin değişiklik formu. Kaydet yalnız klasör ya da parola
+    // değiştiyse ve kaydedilebilirse açıktır; kapatmak ve çıkmak sorar.
     const [editing, setEditing] = useState<string | null>(null);
+    const [editFrom, setEditFrom] = useState('');
     const [editFolder, setEditFolder] = useState('');
     const [editPassword, setEditPassword] = useState('');
+    const editChanged = editing !== null && (folderPath(editFolder) !== folderPath(editFrom) || editPassword !== '');
+    useLeaveGuard(editChanged ? 'some' : 0);
+    const closeEdit = () => {
+        setEditing(null);
+        setEditPassword('');
+    };
+    // Opens a login's form, or closes the open one; unsaved changes ask first.
+    // Bir girişin formunu açar ya da açık olanı kapatır; kaydedilmemiş değişiklik önce sorar.
+    const toggleEdit = async (row: LoginRow) => {
+        if (editChanged && !(await confirmAction({
+            title: t('domain.unsaved.title'),
+            lost: [t('domain.unsaved.lost')],
+            kept: [say('leaveKept')],
+            confirmLabel: t('domain.unsaved.close'),
+            cancelLabel: t('domain.unsaved.back'),
+            tone: 'danger',
+        }))) return;
+        if (editing === row.login) {
+            closeEdit();
+            return;
+        }
+        setEditing(row.login);
+        setEditFrom(folderShown(row.folder));
+        setEditFolder(folderShown(row.folder));
+        setEditPassword('');
+    };
     const [busy, setBusy] = useState(false);
     const [problem, setProblem] = useState('');
     const [warnings, setWarnings] = useState<string[]>([]);
@@ -239,7 +280,6 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                 const full = view.ceiling !== null && view.used >= view.ceiling;
                 const nameOK = LOGIN_NAME.test(name) && name.includes('-') && !name.includes('--');
                 const passwordOK = password !== '' && passwordAcceptable(password, 'file_access');
-                const folderShown = (f: string) => (f === '/' ? '/' : f.replace(/^\//, ''));
 
                 const add = () => {
                     const shownFolder = folderShown('/' + folder.replace(/^\/+/, ''));
@@ -260,10 +300,15 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                         },
                     });
                 };
+                const folderMissing = editFolder.trim() === '';
+                const passwordWeak = editPassword !== '' && !passwordAcceptable(editPassword, 'file_access');
+                const editReason = !editChanged ? t('domain.unsaved.none')
+                    : folderMissing ? t('ftpLogins.folderMissing')
+                        : passwordWeak ? t('ftpLogins.passwordWeak') : say('pendingSome');
                 const change = (login: string, current: string) => {
                     const body: Record<string, string> = {};
                     const nextFolder = editFolder.trim();
-                    if (nextFolder && '/' + nextFolder.replace(/^\/+/, '') !== current) body.folder = nextFolder;
+                    if (nextFolder && folderPath(nextFolder) !== current) body.folder = nextFolder;
                     if (editPassword) body.password = editPassword;
                     if (Object.keys(body).length === 0) return;
                     void confirmAction({
@@ -273,10 +318,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                         progressTitle: t('ftpLogins.progressChange', { login }),
                         action: async (report) => {
                             const end = await run(report, `ftplogin.change.${domainId}.${login}`, 'PUT', `${url}/${login}`, body, t('ftpLogins.changed', { login }));
-                            if (end.state === 'done') {
-                                setEditing(null);
-                                setEditPassword('');
-                            }
+                            if (end.state === 'done') closeEdit();
                             return end;
                         },
                     });
@@ -345,7 +387,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {row.state !== 'unfinished' && row.state !== 'not_on_server' && (
-                                                        <Button disabled={!canOpen} onClick={() => { setEditing(open ? null : row.login); setEditFolder(folderShown(row.folder)); setEditPassword(''); }}>
+                                                        <Button disabled={!canOpen} onClick={() => void toggleEdit(row)}>
                                                             {t('ftpLogins.change')}
                                                         </Button>
                                                     )}
@@ -365,12 +407,16 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                                                         <span>{t('ftpLogins.newPassword')}</span>
                                                         <PasswordInput field="file_access" value={editPassword} maxLength={128} disabled={!canOpen} onChange={setEditPassword} />
                                                     </label>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        <Button variant="primary" disabled={!canOpen || (editPassword !== '' && !passwordAcceptable(editPassword, 'file_access'))}
-                                                            onClick={() => change(row.login, row.folder)}>
-                                                            {t('ftpLogins.saveChange')}
+                                                    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                                                        <p data-form-reason="" aria-live="polite"
+                                                            className={`min-w-0 basis-full text-sm sm:mr-auto sm:basis-0 sm:grow ${editChanged && (folderMissing || passwordWeak) ? 'text-danger' : 'text-fg-muted'}`}>
+                                                            {editReason}
+                                                        </p>
+                                                        <Button onClick={closeEdit} data-form-discard="">{say('discard')}</Button>
+                                                        <Button variant="primary" disabled={!canOpen || !editChanged || folderMissing || passwordWeak}
+                                                            onClick={() => change(row.login, row.folder)} data-form-save="">
+                                                            {say('save')}
                                                         </Button>
-                                                        <Button onClick={() => setEditing(null)}>{t('ftpLogins.cancel')}</Button>
                                                     </div>
                                                 </div>
                                             )}

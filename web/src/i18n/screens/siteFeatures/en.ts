@@ -18,7 +18,7 @@ export const enSiteFeaturesScreens = {
     'siteFeatures.protect.checking': 'Reading the protected folders from the server…',
     'siteFeatures.protect.unknown': 'The protected folders could not be read just now. Nothing was changed. Try again.',
     'siteFeatures.protect.unavailable': 'Protected folders are available for PHP and static sites. This site runs another kind of project, so there is nothing to set here.',
-    'siteFeatures.protect.httpNote': 'This site also answers over plain HTTP, where a user name and password travel unencrypted. Turn on the HTTPS redirect in the SSL/TLS settings so visitors always sign in over HTTPS.',
+    'siteFeatures.protect.httpNote': 'This site also answers over plain HTTP, where a user name and password travel unencrypted. Turn on the HTTPS redirect in Security › Certificate (HTTPS) so visitors always sign in over HTTPS.',
     'siteFeatures.protect.empty': 'No folder is protected yet.',
     'siteFeatures.protect.addTitle': 'Protect a folder',
     'siteFeatures.protect.path': 'Folder',

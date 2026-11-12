@@ -231,7 +231,7 @@ export const enServiceAppsScreens = {
     'err.SERVICE_APP.venv_missing': 'Nothing was changed: the server lacks Python’s venv module. The administrator installs python3-venv.',
     'err.SERVICE_APP.probe_failed': 'Nothing was changed: the server could not say whether the app can run here. Try again in a minute.',
     'err.SERVICE_APP.confirm_data': 'To delete the app’s data too, type the domain name {domain}. Without it, the data is kept.',
-    'err.SERVICE_APP.app_installed': 'Nothing was changed: an AI or automation app uses this domain. Remove it on the AI & automation tab first.',
+    'err.SERVICE_APP.app_installed': 'Nothing was changed: an AI or automation app uses this domain. Remove it in the Site section, under AI & automation, first.',
     'err.SERVICE_APP.no_port': 'Nothing was changed: no free internal port is left for apps on this server. The administrator removes unused apps.',
     'err.SERVICE_APP.limits': 'Memory must be 256 to 65536 MB, CPU 10 to 1600 percent, processes 32 to 8192.',
     'err.SERVICE_APP.hold_reason': 'Write why the app is held (for example the CVE), up to 500 characters.',

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const detailSource = readFileSync(new URL('../src/components/DomainDetail.tsx', import.meta.url), 'utf8');
+// alpha.132: a domain's page is the shell (DomainDetail.tsx), the registry of
+// its sections (domain/sections.ts), their shared body and each section's file.
+const domainPage = ['DomainDetail.tsx', 'domain/sections.ts', 'domain/SectionParts.tsx', ...['Overview', 'Site', 'Files', 'Mail', 'Databases', 'Dns', 'Security', 'Backups', 'Advanced'].map((name) => `domain/sections/${name}Section.tsx`)];
+const detailSource = domainPage.map((file) => readFileSync(new URL(`../src/components/${file}`, import.meta.url), 'utf8')).join('\n');
 const domainsSource = readFileSync(new URL('../src/components/Domains.tsx', import.meta.url), 'utf8');
 const filesSource = readFileSync(new URL('../src/components/DomainFileManager.tsx', import.meta.url), 'utf8');
 const databasesSource = readFileSync(new URL('../src/components/DomainDatabaseManager.tsx', import.meta.url), 'utf8');
@@ -18,11 +21,13 @@ const domainDatabasesSource = readFileSync(new URL('../src/lib/domainDatabases.t
 test('additional-user domain surfaces stay fail-closed without disabling the accessible view tree', () => {
   assert.doesNotMatch(detailSource, /<fieldset/);
   assert.doesNotMatch(detailSource, /setAttribute\('inert'/);
-  assert.match(detailSource, /currentSub\.render\(readOnly\)/);
-  assert.match(detailSource, /current\.render!\(readOnly\)/);
+  // Each part gets its own view-only flag from the registry, and says so.
+  assert.match(detailSource, /const view: PartView = \{ id: rule\.id, readOnly: teamMember && weakest === 'view' \};/);
+  assert.match(detailSource, /\{item\.readOnly && \(/);
+  assert.match(detailSource, /<Suspense fallback=\{<Spinner \/>\}>\{render\(item\)\}<\/Suspense>/);
 
-  assert.match(detailSource, /!isTeamMember && canView\('files'\)/);
-  assert.match(detailSource, /!isTeamMember && projectType === 'php'.*id: 'apps'/s);
+  assert.match(detailSource, /site\(v\) && !v\.teamMember && v\.view\('files'\)/);
+  assert.match(detailSource, /id: 'apps'[\s\S]*?shown: \(v\) => !v\.teamMember && php\(v\)/);
   assert.match(detailSource, /DomainFileManager[^>]+readOnly=\{readOnly\}/s);
 
   assert.match(filesSource, /if \(readOnly\) \{[\s\S]*files\/download/);

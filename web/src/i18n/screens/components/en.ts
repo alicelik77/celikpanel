@@ -136,7 +136,7 @@ export const enComponentsScreens = {
     'services.manageDNSEngine': 'Manage DNS engine',
     'services.manageDNSEngineHint': 'Review installation, activation, standby state, or a safe switch between BIND and PowerDNS.',
     'services.useBuiltInSFTP': 'Use built-in SFTP',
-    'services.useBuiltInSFTPHint': 'No FTP server is needed. Each website has its own account for encrypted SFTP over SSH (port 22). To upload files in the browser, open a website and its Files tab.',
+    'services.useBuiltInSFTPHint': 'No FTP server is needed. Each website has its own account for encrypted SFTP over SSH (port 22). To upload files in the browser, open a website and its Files section.',
     'services.eolBadge': 'EOL',
     'services.eolHint': 'This line no longer receives security fixes upstream — install it only for a legacy site that cannot be upgraded.',
     'services.phpVersionsHint': 'Versions install side by side; every site picks its own version in its settings.',

@@ -3,7 +3,6 @@
 import type { FileAccessScreenKey } from './en';
 
 export const trFileAccessScreens: Record<FileAccessScreenKey, string> = {
-    'fileAccess.tab': 'Erişim',
     'fileAccess.title': 'FTP, SFTP ve SSH',
     'fileAccess.desc': 'Bu sitenin dosyalarına FileZilla gibi bir programla bağlanın. Sitenin kendi hesabıyla girersiniz ve yalnız bu aboneliğin klasörünü görürsünüz; sunucunun geri kalanı kapalı kalır.',
     'fileAccess.checking': 'Bu sitenin erişimi sunucudan okunuyor…',
@@ -30,12 +29,12 @@ export const trFileAccessScreens: Record<FileAccessScreenKey, string> = {
     'fileAccess.saved': 'Erişim sunucuya kaydedildi.',
     'fileAccess.closed': 'Erişim kapatıldı. Site çalışmaya devam ediyor.',
 
-    'fileAccess.block.noSite': 'Bu alan adının web sitesi dosyası yok, bağlanılacak bir şey yok. Önce Barındırma sekmesinden bir web sitesi verin.',
+    'fileAccess.block.noSite': 'Bu alan adının web sitesi dosyası yok, bağlanılacak bir şey yok. Önce Site bölümünde, Site türü kısmından bir web sitesi verin.',
     'fileAccess.block.notInPlan': 'Dosya erişimi bu aboneliğin planında yok. Sağlayıcınız ekleyebilir; sitenin dosyaları Dosya yöneticisinde kullanılabilir.',
     'fileAccess.block.suspended': 'Bu abonelik etkin değil; erişim açılamaz ya da değiştirilemez, yalnız kapatılabilir. Aboneliği sağlayıcınız yeniler.',
     'fileAccess.block.agentUpgrade': 'Sunucunun Agent’ı henüz dosya erişimi sunmuyor. Sunucu yöneticisi panel güncellemesini panelin kendi güncelleme sayfasından tamamlar.',
     'fileAccess.block.agentUnavailable': 'Sunucunun Agent’ı yanıt vermedi; erişim durumu bilinmiyor. Hiçbir şey değişmedi. Biraz sonra yeniden deneyin.',
-    'fileAccess.block.noAccount': 'Sitenin sistem hesabı sunucuda yok. Erişim açılmadan önce sunucu yöneticisi siteyi Barındırma sekmesinden denetler.',
+    'fileAccess.block.noAccount': 'Sitenin sistem hesabı sunucuda yok. Erişim açılmadan önce sunucu yöneticisi siteyi Site bölümünde denetler.',
     'fileAccess.block.accountMismatch': 'Sunucuda bu sitenin adını taşıyan bir hesap var ama bu siteye ait değil; CelikPanel ona dokunmaz. Sunucu yöneticisi denetler.',
     'fileAccess.block.noSSHD': 'Bu sunucuda SFTP’nin gerektirdiği OpenSSH sunucusu yok. Onu sağlayıcınız (sunucu yöneticisi) kurar; ona sorun.',
     'fileAccess.block.sshOwner': 'Sunucu yöneticisi CelikPanel’in SSH erişim dosyasını elle değiştirmiş (/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf). CelikPanel onu korur; dosya kaldırılana ya da geri konana dek hiçbir şeyi değiştirmez.',
@@ -62,7 +61,7 @@ export const trFileAccessScreens: Record<FileAccessScreenKey, string> = {
     'fileAccess.sshTools.missing': 'Komut satırı (SSH) henüz açılamaz: bu sunucuda {names} yok ve komut satırı araçlarını sunucudan alır. FTP ve SFTP çalışır.',
     'fileAccess.sshTools.kept': 'Bu hesabın komut satırı bu arada bu araçlar olmadan açık kalır.',
     'fileAccess.sshTools.admin': 'Bunları burada tek tıkla kurun: dağıtımın resmi paketleri {packages}. Kurulur kurulmaz seçenek burada görünür.',
-    'fileAccess.sshTools.customer': 'Bunları sağlayıcınız (sunucu yöneticisi) kurar; ona sorun. Kurulunca seçenek burada görünür. Yönetici sizseniz o hesapla giriş yapın: bu sekme onları tek tıkla kurar.',
+    'fileAccess.sshTools.customer': 'Bunları sağlayıcınız (sunucu yöneticisi) kurar; ona sorun. Kurulunca seçenek burada görünür. Yönetici sizseniz o hesapla giriş yapın: bu sayfa onları tek tıkla kurar.',
     'fileAccess.sshTools.unknown': '{names} için bu sistemde bilinen paket yok: sunucu yöneticisi sistemin paket yöneticisiyle kurar.',
     'fileAccess.sshTools.install': 'Araçları kur',
     'fileAccess.sshTools.installed': 'Araçlar kuruldu. Komut satırını şimdi açabilirsiniz.',
@@ -89,7 +88,7 @@ export const trFileAccessScreens: Record<FileAccessScreenKey, string> = {
     'err.FILE_ACCESS_AGENT_UPGRADE_REQUIRED': 'Sunucunun Agent’ı henüz dosya erişimi sunmuyor; hiçbir şey değişmedi. Sunucu yöneticisi panel güncellemesini tamamlar.',
     'err.FILE_ACCESS_REFUSED': 'Sunucu değişikliği yapmadı; önceki durum yerinde.',
     'err.FILE_ACCESS_REFUSED.sshd_include_missing': 'Sunucunun SSH yapılandırması CelikPanel’in erişim dosyasını okumuyor; hiçbir şey açılmadı. Sunucu yöneticisi /etc/ssh/sshd_config dosyasının başına “Include /etc/ssh/sshd_config.d/*.conf” satırını ekler.',
-    'err.FILE_ACCESS_REFUSED.jail_tools_missing': 'Sunucuda komut satırının bazı araçları yok, bu yüzden açılmadı. Önce sunucu yöneticisi bunları bu sekmede kurar.',
+    'err.FILE_ACCESS_REFUSED.jail_tools_missing': 'Sunucuda komut satırının bazı araçları yok, bu yüzden açılmadı. Önce sunucu yöneticisi bunları bu sayfada kurar.',
     'err.FILE_ACCESS_REFUSED.sshd_owner_config': 'CelikPanel’in SSH erişim dosyası elle değiştirilmiş; CelikPanel hiçbir şeyi değiştirmedi. Sunucu yöneticisi dosyayı kaldırır ya da CelikPanel’in sürümünü geri koyar.',
     'err.FILE_ACCESS_REFUSED.chroot_unsafe': 'Bu aboneliğin üstündeki bir klasör root’a ait değil ya da başkalarınca yazılabilir; hesap kendi klasörüne kapatılamıyor. Hiçbir şey açılmadı. Sunucu yöneticisi aşağıda adı geçen klasörü düzeltir.',
     'err.FILE_ACCESS_REFUSED.sshd_missing': 'Bu sunucuda OpenSSH sunucusu yok; hiçbir şey açılmadı. Sunucu yöneticisi kurar.',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Cpu, ExternalLink, KeyRound, Loader2, Play, Plus, RefreshCw, Rocket, RotateCw, ScrollText, Settings2, Square, Trash2, X } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -7,6 +7,7 @@ import { Button, Dialog, ErrorBanner, Field, RemoteGate, inputClass } from './ui
 import { readApiError, type ApiError } from '../lib/apiError';
 import { LOADING, invalidate, lastKnown, readRemote, useRefreshEvery, useRereadWhileRechecking, type Remote, type RemoteHandle } from '../lib/remote';
 import { newOperationID } from '../lib/serviceApps';
+import { confirmAction } from '../lib/confirmAction';
 import {
     RUNTIME_DETAIL_REASONS,
     RUNTIME_STATE_GUIDANCE,
@@ -28,6 +29,11 @@ import {
 import { RuntimeAppRisk } from './RuntimeAppRisk';
 import { PasswordInput } from './PasswordInput';
 import { AdminInstallLink } from './AdminInstallLink';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, changedRowClass } from './kit/save/SaveBar';
+import { confirmLeaveIfDirty, useLeaveGuard } from './kit/save/leaveGuard';
+import { useSaveWords } from './kit/save/words';
+import { answerWasLost } from '../lib/requestIdentity';
 
 // The domain's "Programs" tab (alpha.119, docs/RUNTIME-APPS.md): a program the
 // customer uploads (Go, Rust, any program for this server) or a Python web app
@@ -390,7 +396,7 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
     const [logsFailure, setLogsFailure] = useState<ApiError | null>(null);
     const [editing, setEditing] = useState(false);
     const [envOpen, setEnvOpen] = useState(false);
-    const [removeOpen, setRemoveOpen] = useState(false);
+    const [removeID, setRemoveID] = useState(newOperationID);
 
     const blocked = app.states.some((code) => BLOCKS_NEW_USE.includes(code));
     const deployBlocked = blocked || !view.certificate;
@@ -417,6 +423,28 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
         if (res) setDeployID(newOperationID());
         await after(res);
     };
+    // Removing the program asks in the product's own confirmation (alpha.132;
+    // it was a dialogue of its own): what stays, the heavier choice of
+    // deleting the app folder too, and for that choice the domain typed out.
+    // A lost answer keeps the identity, so asking again is the same removal;
+    // any answer that arrived ends it, as for a deploy.
+    // Programı kaldırmak ürünün kendi onay penceresinde sorulur; klasörü de
+    // silmek için alan adı yazılır.
+    const remove = () => void confirmAction({
+        title: t('runtime.remove.title', { domain: view.domain }),
+        message: t('runtime.remove.keep'),
+        tone: 'danger',
+        confirmLabel: t('runtime.remove'),
+        option: {
+            label: t('runtime.remove.files'),
+            typedName: { value: view.domain, label: t('runtime.remove.confirm', { domain: view.domain }), ignoreCase: true },
+        },
+        action: async (_report, answer) => {
+            const res = await sendJSON(base + '/remove', 'POST', { operation_id: removeID, remove_files: answer.option, confirm_domain: answer.option ? answer.typed.trim() : '' });
+            if (res) setRemoveID(newOperationID());
+            await after(res);
+        },
+    });
     const readLogs = async () => {
         setActing('logs');
         setLogsFailure(null);
@@ -483,8 +511,8 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                 )}
                 <Button icon={ScrollText} loading={acting === 'logs'} disabled={!!acting} onClick={() => void readLogs()}>{t('runtime.logs')}</Button>
                 <Button icon={KeyRound} disabled={busy || !!acting} onClick={() => setEnvOpen(true)}>{t('runtime.env')}</Button>
-                <Button icon={Settings2} disabled={busy || !!acting} onClick={() => setEditing((on) => !on)}>{t('runtime.settings.edit')}</Button>
-                <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={() => setRemoveOpen(true)}>{t('runtime.remove')}</Button>
+                <Button icon={Settings2} disabled={busy || !!acting} onClick={() => (editing ? void confirmLeaveIfDirty().then((close) => close && setEditing(false)) : setEditing(true))}>{t('runtime.settings.edit')}</Button>
+                <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('runtime.remove')}</Button>
             </div>
             {deployBlocked && !busy && <p className="text-xs text-fg-subtle">{t('runtime.deployBlocked')}</p>}
             {editing && (
@@ -507,80 +535,139 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                 </div>
             )}
             {envOpen && <EnvDialog app={app} base={base} after={after} onClose={() => setEnvOpen(false)} />}
-            {removeOpen && <RemoveDialog domain={view.domain} base={base} after={after} onClose={() => setRemoveOpen(false)} />}
         </div>
     );
 }
 
+// The program's settings as the form holds them, every value as typed.
+interface SettingsValues { entry: string; argsText: string; health: string; server: 'wsgi' | 'asgi'; workers: string }
+
+const settingsOf = (app: RuntimeApp | undefined, most: number): SettingsValues => ({
+    entry: app?.python?.callable ?? app?.entry ?? '',
+    argsText: (app?.args ?? []).join('\n'),
+    health: app?.health_path ?? '/',
+    server: app?.python?.server ?? 'wsgi',
+    workers: String(app?.python?.workers ?? Math.min(2, most)),
+});
+
+// Creating a program is an action (its button names it). Editing one is a
+// settings form (alpha.132): a draft over the program last read, saved only
+// with the save bar's Save; Discard puts the saved settings back.
+// Program oluşturmak bir eylemdir; düzenlemek Kaydet ile kaydedilen bir ayar formudur.
 function SettingsForm({ base, mode, kind, app, after, onDone }: { base: string; mode: 'create' | 'edit'; kind: RuntimeKindView; app?: RuntimeApp; after: After; onDone?: () => void }) {
     const { t } = useI18n();
+    const say = useSaveWords();
     const python = kind.kind === 'python';
-    const [entry, setEntry] = useState(app?.python?.callable ?? app?.entry ?? '');
-    const [argsText, setArgsText] = useState((app?.args ?? []).join('\n'));
-    const [health, setHealth] = useState(app?.health_path ?? '/');
-    const [server, setServer] = useState<'wsgi' | 'asgi'>(app?.python?.server ?? 'wsgi');
     const most = kind.python?.max_workers ?? maxWorkers(kind.limits.memory_mb);
-    const [workers, setWorkers] = useState(String(app?.python?.workers ?? Math.min(2, most)));
+    const [created, setCreated] = useState<SettingsValues>(() => settingsOf(undefined, most));
+    const known = useMemo(() => (mode === 'edit' && app ? settingsOf(app, most) : null), [mode, app, most]);
+    const draft = useDraft(known);
+    const values = mode === 'edit' ? draft.values ?? known ?? created : created;
+    const set = <K extends keyof SettingsValues>(field: K, value: SettingsValues[K]) => {
+        if (mode === 'edit') draft.set(field, value);
+        else setCreated((current) => ({ ...current, [field]: value }));
+    };
+    const { entry, argsText, health, server, workers } = values;
     const [busy, setBusy] = useState(false);
     const args = argsFromText(argsText);
     const entryOK = python ? callableValid(entry) : entryValid(entry);
     const argsOK = python || argsValid(args);
     const workersOK = !python || (/^\d+$/.test(workers) && Number(workers) >= 1 && Number(workers) <= most);
     const healthOK = healthPathValid(health.trim());
+    const valid = entryOK && argsOK && healthOK && workersOK;
     const prefix = 'runtime-' + mode;
+    const bodyOf = (form: SettingsValues) => (python
+        ? { kind: 'python', entry: form.entry.trim(), server: form.server, workers: Number(form.workers), health_path: form.health.trim() || '/' }
+        : { kind: 'program', entry: form.entry.trim(), args: argsFromText(form.argsText), health_path: form.health.trim() || '/' });
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!entryOK || !argsOK || !healthOK || !workersOK) return;
+        if (mode === 'edit') {
+            save();
+            return;
+        }
+        if (!valid) return;
         setBusy(true);
-        const body = python
-            ? { kind: 'python', entry: entry.trim(), server, workers: Number(workers), health_path: health.trim() || '/' }
-            : { kind: 'program', entry: entry.trim(), args, health_path: health.trim() || '/' };
-        const res = await sendJSON(base + (mode === 'create' ? '/create' : '/settings'), mode === 'create' ? 'POST' : 'PUT', body);
+        const res = await sendJSON(base + '/create', 'POST', bodyOf(created));
         setBusy(false);
         if (await after(res)) {
-            showToast('success', t(mode === 'create' ? 'runtime.create.done' : 'runtime.settings.saved'));
+            showToast('success', t('runtime.create.done'));
             onDone?.();
         }
     };
 
+    const save = () => void draft.save(async (_changes, form) => {
+        if (!valid) return 'refused';
+        const res = await sendJSON(base + '/settings', 'PUT', bodyOf(form));
+        // No answer, or a gateway's in the Panel's place: not known.
+        if (!res || answerWasLost(res)) {
+            await after(null);
+            return 'unknown';
+        }
+        if (!(await after(res))) return 'refused';
+        showToast('success', t('runtime.settings.saved'));
+        onDone?.();
+        return 'saved';
+    });
+
+    const field = (name: keyof SettingsValues, children: ReactNode) => (mode === 'edit'
+        ? <div className={`-mx-2 rounded-r px-2 py-1 ${draft.isChanged(name) ? changedRowClass : ''}`}>{draft.isChanged(name) && <p className="mb-1"><ChangedMark /></p>}{children}</div>
+        : children);
+    const locked = busy || draft.saving;
+
     return (
         <form className="space-y-3" onSubmit={(event) => void submit(event)} noValidate>
             {mode === 'edit' && <div className="text-sm font-medium text-fg">{t('runtime.settings.title')}</div>}
-            {python && (
+            {python && field('server', (
                 <Field label={t('runtime.python.server')} htmlFor={prefix + '-server'}>
-                    <select id={prefix + '-server'} className={inputClass} value={server} onChange={(e) => setServer(e.target.value === 'asgi' ? 'asgi' : 'wsgi')}>
+                    <select id={prefix + '-server'} className={inputClass} value={server} disabled={locked} onChange={(e) => set('server', e.target.value === 'asgi' ? 'asgi' : 'wsgi')}>
                         <option value="wsgi">{t('runtime.python.server.wsgi')}</option>
                         <option value="asgi">{t('runtime.python.server.asgi')}</option>
                     </select>
                 </Field>
-            )}
-            <Field label={t(python ? 'runtime.python.callable' : 'runtime.entry')} htmlFor={prefix + '-entry'} hint={t(python ? 'runtime.python.callable.hint' : 'runtime.entry.hint')}>
-                <input id={prefix + '-entry'} className={inputClass} autoComplete="off" spellCheck={false} value={entry} onChange={(e) => setEntry(e.target.value)} />
-            </Field>
+            ))}
+            {field('entry', (
+                <Field label={t(python ? 'runtime.python.callable' : 'runtime.entry')} htmlFor={prefix + '-entry'} hint={t(python ? 'runtime.python.callable.hint' : 'runtime.entry.hint')}>
+                    <input id={prefix + '-entry'} className={inputClass} autoComplete="off" spellCheck={false} value={entry} disabled={locked} onChange={(e) => set('entry', e.target.value)} />
+                </Field>
+            ))}
             {entry !== '' && !entryOK && <p className="text-xs text-warning">{t(python ? 'err.RUNTIME_APP.python_settings' : 'err.RUNTIME_APP.entry_invalid', { max: most })}</p>}
-            {python ? (
+            {python ? field('workers', (
                 <Field label={t('runtime.python.workers')} htmlFor={prefix + '-workers'} hint={t('runtime.python.workers.hint', { max: most })}>
-                    <input id={prefix + '-workers'} inputMode="numeric" className={inputClass} value={workers} onChange={(e) => setWorkers(e.target.value)} />
+                    <input id={prefix + '-workers'} inputMode="numeric" className={inputClass} value={workers} disabled={locked} onChange={(e) => set('workers', e.target.value)} />
                 </Field>
-            ) : (
+            )) : field('argsText', (
                 <Field label={t('runtime.args')} htmlFor={prefix + '-args'} hint={t('runtime.args.hint', { placeholder: '{port}' })}>
-                    <textarea id={prefix + '-args'} rows={3} className={inputClass + ' font-mono'} spellCheck={false} value={argsText} onChange={(e) => setArgsText(e.target.value)} />
+                    <textarea id={prefix + '-args'} rows={3} className={inputClass + ' font-mono'} spellCheck={false} value={argsText} disabled={locked} onChange={(e) => set('argsText', e.target.value)} />
                 </Field>
-            )}
+            ))}
             {!argsOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.args_invalid')}</p>}
             {!workersOK && <p className="text-xs text-warning">{t('runtime.python.workers.hint', { max: most })}</p>}
-            <Field label={t('runtime.health')} htmlFor={prefix + '-health'} hint={t('runtime.health.hint')}>
-                <input id={prefix + '-health'} className={inputClass} autoComplete="off" spellCheck={false} value={health} onChange={(e) => setHealth(e.target.value)} />
-            </Field>
+            {field('health', (
+                <Field label={t('runtime.health')} htmlFor={prefix + '-health'} hint={t('runtime.health.hint')}>
+                    <input id={prefix + '-health'} className={inputClass} autoComplete="off" spellCheck={false} value={health} disabled={locked} onChange={(e) => set('health', e.target.value)} />
+                </Field>
+            ))}
             {!healthOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.health_path_invalid')}</p>}
-            {mode === 'edit' && <p className="text-xs text-fg-subtle">{t('runtime.settings.applies')}</p>}
-            <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="primary" icon={mode === 'create' ? Plus : undefined} loading={busy} disabled={!entryOK || !argsOK || !healthOK || !workersOK}>
-                    {t(mode === 'create' ? 'runtime.create.button' : 'runtime.settings.save')}
-                </Button>
-                {onDone && <Button type="button" onClick={onDone} disabled={busy}>{t('common.cancel')}</Button>}
-            </div>
+            {mode === 'edit' ? (
+                <>
+                    <p className="text-xs text-fg-subtle">{t('runtime.settings.applies')}</p>
+                    <SaveBar
+                        className="-mx-3 rounded-b-lg px-3 pb-0"
+                        count={draft.count}
+                        saving={draft.saving}
+                        blockedBy={draft.held ? say('stale') : !valid ? t('runtime.settings.invalid') : undefined}
+                        onSave={save}
+                        onDiscard={draft.reset}
+                    />
+                </>
+            ) : (
+                <div className="flex flex-wrap gap-2">
+                    <Button type="submit" variant="primary" icon={Plus} loading={busy} disabled={!valid}>
+                        {t('runtime.create.button')}
+                    </Button>
+                </div>
+            )}
         </form>
     );
 }
@@ -615,11 +702,22 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
         return '';
     });
     const ready = rows.length <= 64 && problems.every((p) => p === '');
+    // alpha.132: what differs from the list the dialog opened with. Save is
+    // offered only for a change; closing or leaving with one asks first.
+    // Pencerenin açıldığı listeden farklı olan; Kaydet yalnız bir değişiklik için sunulur.
+    const opened = useMemo(() => app.env.map((entry, i) => ({ id: i, key: entry.key, value: entry.secret ? '' : (entry.value ?? ''), secret: entry.secret })), [app.env]);
+    const rowChanged = (row: EnvRow) => {
+        const was = opened.find((item) => item.id === row.id);
+        return !was || was.key !== row.key || was.value !== row.value || was.secret !== row.secret;
+    };
+    const changed = rows.length !== opened.length || rows.some(rowChanged);
+    useLeaveGuard(changed ? 'some' : 0);
+    const close = () => void (changed ? confirmLeaveIfDirty() : Promise.resolve(true)).then((go) => go && onClose());
     const update = (id: number, change: Partial<EnvRow>) => setRows((list) => list.map((row) => (row.id === id ? { ...row, ...change } : row)));
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!ready) return;
+        if (!ready || !changed) return;
         setBusy(true);
         const entries = rows.map((row) => {
             const key = row.key.trim();
@@ -640,13 +738,13 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
     };
 
     return (
-        <Dialog id="runtime-env" title={t('runtime.env.title')} icon={KeyRound} width="xl" busy={busy} onDismiss={onClose} onSubmit={(event) => void submit(event)} noValidate
-            actions={<><Button type="button" onClick={onClose} disabled={busy}>{t('common.cancel')}</Button><Button type="submit" variant="primary" loading={busy} disabled={!ready}>{t('runtime.env.save')}</Button></>}>
+        <Dialog id="runtime-env" title={t('runtime.env.title')} icon={KeyRound} width="xl" busy={busy} onDismiss={close} onSubmit={(event) => void submit(event)} noValidate
+            actions={<><Button type="button" onClick={close} disabled={busy}>{t('common.cancel')}</Button><Button type="submit" variant="primary" loading={busy} disabled={!ready || !changed}>{t('runtime.env.save')}</Button></>}>
             <div className="space-y-3 text-sm">
                 <p className="text-fg-muted">{t('runtime.env.hint')}</p>
                 {rows.length === 0 && <p className="text-fg-subtle">{t('runtime.env.empty')}</p>}
                 {rows.map((row, i) => (
-                    <div key={row.id} className="space-y-1 rounded-lg border border-border p-2" data-runtime-env-row={row.key}>
+                    <div key={row.id} className={`space-y-1 rounded-lg border border-border p-2 ${rowChanged(row) ? changedRowClass : ''}`} data-runtime-env-row={row.key}>
                         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto]">
                             <input aria-label={t('runtime.env.key')} placeholder={t('runtime.env.key')} className={inputClass + ' font-mono'} autoComplete="off" spellCheck={false}
                                 value={row.key} onChange={(e) => update(row.id, { key: e.target.value.toUpperCase() })} />
@@ -667,6 +765,7 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
                                 {t('runtime.env.secret')}
                             </label>
                             {keeps(row) && <span>{t('runtime.env.secretSet')}</span>}
+                            {rowChanged(row) && <ChangedMark />}
                             {problems[i] && <span className="text-warning">{problems[i]}</span>}
                         </div>
                     </div>
@@ -676,41 +775,6 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
                     {t('runtime.env.add')}
                 </Button>
                 {app.deployed && <p className="text-xs text-fg-subtle">{t('runtime.env.restart')}</p>}
-            </div>
-        </Dialog>
-    );
-}
-
-function RemoveDialog({ domain, base, after, onClose }: { domain: string; base: string; after: After; onClose: () => void }) {
-    const { t } = useI18n();
-    const [removeFiles, setRemoveFiles] = useState(false);
-    const [typed, setTyped] = useState('');
-    const [busy, setBusy] = useState(false);
-    // One identity for this removal: a repeat after a lost answer is the same.
-    const [operationID] = useState(newOperationID);
-    const ready = !removeFiles || typed.trim().toLowerCase() === domain.toLowerCase();
-    const submit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!ready) return;
-        setBusy(true);
-        const res = await sendJSON(base + '/remove', 'POST', { operation_id: operationID, remove_files: removeFiles, confirm_domain: removeFiles ? typed.trim() : '' });
-        setBusy(false);
-        if (await after(res)) onClose();
-    };
-    return (
-        <Dialog id="runtime-remove" tone="danger" title={t('runtime.remove.title', { domain })} icon={Trash2} busy={busy} onDismiss={onClose} onSubmit={(event) => void submit(event)} noValidate
-            actions={<><Button type="button" onClick={onClose} disabled={busy}>{t('common.cancel')}</Button><Button type="submit" variant="danger" loading={busy} disabled={!ready}>{t('runtime.remove')}</Button></>}>
-            <div className="space-y-3 text-sm">
-                <p className="text-fg-muted">{t('runtime.remove.keep')}</p>
-                <label className="flex items-start gap-2 text-fg">
-                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={removeFiles} onChange={(e) => setRemoveFiles(e.target.checked)} />
-                    {t('runtime.remove.files')}
-                </label>
-                {removeFiles && (
-                    <Field label={t('runtime.remove.confirm', { domain })} htmlFor="runtime-confirm-domain">
-                        <input id="runtime-confirm-domain" className={inputClass} autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
-                    </Field>
-                )}
             </div>
         </Dialog>
     );

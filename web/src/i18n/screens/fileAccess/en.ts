@@ -1,5 +1,5 @@
 // SCREEN catalogue part "fileAccess" (alpha.117): a site's FTP, SFTP and SSH
-// access (the Access tab) and its refusal codes.
+// access (Files › FTP, SFTP and SSH) and its refusal codes.
 // Key prefixes kept here: fileAccess., err.FILE_ACCESS_.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
@@ -8,7 +8,6 @@
 // (Erişim sekmesi) ve ret kodları.
 
 export const enFileAccessScreens = {
-    'fileAccess.tab': 'Access',
     'fileAccess.title': 'FTP, SFTP and SSH',
     'fileAccess.desc': 'Connect to this site’s files with a program such as FileZilla. You sign in as the site’s own account and see only this subscription’s folder; the rest of the server stays closed.',
     'fileAccess.checking': 'Reading this site’s access from the server…',
@@ -35,12 +34,12 @@ export const enFileAccessScreens = {
     'fileAccess.saved': 'Access is saved on the server.',
     'fileAccess.closed': 'Access is closed. The site keeps running.',
 
-    'fileAccess.block.noSite': 'This domain has no website files, so there is nothing to connect to. Give it a website on the Hosting tab first.',
+    'fileAccess.block.noSite': 'This domain has no website files, so there is nothing to connect to. Give it a website first, in the Site section under Site type.',
     'fileAccess.block.notInPlan': 'File access is not part of this subscription’s plan. Your provider can add it; the site’s files are still available in the File manager.',
     'fileAccess.block.suspended': 'This subscription is not active, so access cannot be opened or changed. It can still be closed. Your provider renews the subscription.',
     'fileAccess.block.agentUpgrade': 'The server’s Agent does not offer file access yet. The server administrator finishes the panel update from the panel’s own update page.',
     'fileAccess.block.agentUnavailable': 'The server’s Agent did not answer, so the access state is unknown. Nothing was changed. Try again in a moment.',
-    'fileAccess.block.noAccount': 'The site’s system account is missing on the server. The server administrator checks the site on the Hosting tab before access can be opened.',
+    'fileAccess.block.noAccount': 'The site’s system account is missing on the server. The server administrator checks the site in the Site section before access can be opened.',
     'fileAccess.block.accountMismatch': 'An account with this site’s name exists on the server but does not belong to this site, so CelikPanel does not touch it. The server administrator checks it.',
     'fileAccess.block.noSSHD': 'This server has no OpenSSH server, which SFTP needs. Your provider (the server’s administrator) installs it; ask them.',
     'fileAccess.block.sshOwner': 'The server administrator changed CelikPanel’s SSH access file by hand (/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf). CelikPanel keeps it and changes nothing until it is removed or put back.',
@@ -67,7 +66,7 @@ export const enFileAccessScreens = {
     'fileAccess.sshTools.missing': 'The command line (SSH) cannot be turned on yet: this server lacks {names}, and the command line takes its tools from the server. FTP and SFTP work.',
     'fileAccess.sshTools.kept': 'This account keeps its command line meanwhile, without these tools.',
     'fileAccess.sshTools.admin': 'Install them here with one press: the distribution’s official packages {packages}. The option appears as soon as they are installed.',
-    'fileAccess.sshTools.customer': 'Your provider (the server’s administrator) installs them; ask them. The option appears here once they are installed. If you are the administrator, sign in with that account: this tab then installs them with one press.',
+    'fileAccess.sshTools.customer': 'Your provider (the server’s administrator) installs them; ask them. The option appears here once they are installed. If you are the administrator, sign in with that account: this page then installs them with one press.',
     'fileAccess.sshTools.unknown': 'No package is known for {names} on this system: the server administrator installs it with the system’s package manager.',
     'fileAccess.sshTools.install': 'Install the tools',
     'fileAccess.sshTools.installed': 'The tools are installed. You can turn the command line on now.',
@@ -94,7 +93,7 @@ export const enFileAccessScreens = {
     'err.FILE_ACCESS_AGENT_UPGRADE_REQUIRED': 'The server’s Agent does not offer file access yet, so nothing was changed. The server administrator finishes the panel update.',
     'err.FILE_ACCESS_REFUSED': 'The server did not make the change; what it had is still in place.',
     'err.FILE_ACCESS_REFUSED.sshd_include_missing': 'The server’s SSH configuration does not read CelikPanel’s access file, so nothing was opened. The server administrator adds “Include /etc/ssh/sshd_config.d/*.conf” at the top of /etc/ssh/sshd_config.',
-    'err.FILE_ACCESS_REFUSED.jail_tools_missing': 'The server lacks tools of the command line, so it was not turned on. The server administrator installs them on this tab first.',
+    'err.FILE_ACCESS_REFUSED.jail_tools_missing': 'The server lacks tools of the command line, so it was not turned on. The server administrator installs them on this page first.',
     'err.FILE_ACCESS_REFUSED.sshd_owner_config': 'CelikPanel’s SSH access file was changed by hand, so CelikPanel changed nothing. The server administrator removes it or puts CelikPanel’s version back.',
     'err.FILE_ACCESS_REFUSED.chroot_unsafe': 'A folder above this subscription is not owned by root or is writable by others, so the account cannot be closed into its folder. Nothing was opened. The server administrator fixes the folder named below.',
     'err.FILE_ACCESS_REFUSED.sshd_missing': 'This server has no OpenSSH server, so nothing was opened. The server administrator installs it.',

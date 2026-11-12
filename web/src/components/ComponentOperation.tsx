@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n';
+import { useAuth } from '../auth/AuthContext';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { scanRefusedBySetup } from '../lib/panelHandover';
 import { invalidate } from '../lib/remote';
@@ -940,6 +941,10 @@ export function useOperationNoteOpener(navigate: (to: string) => unknown): void 
 
 export function ComponentOperationProvider({ children }: { children: ReactNode }) {
     const { t, locale } = useI18n();
+    // Component operations are the administrator's (the server answers 403 to
+    // everyone else), so nobody else looks for a running one (alpha.132).
+    // Bileşen işlemleri yöneticinindir; başkası çalışan işlem aramaz.
+    const discovers = useAuth().role === 'admin';
     const [initialSession] = useState(() => ({
         operation: restoredOperation(),
         recoveryMarker: readStoredRecoveryMarker(),
@@ -955,7 +960,7 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
         () => initialSession.operation === null && initialSession.recoveryMarker !== null,
     );
     const [discoveringActive, setDiscoveringActive] = useState(
-        () => initialSession.operation === null && initialSession.recoveryMarker === null,
+        () => discovers && initialSession.operation === null && initialSession.recoveryMarker === null,
     );
     const [refreshingCatalog, setRefreshingCatalog] = useState(false);
     const [connectionInterrupted, setConnectionInterrupted] = useState(false);
@@ -1331,6 +1336,7 @@ export function ComponentOperationProvider({ children }: { children: ReactNode }
     }, []);
 
     useEffect(() => {
+        if (!discovers) return undefined;
         let cancelled = false;
         let activeDiscoveryController: AbortController | null = null;
         let activeDiscoveryRetryTimer: number | undefined;

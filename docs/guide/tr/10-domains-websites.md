@@ -2,11 +2,11 @@
 id: domains-websites
 title: Alan adları ve web siteleri
 roles: [admin, reseller, customer]
-topics: [domains#domain-list, domain.overview#overview, domain.hosting#hosting]
+topics: [domains#domain-list, domain.overview#overview, domain.site#hosting, domain.security#https]
 keywords: [alan adı, domain, web sitesi, alt alan adı, php sürümü, sertifika, https, ssl, lets encrypt, ad sunucusu, statik, node.js]
 ---
 
-Barındırdığınız her şey bir alan adının altında durur: web sitesi, e-postası, veritabanları ve DNS'i. Bu bölüm alan adı eklemeyi, genel bakışı, barındırma ayarlarını ve sertifikayı anlatır.
+Barındırdığınız her şey bir alan adının altında durur: web sitesi, e-postası, veritabanları ve DNS'i. Bu bölüm alan adı eklemeyi, alan adının sayfasını, site ayarlarını ve sertifikayı anlatır.
 
 ## Alan adı listesi {#domain-list}
 
@@ -24,31 +24,34 @@ Sertifika istediyseniz pencere bir dakikaya kadar onu bekler. Pencereyi açık b
 
 ## Genel bakış {#overview}
 
+Alan adının sayfasında tek satırda bölümler vardır: **Genel Bakış**, **Site**, **Dosyalar**, **E-posta**, **Veritabanları**, **Alan adı ve DNS**, **Güvenlik**, **Yedekler** ve **Gelişmiş**. Yalnız alan adına ve size uyan bölümleri görürsünüz. Birkaç parçası olan bölüm onları **Bu sayfada** satırında listeler. Planınızda olmayan bölüm kendi yerinde soluk ve kilitli görünür; onu kimin ekleyebileceğini söyler.
+
 Alan adının altındaki satır **Tür**, **PHP sürümü**, **SSL**, **Disk kullanımı** ve bu ayki **Trafik** bilgisini gösterir.
 
-**Bu alan adının bağlantısı** kartı adın bu sunucuyu gösterip göstermediğini söyler. Göstermedikçe burada barındırılan hiçbir şey o ad için cevap vermez. Kart iki yol sunar; değerleri alan adını aldığınız firmada girin:
+**Genel Bakış**'ta ve **Alan adı ve DNS** bölümünde duran **Bu alan adının bağlantısı** kartı adın bu sunucuyu gösterip göstermediğini söyler. Göstermedikçe burada barındırılan hiçbir şey o ad için cevap vermez. Kart iki yol sunar; değerleri alan adını aldığınız firmada girin:
 
 - **A yolu** DNS'i bu sunucunun ad sunucularına verir. Posta kayıtları ve sertifikalar sizin yerinize yönetilir.
 - **B yolu** DNS'i bugünkü sağlayıcınızda bırakır; yalnız gösterilen adres kayıtlarını eklersiniz.
 
 Kayıt firmasındaki bir değişikliğin yayılması birkaç dakikadan birkaç saate kadar sürebilir. Kart 30 dakika boyunca yarım dakikada bir kendiliğinden kontrol eder; **Tekrar kontrol et** hemen kontrol eder. Değişiklik yayılıyor derken kayıtları yeniden değiştirmeyin.
 
-## Barındırma ayarları {#hosting}
+## Site ayarları {#hosting}
 
-**Barındırma** sekmesi web sitesinin ayarlarını toplar:
+**Site** bölümü alan adında neyin, nasıl çalıştığını toplar:
 
-- **Genel**: **Belge kök dizini**, **www'ye yönlendir** ve aynı siteyi gösteren ek adlar için **Alan adı takma adları**.
-- **Barındırma tipi**: **Proje tipi** olarak **PHP**, **Statik**, **Node.js**, **Vekil** ya da **Yönlendirme** seçip **Uygula** düğmesine basın.
-- Planınızda varsa **Korumalı klasörler** ve **Yönlendirmeler**.
-- Aşağıda anlatılan **PHP** ve **SSL/TLS**.
+- **Site türü**: **Proje tipi** olarak **PHP**, **Statik**, **Node.js**, **Vekil** ya da **Yönlendirme** seçip **Uygula** düğmesine basın.
+- Planınızda varsa **Uygulamalar**, **Yapay zekâ ve otomasyon** ve **Programlar**.
+- Aşağıda anlatılan **PHP ayarları** ve planınızda varsa **Yönlendirmeler**.
+
+**Alan adı ve DNS** bölümünün **Adlar** parçası **Belge kök dizini**, **www'ye yönlendir** ve aynı siteyi gösteren ek adlar için **Alan adı takma adları** ayarlarını tutar. **Korumalı klasörler** **Güvenlik** bölümündedir.
 
 ### PHP sürümü {#php}
 
-Yeni web sitesi statik başlar. PHP çalıştırmak için **Barındırma tipi** bölümünde **PHP** seçin, bir sürüm belirleyin ve **Uygula** düğmesine basın. Sürümü sonra değiştirmek için **PHP** bölümünü açın, **PHP sürümü** listesinden seçin ve **Uygula** düğmesine basın. Listede yalnız sunucuda kurulu sürümler görünür; **PHP-FPM** yoksa yönetici onu **Bileşenler** sayfasından kurar.
+Yeni web sitesi statik başlar. PHP çalıştırmak için **Site** bölümünün **Site türü** parçasında **PHP** seçin, bir sürüm belirleyin ve **Uygula** düğmesine basın. Sürümü sonra değiştirmek için aynı bölümdeki **PHP ayarları** parçasına gidin, **PHP sürümü** listesinden seçin ve **Uygula** düğmesine basın. Listede yalnız sunucuda kurulu sürümler görünür; **PHP-FPM** yoksa yönetici onu **Bileşenler** sayfasından kurar.
 
 ## Sertifika ve HTTPS {#https}
 
-**Barındırma**, ardından **SSL/TLS** bölümünü açın:
+**Güvenlik** bölümünü açın; ilk parçası **Sertifika (HTTPS)**:
 
 1. **Ücretsiz sertifika (ACME)** sekmesinde **E-posta adresi** bilgisini kontrol edin; **Otomatik yenilemeyi aç** açık kalsın.
 2. **Sertifika al** düğmesine basın.
@@ -57,4 +60,4 @@ Sertifika sağlayıcısı alan adına bu sunucuda ulaşabilmelidir; önce **Bu a
 
 **HTTPS zorla** her ziyaretçiyi `https://` adresine gönderir. **HSTS aç** seçeneğini yalnız HTTPS kalıcı olarak çalışıyorsa açın.
 
-**SSL** satırı **Yapılandırıldı — ilgilenmeniz gerekiyor** diyorsa sertifika vardır ama web sunucusu ya da posta sunucusu onu henüz kullanmıyordur. **SSL/TLS** bölümünü açıp **Etkinleştirmeyi yeniden dene** düğmesine basın.
+**SSL** satırı **Yapılandırıldı — ilgilenmeniz gerekiyor** diyorsa sertifika vardır ama web sunucusu ya da posta sunucusu onu henüz kullanmıyordur. **Güvenlik** bölümünü açıp **Etkinleştirmeyi yeniden dene** düğmesine basın.

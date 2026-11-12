@@ -37,7 +37,8 @@ const screenFiles = [
   // alpha.126: "Problems now" on Monitoring and the Dashboard.
   'ProblemsNow',
 ];
-const icons = new Set(['AlertTriangle', 'XCircle']);
+// alpha.132: the domain page's row of sections and its parts draw these.
+const icons = new Set(['AlertTriangle', 'XCircle', 'Lock', 'Eye', 'ChevronDown', 'LayoutGrid', 'AppWindow', 'Folder', 'Mail', 'Database', 'Network', 'ShieldCheck', 'Archive', 'Wrench']);
 // Children of the screens under test that are not under test themselves.
 const stubbedComponents = [
   'Link', 'PHPToolVersion', 'PanelPortCard', 'RepoCard', 'SecurityUpdatesCard', 'RoundcubeUpdateCard', 'WebmailAddressCard', 'RestartsCard', 'AppAccountLine', 'IsolationFact', 'TeamMembersPage', 'DNSServerSettings', 'SecurityAuditCard', 'ServerSetupSettings',
@@ -139,6 +140,8 @@ const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
+  // alpha.132: the keys of a row of section tabs (Settings, a domain's page).
+  '/lib/tablist': compileSource('lib/tablist.ts', () => stub),
   // alpha.119: the topic a domain's tab names for the guide's "?" (the real one).
   '/help/guide/context': compileSource('help/guide/context.ts', () => stub),
   // Who renews a website certificate and what the administrator does (D-040).
@@ -196,17 +199,48 @@ const MonitoringPage = await load('MonitoringPage');
 const ServiceShell = await load('ServiceShell');
 const ComponentDetail = await load('ComponentDetail', { '/ServiceShell': dataModule(`export const ServiceShell = (props) => props.children;`), '/SecurityEmergency': stub });
 const ServiceRecordLookup = await load('ServiceRecordLookup');
-// The Databases tab is lazy since alpha.127: the shipped module stands in.
-// alpha.128 (G22): the health strip has its own test (domain-health-alpha128); here it stands aside.
-const DomainDetailByName = (await import(replaceLazyImport(replaceLazyImport(shared.compile('components/DomainDetail.tsx', {
+// alpha.132: the domain page is a row of sections, each its own lazy file.
+// The Security section is the shipped one (its certificate part is the
+// shipped SSL/TLS screen, under test below); every other section, the health
+// strip (its own test: domain-health-alpha128) and Security's two other parts
+// stand aside. The page writes its place to the address, so it gets an
+// address that answers like the router's.
+const domainRouterURL = dataModule(`
+  import React from '${reactURL}';
+  const listeners = new Set();
+  const subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener); };
+  export const useSearchParams = () => {
+    const search = React.useSyncExternalStore(subscribe, () => globalThis.currentTest.search ?? '');
+    const params = React.useMemo(() => new URLSearchParams(search), [search]);
+    const set = React.useCallback((next) => { globalThis.currentTest.search = next.toString(); listeners.forEach((listener) => listener()); }, []);
+    return [params, set];
+  };
+  // alpha.132: another part of the open section moves the address in place.
+  export const useLocation = () => ({ pathname: '/domains/example.com', search: '', hash: '' });
+  export const replaceCurrentRouterURL = (to) => { globalThis.currentTest.search = new URL(to, 'https://panel.test').search.slice(1); listeners.forEach((listener) => listener()); return true; };
+`);
+const domainSectionsURL = compileSource('components/domain/sections.ts', () => stub);
+const domainOwn = {
   ...own,
-  '/DomainFileManager': fileManagerURL,
+  '/router': domainRouterURL,
+  '/sections': domainSectionsURL,
+  '/lib/domainSectionIcons': compileSource('lib/domainSectionIcons.ts', (specifier) => (specifier.endsWith('/sections') ? domainSectionsURL : stub)),
   '/DomainSSLSettings': sslSettingsURL,
   '/DomainConnection': shared.compile('components/DomainConnection.tsx', own),
-  '/DomainDNSManager': shared.compile('components/DomainDNSManager.tsx', own),
-  '/DomainPHPSettings': shared.compile('components/DomainPHPSettings.tsx', own),
-  '/HostingTypePanel': shared.compile('components/HostingTypePanel.tsx', own),
-}), './DomainDatabaseManager', shared.compile('components/DomainDatabaseManager.tsx', own)), './DomainHealthStrip', dataModule(`export const DomainHealthStrip = () => null;`)))).DomainDetailByName;
+};
+domainOwn['/domain/SectionRow'] = shared.compile('components/domain/SectionRow.tsx', domainOwn);
+domainOwn['/SectionParts'] = shared.compile('components/domain/SectionParts.tsx', domainOwn);
+const quietSection = (name) => dataModule(`export const ${name} = () => null;`);
+let securitySectionURL = shared.compile('components/domain/sections/SecuritySection.tsx', domainOwn);
+securitySectionURL = replaceLazyImport(securitySectionURL, '../../DomainSiteFeatures', dataModule('export const DomainSiteProtect = () => null;'));
+securitySectionURL = replaceLazyImport(securitySectionURL, '../../DomainMalwareScan', dataModule('export const DomainMalwareScan = () => null;'));
+let domainDetailURL = shared.compile('components/DomainDetail.tsx', domainOwn);
+for (const name of ['OverviewSection', 'SiteSection', 'FilesSection', 'MailSection', 'DatabasesSection', 'DnsSection', 'BackupsSection', 'AdvancedSection']) {
+  domainDetailURL = replaceLazyImport(domainDetailURL, `./domain/sections/${name}`, quietSection(name));
+}
+domainDetailURL = replaceLazyImport(domainDetailURL, './domain/sections/SecuritySection', securitySectionURL);
+domainDetailURL = replaceLazyImport(domainDetailURL, './DomainHealthStrip', dataModule(`export const DomainHealthStrip = () => null;`));
+const DomainDetailByName = (await import(domainDetailURL)).DomainDetailByName;
 
 // --- What the server answers when nothing is wrong ----------------------------
 const caps = (overrides = {}) => ({
@@ -359,6 +393,17 @@ const submits = (node) => node.props.type === 'submit';
 const removes = (node) => destructiveWords.test(labelOf(node)) || /text-danger|hover:text-danger/.test(node.props.className ?? '');
 const enabled = (which) => hostButtons().filter((node) => !node.props.disabled && which(node)).map(labelOf);
 const enabledDangerousControls = () => enabled((node) => submits(node) || removes(node));
+// alpha.132: a row's rare actions are words in its "More" menu (components/kit/rows/RowActions.tsx);
+// Delete is the menu's last item. A menu item that cannot be used now is aria-disabled
+// (it stays readable with its reason) and does nothing when pressed.
+const openRowMenu = async (name) => {
+  const more = hostButtons().find((node) => node.props['data-row-more'] === name);
+  assert.ok(more, `no More menu on the row ${name}`);
+  if (more.props['aria-expanded']) return;
+  await act(async () => { more.props.onClick({}); });
+};
+const rowItem = (id) => hostButtons().find((node) => node.props.role === 'menuitem' && node.props['data-row-action'] === id);
+const rowButton = (id) => hostButtons().filter((node) => node.props.role !== 'menuitem' && node.props['data-row-action'] === id);
 
 // --- The table -----------------------------------------------------------------
 // screen:   what is mounted, with which props and role
@@ -786,22 +831,22 @@ test('Domains: after a failed refresh the earlier list stays, marked, and nothin
   serve({ '/api/v1/domains': (request) => (fail ? failures['refused by the server']() : healthy['/api/v1/domains'](request)) });
   try {
     await mount(Domains);
-    const remove = () => buttons('domains.action.delete');
-    assert.equal(remove().length, 1);
-    assert.equal(Boolean(remove()[0].props.disabled), false);
+    const remove = async () => { await openRowMenu('example.com'); return rowItem('delete'); };
+    assert.ok(await remove());
+    assert.equal(Boolean((await remove()).props['aria-disabled']), false);
     fail = true;
     globalThis.confirm = () => true;
-    await press(remove()[0]);
+    await press(await remove());
     assert.ok(has('example.com'), 'the earlier list was dropped');
     assert.ok(has('common.staleNotice'), 'the earlier list is not marked as the earlier list');
     assert.ok(!has('domains.empty'));
-    assert.equal(remove()[0].props.disabled, true, 'a domain can be removed from a list that is not current');
+    assert.equal((await remove()).props['aria-disabled'], true, 'a domain can be removed from a list that is not current');
     assert.deepEqual(enabledDangerousControls(), []);
     assert.equal(buttons('common.retry').length, 1);
     fail = false;
     await press(buttons('common.retry')[0]);
     assert.ok(!has('common.staleNotice'));
-    assert.equal(Boolean(remove()[0].props.disabled), false);
+    assert.equal(Boolean((await remove()).props['aria-disabled']), false);
   } finally {
     await cleanup();
   }
@@ -1325,12 +1370,12 @@ test('A domain page: neither a failed lookup nor an unknown name sends the perso
 test('A domain page: the certificate line under the title is being checked, could not be checked (with the read again), or what the server said', async () => {
   const fact = (state) => tree.root.findAll((node) => node.props['data-ssl-fact'] === state);
   const noCertificate = json({ domain_id: 1, domain_name: 'example.com', has_certificate: false, settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } });
-  // On the overview, where the card reads the same address, and on the DNS
-  // tab, where nothing else on the page reads it.
+  // On the overview, and in Domain & DNS (opened by an older ?tab=dns link),
+  // where nothing else on the page reads it.
   for (const search of [undefined, 'tab=dns']) {
     const open = async (overrides) => {
       serve(overrides);
-      if (search) globalThis.currentTest.search = search;
+          if (search) globalThis.currentTest.search = search;
       await mount(DomainDetailByName, { domainName: 'example.com', onBack() {} });
     };
     const where = search ?? 'overview';
@@ -1376,11 +1421,10 @@ test('A domain page: the certificate line under the title is being checked, coul
 // way, it shares that read. Opened later, it shows the answer the page has as
 // the earlier answer, says it is reading again, keeps its controls off, and
 // sends one more read.
-test('A domain page: the SSL/TLS tab shares the page’s first read, and over an answer the page already has it reads once more with its controls off', async () => {
+test('A domain page: the certificate part of Security shares the page’s first read, and over an answer the page already has it reads once more with its controls off', async () => {
   const noCertificate = { domain_id: 1, domain_name: 'example.com', has_certificate: false, settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
   const openTab = async () => {
-    await press(buttons('domain.tab.hosting')[0]);
-    await press(buttons('domain.sub.ssl')[0]);
+    await press(buttons('domain.section.security')[0]);
   };
   const issue = () => buttons('ssl.issue').filter((node) => !node.props.disabled);
   const typeEmail = async () => {
@@ -2169,7 +2213,9 @@ test('Domains: an administrator sees the infrastructure zone as a DNS-only entry
   try {
     await mount(Domains);
     assert.ok(has('celikhost.com') && has('domains.infrastructure.badge') && has('domains.infrastructure.status'));
-    assert.equal(buttons('domains.action.delete').length, 1, 'the infrastructure zone can be removed from the list');
+    await openRowMenu('example.com');
+    assert.ok(rowItem('delete'), 'the website row lost its Delete');
+    assert.equal(hostButtons().filter((node) => node.props['data-row-more'] === 'celikhost.com').length, 0, 'the infrastructure zone can be removed from the list');
     assert.equal(buttons('domains.infrastructure.manage').length, 1);
     await press(buttons('domains.infrastructure.manage')[0]);
     assert.deepEqual(globalThis.currentTest.navigated, ['/domains/infrastructure/celikhost.com']);
@@ -2419,8 +2465,8 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
   try {
     await mount(Domains);
     globalThis.confirm = (message, request) => { asked.push([request.title, message, request.tone, request.progressTitle]); return true; };
-    const rowDelete = () => hostButtons().find((node) => node.props.title === 'domains.action.delete' || node.props.title === 'domains.status.beingDeleted');
-    await press(rowDelete());
+    await openRowMenu('alicelik.com.tr');
+    await press(rowItem('delete'));
     await act(async () => { await settled(); await settled(); });
     assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
     assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
@@ -2458,9 +2504,12 @@ test('Domains: a deletion still running after a reload is followed again and nev
     assert.ok(has('domains.beingDeletedLine'), 'the waiting deletion is not said in one line');
     assert.ok(!has('domains.deletionReason.remote_dns_removal_confirming'), 'the long waiting text is still shown');
     assert.ok(has('domains.status.beingDeleted'), 'the row does not say it is being deleted');
-    const again = hostButtons().find((node) => node.props.title === 'domains.status.beingDeleted');
-    assert.equal(again.props.disabled, true, 'the row still offers delete');
+    await openRowMenu('alicelik.com.tr');
+    const again = rowItem('delete');
+    assert.equal(again.props['aria-disabled'], true, 'the row still offers delete');
+    assert.ok(has('domains.status.beingDeleted'), 'the menu does not say why Delete is off');
     await press(again);
+    assert.equal(rowButton('manage')[0].props.disabled, true, 'a domain being deleted can still be opened for changes');
     const box = tree.root.findAll((node) => node.type === 'input' && node.props.type === 'checkbox').at(-1);
     assert.equal(box.props.disabled, true, 'a domain being deleted can still be selected for Remove');
     assert.equal(calls.filter((call) => call.method === 'DELETE').length, 0, 'a DELETE was sent');

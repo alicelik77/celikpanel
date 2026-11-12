@@ -166,7 +166,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'err.CERTIFICATE_VALIDATION_UNKNOWN': 'Bu sunucudaki nginx yanıt vermediği için CelikPanel, bu sitenin nginx yapılandırma dosyasının sertifika doğrulamasına izin verip vermediğini kontrol edemedi; bu yüzden sertifika istenmedi ve hiçbir şey değiştirilmedi. Sunucu yöneticisi nginx’in çalıştığını denetler; sonra sertifikayı yeniden isteyin.',
     'err.panel_certificate_contact_email_invalid': 'Yönetici hesabının geçerli bir e-posta adresi yok; sertifika yetkilisi bunu iletişim adresi olarak ister. Hiçbir şey istenmedi. E-posta adresinizi Hesabım’da (sağ üst menü) ayarlayın, sonra yeniden deneyin.',
     'err.panel_certificate_contact_email_invalid.action': 'Hesabım’ı aç',
-    'err.ssl_contact_email_required': 'İletişim e-posta adresi verilmedi ve hesabınızın geçerli bir adresi yok; sertifika yetkilisi bunu ister. Sertifika istenmedi; site ekliyorduysanız site oluşturuldu. E-posta adresinizi Hesabım’da (sağ üst menü) ayarlayın, sonra sertifikayı alan adının ayarlarında SSL/TLS bölümünden isteyin.',
+    'err.ssl_contact_email_required': 'İletişim e-posta adresi verilmedi ve hesabınızın geçerli bir adresi yok; sertifika yetkilisi bunu ister. Sertifika istenmedi; site ekliyorduysanız site oluşturuldu. E-posta adresinizi Hesabım’da (sağ üst menü) ayarlayın, sonra sertifikayı alan adının Güvenlik bölümünden isteyin.',
     'err.ssl_contact_email_required.action': 'Hesabım’ı aç',
     // v0.1.0-alpha.99: kişinin kendi e-postasını değiştirmesi.
     'err.account_email_request_invalid': 'İstek okunamadı; hiçbir şey değiştirilmedi. Sayfayı yenileyip yeniden deneyin.',
@@ -209,7 +209,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     "err.DB_IMPORT_CLIENT_UNSAFE": "Bu sunucunun MariaDB istemcisi bir dosyayı güvenle yüklemek için çok eski (korumalı kipi yok). Hiçbir şey yüklenmedi. Yönetici sunucunun MariaDB paketlerini günceller; sonra yeniden içe aktarın.",
     "err.DB_IMPORT_FILE_REFUSED": "Dosyada CelikPanel'in çalıştırmadığı bir komut var (satırı aşağıda); bu yüzden hiçbir şey yüklenmedi ve veritabanı değişmedi. O satırı dosyadan çıkarın, sonra yeniden içe aktarın.",
     "err.DB_IMPORT_LOAD_FAILED": "Dosya yüklenirken bir hatada durdu ve veritabanı önceki haline döndürüldü. Sunucunun gerekçesi ve satır aşağıda. Dosyayı düzeltin, sonra yeniden içe aktarın.",
-    "err.DB_IMPORT_ROLLBACK_FAILED": "Dosya yüklenirken durdu ve veritabanını geri döndürme tamamlanmadı. Hemen önce alınan güvenlik kopyası duruyor: önceki duruma dönmek için Yedekler sekmesinden onu geri yükleyin. Gerekçe aşağıda.",
+    "err.DB_IMPORT_ROLLBACK_FAILED": "Dosya yüklenirken durdu ve veritabanını geri döndürme tamamlanmadı. Hemen önce alınan güvenlik kopyası duruyor: önceki duruma dönmek için Yedekler bölümünden onu geri yükleyin. Gerekçe aşağıda.",
     "err.DB_IMPORT_UPLOAD_MISSING": "Yüklenen dosya sunucuda yok ya da eksik. Hiçbir şey yüklenmedi. Dosyayı seçip yeniden içe aktarın.",
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "Bu alan adının dosyayı altında yükleyecek bir barındırma hesabı yok; hiçbir şey yüklenmedi. Alan adına barındırma ekleyin, sonra yeniden içe aktarın.",
     "err.DB_TOOLS_RESTORE_RUNNING": "Bu sitenin bir geri yüklemesi ya da içe aktarması hâlâ sürüyor; hiçbir şey başlatılmadı. Bitmesini bekleyin, sonra yeniden deneyin.",

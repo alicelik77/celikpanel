@@ -6,7 +6,7 @@ topics: [domain.mail#mailboxes]
 keywords: [e-posta, posta kutusu, kota, dolu, yönlendirme, yönlendirici, web postası, webmail, roundcube, imap, smtp, outlook, thunderbird, otomatik yanıt, catch-all]
 ---
 
-Posta kutuları bir alan adına aittir. Alan adını, sonra **E-posta** sekmesini açın. Sekme, sunucuda posta hizmeti varsa ve planınız e-postayı kapsıyorsa görünür.
+Posta kutuları bir alan adına aittir. Alan adını, sonra **E-posta** bölümünü açın. Bölüm, sunucuda posta hizmeti varsa görünür. Planınız e-postayı kapsamıyorsa soluk görünür ve kimin ekleyebileceğini söyler.
 
 ## Posta kutuları {#mailboxes}
 
@@ -26,7 +26,7 @@ Her satır posta kutusunun **Kullanım** ve **Kota** bilgisini gösterir. Yanın
 
 Kim yapar: posta kutusunun sahibi eski iletileri siler ya da siz **Kotayı düzenle** ile boyutu büyütürsünüz. Posta hemen yeniden kabul edilir. Bunu posta sunucusunun kendisi yapar; panel dururken de çalışır.
 
-Sekme Dovecot kota eklentisinin etkin olmadığını söylüyorsa boyutlar kayıtlıdır ama henüz uygulanmaz; eklentiyi yönetici açar.
+E-posta bölümü Dovecot kota eklentisinin etkin olmadığını söylüyorsa boyutlar kayıtlıdır ama henüz uygulanmaz; eklentiyi yönetici açar.
 
 ## Yönlendirme {#forwarding}
 
@@ -40,7 +40,7 @@ Posta kutusunun otomatik yanıt düğmesini açın, **Otomatik yanıt gönder** 
 
 ## Web postası {#webmail}
 
-Sekmedeki **Web posta** kutusunda **Webmail’i Aç** düğmesi vardır. Tam e-posta adresi ve posta kutusunun parolasıyla giriş yapın; panel hesabı gerekmez. Web postasının bu sunucuda henüz kullanılamadığı yazıyorsa yönetici Roundcube'u kurar ve ona bir adres verir.
+E-posta bölümündeki **Web posta** kutusunda **Webmail’i Aç** düğmesi vardır. Tam e-posta adresi ve posta kutusunun parolasıyla giriş yapın; panel hesabı gerekmez. Web postasının bu sunucuda henüz kullanılamadığı yazıyorsa yönetici Roundcube'u kurar ve ona bir adres verir.
 
 ## Posta programı ayarları {#mail-programs}
 

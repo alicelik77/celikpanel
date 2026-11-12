@@ -1,5 +1,5 @@
 // SCREEN catalogue part "ftpLogins" (alpha.128, gap G16): a site's other
-// FTP/SFTP logins, each closed into one folder of the site (the Access tab),
+// FTP/SFTP logins, each closed into one folder of the site (Files › FTP, SFTP and SSH),
 // their refusal codes and the steps of their progress window.
 // Key prefixes kept here: ftpLogins., err.FTP_LOGIN_, opstep.ftplogin., dashboard.audit.action.ftp_login.
 // One part of the screen copy; ../../index.tsx fetches every part in
@@ -41,6 +41,8 @@ export const enFtpLoginsScreens = {
     'ftpLogins.newPassword': 'New password (leave empty to keep the current one)',
     'ftpLogins.newFolder': 'Folder (leave as it is to keep it)',
     'ftpLogins.saveChange': 'Save the change',
+    'ftpLogins.folderMissing': 'Write the folder the login sees.',
+    'ftpLogins.passwordWeak': 'The new password does not meet the rules below it. Fix it, or empty the field to keep the current one.',
     'ftpLogins.remove': 'Remove',
     'ftpLogins.confirmAddTitle': 'Add the login {login}?',
     'ftpLogins.confirmAdd': '{login} will see only the folder {folder} of {domain}, over SFTP and over FTP with encryption. The server makes an account and a closed folder for it; it cannot open a command line.',
@@ -61,7 +63,7 @@ export const enFtpLoginsScreens = {
     'ftpLogins.connectFtp': 'FTP with encryption (FTP over TLS, "Require explicit FTP over TLS" in FileZilla): port {port}, passive ports {min}–{max}',
     'ftpLogins.connectFolder': 'The login starts in /files, which is its folder of the site.',
 
-    'ftpLogins.block.noSite': 'This domain has no website files, so there is nothing to give a login to. Give it a website on the Hosting tab first.',
+    'ftpLogins.block.noSite': 'This domain has no website files, so there is nothing to give a login to. Give it a website first, in the Site section under Site type.',
     'ftpLogins.block.notInPlan': 'File access is not part of this subscription’s plan, so no login can be added. Your provider can add it.',
     'ftpLogins.block.notInPlanManager': 'File access is not part of the plan of {name}, so no login can be added. Open its rights to add it.',
     'ftpLogins.block.suspended': 'This subscription is not active, so logins cannot be added or changed; they are paused. They can still be removed. Your provider renews the subscription.',
@@ -100,7 +102,7 @@ export const enFtpLoginsScreens = {
     'err.FTP_LOGIN_REFUSED.no_sshd': 'This server has no OpenSSH server, which logins need. The server administrator installs it first.',
     'err.FTP_LOGIN_REFUSED.name_taken': 'This name is taken on the server. Choose another login name; nothing was changed.',
     'err.FTP_LOGIN_REFUSED.no_sign_in': 'The login could not sign in on this server: SSH accepts only keys here (or refuses accounts without a command line) and FTP over TLS is not available, so it was not created and the earlier steps were put back. The server administrator installs the FTP server (vsftpd) from Components, or allows passwords for SSH; CelikPanel does not change the SSH settings.',
-    'err.FTP_LOGIN_REFUSED.site_account': 'The site’s own account is missing or changed on the server, so no login can be added. The server administrator checks the site on the Hosting tab.',
+    'err.FTP_LOGIN_REFUSED.site_account': 'The site’s own account is missing or changed on the server, so no login can be added. The server administrator checks the site in the Site section.',
 
     // The plan form's and the server limits' label of the key ftp.max_logins.
     'limits.key.ftp.max_logins': 'Additional FTP/SFTP logins per subscription',

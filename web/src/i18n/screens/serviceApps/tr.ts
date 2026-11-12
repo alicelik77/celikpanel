@@ -224,7 +224,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     'err.SERVICE_APP.venv_missing': 'Hiçbir şey değişmedi: sunucuda Python’un venv modülü yok. Yönetici python3-venv paketini kurar.',
     'err.SERVICE_APP.probe_failed': 'Hiçbir şey değişmedi: sunucu, uygulamanın burada çalışıp çalışamayacağını söyleyemedi. Bir dakika sonra yeniden deneyin.',
     'err.SERVICE_APP.confirm_data': 'Uygulamanın verilerini de silmek için {domain} alan adını yazın. Yazmazsanız veriler korunur.',
-    'err.SERVICE_APP.app_installed': 'Hiçbir şey değişmedi: bu alan adını bir yapay zekâ veya otomasyon uygulaması kullanıyor. Önce onu Yapay zekâ ve otomasyon sekmesinden kaldırın.',
+    'err.SERVICE_APP.app_installed': 'Hiçbir şey değişmedi: bu alan adını bir yapay zekâ veya otomasyon uygulaması kullanıyor. Önce onu Site bölümünde, Yapay zekâ ve otomasyon kısmından kaldırın.',
     'err.SERVICE_APP.no_port': 'Hiçbir şey değişmedi: bu sunucuda uygulamalar için boş iç bağlantı noktası kalmadı. Yönetici kullanılmayan uygulamaları kaldırır.',
     'err.SERVICE_APP.limits': 'Bellek 256 ile 65536 MB, işlemci yüzde 10 ile 1600, işlem sayısı 32 ile 8192 arasında olmalı.',
     'err.SERVICE_APP.hold_reason': 'Uygulamanın neden bekletildiğini yazın (örneğin CVE), en çok 500 karakter.',

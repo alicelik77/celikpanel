@@ -34,16 +34,16 @@ test('a mailbox that already exists is named, nothing changed, with the next ste
   assert.match(tr, /başka bir ad seçin/);
 });
 
-test('a static site has no PHP version: its own sentence and the way to its hosting type', async () => {
+test('a static site has no PHP version: its own sentence and the way to its site type', async () => {
   const body = {
     code: 'SITE_HAS_NO_PHP', reason: 'static', action: '/domains/example.com?tab=hosting',
     vars: { domain: 'example.com' }, error: 'example.com is a static site, so it has no PHP version and nothing was changed.',
   };
   const problem = await readApiError(answer(body));
-  assert.match(apiErrorText(problem, sayIn('en')), /^example\.com is a static site: .*has no PHP.*Nothing was changed\..*change its hosting type to PHP/);
-  assert.match(apiErrorText(problem, sayIn('tr')), /^example\.com statik bir site: .*Hiçbir şey değiştirilmedi\..*barındırma tipini PHP yapın/);
-  assert.equal(apiErrorActionLabel(problem, sayIn('en')), 'Open Hosting');
-  assert.equal(apiErrorActionLabel(problem, sayIn('tr')), 'Barındırma’yı aç');
+  assert.match(apiErrorText(problem, sayIn('en')), /^example\.com is a static site: .*has no PHP.*Nothing was changed\..*Site section and change its site type to PHP/);
+  assert.match(apiErrorText(problem, sayIn('tr')), /^example\.com statik bir site: .*Hiçbir şey değiştirilmedi\..*Site bölümünü açıp site türünü PHP yapın/);
+  assert.equal(apiErrorActionLabel(problem, sayIn('en')), 'Open Site');
+  assert.equal(apiErrorActionLabel(problem, sayIn('tr')), 'Site bölümünü aç');
   // Another hosting type without PHP keeps the general sentence.
   const node = await readApiError(answer({ ...body, reason: 'node' }));
   assert.match(apiErrorText(node, sayIn('en')), /^example\.com does not run PHP \(its hosting type is not PHP\)/);

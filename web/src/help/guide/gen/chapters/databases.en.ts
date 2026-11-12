@@ -8,8 +8,8 @@ const chapter = {
   title: "Databases",
   blocks: [
     ["p","A website such as WordPress keeps its content in a database. CelikPanel creates MariaDB (MySQL) and PostgreSQL databases on the server, with a user for each."],
-    ["h",2,"domain-databases","On the domain's Databases tab"],
-    ["p",["The quickest way is from the domain itself. Open the domain, then ",["b","Databases"],", and press ",["b","Create database"],":"]],
+    ["h",2,"domain-databases","In the domain's Databases section"],
+    ["p",["The quickest way is from the domain itself. Open the domain, then its ",["b","Databases"]," section, and press ",["b","Create database"],":"]],
     ["ol",[["Type a ",["b","Database name"],". The panel puts the domain in front of it: for ",["c","example.com"]," and ",["c","shop"],", the full name is ",["c","example_com_shop"],"."],["Choose the ",["b","Database engine"],"."],["Choose a ",["b","Password"],"."],["Press ",["b","Create database"],"."]]],
     ["p",["A user with the same name and ",["c","_user"]," at the end, here ",["c","example_com_shop_user"],", is created with full access. Your application connects to ",["c","localhost"]," with that name, user and password."]],
     ["h",2,"databases-page","The Databases page"],
@@ -17,11 +17,11 @@ const chapter = {
     ["ul",[["the ",["b","Database name"],": letters, digits and underscores only;"],["the ",["b","Website"]," it belongs to, or ",["b","No website (standalone database)"],". A database that belongs to a website is deleted with it;"],["the ",["b","Database user"],": a ",["b","New user"]," or an ",["b","Existing user"],". ",["b","Make a strong password"]," fills one in for you;"],["the ",["b","Permissions"],": ",["b","ALL (full access)"]," or ",["b","SELECT (read only)"],"."]]],
     ["p",[["b","Create user"]," adds a user on its own. To give a user a new password, use its key button. Programs that use the old password stop connecting until they get the new one; an application CelikPanel installed gets it automatically."]],
     ["h",2,"web-tools","phpMyAdmin and phpPgAdmin"],
-    ["p",[["b","Database web tools"]," on the domain's ",["b","Databases"]," tab has ",["b","Open phpMyAdmin"]," (MariaDB) or ",["b","Open phpPgAdmin"]," (PostgreSQL). The tool opens through the panel and is never open to the internet. Sign in with the database user and its password; you see only your own databases."]],
+    ["p",[["b","Database web tools"]," in the domain's ",["b","Databases"]," section has ",["b","Open phpMyAdmin"]," (MariaDB) or ",["b","Open phpPgAdmin"]," (PostgreSQL). The tool opens through the panel and is never open to the internet. Sign in with the database user and its password; you see only your own databases."]],
     ["p",["If the button says to install the tool from ",["b","Components"],", the administrator installs it."]],
     ["h",2,"passwords","Passwords"],
     ["p",["CelikPanel does not keep database passwords and cannot show them again. If you lost one, give the user a new password and put it into your application's configuration file. When your plan's database count or the disk is full, new databases are refused; see ",["g","limits","disk","Limits and suspension"],"."]],
-    ["warn",[["p",["Deleting a database deletes all its data. Take a backup first under ",["b","Advanced"],", then ",["b","Backups"],"."]]]],
+    ["warn",[["p",["Deleting a database deletes all its data. Take a backup first in the domain's ",["b","Backups"]," section."]]]],
   ],
 } as unknown as GuideChapter;
 

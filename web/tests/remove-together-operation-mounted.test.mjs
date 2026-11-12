@@ -35,6 +35,7 @@ const stub = dataModule(`import React from '${reactURL}';
  } });
  export const readApiError = async response => ({ message: 'error ' + response.status });
  export const useNavigationBlocker = () => {};
+ export const useAuth = () => ({ role: globalThis.operationRole ?? 'admin' });
  export const showToast = () => {};
  export const createPortal = node => node;
  export const invalidate = () => [];

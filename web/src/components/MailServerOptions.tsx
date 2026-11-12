@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Info, ShieldAlert, Trash2 } from 'lucide-react';
 import { useMailConfigWords } from '../i18n/mailConfig';
 import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError } from '../lib/apiError';
 import { confirmAction, type OperationEnd } from '../lib/confirmAction';
-import { refreshRemote, useRemote } from '../lib/remote';
+import { lastKnown, refreshRemote, useRemote } from '../lib/remote';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
 import { Button, RemoteGate, inputClass } from './ui';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // The other mail server settings, one at a time (alpha.130), administrator
 // only, server-wide: subaddressing and the sender allow/block list. The state
@@ -105,44 +108,51 @@ async function settingsEnd(res: Response, t: T, done: string, refusedWords: (cod
 export function MailServerOptions() {
     const { t, locale } = useMailConfigWords();
     const read = useRemote(MAIL_SERVER_SETTINGS_URL, decodeView);
-    const known = read.remote.state === 'known' ? read.remote.value : null;
-    const [subDraft, setSubDraft] = useState<boolean | null>(null);
+    const known = lastKnown(read.remote)?.value ?? null;
+    const say = useSaveWords();
+    // Subaddressing is a draft (alpha.132): what the server does now, a "+"
+    // set outside CelikPanel counting as on; only Save in the bar changes it.
+    const subKnown = useMemo(() => (known ? {
+        enabled: known.subaddressing.enabled || known.server?.subaddressing === 'on' || (known.server?.subaddressing === 'owner' && (known.server.recipient_delimiter ?? '').includes('+')),
+    } : null), [known]);
+    const subDraft = useDraft(subKnown);
     const [value, setValue] = useState('');
     const [action, setAction] = useState<'block' | 'allow'>('block');
-    useEffect(() => {
-        // What the server does: a "+" set outside CelikPanel is on too.
-        if (known && subDraft === null) setSubDraft(known.subaddressing.enabled || known.server?.subaddressing === 'on' || (known.server?.subaddressing === 'owner' && (known.server.recipient_delimiter ?? '').includes('+')));
-    }, [known, subDraft]);
     const time = (text: string) => {
         const at = Date.parse(text.includes('T') ? text : `${text.replace(' ', 'T')}Z`);
         return Number.isFinite(at) ? new Date(at).toLocaleDateString(locale, { dateStyle: 'medium' }) : text;
     };
 
-    const saveSubaddressing = async () => {
-        if (subDraft === null) return;
+    const saveSubaddressing = () => void subDraft.save(async (_changes, values) => {
+        const end: { outcome: 'saved' | 'refused' | 'unknown' } = { outcome: 'refused' };
         await confirmAction({
             title: t('mcfg.sub.title'),
-            message: subDraft ? t('mcfg.sub.confirmOn') : t('mcfg.sub.confirmOff'),
+            message: values.enabled ? t('mcfg.sub.confirmOn') : t('mcfg.sub.confirmOff'),
             confirmLabel: t('mcfg.sub.save'),
             progressTitle: t('mcfg.sub.progress'),
             action: async (report) => {
                 try {
                     const res = await sendWithSteps(report, flowSteps(t, 'mailSubaddressing', ['check!', 'save', 'apply']), t, 'mailSubaddressing',
-                        (headers) => fetch('/api/v1/mail/subaddressing', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: subDraft }) }));
-                    return await settingsEnd(res, t, subDraft ? t('mcfg.sub.doneOn') : t('mcfg.sub.doneOff'), (code, detail) => {
+                        (headers) => fetch('/api/v1/mail/subaddressing', { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: values.enabled }) }));
+                    const result = await settingsEnd(res, t, values.enabled ? t('mcfg.sub.doneOn') : t('mcfg.sub.doneOff'), (code, detail) => {
                         if (code === 'MAIL_SETTING_DOVECOT') return t('mcfg.sub.dovecot', { detail });
                         if (code === 'MAIL_SETTING_OWNER_CONFIG') return t('mcfg.sub.owner', { detail });
                         if (code === 'MAIL_SETTING_EDITED_CONFIG') return t('mcfg.sub.edited', { detail });
                         return null;
                     });
+                    end.outcome = result.state === 'done' ? 'saved' : result.state === 'unknown' ? 'unknown' : 'refused';
+                    return result;
                 } catch {
+                    end.outcome = 'unknown';
                     return { state: 'unknown', reason: t('common.resultUnknown') };
                 } finally {
                     refreshRemote(MAIL_SERVER_SETTINGS_URL);
                 }
             },
         });
-    };
+        if (end.outcome === 'saved') await read.retry();
+        return end.outcome;
+    });
 
     const changeRule = async (body: Record<string, unknown>, message: string, tone: 'default' | 'danger') => {
         await confirmAction({
@@ -190,8 +200,6 @@ export function MailServerOptions() {
                 {({ value: view, stale }) => {
                     const sub = subaddressingWords(view, t);
                     const sender = senderWords(view, t);
-                    const serverOn = view.server?.subaddressing === 'on' || (view.server?.subaddressing === 'owner' && (view.server.recipient_delimiter ?? '').includes('+'));
-                    const changed = subDraft !== null && subDraft !== serverOn;
                     return (
                         <>
                             {view.server_unknown && <StateLine tone="warn" mark="unknown" text={t('mcfg.opts.unknown')} />}
@@ -199,14 +207,24 @@ export function MailServerOptions() {
                                 <h4 className="mb-1 text-sm font-medium text-fg">{t('mcfg.sub.title')}</h4>
                                 <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('mcfg.sub.desc')}</p>
                                 <StateLine {...sub} />
-                                <label className="flex min-h-[1.75rem] items-center gap-2 text-sm text-fg">
-                                    <input type="checkbox" className="h-4 w-4" checked={subDraft ?? false} onChange={(event) => setSubDraft(event.target.checked)} />
+                                <label className={`flex min-h-[1.75rem] items-center gap-2 rounded-r text-sm text-fg ${subDraft.isChanged('enabled') ? `${changedRowClass} -ml-2 pl-2` : ''}`}>
+                                    <input type="checkbox" className="h-4 w-4" checked={subDraft.values?.enabled ?? false} disabled={subDraft.saving || !subDraft.values}
+                                        onChange={(event) => subDraft.set('enabled', event.target.checked)} />
                                     {t('mcfg.sub.enabled')}
+                                    {subDraft.isChanged('enabled') && <ChangedMark switched={subDraft.values?.enabled ?? false} />}
                                 </label>
-                                <div className="mt-3">
-                                    <Button variant="primary" disabled={stale || subDraft === null || !changed}
-                                        onClick={() => void saveSubaddressing()}>{t('mcfg.sub.save')}</Button>
-                                </div>
+                                {subDraft.isMoved('enabled') && subDraft.base && (
+                                    <ServerMovedNote value={say(subDraft.base.enabled ? 'on' : 'off')} onTake={() => subDraft.take('enabled')} />
+                                )}
+                                <SaveBar
+                                    className="-mx-5 px-5"
+                                    count={subDraft.count}
+                                    saving={subDraft.saving}
+                                    blockedBy={stale ? say('stale') : undefined}
+                                    unknown={subDraft.outcome === 'unknown' ? { held: subDraft.held, checking: read.reading, onCheck: () => void read.retry() } : undefined}
+                                    onSave={saveSubaddressing}
+                                    onDiscard={subDraft.reset}
+                                />
                             </div>
 
                             <div className="mt-6" data-mail-sender-list>

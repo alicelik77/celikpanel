@@ -242,6 +242,10 @@ const flat = (children) => [].concat(children ?? []).flat(Infinity);
 const labelOf = (node) => [node.props['aria-label'], node.props.title, ...flat(node.props.children)]
   .filter((part) => typeof part === 'string').join(' ');
 const buttons = (label) => hostButtons().filter((node) => labelOf(node).includes(label));
+// alpha.132: Save and Discard are the shared save bar's (components/kit/save/SaveBar.tsx),
+// which shows only while something is unsaved.
+const saveButton = () => hostButtons().find((node) => node.props['data-save'] !== undefined);
+const discardButton = () => hostButtons().find((node) => node.props['data-save-discard'] !== undefined);
 const press = async (node) => {
   await act(async () => {
     await node.props.onClick({});
@@ -264,7 +268,9 @@ const fields = () => tree.root.findAll((node) => ['input', 'textarea', 'select']
 
 const destructiveWords = /delete|remove|\bsil\b|kaldır|disable|flush/i;
 const dangerous = (node) => node.props.type === 'submit' || destructiveWords.test(labelOf(node))
-  || /text-danger|hover:text-danger/.test(node.props.className ?? '') || /\.(save|update|enable)\b/.test(labelOf(node));
+  || /text-danger|hover:text-danger/.test(node.props.className ?? '') || /\.(save|update|enable)\b/.test(labelOf(node))
+  // alpha.132: the shared save bar's Save (components/kit/save/SaveBar.tsx).
+  || node.props['data-save'] !== undefined;
 const enabledDangerousControls = () => hostButtons().filter((node) => !node.props.disabled && dangerous(node)).map(labelOf);
 
 // --- The table -----------------------------------------------------------------
@@ -296,13 +302,13 @@ const table = [
   },
   {
     screen: 'postgresql.conf settings', Component: PostgreSQLSettings, props: pgPath,
-    read: '/api/v1/config', negative: ['dbconf.noSettings', 'dbconf.noMatch', 'dbconf.noChanges'],
+    read: '/api/v1/config', negative: ['dbconf.noSettings', 'dbconf.noMatch'],
     checking: 'dbconf.checking', unknown: 'dbconf.unknown',
     known: [json({ Content: '# the owner removed every setting\n', Parsed: '', Version: 'cf1-x' }), 'dbconf.noSettings'], noEditor: true,
   },
   {
     screen: 'pg_hba.conf access rules', Component: PostgreSQLAccessRules, props: hbaPath,
-    read: '/api/v1/config', negative: ['dbconf.hba.none', 'No access rules', 'dbconf.noChanges'],
+    read: '/api/v1/config', negative: ['dbconf.hba.none', 'No access rules'],
     checking: 'dbconf.checking', unknown: 'dbconf.unknown',
     known: [json({ Content: '# comments only\n', Parsed: '', Version: 'cf1-x' }), 'dbconf.hba.none'], noEditor: true,
   },
@@ -314,13 +320,13 @@ const table = [
   },
   {
     screen: 'MariaDB option file', Component: MariaDBSettings, props: myPath,
-    read: '/api/v1/config', negative: ['dbconf.noSettings', 'dbconf.noChanges'],
+    read: '/api/v1/config', negative: ['dbconf.noSettings'],
     checking: 'dbconf.checking', unknown: 'dbconf.unknown',
     known: [json({ Content: '# nothing here\n', Parsed: '', Version: 'cf1-x' }), 'dbconf.noSettings'], noEditor: true,
   },
   {
     screen: 'raw configuration file', Component: ConfigEditor, props: { path: '/etc/postgresql/17/main/pg_hba.conf', onBack() {} },
-    read: '/api/v1/config', negative: ['dbconf.noChanges'],
+    read: '/api/v1/config', negative: [],
     checking: 'dbconf.checking', unknown: 'dbconf.unknown', known: null, noEditor: true,
   },
   {
@@ -385,7 +391,7 @@ for (const row of table) {
         }
         if (row.noEditor) {
           assert.deepEqual(fields().map((node) => node.type), [], 'an editor is shown for a file that is not known');
-          assert.equal(buttons('dbconf.save').length, 0, 'Save is offered for a file that is not known');
+          assert.equal(saveButton(), undefined, 'Save is offered for a file that is not known');
           assert.equal(buttons('dbconf.hba.add').length, 0);
         }
         const pending = failure === 'still on its way';
@@ -536,14 +542,13 @@ for (const row of mounts.values()) {
 
 // --- The editors, once the file is known ------------------------------------------
 
-const saveButton = () => buttons('dbconf.save')[0];
 const valueOf = (name) => tree.root.findAll((node) => node.type === 'input' && node.props['aria-label'] === `dbconf.valueOf{"name":"${name}"}`)[0];
 
 test('postgresql.conf: Save sends the file that was read with only the changed line replaced, and its version', async () => {
   serve({}, { 'POST /api/v1/config': json({ success: true, version: 'cf1-next', applied: 'reloaded', daemon_check: 'accepted', restart_required: ['shared_buffers'], backup: '/etc/postgresql/17/main/postgresql.conf.celikpanel-backup-20261009T120000Z' }) });
   try {
     await mount(PostgreSQLSettings, pgPath);
-    assert.equal(saveButton().props.disabled, true, 'Save is on although nothing changed');
+    assert.equal(saveButton(), undefined, 'Save is offered although nothing changed');
     await type(valueOf('shared_buffers'), '256MB');
     assert.equal(saveButton().props.disabled, false);
     await press(saveButton());
@@ -723,7 +728,7 @@ test('pg_hba.conf: the banner names the refused rule by its number and the reaso
     assert.ok(said.includes('dbconf.notAccepted') && said.includes('peer authentication is only supported on local sockets'), said);
     // Nothing changed on the server, and Discard brings its file back.
     assert.ok(said.includes('dbconf.refused.unchangedDiscard'), said);
-    assert.equal(buttons('dbconf.discard')[0].props.disabled, false, 'Discard is off after a refusal');
+    assert.equal(discardButton().props.disabled, false, 'Discard is off after a refusal');
     // The page went to the new rule once: its first control, centred and focused.
     const row = tree.root.findAll((node) => node.type === 'select' && node.props['aria-describedby'] === 'hba-new-0-refusal')[0];
     assert.ok(row, 'the refused rule’s control is not tied to the message under it');
@@ -738,7 +743,7 @@ test('pg_hba.conf: the banner names the refused rule by its number and the reaso
     assert.deepEqual(revealed.slice(2), [['scroll', row.props.id, 'center'], ['focus', row.props.id, true]]);
     assert.equal(writesMade().length, 1, 'showing the rule saved again');
     // Discard: the screen is the server's file again, and the refusal is gone.
-    await press(buttons('dbconf.discard')[0]);
+    await press(discardButton());
     assert.ok(!banner(), 'the refusal outlived Discard');
     assert.equal(tree.root.findAll((node) => node.type === 'li').length, shownBefore);
   } finally {
@@ -787,7 +792,7 @@ test('postgresql.conf: the banner names the refused setting and why, and shows i
     assert.deepEqual(revealed, [['scroll', field.props.id, 'center'], ['focus', field.props.id, true]]);
     await press(buttons('dbconf.target.settingShow{"name":"max_connections"}')[0]);
     assert.deepEqual(revealed.slice(2), [['scroll', field.props.id, 'center'], ['focus', field.props.id, true]]);
-    assert.equal(buttons('dbconf.discard')[0].props.disabled, false, 'Discard is off after a refusal');
+    assert.equal(discardButton().props.disabled, false, 'Discard is off after a refusal');
   } finally {
     await cleanup();
   }
@@ -906,7 +911,7 @@ test('mail policy: written but not reloaded stays on screen as a failure, above 
     await mount(PostfixManagement, { onBack() {} });
     const size = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
     await type(size(), '50');
-    await press(buttons('mailpolicy.save')[0]);
+    await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0]);
     assert.ok(has('err.MAIL_POLICY_NOT_RELOADED') && has('Job for postfix.service failed'));
     assert.equal(size().props.value, 50, 'the form does not show what main.cf holds now');
     assert.deepEqual(globalThis.currentTest.toasts.filter(([kind]) => kind === 'success'), [], 'a save that was not loaded is announced as applied');
@@ -960,7 +965,7 @@ test('mail policy: the not-reloaded answer carries the saved values, so they are
       const size = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
       const before = reads('/api/v1/mail/policy');
       await type(size(), '50');
-      await press(buttons('mailpolicy.save')[0]);
+      await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0]);
       assert.ok(has('err.' + code) && has(label) && has('postfix: fatal: bad numerical configuration'), code + ' is not shown with its line');
       // A verified failure is drawn as one; an outcome that could not be
       // established is not (its sentence says "this is not a verified
@@ -994,7 +999,7 @@ test('mail policy: "applied" is said only for a verified reload; a stopped Postf
       await mount(PostfixManagement, { onBack() {} });
       const size = () => tree.root.findAll((node) => node.type === 'input' && node.props.type === 'number')[0];
       await type(size(), '50');
-      await press(buttons('mailpolicy.save')[0]);
+      await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0]);
       assert.deepEqual(globalThis.currentTest.toasts, [['success', key]], 'applied=' + applied);
     } finally {
       await cleanup();

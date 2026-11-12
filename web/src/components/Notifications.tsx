@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
-import { AlertTriangle, Bell, Check, ExternalLink, Info, Mail, Save } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertTriangle, Bell, Check, ExternalLink, Info, Mail } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { notificationsTranslation, type NotificationsKey } from '../i18n/notifications';
 import { showToast } from './Toast';
 import { Button, CouldNotCheck, RemoteGate, inputClass } from './ui';
 import { refusalText } from '../lib/apiError';
-import { invalidate, useRemote } from '../lib/remote';
+import { invalidate, lastKnown, useRemote } from '../lib/remote';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 import { sendRights } from '../lib/rights';
 import { Link, useLocation, useNavigate } from '../router';
 import { useAuth } from '../auth/AuthContext';
@@ -16,7 +19,7 @@ import {
     NOTIFICATIONS_URL, NOTIFICATION_PREFERENCES_URL, NOTIFICATION_SETTINGS_URL, NOTIFY_GROUPS,
     decodeNotificationPreferences, decodeNotificationSettings, decodeNotifications, groupNotifications,
     notificationSeenPath,
-    type NotificationItem, type NotificationMode, type NotificationSettings, type NotifyGroup,
+    type NotificationItem, type NotificationMode, type NotifyGroup,
 } from '../lib/notifications';
 
 // Notifications by recipient (alpha.128, G18): the signed-in person's own
@@ -182,35 +185,31 @@ const MODE_WORDS: Record<NotificationMode, [NotificationsKey, NotificationsKey]>
     none: ['notif.prefs.none', 'notif.prefs.noneHint'],
 };
 
+// An extra address is empty or a whole address; the server checks it again.
+const emailOK = (value: string) => value.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 /** My account: which notices are also emailed, and one extra address. */
 export function NotificationPreferencesCard() {
     const { t } = useNotificationWords();
+    const say = useSaveWords();
     const { user } = useAuth();
     const read = useRemote(NOTIFICATION_PREFERENCES_URL, decodeNotificationPreferences);
-    const [mode, setMode] = useState<NotificationMode | null>(null);
-    const [extra, setExtra] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
-    const known = read.remote.state === 'known' ? read.remote.value : null;
-    useEffect(() => {
-        if (known) {
-            setMode(known.mode);
-            setExtra(known.extra_email);
-        }
-    }, [known]);
+    const answer = lastKnown(read.remote)?.value;
+    // alpha.132: a draft over the answer; only Save writes (owner, 8 Nov 2026).
+    const known = useMemo(() => (answer ? { mode: answer.mode, extra: answer.extra_email } : null), [answer]);
+    const draft = useDraft(known);
     const impersonating = user.impersonating === true;
-    const save = async () => {
-        if (!known || saving) return;
-        setSaving(true);
-        try {
-            const result = await sendRights(NOTIFICATION_PREFERENCES_URL, 'PUT', { mode: mode ?? known.mode, extra_email: (extra ?? known.extra_email).trim() });
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            else if (result.kind === 'refused') showToast('error', refusalText(result.error, t, 'notif.prefs.failed' as TranslationKey));
-            else showToast('success', t('notif.prefs.saved'));
-        } finally {
-            await read.retry();
-            setSaving(false);
+    const save = () => void draft.save(async (_changes, values) => {
+        const result = await sendRights(NOTIFICATION_PREFERENCES_URL, 'PUT', { mode: values.mode, extra_email: values.extra.trim() });
+        if (result.kind === 'lost') return 'unknown';
+        if (result.kind === 'refused') {
+            showToast('error', refusalText(result.error, t, 'notif.prefs.failed' as TranslationKey));
+            return 'refused';
         }
-    };
+        showToast('success', t('notif.prefs.saved'));
+        await read.retry();
+        return 'saved';
+    });
     return (
         <section id="notifications" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5" data-account-section="notifications">
             <div className="mb-1 flex items-center gap-2">
@@ -219,64 +218,80 @@ export function NotificationPreferencesCard() {
             </div>
             <p className="mb-4 text-sm text-fg-muted">{t('notif.prefs.desc')}</p>
             <RemoteGate remote={read.remote} checking={t('notif.prefs.checking')} failed={t('notif.prefs.readFailed')} onRetry={() => void read.retry()} busy={read.reading}>
-                {({ value }) => (
-                    <div className="grid gap-3">
-                        {!value.mail_available && <p className="rounded-lg border border-warning-mark/50 bg-warning-mark/15 p-3 text-sm text-fg" data-notification-mail="unavailable">{t('notif.prefs.noMail')}</p>}
-                        {value.mail_available && !value.own_email_set && <p className="text-sm text-fg-muted" data-notification-own-email="missing">{t('notif.prefs.noOwnEmail')}</p>}
-                        {impersonating && <p className="text-sm text-fg-muted" data-notification-impersonating>{t('notif.prefs.impersonating')}</p>}
-                        <fieldset className="grid gap-2" disabled={impersonating || saving}>
-                            {MODES.map((choice) => (
-                                <label key={choice} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 max-sm:min-h-11 ${(mode ?? value.mode) === choice ? 'border-primary bg-primary/5' : 'border-border'}`} data-notification-mode={choice}>
-                                    <input type="radio" name="notification-mode" className="mt-1" checked={(mode ?? value.mode) === choice} onChange={() => setMode(choice)} />
-                                    <span>
-                                        <span className="block text-sm font-semibold text-fg">{t(MODE_WORDS[choice][0])}</span>
-                                        <span className="block text-xs text-fg-muted">{t(MODE_WORDS[choice][1])}</span>
-                                    </span>
+                {({ value, stale }) => {
+                    const mode = draft.values?.mode ?? value.mode;
+                    const extra = draft.values?.extra ?? value.extra_email;
+                    const extraBad = draft.isChanged('extra') && !emailOK(extra);
+                    return (
+                        <div className="grid gap-3">
+                            {!value.mail_available && <p className="rounded-lg border border-warning-mark/50 bg-warning-mark/15 p-3 text-sm text-fg" data-notification-mail="unavailable">{t('notif.prefs.noMail')}</p>}
+                            {value.mail_available && !value.own_email_set && <p className="text-sm text-fg-muted" data-notification-own-email="missing">{t('notif.prefs.noOwnEmail')}</p>}
+                            {impersonating && <p className="text-sm text-fg-muted" data-notification-impersonating>{t('notif.prefs.impersonating')}</p>}
+                            <fieldset className="grid gap-2" disabled={impersonating || draft.saving}>
+                                {MODES.map((choice) => {
+                                    const marked = draft.isChanged('mode') && mode === choice;
+                                    return (
+                                        <label key={choice} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 max-sm:min-h-11 ${mode === choice ? 'border-primary bg-primary/5' : 'border-border'} ${marked ? changedRowClass : ''}`} data-notification-mode={choice}>
+                                            <input type="radio" name="notification-mode" className="mt-1" checked={mode === choice} onChange={() => draft.set('mode', choice)} />
+                                            <span>
+                                                <span className="block text-sm font-semibold text-fg">{t(MODE_WORDS[choice][0])}{marked && <ChangedMark />}</span>
+                                                <span className="block text-xs text-fg-muted">{t(MODE_WORDS[choice][1])}</span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                                {draft.isMoved('mode') && draft.base && <ServerMovedNote value={t(MODE_WORDS[draft.base.mode][0])} onTake={() => draft.take('mode')} />}
+                                <label className={`mt-1 grid gap-1 text-sm ${draft.isChanged('extra') ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
+                                    <span className="font-semibold text-fg">{t('notif.prefs.extra')}{draft.isChanged('extra') && <ChangedMark />}</span>
+                                    <input type="email" className={inputClass} value={extra} onChange={(event) => draft.set('extra', event.target.value)} maxLength={254} autoComplete="email" aria-invalid={extraBad || undefined} data-notification-extra />
+                                    <span className={`text-xs ${extraBad ? 'text-danger' : 'text-fg-muted'}`}>{extraBad ? t('notif.badEmail') : t('notif.prefs.extraHint')}</span>
                                 </label>
-                            ))}
-                            <label className="mt-1 grid gap-1 text-sm">
-                                <span className="font-semibold text-fg">{t('notif.prefs.extra')}</span>
-                                <input type="email" className={inputClass} value={extra ?? value.extra_email} onChange={(event) => setExtra(event.target.value)} maxLength={254} autoComplete="email" data-notification-extra />
-                                <span className="text-xs text-fg-muted">{t('notif.prefs.extraHint')}</span>
-                            </label>
-                        </fieldset>
-                        {!impersonating && (
-                            <div>
-                                <Button type="button" variant="primary" icon={Save} loading={saving} className="max-sm:min-h-11" onClick={() => void save()}>{t('notif.prefs.save')}</Button>
-                            </div>
-                        )}
-                    </div>
-                )}
+                                {draft.isMoved('extra') && draft.base && <ServerMovedNote value={draft.base.extra || '—'} onTake={() => draft.take('extra')} />}
+                            </fieldset>
+                            {!impersonating && (
+                                <SaveBar
+                                    className="-mx-5 px-5 pb-0"
+                                    count={draft.count}
+                                    saving={draft.saving}
+                                    blockedBy={stale ? say('stale') : extraBad ? t('notif.badEmail') : undefined}
+                                    unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: read.reading, onCheck: () => void read.retry() } : undefined}
+                                    onSave={save}
+                                    onDiscard={draft.reset}
+                                />
+                            )}
+                        </div>
+                    );
+                }}
             </RemoteGate>
         </section>
     );
 }
 
+// The administrator's form: the expiry warning days and one address per kind of event.
+type AdminForm = { expiry: number } & Record<NotifyGroup, string>;
+
 /** The administrator's server-wide settings: expiry warning days and one extra address per kind of event. */
 export function NotificationSettingsCard() {
     const { t } = useNotificationWords();
+    const say = useSaveWords();
     const read = useRemote(NOTIFICATION_SETTINGS_URL, decodeNotificationSettings);
-    const [draft, setDraft] = useState<NotificationSettings | null>(null);
-    const [saving, setSaving] = useState(false);
-    const known = read.remote.state === 'known' ? read.remote.value : null;
-    useEffect(() => {
-        if (known) setDraft(known);
-    }, [known]);
-    const save = async () => {
-        if (!draft || saving) return;
-        setSaving(true);
-        try {
-            const extra = Object.fromEntries(NOTIFY_GROUPS.map((group) => [group, draft.extra[group].trim()]));
-            const result = await sendRights(NOTIFICATION_SETTINGS_URL, 'PUT', { expiry_days_before: draft.expiry_days_before, extra });
-            if (result.kind === 'lost') showToast('error', t('common.resultUnknown'));
-            else if (result.kind === 'refused') showToast('error', refusalText(result.error, t, 'notif.admin.failed' as TranslationKey));
-            else showToast('success', t('notif.admin.saved'));
-        } finally {
-            await read.retry();
-            setSaving(false);
+    const answer = lastKnown(read.remote)?.value;
+    // alpha.132: a draft over the answer; only Save writes (owner, 8 Nov 2026).
+    const known = useMemo<AdminForm | null>(() => (answer ? { expiry: answer.expiry_days_before, ...answer.extra } : null), [answer]);
+    const draft = useDraft(known);
+    const save = () => void draft.save(async (_changes, values) => {
+        const extra = Object.fromEntries(NOTIFY_GROUPS.map((group) => [group, values[group].trim()]));
+        const result = await sendRights(NOTIFICATION_SETTINGS_URL, 'PUT', { expiry_days_before: values.expiry, extra });
+        if (result.kind === 'lost') return 'unknown';
+        if (result.kind === 'refused') {
+            showToast('error', refusalText(result.error, t, 'notif.admin.failed' as TranslationKey));
+            return 'refused';
         }
-    };
-    const setExtra = (group: NotifyGroup, value: string) => setDraft((current) => (current ? { ...current, extra: { ...current.extra, [group]: value } } : current));
+        showToast('success', t('notif.admin.saved'));
+        await read.retry();
+        return 'saved';
+    });
+    const changedClass = (field: keyof AdminForm) => (draft.isChanged(field) ? `-mx-2 rounded-r px-2 ${changedRowClass}` : '');
     return (
         <section className="rounded-xl border border-border bg-surface p-5" data-account-section="notification-settings">
             <div className="mb-1 flex items-center gap-2">
@@ -285,31 +300,48 @@ export function NotificationSettingsCard() {
             </div>
             <p className="mb-4 text-sm text-fg-muted">{t('notif.admin.desc')}</p>
             <RemoteGate remote={read.remote} checking={t('notif.admin.checking')} failed={t('notif.admin.readFailed')} onRetry={() => void read.retry()} busy={read.reading}>
-                {({ value }) => {
-                    const shown = draft ?? value;
+                {({ value, stale }) => {
+                    const form: AdminForm = draft.values ?? { expiry: value.expiry_days_before, ...value.extra };
+                    const bad = NOTIFY_GROUPS.filter((group) => draft.isChanged(group) && !emailOK(form[group]));
                     return (
-                        <fieldset className="grid gap-4" disabled={saving}>
-                            <label className="grid gap-1 text-sm">
-                                <span className="font-semibold text-fg">{t('notif.admin.expiry')}</span>
-                                <select className={inputClass} value={shown.expiry_days_before} onChange={(event) => setDraft({ ...shown, expiry_days_before: Number(event.target.value) })} data-notification-expiry-days>
-                                    {shown.expiry_choices.map((n) => <option key={n} value={n}>{t('notif.admin.days', { n })}</option>)}
-                                </select>
-                                <span className="text-xs text-fg-muted">{t('notif.admin.expiryHint')}</span>
-                            </label>
-                            <div className="grid gap-2">
-                                <p className="text-sm font-semibold text-fg">{t('notif.admin.extraTitle')}</p>
-                                <p className="text-xs text-fg-muted">{t('notif.admin.extraHint')}</p>
-                                {NOTIFY_GROUPS.map((group) => (
-                                    <label key={group} className="grid gap-1 text-sm">
-                                        <span className="text-fg">{t(`notif.admin.group.${group}` as NotificationsKey)}</span>
-                                        <input type="email" className={inputClass} value={shown.extra[group]} onChange={(event) => setExtra(group, event.target.value)} maxLength={254} data-notification-group={group} />
+                        <div>
+                            <fieldset className="grid gap-4" disabled={draft.saving}>
+                                <div className={changedClass('expiry')}>
+                                    <label className="grid gap-1 text-sm">
+                                        <span className="font-semibold text-fg">{t('notif.admin.expiry')}{draft.isChanged('expiry') && <ChangedMark />}</span>
+                                        <select className={inputClass} value={form.expiry} onChange={(event) => draft.set('expiry', Number(event.target.value))} data-notification-expiry-days>
+                                            {value.expiry_choices.map((n) => <option key={n} value={n}>{t('notif.admin.days', { n })}</option>)}
+                                        </select>
+                                        <span className="text-xs text-fg-muted">{t('notif.admin.expiryHint')}</span>
                                     </label>
-                                ))}
-                            </div>
-                            <div>
-                                <Button type="button" variant="primary" icon={Save} loading={saving} className="max-sm:min-h-11" onClick={() => void save()}>{t('notif.admin.save')}</Button>
-                            </div>
-                        </fieldset>
+                                    {draft.isMoved('expiry') && draft.base && <ServerMovedNote value={t('notif.admin.days', { n: draft.base.expiry })} onTake={() => draft.take('expiry')} />}
+                                </div>
+                                <div className="grid gap-2">
+                                    <p className="text-sm font-semibold text-fg">{t('notif.admin.extraTitle')}</p>
+                                    <p className="text-xs text-fg-muted">{t('notif.admin.extraHint')}</p>
+                                    {NOTIFY_GROUPS.map((group) => (
+                                        <div key={group} className={changedClass(group)}>
+                                            <label className="grid gap-1 text-sm">
+                                                <span className="text-fg">{t(`notif.admin.group.${group}` as NotificationsKey)}{draft.isChanged(group) && <ChangedMark />}</span>
+                                                <input type="email" className={inputClass} value={form[group]} onChange={(event) => draft.set(group, event.target.value)} maxLength={254}
+                                                    aria-invalid={bad.includes(group) || undefined} data-notification-group={group} />
+                                                {bad.includes(group) && <span className="text-xs text-danger">{t('notif.badEmail')}</span>}
+                                            </label>
+                                            {draft.isMoved(group) && draft.base && <ServerMovedNote value={draft.base[group] || '—'} onTake={() => draft.take(group)} />}
+                                        </div>
+                                    ))}
+                                </div>
+                            </fieldset>
+                            <SaveBar
+                                className="-mx-5 px-5 pb-0"
+                                count={draft.count}
+                                saving={draft.saving}
+                                blockedBy={stale ? say('stale') : bad.length > 0 ? t('notif.badEmail') : undefined}
+                                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: read.reading, onCheck: () => void read.retry() } : undefined}
+                                onSave={save}
+                                onDiscard={draft.reset}
+                            />
+                        </div>
                     );
                 }}
             </RemoteGate>

@@ -23,8 +23,8 @@
 <article class="guide-article"><h1>Veritabanları</h1>
 <p class="guide-audience">Herkes için</p>
 <p>WordPress gibi bir site içeriğini veritabanında tutar. CelikPanel sunucuda MariaDB (MySQL) ve PostgreSQL veritabanları ve her biri için bir kullanıcı oluşturur.</p>
-<h2 id="domain-databases">Alan adının Veritabanları sekmesinde</h2>
-<p>En kısa yol alan adının kendisidir. Alan adını, sonra <strong>Veritabanları</strong> sekmesini açıp <strong>Veritabanı oluştur</strong> düğmesine basın:</p>
+<h2 id="domain-databases">Alan adının Veritabanları bölümünde</h2>
+<p>En kısa yol alan adının kendisidir. Alan adını, sonra <strong>Veritabanları</strong> bölümünü açıp <strong>Veritabanı oluştur</strong> düğmesine basın:</p>
 <ol><li>Bir <strong>Veritabanı adı</strong> yazın. Panel adın önüne alan adını ekler: <code>example.com</code> ve <code>magaza</code> için tam ad <code>example_com_magaza</code> olur.</li><li><strong>Veritabanı motoru</strong> seçin.</li><li>Bir <strong>Parola</strong> belirleyin.</li><li><strong>Veritabanı oluştur</strong> düğmesine basın.</li></ol>
 <p>Aynı adın sonuna <code>_user</code> eklenmiş, tam yetkili bir kullanıcı da oluşturulur; burada <code>example_com_magaza_user</code>. Uygulamanız <code>localhost</code> adresine bu ad, kullanıcı ve parolayla bağlanır.</p>
 <h2 id="databases-page">Veritabanları sayfası</h2>
@@ -32,11 +32,11 @@
 <ul><li><strong>Veritabanı adı</strong>: yalnız harf, rakam ve alt çizgi;</li><li>bağlı olduğu <strong>Web sitesi</strong> ya da <strong>Web sitesi yok (bağımsız veritabanı)</strong>. Bir siteye bağlı veritabanı site silinince onunla silinir;</li><li><strong>Veritabanı kullanıcısı</strong>: <strong>Yeni kullanıcı</strong> ya da <strong>Var olan kullanıcı</strong>. <strong>Güçlü bir parola üret</strong> sizin için parola yazar;</li><li><strong>İzinler</strong>: <strong>ALL (tam erişim)</strong> ya da <strong>SELECT (yalnızca okuma)</strong>.</li></ul>
 <p><strong>Kullanıcı oluştur</strong> tek başına bir kullanıcı ekler. Bir kullanıcıya yeni parola vermek için anahtar düğmesini kullanın. Eski parolayı kullanan programlar yenisini alana dek bağlanamaz; CelikPanel'in kurduğu uygulama yenisini kendiliğinden alır.</p>
 <h2 id="web-tools">phpMyAdmin ve phpPgAdmin</h2>
-<p>Alan adının <strong>Veritabanları</strong> sekmesindeki <strong>Veritabanı web araçları</strong> kutusunda <strong>phpMyAdmin aç</strong> (MariaDB) ya da <strong>phpPgAdmin aç</strong> (PostgreSQL) düğmesi bulunur. Araç panel üzerinden açılır, internete hiçbir zaman açık değildir. Veritabanı kullanıcısı ve parolasıyla giriş yapın; yalnız kendi veritabanlarınızı görürsünüz.</p>
+<p>Alan adının <strong>Veritabanları</strong> bölümündeki <strong>Veritabanı web araçları</strong> kutusunda <strong>phpMyAdmin aç</strong> (MariaDB) ya da <strong>phpPgAdmin aç</strong> (PostgreSQL) düğmesi bulunur. Araç panel üzerinden açılır, internete hiçbir zaman açık değildir. Veritabanı kullanıcısı ve parolasıyla giriş yapın; yalnız kendi veritabanlarınızı görürsünüz.</p>
 <p>Düğme aracın <strong>Bileşenler</strong> sayfasından kurulmasını söylüyorsa onu yönetici kurar.</p>
 <h2 id="passwords">Parolalar</h2>
 <p>CelikPanel veritabanı parolalarını saklamaz ve yeniden gösteremez. Birini kaybettiyseniz kullanıcıya yeni parola verin ve onu uygulamanızın yapılandırma dosyasına yazın. Planınızdaki veritabanı sayısı ya da disk dolunca yeni veritabanı reddedilir; bkz. <a href="limits.html#disk">Sınırlar ve askıya alma</a>.</p>
-<aside class="guide-callout guide-warning"><p class="guide-callout-label">Uyarı</p><p>Veritabanını silmek bütün verisini siler. Önce <strong>Gelişmiş</strong> sekmesinde <strong>Yedekler</strong> bölümünden yedek alın.</p></aside>
+<aside class="guide-callout guide-warning"><p class="guide-callout-label">Uyarı</p><p>Veritabanını silmek bütün verisini siler. Önce alan adının <strong>Yedekler</strong> bölümünden yedek alın.</p></aside>
 <nav class="guide-pager" aria-label="Bölümler"><a rel="prev" href="mail.html"><span>Önceki</span>E-posta ve web postası</a><a rel="next" href="apps-wordpress.html"><span>Sonraki</span>Uygulamalar, WordPress araçları ve zararlı yazılım taraması</a></nav>
 </article></div>
 </main><footer class="site-footer"><div class="container footer-main">

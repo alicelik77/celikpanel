@@ -158,7 +158,9 @@ const adminCatalog = (extra = {}) => ({
   },
 });
 
-test('the Offered tab: a tick the server did not make is said, never a silent flip back', async () => {
+const saveButton = (view) => view.tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0];
+
+test('the Offered tab: a tick is saved by Save only, and a state the server did not take is said, never a silent flip back', async () => {
   const view = await mount(React.createElement(OfferedItemsTab), ({ url, method }) => {
     if (url.startsWith('/api/v1/rights/catalog')) return answer(200, adminCatalog());
     if (method === 'PUT') return answer(200, { hidden: { php: [], node: [] }, hidden_offerings: [], offered_apps: [], item: { id: 'permission:database_remote', offered: false } });
@@ -169,9 +171,15 @@ test('the Offered tab: a tick the server did not make is said, never a silent fl
     assert.equal(row.props['data-offered'], 'no');
     await act(async () => { await row.findByType('input').props.onChange({ target: { checked: true } }); });
     await settle();
+    assert.equal(view.calls.filter((call) => call.method === 'PUT').length, 0, 'ticking saved at once');
+    await act(async () => { saveButton(view).props.onClick(); });
+    await settle();
     const put = view.calls.find((call) => call.method === 'PUT');
     assert.deepEqual(put.body, { offering_id: 'permission:database_remote', offered: true });
     assert.ok(view.text().includes('Nothing changed: the server still has Remote access to databases hidden.'), view.text());
+    // What the server did not take stays a marked, unsaved change.
+    assert.equal(view.tree.root.findByProps({ 'data-offered-item': 'permission:database_remote' }).findByType('input').props.checked, true);
+    assert.ok(saveButton(view), 'the change that was not taken is no longer unsaved');
   } finally {
     await view.done();
   }
@@ -215,6 +223,7 @@ test('a refused offer says why and where to fix it', async () => {
   try {
     const row = view.tree.root.findByProps({ 'data-offered-item': 'component:php-fpm:8.4' });
     await act(async () => { await row.findByType('input').props.onChange({ target: { checked: false } }); });
+    await act(async () => { saveButton(view).props.onClick(); });
     await settle();
     assert.ok(view.text().includes('Nothing was changed: PHP 8.4 is withdrawn for security on this server, so it cannot be offered.'), view.text());
     assert.ok(view.text().includes(catalogues.en['err.VERSION_WITHDRAWN.action']));
@@ -253,7 +262,7 @@ test('a refusal lists applications and programs by name', () => {
   assert.deepEqual(shown.details, ['WordPress', t('rights.software.program'), t('rights.perm.ssh')]);
 });
 
-test('limits of site settings: one Save names the rows it saves; a row keeps its own error', async () => {
+test('limits of site settings: one save bar marks the rows it saves; a row keeps its own error', async () => {
   const policy = [
     { key: 'php.memory_limit_mb', server_ceiling: 512, server_default: null, customer_editable: true, customer_choice: true },
     { key: 'cron.max_jobs', server_ceiling: null, server_default: null, customer_editable: true, customer_choice: false },
@@ -269,19 +278,21 @@ test('limits of site settings: one Save names the rows it saves; a row keeps its
     body.key === 'cron.max_jobs' ? answer(400, { error: 'no', code: 'SETTING_UNKNOWN' }) : answer(200, { success: true })
   ));
   try {
-    assert.equal(view.tree.root.findAll((node) => node.type === 'button' && node.props['data-limits-save'] !== undefined).length, 1, 'one Save');
     // Limit-only keys have no "customers may change it" box.
     assert.equal(view.tree.root.findByProps({ 'data-limit-row': 'cron.max_jobs' }).findAllByType('input').length, 1);
     assert.equal(view.tree.root.findByProps({ 'data-limit-row': 'php.memory_limit_mb' }).findAllByType('input').length, 2);
-    const save = () => view.tree.root.findByProps({ 'data-limits-save': '' });
-    assert.equal(save().props.disabled, true, 'nothing changed yet');
+    const save = () => view.tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0];
+    assert.equal(save(), undefined, 'nothing changed yet');
     const input = (key) => view.tree.root.findByProps({ 'data-limit-row': key }).findAllByType('input')[0];
     await act(async () => input('php.memory_limit_mb').props.onChange({ target: { value: '1024' } }));
     await act(async () => input('cron.max_jobs').props.onChange({ target: { value: '20' } }));
-    assert.ok(view.text().includes('Will be saved: '), view.text());
+    assert.ok(view.text().includes('2 changes not saved.'), view.text());
+    assert.equal(view.tree.root.findAll((node) => node.props && node.props['data-changed-mark'] !== undefined && typeof node.type === 'string').length, 2, 'the changed rows are marked');
+    assert.equal(view.calls.filter((call) => call.method === 'PUT').length, 0, 'typing saved');
     // An invalid value keeps Save off and says the range beside the row.
     await act(async () => input('db.max_user_connections').props.onChange({ target: { value: '0' } }));
     assert.equal(save().props.disabled, true);
+    assert.ok(view.text().includes(catalogues.en['limits.server.fixFirst']), 'the bar says why Save is off');
     assert.ok(textOf(view.tree.root.findByProps({ 'data-limit-row': 'db.max_user_connections' })).includes('Between 1 and 10000.'));
     await act(async () => input('db.max_user_connections').props.onChange({ target: { value: '50' } }));
     await act(async () => { await save().props.onClick(); });
@@ -293,6 +304,11 @@ test('limits of site settings: one Save names the rows it saves; a row keeps its
     const cron = view.tree.root.findByProps({ 'data-limit-row': 'cron.max_jobs' });
     assert.equal(cron.findAll((node) => node.props && node.props['data-limit-error'] === 'cron.max_jobs').length > 0, true, 'the error stays beside its row');
     assert.ok(globalThis.rightsFixture.toasts.some(([kind]) => kind === 'error'));
+    // The row the server refused stays a marked change; Discard gives it up.
+    assert.ok(save(), 'the refused row is no longer unsaved');
+    await act(async () => view.tree.root.findAll((node) => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0].props.onClick());
+    assert.equal(save(), undefined);
+    assert.equal(input('cron.max_jobs').props.value, '');
   } finally {
     await view.done();
   }

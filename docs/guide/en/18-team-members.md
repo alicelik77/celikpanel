@@ -30,7 +30,7 @@ Access is given per area: **Files**, **Databases**, **Mail**, **DNS**, **SSL**, 
 
 Permissions add up: the strongest one given counts. A member who can only view sees the pages with a "View-only access" note and cannot change anything.
 
-Some parts are never open to team members: the domain's **Overview**, **Access** (FTP, SFTP and SSH), **Applications**, **AI & automation**, the malware scan, WordPress tools and remote backup destinations.
+Some parts are never open to team members: the domain's **Overview**, **FTP, SFTP and SSH**, **Applications**, **AI & automation**, **Programs**, the malware scan, WordPress tools and remote backup destinations. A team member sees only the sections of a domain that were opened for them.
 
 ## Changing or removing a member {#changing}
 

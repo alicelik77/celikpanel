@@ -28,7 +28,7 @@ export const trDataTools: Record<DataToolsKey, string> = {
     'dbt.importFile': 'Döküm dosyası',
     'dbt.importStart': 'İçe aktar',
     'dbt.importConfirm': '{file}, {name} veritabanına yüklensin mi? Önce güvenlik kopyası alınır.',
-    'dbt.importConfirmEmpty': '{name} boşaltılıp {file} yüklensin mi? Önce güvenlik kopyası alınır; Yedekler sekmesinden geri alınabilir.',
+    'dbt.importConfirmEmpty': '{name} boşaltılıp {file} yüklensin mi? Önce güvenlik kopyası alınır; Yedekler bölümünden geri alınabilir.',
     'dbt.importTitle': '{name} veritabanına içe aktarılıyor',
     'dbt.imported': '{file}, {name} veritabanına yüklendi. {safety} güvenlik kopyası Yedekler altında duruyor.',
     'dbt.importBlockedClient': 'Bu sunucunun MariaDB istemcisi bir dosyayı güvenle yüklemek için çok eski; bu yüzden içe aktarma burada kapalı. Yönetici sunucunun MariaDB paketlerini günceller; sonra İçe aktar çalışır.',

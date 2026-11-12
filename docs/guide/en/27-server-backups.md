@@ -10,7 +10,7 @@ Backups are taken per site. A copy on the server's own disk does not survive los
 
 ## On the server {#local}
 
-Each domain has **Backups** on its **Advanced** tab: files, databases or both, by hand or on a schedule. A restore first takes a safety backup. There is no whole-server backup in the panel; cover every site with an every-site schedule to a remote destination, and use your provider's snapshots for the system itself.
+Each domain has a **Backups** section on its page: files, databases or both, by hand or on a schedule. A restore first takes a safety backup. There is no whole-server backup in the panel; cover every site with an every-site schedule to a remote destination, and use your provider's snapshots for the system itself.
 
 ## Remote destinations {#destination}
 

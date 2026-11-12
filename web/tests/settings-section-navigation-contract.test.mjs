@@ -85,17 +85,20 @@ test('user section changes add history while invalid section canonicalization re
   assert.doesNotMatch(selection, /replace:\s*true/);
 });
 
+// alpha.132: the row's keys and its keeping the active section in view are
+// shared with a domain's page (lib/tablist.ts). Only the row scrolls: the
+// page itself is never moved to bring a tab into view.
 test('the horizontally scrolling mobile tab list keeps the active section visible', () => {
   const workspace = sourceBetween('function SettingsWorkspace(', '// The certificate');
+  const tablist = readFileSync(new URL('../src/lib/tablist.ts', import.meta.url), 'utf8');
 
   assert.match(workspace, /overflow-x-auto/);
   assert.match(workspace, /tabRefs\.current\[section\.id\]\s*=\s*element/);
-  assert.match(workspace, /const activeTab\s*=\s*tabRefs\.current\[activeID\]/);
-  assert.match(workspace, /matchMedia\('\(max-width:\s*1023px\)'\)\.matches/);
-  assert.match(workspace, /activeTab\.scrollIntoView\(\s*\{/);
-  assert.match(workspace, /block:\s*'nearest'/);
-  assert.match(workspace, /inline:\s*'nearest'/);
-  assert.match(workspace, /\[activeID\]/);
+  assert.match(workspace, /useEffect\(\(\) => revealTabInRow\(tabRefs\.current\[activeID\]\), \[activeID\]\);/);
+  assert.match(tablist, /row\.scrollLeft [-+]=/);
+  assert.doesNotMatch(tablist, /scrollIntoView/);
+  const keys = sourceBetween('const moveSection', 'return (');
+  assert.match(keys, /nextTabIndex\(event\.key, currentIndex, sections\.length\)/);
 });
 
 // v0.1.0-alpha.98 (D-037, owner 2026-10-22): Settings holds only what is chosen

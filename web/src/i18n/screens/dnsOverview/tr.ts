@@ -151,7 +151,7 @@ export const trDnsOverviewScreens: Record<DnsOverviewScreenKey, string> = {
     "dnsov.s.mail_not_in_list.title": "Listede {domain} için {kind} kaydı yok",
     "dnsov.s.mail_not_in_list.why": "{name} ({kind}) kaydı bu sunucunun {domain} DNS kayıtları arasında yok; bu yüzden internette hiçbir yerde görünmüyor. Beklemek onu eklemez.",
     "dnsov.s.mail_not_in_list.who": "Siz · listenin sahibi olarak",
-    "dnsov.s.mail_not_in_list.next": "Kayıt düzenleyicide (alan adının DNS sekmesi) {kind} kaydını, Posta kayıtları altında gösterilen değerle ekleyin.",
+    "dnsov.s.mail_not_in_list.next": "Kayıt düzenleyicide (alan adının Alan adı ve DNS bölümü) {kind} kaydını, Posta kayıtları altında gösterilen değerle ekleyin.",
     "dnsov.s.mail_not_in_list.then": "Bu sayfa her dakika yeniden bakar; kayıt listeye girince burada görünür.",
     "dnsov.s.ok_optional_glue.title": "Adlarınız doğru; isteğe bağlı bir IPv6 kaydı kayıt kuruluşunda yok",
     "dnsov.s.ok_optional_glue.why": "Kayıt kuruluşunda {name} için IPv6 adresi (glue) yok. Onsuz her şey IPv4 üzerinden çalışır; beklemek bu kaydı eklemez.",

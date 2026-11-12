@@ -318,6 +318,10 @@ const screenPartBudgets = {
   // "databaseClusters", which had 1.07 KiB left. A new part, set with at
   // least 25% headroom from its Turkish file.
   pgLeftovers: kib(7, 2.5),
+  // v0.1.0-alpha.132: the nine sections of a domain's page (domain.section.,
+  // domain.part., domain.notInPlan.). A new part, set with at least 25%
+  // headroom from its Turkish file: 2.86 / 1.01 KiB.
+  domainSections: kib(4, 1.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

@@ -1,11 +1,11 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Save } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { Button, Checking, CouldNotCheck, Field, FormActions, FormSection, RemoteGate, ResultUnknown, inputClass } from './ui';
+import { Button, Checking, CouldNotCheck, FormSection, RemoteGate, ResultUnknown, inputClass } from './ui';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { useRemote } from '../lib/remote';
+import { lastKnown, useRemote } from '../lib/remote';
 import { useLostAnswer } from '../lib/lostAnswer';
 import { supportFor, useSupportTable } from '../lib/supportTable';
 import { SupportLine, supportConfirmation } from './SupportMark';
@@ -13,6 +13,10 @@ import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 import { confirmAction } from '../lib/confirmAction';
 import { followRequestProgress, phpVersionSteps, resumeRequestProgress } from '../lib/requestProgress';
+import { useDraft, type Draft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useLeaveGuard } from './kit/save/leaveGuard';
+import { useSaveWords } from './kit/save/words';
 
 // alpha.128: the site's PHP values within its limits, a chunk of its own.
 const SitePHPLimits = lazy(() => import('./SitePHPLimits').then((module) => ({ default: module.SitePHPLimits })));
@@ -48,6 +52,17 @@ interface PHPSettings {
 }
 
 const poolFields: (keyof PoolConfig)[] = ['pm', 'pm_max_children', 'pm_start_servers', 'pm_min_spare_servers', 'pm_max_spare_servers', 'user', 'group'];
+
+// The pool as the form holds it: every value as typed (alpha.132). A form
+// whose numbers are whole numbers and whose names are filled in can be saved.
+// Havuz, formun tuttuğu biçimde: her değer yazıldığı gibi.
+type PoolForm = Record<keyof PoolConfig, string>;
+const poolNumbers: (keyof PoolConfig)[] = ['pm_max_children', 'pm_start_servers', 'pm_min_spare_servers', 'pm_max_spare_servers'];
+const poolValid = (form: PoolForm) =>
+    ['dynamic', 'static', 'ondemand'].includes(form.pm) &&
+    poolNumbers.every((name) => /^\d{1,6}$/.test(form[name].trim())) &&
+    Number(form.pm_max_children) >= 1 &&
+    form.user.trim() !== '' && form.group.trim() !== '';
 
 const phpVersionPattern = /^[0-9]{1,2}\.[0-9]{1,2}$/;
 
@@ -95,6 +110,7 @@ export function DomainPHPSettings({
     isAdmin = false,
 }: DomainPHPSettingsProps) {
     const { t, locale } = useI18n();
+    const say = useSaveWords();
     // alpha.107 (D-038 §5, §14): each version's security support, from the
     // dated table; the customer sees the mark of their own site's version.
     const support = useSupportTable();
@@ -102,15 +118,13 @@ export function DomainPHPSettings({
     // customers; a hidden one is kept, and the page says so.
     const offered = useOfferedVersions();
     const [saving, setSaving] = useState(false);
-    const [savingPool, setSavingPool] = useState(false);
     // The version picked here and not applied yet; null until the person picks.
     // Burada seçilip henüz uygulanmamış sürüm; kişi seçene dek null.
     const [picked, setPicked] = useState<string | null>(null);
-    // Pool values that were sent, when their answer was lost and the settings
-    // read again do not show them: the form keeps them over that newer answer.
-    // Yanıtı yiten ve yeniden okunan ayarlarda görünmeyen havuz değerleri: form
-    // onları o yeni yanıtın üzerinde tutar.
-    const [poolDraft, setPoolDraft] = useState<{ from: number; value: PoolConfig } | null>(null);
+    // alpha.132: a picked version not applied yet is a change on this page:
+    // leaving asks first.
+    // Seçilip uygulanmamış sürüm bu sayfada bir değişikliktir; çıkarken sorulur.
+    useLeaveGuard(picked !== null && picked !== currentVersion ? 1 : 0);
     // Only versions that actually exist on this host — a hard-coded "8.3" on
     // a server without PHP was a settings page for a ghost. The current
     // version stays selectable even if its tree vanished (honest state).
@@ -143,6 +157,17 @@ export function DomainPHPSettings({
     // için gönderilir.
     const settled = settings.remote.state === 'known' && !settings.reading && !answer.holding;
     const selectedVersion = picked ?? (settings.remote.state === 'known' ? settings.remote.value.php_version : currentVersion);
+    // alpha.132: the pool is a draft over the pool last read; nothing is
+    // sent until Save. A save whose answer was lost keeps it, and the pool
+    // read again decides (useDraft drops what the server now holds).
+    // Havuz, son okunan havuzun üzerindeki taslaktır; Kaydet'e dek gönderilmez.
+    const knownPool = lastKnown(settings.remote)?.value.pool_config ?? null;
+    const poolKnown = useMemo<PoolForm | null>(() => (knownPool
+        ? Object.fromEntries(poolFields.map((name) => [name, String(knownPool[name] ?? '')])) as PoolForm
+        : null), [knownPool]);
+    const pool = useDraft(poolKnown);
+    const resetPool = pool.reset;
+    useEffect(() => resetPool(), [domainId, resetPool]);
 
     const handleVersionChange = async () => {
         if (readOnly || !settled || selectedVersion === currentVersion) return;
@@ -205,49 +230,41 @@ export function DomainPHPSettings({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [domainId]);
 
-    const handleSavePool = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (readOnly || !settled) return;
-        const fd = new FormData(e.currentTarget);
-        const pool: PoolConfig = {
-            pm: fd.get('pm') as string,
-            pm_max_children: parseInt(fd.get('pm_max_children') as string),
-            pm_start_servers: parseInt(fd.get('pm_start_servers') as string),
-            pm_min_spare_servers: parseInt(fd.get('pm_min_spare_servers') as string),
-            pm_max_spare_servers: parseInt(fd.get('pm_max_spare_servers') as string),
-            user: fd.get('user') as string,
-            group: fd.get('group') as string,
+    const handleSavePool = () => void pool.save(async (_changes, values) => {
+        if (readOnly || !settled || !poolValid(values)) return 'refused';
+        const sent: PoolConfig = {
+            pm: values.pm,
+            pm_max_children: Number(values.pm_max_children),
+            pm_start_servers: Number(values.pm_start_servers),
+            pm_min_spare_servers: Number(values.pm_min_spare_servers),
+            pm_max_spare_servers: Number(values.pm_max_spare_servers),
+            user: values.user.trim(),
+            group: values.group.trim(),
         };
-        setSavingPool(true);
-        try {
-            const res = await answer.send(`/api/v1/domains/${domainId}/php/pool`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ version: currentVersion, pool_config: pool }),
-            }, {
-                // The pool read again either holds every value as it was sent,
-                // or it does not; then the form keeps what was sent.
-                // Yeniden okunan havuz her değeri ya gönderildiği gibi tutar ya
-                // da tutmaz; o zaman form gönderileni korur.
-                shows: (read) => {
-                    const now = (read[0].value as PHPSettings).pool_config;
-                    if (!now) return null;
-                    return poolFields.every((name) => String(now[name]) === String(pool[name]));
-                },
-                notMade: (read) => setPoolDraft({ from: read[0].observedAt, value: pool }),
-            });
-            if (!res) return;
-            if (!res.ok) {
-                showToast('error', apiErrorText(await readApiError(res), t, 'php.poolFailed'));
-                return;
-            }
-            showToast('success', t('php.poolSaved'));
-            answer.settle();
-            await settings.retry();
-        } finally {
-            setSavingPool(false);
+        const res = await answer.send(`/api/v1/domains/${domainId}/php/pool`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ version: currentVersion, pool_config: sent }),
+        }, {
+            // The pool read again either holds every value as it was sent,
+            // or it does not; the draft keeps what is not held.
+            // Yeniden okunan havuz her değeri ya gönderildiği gibi tutar ya da tutmaz.
+            shows: (read) => {
+                const now = (read[0].value as PHPSettings).pool_config;
+                if (!now) return null;
+                return poolFields.every((name) => String(now[name]) === String(sent[name]));
+            },
+        });
+        if (!res) return 'unknown';
+        if (!res.ok) {
+            showToast('error', apiErrorText(await readApiError(res), t, 'php.poolFailed'));
+            return 'refused';
         }
-    };
+        showToast('success', t('php.poolSaved'));
+        answer.settle();
+        await settings.retry();
+        return 'saved';
+    });
 
     return (
         <RemoteGate
@@ -258,8 +275,7 @@ export function DomainPHPSettings({
             busy={settings.reading}
         >
             {(shown) => {
-                const keptPool = poolDraft && poolDraft.from === shown.observedAt ? poolDraft.value : null;
-                const pc = shown.value.pool_config ? keptPool ?? shown.value.pool_config : null;
+                const pc = shown.value.pool_config ? pool.values : null;
                 const pending = selectedVersion !== currentVersion;
                 const displayedVersions = currentVersion && !versions.includes(currentVersion)
                     ? [currentVersion, ...versions]
@@ -331,48 +347,58 @@ export function DomainPHPSettings({
                                     <p className="mt-0.5 text-xs text-fg-muted">{t('php.applyFirstHint')}</p>
                                 </div>
                             ) : pc ? (
-                                // The fields hold what the server sent, and a
-                                // newer answer builds the form again.
-                                // Alanlar sunucunun gönderdiğini tutar; daha
-                                // yeni yanıt formu yeniden kurar.
-                                <form key={`${shown.observedAt}${keptPool ? ':kept' : ''}`} onSubmit={handleSavePool}>
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        <Field label={t('php.pmMode')}>
-                                            <select name="pm" defaultValue={pc.pm} disabled={readOnly} className={inputClass}>
-                                                <option value="dynamic">dynamic</option>
-                                                <option value="static">static</option>
-                                                <option value="ondemand">ondemand</option>
-                                            </select>
-                                        </Field>
-                                        <Field label={t('php.maxChildren')}>
-                                            <input type="number" name="pm_max_children" defaultValue={pc.pm_max_children} readOnly={readOnly} className={inputClass} />
-                                        </Field>
-                                        <Field label={t('php.startServers')}>
-                                            <input type="number" name="pm_start_servers" defaultValue={pc.pm_start_servers} readOnly={readOnly} className={inputClass} />
-                                        </Field>
-                                        <Field label={t('php.minSpare')}>
-                                            <input type="number" name="pm_min_spare_servers" defaultValue={pc.pm_min_spare_servers} readOnly={readOnly} className={inputClass} />
-                                        </Field>
-                                        <Field label={t('php.maxSpare')}>
-                                            <input type="number" name="pm_max_spare_servers" defaultValue={pc.pm_max_spare_servers} readOnly={readOnly} className={inputClass} />
-                                        </Field>
-                                        <Field label={t('php.user')}>
-                                            <input type="text" name="user" defaultValue={pc.user} readOnly={readOnly} className={inputClass} />
-                                        </Field>
-                                        <Field label={t('php.group')}>
-                                            <input type="text" name="group" defaultValue={pc.group} readOnly={readOnly} className={inputClass} />
-                                        </Field>
-                                    </div>
-                                    {!readOnly && (
-                                        <FormActions>
-                                            <Button type="submit" variant="primary" icon={Save} disabled={!canSave || savingPool}>
-                                                {t('php.savePool')}
-                                            </Button>
-                                        </FormActions>
-                                    )}
-                                </form>
+                                // The fields hold the server's values with the
+                                // unsaved changes over them; a changed one is marked.
+                                // Alanlar sunucunun değerlerini ve üzerindeki
+                                // kaydedilmemiş değişiklikleri tutar.
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <PoolField name="pm" label={t('php.pmMode')} draft={pool}>
+                                        <select id="php-pool-pm" value={pc.pm} disabled={readOnly || pool.saving} onChange={(e) => pool.set('pm', e.target.value)} className={inputClass}>
+                                            <option value="dynamic">dynamic</option>
+                                            <option value="static">static</option>
+                                            <option value="ondemand">ondemand</option>
+                                        </select>
+                                    </PoolField>
+                                    {([
+                                        ['pm_max_children', 'php.maxChildren'],
+                                        ['pm_start_servers', 'php.startServers'],
+                                        ['pm_min_spare_servers', 'php.minSpare'],
+                                        ['pm_max_spare_servers', 'php.maxSpare'],
+                                        ['user', 'php.user'],
+                                        ['group', 'php.group'],
+                                    ] as const).map(([name, label]) => (
+                                        <PoolField key={name} name={name} label={t(label)} draft={pool}>
+                                            <input
+                                                id={`php-pool-${name}`}
+                                                type={poolNumbers.includes(name) ? 'number' : 'text'}
+                                                value={pc[name]}
+                                                readOnly={readOnly}
+                                                disabled={pool.saving}
+                                                onChange={(e) => pool.set(name, e.target.value)}
+                                                className={inputClass}
+                                            />
+                                        </PoolField>
+                                    ))}
+                                </div>
                             ) : (
                                 <p className="text-sm text-fg-muted">{t('php.poolUnavailable')}</p>
+                            )}
+                            {!readOnly && (
+                                <SaveBar
+                                    count={pool.count}
+                                    saving={pool.saving}
+                                    blockedBy={
+                                        answer.holding || !canSave
+                                            ? say('stale')
+                                            : pending
+                                                ? t('php.applyFirst')
+                                                : pool.values && !poolValid(pool.values)
+                                                  ? t('php.poolInvalid')
+                                                  : undefined
+                                    }
+                                    onSave={handleSavePool}
+                                    onDiscard={pool.reset}
+                                />
                             )}
                         </FormSection>
                         )}
@@ -380,5 +406,26 @@ export function DomainPHPSettings({
                 );
             }}
         </RemoteGate>
+    );
+}
+
+// One field of the pool: its label, marked when changed, and the server's
+// value beside it when the server changed it while it was being edited.
+// Havuzun bir alanı: değiştiyse işaretli etiketi.
+function PoolField({ name, label, draft, children }: {
+    name: keyof PoolConfig; label: string; draft: Draft<PoolForm>; children: React.ReactNode;
+}) {
+    const changed = draft.isChanged(name);
+    return (
+        <div className={`-mx-2 rounded-r px-2 py-1 ${changed ? changedRowClass : ''}`}>
+            <label htmlFor={`php-pool-${name}`} className="mb-1 block text-sm font-medium text-fg-muted">
+                {label}
+                {changed && draft.base && <ChangedMark from={draft.base[name]} to={draft.values?.[name] ?? ''} />}
+            </label>
+            {children}
+            {draft.isMoved(name) && draft.base && (
+                <ServerMovedNote value={draft.base[name]} onTake={() => draft.take(name)} />
+            )}
+        </div>
     );
 }

@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { inputClass } from './ui';
+import { ChangedMark, changedRowClass } from './kit/save/SaveBar';
 import {
     grantable, groupSoftware, inUseText, itemLabel, notOfferedKey, overLimitText, permissionGroups, permissionIdsOf, permissionLabel, permissionTopicKey, quantity,
     softwareGroupKey, softwareGroupName, softwareLabel, toggle,
@@ -17,7 +18,7 @@ import {
 // ve yazılımlar. Yalnız düzenleyenin verebileceği seçilebilir; kümede olup
 // yeniden verilemeyen öğe görünür, işaretli ve sabit kalır.
 
-export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNumbers, reseller = false, grantorIsReseller = false, idPrefix, effective }: {
+export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNumbers, reseller = false, grantorIsReseller = false, idPrefix, effective, base }: {
     /** What the person editing may hand out (GET /api/v1/rights/catalog). */
     grantor: RightsView;
     selection: RightsSelection;
@@ -35,6 +36,11 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
      * so beside it: saved, but not usable until the reseller has it.
      */
     effective?: RightsView;
+    /**
+     * alpha.132: the set as it was opened. Given, every quantity and item
+     * that differs from it is marked as an unsaved change (the plan form).
+     */
+    base?: { numbers: Numbers; selection: RightsSelection };
 }) {
     const { t, locale } = useI18n();
     // Why an item cannot be given, by its kind: a reseller asks the
@@ -50,9 +56,11 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
         ...grantor.software,
         ...selection.software.filter((id) => !grantor.software.some((item) => item.id === id)).map((id) => ({ id, granted: false })),
     ]);
+    const qtyChanged = (key: keyof Numbers) => !!base && base.numbers[key] !== numbers[key];
+    const itemChanged = (kind: 'permissions' | 'software', id: string) => !!base && base.selection[kind].includes(id) !== selection[kind].includes(id);
     const qty = (key: keyof Numbers, label: string, unit?: string) => (
-        <label key={key} className="min-w-0">
-            <span className="mb-1 block text-xs text-fg-muted">{unit ? `${label} (${unit})` : label}</span>
+        <label key={key} className={`min-w-0 ${qtyChanged(key) ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
+            <span className="mb-1 block text-xs text-fg-muted">{unit ? `${label} (${unit})` : label}{qtyChanged(key) && <ChangedMark />}</span>
             <input
                 type="number"
                 min={0}
@@ -95,7 +103,7 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                                     const lacks = checked ? resellerLacks('permissions', id) : null;
                                     return (
                                         <li key={id}>
-                                            <label className={`flex items-start gap-2.5 py-1 max-sm:min-h-11 ${open ? 'cursor-pointer' : 'cursor-not-allowed'}`} data-rights-permission={id}>
+                                            <label className={`flex items-start gap-2.5 py-1 max-sm:min-h-11 ${open ? 'cursor-pointer' : 'cursor-not-allowed'} ${itemChanged('permissions', id) ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`} data-rights-permission={id}>
                                                 <input
                                                     type="checkbox"
                                                     className="mt-1 h-4 w-4 shrink-0 accent-primary"
@@ -105,6 +113,7 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                                                 />
                                                 <span className="min-w-0 text-sm">
                                                     <span className={open ? 'text-fg' : 'text-fg-muted'}>{permissionLabel(id, t)}</span>
+                                                    {itemChanged('permissions', id) && <ChangedMark switched={checked} />}
                                                     {!open && <span className="block text-xs text-fg-subtle">{fixedReason('permissions', id)}</span>}
                                                     {lacks && <span className="block text-xs text-warning" data-rights-reseller-lacks={id}>{lacks}</span>}
                                                 </span>
@@ -137,7 +146,7 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                                             const lacks = selection.software.includes(item.id) ? resellerLacks('software', item.id) : null;
                                             return (
                                                 <li key={item.id}>
-                                                    <label className={`flex items-center gap-2 py-1 text-sm max-sm:min-h-11 ${open ? 'cursor-pointer text-fg' : 'cursor-not-allowed text-fg-muted'}`} data-rights-software={item.id}>
+                                                    <label className={`flex items-center gap-2 py-1 text-sm max-sm:min-h-11 ${open ? 'cursor-pointer text-fg' : 'cursor-not-allowed text-fg-muted'} ${itemChanged('software', item.id) ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`} data-rights-software={item.id}>
                                                         <input
                                                             type="checkbox"
                                                             className="h-4 w-4 shrink-0 accent-primary"
@@ -145,7 +154,7 @@ export function RightsSetEditor({ grantor, selection, onSelection, numbers, onNu
                                                             disabled={!open}
                                                             onChange={(e) => onSelection({ ...selection, software: toggle(selection.software, item.id, e.target.checked) })}
                                                         />
-                                                        <span>{softwareLabel(item.id, t)}</span>
+                                                        <span>{softwareLabel(item.id, t)}{itemChanged('software', item.id) && <ChangedMark switched={selection.software.includes(item.id)} />}</span>
                                                     </label>
                                                     {!open && <span className="block text-xs text-fg-subtle">{fixedReason('software', item.id)}</span>}
                                                     {lacks && <span className="block text-xs text-warning" data-rights-reseller-lacks={item.id}>{lacks}</span>}

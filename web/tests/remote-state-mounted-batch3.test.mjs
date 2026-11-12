@@ -396,24 +396,50 @@ test('a ban lifted, then the list could not be read again: the earlier list stay
   } finally { await unmount(); }
 });
 
-test('a PHP extension switch is sent once and then shows what the server says, accepted or refused', async () => {
-  let posted = 0;
-  let list = [{ name: 'gd', enabled: true }, { name: 'intl', enabled: false }];
+test('PHP extension switches are saved by Save in the progress window, once each; a refused one stays a marked change', async () => {
+  const posted = [];
+  let list = [{ name: 'gd', enabled: true }, { name: 'intl', enabled: false }, { name: 'zip', enabled: false }];
   serve({ '/api/v1/php/extensions': async (init) => {
-    if (init.method === 'POST') { posted += 1; return answer({ error: 'refused' }, 502); }
+    if (init.method === 'POST') {
+      const body = JSON.parse(init.body);
+      posted.push(body);
+      if (body.extension === 'zip') return answer({ error: 'refused' }, 502);
+      list = list.map((ext) => (ext.name === body.extension ? { ...ext, enabled: body.enabled } : ext));
+      return answer({ status: 'success' });
+    }
     return answer(list);
   } });
+  globalThis.operationSteps = [];
+  globalThis.operationEnds = [];
   await mount(React.createElement(PHPManagement, { versions: ['8.3'], onBack() {} }));
   try {
     const switches = () => fields().filter((node) => node.props.type === 'checkbox');
-    assert.deepEqual(switches().map((node) => node.props.checked), [true, false]);
-    await act(async () => { await switches()[1].props.onChange(); });
+    const marks = () => fields().length && tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-changed-mark'] !== undefined).length;
+    const saveButton = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0];
+    assert.deepEqual(switches().map((node) => node.props.checked), [true, false, false]);
+    assert.equal(saveButton(), undefined, 'Save is shown with nothing changed');
+    await act(async () => { switches()[1].props.onChange({ target: { checked: true } }); });
+    await act(async () => { switches()[2].props.onChange({ target: { checked: true } }); });
     await settle();
-    assert.equal(posted, 1);
-    assert.deepEqual(globalThis.currentTest.toasts, [['error', 'php.toggleFailed']]);
-    assert.deepEqual(switches().map((node) => node.props.checked), [true, false], 'a refused switch must not stay on');
+    assert.equal(posted.length, 0, 'a switch changed the server');
+    assert.deepEqual(switches().map((node) => node.props.checked), [true, true, true]);
+    assert.equal(marks(), 2, 'the switched extensions are marked');
+    await act(async () => { saveButton().props.onClick(); });
+    await settle();
+    assert.deepEqual(posted, [{ version: '8.3', extension: 'intl', enabled: true }, { version: '8.3', extension: 'zip', enabled: true }], 'each change is sent once, one after another');
+    const steps = globalThis.operationSteps.at(-1);
+    assert.deepEqual(steps.map((step) => [step.id, step.state]), [['ext-intl', 'done'], ['ext-zip', 'failed'], ['read', 'done']]);
+    const end = globalThis.operationEnds.at(-1);
+    assert.equal(end.state, 'failed');
+    assert.ok(end.reason.includes('php.ext.failed') && end.reason.includes('php.ext.doneBefore') && end.reason.includes('php.ext.next'), end.reason);
+    // intl is saved and no longer a change; zip stays a marked change.
+    assert.deepEqual(switches().map((node) => node.props.checked), [true, true, true]);
+    assert.equal(marks(), 1);
+    assert.ok(saveButton(), 'the refused change is no longer unsaved');
+    await act(async () => { tree.root.findAll((node) => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0].props.onClick(); });
+    assert.deepEqual(switches().map((node) => node.props.checked), [true, true, false], 'Discard shows the server again');
     assert.ok(switches().every((node) => !node.props.disabled));
-  } finally { await unmount(); }
+  } finally { await unmount(); delete globalThis.operationSteps; delete globalThis.operationEnds; }
 });
 
 test('refreshRemote: whoever shows an address reads it again once; with no reader nothing is requested', async () => {

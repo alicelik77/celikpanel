@@ -101,6 +101,9 @@ const press = async (node) => {
   });
 };
 const click = (label) => press(button(label));
+// alpha.132: the mail policy is saved with the shared save bar (components/kit/save).
+const saveBar = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined)[0];
+const policySave = () => press(saveBar());
 const writes = () => calls.filter((call) => call.method !== 'GET');
 const scenario = (name, routes, Component, props, body) => test(name, async () => {
   fixture(routes);
@@ -125,7 +128,7 @@ for (const [name, answer] of [
 ]) {
   scenario(`mail policy ${name}: no form, no defaults, no Save`, [['GET', '/mail/policy', answer]], PostfixManagement, { onBack() {} }, async () => {
     assert.equal(policyInputs().length, 0, 'no policy field may be shown before the policy is known');
-    assert.equal(buttons('mailpolicy.save').length, 0);
+    assert.equal(saveBar(), undefined);
     assert.doesNotMatch(text(), /mailpolicy\.(dnsbl|rate|maxSize)"/);
     if (answer === 'pending') {
       assert.match(text(), /current\.checking/);
@@ -154,14 +157,30 @@ test('mail policy: Retry reads again and only then shows the server values', asy
   }
 });
 
-scenario('mail policy: a save carries the version and the loaded values it did not change',
+scenario('mail policy: nothing is sent before Save; a save carries the version and the loaded values it did not change',
   [['GET', '/mail/policy', () => Response.json(stockPolicy)],
     ['PUT', '/mail/policy', ({ body }) => Response.json({ success: true, policy: { ...stockPolicy, ...body, version: 'mp1-b' } })]],
   PostfixManagement, { onBack() {} }, async () => {
-    await click('mailpolicy.save');
-    assert.deepEqual(writes()[0].body, { message_size_mb: 9, dnsbl_zones: [], outbound_rate_limit: 0, version: 'mp1-a' });
-    await click('mailpolicy.save');
+    assert.equal(saveBar(), undefined, 'Save is shown with nothing changed');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    assert.equal(writes().length, 0, 'typing saved');
+    assert.equal(tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-changed-mark'] !== undefined).length, 1, 'the changed field is not marked');
+    await policySave();
+    assert.deepEqual(writes()[0].body, { message_size_mb: 12, dnsbl_zones: [], outbound_rate_limit: 0, version: 'mp1-a' });
+    assert.equal(saveBar(), undefined, 'the saved change is still unsaved');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '14' } }));
+    await policySave();
     assert.equal(writes()[1].body.version, 'mp1-b', 'the next save uses the version the server answered');
+  });
+
+scenario('mail policy: Discard gives the changes up and sends nothing',
+  [['GET', '/mail/policy', () => Response.json(stockPolicy)]],
+  PostfixManagement, { onBack() {} }, async () => {
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0]);
+    assert.equal(policyInputs()[0].props.value, 9);
+    assert.equal(saveBar(), undefined);
+    assert.equal(writes().length, 0);
   });
 
 for (const code of ['SETTINGS_CHANGED', 'SETTINGS_VERSION_REQUIRED']) {
@@ -171,16 +190,19 @@ for (const code of ['SETTINGS_CHANGED', 'SETTINGS_VERSION_REQUIRED']) {
     try {
       await mount(PostfixManagement, { onBack() {} });
       await act(async () => policyInputs()[0].props.onChange({ target: { value: '50' } }));
-      await click('mailpolicy.save');
+      await policySave();
       assert.match(text(), /mailpolicy\.stale/);
       assert.equal(policyInputs()[0].props.value, 50, 'the typed size stays on screen');
-      assert.equal(button('mailpolicy.save').props.disabled, true, 'a stale form cannot be saved again');
+      assert.equal(saveBar().props.disabled, true, 'a stale form cannot be saved again');
       assert.deepEqual(globalThis.currentTest.toasts, [], 'the guidance is on screen, not a passing toast');
       served = { ...stockPolicy, message_size_mb: 20, version: 'mp1-c' };
       await click('current.reload');
       assert.doesNotMatch(text(), /mailpolicy\.stale/);
-      assert.equal(policyInputs()[0].props.value, 20);
-      assert.equal(button('mailpolicy.save').props.disabled, false);
+      // alpha.132: the typed value is kept over the newer policy and the
+      // server's value is said beside it, to take or to overwrite.
+      assert.equal(policyInputs()[0].props.value, 50);
+      assert.equal(tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-server-moved'] !== undefined).length, 1);
+      assert.equal(saveBar().props.disabled, false);
     } finally {
       await cleanup();
     }
@@ -194,17 +216,20 @@ scenario('mail policy: restrictions CelikPanel will not rewrite withdraw the DNS
     assert.match(text(), /mailpolicy\.dnsblLocked\.other/, 'the reason is on screen (the stub has no words for the reason)');
     assert.match(text(), /mailpolicy\.dnsblLockedAction/);
     assert.doesNotMatch(text(), /mailpolicy\.zones|mailpolicy\.dnsbl"/);
-    await click('mailpolicy.save');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    await policySave();
     assert.deepEqual(writes()[0].body.dnsbl_zones, ['bl.example.org']);
   });
 
 scenario('mail policy: another refusal is the error toast and the form stays',
   [['GET', '/mail/policy', () => Response.json(stockPolicy)], ['PUT', '/mail/policy', refusal(400, 'MAIL_POLICY_INVALID', 'zone sentence')]],
   PostfixManagement, { onBack() {} }, async () => {
-    await click('mailpolicy.save');
+    await act(async () => policyInputs()[0].props.onChange({ target: { value: '12' } }));
+    await policySave();
     assert.deepEqual(globalThis.currentTest.toasts, [['error', 'zone sentence']]);
     assert.doesNotMatch(text(), /mailpolicy\.stale/);
-    assert.equal(button('mailpolicy.save').props.disabled, false);
+    assert.equal(policyInputs()[0].props.value, 12, 'the refused change stays');
+    assert.equal(saveBar().props.disabled, false);
   });
 
 // --- Automatic backup schedule ---
@@ -212,7 +237,7 @@ scenario('mail policy: another refusal is the error toast and the form stays',
 const domain = { domainId: 7, domainName: 'example.com' };
 const weeklyFull = { enabled: true, frequency: 'weekly', backup_type: 'full', retention: 30, last_status: 'success', last_run: '2026-10-07T03:00:00Z', version: 'bs1-a' };
 const scheduleFields = () => [...tree.root.findAllByType('select'), ...tree.root.findAllByType('input')]
-  .filter((node) => node.props.id !== 'backup-database');
+  .filter((node) => node.props.id !== 'backup-database' && node.props.type !== 'checkbox');
 const emptyLists = [['GET', '/backups/schedule', null], ['GET', '/backups', () => Response.json({ backups: [] })], ['GET', '/databases', () => Response.json({ databases: [] })]];
 const withSchedule = (answer, ...more) => [...more, ['GET', '/backups/schedule', answer], ...emptyLists.slice(1)];
 
@@ -221,9 +246,9 @@ for (const [name, answer] of [
   ['refused by the server', refusal(500, 'INTERNAL')],
   ['unreachable', 'offline'],
 ]) {
-  scenario(`backup schedule ${name}: no "off / daily / files / 7" form and no Turn on`, withSchedule(answer), DomainBackupManager, domain, async () => {
+  scenario(`backup schedule ${name}: no "off / daily / files / 7" form and no Save`, withSchedule(answer), DomainBackupManager, domain, async () => {
     assert.equal(scheduleFields().length, 0, 'no schedule field may be shown before the schedule is known');
-    assert.equal(buttons('backup.auto.enable').length + buttons('backup.auto.update').length + buttons('backup.auto.turnOff').length, 0);
+    assert.equal(saveButtons().length, 0);
     assert.doesNotMatch(text(), /backup\.auto\.on"/);
     if (answer === 'pending') assert.match(text(), /current\.checking/);
     else {
@@ -234,26 +259,72 @@ for (const [name, answer] of [
   });
 }
 
-scenario('backup schedule: a known schedule fills the form and both writes carry its version',
+// alpha.132: the schedule is a draft; only Save in the bar writes it.
+const saveButtons = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined);
+const discard = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0];
+const switchBox = () => tree.root.findAllByType('input').find((node) => node.props.type === 'checkbox');
+const change = async (node, value) => act(async () => node.props.onChange({ target: { value, checked: value } }));
+
+scenario('backup schedule: a known schedule fills the form; nothing is written until Save, which sends the change with its version',
   withSchedule(() => Response.json(weeklyFull),
     ['PUT', '/backups/schedule', () => Response.json({ success: true, version: 'bs1-b' })],
     ['DELETE', '/backups/schedule', () => Response.json({ success: true, version: 'bs1-none' })]),
   DomainBackupManager, domain, async () => {
     assert.deepEqual(scheduleFields().map((node) => node.props.value), ['weekly', 'full', 30]);
-    await click('backup.auto.update');
-    assert.deepEqual(writes()[0].body, { frequency: 'weekly', backup_type: 'full', retention: 30, version: 'bs1-a' });
-    await click('backup.auto.turnOff');
+    assert.equal(switchBox().props.checked, true);
+    assert.equal(saveButtons().length, 0, 'Save is offered with nothing changed');
+    await change(scheduleFields()[2], '14');
+    assert.equal(writes().length, 0, 'a changed field was written before Save');
+    assert.match(text(), /data-changed-mark/);
+    await press(saveBar());
+    assert.deepEqual(writes()[0].body, { frequency: 'weekly', backup_type: 'full', retention: 14, version: 'bs1-a' });
+    assert.equal(saveButtons().length, 0, 'the bar stays after a save');
+    // Turning it off is a change too, sent by Save with the version the save answered.
+    await change(switchBox(), false);
+    assert.equal(scheduleFields().length, 0, 'the choices of a schedule turned off are still shown');
+    await press(saveBar());
     assert.match(writes()[1].url, /\/backups\/schedule\?version=bs1-b$/, 'turn off carries the version the save answered');
-    assert.equal(buttons('backup.auto.enable').length, 1);
-    assert.equal(buttons('backup.auto.turnOff').length, 0);
+    assert.equal(switchBox().props.checked, false);
+    assert.equal(writes().length, 2);
   });
 
-scenario('backup schedule: no schedule yet is a known state that offers Turn on with its version',
+scenario('backup schedule: Discard puts the server’s schedule back and sends nothing',
+  withSchedule(() => Response.json(weeklyFull)),
+  DomainBackupManager, domain, async () => {
+    await change(scheduleFields()[0], 'daily');
+    await change(scheduleFields()[2], '3');
+    assert.match(text(), /2 changes not saved/);
+    await press(discard());
+    assert.deepEqual(scheduleFields().map((node) => node.props.value), ['weekly', 'full', 30]);
+    assert.equal(saveButtons().length, 0);
+    assert.equal(writes().length, 0);
+  });
+
+scenario('backup schedule: no schedule yet is a known state; turning it on and saving sends the first choices with its version',
   withSchedule(() => Response.json({ enabled: false, version: 'bs1-none' }),
     ['PUT', '/backups/schedule', () => Response.json({ success: true, version: 'bs1-b' })]),
   DomainBackupManager, domain, async () => {
-    await click('backup.auto.enable');
+    assert.equal(switchBox().props.checked, false);
+    await change(switchBox(), true);
+    await press(saveBar());
     assert.deepEqual(writes()[0].body, { frequency: 'daily', backup_type: 'files', retention: 7, version: 'bs1-none' });
+  });
+
+scenario('backup schedule: a save whose answer was lost keeps the change, holds Save and sends nothing twice',
+  withSchedule(() => Response.json(weeklyFull), ['PUT', '/backups/schedule', 'offline']),
+  DomainBackupManager, domain, async () => {
+    await change(scheduleFields()[2], '14');
+    await press(saveBar());
+    assert.equal(writes().length, 1);
+    assert.equal(saveBar().props.disabled, true, 'Save is offered again before the schedule was read again');
+    assert.equal(scheduleFields()[2].props.value, 14);
+    await press(saveBar());
+    assert.equal(writes().length, 1, 'a lost save was sent a second time');
+    // Checking reads the schedule again; it does not hold the change, so Save is offered again.
+    await press(tree.root.findAll((node) => node.type === 'button' && node.props['data-save-check'] !== undefined)[0]);
+    assert.equal(scheduleFields()[2].props.value, 14, 'the change was dropped although it was not saved');
+    assert.equal(saveBar().props.disabled, false);
+    assert.equal(writes().length, 1);
   });
 
 test('backup schedule: a stale save shows the reload guidance and keeps the chosen values', async () => {
@@ -261,17 +332,20 @@ test('backup schedule: a stale save shows the reload guidance and keeps the chos
   fixture(withSchedule(() => Response.json(served), ['PUT', '/backups/schedule', refusal(409, 'SETTINGS_CHANGED')]));
   try {
     await mount(DomainBackupManager, domain);
-    await act(async () => scheduleFields()[2].props.onChange({ target: { value: '14' } }));
-    await click('backup.auto.update');
+    await change(scheduleFields()[2], '14');
+    await press(saveBar());
     assert.match(text(), /backup\.auto\.stale/);
     assert.deepEqual(scheduleFields().map((node) => node.props.value), ['weekly', 'full', 14]);
-    assert.equal(button('backup.auto.update').props.disabled, true);
-    assert.equal(button('backup.auto.turnOff').props.disabled, true);
+    assert.equal(saveBar().props.disabled, true);
     assert.deepEqual(globalThis.currentTest.toasts, []);
+    // The schedule read again: the untouched fields follow it, the changed one
+    // keeps the person's value and says what the server holds now.
     served = { ...weeklyFull, frequency: 'daily', retention: 5, version: 'bs1-c' };
     await click('current.reload');
     assert.doesNotMatch(text(), /backup\.auto\.stale/);
-    assert.deepEqual(scheduleFields().map((node) => node.props.value), ['daily', 'full', 5]);
+    assert.deepEqual(scheduleFields().map((node) => node.props.value), ['daily', 'full', 14]);
+    assert.match(text(), /data-server-moved/);
+    assert.equal(saveBar().props.disabled, false);
   } finally {
     await cleanup();
   }
@@ -419,7 +493,7 @@ test('the three screens read through the shared current-state helper and never s
   assert.match(postfix, /version: policy\.version/);
   assert.match(backup, /version: schedule\.version/);
   assert.match(backup, /\?version=\$\{encodeURIComponent\(schedule\.version\)\}/);
-  assert.match(cron, /enabled: editingJob\.enabled, comment, version \}/);
+  assert.match(cron, /\{ id: editingJob\.id, schedule, command, enabled, comment, version \}/);
   assert.match(cron, /\{ schedule, command, comment, version \}/);
   assert.match(cron, /enabled: !job\.enabled, version \}/);
   assert.match(cron, /&version=\$\{encodeURIComponent\(version\)\}/);

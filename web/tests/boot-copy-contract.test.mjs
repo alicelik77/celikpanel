@@ -71,6 +71,8 @@ const eagerModules = [
   'src/lib/quietRead.ts',
   'src/lib/panelHandover.ts',
   'src/router.tsx',
+  // alpha.132: the router's one question before leaving unsaved changes.
+  'src/components/kit/save/leaveAsker.ts',
   'src/router-core.ts',
   'src/router-history.ts',
   'src/nav.ts',
