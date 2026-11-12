@@ -158,7 +158,7 @@ export function MailboxRecoveryDialog({ domainId, accountId, address, onClose }:
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mrec.address')}</span>
                                 <input
                                     type="email"
-                                    className={inputClass}
+                                    className={`${inputClass} field-lg`}
                                     value={value}
                                     maxLength={254}
                                     autoComplete="off"

@@ -435,7 +435,7 @@ export function SearchInput({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className="w-56 rounded-lg border border-border-strong bg-surface py-1.5 pl-9 pr-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:border-primary"
+                className="field-md rounded-lg border border-border-strong bg-surface py-1.5 pl-9 pr-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:border-primary"
             />
         </div>
     );
@@ -506,7 +506,10 @@ export function Field({
 }
 
 // inputClass is the shared text-input styling; spread onto <input>/<select>.
-// inputClass paylaşılan metin-girdi stilidir; <input>/<select> üzerine geçir.
+// Every field adds its width class (field-xs … field-full, index.css):
+// the width says what the field holds (tests/field-width-contract.test.mjs).
+// inputClass paylaşılan metin-girdi stilidir; her alan genişlik sınıfını ekler.
+export type FieldSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 export const inputClass =
     'w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-fg outline-none transition-shadow focus:border-primary';
 

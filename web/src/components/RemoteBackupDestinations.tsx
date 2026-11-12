@@ -429,7 +429,7 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
             <div className="space-y-4">
                 <ResultUnknown answer={answer} />
                 {field(t('rbak.form.name'),
-                    <input id={id('name')} className={inputClass} value={name} maxLength={100} required disabled={busy}
+                    <input id={id('name')} className={`${inputClass} field-md`} value={name} maxLength={100} required disabled={busy}
                         onChange={(event) => setName(event.target.value)} />,
                     t('rbak.form.nameHint'), id('name'))}
 
@@ -451,7 +451,7 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="sm:col-span-2">
                             {field(t('rbak.form.endpoint'),
-                                <input id={id('endpoint')} className={inputClass} value={endpoint} inputMode="url" autoComplete="off" spellCheck={false}
+                                <input id={id('endpoint')} className={`${inputClass} field-xl`} value={endpoint} inputMode="url" autoComplete="off" spellCheck={false}
                                     placeholder="https://s3.eu-central-1.amazonaws.com" disabled={busy} onChange={(event) => setEndpoint(event.target.value)} />,
                                 <span className="block">
                                     {t('rbak.form.endpointHint')}
@@ -468,16 +468,16 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                                 </span>, id('endpoint'))}
                         </div>
                         {field(t('rbak.form.region'),
-                            <input id={id('region')} className={inputClass} value={region} autoComplete="off" spellCheck={false} disabled={busy}
+                            <input id={id('region')} className={`${inputClass} field-md`} value={region} autoComplete="off" spellCheck={false} disabled={busy}
                                 onChange={(event) => setRegion(event.target.value)} />, t('rbak.form.regionHint'), id('region'))}
                         {field(t('rbak.form.bucket'),
-                            <input id={id('bucket')} className={inputClass} value={bucket} autoComplete="off" spellCheck={false} disabled={busy}
+                            <input id={id('bucket')} className={`${inputClass} field-lg`} value={bucket} autoComplete="off" spellCheck={false} disabled={busy}
                                 onChange={(event) => setBucket(event.target.value)} />, undefined, id('bucket'))}
                         {field(t('rbak.form.prefix'),
-                            <input id={id('prefix')} className={inputClass} value={prefix} autoComplete="off" spellCheck={false} disabled={busy}
+                            <input id={id('prefix')} className={`${inputClass} field-lg`} value={prefix} autoComplete="off" spellCheck={false} disabled={busy}
                                 onChange={(event) => setPrefix(event.target.value)} />, t('rbak.form.prefixHint'), id('prefix'))}
                         {field(t('rbak.form.accessKey'),
-                            <input id={id('access')} className={inputClass} value={accessKey} autoComplete="off" spellCheck={false} disabled={busy}
+                            <input id={id('access')} className={`${inputClass} field-lg`} value={accessKey} autoComplete="off" spellCheck={false} disabled={busy}
                                 onChange={(event) => setAccessKey(event.target.value)} />,
                             !creating && cfg.access_key_id ? t('rbak.form.accessKeyKeep', { masked: cfg.access_key_id }) : undefined, id('access'))}
                         <div className="sm:col-span-2">
@@ -498,14 +498,14 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                 ) : (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
                         {field(t('rbak.form.host'),
-                            <input id={id('host')} className={inputClass} value={host} autoComplete="off" spellCheck={false} disabled={busy}
+                            <input id={id('host')} className={`${inputClass} field-lg`} value={host} autoComplete="off" spellCheck={false} disabled={busy}
                                 placeholder="backup.example.com" onChange={(event) => setHost(event.target.value)} />, undefined, id('host'))}
                         {field(t('rbak.form.port'),
-                            <input id={id('port')} type="number" inputMode="numeric" min={1} max={65535} className={inputClass} value={port}
+                            <input id={id('port')} type="number" inputMode="numeric" min={1} max={65535} className={`${inputClass} field-xs`} value={port}
                                 disabled={busy} aria-invalid={!portOK || undefined} onChange={(event) => setPort(event.target.value)} />, undefined, id('port'))}
                         <div className="sm:col-span-2">
                             {field(t('rbak.form.user'),
-                                <input id={id('user')} className={inputClass} value={user} autoComplete="off" spellCheck={false} disabled={busy}
+                                <input id={id('user')} className={`${inputClass} field-md`} value={user} autoComplete="off" spellCheck={false} disabled={busy}
                                     onChange={(event) => setUser(event.target.value)} />, undefined, id('user'))}
                         </div>
                         <fieldset className="sm:col-span-2">
@@ -534,7 +534,7 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                         </div>
                         <div className="sm:col-span-2">
                             {field(t('rbak.form.path'),
-                                <input id={id('path')} className={inputClass} value={path} autoComplete="off" spellCheck={false} disabled={busy}
+                                <input id={id('path')} className={`${inputClass} field-xl`} value={path} autoComplete="off" spellCheck={false} disabled={busy}
                                     placeholder="/backups/celikpanel" onChange={(event) => setPath(event.target.value)} />, t('rbak.form.pathHint'), id('path'))}
                         </div>
                     </div>
@@ -560,12 +560,12 @@ function DestinationEditor({ destination, admin, minPassphrase, answer, onClose,
                         </p>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {field(t('rbak.form.passphrase'),
-                                <input id={id('passphrase')} type={reveal ? 'text' : 'password'} className={`${inputClass} font-mono`}
+                                <input id={id('passphrase')} type={reveal ? 'text' : 'password'} className={`${inputClass} font-mono field-lg`}
                                     value={passphrase} autoComplete="new-password" spellCheck={false} disabled={busy}
                                     aria-describedby="rbak-passphrase-warning" onChange={(event) => { setPassphrase(event.target.value); setWrittenDown(false); }} />,
                                 t('rbak.form.passphraseHint', { min: minPassphrase }), id('passphrase'))}
                             {field(t('rbak.form.passphraseAgain'),
-                                <input id={id('passphrase2')} type={reveal ? 'text' : 'password'} className={`${inputClass} font-mono`}
+                                <input id={id('passphrase2')} type={reveal ? 'text' : 'password'} className={`${inputClass} font-mono field-lg`}
                                     value={passphraseAgain} autoComplete="new-password" spellCheck={false} disabled={busy}
                                     onChange={(event) => setPassphraseAgain(event.target.value)} />, undefined, id('passphrase2'))}
                         </div>

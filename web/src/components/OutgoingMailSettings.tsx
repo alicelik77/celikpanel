@@ -120,7 +120,7 @@ function NumberField({ label, value, onChange, min = 0, max = 1000000, hint, cha
             <span className="mb-1 block text-xs text-fg-muted">{label}{changed && <ChangedMark />}</span>
             <input type="number" min={min} max={max} value={value} disabled={disabled}
                 onChange={(event) => onChange(Math.max(min, Math.min(max, parseInt(event.target.value, 10) || 0)))}
-                className={inputClass} />
+                className={`${inputClass} field-sm`} />
             {hint && <span className="mt-1 block text-xs text-fg-subtle">{hint}</span>}
         </label>
     );
@@ -268,7 +268,7 @@ export function OutgoingMailSettings() {
             <div className="mt-6" data-outgoing-report>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <h4 className="text-sm font-semibold text-fg">{t('mout.report.title')}</h4>
-                    <select className={`${inputClass} w-auto`} value={days} onChange={(event) => setDays(Number(event.target.value) as 1 | 7 | 30)} aria-label={t('mout.report.title')}>
+                    <select className={`${inputClass} field-sm`} value={days} onChange={(event) => setDays(Number(event.target.value) as 1 | 7 | 30)} aria-label={t('mout.report.title')}>
                         <option value={1}>{t('mout.report.days1')}</option>
                         <option value={7}>{t('mout.report.days7')}</option>
                         <option value={30}>{t('mout.report.days30')}</option>

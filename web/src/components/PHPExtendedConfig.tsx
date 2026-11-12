@@ -144,7 +144,7 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
                 value={config[key]}
                 onChange={e => setConfig({ ...config, [key]: e.target.value })}
                 placeholder={placeholder}
-                className="w-full bg-surface border border-border rounded px-3 py-2 text-fg text-sm font-mono focus:border-primary"
+                className="bg-surface border border-border rounded px-3 py-2 text-fg text-sm font-mono focus:border-primary field-md"
             />
         </div>
     );
@@ -155,7 +155,7 @@ export function PHPExtendedConfig({ version }: PHPExtendedConfigProps) {
             <select
                 value={config[key]}
                 onChange={e => setConfig({ ...config, [key]: e.target.value })}
-                className="w-full bg-surface border border-border rounded px-3 py-2 text-fg text-sm font-mono focus:border-primary"
+                className="bg-surface border border-border rounded px-3 py-2 text-fg text-sm font-mono focus:border-primary field-sm"
             >
                 {options.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>

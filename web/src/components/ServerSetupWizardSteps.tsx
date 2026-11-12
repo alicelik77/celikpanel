@@ -7,7 +7,7 @@ import { componentName } from '../lib/componentName';
 import { setupComponentClosure, setupRolePreset, type SetupComponentCatalog, type SetupDNSEngineChoice, type SetupRoles } from '../lib/serverSetupComponents';
 import { mergeSetupSPF, setupDNSNames, setupImportedDMARC, setupImportedMX, setupImportedSPF, setupJoinedMailTaken, setupNameWithin, type ServerSetupDraft, type SetupImportedRecord, type SetupJoinedNames } from '../lib/serverSetup';
 import { useRefreshEvery, useRemote } from '../lib/remote';
-import { Button, inputClass, KeepWords } from './ui';
+import { Button, inputClass, KeepWords, type FieldSize } from './ui';
 import { Guidance } from './kit/rows/Guidance';
 
 // Setup wizard v2 (alpha.111): the editing steps and the guidance cards of the
@@ -25,9 +25,10 @@ export function setupServerLabel(t: (key: TranslationKey, values?: Record<string
     return shortName ? t('setup.v2.thisServerNamed', { name: shortName }) : t('setup.v2.thisServer');
 }
 
-export function SetupWizardInput({ name, label, value, onChange, placeholder, required, help, invalid }: { name: string; label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean; help?: ReactNode; invalid?: string }) {
+// A wizard field is lg (a domain or host name) unless the step says what else it holds.
+export function SetupWizardInput({ name, label, value, onChange, placeholder, required, help, invalid, size = 'lg' }: { name: string; label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean; help?: ReactNode; invalid?: string; size?: FieldSize }) {
     return <div className="space-y-2">
-        <label className="block" htmlFor={`setup-${name}`}><span className="mb-2 block text-sm font-medium">{label}</span><input id={`setup-${name}`} name={name} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} required={required} autoCapitalize="none" autoComplete="off" spellCheck={false} aria-invalid={invalid ? true : undefined} aria-describedby={help || invalid ? `setup-${name}-help` : undefined} className={`${inputClass} w-full font-mono`} /></label>
+        <label className="block" htmlFor={`setup-${name}`}><span className="mb-2 block text-sm font-medium">{label}</span><input id={`setup-${name}`} name={name} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} required={required} autoCapitalize="none" autoComplete="off" spellCheck={false} aria-invalid={invalid ? true : undefined} aria-describedby={help || invalid ? `setup-${name}-help` : undefined} className={`${inputClass} font-mono field-${size}`} /></label>
         {(help || invalid) && <p id={`setup-${name}-help`} className={`text-sm leading-6 ${invalid ? 'text-danger' : 'text-fg-muted'}`}>{invalid || help}</p>}
     </div>;
 }
@@ -87,7 +88,7 @@ export function SetupNameStep({ value, suggestion, mainDomain, onChange, invalid
     return <section className="space-y-5" aria-labelledby="setup-name-title">
         <h2 id="setup-name-title" className="text-xl font-semibold">{t('setup.v2.name.title')}</h2>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.name.help', { example: `${sample}.${mainDomain || 'example.com'}` })}</p>
-        <div className="max-w-sm"><SetupWizardInput name="short_name" label={t('setup.v2.name.label')} value={value} onChange={onChange} placeholder={suggestion || 'my-server'}
+        <div className="max-w-sm"><SetupWizardInput name="short_name" size="md" label={t('setup.v2.name.label')} value={value} onChange={onChange} placeholder={suggestion || 'my-server'}
             help={suggestion && value === suggestion ? t('setup.v2.name.suggested', { host: suggestion }) : t('setup.v2.name.optional')} invalid={invalid ? t('setup.v2.name.invalid') : undefined} /></div>
     </section>;
 }
@@ -233,7 +234,7 @@ export function SetupDNSHomeStep({ draft, set, onMode, onMainDNS, catalog, serve
         {engine(draft.dns_engine) && !engine(draft.dns_engine)!.offered && <p role="alert" className="text-sm leading-6 text-danger">{engineHelp(draft.dns_engine)}</p>}
         <p className="text-sm leading-6 text-fg-muted">{t('setup.v2.dns.oneSoftware')}</p>
     </fieldset>;
-    const localIP = <SetupWizardInput name="local_ip" label={t('setup.v2.dns.ipv4')} value={draft.local_ip} onChange={value => set('local_ip', value)} required help={detectedIP && draft.local_ip === detectedIP ? t('setup.v2.dns.detected') : undefined} />;
+    const localIP = <SetupWizardInput name="local_ip" size="md" label={t('setup.v2.dns.ipv4')} value={draft.local_ip} onChange={value => set('local_ip', value)} required help={detectedIP && draft.local_ip === detectedIP ? t('setup.v2.dns.detected') : undefined} />;
     return <section className="space-y-6" aria-labelledby="setup-dnshome-title">
         <div><h2 id="setup-dnshome-title" className="text-xl font-semibold">{t('setup.v2.dns.title')}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v2.dns.help', { domain: mainDomain || 'example.com' })}</p></div>
@@ -430,13 +431,13 @@ export function SetupJoinPanel({ onJoined, disabled, serverIP }: { onJoined: (se
             // never submits that form (the join is this path's one action).
             // Katilma alanlarinda Enter katilir; dis formu gondermez.
             onKeyDown={event => { if (event.key === 'Enter' && (event.target as { tagName?: string }).tagName === 'INPUT') { event.preventDefault(); void join(); } }}>
-            <SetupWizardInput name="join_address" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:1923" help={t('setup.v5.join.addressHelp')} />
+            <SetupWizardInput name="join_address" size="xl" label={t('setup.v5.join.address')} value={address} onChange={setAddress} placeholder="https://203.0.113.10:1923" help={t('setup.v5.join.addressHelp')} />
             <SetupWizardInput name="join_code" label={t('setup.v5.join.code')} value={code} onChange={setCode} placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" help={t('setup.v5.join.codeHelp')} />
             {/* The first server checks the caller's address against the one this
                 server declares. Behind 1:1 NAT the own address is private: the
                 owner types the public one (D-024: who acts and what to type). */}
             {serverIP && <p className="text-sm leading-6 text-fg-muted" data-setup-join-ip="">{t(publicSetupIPv4(serverIP) ? 'setup.v5.join.detected' : 'setup.v5.join.noPublic', { ip: serverIP })}</p>}
-            {(!publicSetupIPv4(serverIP || '') || answer?.code === 'server_setup_join_source_mismatch' || problem === 'setup.v5.join.publicRequired' || publicIPv4) && <SetupWizardInput name="join_public_ipv4" label={t('setup.v5.join.publicIPv4')} value={publicIPv4} onChange={setPublicIPv4} placeholder="203.0.113.20" help={t('setup.v5.join.publicIPv4Help')} />}
+            {(!publicSetupIPv4(serverIP || '') || answer?.code === 'server_setup_join_source_mismatch' || problem === 'setup.v5.join.publicRequired' || publicIPv4) && <SetupWizardInput name="join_public_ipv4" size="md" label={t('setup.v5.join.publicIPv4')} value={publicIPv4} onChange={setPublicIPv4} placeholder="203.0.113.20" help={t('setup.v5.join.publicIPv4Help')} />}
             {problem && <p role="alert" className="text-sm leading-6 text-danger">{t(problem)}</p>}
             {message && <p role={answer?.state === 'refused' ? 'alert' : 'status'} className="text-sm leading-6" data-setup-join-state={answer?.state}>{message}</p>}
             <Button type="button" variant="primary" disabled={busy || disabled} loading={busy} onClick={() => void join()}>{t(busy ? 'setup.v5.join.joining' : answer && !(answer.state === 'ok' && answer.setup) ? 'setup.v5.join.retry' : 'setup.v5.join.submit')}</Button>
@@ -888,8 +889,8 @@ export function SetupRecordsStep({ draft, update, mainDomain, own }: {
                 <Button type="button" variant="secondary" onClick={() => void remote.retry()}>{t('setup.v3.records.retry')}</Button>
             </div>)}
         {read && !delegatedHere && <p className="text-sm text-fg-muted">{t('setup.v3.records.count', { imported, skipped: candidates.length - imported })}</p>}
-        <div className="flex max-w-md flex-wrap items-end gap-2">
-            <div className="min-w-0 flex-1"><SetupWizardInput name="extra_name" label={t('setup.v3.records.extra')} value={typed} onChange={setTyped} placeholder={`shop.${mainDomain || 'example.com'}`} /></div>
+        <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-0"><SetupWizardInput name="extra_name" label={t('setup.v3.records.extra')} value={typed} onChange={setTyped} placeholder={`shop.${mainDomain || 'example.com'}`} /></div>
             <Button type="button" variant="secondary" disabled={!typed.trim() || extras.length >= 8} onClick={() => { const label = typed.trim().toLowerCase().replace(/\.$/, '').replace(new RegExp(`\\.${mainDomain.replace(/\./g, '\\.')}$`), ''); if (label && !extras.includes(label)) setExtras([...extras, label]); setTyped(''); }}>{t('setup.v3.records.look')}</Button>
         </div>
         <p className="max-w-2xl text-sm leading-6 text-fg-muted">{t('setup.v3.records.limit')}</p>

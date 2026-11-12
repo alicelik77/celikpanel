@@ -777,8 +777,8 @@ function VPNPageBody() {
                             <h3 className="font-semibold text-fg">{t('vpn.addPeer')}</h3>
                             <p className="mt-1 text-sm text-fg-muted">{t('vpn.subscriptionRequired')}</p>
                         </div>
-                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
-                            <label className="block">
+                        <div className="flex flex-wrap items-end gap-3">
+                            <label className="block min-w-0">
                                 <span className="mb-1 block text-sm font-medium text-fg-muted">
                                     {t('vpn.subscription')}
                                 </span>
@@ -787,7 +787,7 @@ function VPNPageBody() {
                                     onChange={(event) => setSelectedSubscriptionID(
                                         event.target.value ? Number(event.target.value) : null,
                                     )}
-                                    className={inputClass}
+                                    className={`${inputClass} field-lg`}
                                 >
                                     <option value="">{t('vpn.selectSubscription')}</option>
                                     {subscriptions.map((subscription) => (
@@ -798,7 +798,7 @@ function VPNPageBody() {
                                     ))}
                                 </select>
                             </label>
-                            <label className="block">
+                            <label className="block min-w-0">
                                 <span className="mb-1 block text-sm font-medium text-fg-muted">
                                     {t('vpn.deviceName')}
                                 </span>
@@ -810,7 +810,7 @@ function VPNPageBody() {
                                     }}
                                     placeholder={t('vpn.peerNamePlaceholder')}
                                     maxLength={60}
-                                    className={inputClass}
+                                    className={`${inputClass} field-md`}
                                 />
                             </label>
                             <Button

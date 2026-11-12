@@ -410,7 +410,7 @@ function AuthRecords({
                         <select
                             value={dmarcPolicy}
                             onChange={(e) => setDmarcPolicy(e.target.value as typeof dmarcPolicy)}
-                            className={`${inputClass} w-auto`}
+                            className={`${inputClass} field-md`}
                         >
                             <option value="none">{t('mailauth.policy.none')}</option>
                             <option value="quarantine">{t('mailauth.policy.quarantine')}</option>

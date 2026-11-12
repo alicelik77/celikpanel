@@ -500,7 +500,7 @@ export function AddDomainModal({ onClose, onSuccess, initialDomain = '', sslByDe
                         type="text"
                         value={domainName}
                         onChange={(e) => setDomainName(e.target.value)}
-                        className="w-full bg-surface-2 border border-border rounded-lg px-4 py-3 text-fg focus:border-primary"
+                        className="bg-surface-2 border border-border rounded-lg px-4 py-3 text-fg focus:border-primary field-lg"
                         placeholder="example.com"
                         required
                     />

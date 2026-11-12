@@ -273,7 +273,7 @@ function InstallIssuedDialog({ request, onClose, reload }: { request: Certificat
                         ? <p className="text-sm text-fg-muted">{t('mcert.inst.noSites')}</p>
                         : (
                             <Field label={t('mcert.inst.site')} htmlFor="certificate-request-site">
-                                <select id="certificate-request-site" value={chosen?.id ?? ''} onChange={(event) => setSiteID(Number(event.target.value))} className={inputClass} data-certificate-site="">
+                                <select id="certificate-request-site" value={chosen?.id ?? ''} onChange={(event) => setSiteID(Number(event.target.value))} className={`${inputClass} field-lg`} data-certificate-site="">
                                     {!chosen && <option value="" disabled>—</option>}
                                     {value.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
                                 </select>
@@ -338,7 +338,7 @@ function NewRequestDialog({ onClose, reload }: { onClose: () => void; reload: ()
                         <textarea id="certificate-request-names" rows={4} value={names} onChange={(event) => setNames(event.target.value)} className={`${inputClass} font-mono`} spellCheck={false} autoCapitalize="none" disabled={busy} />
                     </Field>
                     <Field label={t('mcert.req.keyType')} htmlFor="certificate-request-key">
-                        <select id="certificate-request-key" value={keyType} onChange={(event) => setKeyType(event.target.value as (typeof KEY_TYPES)[number])} className={inputClass} disabled={busy}>
+                        <select id="certificate-request-key" value={keyType} onChange={(event) => setKeyType(event.target.value as (typeof KEY_TYPES)[number])} className={`${inputClass} field-lg`} disabled={busy}>
                             {KEY_TYPES.map((type) => <option key={type} value={type}>{t(`mcert.req.key.${type}` as MaintenanceWordKey)}</option>)}
                         </select>
                     </Field>

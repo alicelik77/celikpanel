@@ -250,7 +250,7 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
                                                     placeholder="/private"
                                                     autoComplete="off"
                                                     spellCheck={false}
-                                                    className={`${inputClass} font-mono`}
+                                                    className={`${inputClass} font-mono field-lg`}
                                                 />
                                                 <span className="block text-xs font-normal text-fg-muted">{t('siteFeatures.protect.pathHint')}</span>
                                             </label>
@@ -261,7 +261,7 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
                                                     onChange={(e) => setRealm(e.target.value)}
                                                     maxLength={64}
                                                     placeholder="Restricted area"
-                                                    className={inputClass}
+                                                    className={`${inputClass} field-md`}
                                                 />
                                                 <span className="block text-xs font-normal text-fg-muted">{t('siteFeatures.protect.realmHint')}</span>
                                             </label>
@@ -271,7 +271,7 @@ export function DomainSiteProtect({ domainId, readOnly = false }: PanelProps) {
                                                     value={username}
                                                     onChange={(e) => setUsername(e.target.value)}
                                                     autoComplete="off"
-                                                    className={inputClass}
+                                                    className={`${inputClass} field-md`}
                                                 />
                                             </label>
                                             <label className="space-y-1 text-sm font-medium text-fg">
@@ -394,14 +394,14 @@ function ProtectedDirCard({
             {!readOnly && (
                 <div className="mt-3">
                     <p className="text-xs font-medium text-fg-muted">{t('siteFeatures.protect.addUser')}</p>
-                    <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                    <div className="mt-1 flex flex-wrap items-start gap-2">
                         <input
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder={t('siteFeatures.protect.username')}
                             aria-label={t('siteFeatures.protect.username')}
                             autoComplete="off"
-                            className={inputClass}
+                            className={`${inputClass} field-md`}
                         />
                         <PasswordInput
                             field="site_protect"
@@ -542,7 +542,7 @@ export function DomainSiteRedirects({ domainId, readOnly = false }: PanelProps) 
                                                     placeholder="/old-page"
                                                     autoComplete="off"
                                                     spellCheck={false}
-                                                    className={`${inputClass} font-mono`}
+                                                    className={`${inputClass} font-mono field-lg`}
                                                 />
                                                 <span className="block text-xs font-normal text-fg-muted">{t('siteFeatures.redirect.sourceHint')}</span>
                                             </label>
@@ -554,13 +554,13 @@ export function DomainSiteRedirects({ domainId, readOnly = false }: PanelProps) 
                                                     placeholder="https://example.org/new"
                                                     autoComplete="off"
                                                     spellCheck={false}
-                                                    className={`${inputClass} font-mono`}
+                                                    className={`${inputClass} font-mono field-xl`}
                                                 />
                                                 <span className="block text-xs font-normal text-fg-muted">{t('siteFeatures.redirect.targetHint')}</span>
                                             </label>
                                             <label className="space-y-1 text-sm font-medium text-fg">
                                                 <span>{t('siteFeatures.redirect.code')}</span>
-                                                <select value={code} onChange={(e) => setCode(Number(e.target.value))} className={inputClass}>
+                                                <select value={code} onChange={(e) => setCode(Number(e.target.value))} className={`${inputClass} field-lg`}>
                                                     {REDIRECT_CODES.map((value) => (
                                                         <option key={value} value={value}>
                                                             {t(`siteFeatures.redirect.code.${value}` as TranslationKey)}

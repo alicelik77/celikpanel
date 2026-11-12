@@ -620,7 +620,7 @@ function SettingsForm({ base, mode, kind, app, after, onDone }: { base: string; 
             {mode === 'edit' && <div className="text-sm font-medium text-fg">{t('runtime.settings.title')}</div>}
             {python && field('server', (
                 <Field label={t('runtime.python.server')} htmlFor={prefix + '-server'}>
-                    <select id={prefix + '-server'} className={inputClass} value={server} disabled={locked} onChange={(e) => set('server', e.target.value === 'asgi' ? 'asgi' : 'wsgi')}>
+                    <select id={prefix + '-server'} className={`${inputClass} field-lg`} value={server} disabled={locked} onChange={(e) => set('server', e.target.value === 'asgi' ? 'asgi' : 'wsgi')}>
                         <option value="wsgi">{t('runtime.python.server.wsgi')}</option>
                         <option value="asgi">{t('runtime.python.server.asgi')}</option>
                     </select>
@@ -628,13 +628,13 @@ function SettingsForm({ base, mode, kind, app, after, onDone }: { base: string; 
             ))}
             {field('entry', (
                 <Field label={t(python ? 'runtime.python.callable' : 'runtime.entry')} htmlFor={prefix + '-entry'} hint={t(python ? 'runtime.python.callable.hint' : 'runtime.entry.hint')}>
-                    <input id={prefix + '-entry'} className={inputClass} autoComplete="off" spellCheck={false} value={entry} disabled={locked} onChange={(e) => set('entry', e.target.value)} />
+                    <input id={prefix + '-entry'} className={`${inputClass} field-lg`} autoComplete="off" spellCheck={false} value={entry} disabled={locked} onChange={(e) => set('entry', e.target.value)} />
                 </Field>
             ))}
             {entry !== '' && !entryOK && <p className="text-xs text-warning">{t(python ? 'err.RUNTIME_APP.python_settings' : 'err.RUNTIME_APP.entry_invalid', { max: most })}</p>}
             {python ? field('workers', (
                 <Field label={t('runtime.python.workers')} htmlFor={prefix + '-workers'} hint={t('runtime.python.workers.hint', { max: most })}>
-                    <input id={prefix + '-workers'} inputMode="numeric" className={inputClass} value={workers} disabled={locked} onChange={(e) => set('workers', e.target.value)} />
+                    <input id={prefix + '-workers'} inputMode="numeric" className={`${inputClass} field-xs`} value={workers} disabled={locked} onChange={(e) => set('workers', e.target.value)} />
                 </Field>
             )) : field('argsText', (
                 <Field label={t('runtime.args')} htmlFor={prefix + '-args'} hint={t('runtime.args.hint', { placeholder: '{port}' })}>
@@ -645,7 +645,7 @@ function SettingsForm({ base, mode, kind, app, after, onDone }: { base: string; 
             {!workersOK && <p className="text-xs text-warning">{t('runtime.python.workers.hint', { max: most })}</p>}
             {field('health', (
                 <Field label={t('runtime.health')} htmlFor={prefix + '-health'} hint={t('runtime.health.hint')}>
-                    <input id={prefix + '-health'} className={inputClass} autoComplete="off" spellCheck={false} value={health} disabled={locked} onChange={(e) => set('health', e.target.value)} />
+                    <input id={prefix + '-health'} className={`${inputClass} field-lg`} autoComplete="off" spellCheck={false} value={health} disabled={locked} onChange={(e) => set('health', e.target.value)} />
                 </Field>
             ))}
             {!healthOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.health_path_invalid')}</p>}
@@ -745,15 +745,15 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
                 {rows.length === 0 && <p className="text-fg-subtle">{t('runtime.env.empty')}</p>}
                 {rows.map((row, i) => (
                     <div key={row.id} className={`space-y-1 rounded-lg border border-border p-2 ${rowChanged(row) ? changedRowClass : ''}`} data-runtime-env-row={row.key}>
-                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto]">
-                            <input aria-label={t('runtime.env.key')} placeholder={t('runtime.env.key')} className={inputClass + ' font-mono'} autoComplete="off" spellCheck={false}
+                        <div className="flex flex-wrap items-start gap-2">
+                            <input aria-label={t('runtime.env.key')} placeholder={t('runtime.env.key')} className={`${inputClass} font-mono field-md`} autoComplete="off" spellCheck={false}
                                 value={row.key} onChange={(e) => update(row.id, { key: e.target.value.toUpperCase() })} />
                             {row.secret ? (
                                 <PasswordInput aria-label={t('runtime.env.value')} autoComplete="new-password"
                                     placeholder={keeps(row) || (row.storedSecret !== '' && row.storedSecret === row.key) ? t('runtime.env.secretReplace') : t('runtime.env.value')}
                                     value={row.value} onChange={(value) => update(row.id, { value })} />
                             ) : (
-                                <input aria-label={t('runtime.env.value')} placeholder={t('runtime.env.value')} className={inputClass} autoComplete="off" spellCheck={false}
+                                <input aria-label={t('runtime.env.value')} placeholder={t('runtime.env.value')} className={`${inputClass} field-lg`} autoComplete="off" spellCheck={false}
                                     value={row.value} onChange={(e) => update(row.id, { value: e.target.value })} />
                             )}
                             <Button type="button" icon={X} aria-label={t('runtime.env.removeRow', { key: row.key || '—' })} onClick={() => setRows((list) => list.filter((other) => other.id !== row.id))} />

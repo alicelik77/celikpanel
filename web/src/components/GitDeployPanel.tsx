@@ -146,12 +146,12 @@ export function GitDeployPanel({ domainId, domainName }: { domainId: number; dom
             <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
                 <label className="block text-sm font-medium text-fg">
                     <span>{t('git.repo')}</span>
-                    <input value={form.repo_url} onChange={(e) => setEdit({ ...form, repo_url: e.target.value })} placeholder="https://github.com/acme/site.git" spellCheck={false} autoComplete="off" className={`${inputClass} mt-1 font-mono`} />
+                    <input value={form.repo_url} onChange={(e) => setEdit({ ...form, repo_url: e.target.value })} placeholder="https://github.com/acme/site.git" spellCheck={false} autoComplete="off" className={`${inputClass} mt-1 font-mono field-xl`} />
                     <span className="mt-1 block text-xs font-normal text-fg-muted">{t('git.repoHint')}</span>
                 </label>
                 <label className="block text-sm font-medium text-fg">
                     <span>{t('git.branch')}</span>
-                    <input value={form.branch} onChange={(e) => setEdit({ ...form, branch: e.target.value })} spellCheck={false} autoComplete="off" className={`${inputClass} mt-1 font-mono sm:w-64`} />
+                    <input value={form.branch} onChange={(e) => setEdit({ ...form, branch: e.target.value })} spellCheck={false} autoComplete="off" className={`${inputClass} mt-1 font-mono field-md`} />
                 </label>
                 {state.can_build && (
                     <label className="flex items-center gap-2 text-sm text-fg">

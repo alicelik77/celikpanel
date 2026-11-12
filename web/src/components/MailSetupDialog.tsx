@@ -292,7 +292,7 @@ export function MailSetupDialog({ profile, profileName, savedHostname, onClose }
                 : <div className="space-y-2">
                     <label className="block" htmlFor="mail-setup-hostname"><span className="mb-2 block text-sm font-medium">{t('svc.mailSetup.hostname')}</span>
                         <input id="mail-setup-hostname" value={hostname} disabled={busy} onChange={event => { setTouched(true); setHostname(event.target.value); }} placeholder={proposal} autoCapitalize="none" autoComplete="off" spellCheck={false}
-                            aria-invalid={taken || invalid ? true : undefined} aria-describedby="mail-setup-hostname-help" className={`${inputClass} w-full font-mono`} /></label>
+                            aria-invalid={taken || invalid ? true : undefined} aria-describedby="mail-setup-hostname-help" className={`${inputClass} font-mono field-lg`} /></label>
                     <p id="mail-setup-hostname-help" className={`text-sm leading-6 ${taken || invalid ? 'text-danger' : 'text-fg-muted'}`} data-mail-setup-hostname={taken ? 'taken' : invalid ? 'invalid' : 'ok'}>
                         {taken ? t('svc.mailSetup.hostnameTaken', { name, proposal }) : invalid ? t('svc.mailSetup.hostnameInvalid', { proposal })
                             : joined && joined.first.mail_hostname ? t('svc.mailSetup.hostnameJoined', { first: joined.first.mail_hostname, domain: joined.main_domain, proposal }) : t('svc.mailSetup.hostnameHelp', { proposal: proposal || 'mail.example.com' })}

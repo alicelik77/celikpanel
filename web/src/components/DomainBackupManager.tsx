@@ -327,7 +327,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                             value={selectedDatabaseId}
                             onChange={(event) => setSelectedDatabaseId(event.target.value)}
                             disabled={busy || !databasesKnown || databases.length === 0}
-                            className={`${inputClass} mb-2`}
+                            className={`${inputClass} mb-2 field-md`}
                         >
                             {/* "No linked databases" is an option only for an
                                 answer that lists none.
@@ -741,17 +741,17 @@ function AutoBackupSection({
             {values.enabled && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {field('frequency', t('backup.auto.frequency'),
-                        <select disabled={busy} value={values.frequency} onChange={(e) => draft.set('frequency', e.target.value as 'daily' | 'weekly')} className={inputClass}>
+                        <select disabled={busy} value={values.frequency} onChange={(e) => draft.set('frequency', e.target.value as 'daily' | 'weekly')} className={`${inputClass} field-sm`}>
                             <option value="daily">{t('backup.auto.daily')}</option>
                             <option value="weekly">{t('backup.auto.weekly')}</option>
                         </select>)}
                     {field('backup_type', t('backup.auto.type'),
-                        <select disabled={busy} value={values.backup_type} onChange={(e) => draft.set('backup_type', e.target.value as 'files' | 'full')} className={inputClass}>
+                        <select disabled={busy} value={values.backup_type} onChange={(e) => draft.set('backup_type', e.target.value as 'files' | 'full')} className={`${inputClass} field-sm`}>
                             <option value="files">{t('backup.type.files')}</option>
                             <option value="full">{t('backup.type.full')}</option>
                         </select>)}
                     {field('retention', t('backup.auto.retention'),
-                        <input disabled={busy} type="number" min={1} max={60} value={values.retention} onChange={(e) => draft.set('retention', Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))} className={inputClass} />)}
+                        <input disabled={busy} type="number" min={1} max={60} value={values.retention} onChange={(e) => draft.set('retention', Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))} className={`${inputClass} field-xs`} />)}
                 </div>
             )}
 

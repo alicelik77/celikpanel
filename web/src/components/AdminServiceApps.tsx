@@ -129,9 +129,9 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
                 <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
                     <div className="text-sm font-medium text-fg">{t('svcapps.admin.limits')}</div>
                     <div className="grid gap-3 sm:grid-cols-3">
-                        <Field label={t('svcapps.admin.memory')} htmlFor={`svc-mem-${app.id}`}><input id={`svc-mem-${app.id}`} inputMode="numeric" className={inputClass} value={memory} onChange={(e) => setMemory(e.target.value)} /></Field>
-                        <Field label={t('svcapps.admin.cpu')} htmlFor={`svc-cpu-${app.id}`}><input id={`svc-cpu-${app.id}`} inputMode="numeric" className={inputClass} value={cpu} onChange={(e) => setCPU(e.target.value)} /></Field>
-                        <Field label={t('svcapps.admin.tasks')} htmlFor={`svc-tasks-${app.id}`}><input id={`svc-tasks-${app.id}`} inputMode="numeric" className={inputClass} value={tasks} onChange={(e) => setTasks(e.target.value)} /></Field>
+                        <Field label={t('svcapps.admin.memory')} htmlFor={`svc-mem-${app.id}`}><input id={`svc-mem-${app.id}`} inputMode="numeric" className={`${inputClass} field-xs`} value={memory} onChange={(e) => setMemory(e.target.value)} /></Field>
+                        <Field label={t('svcapps.admin.cpu')} htmlFor={`svc-cpu-${app.id}`}><input id={`svc-cpu-${app.id}`} inputMode="numeric" className={`${inputClass} field-xs`} value={cpu} onChange={(e) => setCPU(e.target.value)} /></Field>
+                        <Field label={t('svcapps.admin.tasks')} htmlFor={`svc-tasks-${app.id}`}><input id={`svc-tasks-${app.id}`} inputMode="numeric" className={`${inputClass} field-xs`} value={tasks} onChange={(e) => setTasks(e.target.value)} /></Field>
                     </div>
                     <label className="flex items-start gap-2 text-sm text-fg">
                         <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={read} onChange={(e) => setRead(e.target.checked)} />
@@ -149,9 +149,9 @@ function AdminAppCard({ app, onDone, onFailure }: { app: AdminServiceAppEntry; o
                 )}
                 {!app.held ? (
                     <>
-                        <div className="min-w-56 flex-1">
+                        <div className="field-xl min-w-0">
                             <Field label={t('svcapps.admin.holdReason')} htmlFor={`svc-hold-${app.id}`} hint={t('svcapps.admin.holdNote')}>
-                                <input id={`svc-hold-${app.id}`} className={inputClass} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+                                <input id={`svc-hold-${app.id}`} className={`${inputClass} field-full`} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
                             </Field>
                         </div>
                         <Button variant="danger" icon={ShieldAlert} loading={busy === 'hold'} disabled={!!busy || reason.trim() === ''} onClick={() => void post('hold', { reason })}>{t('svcapps.admin.hold')}</Button>

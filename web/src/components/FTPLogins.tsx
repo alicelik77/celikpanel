@@ -400,7 +400,7 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                                                 <div className="space-y-3 border-t border-border pt-3">
                                                     <label className="block space-y-1 text-sm font-medium text-fg">
                                                         <span>{t('ftpLogins.newFolder')}</span>
-                                                        <input className={inputClass} value={editFolder} maxLength={512} spellCheck={false} disabled={!canOpen}
+                                                        <input className={`${inputClass} field-xl`} value={editFolder} maxLength={512} spellCheck={false} disabled={!canOpen}
                                                             onChange={(e) => setEditFolder(e.target.value)} />
                                                     </label>
                                                     <label className="block space-y-1 text-sm font-medium text-fg">
@@ -433,13 +433,13 @@ export function FTPLogins({ domainId, isAdmin }: { domainId: number; isAdmin: bo
                             <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
                                 <label className="block space-y-1 text-sm font-medium text-fg">
                                     <span>{t('ftpLogins.name')}</span>
-                                    <input className={inputClass} value={name} maxLength={32} spellCheck={false} autoComplete="off"
+                                    <input className={`${inputClass} field-md`} value={name} maxLength={32} spellCheck={false} autoComplete="off"
                                         onChange={(e) => setName(e.target.value.toLowerCase().trim())} />
                                     <span className="block text-xs font-normal text-fg-muted">{t('ftpLogins.nameHint')}</span>
                                 </label>
                                 <label className="block space-y-1 text-sm font-medium text-fg">
                                     <span>{t('ftpLogins.folder')}</span>
-                                    <input className={inputClass} value={folder} maxLength={512} spellCheck={false}
+                                    <input className={`${inputClass} field-xl`} value={folder} maxLength={512} spellCheck={false}
                                         onChange={(e) => setFolder(e.target.value)} />
                                     <span className="block text-xs font-normal text-fg-muted">{t('ftpLogins.folderHint')}</span>
                                 </label>

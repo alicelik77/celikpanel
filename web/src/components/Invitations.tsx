@@ -90,7 +90,7 @@ export function InvitationLinkDialog({ outcome, onClose }: { outcome: Invitation
                     readOnly
                     value={link}
                     onFocus={(e) => e.currentTarget.select()}
-                    className={`${inputClass} font-mono text-xs`}
+                    className={`${inputClass} font-mono text-xs field-xl`}
                     aria-label={t('acct.invite.copyTitle')}
                 />
             </div>

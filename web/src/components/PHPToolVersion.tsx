@@ -276,7 +276,7 @@ export function PHPToolVersion({ serviceId, tool, reconcileDelayMs = 5000 }: { s
                                         value={selected}
                                         onChange={(event) => setChoice(event.target.value)}
                                         disabled={busy}
-                                        className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
+                                        className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11 field-sm"
                                         data-php-tool-select=""
                                     >
                                         {options.map((version) => (

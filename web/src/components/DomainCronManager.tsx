@@ -285,7 +285,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                 <select
                                     value={schedulePresets.find((p) => p.value === schedule)?.value ?? ''}
                                     onChange={(e) => e.target.value && setSchedule(e.target.value)}
-                                    className={`${inputClass} w-auto`}
+                                    className={`${inputClass} field-md`}
                                 >
                                     <option value="">{t('cron.custom')}</option>
                                     {schedulePresets.map((p) => (
@@ -299,7 +299,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                     value={schedule}
                                     onChange={(e) => setSchedule(e.target.value)}
                                     placeholder="* * * * *"
-                                    className={`${inputClass} flex-1 font-mono`}
+                                    className={`${inputClass} font-mono min-w-0 field-md`}
                                 />
                             </div>
                             <p className="mt-1 text-xs text-fg-subtle">{t('cron.scheduleFormat')}</p>
@@ -312,7 +312,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                 value={command}
                                 onChange={(e) => setCommand(e.target.value)}
                                 placeholder="/usr/bin/php /var/www/example.com/cron.php"
-                                className={`${inputClass} font-mono`}
+                                className={`${inputClass} font-mono field-xl`}
                             />
                         </div>
 
@@ -322,7 +322,7 @@ export function DomainCronManager({ domainId, readOnly = false }: DomainCronMana
                                 type="text"
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
-                                className={inputClass}
+                                className={`${inputClass} field-xl`}
                             />
                         </div>
 

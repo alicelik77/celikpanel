@@ -208,7 +208,7 @@ export function MailboxRecoveryPage() {
                                             value={mailbox}
                                             disabled={busy}
                                             onChange={(event) => setMailbox(event.target.value)}
-                                            className={inputClass}
+                                            className={`${inputClass} field-lg`}
                                         />
                                     </label>
                                     {formProblem && <p role="alert" className="text-sm text-danger">{formProblem}</p>}

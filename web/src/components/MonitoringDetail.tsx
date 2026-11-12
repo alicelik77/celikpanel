@@ -243,7 +243,7 @@ function AlertSettings({ report, onSaved }: { report: AlertsReport; onSaved: () 
             <div className="mt-3 space-y-3 text-sm">
                 <label className="flex flex-wrap items-center gap-2">
                     <span className="text-fg">{t('malert.delay')}</span>
-                    <select className={`${inputClass} w-auto`} value={delay} onChange={(e) => setDelay(Number(e.target.value))} data-alert-delay="">
+                    <select className={`${inputClass} field-sm`} value={delay} onChange={(e) => setDelay(Number(e.target.value))} data-alert-delay="">
                         {report.delay_choices.map((n) => <option key={n} value={n}>{t('malert.minutes', { n })}</option>)}
                     </select>
                 </label>

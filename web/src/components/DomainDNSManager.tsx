@@ -480,7 +480,7 @@ export function DomainDNSManager({
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
                         <label className="sm:col-span-2">
                             <span className="mb-1 block text-xs text-fg-muted">{t('dns.type')}</span>
-                            <select value={newType} onChange={(e) => setNewType(e.target.value)} className={inputClass}>
+                            <select value={newType} onChange={(e) => setNewType(e.target.value)} className={`${inputClass} field-sm`}>
                                 {recordTypes.map((rt) => (
                                     <option key={rt} value={rt}>
                                         {rt}
@@ -490,20 +490,20 @@ export function DomainDNSManager({
                         </label>
                         <label className="sm:col-span-3">
                             <span className="mb-1 block text-xs text-fg-muted">{t('dns.name')}</span>
-                            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('dns.nameHint')} className={inputClass} />
+                            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('dns.nameHint')} className={`${inputClass} field-lg`} />
                         </label>
                         <label className={needsPrio ? 'sm:col-span-4' : 'sm:col-span-5'}>
                             <span className="mb-1 block text-xs text-fg-muted">{t('dns.content')}</span>
-                            <input value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="192.168.1.1" className={inputClass} />
+                            <input value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="192.168.1.1" className={`${inputClass} field-xl`} />
                         </label>
                         <label className="sm:col-span-2">
                             <span className="mb-1 block text-xs text-fg-muted">{t('dns.ttl')}</span>
-                            <input type="number" value={newTTL} onChange={(e) => setNewTTL(parseInt(e.target.value))} className={inputClass} />
+                            <input type="number" value={newTTL} onChange={(e) => setNewTTL(parseInt(e.target.value))} className={`${inputClass} field-xs`} />
                         </label>
                         {needsPrio && (
                             <label className="sm:col-span-1">
                                 <span className="mb-1 block text-xs text-fg-muted">{t('dns.priority')}</span>
-                                <input type="number" value={newPrio} onChange={(e) => setNewPrio(parseInt(e.target.value))} className={inputClass} />
+                                <input type="number" value={newPrio} onChange={(e) => setNewPrio(parseInt(e.target.value))} className={`${inputClass} field-xs`} />
                             </label>
                         )}
                     </div>

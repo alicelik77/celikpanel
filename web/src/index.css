@@ -518,3 +518,49 @@ html {
         opacity: 0.35;
     }
 }
+
+/* Field widths (owner, 12 Nov 2026: "the fields where an IP address is typed
+   are long enough to take epic texts"). A text, number or date field and a
+   select are as wide as what they hold, not as wide as their card: the width
+   tells the user what is expected. Every such field in web/src/components
+   carries one of these classes (tests/field-width-contract.test.mjs):
+   xs ~6 characters (a count, a port), sm ~12 (a size, a date, a duration),
+   md ~28 (an IPv4 address, a user or database name, a short label),
+   lg ~48 (an IPv6 address, a host or domain name, an e-mail address, a
+   password), xl ~80 (a URL, a path, a command, a one-line description),
+   full only for free text. A select takes the size of its longest option.
+   The field keeps its size and never grows past its container, so on a phone
+   it narrows to the screen; it stays at the start of its row, and the control
+   that belongs to it (a unit, a button) follows it directly.
+   Alan genişlikleri: alan, kartı kadar değil, tuttuğu değer kadar geniştir;
+   genişlik kullanıcıya ne beklendiğini söyler. Alan kabından taşmaz,
+   telefonda ekrana daralır; ait olduğu birim ya da düğme hemen arkasından gelir. */
+:root {
+    --field-xs: 6rem;
+    --field-sm: 10rem;
+    --field-md: 16rem;
+    --field-lg: 26rem;
+    --field-xl: 42rem;
+}
+.field-xs { --field-width: var(--field-xs); }
+.field-sm { --field-width: var(--field-sm); }
+.field-md { --field-width: var(--field-md); }
+.field-lg { --field-width: var(--field-lg); }
+.field-xl { --field-width: var(--field-xl); }
+.field-full { --field-width: 100%; }
+/* A frame around a field (the password field with its buttons, an address
+   with its domain) fills its container up to the size, and never makes a
+   grid column wider than the screen. / Alanı saran çerçeve kabını boyuna
+   kadar doldurur, ızgara sütununu ekrandan genişletmez. */
+.field-xs, .field-sm, .field-md, .field-lg, .field-xl, .field-full {
+    width: 100%;
+    max-width: var(--field-width);
+}
+/* The field itself has its size and keeps its own line, as a full-width one
+   did: a label's text never runs into it. / Alanın kendisi boyundadır ve
+   kendi satırında kalır. */
+:is(input, select, textarea):is(.field-xs, .field-sm, .field-md, .field-lg, .field-xl, .field-full) {
+    display: block;
+    width: var(--field-width);
+    max-width: 100%;
+}

@@ -1171,12 +1171,12 @@ function SetupWizard({ initial }: { initial: ServerSetupSnapshot }) {
                         joined={joinedLink}
                         connection={<ServerSetupDNSConnection value={draft.remote_dns_connection_id} onChange={value => change('remote_dns_connection_id', value)} onValidityChange={setRemoteVerified} />}
                         publisher={secondaryHosting && !joinFlow && <div className="space-y-3">
-                            <label className="block" htmlFor="setup-dns_hosting_management"><span className="mb-2 block text-sm font-medium">{t('setup.publisher.management')}</span><select id="setup-dns_hosting_management" name="dns_hosting_management" value={hostingDNSManagement} onChange={event => change('dns_hosting_management', event.target.value as 'manual' | 'panel')} className={`${inputClass} w-full`}>
+                            <label className="block" htmlFor="setup-dns_hosting_management"><span className="mb-2 block text-sm font-medium">{t('setup.publisher.management')}</span><select id="setup-dns_hosting_management" name="dns_hosting_management" value={hostingDNSManagement} onChange={event => change('dns_hosting_management', event.target.value as 'manual' | 'panel')} className={`${inputClass} field-lg`}>
                                 <option value="manual">{t('setup.publisher.manual')}</option>
                                 <option value="panel">{t('setup.publisher.automatic')}</option>
                             </select></label>
                             {automaticPublisher ? <>
-                                <SetupWizardInput name="dns_publisher_endpoint" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:1923" required />
+                                <SetupWizardInput name="dns_publisher_endpoint" size="xl" label={t('setup.publisher.endpoint')} value={draft.dns_publisher_endpoint || ''} onChange={value => change('dns_publisher_endpoint', value)} placeholder="https://frankfurt.example.com:1923" required />
                                 <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.setupHelp')}</p>
                             </> : <p className="text-sm leading-6 text-fg-muted">{t('setup.publisher.manualHelp')}</p>}
                         </div>} />
@@ -1366,7 +1366,7 @@ function SetupNodeVersion({ value, onChange }: { value: string; onChange: (value
         return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
     }, [attempt]);
     return <div className="space-y-3">
-        <label className="block" htmlFor="setup-node_version"><span className="mb-2 block text-sm font-medium">{t('setup.nodeVersion')}</span><select id="setup-node_version" name="node_version" value={value} onChange={event => onChange(event.target.value)} required disabled={!releases} className={`${inputClass} w-full`}>
+        <label className="block" htmlFor="setup-node_version"><span className="mb-2 block text-sm font-medium">{t('setup.nodeVersion')}</span><select id="setup-node_version" name="node_version" value={value} onChange={event => onChange(event.target.value)} required disabled={!releases} className={`${inputClass} field-md`}>
             <option value="">{t(releases ? 'setup.nodeChoose' : failed ? 'setup.nodeUnavailable' : 'common.loading')}</option>
             {value && !releases?.some(item => item.version === value) && <option value={value}>{value} — {t('setup.nodeSaved')}</option>}
             {releases?.map(item => <option key={item.version} value={item.version}>Node.js {item.version} · {item.name} LTS</option>)}

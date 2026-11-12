@@ -139,9 +139,9 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
                 <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
                     <div className="text-sm font-medium text-fg">{t('runtime.admin.limitsTitle')}</div>
                     <div className="grid gap-3 sm:grid-cols-3">
-                        <Field label={t('runtime.admin.memory')} htmlFor={`rt-mem-${kind.kind}`}><input id={`rt-mem-${kind.kind}`} inputMode="numeric" className={inputClass} value={memory} onChange={(e) => setMemory(e.target.value)} /></Field>
-                        <Field label={t('runtime.admin.cpu')} htmlFor={`rt-cpu-${kind.kind}`}><input id={`rt-cpu-${kind.kind}`} inputMode="numeric" className={inputClass} value={cpu} onChange={(e) => setCPU(e.target.value)} /></Field>
-                        <Field label={t('runtime.admin.tasks')} htmlFor={`rt-tasks-${kind.kind}`}><input id={`rt-tasks-${kind.kind}`} inputMode="numeric" className={inputClass} value={tasks} onChange={(e) => setTasks(e.target.value)} /></Field>
+                        <Field label={t('runtime.admin.memory')} htmlFor={`rt-mem-${kind.kind}`}><input id={`rt-mem-${kind.kind}`} inputMode="numeric" className={`${inputClass} field-xs`} value={memory} onChange={(e) => setMemory(e.target.value)} /></Field>
+                        <Field label={t('runtime.admin.cpu')} htmlFor={`rt-cpu-${kind.kind}`}><input id={`rt-cpu-${kind.kind}`} inputMode="numeric" className={`${inputClass} field-xs`} value={cpu} onChange={(e) => setCPU(e.target.value)} /></Field>
+                        <Field label={t('runtime.admin.tasks')} htmlFor={`rt-tasks-${kind.kind}`}><input id={`rt-tasks-${kind.kind}`} inputMode="numeric" className={`${inputClass} field-xs`} value={tasks} onChange={(e) => setTasks(e.target.value)} /></Field>
                     </div>
                     {!limitsOK && <p className="text-xs text-warning">{t('err.RUNTIME_APP.limits')}</p>}
                     {!sandbox.known && <p className="text-sm text-warning">{t('runtime.admin.levelUnknown')}</p>}
@@ -183,9 +183,9 @@ function AdminKindCard({ kind, sandbox, portRange, onDone, onFailure }: {
                 )}
                 {missing ? null : !kind.held ? (
                     <>
-                        <div className="min-w-56 flex-1">
+                        <div className="field-xl min-w-0">
                             <Field label={t('runtime.admin.holdReason')} htmlFor={`rt-hold-${kind.kind}`} hint={t('runtime.admin.holdNote')}>
-                                <input id={`rt-hold-${kind.kind}`} className={inputClass} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+                                <input id={`rt-hold-${kind.kind}`} className={`${inputClass} field-full`} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
                             </Field>
                         </div>
                         <Button variant="danger" icon={ShieldAlert} loading={busy === 'hold'} disabled={!!busy || reason.trim() === ''} onClick={() => void post('hold', { reason })}>{t('runtime.admin.hold')}</Button>

@@ -260,14 +260,14 @@ function CatchAllSection({ domainId, domainName, readOnly }: { domainId: number;
                         )}
                     </div>
                     <div className="flex flex-wrap items-end gap-3">
-                        <label className="min-w-0 flex-1 basis-64">
+                        <label className="min-w-0">
                             <span className="mb-1 block text-xs text-fg-muted">{t('mail.catchAll.destination')}</span>
                             <input
                                 type="email"
                                 value={draft}
                                 onChange={(e) => { setDraft(e.target.value); setRefused(''); }}
                                 placeholder={current ? `inbox@${domainName}` : undefined}
-                                className={`${inputClass} disabled:bg-surface-2 disabled:text-fg-muted`}
+                                className={`${inputClass} disabled:bg-surface-2 disabled:text-fg-muted field-lg`}
                                 disabled={locked}
                                 aria-invalid={refused ? true : undefined}
                                 aria-describedby={refused ? 'catch-all-refused' : undefined}

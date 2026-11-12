@@ -333,7 +333,7 @@ function HostingForm({
                             onChange={(e) => set('start_command', e.target.value)}
                             disabled={busy}
                             placeholder="node server.js"
-                            className={`${inputClass} font-mono`}
+                            className={`${inputClass} font-mono field-xl`}
                         />
                         {moved('start_command', (value) => value.start_command)}
                     </label>
@@ -356,7 +356,7 @@ function HostingForm({
                             value={state.runtime_version}
                             onChange={(e) => set('runtime_version', e.target.value)}
                             disabled={busy}
-                            className={inputClass}
+                            className={`${inputClass} field-sm`}
                         >
                             {!state.runtime_version && (
                                 <option value="" disabled>
@@ -413,7 +413,7 @@ function HostingForm({
                             onChange={(e) => set('forward_to', e.target.value)}
                             disabled={busy}
                             placeholder="https://example.com"
-                            className={`${inputClass} font-mono`}
+                            className={`${inputClass} font-mono field-xl`}
                         />
                         {moved('forward_to', (value) => value.forward_to)}
                     </label>
@@ -424,7 +424,7 @@ function HostingForm({
                                 value={state.forward_code}
                                 onChange={(e) => set('forward_code', Number(e.target.value))}
                                 disabled={busy}
-                                className={inputClass}
+                                className={`${inputClass} field-md`}
                             >
                                 <option value={301}>{t('hosting.code301')}</option>
                                 <option value={302}>{t('hosting.code302')}</option>
