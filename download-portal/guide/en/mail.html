@@ -30,14 +30,14 @@
 <h2 id="full">When a mailbox is full</h2>
 <ul><li>At <strong>90%</strong> the mailbox receives one warning message, in English and Turkish.</li><li>At <strong>100%</strong> new mail is refused, and senders get a &quot;mailbox full&quot; bounce. Nothing already in the mailbox is lost.</li></ul>
 <p>Who acts: the mailbox owner deletes old mail, or you raise its size with <strong>Edit quota</strong>. Mail is accepted again at once. This works through the mail server itself, also when the panel is stopped.</p>
-<p>If the tab says the Dovecot quota plugin is not enabled, sizes are recorded but not enforced yet; the administrator turns it on.</p>
+<p>If the Mail section says the Dovecot quota plugin is not enabled, sizes are recorded but not enforced yet; the administrator turns it on.</p>
 <h2 id="forwarding">Forwarding</h2>
 <p>On <strong>Forwarding</strong>, press <strong>Add forwarder</strong>, type the <strong>Source address</strong> and the <strong>Destination address</strong>, and press <strong>Create</strong>. Mail sent to the source is delivered to the destination.</p>
 <p>On <strong>Settings</strong>, the <strong>Catch-all address</strong> delivers mail sent to any unknown name at your domain to one mailbox. It also collects spam.</p>
 <h2 id="autoreply">Out-of-office reply</h2>
 <p>Open the mailbox's <strong>Out-of-office reply</strong>, tick <strong>Send an automatic reply</strong>, write the <strong>Subject</strong> and <strong>Message</strong>, optionally a <strong>First day</strong> and <strong>Last day</strong>, and press <strong>Save reply</strong>. The mail server sends the reply itself, to each sender at most once in the number of days you set, and never to mailing lists.</p>
 <h2 id="webmail">Webmail</h2>
-<p>The <strong>Webmail</strong> box on the tab has <strong>Open Webmail</strong>. Sign in with the full email address and the mailbox password; no panel account is needed. If it says webmail is not available on this server yet, the administrator installs Roundcube and gives it an address.</p>
+<p>The <strong>Webmail</strong> box in the Mail section has <strong>Open Webmail</strong>. Sign in with the full email address and the mailbox password; no panel account is needed. If it says webmail is not available on this server yet, the administrator installs Roundcube and gives it an address.</p>
 <h2 id="mail-programs">Settings for mail programs</h2>
 <p><strong>Settings</strong> shows <strong>Mail client setup</strong> for Thunderbird, Outlook, Apple Mail or a phone. For <code>example.com</code> the values are:</p>
 <div class="table-scroll guide-table-scroll" tabindex="0" role="region" aria-label="Table: Settings for mail programs"><table class="guide-table"><thead><tr><th scope="col"></th><th scope="col">Server</th><th scope="col">Port</th><th scope="col">Security</th></tr></thead><tbody><tr><td>Incoming (IMAP)</td><td><code>mail.example.com</code></td><td>993</td><td>SSL/TLS</td></tr><tr><td>Incoming (POP3)</td><td><code>mail.example.com</code></td><td>995</td><td>SSL/TLS</td></tr><tr><td>Outgoing (SMTP)</td><td><code>mail.example.com</code></td><td>587</td><td>STARTTLS</td></tr></tbody></table></div>

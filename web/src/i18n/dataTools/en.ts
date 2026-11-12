@@ -31,7 +31,7 @@ export const enDataTools = {
     'dbt.importFile': 'Dump file',
     'dbt.importStart': 'Import',
     'dbt.importConfirm': 'Load {file} into {name}? A safety copy is taken first.',
-    'dbt.importConfirmEmpty': 'Empty {name} and load {file} into it? A safety copy is taken first, so this can be undone from the Backups tab.',
+    'dbt.importConfirmEmpty': 'Empty {name} and load {file} into it? A safety copy is taken first, so this can be undone from the Backups section.',
     'dbt.importTitle': 'Importing into {name}',
     'dbt.imported': '{file} was loaded into {name}. The safety copy {safety} is kept under Backups.',
     'dbt.importBlockedClient': "This server's MariaDB client is too old to load a file safely, so importing is turned off here. The administrator updates the server's MariaDB packages; then Import works.",

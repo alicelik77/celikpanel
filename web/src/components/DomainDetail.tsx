@@ -1,12 +1,16 @@
 import { Fragment, Suspense, lazy, useCallback, useState, useEffect, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react';
-import { useSearchParams } from '../router';
+import { replaceCurrentRouterURL, useLocation, useSearchParams } from '../router';
 import { publishGuideTopic } from '../help/guide/context';
 import { ArrowLeft, Globe, Lock, ExternalLink } from 'lucide-react';
 import { decodeSSLData, type SSLRuntimeSummary } from './DomainSSLSettings';
 import { DomainConnection } from './DomainConnection';
 import { useI18n } from '../i18n';
 import { formatTime } from '../lib/dateFormat';
-import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner, StatusDot } from './ui';
+import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner } from './ui';
+import { Guidance } from './kit/rows/Guidance';
+import { StateLabel } from './kit/rows/StateLabel';
+import { siteKindWord } from './kit/words';
+import { confirmLeaveIfDirty } from './kit/save/leaveGuard';
 import { useAuth } from '../auth/AuthContext';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
 import { decodeList, lastKnown, useRemote, useRereadWhileRechecking } from '../lib/remote';
@@ -192,7 +196,9 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     const { t, locale } = useI18n();
     const { role } = useAuth();
     const isTeamMember = role === 'additional_user';
+    const isAdmin = role === 'admin';
     const [searchParams, setSearchParams] = useSearchParams();
+    const { pathname, hash } = useLocation();
     const requested = requestedPlace(searchParams);
     // The list is the same address the Domains page and the navigation read,
     // so this page shares their request. What this page changed itself (the
@@ -318,11 +324,26 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     // row, the Overview's tiles, the health strip's fixes, the configuration
     // file notice) passes through here and nowhere else: what must hold the
     // person on the section they are leaving is asked at this one place.
+    //   - Another section: its screens are put away, so unsaved changes ask
+    //     first in the panel's own dialog (kit/save/leaveGuard). "Leave" gives
+    //     them up, so the router does not ask a second time; "Stay" keeps the
+    //     person and the changes where they are.
+    //   - Another part of the open section: every part stays drawn on the
+    //     same page (SectionParts), nothing is put away and nothing is asked;
+    //     the address follows in place.
     // Bir bölüme ya da bölümün bir parçasına geçiş; bölüm değiştiren her yol
-    // yalnız buradan geçer.
+    // yalnız buradan geçer. Başka bölüme geçerken kaydedilmemiş değişiklik
+    // panelin penceresiyle bir kez sorulur; aynı bölümün başka parçası aynı
+    // sayfada çizili kaldığından hiçbir şey sorulmaz.
     const go = async (place: Place, options: { replace?: boolean } = {}) => {
         if (current && place.section === current.id && (place.part ?? null) === shownPart && !options.replace) return;
-        setSearchParams(withPlace(searchParams, place), { replace: options.replace });
+        const next = withPlace(searchParams, place);
+        if (current && place.section === current.id) {
+            const query = next.toString();
+            if (replaceCurrentRouterURL(`${pathname}${query ? `?${query}` : ''}${hash}`)) return;
+        }
+        if (current && place.section !== current.id && !(await confirmLeaveIfDirty())) return;
+        setSearchParams(next, { replace: options.replace });
     };
 
     if (list.remote.state === 'loading') {
@@ -376,7 +397,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     if (!isTeamMember || canView('files') || canView('php')) {
         facts.push({
             key: 'type',
-            content: <Fact label={t('domain.info.type')}>{projectType}</Fact>,
+            content: <Fact label={t('domain.info.type')}>{siteKindWord(t, domain.project_type, { admin: isAdmin })}</Fact>,
         });
     }
     if (projectType === 'php' && canView('php')) {
@@ -455,7 +476,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                     busy={list.reading}
                 />
             )}
-            {role === 'admin' && !isDnsOnly && domain.site_config && !configShown && (
+            {isAdmin && !isDnsOnly && domain.site_config && !configShown && (
                 <Suspense fallback={null}>
                     <SiteConfigNotice
                         state={domain.site_config.state}
@@ -477,10 +498,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                         {canView('ssl') && sslUsable ? <Lock className="h-5 w-5" /> : <Globe className="h-5 w-5" />}
                     </span>
                     <h1 className="min-w-0 break-all text-2xl font-bold tracking-tight">{domain.domain_name}</h1>
-                    <span className="inline-flex items-center gap-1.5 text-sm text-fg-muted">
-                        <StatusDot ok={domain.status === 'active'} />
-                        {domain.status === 'active' ? t('domains.status.active') : domain.status}
-                    </span>
+                    <StateLabel status={domain.status} admin={isAdmin} className="text-sm text-fg-muted" />
                     {!isDnsOnly && canView('files') && (
                         <a
                             href={`${sslUsable ? 'https' : 'http'}://${domain.domain_name}`}
@@ -550,15 +568,17 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                     not only the toast that sent the person here (alpha.114).
                     Site olustu ama DNS yayimlanamadi: sayfa dikkat gerekeni soyler. */}
                 {current.id === 'dns' && searchParams.get('attention') === 'dns-publication' && (
-                    <section role="status" data-dns-publication-attention="" className="mb-4 space-y-2 rounded-lg border border-warning-mark/50 bg-warning-mark/10 p-4 text-sm leading-6 text-fg">
-                        <h2 className="font-semibold">{t('domains.attention.dnsTitle', { name: domain.domain_name })}</h2>
-                        <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)]">
-                            <dt className="text-fg-muted">{t('setup.v2.why')}</dt><dd>{t('domains.attention.dnsWhy')}</dd>
-                            <dt className="text-fg-muted">{t('setup.v2.who')}</dt><dd>{t('domains.attention.dnsWho')}</dd>
-                            <dt className="text-fg-muted">{t('setup.v2.next')}</dt><dd>{t('domains.attention.dnsNext')}</dd>
-                            <dt className="text-fg-muted">{t('setup.v2.then')}</dt><dd>{t('domains.attention.dnsThen')}</dd>
-                        </dl>
-                    </section>
+                    <Guidance
+                        tone="waiting"
+                        titleAs="h2"
+                        className="mb-4"
+                        data-dns-publication-attention=""
+                        title={t('domains.attention.dnsTitle', { name: domain.domain_name })}
+                        why={t('domains.attention.dnsWhy')}
+                        who={t('domains.attention.dnsWho')}
+                        next={t('domains.attention.dnsNext')}
+                        then={t('domains.attention.dnsThen')}
+                    />
                 )}
 
                 <Suspense fallback={<Spinner />}>

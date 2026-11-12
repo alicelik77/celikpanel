@@ -18,8 +18,7 @@ export const trDbRemote: Record<DbRemoteKey, string> = {
     'dbr.turnOn': 'Bu sunucu için aç',
     'dbr.turnOnConfirm': 'Bu sunucuda dışarıdan bağlantılar açılsın mı? Henüz hiçbir şey açılmaz: bir veritabanına yalnız onun için bir adres listelendikten sonra ve yalnız o adresten ulaşılır.',
     'dbr.turnOnTitle': 'Dışarıdan bağlantılar açılıyor',
-    'dbr.notInPlan': 'Planınızda dışarıdan bağlantılar yok. {grantor} kişisinden “Veritabanlarına dışarıdan erişim” iznini planınıza eklemesini isteyin.',
-    'dbr.grantor.admin': 'yönetici',
+    'dbr.notInPlan': 'Planınızda dışarıdan bağlantı yok. Bunun için {grantor} planınıza “Veritabanlarına dışarıdan erişim” iznini eklemesini isteyin.',
     'dbr.remoteServer': 'Bu veritabanı başka bir sunucuda; CelikPanel yalnız bu sunucunun veritabanlarını açar.',
     'dbr.subscriptionInactive': 'Bu abonelik etkin değil; şu an adres listelenemez.',
 

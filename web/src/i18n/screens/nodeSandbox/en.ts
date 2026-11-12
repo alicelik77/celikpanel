@@ -1,7 +1,7 @@
 // SCREEN catalogue part "nodeSandbox" (alpha.127): Node.js sites in the site
 // sandbox - the administrator's card under Components → Node.js (the move of
 // sites an earlier release wrote) and the site's own line and install step on
-// its Hosting tab (nodesandbox.), and the audit log's sentences for its two
+// its Site section (nodesandbox.), and the audit log's sentences for its two
 // actions (dashboard.audit.action.site.node_*). Each refusal says what is wrong, who acts and
 // the next action (D-024).
 // One part of the screen copy; ../../index.tsx fetches every part in
@@ -25,7 +25,7 @@ export const enNodeSandboxScreens = {
     'nodesandbox.putBack': 'Kept in the earlier protection because the proof failed; they run again on their earlier unit: {sites}. The site’s owner makes the application listen only on its own port and write only inside its own folder; then move again.',
     'nodesandbox.skipped': 'Not moved, nothing changed: {sites}.',
     'nodesandbox.edited': 'Changed on the server, kept as they are and not moved: {sites}. Move your own settings into the unit’s drop-in folder (or put CelikPanel’s text back on the site’s configuration page) to move them.',
-    'nodesandbox.shared': 'Run as the shared web account, so they cannot be moved yet: {sites}. Use “Run under the site’s own user” on each site’s Hosting tab first.',
+    'nodesandbox.shared': 'Run as the shared web account, so they cannot be moved yet: {sites}. Use “Run under the site’s own user” in each site’s Site section first.',
     'nodesandbox.unknown': 'The site sandbox could not be read from the server. It is read again when this page is opened.',
     'nodesandbox.busy': 'Node.js sites are being moved now. This page updates by itself.',
     'nodesandbox.lost': 'The answer was lost. Press the button again: the same request returns the first answer and moves nothing twice.',

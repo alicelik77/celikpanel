@@ -215,6 +215,9 @@ const domainRouterURL = dataModule(`
     const set = React.useCallback((next) => { globalThis.currentTest.search = next.toString(); listeners.forEach((listener) => listener()); }, []);
     return [params, set];
   };
+  // alpha.132: another part of the open section moves the address in place.
+  export const useLocation = () => ({ pathname: '/domains/example.com', search: '', hash: '' });
+  export const replaceCurrentRouterURL = (to) => { globalThis.currentTest.search = new URL(to, 'https://panel.test').search.slice(1); listeners.forEach((listener) => listener()); return true; };
 `);
 const domainSectionsURL = compileSource('components/domain/sections.ts', () => stub);
 const domainOwn = {

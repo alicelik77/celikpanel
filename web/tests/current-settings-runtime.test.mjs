@@ -261,7 +261,6 @@ for (const [name, answer] of [
 
 // alpha.132: the schedule is a draft; only Save in the bar writes it.
 const saveButtons = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined);
-const saveBar = () => saveButtons()[0];
 const discard = () => tree.root.findAll((node) => node.type === 'button' && node.props['data-save-discard'] !== undefined)[0];
 const switchBox = () => tree.root.findAllByType('input').find((node) => node.props.type === 'checkbox');
 const change = async (node, value) => act(async () => node.props.onChange({ target: { value, checked: value } }));

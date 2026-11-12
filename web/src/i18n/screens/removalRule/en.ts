@@ -24,7 +24,7 @@ export const enRemovalRuleScreens = {
     'rmrule.kind.node_service_apps': '{count} app(s) run on it (n8n, for example). Remove the app on its site’s page first.',
     'rmrule.kind.python_apps': '{count} Python app(s) run on it. Remove them on their site’s page first.',
     'rmrule.kind.databases': '{count} database(s) are stored in it. Move or delete them on the Databases page first.',
-    'rmrule.kind.mail_addresses': '{count} mailbox(es) or forwarding(s) use it. Remove them on the domain’s Mail tab first.',
+    'rmrule.kind.mail_addresses': '{count} mailbox(es) or forwarding(s) use it. Remove them in the domain’s Mail section first.',
     'rmrule.kind.dns_zones': '{count} DNS zone(s) are served by it.',
     'rmrule.kind.certificates': '{count} certificate(s) are renewed with it. Without it they expire within 90 days and HTTPS stops working.',
     'rmrule.kind.panel_firewall': 'The panel firewall runs on it. Turn the firewall off on the Security page first.',

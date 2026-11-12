@@ -278,6 +278,31 @@ test('Back with unsaved changes returns to the page, asks, and goes back only on
   });
 });
 
+test('Back and Forward between two sections of one page (only ?section= differs) ask exactly once', async () => {
+  const browser = fakeBrowser('/domains/example.com?section=overview');
+  const blocked = { current: false };
+  await mounted(app({ dirty: false, blocked }), async (tree) => {
+    await act(async () => { navigate('/domains/example.com?section=mail'); });
+    await act(async () => { tree.update(app({ dirty: true, blocked })); });
+    answering(false);
+    window.history.go(-1);
+    await wait();
+    assert.equal(asked.length, 1, 'Back to another section did not ask, or asked twice');
+    assert.equal(browser.url(), '/domains/example.com?section=mail', 'Stay left the section');
+    answering(true);
+    window.history.go(-1);
+    await wait();
+    assert.equal(asked.length, 1, 'Leave was asked more than once');
+    assert.equal(browser.url(), '/domains/example.com?section=overview');
+    // Forward with nothing unsaved any more goes at once.
+    answering(false);
+    window.history.go(1);
+    await wait();
+    assert.equal(asked.length, 0);
+    assert.equal(browser.url(), '/domains/example.com?section=mail');
+  });
+});
+
 test('a running operation still refuses without asking, and a page with nothing unsaved goes at once', async () => {
   const browser = fakeBrowser('/system');
   const blocked = { current: true };

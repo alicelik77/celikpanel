@@ -485,6 +485,11 @@ export function OfferedItemsTab() {
         const inCatalog = offeredInCatalog(item);
         const offered = (inCatalog ? undefined : draft.values?.[item]) ?? state?.granted ?? false;
         const changed = !inCatalog && draft.isChanged(item);
+        // The word on the right says what the server has now; a changed row's
+        // mark already says what Save will make of it.
+        // Sağdaki sözcük sunucuda şu an olanı söyler; değişiklik işareti
+        // Kaydet'in ne yapacağını zaten söyler.
+        const live = (inCatalog ? undefined : draft.base?.[item]) ?? state?.granted ?? false;
         const withdrawn = state?.withdrawn === true;
         const component = item.startsWith('component:node:') ? 'node' : 'php-fpm';
         return (
@@ -499,7 +504,7 @@ export function OfferedItemsTab() {
                         <span className="min-w-0 text-sm font-medium text-fg">{name}{changed && <ChangedMark switched={offered} />}</span>
                     </label>
                 )}
-                <span className={`text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>{t(offered ? 'rights.offered.yes' : 'rights.offered.no')}</span>
+                <span className={`text-xs ${live ? 'text-fg-muted' : 'font-semibold text-warning'}`} data-offered-now={live ? 'yes' : 'no'}>{t(live ? 'rights.offered.yes' : 'rights.offered.no')}</span>
                 {draft.isMoved(item) && draft.base && (
                     <div className="w-full"><ServerMovedNote value={t(draft.base[item] ? 'rights.offered.yes' : 'rights.offered.no')} onTake={() => draft.take(item)} /></div>
                 )}

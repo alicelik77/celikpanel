@@ -111,6 +111,8 @@ export function OfferedVersionsCard({ component, installed }: { component: Offer
                     {lines.map(({ line, versions }) => {
                         const offered = draft.values?.[line] ?? !hidden.includes(line);
                         const changed = draft.isChanged(line);
+                        // The word on the right is the server's state; the mark says what Save changes.
+                        const live = draft.base?.[line] ?? !hidden.includes(line);
                         const label = versions.length > 1 ? versions.join(', ') : versions[0] ?? line;
                         return (
                             <li key={line} className={`px-3 py-2 ${changed ? changedRowClass : ''}`} data-offered-line={line} data-offered={offered ? 'yes' : 'no'}>
@@ -131,8 +133,8 @@ export function OfferedVersionsCard({ component, installed }: { component: Offer
                                         </span>
                                     </label>
                                     <SupportBadge table={support} component={component} version={line} />
-                                    <span className={`text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>
-                                        {t((offered ? 'life.offer.offered' : 'life.offer.hidden') as TranslationKey)}
+                                    <span className={`text-xs ${live ? 'text-fg-muted' : 'font-semibold text-warning'}`} data-offered-now={live ? 'yes' : 'no'}>
+                                        {t((live ? 'life.offer.offered' : 'life.offer.hidden') as TranslationKey)}
                                     </span>
                                 </div>
                                 {draft.isMoved(line) && draft.base && (

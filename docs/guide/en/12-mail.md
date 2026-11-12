@@ -26,7 +26,7 @@ Each row shows the mailbox's **Usage** and **Quota**. Beside it you can change t
 
 Who acts: the mailbox owner deletes old mail, or you raise its size with **Edit quota**. Mail is accepted again at once. This works through the mail server itself, also when the panel is stopped.
 
-If the tab says the Dovecot quota plugin is not enabled, sizes are recorded but not enforced yet; the administrator turns it on.
+If the Mail section says the Dovecot quota plugin is not enabled, sizes are recorded but not enforced yet; the administrator turns it on.
 
 ## Forwarding {#forwarding}
 
@@ -40,7 +40,7 @@ Open the mailbox's **Out-of-office reply**, tick **Send an automatic reply**, wr
 
 ## Webmail {#webmail}
 
-The **Webmail** box on the tab has **Open Webmail**. Sign in with the full email address and the mailbox password; no panel account is needed. If it says webmail is not available on this server yet, the administrator installs Roundcube and gives it an address.
+The **Webmail** box in the Mail section has **Open Webmail**. Sign in with the full email address and the mailbox password; no panel account is needed. If it says webmail is not available on this server yet, the administrator installs Roundcube and gives it an address.
 
 ## Settings for mail programs {#mail-programs}
 

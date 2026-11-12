@@ -209,7 +209,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     "err.DB_IMPORT_CLIENT_UNSAFE": "Bu sunucunun MariaDB istemcisi bir dosyayı güvenle yüklemek için çok eski (korumalı kipi yok). Hiçbir şey yüklenmedi. Yönetici sunucunun MariaDB paketlerini günceller; sonra yeniden içe aktarın.",
     "err.DB_IMPORT_FILE_REFUSED": "Dosyada CelikPanel'in çalıştırmadığı bir komut var (satırı aşağıda); bu yüzden hiçbir şey yüklenmedi ve veritabanı değişmedi. O satırı dosyadan çıkarın, sonra yeniden içe aktarın.",
     "err.DB_IMPORT_LOAD_FAILED": "Dosya yüklenirken bir hatada durdu ve veritabanı önceki haline döndürüldü. Sunucunun gerekçesi ve satır aşağıda. Dosyayı düzeltin, sonra yeniden içe aktarın.",
-    "err.DB_IMPORT_ROLLBACK_FAILED": "Dosya yüklenirken durdu ve veritabanını geri döndürme tamamlanmadı. Hemen önce alınan güvenlik kopyası duruyor: önceki duruma dönmek için Yedekler sekmesinden onu geri yükleyin. Gerekçe aşağıda.",
+    "err.DB_IMPORT_ROLLBACK_FAILED": "Dosya yüklenirken durdu ve veritabanını geri döndürme tamamlanmadı. Hemen önce alınan güvenlik kopyası duruyor: önceki duruma dönmek için Yedekler bölümünden onu geri yükleyin. Gerekçe aşağıda.",
     "err.DB_IMPORT_UPLOAD_MISSING": "Yüklenen dosya sunucuda yok ya da eksik. Hiçbir şey yüklenmedi. Dosyayı seçip yeniden içe aktarın.",
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "Bu alan adının dosyayı altında yükleyecek bir barındırma hesabı yok; hiçbir şey yüklenmedi. Alan adına barındırma ekleyin, sonra yeniden içe aktarın.",
     "err.DB_TOOLS_RESTORE_RUNNING": "Bu sitenin bir geri yüklemesi ya da içe aktarması hâlâ sürüyor; hiçbir şey başlatılmadı. Bitmesini bekleyin, sonra yeniden deneyin.",

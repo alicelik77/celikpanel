@@ -57,7 +57,7 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'ftpLogins.connectFtp': 'Şifreli FTP (FTP over TLS, FileZilla’da "Açık TLS üzerinden FTP gerektir"): {port} numaralı bağlantı noktası, pasif bağlantı noktaları {min}–{max}',
     'ftpLogins.connectFolder': 'Giriş, sitedeki klasörü olan /files içinde başlar.',
 
-    'ftpLogins.block.noSite': 'Bu alan adının web sitesi dosyası yok, bu yüzden giriş verilecek bir şey yok. Önce Barındırma sekmesinden bir web sitesi verin.',
+    'ftpLogins.block.noSite': 'Bu alan adının web sitesi dosyası yok, bu yüzden giriş verilecek bir şey yok. Önce Site bölümünde, Site türü kısmından bir web sitesi verin.',
     'ftpLogins.block.notInPlan': 'Dosya erişimi bu aboneliğin planında yok, bu yüzden giriş eklenemez. Sağlayıcınız ekleyebilir.',
     'ftpLogins.block.notInPlanManager': 'Dosya erişimi {name} hesabının planında yok, bu yüzden giriş eklenemez. Eklemek için haklarını açın.',
     'ftpLogins.block.suspended': 'Bu abonelik etkin değil, bu yüzden girişler eklenemez ya da değiştirilemez; duraklatılmışlardır. Yine de kaldırılabilirler. Sağlayıcınız aboneliği yeniler.',
@@ -96,7 +96,7 @@ export const trFtpLoginsScreens: Record<FtpLoginsScreenKey, string> = {
     'err.FTP_LOGIN_REFUSED.no_sshd': 'Bu sunucuda girişlerin gerektirdiği OpenSSH sunucusu yok. Önce sunucu yöneticisi kurar.',
     'err.FTP_LOGIN_REFUSED.name_taken': 'Bu ad sunucuda kullanılıyor. Başka bir giriş adı seçin; hiçbir şey değiştirilmedi.',
     'err.FTP_LOGIN_REFUSED.no_sign_in': 'Giriş bu sunucuda bağlanamazdı: burada SSH yalnız anahtar kabul ediyor (ya da komut satırı olmayan hesapları reddediyor) ve şifreli FTP yok; bu yüzden oluşturulmadı ve önceki adımlar geri alındı. Sunucu yöneticisi FTP sunucusunu (vsftpd) Bileşenler’den kurar ya da SSH’de şifreye izin verir; CelikPanel SSH ayarlarını değiştirmez.',
-    'err.FTP_LOGIN_REFUSED.site_account': 'Sitenin kendi hesabı sunucuda yok ya da değişmiş, bu yüzden giriş eklenemez. Sunucu yöneticisi siteyi Barındırma sekmesinden denetler.',
+    'err.FTP_LOGIN_REFUSED.site_account': 'Sitenin kendi hesabı sunucuda yok ya da değişmiş, bu yüzden giriş eklenemez. Sunucu yöneticisi siteyi Site bölümünde denetler.',
 
     // The plan form's and the server limits' label of the key ftp.max_logins.
     'limits.key.ftp.max_logins': 'Abonelik başına ek FTP/SFTP girişi',

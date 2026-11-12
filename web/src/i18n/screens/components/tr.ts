@@ -127,7 +127,7 @@ export const trComponentsScreens: Record<ComponentsScreenKey, string> = {
     'services.manageDNSEngine': 'DNS motorunu yönet',
     'services.manageDNSEngineHint': 'BIND ile PowerDNS arasında kurulum, etkinleştirme, bekleme durumu veya güvenli geçiş ayrıntılarını inceleyin.',
     'services.useBuiltInSFTP': 'Yerleşik SFTP’yi kullanın',
-    'services.useBuiltInSFTPHint': 'FTP sunucusu gerekmez. Her web sitesinin SSH (22 numaralı port) üzerinden şifreli SFTP için kendi hesabı vardır. Dosyaları tarayıcıdan yüklemek için bir web sitesini ve onun Dosyalar sekmesini açın.',
+    'services.useBuiltInSFTPHint': 'FTP sunucusu gerekmez. Her web sitesinin SSH (22 numaralı port) üzerinden şifreli SFTP için kendi hesabı vardır. Dosyaları tarayıcıdan yüklemek için bir web sitesini ve onun Dosyalar bölümünü açın.',
     'services.eolBadge': 'EOL',
     'services.eolHint': 'Bu hat artık güvenlik yaması almıyor — yalnız yükseltilemeyen eski bir site için kurun.',
     'services.phpVersionsHint': 'Sürümler yan yana kurulur; her site kendi sürümünü kendi ayarından seçer.',

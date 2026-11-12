@@ -56,7 +56,7 @@ export const enGuideScreens = {
     'guide.tour.components.title': 'Components',
     'guide.tour.components.text': 'Install and look after what the server runs: the web server, PHP, mail, DNS and databases. Every component has its own page.',
     'guide.tour.domains.title': 'Domains',
-    'guide.tour.domains.text': 'Every website, mailbox and DNS zone belongs to a domain. Open a domain to see its tabs: hosting, DNS, mail, files and more.',
+    'guide.tour.domains.text': 'Every website, mailbox and DNS zone belongs to a domain. Open a domain to see its sections: site, files, mail, databases, DNS and more.',
     'guide.tour.users.title': 'Users',
     'guide.tour.users.text': 'Create your plans and your customers here. What a customer may use comes from the plan you give them.',
     'guide.tour.dashboard.title': 'Dashboard',

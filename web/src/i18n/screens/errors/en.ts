@@ -218,7 +218,7 @@ export const enErrorsScreens = {
     "err.DB_IMPORT_CLIENT_UNSAFE": "This server's MariaDB client is too old to load a file safely (it has no sandbox mode). Nothing was loaded. The administrator updates the server's MariaDB packages; then import again.",
     "err.DB_IMPORT_FILE_REFUSED": "The file contains a command CelikPanel does not run (the line is named below), so nothing was loaded and the database is unchanged. Remove that line from the file, then import again.",
     "err.DB_IMPORT_LOAD_FAILED": "Loading the file stopped at an error, and the database was put back as it was before. The server's reason and the line are below. Correct the file, then import again.",
-    "err.DB_IMPORT_ROLLBACK_FAILED": "Loading the file stopped, and putting the database back did not finish. The safety copy taken just before is kept: restore it from the Backups tab to return to the state before. The reason is below.",
+    "err.DB_IMPORT_ROLLBACK_FAILED": "Loading the file stopped, and putting the database back did not finish. The safety copy taken just before is kept: restore it from the Backups section to return to the state before. The reason is below.",
     "err.DB_IMPORT_UPLOAD_MISSING": "The uploaded file is missing or incomplete on the server. Nothing was loaded. Choose the file and import again.",
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "This domain has no hosting account to load the file under, so nothing was loaded. Add hosting to the domain, then import again.",
     "err.DB_TOOLS_RESTORE_RUNNING": "A restore or import of this site is still running, so nothing was started. Wait until it ends, then try again.",

@@ -17,7 +17,7 @@ export const enSiteToolsScreens = {
     'wpt.notPHP': 'WordPress tools work on PHP sites only.',
     'wpt.phpMissing': 'The PHP command line for this site’s PHP version is not installed, so WordPress cannot be read.',
     'wpt.phpMissingNext': 'The administrator installs the PHP version again from Components (it brings its command line).',
-    'wpt.phpMissingResumes': 'Open this tab again afterwards.',
+    'wpt.phpMissingResumes': 'Open this page again afterwards.',
     'wpt.core': 'WordPress {version}',
     'wpt.coreLatest': 'Up to date',
     'wpt.coreUpdate': 'WordPress {version} is available',

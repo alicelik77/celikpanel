@@ -100,6 +100,8 @@ export function OfferedAppsSection({ onPart }: { onPart: (part: OfferedPart | nu
                         {shown.value.map((app) => {
                             const offered = draft.values?.[app.offering_id] ?? app.offered;
                             const changed = draft.isChanged(app.offering_id);
+                            // The word beside the name is the server's state; the mark says what Save changes.
+                            const live = draft.base?.[app.offering_id] ?? app.offered;
                             return (
                                 <li key={app.id} className={`rounded-lg border border-border bg-surface p-3 ${changed ? changedRowClass : ''}`} data-offered-app={app.id} data-offered={offered ? 'yes' : 'no'}>
                                     <label className="flex cursor-pointer items-start gap-2.5 max-sm:min-h-11">
@@ -108,7 +110,7 @@ export function OfferedAppsSection({ onPart }: { onPart: (part: OfferedPart | nu
                                             aria-label={t('rights.offered.toggle', { name: app.name })} />
                                         <span className="min-w-0">
                                             <span className="font-medium text-fg">{app.name} {app.version}</span>
-                                            <span className={`ml-2 text-xs ${offered ? 'text-fg-muted' : 'font-semibold text-warning'}`}>{t(offered ? 'rights.offered.yes' : 'rights.offered.no')}</span>
+                                            <span className={`ml-2 text-xs ${live ? 'text-fg-muted' : 'font-semibold text-warning'}`} data-offered-now={live ? 'yes' : 'no'}>{t(live ? 'rights.offered.yes' : 'rights.offered.no')}</span>
                                             {changed && <ChangedMark switched={offered} />}
                                             <span className="block text-xs text-fg-muted">{appText(app, 'description', locale)}</span>
                                         </span>

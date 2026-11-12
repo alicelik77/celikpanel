@@ -73,7 +73,6 @@ export const enSitesScreens = {
     'domains.col.traffic': 'Traffic',
     'domains.perMonth': '{size}/mo',
     'domains.col.status': 'Status',
-    'domains.status.active': 'Active',
     'domains.infrastructure.badge': 'Infrastructure zone · DNS only',
     'domains.infrastructure.status': 'DNS records only',
     'domains.infrastructure.manage': 'Manage DNS records',
@@ -100,7 +99,7 @@ export const enSitesScreens = {
     'domains.infrastructure.hostWebsite': 'Host a website',
     'domains.infrastructure.hostWebsiteHelp': 'Add a website for {zone}. Its DNS records stay as they are; names that already point elsewhere are listed after the site is created.',
     'domains.kept.dismiss': 'Hide this note',
-    'domains.forMail': 'Mailboxes belong to a domain. Open a domain below, then its Mail tab, to see, add or change its mailboxes.',
+    'domains.forMail': 'Mailboxes belong to a domain. Open a domain below, then its Mail section, to see, add or change its mailboxes.',
     'domains.confirmBulkDelete': 'The website files, mail and DNS records of these {n} domains are removed from this server. This cannot be undone.\n\n{names}',
     // The product's own confirmation and the row of a domain being deleted (6 Nov 2026).
     'domains.deleteTitle': 'Delete {name}?',
@@ -346,8 +345,8 @@ export const enSitesScreens = {
     'conn.propagation.autoStopped': 'Still spreading as of the last check at {time}. This page stopped checking by itself after 30 minutes. This is not a failure: a DNS change can take several hours to spread. Use Check again, or come back later.',
     'conn.okDelegated': 'This domain is fully connected to the configured nameservers, so records, mail authentication and certificates are managed here.',
     "conn.okARecord": "This domain points to this server. DNS remains at your provider; add the required mail and authentication records there when enabling mail.",
-    'conn.sslReady': 'A certificate can be issued for this domain. Open the SSL section under Hosting to request one.',
-    'conn.sslPropagating': 'This domain already reaches this server through the updated resolvers. Open SSL/TLS under Hosting and request the certificate once; if the certificate authority still has the old cache, wait before retrying.',
+    'conn.sslReady': 'A certificate can be issued for this domain. Open its Security section to request one.',
+    'conn.sslPropagating': 'This domain already reaches this server through the updated resolvers. Open the Security section and request the certificate once; if the certificate authority still has the old cache, wait before retrying.',
     'conn.sslBlocked': 'A certificate cannot be issued yet: Let\'s Encrypt has to reach this domain at this server, and today it does not resolve here. Finish the step above, wait for DNS to spread, then check again.',
     'backup.auto.title': 'Automatic backups',
     'backup.auto.on': 'On',
@@ -674,9 +673,9 @@ export const enSitesScreens = {
     'php.ini.saveFailed': 'php.ini was not saved. Nothing was changed.',
     'php.ini.unknown': 'php.ini of PHP {version} could not be read from the server, so its settings are not shown and cannot be changed here yet. Nothing was changed. Try again.',
     // alpha.125 (a124 lab): changing PHP on a site without PHP was a 500.
-    'err.SITE_HAS_NO_PHP': '{domain} does not run PHP (its hosting type is not PHP), so it has no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Hosting tab and change its hosting type to PHP, then choose the version here.',
-    'err.SITE_HAS_NO_PHP.static': '{domain} is a static site: it serves files as they are and has no PHP, so there is no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Hosting tab and change its hosting type to PHP, then choose the version here.',
-    'err.SITE_HAS_NO_PHP.action': 'Open Hosting',
+    'err.SITE_HAS_NO_PHP': '{domain} does not run PHP (its hosting type is not PHP), so it has no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Site section and change its site type to PHP, then choose the version here.',
+    'err.SITE_HAS_NO_PHP.static': '{domain} is a static site: it serves files as they are and has no PHP, so there is no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Site section and change its site type to PHP, then choose the version here.',
+    'err.SITE_HAS_NO_PHP.action': 'Open Site',
     // --- alpha.132 shared kit (components/kit/words.ts, components/kit/rows/*): kinds and
     // states in words, the row's "More" menu and the guidance block's labels. ---
     'kind.php': 'PHP site',

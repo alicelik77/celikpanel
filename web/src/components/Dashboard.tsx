@@ -24,6 +24,7 @@ import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
 import { PageHeader } from './PageHeader';
+import { siteKindWord } from './kit/words';
 import { MyPlanCard } from './MyPlanCard';
 
 // alpha.128 ops (G18): the person's own notices, "Needs your action" first.
@@ -1380,7 +1381,7 @@ function AdminDashboard() {
                                                 <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-xs font-medium text-fg-muted">
                                                     {(d.project_type || 'php') === 'php' && d.php_version
                                                         ? `PHP ${d.php_version}`
-                                                        : d.project_type || 'php'}
+                                                        : siteKindWord(t, d.project_type, { admin: true })}
                                                 </span>
                                                 {/* SSL warns only where a site exists to secure — a
                                                     DNS-only domain has nothing to certify.

@@ -268,6 +268,8 @@ for (const file of ['components/ui.tsx', 'components/DomainDetail.tsx', 'compone
 }
 // The address is a small store, so a section change re-renders the page as
 // the router does; every write is kept with whether it replaced the entry.
+// Like the router, a write asks first while something is unsaved (the real
+// leave guard, set below), and an in-place rewrite does not ask.
 globalThis.a132Address = { search: '', writes: [], listeners: new Set() };
 const stub = dataModule(`
   import React from '${reactURL}';
@@ -283,16 +285,30 @@ const stub = dataModule(`
     const search = React.useSyncExternalStore(subscribe, () => address.search);
     const params = React.useMemo(() => new URLSearchParams(search), [search]);
     const set = React.useCallback((next, options = {}) => {
-      address.search = next.toString();
-      address.writes.push({ search: address.search, replace: Boolean(options.replace) });
-      address.listeners.forEach((listener) => listener());
+      const write = () => {
+        address.search = next.toString();
+        address.writes.push({ search: address.search, replace: Boolean(options.replace) });
+        address.listeners.forEach((listener) => listener());
+      };
+      const asking = globalThis.a132AskToLeave?.();
+      if (asking) { void asking.then((leave) => { if (leave) write(); }); return; }
+      write();
     }, []);
     return [params, set];
+  };
+  export const useLocation = () => ({ pathname: '/domains/example.com', search: address.search ? '?' + address.search : '', hash: '' });
+  export const replaceCurrentRouterURL = (to) => {
+    address.search = new URL(to, 'https://panel.test').search.slice(1);
+    address.writes.push({ search: address.search, replace: true, inPlace: true });
+    address.listeners.forEach((listener) => listener());
+    return true;
   };
   export const DomainConnection = () => React.createElement('aside', { 'data-stub': 'connection' });
   export const decodeSSLData = (raw) => raw;
 `);
 const shared = sharedLayer(stub);
+globalThis.a132AskToLeave = (await import(shared.resolve('/leaveAsker'))).askToLeave;
+const { useLeaveGuard } = await import(shared.resolve('/leaveGuard'));
 const sectionsURL = compileSource('components/domain/sections.ts', () => stub);
 const own = {
   '/sections': sectionsURL,
@@ -306,7 +322,7 @@ own['/domain/SectionRow'] = shared.compile('components/domain/SectionRow.tsx', o
 // strip keeps the two functions the page gave it.
 const sectionStub = (name, id) => dataModule(`
   import React from '${reactURL}';
-  export const ${name} = (props) => React.createElement('main', { 'data-stub-section': '${id}', 'data-parts': props.parts.map((p) => p.id + (p.readOnly ? ':view' : '')).join(','), 'data-part': props.part ?? '' });
+  export const ${name} = (props) => { globalThis.a132Go = props.go; return React.createElement('main', { 'data-stub-section': '${id}', 'data-parts': props.parts.map((p) => p.id + (p.readOnly ? ':view' : '')).join(','), 'data-part': props.part ?? '' }); };
 `);
 let detailURL = shared.compile('components/DomainDetail.tsx', own);
 for (const [name, id] of [['OverviewSection', 'overview'], ['SiteSection', 'site'], ['FilesSection', 'files'], ['MailSection', 'mail'], ['DatabasesSection', 'databases'], ['DnsSection', 'dns'], ['SecuritySection', 'security'], ['BackupsSection', 'backups'], ['AdvancedSection', 'advanced']]) {
@@ -426,7 +442,9 @@ test('mounted: an older ?tab= link opens its section and part, and the address i
   // The DNS publication notice still opens with its link.
   await open({ role: 'admin', search: 'tab=dns&attention=dns-publication' });
   try {
-    assert.equal(tree.root.findAll((node) => node.props['data-dns-publication-attention'] === '').length, 1);
+    const notice = tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-dns-publication-attention'] === '');
+    assert.equal(notice.length, 1);
+    assert.equal(notice[0].props['data-guidance'], 'waiting', 'the notice is the one guidance block');
   } finally { await close(); }
 });
 
@@ -456,5 +474,66 @@ test('mounted: the health strip\'s fixes name older tabs and lead to the section
     await act(async () => { strip.onGo('hosting', 'ssl'); await settled(); });
     assert.deepEqual(globalThis.a132Address.writes.at(-1), { search: 'section=security&part=certificate', replace: false });
     assert.equal(shown().section, 'security');
+  } finally { await close(); }
+});
+
+// --- Leaving a section with unsaved changes ----------------------------------------
+
+// A screen part with unsaved changes, as useDraft registers one.
+function Unsaved({ n }) {
+  useLeaveGuard(n);
+  return null;
+}
+let asked = [];
+const answering = (answer) => {
+  asked = [];
+  globalThis.confirm = (text, request) => { asked.push(request); return answer; };
+};
+async function withUnsaved(run) {
+  let probe;
+  await act(async () => { probe = Renderer.create(React.createElement(Unsaved, { n: 1 })); });
+  try { await run(); } finally { await act(async () => probe.unmount()); }
+}
+
+test('mounted: another section with unsaved changes asks once; Stay keeps them and the place, Leave gives them up and goes', async () => {
+  await open({ role: 'admin' });
+  try {
+    await withUnsaved(async () => {
+      answering(false);
+      await press('security');
+      assert.equal(asked.length, 1, 'switching section did not ask, or asked twice');
+      assert.equal(asked[0].confirmLabel, 'Leave without saving');
+      assert.equal(shown().section, 'overview', 'Stay left the section');
+      assert.equal(globalThis.a132Address.writes.length, 0, 'Stay changed the address');
+      answering(true);
+      await press('security');
+      assert.equal(asked.length, 1, 'Stay dropped the changes, or Leave was asked twice (once here, once by the router)');
+      assert.equal(shown().section, 'security');
+      assert.deepEqual(globalThis.a132Address.writes, [{ search: 'section=security', replace: false }]);
+      assert.equal(globalThis.a132AskToLeave(), null, 'Leave kept the given-up changes');
+    });
+  } finally { await close(); }
+});
+
+test('mounted: with nothing unsaved a section switch asks nothing', async () => {
+  await open({ role: 'admin' });
+  try {
+    answering(false);
+    await press('mail');
+    assert.equal(asked.length, 0);
+    assert.equal(shown().section, 'mail');
+  } finally { await close(); }
+});
+
+test('mounted: another part of the open section asks nothing, even with unsaved changes, and moves the address in place', async () => {
+  await open({ role: 'admin', search: 'section=advanced' });
+  try {
+    await withUnsaved(async () => {
+      answering(false);
+      await act(async () => { await globalThis.a132Go({ section: 'advanced', part: 'logs' }, { replace: true }); await settled(); });
+      assert.equal(asked.length, 0, 'a part of the same page asked about leaving');
+      assert.deepEqual(globalThis.a132Address.writes, [{ search: 'section=advanced&part=logs', replace: true, inPlace: true }]);
+      assert.equal(shown().part, 'logs');
+    });
   } finally { await close(); }
 });

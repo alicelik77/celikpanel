@@ -150,7 +150,7 @@ export const enDnsOverviewScreens = {
     "dnsov.s.mail_not_in_list.title": "The list has no {kind} record for {domain}",
     "dnsov.s.mail_not_in_list.why": "{name} ({kind}) is not in this server's DNS records for {domain}, so it shows nowhere on the internet. Waiting will not add it.",
     "dnsov.s.mail_not_in_list.who": "You, the owner of the list.",
-    "dnsov.s.mail_not_in_list.next": "Add the {kind} record in the record editor (the domain's DNS tab) with the value shown under Mail records.",
+    "dnsov.s.mail_not_in_list.next": "Add the {kind} record in the record editor (the domain's Domain & DNS section) with the value shown under Mail records.",
     "dnsov.s.mail_not_in_list.then": "This page checks again every minute and shows the record once it is in the list.",
     "dnsov.s.ok_optional_glue.title": "Your names are correct; one optional IPv6 record is not at the registry",
     "dnsov.s.ok_optional_glue.why": "The registry has no IPv6 address (glue) for {name}. Everything works over IPv4 without it, and waiting does not add it.",

@@ -18,7 +18,7 @@ export const trRemovalRuleScreens: Record<RemovalRuleScreenKey, string> = {
     'rmrule.kind.node_service_apps': '{count} uygulama bunun üzerinde çalışıyor (örneğin n8n). Önce uygulamayı sitesinin sayfasında kaldırın.',
     'rmrule.kind.python_apps': '{count} Python uygulaması bunun üzerinde çalışıyor. Önce onları sitelerinin sayfasında kaldırın.',
     'rmrule.kind.databases': '{count} veritabanı bunun içinde duruyor. Önce Veritabanları sayfasında taşıyın ya da silin.',
-    'rmrule.kind.mail_addresses': '{count} posta kutusu ya da yönlendirme bunu kullanıyor. Önce alan adının Posta sekmesinde kaldırın.',
+    'rmrule.kind.mail_addresses': '{count} posta kutusu ya da yönlendirme bunu kullanıyor. Önce alan adının E-posta bölümünde kaldırın.',
     'rmrule.kind.dns_zones': '{count} DNS bölgesi bununla sunuluyor.',
     'rmrule.kind.certificates': '{count} sertifika bununla yenileniyor. O olmadan 90 gün içinde süreleri dolar ve HTTPS çalışmaz.',
     'rmrule.kind.panel_firewall': 'Panel güvenlik duvarı bunun üzerinde çalışıyor. Önce Güvenlik sayfasında duvarı kapatın.',

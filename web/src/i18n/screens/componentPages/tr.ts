@@ -104,7 +104,7 @@ export const trComponentPagesScreens: Record<ComponentPagesScreenKey, string> = 
     'pdns.step.port': '53 numaralı portu boşalt (stub dinleyici)',
     'pdns.step.restart': 'Servisi yeniden başlat',
     'pdns.managed': 'Bu servisi panel yapılandırır',
-    'pdns.managedDesc': 'Elle düzenlenecek PowerDNS ayarı bilinçli olarak yoktur: yapılandırmayı (SQLite arka ucu, port 53, DNSSEC) panel yazar ve doğru tutar. Asıl DNS işi olan kayıtlar, her domainin kendi DNS sekmesinde yönetilir.',
+    'pdns.managedDesc': 'Elle düzenlenecek PowerDNS ayarı bilinçli olarak yoktur: yapılandırmayı (SQLite arka ucu, port 53, DNSSEC) panel yazar ve doğru tutar. Asıl DNS işi olan kayıtlar, her alan adının kendi Alan adı ve DNS bölümünde yönetilir.',
     'pdns.goDomainRecords': 'DNS kayıtlarını yönet',
     'pdns.readOnly': 'salt okunur',
     'pdns.readOnlyNote': 'Bu dosyanın sahibi panel — elle yapılan değişiklikler bir sonraki onarım veya eşitlemede üzerine yazılır.',

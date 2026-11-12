@@ -261,7 +261,13 @@ export function DatabaseRemoteAccess({ db, readOnly = false }: { db: DatabaseRem
         if (!shown) return null;
         const { reason, grantor } = shown.access;
         if (reason === 'not_offered') return { text: t(admin ? 'dbr.off.admin' : 'dbr.off.other'), turnOn: admin };
-        if (reason === 'not_in_plan') return { text: t('dbr.notInPlan', { grantor: grantor === 'the administrator' || !grantor ? t('dbr.grantor.admin') : grantor }) };
+        if (reason === 'not_in_plan') {
+            // The server names the grantor in English ("the administrator" or
+            // "your provider (name)"); the sentence says it in the reader's words.
+            // Sunucu izni vereni İngilizce adlandırır; cümle okurun diliyle söyler.
+            const provider = /^your provider \((.+)\)$/.exec(grantor);
+            return { text: t('dbr.notInPlan', { grantor: provider ? t('rights.grantor.provider', { name: provider[1] }) : t('rights.grantor.administrator') }) };
+        }
         if (reason === 'remote_server') return { text: t('dbr.remoteServer') };
         if (reason.startsWith('subscription_')) return { text: t('dbr.subscriptionInactive') };
         return null;

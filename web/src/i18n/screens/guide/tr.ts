@@ -49,7 +49,7 @@ export const trGuideScreens: Record<GuideScreenKey, string> = {
     'guide.tour.components.title': 'Bileşenler',
     'guide.tour.components.text': 'Sunucunun çalıştırdıklarını buradan kurar ve izlersiniz: web sunucusu, PHP, e-posta, DNS ve veritabanları. Her bileşenin kendi sayfası vardır.',
     'guide.tour.domains.title': 'Alan Adları',
-    'guide.tour.domains.text': 'Her web sitesi, posta kutusu ve DNS bölgesi bir alan adına bağlıdır. Sekmelerini görmek için bir alan adını açın: barındırma, DNS, e-posta, dosyalar ve diğerleri.',
+    'guide.tour.domains.text': 'Her web sitesi, posta kutusu ve DNS bölgesi bir alan adına bağlıdır. Bölümlerini görmek için bir alan adını açın: site, dosyalar, e-posta, veritabanları, DNS ve diğerleri.',
     'guide.tour.users.title': 'Kullanıcılar',
     'guide.tour.users.text': 'Planlarınızı ve müşterilerinizi burada oluşturursunuz. Bir müşterinin neleri kullanabileceği ona verdiğiniz plandan gelir.',
     'guide.tour.dashboard.title': 'Panel',

@@ -1,5 +1,5 @@
 // SCREEN catalogue part "fileAccess" (alpha.117): a site's FTP, SFTP and SSH
-// access (the Access tab) and its refusal codes.
+// access (Files › FTP, SFTP and SSH) and its refusal codes.
 // Key prefixes kept here: fileAccess., err.FILE_ACCESS_.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
@@ -34,12 +34,12 @@ export const enFileAccessScreens = {
     'fileAccess.saved': 'Access is saved on the server.',
     'fileAccess.closed': 'Access is closed. The site keeps running.',
 
-    'fileAccess.block.noSite': 'This domain has no website files, so there is nothing to connect to. Give it a website on the Hosting tab first.',
+    'fileAccess.block.noSite': 'This domain has no website files, so there is nothing to connect to. Give it a website first, in the Site section under Site type.',
     'fileAccess.block.notInPlan': 'File access is not part of this subscription’s plan. Your provider can add it; the site’s files are still available in the File manager.',
     'fileAccess.block.suspended': 'This subscription is not active, so access cannot be opened or changed. It can still be closed. Your provider renews the subscription.',
     'fileAccess.block.agentUpgrade': 'The server’s Agent does not offer file access yet. The server administrator finishes the panel update from the panel’s own update page.',
     'fileAccess.block.agentUnavailable': 'The server’s Agent did not answer, so the access state is unknown. Nothing was changed. Try again in a moment.',
-    'fileAccess.block.noAccount': 'The site’s system account is missing on the server. The server administrator checks the site on the Hosting tab before access can be opened.',
+    'fileAccess.block.noAccount': 'The site’s system account is missing on the server. The server administrator checks the site in the Site section before access can be opened.',
     'fileAccess.block.accountMismatch': 'An account with this site’s name exists on the server but does not belong to this site, so CelikPanel does not touch it. The server administrator checks it.',
     'fileAccess.block.noSSHD': 'This server has no OpenSSH server, which SFTP needs. Your provider (the server’s administrator) installs it; ask them.',
     'fileAccess.block.sshOwner': 'The server administrator changed CelikPanel’s SSH access file by hand (/etc/ssh/sshd_config.d/60-celikpanel-file-access.conf). CelikPanel keeps it and changes nothing until it is removed or put back.',

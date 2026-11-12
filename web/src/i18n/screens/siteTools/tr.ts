@@ -11,7 +11,7 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'wpt.notPHP': 'WordPress araçları yalnız PHP sitelerinde çalışır.',
     'wpt.phpMissing': 'Bu sitenin PHP sürümünün komut satırı kurulu değil; bu yüzden WordPress okunamıyor.',
     'wpt.phpMissingNext': 'Yönetici PHP sürümünü Bileşenler’den yeniden kurar (komut satırını da getirir).',
-    'wpt.phpMissingResumes': 'Sonra bu sekmeyi yeniden açın.',
+    'wpt.phpMissingResumes': 'Sonra bu sayfayı yeniden açın.',
     'wpt.core': 'WordPress {version}',
     'wpt.coreLatest': 'Güncel',
     'wpt.coreUpdate': 'WordPress {version} çıktı',
