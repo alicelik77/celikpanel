@@ -13,6 +13,8 @@ interface Props {
     domainId: number;
     domainName: string;
     readOnly?: boolean;
+    /** The administrator gets the full guidance; others the short version. */
+    admin?: boolean;
 }
 
 interface CatchAll {
@@ -22,14 +24,26 @@ interface CatchAll {
     // Bu sayfanın okuduğu catch-all; her değişiklik onu geri taşır.
     version: string;
 }
+// alpha.133: each list is listed, not listed, or could not be checked (a
+// refused question, e.g. through a public DNS resolver, says nothing about
+// the address). The panel reads the Agent's answer (cmd/panel
+// mail_health_handlers.go rblView) and sends the summary with it.
 interface RblResult {
     zone: string;
+    name: string;
     listed: boolean;
-    detail?: string;
+    outcome: 'listed' | 'not_listed' | 'not_checked';
+    sublists?: string[];
+}
+export interface RblSummary {
+    status: string;
+    code?: string;
+    items?: string[];
 }
 interface RblReport {
     ip: string;
     results: RblResult[];
+    summary: RblSummary;
 }
 
 function decodeCatchAll(raw: unknown): CatchAll {
@@ -42,8 +56,26 @@ function decodeCatchAll(raw: unknown): CatchAll {
 
 function decodeRbl(raw: unknown): RblReport {
     const answer = raw as Partial<RblReport> | null;
-    if (!answer || typeof answer.ip !== 'string' || !Array.isArray(answer.results)) throw new Error('rbl');
+    if (!answer || typeof answer.ip !== 'string' || !Array.isArray(answer.results) || typeof answer.summary?.status !== 'string') throw new Error('rbl');
     return answer as RblReport;
+}
+
+type Say = ReturnType<typeof useI18n>['t'];
+const RBL_SAY = ['listed', 'policy', 'public_resolver', 'too_many_queries', 'unknown_answer', 'lookup_failed', 'older_agent'];
+
+// The one sentence for a blocklist answer, used by this check and by the
+// deliverability card: reason, who acts, next step. Customers and resellers
+// get the short version without the server's details. Nothing for "clean".
+export function rblSentence(t: Say, summary: RblSummary, admin: boolean): string | null {
+    if (summary.status === 'ok') return null;
+    const lists = (summary.items ?? []).join(', ');
+    const code = summary.code ?? '';
+    if (!admin) {
+        if (summary.status === 'fail') return t(code === 'policy' ? 'mail.rbl.short.policy' : 'mail.rbl.short.listed', { lists });
+        return t('mail.rbl.short.notChecked');
+    }
+    if (RBL_SAY.includes(code)) return t(`mail.rbl.say.${code}` as Parameters<Say>[0], { lists });
+    return t('mail.rbl.unknown');
 }
 
 // The "Settings" tab of the mail manager: how to configure a client, the
@@ -62,7 +94,7 @@ function decodeRbl(raw: unknown): RblReport {
 // değer gerçektir. Üçü de sunucudan okunur ve okunuyor, okunamadı ya da
 // biliniyor olarak çizilir. Catch-all alanı, geçerli adres okunana dek hiçbir
 // şey tutmaz.
-export function MailSettingsPanel({ domainId, domainName, readOnly = false }: Props) {
+export function MailSettingsPanel({ domainId, domainName, readOnly = false, admin = false }: Props) {
     const { t } = useI18n();
     const setup = useRemote(mailSetupURL(domainId), decodeMailSetup);
     const [rbl, setRbl] = useState<Remote<RblReport> | null>(null);
@@ -75,7 +107,9 @@ export function MailSettingsPanel({ domainId, domainName, readOnly = false }: Pr
     };
 
     const report = rbl?.state === 'known' ? rbl.value : null;
-    const listedCount = report?.results.filter((r) => r.listed).length ?? 0;
+    const listedCount = report?.results.filter((r) => r.outcome === 'listed').length ?? 0;
+    const uncheckedCount = report?.results.filter((r) => r.outcome !== 'listed' && r.outcome !== 'not_listed').length ?? 0;
+    const sentence = report ? rblSentence(t, report.summary, admin) : null;
 
     return (
         <div className="space-y-6">
@@ -133,35 +167,45 @@ export function MailSettingsPanel({ domainId, domainName, readOnly = false }: Pr
                 )}
 
                 {report && (
-                    <div className="mt-4">
+                    <div className="mt-4" data-rbl-summary={report.summary.status}>
+                        {/* Could not check is said as that, never as a warning
+                            about the address. / Denetlenemedi uyarı değildir. */}
                         <div
                             className={`mb-3 flex items-center gap-2 rounded-lg border p-3 text-sm ${
-                                listedCount === 0
-                                    ? 'border-success/30 bg-success/10 text-success'
-                                    : 'border-danger/30 bg-danger/10 text-danger'
+                                listedCount > 0
+                                    ? 'border-danger/30 bg-danger/10 text-danger'
+                                    : uncheckedCount > 0
+                                      ? 'border-border text-fg-muted'
+                                      : 'border-success/30 bg-success/10 text-success'
                             }`}
                         >
-                            {listedCount === 0 ? <ShieldCheck className="h-4 w-4" aria-hidden="true" /> : <ShieldAlert className="h-4 w-4" aria-hidden="true" />}
+                            {listedCount > 0 ? <ShieldAlert className="h-4 w-4" aria-hidden="true" /> : uncheckedCount === 0 && <ShieldCheck className="h-4 w-4" aria-hidden="true" />}
                             <span>
-                                {listedCount === 0
-                                    ? t('mail.rbl.clean', { ip: report.ip })
-                                    : t('mail.rbl.listed', { ip: report.ip, n: listedCount })}
+                                {listedCount > 0
+                                    ? t('mail.rbl.listed', { ip: report.ip, n: listedCount })
+                                    : uncheckedCount > 0
+                                      ? t('mail.rbl.incomplete', { ip: report.ip, n: uncheckedCount })
+                                      : t('mail.rbl.clean', { ip: report.ip })}
                             </span>
                         </div>
+                        {sentence && <p className="mb-3 text-sm text-fg-muted" data-rbl-say="">{sentence}</p>}
                         <ul className="divide-y divide-border rounded-lg border border-border">
                             {report.results.map((r) => (
-                                <li key={r.zone} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                                    <span className="min-w-0 break-all font-mono text-xs text-fg-muted">{r.zone}</span>
-                                    {r.listed ? (
+                                <li key={r.zone} className="flex items-center justify-between gap-3 px-3 py-2 text-sm" data-rbl-outcome={r.outcome}>
+                                    <span className="min-w-0 break-all text-fg">{r.name}</span>
+                                    {r.outcome === 'listed' ? (
                                         <span className="inline-flex shrink-0 items-center gap-1.5 text-danger">
                                             <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
                                             {t('mail.rbl.onList')}
+                                            {r.sublists && r.sublists.length > 0 && ` (${r.sublists.join(', ').toUpperCase()})`}
                                         </span>
-                                    ) : (
+                                    ) : r.outcome === 'not_listed' ? (
                                         <span className="inline-flex shrink-0 items-center gap-1.5 text-success">
                                             <Check className="h-3.5 w-3.5" aria-hidden="true" />
                                             {t('mail.rbl.notListed')}
                                         </span>
+                                    ) : (
+                                        <span className="shrink-0 text-fg-muted">{t('mail.rbl.notChecked')}</span>
                                     )}
                                 </li>
                             ))}

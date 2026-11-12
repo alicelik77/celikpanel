@@ -237,11 +237,58 @@ const (
 	MailDNSLookupErrorOther      = "other"
 )
 
+// RBLResult is one blocklist's answer about the server's sending address.
+//
+// Additive (alpha.133): Outcome, Reason and Sublists. Before alpha.133 the
+// Agent read ANY address answer as "listed", so a list refusing the question
+// (Spamhaus answers 127.255.255.254 to queries that come through a public
+// resolver) was shown as a listing. A current Agent always sets Outcome and
+// sets Listed only for an answer the list documents as a listing. An older
+// Agent sends neither new field; its Listed cannot tell a refusal from a
+// listing (nor its false a failed lookup from "not listed"), so the Panel
+// says such an answer could not be checked (RBLReasonOlderAgent). An older
+// Panel ignores the new fields and reads Listed, which a current Agent keeps
+// truthful: a refusal is never true.
+//
+// Ek alanlar (alpha.133): Outcome, Reason, Sublists. Eski Agent her adres
+// yanitini "listede" sayardi; guncel Agent Listed'i yalniz listenin belgeledigi
+// listeleme yanitinda true yapar. Eski Agent'in yaniti panelde "denetlenemedi"
+// sayilir; eski Panel yeni alanlari yok sayar.
 type RBLResult struct {
 	Zone   string `json:"zone"`
 	Listed bool   `json:"listed"`
 	Detail string `json:"detail,omitempty"`
+	// Outcome: RBLListed, RBLNotListed or RBLNotChecked. Empty from an
+	// Agent older than alpha.133.
+	Outcome string `json:"outcome,omitempty"`
+	// Reason: why a list could not be checked (RBLReason*); set only with
+	// RBLNotChecked.
+	Reason string `json:"reason,omitempty"`
+	// Sublists: for a listing on a combined list, the documented parts it
+	// came from (Spamhaus ZEN: "sbl", "css", "xbl", "pbl"). "pbl" is a
+	// policy entry for an address range, not a spam report.
+	Sublists []string `json:"sublists,omitempty"`
 }
+
+const (
+	RBLListed     = "listed"
+	RBLNotListed  = "not_listed"
+	RBLNotChecked = "not_checked"
+
+	// The list refused the question because it came through a public DNS
+	// resolver (Spamhaus 127.255.255.254).
+	RBLReasonPublicResolver = "public_resolver"
+	// The list refused the question because of the resolver's query volume
+	// (Spamhaus 127.255.255.255).
+	RBLReasonTooManyQueries = "too_many_queries"
+	// The list answered with an address it does not document as a listing.
+	RBLReasonUnknownAnswer = "unknown_answer"
+	// No answer: a DNS error or the lookup's time limit.
+	RBLReasonLookupFailed = "lookup_failed"
+	// Panel-side only: an Agent older than alpha.133 answered; its "listed"
+	// may be a refusal.
+	RBLReasonOlderAgent = "older_agent"
+)
 
 type CheckRBLResponse struct {
 	IP      string      `json:"ip"`

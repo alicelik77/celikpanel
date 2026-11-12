@@ -89,7 +89,9 @@ export function healthSentence(check: HealthCheck, contact: HealthContact, say: 
         percent: check.percent ?? 0,
         used: formatBytes(check.used_bytes),
         limit: formatBytes(check.limit_bytes),
-        items: (check.items ?? []).map((item) => item.toUpperCase()).join(', '),
+        // Record names (SPF, DKIM) are said in capitals; blocklist names as
+        // the list writes them (alpha.133).
+        items: (check.items ?? []).map((item) => (check.id === 'mail' && check.code.startsWith('listed') ? item : item.toUpperCase())).join(', '),
         who: say(`dhealth.who.${contact}` as DomainOpsKey),
     };
     if (check.id === 'site' && check.code === 'down') {
