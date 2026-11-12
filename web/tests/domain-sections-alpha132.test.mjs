@@ -142,14 +142,14 @@ test('administrator, reseller and customer of a PHP site see the nine sections a
   }
 });
 
-test('a section the plan closes is drawn last and faded, with the right that opens it', () => {
+test('a section the plan closes is faded in its own place, with the right that opens it', () => {
   const list = build({ closedRights: ['backups', 'databases'] });
-  assert.deepEqual(ids(list), ['overview', 'site', 'files', 'mail', 'dns', 'security', 'advanced', 'databases*', 'backups*']);
+  assert.deepEqual(ids(list), ['overview', 'site', 'files', 'mail', 'databases*', 'dns', 'security', 'backups*', 'advanced']);
   assert.deepEqual(list.find((section) => section.id === 'backups').notInPlan, ['backups']);
   assert.deepEqual(list.find((section) => section.id === 'databases').parts, []);
   // Mail, and Files when the manager and every outside access are closed.
   const more = build({ role: 'reseller', closedRights: ['mail', 'file_manager', 'file_access', 'ssh'] });
-  assert.deepEqual(ids(more).slice(-2), ['files*', 'mail*']);
+  assert.deepEqual(ids(more), ['overview', 'site', 'files*', 'mail*', 'databases', 'dns', 'security', 'backups', 'advanced']);
   // Files with outside access still open is open, with that part only.
   const access = build({ closedRights: ['file_manager'] });
   assert.deepEqual(partsOf(access, 'files'), ['access']);
@@ -192,7 +192,24 @@ test('a team member sees only what was granted, view-only where it may only view
   assert.deepEqual(partsOf(wide, 'advanced'), ['cron', 'logs:view', 'web']);
   // A grant the plan closes is faded; what was not granted stays absent.
   const closed = member({ mail: 'manage', dns: 'view' }, ['mail', 'backups', 'databases']);
-  assert.deepEqual(ids(closed), ['dns', 'mail*']);
+  assert.deepEqual(ids(closed), ['mail*', 'dns']);
+});
+
+test('the row keeps one order for every viewer and plan: a closed section stays in its place, an absent one closes up', () => {
+  const rights = ['mail', 'databases', 'backups', 'file_manager', 'file_access', 'ssh', 'cron', 'service_apps', 'program_apps', 'python_apps', 'app_installer', 'wordpress_tools', 'malware_scan', 'site_protect_redirects', 'dns_edit', 'dnssec'];
+  const subsets = [[], ...rights.map((right) => [right]), rights, ['backups', 'databases'], ['mail', 'file_manager', 'file_access', 'ssh']];
+  const grants = [undefined, { files: 'manage', php: 'none', ssl: 'view', dns: 'view', mail: 'manage', databases: 'none', backups: 'manage', cron: 'none', statistics: 'view' }];
+  for (const role of ['admin', 'reseller', 'customer', 'additional_user']) {
+    for (const projectType of ['php', 'static', 'node', 'runtime_app', 'forwarding', 'dnsonly']) {
+      for (const closedRights of subsets) {
+        for (const serverState of [server, null, { mail: false, databases: true }]) {
+          const access = role === 'additional_user' ? grants[1] : grants[0];
+          const order = sections.buildSections({ role, projectType, closedRights, access, server: serverState }).map((section) => sections.SECTION_ORDER.indexOf(section.id));
+          assert.deepEqual(order, [...order].sort((a, b) => a - b), `${role} ${projectType} ${closedRights.join(',')}`);
+        }
+      }
+    }
+  }
 });
 
 // --- The guide -----------------------------------------------------------------
@@ -353,8 +370,8 @@ const press = async (section) => {
 test('mounted: each viewer gets its row, the first section open, and the tablist wired to the panel', async () => {
   const cases = [
     { name: 'administrator', role: 'admin', expect: ALL },
-    { name: 'reseller, mail closed', role: 'reseller', row: { rights_closed: ['mail'] }, expect: ['overview', 'site', 'files', 'databases', 'dns', 'security', 'backups', 'advanced', 'mail*'] },
-    { name: 'customer, backups and databases closed', role: 'customer', row: { rights_closed: ['backups', 'databases'] }, expect: ['overview', 'site', 'files', 'mail', 'dns', 'security', 'advanced', 'databases*', 'backups*'] },
+    { name: 'reseller, mail closed', role: 'reseller', row: { rights_closed: ['mail'] }, expect: ['overview', 'site', 'files', 'mail*', 'databases', 'dns', 'security', 'backups', 'advanced'] },
+    { name: 'customer, backups and databases closed', role: 'customer', row: { rights_closed: ['backups', 'databases'] }, expect: ['overview', 'site', 'files', 'mail', 'databases*', 'dns', 'security', 'backups*', 'advanced'] },
     { name: 'team member, mail to view and DNS to manage', role: 'additional_user', row: { access: grants({ mail: 'view', dns: 'manage' }) }, expect: ['mail', 'dns'] },
     { name: 'DNS-only domain', role: 'customer', row: { project_type: 'dnsonly' }, expect: ['overview', 'mail', 'databases', 'dns'] },
     { name: 'server without mail or databases', role: 'admin', caps: capabilities({ mail_server: false, database_servers: [] }), expect: ['overview', 'site', 'files', 'dns', 'security', 'backups', 'advanced'] },

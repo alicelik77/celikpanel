@@ -120,8 +120,9 @@ export interface SectionView {
     /** Drawn and opened as usual. */
     parts: PartView[];
     /**
-     * Closed by the plan (D-042): drawn faded, last in the row, and opening a
-     * page that says what it is and whom to ask. The rights that open it.
+     * Closed by the plan (D-042): drawn faded in its own place in the row,
+     * and opening a page that says what it is and whom to ask. The rights
+     * that open it.
      */
     notInPlan?: string[];
 }
@@ -262,9 +263,9 @@ function notInPlan(id: SectionId, v: Viewer): string[] | undefined {
 const ORDER: Record<DomainAccessMode, number> = { none: 0, view: 1, manage: 2 };
 
 /**
- * The sections this viewer sees on this domain, in the row's order: the open
- * ones first, then those the plan closes. A section with nothing to show and
- * no plan reason is absent.
+ * The sections this viewer sees on this domain, always in SECTION_ORDER: a
+ * section the plan closes keeps its own place, faded. A section with nothing
+ * to show and no plan reason is absent; the others close up around it.
  */
 export function buildSections(input: SectionInput): SectionView[] {
     const teamMember = input.role === 'additional_user';
@@ -282,8 +283,7 @@ export function buildSections(input: SectionInput): SectionView[] {
         open: (right) => !closed.has(right),
         server: teamMember ? null : input.server,
     };
-    const shown: SectionView[] = [];
-    const faded: SectionView[] = [];
+    const sections: SectionView[] = [];
     for (const id of SECTION_ORDER) {
         const parts = RULES[id].filter((rule) => rule.shown(viewer)).map((rule) => {
             // The weakest grant among the part's capabilities decides.
@@ -294,13 +294,13 @@ export function buildSections(input: SectionInput): SectionView[] {
             return { id: rule.id, readOnly: teamMember && weakest === 'view' };
         });
         if (parts.length > 0) {
-            shown.push({ id, parts });
+            sections.push({ id, parts });
             continue;
         }
         const rights = notInPlan(id, viewer);
-        if (rights) faded.push({ id, parts: [], notInPlan: rights });
+        if (rights) sections.push({ id, parts: [], notInPlan: rights });
     }
-    return [...shown, ...faded];
+    return sections;
 }
 
 // --- The address --------------------------------------------------------------

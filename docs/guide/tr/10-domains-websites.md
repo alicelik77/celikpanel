@@ -24,7 +24,7 @@ Sertifika istediyseniz pencere bir dakikaya kadar onu bekler. Pencereyi açık b
 
 ## Genel bakış {#overview}
 
-Alan adının sayfasında tek satırda bölümler vardır: **Genel Bakış**, **Site**, **Dosyalar**, **E-posta**, **Veritabanları**, **Alan adı ve DNS**, **Güvenlik**, **Yedekler** ve **Gelişmiş**. Yalnız alan adına ve size uyan bölümleri görürsünüz. Birkaç parçası olan bölüm onları **Bu sayfada** satırında listeler. Planınızda olmayan bölüm sonda, soluk ve kilitli görünür; onu kimin ekleyebileceğini söyler.
+Alan adının sayfasında tek satırda bölümler vardır: **Genel Bakış**, **Site**, **Dosyalar**, **E-posta**, **Veritabanları**, **Alan adı ve DNS**, **Güvenlik**, **Yedekler** ve **Gelişmiş**. Yalnız alan adına ve size uyan bölümleri görürsünüz. Birkaç parçası olan bölüm onları **Bu sayfada** satırında listeler. Planınızda olmayan bölüm kendi yerinde soluk ve kilitli görünür; onu kimin ekleyebileceğini söyler.
 
 Alan adının altındaki satır **Tür**, **PHP sürümü**, **SSL**, **Disk kullanımı** ve bu ayki **Trafik** bilgisini gösterir.
 

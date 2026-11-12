@@ -1,13 +1,13 @@
 // The one row of sections on a domain's page (alpha.132, drawings X07, P1).
 // Words with icons, the active one underlined; a section the plan does not
-// include is drawn last, faded, with a lock, and still opens (its page says
-// whom to ask). On a narrow screen the row scrolls sideways inside itself and
+// include is drawn faded in its own place, with a lock, and still opens (its
+// page says whom to ask). The order of the sections never changes. On a narrow screen the row scrolls sideways inside itself and
 // keeps the active section in view; the page never scrolls sideways.
 // Keyboard: the arrow keys, Home and End move between sections, Enter or
 // Space opens one (a section loads its own screens, so moving does not).
 //
-// Alan adı sayfasındaki tek bölüm satırı. Planda olmayan bölüm sonda, soluk ve
-// kilitli çizilir; açılınca kime başvurulacağını söyler. Dar ekranda satır
+// Alan adı sayfasındaki tek bölüm satırı. Planda olmayan bölüm kendi yerinde,
+// soluk ve kilitli çizilir; açılınca kime başvurulacağını söyler. Dar ekranda satır
 // kendi içinde yana kayar, etkin bölüm görünür kalır.
 import { useEffect, useRef } from 'react';
 import { Lock } from 'lucide-react';

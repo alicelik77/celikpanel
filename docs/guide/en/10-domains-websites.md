@@ -24,7 +24,7 @@ If you asked for a certificate, the window waits for it, up to about a minute. L
 
 ## The overview {#overview}
 
-A domain's page has one row of sections: **Overview**, **Site**, **Files**, **Mail**, **Databases**, **Domain & DNS**, **Security**, **Backups** and **Advanced**. You see only the sections that apply to the domain and to you. A section with several parts lists them under **On this page**. A section your plan does not include is shown last, faded and with a lock; it says who can add it.
+A domain's page has one row of sections: **Overview**, **Site**, **Files**, **Mail**, **Databases**, **Domain & DNS**, **Security**, **Backups** and **Advanced**. You see only the sections that apply to the domain and to you. A section with several parts lists them under **On this page**. A section your plan does not include stays in its place, faded and with a lock; it says who can add it.
 
 The line under the domain's name shows its **Type**, **PHP version**, **SSL**, **Disk usage** and **Traffic** this month.
 
