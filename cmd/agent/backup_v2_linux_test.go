@@ -27,6 +27,7 @@ func installBackupTestPaths(t *testing.T) (string, string) {
 	}
 	oldBase := backupBaseDir
 	oldDocumentRoot := backupDocumentRoot
+	oldSiteHome := backupSiteHome
 	backupBaseDir = backupRoot
 	backupDocumentRoot = func(subscriptionID, domainID int) (string, error) {
 		if subscriptionID != 7 || domainID != 9 {
@@ -34,9 +35,17 @@ func installBackupTestPaths(t *testing.T) (string, string) {
 		}
 		return docroot, nil
 	}
+	// The site home is the document root's parent, as on a server.
+	backupSiteHome = func(subscriptionID, domainID int) (string, error) {
+		if subscriptionID != 7 || domainID != 9 {
+			return "", errors.New("unexpected test scope")
+		}
+		return filepath.Dir(docroot), nil
+	}
 	t.Cleanup(func() {
 		backupBaseDir = oldBase
 		backupDocumentRoot = oldDocumentRoot
+		backupSiteHome = oldSiteHome
 	})
 	return backupRoot, docroot
 }

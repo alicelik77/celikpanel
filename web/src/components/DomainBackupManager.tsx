@@ -17,12 +17,18 @@ import { useLostAnswer } from '../lib/lostAnswer';
 import { decodeDomainDatabases } from '../lib/domainDatabases';
 import { saveDownload } from '../lib/download';
 import { decodeSiteOverview, remoteEligibleBackupName, siteRemoteURL } from '../lib/remoteBackup';
-import { confirmAction, followOperation } from '../lib/confirmAction';
+import { confirmAction, followOperation, type OperationReport } from '../lib/confirmAction';
 import { backupCreateSteps, backupRestoreSteps, followRequestProgress, resumeRequestProgress } from '../lib/requestProgress';
 import { answerWasLost } from '../lib/requestIdentity';
 import { useDraft } from './kit/save/draft';
 import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
 import { useSaveWords } from './kit/save/words';
+import { sizeWord } from './kit/words';
+import { BackupContentsNote, RestoreProgramOutcome, type ProgramOutcome } from './BackupContentsNote';
+import {
+    LARGE_BACKUP_BYTES, PROGRAM_AREA, areaWord, backupAreas, backupLeftOut, contentsBytes, decodeBackupContents,
+    holdsProgram, leftOutWords, serviceAppName,
+} from '../lib/backupContents';
 
 // Remote copies (alpha.118): their own screen, fetched with this tab.
 // Uzak kopyalar: kendi ekranı, bu sekmeyle birlikte getirilir.
@@ -37,6 +43,12 @@ interface BackupItem {
     legacy: boolean;
     restorable: boolean;
     created_at: string;
+    // The package's format and what a version-3 package holds besides the
+    // site's files (docs/SITE-BACKUP-CONTENTS-DESIGN.md). Absent before.
+    format?: number;
+    areas?: unknown;
+    left_out?: unknown;
+    left_out_more?: number;
 }
 
 interface DomainBackupManagerProps {
@@ -136,6 +148,16 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
     const remoteOverview = useRemote(siteRemoteURL(domainId), decodeSiteOverview);
     const remoteTargets = remoteOverview.remote.state === 'known' ? remoteOverview.remote.value.destinations.length : 0;
     const [sendName, setSendName] = useState<string | null>(null);
+    // What a backup of this site holds, before one is made; and what the last
+    // restore did with the site's program.
+    // Bu sitenin yedeğinin neleri içereceği; son geri yüklemenin programla yaptığı.
+    const contents = useRemote(`/api/v1/domains/${domainId}/backups/contents`, decodeBackupContents);
+    const contentsKnown = contents.remote.state === 'known' ? contents.remote.value : null;
+    const siteHasProgram = !!contentsKnown && (contentsKnown.program !== null || holdsProgram(contentsKnown.areas));
+    // The site keeps more than its web files (a program, app data): the
+    // cards say so instead of "website files only".
+    const siteHasAreas = !!contentsKnown && contentsKnown.areas.length > 0;
+    const [programOutcome, setProgramOutcome] = useState<ProgramOutcome | null>(null);
 
     const loading = backups.reading;
     const loadBackups = () => backups.retry();
@@ -175,32 +197,38 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
         if (readOnly || !listKnown || creating !== null) return;
         if (type === 'database' && !selectedDatabaseId) return;
         if (type !== 'files' && !databasesKnown) return;
-        setCreating(type);
-        await followOperation({
-            progressTitle: t('opstep.backup.title', { name: domainName }),
-            action: async (report) => {
-                const progress = followRequestProgress(report, backupCreateSteps(t), t, `backup.${domainId}`);
-                try {
-                    const res = await answer.send(`/api/v1/domains/${domainId}/backups`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...progress.headers },
-                        body: JSON.stringify({
-                            type,
-                            ...(type === 'database' ? { database_id: Number(selectedDatabaseId) } : {}),
-                        }),
-                    });
-                    progress.settle(res);
-                    if (!res) return;
-                    if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.createFailed'))) return;
-                    showToast('success', t('backup.created'));
-                    answer.settle();
-                    await loadBackups();
-                } finally {
-                    progress.settle(null);
-                    setCreating(null);
-                }
-            },
-        });
+        // A large files or full backup asks first, naming its size.
+        const large = type !== 'database' && contentsKnown && contentsBytes(contentsKnown) >= LARGE_BACKUP_BYTES
+            ? sizeWord(contentsBytes(contentsKnown), locale) : null;
+        const progressTitle = t('opstep.backup.title', { name: domainName });
+        const create = async (report: OperationReport) => {
+            setCreating(type);
+            const progress = followRequestProgress(report, backupCreateSteps(t), t, `backup.${domainId}`);
+            try {
+                const res = await answer.send(`/api/v1/domains/${domainId}/backups`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...progress.headers },
+                    body: JSON.stringify({
+                        type,
+                        ...(type === 'database' ? { database_id: Number(selectedDatabaseId) } : {}),
+                    }),
+                });
+                progress.settle(res);
+                if (!res) return;
+                if (!(await answered<{ success?: boolean; error?: string }>(res, 'backup.createFailed'))) return;
+                showToast('success', t('backup.created'));
+                answer.settle();
+                await loadBackups();
+            } finally {
+                progress.settle(null);
+                setCreating(null);
+            }
+        };
+        if (large) {
+            await confirmAction({ message: t('bkc.confirmLarge', { size: large }), confirmLabel: t('bkc.confirmLargeLabel'), progressTitle, action: create });
+        } else {
+            await followOperation({ progressTitle, action: create });
+        }
         setCreating(null);
     };
 
@@ -224,7 +252,16 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
     const restoreBackup = async (backup: BackupItem) => {
         if (readOnly || !listKnown) return;
         if (!backup.restorable) return;
-        await confirmAction({ message: t('backup.restoreConfirm', { name: backup.name }), tone: 'danger',
+        const areas = backupAreas(backup.areas);
+        const withProgram = holdsProgram(areas);
+        const apps = areas.filter((area) => area.name !== PROGRAM_AREA).map((area) => serviceAppName(area.name));
+        const kept = [
+            ...(withProgram ? [t('bkc.restore.secretsKept')] : siteHasProgram && backup.type !== 'database' ? [t('bkc.restore.programKept')] : []),
+            ...(apps.length > 0 ? [t('bkc.restore.appsKept', { apps: apps.join(', ') })] : []),
+        ];
+        const message = t('backup.restoreConfirm', { name: backup.name }) + (withProgram ? '\n' + t('bkc.restore.stopStart') : '');
+        await confirmAction({ message, tone: 'danger',
+            lost: withProgram ? [t('bkc.restore.programLost')] : undefined, kept: kept.length > 0 ? kept : undefined,
             progressTitle: t('opstep.restore.title', { name: backup.name }),
             action: async (report) => {
                 setRestoring(backup.name);
@@ -237,11 +274,18 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                     });
                     progress.settle(res);
                     if (!res) return;
-                    const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem }>(res, 'backup.restoreFailed');
+                    setProgramOutcome(null);
+                    const data = await answered<{ success?: boolean; error?: string; safety_backup?: BackupItem; program?: ProgramOutcome }>(res, 'backup.restoreFailed');
+                    // The site changed: what a backup of it holds is read again.
+                    void contents.retry();
                     if (!data) return;
-                    showToast('success', data.safety_backup
-                        ? t('backup.restoredWithSafety', { name: data.safety_backup.name })
-                        : t('backup.restored'));
+                    const program = data.program;
+                    if (program && program.state !== 'started' && program.state !== 'not_running') setProgramOutcome(program);
+                    showToast('success', program?.state === 'started'
+                        ? t('bkc.result.started')
+                        : data.safety_backup
+                            ? t('backup.restoredWithSafety', { name: data.safety_backup.name })
+                            : t('backup.restored'));
                     answer.settle();
                     await loadBackups();
                     // A restore can bring databases back or replace them: the database
@@ -292,6 +336,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
             {/* Create */}
             {!readOnly && <section aria-busy={creating !== null}>
                 <h3 className="mb-3 text-sm font-semibold text-fg">{t('backup.createTitle')}</h3>
+                <BackupContentsNote contents={contents} databaseNames={databasesKnown ? databases.map((database) => database.name) : null} />
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     {backupTypes.filter(({ type }) => type === 'files').map(({ type, icon: Icon, labelKey, descKey, tone }) => (
                         <button
@@ -306,7 +351,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                             </span>
                             <span>
                                 <span className="block text-sm font-semibold text-fg">{t(labelKey)}</span>
-                                <span className="block text-xs text-fg-muted">{t(descKey)}</span>
+                                <span className="block text-xs text-fg-muted">{siteHasAreas ? t('bkc.filesDescAreas') : t(descKey)}</span>
                             </span>
                         </button>
                     ))}
@@ -368,7 +413,9 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                         <span>
                             <span className="block text-sm font-semibold text-fg">{t('backup.full')}</span>
                             <span className="block text-xs text-fg-muted">
-                                {databasesKnown ? t('backup.fullDesc', { count: databases.length }) : t('backup.fullDescLoading')}
+                                {siteHasAreas
+                                    ? t('bkc.fullDescAreas', { count: databasesKnown ? String(databases.length) : '…' })
+                                    : databasesKnown ? t('backup.fullDesc', { count: databases.length }) : t('backup.fullDescLoading')}
                             </span>
                         </span>
                     </button>
@@ -409,6 +456,10 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
 
                 <ResultUnknown answer={answer} className="mb-3" />
                 <ErrorBanner className="mb-3" error={refusal?.problem ?? null} sentence={refusal?.sentence} />
+                {refusal?.problem.vars?.program && (
+                    <RestoreProgramOutcome failed outcome={{ state: refusal.problem.vars.program, reason: refusal.problem.vars.program_reason }} />
+                )}
+                {programOutcome && !refusal && <RestoreProgramOutcome outcome={programOutcome} />}
 
                 <RemoteGate
                     remote={backups.remote}
@@ -428,6 +479,11 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                             const blockedReason = backup.legacy && backup.type === 'database'
                                 ? t('backup.legacyDatabaseUnrestorable')
                                 : t('backup.notRestorable');
+                            // What this backup holds besides the site's files, and
+                            // whether it lacks the program this site has now.
+                            const areas = backupAreas(backup.areas);
+                            const leftWords = leftOutWords(t, backupLeftOut(backup.left_out), backup.left_out_more ?? 0, locale);
+                            const lacksProgram = siteHasProgram && backup.type !== 'database' && !holdsProgram(areas);
                             return (
                                 <div
                                     key={backup.name}
@@ -452,7 +508,7 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                                                     {t(originLabelKey[backup.origin] ?? 'backup.origin.unknown')}
                                                 </span>
                                                 <span className="rounded bg-surface-2 px-1.5 py-0.5">
-                                                    {t(backup.legacy ? 'backup.format.legacy' : 'backup.format.current')}
+                                                    {t(backup.legacy || (lacksProgram && (backup.format ?? 0) < 3) ? 'backup.format.legacy' : 'backup.format.current')}
                                                 </span>
                                                 <span className={`rounded px-1.5 py-0.5 ${backup.restorable ? 'bg-success/10 text-success' : 'bg-warning/15 text-warning'}`}>
                                                     {t(backup.restorable ? 'backup.restorable.yes' : 'backup.restorable.no')}
@@ -461,6 +517,17 @@ export function DomainBackupManager({ domainId, domainName, readOnly = false }: 
                                                     <span>{t('backup.databaseId', { id: backup.database_id })}</span>
                                                 ) : null}
                                             </div>
+                                            {areas.length > 0 && (
+                                                <p className="mt-1 text-xs text-fg-muted">{t('bkc.row.holds', { list: areas.map((area) => areaWord(t, area, locale)).join(' · ') })}</p>
+                                            )}
+                                            {lacksProgram && (
+                                                <p className="mt-1 text-xs text-warning" role="note">
+                                                    {t((backup.format ?? 0) < 3 ? 'bkc.row.noProgramOld' : 'bkc.row.noProgram')}
+                                                </p>
+                                            )}
+                                            {leftWords.length > 0 && (
+                                                <p className="mt-1 text-xs text-fg-muted">{t('bkc.row.left', { list: leftWords.join('; ') })}</p>
+                                            )}
                                             {restoreBlocked && (
                                                 <p className="mt-1 text-xs text-warning" role="note">{blockedReason}</p>
                                             )}

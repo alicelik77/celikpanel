@@ -410,6 +410,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "backup-restore", []string{http.MethodPost, http.MethodOptions}
 	case "backups/download":
 		match.kind, match.methods = "backup-download", []string{http.MethodGet}
+	case "backups/contents":
+		// What a backup of this site holds, measured before one is made.
+		match.kind, match.methods = "backup-contents", []string{http.MethodGet}
 	case "backups":
 		match.kind, match.methods = "backups", []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions}
 	// alpha.118: remote backups of the site.
@@ -660,6 +663,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleRestoreBackup(w, r)
 	case "backup-download":
 		p.handleDownloadBackup(w, r)
+	case "backup-contents":
+		p.handleBackupContents(w, r)
 	case "backups":
 		p.handleDomainBackups(w, r)
 	case "backup-remote", "backup-remote-policy", "backup-remote-objects", "backup-remote-send",

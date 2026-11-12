@@ -83,6 +83,7 @@ var teamMemberDomainRequirements = map[teamMemberRouteKey]teamMemberDomainRequir
 	{kind: "backup-restore", method: http.MethodPost}:    {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionManage},
 	{kind: "backup-restore", method: http.MethodOptions}: {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionView},
 	{kind: "backup-download", method: http.MethodGet}:    {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionView},
+	{kind: "backup-contents", method: http.MethodGet}:    {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionView},
 	{kind: "backups", method: http.MethodGet}:            {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionView},
 	{kind: "backups", method: http.MethodPost}:           {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionManage},
 	{kind: "backups", method: http.MethodDelete}:         {capability: core.TeamCapabilityBackups, mode: core.TeamPermissionManage},

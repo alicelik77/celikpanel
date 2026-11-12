@@ -7632,3 +7632,41 @@ bağlantıyı tutar.
     (önceki bileşik kodlarla aynı sınıf).
   - Gerçek sistemde ölçülmedi; lab w9'u yineler. **Hiçbir P0 işi kapanmadı**;
     P0.4 kısmi kalır.
+
+### Dal a134/progbackup (site yedeği sitenin programını, Python uygulamasını ve hizmet uygulaması verisini içerir; paket bildirimi sürüm 3; Agent yedek ve geri yükleme yolları; şema değişikliği yok; ilkeler 1, 2 ve 4; D-022; D-024; D-025; 2026-11-12)
+
+- **Kusur.** Bir sahibin sunucusunda salt-okur bulundu: dosya ve tam yedek
+  yalnız `public_html`'i arşivliyordu; program sitesinin `app/` klasörü
+  (program, yapılandırma, veri) hiçbir yedekte yoktu ve ekran bunu söylemiyordu.
+  Python uygulamaları ve hizmet uygulamaları (`apps/<uygulama>`) da yedek
+  dışındaydı. Tasarım: [SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md).
+- **Sözleşme.** Dosya ya da tam yedek `public_html`'i eskisi gibi ve Agent'ın
+  bulduğu site ev dizini alanlarını (`app`, `apps/<uygulama>`) içerir; her alan
+  yalnız adı konmuş derleme önbelleklerini, geçici derleme klasörlerini, hizmet
+  uygulamalarının yeniden kurulan program dosyalarını, özel dosyaları ve site
+  hesabına ait olmayan dosyaları dışarıda bırakır; dışarıda kalan her öğe
+  gerekçesi ve boyutuyla kaydedilir. Alan içindeki bağlantılar bağlantı olarak
+  saklanır, asla izlenmez. Ortam dosyaları hiçbir zaman arşivlenmez. Geri
+  yükleme `app`'i `public_html` gibi değiştirir (hazırlanır, sahibi site hesabı,
+  arşivdeki kipler, tek yeniden adlandırma, sonraki adım başarısız olursa önceki
+  klasör geri konur); hizmet uygulaması alanları adlandırılır ve geri
+  yüklenmez. Programı içeren yedeğin geri yüklemesi çalışan programı önce
+  durdurur, sonra Programlar sekmesinin kendi denetimi ve kapılarıyla yeniden
+  başlatır; sahibin durdurduğu program durmuş kalır; geri koyma başarısızsa
+  program durmuş bırakılır.
+- **Biçim geçişi.** Bildirim sürüm 3 (`home`, `areas`, `left_out`) yalnız bir
+  alan varsa yazılır; alanı olmayan site değişmemiş sürüm 2 paketini alır. RPC
+  protokolü 2 kalır; `Info`, `RestoreResponse` ve yeni salt-okur
+  `Agent.BackupContentsV1` eklemelidir. Eski paketler eskisi gibi geri yüklenir.
+  Eski sürüm sürüm 3 paketini listelemez, geri yüklemez, içe almaz (hiçbir şey
+  yazılmadan kapalı kalır) ve dosyayı diskte bırakır; sahip yeniden
+  güncelleyince görünür. Uzak kopyalar aynı baytlardır.
+- **Kurtarma.** Hiçbir şey kendiliğinden yeniden denenmez. Programın
+  durdurulması ile başlatılması arasında duran Panel programı durmuş ve
+  devre dışı bırakır; korunan isteğin sonucu bilinmez ve sahip programı
+  Programlar sekmesinden başlatır. Program işlem kilidi geri yüklemeyle
+  paylaşılmaz: geri yüklemenin denetiminden sonra başlayan işlem kalan açıktır.
+- **Kanıt.** Bileşen testleri: `cmd/agent/backup_home_linux_test.go`,
+  `cmd/panel/domain_backup_program_test.go`,
+  `web/tests/site-backup-contents-mounted.test.mjs`. Gerçek sistemde
+  çalıştırılmadı. **Hiçbir P0 işi kapanmadı.**

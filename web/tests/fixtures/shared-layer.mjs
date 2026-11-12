@@ -320,6 +320,9 @@ export function sharedLayer(stubURL, extra = {}) {
   // alpha.114: the owner's automatic/manual choice and Arch's step-by-step guide.
   if (!extra['/OSUpdatesChoice']) table['/OSUpdatesChoice'] = compileSource('components/OSUpdatesChoice.tsx', resolve);
   if (!extra['/ArchUpdateGuide']) table['/ArchUpdateGuide'] = compileSource('components/ArchUpdateGuide.tsx', resolve);
+  // The release after alpha.133: what a site backup holds, and what a restore did with the program.
+  if (!extra['/lib/backupContents']) table['/lib/backupContents'] = compileSource('lib/backupContents.ts', resolve);
+  if (!extra['/BackupContentsNote']) table['/BackupContentsNote'] = compileSource('components/BackupContentsNote.tsx', resolve);
   return { uiURL, resolve, compile: (path, more = {}) => quietLazyParts(compileSource(path, (specifier) => {
     for (const [suffix, url] of Object.entries(more)) if (specifier.endsWith(suffix)) return url;
     return resolve(specifier);

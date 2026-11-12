@@ -8408,3 +8408,46 @@ until the backup reports ready.
     as an unreviewed code (the same class as earlier composites).
   - Not measured natively; the lab repeats w9. **No P0 item is closed**; P0.4
     stays partial.
+
+### Branch a134/progbackup (a site backup holds the site's program, Python app and service-app data; package manifest version 3; Agent backup and restore paths; no schema change; invariants 1, 2 and 4; D-022; D-024; D-025; 2026-11-12)
+
+- **Defect.** Found read-only on an owner's server: files and full backups
+  archived only `public_html`; a program site's `app/` (binary, configuration,
+  data) was in no backup and the screen did not say so. Python apps and service
+  apps (`apps/<app>`) were outside every backup as well. Design:
+  [SITE-BACKUP-CONTENTS-DESIGN.md](SITE-BACKUP-CONTENTS-DESIGN.md).
+- **Contract.** A files or full backup holds `public_html` as before and the
+  site-home areas the Agent finds (`app`, `apps/<app>`), each leaving out only
+  the named build caches, temporary build folders, service apps' reinstalled
+  program files, special files and files not owned by the site's account; every
+  left-out item is recorded with its reason and size. Links inside an area are
+  stored as links and never followed. Environment files are never archived.
+  Restore replaces `app` like `public_html` (staged, owner the site's account,
+  archived modes, one rename, the earlier folder put back when a later step
+  fails); service-app areas are named and not restored. A restore of a backup
+  holding the program stops a running program first and starts it again after,
+  with the Programs tab's own control and gates; a program the owner stopped
+  stays stopped; after a failed put-back it is left stopped.
+- **Format transition.** Manifest version 3 (`home`, `areas`, `left_out`) is
+  written only when an area exists; a site without one gets the unchanged
+  version-2 package. The RPC protocol stays 2; `Info`, `RestoreResponse` and the
+  new read-only `Agent.BackupContentsV1` are additive. Older packages restore as
+  before. An older release does not list, restore or import a version-3 package
+  (fail closed before anything is written) and leaves it on disk; it reappears
+  after the owner updates again. Remote copies are the same bytes.
+- **Recovery.** Nothing is retried. A Panel stopped between stopping and
+  starting the program leaves it stopped and disabled; the guarded request's
+  outcome is unknown and the owner starts the program on the Programs tab. The
+  program operation lock is not shared with the restore: an operation started
+  after the restore's check is a remaining gap.
+- **Evidence.** Component tests: `cmd/agent/backup_home_linux_test.go` (file
+  set per site kind, rules, links, ownership, special files, measurement equal
+  to the archive, time limit, manifest versions both ways, restore of old and
+  new packages with owner, modes and links, a missing folder made, service apps
+  left, crafted packages never escaping, a failed full restore putting the
+  program back, remote verification), `cmd/panel/domain_backup_program_test.go`
+  (stop and start around the restore, owner-stopped, without the program,
+  operation running, failed and unanswered restores, a held offering, no
+  program record, the contents endpoint), and
+  `web/tests/site-backup-contents-mounted.test.mjs`. No native run. **No P0
+  item is closed.**
