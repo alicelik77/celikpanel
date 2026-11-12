@@ -405,7 +405,7 @@ func TestOwnerEditAtTerminalRetirementExchangeIsPreserved(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := s.retireAt(request, enrollment, digest, 1, allow, func(at string) {
-		if at != "before_exchange" {
+		if at != "before_rename" {
 			return
 		}
 		if e := os.WriteFile(s.path, []byte("owner terminal edit"), 0600); e != nil {

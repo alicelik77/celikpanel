@@ -59,6 +59,19 @@ func Retire(request dnspeerproof.RequestV1, enrollmentSHA256, requestSHA256 stri
 	return store{path: Path, now: time.Now}.retire(request, enrollmentSHA256, requestSHA256, ledgerAttempt, verifyTerminal)
 }
 
+// Recover finishes or rolls back a write or retirement that an earlier
+// process left half done (killed, power loss, or a release before alpha.133
+// that stopped a retirement midway), so the caller can continue with a fresh
+// challenge in the same attempt. See recover_linux.go for every state it accepts.
+// It needs the same authority as Retire: verify is the caller's held check
+// (both external locks, the exact active attempt) and finished reports, under
+// those locks, whether a record's operation is terminal in the durable ledger
+// (an error means it could not be read, not that it is unfinished).
+// A state it cannot prove is StateError{Unresolved} and stays untouched.
+func Recover(verify VerifyCurrent, finished FinishedCheck) (Repair, error) {
+	return store{path: Path, now: time.Now}.recoverAt(verify, finished, nil)
+}
+
 type store struct {
 	path      string
 	trustRoot string // test-only bounded root; production defaults to /
@@ -179,8 +192,18 @@ func (s store) retire(request dnspeerproof.RequestV1, enrollment, digest string,
 	return s.retireAt(request, enrollment, digest, ledgerAttempt, verifyTerminal, nil)
 }
 
-// retireAt is split only to inject a deterministic owner edit at the narrow
-// pre-exchange boundary in tests. Production passes no checkpoint.
+// retireAt is split only to inject a deterministic owner edit or a crash at
+// each file operation in tests. Production passes no checkpoint.
+//
+// A retirement is one transition (alpha.133, lab of 12 Nov 2026): the
+// canonical journal is renamed, without replacing anything, to a private
+// .dns-peer-retired-* name. Before that rename nothing has changed; after it
+// the retired record sits under that name and the canonical name is absent,
+// a state Recover completes by itself. Until alpha.133 an empty tombstone
+// was exchanged with the journal first and removed later: a retirement
+// stopped between those steps (a.132's prepare deadline running out inside
+// the terminal recheck after the exchange) left a 0-byte journal beside the
+// retired record, which every later proof refused.
 func (s store) retireAt(request dnspeerproof.RequestV1, enrollment, digest string, ledgerAttempt uint64, verifyTerminal VerifyCurrent, checkpoint func(string)) error {
 	processMu.Lock()
 	defer processMu.Unlock()
@@ -226,50 +249,36 @@ func (s store) retireAt(request dnspeerproof.RequestV1, enrollment, digest strin
 	if _, err = rand.Read(nonce[:]); err != nil {
 		return StateError{Unknown}
 	}
-	retired := ".dns-peer-retired-" + hex.EncodeToString(nonce[:])
-	// A durable empty tombstone is exchanged with the target. The displaced
-	// journal stays under the private name for identity/content inspection.
-	fd, err := unix.Openat(dir, retired, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
-	if err != nil {
-		return StateError{Unknown}
+	retired := retiredPrefix + hex.EncodeToString(nonce[:])
+	if checkpoint != nil {
+		checkpoint("before_rename")
 	}
-	tombstone := os.NewFile(uintptr(fd), retired)
-	defer tombstone.Close()
-	retain := false
-	defer func() {
-		if !retain {
-			_ = unix.Unlinkat(dir, retired, 0)
-		}
-	}()
-	if unix.Fchown(fd, 0, 0) != nil || tombstone.Chmod(0600) != nil || tombstone.Sync() != nil {
-		return StateError{Unknown}
-	}
-	var tombstoneStat, namedTombstone unix.Stat_t
-	if unix.Fstat(fd, &tombstoneStat) != nil || !safeFile(tombstoneStat) || tombstoneStat.Size != 0 ||
-		unix.Fstatat(dir, retired, &namedTombstone, unix.AT_SYMLINK_NOFOLLOW) != nil ||
-		!sameFile(tombstoneStat, namedTombstone) ||
-		verifyTerminal() != nil || s.verifyDirectory(dir) != nil {
-		return StateError{Unknown}
-	}
-	beforeExchange, err := readAt(dir, name)
-	if err != nil || beforeExchange != current {
+	// The one transition. RENAME_NOREPLACE never displaces another file. The
+	// terminal proof above ran under the caller's held locks immediately
+	// before it; nothing after this point can veto the retirement, so no
+	// context or recheck runs between it and its completion.
+	if unix.Renameat2(dir, name, dir, retired, unix.RENAME_NOREPLACE) != nil {
 		return StateError{Unknown}
 	}
 	if checkpoint != nil {
-		checkpoint("before_exchange")
+		checkpoint("renamed")
 	}
-	if unix.Renameat2(dir, name, dir, retired, unix.RENAME_EXCHANGE) != nil {
-		return StateError{Unknown}
-	}
-	retain = true
-	var displaced, canonicalTombstone unix.Stat_t
+	return finishRetirement(dir, retired, current, &oldStat, checkpoint)
+}
+
+// finishRetirement completes a retirement whose rename happened: the file
+// under the retired name must be exactly the retired record (and, right
+// after the rename, the very file that was checked), then the rename is
+// made durable and the retired record removed. Any failure leaves the
+// retired file in place: a difference is kept for review (Recover then
+// refuses it unless it is a terminal record), anything else is completed by
+// the next Recover.
+func finishRetirement(dir int, retired string, record RecordV1, old *unix.Stat_t, checkpoint func(string)) error {
+	var displaced unix.Stat_t
 	moved, err := readAt(dir, retired)
-	if err != nil || moved != current ||
+	if err != nil || moved != record ||
 		unix.Fstatat(dir, retired, &displaced, unix.AT_SYMLINK_NOFOLLOW) != nil ||
-		!sameFile(oldStat, displaced) || oldStat.Mtim != displaced.Mtim ||
-		unix.Fstatat(dir, name, &canonicalTombstone, unix.AT_SYMLINK_NOFOLLOW) != nil ||
-		!sameFile(tombstoneStat, canonicalTombstone) ||
-		verifyTerminal() != nil || s.verifyDirectory(dir) != nil {
+		old != nil && (!sameFile(*old, displaced) || old.Mtim != displaced.Mtim) {
 		_ = unix.Fsync(dir)
 		return StateError{Unknown}
 	}
@@ -277,19 +286,17 @@ func (s store) retireAt(request dnspeerproof.RequestV1, enrollment, digest strin
 		return StateError{Unknown}
 	}
 	if checkpoint != nil {
-		checkpoint("exchanged_durable")
+		checkpoint("rename_durable")
 	}
-	// Make the canonical name absent while the old evidence is still retained.
-	if unix.Unlinkat(dir, name, 0) != nil || unix.Fsync(dir) != nil {
+	if unix.Unlinkat(dir, retired, 0) != nil {
 		return StateError{Unknown}
 	}
 	if checkpoint != nil {
-		checkpoint("canonical_absent_durable")
+		checkpoint("retired_removed")
 	}
-	if unix.Unlinkat(dir, retired, 0) != nil || unix.Fsync(dir) != nil {
+	if unix.Fsync(dir) != nil {
 		return StateError{Unknown}
 	}
-	retain = false
 	return nil
 }
 
@@ -400,7 +407,7 @@ func writeAt(dir int, name string, record RecordV1, before *RecordV1, s store, v
 	if _, err = rand.Read(nonce[:]); err != nil {
 		return StateError{Unknown}
 	}
-	stage := ".dns-peer-challenge-" + hex.EncodeToString(nonce[:])
+	stage := challengePrefix + hex.EncodeToString(nonce[:])
 	fd, err := unix.Openat(dir, stage, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
 	if err != nil {
 		return StateError{Unknown}
@@ -413,11 +420,17 @@ func writeAt(dir int, name string, record RecordV1, before *RecordV1, s store, v
 	}()
 	file := os.NewFile(uintptr(fd), stage)
 	defer file.Close()
+	if checkpoint != nil {
+		checkpoint("created")
+	}
 	if unix.Fchown(fd, 0, 0) != nil || file.Chmod(0600) != nil {
 		return StateError{Unknown}
 	}
 	if _, err = file.Write(raw); err != nil {
 		return StateError{Unknown}
+	}
+	if checkpoint != nil {
+		checkpoint("written")
 	}
 	if err = file.Sync(); err != nil {
 		return StateError{Unknown}
@@ -490,10 +503,16 @@ func writeAt(dir int, name string, record RecordV1, before *RecordV1, s store, v
 		checkpoint("parent_durable")
 	}
 	if before != nil {
-		if unix.Unlinkat(dir, stage, 0) != nil || unix.Fsync(dir) != nil {
+		if unix.Unlinkat(dir, stage, 0) != nil {
 			return StateError{Unknown}
 		}
 		retainStage = false
+		if checkpoint != nil {
+			checkpoint("stage_removed")
+		}
+		if unix.Fsync(dir) != nil {
+			return StateError{Unknown}
+		}
 	}
 	stored, err := readAt(dir, name)
 	if err != nil || stored != record || !bytes.Equal(raw, mustEncode(stored)) || s.verifyDirectory(dir) != nil || verify() != nil {
@@ -502,24 +521,22 @@ func writeAt(dir int, name string, record RecordV1, before *RecordV1, s store, v
 	return nil
 }
 
-// Any unexplained private stage may be a displaced owner edit or an
-// interrupted publication. It is evidence, never disposable scratch. Stop
-// further proof work until an explicit owner recovery classifies it.
+// Any private stage may be a displaced owner edit or an interrupted
+// publication or retirement. It is evidence, never disposable scratch: read,
+// publish, consume and retire stop on it. Only Recover, under the caller's
+// held authority, removes one, and only in the states it can prove.
+//
+// Until alpha.133 this listed through a duplicate of dir without rewinding
+// it: the duplicate shares dir's offset, so every listing after the first on
+// the same descriptor (writeAt's, after publish's or consume's own) saw no
+// names at all. stageNames starts from the first entry.
 func countOrphanStages(dir int) error {
-	duplicate, err := unix.Dup(dir)
+	stages, err := stageNames(dir)
 	if err != nil {
 		return err
 	}
-	file := os.NewFile(uintptr(duplicate), "dns-peer-journal-directory")
-	defer file.Close()
-	names, err := file.Readdirnames(-1)
-	if err != nil {
-		return err
-	}
-	for _, name := range names {
-		if strings.HasPrefix(name, ".dns-peer-challenge-") || strings.HasPrefix(name, ".dns-peer-retired-") {
-			return StateError{Unknown}
-		}
+	if len(stages) != 0 {
+		return StateError{Unknown}
 	}
 	return nil
 }
