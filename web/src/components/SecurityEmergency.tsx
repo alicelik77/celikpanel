@@ -26,8 +26,7 @@ import {
     SECURITY_EMERGENCIES_URL, EMERGENCY_ANCHOR, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor,
     type EmergencyComponent, type EmergencyDetail, type EmergencySite,
 } from '../lib/securityEmergency';
-import { typedNameMatches } from '../lib/confirmAction';
-import { TypedNameField } from './kit/save/ConfirmDetails';
+import { TypedNameField, typedNameMatches } from './kit/save/ConfirmDetails';
 
 export { SECURITY_EMERGENCIES_URL, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor };
 export type { EmergencyComponent, EmergencyDetail, EmergencySite };

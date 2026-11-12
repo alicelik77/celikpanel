@@ -225,55 +225,57 @@ export function DomainGeneralSettings({ domainId, domainName }: DomainGeneralSet
                     <div>
                         <ResultUnknown answer={answer} className="mb-4" />
                         <div>
-                            <FormSection title={t('general.docRoot')} description={t('general.docRootHint')}>
-                                <p className="break-all rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-sm text-fg">
-                                    {settings.document_root}
-                                </p>
-                            </FormSection>
-
-                            <FormSection
-                                title={t('general.webServer')}
-                                description={t('general.webServerHintSingle')}
-                            >
-                                <p className="text-sm font-medium text-fg">Nginx</p>
-                                {settings.web_server !== 'nginx' && (
-                                    <p className="mt-1 text-xs text-warning">
-                                        {t('general.webServerUnsupported', { name: settings.web_server || 'unknown' })}
+                            <div>
+                                <FormSection title={t('general.docRoot')} description={t('general.docRootHint')}>
+                                    <p className="break-all rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-sm text-fg">
+                                        {settings.document_root}
                                     </p>
-                                )}
-                            </FormSection>
+                                </FormSection>
 
-                            <FormSection title={t('general.redirects')}>
-                                {settings.redirect_www_available ? (
-                                    <div className={`-mx-3 rounded-r px-3 py-2 ${redirectChanged ? changedRowClass : ''}`}>
-                                        <label className="flex cursor-pointer items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                name="redirect_www"
-                                                checked={redirectWww}
-                                                disabled={draft.saving}
-                                                onChange={(event) => draft.set('redirect_www', event.target.checked)}
-                                                className="mt-0.5 h-4 w-4 accent-primary"
-                                            />
-                                            <span>
-                                                <span className="block text-sm text-fg">
-                                                    {t('general.redirectWww')}
-                                                    {redirectChanged && <ChangedMark switched={redirectWww} />}
+                                <FormSection
+                                    title={t('general.webServer')}
+                                    description={t('general.webServerHintSingle')}
+                                >
+                                    <p className="text-sm font-medium text-fg">Nginx</p>
+                                    {settings.web_server !== 'nginx' && (
+                                        <p className="mt-1 text-xs text-warning">
+                                            {t('general.webServerUnsupported', { name: settings.web_server || 'unknown' })}
+                                        </p>
+                                    )}
+                                </FormSection>
+
+                                <FormSection title={t('general.redirects')}>
+                                    {settings.redirect_www_available ? (
+                                        <div className={`rounded-r px-3 py-2 ${redirectChanged ? changedRowClass : ''}`}>
+                                            <label className="flex cursor-pointer items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    name="redirect_www"
+                                                    checked={redirectWww}
+                                                    disabled={draft.saving}
+                                                    onChange={(event) => draft.set('redirect_www', event.target.checked)}
+                                                    className="mt-0.5 h-4 w-4 accent-primary"
+                                                />
+                                                <span>
+                                                    <span className="block text-sm text-fg">
+                                                        {t('general.redirectWww')}
+                                                        {redirectChanged && <ChangedMark switched={redirectWww} />}
+                                                    </span>
+                                                    <span className="block text-xs text-fg-subtle">{`${domainName} → www.${domainName}`}</span>
                                                 </span>
-                                                <span className="block text-xs text-fg-subtle">{`${domainName} → www.${domainName}`}</span>
-                                            </span>
-                                        </label>
-                                        {draft.isMoved('redirect_www') && draft.base && (
-                                            <ServerMovedNote value={say(draft.base.redirect_www ? 'on' : 'off')} onTake={() => draft.take('redirect_www')} />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-fg-muted">{t('general.redirectWwwUnavailable')}</p>
-                                )}
-                                <p className="mt-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-fg-muted">
-                                    {t('general.forceHttpsManaged')}
-                                </p>
-                            </FormSection>
+                                            </label>
+                                            {draft.isMoved('redirect_www') && draft.base && (
+                                                <ServerMovedNote value={say(draft.base.redirect_www ? 'on' : 'off')} onTake={() => draft.take('redirect_www')} />
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-fg-muted">{t('general.redirectWwwUnavailable')}</p>
+                                    )}
+                                    <p className="mt-3 rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-fg-muted">
+                                        {t('general.forceHttpsManaged')}
+                                    </p>
+                                </FormSection>
+                            </div>
 
                             <SaveBar
                                 count={draft.count}

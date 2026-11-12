@@ -3,7 +3,7 @@ import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { Button, Dialog } from './ui';
 import { useI18n } from '../i18n';
 import { captureToasts, type CapturedToast } from './Toast';
-import { registerConfirmHost, typedNameMatches, type ConfirmRequest, type OperationEnd, type OperationStep } from '../lib/confirmAction';
+import { registerConfirmHost, type ConfirmAnswer, type ConfirmRequest, type OperationEnd, type OperationStep } from '../lib/confirmAction';
 
 // The product's own confirmation and progress window (owner, 6 Nov 2026):
 // mounted once at the application root, it answers every confirmAction() with
@@ -95,11 +95,10 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
     const answered = useRef(false);
     const mounted = useRef(true);
     const danger = request.tone === 'danger';
-    const [option, setOption] = useState(false);
-    const [typed, setTyped] = useState('');
-    const typedName = request.typedName ?? (option ? request.option?.typedName : undefined);
-    // The confirm button is off until the name is typed exactly.
-    const ready = !typedName || typedNameMatches(typed, typedName);
+    // The choice and the typed name, kept by the structured part; the confirm
+    // button is off until that part says the name is typed exactly.
+    const chosen = useRef<ConfirmAnswer>({ option: false, typed: '' });
+    const [ready, setReady] = useState(!request.typedName);
 
     // Focus the safe choice for a destructive question, the action otherwise;
     // give focus back to whatever asked when the dialogue closes.
@@ -150,7 +149,7 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
         const release = captureToasts((toast) => said.push(toast));
         let result: OperationEnd | void;
         try {
-            result = await action({ steps: (next) => { if (mounted.current) setSteps(next); } }, { option, typed });
+            result = await action({ steps: (next) => { if (mounted.current) setSteps(next); } }, chosen.current);
         } catch (error) {
             // The action could not tell how it ended: the result is not known.
             console.error(error);
@@ -217,7 +216,7 @@ function ConfirmDialog({ request, answer, running }: Omit<Open, 'key'>) {
         >
             {(request.lost || request.kept || request.option || request.typedName) && (
                 <Suspense fallback={null}>
-                    <ConfirmDetails request={request} option={option} onOption={setOption} typed={typed} onTyped={setTyped} disabled={phase !== 'ask'} />
+                    <ConfirmDetails request={request} disabled={phase !== 'ask'} onAnswer={(next, matches) => { chosen.current = next; setReady(matches); }} />
                 </Suspense>
             )}
         </Dialog>

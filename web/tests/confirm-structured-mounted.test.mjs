@@ -27,7 +27,8 @@ const progressURL = shared.compile('components/OperationProgress.tsx');
 let hostURL = replaceLazyImport(shared.compile('components/ConfirmHost.tsx'), './OperationProgress', progressURL);
 hostURL = replaceLazyImport(hostURL, './kit/save/ConfirmDetails', shared.resolve('/ConfirmDetails'));
 const { ConfirmHost } = await import(hostURL);
-const { confirmAction, typedNameMatches } = await import(confirmActionURL);
+const { confirmAction } = await import(confirmActionURL);
+const { typedNameMatches } = await import(shared.resolve('/ConfirmDetails'));
 
 globalThis.window = { setInterval, clearInterval, setTimeout, clearTimeout };
 globalThis.document = { activeElement: null, getElementById: () => null, addEventListener() {}, removeEventListener() {} };

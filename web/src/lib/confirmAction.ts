@@ -24,7 +24,8 @@
 // A question may also carry, structured (alpha.132, drawing X16): what is lost
 // and what stays (`lost`, `kept`), one heavier choice (`option`, e.g. "also
 // delete the data"), and a name to type before the confirm button turns on
-// (`typedName`, matched by typedNameMatches). The action receives the choice
+// (`typedName`, matched by typedNameMatches in components/kit/save/ConfirmDetails.tsx,
+// which is fetched only for such a question). The action receives the choice
 // and what was typed. Leaving unsaved changes asks through here too
 // (components/kit/save/leaveGuard.ts, with `cancelLabel`).
 //
@@ -77,12 +78,6 @@ export interface TypedName {
     label: string;
     /** Letter case does not count (a domain name: the server compares it so too). */
     ignoreCase?: boolean;
-}
-
-/** Whether what was typed is the name. Spaces around it do not count. */
-export function typedNameMatches(typed: string, name: TypedName): boolean {
-    const given = typed.trim();
-    return name.ignoreCase ? given.toLowerCase() === name.value.toLowerCase() : given === name.value;
 }
 
 /** What the person chose in the question; the action receives it. */
