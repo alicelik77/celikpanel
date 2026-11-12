@@ -66,7 +66,7 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     [/from ['"]lucide-react['"]/g, `from '${iconsURL}'`],
     [/from ['"]\.\.\/lib\/panelUpdateDiscovery['"]/g, `from '${moduleURL(panelUpdateDiscoveryStubSource())}'`],
     // alpha.132: the automatic-check switch has its own mounted test (panel-update-discovery-mounted).
-    [/from ['"]\.\/PanelUpdateAutoCheck['"]/g, `from 'data:text/javascript,export function PanelUpdateAutoCheck() { return null; }'`],
+    [/import\(['"]\.\/PanelUpdateAutoCheck['"]\)/g, `import('data:text/javascript,export function PanelUpdateAutoCheck() { return null; }')`],
     [/from ['"]\.\/ui['"]/g, `from '${uiURL}'`],
     [/from ['"]\.\.\/i18n['"]/g, `from '${i18nURL}'`],
     [/from ['"]\.\.\/lib\/apiError['"]/g, `from '${apiErrorURL}'`],

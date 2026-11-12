@@ -167,10 +167,9 @@ test('a Turkish screen shows the Turkish description, check and risk note; Engli
 
 test('the offered applications screen localizes its texts and names the application being saved', () => {
   const offered = readFileSync(new URL('../src/components/OfferedAppsSection.tsx', import.meta.url), 'utf8');
-  // alpha.132: the Offered tab's one draft saves the applications and asks first, with the risk.
-  const tab = readFileSync(new URL('../src/components/PlanRights.tsx', import.meta.url), 'utf8');
-  assert.match(tab, /t\('appOffer\.confirm', \{ name: app\.name, risk: appText\(app, 'risk', locale\) \}\)/);
+  // alpha.132: Save asks first, with the risk; a saved or refused application is named by its name.
+  assert.match(offered, /t\('appOffer\.confirm', \{ name: app\.name, risk: appText\(app, 'risk', locale\) \}\)/);
   for (const field of ['description', 'checked', 'risk']) assert.ok(offered.includes(`appText(app, '${field}', locale)`), field);
-  assert.ok(tab.includes('appOf(id)?.name ?? offeredLabel(id, t)'), 'a saved or refused application is named by its name');
+  assert.ok(offered.includes('nameOf: (id) => appOf(id)?.name ?? id'), 'a saved or refused application is named by its name');
   assert.ok(!/\{app\.(description|checked|risk)\}/.test(offered + source), 'no raw English catalog text is shown');
 });

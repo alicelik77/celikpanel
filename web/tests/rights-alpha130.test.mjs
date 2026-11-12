@@ -106,7 +106,6 @@ const stub = dataModule(`
 const shared = sharedLayer(stub);
 const own = { '/lib/rights': rightsURL };
 own['/lib/accounts'] = compileSource('lib/accounts.ts', (specifier) => (specifier.endsWith('/remote') ? remoteURL : shared.resolve(specifier)));
-own['/lib/appCatalog'] = compileSource('lib/appCatalog.ts', (specifier) => shared.resolve(specifier));
 own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 own['/RightsSetEditor'] = shared.compile('components/RightsSetEditor.tsx', own);
 own['/AccountRights'] = shared.compile('components/AccountRights.tsx', own);

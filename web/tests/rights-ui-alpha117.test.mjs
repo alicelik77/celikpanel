@@ -184,8 +184,6 @@ const shared = sharedLayer(stub);
 const besideRemote = (specifier) => (specifier.endsWith('/remote') ? remoteURL : shared.resolve(specifier));
 const accountsURL = compileSource('lib/accounts.ts', besideRemote);
 const own = { '/lib/rights': rightsURL, '/lib/accounts': accountsURL };
-// alpha.132: the Offered tab reads the applications for its one draft.
-own['/lib/appCatalog'] = compileSource('lib/appCatalog.ts', (specifier) => shared.resolve(specifier));
 own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own);
 own['/RightsSetEditor'] = shared.compile('components/RightsSetEditor.tsx', own);
 own['/AccountRights'] = shared.compile('components/AccountRights.tsx', own);

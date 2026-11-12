@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, DownloadCloud, Info, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from './ui';
 import { useI18n } from '../i18n';
@@ -21,7 +21,6 @@ import {
 import { decodePreviousUpdateAttempt, previousAttemptPackageManagerBusy, previousAttemptStopped, type PreviousUpdateAttempt } from '../lib/systemUpdateOutcome';
 import { SystemUpdateSteps, systemUpdateStepsAnnouncement } from './SystemUpdateSteps';
 import { BuildCommit } from './BuildCommit';
-import { PanelUpdateAutoCheck } from './PanelUpdateAutoCheck';
 import {
     clockTime,
     panelUpdateDiscoveryState,
@@ -35,6 +34,10 @@ import {
     type DiscoveryRefresh,
     type PanelUpdateDiscovery,
 } from '../lib/panelUpdateDiscovery';
+
+// alpha.132: the automatic-check switch and its save bar, fetched with Settings'
+// card only (the licence page's card has no switch).
+const PanelUpdateAutoCheck = lazy(() => import('./PanelUpdateAutoCheck').then((module) => ({ default: module.PanelUpdateAutoCheck })));
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
@@ -929,7 +932,7 @@ export function PanelUpdateCard({ activation = false }: { activation?: boolean }
             {/* The owner's switch lives in Settings; the licence page offers
                 the update only (a locked panel accepts no setting change).
                 Anahtar Ayarlar'dadir; lisans sayfasi yalniz guncellemeyi sunar. */}
-            {!activation && <PanelUpdateAutoCheck stored={stored} />}
+            {!activation && <Suspense fallback={null}><PanelUpdateAutoCheck stored={stored} /></Suspense>}
         </section>
     );
 }

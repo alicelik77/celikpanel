@@ -9,14 +9,13 @@ import type { ApiError } from '../lib/apiError';
 import { apiErrorActionLabel, refusalText, refusalToast } from '../lib/apiError';
 import { countText, invalidate, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import {
-    NEW_PLAN, OFFERED_URL, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateIn, offeredStateOf,
+    NEW_PLAN, RESELLER_PLANS_URL, applyOffers, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateOf,
     permissionGroups, permissionIdsOf, permissionTopicKey, planBody, rightsSummary, selectionOf, sendRights, softwareGroupKey, softwareGroupName,
-    type EditedPlan, type Numbers, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
+    type EditedPlan, type Numbers, type OffersApplied, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
-import { confirmAction, type OperationReport, type OperationStep } from '../lib/confirmAction';
-import { APP_CATALOG_URL, appText, decodeCatalog as decodeAppCatalog } from '../lib/appCatalog';
+import { confirmAction } from '../lib/confirmAction';
 import { useDraft } from './kit/save/draft';
 import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
 import { useSaveWords } from './kit/save/words';
@@ -381,6 +380,42 @@ function RowLink({ to, label }: { to: string; label: string }) {
 }
 
 /**
+ * What the applications' part (OfferedAppsSection.tsx, its own chunk) hands
+ * the Offered tab's one save bar: its unsaved count and state, and its save,
+ * discard and check. Stable functions; a new object only when a value changes.
+ */
+export interface OfferedPart {
+    count: number;
+    saving: boolean;
+    /** Save is off until the list has been read again. */
+    blocked: boolean;
+    unknown: boolean;
+    held: boolean;
+    checking: boolean;
+    save: () => Promise<unknown>;
+    reset: () => void;
+    check: () => void;
+}
+
+/** What a save of offers did not do, beside the list, with each refusal's own fix. */
+function OffersReport({ report, className = '' }: { report: OffersApplied | null; className?: string }) {
+    const { t } = useI18n();
+    const navigate = useNavigate();
+    if (!report || report.failed.length === 0) return null;
+    return (
+        <div className={`rounded-lg border border-danger/40 bg-danger/5 px-3 py-2 text-sm leading-6 text-fg ${className}`} role="alert" data-offered-report="">
+            {report.saved.length > 0 && <p>{t('rights.offered.savedSome', { what: report.saved.join(', ') })}</p>}
+            {report.failed.map((line) => (
+                <p key={line.text} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="min-w-0 max-w-[75ch]">{line.text}</span>
+                    {line.fix && <Button type="button" onClick={() => navigate(line.fix!.action!)}>{apiErrorActionLabel(line.fix, t)}</Button>}
+                </p>
+            ))}
+        </div>
+    );
+}
+
+/**
  * What the administrator offers on this server: every permission and every
  * installed piece of software, each shown or hidden for resellers and
  * customers. Hiding changes nothing that runs; the item can no longer be
@@ -395,134 +430,55 @@ function RowLink({ to, label }: { to: string; label: string }) {
  * topics as on every rights screen, sorted in the reader's language.
  *
  * alpha.132 (owner, 8 Nov 2026): ticking no longer saves. The permissions,
- * the software and the applications below are one list of offers (one
- * endpoint, one kind of change), so they are one draft with one save bar at
- * the end of the list; the server's limits further down are a separate
- * setting with their own bar. Save sends one request per changed item, one
- * after another; what the server did not take is named with its reason and
- * stays a marked change. Offering an application asks first, with its risk.
+ * the software and the applications are one list with one save bar under
+ * it. The applications stay their own chunk with their own read and draft
+ * (the catalogue module stays off the Users route) and hand the bar their
+ * count and save (OfferedPart). The server's limits further down are a
+ * separate setting with their own bar. Save sends one request per changed
+ * item; what the server did not take is named with its reason and stays a
+ * marked change; offering an application asks first, with its risk.
  */
 export function OfferedItemsTab() {
     const { t, locale } = useI18n();
     const say = useSaveWords();
     const catalog = useGrantorCatalog();
-    // The applications are read here so that they are part of the one draft;
-    // their long descriptions stay in their own chunk.
-    const apps = useRemote(APP_CATALOG_URL, decodeAppCatalog);
     const rightsView = lastKnown(catalog.remote)?.value;
-    const appList = lastKnown(apps.remote)?.value;
     const known = useMemo(() => {
-        if (!rightsView && !appList) return null;
+        if (!rightsView) return null;
         const offers: Record<string, boolean> = {};
-        if (rightsView) {
-            for (const id of permissionIdsOf(rightsView)) offers[`permission:${id}`] = rightsView.permissions.find((item) => item.id === id)?.granted ?? false;
-            for (const item of rightsView.software) if (!item.id.startsWith('app:') && !offeredInCatalog(item.id)) offers[item.id] = item.granted;
-        }
-        for (const app of appList ?? []) offers[app.offering_id] = app.offered;
+        for (const id of permissionIdsOf(rightsView)) offers[`permission:${id}`] = rightsView.permissions.find((item) => item.id === id)?.granted ?? false;
+        for (const item of rightsView.software) if (!item.id.startsWith('app:') && !offeredInCatalog(item.id)) offers[item.id] = item.granted;
         return offers;
-    }, [rightsView, appList]);
+    }, [rightsView]);
     const draft = useDraft<Record<string, boolean>>(known);
-    const navigate = useNavigate();
-    // What the last save did not do (with a refusal's own fix), and what it did.
-    const [report, setReport] = useState<{ saved: string[]; failed: { text: string; fix?: ApiError }[] } | null>(null);
-    const appOf = (id: string) => appList?.find((app) => app.offering_id === id);
-    const nameOf = (id: string) => appOf(id)?.name ?? offeredLabel(id, t);
-    // Save is off while a list a change was made on is an earlier answer.
-    const stale = draft.changed.some((id) => (appOf(id) ? apps.remote.state !== 'known' : catalog.remote.state !== 'known'));
+    const [report, setReport] = useState<OffersApplied | null>(null);
+    // The applications' part (its own chunk) once it has been fetched.
+    const [apps, setApps] = useState<OfferedPart | null>(null);
 
-    // Sends the changes one by one, then reads the lists again; with a
-    // progress window (`report`) each item is a step.
-    const apply = async (entries: [string, boolean][], report?: OperationReport) => {
-        const steps: OperationStep[] = [
-            ...entries.map(([id, offered]): OperationStep => ({ id, label: t(offered ? 'rights.offered.stepOffer' : 'rights.offered.stepHide', { name: nameOf(id) }), state: 'pending' })),
-            { id: 'read', label: t('rights.offered.stepRead'), state: 'pending' },
-        ];
-        const step = (at: number, next: Partial<OperationStep>) => {
-            steps[at] = { ...steps[at], ...next };
-            report?.steps(steps.map((item) => ({ ...item })));
-        };
-        const saved: string[] = [];
-        const failed: { text: string; fix?: ApiError }[] = [];
-        const notSaved = (id: string, reason: string, fix?: ApiError) => failed.push({ text: t('rights.offered.notSaved', { what: nameOf(id), reason }), fix: fix?.action ? fix : undefined });
-        const still = (id: string, offered: boolean) => failed.push({ text: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: nameOf(id) }) });
-        const unsure: [number, string, boolean][] = [];
-        let lost = false;
-        for (const [at, [id, offered]] of entries.entries()) {
-            step(at, { state: 'running', since: Date.now() });
-            const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: id, offered });
-            if (result.kind === 'lost') {
-                lost = true;
-                notSaved(id, t('common.resultUnknown'));
-                step(at, { state: 'failed', note: t('common.resultUnknown') });
-            } else if (result.kind === 'refused') {
-                notSaved(id, refusalText(readableRefusal(result.error, t), t, 'rights.offered.failed'), result.error);
-                step(at, { state: 'failed', note: failed[failed.length - 1].text });
-            } else {
-                // The answer names the item's state now; an older answer
-                // without it is checked against the lists read again below.
-                const now = offeredStateIn(result.body, id);
-                if (now === undefined) unsure.push([at, id, offered]);
-                else if (now !== offered) {
-                    still(id, offered);
-                    step(at, { state: 'failed', note: failed[failed.length - 1].text });
-                } else {
-                    saved.push(nameOf(id));
-                    step(at, { state: 'done' });
-                }
-            }
-        }
-        // Every chooser, plan and account screen follows the offer.
-        const read = steps.length - 1;
-        step(read, { state: 'running', since: Date.now() });
-        invalidate('rights', 'components');
-        const [rights, applications] = await Promise.all([catalog.retry(), apps.retry()]);
-        step(read, { state: 'done' });
-        for (const [at, id, offered] of unsure) {
-            const now = appOf(id)
-                ? (applications.state === 'known' ? applications.value.find((entry) => entry.offering_id === id)?.offered : undefined)
-                : (rights.state === 'known' ? offeredStateOf(rights.value, id) : undefined);
-            if (now === undefined) {
-                lost = true;
-                notSaved(id, t('common.resultUnknown'));
-                step(at, { state: 'failed', note: t('common.resultUnknown') });
-            } else if (now !== offered) {
-                still(id, offered);
-                step(at, { state: 'failed', note: failed[failed.length - 1].text });
-            } else {
-                saved.push(nameOf(id));
-                step(at, { state: 'done' });
-            }
-        }
-        return { saved, failed, lost };
-    };
-
-    const save = () => void draft.save(async (changes) => {
+    const saveItems = () => draft.save(async (changes) => {
         setReport(null);
-        const entries = Object.entries(changes) as [string, boolean][];
-        const offeredApps = entries.filter(([id, offered]) => offered && appOf(id)).map(([id]) => appOf(id)!);
-        const done: { result?: Awaited<ReturnType<typeof apply>> } = {};
-        if (offeredApps.length > 0) {
-            // Offering an application asks first, with its risk; the changes
-            // then run in the progress window.
-            await confirmAction({
-                message: offeredApps.map((app) => t('appOffer.confirm', { name: app.name, risk: appText(app, 'risk', locale) })).join('\n\n'),
-                confirmLabel: say('save'),
-                progressTitle: t('rights.offered.applying'),
-                action: async (report) => {
-                    const result = await apply(entries, report);
-                    done.result = result;
-                    if (result.failed.length === 0) return { state: 'done' };
-                    return { state: result.lost ? 'unknown' : 'failed', reason: `${result.failed.map((line) => line.text).join(' ')} ${t('rights.offered.next')}` };
-                },
-            });
-            // Declined: nothing was sent and the changes stay.
-            if (!done.result) return 'refused';
-        } else done.result = await apply(entries);
-        const { saved, failed, lost } = done.result;
-        if (failed.length === 0) return 'saved';
-        setReport({ saved, failed });
-        return lost ? 'unknown' : 'refused';
+        const result = await applyOffers(Object.entries(changes) as [string, boolean][], {
+            t,
+            nameOf: (id) => offeredLabel(id, t),
+            reread: async () => {
+                // Every chooser, plan and account screen follows the offer.
+                invalidate('rights', 'components');
+                const reread = await catalog.retry();
+                return (id) => (reread.state === 'known' ? offeredStateOf(reread.value, id) : undefined);
+            },
+        });
+        if (result.failed.length === 0) return 'saved';
+        setReport(result);
+        return result.lost ? 'unknown' : 'refused';
     });
+    // One bar for the whole list: the permissions and software, then the
+    // applications (which ask first when one is being offered).
+    const save = async () => {
+        if (draft.count > 0) await saveItems();
+        if (apps && apps.count > 0) await apps.save();
+    };
+    const itemsUnknown = draft.outcome === 'unknown';
+    const unknown = itemsUnknown || apps?.unknown;
 
     const row = (item: string, state: RightsItem | undefined) => {
         const name = offeredLabel(item, t);
@@ -606,29 +562,23 @@ export function OfferedItemsTab() {
                         </section>
                     </div>
                 )}
+                <OffersReport className="mt-4" report={report} />
                 <Suspense fallback={<Checking className="mt-6" label={t('apps.checking')} />}>
-                    <OfferedAppsSection catalog={apps} draft={draft} />
+                    <OfferedAppsSection onPart={setApps} />
                 </Suspense>
-                {report && (
-                    <div className="mt-4 rounded-lg border border-danger/40 bg-danger/5 px-3 py-2 text-sm leading-6 text-fg" role="alert" data-offered-report="">
-                        {report.saved.length > 0 && <p>{t('rights.offered.savedSome', { what: report.saved.join(', ') })}</p>}
-                        {report.failed.map((line) => (
-                            <p key={line.text} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                <span className="min-w-0 max-w-[75ch]">{line.text}</span>
-                                {line.fix && <Button type="button" onClick={() => navigate(line.fix!.action!)}>{apiErrorActionLabel(line.fix, t)}</Button>}
-                            </p>
-                        ))}
-                    </div>
-                )}
                 <SaveBar
-                    count={draft.count}
-                    saving={draft.saving}
-                    blockedBy={stale ? say('stale') : undefined}
-                    unknown={draft.outcome === 'unknown'
-                        ? { held: draft.held, checking: catalog.reading || apps.reading, onCheck: () => { void catalog.retry(); void apps.retry(); } }
+                    count={draft.count + (apps?.count ?? 0)}
+                    saving={draft.saving || !!apps?.saving}
+                    blockedBy={(draft.count > 0 && catalog.remote.state !== 'known') || apps?.blocked ? say('stale') : undefined}
+                    unknown={unknown
+                        ? {
+                            held: (itemsUnknown && draft.held) || !!apps?.held,
+                            checking: catalog.reading || !!apps?.checking,
+                            onCheck: () => { void catalog.retry(); apps?.check(); },
+                        }
                         : undefined}
-                    onSave={save}
-                    onDiscard={() => { setReport(null); draft.reset(); }}
+                    onSave={() => void save()}
+                    onDiscard={() => { setReport(null); draft.reset(); apps?.reset(); }}
                 />
             </div>
             {/* alpha.128: the server's limits of site settings, every key. */}

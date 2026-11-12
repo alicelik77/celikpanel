@@ -118,8 +118,9 @@ const autoCheckURL = compileURL('../src/components/PanelUpdateAutoCheck.tsx', {
     './kit/save/SaveBar': compileURL('../src/components/kit/save/SaveBar.tsx', { '../../../i18n': stubURL, '../../ui': stubURL, './words': wordsURL }),
     './kit/save/words': wordsURL,
 });
-const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpdateCard.tsx', {
-    './PanelUpdateAutoCheck': autoCheckURL,
+// The card fetches the switch lazily: its import is pointed at the real part.
+const lazyPart = (url, specifier, target) => moduleURL(Buffer.from(url.slice(url.indexOf(',') + 1), 'base64').toString().split(`import('${specifier}')`).join(`import('${target}')`));
+const { PanelUpdateCard } = await import(lazyPart(compileURL('../src/components/PanelUpdateCard.tsx', {
     'lucide-react': stubURL, './ui': stubURL, '../i18n': stubURL,
     '../lib/apiError': moduleURL('export async function readApiError() { return {}; } export function apiErrorText() { return "api-error"; }'),
     '../lib/panelUpdateAdmission': admissionURL,
@@ -128,7 +129,7 @@ const { PanelUpdateCard } = await import(compileURL('../src/components/PanelUpda
     './SystemUpdateSteps': moduleURL('export function SystemUpdateSteps() { return null; } export function systemUpdateStepsAnnouncement() { return ""; }'),
     './BuildCommit': stubURL,
     '../lib/panelUpdateDiscovery': discoveryURL,
-}));
+}), './PanelUpdateAutoCheck', autoCheckURL));
 
 const CURRENT = { version: 'v0.1.0-alpha.95', commit: '5f3cb1a2fa336c529740a20e9a543b8ac086dc8d' };
 const TARGET = {

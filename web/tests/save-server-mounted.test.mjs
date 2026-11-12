@@ -48,9 +48,12 @@ own['/BlockingProblems'] = shared.compile('components/BlockingProblems.tsx', own
 own['/RightsSetEditor'] = shared.compile('components/RightsSetEditor.tsx', own);
 own['/AccountRights'] = shared.compile('components/AccountRights.tsx', own);
 const { OfferedVersionsCard } = await import(shared.compile('components/OfferedVersionsCard.tsx', own));
-// The Offered tab with its real applications part (the fixture quiets lazy parts).
+const planRightsURL = shared.compile('components/PlanRights.tsx', own);
+const { OfferedItemsTab, PlanEditor } = await import(planRightsURL);
+// The Offered tab with its real applications part (its own chunk, which the
+// fixture quiets in every screen).
 const quietApps = dataModule('export const OfferedAppsSection = () => null;');
-const { OfferedItemsTab, PlanEditor } = await import(replaceLazyImport(shared.compile('components/PlanRights.tsx', own), quietApps, shared.compile('components/OfferedAppsSection.tsx', own)));
+const { OfferedItemsTab: OfferedTabWithApps } = await import(replaceLazyImport(planRightsURL, quietApps, shared.compile('components/OfferedAppsSection.tsx', own)));
 const { NotificationPreferencesCard, NotificationSettingsCard } = await import(shared.compile('components/Notifications.tsx', own));
 
 const answer = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -147,51 +150,79 @@ test('offered versions: a lost answer says the result is not known and sends not
 const permissions = rights.PERMISSION_IDS.map((id) => ({ id, granted: id !== 'ssh' }));
 const catalog = { scope: 'administrator', rights: { subscription_id: 0, state: 'unlimited', unrestricted: false, own: { all_permissions: true, all_software: true, permissions: [], software: [] }, permissions, software: [{ id: 'component:mariadb', granted: true }] } };
 
-test('the Offered tab: one bar for permissions and applications; offering an application asks with its risk; a refusal stays marked with its fix', async () => {
-  let joomla = false;
+test('the Offered tab: ticking sends nothing; Save sends each change once; a refusal stays marked with its fix', async () => {
+  let mariadb = true;
   const view = await mount(React.createElement(OfferedItemsTab), ({ url, method, body }) => {
-    if (url.startsWith('/api/v1/rights/catalog')) return answer(200, catalog);
-    if (url === '/api/v1/apps') return answer(200, { apps: [{ id: 'joomla', name: 'Joomla', offered: joomla, risk: 'Extensions need care.' }] });
+    if (url.startsWith('/api/v1/rights/catalog')) return answer(200, { ...catalog, rights: { ...catalog.rights, software: [{ id: 'component:mariadb', granted: mariadb }] } });
     if (method === 'PUT' && body.offering_id === 'permission:ssh') return answer(409, { error: 'no', code: 'VERSION_WITHDRAWN', action: '/components/php-fpm' });
-    if (method === 'PUT') { joomla = body.offered; return answer(200, { item: { id: body.offering_id, offered: body.offered } }); }
+    if (method === 'PUT') { mariadb = body.offered; return answer(200, { item: { id: body.offering_id, offered: body.offered } }); }
     return answer(404, { error: 'none' });
   });
   try {
-    const ssh = () => view.tree.root.findByProps({ 'data-offered-item': 'permission:ssh' }).findByType('input');
-    const joomlaBox = () => view.tree.root.findByProps({ 'data-offered-app': 'joomla' }).findByType('input');
-    await tick(ssh(), true);
-    await tick(joomlaBox(), true);
+    const box = (item) => view.tree.root.findByProps({ 'data-offered-item': item }).findByType('input');
+    await tick(box('permission:ssh'), true);
+    await tick(box('component:mariadb'), false);
     assert.equal(view.writes().length, 0, 'ticking saved');
-    assert.equal(view.tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined).length, 1, 'one save bar for the whole list');
-    assert.ok(view.text().includes('2 changes not saved.'));
-    // Declined: nothing is sent and the changes stay.
-    const asked = [];
-    globalThis.confirm = (text) => { asked.push(text); return false; };
-    await view.press(view.save());
-    assert.equal(view.writes().length, 0);
-    assert.ok(asked[0].includes('appOffer.confirm') && asked[0].includes('Extensions need care.'), asked[0]);
     assert.equal(view.marks(), 2);
-    globalThis.confirm = () => true;
-    globalThis.operationSteps = [];
-    globalThis.operationEnds = [];
+    assert.ok(view.text().includes('2 changes not saved.'));
     await view.press(view.save());
     assert.deepEqual(view.writes().map((call) => call.body), [
       { offering_id: 'permission:ssh', offered: true },
-      { offering_id: 'app:joomla', offered: true },
+      { offering_id: 'component:mariadb', offered: false },
     ]);
-    // Confirmed, the changes run in the progress window, one step each.
-    assert.deepEqual(globalThis.operationSteps.at(-1).map((step) => [step.id, step.state]), [['permission:ssh', 'failed'], ['app:joomla', 'done'], ['read', 'done']]);
-    assert.equal(globalThis.operationEnds.at(-1).state, 'failed');
-    assert.ok(globalThis.operationEnds.at(-1).reason.includes('rights.offered.next'));
     const report = view.tree.root.findByProps({ 'data-offered-report': '' });
-    assert.ok(textOf(report).includes('rights.offered.savedSome{"what":"Joomla"}'), textOf(report));
+    assert.ok(textOf(report).includes('rights.offered.savedSome'), textOf(report));
     assert.ok(textOf(report).includes('rights.offered.notSaved'));
     // The refusal's own fix is offered beside it.
     await view.press(report.findAllByType('button')[0]);
     assert.deepEqual(globalThis.saveFixture.navigated, ['/components/php-fpm']);
-    assert.equal(ssh().props.checked, true, 'the refused item keeps the person’s choice');
-    assert.equal(joomlaBox().props.checked, true);
+    assert.equal(box('permission:ssh').props.checked, true, 'the refused item keeps the person’s choice');
+    assert.equal(box('component:mariadb').props.checked, false);
     assert.equal(view.marks(), 1, 'only the refused item is still a change');
+    await view.press(view.discard());
+    assert.equal(box('permission:ssh').props.checked, false);
+    assert.equal(view.writes().length, 2);
+  } finally {
+    await view.done();
+  }
+});
+
+test('offered applications share the tab’s one bar; offering asks with the risk, then runs in the progress window; declining sends nothing', async () => {
+  let joomla = false;
+  let ssh = false;
+  const view = await mount(React.createElement(OfferedTabWithApps), ({ url, method, body }) => {
+    if (url.startsWith('/api/v1/rights/catalog')) return answer(200, { ...catalog, rights: { ...catalog.rights, permissions: permissions.map((item) => (item.id === 'ssh' ? { ...item, granted: ssh } : item)) } });
+    if (url === '/api/v1/apps') return answer(200, { apps: [{ id: 'joomla', name: 'Joomla', offered: joomla, risk: 'Extensions need care.' }] });
+    if (method === 'PUT' && body.offering_id === 'app:joomla') { joomla = body.offered; return answer(200, { item: { id: body.offering_id, offered: body.offered } }); }
+    if (method === 'PUT') { ssh = body.offered; return answer(200, { item: { id: body.offering_id, offered: body.offered } }); }
+    return answer(404, { error: 'none' });
+  });
+  try {
+    const app = () => view.tree.root.findByProps({ 'data-offered-app': 'joomla' }).findByType('input');
+    const sshBox = () => view.tree.root.findByProps({ 'data-offered-item': 'permission:ssh' }).findByType('input');
+    await tick(app(), true);
+    await tick(sshBox(), true);
+    assert.equal(view.writes().length, 0, 'ticking saved');
+    assert.equal(view.tree.root.findAll((node) => node.type === 'button' && node.props['data-save'] !== undefined).length, 1, 'one save bar for the whole list');
+    assert.ok(view.text().includes('2 changes not saved.'), view.text());
+    // Declined: the permission is saved, the application is not sent and stays marked.
+    const asked = [];
+    globalThis.confirm = (text) => { asked.push(text); return false; };
+    await view.press(view.save());
+    assert.deepEqual(view.writes().map((call) => call.body), [{ offering_id: 'permission:ssh', offered: true }]);
+    assert.ok(asked[0].includes('appOffer.confirm') && asked[0].includes('Extensions need care.'), asked[0]);
+    assert.equal(view.marks(), 1, 'the declined application is no longer marked');
+    assert.ok(view.text().includes('1 change not saved.'));
+    globalThis.confirm = () => true;
+    globalThis.operationSteps = [];
+    globalThis.operationEnds = [];
+    await view.press(view.save());
+    assert.deepEqual(view.writes().map((call) => call.body)[1], { offering_id: 'app:joomla', offered: true });
+    assert.deepEqual(globalThis.operationSteps.at(-1).map((step) => [step.id, step.state]), [['app:joomla', 'done'], ['read', 'done']]);
+    assert.equal(globalThis.operationEnds.at(-1).state, 'done');
+    assert.equal(app().props.checked, true);
+    assert.equal(view.marks(), 0);
+    assert.equal(view.save(), undefined);
   } finally {
     await view.done();
   }
