@@ -338,7 +338,6 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mailpolicy.rate': 'Giden posta hızını sınırla',
     'mailpolicy.rateHint': 'Bir hesabın ne kadar hızlı gönderebileceğini sınırlar; ele geçirilmiş bir posta kutusu spam patlatıp sunucuyu (ve domain’lerini) askıya aldıramaz.',
     'mailpolicy.rateLabel': 'Gönderici başına dakikada en fazla mesaj',
-    'mailpolicy.save': 'Politikayı kaydet',
     'mailpolicy.saved': 'Posta politikası uygulandı.',
     'mailpolicy.unknown': 'Geçerli posta politikası sunucudan okunamadı; bu yüzden ayarlar gösterilmiyor ve buradan kayıt yapılamıyor. Hiçbir şey değiştirilmedi. Tekrar deneyin; sorun sürerse sunucuda Postfix’in çalıştığını denetleyin (sudo systemctl status postfix).',
     'mailpolicy.stale': 'Posta politikası bu sayfa yüklendikten sonra sunucuda değişti; bu yüzden hiçbir şey kaydedilmedi. Girdikleriniz aşağıda duruyor. Geçerli ayarları yeniden yükleyin, sonra değişikliğinizi tekrar yapın.',

@@ -346,7 +346,6 @@ export const enMailDatabasesScreens = {
     'mailpolicy.rate': 'Limit outgoing mail rate',
     'mailpolicy.rateHint': 'Caps how fast one account can send, so a compromised mailbox cannot blast spam and get the server (and its domains) suspended.',
     'mailpolicy.rateLabel': 'Max messages per minute, per sender',
-    'mailpolicy.save': 'Save policy',
     'mailpolicy.saved': 'Mail policy applied.',
     'mailpolicy.unknown': 'The current mail policy could not be read from the server, so no settings are shown and nothing can be saved here. Nothing was changed. Try again; if it keeps failing, check on the server that Postfix is running (sudo systemctl status postfix).',
     'mailpolicy.stale': 'The mail policy changed on the server after this page loaded, so nothing was saved. What you entered is still shown below. Reload the current settings, then make your change again.',

@@ -12,31 +12,15 @@ import { fileURLToPath } from 'node:url';
 // its onChange or onClick, directly or through a function of the same file
 // (followed three calls deep).
 //
-// The controls that still did so when the rule was written are listed below
-// with where they were. The list may only shrink: a control that no longer
-// sends is a stale entry and fails the test too, so whoever converts one
-// removes its line. The lanes SAVE-DOMAIN and SAVE-SERVER of alpha.132 empty it.
+// When the rule was written (alpha.132) a list of the controls that still
+// saved on change was kept here; the lanes of alpha.132 converted every one of
+// them, so the rule now holds with no exceptions.
 //
 // Hiçbir ayar tıklanarak kaydedilmez: onay kutusu, anahtar, seçim düğmesi ya da
 // açılır liste yalnız taslağı değiştirir. Bu test, onChange/onClick'ten
-// doğrudan sunucuya yazan denetimi yakalar. Aşağıdaki liste yalnız küçülebilir.
+// doğrudan sunucuya yazan denetimi yakalar; istisna yoktur.
 
 const components = fileURLToPath(new URL('../src/components/', import.meta.url));
-
-// file (under src/components) → the handler expressions that still save on
-// change there, each with how many controls use it.
-const stillSavingOnChange = {
-    // :365 offered item; `change` :324
-    'PlanRights.tsx': { 'change(item, e.target.checked)': 1 },
-    // :71 offered application
-    'OfferedAppsSection.tsx': { 'change(app, e.target.checked)': 1 },
-    // :94 offered version line
-    'OfferedVersionsCard.tsx': { 'change(line, event.target.checked)': 1 },
-    // :134 PHP extension on/off (`toggleExt` :61)
-    'PHPManagement.tsx': { 'toggleExt(ext)': 1 },
-    // :973 automatic update check (`saveAutoCheck` :555)
-    'PanelUpdateCard.tsx': { 'saveAutoCheck(event.currentTarget.checked)': 1 },
-};
 
 const files = (dir) => readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -124,12 +108,14 @@ function offenders() {
     return found;
 }
 
-test('no settings control saves on change, apart from the listed ones that are still being converted', () => {
+test('no settings control saves on change', () => {
     const found = offenders();
-    const counted = Object.fromEntries(Object.entries(found).map(([file, handlers]) => [file, Object.fromEntries(Object.entries(handlers).map(([key, lines]) => [key, lines.length]))]));
     const where = Object.entries(found).flatMap(([file, handlers]) => Object.entries(handlers).map(([key, lines]) => `${file}:${lines.join(',')} ${key}`));
-    assert.deepEqual(counted, stillSavingOnChange,
-        `A settings control sends to the server from onChange/onClick (use useDraft + SaveBar from components/kit/save), or a listed one was converted and its line must go.\nFound:\n${where.join('\n')}`);
+    assert.deepEqual(where, [],
+        `A settings control sends to the server from onChange/onClick; make it change a draft (useDraft + SaveBar from components/kit/save).
+Found:
+${where.join('
+')}`);
 });
 
 test('the sweep sees a control that saves on change, and not one that only edits a draft', () => {

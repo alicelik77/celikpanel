@@ -5,6 +5,7 @@ import { Checking, CouldNotCheck, inputClass } from './ui';
 import { useRemote } from '../lib/remote';
 import type { EditedPlan, PlanKind } from '../lib/rights';
 import { unitText } from '../lib/settingLimits';
+import { ChangedMark, changedRowClass } from './kit/save/SaveBar';
 
 // The plan form's limits of site settings (alpha.128, docs/SITE-LIMITS.md):
 // one number per key, empty = "up to the level above" (the server's limit for
@@ -30,8 +31,13 @@ function decodeLimits(raw: unknown): { scope: string; limits: GrantorLimit[] } {
     return raw as { scope: string; limits: GrantorLimit[] };
 }
 
-export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = false }: { kind: PlanKind; plan: EditedPlan; onPlan: (next: EditedPlan) => void; idPrefix: string; ceilingsOff?: boolean }) {
+export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = false, base }: {
+    kind: PlanKind; plan: EditedPlan; onPlan: (next: EditedPlan) => void; idPrefix: string; ceilingsOff?: boolean;
+    /** alpha.132: the plan as it was opened; given, what differs from it is marked as an unsaved change. */
+    base?: EditedPlan;
+}) {
     const { t } = useI18n();
+    const marked = (changed: boolean) => (base && changed ? `-mx-2 rounded-r px-2 ${changedRowClass}` : '');
     const grantor = useRemote(ceilingsOff ? null : '/api/v1/rights/setting-limits', decodeLimits);
     const ceilings = plan.ceilings ?? {};
     const setCeiling = (key: string, raw: string) => {
@@ -60,8 +66,8 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                             const outside = value !== undefined && (value < limit.min || value > limit.max ||
                                 (limit.ceiling !== null && (limit.floor ? value < limit.ceiling : value > limit.ceiling)));
                             return (
-                                <label key={limit.key} htmlFor={id} className="block">
-                                    <span className="mb-1 block text-xs text-fg-muted">{t(`limits.key.${limit.key}` as TranslationKey)}</span>
+                                <label key={limit.key} htmlFor={id} className={`block ${marked(value !== (base?.ceilings ?? {})[limit.key])}`}>
+                                    <span className="mb-1 block text-xs text-fg-muted">{t(`limits.key.${limit.key}` as TranslationKey)}{base && value !== (base.ceilings ?? {})[limit.key] && <ChangedMark />}</span>
                                     <input id={id} type="number" min={limit.min} max={limit.ceiling ?? limit.max} value={value ?? ''}
                                         placeholder={t('limits.plan.upTo', { value: above })} onChange={(e) => setCeiling(limit.key, e.target.value)}
                                         className={inputClass} aria-invalid={outside || undefined} />
@@ -74,17 +80,17 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
             )}
             {kind === 'customer' ? (
                 <div className="mt-4">
-                    <p className="mb-1 text-xs font-semibold text-fg">{t('limits.plan.overuse.title')}</p>
+                    <p className="mb-1 text-xs font-semibold text-fg">{t('limits.plan.overuse.title')}{base && policy !== (base.overuse_policy || 'close') && <ChangedMark />}</p>
                     {(['close', 'notify'] as const).map((option) => (
-                        <label key={option} className="flex items-start gap-2 py-1 text-sm text-fg">
+                        <label key={option} className={`flex items-start gap-2 py-1 text-sm text-fg ${marked(policy === option && policy !== (base?.overuse_policy || 'close'))}`}>
                             <input type="radio" name={`${idPrefix}-overuse`} checked={policy === option} onChange={() => onPlan({ ...plan, overuse_policy: option })} className="mt-1" />
                             <span>{t(`limits.plan.overuse.${option}` as TranslationKey)}</span>
                         </label>
                     ))}
                     <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {(['notify_percent_disk', 'notify_percent_traffic'] as const).map((field) => (
-                            <label key={field} className="block">
-                                <span className="mb-1 block text-xs text-fg-muted">{t(field === 'notify_percent_disk' ? 'limits.plan.notifyDisk' : 'limits.plan.notifyTraffic')}</span>
+                            <label key={field} className={`block ${marked((plan[field] ?? 80) !== (base?.[field] ?? 80))}`}>
+                                <span className="mb-1 block text-xs text-fg-muted">{t(field === 'notify_percent_disk' ? 'limits.plan.notifyDisk' : 'limits.plan.notifyTraffic')}{base && (plan[field] ?? 80) !== (base[field] ?? 80) && <ChangedMark />}</span>
                                 <input type="number" min={50} max={95} value={plan[field] ?? 80} className={inputClass}
                                     onChange={(e) => onPlan({ ...plan, [field]: Math.min(95, Math.max(50, Number(e.target.value) || 80)) })} />
                             </label>
@@ -94,9 +100,9 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                 </div>
             ) : (
                 <div className="mt-4">
-                    <p className="mb-1 text-xs font-semibold text-fg">{t('limits.plan.overselling.title')}</p>
+                    <p className="mb-1 text-xs font-semibold text-fg">{t('limits.plan.overselling.title')}{base && overselling !== (base.overselling || 'allowed') && <ChangedMark />}</p>
                     {(['allowed', 'not_allowed'] as const).map((option) => (
-                        <label key={option} className="flex items-start gap-2 py-1 text-sm text-fg">
+                        <label key={option} className={`flex items-start gap-2 py-1 text-sm text-fg ${marked(overselling === option && overselling !== (base?.overselling || 'allowed'))}`}>
                             <input type="radio" name={`${idPrefix}-overselling`} checked={overselling === option} onChange={() => onPlan({ ...plan, overselling: option })} className="mt-1" />
                             <span>{t(`limits.plan.overselling.${option}` as TranslationKey)}</span>
                         </label>

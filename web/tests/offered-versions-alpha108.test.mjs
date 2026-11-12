@@ -52,11 +52,12 @@ test('the control sits on each runtime’s own Manage page, not in the versions 
   assert.match(read('components/ComponentDetail.tsx'), /serviceId === 'node' && record\?\.is_installed === true[\s\S]{0,200}<OfferedVersionsCard component="node"/);
   assert.doesNotMatch(read('components/ServiceList.tsx'), /OfferedVersionsCard/);
   const card = read('components/OfferedVersionsCard.tsx');
-  // One request per change; after it, the server's list is read again and a
-  // lost answer is never sent a second time.
+  // One request per changed line, sent by Save (alpha.132); after it, the
+  // server's list is read again and a lost answer is never sent a second time.
   assert.match(card, /method: 'PUT'/);
   assert.match(card, /await handle\.retry\(\);/);
-  assert.match(card, /setFailure\(t\('life\.offer\.lost'\)\)/);
+  assert.match(card, /reason: t\('common\.resultUnknown'\)/);
+  assert.match(card, /return lost \? 'unknown' : 'refused';/);
 });
 
 test('a site’s own pickers keep its version and say when it is no longer offered', () => {
