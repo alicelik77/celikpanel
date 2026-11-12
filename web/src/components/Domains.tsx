@@ -344,11 +344,25 @@ export function Domains() {
     // saved state while it waits; it never sends a second delete.
     // Soru alan adini ve onunla gideni soyler; onaydan sonra ayni pencere
     // silmenin adimlarini kilitli gosterir. Beklerken yalniz okur.
+    // What goes and what stays is what the server's deletion does
+    // (cmd/panel/domain_handlers.go handleDeleteDomain, alpha.133): the site
+    // with its files and FTP logins, mail, CelikPanel's DNS records,
+    // certificates and backup schedules go; linked databases stay on their
+    // engine and backups stay where they are, both out of the panel's sight;
+    // stored mail is moved aside. Kinds only: the list knows no counts. The
+    // name is typed before Delete turns on (owner, alpha.132 proposal).
+    // Silmenin götürdüğü ve bıraktığı, sunucunun yaptığıdır; ad yazılır.
+    const deleteLists = () => ({
+        lost: [t('domains.delete.lost.site'), t('domains.delete.lost.mail'), t('domains.delete.lost.dns'), t('domains.delete.lost.schedule')],
+        kept: [t('domains.delete.kept.databases'), t('domains.delete.kept.backups'), t('domains.delete.kept.mail'), t('domains.delete.kept.dns')],
+    });
     const handleDelete = async (id: number, name: string) => {
         if (!listCurrent || beingDeleted(id)) return;
         await confirmAction({
             title: t('domains.deleteTitle', { name }),
             message: t('domains.deleteWhat'),
+            ...deleteLists(),
+            typedName: { value: name, label: t('domains.delete.typeName', { name }), ignoreCase: true },
             confirmLabel: t('common.delete'),
             tone: 'danger',
             progressTitle: t('domains.deletingTitle', { name }),
@@ -369,6 +383,7 @@ export function Domains() {
         await confirmAction({
             title: t('domains.bulkDeleteTitle', { n: rows.length }),
             message: t('domains.confirmBulkDelete', { n: rows.length, names: rows.map((d) => d.domain_name).join('\n') }),
+            ...deleteLists(),
             confirmLabel: t('common.delete'),
             tone: 'danger',
             progressTitle: t('domains.bulkDeletingTitle', { n: rows.length }),
@@ -648,13 +663,15 @@ export function Domains() {
 
     return (
         <div className="p-6 md:p-8">
-            {!isTeamMember && <SubscriptionUsage />}
+            {/* The title first, then the plan cards, on every width (on a
+                phone the cards stood above the title). */}
             <PageHeader
                 title={t('nav.domains')}
                 subtitle={hiddenInvalid ? HIDDEN_INVALID_ACCESS : t('domains.subtitle')}
                 breadcrumb={[t('common.home'), t('nav.domains')]}
                 actions={!isTeamMember && addButton}
             />
+            {!isTeamMember && <SubscriptionUsage />}
 
             {/* Why Add domain is off, at the top and with its fix; the empty
                 list says it in its own place (owner feedback 2026-10-31). */}
