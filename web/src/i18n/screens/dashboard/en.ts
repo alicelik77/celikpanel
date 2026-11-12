@@ -31,6 +31,8 @@ export const enDashboardScreens = {
     'audit.col.ip': 'IP',
     'audit.resource.api_token': 'API token',
     'audit.resource.config': 'Configuration',
+    'audit.resource.database': 'Database',
+    'audit.resource.database_user': 'Database user',
     'audit.resource.dns_engine': 'DNS software',
     'audit.resource.dns_zone': 'DNS zone',
     'audit.resource.domain': 'Domain',

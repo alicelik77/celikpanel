@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
@@ -114,8 +114,8 @@ test('every problem code of the transport contract has its words in English and 
   }
   assert.deepEqual(Object.keys(PROBLEM_FIX).filter((code) => !CODES.includes(code)), [], 'a button decision for a code the contract does not have');
   assert.deepEqual(Object.keys(trDbServer).sort(), Object.keys(enDbServer).sort());
-  // The Databases page's import is only a re-export until that page stops showing the account.
-  assert.equal(source('components/DatabaseAccountStrip.tsx').match(/^export /gm).length, 1);
+  // The account's old file is gone with the old Databases page (no leftovers).
+  assert.ok(!existsSync(new URL('../src/components/DatabaseAccountStrip.tsx', import.meta.url)), 'DatabaseAccountStrip.tsx is back');
   for (const value of Object.values(trDbServer)) assert.doesNotMatch(value, /\b(the|and|is not)\b/, `English left in Turkish: ${value}`);
 });
 

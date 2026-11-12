@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowRight, ArrowUp, Database, Globe, KeyRound, Plus, SearchX, Server, Trash2, X } from 'lucide-react';
-import { useNavigate } from '../../router';
+import { Link, useNavigate } from '../../router';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../auth/AuthContext';
 import { Button, Dialog, ErrorBanner, KnownEmpty, RemoteGate, SearchInput, type Shown } from '../ui';
@@ -53,6 +53,8 @@ type Sort = { key: SortKey; dir: 1 | -1 };
 
 // The domain page's Databases section, where the database's card is.
 const databaseSectionPath = (domainName: string) => `/domains/${encodeURIComponent(domainName)}?section=databases`;
+// The same section with its "add a database" form open (DomainDatabaseManager reads ?create=1 once).
+const databaseCreatePath = (domainName: string) => `${databaseSectionPath(domainName)}&create=1`;
 
 const ENGINE_NAMES: Record<string, string> = { mariadb: 'MariaDB', postgresql: 'PostgreSQL' };
 
@@ -102,6 +104,8 @@ export function DatabasesPage() {
             ],
             kept: [
                 ...(db.domain ? [t('databases.delete.keptDomain', { domain: db.domain.name })] : []),
+                // Deleting here keeps the database's users (the domain page's delete removes them).
+                ...(db.users.length > 0 ? [t(db.domain ? 'databases.delete.keptUsersDomain' : 'databases.delete.keptUsers', { users: db.users.map((user) => user.username).join(', ') })] : []),
                 t('databases.delete.keptOthers'),
             ],
             typedName: { value: db.name, label: t('databases.delete.typed', { name: db.name }) },
@@ -148,9 +152,14 @@ export function DatabasesPage() {
         };
     };
 
-    const engines = known?.engines ?? [];
-    const noEngine = known !== undefined && !engines.some((engine) => engine.installed);
-    const mayAdd = current && known !== undefined && known.mayCreate && !noEngine;
+    // engines: null is "could not be asked right now", never "none installed";
+    // a team member's answer carries none (the server's make-up is not theirs).
+    const noEngine = known !== undefined && role !== 'additional_user' && known.engines !== null && !known.engines.some((engine) => engine.installed);
+    // A team member's answer is always empty and says nothing about creating
+    // (their grants are per domain): "Add database" asks which of their
+    // domains, and lists only those where they may manage databases.
+    const teamMember = role === 'additional_user';
+    const mayAdd = current && known !== undefined && (known.mayCreate || teamMember) && !noEngine;
 
     // "All databases on this server · 9 databases, 5 accounts".
     const subtitle = (() => {
@@ -197,11 +206,18 @@ export function DatabasesPage() {
                             : wide
                                 ? <DatabaseList shown={shown} isAdmin={isAdmin} engineWord={engineWord} sizeText={sizeText} actionsFor={actionsFor} />
                                 : <DatabaseGroups shown={shown} engineWord={engineWord} sizeText={sizeText} actionsFor={actionsFor} />}
+                        {isAdmin && (
+                            <p className="mt-4 text-sm text-fg-muted" data-database-outside-link="">
+                                <Link to="/security#outside-connections" className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary">
+                                    {t('databases.outsideLink')}
+                                </Link>
+                            </p>
+                        )}
                     </>
                 )}
             </RemoteGate>
 
-            {picking && <DomainPick teamMember={role === 'additional_user'} onClose={() => setPicking(false)} onPick={(name) => navigate(databaseSectionPath(name))} />}
+            {picking && <DomainPick teamMember={role === 'additional_user'} onClose={() => setPicking(false)} onPick={(name) => navigate(databaseCreatePath(name))} />}
         </div>
     );
 }
@@ -211,6 +227,14 @@ export function DatabasesPage() {
 function EngineGuidance({ answer, onOpen, engineWord }: { answer: VisibleDatabases; onOpen: () => void; engineWord: (engine: string) => string }) {
     const { t } = useI18n();
     const open = <Button icon={Server} onClick={onOpen}>{t('databases.openComponents')}</Button>;
+    if (answer.engines === null) {
+        // Not known right now: said as such, never as "no database service".
+        return (
+            <Guidance tone="unknown" className="mb-4" data-database-guidance="engines-unknown"
+                title={t('databases.enginesUnknown.title')} why={t('databases.enginesUnknown.why')} who={whoWord(t, 'nobody')}
+                next={t('databases.enginesUnknown.next')} then={t('databases.enginesUnknown.then')} />
+        );
+    }
     if (!answer.engines.some((engine) => engine.installed)) {
         return (
             <Guidance tone="blocked" titleAs="h2" className="mb-4" data-database-guidance="no-engine"
@@ -239,6 +263,8 @@ function Empty({ of, role, noEngine, mayAdd }: { of: Shown<VisibleDatabases>; ro
     }
     if (noEngine) return <KnownEmpty of={of} icon={Database} title={t('databases.noEngine.tenant')} />;
     if (role === 'reseller') return <KnownEmpty of={of} icon={Database} title={t('databases.empty.reseller')} />;
+    // A team member's databases are on the pages of the domains they were given.
+    if (role === 'additional_user') return <KnownEmpty of={of} icon={Database} title={t('databases.empty.team')} hint={t('databases.empty.teamHint')} />;
     // "Add database" stands once, in the header; the hint points to it.
     return <KnownEmpty of={of} icon={Database} title={t('databases.empty.customer')} hint={t(mayAdd ? 'databases.empty.customerHint' : 'databases.empty.customerClosed')} />;
 }
@@ -260,6 +286,9 @@ function DatabaseList({ shown, isAdmin, engineWord, sizeText, actionsFor }: {
     const [query, setQuery] = useState('');
     const [sort, setSort] = useState<Sort>({ key: 'owner', dir: 1 });
     const collator = useMemo(() => new Intl.Collator(locale, { sensitivity: 'base', numeric: true }), [locale]);
+    // The size column, its sort and its line on a phone card exist only when
+    // the answer carries a size (alpha.133 reads none: the column is absent).
+    const sized = shown.value.databases.some((db) => db.sizeBytes !== null);
 
     const rows = useMemo(() => {
         // Letter case does not count, nor the Turkish dotted and dotless i: "BAYI1" finds bayi1.
@@ -320,7 +349,7 @@ function DatabaseList({ shown, isAdmin, engineWord, sizeText, actionsFor }: {
                                 {heading('owner', t('databases.col.owner'))}
                                 {heading('domain', t('databases.col.domain'))}
                                 {heading('kind', t('databases.col.kind'))}
-                                {heading('size', t('databases.col.size'), 'text-right')}
+                                {sized && heading('size', t('databases.col.size'), 'text-right')}
                                 <th className="px-4 py-2.5"><span className="sr-only">{t('databases.col.actions')}</span></th>
                             </tr>
                         </thead>
@@ -347,9 +376,11 @@ function DatabaseList({ shown, isAdmin, engineWord, sizeText, actionsFor }: {
                                             {db.domain ? <span className="break-all text-fg">{db.domain.name}</span> : <span className="text-fg-muted">{t('databases.unbound')}</span>}
                                         </td>
                                         <td className={`${cell} ${labelled} text-fg`} data-label={t('databases.col.kind')}>{engineWord(db.engine)}</td>
-                                        <td className={`${cell} ${labelled} whitespace-nowrap text-right text-fg max-sm:text-left`} data-label={t('databases.col.size')}>
-                                            {size ?? <span className="text-fg-subtle" title={t('databases.sizeNotKnown')}>—<span className="sr-only">{t('databases.sizeNotKnown')}</span></span>}
-                                        </td>
+                                        {sized && (
+                                            <td className={`${cell} ${labelled} whitespace-nowrap text-right text-fg max-sm:text-left`} data-label={t('databases.col.size')}>
+                                                {size ?? <span className="text-fg-subtle" title={t('databases.sizeNotKnown')}>—<span className="sr-only">{t('databases.sizeNotKnown')}</span></span>}
+                                            </td>
+                                        )}
                                         <td className={`${cell} max-sm:basis-full max-sm:pt-2`}>
                                             <RowActions name={db.name} actions={actions} more={more} />
                                         </td>
@@ -408,7 +439,8 @@ function DatabaseGroups({ shown, engineWord, sizeText, actionsFor }: {
                         {items.map((db) => {
                             const { actions, more } = actionsFor(db, shown.stale);
                             const size = sizeText(db);
-                            const facts = [size ?? t('databases.sizeNotKnown'), t('databases.added', { date: formatDate(db.createdAt, locale) })];
+                            // A size and a creation time are said only when known (alpha.133 reads no size).
+                            const facts = [size, db.createdAt ? t('databases.added', { date: formatDate(db.createdAt, locale) }) : null].filter((fact): fact is string => fact !== null);
                             return (
                                 <li key={db.id} className="flex flex-wrap items-center gap-3 p-3 max-sm:items-start" data-database-row={db.name}>
                                     {(db.engine === 'mariadb' || db.engine === 'postgresql') && <EngineMark engine={db.engine} size="sm" />}
@@ -417,7 +449,7 @@ function DatabaseGroups({ shown, engineWord, sizeText, actionsFor }: {
                                             <span className="font-semibold text-fg">{engineWord(db.engine)}</span>
                                             <span className="break-all font-mono text-fg">{db.name}</span>
                                         </p>
-                                        <p className="text-xs text-fg-muted">{facts.join(' · ')}</p>
+                                        {facts.length > 0 && <p className="text-xs text-fg-muted">{facts.join(' · ')}</p>}
                                     </div>
                                     <RowActions name={db.name} actions={actions} more={more} className="max-sm:basis-full" />
                                 </li>

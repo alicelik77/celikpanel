@@ -67,9 +67,6 @@ const stubbedComponents = [
   'DatabaseUsers', 'DatabaseUserPassword', 'EngineMark',
   // alpha.129: connections from outside read their own address when opened.
   'DatabaseRemoteAccess',
-  // alpha.133: CelikPanel's account on an engine belongs to the MariaDB and
-  // PostgreSQL pages (tests/database-server-alpha133.test.mjs).
-  'DatabaseAccountStrip',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.
@@ -99,6 +96,8 @@ const stub = dataModule(`
   // alpha.127: the administrator's install link; others see the sentence it carries.
   export const AdminInstallLink = (props) => props.fallback ?? null;
   export const useLocation = () => ({ pathname: '/', search: '', hash: '' });
+  // alpha.133: a domain's Databases section drops ?create=1 from the address.
+  export const replaceCurrentRouterURL = () => true;
   export const useAuth = () => ({ role: globalThis.currentTest.role });
   export const showToast = (...args) => globalThis.currentTest.toasts.push(args);
   export const PageHeader = (props) => React.createElement('header', null, props.title, props.subtitle, props.actions);

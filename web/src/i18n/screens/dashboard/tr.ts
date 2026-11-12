@@ -25,6 +25,8 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'audit.col.ip': 'IP',
     'audit.resource.api_token': 'API jetonu',
     'audit.resource.config': 'Yapılandırma',
+    'audit.resource.database': 'Veritabanı',
+    'audit.resource.database_user': 'Veritabanı kullanıcısı',
     'audit.resource.dns_engine': 'DNS yazılımı',
     'audit.resource.dns_zone': 'DNS bölgesi',
     'audit.resource.domain': 'Alan adı',

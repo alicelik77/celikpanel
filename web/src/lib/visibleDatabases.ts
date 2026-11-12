@@ -41,9 +41,10 @@ export interface VisibleDatabase {
     engine: string;
     owner: VisibleOwner;
     domain: { id: number; name: string } | null;
-    /** null: not known right now (never "0 B"). */
+    /** null: not known right now (never "0 B"); always null in alpha.133. */
     sizeBytes: number | null;
-    createdAt: string;
+    /** null: the record carries no creation time. */
+    createdAt: string | null;
     users: Array<{ id: number; username: string }>;
 }
 
@@ -55,7 +56,8 @@ export interface VisibleEngine {
 
 export interface VisibleDatabases {
     databases: VisibleDatabase[];
-    engines: VisibleEngine[];
+    /** null: the server could not be asked right now (not "none installed"); empty for a team member. */
+    engines: VisibleEngine[] | null;
     mayCreate: boolean;
 }
 
@@ -112,7 +114,7 @@ function decodeDatabase(raw: unknown): VisibleDatabase {
         owner: decodeOwner(db.owner),
         domain,
         sizeBytes: typeof db.size_bytes === 'number' ? db.size_bytes : null,
-        createdAt: db.created_at,
+        createdAt: db.created_at === '' ? null : db.created_at,
         users,
     };
 }
@@ -121,8 +123,8 @@ function decodeDatabase(raw: unknown): VisibleDatabase {
 export function decodeVisibleDatabases(raw: unknown): VisibleDatabases {
     refuseSecrets(raw);
     const body = raw as Record<string, unknown> | null;
-    if (!body || typeof body !== 'object' || !Array.isArray(body.databases) || !Array.isArray(body.engines) || typeof body.may_create !== 'boolean') shape('answer');
-    const engines = body.engines.map((item) => {
+    if (!body || typeof body !== 'object' || !Array.isArray(body.databases) || (body.engines !== null && !Array.isArray(body.engines)) || typeof body.may_create !== 'boolean') shape('answer');
+    const engines = body.engines === null ? null : body.engines.map((item) => {
         const engine = item as Record<string, unknown> | null;
         if (!engine || typeof engine !== 'object' || !isText(engine.engine) || typeof engine.installed !== 'boolean' || typeof engine.running !== 'boolean') shape('engine');
         return { engine: engine.engine, installed: engine.installed, running: engine.running };

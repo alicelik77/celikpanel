@@ -21,6 +21,7 @@ const stub = dataModule(`
   const say = (key, vars) => (vars ? key + JSON.stringify(vars) : key);
   export const useI18n = () => ({ t: say, locale: 'tr' });
   export const useNavigate = () => (path) => { globalThis.page.navigated.push(path); };
+  export const Link = (props) => React.createElement('a', { href: props.to }, props.children);
   export const useAuth = () => ({ role: globalThis.page.role });
   export const showToast = (...args) => globalThis.page.toasts.push(args);
   export const PageHeader = (props) => React.createElement('header', null, React.createElement('h1', null, props.title), React.createElement('p', { 'data-subtitle': '' }, props.subtitle), props.actions);
@@ -210,7 +211,8 @@ test('delete asks in the panel with what is lost, what stays and the typed name,
     assert.equal(typedNameMatches('Kahvedukkani_dr_test_magaza', request.typedName), false);
     assert.equal(typedNameMatches('kahvedukkani_dr_test_magaza', request.typedName), true);
     assert.deepEqual(request.lost, ['databases.delete.lostDataSized{"name":"kahvedukkani_dr_test_magaza","size":"14 MB"}', 'databases.delete.lostAccess{"users":"kahve_app, kahve_rapor"}']);
-    assert.deepEqual(request.kept, ['databases.delete.keptDomain{"domain":"kahvedukkani.dr.test"}', 'databases.delete.keptOthers']);
+    // Deleting from this list keeps the database's users (the domain page's delete removes the one created with it).
+    assert.deepEqual(request.kept, ['databases.delete.keptDomain{"domain":"kahvedukkani.dr.test"}', 'databases.delete.keptUsersDomain{"users":"kahve_app, kahve_rapor"}', 'databases.delete.keptOthers']);
     // Confirmed: one DELETE, the list is read again, the toast says it.
     globalThis.page.answer = true;
     const before = calls.filter((call) => call.url === VISIBLE_DATABASES_URL).length;
@@ -326,7 +328,8 @@ test('"Add database" asks for which domain, lists only the domains that can take
     const offered = tree.root.findAll((node) => node.type === 'button' && node.props['data-database-pick'] !== undefined).map((node) => node.props['data-database-pick']);
     assert.deepEqual(offered, ['alfa.dr.test', 'zeta.dr.test'], 'a domain whose plan closes databases or that is being deleted is offered');
     await press(button({ 'data-database-pick': 'zeta.dr.test' }));
-    assert.deepEqual(globalThis.page.navigated, ['/domains/zeta.dr.test?section=databases']);
+    // The section opens with its own "add a database" form (DomainDatabaseManager reads ?create=1 once).
+    assert.deepEqual(globalThis.page.navigated, ['/domains/zeta.dr.test?section=databases&create=1']);
     assert.ok(!has('databases.pick.title'), 'the question stays open');
     assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'choosing a domain changes nothing');
   } finally {
@@ -347,6 +350,87 @@ test('a team member is offered only the domains where they may manage databases'
     assert.deepEqual(tree.root.findAll((node) => node.type === 'button' && node.props['data-database-pick'] !== undefined).map((node) => node.props['data-database-pick']), ['manage.dr.test']);
   } finally {
     await cleanup();
+  }
+});
+
+// --- The server's real answer in alpha.133 -------------------------------------------------------
+
+// dblist-be answers size_bytes null for every row (sizes are read one at a
+// time by the Agent), created_at "" for a record without a time, engines null
+// when the Agent could not be asked, and an empty list for a team member.
+const real = (row) => ({ ...row, size_bytes: null });
+test('no size anywhere: the size column, its sort and its phone line are absent; an unknown date is not drawn', async () => {
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST.map(real))) });
+    assert.equal(rows().length, 6);
+    assert.ok(!has('databases.col.size') && !has('databases.sizeNotKnown'), 'a column of dashes is drawn');
+    assert.equal(tree.root.findAll((node) => node.type === 'button' && node.props['data-sort'] === 'size').length, 0);
+    assert.equal(tree.root.findAll((node) => node.props['data-label'] === 'databases.col.size').length, 0);
+    await openMenu('kahvedukkani_dr_test_magaza');
+    globalThis.page.answer = false;
+    await press(menuItem('delete'));
+    assert.deepEqual(globalThis.page.asked[0].lost[0], 'databases.delete.lostData{"name":"kahvedukkani_dr_test_magaza"}');
+  } finally {
+    await cleanup();
+  }
+  const self = owner('musteri1', { self: true });
+  try {
+    await mount('customer', { [VISIBLE_DATABASES_URL]: json(answer([
+      real(db(3, 'kahvedukkani_dr_test_rapor', self, 'kahvedukkani.dr.test', { created_at: '' })),
+      real(db(4, 'kahvedukkani_dr_test_magaza', self, 'kahvedukkani.dr.test')),
+    ])) });
+    assert.ok(!has('databases.sizeNotKnown'), 'every card says the size is not known');
+    assert.equal(text().split('databases.added').length - 1, 1, 'a record without a time says when it was added');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('engines not known right now: the administrator reads "could not be read", nobody reads "no database service"', async () => {
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer([], { engines: null })) });
+    assert.ok(tree.root.findAll((node) => node.props['data-database-guidance'] === 'engines-unknown').length > 0);
+    assert.ok(!has('databases.noEngine') && has('databases.empty.adminHint'));
+    assert.equal(buttonsWith('databases.addDatabase').length, 1, '"Add database" waits for nothing the server could not say');
+  } finally {
+    await cleanup();
+  }
+  for (const role of ['reseller', 'customer']) {
+    try {
+      await mount(role, { [VISIBLE_DATABASES_URL]: json(answer([], { engines: null })) });
+      assert.ok(!has('databases.noEngine') && !has('databases.enginesUnknown'), role);
+    } finally {
+      await cleanup();
+    }
+  }
+});
+
+test('a team member: an empty list says where their databases are, never "none" and never "no service"', async () => {
+  try {
+    await mount('additional_user', { [VISIBLE_DATABASES_URL]: json({ databases: [], engines: [], may_create: false }), '/api/v1/domains': json([]) });
+    assert.ok(has('databases.empty.team') && has('databases.empty.teamHint'));
+    assert.ok(!has('databases.noEngine') && !has('databases.empty.customer'));
+  } finally {
+    await cleanup();
+  }
+});
+
+test('the administrator’s list says, in one quiet line, that outside connections are set on Security; nobody else’s does', async () => {
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST.map(real))) });
+    const link = tree.root.findAll((node) => node.type === 'a' && node.props.href === '/security#outside-connections');
+    assert.equal(link.length, 1);
+    assert.equal(textOf(link[0]), 'databases.outsideLink');
+  } finally {
+    await cleanup();
+  }
+  for (const role of ['reseller', 'customer']) {
+    try {
+      await mount(role, { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST.map(real))) });
+      assert.ok(!has('databases.outsideLink'), role);
+    } finally {
+      await cleanup();
+    }
   }
 });
 
@@ -418,7 +502,9 @@ test('the decoder takes the contract and refuses an answer with a secret-looking
   }
   const top = { ...structuredClone(good), admin_password: 'x' };
   assert.throws(() => decodeVisibleDatabases(top), /secret-looking/);
-  for (const broken of [null, [], { databases: [] }, { ...good, may_create: 'yes' }, { ...good, databases: [{ ...good.databases[0], owner: null }] }]) {
+  assert.equal(decodeVisibleDatabases({ ...good, engines: null }).engines, null, 'engines not known is kept as not known');
+  assert.equal(decodeVisibleDatabases({ ...good, databases: [{ ...good.databases[0], created_at: '' }] }).databases[0].createdAt, null);
+  for (const broken of [null, [], { databases: [] }, { ...good, may_create: 'yes' }, { ...good, engines: 'none' }, { ...good, databases: [{ ...good.databases[0], owner: null }] }]) {
     assert.throws(() => decodeVisibleDatabases(broken), /not the contract/);
   }
   // On the page: such an answer is "could not be read", and the secret is nowhere.
@@ -458,4 +544,10 @@ test('every text of the page is in both languages with the same placeholders, an
     assert.equal(enScreens[gone], undefined, gone);
     assert.equal(trScreens[gone], undefined, gone);
   }
+});
+
+test('the domain’s Databases section opens its "add a database" form for ?create=1, once, and takes the parameter out of the address', () => {
+  const manager = readFileSync(new URL('../src/components/DomainDatabaseManager.tsx', import.meta.url), 'utf8');
+  assert.match(manager, /useState\(\(\) => !readOnly && new URLSearchParams\(search\)\.get\('create'\) === '1'\)/);
+  assert.match(manager, /params\.delete\('create'\);[\s\S]{0,120}replaceCurrentRouterURL\(`\$\{pathname\}\$\{query \? `\?\$\{query\}` : ''\}\$\{hash\}`\)/);
 });

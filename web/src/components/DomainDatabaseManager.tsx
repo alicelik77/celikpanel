@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { replaceCurrentRouterURL, useLocation } from '../router';
 import { Database, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -108,7 +109,20 @@ export function DomainDatabaseManager({
 }: DomainDatabaseManagerProps) {
     const { t, locale } = useI18n();
     const [creating, setCreating] = useState(false);
-    const [showCreateForm, setShowCreateForm] = useState(false);
+    // "Add database" on the Databases page brings the person here with
+    // ?create=1 (alpha.133): the form starts open, and the parameter leaves
+    // the address at once so Back or a reload does not open it again.
+    // Veritabanları sayfasındaki "Veritabanı ekle" buraya ?create=1 ile gelir;
+    // form açık başlar ve parametre adresten hemen kalkar.
+    const { pathname, search, hash } = useLocation();
+    const [showCreateForm, setShowCreateForm] = useState(() => !readOnly && new URLSearchParams(search).get('create') === '1');
+    useEffect(() => {
+        const params = new URLSearchParams(search);
+        if (!params.has('create')) return;
+        params.delete('create');
+        const query = params.toString();
+        replaceCurrentRouterURL(`${pathname}${query ? `?${query}` : ''}${hash}`);
+    }, [pathname, search, hash]);
 
     // The list is read through lib/remote.ts: being read, read, or not
     // readable. "No databases yet" is drawn only for an answer the server gave.
