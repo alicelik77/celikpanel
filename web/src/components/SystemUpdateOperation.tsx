@@ -1639,7 +1639,18 @@ export function SystemUpdateOperationProvider({ children }: { children: ReactNod
     useEffect(() => subscribeSystemUpdateAuthentication((authenticated, generation) => {
         authSignalGenerationRef.current = generation;
         authenticatedRef.current = authenticated;
-        const exactMarker = pendingReloadRef.current ?? requiredReloadRef.current
+        // The request this page shows, chosen as the render chooses it: a
+        // record can carry the reload of an earlier update that this tab has
+        // already made; that is not the request to resume. Resuming it instead
+        // of the followed one left the tracking unpaused with no read scheduled
+        // once the navigation lock had been released (alpha.133 lab, server B:
+        // step 2 for ten minutes after the update had finished, and "Reading
+        // the state" after the page was opened again).
+        // Sayfanin gosterdigi istek; sekmede zaten yapilmis eski yeniden
+        // yukleme surdurulecek istek degildir.
+        const carriedReload = requiredReloadRef.current;
+        const exactMarker = pendingReloadRef.current
+            ?? (carriedReload && !tabHasReloadedMarker(carriedReload) ? carriedReload : null)
             ?? provisionalRef.current ?? markerRef.current ?? terminalRef.current?.marker;
         if (!authenticated) {
             if (!exactMarker) return;

@@ -116,7 +116,7 @@ export const en = {
     'recovery.operationTitle': "Update and recovery status",
     'recovery.noOperation': "No update operation ID is saved in this browser. This page cannot associate an update result without its exact ID.",
     'recovery.operationId': "Operation ID",
-    'recovery.observationUnavailable': "The latest result could not be read. Any result below is the last verified observation, not confirmation that work is still running. Check again; do not start a second update.",
+    'recovery.observationUnavailable': "The latest state could not be read; it is read again by itself. If a state is shown below, it is the last one verified, not proof that the work is still running. Do not start a second update.",
     'recovery.observedAt': "Last verified observation",
     'recovery.previousFailure': "Previously recorded failure",
     'recovery.checkStatus': "Check this operation",
