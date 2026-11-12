@@ -65,16 +65,20 @@ function ask(scope?: object): Promise<boolean> | null {
     const unsaved = open(scope);
     if (unsaved.length === 0) return null;
     const n = unsaved.reduce<Unsaved>((sum, count) => (sum === 'some' || count === 'some' ? 'some' : sum + count), 0);
-    const lost = n === 'some' ? saveWord(locale, 'leaveLostSome') : n === 1 ? saveWord(locale, 'leaveLostOne') : saveWord(locale, 'leaveLost', { n });
+    // Closing one part (a scope) is said as closing that part, not leaving the page.
+    const part = scope !== undefined;
+    const lost = n === 'some'
+        ? saveWord(locale, part ? 'partLostSome' : 'leaveLostSome')
+        : n === 1 ? saveWord(locale, part ? 'partLostOne' : 'leaveLostOne') : saveWord(locale, part ? 'partLost' : 'leaveLost', { n });
     // One question at a time: while another question is open the answer is
     // "stay" (lib/confirmAction.ts).
     return confirmAction({
-        title: saveWord(locale, 'leaveTitle'),
+        title: saveWord(locale, part ? 'partTitle' : 'leaveTitle'),
         tone: 'danger',
         lost: [lost],
         kept: [saveWord(locale, 'leaveKept')],
-        confirmLabel: saveWord(locale, 'leave'),
-        cancelLabel: saveWord(locale, 'stay'),
+        confirmLabel: saveWord(locale, part ? 'partClose' : 'leave'),
+        cancelLabel: saveWord(locale, part ? 'partStay' : 'stay'),
     }).then((leave) => {
         if (leave) {
             for (const key of inScope(scope)) registered.set(key, 0);

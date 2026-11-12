@@ -639,7 +639,8 @@ test('mounted: closing a part with unsaved changes asks about that part only; St
     globalThis.confirm = (text, request) => { asked.push(request); return false; };
     await view.press('logs');
     assert.equal(asked.length, 1, 'closing a part with unsaved changes did not ask');
-    assert.deepEqual(asked[0].lost, ['1 change on this page that was not saved'], 'the question counted another part’s changes');
+    assert.deepEqual(asked[0].lost, ['This part has 1 unsaved change'], 'the question counted another part’s changes');
+    assert.deepEqual([asked[0].title, asked[0].confirmLabel, asked[0].cancelLabel], ['Close without saving?', 'Close without saving', 'Keep it open']);
     assert.ok(view.probes().includes('logs'), 'Stay closed the part');
     globalThis.confirm = (text, request) => { asked.push(request); return true; };
     await view.press('logs');

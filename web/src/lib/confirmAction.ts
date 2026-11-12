@@ -58,8 +58,8 @@ export interface OperationStep {
  * known. `reason` already says who acts and what happens next.
  */
 export type OperationEnd =
-    | { state: 'done'; message?: string }
-    | { state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void } };
+    | { state: 'done'; message?: string; title?: string }
+    | { state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void }; title?: string };
 
 /** What a running action can tell the window. */
 export interface OperationReport {

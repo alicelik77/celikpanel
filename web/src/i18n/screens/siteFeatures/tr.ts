@@ -9,7 +9,7 @@ export const trSiteFeaturesScreens: Record<SiteFeaturesScreenKey, string> = {
     'siteFeatures.protect.checking': 'Korumalı klasörler sunucudan okunuyor…',
     'siteFeatures.protect.unknown': 'Korumalı klasörler şu anda okunamadı. Hiçbir şey değişmedi. Yeniden deneyin.',
     'siteFeatures.protect.unavailable': 'Korumalı klasörler PHP ve statik sitelerde kullanılır. Bu site başka türde bir proje çalıştırıyor; burada ayarlanacak bir şey yok.',
-    'siteFeatures.protect.httpNote': 'Bu site düz HTTP üzerinden de yanıt veriyor; orada kullanıcı adı ve parola şifrelenmeden gider. Ziyaretçiler hep HTTPS ile girsin diye SSL/TLS ayarlarında HTTPS yönlendirmesini açın.',
+    'siteFeatures.protect.httpNote': 'Bu site düz HTTP üzerinden de yanıt veriyor; orada kullanıcı adı ve parola şifrelenmeden gider. Ziyaretçiler hep HTTPS ile girsin diye Güvenlik › Sertifika (HTTPS) kısmında HTTPS yönlendirmesini açın.',
     'siteFeatures.protect.empty': 'Henüz korunan klasör yok.',
     'siteFeatures.protect.addTitle': 'Klasörü koru',
     'siteFeatures.protect.path': 'Klasör',

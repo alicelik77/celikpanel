@@ -125,8 +125,11 @@ test('a confirmed action shows its steps, locked, and ends with Completed or the
     assert.equal(tree.root.findAll((node) => node.props['data-operation-close'] !== undefined).length, 0, 'the running operation can be closed');
     // Escape does nothing while it runs.
     for (const listener of keydown) listener({ key: 'Escape', preventDefault() {} });
-    await act(async () => { finish({ state: 'done' }); await settled(); await settled(); });
+    await act(async () => { finish({ state: 'done', title: 'example.com deleted' }); await settled(); await settled(); });
     assert.ok(JSON.stringify(tree.toJSON()).includes('operation.completed'), 'the end is not said');
+    // An ending that names itself replaces the running title (alpha.132 lab: "Saving…" stayed after the end).
+    assert.ok(JSON.stringify(tree.toJSON()).includes('example.com deleted'), 'the ending did not name itself');
+    assert.ok(!JSON.stringify(tree.toJSON()).includes('Deleting example.com'), 'the running title stayed after the end');
     const ok = tree.root.findAll((node) => node.type === 'button' && node.props['data-operation-close'] !== undefined)[0];
     await act(async () => { ok.props.onClick({}); await settled(); });
     assert.equal(await answer, true);

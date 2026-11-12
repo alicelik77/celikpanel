@@ -164,6 +164,10 @@ export const enLimitsScreens = {
     'limits.server.invalid': 'Between {min} and {max}.',
     'limits.server.fixFirst': 'Save is off until every changed value is within its range.',
     // alpha.130: the Offered tab and the rights editor (the rights part is full).
+    // alpha.132: the Offered tab's progress window says how the save ended.
+    'rights.offered.savedTitle': 'What is offered was saved',
+    'rights.offered.failedTitle': 'Not everything offered was saved',
+    'rights.offered.unknownTitle': 'Not known whether everything offered was saved',
     'rights.offered.stillHidden': 'Nothing changed: the server still has {name} hidden. Try again; if it stays hidden, this is a fault in CelikPanel, please report it.',
     'rights.offered.stillOffered': 'Nothing changed: the server still offers {name}. Try again; if it stays offered, this is a fault in CelikPanel, please report it.',
     'rights.offered.inCatalog': 'Offered in Catalog management, where its risk summary is shown first.',

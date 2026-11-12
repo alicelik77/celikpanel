@@ -157,6 +157,9 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.server.invalid': '{min} ile {max} arasında olmalı.',
     'limits.server.fixFirst': 'Değişen her değer kendi aralığına girene dek Kaydet kapalı.',
     // alpha.130: the Offered tab and the rights editor (the rights part is full).
+    'rights.offered.savedTitle': 'Sunulanlar kaydedildi',
+    'rights.offered.failedTitle': 'Sunulanların hepsi kaydedilemedi',
+    'rights.offered.unknownTitle': 'Sunulanların hepsinin kaydedilip kaydedilmediği bilinmiyor',
     'rights.offered.stillHidden': 'Hiçbir şey değişmedi: {name} sunucuda hâlâ gizli. Yeniden deneyin; gizli kalırsa bu bir CelikPanel hatasıdır, lütfen bildirin.',
     'rights.offered.stillOffered': 'Hiçbir şey değişmedi: {name} sunucuda hâlâ sunuluyor. Yeniden deneyin; sunulmaya devam ederse bu bir CelikPanel hatasıdır, lütfen bildirin.',
     'rights.offered.inCatalog': 'Katalog yönetiminde, önce risk özeti gösterilerek sunulur.',

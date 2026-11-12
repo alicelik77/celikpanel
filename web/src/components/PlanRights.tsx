@@ -511,9 +511,11 @@ export function OfferedItemsTab() {
                     if (result) results.push(result);
                 }
                 const failed = results.flatMap((result) => result.failed);
-                if (failed.length === 0) return { state: 'done' };
+                if (failed.length === 0) return { state: 'done', title: t('rights.offered.savedTitle') };
+                const lost = results.some((result) => result.lost);
                 return {
-                    state: results.some((result) => result.lost) ? 'unknown' : 'failed',
+                    state: lost ? 'unknown' : 'failed',
+                    title: t(lost ? 'rights.offered.unknownTitle' : 'rights.offered.failedTitle'),
                     reason: `${failed.map((line) => line.text).join(' ')} ${t('rights.offered.next')}`,
                 };
             },

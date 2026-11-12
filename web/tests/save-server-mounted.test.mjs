@@ -224,6 +224,7 @@ test('offered applications share the tab’s one bar; every question is asked be
     assert.deepEqual(view.writes().map((call) => call.body), [{ offering_id: 'permission:ssh', offered: true }, { offering_id: 'app:joomla', offered: true }]);
     assert.deepEqual(globalThis.operationSteps.at(-1).map((step) => [step.id, step.state]), [['permission:ssh', 'done'], ['read', 'done'], ['apps-app:joomla', 'done'], ['apps-read', 'done']]);
     assert.equal(globalThis.operationEnds.at(-1).state, 'done');
+    assert.equal(globalThis.operationEnds.at(-1).title, 'rights.offered.savedTitle', 'the finished window still says it is saving');
     assert.equal(app().props.checked, true);
     assert.equal(view.marks(), 0);
     assert.equal(view.save(), undefined);

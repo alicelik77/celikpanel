@@ -33,7 +33,7 @@ export const trWebSettings: Record<WebSettingsKey, string> = {
     'web.mime.ext': 'Uzantılar, örneğin exa exb',
     'web.mime.add': 'Dosya türü ekle',
     'web.headers.title': 'Yanıt başlıkları',
-    'web.headers.desc': 'Sitenin her yanıtıyla gönderilir. HSTS başlığı SSL/TLS ayarlarında belirlenir.',
+    'web.headers.desc': 'Sitenin her yanıtıyla gönderilir. HSTS başlığı Güvenlik › Sertifika (HTTPS) kısmında belirlenir.',
     'web.headers.name': 'Başlık, örneğin X-Frame-Options',
     'web.headers.value': 'Değer, örneğin SAMEORIGIN',
     'web.headers.add': 'Başlık ekle',

@@ -35,7 +35,7 @@ export const enWebSettings = {
     'web.mime.ext': 'Extensions, for example exa exb',
     'web.mime.add': 'Add a file type',
     'web.headers.title': 'Response headers',
-    'web.headers.desc': 'Sent with every answer of the site. The HSTS header is set in the SSL/TLS settings.',
+    'web.headers.desc': 'Sent with every answer of the site. The HSTS header is set in Security › Certificate (HTTPS).',
     'web.headers.name': 'Header, for example X-Frame-Options',
     'web.headers.value': 'Value, for example SAMEORIGIN',
     'web.headers.add': 'Add a header',

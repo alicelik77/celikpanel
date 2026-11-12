@@ -71,7 +71,7 @@ export function PlanLimitsSection({ kind, plan, onPlan, idPrefix, ceilingsOff = 
                                     <input id={id} type="number" min={limit.min} max={limit.ceiling ?? limit.max} value={value ?? ''}
                                         placeholder={t('limits.plan.upTo', { value: above })} onChange={(e) => setCeiling(limit.key, e.target.value)}
                                         className={inputClass} aria-invalid={outside || undefined} />
-                                    {outside && <span className="mt-1 block text-xs text-danger-fg">{limit.floor ? t('limits.php.belowMin', { min: above }) : t('limits.php.aboveLimit', { limit: above })}</span>}
+                                    {outside && <span className="mt-1 block text-xs text-danger">{limit.floor ? t('limits.php.belowMin', { min: above }) : t('limits.php.aboveLimit', { limit: above })}</span>}
                                 </label>
                             );
                         })}

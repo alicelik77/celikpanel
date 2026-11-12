@@ -89,7 +89,8 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
             busy={!end}
             // Only the result can be closed; the running operation cannot.
             onDismiss={end ? onClose : undefined}
-            title={title}
+            // An ending may name itself ("… saved") in place of the running title ("Saving …").
+            title={end?.title ?? title}
             description={end ? t(END_TITLE[end.state]) : t('operation.wait')}
             actions={end
                 ? (
