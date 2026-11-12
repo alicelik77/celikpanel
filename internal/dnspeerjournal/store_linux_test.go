@@ -562,3 +562,57 @@ func TestCatalogAdvanceRefusedUnlessVerifiedRestampOfSameOperation(t *testing.T)
 		t.Fatalf("journal changed after a refused advance: %v", err)
 	}
 }
+
+// The agent's prepare step budgets a retirement by this count
+// (cmd/agent retireCallsPerRetirement): a successful retirement calls its
+// terminal verifier exactly four times. A change here must change that
+// budget model and its incident test (12 Nov 2026).
+func TestRetireVerifiesTerminalFourTimes(t *testing.T) {
+	s, request, digest := fixture(t)
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	if err := s.retire(request, enrollment, digest, 1, func() error { calls++; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 4 {
+		t.Fatalf("retirement verified %d times, want 4", calls)
+	}
+}
+
+// alpha132ConsumedJournal is a consumed challenge exactly as alpha.132 (and
+// every release since the v1 sidecar) writes it: the state an updated Agent
+// finds on a server whose earlier deletion finished (Frankfurt, 6 Nov 2026).
+const alpha132ConsumedJournal = `{"schema":"celikpanel-dns-peer-challenge-journal/v1","state":"consumed","ledger_attempt":2,"enrollment_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","request_sha256":"fa7b928efa9bba9c981f373be17fb9087d6c5fdce2c2721e697baa3fc3d8437c","request":{"schema":"celikpanel-bind-peer-deletion-request/v1","mutation_request_id":"11111111111111111111111111111111","mutation_owner_id":"22222222222222222222222222222222","deletion_generation":9,"deletion_qualifier":"dns-zone-sync/v3:sha256:3333333333333333333333333333333333333333333333333333333333333333","primary_ip":"192.0.2.10","peer_ip":"192.0.2.11","peer_identity_sha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","catalog_name":"catalog-c000020a.celikpanel.invalid","catalog_serial":12,"catalog_members_sha256":"47062138e6383d3a7ccb753244d1ffd593f9fe117db2b3710c68241e6f69d6b2","deleted_zone":"earlier.example.test","view":"_default","nonce":"4444444444444444444444444444444444444444444444444444444444444444","attempt":3,"issued_at_unix":1799000000,"expires_at_unix":1799000030}}`
+
+// Upgrade path (alpha.133): the sidecar format is unchanged, so an updated
+// Agent reads the earlier release's consumed challenge as it was written,
+// retires it under its exact terminal proof, and the next deletion starts
+// at attempt 1 of a new operation.
+func TestUpdatedAgentRetiresEarlierReleaseChallenge(t *testing.T) {
+	s, _, _ := fixture(t)
+	if err := os.WriteFile(s.path, []byte(alpha132ConsumedJournal), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(s.path, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	old, err := s.read()
+	if err != nil || old.State != StateConsumed || old.Request.DeletedZone != "earlier.example.test" {
+		t.Fatalf("earlier release journal: %+v %v", old, err)
+	}
+	if raw, encodeErr := Encode(old); encodeErr != nil || string(raw) != alpha132ConsumedJournal {
+		t.Fatalf("the v1 encoding changed: %v", encodeErr)
+	}
+	if err := s.retire(old.Request, old.EnrollmentSHA256, old.RequestSHA256, old.LedgerAttempt, allow); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.read(); !IsCode(err, Missing) {
+		t.Fatalf("retired journal: %v", err)
+	}
+	_, request, _ := fixture(t) // a new operation's request
+	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
+		t.Fatalf("first challenge of the next deletion: %v", err)
+	}
+}

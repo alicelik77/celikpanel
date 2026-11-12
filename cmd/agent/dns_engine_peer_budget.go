@@ -34,7 +34,8 @@ import (
 // acceptance also ends expiryReserve before the challenge expires, so that
 // consume-once still reaches its own expiry check (the challenge lives 30 s).
 // A step that runs out of time before the peer's answer was accepted is
-// dns_peer_proof_timeout. After dnspeerproof.Verify accepted the answer,
+// dns_peer_proof_timeout, with the side that ran out of time
+// (dnsPeerProofStep.timeoutSide). After dnspeerproof.Verify accepted the answer,
 // consume-once and the final recheck run under a fresh context derived from
 // context.WithoutCancel of the request context: a positive answer is never
 // discarded because a clock of an earlier step ran out.
@@ -67,6 +68,21 @@ var dnsPeerProofSteps = dnsPeerProofBudget{
 	postInspection: 10 * time.Second,
 	consume:        20 * time.Second,
 	expiryReserve:  5 * time.Second,
+}
+
+// timeoutSide names which side of the proof a step's deadline concerns:
+// prepare and challenge_write run only this server's checks; the exchange is
+// the secondary's inspector; post_inspection probes both servers and is
+// reported without a side.
+func (step dnsPeerProofStep) timeoutSide() string {
+	switch step {
+	case dnsPeerProofStepPrepare, dnsPeerProofStepChallengeWrite:
+		return transport.DNSPeerProofTimeoutLocalCheck
+	case dnsPeerProofStepExchange:
+		return transport.DNSPeerProofTimeoutPeerExchange
+	default:
+		return ""
+	}
 }
 
 func (b dnsPeerProofBudget) limit(step dnsPeerProofStep) time.Duration {
@@ -144,10 +160,14 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 		return err
 	}
 	if r.base.Err() == nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		// Before acceptance: nothing was consumed, nothing changed on either
-		// server; the same publication is retried as a new attempt.
-		r.stopped(step, transport.DNSPeerPendingProofTimeout, err)
-		return pendingDNSPeerCause(transport.DNSPeerPendingProofTimeout, err)
+		// Before acceptance: nothing of the proof was consumed (the deletion
+		// itself is already committed on this server); the same publication
+		// is retried as a new attempt. The code names which side ran out of
+		// time, so the owner is not sent to the secondary for this server's
+		// own checks (incident of 12 Nov 2026).
+		code := transport.DNSPeerPendingProofTimeoutWithDetail(step.timeoutSide())
+		r.stopped(step, code, err)
+		return pendingDNSPeerCause(code, err)
 	}
 	r.stopped(step, pendingDNSPeerCode(err), err)
 	return err
@@ -293,13 +313,49 @@ func (c *nativePeerCurrentChecks) at(ctx context.Context) func() error {
 	}
 }
 
+// held is the recheck of what authorizes journal work without the local DNS
+// evidence: the exact active ledger attempt under both held external locks
+// (attempt) and the unchanged enrollment. It runs no command and takes no
+// context.
+func (c *nativePeerCurrentChecks) held() error {
+	err := peerCurrentPendingCodeAt(c.attempt, c.enrollment, func() error { return nil })
+	c.last = err
+	return err
+}
+
 // journalOp runs one private challenge journal operation whose rechecks run
 // under ctx. A recheck that found a reviewed difference keeps its own code;
 // a recheck that ran out of time stays a deadline for the step runner;
 // anything else is dns_peer_journal_unknown with its cause logged.
 func (c *nativePeerCurrentChecks) journalOp(ctx context.Context, what string, op func(func() error) error) error {
+	return c.journalOpWith(c.at(ctx), what, op)
+}
+
+// retireOp runs the reconciliation that may retire an earlier, terminal
+// operation's challenge before this proof mints its own. Its rechecks are
+// the held ones (dns_engine_peer_native_linux.go explains why the local DNS
+// evidence of this deletion is not part of that authority), so retiring is a
+// few file operations that complete regardless of the step's remaining time
+// (incident of 12 Nov 2026: seven full local rechecks overran prepare's 8 s
+// on every attempt and the retirement never completed).
+func (c *nativePeerCurrentChecks) retireOp(what string, op func(func() error) error) error {
+	return c.journalOpWith(c.held, what, op)
+}
+
+// prepareJournal is the journal part of a native proof's prepare step:
+// reconcile retires an earlier terminal operation's challenge under the held
+// checks (retireOp), then the full current-evidence recheck runs under ctx
+// before any challenge is minted.
+func (c *nativePeerCurrentChecks) prepareJournal(ctx context.Context, reconcile func(func() error) error) error {
+	if err := c.retireOp("previous challenge reconciliation", reconcile); err != nil {
+		return err
+	}
+	return c.at(ctx)()
+}
+
+func (c *nativePeerCurrentChecks) journalOpWith(verify func() error, what string, op func(func() error) error) error {
 	c.last = nil
-	err := op(c.at(ctx))
+	err := op(verify)
 	if err == nil {
 		return nil
 	}

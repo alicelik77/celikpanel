@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/dnspeerenrollment"
@@ -176,10 +177,9 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			},
 			local: func(ctx context.Context) error { return recheckNativePeerLocalEvidence(ctx, plan, record) },
 		}
-		if err := checks.at(ctx)(); err != nil {
-			return err
-		}
-		if err := checks.journalOp(ctx, "previous challenge reconciliation", func(verify func() error) error {
+		// As in verifyEnrolledBINDPeerDeletion: an earlier terminal
+		// operation's challenge is retired first, under the held checks.
+		if err := checks.prepareJournal(ctx, func(verify func() error) error {
 			return reconcileHistoricalPDNSPeerChallenge(m, plan, verify)
 		}); err != nil {
 			return err
@@ -287,6 +287,8 @@ func verifyEnrolledPDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	})
 }
 
+// reconcileHistoricalPDNSPeerChallenge is reconcileHistoricalBINDPeerChallenge
+// for the PowerDNS secondary's journal; verifyCurrent is the held recheck.
 func reconcileHistoricalPDNSPeerChallenge(m *serviceMutationManager, plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error) error {
 	return reconcileHistoricalPDNSPeerChallengeAt(plan, verifyCurrent,
 		m.loadLedgerFromDisk, pdnspeerjournal.Read, pdnspeerjournal.Retire)
@@ -333,7 +335,12 @@ func reconcileHistoricalPDNSPeerChallengeAt(plan dnsV3PrimaryPropagationPlan, ve
 	if _, err := read(); !pdnspeerjournal.IsCode(err, pdnspeerjournal.Missing) {
 		return errors.New("historical PowerDNS challenge retirement is unverified")
 	}
-	return verifyCurrent()
+	if err := verifyCurrent(); err != nil {
+		return err
+	}
+	log.Printf("DNS peer proof for %s retired the challenge of an earlier finished deletion (%s, ledger attempt %d) before minting its own",
+		plan.Changed.Domain, previous.Request.DeletedZone, previous.LedgerAttempt)
+	return nil
 }
 
 func historicalPDNSPeerChallengeMatchesLedger(previous pdnspeerjournal.RecordV1, ledger *serviceMutationLedger) bool {

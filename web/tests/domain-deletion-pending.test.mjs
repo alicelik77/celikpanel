@@ -238,7 +238,10 @@ test('an internal proof failure names no owner change, the owner, the log comman
   assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
 });
 
-test('a proof timeout says nothing changed, who retries now and what to check if it repeats', async () => {
+// alpha.133 (incident of 12 Nov 2026): the old text said nothing had changed
+// and sent the owner to the backup's SSH port, although the zone was already
+// removed on this server and this server's own check had run out of time.
+test('a proof timeout says what is already true, that CelikPanel checks again by itself, and which side ran out of time', async () => {
   assert.deepEqual(await readDomainDeletionOutcome(response(202, {
     status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_proof_timeout',
   })), { state: 'pending', reason: 'dns_peer_proof_timeout' });
@@ -247,24 +250,33 @@ test('a proof timeout says nothing changed, who retries now and what to check if
   })), 'dns_peer_proof_timeout');
   const en_ = en['err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout'];
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout'];
-  assert.match(en_, /did not finish within its time/);
-  assert.match(en_, /Nothing was changed on either server/);
-  assert.match(en_, /DNS answers are unaffected/);
-  assert.match(en_, /retry now/);
-  assert.match(en_, /SSH port/);
-  assert.match(en_, /overloaded/);
-  assert.doesNotMatch(en_, /evidence changed|reconcile|Retrying does not help/);
-  assert.match(tr_, /sürede bitmedi/);
-  assert.match(tr_, /Hiçbir sunucuda bir şey değiştirilmedi/);
-  assert.match(tr_, /DNS yanıtları etkilenmez/);
-  assert.match(tr_, /SSH bağlantı noktasına/);
-  assert.match(tr_, /aşırı yüklü/);
-  assert.doesNotMatch(tr_, /uzlaştır/);
+  assert.match(en_, /removed from DNS on this server/);
+  assert.match(en_, /not confirmed yet, because the check did not finish in time/);
+  assert.match(en_, /Nobody needs to do anything now/);
+  assert.match(en_, /administrator gets a notification/);
+  assert.match(tr_, /bu sunucuda DNS'ten kaldırıldı/);
+  assert.match(tr_, /henüz doğrulanmadı/);
+  assert.match(tr_, /kimsenin bir şey yapması gerekmiyor/);
+  assert.match(tr_, /yöneticisine ne yapması gerektiğini/);
   for (const text of [en_, tr_]) {
+    assert.doesNotMatch(text, /Nothing was changed|değiştirilmedi|DNS answers are unaffected|etkilenmez/);
+    assert.doesNotMatch(text, /SSH|port|bağlantı noktası|journalctl|overloaded|aşırı yüklü/);
     assert.doesNotMatch(text, /secret|password|parola/i);
   }
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  for (const [detail, enWant, trWant] of [
+    ['local_check', /this server's own part of the check/, /bu sunucunun kendi denetimiydi/],
+    ['peer_exchange', /backup DNS server's answer that did not come in time/, /yedek DNS sunucusunun yanıtıydı/],
+  ]) {
+    assert.deepEqual(await readDomainDeletionOutcome(response(202, {
+      status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_proof_timeout', detail,
+    })), { state: 'pending', reason: 'dns_peer_proof_timeout', detail });
+    const key = domainDeletionDetailKey('dns_peer_proof_timeout', detail);
+    assert.equal(key, `err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout.${detail}`);
+    assert.match(en[key], enWant);
+    assert.match(tr[key], trWant);
+  }
+  assert.equal(domainDeletionDetailKey('dns_peer_proof_timeout', 'exchange'), null);
+  assert.equal(domainDeletionDetailKey('dns_peer_owner_edit_unknown', 'local_check'), null);
 });
 
 test('a challenge that cannot be reconciled waits for the automatic re-check, then names the Agent log and why a retry is safe', () => {
