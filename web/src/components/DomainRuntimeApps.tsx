@@ -7,6 +7,7 @@ import { Button, Dialog, ErrorBanner, Field, RemoteGate, inputClass } from './ui
 import { readApiError, type ApiError } from '../lib/apiError';
 import { LOADING, invalidate, lastKnown, readRemote, useRefreshEvery, useRereadWhileRechecking, type Remote, type RemoteHandle } from '../lib/remote';
 import { newOperationID } from '../lib/serviceApps';
+import { confirmAction } from '../lib/confirmAction';
 import {
     RUNTIME_DETAIL_REASONS,
     RUNTIME_STATE_GUIDANCE,
@@ -390,7 +391,7 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
     const [logsFailure, setLogsFailure] = useState<ApiError | null>(null);
     const [editing, setEditing] = useState(false);
     const [envOpen, setEnvOpen] = useState(false);
-    const [removeOpen, setRemoveOpen] = useState(false);
+    const [removeID, setRemoveID] = useState(newOperationID);
 
     const blocked = app.states.some((code) => BLOCKS_NEW_USE.includes(code));
     const deployBlocked = blocked || !view.certificate;
@@ -417,6 +418,28 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
         if (res) setDeployID(newOperationID());
         await after(res);
     };
+    // Removing the program asks in the product's own confirmation (alpha.132;
+    // it was a dialogue of its own): what stays, the heavier choice of
+    // deleting the app folder too, and for that choice the domain typed out.
+    // A lost answer keeps the identity, so asking again is the same removal;
+    // any answer that arrived ends it, as for a deploy.
+    // Programı kaldırmak ürünün kendi onay penceresinde sorulur; klasörü de
+    // silmek için alan adı yazılır.
+    const remove = () => void confirmAction({
+        title: t('runtime.remove.title', { domain: view.domain }),
+        message: t('runtime.remove.keep'),
+        tone: 'danger',
+        confirmLabel: t('runtime.remove'),
+        option: {
+            label: t('runtime.remove.files'),
+            typedName: { value: view.domain, label: t('runtime.remove.confirm', { domain: view.domain }), ignoreCase: true },
+        },
+        action: async (_report, answer) => {
+            const res = await sendJSON(base + '/remove', 'POST', { operation_id: removeID, remove_files: answer.option, confirm_domain: answer.option ? answer.typed.trim() : '' });
+            if (res) setRemoveID(newOperationID());
+            await after(res);
+        },
+    });
     const readLogs = async () => {
         setActing('logs');
         setLogsFailure(null);
@@ -484,7 +507,7 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                 <Button icon={ScrollText} loading={acting === 'logs'} disabled={!!acting} onClick={() => void readLogs()}>{t('runtime.logs')}</Button>
                 <Button icon={KeyRound} disabled={busy || !!acting} onClick={() => setEnvOpen(true)}>{t('runtime.env')}</Button>
                 <Button icon={Settings2} disabled={busy || !!acting} onClick={() => setEditing((on) => !on)}>{t('runtime.settings.edit')}</Button>
-                <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={() => setRemoveOpen(true)}>{t('runtime.remove')}</Button>
+                <Button variant="danger" icon={Trash2} disabled={busy || !!acting} onClick={remove}>{t('runtime.remove')}</Button>
             </div>
             {deployBlocked && !busy && <p className="text-xs text-fg-subtle">{t('runtime.deployBlocked')}</p>}
             {editing && (
@@ -507,7 +530,6 @@ function AppCard({ view, app, kind, base, after }: { view: RuntimeAppsView; app:
                 </div>
             )}
             {envOpen && <EnvDialog app={app} base={base} after={after} onClose={() => setEnvOpen(false)} />}
-            {removeOpen && <RemoveDialog domain={view.domain} base={base} after={after} onClose={() => setRemoveOpen(false)} />}
         </div>
     );
 }
@@ -676,41 +698,6 @@ function EnvDialog({ app, base, after, onClose }: { app: RuntimeApp; base: strin
                     {t('runtime.env.add')}
                 </Button>
                 {app.deployed && <p className="text-xs text-fg-subtle">{t('runtime.env.restart')}</p>}
-            </div>
-        </Dialog>
-    );
-}
-
-function RemoveDialog({ domain, base, after, onClose }: { domain: string; base: string; after: After; onClose: () => void }) {
-    const { t } = useI18n();
-    const [removeFiles, setRemoveFiles] = useState(false);
-    const [typed, setTyped] = useState('');
-    const [busy, setBusy] = useState(false);
-    // One identity for this removal: a repeat after a lost answer is the same.
-    const [operationID] = useState(newOperationID);
-    const ready = !removeFiles || typed.trim().toLowerCase() === domain.toLowerCase();
-    const submit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!ready) return;
-        setBusy(true);
-        const res = await sendJSON(base + '/remove', 'POST', { operation_id: operationID, remove_files: removeFiles, confirm_domain: removeFiles ? typed.trim() : '' });
-        setBusy(false);
-        if (await after(res)) onClose();
-    };
-    return (
-        <Dialog id="runtime-remove" tone="danger" title={t('runtime.remove.title', { domain })} icon={Trash2} busy={busy} onDismiss={onClose} onSubmit={(event) => void submit(event)} noValidate
-            actions={<><Button type="button" onClick={onClose} disabled={busy}>{t('common.cancel')}</Button><Button type="submit" variant="danger" loading={busy} disabled={!ready}>{t('runtime.remove')}</Button></>}>
-            <div className="space-y-3 text-sm">
-                <p className="text-fg-muted">{t('runtime.remove.keep')}</p>
-                <label className="flex items-start gap-2 text-fg">
-                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={removeFiles} onChange={(e) => setRemoveFiles(e.target.checked)} />
-                    {t('runtime.remove.files')}
-                </label>
-                {removeFiles && (
-                    <Field label={t('runtime.remove.confirm', { domain })} htmlFor="runtime-confirm-domain">
-                        <input id="runtime-confirm-domain" className={inputClass} autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
-                    </Field>
-                )}
             </div>
         </Dialog>
     );

@@ -26,6 +26,7 @@ import {
     SECURITY_EMERGENCIES_URL, EMERGENCY_ANCHOR, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor,
     type EmergencyComponent, type EmergencyDetail, type EmergencySite,
 } from '../lib/securityEmergency';
+import { TypedNameField, typedNameMatches } from './kit/save/ConfirmDetails';
 
 export { SECURITY_EMERGENCIES_URL, decodeEmergencyDetail, decodeEmergencyList, openEmergenciesFor };
 export type { EmergencyComponent, EmergencyDetail, EmergencySite };
@@ -280,7 +281,9 @@ function ConfirmDialog({ detail, step, onClose, onDone }: { detail: EmergencyDet
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<ApiError | null>(null);
     const needsName = step !== 'reenable';
-    const ready = reason.trim() !== '' && password !== '' && (!needsName || typed.trim() === detail.confirm_name) && (step !== 'move' || target !== '');
+    // The name is typed exactly, letter case included: the server compares it so.
+    const typedName = { value: detail.confirm_name, label: t('emg.confirm.typeName', { name: detail.confirm_name }) };
+    const ready = reason.trim() !== '' && password !== '' && (!needsName || typedNameMatches(typed, typedName)) && (step !== 'move' || target !== '');
     const submit = async () => {
         if (!ready || busy) return;
         setBusy(true);
@@ -356,10 +359,7 @@ function ConfirmDialog({ detail, step, onClose, onDone }: { detail: EmergencyDet
                     <input className="mt-1 block w-full rounded-md border border-border bg-surface px-2 py-1.5" value={reason} maxLength={500} onChange={(ev) => setReason(ev.target.value)} data-emergency-confirm-reason="" />
                 </label>
                 {needsName && (
-                    <label className="block">
-                        <span className="text-fg-muted">{t('emg.confirm.typeName', { name: detail.confirm_name })}</span>
-                        <input className="mt-1 block w-full rounded-md border border-border bg-surface px-2 py-1.5 font-mono" value={typed} autoComplete="off" spellCheck={false} onChange={(ev) => setTyped(ev.target.value)} data-emergency-confirm-name="" />
-                    </label>
+                    <TypedNameField id={`emergency-${step}-name`} label={typedName.label} value={typed} onChange={setTyped} data-emergency-confirm-name="" />
                 )}
                 {step === 'reenable' && (
                     <label className="flex items-center gap-2">

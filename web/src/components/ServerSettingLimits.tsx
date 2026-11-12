@@ -5,8 +5,12 @@ import type { TranslationKey } from '../i18n/en';
 import { showToast } from './Toast';
 import { Button, Checking, RemoteGate, inputClass } from './ui';
 import { apiErrorText, readApiError } from '../lib/apiError';
-import { invalidate, useRemote } from '../lib/remote';
+import { invalidate, lastKnown, useRemote } from '../lib/remote';
+import { answerWasLost } from '../lib/requestIdentity';
 import { sendSettings, unitText } from '../lib/settingLimits';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // The server's limits of site settings (alpha.128, docs/SITE-LIMITS.md),
 // administrator only: one row per key with the server limit (empty = no
@@ -19,6 +23,8 @@ import { sendSettings, unitText } from '../lib/settingLimits';
 // databases, FTP, mail) shows "Limit only" instead of a box that fixed
 // nothing.
 // Also the administrator's password level (G21), on the Security page.
+// alpha.132: choosing a level no longer saves it; the choice is marked and
+// saved with the shared save bar (components/kit/save).
 //
 // Sunucunun site ayarı sınırları ve parola düzeyi; yalnız yönetici. Bölümün
 // tek Kaydet düğmesi yalnız değişen satırları kaydeder; satırın hatası
@@ -198,36 +204,57 @@ function decodeLevel(raw: unknown): { level: string } {
 
 export function PasswordLevelCard() {
     const { t } = useI18n();
+    const say = useSaveWords();
     const view = useRemote('/api/v1/rights/password-level', decodeLevel);
-    const [busy, setBusy] = useState(false);
-    const choose = async (level: string) => {
-        setBusy(true);
-        try {
-            const res = await sendSettings('/api/v1/rights/password-level', 'PUT', { level });
-            if (!res) { showToast('error', t('common.resultUnknown')); return; }
-            if (!res.ok) { showToast('error', apiErrorText(await readApiError(res), t, 'limits.password.failed')); return; }
-            showToast('success', t('limits.password.saved'));
-            void view.retry();
-        } finally {
-            setBusy(false);
+    const draft = useDraft(lastKnown(view.remote)?.value);
+    const levelText = (level: string) => t(`limits.password.${level}` as TranslationKey);
+    const save = () => void draft.save(async (changes) => {
+        const res = await sendSettings('/api/v1/rights/password-level', 'PUT', { level: changes.level });
+        // No answer, or a gateway's in the Panel's place: not known.
+        if (!res || answerWasLost(res)) return 'unknown';
+        if (!res.ok) {
+            showToast('error', apiErrorText(await readApiError(res), t, 'limits.password.failed'));
+            return 'refused';
         }
-    };
+        showToast('success', t('limits.password.saved'));
+        await view.retry();
+        return 'saved';
+    });
     return (
         <section className="rounded-xl border border-border bg-surface p-4" data-password-level="">
             <h3 className="text-sm font-semibold text-fg">{t('limits.password.title')}</h3>
             <p className="mt-1 max-w-[75ch] text-xs text-fg-subtle">{t('limits.password.intro')}</p>
             <RemoteGate remote={view.remote} checking={t('limits.checking')} failed={t('limits.unread')} onRetry={() => void view.retry()} busy={view.reading}>
-                {(shown) => (
-                    <div className="mt-2">
-                        {PASSWORD_LEVELS.map((level) => (
-                            <label key={level} className="flex items-start gap-2 py-1 text-sm text-fg">
-                                <input type="radio" name="password-level" checked={shown.value.level === level} disabled={busy}
-                                    onChange={() => void choose(level)} className="mt-1" />
-                                <span>{t(`limits.password.${level}` as TranslationKey)}</span>
-                            </label>
-                        ))}
-                    </div>
-                )}
+                {(shown) => {
+                    const chosen = draft.values?.level ?? shown.value.level;
+                    const changed = draft.isChanged('level');
+                    return (
+                        <div className="mt-2">
+                            {PASSWORD_LEVELS.map((level) => (
+                                <label key={level} className={`-mx-2 flex items-start gap-2 rounded-r px-2 py-1 text-sm text-fg ${changed && chosen === level ? changedRowClass : ''}`}>
+                                    <input type="radio" name="password-level" checked={chosen === level} disabled={draft.saving}
+                                        onChange={() => draft.set('level', level)} className="mt-1" />
+                                    <span>
+                                        {levelText(level)}
+                                        {changed && chosen === level && <ChangedMark />}
+                                    </span>
+                                </label>
+                            ))}
+                            {draft.isMoved('level') && draft.base && (
+                                <ServerMovedNote value={levelText(draft.base.level)} onTake={() => draft.take('level')} />
+                            )}
+                            <SaveBar
+                                className="-mx-4 px-4 pb-0"
+                                count={draft.count}
+                                saving={draft.saving}
+                                blockedBy={shown.stale ? say('stale') : undefined}
+                                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: view.reading, onCheck: () => void view.retry() } : undefined}
+                                onSave={save}
+                                onDiscard={draft.reset}
+                            />
+                        </div>
+                    );
+                }}
             </RemoteGate>
         </section>
     );

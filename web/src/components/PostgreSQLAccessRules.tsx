@@ -3,8 +3,10 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useConfigFile, type ConfigFile, type ConfigFileHandle } from '../lib/configFile';
 import { applyHba, hbaMethods, hbaRuleComplete, hbaTypes, parseHba, type HbaFields, type HbaRule } from '../lib/dbConfigText';
-import { ConfigFileGate, ConfigSaveBar, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, revealField, type RefusalTarget } from './ConfigFileNotices';
+import { ConfigFileGate, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, revealField, type RefusalTarget } from './ConfigFileNotices';
 import { Button } from './ui';
+import { SaveBar } from './kit/save/SaveBar';
+import { useLeaveGuard } from './kit/save/leaveGuard';
 
 // The access rules of pg_hba.conf, in the order PostgreSQL reads them.
 //
@@ -68,6 +70,7 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
     };
 
     const changes = edited.size + removed.size + added.length;
+    useLeaveGuard(changes);
     const incomplete = [...edited.values(), ...added].some((rule) => !hbaRuleComplete(rule));
     const next = useMemo(() => applyHba(value.content, { edited, removed, added }), [value.content, edited, removed, added]);
 
@@ -207,10 +210,11 @@ function RulesForm({ handle, value }: { handle: ConfigFileHandle; value: ConfigF
                     {t('dbconf.hba.add')}
                 </Button>
             </div>
-            <ConfigSaveBar
-                handle={handle}
-                changes={changes}
-                blockedBy={changes > 0 && incomplete ? t('dbconf.hba.incomplete') : undefined}
+            <SaveBar
+                className="-mx-5 px-5"
+                count={changes}
+                saving={handle.saving}
+                blockedBy={handle.stale ? t('dbconf.staleSave') : incomplete ? t('dbconf.hba.incomplete') : undefined}
                 onSave={() => void handle.save(next.content)}
                 onDiscard={discard}
             />

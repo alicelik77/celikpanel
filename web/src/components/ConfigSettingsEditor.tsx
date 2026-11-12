@@ -3,8 +3,10 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useConfigFile, type ConfigFile, type ConfigFileHandle } from '../lib/configFile';
 import type { ConfigItem, ConfigSection, ItemEdit } from '../lib/dbConfigText';
-import { ConfigFileGate, ConfigSaveBar, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, refusalName, revealField, type RefusalTarget } from './ConfigFileNotices';
+import { ConfigFileGate, ConfigSaveNotices, FieldRefusal, refusalDetail, refusalLine, refusalName, revealField, type RefusalTarget } from './ConfigFileNotices';
 import { inputClass } from './ui';
+import { SaveBar } from './kit/save/SaveBar';
+import { useLeaveGuard } from './kit/save/leaveGuard';
 
 // The settings of one configuration file as a searchable list: each setting
 // the file holds, with whether it is set or commented out, and its value.
@@ -72,6 +74,7 @@ function SettingsForm({
     // that is put back to what the file holds leaves the map again.
     // Kişinin değiştirdikleri, dosyadaki satırlarına göre.
     const [edits, setEdits] = useState<ReadonlyMap<number, ItemEdit>>(new Map());
+    useLeaveGuard(edits.size);
     const [search, setSearch] = useState('');
     const [open, setOpen] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
@@ -215,9 +218,11 @@ function SettingsForm({
                 </div>
             )}
             <p className="mt-3 max-w-[75ch] text-xs leading-relaxed text-fg-muted">{t('dbconf.note')}</p>
-            <ConfigSaveBar
-                handle={handle}
-                changes={edits.size}
+            <SaveBar
+                className="-mx-5 px-5"
+                count={edits.size}
+                saving={handle.saving}
+                blockedBy={handle.stale ? t('dbconf.staleSave') : undefined}
                 onSave={() => void handle.save(format.apply(value.content, edits))}
                 onDiscard={() => { handle.clearRefusal(); setEdits(new Map()); }}
             />

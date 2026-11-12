@@ -14,6 +14,7 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { showToast } from './Toast';
 import { Button, Card, EmptyState, ErrorBanner, Field, inputClass } from './ui';
 import { confirmAction } from '../lib/confirmAction';
+import { useLeaveGuard } from './kit/save/leaveGuard';
 
 type ReleaseState = 'available' | 'coming_soon' | 'retired';
 
@@ -121,15 +122,10 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
         onDirtyChange?.(dirty);
         return () => onDirtyChange?.(false);
     }, [dirty, onDirtyChange]);
-    useEffect(() => {
-        if (!dirty) return;
-        const guard = (event: BeforeUnloadEvent) => {
-            event.preventDefault();
-            event.returnValue = '';
-        };
-        window.addEventListener('beforeunload', guard);
-        return () => window.removeEventListener('beforeunload', guard);
-    }, [dirty]);
+    // Unsaved edits: leaving the page asks in the panel's own dialog, and
+    // closing the tab gets the browser's leave question (alpha.132: the one
+    // place that sets it is components/kit/save/leaveGuard.ts).
+    useLeaveGuard(dirty ? 'some' : 0);
     const filtered = useMemo(() => {
         if (!catalog) return [];
         const needle = query.trim().toLocaleLowerCase(locale === 'tr' ? 'tr-TR' : 'en-US');

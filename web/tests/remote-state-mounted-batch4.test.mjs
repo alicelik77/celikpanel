@@ -196,7 +196,7 @@ const screens = [
   { name: 'Hosting type, the application’s state', element: el(HostingTypePanel), read: `${D}/app/status`, negative: ['hosting.app.state.inactive', 'hosting.app.state.failed'], changes: ['services.start', 'services.stop', 'services.restart'], checking: 'hosting.app.checking', unknown: 'hosting.app.unknown', negativeAnswer: [{ exists: true, active: 'inactive', pid: 0, memory_mb: 0 }, 'hosting.app.state.inactive'] },
   { name: 'Hosting type, the application’s logs', element: el(HostingTypePanel), read: `${D}/app/logs`, negative: ['hosting.app.empty'], changes: [], checking: 'hosting.app.logsChecking', unknown: 'hosting.app.unknown', empty: 'hosting.app.empty' },
   { name: 'PHP settings', element: php, read: `${D}/php`, negative: ['php.poolUnavailable', 'php.applyFirst'], changes: ['php.apply', 'php.savePool'], formFields: true, checking: 'php.checking', unknown: 'php.unknown', negativeAnswer: [{ php_version: '8.3', pool_name: 'example_com', available_versions: [] }, 'php.poolUnavailable'] },
-  { name: 'General settings', element: el(DomainGeneralSettings), read: `${D}/general`, negative: ['general.noAliases', 'general.redirectWwwUnavailable'], changes: ['general.save', 'general.add', 'common.remove'], formFields: true, checking: 'general.checking', unknown: 'general.unknown', negativeAnswer: [{ ...good[`${D}/general`], aliases: null }, 'general.noAliases'] },
+  { name: 'General settings', element: el(DomainGeneralSettings), read: `${D}/general`, negative: ['general.noAliases', 'general.redirectWwwUnavailable'], changes: ['Save', 'general.add', 'common.remove'], formFields: true, checking: 'general.checking', unknown: 'general.unknown', negativeAnswer: [{ ...good[`${D}/general`], aliases: null }, 'general.noAliases'] },
   { name: 'Applications', element: el(DomainAppsPanel), read: `${D}/apps`, negative: ['apps.empty'], changes: ['apps.install'], checking: 'apps.checking', unknown: 'apps.unknown', empty: 'apps.empty' },
   { name: 'Mail authentication', element: el(MailAuthPanel), read: `${D}/mail/auth`, negative: ['mailauth.status.missing', 'mailauth.status.no_key', 'mailauth.signingMissing'], changes: ['mailauth.apply', 'mailauth.generateKey'], checking: 'mailauth.checking', unknown: 'mailauth.unknown', negativeAnswer: [{ ...good[`${D}/mail/auth`], spf: authRecord('missing') }, 'mailauth.status.missing'] },
   { name: 'Logs', element: el(DomainLogsViewer), read: `${D}/logs/access`, negative: ['logs.empty', 'logs.linesN{"n":"0"}'], changes: ['logs.clear', 'logs.download'], checking: 'logs.checking', unknown: 'logs.unknown', empty: 'logs.empty' },
@@ -322,8 +322,8 @@ const lost = [
     const input = fields().find((node) => node.props.type === 'text');
     await act(async () => { input.props.onChange({ target: { value: 'more.example.net' } }); });
     await press('general.add');
-  }, reread: `${D}/general`, held: ['general.save', 'general.add', 'common.remove'], after: 'not-made' },
-  { name: 'General settings, removing an alias', element: el(DomainGeneralSettings), change: `DELETE ${D}/aliases/alias.example.net`, path: `${D}/aliases/alias.example.net`, start: () => press('common.remove'), reread: `${D}/general`, held: ['general.save', 'general.add', 'common.remove'] },
+  }, reread: `${D}/general`, held: ['Save', 'general.add', 'common.remove'], after: 'not-made' },
+  { name: 'General settings, removing an alias', element: el(DomainGeneralSettings), change: `DELETE ${D}/aliases/alias.example.net`, path: `${D}/aliases/alias.example.net`, start: () => press('common.remove'), reread: `${D}/general`, held: ['Save', 'general.add', 'common.remove'] },
   { name: 'Applications, installing', element: el(DomainAppsPanel), change: `POST ${D}/apps/install`, path: `${D}/apps/install`, start: () => press('apps.install'), reread: `${D}/apps`, held: ['apps.install'], where: 'apps.resultUnknownWhere' },
   { name: 'Mail authentication, publishing a record', element: el(MailAuthPanel), change: `POST ${D}/mail/auth/apply`, path: `${D}/mail/auth/apply`, start: () => press('mailauth.apply'), reread: `${D}/mail/auth`, held: ['mailauth.apply'] },
   { name: 'Logs, clearing', element: el(DomainLogsViewer), change: `DELETE ${D}/logs/access`, path: `${D}/logs/access`, start: () => press('logs.clear'), reread: `${D}/logs/access`, held: ['logs.clear'] },
@@ -824,31 +824,50 @@ test('General settings, an alias whose answer was lost: in the aliases read agai
 });
 
 test('General settings, the switch whose answer was lost: shown as saved when the settings read again hold it, kept when they do not', async () => {
-  // The switch is read through FormData; an absent field is "off", and the
-  // server has it on.
-  globalThis.FormData = class { get() { return null; } };
+  // alpha.132: the switch is a draft; only the save bar's Save sends it.
+  for (const taken of [true, false]) {
+    let lostOne = false;
+    serve({ [`${D}/general`]: (init) => {
+      if (init.method === 'POST') { lostOne = true; return DROP(); }
+      return answer({ ...good[`${D}/general`], redirect_www: lostOne && taken ? false : true });
+    } });
+    await mount(el(DomainGeneralSettings)());
+    try {
+      const toggle = () => fields().find((node) => node.props.name === 'redirect_www');
+      const saveBar = () => tree.root.findAll((node) => node.props['data-save-bar'] !== undefined);
+      assert.equal(toggle().props.checked, true);
+      assert.equal(saveBar().length, 0, 'the save bar is shown although nothing changed');
+      await act(async () => { toggle().props.onChange({ target: { checked: false } }); });
+      assert.equal(requests.filter((line) => line === `POST ${D}/general`).length, 0, 'switching sent the setting');
+      assert.ok(text().includes('1 change not saved'), text().slice(0, 400));
+      await press('Save');
+      await settle();
+      assert.deepEqual(noticeState(), [taken ? 'made' : 'not-made']);
+      // Saved: the switch is the server's "off" and nothing is left to save.
+      // Not shown as saved: the server says "on" and the switch still holds
+      // the "off" that was sent, with Save offered again.
+      assert.equal(toggle().props.checked, false, taken ? 'the switch does not show the saved value' : 'what was switched is gone');
+      assert.equal(saveBar().length, taken ? 0 : 1);
+      assert.equal(requests.filter((line) => line === `POST ${D}/general`).length, 1);
+    } finally { await unmount(); }
+  }
+});
+
+test('General settings: the switch is sent only by Save; Discard puts the server value back', async () => {
+  serve({ [`${D}/general`]: (init) => (init.method === 'POST' ? answer({ success: true }) : answer(good[`${D}/general`])) });
+  await mount(el(DomainGeneralSettings)());
   try {
-    for (const taken of [true, false]) {
-      let lostOne = false;
-      serve({ [`${D}/general`]: (init) => {
-        if (init.method === 'POST') { lostOne = true; return DROP(); }
-        return answer({ ...good[`${D}/general`], redirect_www: lostOne && taken ? false : true });
-      } });
-      await mount(el(DomainGeneralSettings)());
-      try {
-        const toggle = () => fields().find((node) => node.props.name === 'redirect_www');
-        assert.equal(toggle().props.defaultChecked, true);
-        const form = tree.root.findByType('form');
-        await act(async () => { await form.props.onSubmit({ preventDefault() {}, currentTarget: {} }); });
-        await settle();
-        assert.deepEqual(noticeState(), [taken ? 'made' : 'not-made']);
-        // Saved: the switch is the server's "off". Not shown as saved: the
-        // server says "on" and the switch still holds the "off" that was sent.
-        assert.equal(toggle().props.defaultChecked, false, taken ? 'the switch does not show the saved value' : 'what was switched is gone');
-        assert.equal(requests.filter((line) => line === `POST ${D}/general`).length, 1);
-      } finally { await unmount(); }
-    }
-  } finally { globalThis.FormData = realFormData; }
+    const toggle = () => fields().find((node) => node.props.name === 'redirect_www');
+    await act(async () => { toggle().props.onChange({ target: { checked: false } }); });
+    assert.ok(tree.root.findAll((node) => node.props['data-changed-mark'] !== undefined).length === 1, 'the changed switch is not marked');
+    await press('Discard');
+    assert.equal(toggle().props.checked, true);
+    assert.equal(requests.filter((line) => line.startsWith('POST ')).length, 0);
+    await act(async () => { toggle().props.onChange({ target: { checked: false } }); });
+    await press('Save');
+    const posts = requests.filter((line) => line === `POST ${D}/general`);
+    assert.equal(posts.length, 1);
+  } finally { await unmount(); }
 });
 
 test('Hosting type, Apply whose answer was lost: what was typed is put back when the settings read again are still the earlier ones', async () => {

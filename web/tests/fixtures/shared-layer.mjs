@@ -274,6 +274,15 @@ export function sharedLayer(stubURL, extra = {}) {
     for (const [suffix, url] of Object.entries(table)) if (specifier.endsWith(suffix)) return url;
     return stubURL;
   };
+  // alpha.132: the shared saving parts (components/kit/save: the draft, the
+  // save bar, the leave guard and the structured confirmation) are the
+  // shipped modules in every mounted test, so a screen's Save, Discard and
+  // leave question are the real ones. Their icons come from their own stub.
+  const kitIcons = dataModule(['CheckCircle2', 'XCircle'].map((name) => `export const ${name} = () => null;`).join(' '));
+  for (const [suffix, file] of [['/leaveAsker', 'leaveAsker.ts'], ['/words', 'words.ts'], ['/saveRun', 'saveRun.ts'], ['/leaveGuard', 'leaveGuard.ts'],
+    ['/draft', 'draft.ts'], ['/SaveBar', 'SaveBar.tsx'], ['/ConfirmDetails', 'ConfirmDetails.tsx']]) {
+    if (!extra[suffix]) table[suffix] = compileSource(`components/kit/save/${file}`, (specifier) => (specifier === 'lucide-react' ? kitIcons : resolve(specifier)));
+  }
   // alpha.127: every password field is the shipped PasswordInput with the
   // shipped rule. Its icons come from its own small stub, so a test's stub
   // need not list them.

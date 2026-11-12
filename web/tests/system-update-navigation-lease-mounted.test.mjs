@@ -27,11 +27,13 @@ const reactURL = pathToFileURL(require.resolve('react')).href;
 const jsxRuntimeURL = pathToFileURL(require.resolve('react/jsx-runtime')).href;
 const routerCoreURL = compileURL('../src/router-core.ts');
 const routerHistoryURL = compileURL('../src/router-history.ts');
+const leaveAskerURL = compileURL('../src/components/kit/save/leaveAsker.ts');
 const routerURL = compileURL('../src/router.tsx', [
     [/from ['"]react['"]/, `from '${reactURL}'`],
     [/from ['"]react\/jsx-runtime['"]/, `from '${jsxRuntimeURL}'`],
     [/from ['"]\.\/router-core['"]/g, `from '${routerCoreURL}'`],
     [/from ['"]\.\/router-history['"]/g, `from '${routerHistoryURL}'`],
+    [/from ['"]\.\/components\/kit\/save\/leaveAsker['"]/g, `from '${leaveAskerURL}'`],
 ]);
 const hookURL = compileURL('../src/lib/useSystemUpdateNavigationLease.ts', [
     [/from ['"]react['"]/, `from '${reactURL}'`],

@@ -231,8 +231,6 @@ export const enSitesScreens = {
     'general.forceHttps': 'Force HTTPS',
     'general.forceHttpsHint': 'Redirect HTTP requests to HTTPS',
     'general.forceHttpsManaged': 'Force HTTPS is managed in Hosting → SSL/TLS so certificate and HSTS state stay consistent.',
-    'general.save': 'Save changes',
-    'general.saving': 'Saving…',
     'general.saved': 'Settings saved',
     'general.saveFailed': 'Could not save settings',
     'general.aliases': 'Domain aliases',

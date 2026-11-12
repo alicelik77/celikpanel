@@ -3,7 +3,8 @@ import { ArrowLeft, FileCode } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useConfigFile, type ConfigFile, type ConfigFileHandle } from '../lib/configFile';
 import { ConfigFileGate, ConfigSaveNotices } from './ConfigFileNotices';
-import { Button } from './ui';
+import { SaveBar } from './kit/save/SaveBar';
+import { useLeaveGuard } from './kit/save/leaveGuard';
 
 interface ConfigEditorProps {
     path: string;
@@ -56,6 +57,7 @@ function RawText({ handle, value, file }: { handle: ConfigFileHandle; value: Con
     const [text, setText] = useState(value.content);
     useEffect(() => setText(value.content), [value.content]);
     const changed = text !== value.content;
+    useLeaveGuard(changed ? 'some' : 0);
     return (
         <>
             <ConfigSaveNotices handle={handle} file={file} service={t('dbconf.theService')} placed={false} />
@@ -67,17 +69,14 @@ function RawText({ handle, value, file }: { handle: ConfigFileHandle; value: Con
                 spellCheck={false}
                 className="block h-[calc(100dvh-24rem)] min-h-[18rem] w-full resize-y rounded-lg border border-border-strong bg-bg p-4 font-mono text-sm leading-relaxed text-fg outline-none focus:border-primary disabled:text-fg-muted"
             />
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-                <p className="min-w-0 basis-full text-xs text-fg-muted sm:mr-auto sm:basis-auto" aria-live="polite">
-                    {changed ? t('dbconf.raw.changed') : t('dbconf.noChanges')}
-                </p>
-                <Button type="button" onClick={() => { handle.clearRefusal(); setText(value.content); }} disabled={!changed || handle.saving}>
-                    {t('dbconf.discard')}
-                </Button>
-                <Button type="button" variant="primary" onClick={() => void handle.save(text)} disabled={!changed || handle.stale} loading={handle.saving}>
-                    {handle.saving ? t('dbconf.saving') : t('dbconf.save')}
-                </Button>
-            </div>
+            <SaveBar
+                className="-mx-5 px-5"
+                count={changed ? 'some' : 0}
+                saving={handle.saving}
+                blockedBy={handle.stale ? t('dbconf.staleSave') : undefined}
+                onSave={() => void handle.save(text)}
+                onDiscard={() => { handle.clearRefusal(); setText(value.content); }}
+            />
         </>
     );
 }

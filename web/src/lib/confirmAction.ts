@@ -21,6 +21,14 @@
 // server asked for something more); it is shown above the progress window.
 // With no host mounted nothing is asked and nothing is done (answer "no").
 //
+// A question may also carry, structured (alpha.132, drawing X16): what is lost
+// and what stays (`lost`, `kept`), one heavier choice (`option`, e.g. "also
+// delete the data"), and a name to type before the confirm button turns on
+// (`typedName`, matched by typedNameMatches in components/kit/save/ConfirmDetails.tsx,
+// which is fetched only for such a question). The action receives the choice
+// and what was typed. Leaving unsaved changes asks through here too
+// (components/kit/save/leaveGuard.ts, with `cancelLabel`).
+//
 // Bir ekranın "emin misiniz?" diye sormasının ve başlattığı işi göstermesinin
 // tek yolu. Onaylanan iş, aynı pencereyi ilerleme penceresine çevirir: sayfa
 // kilitlidir, adımlar ya da "Sunucuda çalışılıyor…" ve geçen süre gösterilir;
@@ -59,6 +67,27 @@ export interface OperationReport {
     steps(steps: OperationStep[]): void;
 }
 
+/**
+ * A name the person types before the confirm button turns on (alpha.132):
+ * the safeguard of a removal that cannot be undone.
+ */
+export interface TypedName {
+    /** The exact name to type. */
+    value: string;
+    /** The field's label, naming what to type: "Type example.com to delete the folder too". */
+    label: string;
+    /** Letter case does not count (a domain name: the server compares it so too). */
+    ignoreCase?: boolean;
+}
+
+/** What the person chose in the question; the action receives it. */
+export interface ConfirmAnswer {
+    /** The heavier choice (`option`) was ticked. */
+    option: boolean;
+    /** What was typed into the name field ('' without one). */
+    typed: string;
+}
+
 export interface ConfirmRequest {
     /** Short heading, e.g. "Delete example.com?". Without one the message is the dialogue's text. */
     title?: string;
@@ -66,6 +95,20 @@ export interface ConfirmRequest {
     message?: string;
     /** The confirm button's label; "Continue" when not given. */
     confirmLabel?: string;
+    /** The other button's label; "Cancel" when not given. */
+    cancelLabel?: string;
+    /** What is lost, one plain line each (drawn with a red cross). */
+    lost?: string[];
+    /** What stays as it is, one plain line each (drawn with a green check). */
+    kept?: string[];
+    /** The confirm button stays off until this name is typed. */
+    typedName?: TypedName;
+    /**
+     * One heavier choice inside the question, off at first ("Also delete the
+     * app's data"). Ticked, its `lost` lines join the list and its
+     * `typedName` must be typed. The action receives whether it was ticked.
+     */
+    option?: { label: string; lost?: string[]; typedName?: TypedName };
     /** danger: the change removes or overwrites something. */
     tone?: 'default' | 'danger';
     /** The progress window's title while the action runs, e.g. "Deleting example.com". */
@@ -76,7 +119,7 @@ export interface ConfirmRequest {
      * window closes when it ends and the page says the result itself.
      * confirmAction then answers true.
      */
-    action?: (report: OperationReport) => Promise<OperationEnd | void>;
+    action?: (report: OperationReport, answer: ConfirmAnswer) => Promise<OperationEnd | void>;
 }
 
 /** An operation already running, followed without a question (e.g. after a reload). */

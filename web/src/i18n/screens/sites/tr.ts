@@ -226,8 +226,6 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'general.forceHttps': 'HTTPS zorla',
     'general.forceHttpsHint': 'HTTP isteklerini HTTPS\'e yönlendir',
     'general.forceHttpsManaged': 'Sertifika ve HSTS durumu tutarlı kalsın diye HTTPS zorlama Hosting → SSL/TLS bölümünden yönetilir.',
-    'general.save': 'Değişiklikleri kaydet',
-    'general.saving': 'Kaydediliyor…',
     'general.saved': 'Ayarlar kaydedildi',
     'general.saveFailed': 'Ayarlar kaydedilemedi',
     'general.aliases': 'Alan adı takma adları',
