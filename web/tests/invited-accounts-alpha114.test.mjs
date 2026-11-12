@@ -75,7 +75,8 @@ test('a disabled Save says what is missing', () => {
   // alpha.117: the plan editor moved to PlanRights.tsx; its Save still says what is missing.
   // alpha.132: in the shared save bar, in place of the count.
   const planEditor = source('../src/components/PlanRights.tsx');
-  assert.match(planEditor, /blockedBy=\{nameMissing \? t\('acct\.plan\.missing'\) : undefined\}/);
+  // alpha.133: then a limit outside its range, by name.
+  assert.match(planEditor, /blockedBy=\{nameMissing \? t\('acct\.plan\.missing'\) : outside \? t\('limits\.plan\.outside', \{ name: outside\.name \}\) : undefined\}/);
   for (const key of ['acct.team.missing', 'acct.team.passwordRule', 'acct.team.newPasswordShort', 'acct.plan.missing',
     'acct.team.inviteHint', 'acct.invite.rowResend', 'acct.invite.status.cancelledUsers', 'acct.invite.status.cancelledTeam']) {
     assert.ok(en.includes(`'${key}':`), `${key} in English`);
