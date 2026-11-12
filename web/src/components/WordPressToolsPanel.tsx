@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, RefreshCw, Download } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -10,6 +10,10 @@ import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
 import { AdminInstallLink } from './AdminInstallLink';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { forget, remember, remembered } from '../lib/requestProgress';
+import { answerWasLost } from '../lib/requestIdentity';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 // WordPress tools of one site (alpha.118, docs/WORDPRESS-TOOLS.md): status,
 // verified updates with a backup first, the switch for automatic minor
@@ -155,7 +159,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
 
     // Starts an update or a copy; answers the operation the server accepted
     // (its id, or '' when the answer named none), or null when it was refused.
-    const start = async (path: string, method: 'POST' | 'PUT', body: unknown, done?: () => void): Promise<string | null> => {
+    const start = async (path: string, method: 'POST', body: unknown, done?: () => void): Promise<string | null> => {
         if (busy) return null;
         setBusy(true);
         setFailure(null);
@@ -253,7 +257,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
         }
     };
 
-    const startAndFollow = async (report: OperationReport, path: 'update' | 'clone', method: 'POST' | 'PUT', body: unknown, done?: () => void, target = '') => {
+    const startAndFollow = async (report: OperationReport, path: 'update' | 'clone', method: 'POST', body: unknown, done?: () => void, target = '') => {
         const since = Date.now();
         report.steps(wordpressSteps(t, path, 'start', since, null, false, target));
         const id = await start(path, method, body, done);
@@ -334,14 +338,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                             </div>
                             {value.database_linked === false && <SiteToolGuidance tone="prerequisite" reason={t('wpt.dbNotLinked')} />}
 
-                            <label className="flex cursor-pointer items-start gap-3">
-                                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={value.auto_minor_core} disabled={busy || stale}
-                                    onChange={(e) => void start('auto-update', 'PUT', { minor_core: e.target.checked })} />
-                                <span>
-                                    <span className="block text-sm text-fg">{t('wpt.autoMinor')}</span>
-                                    <span className="block text-xs text-fg-subtle">{t('wpt.autoMinorHint')}</span>
-                                </span>
-                            </label>
+                            <AutoMinorSetting url={url} value={value} stale={stale} reading={state.reading} onSaved={() => state.retry()} />
 
                             <div>
                                 <h4 className="mb-2 text-sm font-semibold text-fg">{t('wpt.plugins')}</h4>
@@ -413,5 +410,63 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                 }}
             </RemoteGate>
         </section>
+    );
+}
+
+// alpha.132: automatic minor releases are a setting saved by Save, not by
+// ticking it (owner, 8 Nov 2026). The tick is a draft over the state last
+// read; the update and copy above stay actions.
+// Küçük sürümlerin kendiliğinden kurulması Kaydet ile kaydedilen bir ayardır.
+function AutoMinorSetting({ url, value, stale, reading, onSaved }: {
+    url: string; value: WPState; stale: boolean; reading: boolean; onSaved: () => Promise<unknown>;
+}) {
+    const { t } = useI18n();
+    const say = useSaveWords();
+    const known = useMemo(() => ({ auto_minor_core: value.auto_minor_core }), [value]);
+    const draft = useDraft(known);
+    const on = draft.values?.auto_minor_core ?? value.auto_minor_core;
+    const changed = draft.isChanged('auto_minor_core');
+    const save = () => void draft.save(async (changes) => {
+        let res: Response | null = null;
+        try {
+            res = await sendSiteTool(`${url}/auto-update`, 'PUT', { minor_core: changes.auto_minor_core });
+        } catch {
+            res = null;
+        }
+        if (!res || answerWasLost(res)) return 'unknown';
+        if (!res.ok) {
+            showToast('error', refusalText(await readApiError(res), t, 'wpt.autoMinorFailed'));
+            return 'refused';
+        }
+        showToast('success', t('wpt.autoMinorSaved'));
+        await onSaved();
+        return 'saved';
+    });
+    return (
+        <div className="rounded-lg border border-border px-3">
+            <label className={`-mx-3 flex cursor-pointer items-start gap-3 px-3 py-3 ${changed ? changedRowClass : ''}`}>
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={on} disabled={draft.saving}
+                    onChange={(e) => draft.set('auto_minor_core', e.target.checked)} />
+                <span>
+                    <span className="block text-sm text-fg">
+                        {t('wpt.autoMinor')}
+                        {changed && <ChangedMark switched={on} />}
+                    </span>
+                    <span className="block text-xs text-fg-subtle">{t('wpt.autoMinorHint')}</span>
+                </span>
+            </label>
+            {draft.isMoved('auto_minor_core') && draft.base && (
+                <ServerMovedNote value={say(draft.base.auto_minor_core ? 'on' : 'off')} onTake={() => draft.take('auto_minor_core')} />
+            )}
+            <SaveBar
+                className="-mx-3 mt-0 rounded-b-lg px-3"
+                count={draft.count}
+                saving={draft.saving}
+                blockedBy={stale ? say('stale') : undefined}
+                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: reading, onCheck: () => void onSaved() } : undefined}
+                onSave={save}
+                onDiscard={draft.reset}
+            />
+        </div>
     );
 }

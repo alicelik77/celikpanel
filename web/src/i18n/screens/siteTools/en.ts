@@ -41,6 +41,8 @@ export const enSiteToolsScreens = {
     'wpt.check': 'Check again',
     'wpt.autoMinor': 'Install security and maintenance releases of WordPress automatically',
     'wpt.autoMinorHint': 'Once a day; a backup is made first and restored if the update fails. Major releases are always your choice.',
+    'wpt.autoMinorSaved': 'The automatic update setting was saved.',
+    'wpt.autoMinorFailed': 'The automatic update setting was not saved.',
     'wpt.plugins': 'Plugins',
     'wpt.themes': 'Themes',
     'wpt.none': 'None',
@@ -165,6 +167,8 @@ export const enSiteToolsScreens = {
     'mscan.schedule': 'Scan every site weekly (all subscriptions, at low priority)',
     'mscan.scheduleHint': 'Only for the administrator. Customers, their resellers and administrators are told when something is found.',
     'mscan.scheduleLast': 'Last weekly round: {when}',
+    'mscan.scheduleSaved': 'The weekly scan setting was saved.',
+    'mscan.scheduleFailed': 'The weekly scan setting was not saved.',
 
     'err.MALWARE_SCAN_ALREADY_QUEUED': 'A scan of this site is already waiting or running, so no second one was queued. This screen shows its progress.',
     'err.MALWARE_DELETE_CONFIRMATION_REQUIRED': 'Deleting needs an explicit confirmation naming the file. Nothing was deleted.',

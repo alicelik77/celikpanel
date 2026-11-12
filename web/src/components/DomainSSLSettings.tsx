@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Shield, CheckCircle, AlertTriangle, XCircle, Lock, Upload, Unlink, RefreshCw } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -17,6 +17,10 @@ import { renewalGuidance, renewalLabelKey, type SiteRenewalState } from '../lib/
 import { PasswordInput } from './PasswordInput';
 import { confirmAction, followOperation } from '../lib/confirmAction';
 import { flowSteps, followRequestProgress, resumeRequestProgress, sendWithSteps, sslIssueSteps } from '../lib/requestProgress';
+import { answerWasLost } from '../lib/requestIdentity';
+import { useDraft } from './kit/save/draft';
+import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import { useSaveWords } from './kit/save/words';
 
 interface DomainSSLSettingsProps {
     domainId: number;
@@ -77,6 +81,39 @@ interface SSLSettings {
     // Additive (2026-10-14): the time left on the server's clock when it answered.
     hsts_retire_remaining_seconds?: number | null;
 }
+
+// The certificate's settings as one block (alpha.132; owner, 8 Nov 2026:
+// nothing is saved by clicking a setting). Three addresses keep them:
+// renewal, the HTTPS settings (force HTTPS, HSTS and its duration together)
+// and the mail certificate. `auto_renew` means something only for a
+// certificate the panel requests; `secure_mail` is null while not known.
+// Sertifikanın ayarları tek blok: üç adreste tutulur; Kaydet değişenleri sırayla gönderir.
+interface CertificateSettings {
+    auto_renew: boolean;
+    force_https: boolean;
+    hsts_enabled: boolean;
+    hsts_max_age: number;
+    secure_mail: boolean | null;
+}
+
+type SettingsPart = 'renewal' | 'https' | 'mail';
+
+// How a Save of the block ended, part by part (D-024): what was saved, the
+// part the server refused with its reason, the part whose answer was lost
+// (not known), and what was not sent because an earlier part did not go
+// through. Kaydet'in parça parça nasıl bittiği.
+interface SettingsReport {
+    saved: SettingsPart[];
+    refused?: { part: SettingsPart; problem: ApiError };
+    unknown?: SettingsPart;
+    notSent: SettingsPart[];
+}
+
+const PART_WORDS: Record<SettingsPart, TranslationKey> = {
+    renewal: 'ssl.save.part.renewal',
+    https: 'ssl.save.part.https',
+    mail: 'ssl.save.part.mail',
+};
 
 interface SSLData {
     domain_id: number;
@@ -149,6 +186,7 @@ export function DomainSSLSettings({
     customOpen = true,
 }: DomainSSLSettingsProps) {
     const { t, locale } = useI18n();
+    const say = useSaveWords();
     // Another domain is another address: its answer never appears under this
     // one, and an answer for the domain just left is dropped.
     // Başka alan adı başka adrestir: yanıtı bunun altında görünmez.
@@ -178,13 +216,8 @@ export function DomainSSLSettings({
     const [showReissue, setShowReissue] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [removing, setRemoving] = useState(false);
-    const [settingsBusy, setSettingsBusy] = useState(false);
-    const [secureMailBusy, setSecureMailBusy] = useState(false);
-    const [renewalBusy, setRenewalBusy] = useState(false);
+    const [settingsReport, setSettingsReport] = useState<SettingsReport | null>(null);
     const currentDomainIdRef = useRef(domainId);
-    const settingsMutationBusyRef = useRef(false);
-    const secureMailMutationBusyRef = useRef(false);
-    const renewalMutationBusyRef = useRef(false);
 
     // Event handlers from the previous render can finish after navigation. Keep
     // the current identity synchronously available so they cannot update the
@@ -225,6 +258,18 @@ export function DomainSSLSettings({
     // `false`, bilinmediğinde `null`.
     const secureMail: boolean | null =
         mailAvailable === false ? false : mailState.remote.state === 'known' ? mailState.remote.value : null;
+    // alpha.132: the settings block is a draft over what was last read. A
+    // new answer of either read is a new base; nothing is sent until Save.
+    // Ayarlar bloğu son okunanın üzerindeki taslaktır; Kaydet'e dek hiçbir şey gönderilmez.
+    const settingsKnown = useMemo<CertificateSettings | null>(() => (data ? {
+        auto_renew: data.has_certificate && data.certificate?.type === 'letsencrypt' ? data.certificate.auto_renew : false,
+        force_https: data.settings.force_https,
+        hsts_enabled: data.settings.hsts_enabled,
+        hsts_max_age: data.settings.hsts_max_age,
+        secure_mail: secureMail,
+    } : null), [data, secureMail]);
+    const draft = useDraft(settingsKnown);
+    const resetSettings = draft.reset;
     // Nothing that changes the certificate or its settings is offered on an
     // earlier answer, or while the answer is being read again.
     // Sertifikayı ya da ayarlarını değiştiren hiçbir şey, önceki bir yanıt
@@ -260,9 +305,10 @@ export function DomainSSLSettings({
         setShowReissue(false);
         setIncludeMail(false);
         setCertSource('letsencrypt');
-        setSettingsBusy(settingsMutationBusyRef.current);
-        setSecureMailBusy(secureMailMutationBusyRef.current);
-        setRenewalBusy(renewalMutationBusyRef.current);
+        setSettingsReport(null);
+        // Another domain's settings are not this one's draft.
+        resetSettings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [domainId]);
 
     // The issue form starts from what the server said, each time it says it.
@@ -537,107 +583,100 @@ export function DomainSSLSettings({
         });
     };
 
-    const handleUpdateSettings = async (updates: Partial<SSLSettings>) => {
-        if (readOnly || locked || !data || settingsMutationBusyRef.current) return;
+    // Save: the changed parts go to their own addresses in a fixed order —
+    // renewal, then the HTTPS settings, then the mail certificate, which runs
+    // in the locked progress window with the server's steps. A part that is
+    // refused, or whose answer is lost, stops the parts after it: they are not
+    // sent and stay unsaved. The page then says, part by part, what was saved,
+    // what was refused and why, what is not known and what was not sent
+    // (D-024); the settings are read again, so what the server now holds is no
+    // change any more and Save sends only what is left.
+    // Kaydet: değişen parçalar sırayla kendi adreslerine gider; reddedilen ya
+    // da yanıtı yiten parça sonrakileri durdurur. Sayfa parça parça ne olduğunu söyler.
+    const saveSettings = () => void draft.save(async (changes, values) => {
+        if (readOnly || locked) return 'refused';
         const targetDomainId = domainId;
-        const nextSettings = { ...data.settings, ...updates };
-        const settingsRequest = {
-            force_https: nextSettings.force_https,
-            hsts_enabled: nextSettings.hsts_enabled,
-            hsts_max_age: nextSettings.hsts_max_age,
-        };
-        settingsMutationBusyRef.current = true;
-        setSettingsBusy(true);
-        try {
-            const res = await fetch(`/api/v1/domains/${targetDomainId}/ssl/settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settingsRequest),
-            });
-            if (!res.ok) {
-                const apiError = await readApiError(res);
-                if (currentDomainIdRef.current === targetDomainId) {
-                    showToast('error', apiErrorText(apiError, t, 'ssl.settingsFailed'));
-                }
-                return;
-            }
-            if (currentDomainIdRef.current === targetDomainId) {
-                showToast('success', t('ssl.settingsSaved'));
-            }
-            await loadSSLData();
-        } catch {
-            await resultUnknown(targetDomainId);
-        } finally {
-            settingsMutationBusyRef.current = false;
-            setSettingsBusy(false);
-        }
-    };
+        const parts: SettingsPart[] = [];
+        if ('auto_renew' in changes) parts.push('renewal');
+        if ('force_https' in changes || 'hsts_enabled' in changes || 'hsts_max_age' in changes) parts.push('https');
+        if ('secure_mail' in changes && mailAvailable === true && values.secure_mail !== null) parts.push('mail');
+        const report: SettingsReport = { saved: [], notSent: [] };
+        setSettingsReport(null);
 
-    const handleSecureMailChange = async (nextSecureMail: boolean) => {
-        if (readOnly || locked || secureMailMutationBusyRef.current || secureMail === null || mailAvailable !== true) return;
-        const targetDomainId = domainId;
-        secureMailMutationBusyRef.current = true;
-        setSecureMailBusy(true);
-        // Runs in the locked progress window with the server's steps (alpha.127).
-        await followOperation({ progressTitle: t('opstep.mailCert.title', { name: domainName }), action: async (report) => {
-        try {
-            const res = await sendWithSteps(report, flowSteps(t, 'mailCert', ['check!', 'mail_tls', 'tlsa'], { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
-                (headers) => fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
+        // One part: its own address; undefined while the answer is not known.
+        // Bir parça: kendi adresi; yanıt bilinmiyorsa undefined.
+        const sendPart = async (part: SettingsPart): Promise<Response | null> => {
+            if (part === 'renewal') {
+                return fetch(`/api/v1/domains/${targetDomainId}/ssl/renewal`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', ...headers },
-                    body: JSON.stringify({ secure_mail: nextSecureMail }),
-                }));
-            if (!res.ok) {
-                const apiError = await readApiError(res);
-                if (currentDomainIdRef.current === targetDomainId) {
-                    showToast('error', apiErrorText(apiError, t));
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ auto_renew: values.auto_renew }),
+                });
+            }
+            if (part === 'https') {
+                return fetch(`/api/v1/domains/${targetDomainId}/ssl/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        force_https: values.force_https,
+                        hsts_enabled: values.hsts_enabled,
+                        hsts_max_age: values.hsts_max_age,
+                    }),
+                });
+            }
+            const sent: { answer: Response | null; lost: boolean } = { answer: null, lost: false };
+            await followOperation({ progressTitle: t('opstep.mailCert.title', { name: domainName }), action: async (progress) => {
+                try {
+                    sent.answer = await sendWithSteps(progress, flowSteps(t, 'mailCert', ['check!', 'mail_tls', 'tlsa'], { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
+                        (headers) => fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', ...headers },
+                            body: JSON.stringify({ secure_mail: values.secure_mail }),
+                        }));
+                } catch {
+                    sent.lost = true;
                 }
-                return;
-            }
-            if (currentDomainIdRef.current === targetDomainId) {
-                showToast('success', nextSecureMail ? t('ssl.mailSecured') : t('ssl.mailUnsecured'));
-            }
-            await loadSSLData();
-        } catch {
-            await resultUnknown(targetDomainId);
-        } finally {
-            secureMailMutationBusyRef.current = false;
-            setSecureMailBusy(false);
-        }
-        } });
-        secureMailMutationBusyRef.current = false;
-        setSecureMailBusy(false);
-    };
+            } });
+            if (sent.lost) throw new Error('lost');
+            return sent.answer;
+        };
 
-    const handleAutoRenewChange = async (nextAutoRenew: boolean) => {
-        if (readOnly || locked || renewalMutationBusyRef.current) return;
-        const targetDomainId = domainId;
-        renewalMutationBusyRef.current = true;
-        setRenewalBusy(true);
-        try {
-            const res = await fetch(`/api/v1/domains/${targetDomainId}/ssl/renewal`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ auto_renew: nextAutoRenew }),
-            });
+        for (const part of parts) {
+            if (report.refused || report.unknown) {
+                report.notSent.push(part);
+                continue;
+            }
+            let res: Response | null;
+            try {
+                res = await sendPart(part);
+            } catch {
+                report.unknown = part;
+                continue;
+            }
+            if (res === null) {
+                // The progress window did not open: nothing of this part was sent.
+                report.notSent.push(part);
+                continue;
+            }
+            if (answerWasLost(res)) {
+                report.unknown = part;
+                continue;
+            }
             if (!res.ok) {
-                const apiError = await readApiError(res);
-                if (currentDomainIdRef.current === targetDomainId) {
-                    showToast('error', apiErrorText(apiError, t, 'ssl.autoRenewFailed'));
-                }
-                return;
+                report.refused = { part, problem: await readApiError(res) };
+                continue;
             }
-            if (currentDomainIdRef.current === targetDomainId) {
-                showToast('success', t('ssl.autoRenewSaved'));
-            }
-            await loadSSLData();
-        } catch {
-            await resultUnknown(targetDomainId);
-        } finally {
-            renewalMutationBusyRef.current = false;
-            setRenewalBusy(false);
+            report.saved.push(part);
         }
-    };
+
+        const whole = report.saved.length === parts.length;
+        if (currentDomainIdRef.current === targetDomainId) {
+            if (whole) showToast('success', t('ssl.settingsSaved'));
+            else setSettingsReport(report);
+        }
+        await loadSSLData();
+        return whole ? 'saved' : report.unknown ? 'unknown' : 'refused';
+    });
 
     const handleRetryActivation = async () => {
         if (readOnly || locked) return;
@@ -704,6 +743,29 @@ export function DomainSSLSettings({
         return <CouldNotCheck text={t('ssl.unknown')} onRetry={() => void loadSSLData()} busy={ssl.reading} />;
     }
     const stale = ssl.remote.state === 'unknown';
+    // What the settings block shows: the server's values with the unsaved
+    // changes over them, and the server's values themselves.
+    // Ayarlar bloğunun gösterdiği: sunucunun değerleri ve üzerindeki kaydedilmemiş değişiklikler.
+    const settings = draft.values ?? settingsKnown!;
+    const savedSettings = draft.base ?? settingsKnown!;
+    const hstsWords = (seconds: number) => {
+        const preset = HSTS_PRESETS.find((candidate) => candidate.seconds === seconds);
+        return preset ? t(preset.label) : t('ssl.hstsMaxAge.current', { seconds });
+    };
+    // HSTS needs HTTPS forced: turning it on forces HTTPS and starts with the
+    // short trial duration; taking back one's own HSTS change takes back
+    // what it brought along.
+    // HSTS, HTTPS zorlamayı gerektirir; açmak HTTPS'i zorlar ve kısa deneme süresiyle başlar.
+    const setHsts = (on: boolean) => {
+        draft.set('hsts_enabled', on);
+        if (on) {
+            draft.set('force_https', true);
+            if (!savedSettings.hsts_enabled) draft.set('hsts_max_age', INITIAL_HSTS_MAX_AGE);
+        } else {
+            draft.set('hsts_max_age', savedSettings.hsts_max_age);
+            if (!savedSettings.hsts_enabled) draft.set('force_https', savedSettings.force_https);
+        }
+    };
 
     // The backend may retain historical certificate details after the active
     // assignment is removed. has_certificate is authoritative; stale details
@@ -922,12 +984,16 @@ export function DomainSSLSettings({
                                 {cert.type === 'letsencrypt' && (
                                     <div className="mt-4 border-t border-border pt-4">
                                         <ControlledToggle
-                                            checked={cert.auto_renew}
-                                            onChange={handleAutoRenewChange}
+                                            checked={settings.auto_renew}
+                                            onChange={(v) => draft.set('auto_renew', v)}
                                             label={t('ssl.autoRenewOn')}
                                             hint={t(cert.renewal_owner === 'operating_system' ? 'ssl.autoRenewHint.os' : 'ssl.autoRenewHint')}
-                                            disabled={readOnly || locked || renewalBusy}
+                                            disabled={readOnly || locked || draft.saving}
+                                            changed={draft.isChanged('auto_renew')}
                                         />
+                                        {draft.isMoved('auto_renew') && draft.base && (
+                                            <ServerMovedNote value={say(draft.base.auto_renew ? 'on' : 'off')} onTake={() => draft.take('auto_renew')} />
+                                        )}
                                     </div>
                                 )}
                                 <div className="mt-4 flex flex-wrap gap-2">
@@ -1173,77 +1239,83 @@ export function DomainSSLSettings({
             {/* HTTPS settings */}
             <FormSection title={t('ssl.httpsSettings')}>
                 <ControlledToggle
-                    checked={data.settings.force_https}
-                    onChange={(v) => {
-                        if (!v && data.settings.hsts_enabled) {
-                            showToast('warning', t('ssl.forceHttpsRequiredByHsts'));
-                            return;
-                        }
-                        handleUpdateSettings({ force_https: v });
-                    }}
+                    checked={settings.force_https}
+                    onChange={(v) => draft.set('force_https', v)}
                     label={t('ssl.forceHttps')}
                     hint={
                         !data.has_certificate
                             ? t('ssl.httpsCertificateRequired')
-                            : !certificateReady && !data.settings.force_https
+                            : !certificateReady && !settings.force_https
                               ? t('ssl.usableCertificateRequired')
-                            : data.settings.hsts_enabled
+                            : settings.hsts_enabled
                               ? t('ssl.forceHttpsRequiredByHsts')
                               : t('ssl.forceHttpsHint')
                     }
                     disabled={
                         readOnly ||
                         locked ||
-                        settingsBusy ||
-                        (!certificateReady && !data.settings.force_https) ||
-                        (data.settings.hsts_enabled && data.settings.force_https)
+                        draft.saving ||
+                        (!certificateReady && !settings.force_https) ||
+                        (settings.hsts_enabled && settings.force_https)
                     }
+                    changed={draft.isChanged('force_https')}
                 />
+                {draft.isMoved('force_https') && (
+                    <ServerMovedNote value={say(savedSettings.force_https ? 'on' : 'off')} onTake={() => draft.take('force_https')} />
+                )}
                 <ControlledToggle
-                    checked={data.settings.hsts_enabled}
-                    onChange={(v) =>
-                        handleUpdateSettings({
-                            hsts_enabled: v,
-                            force_https: v ? true : data.settings.force_https,
-                            hsts_max_age: v ? INITIAL_HSTS_MAX_AGE : data.settings.hsts_max_age,
-                        })
-                    }
+                    checked={settings.hsts_enabled}
+                    onChange={setHsts}
                     label={t('ssl.hsts')}
                     hint={
                         !data.has_certificate
                             ? t('ssl.httpsCertificateRequired')
-                            : !certificateReady && !data.settings.hsts_enabled
+                            : !certificateReady && !settings.hsts_enabled
                               ? t('ssl.usableCertificateRequired')
-                              : hstsRetirementUntil && !data.settings.hsts_enabled
+                              : hstsRetirementUntil && !settings.hsts_enabled
                                 ? t('ssl.hstsRetirementActive', {
                                       date: hstsRetirementDate,
                                       remaining: hstsRetirementRemaining,
                                   })
                               : t('ssl.hstsHint')
                     }
-                    disabled={readOnly || locked || settingsBusy || (!certificateReady && !data.settings.hsts_enabled)}
+                    disabled={readOnly || locked || draft.saving || (!certificateReady && !settings.hsts_enabled)}
+                    changed={draft.isChanged('hsts_enabled')}
                 />
-                {data.has_certificate && data.settings.hsts_enabled && (
+                {draft.isMoved('hsts_enabled') && (
+                    <ServerMovedNote value={say(savedSettings.hsts_enabled ? 'on' : 'off')} onTake={() => draft.take('hsts_enabled')} />
+                )}
+                {data.has_certificate && settings.hsts_enabled && (
                     <div className="ml-7 space-y-2">
-                        <Field label={t('ssl.hstsMaxAge')} hint={t('ssl.hstsMaxAgeHint')}>
-                            <select
-                                value={data.settings.hsts_max_age}
-                                onChange={(event) => handleUpdateSettings({ hsts_max_age: Number(event.target.value) })}
-                                className={inputClass}
-                                disabled={readOnly || locked || settingsBusy}
-                            >
-                                {!HSTS_PRESETS.some((preset) => preset.seconds === data.settings.hsts_max_age) && (
-                                    <option value={data.settings.hsts_max_age}>
-                                        {t('ssl.hstsMaxAge.current', { seconds: data.settings.hsts_max_age })}
-                                    </option>
-                                )}
-                                {HSTS_PRESETS.map((preset) => (
-                                    <option key={preset.seconds} value={preset.seconds}>
-                                        {t(preset.label)}
-                                    </option>
-                                ))}
-                            </select>
-                        </Field>
+                        <div className={`-ml-3 rounded-r pl-3 ${draft.isChanged('hsts_max_age') ? changedRowClass : ''}`}>
+                            <Field label={t('ssl.hstsMaxAge')} hint={t('ssl.hstsMaxAgeHint')}>
+                                <select
+                                    value={settings.hsts_max_age}
+                                    onChange={(event) => draft.set('hsts_max_age', Number(event.target.value))}
+                                    className={inputClass}
+                                    disabled={readOnly || locked || draft.saving}
+                                >
+                                    {!HSTS_PRESETS.some((preset) => preset.seconds === savedSettings.hsts_max_age) && (
+                                        <option value={savedSettings.hsts_max_age}>
+                                            {t('ssl.hstsMaxAge.current', { seconds: savedSettings.hsts_max_age })}
+                                        </option>
+                                    )}
+                                    {HSTS_PRESETS.map((preset) => (
+                                        <option key={preset.seconds} value={preset.seconds}>
+                                            {t(preset.label)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+                            {draft.isChanged('hsts_max_age') && (
+                                <p className="mt-1 pb-1">
+                                    <ChangedMark from={hstsWords(savedSettings.hsts_max_age)} to={hstsWords(settings.hsts_max_age)} />
+                                </p>
+                            )}
+                            {draft.isMoved('hsts_max_age') && (
+                                <ServerMovedNote value={hstsWords(savedSettings.hsts_max_age)} onTake={() => draft.take('hsts_max_age')} />
+                            )}
+                        </div>
                         <p className="flex items-start gap-2 rounded-lg border border-warning-mark/50 bg-warning-mark/20 px-3 py-2 text-xs text-fg-muted">
                             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                             <span>{t('ssl.hstsHttpsOnly')}</span>
@@ -1251,29 +1323,35 @@ export function DomainSSLSettings({
                     </div>
                 )}
                 {data.has_certificate && mailAvailable === true && (
-                    <ControlledToggle
-                        checked={secureMail === true}
-                        onChange={handleSecureMailChange}
-                        label={t('ssl.secureMail')}
-                        hint={
-                            secureMail === null
-                                ? t('ssl.mailStateUnknown')
-                                : !certificateReady
-                                ? t('ssl.usableCertificateRequired')
-                                : certificateDNSNames === null
-                                ? t('ssl.secureMailCoverageUnknown', { name: mailName })
-                                : mailCovered
-                                  ? t('ssl.secureMailHint', { name: mailName })
-                                  : t('ssl.secureMailNotCovered', { name: mailName })
-                        }
-                        disabled={
-                            readOnly ||
-                            locked ||
-                            secureMailBusy ||
-                            secureMail === null ||
-                            (secureMail !== true && (!certificateReady || !mailCovered))
-                        }
-                    />
+                    <>
+                        <ControlledToggle
+                            checked={settings.secure_mail === true}
+                            onChange={(v) => draft.set('secure_mail', v)}
+                            label={t('ssl.secureMail')}
+                            hint={
+                                savedSettings.secure_mail === null
+                                    ? t('ssl.mailStateUnknown')
+                                    : !certificateReady
+                                    ? t('ssl.usableCertificateRequired')
+                                    : certificateDNSNames === null
+                                    ? t('ssl.secureMailCoverageUnknown', { name: mailName })
+                                    : mailCovered
+                                      ? t('ssl.secureMailHint', { name: mailName })
+                                      : t('ssl.secureMailNotCovered', { name: mailName })
+                            }
+                            disabled={
+                                readOnly ||
+                                locked ||
+                                draft.saving ||
+                                savedSettings.secure_mail === null ||
+                                (settings.secure_mail !== true && (!certificateReady || !mailCovered))
+                            }
+                            changed={draft.isChanged('secure_mail')}
+                        />
+                        {draft.isMoved('secure_mail') && savedSettings.secure_mail !== null && (
+                            <ServerMovedNote value={say(savedSettings.secure_mail ? 'on' : 'off')} onTake={() => draft.take('secure_mail')} />
+                        )}
+                    </>
                 )}
                 {data.has_certificate && mailAvailable !== true && (
                     <p className="flex items-start gap-2 rounded-lg border border-border bg-surface-subtle px-3 py-2 text-xs text-fg-muted">
@@ -1281,7 +1359,49 @@ export function DomainSSLSettings({
                         <span>{t(mailAvailable === false ? 'ssl.mailUnavailable' : 'ssl.mailCapabilityUnknown')}</span>
                     </p>
                 )}
+                {settingsReport && <SettingsSaveReport report={settingsReport} />}
             </FormSection>
+            <SaveBar
+                count={draft.count}
+                saving={draft.saving}
+                blockedBy={
+                    stale
+                        ? say('stale')
+                        : locked
+                          ? t('common.lostStateReading')
+                          : settings.hsts_enabled && !settings.force_https
+                            ? t('ssl.forceHttpsRequiredByHsts')
+                            : undefined
+                }
+                unknown={draft.outcome === 'unknown' ? { held: draft.held, checking: ssl.reading, onCheck: () => void loadSSLData() } : undefined}
+                onSave={saveSettings}
+                onDiscard={() => {
+                    setSettingsReport(null);
+                    draft.reset();
+                }}
+            />
+        </div>
+    );
+}
+
+// How the last Save of the settings block ended, part by part (D-024): what
+// was saved, what the server refused and why, what is not known, and what was
+// not sent; then who acts and how it resumes.
+// Ayarlar bloğunun son Kaydet'inin parça parça nasıl bittiği; sonra kim ne yapar.
+function SettingsSaveReport({ report }: { report: SettingsReport }) {
+    const { t } = useI18n();
+    const names = (parts: SettingsPart[]) => parts.map((part) => t(PART_WORDS[part])).join(', ');
+    return (
+        <div role="alert" data-ssl-save-report="" className="space-y-1.5 rounded-lg border border-danger/30 bg-danger/5 px-3 py-3 text-sm text-fg">
+            {report.saved.length > 0 && <p>{t('ssl.save.saved', { parts: names(report.saved) })}</p>}
+            {report.refused && (
+                <p className="text-danger">
+                    {t('ssl.save.refused', { part: t(PART_WORDS[report.refused.part]), reason: apiErrorText(report.refused.problem, t, 'ssl.settingsFailed') })}
+                </p>
+            )}
+            {report.unknown && <p className="text-warning">{t('ssl.save.unknown', { part: t(PART_WORDS[report.unknown]) })}</p>}
+            {report.notSent.length > 0 && <p>{t('ssl.save.notSent', { parts: names(report.notSent) })}</p>}
+            <p className="text-fg-muted">{t(report.unknown ? 'ssl.save.nextUnknown' : 'ssl.save.next')}</p>
         </div>
     );
 }
@@ -1312,30 +1432,36 @@ function TabBtn({ active, onClick, icon: Icon, label }: { active: boolean; onCli
     );
 }
 
+// A switch of the settings block; a changed one is marked (alpha.132).
 function ControlledToggle({
     checked,
     onChange,
     label,
     hint,
     disabled = false,
+    changed = false,
 }: {
     checked: boolean;
     onChange: (v: boolean) => void;
     label: string;
     hint?: string;
     disabled?: boolean;
+    changed?: boolean;
 }) {
     return (
-        <label className={`flex items-start gap-3 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+        <label className={`-mx-3 flex items-start gap-3 rounded-r px-3 py-1.5 ${changed ? changedRowClass : ''} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
             <input
                 type="checkbox"
                 checked={checked}
                 disabled={disabled}
                 onChange={(e) => onChange(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-primary"
+                className={`mt-0.5 h-4 w-4 accent-primary ${disabled ? 'opacity-60' : ''}`}
             />
-            <span>
-                <span className="block text-sm text-fg">{label}</span>
+            <span className={disabled ? 'opacity-60' : ''}>
+                <span className="block text-sm text-fg">
+                    {label}
+                    {changed && <ChangedMark switched={checked} />}
+                </span>
                 {hint && <span className="block text-xs text-fg-subtle">{hint}</span>}
             </span>
         </label>
