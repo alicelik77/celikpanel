@@ -175,6 +175,11 @@ function reviewedFollowUp(pending: Record<string, unknown>): { followUp?: Domain
 // The deletion stays pending and the same retry action repeats it.
 const reviewedStageFailures: Record<string, string> = {
     mail_runtime_cleanup: 'mail_runtime_cleanup_failed',
+    // alpha.134: the sender-limit lists, the website (its error line names
+    // the part still there) and the domain's databases.
+    mail_lists_cleanup: 'mail_lists_cleanup_failed',
+    site_cleanup: 'site_cleanup_failed',
+    database_cleanup: 'database_cleanup_failed',
 };
 
 function reviewedStageFailure(pending: Record<string, unknown>): string {
@@ -410,7 +415,7 @@ export async function readSavedDomainDeletion(domainId: number): Promise<SavedDo
 // as the server names them. Only these are shown; anything else is ''.
 // Bir silmenin bildirdiği aşamalar; yalnız bunlar gösterilir.
 const reviewedStages = new Set([
-    'running', 'mail_tls_cleanup', 'mail_runtime_cleanup', 'site_cleanup', 'dns_cleanup',
+    'running', 'mail_tls_cleanup', 'mail_runtime_cleanup', 'mail_lists_cleanup', 'site_cleanup', 'database_cleanup', 'dns_cleanup',
     'certificate_cleanup', 'ledger_delete', 'dns_removed', 'incomplete', 'marker_check',
 ]);
 

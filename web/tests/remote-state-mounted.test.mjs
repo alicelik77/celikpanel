@@ -137,7 +137,9 @@ const hstsRemainingURL = compileSource('lib/hstsRemaining.ts', () => stub);
 // The identity a state-changing request carries is the real one (D-029).
 const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
-  '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
+  '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL,
+  // alpha.134: the delete question and the words of its result, shipped.
+  '/lib/domainDeletionQuestion': compileSource('lib/domainDeletionQuestion.ts', () => stub), '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
   // alpha.132: the keys of a row of section tabs (Settings, a domain's page).
@@ -2577,11 +2579,17 @@ test('Domains: one confirmation for a bulk delete, and the rows change without a
 // followed in the locked window, step by step (the DNS step waits, and says
 // for what), by reading its saved state only, until it ends; no toast.
 test('Domains: a confirmed delete is followed step by step, by reads only, until it is done', async () => {
-  const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
+  // alpha.134: the answer names what stays; the end of the window says it.
+  const pendingBody = {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming',
+    kept: { databases: [{ id: 7, name: 'shop_db', engine: 'mariadb' }], backups: { path: '/var/backups/celikpanel/subscriptions/1/domains/4', files: 2, bytes: 4096 } },
+  };
   const live = liveDomains({ domains: [siteRow(4, 'alicelik.com.tr')], zones: [] });
   let statusReads = 0;
   serve({
     ...live.table,
+    // alpha.134: the question reads the domain's databases first.
+    '/api/v1/domains/4/databases': () => Response.json({ databases: [{ id: 7, name: 'shop_db', engine: 'MariaDB 10.11' }, { id: 8, name: 'blog_db', engine: 'MariaDB 10.11' }] }),
     '/api/v1/domains/4/deletion-status': () => {
       statusReads++;
       if (statusReads < 2) return Response.json(pendingBody);
@@ -2605,20 +2613,26 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
     await openRowMenu('alicelik.com.tr');
     await press(rowItem('delete'));
     await act(async () => { await settled(); await settled(); });
-    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
+    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat domains.delete.databasesStay', 'danger', 'domains.deletingTitle']], 'the question does not name the domain, what goes and that the databases stay');
     // alpha.133: what goes and what stays, as the server's deletion does it,
-    // and the name typed before Delete turns on.
+    // and the name typed before Delete turns on. alpha.134: the databases
+    // are one choice, off at first, naming them.
     assert.deepEqual(question.lost, ['domains.delete.lost.site', 'domains.delete.lost.mail', 'domains.delete.lost.dns', 'domains.delete.lost.schedule']);
-    assert.deepEqual(question.kept, ['domains.delete.kept.databases', 'domains.delete.kept.backups', 'domains.delete.kept.mail', 'domains.delete.kept.dns']);
+    assert.deepEqual(question.kept, ['domains.delete.kept.backups', 'domains.delete.kept.mail', 'domains.delete.kept.dns']);
+    assert.deepEqual(question.option, { label: 'domains.delete.databasesOption', lost: ['domains.delete.lost.databases'] });
     assert.deepEqual(question.typedName, { value: 'alicelik.com.tr', label: 'domains.delete.typeName', ignoreCase: true }, 'deleting a domain does not ask for its name');
-    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
+    const deletes = calls.filter((call) => call.method === 'DELETE');
+    assert.equal(deletes.length, 1, 'more than one DELETE was sent');
+    assert.equal(deletes[0].url, '/api/v1/domains/4?databases=keep', 'the untouched choice did not keep the databases');
     const shown = globalThis.operationSteps.map((steps) => steps.map((step) => `${step.id}=${step.state}`).join(' '));
     assert.equal(shown[0], 'request=running finish=pending');
-    assert.ok(shown.includes('mail=done site=done dns=waiting certificates=pending finish=pending'), `the DNS step did not wait: ${shown.join(' | ')}`);
-    assert.equal(shown.at(-1), 'mail=done site=done dns=done certificates=done finish=done');
+    assert.ok(shown.includes('mail=done site=done databases=done dns=waiting certificates=pending finish=pending'), `the DNS step did not wait: ${shown.join(' | ')}`);
+    assert.equal(shown.at(-1), 'mail=done site=done databases=done dns=done certificates=done finish=done');
     const waiting = globalThis.operationSteps.flat().find((step) => step.state === 'waiting');
     assert.equal(waiting.note, 'domains.step.note.confirming', 'the waiting step does not say for what');
     assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    // What stays is said at the end, with the administrator's folder.
+    assert.equal(globalThis.operationEnds[0].message, 'domains.deleted. domains.deleted.databasesKept domains.deleted.backupsKeptAdmin');
     assert.deepEqual(globalThis.currentTest.toasts, [], 'a toast repeated what the window says');
     assert.ok(!has('alicelik.com.tr'), 'the deleted domain stayed in the list');
   } finally {
