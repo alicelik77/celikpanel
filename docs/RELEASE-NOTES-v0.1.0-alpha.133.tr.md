@@ -6,8 +6,9 @@ Küçük tasarım sürümlerinin ikincisi. Sol menüdeki **Veritabanları** sayf
 artık herkesin veritabanlarını tek görünürlük kuralıyla listeliyor; sunucunun
 kendi işleri bu sayfadan çıkıp Güvenlik sayfasına ve MariaDB ile PostgreSQL
 sayfalarına taşındı. Alanlar tuttukları değer kadar geniş, alan adı silinirken
-neyin gidip neyin kaldığı söyleniyor ve yanlış bir kara liste uyarısı
-giderildi.
+neyin gidip neyin kaldığı söyleniyor, iki sunuculu DNS çiftinde "bekliyor"
+durumunda kalan alan adı silme yeniden bitiyor ve yanlış bir kara liste
+uyarısı giderildi.
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
 günceller.**
 
@@ -61,6 +62,26 @@ göre seçilmiş altı boyuttan birini taşır: bağlantı noktası ya da sayı 
 IP adresi ya da ad orta, sunucu adı, e-posta adresi ya da parola daha geniş,
 web adresi, yol ya da komut en geniş. Telefonda hiçbir alan ekrandan taşmaz.
 Bir test bunu istisnasız korur.
+
+### Alan adı silme, DNS çiftinde artık "bekliyor"da kalmıyor
+
+- İki sunuculu bir DNS çiftinin ana sunucusunda, daha önceki bir silmeden
+  sonra bir alan adını silmek sonsuza dek "siliniyor" durumunda kalabiliyordu:
+  sunucu, yedek DNS sunucusunu denetlemeden önce önceki silmenin tek
+  kullanımlık denetim kaydını temizliyordu ve bu temizlik bu sunucunun kendi
+  DNS denetimini yedi kez yineliyordu; adımın süresi hep doluyordu. Temizlik
+  artık aynı güvenlik denetimleri altında bir kez yapılıyor ve silme bitiyor.
+- Yedek sunucunun doğrulaması geciktiğinde pencere doğruyu söyler: alan adı
+  bu sunucuda DNS'ten zaten kaldırıldı, açık olan yalnız yedek sunucunun
+  doğrulaması, **kimsenin bir şey yapması gerekmiyor** ve CelikPanel
+  kendiliğinden yeniden denetler (en çok 5 dakikada bir). Başarısız değil
+  bekliyor olarak görünür; biten adımlar bitti olarak okunur ("Posta
+  kaldırıldı", …). Sürenin hangi tarafta dolduğunu da söyler: bu sunucunun
+  kendi denetiminde mi, yedek sunucunun yanıtında mı.
+- Aynı neden üst üste altı kez yinelenirse (yaklaşık çeyrek saat)
+  yöneticilere neden, kimin yapacağı ve sonraki adımla **tek** bir bildirim
+  gider; yeniden denetimler sürer ve "Bu silme işlemini tekrar dene" yeniden
+  gerçek bir yeniden denemedir.
 
 ### Diğer düzeltmeler
 
@@ -118,6 +139,10 @@ Bir test bunu istisnasız korur.
   boyutlar tek seferde okunabildiğinde gelecek.
 - **Sertifika ekranı posta adının kapsanıp kapsanmadığını henüz
   söylemiyor.**
+- alpha.132'de bu şekilde takılan bir silme, güncellemeden birkaç dakika
+  sonra kendiliğinden biter; yeter ki önceki silmenin kaydı hâlâ tutuluyor
+  olsun (son 128 işlem tutulur). Kayıt düşmüşse silme beklemede kalır; bu
+  durumun henüz kendiliğinden bir çıkış yolu yok.
 - Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi
   kendisine verilen alan adlarının sayfalarındadır.
 - LAB DENEMESİNDEN SONRA DOĞRULANACAK: gerçek sistem denetimi (alpha.132'den
@@ -133,7 +158,10 @@ parola, bağlantı sırrı ya da içerik). Veritabanı silmek ve veritabanı
 kullanıcısına parola vermek artık çağıranın ilk aboneliğine göre değil,
 veritabanı sahibinin görünürlüğüne göre yetkilendirilir; olmayan ve başkasına
 ait kayıt aynı yanıtı alır; iki denetim satırı da kimin yaptığını ve kimin
-veritabanı olduğunu yazar (`database.delete`). Yönetim hizmetinin kara liste
+veritabanı olduğunu yazar (`database.delete`). Takılan silme düzeltmesi
+hiçbir saklanan biçimi değiştirmez (günlük eki ve iş kaydı sürüm 1 kalır; yeni
+neden kodları `dns_peer_proof_timeout:local_check` / `:peer_exchange` mevcut
+hata kodu alanını kullanır, eski okuyucular bunları bilinmeyen sayar). Yönetim hizmetinin kara liste
 yanıtına geriye uyumlu Outcome, Reason ve Sublists alanları eklendi; eski
 panel Listed alanını okur ve güncel hizmet bunu yalnız belgelenmiş bir
 listeleme için koyar; eski hizmetin yanıtı "denetlenemedi" olarak gösterilir.

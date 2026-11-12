@@ -442,3 +442,18 @@ test('a running deletion names its live step; anything unreviewed is ignored', a
   // `step` counts only while the request runs.
   assert.equal(await readDomainDeletionStage(response(200, { status: 'failed', stage: 'site_cleanup', step: 'ledger_delete' })), 'site_cleanup');
 });
+
+// alpha.133 integration: a deletion whose backup confirmation CelikPanel
+// re-checks by itself ends the window as blocked, but its line under the
+// title must not say that someone needs to act; every other blocked ending
+// keeps the state's own word.
+test('a deletion re-checked by itself does not say that someone needs to act', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+  assert.match(read('components/Domains.tsx'), /if \(RECHECKED_BY_ITSELF\.has\(reason\)\) \{[\s\S]{0,400}return \{ state: 'blocked', subtitle: t\('domains\.step\.rechecksAlone'\)/);
+  const progress = read('components/OperationProgress.tsx');
+  assert.match(progress, /const endLine = end \? \(end\.state !== 'done' && end\.subtitle\) \|\| t\(END_TITLE\[end\.state\]\) : '';/);
+  assert.match(progress, /description=\{end \? endLine : t\('operation\.wait'\)\}/);
+  assert.match(enScreens['domains.step.rechecksAlone'], /Nobody needs to act/);
+  assert.match(trScreens['domains.step.rechecksAlone'], /Kimsenin bir şey yapması gerekmiyor/);
+});

@@ -135,6 +135,7 @@ export const enSitesScreens = {
     'domains.step.done.dns': '{name} removed from DNS',
     'domains.step.done.certificates': 'Certificates removed',
     'domains.step.done.finish': 'Deletion finished',
+    'domains.step.rechecksAlone': 'Nobody needs to act; CelikPanel checks again by itself',
     'domains.step.continuesAlone': 'You can close this window: the deletion continues by itself and the list shows it as being deleted.',
     'domains.step.unread': 'The state of the deletion of {name} could not be read for a minute. Nothing was sent again. Close this window; the list reads it again by itself.',
     'domains.step.stopped': 'No deletion of {name} is running any more, but the domain is still on this server. Check the list; delete it again if it should go.',

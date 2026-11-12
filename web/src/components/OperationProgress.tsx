@@ -66,8 +66,11 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
     // the server, with the time it has taken so far.
     const shown: OperationStep[] = steps ?? [{ id: 'server', label: t('operation.working'), state: end ? (end.state === 'done' ? 'done' : 'failed') : 'running', since: startedAt }];
     const current = shown.find((step) => step.state === 'running' || step.state === 'waiting');
+    // The line under the title: the state's word, or the ending's own when
+    // that word would not be true (a wait nobody needs to act on).
+    const endLine = end ? (end.state !== 'done' && end.subtitle) || t(END_TITLE[end.state]) : '';
     const announcement = end
-        ? t(END_TITLE[end.state])
+        ? endLine
         : current ? (current.note ? `${current.label}. ${current.note}` : current.label) : t('operation.working');
     const EndIcon = end ? END_ICON[end.state] : null;
 
@@ -91,7 +94,7 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
             onDismiss={end ? onClose : undefined}
             // An ending may name itself ("… saved") in place of the running title ("Saving …").
             title={end?.title ?? title}
-            description={end ? t(END_TITLE[end.state]) : t('operation.wait')}
+            description={end ? endLine : t('operation.wait')}
             actions={end
                 ? (
                     <>

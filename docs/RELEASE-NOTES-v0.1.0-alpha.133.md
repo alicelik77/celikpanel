@@ -6,7 +6,8 @@ The second small design release. The left menu's **Databases** page now
 lists everyone's databases by the one visibility rule, and what belongs to
 the server itself has left it for Security and the MariaDB and PostgreSQL
 pages. Fields are as wide as what they hold, deleting a domain says what
-goes and what stays, and a false blocklist alarm is gone.
+goes and what stays, a domain deletion that stayed "waiting" on a two-server
+DNS pair finishes again, and a false blocklist alarm is gone.
 **Only the owner updates installed panels, from the panel's own update
 screen.**
 
@@ -62,6 +63,25 @@ address or a name medium, a host name, e-mail address or password wider,
 a web address, path or command widest. On a phone a field never runs past
 the screen. A test keeps it that way, with no exceptions.
 
+### A domain deletion no longer stays "waiting" on a DNS pair
+
+- On the main server of a two-server DNS pair, deleting a domain after an
+  earlier deletion could stay "being deleted" for ever: before checking the
+  backup DNS server, the server first cleaned up the earlier deletion's
+  one-time check, and that clean-up repeated this server's own DNS check
+  seven times, so the step always ran out of time. The clean-up now runs
+  once, under the same safety checks, and the deletion finishes.
+- When the backup's confirmation is late, the window says the truth: the
+  domain is already removed from DNS on this server, only the backup's
+  confirmation is open, **nobody needs to act** and CelikPanel checks again
+  by itself (at most every 5 minutes). It shows as waiting, not failed, and
+  finished steps read as done ("Mail removed", …). It also says which side
+  ran out of time: this server's own check or the backup's answer.
+- If the same cause repeats six times in a row (about a quarter of an
+  hour), the administrators get **one** notification with the reason, who
+  acts and the next step; the re-checks continue, and "Retry this deletion"
+  is a real retry again.
+
 ### Other corrections
 
 - **Deleting a domain** lists what goes (the website and its files, extra
@@ -115,6 +135,11 @@ the screen. A test keeps it that way, with no exceptions.
   read in one call for the whole list.
 - **The certificate screen does not yet say whether the mail name is
   covered.**
+- A deletion that stopped this way on alpha.132 finishes by itself within a
+  few minutes after the update, as long as the record of the earlier
+  deletion is still kept (the last 128 operations are kept). If it has
+  dropped out, the deletion stays waiting; this case has no automatic way
+  forward yet.
 - A team member's Databases list is empty; their databases are on the
   pages of the domains they were given, as before.
 - TO CONFIRM after the lab run: real-system check (update from alpha.132
@@ -130,7 +155,10 @@ connection secret or content). Deleting a database and setting a database
 user's password now authorize by the visibility of the database's owner
 instead of the caller's first subscription; a missing and a foreign record
 answer alike; both audit rows name who acted and whose database it was
-(`database.delete`). The Agent's blocklist answer gains the additive gob
+(`database.delete`). The stuck-deletion fix changes no stored format (the
+journal sidecar and ledger stay version 1; the new reason codes
+`dns_peer_proof_timeout:local_check` / `:peer_exchange` use the existing
+error-code field, which older readers treat as unknown). The Agent's blocklist answer gains the additive gob
 fields Outcome, Reason and Sublists; an older Panel reads Listed, which a
 current Agent sets only for a documented listing, and an older Agent's
 answer is shown as "could not check". Release sequence 132 → 133.

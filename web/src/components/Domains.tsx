@@ -527,7 +527,8 @@ export function Domains() {
             // Nothing failed: the removal is done here and CelikPanel checks
             // the backup's confirmation again by itself (alpha.133).
             report.steps(deletionSteps(name, stage, reason, since));
-            return { state: 'blocked', reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
+            // "Someone needs to act" would not be true here: nobody does.
+            return { state: 'blocked', subtitle: t('domains.step.rechecksAlone'), reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
         }
         report.steps(deletionSteps(name, stage, reason, since, true));
         return { state: reason ? 'failed' : 'unknown', reason: pendingMessage(reason, detail) };

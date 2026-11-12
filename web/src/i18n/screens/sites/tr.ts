@@ -129,6 +129,7 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.step.done.dns': '{name} DNS’ten kaldırıldı',
     'domains.step.done.certificates': 'Sertifikalar kaldırıldı',
     'domains.step.done.finish': 'Silme bitti',
+    'domains.step.rechecksAlone': 'Kimsenin bir şey yapması gerekmiyor; CelikPanel kendiliğinden yeniden denetler',
     'domains.step.continuesAlone': 'Bu pencereyi kapatabilirsiniz: silme kendiliğinden sürer ve liste onu siliniyor olarak gösterir.',
     'domains.step.unread': '{name} silmesinin durumu bir dakikadır okunamadı. Hiçbir şey yeniden gönderilmedi. Bu pencereyi kapatın; liste onu kendiliğinden yeniden okur.',
     'domains.step.stopped': '{name} için artık süren bir silme yok, ama alan adı hâlâ bu sunucuda. Listeye bakın; gitmesi gerekiyorsa yeniden silin.',
