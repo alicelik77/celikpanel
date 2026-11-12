@@ -76,6 +76,7 @@ var auditActionNames = []string{
 	"database.check",
 	"database.copy",
 	"database.copy.failed",
+	"database.delete",
 	"database.export",
 	"database.import",
 	"database.import.failed",

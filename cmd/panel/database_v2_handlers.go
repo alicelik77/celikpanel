@@ -855,15 +855,22 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get database info
+	// Get database info. alpha.133: authorized by the visibility of the
+	// database's owner (the left-menu Databases page lists every database the
+	// caller may see); a missing and a foreign database answer the same.
 	dbRepo := repositories.NewPostgresDatabaseV2Repository(p.db.GetDB())
 	database, err := dbRepo.GetByID(ctx, databaseID)
 	if err != nil {
-		http.Error(w, "database not found", http.StatusNotFound)
+		writeClientError(w, http.StatusNotFound, "invalid request")
 		return
 	}
-	if err := p.canAccessDBServer(ctx, currentCaller(r), database.ServerID); err != nil {
+	owner, err := p.visibleDatabaseRecordOwner(ctx, currentCaller(r), database.SubscriptionID, database.ServerID)
+	if errors.Is(err, errNotFound) {
 		writeClientError(w, http.StatusNotFound, "invalid request")
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
 		return
 	}
 
@@ -894,6 +901,10 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		writeServerError(w, err)
 		return
 	}
+	// The row names who acted (the session's person, and the account acted
+	// as during "Log in as") and whose database it was.
+	p.auditDetailed(r, "database.delete:"+database.Name, "database", databaseID,
+		map[string]any{"owner": owner.Username, "owner_id": owner.ID})
 
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.WriteHeader(http.StatusOK)
