@@ -62,6 +62,7 @@ var teamMemberDomainRequirements = map[teamMemberRouteKey]teamMemberDomainRequir
 	{kind: "dnssec", method: http.MethodPost}: {capability: core.TeamCapabilityDNS, mode: core.TeamPermissionManage},
 
 	{kind: "ssl-mail", method: http.MethodGet}:         {capability: core.TeamCapabilitySSL, mode: core.TeamPermissionView},
+	{kind: "ssl-coverage", method: http.MethodGet}:     {capability: core.TeamCapabilitySSL, mode: core.TeamPermissionView},
 	{kind: "ssl-mail", method: http.MethodPut}:         {capability: core.TeamCapabilitySSL, mode: core.TeamPermissionManage},
 	{kind: "ssl-retry", method: http.MethodPost}:       {capability: core.TeamCapabilitySSL, mode: core.TeamPermissionManage},
 	{kind: "ssl-renewal", method: http.MethodPut}:      {capability: core.TeamCapabilitySSL, mode: core.TeamPermissionManage},

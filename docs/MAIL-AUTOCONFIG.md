@@ -20,9 +20,13 @@ The answers are fixed texts written into the site file with nginx `return
 200` (no PHP, no panel process): they keep working with the panel stopped or
 removed (D-022). They hold:
 
-- the mail server name (the domain's `mail.<domain>` when the domain's
-  certificate carries it for mail, otherwise the server's mail name, which
-  always has a certificate);
+- the mail server name: the server's mail name, which always has a
+  certificate. Since alpha.134 a domain whose certificate covers
+  `mail.<domain>` has mail serve it for that name, but programs are still
+  told the server's name; only a domain that chose `mail.<domain>` before
+  alpha.134 keeps telling it, while mail serves its certificate for it
+  (docs/CERTIFICATE-COVERAGE.md). Switching that serving on or off writes
+  the site file again in the same operation;
 - IMAP 993 over TLS; sending on 465 (TLS) and 587 (STARTTLS); sign-in
   required, user name = the whole address.
 

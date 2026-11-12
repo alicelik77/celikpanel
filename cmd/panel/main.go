@@ -370,6 +370,9 @@ func matchDomainSubroute(r *http.Request) (domainSubroute, bool) {
 		match.kind, match.methods = "dnssec", getPost
 	case "ssl/mail":
 		match.kind, match.methods = "ssl-mail", []string{http.MethodGet, http.MethodPut}
+	case "ssl/coverage":
+		// alpha.134: what the domain's certificate protects (read only).
+		match.kind, match.methods = "ssl-coverage", []string{http.MethodGet}
 	case "ssl/retry":
 		match.kind, match.methods = "ssl-retry", []string{http.MethodPost}
 	case "ssl/renewal":
@@ -628,6 +631,8 @@ func (p *Panel) handleDomainSubroute(w http.ResponseWriter, r *http.Request) {
 		p.handleDomainDNSSEC(w, r, match.domainID)
 	case "ssl-mail":
 		p.handleDomainSSLMail(w, r, match.domainID)
+	case "ssl-coverage":
+		p.handleCertificateCoverage(w, r, match.domainID)
 	case "ssl-retry":
 		p.handleRetrySSLActivation(w, r)
 	case "ssl-renewal":

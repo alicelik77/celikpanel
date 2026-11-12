@@ -210,9 +210,16 @@ const errCodeSSLDependentsPending = "ssl_dependents_pending"
 // seçer (boş = Let's Encrypt); ad, artık kayıtlı herhangi bir ACME
 // sağlayıcısından verse de uyumluluk için korunur.
 type IssueLetsEncryptRequest struct {
-	Email       string `json:"email"`
-	AutoRenew   bool   `json:"auto_renew"`
-	IncludeMail bool   `json:"include_mail,omitempty"`
+	Email     string `json:"email"`
+	AutoRenew bool   `json:"auto_renew"`
+	// IncludeMail asks for mail.<domain> explicitly: the request is refused
+	// when the public DNS shows the name elsewhere (API clients).
+	IncludeMail bool `json:"include_mail,omitempty"`
+	// ExcludeMail leaves mail.<domain> out. Without it (alpha.134), a domain
+	// whose mail is on this server gets the name whenever the public DNS
+	// shows it here, and mail serves the certificate for it
+	// (docs/CERTIFICATE-COVERAGE.md).
+	ExcludeMail bool   `json:"exclude_mail,omitempty"`
 	Provider    string `json:"provider,omitempty"`
 	EABKeyID    string `json:"eab_key_id,omitempty"`
 	EABHMACKey  string `json:"eab_hmac_key,omitempty"`
@@ -635,6 +642,21 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	aliases := append([]string(nil), managedNames[1:]...)
 	var mailName string
+	// mailByDefault: the name was not asked for; it is included because mail
+	// is here and the name points here, and it is left out (not refused)
+	// where it cannot be validated.
+	mailByDefault := false
+	if req.IncludeMail && req.ExcludeMail {
+		writeClientError(w, http.StatusBadRequest, "include_mail and exclude_mail cannot both be set")
+		return
+	}
+	if !req.IncludeMail && !req.ExcludeMail {
+		mailName = p.defaultMailCertificateName(ctx, domain.Name)
+		mailByDefault = mailName != ""
+		if mailByDefault {
+			aliases = append(aliases, mailName)
+		}
+	}
 	if req.IncludeMail {
 		mailName, err = mailCertificateHostname(domain.Name)
 		if err != nil {
@@ -686,6 +708,9 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 
 	// Call agent to issue certificate
 	var agentResp transport.IssueLetsEncryptResponse
+	// mailNote: what happened to mail.<domain> that the person did not ask
+	// for (left out, or mail kept the server's certificate for it).
+	mailNote := ""
 
 	// Empty keeps the documented Let's Encrypt default. A non-empty unknown
 	// provider is a client error; never silently issue from a different CA.
@@ -757,6 +782,13 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	}
 	// A kept file was not changed, so there is nothing to restore.
 	validationVhostPrepared := !keptSiteConfig
+	if keptSiteConfig && mailByDefault {
+		// The owner's file has no server for mail.<domain> to validate it;
+		// the name was not asked for, so it is left out, not refused.
+		aliases = removeCertificateName(aliases, mailName)
+		mailName, mailByDefault = "", false
+		mailNote = certificateMailNoteSiteFileKept
+	}
 	if keptSiteConfig && len(autoconfigNames) > 0 {
 		// The kept file has no mail set-up server to validate them.
 		autoconfigNames = nil
@@ -911,8 +943,20 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if subject == "" {
 		subject = domain.Name
 	}
-	secureMail := previousSecureMail &&
+	// alpha.134: a certificate that carries mail.<domain> is served by mail
+	// for that name (serving only: what programs are told does not change,
+	// mailClientHost). A domain that served it before keeps serving it.
+	secureMail := (previousSecureMail || mailName != "") &&
 		certificateCoversHostname(info.DNSNames, "mail."+domain.Name)
+	if secureMail && !previousSecureMail &&
+		(!p.mailTLSIdentityKnown(ctx) || p.requireMailTLSSyncV2Agent(ctx) != nil) {
+		// No server mail name, or an Agent that cannot publish the mail name
+		// set: mail keeps the server's certificate for the name; nothing of
+		// mail is changed.
+		secureMail = false
+		mailNote = certificateMailNoteNotSwitched
+	}
+	newlyServingMail := secureMail && !previousSecureMail
 	// Only the site's first certificate turns the redirect on; a reissue
 	// keeps whatever the owner chose.
 	httpsRedirect := req.RedirectHTTP && activeCount == 0
@@ -993,7 +1037,17 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if secureMail {
 		reportOperationStep(ctx, "mail")
 	}
-	if err := p.syncCertificateDependents(ctx, domainID); err != nil {
+	dependentsErr := p.syncCertificateDependents(ctx, domainID)
+	if dependentsErr != nil && newlyServingMail && !mutationTerminalUncertain(dependentsErr) &&
+		p.restoreMailBeforeServing(domainID, dependentsErr) {
+		// This request asked mail to start serving the name and mail said a
+		// known no: mail is back as it was, the certificate stays, and the
+		// list offers "use it for mail" (no half state).
+		mailNote = certificateMailNoteNotSwitched
+		secureMail = false
+		dependentsErr = nil
+	}
+	if err := dependentsErr; err != nil {
 		if markErr := p.markCertificatePendingDetached(
 			ctx, domainID, sslPendingDependents, false,
 		); markErr != nil {
@@ -1036,6 +1090,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 		if autoconfigNote != "" {
 			answer["mail_setup_note"] = autoconfigNote
 		}
+		addCertificateMailAnswer(answer, mailName, secureMail, mailNote)
 		validationNotRun.addTo(answer)
 		json.NewEncoder(w).Encode(answer)
 		return
@@ -1053,6 +1108,7 @@ func (p *Panel) handleIssueLetsEncrypt(w http.ResponseWriter, r *http.Request) {
 	if autoconfigNote != "" {
 		answer["mail_setup_note"] = autoconfigNote
 	}
+	addCertificateMailAnswer(answer, mailName, secureMail, mailNote)
 	validationNotRun.addTo(answer)
 	json.NewEncoder(w).Encode(answer)
 }

@@ -66,6 +66,7 @@ const stub = dataModule(`
   export const Link = (props) => React.createElement('a', { href: props.to }, props.children);
   export const showToast = () => {};
   export const MailAutoconfigNotice = () => null;
+  export const MailHostProtection = () => null;
   export const createPortal = () => null;
   export const useNavigationBlocker = () => {};
 `);

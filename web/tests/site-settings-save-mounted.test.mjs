@@ -14,7 +14,7 @@ import { compileSource, dataModule, reactURL, sharedLayer } from './fixtures/sha
 // is said and sent nothing a second time.
 // Bir sitenin ayar ekranlarında tek kaydetme yolu: ayar tıklanınca kaydedilmez.
 
-const files = ['DomainSSLSettings', 'WordPressToolsPanel', 'DomainMalwareScan', 'DomainWebSettings', 'NodeSiteTools', 'DomainRuntimeApps', 'HostingTypePanel', 'DomainPHPSettings'];
+const files = ['DomainSSLSettings', 'domain/CertificateCoverage', 'WordPressToolsPanel', 'DomainMalwareScan', 'DomainWebSettings', 'NodeSiteTools', 'DomainRuntimeApps', 'HostingTypePanel', 'DomainPHPSettings'];
 const icons = new Set(['AlertTriangle', 'XCircle']);
 for (const name of files) {
   const text = readFileSync(new URL(`../src/components/${name}.tsx`, import.meta.url), 'utf8');
@@ -55,6 +55,9 @@ const own = {
   // alpha.132: the site tools' request helper (kit-rows moved it to lib/siteTool.ts).
   '/lib/siteTool': compileSource('lib/siteTool.ts', () => stub),
 };
+// alpha.134: the certificate screen's list of what is protected, the shipped modules.
+own['/coverageLines'] = compileSource('components/domain/coverageLines.ts', (specifier) => (specifier.endsWith('/dateFormat') ? shared.resolve('/lib/dateFormat') : stub));
+own['/CertificateCoverage'] = shared.compile('components/domain/CertificateCoverage.tsx', own);
 const load = async (name) => (await import(shared.compile(`components/${name}.tsx`, own)))[name];
 const DomainSSLSettings = await load('DomainSSLSettings');
 const WordPressToolsPanel = await load('WordPressToolsPanel');

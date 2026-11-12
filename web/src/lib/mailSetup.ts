@@ -39,6 +39,12 @@ export interface MailSetup {
     // Panel did not say or the answer did not read as one.
     // Posta programlarının kendini ayarlayıp ayarlamadığı.
     autoconfig: MailAutoconfig | null;
+    // Whether a trusted certificate protects mail_host (alpha.134): the
+    // certificate screen's "mail programs" line, as the server sent it. Its
+    // reader decodes it with the list's own decoder
+    // (components/domain/coverageLines.ts), so a line is believed one way.
+    // Sunucu adını güvenilir bir sertifikanın koruyup korumadığı; okuyan çözer.
+    host_protection: unknown;
 }
 
 export interface MailAutoconfigRecord {
@@ -116,5 +122,6 @@ export function decodeMailSetup(raw: unknown): MailSetup {
         webmail_reason: typeof setup.webmail_reason === 'string' && WEBMAIL_REASONS.includes(setup.webmail_reason)
             ? setup.webmail_reason as WebmailReason : null,
         autoconfig: decodeMailAutoconfig(setup.autoconfig),
+        host_protection: setup.host_protection ?? null,
     };
 }
