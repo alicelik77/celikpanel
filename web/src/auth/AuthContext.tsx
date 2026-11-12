@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { CurrentUser } from '../lib/api';
+import { ServerDetailAccess } from '../components/ui';
 
 // The signed-in user (with role) is provided once at the top of the tree so
 // the shell, navigation and route guards all render from the same source.
@@ -46,7 +47,10 @@ export function AuthProvider({
 
     return (
         <AuthContext.Provider value={{ user, role, logout: onLogout }}>
-            {children}
+            {/* A refusal's server words that name internals are an administrator's (ErrorBanner). */}
+            <ServerDetailAccess.Provider value={role === 'admin'}>
+                {children}
+            </ServerDetailAccess.Provider>
         </AuthContext.Provider>
     );
 }

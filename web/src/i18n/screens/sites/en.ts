@@ -92,7 +92,7 @@ export const enSitesScreens = {
     'domains.infrastructure.missing': 'This server has no infrastructure DNS zone named {zone}. It may have been removed, or the address is mistyped.',
     'domains.empty': 'No domains yet',
     'domains.emptyHint': 'Get started by adding your first domain',
-    'domains.action.visit': 'Visit site',
+    'domains.action.visit': 'Open site',
     'domains.action.manage': 'Manage',
     'domains.action.delete': 'Delete',
     'domains.infrastructure.noWebsite': 'No website for this name yet.',
@@ -668,6 +668,33 @@ export const enSitesScreens = {
     'err.SITE_HAS_NO_PHP': '{domain} does not run PHP (its hosting type is not PHP), so it has no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Hosting tab and change its hosting type to PHP, then choose the version here.',
     'err.SITE_HAS_NO_PHP.static': '{domain} is a static site: it serves files as they are and has no PHP, so there is no PHP version to change. Nothing was changed. To run PHP on it, open the site’s Hosting tab and change its hosting type to PHP, then choose the version here.',
     'err.SITE_HAS_NO_PHP.action': 'Open Hosting',
+    // --- alpha.132 shared kit (components/kit/words.ts, components/kit/rows/*): kinds and
+    // states in words, the row's "More" menu and the guidance block's labels. ---
+    'kind.php': 'PHP site',
+    'kind.static': 'Static site',
+    'kind.node': 'Node.js app',
+    'kind.program': 'Program',
+    'kind.python': 'Python app',
+    'kind.runtime': 'Program or Python app',
+    'kind.service': 'AI and automation app',
+    'kind.proxy': 'Site shown from another server',
+    'kind.forwarding': 'Redirect',
+    'kind.dnsonly': 'DNS only',
+    'kind.unknown': 'Other kind',
+    'state.active': 'Active',
+    'state.suspended': 'Suspended',
+    'state.pending': 'Deletion pending',
+    'state.unknown': 'State not known',
+    'kit.rows.more': 'More',
+    'kit.rows.moreFor': 'More: {name}',
+    'kit.guidance.why': 'Why',
+    'kit.guidance.who': 'Who acts',
+    'kit.guidance.next': 'Next step',
+    'kit.guidance.then': 'Then',
+    'kit.guidance.who.you': 'You',
+    'kit.guidance.who.administrator': 'The server administrator',
+    'kit.guidance.who.nobody': 'Nobody — you do not need to do anything',
+    // --- end of the alpha.132 shared kit block ---
 } as const;
 
 export type SitesScreenKey = keyof typeof enSitesScreens;

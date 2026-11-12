@@ -209,7 +209,7 @@ test('application install and WordPress steps follow the durable status', async 
       export const domainAppOperationURL = () => '';
       export const domainAppsURL = () => '';
       export const phpExtensionsInstallPath = '';
-      export const SiteToolGuidance = () => null;
+      export const Guidance = () => null, whoWord = () => '';
       export const sendSiteTool = async () => new Response('{}');
       // alpha.127 (admin next step): WordPress tools link the administrator to PHP-FPM.
       export const AdminInstallLink = (props) => props.fallback ?? null;

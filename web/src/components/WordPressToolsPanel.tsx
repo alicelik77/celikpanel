@@ -6,7 +6,9 @@ import type { TranslationKey } from '../i18n/en';
 import { Button, ErrorBanner, RemoteGate } from './ui';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { useRemote, useRefreshEvery } from '../lib/remote';
-import { SiteToolGuidance, sendSiteTool } from './SiteToolGuidance';
+import { Guidance } from './kit/rows/Guidance';
+import { whoWord } from './kit/words';
+import { sendSiteTool } from '../lib/siteTool';
 import { AdminInstallLink } from './AdminInstallLink';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { forget, remember, remembered } from '../lib/requestProgress';
@@ -80,31 +82,31 @@ function OperationGuidance({ op }: { op: WPOperation }) {
         const reason = op.kind === 'clone' && op.status !== 'queued'
             ? t('wpt.op.cloning', { target: op.target_domain ?? '' })
             : t(`wpt.op.${op.status}` as TranslationKey);
-        return <SiteToolGuidance tone="progress" reason={reason} who="nobody" resumes={t('wpt.op.runningResumes')} />;
+        return <Guidance tone="progress" title={reason} who={whoWord(t, 'nobody')} then={t('wpt.op.runningResumes')} />;
     }
     const backup = op.backup_name ? <p className="text-xs text-fg-muted">{t('wpt.op.backup', { backup: op.backup_name })}</p> : null;
     const coded = op.code ? t(`err.${op.code}` as TranslationKey) : '';
     const why = coded && coded !== `err.${op.code}` ? coded : detail;
     switch (op.status) {
         case 'applied':
-            return <SiteToolGuidance tone="success" reason={t('wpt.op.applied', { detail })}>{backup}</SiteToolGuidance>;
+            return <Guidance tone="success" title={t('wpt.op.applied', { detail })}>{backup}</Guidance>;
         case 'failed':
-            return <SiteToolGuidance tone="failure" reason={t('wpt.op.failed', { detail: why })} who="you" next={t('wpt.op.failedNext')}>{backup}</SiteToolGuidance>;
+            return <Guidance tone="failed" title={t('wpt.op.failed', { detail: why })} who={whoWord(t, 'you')} next={t('wpt.op.failedNext')}>{backup}</Guidance>;
         case 'rolled_back':
-            return <SiteToolGuidance tone="failure" reason={t('wpt.op.rolled_back', { detail })} who="you" next={t('wpt.op.rolledBackNext')}>{backup}</SiteToolGuidance>;
+            return <Guidance tone="failed" title={t('wpt.op.rolled_back', { detail })} who={whoWord(t, 'you')} next={t('wpt.op.rolledBackNext')}>{backup}</Guidance>;
         default:
             // alpha.127: a restore refused for a PostgreSQL prerequisite says
             // which one (its own coded sentence, the server administrator acts),
             // with the facts underneath; nothing of the backup was written.
             if (op.code?.startsWith('WORDPRESS_RESTORE_PG_') && coded && coded !== `err.${op.code}`) {
                 return (
-                    <SiteToolGuidance tone="failure" reason={coded} who="administrator" next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}>
+                    <Guidance tone="failed" title={coded} who={whoWord(t, 'administrator')} next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })}>
                         {detail && <p className="text-xs text-fg-muted">{detail}</p>}
-                    </SiteToolGuidance>
+                    </Guidance>
                 );
             }
             return (
-                <SiteToolGuidance tone="unknown" reason={t('wpt.op.needs_review', { detail })} who="you"
+                <Guidance tone="unknown" title={t('wpt.op.needs_review', { detail })} who={whoWord(t, 'you')}
                     next={t('wpt.op.needsReviewNext', { backup: op.backup_name ?? '—' })} />
             );
     }
@@ -301,12 +303,12 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                     if (s.code === 'WORDPRESS_PHP_CLI_MISSING') {
                         // alpha.127: the administrator opens PHP-FPM's page, where the site's version is installed again.
                         return (
-                            <SiteToolGuidance tone="prerequisite" reason={t('wpt.phpMissing')} who="administrator" next={t('wpt.phpMissingNext')} resumes={t('wpt.phpMissingResumes')}>
+                            <Guidance tone="blocked" title={t('wpt.phpMissing')} who={whoWord(t, 'administrator')} next={t('wpt.phpMissingNext')} then={t('wpt.phpMissingResumes')}>
                                 <AdminInstallLink to="/components/php-fpm" label={t('adminNext.openPHPFPM')} />
-                            </SiteToolGuidance>
+                            </Guidance>
                         );
                     }
-                    if (!s.detected) return <SiteToolGuidance tone="prerequisite" reason={t('wpt.notDetected')} who="you" next={t('wpt.notDetectedNext')} />;
+                    if (!s.detected) return <Guidance tone="blocked" title={t('wpt.notDetected')} who={whoWord(t, 'you')} next={t('wpt.notDetectedNext')} />;
                     const latest = value.operations[0];
                     const locked = busy || stale || running;
                     const coreTarget = s.core_minor || s.core_update;
@@ -315,7 +317,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                         <div className="space-y-4">
                             {latest && <OperationGuidance op={latest} />}
                             <ErrorBanner error={failure} sentence="wpt.startFailed" />
-                            {!s.updates_checked && <SiteToolGuidance tone="unknown" reason={t('wpt.updatesNotChecked')} who="you" next={t('wpt.check')} />}
+                            {!s.updates_checked && <Guidance tone="unknown" title={t('wpt.updatesNotChecked')} who={whoWord(t, 'you')} next={t('wpt.check')} />}
 
                             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3">
                                 <div>
@@ -332,7 +334,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                     </Button>
                                 )}
                             </div>
-                            {value.database_linked === false && <SiteToolGuidance tone="prerequisite" reason={t('wpt.dbNotLinked')} />}
+                            {value.database_linked === false && <Guidance tone="blocked" title={t('wpt.dbNotLinked')} />}
 
                             <label className="flex cursor-pointer items-start gap-3">
                                 <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={value.auto_minor_core} disabled={busy || stale}

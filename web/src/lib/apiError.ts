@@ -219,21 +219,43 @@ export function apiErrorActionLabel(e: ApiError, t: T): string {
     return s !== key ? s : t('common.goFix');
 }
 
-// refusalText: what a refused change says on a screen (owner feedback
-// 2026-10-31: "the user must see the problem and understand the fix"). A coded
-// refusal with words of its own says them; otherwise the screen's own sentence
-// keeps the server's reason beside it instead of dropping it; with neither,
-// the screen's sentence alone.
-// refusalText: reddedilen degisikligin ekrandaki cumlesi; sunucunun nedeni
-// atilmaz, ekranin cumlesiyle birlikte soylenir.
+// refusalParts: a refusal split into the sentence a person reads and the
+// server's own words, when those are all there is (alpha.132, principle P5).
+// A coded refusal with words of its own is `text` alone. Otherwise `text` is
+// the screen's sentence (or, without one, a plain generic sentence) and `raw`
+// keeps the server's message, which the screen shows under a closed "Details"
+// (ErrorBanner) instead of printing it inline in another language.
+// refusalParts: okunacak cümle ve yalnız sunucunun sözü varsa onun metni;
+// ham metin satır içinde değil, kapalı "Ayrıntı" altında gösterilir.
+export function refusalParts(e: ApiError, t: T, sentenceKey?: TranslationKey): { text: string; raw?: string } {
+    const text = apiErrorText(e, t, sentenceKey ?? 'common.error');
+    const raw = e.message.trim();
+    if (!raw || text !== e.message) return { text };
+    return { text: t(sentenceKey ?? 'kit.detail.generic'), raw };
+}
+
+// The server's own words may be shown to everyone only when they name no
+// server internals: no file path, no service unit and no command. Otherwise
+// only an administrator reads them (ErrorBanner); others are told who can.
+// Sunucunun sözü yalnız yol, birim adı ya da komut içermiyorsa herkese gösterilir.
+const SERVER_INTERNALS = [
+    /(^|[\s'"(=:,])~?\/[A-Za-z0-9._-]/, // an absolute path (/etc/…, /var/www/…), not the slashes inside a URL
+    /\b[\w@.-]+\.(service|socket|timer|target|mount|path|slice)\b/, // a systemd unit
+    /\b(sudo|systemctl|journalctl|apt-get|apt|dpkg|dnf|yum|pacman|certbot|chmod|chown|rndc|pdnsutil|postconf|doveadm|mysqladmin|psql|nginx\s+-t)\b/, // a command
+    /`/, // a quoted command line
+];
+export function serverTextForEveryone(raw: string): boolean {
+    return !SERVER_INTERNALS.some((pattern) => pattern.test(raw));
+}
+
+// refusalText: what a refused change says in one string (a toast, a progress
+// window's reason). The screen's sentence keeps the server's reason beside it
+// (owner feedback 2026-10-31); a coded refusal with words says them.
+// refusalText: tek dizgede reddin cümlesi; sunucunun nedeni atılmaz.
 export function refusalText(e: ApiError | null, t: T, sentenceKey: TranslationKey): string {
     if (!e) return t(sentenceKey);
-    if (e.code) {
-        const coded = apiErrorText(e, t, sentenceKey);
-        if (coded && coded !== e.message) return coded;
-    }
-    const reason = e.message.trim();
-    return reason ? t('problem.failedBecause', { sentence: t(sentenceKey), reason }) : t(sentenceKey);
+    const { text, raw } = refusalParts(e, t, sentenceKey);
+    return raw ? t('problem.failedBecause', { sentence: text, reason: raw }) : text;
 }
 
 // What a toast carries beside the sentence: the refusal's fix (its action
