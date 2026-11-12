@@ -115,7 +115,7 @@ test('Turkish: one replaced package says what, why and what follows, each with i
   // alpha.124: what else comes is said by component, never by package name.
   assert.ok(body.includes('Bununla birlikte gelenlerBir veritabanı sunucusu'), body);
   assert.ok(!body.includes('mariadb-server'), body);
-  assert.ok(body.includes('Bunu istemiyorsanız İptal’e basın ve Ubuntu’nun kendi sürümünü (8.3) seçin.'), body);
+  assert.ok(body.includes('Bunu istemiyorsanız Vazgeç’e basın ve Ubuntu’nun kendi sürümünü (8.3) seçin.'), body);
   assert.ok(body.endsWith('Yukarıdaki değişiklikleri okudum, onaylıyorum.'), body);
   const line = tree.root.find((node) => node.props['data-notable-package'] === 'php-common');
   assert.equal(line.props.title, `php-common ${SHARED.from} → ${SHARED.to}`);
@@ -147,7 +147,7 @@ test('the footer names the distribution’s own version when there is one, and s
   assert.ok(avoid.includes('If you don’t want this, press Cancel and choose Ubuntu’s own version.'), avoid);
   const unknownDistro = text(render('tr', known([SHARED], ''), { avoidable: true, recommended: '8.3' }).toJSON());
   assert.ok(unknownDistro.includes('dağıtımın sürümü (2:93) yerine'), unknownDistro);
-  assert.ok(unknownDistro.includes('Bunu istemiyorsanız İptal’e basın ve dağıtımın kendi sürümünü (8.3) seçin.'), unknownDistro);
+  assert.ok(unknownDistro.includes('Bunu istemiyorsanız Vazgeç’e basın ve dağıtımın kendi sürümünü (8.3) seçin.'), unknownDistro);
 });
 
 test('a vendor replacement is refused with its packages one per line', () => {

@@ -3,8 +3,7 @@ import { useNavigate, useSearchParams } from '../router';
 import { Globe, Plus, Trash2, ExternalLink, Settings, Lock, HardDrive, Network } from 'lucide-react';
 import { RowActions, type RowAction } from './kit/rows/RowActions';
 import { StateLabel } from './kit/rows/StateLabel';
-import { siteKindWord } from './kit/words';
-import { localeTag } from '../lib/dateFormat';
+import { siteKindWord, sizeWord } from './kit/words';
 import { AddDomainModal, type SiteRecordsOutcome } from './AddDomainModal';
 import { KeptSiteRecords } from './KeptSiteRecords';
 import { confirmAction, followOperation, type OperationEnd, type OperationReport, type OperationStep } from '../lib/confirmAction';
@@ -880,10 +879,10 @@ export function Domains() {
                                             ) : '—'}
                                         </td>
                                         <td className="whitespace-nowrap px-4 py-3 text-right text-fg-muted max-sm:basis-full max-sm:p-0 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-fg-subtle max-sm:before:content-[attr(data-label)]" data-label={t('domains.col.disk')}>
-                                            {canView(d, 'statistics') ? fmtBytes(d.disk_usage, locale) : '—'}
+                                            {canView(d, 'statistics') ? sizeWord(d.disk_usage, locale) : '—'}
                                         </td>
                                         <td className="whitespace-nowrap px-4 py-3 text-right text-fg-muted max-sm:basis-full max-sm:p-0 max-sm:text-left max-sm:before:mr-2 max-sm:before:text-fg-subtle max-sm:before:content-[attr(data-label)]" data-label={t('domains.col.traffic')}>
-                                            {canView(d, 'statistics') ? t('domains.perMonth', { size: fmtBytes(d.bandwidth, locale) }) : '—'}
+                                            {canView(d, 'statistics') ? t('domains.perMonth', { size: sizeWord(d.bandwidth, locale) }) : '—'}
                                         </td>
                                         <td className="px-4 py-3 max-sm:basis-full max-sm:p-0">
                                             {beingDeleted(d.id) ? (
@@ -997,20 +996,6 @@ export function Domains() {
     );
 }
 
-function fmtBytes(bytes: number = 0, locale: string): string {
-    // Honest sizes: a 627-byte site reads "627 B", never a fake-looking
-    // "0.0 MB"; the number in the reader's locale ("3,6 KB" in Turkish).
-    // Dürüst boyutlar: 627 baytlık site "627 B" okunur, sahte görünen
-    // "0.0 MB" asla; sayı okurun dilinde.
-    const number = (value: number, digits: number) => value.toLocaleString(localeTag(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits });
-    if (!bytes) return '0 B';
-    if (bytes < 1024) return `${bytes} B`;
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${number(kb, kb < 10 ? 1 : 0)} KB`;
-    const mb = kb / 1024;
-    if (mb < 1024) return `${number(mb, mb < 10 ? 1 : 0)} MB`;
-    return `${number(mb / 1024, 2)} GB`;
-}
 
 
 // The title of a subscription card. The workspace the Panel made for an
@@ -1070,13 +1055,13 @@ function SubscriptionUsage() {
                         {s.owner && s.owner !== viewer && <p className="-mt-1 mb-2 text-xs text-fg-subtle" data-subscription-owner="">{t('quota.accountOf', { owner: s.owner })}</p>}
                         {unlimited ? (
                             <p className="text-sm text-fg-muted">
-                                {fmtBytes(u.disk_used_bytes, locale)} · {t('quota.unlimited')}
+                                {sizeWord(u.disk_used_bytes, locale)} · {t('quota.unlimited')}
                             </p>
                         ) : (
                             <>
                                 <UsageBar percent={pct} />
                                 <p className="mt-1.5 text-xs text-fg-muted">
-                                    {t('quota.diskOf', { used: fmtBytes(u.disk_used_bytes, locale), total: fmtBytes(u.disk_limit_bytes, locale) })}
+                                    {t('quota.diskOf', { used: sizeWord(u.disk_used_bytes, locale), total: sizeWord(u.disk_limit_bytes, locale) })}
                                 </p>
                             </>
                         )}

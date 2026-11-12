@@ -9,7 +9,7 @@ import { formatTime } from '../lib/dateFormat';
 import { Button, Checking, CouldNotCheck, KnownEmpty, Spinner } from './ui';
 import { Guidance } from './kit/rows/Guidance';
 import { StateLabel } from './kit/rows/StateLabel';
-import { siteKindWord } from './kit/words';
+import { siteKindWord, sizeWord } from './kit/words';
 import { confirmLeaveIfDirty } from './kit/save/leaveGuard';
 import { useAuth } from '../auth/AuthContext';
 import { useHostingCapabilities } from '../lib/hostingCapabilities';
@@ -446,7 +446,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
     if (!isDnsOnly && canView('statistics')) {
         facts.push({
             key: 'disk',
-            content: <Fact label={t('domain.info.disk')}>{fmtBytes(measured ? measured.disk_usage : domain.disk_usage)}</Fact>,
+            content: <Fact label={t('domain.info.disk')}>{sizeWord(measured ? measured.disk_usage : domain.disk_usage, locale)}</Fact>,
         });
         facts.push({
             key: 'traffic',
@@ -454,7 +454,7 @@ export function DomainDetail({ domainId, onBack }: DomainDetailProps) {
                 <Fact label={t('domain.info.traffic')}>
                     {measured?.traffic_state === 'unknown'
                         ? t('domain.info.trafficUnknown')
-                        : t('domain.info.trafficMonth', { bytes: fmtBytes(measured ? measured.bandwidth : domain.bandwidth) })}
+                        : t('domain.info.trafficMonth', { bytes: sizeWord(measured ? measured.bandwidth : domain.bandwidth, locale) })}
                 </Fact>
             ),
         });
@@ -621,15 +621,3 @@ function FactDivider() {
     return <span aria-hidden className="h-3.5 w-px self-center bg-border-strong" />;
 }
 
-function fmtBytes(bytes: number = 0): string {
-    // Honest sizes: a 627-byte site reads "627 B", never a fake-looking
-    // "0.0 MB". / Dürüst boyutlar: 627 baytlık site "627 B" okunur, sahte
-    // görünen "0.0 MB" asla.
-    if (!bytes) return '0 B';
-    if (bytes < 1024) return `${bytes} B`;
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`;
-    const mb = kb / 1024;
-    if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
-    return `${(mb / 1024).toFixed(2)} GB`;
-}

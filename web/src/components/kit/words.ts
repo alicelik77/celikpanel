@@ -1,5 +1,6 @@
 import type { TranslationKey } from '../../i18n/en';
 import type { StatusDotTone } from '../ui';
+import { localeTag } from '../../lib/dateFormat';
 
 // Codes in words (alpha.132, principle P5 "no raw codes, ever"): what a site
 // is and what state a domain is in, said the same way on every screen. A code
@@ -84,4 +85,20 @@ export function stateTone(status: string | null | undefined): StatusDotTone {
 /** Who acts, for the guidance block's "Who acts" row, when it is one of the three usual answers. */
 export function whoWord(t: Translate, who: 'you' | 'administrator' | 'nobody'): string {
     return t(`kit.guidance.who.${who}`);
+}
+
+/**
+ * A size in the reader's number format ("3,6 KB" in Turkish, "3.6 KB" in
+ * English). Honest: a 627-byte site reads "627 B", never "0.0 MB".
+ * Okurun sayı biçiminde boyut; 627 baytlık site "627 B" okunur.
+ */
+export function sizeWord(bytes: number = 0, locale: string): string {
+    const number = (value: number, digits: number) => value.toLocaleString(localeTag(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${number(kb, kb < 10 ? 1 : 0)} KB`;
+    const mb = kb / 1024;
+    if (mb < 1024) return `${number(mb, mb < 10 ? 1 : 0)} MB`;
+    return `${number(mb / 1024, 2)} GB`;
 }

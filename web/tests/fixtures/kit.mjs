@@ -34,7 +34,9 @@ const cache = new Map();
 export function kitModules(i18nURL, uiURL) {
   const key = i18nURL + '|' + uiURL;
   if (cache.has(key)) return cache.get(key);
-  const words = compile('components/kit/words.ts', () => i18nURL);
+  // words.ts formats sizes with the shipped locale helper (lib/dateFormat.ts, no imports).
+  const dateFormat = compile('lib/dateFormat.ts', () => i18nURL);
+  const words = compile('components/kit/words.ts', (specifier) => (specifier.endsWith('/dateFormat') ? dateFormat : i18nURL));
   const base = (specifier) => (specifier === 'lucide-react' ? icons
     : specifier === 'react-dom' ? portal
       : specifier.endsWith('/ui') ? uiURL

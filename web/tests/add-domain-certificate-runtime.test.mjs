@@ -189,13 +189,13 @@ test('a verified issuance failure keeps the site, names the cause and the next s
     assert.ok(text().includes('example.com was created, but its certificate was not issued'));
     assert.ok(text().includes('the certificate authority could not validate one of the names'));
     assert.ok(text().includes('Timeout during connect'));
-    assert.ok(text().includes('request the certificate again under SSL/TLS'));
+    assert.ok(text().includes('request the certificate again in the domain’s Security section'));
     // Nothing is closed or reported as done until the person acts.
     assert.equal(succeeded.length, 0);
     await act(async () => { await flush(); await flush(); });
     assert.equal(posts(/ssl\/letsencrypt$/).length, 1, 'waiting never requests again');
     assert.equal(posts(/\/domains\/create$/).length, 1);
-    // Open SSL/TLS: the list is refreshed and the SSL page opens.
+    // Open Security: the list is refreshed and the certificate part opens.
     await act(async () => { buttonNamed(t('domains.add.sslOpen'))[0].props.onClick(); await flush(); });
     assert.equal(succeeded.length, 1);
     assert.deepEqual(globalThis.currentTest.navigated, ['/domains/example.com?tab=ssl']);

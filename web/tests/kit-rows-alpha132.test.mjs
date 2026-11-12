@@ -336,7 +336,12 @@ test('the replaced pieces are gone: icon-only row actions, the old guidance bloc
   assert.match(domains, /<StateLabel status=\{d\.status\}/);
   // The traffic's "per month" is the reader's words, and the kind is plain text, not a pill.
   assert.doesNotMatch(domains, /\/mo`|typeBadge/);
-  assert.match(domains, /t\('domains\.perMonth', \{ size: fmtBytes\(d\.bandwidth, locale\) \}\)/);
+  assert.match(domains, /t\('domains\.perMonth', \{ size: sizeWord\(d\.bandwidth, locale\) \}\)/);
+  // The domain page's header uses the same formatter as the list (lab, 12 Nov 2026: "3.2 KB" beside "3,2 KB").
+  const detail = read('../src/components/DomainDetail.tsx');
+  assert.match(detail, /sizeWord\(measured \? measured\.disk_usage : domain\.disk_usage, locale\)/);
+  assert.doesNotMatch(detail, /function fmtBytes/);
+  assert.deepEqual([wordsLib.sizeWord(3700, 'tr'), wordsLib.sizeWord(3700, 'en'), wordsLib.sizeWord(627, 'tr'), wordsLib.sizeWord(0, 'tr')], ['3,6 KB', '3.6 KB', '627 B', '0 B']);
   assert.deepEqual([enScreens['domains.perMonth'], trScreens['domains.perMonth']], ['{size}/mo', '{size}/ay']);
   // An action that asks before it acts carries an ellipsis (RowActions' convention).
   assert.deepEqual([enScreens['domains.action.delete'], trScreens['domains.action.delete']], ['Delete…', 'Sil…']);

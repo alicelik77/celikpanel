@@ -37,6 +37,7 @@ const stub = dataModule(`import React from '${reactURL}';
  } });
  export const readApiError = async response => ({ message: 'error ' + response.status });
  export const useNavigationBlocker = () => {};
+ export const useAuth = () => ({ role: globalThis.operationRole ?? 'admin' });
  export const showToast = () => {};
  export const createPortal = node => node;
  export const invalidate = () => [];
@@ -106,6 +107,25 @@ async function open() {
   await settle();
 }
 async function close() { if (tree) await act(async () => tree.unmount()); tree = undefined; globalThis.fetch = originalFetch; }
+
+test('only the administrator looks for a running component operation; a customer or reseller sends no request (alpha.132 lab: 403 on every page)', async () => {
+  for (const role of ['customer', 'reseller', 'additional_user']) {
+    globalThis.operationRole = role;
+    timers = []; calls = []; root.attributes.clear();
+    routes = {};
+    storage = new Map();
+    globalThis.fetch = async (url, init = {}) => { calls.push({ key: `${init.method || 'GET'} ${url}` }); throw new Error('no request expected'); };
+    try {
+      await act(async () => { tree = Renderer.create(React.createElement(ComponentOperationProvider, null, null)); });
+      await settle();
+      assert.deepEqual(calls, [], `${role} asked for the running operation`);
+      assert.equal(dialog(), null, `${role} saw a lock`);
+    } finally {
+      await close();
+      delete globalThis.operationRole;
+    }
+  }
+});
 
 for (const [locale, c] of Object.entries({ en, tr })) {
   test(`${locale}: a lost connection reconnects with motion, says nothing needs pressing, and is bounded while the reads go on`, async () => {

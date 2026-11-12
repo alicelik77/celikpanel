@@ -38,9 +38,9 @@ export const trAdminNextScreens: Record<AdminNextScreenKey, string> = {
 
     'adminNext.mail.keySigningFailed': 'DKIM anahtarı hazır, ancak DKIM imzalama açılamadı; posta hâlâ imzasız çıkıyor. "DKIM anahtarı üret" düğmesine yeniden basın; anahtar korunur. Yine olmazsa Bileşenler’de posta kurulumunu açıp Onar’ı seçin.',
     'adminNext.mail.autoSigningFailed': 'DKIM anahtarı hazır, ancak OpenDKIM onunla imzalayacak biçimde kurulamadı (neden aşağıda); posta hâlâ imzasız çıkıyor. Yeniden dene’ye basın; anahtar korunur. Yine olmazsa Bileşenler’de posta kurulumunu açıp Onar’ı seçin.',
-    'adminNext.access.noSSHD': 'Bu sunucuda SFTP’nin gerektirdiği OpenSSH sunucusu yok. root olarak sistemin paket yöneticisiyle kurun (openssh-server; Arch’ta openssh), sonra bu sekmeyi yeniden açın.',
+    'adminNext.access.noSSHD': 'Bu sunucuda SFTP’nin gerektirdiği OpenSSH sunucusu yok. root olarak sistemin paket yöneticisiyle kurun (openssh-server; Arch’ta openssh), sonra bu sayfayı yeniden açın.',
     'adminNext.access.jailProgramsNamed': 'Bu sunucuda kurulu olmadığı için komut satırında yok: {names}. Komut satırının geri kalanı çalışır. Bunları root olarak sistemin paket yöneticisiyle kurun, sonra erişimi burada yeniden kaydedin.',
-    'adminNext.access.toolsUnknown': '{names} için bu sistemde bilinen paket yok: root olarak sistemin paket yöneticisiyle kurun, sonra bu sekmeyi yeniden açın.',
+    'adminNext.access.toolsUnknown': '{names} için bu sistemde bilinen paket yok: root olarak sistemin paket yöneticisiyle kurun, sonra bu sayfayı yeniden açın.',
     'adminNext.access.confirmTitle': '{packages} kurulsun mu?',
     'adminNext.access.confirmMessage': 'CelikPanel bu sunucuya dağıtımın resmi {packages} paketlerini kurar; böylece komut satırının araçları olur. Başka hiçbir şey değişmez; FTP ve SFTP çalışmayı sürdürür.',
     'adminNext.access.progressTitle': '{packages} kuruluyor',

@@ -47,9 +47,9 @@ export const enAdminNextScreens = {
     'adminNext.mail.keySigningFailed': 'The DKIM key is ready, but DKIM signing could not be switched on, so mail still leaves unsigned. Press "Generate DKIM key" again; the key is kept. If it fails again, open the mail setup on Components and choose Repair.',
     'adminNext.mail.autoSigningFailed': 'The DKIM key is ready, but OpenDKIM could not be set up to sign with it (reason below), so mail still leaves unsigned. Press Try again; the key is kept. If it fails again, open the mail setup on Components and choose Repair.',
 
-    'adminNext.access.noSSHD': 'This server has no OpenSSH server, which SFTP needs. Install it as root with the system’s package manager (openssh-server; openssh on Arch), then open this tab again.',
+    'adminNext.access.noSSHD': 'This server has no OpenSSH server, which SFTP needs. Install it as root with the system’s package manager (openssh-server; openssh on Arch), then open this page again.',
     'adminNext.access.jailProgramsNamed': 'Not installed on this server, so not in the command line: {names}. The rest of the command line works. Install them as root with the system’s package manager, then save access here again.',
-    'adminNext.access.toolsUnknown': 'No package is known for {names} on this system: install it as root with the system’s package manager, then open this tab again.',
+    'adminNext.access.toolsUnknown': 'No package is known for {names} on this system: install it as root with the system’s package manager, then open this page again.',
     'adminNext.access.confirmTitle': 'Install {packages}?',
     'adminNext.access.confirmMessage': 'CelikPanel installs the distribution’s official packages {packages} on this server, so the command line has its tools. Nothing else changes; FTP and SFTP keep working.',
     'adminNext.access.progressTitle': 'Installing {packages}',

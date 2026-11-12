@@ -37,6 +37,7 @@ const stub = dataModule(`import React from '${reactURL}';
  export const useI18n = () => ({ t: (key, vars) => (vars ? key + ' ' + JSON.stringify(vars) : key) });
  export const readApiError = async response => ({ message: 'error ' + response.status });
  export const useNavigationBlocker = () => {};
+ export const useAuth = () => ({ role: globalThis.operationRole ?? 'admin' });
  export const showToast = (kind, message) => { fixture().toasts.push([kind, message]); };
  export const createPortal = node => node;
  // The tracker tells the shared read of the component records to read again

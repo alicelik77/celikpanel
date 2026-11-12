@@ -81,7 +81,6 @@ export const tr: Record<ShellKey, string> = {
     'recovery.failure.candidate_panel_startup_check_failed.recovered': "Yeni sürümün paneli, hiçbir şey devreye alınmadan önce başlangıç denetiminden geçemedi; bu yüzden sunucu otomatik olarak önceki sürüme döndürüldü. Önceki sürüm çalışmaya devam ediyor ve sunucuda yapmanız gereken bir şey yok. Bunu bildirirken güncelleme sayfasında bu güncelleme için gösterilen neden satırını ekleyin.",
     'recovery.failure.panel_start_unverified.pending': "Güncelleme uygulandı, ancak yeni sürümün paneli açılmadı. Sunucu sahibi sunucudaki panel günlüğünü sudo journalctl -u celikpanel-panel -n 50 ile okumalıdır. Tamamlama sınırına kadar otomatik olarak yeniden denenir; sonrasında kurtarma günlüğü tek seferlik bir yeniden deneme komutu gösterir. Bu noktadan önceki sürüme desteklenen bir dönüş yok.",
     'recovery.failure.update_finishing_scheduler.pending': "Yeni sürüm kuruldu ve çalışıyor. Son adım olan otomatik sertifika yenilemeyi yeniden açma ilk denemede doğrulanmadı; sunucu bu adımı kendiliğinden yineliyor. Yapmanız gereken bir şey yok.",
-    'app.tagline': 'Kontrol Paneli',
     'app.pageLoadFailed': 'Bu bölüm yüklenemedi. Bu sekme açıkken CelikPanel güncellenmiş olabilir.',
     'app.reload': 'CelikPanel’i yeniden yükle',
 
@@ -197,7 +196,7 @@ export const tr: Record<ShellKey, string> = {
     'common.staleNotice': 'Bu, az önce sunucudan yeniden okunamadı; aşağıda gösterilen, saat {time} itibarıyla olan hâlidir. Hiçbir şey değiştirilmedi. Bir şeyi kaldıran ya da değiştiren denetimler, yeniden okunana dek kapalıdır.',
     'common.resultUnknown': 'Yanıt gelmeden bağlantı koptu; bu yüzden değişikliğin yapılıp yapılmadığı bilinmiyor. Hiçbir şey ikinci kez gönderilmez. Gösterilen yeniden okunuyor; işlemi yinelemeden önce ona bakın.',
     'common.technicalDetails': 'Teknik ayrıntılar',
-    'common.cancel': 'İptal',
+    'common.cancel': 'Vazgeç',
     'common.continue': 'Devam et',
     'common.delete': 'Sil',
     'operation.working': 'Sunucuda çalışılıyor…',
@@ -213,8 +212,6 @@ export const tr: Record<ShellKey, string> = {
     // Türkçe sayıdan sonra çoğul eki almaz: '1 öğe', '{n} öğe'.
     'common.itemsTotalOne': '1 öğe',
     'common.itemsTotal': '{n} öğe',
-    'common.perPage': 'Sayfa başına',
-    'common.search': 'Ara…',
     'common.remove': 'Kaldır',
     'common.home': 'Ana sayfa',
     // "Henüz bakılmadı", "kurulu değil" demek değildir. Panel ikisinden

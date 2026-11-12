@@ -165,7 +165,7 @@ export const trDnsCertificatesScreens: Record<DnsCertificatesScreenKey, string> 
     'dns.ttl': 'TTL',
     'dns.priority': 'Öncelik',
     'dns.save': 'Kaydı kaydet',
-    'dns.cancel': 'İptal',
+    'dns.cancel': 'Vazgeç',
     'dns.recordAdded': 'Kayıt eklendi',
     'dns.recordAddFailed': 'Kayıt eklenemedi',
     'dns.recordDeleted': 'Kayıt silindi',

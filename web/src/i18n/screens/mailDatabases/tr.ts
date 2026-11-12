@@ -137,7 +137,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'mail.forwarders': 'Yönlendiriciler',
     'mail.addForwarder': 'Yönlendirici ekle',
     'mail.create': 'Oluştur',
-    'mail.cancel': 'İptal',
+    'mail.cancel': 'Vazgeç',
     'mail.source': 'Kaynak adres',
     'mail.destination': 'Hedef adres',
     'mail.col.address': 'Adres',
