@@ -169,7 +169,8 @@ test('every dialogue in the product is the shared one', () => {
     'ChangeEmailModal.tsx': 1,
     'DNSEngineCard.tsx': 1,
     'Dashboard.tsx': 1,
-    'DatabaseAccountStrip.tsx': 1,
+    // alpha.133: CelikPanel's engine account (its password, shown once) with Security › Open to the outside.
+    'DatabaseRemoteServerPanel.tsx': 1,
     'DomainMailManager.tsx': 1,
     // alpha.124: the sending mailbox's settings, password shown once (passwordless mail).
     'PasswordlessMailNotice.tsx': 1,

@@ -147,7 +147,7 @@ test('a change whose one-time result is not kept says what was made and what to 
   assert.match(dialog, /if \(resultNotKept\(problem\)\) \{\s+onPasswordNotShown\(name, userMode === 'new' \? newUsername : ''\);/);
   assert.match(read('../src/components/DatabaseManagementV2.tsx'), /t\('databases\.passwordNotShown', passwordNotShown\)/);
   // The engine account's password is read with "Show password": that answer is the success it was.
-  assert.match(read('../src/components/DatabaseAccountStrip.tsx'), /problem\.code === 'REQUEST_COMPLETED_RESULT_NOT_RETAINED' && !problem\.reason/);
+  assert.match(read('../src/components/DatabaseRemoteServerPanel.tsx'), /problem\.code === 'REQUEST_COMPLETED_RESULT_NOT_RETAINED' && !problem\.reason/);
 });
 
 test('a configuration reload whose result is unknown is not a failure, and the line is labelled by its source', () => {

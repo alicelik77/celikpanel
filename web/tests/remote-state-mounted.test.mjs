@@ -22,7 +22,7 @@ import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } fr
 
 const source = (path) => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
 const screenFiles = [
-  'AddDomainModal', 'Domains', 'DatabaseManagementV2', 'DatabaseAccountStrip', 'DomainDatabaseManager',
+  'AddDomainModal', 'Domains', 'DatabaseManagementV2', 'DomainDatabaseManager',
   'DomainConnection', 'DomainDNSManager', 'DomainPHPSettings', 'HostingTypePanel',
   // The second batch.
   'Settings', 'UsersPage', 'DomainFileManager', 'DomainSSLSettings', 'ImportPage', 'LicenseNotice', 'MonitoringPage',
@@ -67,6 +67,9 @@ const stubbedComponents = [
   'DatabaseUsers', 'DatabaseUserPassword', 'EngineMark',
   // alpha.129: connections from outside read their own address when opened.
   'DatabaseRemoteAccess',
+  // alpha.133: CelikPanel's account on an engine belongs to the MariaDB and
+  // PostgreSQL pages (tests/database-server-alpha133.test.mjs).
+  'DatabaseAccountStrip',
   // alpha.128: the visitor statistics above the logs read their own address.
   'VisitorStats',
   // alpha.128: the server's IP addresses on Settings read their own address.
@@ -173,11 +176,10 @@ own['/CertificateReachNotice'] = shared.compile('components/CertificateReachNoti
 // alpha.114: the names a new site found pointing elsewhere, the shipped card.
 own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
-const stripURL = shared.compile('components/DatabaseAccountStrip.tsx', own);
 const load = async (name, more = {}) => (await import(shared.compile(`components/${name}.tsx`, { ...own, ...more })))[name];
 const AddDomainModal = (await import(modalURL)).AddDomainModal;
 const Domains = await load('Domains', { '/AddDomainModal': modalURL });
-const DatabaseManagementV2 = await load('DatabaseManagementV2', { '/DatabaseAccountStrip': stripURL });
+const DatabaseManagementV2 = await load('DatabaseManagementV2');
 const DomainDatabaseManager = await load('DomainDatabaseManager');
 const DomainConnection = await load('DomainConnection');
 const DomainDNSManager = await load('DomainDNSManager');
@@ -453,7 +455,7 @@ const table = [
   {
     screen: 'Databases page (engines)', Component: DatabaseManagementV2,
     read: '/api/v1/database-servers',
-    negative: ['databases.noServers', 'databases.noServersHint', 'domains.goServices', 'databases.account.missing'],
+    negative: ['databases.noServers', 'databases.noServersHint', 'domains.goServices'],
     checking: 'databases.checkingServers', unknown: 'databases.serversUnknown',
     known: [json([]), 'databases.noServers'],
   },
@@ -881,54 +883,7 @@ test('Domains: a pending row whose saved deletion could not be read says exactly
   }
 });
 
-// --- Databases: the account strip follows the latest answer ---------------------
-
-test('Databases: after the panel account is removed the strip shows the new answer, not the row it was mounted with', async () => {
-  let account = 'celikpanel';
-  serve({ '/api/v1/database-servers': () => Response.json([{ ...engine, admin_username: account }]) });
-  try {
-    await mount(DatabaseManagementV2);
-    assert.ok(has('databases.account.present'));
-    assert.equal(buttons('databases.account.rotate').length, 1);
-    account = '';
-    await press(buttons('databases.account.remove')[0]);
-    assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.endsWith('/admin-account')).length, 1);
-    assert.ok(!has('databases.account.present'), 'the strip still shows the account that was just removed');
-    assert.equal(buttons('databases.account.rotate').length, 0, '"New password" is still offered for a removed account');
-    assert.ok(has('databases.account.missing'));
-  } finally {
-    await cleanup();
-  }
-});
-
-test('Databases: while the engine list is being read again, or could not be, the account controls are off', async () => {
-  let mode = 'ok';
-  let release;
-  serve({ '/api/v1/database-servers': () => {
-    if (mode === 'hang') return new Promise((resolve) => { release = () => resolve(Response.json([engine])); });
-    if (mode === 'fail') return failures['refused by the server']();
-    return Response.json([engine]);
-  } });
-  try {
-    await mount(DatabaseManagementV2);
-    const account = () => ['databases.account.show', 'databases.account.rotate', 'databases.account.remove'].flatMap(buttons);
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [false, false, false]);
-    mode = 'hang';
-    await press(buttons('databases.account.rotate')[0]);
-    assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [true, true, true], 'the row is being read again');
-    await act(async () => { release(); await settled(); await settled(); });
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [false, false, false], 'the row is current again');
-    mode = 'fail';
-    await press(buttons('databases.account.rotate')[0]);
-    assert.equal(calls.filter((call) => call.method === 'POST').length, 2);
-    assert.ok(has('common.staleNotice'));
-    assert.deepEqual(account().map((node) => Boolean(node.props.disabled)), [true, true, true], 'the row could not be read again');
-    assert.deepEqual(enabledDangerousControls().filter((label) => label.includes('account')), []);
-  } finally {
-    await cleanup();
-  }
-});
+// --- Databases ---------------------------------------------------------------------
 
 test('Databases: a list that could not be read again keeps its rows and withdraws delete; counts are never invented', async () => {
   let fail = false;
