@@ -252,7 +252,6 @@ export const enSettingsScreens = {
     'plans.saveAnyway': 'Save anyway (nothing is deleted)',
     'plans.deleted': 'Plan deleted.',
     'plans.edit': 'Edit',
-    'plans.save': 'Save',
     'plans.empty': 'No service plans yet',
     'plans.emptyHint': 'Plans are reusable quota templates for onboarding customers.',
     'plans.checking': 'Reading the plans…',

@@ -239,7 +239,6 @@ export const trSettingsScreens: Record<SettingsScreenKey, string> = {
     'plans.saveAnyway': 'Yine de kaydet (hiçbir şey silinmez)',
     'plans.deleted': 'Plan silindi.',
     'plans.edit': 'Düzenle',
-    'plans.save': 'Kaydet',
     'plans.empty': 'Henüz servis planı yok',
     'plans.emptyHint': 'Planlar, müşteri açarken kullanılan yeniden kullanılabilir kota şablonlarıdır.',
     'plans.checking': 'Planlar okunuyor…',

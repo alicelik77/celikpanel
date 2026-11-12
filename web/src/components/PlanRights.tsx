@@ -1,26 +1,26 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
-import { Copy, Layers, Lock, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Copy, Layers, Lock, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useNavigate } from '../router';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
 import { showToast } from './Toast';
 import { Button, Checking, CouldNotCheck, ErrorBanner, KnownEmpty, RemoteGate, inputClass } from './ui';
-import { BlockedReason } from './BlockingProblems';
 import type { ApiError } from '../lib/apiError';
 import { apiErrorActionLabel, refusalText, refusalToast } from '../lib/apiError';
 import { countText, invalidate, lastKnown, mapRemote, useRemote } from '../lib/remote';
 import {
     NEW_PLAN, OFFERED_URL, RESELLER_PLANS_URL, editedFromResellerPlan, groupSoftware, itemLabel, limitWords, offeredInCatalog, offeredStateIn, offeredStateOf,
     permissionGroups, permissionIdsOf, permissionTopicKey, planBody, rightsSummary, selectionOf, sendRights, softwareGroupKey, softwareGroupName,
-    type EditedPlan, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
+    type EditedPlan, type Numbers, type PlanKind, type ResellerPlan, type RightsItem, type RightsPreview, type RightsSelection, type RightsView,
 } from '../lib/rights';
 import { RightsPreviewBox, RightsSetEditor } from './RightsSetEditor';
 import { readableRefusal, useGrantorCatalog } from './AccountRights';
-import { confirmAction } from '../lib/confirmAction';
+import { confirmAction, type OperationReport, type OperationStep } from '../lib/confirmAction';
 import { APP_CATALOG_URL, appText, decodeCatalog as decodeAppCatalog } from '../lib/appCatalog';
 import { useDraft } from './kit/save/draft';
 import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
 import { useSaveWords } from './kit/save/words';
+import { useLeaveGuard } from './kit/save/leaveGuard';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
 // alpha.128: the plan's limits of site settings, a chunk of its own.
@@ -42,7 +42,40 @@ const OfferedAppsSection = lazy(() => import('./OfferedAppsSection').then((modul
 
 type Say = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
-/** The editor of one plan, with its narrowing preview. */
+const sameItems = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join('\n') === [...b].sort().join('\n');
+
+/**
+ * What differs from the plan as it was opened, one entry per changed field
+ * (alpha.132): the name, each quantity, the permissions, the software, each
+ * limit of site settings and the over-limit choices. Exported for the tests.
+ */
+export function planChanges(kind: PlanKind, plan: EditedPlan, initial: EditedPlan, selection: RightsSelection, initialSelection: RightsSelection): string[] {
+    const changed: string[] = [];
+    if (plan.name !== initial.name) changed.push('name');
+    for (const key of Object.keys(plan.numbers) as (keyof Numbers)[]) {
+        if ((kind === 'reseller' || key !== 'max_customers') && plan.numbers[key] !== initial.numbers[key]) changed.push(key);
+    }
+    if (!sameItems(selection.permissions, initialSelection.permissions)) changed.push('permissions');
+    if (!sameItems(selection.software, initialSelection.software)) changed.push('software');
+    const ceilings = plan.ceilings ?? {};
+    const before = initial.ceilings ?? {};
+    for (const key of new Set([...Object.keys(ceilings), ...Object.keys(before)])) if (ceilings[key] !== before[key]) changed.push(`ceiling:${key}`);
+    if (kind === 'customer') {
+        if ((plan.overuse_policy || 'close') !== (initial.overuse_policy || 'close')) changed.push('overuse_policy');
+        if ((plan.notify_percent_disk ?? 80) !== (initial.notify_percent_disk ?? 80)) changed.push('notify_percent_disk');
+        if ((plan.notify_percent_traffic ?? 80) !== (initial.notify_percent_traffic ?? 80)) changed.push('notify_percent_traffic');
+    } else if ((plan.overselling || 'allowed') !== (initial.overselling || 'allowed')) changed.push('overselling');
+    return changed;
+}
+
+/**
+ * The editor of one plan, with its narrowing preview.
+ * alpha.132 (owner, 8 Nov 2026): one way of saving. A changed field is
+ * marked, the shared save bar counts the changes and Save is shown only
+ * when there is one (a new plan: until it is created); Discard puts the
+ * plan back as it was opened (a new plan: closes the form); closing or
+ * leaving with unsaved changes asks first.
+ */
 export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose }: {
     kind: PlanKind;
     initial: EditedPlan;
@@ -51,14 +84,18 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
     onClose: () => void;
 }) {
     const { t } = useI18n();
+    const say = useSaveWords();
     const isNew = initial.id === 0;
     const [plan, setPlan] = useState(initial);
-    const [selection, setSelection] = useState<RightsSelection>(() =>
+    const [initialSelection] = useState<RightsSelection>(() =>
         selectionOf(initial.rights ?? { all_permissions: true, all_software: true, permissions: [], software: [] }, grantor));
+    const [selection, setSelection] = useState<RightsSelection>(initialSelection);
     // An existing plan's set is sent only once it was changed here: an
     // untouched "everything offered" stays as it is.
     const [touched, setTouched] = useState(isNew);
     const [busy, setBusy] = useState(false);
+    // The answer of the last save did not arrive: Save waits for a check.
+    const [lost, setLost] = useState(false);
     const [pending, setPending] = useState<{ preview: RightsPreview; sentence: string; body: string } | null>(null);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
     const url = kind === 'reseller'
@@ -69,15 +106,44 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
     const shown = pending && pending.body === bodyText ? pending : null;
     const nameMissing = !plan.name.trim();
     const idPrefix = `plan-${kind}-${plan.id}`;
+    const changes = planChanges(kind, plan, initial, selection, initialSelection);
+    useLeaveGuard(changes.length);
+
+    const discard = () => {
+        setPlan(initial);
+        setSelection(initialSelection);
+        setTouched(isNew);
+        setPending(null);
+        setRefusal(null);
+    };
+    // Closing with unsaved changes asks, in the words of leaving a page.
+    const close = async () => {
+        if (changes.length > 0) {
+            const leave = await confirmAction({
+                title: say('leaveTitle'),
+                tone: 'danger',
+                lost: [changes.length === 1 ? say('leaveLostOne') : say('leaveLost', { n: changes.length })],
+                kept: [say('leaveKept')],
+                confirmLabel: say('leave'),
+                cancelLabel: say('stay'),
+            });
+            if (!leave) return;
+        }
+        onClose();
+    };
 
     const save = async (confirm: boolean) => {
+        if (busy) return;
         setBusy(true);
         setRefusal(null);
         try {
             const overUsage = confirm && (shown?.preview.over_limit.length ?? 0) > 0;
             const result = await sendRights(url, isNew ? 'POST' : 'PUT', planBody(kind, plan, chosen, { narrowing: confirm, overUsage }));
             if (result.kind === 'lost') {
-                showToast('error', t('common.resultUnknown'));
+                // Not known whether it was saved: nothing is sent again
+                // until the list has been read again.
+                setLost(true);
+                setPending(null);
                 invalidate('plans', 'rights');
                 return;
             }
@@ -109,12 +175,18 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
         }
     };
 
+    const nameChanged = changes.includes('name');
     return (
         <section className="mb-4 rounded-xl border border-border bg-surface-2/50 p-4" data-plan-editor={kind}>
-            <label className="block max-w-md">
-                <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}</span>
-                <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={inputClass} autoFocus />
-            </label>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className={`min-w-0 max-w-md flex-1 ${nameChanged ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
+                    <label className="block">
+                        <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}{nameChanged && !isNew && <ChangedMark />}</span>
+                        <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={inputClass} autoFocus />
+                    </label>
+                </div>
+                <Button type="button" icon={X} onClick={() => void close()} disabled={busy} data-plan-close="">{t('common.close')}</Button>
+            </div>
             <div className="mt-4">
                 <RightsSetEditor
                     grantor={grantor}
@@ -125,33 +197,36 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                     reseller={kind === 'reseller'}
                     grantorIsReseller={grantorIsReseller}
                     idPrefix={idPrefix}
+                    base={isNew ? undefined : { numbers: initial.numbers, selection: initialSelection }}
                 />
             </div>
             <Suspense fallback={<Checking label={t('limits.checking')} />}>
-                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} />
+                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} base={isNew ? undefined : initial} />
             </Suspense>
             {!isNew && !touched && initial.rights?.all_permissions && initial.rights.all_software && (
                 <p className="mt-3 text-xs text-fg-muted">{t('rights.plan.everythingKept')}</p>
             )}
             {shown && <div className="mt-4"><RightsPreviewBox id={`${idPrefix}-preview`} preview={shown.preview} sentence={shown.sentence} /></div>}
             <ErrorBanner className="mt-3" error={readableRefusal(refusal, t)} sentence="plans.saveFailed" />
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                {nameMissing && <BlockedReason id={`${idPrefix}-reason`} target={`${idPrefix}-name`} text={t('acct.plan.missing')} className="mr-auto" />}
-                <Button type="button" icon={X} onClick={onClose}>{t('common.cancel')}</Button>
-                {shown ? (
-                    <>
-                        <Button type="button" onClick={() => setPending(null)} disabled={busy}>{t('rights.back')}</Button>
-                        <Button type="button" variant="primary" onClick={() => void save(true)} loading={busy} data-plan-confirm="">
-                            {t(shown.preview.over_limit.length > 0 && kind === 'customer' ? 'plans.saveAnyway' : 'rights.plan.confirm')}
-                        </Button>
-                    </>
-                ) : (
-                    <Button type="button" variant="primary" icon={Save} onClick={() => void save(false)} loading={busy} disabled={nameMissing}
-                        aria-describedby={nameMissing ? `${idPrefix}-reason` : undefined}>
-                        {t('plans.save')}
+            {shown ? (
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                    <Button type="button" onClick={() => setPending(null)} disabled={busy}>{t('rights.back')}</Button>
+                    <Button type="button" variant="primary" onClick={() => void save(true)} loading={busy} data-plan-confirm="">
+                        {t(shown.preview.over_limit.length > 0 && kind === 'customer' ? 'plans.saveAnyway' : 'rights.plan.confirm')}
                     </Button>
-                )}
-            </div>
+                </div>
+            ) : (
+                <SaveBar
+                    className="-mx-4 px-4 pb-0"
+                    // A new plan is created only by Save: the bar stays until then.
+                    count={isNew ? 'some' : changes.length}
+                    saving={busy}
+                    blockedBy={nameMissing ? t('acct.plan.missing') : undefined}
+                    unknown={lost ? { held: true, checking: false, onCheck: () => { invalidate('plans', 'rights'); setLost(false); } } : undefined}
+                    onSave={() => void save(false)}
+                    onDiscard={isNew ? onClose : discard}
+                />
+            )}
         </section>
     );
 }
@@ -355,53 +430,95 @@ export function OfferedItemsTab() {
     // Save is off while a list a change was made on is an earlier answer.
     const stale = draft.changed.some((id) => (appOf(id) ? apps.remote.state !== 'known' : catalog.remote.state !== 'known'));
 
-    const save = () => void draft.save(async (changes) => {
-        setReport(null);
-        const entries = Object.entries(changes) as [string, boolean][];
-        const offeredApps = entries.filter(([id, offered]) => offered && appOf(id)).map(([id]) => appOf(id)!);
-        if (offeredApps.length > 0) {
-            const go = await confirmAction({
-                message: offeredApps.map((app) => t('appOffer.confirm', { name: app.name, risk: appText(app, 'risk', locale) })).join('\n\n'),
-                confirmLabel: say('save'),
-            });
-            if (!go) return 'refused';
-        }
+    // Sends the changes one by one, then reads the lists again; with a
+    // progress window (`report`) each item is a step.
+    const apply = async (entries: [string, boolean][], report?: OperationReport) => {
+        const steps: OperationStep[] = [
+            ...entries.map(([id, offered]): OperationStep => ({ id, label: t(offered ? 'rights.offered.stepOffer' : 'rights.offered.stepHide', { name: nameOf(id) }), state: 'pending' })),
+            { id: 'read', label: t('rights.offered.stepRead'), state: 'pending' },
+        ];
+        const step = (at: number, next: Partial<OperationStep>) => {
+            steps[at] = { ...steps[at], ...next };
+            report?.steps(steps.map((item) => ({ ...item })));
+        };
         const saved: string[] = [];
         const failed: { text: string; fix?: ApiError }[] = [];
         const notSaved = (id: string, reason: string, fix?: ApiError) => failed.push({ text: t('rights.offered.notSaved', { what: nameOf(id), reason }), fix: fix?.action ? fix : undefined });
         const still = (id: string, offered: boolean) => failed.push({ text: t(offered ? 'rights.offered.stillHidden' : 'rights.offered.stillOffered', { name: nameOf(id) }) });
-        const unsure: [string, boolean][] = [];
+        const unsure: [number, string, boolean][] = [];
         let lost = false;
-        for (const [id, offered] of entries) {
+        for (const [at, [id, offered]] of entries.entries()) {
+            step(at, { state: 'running', since: Date.now() });
             const result = await sendRights(OFFERED_URL, 'PUT', { offering_id: id, offered });
             if (result.kind === 'lost') {
                 lost = true;
                 notSaved(id, t('common.resultUnknown'));
+                step(at, { state: 'failed', note: t('common.resultUnknown') });
             } else if (result.kind === 'refused') {
                 notSaved(id, refusalText(readableRefusal(result.error, t), t, 'rights.offered.failed'), result.error);
+                step(at, { state: 'failed', note: failed[failed.length - 1].text });
             } else {
                 // The answer names the item's state now; an older answer
                 // without it is checked against the lists read again below.
                 const now = offeredStateIn(result.body, id);
-                if (now === undefined) unsure.push([id, offered]);
-                else if (now !== offered) still(id, offered);
-                else saved.push(nameOf(id));
+                if (now === undefined) unsure.push([at, id, offered]);
+                else if (now !== offered) {
+                    still(id, offered);
+                    step(at, { state: 'failed', note: failed[failed.length - 1].text });
+                } else {
+                    saved.push(nameOf(id));
+                    step(at, { state: 'done' });
+                }
             }
         }
         // Every chooser, plan and account screen follows the offer.
+        const read = steps.length - 1;
+        step(read, { state: 'running', since: Date.now() });
         invalidate('rights', 'components');
         const [rights, applications] = await Promise.all([catalog.retry(), apps.retry()]);
-        for (const [id, offered] of unsure) {
-            const app = appOf(id);
-            const now = app
+        step(read, { state: 'done' });
+        for (const [at, id, offered] of unsure) {
+            const now = appOf(id)
                 ? (applications.state === 'known' ? applications.value.find((entry) => entry.offering_id === id)?.offered : undefined)
                 : (rights.state === 'known' ? offeredStateOf(rights.value, id) : undefined);
             if (now === undefined) {
                 lost = true;
                 notSaved(id, t('common.resultUnknown'));
-            } else if (now !== offered) still(id, offered);
-            else saved.push(nameOf(id));
+                step(at, { state: 'failed', note: t('common.resultUnknown') });
+            } else if (now !== offered) {
+                still(id, offered);
+                step(at, { state: 'failed', note: failed[failed.length - 1].text });
+            } else {
+                saved.push(nameOf(id));
+                step(at, { state: 'done' });
+            }
         }
+        return { saved, failed, lost };
+    };
+
+    const save = () => void draft.save(async (changes) => {
+        setReport(null);
+        const entries = Object.entries(changes) as [string, boolean][];
+        const offeredApps = entries.filter(([id, offered]) => offered && appOf(id)).map(([id]) => appOf(id)!);
+        const done: { result?: Awaited<ReturnType<typeof apply>> } = {};
+        if (offeredApps.length > 0) {
+            // Offering an application asks first, with its risk; the changes
+            // then run in the progress window.
+            await confirmAction({
+                message: offeredApps.map((app) => t('appOffer.confirm', { name: app.name, risk: appText(app, 'risk', locale) })).join('\n\n'),
+                confirmLabel: say('save'),
+                progressTitle: t('rights.offered.applying'),
+                action: async (report) => {
+                    const result = await apply(entries, report);
+                    done.result = result;
+                    if (result.failed.length === 0) return { state: 'done' };
+                    return { state: result.lost ? 'unknown' : 'failed', reason: `${result.failed.map((line) => line.text).join(' ')} ${t('rights.offered.next')}` };
+                },
+            });
+            // Declined: nothing was sent and the changes stay.
+            if (!done.result) return 'refused';
+        } else done.result = await apply(entries);
+        const { saved, failed, lost } = done.result;
         if (failed.length === 0) return 'saved';
         setReport({ saved, failed });
         return lost ? 'unknown' : 'refused';

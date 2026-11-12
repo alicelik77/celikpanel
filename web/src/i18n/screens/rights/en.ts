@@ -167,6 +167,11 @@ export const enRightsScreens = {
     'rights.offered.failed': 'The server did not accept it.',
     'rights.offered.notSaved': 'Not saved: {what}. {reason}',
     'rights.offered.savedSome': 'Saved: {what}.',
+    'rights.offered.applying': 'Saving what is offered',
+    'rights.offered.stepOffer': 'Offering {name}',
+    'rights.offered.stepHide': 'Hiding {name}',
+    'rights.offered.stepRead': 'Reading what is offered again',
+    'rights.offered.next': 'What was not saved stays marked on the page: fix the cause, then press Save again, or Discard it.',
 
     'rights.notice.migratedOne': '1 account became Unlimited with this update',
     'rights.notice.migratedMany': '{n} accounts became Unlimited with this update',

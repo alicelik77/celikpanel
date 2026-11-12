@@ -87,6 +87,10 @@ const plainQuestions = {
   // Installing a version past its support: the install then runs under the
   // component operation's own lock (OperationOverlay).
   'components/ServiceList.tsx': 1,
+  // alpha.132: giving up unsaved changes sends nothing: switching the PHP
+  // version or tab with unsaved extension switches, closing a plan form.
+  'components/PHPManagement.tsx': 1,
+  'components/PlanRights.tsx': 1,
 };
 
 function calls(text, name) {

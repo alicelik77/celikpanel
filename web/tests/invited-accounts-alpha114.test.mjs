@@ -73,9 +73,9 @@ test('a disabled Save says what is missing', () => {
   assert.match(team, /newPasswordShort \? \[t\('acct\.team\.newPasswordShort'\)\]/);
   assert.match(team, /aria-describedby=\{!canSave \? 'team-save-reason' : undefined\}/);
   // alpha.117: the plan editor moved to PlanRights.tsx; its Save still says what is missing.
+  // alpha.132: in the shared save bar, in place of the count.
   const planEditor = source('../src/components/PlanRights.tsx');
-  assert.match(planEditor, /id=\{`\$\{idPrefix\}-reason`\} target=\{`\$\{idPrefix\}-name`\} text=\{t\('acct\.plan\.missing'\)\}/);
-  assert.match(planEditor, /aria-describedby=\{nameMissing \? `\$\{idPrefix\}-reason` : undefined\}/);
+  assert.match(planEditor, /blockedBy=\{nameMissing \? t\('acct\.plan\.missing'\) : undefined\}/);
   for (const key of ['acct.team.missing', 'acct.team.passwordRule', 'acct.team.newPasswordShort', 'acct.plan.missing',
     'acct.team.inviteHint', 'acct.invite.rowResend', 'acct.invite.status.cancelledUsers', 'acct.invite.status.cancelledTeam']) {
     assert.ok(en.includes(`'${key}':`), `${key} in English`);

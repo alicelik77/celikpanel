@@ -25,6 +25,7 @@ import { confirmAction } from '../lib/confirmAction';
 import { PasswordInput } from './PasswordInput';
 import { passwordAcceptable } from '../lib/passwordPolicy';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
+import { confirmLeaveIfDirty } from './kit/save/leaveGuard';
 
 // Account management: the admin/reseller view over the role hierarchy.
 // Everything here mirrors what the API enforces — role options, visibility
@@ -49,6 +50,11 @@ function AccountUsersPage({ role }: { role: 'admin' | 'reseller' }) {
     const { t } = useI18n();
     const isAdmin = role === 'admin';
     const [tab, setTab] = useState<UsersTab>('accounts');
+    // alpha.132: a tab with unsaved changes (a plan form, the Offered tab)
+    // asks before it is left, as leaving the page does.
+    const go = (next: UsersTab) => {
+        if (next !== tab) void confirmLeaveIfDirty().then((leave) => { if (leave) setTab(next); });
+    };
 
     return (
         <div className="p-6 md:p-8">
@@ -59,17 +65,17 @@ function AccountUsersPage({ role }: { role: 'admin' | 'reseller' }) {
             />
 
             <div className="mb-4 flex items-center gap-1 border-b border-border">
-                <Tab active={tab === 'accounts'} onClick={() => setTab('accounts')} label={t('users.tab.accounts')} />
+                <Tab active={tab === 'accounts'} onClick={() => go('accounts')} label={t('users.tab.accounts')} />
                 {/* Resellers have their own plans too (alpha.114). / Bayilerin de kendi planları var. */}
-                <Tab active={tab === 'plans'} onClick={() => setTab('plans')} label={t('users.tab.plans')} />
+                <Tab active={tab === 'plans'} onClick={() => go('plans')} label={t('users.tab.plans')} />
                 {/* alpha.117 (D-042): the administrator's reseller plans and what the server offers. */}
-                {isAdmin && <Tab active={tab === 'resellerPlans'} onClick={() => setTab('resellerPlans')} label={t('rights.tab.resellerPlans')} />}
-                {isAdmin && <Tab active={tab === 'offered'} onClick={() => setTab('offered')} label={t('rights.tab.offered')} />}
+                {isAdmin && <Tab active={tab === 'resellerPlans'} onClick={() => go('resellerPlans')} label={t('rights.tab.resellerPlans')} />}
+                {isAdmin && <Tab active={tab === 'offered'} onClick={() => go('offered')} label={t('rights.tab.offered')} />}
                 {/* Suspended subscriptions, with what they still hold (2 Nov 2026). / Askıdaki abonelikler. */}
-                <Tab active={tab === 'deletable'} onClick={() => setTab('deletable')} label={t('susp.del.tab')} />
+                <Tab active={tab === 'deletable'} onClick={() => go('deletable')} label={t('susp.del.tab')} />
             </div>
 
-            {tab === 'accounts' && <AccountsTab isAdmin={isAdmin} onCreatePlan={(reseller) => setTab(reseller ? 'resellerPlans' : 'plans')} />}
+            {tab === 'accounts' && <AccountsTab isAdmin={isAdmin} onCreatePlan={(reseller) => go(reseller ? 'resellerPlans' : 'plans')} />}
             {tab === 'plans' && <PlansTab isAdmin={isAdmin} />}
             {tab === 'resellerPlans' && isAdmin && <ResellerPlansTab />}
             {tab === 'offered' && isAdmin && <OfferedItemsTab />}

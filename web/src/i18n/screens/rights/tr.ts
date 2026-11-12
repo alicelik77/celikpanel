@@ -159,6 +159,11 @@ export const trRightsScreens: Record<RightsScreenKey, string> = {
     'rights.offered.failed': 'Sunucu bunu kabul etmedi.',
     'rights.offered.notSaved': 'Kaydedilmedi: {what}. {reason}',
     'rights.offered.savedSome': 'Kaydedildi: {what}.',
+    'rights.offered.applying': 'Sunulanlar kaydediliyor',
+    'rights.offered.stepOffer': '{name} sunuluyor',
+    'rights.offered.stepHide': '{name} gizleniyor',
+    'rights.offered.stepRead': 'Sunulanlar yeniden okunuyor',
+    'rights.offered.next': 'Kaydedilmeyenler sayfada işaretli duruyor: nedeni giderip yeniden Kaydet’e basın ya da Vazgeç’i seçin.',
 
     'rights.notice.migratedOne': 'Bu güncellemeyle 1 hesap Sınırsız oldu',
     'rights.notice.migratedMany': 'Bu güncellemeyle {n} hesap Sınırsız oldu',
