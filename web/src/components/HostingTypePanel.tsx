@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FileCode, Files, Hexagon, ArrowLeftRight, ExternalLink, Play, StopCircle, RotateCw, type LucideIcon } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
@@ -17,6 +17,10 @@ import { OfferedVersionNote } from './OfferedVersionsCard';
 import { isOffered, useOfferedVersions } from '../lib/offeredVersions';
 import { confirmAction, followOperation, type OperationReport } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
+import { useDraft, type Draft } from './kit/save/draft';
+import { ChangedMark, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
+import type { SaveOutcome } from './kit/save/saveRun';
+import { useSaveWords } from './kit/save/words';
 
 // Hosting type for a domain (roadmap 3A): pick what the site IS, fill the
 // type-specific fields, apply. For node projects the live application panel
@@ -80,12 +84,41 @@ function showsHosting(before: HostingState, now: HostingState, sent: HostingStat
     return all.every((name) => sameField(now, before, name)) ? false : null;
 }
 
+// What the form changes (alpha.132): the type and its own fields, as a draft
+// over the settings last read. Picking a type or typing changes nothing on
+// the server; the change is made only by the button that names it, and
+// leaving with a change not applied asks first.
+// Formun değiştirdikleri: tür ve kendi alanları, son okunan ayarların üzerinde
+// taslak. Değişiklik yalnız onu adlandıran düğmeyle yapılır.
+interface HostingChoice {
+    project_type: string;
+    start_command: string;
+    runtime_version: string;
+    forward_to: string;
+    forward_code: number;
+}
+
+const choiceOf = (saved: HostingState): HostingChoice => ({
+    project_type: saved.project_type,
+    start_command: saved.start_command ?? '',
+    runtime_version: saved.runtime_version ?? '',
+    forward_to: saved.forward_to ?? '',
+    forward_code: saved.forward_code || 301,
+});
+
+const SWITCH_WORDS: Record<string, TranslationKey> = {
+    php: 'hosting.switchTo.php',
+    static: 'hosting.switchTo.static',
+    node: 'hosting.switchTo.node',
+    proxy: 'hosting.switchTo.proxy',
+    forwarding: 'hosting.switchTo.forwarding',
+};
+
 const NODE_RUNTIMES_URL = '/api/v1/runtimes/node';
 const decodeNodeRuntimes = (raw: unknown) => decodeListIn<string>(raw, 'installed');
 
 export function HostingTypePanel({ domainId, domainName }: { domainId: number; domainName: string }) {
     const { t, locale } = useI18n();
-    const [saving, setSaving] = useState(false);
 
     // A type whose requirement is missing on this server must say so instead
     // of failing at Apply: switching to PHP needs PHP-FPM installed. PHP is
@@ -109,56 +142,57 @@ export function HostingTypePanel({ domainId, domainName }: { domainId: number; d
     // değiştirildiği yanıtın yanında tutulur; daha yeni bir yanıt (Uygula'dan
     // ya da yanıtı yiten değişiklikten sonra) formun gösterdiği olur.
     const hosting = useRemote(`/api/v1/domains/${domainId}/hosting`, decodeHosting);
-    const [edit, setEdit] = useState<{ from: number; value: HostingState } | null>(null);
+    const savedHosting = lastKnown(hosting.remote)?.value;
+    const known = useMemo(() => (savedHosting ? choiceOf(savedHosting) : null), [savedHosting]);
+    const draft = useDraft(known);
+    const resetDraft = draft.reset;
+    useEffect(() => resetDraft(), [domainId, resetDraft]);
     const answer = useLostAnswer(() => hosting.retry());
 
     const support = useSupportTable();
-    const apply = async (form: HostingState) => {
-        if (hosting.remote.state !== 'known' || answer.holding) return;
+    // The change runs in the locked progress window with the server's steps
+    // (alpha.127): a confirmed change in the question's own window, otherwise
+    // in one opened for it. How it ended goes to the draft: saved, refused
+    // (also when the question was declined and nothing was sent) or unknown.
+    // Değişiklik kilitli ilerleme penceresinde sunucunun adımlarıyla yürür.
+    const apply = () => void draft.save(async (_changes, values) => {
+        if (hosting.remote.state !== 'known' || answer.holding) return 'refused';
         const before = hosting.remote.value;
+        const form: HostingState = { ...before, ...values };
         // alpha.107 (D-038 §5): a Node.js line past its support asks first.
         const unsupported = form.project_type === 'node' && form.runtime_version && form.runtime_version !== before.runtime_version
             ? supportConfirmation(t, locale, support, 'node', form.runtime_version, 'choose')
             : '';
-        // The change runs in the locked progress window with the server's
-        // steps (alpha.127): a confirmed change in the question's own window,
-        // otherwise in one opened for it.
+        const ended: { outcome: SaveOutcome } = { outcome: 'refused' };
         const proceed = async (report: OperationReport) => {
-            setSaving(true);
-            try {
-                const res = await sendWithSteps(report, flowSteps(t, 'hosting', ['check!', 'switch']), t, `hosting.${domainId}`,
-                    (headers) => answer.send(`/api/v1/domains/${domainId}/hosting`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', ...headers },
-                    body: JSON.stringify(form),
-                }, {
-                    // If the answer is lost and the settings read again are still
-                    // the earlier ones, what was typed is put back over that newer
-                    // answer instead of being replaced by it unseen.
-                    // Yanıt yiter ve yeniden okunan ayarlar hâlâ öncekilerse, yazılan
-                    // o yeni yanıtın üzerine geri konur.
-                    shows: (read) => showsHosting(before, read[0].value as HostingState, form),
-                    notMade: (read) => setEdit({ from: read[0].observedAt, value: form }),
-                }));
-                if (!res) return;
-                if (!res.ok) {
-                    showToast('error', apiErrorText(await readApiError(res), t));
-                    return;
-                }
-                showToast('success', t('hosting.saved'));
-                answer.settle();
-                await hosting.retry();
-            } finally {
-                setSaving(false);
+            ended.outcome = 'unknown';
+            const res = await sendWithSteps(report, flowSteps(t, 'hosting', ['check!', 'switch']), t, `hosting.${domainId}`,
+                (headers) => answer.send(`/api/v1/domains/${domainId}/hosting`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...headers },
+                body: JSON.stringify(form),
+            }, {
+                // The settings read again either show what was sent, or the
+                // earlier ones; the draft keeps what they do not hold.
+                // Yeniden okunan ayarlar ya gönderileni ya öncekini gösterir.
+                shows: (read) => showsHosting(before, read[0].value as HostingState, form),
+            }));
+            if (!res) return;
+            if (!res.ok) {
+                ended.outcome = 'refused';
+                showToast('error', apiErrorText(await readApiError(res), t));
+                return;
             }
+            ended.outcome = 'saved';
+            showToast('success', t('hosting.saved'));
+            answer.settle();
+            await hosting.retry();
         };
         const progressTitle = t('opstep.hosting.title', { name: domainName });
-        if (!(unsupported)) {
-            await followOperation({ progressTitle, action: proceed });
-            return;
-        }
-        await confirmAction({ message: unsupported, progressTitle, action: proceed });
-    };
+        if (!(unsupported)) await followOperation({ progressTitle, action: proceed });
+        else await confirmAction({ message: unsupported, progressTitle, action: proceed });
+        return ended.outcome;
+    });
 
     return (
         <RemoteGate
@@ -173,12 +207,11 @@ export function HostingTypePanel({ domainId, domainName }: { domainId: number; d
                     domainId={domainId}
                     domainName={domainName}
                     saved={shown.value}
-                    state={edit && edit.from === shown.observedAt ? edit.value : shown.value}
-                    setState={(value) => setEdit({ from: shown.observedAt, value })}
+                    draft={draft}
                     phpKnownMissing={phpKnownMissing}
                     capabilities={capabilities}
                     answer={answer}
-                    canApply={!shown.stale && !hosting.reading && !saving && !answer.holding}
+                    canApply={!shown.stale && !hosting.reading && !draft.saving && !answer.holding}
                     onApply={apply}
                 />
             )}
@@ -190,8 +223,7 @@ function HostingForm({
     domainId,
     domainName,
     saved,
-    state,
-    setState,
+    draft,
     phpKnownMissing,
     capabilities,
     answer,
@@ -202,15 +234,32 @@ function HostingForm({
     domainName: string;
     /** What the server has saved; the live application panel follows this, not the draft. */
     saved: HostingState;
-    state: HostingState;
-    setState: (next: HostingState) => void;
+    draft: Draft<HostingChoice>;
     phpKnownMissing: boolean;
     capabilities: ReturnType<typeof useHostingCapabilities>;
     answer: LostAnswerHandle;
     canApply: boolean;
-    onApply: (form: HostingState) => void;
+    onApply: () => void;
 }) {
     const { t } = useI18n();
+    const say = useSaveWords();
+    // What the form shows: the saved settings with the change not applied over them.
+    const state: HostingChoice & { app_port?: number } = { ...(draft.values ?? choiceOf(saved)), app_port: saved.app_port };
+    const set = draft.set;
+    const busy = draft.saving;
+    const typeChanged = draft.isChanged('project_type');
+    // A field the type needs and the form lacks keeps the change from being applied.
+    const missing = state.project_type === 'node' && !state.runtime_version
+        ? t('hosting.pickVersion')
+        : (state.project_type === 'proxy' || state.project_type === 'forwarding') && !state.forward_to.trim()
+          ? t('hosting.needsTarget')
+          : '';
+    const applyLabel = typeChanged ? t(SWITCH_WORDS[state.project_type] ?? 'hosting.applyChanges') : t('hosting.applyChanges');
+    // A field's own mark, and the server's value when it changed under the edit.
+    const mark = (field: keyof HostingChoice) => (draft.isChanged(field) ? <ChangedMark /> : null);
+    const moved = (field: keyof HostingChoice, words: (value: HostingChoice) => string) => (draft.isMoved(field) && draft.base
+        ? <ServerMovedNote value={words(draft.base) || '—'} onTake={() => draft.take(field)} />
+        : null);
     const support = useSupportTable();
     // Which Node.js versions exist is asked only for a Node.js project. Until
     // it is known the list holds the saved version and nothing invented.
@@ -238,8 +287,9 @@ function HostingForm({
                         return (
                             <button
                                 key={id}
-                                onClick={() => setState({ ...state, project_type: id })}
-                                disabled={unavailable}
+                                type="button"
+                                onClick={() => set('project_type', id)}
+                                disabled={unavailable || busy}
                                 title={unavailable ? t('hosting.phpMissing') : t(descKey)}
                                 className={`flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition-colors ${
                                     active
@@ -248,7 +298,10 @@ function HostingForm({
                                 } ${unavailable ? 'cursor-not-allowed opacity-50' : ''}`}
                             >
                                 <Icon className={`h-5 w-5 ${active ? 'text-primary' : 'text-fg-muted'}`} />
-                                <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-fg'}`}>{t(labelKey)}</span>
+                                <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-fg'}`}>
+                                    {t(labelKey)}
+                                    {active && typeChanged && <ChangedMark />}
+                                </span>
                                 {unavailable && (
                                     <span className="text-xs font-medium text-warning">{t('hosting.phpMissing')}</span>
                                 )}
@@ -259,6 +312,7 @@ function HostingForm({
                 <p className="mt-2 text-xs text-fg-subtle">
                     {t(typeDefs.find((d) => d.id === state.project_type)?.descKey ?? 'hosting.desc.php')}
                 </p>
+                {moved('project_type', (value) => t(typeDefs.find((d) => d.id === value.project_type)?.labelKey ?? 'hosting.type.php'))}
                 {capabilities.remote.state === 'unknown' && (
                     <CouldNotCheck
                         className="mt-3"
@@ -272,17 +326,19 @@ function HostingForm({
             {/* Type-specific fields */}
             {state.project_type === 'node' && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label>
-                        <span className="mb-1 block text-xs text-fg-muted">{t('hosting.startCommand')}</span>
+                    <label className={`-mx-2 block rounded-r px-2 py-1 ${draft.isChanged('start_command') ? changedRowClass : ''}`}>
+                        <span className="mb-1 block text-xs text-fg-muted">{t('hosting.startCommand')}{mark('start_command')}</span>
                         <input
-                            value={state.start_command || ''}
-                            onChange={(e) => setState({ ...state, start_command: e.target.value })}
+                            value={state.start_command}
+                            onChange={(e) => set('start_command', e.target.value)}
+                            disabled={busy}
                             placeholder="node server.js"
                             className={`${inputClass} font-mono`}
                         />
+                        {moved('start_command', (value) => value.start_command)}
                     </label>
-                    <label>
-                        <span className="mb-1 block text-xs text-fg-muted">{t('hosting.nodeVersion')}</span>
+                    <label className={`-mx-2 block rounded-r px-2 py-1 ${draft.isChanged('runtime_version') ? changedRowClass : ''}`}>
+                        <span className="mb-1 block text-xs text-fg-muted">{t('hosting.nodeVersion')}{mark('runtime_version')}</span>
                         {/* The "system default" option is gone (B3d): the panel
                             only operates what it installed — an unnamed
                             interpreter can't be listed, sized or protected
@@ -297,8 +353,9 @@ function HostingForm({
                             tutucu); select saklanan değer hakkında yalan
                             söylemez, sunucu sürümsüz yeni kaydı reddeder. */}
                         <select
-                            value={state.runtime_version || ''}
-                            onChange={(e) => setState({ ...state, runtime_version: e.target.value })}
+                            value={state.runtime_version}
+                            onChange={(e) => set('runtime_version', e.target.value)}
+                            disabled={busy}
                             className={inputClass}
                         >
                             {!state.runtime_version && (
@@ -320,6 +377,7 @@ function HostingForm({
                         {offered && savedNode && (
                             <OfferedVersionNote component="node" version={savedNode} offered={isOffered(offered, 'node', savedNode)} restricted={offered.restricted} />
                         )}
+                        {moved('runtime_version', (value) => value.runtime_version)}
                     </label>
                     {/* One line while the versions are read, in a place that
                         is there in every state; the notice when they could
@@ -345,28 +403,33 @@ function HostingForm({
 
             {(state.project_type === 'forwarding' || state.project_type === 'proxy') && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label>
+                    <label className={`-mx-2 block rounded-r px-2 py-1 ${draft.isChanged('forward_to') ? changedRowClass : ''}`}>
                         <span className="mb-1 block text-xs text-fg-muted">
                             {state.project_type === 'proxy' ? t('hosting.upstream') : t('hosting.forwardTo')}
+                            {mark('forward_to')}
                         </span>
                         <input
-                            value={state.forward_to || ''}
-                            onChange={(e) => setState({ ...state, forward_to: e.target.value })}
+                            value={state.forward_to}
+                            onChange={(e) => set('forward_to', e.target.value)}
+                            disabled={busy}
                             placeholder="https://example.com"
                             className={`${inputClass} font-mono`}
                         />
+                        {moved('forward_to', (value) => value.forward_to)}
                     </label>
                     {state.project_type === 'forwarding' && (
-                        <label>
-                            <span className="mb-1 block text-xs text-fg-muted">{t('hosting.forwardCode')}</span>
+                        <label className={`-mx-2 block rounded-r px-2 py-1 ${draft.isChanged('forward_code') ? changedRowClass : ''}`}>
+                            <span className="mb-1 block text-xs text-fg-muted">{t('hosting.forwardCode')}{mark('forward_code')}</span>
                             <select
-                                value={state.forward_code || 301}
-                                onChange={(e) => setState({ ...state, forward_code: Number(e.target.value) })}
+                                value={state.forward_code}
+                                onChange={(e) => set('forward_code', Number(e.target.value))}
+                                disabled={busy}
                                 className={inputClass}
                             >
                                 <option value={301}>{t('hosting.code301')}</option>
                                 <option value={302}>{t('hosting.code302')}</option>
                             </select>
+                            {moved('forward_code', (value) => t(value.forward_code === 302 ? 'hosting.code302' : 'hosting.code301'))}
                         </label>
                     )}
                 </div>
@@ -374,11 +437,26 @@ function HostingForm({
 
             <ResultUnknown answer={answer} />
 
-            <div className="flex justify-end">
-                <Button variant="primary" onClick={() => onApply(state)} disabled={!canApply}>
-                    {t('hosting.save')}
-                </Button>
-            </div>
+            {/* The change not applied yet: what happens, Discard, and the
+                button that names the change (drawing D4). Nothing applies
+                before it is pressed.
+                Henüz uygulanmamış değişiklik: Vazgeç ve değişikliği adlandıran düğme. */}
+            {(draft.count > 0 || busy) && (
+                <div data-hosting-staged="" className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-border pt-3">
+                    <p className="flex min-w-0 basis-full items-start gap-2 text-sm text-fg sm:mr-auto sm:basis-0 sm:grow" aria-live="polite">
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${canApply && !missing ? 'bg-primary' : 'bg-warning'}`} aria-hidden="true" />
+                        <span className="min-w-0 max-w-[75ch]">
+                            {!canApply && !busy ? say('stale') : missing || t('hosting.staged', { button: applyLabel })}
+                        </span>
+                    </p>
+                    <Button type="button" onClick={draft.reset} disabled={busy} data-save-discard="">
+                        {say('discard')}
+                    </Button>
+                    <Button type="button" variant="primary" onClick={onApply} disabled={!canApply || !!missing} loading={busy} data-save="">
+                        {applyLabel}
+                    </Button>
+                </div>
+            )}
 
             {/* The live panel belongs to the application the server runs, so
                 it follows the saved type: a Node.js type that is only picked

@@ -27,6 +27,8 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'wpt.check': 'Yeniden denetle',
     'wpt.autoMinor': 'WordPress’in güvenlik ve bakım sürümlerini kendiliğinden kur',
     'wpt.autoMinorHint': 'Günde bir kez; önce yedek alınır, güncelleme başarısız olursa geri yüklenir. Büyük sürümler her zaman sizin seçiminizdir.',
+    'wpt.autoMinorSaved': 'Kendiliğinden güncelleme ayarı kaydedildi.',
+    'wpt.autoMinorFailed': 'Kendiliğinden güncelleme ayarı kaydedilmedi.',
     'wpt.plugins': 'Eklentiler',
     'wpt.themes': 'Temalar',
     'wpt.none': 'Yok',
@@ -148,6 +150,8 @@ export const trSiteToolsScreens: Record<SiteToolsScreenKey, string> = {
     'mscan.schedule': 'Her siteyi haftada bir tara (tüm abonelikler, düşük öncelikle)',
     'mscan.scheduleHint': 'Yalnız yönetici içindir. Bir şey bulununca müşteriye, bayisine ve yöneticilere bildirilir.',
     'mscan.scheduleLast': 'Son haftalık tur: {when}',
+    'mscan.scheduleSaved': 'Haftalık tarama ayarı kaydedildi.',
+    'mscan.scheduleFailed': 'Haftalık tarama ayarı kaydedilmedi.',
 
     'err.MALWARE_SCAN_ALREADY_QUEUED': 'Bu sitenin taraması zaten bekliyor ya da sürüyor; ikincisi sıraya alınmadı. İlerlemesi bu ekranda görünür.',
     'err.MALWARE_DELETE_CONFIRMATION_REQUIRED': 'Silmek, dosyayı adıyla belirten açık bir onay ister. Hiçbir şey silinmedi.',

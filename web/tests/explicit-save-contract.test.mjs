@@ -36,18 +36,6 @@ const stillSavingOnChange = {
     'PHPManagement.tsx': { 'toggleExt(ext)': 1 },
     // :973 automatic update check (`saveAutoCheck` :555)
     'PanelUpdateCard.tsx': { 'saveAutoCheck(event.currentTarget.checked)': 1 },
-    // :926 auto-renew, :1177 force HTTPS, :1204 HSTS, :1231 HSTS duration, :1256 protect mail
-    'DomainSSLSettings.tsx': {
-        handleAutoRenewChange: 1,
-        'if (!v && data.settings.hsts_enabled) {': 1,
-        'handleUpdateSettings({': 1,
-        'handleUpdateSettings({ hsts_max_age: Number(event.target.value) })': 1,
-        handleSecureMailChange: 1,
-    },
-    // :339 automatic minor core updates
-    'WordPressToolsPanel.tsx': { "start('auto-update', 'PUT', { minor_core: e.target.checked })": 1 },
-    // :142 weekly malware scan
-    'DomainMalwareScan.tsx': { 'setSaving(true);': 1 },
 };
 
 const files = (dir) => readdirSync(dir).flatMap((name) => {
