@@ -112,10 +112,7 @@ test('no settings control saves on change', () => {
     const found = offenders();
     const where = Object.entries(found).flatMap(([file, handlers]) => Object.entries(handlers).map(([key, lines]) => `${file}:${lines.join(',')} ${key}`));
     assert.deepEqual(where, [],
-        `A settings control sends to the server from onChange/onClick; make it change a draft (useDraft + SaveBar from components/kit/save).
-Found:
-${where.join('
-')}`);
+        `A settings control sends to the server from onChange/onClick; make it change a draft (useDraft + SaveBar from components/kit/save).\nFound:\n${where.join('\n')}`);
 });
 
 test('the sweep sees a control that saves on change, and not one that only edits a draft', () => {
