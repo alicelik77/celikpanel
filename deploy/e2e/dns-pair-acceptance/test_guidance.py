@@ -306,7 +306,7 @@ class MailStageDeletionFailureTest(unittest.TestCase):
         self.assertTrue(saved["actionable"])
         self.assertEqual(saved["state"], "verified-failure")
         self.assertIn("Retry this deletion", saved["shown"]["en"][0])
-        self.assertIn("Bu silme işlemini yeniden dene", saved["shown"]["tr"][0])
+        self.assertIn("Bu silme işlemini tekrar dene", saved["shown"]["tr"][0])
 
     def test_unreviewed_or_reasonless_mail_stage_stays_generic(self) -> None:
         bare = {k: v for k, v in self.BODY.items() if k != "reason"}

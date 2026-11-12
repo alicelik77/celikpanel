@@ -242,7 +242,7 @@ func domainDeletionStuckNoticeWords(audience string, body map[string]any) accoun
 	}
 	if audience == audienceAdministrator {
 		w.TextEN = fmt.Sprintf("The domain %s is removed from DNS, but %s failed three times in a row, so its deletion is not finished. Its website, mail and DNS are already gone. CelikPanel now tries again only every 6 hours. Who acts: you. Open Domains, read the error shown for %s, fix its cause on the server, then use “Retry this deletion”.", domain, stepEN, domain)
-		w.TextTR = fmt.Sprintf("%s alan adı DNS'ten kaldırıldı, ancak %s adımı üst üste üç kez başarısız oldu; bu yüzden silme bitmedi. Web sitesi, postası ve DNS kayıtları zaten kaldırıldı. CelikPanel artık yalnız 6 saatte bir yeniden dener. Kim yapar: siz. Alan adları sayfasında %s için gösterilen hatayı okuyun, nedenini sunucuda giderin, sonra “Bu silme işlemini yeniden dene” düğmesini kullanın.", domain, stepTR, domain)
+		w.TextTR = fmt.Sprintf("%s alan adı DNS'ten kaldırıldı, ancak %s adımı üst üste üç kez başarısız oldu; bu yüzden silme bitmedi. Web sitesi, postası ve DNS kayıtları zaten kaldırıldı. CelikPanel artık yalnız 6 saatte bir yeniden dener. Kim yapar: siz. Alan adları sayfasında %s için gösterilen hatayı okuyun, nedenini sunucuda giderin, sonra “Bu silme işlemini tekrar dene” düğmesini kullanın.", domain, stepTR, domain)
 		return w
 	}
 	w.TextEN = fmt.Sprintf("The domain %s is removed from DNS and its website and mail are gone, but the last step of its deletion keeps failing on the server, so it is still listed. Nothing of it is served any more. Who acts: your provider (the administrator of this server) was told and fixes it; you do not need to do anything.", domain)

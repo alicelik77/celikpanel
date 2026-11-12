@@ -1070,7 +1070,7 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 	nextTR := " CelikPanel bunu 5 dakikada bir kendiliğinden denetlemeyi sürdürür; diğer DNS değişiklikleri onu bekler."
 	if deletion {
 		nextEN += " “Retry this deletion” on Domains checks again at once."
-		nextTR += " Alan adları sayfasındaki “Bu silme işlemini yeniden dene” hemen yeniden denetler."
+		nextTR += " Alan adları sayfasındaki “Bu silme işlemini tekrar dene” hemen yeniden denetler."
 	}
 	reason, detail := bodyString(body, "reason"), bodyString(body, "detail")
 	switch {
