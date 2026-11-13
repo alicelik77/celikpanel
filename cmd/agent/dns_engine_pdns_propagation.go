@@ -326,8 +326,17 @@ func catalogAXFRProbesForSourceEngine(engine transport.DNSEngine) (dnsCatalogAXF
 // Yedek DNS sunucusunun silmeyi onaylaması bekleniyor; Panel aynı işlemi
 // kendiliğinden yeniden denetler. Kimin ne yapacağını yalnız otomatik
 // denetimler onaysız bitince Panel söyler.
-func pairedDeletionAwaitingPeer(check dnsV3ProofCheck) error {
-	return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically and says who must act only if those checks end without confirmation", check)
+//
+// alpha.133 round 5: the line's ending follows the reviewed code (pending,
+// "" when none): the Panel re-checks every code automatically except
+// dns_peer_journal_unresolved, which waits for the server administrator
+// (cmd/panel dnsPeerPendingRetriesAutomatically). Until then it said "checks
+// the same operation again automatically" for every code.
+func pairedDeletionAwaitingPeer(check dnsV3ProofCheck, pending string) error {
+	if reason, _, ok := transport.SplitDNSPeerPendingCode(pending); ok && reason == transport.DNSPeerPendingJournalUnresolved {
+		return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s): this server's check record of the backup's confirmation is in a state the Agent cannot sort out by itself; the Panel does not check this operation again automatically and asks the server administrator to act", check)
+	}
+	return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically until it is confirmed and notifies the administrators if the same cause lasts", check)
 }
 
 func completeDNSV3PrimaryPropagationAt(
@@ -412,7 +421,7 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 			// Once it is inconclusive, later DNS retries cannot repeat that
 			// challenge and must not replace its reviewed reason with a
 			// different final check just before the deadline.
-			return errors.Join(pairedDeletionAwaitingPeer(dnsV3ProofNativePeer), nativePending)
+			return errors.Join(pairedDeletionAwaitingPeer(dnsV3ProofNativePeer, pendingDNSPeerCode(nativePending)), nativePending)
 		}
 		// Follow the daemon's own producer re-stamp, and nothing else, at
 		// any point before the native challenge binds a serial.
@@ -433,14 +442,14 @@ func completeDNSV3PrimaryPropagationWithNativeAt(
 			// unclassified.
 			// Yedek, dalga süresinde güncel kataloğa yetişmedi: geçici neden.
 			if plan.Changed.Delete {
-				reason := pairedDeletionAwaitingPeer(check)
 				if check == dnsV3ProofNativePeer && nativePending != nil {
-					return errors.Join(reason, nativePending)
+					return errors.Join(pairedDeletionAwaitingPeer(check, pendingDNSPeerCode(nativePending)), nativePending)
 				}
 				if check == dnsV3ProofCatalogPair && isDNSPeerBehind(err) {
+					reason := pairedDeletionAwaitingPeer(check, transport.DNSPeerPendingCatchingUp)
 					return errors.Join(reason, pendingDNSPeerCause(transport.DNSPeerPendingCatchingUp, reason))
 				}
-				return reason
+				return pairedDeletionAwaitingPeer(check, "")
 			}
 			reason := fmt.Errorf("paired DNS primary propagation did not converge (check=%s)", check)
 			if check == dnsV3ProofCatalogPair && isDNSPeerBehind(err) {

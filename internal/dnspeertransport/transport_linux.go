@@ -57,10 +57,29 @@ type Enrollment struct {
 type Code string
 
 const (
-	CodeEnrollment  Code = "peer_enrollment_invalid"
+	CodeEnrollment Code = "peer_enrollment_invalid"
+	// CodeUnavailable: the enrolled peer answered, but not with an
+	// observation this server can accept: another host key, the enrolled key
+	// refused, the session refused, an oversized answer, or the forced
+	// command exited unsuccessfully (Reason may name why).
 	CodeUnavailable Code = "peer_inspection_unavailable"
 	CodeMalformed   Code = "peer_inspection_malformed"
+	// CodeNoAnswer (alpha.133 round 5): the peer gave no answer at all. No
+	// TCP connection to its SSH port (refused, no route, timed out), the
+	// connection ended before the peer presented any host key, or the
+	// connection was lost or the exchange's time ran out before the forced
+	// command reported a result. It proves nothing about the peer; it is
+	// what a switched-off, restarting or unreachable peer looks like, and it
+	// is classified the same however quickly or at whichever instant of the
+	// time bound it came back.
+	CodeNoAnswer Code = "peer_no_answer"
 )
+
+// PeerAnswered reports an inspection the enrolled peer did answer (with an
+// answer this server cannot accept): CodeUnavailable or CodeMalformed. Such
+// an outcome keeps its own reason even when it came back at the step's time
+// bound; CodeNoAnswer, CodeEnrollment and anything else do not.
+func (e Unknown) PeerAnswered() bool { return e.Code == CodeUnavailable || e.Code == CodeMalformed }
 
 // Unknown never asserts absence, failure of the native service, or deletion.
 // Details from SSH, including paths and stderr, are deliberately not returned.
@@ -169,6 +188,9 @@ func Inspect(ctx context.Context, enrollment Enrollment, request dnspeerproof.Re
 			Code: CodeUnavailable, Reason: bindInspectorReason(reason),
 		}
 	}
+	if IsCode(err, CodeNoAnswer) {
+		return dnspeerproof.ResponseV1{}, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
+	}
 	if err != nil || !auth.Established || auth.PeerIP != enrollment.PeerIP || auth.IdentitySHA256 != enrollment.HostKeySHA256 {
 		return dnspeerproof.ResponseV1{}, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
 	}
@@ -205,6 +227,53 @@ func (PowerDNSSSH) Exchange(ctx context.Context, enrollment Enrollment, request 
 }
 
 func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, command string) ([]byte, dnspeerproof.PeerAuthentication, error) {
+	return exchangeFixedAt(ctx, enrollment, request, command, func(ctx context.Context, address string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "tcp", address)
+	})
+}
+
+// connectionLost reports a failure of the connection itself (closed, reset,
+// ended, timed out), as opposed to something the peer said.
+func connectionLost(err error) bool {
+	var netErr net.Error
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, os.ErrDeadlineExceeded) || errors.As(err, &netErr)
+}
+
+// noAnswerOr is CodeNoAnswer when the exchange's time ran out or the
+// connection itself failed, and CodeUnavailable (the peer answered) otherwise.
+// After ctx ended the connection is closed by this exchange, so whatever the
+// SSH layer reports then is the deadline's doing.
+func noAnswerOr(ctx context.Context, err error) Unknown {
+	if ctx.Err() != nil || connectionLost(err) {
+		return Unknown{Code: CodeNoAnswer}
+	}
+	return Unknown{Code: CodeUnavailable}
+}
+
+// exchangeFixedAt is exchangeFixed with the TCP dial replaceable by a test.
+//
+// Which failure is which (alpha.133 round 5, lab w9: a backup whose SSH port
+// was blocked once came back as "the inspection could not complete" because
+// the dialer's own poller deadline and the step's context deadline are two
+// timers for the same instant, and whichever fired first decided the code):
+//
+//	no answer (CodeNoAnswer)       the dial failed (refused, no route, timed
+//	                               out, cancelled); the connection ended before
+//	                               any host key was presented; the connection
+//	                               was lost, ended without an exit status, or
+//	                               the exchange's time ran out after that
+//	an answer (CodeUnavailable)    another host key; the enrolled key refused;
+//	                               the session refused; an oversized answer;
+//	                               the forced command's non-zero exit
+//	                               (CommandFailed, which wins over a deadline)
+//
+// The dial is classified as no answer whatever error value it returns, so the
+// outcome no longer depends on which of the two timers fired first.
+func exchangeFixedAt(ctx context.Context, enrollment Enrollment, request []byte, command string,
+	dial func(context.Context, string) (net.Conn, error),
+) ([]byte, dnspeerproof.PeerAuthentication, error) {
 	if enrollment.validate() != nil || len(request) == 0 || len(request) > maxWireSize {
 		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeEnrollment}
 	}
@@ -219,7 +288,7 @@ func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, c
 	if err != nil {
 		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeEnrollment}
 	}
-	var matched bool
+	var hostKeySeen, matched bool
 	config := &ssh.ClientConfig{
 		User: enrollment.Username,
 		// V1 enrollment pins an Ed25519 host key digest. Never let the SSH
@@ -227,6 +296,7 @@ func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, c
 		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
 		Auth:              []ssh.AuthMethod{ssh.PublicKeys(signer)},
 		HostKeyCallback: func(_ string, _ net.Addr, actual ssh.PublicKey) error {
+			hostKeySeen = true
 			sum := sha256.Sum256(actual.Marshal())
 			matched = hex.EncodeToString(sum[:]) == enrollment.HostKeySHA256
 			if !matched {
@@ -236,13 +306,14 @@ func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, c
 		},
 		Timeout: enrollment.Timeout,
 	}
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(enrollment.PeerIP, "22"))
+	conn, err := dial(ctx, net.JoinHostPort(enrollment.PeerIP, "22"))
 	if err != nil {
-		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		// Refused, no route, timed out or cancelled: nothing answered.
+		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
 	}
 	defer conn.Close()
 	if err := conn.SetDeadline(time.Now().Add(enrollment.Timeout)); err != nil {
-		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
 	}
 	closed := make(chan struct{})
 	go func() {
@@ -254,14 +325,29 @@ func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, c
 	}()
 	defer close(closed)
 	clientConn, chans, reqs, err := ssh.NewClientConn(conn, net.JoinHostPort(enrollment.PeerIP, "22"), config)
-	if err != nil || !matched {
+	switch {
+	case hostKeySeen && !matched:
+		// Another host answered on the peer's address.
+		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+	case err != nil && !hostKeySeen:
+		// The connection ended (or the time ran out) before any host key.
+		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
+	case err != nil:
+		// The pinned host refused the enrolled key, unless the connection
+		// itself was lost or the time ran out during authentication.
+		return nil, dnspeerproof.PeerAuthentication{}, noAnswerOr(ctx, err)
+	case !matched:
 		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
 	}
 	client := ssh.NewClient(clientConn, chans, reqs)
 	defer client.Close()
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		var refused *ssh.OpenChannelError
+		if errors.As(err, &refused) {
+			return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		}
+		return nil, dnspeerproof.PeerAuthentication{}, noAnswerOr(ctx, err)
 	}
 	defer session.Close()
 	var stdout limitedBuffer
@@ -273,13 +359,20 @@ func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, c
 	session.Stderr = &stderr
 	if err := session.Run(command); err != nil || stdout.overflow || stderr.overflow {
 		var exit *ssh.ExitError
-		if err != nil && errors.As(err, &exit) && matched && !stdout.overflow && !stderr.overflow {
+		var missing *ssh.ExitMissingError
+		switch {
+		case stdout.overflow || stderr.overflow:
+			return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		case errors.As(err, &exit) && matched:
 			// The pinned host ran the owner's forced command, which exited
 			// non-zero. Only its bounded stderr is kept, for digest-bound
 			// parsing of one reviewed reason token.
 			return nil, dnspeerproof.PeerAuthentication{}, CommandFailed(stderr.Bytes())
+		case errors.As(err, &missing):
+			// The connection ended before the command reported a result.
+			return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
 		}
-		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		return nil, dnspeerproof.PeerAuthentication{}, noAnswerOr(ctx, err)
 	}
 	auth := dnspeerproof.PeerAuthentication{Established: true, IdentitySHA256: enrollment.HostKeySHA256, PeerIP: enrollment.PeerIP}
 	return stdout.Bytes(), auth, nil

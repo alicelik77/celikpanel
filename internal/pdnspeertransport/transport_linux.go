@@ -20,6 +20,7 @@ const (
 	CodeEnrollment  = dnspeertransport.CodeEnrollment
 	CodeUnavailable = dnspeertransport.CodeUnavailable
 	CodeMalformed   = dnspeertransport.CodeMalformed
+	CodeNoAnswer    = dnspeertransport.CodeNoAnswer
 	maxWireSize     = 4096
 )
 
@@ -72,6 +73,9 @@ func Inspect(ctx context.Context, enrollment Enrollment, request pdnspeerproof.R
 		// The pinned host ran the owner's forced command, which exited
 		// non-zero. At most one reviewed token bound to this request survives.
 		return zero, noAuth, Unknown{Code: CodeUnavailable, Reason: pdnsInspectorReason(reason)}
+	}
+	if IsCode(err, CodeNoAnswer) {
+		return zero, noAuth, Unknown{Code: CodeNoAnswer}
 	}
 	if err != nil || !auth.Established || auth.PeerIP != enrollment.PeerIP ||
 		auth.IdentitySHA256 != enrollment.HostKeySHA256 {

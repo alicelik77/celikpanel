@@ -260,6 +260,14 @@ func nativePeerProofCatalogProbes(plan dnsV3PrimaryPropagationPlan) (dnsCatalogA
 	return local, peer, nil
 }
 
+// peerNoAnswerPendingCode is the reviewed code of an exchange the backup DNS
+// server did not answer at all: switched off, restarting, unreachable, or no
+// answer within the exchange's bound (alpha.133 round 5). It is the
+// exchange's timeout whether the transport came back at the bound or at once
+// (connection refused), so it is re-checked automatically and the deletion
+// finishes by itself once the backup answers.
+var peerNoAnswerPendingCode = transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange)
+
 // inspectionPendingCode classifies an incomplete authenticated inspection by
 // the reviewed reason token its forced command reported, if any. A refused
 // local catalog transfer has its own typed reason (the secondary's owner can

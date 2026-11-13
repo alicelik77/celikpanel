@@ -130,7 +130,7 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			var err error
 			response, authenticated, err = dnspeertransport.Inspect(ctx, enrollment.Transport, request, dnspeertransport.SSH{})
 			if err != nil {
-				return pendingDNSPeerCause(inspectionPendingCode(dnspeertransport.InspectorReason(err)), err)
+				return pendingDNSPeerCause(bindInspectionPendingCode(err), err)
 			}
 			return nil
 		},
@@ -155,6 +155,18 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256, digest, attempt, verify)
 		},
 	})
+}
+
+// bindInspectionPendingCode classifies an incomplete BIND-secondary
+// inspection: a backup that gave no answer at all is the exchange's timeout
+// (peerNoAnswerPendingCode), however quickly or at whichever instant of the
+// step's bound the transport came back; an answer this server cannot accept
+// keeps dns_peer_inspection_unknown with the inspector's reviewed reason.
+func bindInspectionPendingCode(err error) string {
+	if dnspeertransport.IsCode(err, dnspeertransport.CodeNoAnswer) {
+		return peerNoAnswerPendingCode
+	}
+	return inspectionPendingCode(dnspeertransport.InspectorReason(err))
 }
 
 // nextBINDPeerChallengeAttempt is the journal part of prepare: reconcile

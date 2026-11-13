@@ -143,7 +143,12 @@ func TestPDNSInspectionPendingCodeCarriesTheInspectorReason(t *testing.T) {
 		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeUnavailable}:                              transport.DNSPeerPendingInspectionUnknown,
 		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeMalformed, Reason: "config_unreviewed"}:   transport.DNSPeerPendingInspectionUnknown,
 		errors.New("config_unreviewed"): transport.DNSPeerPendingInspectionUnknown,
+		// alpha.133 round 5: no answer at all is the exchange's timeout.
+		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeNoAnswer}: "dns_peer_proof_timeout:peer_exchange",
 	} {
+		if bindInspectionPendingCode(err) != want {
+			t.Fatalf("%v: the BIND path maps it to %q, want %q", err, bindInspectionPendingCode(err), want)
+		}
 		got := pdnsInspectionPendingCode(err)
 		if got != want || !transport.ValidDNSPeerPendingCode(got) {
 			t.Fatalf("%v -> %q, want %q", err, got, want)
