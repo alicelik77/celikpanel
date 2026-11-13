@@ -44,8 +44,13 @@ func writeTree(t *testing.T, root string, files map[string]string) {
 }
 
 // chownTree gives root and everything below it uid:uid, links included.
+// Giving a file to another account needs root, as the Agent has; without it
+// the test is skipped (CI's ordinary user), never failed or half run.
 func chownTree(t *testing.T, root string, uid int) {
 	t.Helper()
+	if os.Geteuid() != 0 {
+		t.Skip("giving files to the site's account requires root")
+	}
 	err := filepath.Walk(root, func(p string, _ os.FileInfo, err error) error {
 		if err != nil {
 			return err
