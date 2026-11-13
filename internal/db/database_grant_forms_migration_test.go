@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-// Migration 78 (alpha.134, rights by exact name, docs/DATABASE-USERS.md):
+// Migration 79 (alpha.134, rights by exact name, docs/DATABASE-USERS.md):
 // database_grant_forms holds the before-image of every pattern-form grant
 // row found on a MariaDB, and database_grant_form_engines where each engine
 // stands. Additive only; a release before it refuses a ledger that carries
 // it, and going back is the pre-update snapshot restore (D-025). The
 // integrator renumbers it when the release's migrations are joined.
-const databaseGrantFormsMigrationVersion = 78
+const databaseGrantFormsMigrationVersion = 79
 
 func TestOlderReleaseRefusesALedgerWithTheDatabaseGrantFormsEntry(t *testing.T) {
 	database, err := NewSQLiteDB(filepath.Join(t.TempDir(), "panel.sqlite"))

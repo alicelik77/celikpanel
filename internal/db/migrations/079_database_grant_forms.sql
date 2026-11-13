@@ -1,4 +1,4 @@
--- 078 (alpha.134, docs/DATABASE-USERS.md "Rights by exact name"): MariaDB
+-- 079 (alpha.134, docs/DATABASE-USERS.md "Rights by exact name"): MariaDB
 -- reads a database-level grant's name as a pattern (`_` = any one
 -- character), and every name CelikPanel made holds `_`, so the grants it
 -- wrote before alpha.134 could also cover another customer's database.
@@ -26,8 +26,9 @@
 -- was last checked. A status read never starts work; the panel's own loop
 -- does, after an update of the panel is verified.
 --
--- Additive only: two new tables. Going back to alpha.133 is the pre-update
--- snapshot restore, as for every migration; the engine keeps the exact-form
+-- Additive only: two new tables. Going back to alpha.133 (schema 077, two
+-- steps back: this migration and 078) is the pre-update snapshot restore,
+-- as for every migration; the engine keeps the exact-form
 -- grants already written (alpha.133 reads them as described in
 -- docs/DATABASE-USERS.md), and updating again resumes from the engine.
 --

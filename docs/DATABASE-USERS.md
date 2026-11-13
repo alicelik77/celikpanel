@@ -133,7 +133,7 @@ same rules.
     recorded user given a recorded database, on localhost or a remote copy
     the Agent's remote access record lists. For each such row the
     before-image (account, host, stored name, privileges) is written to
-    `database_grant_forms` (migration 078) first; then the same privileges
+    `database_grant_forms` (migration 079) first; then the same privileges
     are granted by the exact name and checked, and the pattern form is
     revoked and checked - access is never lost, and an interruption at any
     step is continued from the engine on the next round. A row that is not
@@ -157,7 +157,8 @@ same rules.
     "blocked" with that reason; each round asks again (read only) and
     continues when the cause is gone. A server that is not MariaDB (MySQL)
     gets exact new grants but no automatic rewrite: its rows are listed.
-  - Going back to alpha.133 (snapshot restore of the panel database): the
+  - Going back to alpha.133 (snapshot restore of the panel database,
+    schema 079 back to 077: two steps, this migration and 078): the
     exact-form grants stay on the engine and keep working. alpha.133 code
     then (documented, not built): drops both forms when a database is
     deleted; but removing an added user from a live database looks for the

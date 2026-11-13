@@ -19,7 +19,7 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Rights by exact name (alpha.134, docs/DATABASE-USERS.md, migration 078).
+// Rights by exact name (alpha.134, docs/DATABASE-USERS.md, migration 079).
 //
 // MariaDB reads a database-level grant's name as a pattern (`_` = any one
 // character), and every name CelikPanel made holds `_`: a grant it wrote on
