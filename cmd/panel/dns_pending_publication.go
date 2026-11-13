@@ -561,7 +561,7 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 	defer p.serviceMutationMu.Unlock()
 	dnsPublicationMu.Lock()
 	defer dnsPublicationMu.Unlock()
-	attemptCtx, cancel := context.WithTimeout(ctx, dnsPendingPublicationAttemptLimit)
+	attemptCtx, cancel := context.WithTimeout(context.WithValue(ctx, dnsPendingReconcilerAttemptKey{}, true), dnsPendingPublicationAttemptLimit)
 	defer cancel()
 	done, stale, err := p.resumePendingDNSPublicationLocked(attemptCtx, lease, true)
 	if stale {
@@ -602,6 +602,15 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 		log.Printf("pending DNS publication %s: automatic re-check failed (%d in a row): %v",
 			lease.ZoneName, entry.Failures, err)
 	}
+}
+
+// dnsPendingReconcilerAttemptKey marks the context of the reconciler's own
+// attempt (attemptPendingDNSPublication), as opposed to a person's press.
+type dnsPendingReconcilerAttemptKey struct{}
+
+func dnsPendingReconcilerAttempt(ctx context.Context) bool {
+	automatic, _ := ctx.Value(dnsPendingReconcilerAttemptKey{}).(bool)
+	return automatic
 }
 
 func dnsPendingReasonForLog(code string) string {

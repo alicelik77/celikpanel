@@ -209,10 +209,13 @@ func TestOwnerEditOfThisServerIsNotRecheckedAndNotifiesOnce(t *testing.T) {
 			if unseen != len(admins) || total != len(admins) {
 				t.Fatalf("notices unseen=%d total=%d, want %d", unseen, total, len(admins))
 			}
-			// The administrator finished the change and pressed Delete: the
-			// same operation continues and completes.
+			// The administrator finished the change and pressed again (the
+			// same publication's own request): the same operation continues
+			// and completes.
 			pending = false
-			panel.attemptPendingDNSPublication(ctx, lease)
+			if err := panel.syncZoneToDNS(ctx, "edited.example", false); err != nil {
+				t.Fatalf("press: %v", err)
+			}
 			if leaseCount(t, panel) != 0 {
 				t.Fatal("the press did not continue the deletion")
 			}
@@ -259,5 +262,73 @@ func TestDeletionNotificationOpensDomains(t *testing.T) {
 		if tc.want == "/dns-infrastructure" && strings.Contains(words.TextEN, "On Domains, the waiting notice") {
 			t.Fatalf("%s: a DNS change's text sends the reader to Domains: %s", tc.reason, words.TextEN)
 		}
+	}
+}
+
+// Re-review of round 5 (W3): when the reconciler finds the exact job still
+// running (for example the Agent's own startup recovery), it waits for it;
+// if it ends pending with a code that stops the automatic re-checks, the
+// reconciler does not run the recovery itself. A person's press still does.
+func TestReconcilerDoesNotRecoverAStopCodeAfterWaitingForTheJob(t *testing.T) {
+	code := transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog)
+	panel, agent, clock, scheduler := newPendingPublicationPanel(t, "running.example")
+	ctx := context.Background()
+	configurePendingWithCode(t, agent, code)
+	recoverOutcome(t, agent, func() bool { return true }, func() string { return code })
+	if err := panel.syncZoneToDNS(ctx, "running.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
+		t.Fatalf("initial err=%v", err)
+	}
+	lease, err := readDNSZoneEngineLease(ctx, panel.db.GetDB(), "running.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, before := pendingAgentCalls(agent)
+	// A panel restart while the Agent's own recovery of the job runs: the
+	// first status reads see it running, then it ends pending.
+	scheduler = useTestPendingScheduler(panel, clock)
+	reads := 0
+	agent.statusHook = func(_ string, job *ServiceOperationMutationJob) {
+		reads++
+		if job == nil {
+			return
+		}
+		if reads <= 3 {
+			job.Status = agentMutationRunning
+		} else {
+			job.Status = agentMutationPending
+		}
+	}
+	for i := 0; i < 3; i++ {
+		panel.reconcilePendingDNSPublicationsOnce(ctx)
+		clock.Advance(dnsPendingPublicationMaxDelay + time.Second)
+	}
+	agent.statusHook = nil
+	if reads <= 3 {
+		t.Fatalf("the reconciler never waited for the running job (%d status reads)", reads)
+	}
+	if _, after := pendingAgentCalls(agent); len(after) != len(before) {
+		t.Fatalf("the reconciler ran the recovery of %s %d time(s)", code, len(after)-len(before))
+	}
+	if entry, _ := scheduler.entry(lease.RequestID); entry.Automatic || entry.Code != code {
+		t.Fatalf("entry=%+v", entry)
+	}
+	// A person's press runs it.
+	if err := panel.syncZoneToDNS(ctx, "running.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
+		t.Fatalf("press err=%v", err)
+	}
+	if _, after := pendingAgentCalls(agent); len(after) != len(before)+1 {
+		t.Fatalf("the press ran the recovery %d time(s)", len(after)-len(before))
+	}
+}
+
+// Re-review of round 5 (W1): the backup that stopped answering right after
+// the exchange is dns_peer_catching_up (Agent test
+// TestNativePeerAfterInspectionNamesTheCheck); the Panel re-checks it and the
+// deletion finishes once the backup is back.
+func TestBackupGoneAfterTheExchangeIsRecheckedUntilItReturns(t *testing.T) {
+	if _, recovers := runPendingSequence(t, "gone-after.example", []string{
+		transport.DNSPeerPendingCatchingUp, transport.DNSPeerPendingCatchingUp, transport.DNSPeerPendingCatchingUp, "",
+	}); recovers != 3 {
+		t.Fatalf("re-checks %d, want 3", recovers)
 	}
 }

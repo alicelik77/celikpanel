@@ -988,6 +988,7 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 	if err := validateAgentMutationIdentity(job, identity); err != nil {
 		return false, err
 	}
+	waited := false
 	if agentMutationActive(job.Status) {
 		if hold != "" {
 			// A held Agent never moves this job: it is not "in progress".
@@ -1002,6 +1003,7 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 			return false, &dnsAgentPublicationError{Err: errors.New("DNS V3 publication is already in progress")}
 		}
 		job, err = p.waitExpectedAgentMutationTerminal(ctx, identity)
+		waited = true
 		if err != nil && (job == nil || agentMutationActive(job.Status)) {
 			return false, &dnsAgentPublicationError{Err: fmt.Errorf("wait for durable DNS V3 publication: %w", err)}
 		}
@@ -1012,6 +1014,16 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 	if job.Status == agentMutationPending {
 		if err := validateDNSZoneSyncV3PendingJob(job, identity); err != nil {
 			return false, err
+		}
+		// The reconciler's own attempt that waited for an active job (for
+		// example the Agent's startup recovery) does not run the recovery
+		// for a code that stops the automatic re-checks (alpha.133 round 5
+		// re-review): an owner edit of this server, an unresolved check
+		// record. A person's press still recovers it.
+		if code := dnsZoneV3PendingCodeFromJob(job); waited && dnsPendingReconcilerAttempt(ctx) &&
+			transport.DNSPeerPendingStopsAutomaticRechecks(code) {
+			return false, &dnsAgentPublicationError{Err: fmt.Errorf("%w: %w",
+				errDNSZoneV3PropagationDeferred, &dnsZoneV3PropagationPendingError{Code: code, Exact: true})}
 		}
 		return p.recoverPendingDNSZoneV3(ctx, lease)
 	}
