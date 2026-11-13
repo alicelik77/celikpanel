@@ -244,11 +244,15 @@ resumes by itself.
 - **A MariaDB account CelikPanel does not know keeps its rights on a deleted
   database.** MariaDB keeps such rights after the database is gone, and a
   later database of the same name would inherit them. CelikPanel removes
-  them from the database's own users (every host of their names, also
-  hosts made by hand), but not from an account with another name that was
-  made outside CelikPanel. If you gave such an account rights on a database,
+  them from the database's own users - those it removes, those that stay
+  because another database uses them and those kept for rights of their
+  own - on every account of their names, also accounts made by hand; but
+  not from an account with another name that was made outside CelikPanel. If you gave such an account rights on a database,
   take them away on the server when you delete it (`REVOKE ALL PRIVILEGES ON
   name.* FROM account`). This comes in the next release.
+- **MariaDB database rights are still given by name pattern,** in which
+  `_` stands for any one character. Rights given for exactly one database
+  name, and the conversion of the existing ones, come in alpha.134.
 - **Removing users on a database server reached with its own account**
   (another machine, or one an administrator registered) is not done in
   this release: it needs a check of the rights the owner gave there, which

@@ -255,7 +255,7 @@ export function DomainDatabaseManager({
         if (readOnly || list.remote.state !== 'known' || answer.holding || !databaseDeleteDescribable(db.users ?? [])) return;
         // alpha.133 round 5: the same lines as the Databases page - which users
         // go with it and which stay (lib/databaseDeleteWords.ts).
-        const users = databaseDeleteUserLines(t, db.users ?? []);
+        const users = databaseDeleteUserLines(t, db.name, db.users ?? []);
         await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger',
             ...(users.lost.length > 0 ? { lost: users.lost } : {}),
             ...(users.kept.length > 0 ? { kept: users.kept } : {}),

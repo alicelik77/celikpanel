@@ -98,7 +98,7 @@ export function DatabasesPage() {
         const size = sizeText(db);
         // Which users go with it and which stay, as the server will decide
         // (lib/databaseDeleteWords.ts; alpha.133 round 5).
-        const users = databaseDeleteUserLines(t, db.users);
+        const users = databaseDeleteUserLines(t, db.name, db.users);
         await confirmAction({
             title: t('databases.delete.title', { name: db.name }),
             message: t('databases.delete.message'),
