@@ -85,9 +85,28 @@ the screen. A test keeps it that way, with no exceptions.
   the administrators were notified; or the automatic checks have ended. If
   the same cause repeats six times in a row (about a quarter of an hour),
   the administrators get **one** notification with the reason, who acts and
-  the next step; the re-checks continue, and "Retry this deletion" is a
-  real retry again. A re-check the panel stopped waiting for is not counted
-  as a repeat, so no false "stuck" is reported.
+  the next step; the re-checks continue, and More → Delete… on the
+  domain's row is a real retry again. A re-check the panel stopped waiting
+  for is not counted as a repeat, so no false "stuck" is reported.
+- **A check record left half done is finished by itself.** To confirm the
+  backup, the server keeps a one-time check record. alpha.132 could stop
+  in the middle of retiring the previous deletion's record (the lab left an
+  empty record file beside the old one), and every later check of the next
+  deletion refused it, so that deletion never finished while the screen
+  said nobody needed to act. The next check now finishes or undoes such an
+  interrupted change by itself and carries on in the same attempt; a
+  retirement is now one step that cannot stop halfway. What CelikPanel
+  cannot attribute to such an interruption is kept untouched and said as
+  its own state: the server administrator is named, with the one next step
+  (send two command outputs to support; do not delete the files), and the
+  administrators get one notification.
+- **The waiting message is short and says who acts.** Domains shows the
+  waiting deletion as one block: what waits, why in one sentence, who acts
+  ("You do not need to do anything" only while CelikPanel's own checks can
+  finish it), the next check's time, and the page's own "Check deletion
+  status" button; the command for an administrator and the technical
+  explanation are under a closed "Details". The deletion window and the
+  notification use the same sentences, and name only controls that exist.
 
 ### Other corrections
 
@@ -143,14 +162,20 @@ the screen. A test keeps it that way, with no exceptions.
 - **The certificate screen does not yet say whether the mail name is
   covered.**
 - A deletion that stopped this way on alpha.132 finishes by itself within a
-  few minutes after the update, as long as the record of the earlier
+  few minutes after the update, whether the earlier deletion's check record
+  is intact or was left half retired, as long as the record of that earlier
   deletion is still kept (the last 128 operations are kept). If it has
-  dropped out, the deletion stays waiting; this case has no automatic way
-  forward yet.
+  dropped out, the deletion now says that the server administrator acts
+  (send the two command outputs to support); there is no button for it
+  yet.
 - A deletion on a DNS pair also waits with no automatic way forward if,
   between two attempts, another zone is added or removed outside CelikPanel
-  on the server, or if the process is stopped in the middle of a write.
-  Both were possible before this release too.
+  on the server (possible before this release too). A stop in the middle
+  of a check record's write or retirement is no longer such a case.
+- Other waiting reasons of a deletion (for example a missing inspection
+  set-up between the two servers) still show their earlier, longer text,
+  some of which names "Retry this deletion"; that control is More →
+  Delete… on the domain's row.
 - A re-check that is held back by a DNS change made outside CelikPanel can
   still outlast the agent's lease; its result is then not counted and the
   next re-check decides.
@@ -174,8 +199,13 @@ instead of the caller's first subscription; a missing and a foreign record
 answer alike; both audit rows name who acted and whose database it was
 (`database.delete`). The stuck-deletion fix changes no stored format (the
 journal sidecar and ledger stay version 1; the new reason codes
-`dns_peer_proof_timeout:local_check` / `:peer_exchange` use the existing
-error-code field, which older readers treat as unknown). The Agent's blocklist answer gains the additive gob
+`dns_peer_proof_timeout:local_check` / `:peer_exchange` and
+`dns_peer_journal_unresolved` use the existing error-code field, which older
+readers treat as unknown). The check record's file steps changed, not its
+content: a retirement is one rename to a private name, and the Agent
+finishes or undoes what an earlier release left half done (RESILIENCE-CONTRACT,
+"Branch a133/dnsproof4"). The deletion status gains the optional fields
+`follow_up` and `next_check_at`. The Agent's blocklist answer gains the additive gob
 fields Outcome, Reason and Sublists; an older Panel reads Listed, which a
 current Agent sets only for a documented listing, and an older Agent's
 answer is shown as "could not check". Release sequence 132 → 133.

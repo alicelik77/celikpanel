@@ -87,9 +87,28 @@ Bir test bunu istisnasız korur.
   bildirildi; ya da kendiliğinden denetimler bitti. Aynı neden üst üste altı
   kez yinelenirse (yaklaşık çeyrek saat) yöneticilere neden, kimin yapacağı
   ve sonraki adımla **tek** bir bildirim gider; yeniden denetimler sürer ve
-  "Bu silme işlemini tekrar dene" yeniden gerçek bir yeniden denemedir.
+  alan adının satırındaki Diğer → Sil… yeniden gerçek bir yeniden denemedir.
   Panelin beklemeyi bıraktığı bir denetim yineleme sayılmaz; bu yüzden
   yanlış "takıldı" bildirilmez.
+- **Yarım kalan denetim kaydı kendiliğinden tamamlanır.** Sunucu, yedek
+  sunucuyu doğrulamak için tek kullanımlık bir denetim kaydı tutar.
+  alpha.132, önceki silmenin kaydını kaldırırken yarıda kalabiliyordu (lab'da
+  eski kaydın yanında boş bir kayıt dosyası kaldı) ve sonraki silmenin her
+  denetimi bunu reddediyordu; ekran kimsenin bir şey yapması gerekmediğini
+  söylerken o silme hiç bitmiyordu. Sonraki denetim artık böyle yarım kalmış
+  bir değişikliği kendisi tamamlar ya da geri alır ve aynı denemede sürer;
+  kaydı kaldırmak artık yarıda kalamayan tek bir adım. CelikPanel'in böyle bir
+  kesintiye bağlayamadığı durum olduğu gibi bırakılır ve kendi durumu olarak
+  söylenir: sunucu yöneticisi tek sonraki adımla adlandırılır (iki komutun
+  çıktısını desteğe gönderin; dosyaları silmeyin) ve yöneticilere tek bir
+  bildirim gider.
+- **Bekleme iletisi kısa ve kimin yapacağını söylüyor.** Alan Adları sayfası
+  bekleyen silmeyi tek bir kutu olarak gösterir: ne bekliyor, tek cümleyle
+  neden, kim yapar ("Sizin bir şey yapmanız gerekmiyor" yalnız CelikPanel'in
+  kendi denetimleri bunu bitirebiliyorken), sonraki denetimin saati ve
+  sayfanın kendi "Silme durumunu kontrol et" düğmesi; yöneticinin komutu ve
+  teknik açıklama kapalı "Ayrıntılar" altındadır. Silme penceresi ve bildirim
+  aynı cümleleri kullanır ve yalnız var olan düğmeleri adlandırır.
 
 ### Diğer düzeltmeler
 
@@ -147,14 +166,20 @@ Bir test bunu istisnasız korur.
   boyutlar tek seferde okunabildiğinde gelecek.
 - **Sertifika ekranı posta adının kapsanıp kapsanmadığını henüz
   söylemiyor.**
-- alpha.132'de bu şekilde takılan bir silme, güncellemeden birkaç dakika
-  sonra kendiliğinden biter; yeter ki önceki silmenin kaydı hâlâ tutuluyor
-  olsun (son 128 işlem tutulur). Kayıt düşmüşse silme beklemede kalır; bu
-  durumun henüz kendiliğinden bir çıkış yolu yok.
+- alpha.132'de bu şekilde takılan bir silme, önceki silmenin denetim kaydı
+  ister sağlam ister yarım kaldırılmış olsun, güncellemeden birkaç dakika
+  sonra kendiliğinden biter; yeter ki o önceki silmenin kaydı hâlâ tutuluyor
+  olsun (son 128 işlem tutulur). Kayıt düşmüşse silme artık sunucu
+  yöneticisinin yapacağını söyler (iki komutun çıktısını desteğe gönderin);
+  bunun için henüz bir düğme yok.
 - DNS çiftinde bir silme, iki deneme arasında sunucuda CelikPanel dışında
-  başka bir bölge eklenir ya da kaldırılırsa veya süreç bir yazmanın
-  ortasında durdurulursa da kendiliğinden bir çıkış yolu olmadan bekler. İkisi
-  bu sürümden önce de olabiliyordu.
+  başka bir bölge eklenir ya da kaldırılırsa da kendiliğinden bir çıkış yolu
+  olmadan bekler (bu sürümden önce de olabiliyordu). Denetim kaydının
+  yazılması ya da kaldırılması sırasında durma artık böyle bir durum değil.
+- Bir silmenin diğer bekleme nedenleri (örneğin iki sunucu arasında
+  kurulmamış inceleme erişimi) önceki, daha uzun metinlerini göstermeyi
+  sürdürür; bunların bazıları "Bu silme işlemini tekrar dene" der; o düğme,
+  alan adının satırındaki Diğer → Sil… işlemidir.
 - CelikPanel dışında yapılan bir DNS değişikliğinin geri tuttuğu bir yeniden
   denetim, yönetim hizmetinin süre kirasını yine aşabilir; o zaman sonucu
   sayılmaz ve bir sonraki yeniden denetim karar verir.
@@ -178,8 +203,13 @@ veritabanı sahibinin görünürlüğüne göre yetkilendirilir; olmayan ve baş
 ait kayıt aynı yanıtı alır; iki denetim satırı da kimin yaptığını ve kimin
 veritabanı olduğunu yazar (`database.delete`). Takılan silme düzeltmesi
 hiçbir saklanan biçimi değiştirmez (günlük eki ve iş kaydı sürüm 1 kalır; yeni
-neden kodları `dns_peer_proof_timeout:local_check` / `:peer_exchange` mevcut
-hata kodu alanını kullanır, eski okuyucular bunları bilinmeyen sayar). Yönetim hizmetinin kara liste
+neden kodları `dns_peer_proof_timeout:local_check` / `:peer_exchange` ve
+`dns_peer_journal_unresolved` mevcut hata kodu alanını kullanır, eski
+okuyucular bunları bilinmeyen sayar). Denetim kaydının içeriği değil dosya
+adımları değişti: kaldırma, özel bir ada tek bir yeniden adlandırmadır ve
+Agent, önceki bir sürümün yarım bıraktığını tamamlar ya da geri alır
+(RESILIENCE-CONTRACT, "Branch a133/dnsproof4"). Silme durumu isteğe bağlı
+`follow_up` ve `next_check_at` alanlarını kazanır. Yönetim hizmetinin kara liste
 yanıtına geriye uyumlu Outcome, Reason ve Sublists alanları eklendi; eski
 panel Listed alanını okur ve güncel hizmet bunu yalnız belgelenmiş bir
 listeleme için koyar; eski hizmetin yanıtı "denetlenemedi" olarak gösterilir.
