@@ -335,7 +335,7 @@ test('a refused delete says the reason in the reader’s words: the administrato
     // Both languages carry both sentences, with the same placeholders.
     for (const key of ['err.DATABASE_ENGINE_CREDENTIAL_REFUSED', 'err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator', 'err.DATABASE_ENGINE_UNREACHABLE', 'err.DATABASE_ENGINE_UNREACHABLE.administrator',
       'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown',
-      'err.DATABASE_DELETE_RECORDS_LEFT', 'databases.delete.lostUsers', 'databases.delete.keptShared', 'databases.delete.keptAccount', 'databases.delete.keptServer',
+      'err.DATABASE_DELETE_RECORDS_LEFT', 'err.DATABASE_ENGINE_BUSY', 'databases.delete.lostUsers', 'databases.delete.keptShared', 'databases.delete.keptAccount', 'databases.delete.keptServer',
       'databases.delete.usersUnknown', 'databases.deletedNamed', 'databases.keptNote.otherRights', 'databases.keptNote.unchecked', 'databases.keptNote.server']) {
       assert.ok(enScreens[key] && trScreens[key], key);
       const holes = (value) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');
