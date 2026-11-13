@@ -34,8 +34,11 @@ günceller.**
   kullandığı kullanıcı ile veritabanı sunucusunun ve CelikPanel'in kendi
   hesapları kalır; iki silme sorusu da hangi kullanıcıların gidip
   hangilerinin kaldığını söyler. Sahibinin sunucuda CelikPanel dışında elle
-  başka haklar verdiği bir kullanıcı da sunucuda kalır, yalnız silinen
-  veritabanına erişimi alınır; silmeden sonraki bildirim bunu söyler.
+  başka haklar verdiği bir kullanıcı da sunucuda kalır. Kalan her kullanıcı,
+  adını taşıyan her hesapta, aynı adla elle açılmış hesapta da, silinen
+  veritabanı üzerindeki haklarını kaybeder; silmeden sonraki bildirim bunu
+  söyler. (CelikPanel dışında başka bir adla açılmış hesap aşağıda bilinen
+  bir sınırdır.)
   CelikPanel'in o sunucunun kendi hesabıyla bağlandığı bir veritabanı
   sunucusunda (başka bir makine ya da bir yöneticinin kendisinin kaydettiği
   bir sunucu) yalnız veritabanı silinir, kullanıcıları kalır; soru bunu önce,
@@ -331,9 +334,24 @@ itibaren pencere kendiliğinden devam eder.
   asla bitti diye bildirilmez.
 - Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi
   kendisine verilen alan adlarının sayfalarındadır.
-- Bu sürümün gerçek sistem denetimi (alpha.132'den panelin kendi güncelleme
-  ekranıyla güncelleme, her rolle elle denenen ekranlar) henüz yapılacak;
-  neyi kapsadığı ve neyi kapsamadığı yayından önce buraya eklenir.
+- **Laboratuvarın şimdiye dek denetledikleri** (bu sürümün adaylarında üç
+  deneme):
+  - Yanıt vermeyen yedek DNS sunucusu gerçek bir PowerDNS/BIND çiftinde
+    denetlendi: bağlantısı engellendi, reddedildi, yanıt verdikten hemen
+    sonra koptu ve DNS hizmeti durduruldu. Her seferinde yukarıda anlatıldığı
+    gibi davrandı.
+  - Listeden veritabanı silme gerçek MariaDB 11.8 ve PostgreSQL 17 üzerinde
+    denetlendi.
+  - **Bir çiftte henüz denetlenmeyenler:** bu sunucudaki DNS elle
+    değiştiriliyor olabileceği için bir kişinin yapması gereken durum
+    (laboratuvar ona ulaşamadı: PowerDNS'i durdurmak yönetim hizmetini
+    bekletir; bu, yukarıdaki açık konudur), yedek DNS sunucusunun değişen
+    anahtarı ve bir yöneticinin kaydettiği ikinci bir veritabanı sunucusu.
+  - Bu adaydaki, kalan hesaplardan hakların kaldırılmasının laboratuvar
+    denetimi henüz yapılacak.
+  - Bu adayda alpha.132'den panelin kendi güncelleme ekranıyla tam
+    güncelleme ve her rolle elle denenen ekranlar yayından önce buraya
+    eklenir.
 - Önceki sınırlar sürüyor (bkz. alpha.132).
 
 ## Kanıt

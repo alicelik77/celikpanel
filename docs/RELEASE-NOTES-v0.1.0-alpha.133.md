@@ -33,8 +33,11 @@ screen.**
   another database also uses stays, and so do the database server's and
   CelikPanel's own accounts; both delete questions say which users go and
   which stay. A user its owner gave other rights on the server by hand
-  (outside CelikPanel) stays on the server too, with only its access to the
-  deleted database taken away, and the notice after the delete says so.
+  (outside CelikPanel) stays on the server too. Every user that stays loses
+  its rights on the deleted database, on every account of its name, also
+  one made by hand under the same name; the notice after the delete says
+  so. (An account with another name made outside CelikPanel is a known
+  limit below.)
   On a database server CelikPanel reaches with that server's own account
   (another machine, or a database server an administrator registered
   themselves), only the database is deleted and its users stay; the
@@ -327,10 +330,24 @@ resumes by itself.
   retried, and it is never reported as done.
 - A team member's Databases list is empty; their databases are on the
   pages of the domains they were given, as before.
-- The real-system check of this release (an update from alpha.132 through
-  the panel's own update screen, the screens tried by hand as each role) is
-  still to come; what it covered and what it did not cover is added here
-  before publication.
+- **What the lab has checked so far** (three runs on candidates of this
+  release):
+  - A backup DNS server that does not answer was checked on a real
+    PowerDNS/BIND pair: its connection blocked, refused, dropping out right
+    after it answered, and its DNS service stopped. Each time it behaved as
+    described above.
+  - Deleting a database from the list was checked on real MariaDB 11.8 and
+    PostgreSQL 17.
+  - **Not yet checked on a pair:** the state where a person must act
+    because DNS on this server may be changed by hand (the lab could not
+    reach it: stopping PowerDNS puts the Agent on hold, which is the open
+    item above), a changed host key of the backup DNS server, and a second
+    database server registered by an administrator.
+  - The removal of rights from kept accounts in this candidate has its lab
+    check still to come.
+  - The full update from alpha.132 through the panel's own update screen on
+    this candidate, and the screens tried by hand as each role, are added
+    here before publication.
 - Earlier limits still apply (see alpha.132).
 
 ## Evidence
