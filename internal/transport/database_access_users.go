@@ -37,6 +37,10 @@ type DatabaseAccessUserRequest struct {
 // rights CelikPanel did not give.
 const DatabaseAccessKeptOtherRights = "other_rights"
 
+// DatabaseAccessKeptUnchecked is the KeptReason of an account kept because
+// what else it has could not be checked (fail closed).
+const DatabaseAccessKeptUnchecked = "unchecked"
+
 type DatabaseAccessUserResponse struct {
 	Applied bool `json:"applied"`
 	// Exists: creation found the account name already on the engine; nothing
