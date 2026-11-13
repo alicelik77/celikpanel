@@ -98,7 +98,20 @@ func verifyNativePeerAfterInspectionAt(
 			}
 			return dnsPeerProofDeadline(deadlineErr)
 		}
+		if !retry && isDNSPeerBehind(err) {
+			// This server's catalog matched its record; only the backup did
+			// not serve it (it stopped answering after the exchange, is
+			// restarting, or is behind). That is the backup catching up, the
+			// same reading as the wave's for the same observation, and is
+			// re-checked by itself; it is not an edit of this server's DNS
+			// (alpha.133 round 5 re-review: a backup reboot right after it
+			// answered was told "finish your change to this server's DNS").
+			return pendingDNSPeerCause(transport.DNSPeerPendingCatchingUp,
+				fmt.Errorf("post-inspection catalog pair check (recorded serial %d): %w", evidence.Serial, err))
+		}
 		if !retry {
+			// This server's own catalog or member answers differ from the
+			// record: a local edit.
 			return pendingDNSPeerOwnerEdit(dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckCatalogProbe,
 				"after the inspection the catalog pair did not match the recorded evidence (recorded catalog %s serial %d, %d member(s); challenge serial %d; %s): %v",
 				evidence.Domain, evidence.Serial, len(evidence.Members), authority.catalogSerial,
