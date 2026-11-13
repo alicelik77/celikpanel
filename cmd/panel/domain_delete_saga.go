@@ -205,9 +205,9 @@ func (p *Panel) removeDomainMailRuntimeLocked(
 	if !response.Applied {
 		return nil, errDomainMailCleanupNotConfirmed
 	}
-	// alpha.134: where the stored mail was moved aside, for the answer.
-	if response.Quarantined && response.QuarantinePath != "" {
-		return &domainDeletionKeptMail{Path: response.QuarantinePath, Bytes: response.QuarantineBytes}, nil
+	// alpha.134/135: where the stored mail was moved aside, for the holding list.
+	if response.Quarantined && response.QuarantineName != "" {
+		return &domainDeletionKeptMail{Name: response.QuarantineName, Path: response.QuarantinePath, Bytes: response.QuarantineBytes}, nil
 	}
 	return nil, nil
 }

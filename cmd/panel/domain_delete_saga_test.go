@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/rpc"
+	"strings"
 	"sync"
 	"testing"
 
@@ -132,6 +133,7 @@ func (a *domainDeletionRPCAgent) DeleteMailDomain(
 	resp.Applied = true
 	if a.mailQuarantine != "" {
 		resp.Quarantined, resp.QuarantinePath, resp.QuarantineBytes = true, a.mailQuarantine, 2048
+		resp.QuarantineName = a.mailQuarantine[strings.LastIndexByte(a.mailQuarantine, '/')+1:]
 	}
 	return nil
 }

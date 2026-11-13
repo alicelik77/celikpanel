@@ -1832,6 +1832,9 @@ func main() {
 	http.HandleFunc(certificatesOverviewPath, panel.handleCertificatesOverview)
 	http.HandleFunc(certificateRequestsPath, panel.handleCertificateRequests)
 	http.HandleFunc(certificateRequestsPath+"/", panel.handleCertificateRequestItem)
+	// alpha.135: what deletions left, kept 30 days (deletion_holding.go).
+	http.HandleFunc(holdingPath, panel.handleDeletionHolding)
+	http.HandleFunc(holdingPath+"/", panel.handleDeletionHoldingItem)
 	http.HandleFunc(osReleaseAPIPath, panel.handleOSRelease)
 	http.HandleFunc(osReleaseReviewedAPIPath, panel.handleOSRelease)
 	// alpha.107 (D-038 §11): the dated support table, for every signed-in person.
@@ -1999,6 +2002,7 @@ func main() {
 	panel.startWordPressAutoUpdater()
 	// alpha.128 (G27): site log retention, every six hours.
 	panel.startSiteLogRetention()
+	panel.startDeletionHolding()
 	panel.startMalwareScanWorker()
 	// alpha.118: remote backups; continues what a restart interrupted.
 	panel.startRemoteBackupWorker()

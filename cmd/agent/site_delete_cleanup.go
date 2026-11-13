@@ -253,26 +253,12 @@ func measureKeptBackups(subscriptionID, domainID int) *transport.KeptBackups {
 	if err != nil || !info.IsDir() {
 		return &transport.KeptBackups{Path: dir, Unknown: true}
 	}
-	kept := &transport.KeptBackups{Path: dir}
-	walkErr := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.Type().IsRegular() {
-			fileInfo, infoErr := entry.Info()
-			if infoErr != nil {
-				return infoErr
-			}
-			kept.Files++
-			kept.Bytes += fileInfo.Size()
-		}
-		return nil
-	})
-	if walkErr != nil {
+	bytes, files, unknown := measureHeldTree(dir)
+	if unknown {
 		return &transport.KeptBackups{Path: dir, Unknown: true}
 	}
-	if kept.Files == 0 {
+	if files == 0 {
 		return nil
 	}
-	return kept
+	return &transport.KeptBackups{Path: dir, Files: files, Bytes: bytes}
 }

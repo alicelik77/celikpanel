@@ -522,8 +522,8 @@ func alertLine(item pendingAlertMail) (string, string) {
 		return fmt.Sprintf("The certificate the website %s serves expires in %s days. Open the domain's SSL tab and renew it.", subject, n),
 			fmt.Sprintf("%s web sitesinin sunduğu sertifikanın süresi %s gün içinde doluyor. Alan adının SSL sekmesinden yenileyin.", subject, n)
 	case "disk_full":
-		return fmt.Sprintf("The disk is %s%% full. Remove old backups, logs or files that are no longer needed.", n),
-			fmt.Sprintf("Disk %%%s dolu. Gerekmeyen eski yedekleri, günlükleri ya da dosyaları silin.", n)
+		return fmt.Sprintf("The disk is %s%% full. Remove old backups, logs or files that are no longer needed; Maintenance → What deletions left shows what deleted domains and mailboxes left, which can be deleted now.", n),
+			fmt.Sprintf("Disk %%%s dolu. Gerekmeyen eski yedekleri, günlükleri ya da dosyaları silin; Bakım → Silmelerden kalanlar, silinen alan adlarından ve posta kutularından kalanları gösterir, bunlar şimdi silinebilir.", n)
 	case "certificate_expired":
 		return fmt.Sprintf("The certificate of %s has expired; visitors see a warning. Open the domain's SSL tab and renew it.", subject),
 			fmt.Sprintf("%s sertifikasının süresi doldu; ziyaretçiler uyarı görüyor. Alan adının SSL sekmesinden yenileyin.", subject)

@@ -266,8 +266,10 @@ type domainDeletionKept struct {
 	// answer the Databases page would have given for it (the same code,
 	// reason and facts, so the screen uses the same sentences).
 	DatabaseFailure *domainDeletionDatabaseFailure `json:"database_failure,omitempty"`
-	Mail            *domainDeletionKeptMail        `json:"mail,omitempty"`
-	Backups         *transport.KeptBackups         `json:"backups,omitempty"`
+	// Mail and Backups (alpha.135): what went into the holding list, kept
+	// until RemoveAfter (cmd/panel/deletion_holding.go).
+	Mail    *holdingKeptView `json:"mail,omitempty"`
+	Backups *holdingKeptView `json:"backups,omitempty"`
 }
 
 // domainDeletionDeletedDatabase is one deleted database. The user lists are
@@ -288,7 +290,9 @@ type domainDeletionDatabaseFailure struct {
 	Answer json.RawMessage `json:"answer"`
 }
 
+// domainDeletionKeptMail is where the mail stage moved the stored mail.
 type domainDeletionKeptMail struct {
+	Name string `json:"name"`
 	Path string `json:"path"`
 	// Bytes is -1 when the size could not be read.
 	Bytes int64 `json:"bytes"`

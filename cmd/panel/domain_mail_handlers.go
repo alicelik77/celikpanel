@@ -172,14 +172,21 @@ func (p *Panel) handleListEmailForwardings(w http.ResponseWriter, r *http.Reques
 }
 
 func (p *Panel) callMailMutation(ctx context.Context, method string, request any) error {
+	_, err := p.callMailMutationAnswer(ctx, method, request)
+	return err
+}
+
+// callMailMutationAnswer is callMailMutation with the Agent's answer
+// (alpha.135: a deleted mailbox's holding folder).
+func (p *Panel) callMailMutationAnswer(ctx context.Context, method string, request any) (transport.MailMutationResponse, error) {
 	var response transport.MailMutationResponse
 	if err := p.callAgentContext(ctx, method, request, &response); err != nil {
-		return err
+		return response, err
 	}
 	if !response.Applied {
-		return fmt.Errorf("%s did not confirm a complete mutation", method)
+		return response, fmt.Errorf("%s did not confirm a complete mutation", method)
 	}
-	return nil
+	return response, nil
 }
 
 func rollbackMailTx(tx *sql.Tx, cause error) error {
@@ -496,8 +503,11 @@ func (p *Panel) handleDeleteEmailAccount(w http.ResponseWriter, r *http.Request,
 		writeServerError(w, err)
 		return
 	}
-	if err := p.callMailMutation(r.Context(), "Agent.DeleteMailAccount",
-		&transport.DeleteMailAccountRequest{Email: address}); err != nil {
+	// alpha.135: the mailbox's stored mail goes into the holding list (30
+	// days, then removed), so a mailbox made again starts empty.
+	answer, err := p.callMailMutationAnswer(r.Context(), "Agent.DeleteMailAccount",
+		&transport.DeleteMailAccountRequest{Email: address, AccountID: id})
+	if err != nil {
 		compensationCtx, cancel := mailCompensationContext(r.Context())
 		_, restoreErr := p.db.GetDB().ExecContext(compensationCtx,
 			"INSERT INTO email_accounts (id, domain_id, address, password_hash, quota_mb) VALUES (?, ?, ?, ?, ?)",
@@ -511,7 +521,16 @@ func (p *Panel) handleDeleteEmailAccount(w http.ResponseWriter, r *http.Request,
 	}
 	p.requestOutgoingApply()
 	p.requestDomainMailOptionsApply(r.Context())
-	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	result := map[string]any{"success": true}
+	if answer.HeldName != "" {
+		var domainName string
+		_ = p.db.GetDB().QueryRowContext(r.Context(), `SELECT name FROM domains WHERE id = ?`, domainID).Scan(&domainName)
+		result["held"] = p.holdDomainDeletionItem(r.Context(), r, holdingRecord{
+			ID: holdingMailID(answer.HeldName), Kind: transport.HeldItemMail, Name: answer.HeldName,
+			DomainID: domainID, Domain: domainName, AccountID: id, Mailbox: address, Bytes: answer.HeldBytes,
+		})
+	}
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 func (p *Panel) handleUpdateEmailQuota(w http.ResponseWriter, r *http.Request, domainID int) {

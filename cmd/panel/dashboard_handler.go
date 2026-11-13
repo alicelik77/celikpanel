@@ -43,6 +43,9 @@ type dashboardExtras struct {
 	Databases     int                     `json:"databases"`
 	MailAccounts  int                     `json:"mail_accounts"`
 	ExpiringCerts []dashboardExpiringCert `json:"expiring_certs"`
+	// Holding (alpha.135): what deletions left, kept 30 days; for the
+	// administrator, absent when there is nothing (deletion_holding.go).
+	Holding *holdingSummary `json:"holding,omitempty"`
 }
 
 func (p *Panel) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -144,6 +147,9 @@ func (p *Panel) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		out.ExpiringCerts = out.ExpiringCerts[:6]
 	}
 
+	if callerIsAdmin(r) {
+		out.Holding = p.holdingForDashboard(r.Context())
+	}
 	if err := json.NewEncoder(w).Encode(out); err != nil {
 		log.Printf("encode dashboard response: %v", err)
 	}

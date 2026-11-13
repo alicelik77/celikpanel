@@ -206,6 +206,9 @@ var routeRoleMatrix = map[string]string{
 	"/api/v1/maintenance/certificates":          gateTenant, // admin-only in handler
 	"/api/v1/maintenance/certificate-requests":  gateTenant, // admin-only in handler
 	"/api/v1/maintenance/certificate-requests/": gateTenant, // admin-only in handler
+	// alpha.135: what deletions left, kept 30 days.
+	"/api/v1/maintenance/deletion-holding":  gateTenant, // admin-only in handler
+	"/api/v1/maintenance/deletion-holding/": gateTenant, // admin-only in handler
 
 	// alpha.114: forgot password, invitations, address confirmation, recovery codes.
 	"/api/v1/auth/2fa/recovery/regenerate":    gateTenant, // own account only (signed-in self)

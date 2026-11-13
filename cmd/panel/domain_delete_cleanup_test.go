@@ -471,7 +471,7 @@ func TestDomainDeletionSiteFailureIsNamedAndTheAnswerSaysWhatStays(t *testing.T)
 	}
 	agent.siteFailuresRemaining, agent.siteFailure = 1, "site cleanup incomplete: scheduled tasks"
 	agent.keptBackups = &transport.KeptBackups{Path: "/var/backups/celikpanel/subscriptions/1/domains/1", Files: 2, Bytes: 4096}
-	agent.mailQuarantine = "/var/mail/vhosts/.celikpanel-quarantine/domain-1-abc"
+	agent.mailQuarantine = fmt.Sprintf("/var/mail/vhosts/.celikpanel-quarantine/domain-%d-0123456789abcdef", f.domainID)
 
 	first := deleteDomainForSagaTest(t, p, f.domainID)
 	requireDeletionPendingStage(t, first, domainDeletionStageSite)
@@ -484,7 +484,7 @@ func TestDomainDeletionSiteFailureIsNamedAndTheAnswerSaysWhatStays(t *testing.T)
 		t.Fatal(err)
 	}
 	if pendingAnswer.Reason != domainDeletionReasonSite || !strings.Contains(pendingAnswer.ErrorLine, "scheduled tasks") ||
-		pendingAnswer.Kept.Mail == nil || pendingAnswer.Kept.Mail.Path != agent.mailQuarantine ||
+		pendingAnswer.Kept.Mail == nil || pendingAnswer.Kept.Mail.RemoveAfter == "" || pendingAnswer.Kept.Mail.Path != "" ||
 		pendingAnswer.Kept.Backups == nil || pendingAnswer.Kept.Backups.Files != 2 || len(pendingAnswer.Kept.Databases) != 2 {
 		t.Fatalf("pending answer = %s", first.Body.String())
 	}

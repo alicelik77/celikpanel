@@ -521,6 +521,13 @@ func (p *Panel) handleDownloadBackup(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	p.streamBackupDownload(w, r, d)
+}
+
+// streamBackupDownload sends one backup file of d's scope (?name=), for the
+// domain's Backups section and, alpha.135, for a deleted domain's backups in
+// the holding list (cmd/panel/deletion_holding.go).
+func (p *Panel) streamBackupDownload(w http.ResponseWriter, r *http.Request, d backupDomain) {
 	name := r.URL.Query().Get("name")
 	if !validBackupName(name) {
 		writeClientError(w, http.StatusBadRequest, "invalid backup name")

@@ -167,6 +167,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.ServiceHealthV1 Agent.SSHPasswordLoginStatusV1
 		Agent.DatabaseToolsInfoV1 Agent.DatabaseExportReadV1
 		Agent.SiteVisitorStatsV1 Agent.ServerIPAddressesV1
+		Agent.DeletionHoldingInventoryV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectControl, "", `
 		Agent.BeginServiceMutation Agent.CancelServiceMutation Agent.FinishServiceMutation
@@ -253,6 +254,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityBackup, `
 		Agent.CreateBackup Agent.DeleteBackup Agent.ExtractCpmoveFiles Agent.RestoreBackup
 		Agent.ImportBackupChunk Agent.AbortBackupImport
+		Agent.RemoveHeldItemV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectHostMutation, agentRPCCapabilityRuntimeNode, `
 		Agent.InstallNodeVersion Agent.RemoveNodeVersion
@@ -383,6 +385,8 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
+	"Agent.DeletionHoldingInventoryV1":    agentRPCStandardReadTimeout,
+	"Agent.RemoveHeldItemV1":              agentRPCMutationTimeout,
 	"Agent.ReadBackupChunk":               agentRPCStandardReadTimeout,
 	"Agent.ReadSystemSQLiteSnapshotChunk": agentRPCStandardReadTimeout,
 	"Agent.ServiceJournal":                agentRPCStandardReadTimeout,

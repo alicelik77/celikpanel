@@ -387,7 +387,7 @@ func (a *Agent) DeleteMailAccount(req *transport.DeleteMailAccountRequest, resp 
 		return fmt.Errorf("mail account delete request and response are required")
 	}
 	resp.Applied = false
-	email, _, _, err := canonicalAgentMailbox(req.Email)
+	email, local, domain, err := canonicalAgentMailbox(req.Email)
 	if err != nil {
 		return err
 	}
@@ -418,10 +418,36 @@ func (a *Agent) DeleteMailAccount(req *transport.DeleteMailAccountRequest, resp 
 			postmaps = append(postmaps, autoresponderTransportPath)
 		}
 	}
-	if err := applyMailFileMutation(ctx, writes, postmaps, nil); err != nil {
+	// alpha.135: the mailbox's stored mail goes into the mail holding folder
+	// (kept 30 days, then removed by the Panel), so a mailbox made again
+	// under the same address starts empty. Without an account id (a
+	// compensation) it stays where it is.
+	var afterWrite func() (func() error, error)
+	held := ""
+	if req.AccountID > 0 {
+		name := heldMailboxName(req.AccountID, email)
+		afterWrite = func() (func() error, error) {
+			rollback, moved, holdErr := holdMailboxDirectory(domain, local, name)
+			if holdErr == nil && moved {
+				held = name
+			}
+			return rollback, holdErr
+		}
+	}
+	if err := applyMailFileMutation(ctx, writes, postmaps, afterWrite); err != nil {
 		return err
 	}
 	resp.Applied = true
+	if held != "" {
+		resp.HeldName = held
+		if root, err := heldMailRoot(); err == nil {
+			bytes, _, unknown := measureHeldTree(filepath.Join(root, held))
+			if unknown {
+				bytes = -1
+			}
+			resp.HeldBytes = bytes
+		}
+	}
 	return nil
 }
 

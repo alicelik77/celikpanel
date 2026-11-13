@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	mailDomainQuarantineDirectory = ".celikpanel-quarantine"
-	managedMailRootMode           = 0o710
+	managedMailRootMode = 0o710
 )
 
 func managedMailOwnerIDs() (int, int, error) {
@@ -298,15 +297,4 @@ func restoreQuarantinedMailDomain(domain string, domainID int) error {
 		return fmt.Errorf("sync mail root after rollback: %w", err)
 	}
 	return nil
-}
-
-// quarantinedMailDomainPath is where a deleted domain's stored mail was moved
-// aside (alpha.134: the deletion's answer names it), or "" when the mail
-// root cannot be named.
-func quarantinedMailDomainPath(domain string, domainID int) string {
-	root, err := managedMailRootPath()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(root, mailDomainQuarantineDirectory, mailDomainQuarantineName(domain, domainID))
 }

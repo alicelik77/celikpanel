@@ -938,7 +938,13 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 		pending(domainDeletionStageMailRuntime, err)
 		return
 	}
-	kept.Mail = keptMail
+	// alpha.135: the stored mail joins the holding list (30 days).
+	if keptMail != nil {
+		kept.Mail = p.holdDomainDeletionItem(ctx, r, holdingRecord{
+			ID: holdingMailID(keptMail.Name), Kind: transport.HeldItemMail, Name: keptMail.Name,
+			DomainID: domainID, Domain: domain.Name, Bytes: keptMail.Bytes, Path: keptMail.Path,
+		})
+	}
 	// The DKIM key CelikPanel made for this domain goes with it; a key or
 	// table line it did not make is kept and named. This never stops the
 	// deletion (domain_dkim_automatic.go).
@@ -1002,7 +1008,19 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 				p.recordDomainDeletionStageFailure(ctx, domainID, domain.Name, domainDeletionStageSite, err, false))
 			return
 		}
-		kept.Backups = agentResp.KeptBackups
+		// alpha.135: the domain's backups on this server join the holding
+		// list (30 days); remote backup targets are never touched.
+		if backups := agentResp.KeptBackups; backups != nil {
+			bytes := backups.Bytes
+			if backups.Unknown {
+				bytes = -1
+			}
+			kept.Backups = p.holdDomainDeletionItem(ctx, r, holdingRecord{
+				ID: holdingBackupsID(siteSubscriptionID, domainID), Kind: transport.HeldItemBackups,
+				SubscriptionID: siteSubscriptionID, DomainID: domainID, Domain: domain.Name,
+				Bytes: bytes, Files: backups.Files, Path: backups.Path,
+			})
+		}
 		if !agentResp.Success {
 			// The Agent answered which parts are still there: a verified
 			// failure, kept with the marker (D-024).

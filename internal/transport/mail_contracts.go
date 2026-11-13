@@ -33,6 +33,11 @@ type MailConfigSyncRequest struct {
 
 type DeleteMailAccountRequest struct {
 	Email string `json:"email"`
+	// AccountID (alpha.135, additive): the mailbox's panel record. When it
+	// is set, the mailbox's stored mail is moved into the mail holding
+	// folder (mailbox-<id>-<16 hex>), kept 30 days; zero leaves it where it is
+	// (a compensation of a mailbox just made).
+	AccountID int `json:"account_id,omitempty"`
 }
 
 // UpdateMailPasswordRequest carries a password only for the lifetime of one
@@ -64,6 +69,9 @@ type DeleteMailDomainResponse struct {
 	// -1 when the size could not be read. Empty when nothing was kept.
 	QuarantinePath  string `json:"quarantine_path,omitempty"`
 	QuarantineBytes int64  `json:"quarantine_bytes,omitempty"`
+	// QuarantineName (alpha.135, additive): the holding folder's own name,
+	// the identifier the Panel's holding record keeps.
+	QuarantineName string `json:"quarantine_name,omitempty"`
 }
 
 type UpdateMailForwardingRequest struct {
@@ -86,6 +94,11 @@ type UpdateMailQuotaRequest struct {
 // mutation was published.
 type MailMutationResponse struct {
 	Applied bool `json:"applied"`
+	// HeldName and HeldBytes (alpha.135, additive): the holding folder a
+	// deleted mailbox's stored mail was moved into, and its size (-1 when it
+	// could not be read). Empty when there was nothing to hold.
+	HeldName  string `json:"held_name,omitempty"`
+	HeldBytes int64  `json:"held_bytes,omitempty"`
 }
 
 // ValidateMailboxPassword enforces the shared panel/agent wire boundary. The
