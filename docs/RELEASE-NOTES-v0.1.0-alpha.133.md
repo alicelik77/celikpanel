@@ -2,6 +2,8 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.133.tr.md)
 
+> **Published** on 2026-11-13 (UTC): release commit `ec3fa904b`, GitHub pre-release at 18:39:47Z, download portal at about 18:44Z (public check 27/27).
+
 The second small design release. The left menu's **Databases** page now
 lists everyone's databases by the one visibility rule, and what belongs to
 the server itself has left it for Security and the MariaDB and PostgreSQL
