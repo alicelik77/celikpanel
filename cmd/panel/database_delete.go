@@ -513,11 +513,11 @@ func (p *Panel) auditDatabaseDeletion(r *http.Request, deletion *databaseDeletio
 	if owner, ok := p.databaseSubscriptionOwner(r.Context(), deletion.SubscriptionID); ok {
 		details["owner"], details["owner_id"] = owner.Username, owner.ID
 	}
-	action := "database.delete:" + deletion.Name
-	if outcome != "deleted" {
-		action = "database.delete.partial:" + deletion.Name
+	if outcome == "deleted" {
+		p.auditDetailed(r, "database.delete:"+deletion.Name, "database", deletion.ID, details)
+		return
 	}
-	p.auditDetailed(r, action, "database", deletion.ID, details)
+	p.auditDetailed(r, "database.delete.partial:"+deletion.Name, "database", deletion.ID, details)
 }
 
 // writeDatabaseDeleteError answers a deletion that did not finish, in the
