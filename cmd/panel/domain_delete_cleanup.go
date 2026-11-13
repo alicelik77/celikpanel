@@ -43,8 +43,8 @@ import (
 //     are made from the panel's records; a domain being deleted leaves them
 //     at the mail step (loadOutgoingMailboxes and domainOptionsEntries skip a
 //     marked domain), and that new state is applied as a step.
-//   - What stays on purpose (stored mail moved aside, the backups, unbound
-//     databases) is named in the deletion's answer with where and how large.
+//   - What stays on purpose (unbound databases; the stored mail and the
+//     backups, held 30 days in deletion_holding.go) is named in the answer.
 //
 // No schema change: an older release reading this database sees a plan
 // record it does not know (it ignores unknown panel_settings keys) and

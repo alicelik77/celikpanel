@@ -107,7 +107,6 @@ export const enSitesScreens = {
     'domains.deleteWhat': 'This cannot be undone.',
     // alpha.134: what a deletion takes and what it leaves, and its result, are in the part "domainDelete".
     'domains.step.databases': 'Handling the databases as you chose',
-    'domains.step.done.databases': 'Databases handled as you chose',
     'domains.status.beingDeleted': 'Being deleted',
     'domains.beingDeletedLine': '{name} is being deleted. Nothing to do; this page updates by itself.',
     'domains.deletingTitle': 'Deleting {name}',

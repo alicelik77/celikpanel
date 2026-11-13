@@ -92,16 +92,21 @@ export default function ConfirmDetails({ request, disabled, onAnswer }: {
     const onTyped = (text: string) => { setTyped(text); tell(option, text); };
     const lost = [...(request.lost ?? []), ...(option ? choice?.lost ?? [] : [])];
     const kept = [...(request.kept ?? []), ...(option ? choice?.kept ?? [] : [])];
+    const box = choice && (
+        <div className="space-y-1">
+            <label className="flex items-start gap-2 text-sm text-fg">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={option} disabled={disabled}
+                    onChange={(event) => onOption(event.target.checked)} data-confirm-option="" />
+                {choice.label}
+            </label>
+            {choice.note && <p className="pl-6 text-sm text-fg-muted" data-confirm-option-note="">{option ? choice.note.on : choice.note.off}</p>}
+        </div>
+    );
     return (
         <div className="space-y-4">
+            {choice?.first && box}
             <ConfirmLists lost={lost} kept={kept} />
-            {choice && (
-                <label className="flex items-start gap-2 text-sm text-fg">
-                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={option} disabled={disabled}
-                        onChange={(event) => onOption(event.target.checked)} data-confirm-option="" />
-                    {choice.label}
-                </label>
-            )}
+            {!choice?.first && box}
             {typedName && (
                 <TypedNameField id="confirm-action-typed" label={typedName.label} value={typed} onChange={onTyped} disabled={disabled} data-confirm-typed="" />
             )}

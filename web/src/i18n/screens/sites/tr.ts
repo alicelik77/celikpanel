@@ -101,7 +101,6 @@ export const trSitesScreens: Record<SitesScreenKey, string> = {
     'domains.bulkDeleteTitle': '{n} alan adı silinsin mi?',
     'domains.deleteWhat': 'Bu geri alınamaz.',
     'domains.step.databases': 'Veritabanları seçiminize göre işleniyor',
-    'domains.step.done.databases': 'Veritabanları seçiminize göre işlendi',
     'domains.status.beingDeleted': 'Siliniyor',
     'domains.beingDeletedLine': '{name} siliniyor. Yapmanız gereken bir şey yok; bu sayfa kendiliğinden güncellenir.',
     'domains.deletingTitle': '{name} siliniyor',

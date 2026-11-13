@@ -15,10 +15,12 @@ import { readApiError, refusalText, type ApiError } from './apiError';
 // with the same lines as that page (lib/databaseDeleteWords.ts), and offers
 // no deletion it cannot describe. A retry of a deletion that stopped repeats
 // the choice accepted when it started and says it; it offers no choice.
-// The server answers what stayed: the kept databases, where the stored mail
-// was moved aside and the kept backups, which the result names with what can
-// be done with them later; and a database deletion that did not finish, said
-// with the Databases page's own sentence.
+// The choice comes first and the sentence under it changes with it (alpha.135).
+// The server answers what stayed: the kept databases, and the stored mail and
+// backups, which go into the holding list for 30 days (alpha.135): the result
+// says each in a short row with its size and date, folders only under the
+// administrator's closed Details; and a database deletion that did not finish,
+// said with the Databases page's own sentence.
 //
 // Alan adı silme sorusu ve sonucu: veritabanları bir seçimdir (varsayılan
 // tutmak); silinirse Veritabanları sayfasının silmesiyle ve sözleriyle.
@@ -77,11 +79,15 @@ export function domainDeleteQuestion(t: Translate, databases: DomainDatabasesRea
         optionKept.push(...users.kept);
     }
     return {
-        message: `${t('domains.deleteWhat')} ${t('domains.delete.databasesStay', { n: databases.length })}`,
+        message: t('domains.deleteWhat'),
         lost,
         kept,
         option: {
             label: t('domains.delete.databasesOption', { n: databases.length }),
+            // The choice before its consequences; the sentence under it says
+            // what happens, ticked or not (alpha.135).
+            first: true,
+            note: { off: t('domains.delete.databasesStay', { n: databases.length }), on: t('domains.delete.databasesGo', { n: databases.length }) },
             lost: optionLost,
             ...(optionKept.length > 0 ? { kept: optionKept } : {}),
         },
@@ -100,20 +106,42 @@ export interface DomainDeletedDatabase {
     answer: Record<string, unknown>;
 }
 
+/** One item a deletion put into the holding list (alpha.135): kept until `removeAfter`, then removed. */
+export interface DomainDeletionHeld {
+    /** -1: the size could not be read. */
+    bytes: number;
+    files: number;
+    removeAfter: string;
+    /** Where it is: the administrator's answer only. */
+    path: string;
+}
+
 /** What a deletion's answer says stayed, which databases it deleted, and a database deletion that did not finish. */
 export interface DomainDeletionKept {
     choice: 'keep' | 'delete' | null;
     databases: string[];
     deleted: DomainDeletedDatabase[];
     databaseFailure: ApiError | null;
-    mail: { path: string; bytes: number } | null;
-    backups: { path: string; files: number; bytes: number; unknown: boolean } | null;
+    mail: DomainDeletionHeld | null;
+    backups: DomainDeletionHeld | null;
 }
 
 function records(value: unknown): Record<string, unknown>[] {
     return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> =>
         Boolean(item) && typeof item === 'object' && !Array.isArray(item) &&
         typeof (item as Record<string, unknown>).name === 'string' && (item as Record<string, unknown>).name !== '') : [];
+}
+
+function held(value: unknown): DomainDeletionHeld | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const item = value as Record<string, unknown>;
+    if (typeof item.remove_after !== 'string' || Number.isNaN(Date.parse(item.remove_after))) return null;
+    return {
+        bytes: typeof item.bytes === 'number' ? item.bytes : -1,
+        files: typeof item.files === 'number' ? item.files : 0,
+        removeAfter: item.remove_after,
+        path: typeof item.path === 'string' && item.path.startsWith('/') ? item.path : '',
+    };
 }
 
 /** Reads `kept` of a deletion answer (200 or 202) without using up its body; null when there is none. */
@@ -123,20 +151,7 @@ export async function readDomainDeletionKept(response: Response): Promise<Domain
         const kept = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>).kept : undefined;
         if (!kept || typeof kept !== 'object' || Array.isArray(kept)) return null;
         const value = kept as Record<string, unknown>;
-        const mailValue = value.mail as Record<string, unknown> | undefined;
-        const backupValue = value.backups as Record<string, unknown> | undefined;
         const failureValue = value.database_failure as Record<string, unknown> | undefined;
-        const mail = mailValue && typeof mailValue.path === 'string' && mailValue.path.startsWith('/')
-            ? { path: mailValue.path, bytes: typeof mailValue.bytes === 'number' ? mailValue.bytes : -1 }
-            : null;
-        const backups = backupValue && typeof backupValue.path === 'string' && backupValue.path.startsWith('/')
-            ? {
-                path: backupValue.path,
-                files: typeof backupValue.files === 'number' ? backupValue.files : 0,
-                bytes: typeof backupValue.bytes === 'number' ? backupValue.bytes : 0,
-                unknown: backupValue.unknown === true,
-            }
-            : null;
         // The Databases page's own answer for the database whose deletion did
         // not finish, read the one way an error answer is read.
         const databaseFailure = failureValue && failureValue.answer && typeof failureValue.answer === 'object'
@@ -148,9 +163,9 @@ export async function readDomainDeletionKept(response: Response): Promise<Domain
             choice: value.choice === 'keep' || value.choice === 'delete' ? value.choice : null,
             databases: records(value.databases).map((item) => item.name as string),
             deleted: records(value.deleted_databases).map((item) => ({ name: item.name as string, answer: item })),
-            databaseFailure, mail, backups,
+            databaseFailure, mail: held(value.mail), backups: held(value.backups),
         };
-        return result.choice || result.databases.length || result.deleted.length || databaseFailure || mail || backups ? result : null;
+        return result.choice || result.databases.length || result.deleted.length || databaseFailure || result.mail || result.backups ? result : null;
     } catch {
         return null;
     }
@@ -161,30 +176,54 @@ export function domainDeletionDatabaseFailureText(t: Translate, kept: DomainDele
     return kept?.databaseFailure ? refusalText(kept.databaseFailure, t, 'ddb.deleteFailed') : '';
 }
 
+/** The finished databases step, said as what happened ("2 databases stayed" / "2 databases deleted"). */
+export function domainDeletionDatabasesDone(t: Translate, kept: DomainDeletionKept | null): string {
+    if (kept?.deleted.length) return t('domains.step.done.databasesDeleted', { n: kept.deleted.length });
+    if (kept?.databases.length) return t('domains.step.done.databasesKept', { n: kept.databases.length });
+    return t('domains.step.done.noDatabases');
+}
+
 /**
- * The result's sentences about what stayed, each with what can be done with
- * it later. Folders are named to the administrator only (a customer is told
- * whom to ask).
+ * The end of a finished deletion (alpha.135): one short sentence of what was
+ * deleted and the notes about kept database users; the rows of what stayed
+ * under "Kept" (databases and where to find them; mail and backups with
+ * their size and the date they are removed); and, for the administrator
+ * only, where the held items are, under a closed "Details". No folder and no
+ * server command in the visible text.
  */
-export function domainDeletionKeptSentences(t: Translate, kept: DomainDeletionKept | null, admin: boolean, size: (bytes: number) => string): string[] {
-    if (!kept) return [];
-    const out: string[] = [];
-    if (kept.deleted.length) {
-        out.push(t('domains.deleted.databasesDeleted', { names: kept.deleted.map((item) => item.name).join(', ') }));
-        for (const item of kept.deleted) out.push(...databaseKeptNotes(t, item.name, item.answer));
+export function domainDeletionEnd(t: Translate, kept: DomainDeletionKept | null, admin: boolean,
+    size: (bytes: number) => string, date: (iso: string) => string, first?: string,
+): { message: string; kept?: { title: string; rows: string[] }; details?: { summary: string; lines: string[] } } {
+    // The heading says it is deleted (domains.deleted); a DKIM note, when
+    // there is one, comes first.
+    const sentences = first ? [first] : [];
+    const rows: string[] = [];
+    const lines: string[] = [];
+    if (kept?.deleted.length) {
+        sentences.push(t('domains.deleted.databasesDeleted', { names: kept.deleted.map((item) => item.name).join(', ') }));
+        for (const item of kept.deleted) sentences.push(...databaseKeptNotes(t, item.name, item.answer));
     }
-    if (kept.databases.length) out.push(t('domains.deleted.databasesKept', { names: kept.databases.join(', ') }));
-    if (kept.mail) {
-        const amount = kept.mail.bytes >= 0 ? size(kept.mail.bytes) : t('domains.deleted.sizeUnknown');
-        out.push(admin
-            ? t('domains.deleted.mailKeptAdmin', { size: amount, path: kept.mail.path })
-            : t('domains.deleted.mailKept', { size: amount }));
+    if (kept?.databases.length) rows.push(t('domains.deleted.row.databases', { names: kept.databases.join(', ') }));
+    const amount = (item: DomainDeletionHeld) => (item.bytes >= 0 ? size(item.bytes) : t('domains.deleted.sizeUnknown'));
+    let total = 0;
+    if (kept?.mail) {
+        rows.push(t('domains.deleted.row.mail', { size: amount(kept.mail), date: date(kept.mail.removeAfter) }));
+        total += Math.max(kept.mail.bytes, 0);
+        if (kept.mail.path) lines.push(t('domains.deleted.detail.mail', { path: kept.mail.path }));
     }
-    if (kept.backups) {
-        const amount = kept.backups.unknown ? t('domains.deleted.sizeUnknown') : size(kept.backups.bytes);
-        out.push(admin
-            ? t('domains.deleted.backupsKeptAdmin', { n: kept.backups.files, size: amount, path: kept.backups.path })
-            : t('domains.deleted.backupsKept', { n: kept.backups.files, size: amount }));
+    if (kept?.backups) {
+        rows.push(t('domains.deleted.row.backups', { n: kept.backups.files, size: amount(kept.backups), date: date(kept.backups.removeAfter) }));
+        total += Math.max(kept.backups.bytes, 0);
+        if (kept.backups.path) lines.push(t('domains.deleted.detail.backups', { path: kept.backups.path }));
     }
-    return out;
+    if (kept?.mail || kept?.backups) {
+        const until = date((kept.mail ?? kept.backups)!.removeAfter);
+        rows.push(admin ? t('domains.deleted.row.holdingAdmin', { size: size(total) }) : t('domains.deleted.row.askProvider', { date: until }));
+    }
+    const message = sentences.map((sentence) => (/[.!?]$/.test(sentence) ? sentence : `${sentence}.`)).join(' ');
+    return {
+        message,
+        ...(rows.length ? { kept: { title: t('domains.deleted.keptTitle'), rows } } : {}),
+        ...(admin && lines.length ? { details: { summary: t('domains.deleted.detailsTitle'), lines } } : {}),
+    };
 }

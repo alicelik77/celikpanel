@@ -72,8 +72,11 @@ test('the databases are kept unless the box is ticked; ticked, each database and
         });
         await settled();
       });
-      // Kept unless ticked: the message says so; the box is off at first.
-      assert.ok(text(tree).includes('domains.delete.databasesStay(n=2)'), 'the question does not say the databases stay');
+      // The choice comes first, under the heading and above the lists; the
+      // sentence under it says what happens and changes with it (alpha.135).
+      const json = text(tree);
+      assert.ok(json.indexOf('domains.delete.databasesOption(n=2)') < json.indexOf('domains.delete.lost.site'), 'the choice is not above its consequences');
+      assert.ok(json.includes('domains.delete.databasesStay(n=2)') && !json.includes('domains.delete.databasesGo'), 'the unticked box does not say the databases stay');
       const box = input(tree, 'data-confirm-option');
       assert.ok(box, 'no choice for the databases');
       assert.equal(box.props.checked, false, 'deleting the databases is chosen by default');
@@ -83,6 +86,7 @@ test('the databases are kept unless the box is ticked; ticked, each database and
       assert.ok(!text(tree).includes('databases.delete.lostData'), 'a database is listed as lost before the box is ticked');
       if (tick) {
         await act(async () => { box.props.onChange({ target: { checked: true } }); });
+        assert.ok(text(tree).includes('domains.delete.databasesGo(n=2)') && !text(tree).includes('domains.delete.databasesStay'), 'the ticked box still says the databases stay')
         // Each database's data, the users that go with it, and the user that stays.
         assert.equal(lines(tree, 'data-confirm-lost').length, 7);
         for (const line of ['databases.delete.lostData(name=blog_db)', 'databases.delete.lostData(name=shop_db)', 'databases.delete.lostUsers(users=shop_user)']) {
@@ -124,7 +128,9 @@ test('no choice without databases, for unread databases, for users that cannot b
   assert.equal(bulk.kept[0], 'domains.delete.kept.databasesUnbound');
 });
 
-test('the result says what stayed: folders to the administrator, whom to ask to a customer', async () => {
+const date = (iso) => `D(${iso.slice(0, 10)})`;
+
+test('the result: rows of what stayed with size and date, folders only under the administrator’s Details', async () => {
   const response = Response.json({
     status: 'deleted',
     kept: {
@@ -133,8 +139,8 @@ test('the result says what stayed: folders to the administrator, whom to ask to 
         { id: 8, name: 'shop_db', engine: 'mariadb', users_removed: ['shop_user'] },
         { id: 9, name: 'old_db', engine: 'mariadb', users_kept_on_engine: ['old_user'] },
       ],
-      mail: { path: '/var/mail/vhosts/.celikpanel-quarantine/domain-4-ab', bytes: 2048 },
-      backups: { path: '/var/backups/celikpanel/subscriptions/1/domains/4', files: 3, bytes: 4096 },
+      mail: { path: '/var/mail/vhosts/.celikpanel-quarantine/domain-4-0123456789abcdef', bytes: 2048, remove_after: '2026-12-14T10:00:00Z' },
+      backups: { path: '/var/backups/celikpanel/subscriptions/1/domains/4', files: 3, bytes: 4096, remove_after: '2026-12-14T10:00:00Z' },
     },
   });
   const kept = await question.readDomainDeletionKept(response);
@@ -142,23 +148,34 @@ test('the result says what stayed: folders to the administrator, whom to ask to 
   assert.deepEqual(kept.deleted.map((item) => item.name), ['shop_db', 'old_db']);
   // The body is still there for the other readers.
   assert.equal((await response.json()).status, 'deleted');
-  const admin = question.domainDeletionKeptSentences(t, kept, true, size);
-  assert.deepEqual(admin, [
-    'domains.deleted.databasesDeleted(names=shop_db, old_db)',
-    // The Databases page's own note about an account kept on the engine.
-    'databases.keptNote.otherRights(name=old_db,users=old_user)',
-    'domains.deleted.mailKeptAdmin(size=2048B,path=/var/mail/vhosts/.celikpanel-quarantine/domain-4-ab)',
-    'domains.deleted.backupsKeptAdmin(n=3,size=4096B,path=/var/backups/celikpanel/subscriptions/1/domains/4)',
+  assert.equal(question.domainDeletionDatabasesDone(t, kept), 'domains.step.done.databasesDeleted(n=2)');
+  const admin = question.domainDeletionEnd(t, kept, true, size, date);
+  assert.equal(admin.message, 'domains.deleted.databasesDeleted(names=shop_db, old_db). databases.keptNote.otherRights(name=old_db,users=old_user).');
+  assert.deepEqual(admin.kept, { title: 'domains.deleted.keptTitle', rows: [
+    'domains.deleted.row.mail(size=2048B,date=D(2026-12-14))',
+    'domains.deleted.row.backups(n=3,size=4096B,date=D(2026-12-14))',
+    'domains.deleted.row.holdingAdmin(size=6144B)',
+  ] });
+  assert.deepEqual(admin.details.lines, [
+    'domains.deleted.detail.mail(path=/var/mail/vhosts/.celikpanel-quarantine/domain-4-0123456789abcdef)',
+    'domains.deleted.detail.backups(path=/var/backups/celikpanel/subscriptions/1/domains/4)',
   ]);
-  const customer = question.domainDeletionKeptSentences(t, kept, false, size);
-  assert.ok(customer.every((sentence) => !sentence.includes('/var/')), 'a customer is shown a server folder');
-  assert.ok(customer.includes('domains.deleted.mailKept(size=2048B)'));
-  // Nothing said, nothing shown; a malformed answer is not read as kept.
+  for (const visible of [admin.message, ...admin.kept.rows]) {
+    assert.ok(!visible.includes('/var/') && !visible.includes('sudo'), `a folder or a command in the visible text: ${visible}`);
+  }
+  // A customer: no folder anywhere (the server sends none), whom to ask.
+  const customerKept = { ...kept, mail: { ...kept.mail, path: '' }, backups: { ...kept.backups, path: '' } };
+  const customer = question.domainDeletionEnd(t, customerKept, false, size, date);
+  assert.equal(customer.details, undefined, 'a customer has the administrator’s Details');
+  assert.equal(customer.kept.rows.at(-1), 'domains.deleted.row.askProvider(date=D(2026-12-14))');
+  // Databases kept: their row says where they are; the step says how many.
+  const keptOnes = { choice: 'keep', databases: ['blog_db', 'shop_db'], deleted: [], databaseFailure: null, mail: null, backups: null };
+  assert.equal(question.domainDeletionDatabasesDone(t, keptOnes), 'domains.step.done.databasesKept(n=2)');
+  assert.deepEqual(question.domainDeletionEnd(t, keptOnes, true, size, date).kept.rows, ['domains.deleted.row.databases(names=blog_db, shop_db)']);
+  assert.equal(question.domainDeletionDatabasesDone(t, null), 'domains.step.done.noDatabases');
+  // Nothing said, nothing shown; a held item without its date is not read.
   assert.equal(await question.readDomainDeletionKept(Response.json({ status: 'deleted' })), null);
-  assert.equal(await question.readDomainDeletionKept(Response.json({ kept: { mail: { path: 'relative', bytes: 1 } } })), null);
-  // A size that could not be read is said as such.
-  const unknownSize = question.domainDeletionKeptSentences(t, { choice: null, databases: [], deleted: [], databaseFailure: null, mail: { path: '/m', bytes: -1 }, backups: null }, true, size);
-  assert.deepEqual(unknownSize, ['domains.deleted.mailKeptAdmin(size=domains.deleted.sizeUnknown,path=/m)']);
+  assert.equal(await question.readDomainDeletionKept(Response.json({ kept: { mail: { bytes: 1 } } })), null);
 });
 
 test('a database deletion that did not finish is said with the Databases page sentence', async () => {
@@ -180,21 +197,27 @@ test('a database deletion that did not finish is said with the Databases page se
   assert.equal(question.domainDeletionDatabaseFailureText(t, null), '');
 });
 
-test('the result is shown at the end of the deletion window', async () => {
+test('the window’s end: the heading says deleted, the rows of what stayed, the closed Details', async () => {
   await mounted(async (tree) => {
+    const kept = { choice: 'keep', databases: ['blog_db'], deleted: [], databaseFailure: null,
+      mail: { bytes: 2048, files: 0, removeAfter: '2026-12-14T10:00:00Z', path: '/var/mail/vhosts/.celikpanel-quarantine/domain-4-0123456789abcdef' }, backups: null };
     await act(async () => {
       void confirmAction({
         title: 'domains.deleteTitle',
         ...question.domainDeleteQuestion(t, []),
         tone: 'danger',
-        action: async () => ({ state: 'done', message: ['domains.deleted', ...question.domainDeletionKeptSentences(t, { choice: 'keep', databases: ['blog_db'], deleted: [], databaseFailure: null, mail: null, backups: null }, true, size)].join(' ') }),
+        action: async () => ({ state: 'done', title: 'domains.deleted', ...question.domainDeletionEnd(t, kept, true, size, date) }),
       });
       await settled();
     });
     await act(async () => { button(tree, 'confirm-action-confirm').props.onClick({}); await settled(); });
-    const end = tree.root.findAll((node) => node.props['data-operation-end'] === 'done')[0];
-    assert.ok(end, 'the end of the window is not shown');
-    assert.ok(JSON.stringify(end.children).includes('domains.deleted.databasesKept(names=blog_db)'), 'the end does not say which databases stayed');
+    const rows = tree.root.findAll((node) => node.props['data-operation-kept'] !== undefined)[0];
+    assert.ok(rows, 'the rows of what stayed are not shown');
+    const shown = text(tree);
+    assert.ok(shown.includes('domains.deleted.keptTitle') && shown.includes('domains.deleted.row.databases(names=blog_db)') && shown.includes('domains.deleted.row.mail'));
+    const details = tree.root.findAll((node) => node.type === 'details' && node.props['data-operation-details'] !== undefined)[0];
+    assert.ok(details && !details.props.open, 'the folders are not under a closed Details');
+    assert.ok(text(tree).includes('domains.deleted'), 'the heading does not say deleted');
   });
 });
 

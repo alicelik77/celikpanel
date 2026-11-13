@@ -1,14 +1,15 @@
 // SCREEN catalogue part "domainDelete" (alpha.134): the question that
 // deletes a domain - what goes, what stays, the choice for its databases, a
 // retry of a deletion that stopped - the words of its result (what was
-// deleted and what stayed, with what can be done with it) and the reasons a
-// deletion stops at one of its own steps. Split out of "sites" and "errors",
-// which were full. Key prefixes: domains.delete., domains.deleted.,
-// domains.deletion., err.DOMAIN_DELETION_ (except the mail step's reason,
-// which stays in "errors"). The database lines of the question and of the
-// result are the Databases page's own (databases., part "mailDatabases").
-// One part of the screen copy; ../../index.tsx fetches every part in
-// parallel and no screen renders before all of them have arrived.
+// deleted and what stayed) and the reasons a deletion stops at one of its
+// own steps. Split out of "sites" and "errors", which were full. Key
+// prefixes: domains.delete., domains.deleted., domains.deletion.,
+// domains.step.done.databases*, err.DOMAIN_DELETION_ (except the mail step's
+// reason, which stays in "errors"). The database lines of the question and
+// of the result are the Databases page's own (databases., part
+// "mailDatabases"). One part of the screen copy; ../../index.tsx fetches
+// every part in parallel and no screen renders before all of them have
+// arrived.
 //
 // EKRAN katalogu parçası "domainDelete": alan adı silme sorusu, sonucu ve
 // silmenin kendi adımlarında durma nedenleri.
@@ -21,21 +22,29 @@ export const enDomainDeleteScreens = {
     'domains.delete.kept.databasesUnread': 'The domain’s databases could not be read just now, so none is deleted: they stay on the Databases page, bound to no domain.',
     'domains.delete.kept.databasesUnbound': 'Their databases are not deleted: they stay on the Databases page, bound to no domain, where you can manage or delete them.',
     'domains.delete.kept.databasesUsersUnknown': 'Its databases ({n}) stay: which of their users would be removed could not be read just now, so deleting them is not offered here. They appear on the Databases page bound to no domain, where you can delete them later.',
-    'domains.delete.databasesStay': 'Unless you tick the box below, the domain’s databases ({n}) stay: they appear on the Databases page bound to no domain, with their users and passwords, and you manage them there.',
     'domains.delete.databasesOption': 'Also delete its databases ({n})',
+    'domains.delete.databasesStay': 'Not ticked: its {n} databases stay, with their users and passwords, on the Databases page, bound to no domain.',
+    'domains.delete.databasesGo': 'Ticked: its {n} databases and everything in them are deleted, as listed below.',
     'domains.delete.retryKeep': 'This deletion was started earlier and continues where it stopped. Its databases stay, as chosen then: they appear on the Databases page bound to no domain.',
     'domains.delete.retryDelete': 'This deletion was started earlier and continues where it stopped. Its databases are deleted, as chosen then, with the users nothing else uses.',
-    'domains.delete.kept.backups': 'Backups already taken are not deleted: they stay on this server and at the remote backup destination, but no longer appear in the panel. Download any backup you want to keep first, in the Backups section.',
-    'domains.delete.kept.mail': 'Messages in its mailboxes are not deleted; they are moved aside on the server.',
+    'domains.delete.kept.backups': 'Its backups on this server are kept 30 days, then deleted; copies at a remote backup destination are not touched.',
+    'domains.delete.kept.mail': 'The messages in its mailboxes are kept 30 days, then deleted.',
     'domains.delete.kept.dns': 'Records at another DNS provider are not touched.',
     'domains.delete.typeName': 'Type {name} to delete it',
+    'domains.step.done.databasesKept': '{n} databases stayed',
+    'domains.step.done.databasesDeleted': '{n} databases deleted',
+    'domains.step.done.noDatabases': 'No databases to handle',
     'domains.deleted.databasesDeleted': 'Deleted databases: {names}.',
-    'domains.deleted.databasesKept': 'These databases stay: {names}. They appear on the Databases page bound to no domain, where you can give them a new password or delete them.',
-    'domains.deleted.mailKeptAdmin': 'The stored mail ({size}) was moved aside on this server to {path}. You can recover it from there; when it is no longer needed, delete that folder on the server.',
-    'domains.deleted.mailKept': 'The stored mail ({size}) is kept aside on the server. To get it back, or to have it deleted for good, ask your server administrator.',
-    'domains.deleted.backupsKeptAdmin': 'The backups stay: {n} files, {size}, in {path}. When they are no longer needed, delete that folder on the server.',
-    'domains.deleted.backupsKept': 'The backups ({n} files, {size}) stay on the server. To download them, or to have them deleted, ask your server administrator.',
-    'domains.deleted.sizeUnknown': 'size could not be read',
+    'domains.deleted.keptTitle': 'Kept',
+    'domains.deleted.row.databases': 'Databases: {names}, on the Databases page, bound to no domain',
+    'domains.deleted.row.mail': 'Mail: {size}, kept until {date}, then deleted',
+    'domains.deleted.row.backups': 'Backups: {n} files, {size}, kept until {date}, then deleted',
+    'domains.deleted.row.holdingAdmin': '{size} went to Maintenance → What deletions left, where you can download it or delete it earlier.',
+    'domains.deleted.row.askProvider': 'Until {date} your provider can give the mail and the backups back.',
+    'domains.deleted.detailsTitle': 'Details',
+    'domains.deleted.detail.mail': 'Mail: {path}',
+    'domains.deleted.detail.backups': 'Backups: {path}',
+    'domains.deleted.sizeUnknown': 'size not known',
     'domains.deletion.stoppedAskAdmin': 'The deletion stopped on the server before it finished; what is already removed stays removed. Your server administrator finds and fixes the cause on the server. After that, use “Retry this deletion” (Delete on this domain): it continues where it stopped.',
     'domains.deletion.stoppedAtDatabases': 'The deletion stopped at the domain’s databases; the website is already removed and the DNS zone is unchanged.',
     'err.DOMAIN_DELETION_FAILED.mail_lists_cleanup_failed': 'Deletion stopped while taking this domain out of the server’s sender-limit lists. The website, the DNS zone and the databases are unchanged. The server administrator opens Mail → Sending limits on this server, fixes what it reports, then uses “Retry this deletion”. Nothing retries by itself.',

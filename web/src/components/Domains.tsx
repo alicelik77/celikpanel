@@ -18,12 +18,13 @@ import { deletionGuideFollowUp, deletionGuideText, deletionGuideWords, type Dele
 import { Guidance } from './kit/rows/Guidance';
 import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionGuideReason, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage, type DomainDeletionFollowUp } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
-import { domainBulkDeleteLists, domainDeleteQuestion, domainDeletionDatabaseFailureText, domainDeletionKeptSentences, readDomainDatabasesForDeletion, readDomainDeletionKept, type DomainDeletionKept } from '../lib/domainDeletionQuestion';
+import { domainBulkDeleteLists, domainDeleteQuestion, domainDeletionDatabaseFailureText, domainDeletionDatabasesDone, domainDeletionEnd, readDomainDatabasesForDeletion, readDomainDeletionKept, type DomainDeletionKept } from '../lib/domainDeletionQuestion';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
 import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
 import type { TranslationKey } from '../i18n/en';
 import { useAuth } from '../auth/AuthContext';
+import { formatDate } from '../lib/dateFormat';
 import {
     hasAnyDomainAccess,
     hasDomainAccess,
@@ -359,7 +360,8 @@ export function Domains() {
     const inFlight = useRef(new Set<number>());
     // What each deletion's answer said stays (alpha.134), kept for the end of
     // a deletion this page follows after its request answered.
-    const keptByDomain = useRef(new Map<number, DomainDeletionKept>());
+    // Keyed by the domain's name (unique), so the steps can say what happened.
+    const keptByDomain = useRef(new Map<string, DomainDeletionKept>());
     const beingDeleted = (id: number) =>
         deleting.includes(id) || pendingDeletions.some((item) => item.id === id && item.blocksRetry);
 
@@ -451,7 +453,8 @@ export function Domains() {
                     show(index, { state: 'running', since: Date.now() });
                     const result = await deleteDomain(row.id, row.domain_name);
                     if (result.kind === 'done') {
-                        show(index, { state: 'done', note: deletedMessage(row.id, row.domain_name, result.note) });
+                        const end = deletedEnd(row.domain_name, result.note);
+                        show(index, { state: 'done', note: [end.message, ...(end.kept?.rows ?? [])].join(' ') });
                     } else {
                         unfinished++;
                         show(index, result.kind === 'pending' && continuesByItself(result.reason, result.followUp)
@@ -554,7 +557,7 @@ export function Domains() {
         const doneLabels = {
             mail: t('domains.step.done.mail'),
             site: t('domains.step.done.site'),
-            databases: t('domains.step.done.databases'),
+            databases: domainDeletionDatabasesDone(t, keptByDomain.current.get(name) ?? null),
             dns: t('domains.step.done.dns', { name }),
             certificates: t('domains.step.done.certificates'),
             finish: t('domains.step.done.finish'),
@@ -620,7 +623,7 @@ export function Domains() {
                 setPendingDeletions((current) => current.filter((item) => item.id !== id));
                 report.steps(deletionSteps(name, 'deleted', '', 0));
                 changed();
-                return { state: 'done', message: deletedMessage(id, name) };
+                return deletedEnd(name);
             }
             if (saved.state === 'unknown') {
                 unknownSince ??= Date.now();
@@ -682,15 +685,15 @@ export function Domains() {
         })();
     };
 
-    // The end of a finished deletion: what was deleted, and what stayed
-    // with what can be done with it later (alpha.134).
-    const deletedMessage = (id: number, name: string, note?: string) => {
-        const kept = keptByDomain.current.get(id) ?? null;
-        keptByDomain.current.delete(id);
-        const first = note ?? t('domains.deleted', { name });
-        const rest = domainDeletionKeptSentences(t, kept, isAdmin, (bytes) => sizeWord(bytes, locale));
-        // The short "example.com deleted" ends as a sentence before what stayed.
-        return rest.length === 0 ? first : [/[.!?]$/.test(first) ? first : `${first}.`, ...rest].join(' ');
+    // The end of a finished deletion (alpha.135): the heading says it is
+    // deleted; one sentence of what was deleted; the rows of what stayed
+    // (databases, and mail and backups with their size and the date they
+    // are removed); folders only under the administrator's closed Details.
+    const deletedEnd = (name: string, note?: string): OperationEnd & { state: 'done' } => {
+        const kept = keptByDomain.current.get(name) ?? null;
+        keptByDomain.current.delete(name);
+        const end = domainDeletionEnd(t, kept, isAdmin, (bytes) => sizeWord(bytes, locale), (iso) => formatDate(iso, locale), note);
+        return { state: 'done', title: t('domains.deleted', { name }), ...end };
     };
 
     const deleteAndFollow = async (id: number, name: string, report: OperationReport, databases?: 'keep' | 'delete'): Promise<OperationEnd> => {
@@ -701,7 +704,7 @@ export function Domains() {
         const result = await deleteDomain(id, name, databases).finally(() => { answered = true; });
         if (result.kind === 'done') {
             report.steps(deletionSteps(name, 'deleted', '', startedAt));
-            return { state: 'done', message: deletedMessage(id, name, result.note) };
+            return deletedEnd(name, result.note);
         }
         if (result.kind === 'failed') return { state: 'failed', reason: result.text };
         if (result.kind === 'unknown') return { state: 'unknown', reason: t('common.resultUnknown') };
@@ -718,7 +721,7 @@ export function Domains() {
         try {
             const res = await fetch(`${API_BASE}/domains/${id}${databases ? `?databases=${databases}` : ''}`, { method: 'DELETE' });
             const kept = await readDomainDeletionKept(res);
-            if (kept) keptByDomain.current.set(id, kept);
+            if (kept) keptByDomain.current.set(name, kept);
             const stage = await readDomainDeletionStage(res);
             const outcome = await readDomainDeletionOutcome(res);
             if (outcome.state === 'pending') {

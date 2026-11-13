@@ -58,7 +58,13 @@ export interface OperationStep {
  * known. `reason` already says who acts and what happens next.
  */
 export type OperationEnd =
-    | { state: 'done'; message?: string; title?: string }
+    | {
+        state: 'done'; message?: string; title?: string;
+        /** What stayed, one short row each under a heading (alpha.135: a deletion's "Kept"). */
+        kept?: { title: string; rows: string[] };
+        /** Closed "Details" under the end, for facts only some readers need (folders, for the administrator). */
+        details?: { summary: string; lines: string[] };
+    }
     | {
         state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void }; title?: string;
         /** The line under the title in place of the state's own word, when that word would not be true (alpha.133: a blocked ending that nobody needs to act on). */
@@ -112,7 +118,13 @@ export interface ConfirmRequest {
      * app's data"). Ticked, its `lost` and `kept` lines join the lists and its
      * `typedName` must be typed. The action receives whether it was ticked.
      */
-    option?: { label: string; lost?: string[]; kept?: string[]; typedName?: TypedName };
+    option?: {
+        label: string; lost?: string[]; kept?: string[]; typedName?: TypedName;
+        /** The choice comes before its consequences: drawn under the message, above the lists (alpha.135). */
+        first?: boolean;
+        /** One sentence under the box that says what happens, ticked or not (alpha.135). */
+        note?: { off: string; on: string };
+    };
     /** danger: the change removes or overwrites something. */
     tone?: 'default' | 'danger';
     /** The progress window's title while the action runs, e.g. "Deleting example.com". */

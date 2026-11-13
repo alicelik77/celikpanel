@@ -335,6 +335,9 @@ const screenPartBudgets = {
   // (both full). A new part, set with at least 25% headroom from its
   // Turkish file: 5.30 / 1.71 KiB.
   domainDelete: kib(7.5, 2.5),
+  // alpha.135: what deletions left, kept 30 days (holding.). A new part, set
+  // with at least 25% headroom from its Turkish file.
+  deletionHolding: kib(4.5, 2),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

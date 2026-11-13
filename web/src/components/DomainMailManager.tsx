@@ -2,7 +2,8 @@ import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Mail, Plus, Trash2, ArrowRight, AtSign, Pencil, Info, KeyRound, CalendarClock, Eraser, LifeBuoy } from 'lucide-react';
 import { showToast } from './Toast';
 import { useI18n } from '../i18n';
-import { formatTime } from '../lib/dateFormat';
+import { formatDate, formatTime } from '../lib/dateFormat';
+import { sizeWord } from './kit/words';
 import { readApiError, type ApiError } from '../lib/apiError';
 import { useRefusal } from '../lib/useRefusal';
 import type { TranslationKey } from '../i18n/en';
@@ -83,7 +84,7 @@ const DomainMailOptions = lazy(() => import('./DomainMailOptions'));
 const MailboxRecoveryDialog = lazy(() => import('./MailboxRecoveryDialog'));
 
 export function DomainMailManager({ domainId, domainName, readOnly = false }: DomainMailManagerProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { role } = useAuth();
     const [activeTab, setActiveTab] = useState<'accounts' | 'forwarding' | 'auth' | 'settings'>('accounts');
     // The two lists are read once for the screen, so the number beside each
@@ -235,13 +236,21 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
     const deleteAccount = async (id: number, address: string) => {
         if (readOnly) return;
+        // alpha.135: its messages are kept 30 days (Maintenance → What
+        // deletions left), then deleted; a mailbox made again starts empty.
         await confirmAction({ message: t('mail.confirmDeleteAccount', { name: address }), confirmLabel: t('common.delete'), tone: 'danger',
+            kept: [t('holding.mailboxKept')],
             action: async () => {
                 try {
                     const res = await fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${id}`, { method: 'DELETE' });
                     if (!res.ok) { refuse(await readApiError(res), 'mail.deleteAccountFailed'); return; }
                     setRefusal(null);
-                    showToast('success', t('mail.accountDeleted'));
+                    const answer = await res.json().then((value: unknown) => value as { held?: { bytes?: number; remove_after?: string } } | null, () => null);
+                    const held = answer?.held && typeof answer.held.remove_after === 'string' ? answer.held : null;
+                    showToast('success', held
+                        ? [t('holding.mailboxKeptUntil', { name: address, size: sizeWord(Math.max(held.bytes ?? 0, 0), locale), date: formatDate(held.remove_after as string, locale) }),
+                            ...(role === 'admin' ? [] : [t('holding.mailboxAskProvider')])].join(' ')
+                        : t('mail.accountDeleted'));
                     reloadAccounts();
                 } catch {
                     // No answer: whether it changed is not known; the list is read again.
@@ -313,7 +322,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: account.id }),
         }));
     const bulkDelete = async (accounts: EmailAccount[]) => runBulkAction(accounts, t('mail.bulk.deleteTitle', { n: selected.size }),
-        t('mail.bulk.deleteConfirm', { n: selected.size }), 'mail.bulk.deleteStep', 'danger',
+        `${t('mail.bulk.deleteConfirm', { n: selected.size })} ${t('holding.mailboxKept')}`, 'mail.bulk.deleteStep', 'danger',
         (account) => fetch(`/api/v1/domains/${domainId}/mail/accounts?id=${account.id}`, { method: 'DELETE' }));
 
     // alpha.128 (G20): every message of one mailbox removed by Dovecot; the

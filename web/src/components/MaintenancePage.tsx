@@ -4,6 +4,7 @@ import { SystemSQLiteManager } from './SystemSQLiteManager';
 import { RestartsCard } from './RestartsCard';
 import { ServerClockCard, ServerProcessesCard, ServerRebootCard } from './ServerMaintenanceCards';
 import { ServerCertificatesCard } from './ServerCertificatesCard';
+import { DeletionHoldingCard } from './DeletionHoldingCard';
 
 // Server → Maintenance (D-037, owner 2026-10-22): inspecting and safely
 // maintaining the SQLite files CelikPanel and the installed services keep.
@@ -24,6 +25,8 @@ export function MaintenancePage() {
             <PageHeader title={t('nav.maintenance')} breadcrumb={[t('common.home'), t('nav.maintenance')]} />
             <div className="grid max-w-7xl gap-5">
                 {/* alpha.107 (D-038 §10): what waits for a restart or a reboot. */}
+                {/* alpha.135: what deletions left, kept 30 days (the home page and the disk warning open it). */}
+                <div className="max-w-5xl"><DeletionHoldingCard /></div>
                 <div className="max-w-5xl"><RestartsCard /></div>
                 {/* alpha.128 (G29): restarting the server, its clock and its busiest processes. */}
                 <div className="max-w-5xl"><ServerRebootCard /></div>

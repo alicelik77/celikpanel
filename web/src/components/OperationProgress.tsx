@@ -142,6 +142,22 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
                 </p>
             )}
             {end?.state === 'done' && end.message && <p className="mt-4 text-sm text-fg-muted [overflow-wrap:anywhere]" data-operation-end="done">{end.message}</p>}
+            {end?.state === 'done' && end.kept && end.kept.rows.length > 0 && (
+                <div className="mt-4" data-operation-kept="">
+                    <p className="text-sm font-semibold text-fg">{end.kept.title}</p>
+                    <ul className="mt-1 divide-y divide-border rounded-lg border border-border text-sm text-fg">
+                        {end.kept.rows.map((row, index) => <li key={index} className="px-3 py-2 [overflow-wrap:anywhere]">{row}</li>)}
+                    </ul>
+                </div>
+            )}
+            {end?.state === 'done' && end.details && end.details.lines.length > 0 && (
+                <details className="mt-3 text-sm text-fg-muted" data-operation-details="">
+                    <summary className="cursor-pointer font-semibold text-fg">{end.details.summary}</summary>
+                    <ul className="mt-2 space-y-1 font-mono text-xs [overflow-wrap:anywhere]">
+                        {end.details.lines.map((line, index) => <li key={index}>{line}</li>)}
+                    </ul>
+                </details>
+            )}
         </Dialog>
     );
 }

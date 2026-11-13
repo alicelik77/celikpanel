@@ -568,7 +568,7 @@ func (p *Panel) handleDeletionHoldingItem(w http.ResponseWriter, r *http.Request
 				code, status = "HOLDING_REMOVE_UNKNOWN", http.StatusBadGateway
 			}
 			writeCodedErrorVars(w, status, code,
-				"It was not removed: "+outcome.Failure.Line+". It stays in the list and is tried again by itself; press Delete now again after the cause is fixed.",
+				"It was not removed; the reason is kept with the item in the list (Details). It stays in the list and is tried again by itself; press Delete now again after the cause is fixed.",
 				"", nil, map[string]string{"line": outcome.Failure.Line})
 			return
 		}
