@@ -11128,3 +11128,45 @@ outcomes, read against each list's documented codes:
 Customers and resellers get the short sentence without server details. A
 "could not check" never turns into "listed" or "clean" by itself; only a new
 check replaces it.
+
+### A deletion waiting for the backup DNS server: which reasons are checked again (alpha.133, 2026-11-13)
+
+In the lab a backup DNS server that was unreachable for about 45 seconds
+turned one deletion check into "a person must act"; the deletion then waited
+after the backup came back until someone pressed Delete again, and the screen
+showed one technical sentence. The rule for every reason of a deletion's DNS
+confirmation:
+
+- **Only a reason another check provably cannot change stops CelikPanel's
+  own checks.** Today that is one: a check record CelikPanel cannot sort out
+  by itself (`dns_peer_journal_unresolved`). Every other reason can clear by
+  itself or because somebody repairs one of the two servers, so CelikPanel
+  checks again at the same slow pace (15 seconds, doubling to every 5
+  minutes) and the deletion finishes by itself, with nothing to press, once
+  the cause is gone. After six of the same in a row the administrators get
+  one notification ("stuck"); the checks go on. A check is the same one More
+  → Delete… runs; status reads never start one.
+- **A backup that does not answer needs nobody.** Switched off, restarting,
+  unreachable or no answer in time is a wait, however the connection failed.
+- **Who acts is the reason's own.** "You do not need to do anything" is said
+  only where the next automatic check can finish the deletion.
+
+| Reason | What the owner reads | Who acts | Checked again |
+|---|---|---|---|
+| backup has not caught up (`dns_peer_catching_up`) | the backup has not caught up yet | nobody | yes |
+| backup did not answer (`dns_peer_proof_timeout:peer_exchange`) | the backup did not answer; finishes once it answers | nobody | yes |
+| this server's check ran out of time (`dns_peer_proof_timeout`, `:local_check`) | the check did not finish in time | nobody | yes |
+| this server's last check did not complete (`dns_peer_journal_unknown`) | the last check did not complete | nobody | yes |
+| backup answered but did not confirm (`dns_peer_inspection_unknown`) | the backup answered without confirming | administrator or the backup's operator: check its DNS service and that it allows the check | yes |
+| no check access set up (`dns_peer_enrollment_required`) | the backup cannot be checked yet | administrator: Server setup on this server | yes |
+| check access changed (`dns_peer_enrollment_changed`) | the check access changed or cannot be trusted | administrator: set the access up again | yes |
+| backup's state did not show the removal (`dns_peer_native_unknown`) | the backup's answer did not show the removal | administrator or the backup's operator | yes |
+| DNS changed during the check (`dns_peer_owner_edit_unknown`) | DNS changed while confirming | administrator: check a hand-made change | yes |
+| backup refused its own transfer (`dns_peer_catalog_transfer_refused`) | the backup did not let its check read the list | administrator or the backup's operator: allow the transfer | yes |
+| this server could not run its check (`dns_peer_proof_internal`) | this server could not run its check | administrator: send the Agent's lines to support | yes |
+| check record CelikPanel cannot sort out (`dns_peer_journal_unresolved`) | the check record is in a state CelikPanel cannot sort out | administrator: send two command outputs to support | **no** |
+
+Customers and team members are told to contact the server's administrator
+and never see a command. Technical detail and commands are in the
+administrator's closed Details. Other deletion reasons (not about the backup
+DNS server's confirmation) keep their single sentence for now.

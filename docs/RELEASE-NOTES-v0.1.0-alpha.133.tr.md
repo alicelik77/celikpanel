@@ -74,10 +74,9 @@ Bir test bunu istisnasız korur.
   Tam denetim artık yalnız kanıtın ona dayandığı yerlerde, dört kez
   çalışıyor; aradaki yazmalar yalnız onlara yetki verenleri denetliyor (iki
   kilit, tam deneme, eşleşme). Önceki silmenin temizliği bir kez yapılıyor.
-  Bir silmenin 20–27 saniye yerine yaklaşık 9–12 saniye sürmesi bekleniyor
-  (LAB DENEMESİNDEN SONRA DOĞRULANACAK). Bu değişiklikler bileşen
-  testleriyle kanıtlandı; gerçek iki sunuculu denetim, henüz yapılacak olan
-  lab tekrarıdır.
+  Lab'da boşta bir çiftte ölçüldüğünde bir silmenin DNS doğrulaması artık
+  6,5–8,0 saniye sürüyor (alpha.132'de 20–27 saniyeydi); her adım 1,5–2,0
+  saniye.
 - Yedek sunucunun doğrulaması geciktiğinde pencere doğruyu söyler: alan adı
   bu sunucuda DNS'ten zaten kaldırıldı, açık olan yalnız yedek sunucunun
   doğrulaması, **kimsenin bir şey yapması gerekmiyor** ve CelikPanel
@@ -114,6 +113,31 @@ Bir test bunu istisnasız korur.
   denetliyor, yöneticilere mi bildirildi, bir kişi mi yapmalı); yalnız okuyanın
   sahip olduğu düğmeleri adlandırır ve pencere komutlar için kutunun
   Ayrıntılar'ına yönlendirir.
+- **Kısa süre ulaşılamayan bir yedek DNS sunucusu artık silmeyi yarıda
+  bırakmıyor.** Lab'da bağlantısı yaklaşık 45 saniye engellenen bir yedek,
+  dokuz denetimden birini "bir kişi yapmalı" durumuna çevirdi; yedek yeniden
+  yanıt verdiği hâlde silme, biri Sil'e yeniden basana kadar bekledi. Yanıt
+  vermeyen bir yedek (kapalı, yeniden başlıyor, ulaşılamıyor ya da zamanında
+  yanıt yok) artık bağlantı nasıl koparsa kopsun her zaman kimsenin bir şey
+  yapmasını gerektirmeyen bir beklemedir; CelikPanel yedek yanıt verene kadar
+  denetlemeyi sürdürür ve silme kendiliğinden biter.
+- **CelikPanel'in kendi denetimlerini yalnız bir neden durdurur:**
+  kendiliğinden düzeltemediği ve başka bir denetimin değiştiremeyeceği bir
+  denetim kaydı. Diğer her neden (yedeğin denetimi reddetmesi, eksik ya da
+  değişmiş denetim erişimi, reddedilen aktarım, denetim sırasında değişen DNS,
+  düzeltme gereken bir Agent) aynı yavaş aralıkla yeniden denetlenir; neden
+  düzelince silme kendiliğinden biter. Aynı neden üst üste altı kez olursa
+  yöneticilere eskisi gibi tek bildirim gider.
+- **Her bekleme nedeni artık neden, kim yapar, tek sonraki adım ve nasıl
+  süreceğini söylüyor**; Türkçe ve İngilizce, Alan Adları sayfasında, silme
+  penceresinde ve toplu silme notlarında. "Sizin bir şey yapmanız
+  gerekmiyor" yalnız sonraki denetim işi kendiliğinden bitirebiliyorsa
+  görünür. Müşteriler ve ekip üyeleri hiçbir komut ve Ayrıntılar görmez.
+- Takılan bir silmenin bildirimi, metninin yönlendirdiği Alan Adları
+  sayfasını açar (önceden DNS ve eş sunucular sayfasını açıyordu). İkinci
+  açık Alan Adları sekmesi bekleyen silmeyi her durumda izler ve başka yerde
+  bitince listeden kaldırır (önceden listede kalıyordu). Agent'ın ve panelin
+  günlük satırları sonraki denetimin kendiliğinden olup olmadığını söyler.
 
 ### Diğer düzeltmeler
 
@@ -211,10 +235,21 @@ itibaren pencere kendiliğinden devam eder.
   zaman sunucu yöneticisi adlandırılır.
 - Yedek DNS sunucusu henüz yetişirken takılan bir silme için sayfada
   yeniden deneme yok; ekran sonraki adım olarak desteği adlandırır.
-- Bir silmenin diğer bekleme nedenleri (örneğin iki sunucu arasında
-  kurulmamış inceleme erişimi) önceki, daha uzun metinlerini göstermeyi
-  sürdürür; bunların bazıları "Bu silme işlemini tekrar dene" der; o düğme,
-  alan adının satırındaki Diğer → Sil… işlemidir.
+- Yedek DNS sunucusunun doğrulamasıyla ilgili olmayan silme nedenleri
+  (örneğin yerel rndc anahtarı, beklemeye alınmış Agent, katılmış bir
+  sunucunun ana DNS sunucusundaki kaldırması) önceki tek metinlerini
+  göstermeyi sürdürür; beklemeye alınmış Agent ve rndc metinleri hâlâ "Bu
+  silme işlemini tekrar dene" der; o düğme, alan adının satırındaki Diğer →
+  Sil… işlemidir.
+- Yalnız bir düzeltme ya da güncellemenin değiştirebileceği bir neden
+  (örneğin Agent'ın kendi denetimini çalıştıramaması) de artık birkaç
+  dakikada bir yeniden denetlenir. Bunun bedeli her seferinde kısa bir
+  denetim ve bir günlük satırıdır; düzeltmeden sonra silmenin kendiliğinden
+  bitmesini sağlayan budur.
+- Bir silme doğrulanırken elle yapılan bir DNS değişikliği de kendiliğinden
+  yeniden denetlenir. Denetim, Diğer → Sil…'in çalıştırdığı denetimin aynısıdır
+  ve değişikliğin üzerine asla yazmaz; ancak biri bakana kadar aynı fark
+  birkaç dakikada bir bildirilir.
 - CelikPanel dışında yapılan bir DNS değişikliğinin geri tuttuğu bir yeniden
   denetim, yönetim hizmetinin süre kirasını yine aşabilir; o zaman sonucu
   sayılmaz ve bir sonraki yeniden denetim karar verir.
@@ -244,7 +279,11 @@ okuyucular bunları bilinmeyen sayar). Denetim kaydının içeriği değil dosya
 adımları değişti: kaldırma, özel bir ada tek bir yeniden adlandırmadır ve
 Agent, önceki bir sürümün yarım bıraktığını tamamlar ya da geri alır
 (RESILIENCE-CONTRACT, "Branch a133/dnsproof4"). Silme durumu isteğe bağlı
-`follow_up` ve `next_check_at` alanlarını kazanır. Yönetim hizmetinin kara liste
+`follow_up` ve `next_check_at` alanlarını kazanır. Yanıt vermeyen bir yedek,
+bağlantı nasıl koparsa kopsun mevcut `dns_peer_proof_timeout:peer_exchange`
+koduyla kaydedilir (SSH aktarımı artık yanıt yokluğunu kabul edemediği bir
+yanıttan ayırır); `follow_up` yalnız `dns_peer_journal_unresolved` için
+`person` olur (RESILIENCE-CONTRACT, "Branch a133/proofwait"). Yönetim hizmetinin kara liste
 yanıtına geriye uyumlu Outcome, Reason ve Sublists alanları eklendi; eski
 panel Listed alanını okur ve güncel hizmet bunu yalnız belgelenmiş bir
 listeleme için koyar; eski hizmetin yanıtı "denetlenemedi" olarak gösterilir.

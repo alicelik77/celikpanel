@@ -8274,3 +8274,73 @@ until the backup reports ready.
   skips them. Run them in the development guest as root:
   `unshare --mount --propagation private bash -c 'mkdir -p /var/tmp/peer-iso /var/lib/celikpanel-agent-private && chmod 700 /var/tmp/peer-iso && mount --bind /var/tmp/peer-iso /var/lib/celikpanel-agent-private && go test -count=1 -v ./internal/dnspeerjournal ./internal/pdnspeerjournal && CELIKPANEL_TEST_REAL_PEER_JOURNAL=1 go test -count=1 -v ./cmd/agent -run "^Test(LabTorn|IntactEarlier|EveryStateOfAnInterrupted|RepairSurvives|UnprovableJournal|PrepareJournalWorkIgnores|OwnerServerShaped|NativePeerTailConsumedChallengeIsSupersededOnTheRealStore)"'` (from the source root; 58 PASS lines, no SKIP)
   and check that no test of `dns_engine_peer_journal_repair_linux_test.go` reports SKIP.
+
+### Branch a133/proofwait (a backup DNS server that does not answer is always a wait; only an unresolved check record stops the automatic re-checks; no schema change; invariants 3 and 4; P0.4; D-024; D-025; 2026-11-13)
+
+- **Incident.** alpha.133 lab, second idle run (`194a4b4e4`), PowerDNS primary
+  with a BIND backup whose SSH port was blocked: two re-checks of `w9.test`
+  ended `dns_peer_proof_timeout:peer_exchange` (`exchange=10.001s`), the third
+  `dns_peer_inspection_unknown` (`exchange=10s`). The deletion then waited after
+  the backup answered again, until a person pressed More → Delete…; the
+  banner was one jargon row.
+- **Cause.** The exchange step's context and the dialer's own poller deadline
+  are two timers for the same instant: `net` sets the connect's write deadline
+  from `ctx.Deadline()` (`net/fd_unix.go` 78-82 in Go 1.26.5) and returns the
+  poller's timeout while `ctx.Done()` is still open (119-125). The transport
+  then returned `peer_inspection_unavailable`
+  (`internal/dnspeertransport/transport_linux.go` 239-241 at `194a4b4e4`) and
+  `stepWithin` read `ctx.Err()` as nil (`cmd/agent/dns_engine_peer_budget.go`
+  183), so the inspection code was kept; one in nine is which timer the
+  runtime fired first. The Panel's worker logged "next automatic re-check in
+  1m0s" for every code, but `dns_peer_inspection_unknown` was not re-checked
+  (`cmd/panel/dns_peer_pending_guidance.go` 61-77): `recordAttempt` set
+  `Automatic=false` and the scan only read the status every minute. The
+  behaviour matched the code; the log line was wrong. Every deletion waiting
+  with that code, and five others, waited for a press.
+- **Change.** The SSH transport classifies its failures: no answer
+  (`peer_no_answer`: refused, no route, timed out, closed before any host key,
+  the connection lost or the exchange's time out before the command's result)
+  versus an answer it cannot accept (another host key, the enrolled key or
+  the session refused, an oversized answer, a non-zero exit, which keeps its
+  digest-bound reason). A dial failure is "no answer" whatever error value it
+  returns. "No answer" is `dns_peer_proof_timeout:peer_exchange` on the BIND
+  and PowerDNS paths. A step reads whether it ran out of time from its
+  deadline (`dnsPeerStepDeadlineMargin`, 100 ms) as well as from `ctx.Err()`,
+  also in the local recheck; an answer the backup gave keeps its code at the
+  bound. The Panel re-checks every reviewed DNS proof reason except
+  `dns_peer_journal_unresolved` (the rule below) at the same cadence (15 s
+  doubling to 5 min), "stuck" after six in a row with one notification. The
+  worker's and the Agent's lines say whether the next check is automatic.
+  The notification of a deletion opens Domains. The guidance of every reason
+  is in the web guide (D-024; OPERATION-GUIDANCE, same date).
+- **The rule.** Only a reason for which another check provably cannot change
+  the result stops the automatic re-checks: today `dns_peer_journal_unresolved`
+  (the Agent never changes an unprovable record by itself). A reason that can
+  clear by itself or by somebody repairing either server is re-checked; it
+  may become "stuck" (a person should look) but never a state in which
+  nothing checks again. The re-check is the exact recovery a press of More →
+  Delete… runs, under the host mutation lock; it never starts a second
+  deletion. Repeated failures that are not a reviewed pending result still
+  end the automatic attempts (`stopped`, invariant 4).
+- **Recovery.** A deletion already waiting with any re-checked code on an
+  updated Panel is re-checked by the next scan and finishes once the backup
+  answers; nothing to press. No stored format changes: the codes already
+  existed, `follow_up` keeps its four values.
+- **Evidence.** Component and production-path tests in the WSL guest: the
+  real SSH exchange against loopback servers and dialers for every failure
+  shape (refused, the dial timer before the context timer, the context first,
+  no route, a silent port, closed before the host key, lost after the
+  command, another host key, the key refused, the session refused, a non-zero
+  exit); the w9 wave with each shape at and before the bound; the Panel's
+  reconciler through the w9 sequence (no answer, the race's code, no answer,
+  then answered: finished with no press) and through a refusing backup (stuck
+  after six, finished once it stops); the notification's page; the web guard
+  that fails when a code the server can send reaches the screen without all
+  rows; the list in a second tab dropping a deletion finished elsewhere (it
+  fails on the previous code). No native run yet.
+- **Remaining.** Not measured natively; the lab repeats w9. Codes only a fix
+  or an update can change (`dns_peer_proof_internal`) and a hand-made DNS
+  change (`dns_peer_owner_edit_unknown`) are re-checked every 5 minutes, one
+  log line each; the latter's recovery path was not re-audited here beyond
+  being the one a press runs. Deletion reasons outside the DNS proof keep
+  their single text. **No P0 item is closed**; P0.4 stays partial.

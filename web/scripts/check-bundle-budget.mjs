@@ -328,8 +328,8 @@ const screenPartBudgets = {
   deletionGuide: kib(7, 2.5),
   // alpha.133 round 5: the guide's other reasons of the backup DNS server's
   // confirmation, split out of "deletionGuide" by size. A new part, set with
-  // at least 25% headroom from its Turkish file: 7.60 / 1.89 KiB.
-  deletionGuidePeer: kib(9.5, 2.5),
+  // at least 25% headroom from its Turkish file: 7.62 / 1.90 KiB.
+  deletionGuidePeer: kib(10, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

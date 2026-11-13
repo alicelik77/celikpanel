@@ -7495,3 +7495,76 @@ bağlantıyı tutar.
   konuğunda root olarak yukarıdaki İngilizce bölümdeki komutla çalıştırılır;
   `dns_engine_peer_journal_repair_linux_test.go` testlerinden hiçbiri SKIP
   dememelidir.
+
+### Dal a133/proofwait (yanıt vermeyen yedek DNS sunucusu her zaman beklemedir; kendiliğinden yeniden denetimleri yalnız çözülemeyen denetim kaydı durdurur; şema değişikliği yok; ilkeler 3 ve 4; P0.4; D-024; D-025; 2026-11-13)
+
+- **Olay.** alpha.133 lab'ı, ikinci boşta çalışma (`194a4b4e4`), PowerDNS ana
+  sunucu ve SSH bağlantı noktası engellenmiş bir BIND yedek: `w9.test` için iki
+  yeniden denetim `dns_peer_proof_timeout:peer_exchange` (`exchange=10.001s`),
+  üçüncüsü `dns_peer_inspection_unknown` (`exchange=10s`) ile bitti. Yedek
+  yeniden yanıt verdikten sonra da silme, biri Diğer → Sil…'e basana kadar
+  bekledi; kutu tek bir jargon satırıydı.
+- **Neden.** Değişim adımının bağlamı ile bağlayıcının kendi yoklayıcı süresi
+  aynı an için iki zamanlayıcıdır: `net`, bağlantının yazma süresini
+  `ctx.Deadline()`'dan koyar (Go 1.26.5'te `net/fd_unix.go` 78-82) ve
+  `ctx.Done()` henüz açıkken yoklayıcının zaman aşımını döndürür (119-125).
+  Aktarım o zaman `peer_inspection_unavailable` döndürdü (`194a4b4e4`'te
+  `internal/dnspeertransport/transport_linux.go` 239-241) ve `stepWithin`
+  `ctx.Err()`'i boş okudu (`cmd/agent/dns_engine_peer_budget.go` 183); dokuzda
+  bir, çalışma zamanının hangi zamanlayıcıyı önce çalıştırdığıdır. Panelin
+  işçisi her kod için "next automatic re-check in 1m0s" yazdı ama
+  `dns_peer_inspection_unknown` yeniden denetlenmiyordu
+  (`cmd/panel/dns_peer_pending_guidance.go` 61-77): `recordAttempt`
+  `Automatic=false` koydu ve tarama yalnız dakikada bir durumu okudu.
+  Davranış koda uyuyordu; günlük satırı yanlıştı. O kodla ve beş başka kodla
+  bekleyen her silme bir basışı bekledi.
+- **Değişiklik.** SSH aktarımı hatalarını ayırır: yanıt yok (`peer_no_answer`:
+  reddedildi, yol yok, zaman aşımı, sunucu anahtarından önce kapandı, bağlantı
+  koptu ya da komutun sonucundan önce süre doldu) ile kabul edemediği bir yanıt
+  (başka bir sunucu anahtarı, kayıtlı anahtarın ya da oturumun reddi, çok büyük
+  yanıt, sıfırdan farklı çıkış; bu, isteğe bağlı gözden geçirilmiş nedenini
+  korur). Bağlanma hatası hangi hata değeriyle dönerse dönsün "yanıt yok"tur.
+  "Yanıt yok", BIND ve PowerDNS yollarında
+  `dns_peer_proof_timeout:peer_exchange`'dir. Bir adım süresinin dolup
+  dolmadığını `ctx.Err()`'in yanında süre sınırından da okur
+  (`dnsPeerStepDeadlineMargin`, 100 ms; yerel yeniden denetimde de); yedeğin
+  verdiği bir yanıt sınırda da kendi kodunu korur. Panel, gözden geçirilmiş
+  her DNS kanıt nedenini `dns_peer_journal_unresolved` dışında (aşağıdaki
+  kural) aynı aralıkla (15 sn'den 5 dk'ya ikiye katlanarak) yeniden denetler;
+  üst üste altı kezden sonra "takıldı" ve tek bildirim. İşçinin ve Agent'ın
+  satırları sonraki denetimin kendiliğinden olup olmadığını söyler. Bir
+  silmenin bildirimi Alan Adları sayfasını açar. Her nedenin yönlendirmesi web
+  kılavuzundadır (D-024; OPERATION-GUIDANCE, aynı tarih).
+- **Kural.** Kendiliğinden yeniden denetimleri yalnız, başka bir denetimin
+  sonucu kanıtlanabilir biçimde değiştiremeyeceği bir neden durdurur: bugün
+  `dns_peer_journal_unresolved` (Agent kanıtlayamadığı bir kaydı asla kendisi
+  değiştirmez). Kendiliğinden ya da biri iki sunucudan birini onarınca
+  geçebilecek bir neden yeniden denetlenir; "takıldı" (biri bakmalı) olabilir
+  ama hiçbir şeyin yeniden denetlemediği bir duruma asla dönmez. Yeniden
+  denetim, Diğer → Sil…'e basışın çalıştırdığı tam kurtarmadır, sunucu
+  değişiklik kilidi altındadır; asla ikinci bir silme başlatmaz. Gözden
+  geçirilmiş bekleme sonucu olmayan tekrarlanan hatalar kendiliğinden
+  denemeleri yine bitirir (`stopped`, ilke 4).
+- **Kurtarma.** Güncellenmiş bir panelde yeniden denetlenen bir kodla zaten
+  bekleyen silme sonraki taramada yeniden denetlenir ve yedek yanıt verince
+  biter; basılacak bir şey yok. Saklanan biçim değişmez: kodlar zaten vardı,
+  `follow_up` dört değerini korur.
+- **Kanıt.** WSL konuğunda bileşen ve üretim yolu testleri: her hata biçimi için
+  yerel döngü sunucularına ve bağlayıcılara karşı gerçek SSH değişimi
+  (reddedildi, bağlayıcı zamanlayıcısı bağlamınkinden önce, önce bağlam, yol
+  yok, sessiz bağlantı noktası, sunucu anahtarından önce kapandı, komuttan
+  sonra koptu, başka sunucu anahtarı, anahtar reddi, oturum reddi, sıfırdan
+  farklı çıkış); her biçimle sınırda ve sınırdan önce w9 dalgası; panelin
+  uzlaştırıcısı w9 dizisinde (yanıt yok, yarışın kodu, yanıt yok, sonra yanıt:
+  basmadan bitti) ve reddeden bir yedekte (altıdan sonra takıldı, reddetmeyi
+  bırakınca bitti); bildirimin sayfası; sunucunun gönderebildiği bir kod tüm
+  satırları olmadan ekrana ulaşırsa düşen web koruma testi; başka yerde bitirilen
+  silmeyi ikinci sekmedeki listenin düşürmesi (önceki kodda düşer). Henüz
+  gerçek sistemde çalıştırılmadı.
+- **Kalan.** Gerçek sistemde ölçülmedi; lab w9'u yineler. Yalnız bir düzeltme ya
+  da güncellemenin değiştirebileceği kodlar (`dns_peer_proof_internal`) ve elle
+  yapılan DNS değişikliği (`dns_peer_owner_edit_unknown`) 5 dakikada bir, her
+  seferinde bir günlük satırıyla yeniden denetlenir; ikincisinin kurtarma yolu
+  burada, bir basışın çalıştırdığı yol olmanın ötesinde yeniden incelenmedi.
+  DNS kanıtı dışındaki silme nedenleri tek metinlerini korur. **Hiçbir P0 işi
+  kapanmadı**; P0.4 kısmi kalır.
