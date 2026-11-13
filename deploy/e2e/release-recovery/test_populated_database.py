@@ -448,7 +448,7 @@ class PopulatedDatabaseTests(unittest.TestCase):
         with self.assertRaises(p.Refused):
             self.verify(result, 57)
 
-    def test_actual_39_through_77_migrations_add_tables_and_change_no_other_old_row(self):
+    def test_actual_39_through_78_migrations_add_tables_and_change_no_other_old_row(self):
         # alpha.118: 58 application catalog operations, 59 WordPress tools and
         # malware scans, 60 remote backups, 61 service apps; all additive.
         # alpha.119: 62 the first-login tour's state (one table, one trigger),
@@ -470,10 +470,12 @@ class PopulatedDatabaseTests(unittest.TestCase):
         # database_remote_rules, a table of 74; no table added), 76 mailbox
         # recovery (two tables), 77 mail relay and mail server settings (three
         # tables).
-        self.assertEqual(len(self.sql), 77, 'a migration after 77 needs its own pin before a candidate carries it')
+        # alpha.134: 78 which name a domain's mail programs are told (one NOT
+        # NULL DEFAULT 0 column on the old domains; no table added).
+        self.assertEqual(len(self.sql), 78, 'a migration after 78 needs its own pin before a candidate carries it')
         counts = {58: 102, 59: 107, 60: 110, 61: 113, 62: 114, 63: 117, 64: 118, 65: 121,
                   66: 123, 67: 129, 68: 134, 69: 135, 70: 136, 71: 137, 72: 140, 73: 140, 74: 141,
-                  75: 141, 76: 143, 77: 146}
+                  75: 141, 76: 143, 77: 146, 78: 146}
         for version, tables in counts.items():
             with self.subTest(version=version):
                 self.setUp()
@@ -492,9 +494,39 @@ class PopulatedDatabaseTests(unittest.TestCase):
                 if version >= 72:
                     expected_columns['sessions'] = expected_columns.get('sessions', ()) + ('last_seen_at', 'client_ip', 'user_agent')
                 self.assertEqual(p.added_columns(version), expected_columns)
-        for version in (78, '77', True):
+        for version in (79, '78', True):
             with self.subTest(version=version), self.assertRaises(p.Refused):
                 self.verify(result, version)
+
+    def test_migration78_tells_the_own_mail_name_only_where_the_certificate_secured_mail(self):
+        # alpha.134: 78 sets domains.mail_clients_use_own_name to 1 exactly for
+        # a domain whose active certificate secured mail before; every other
+        # old domain keeps the default 0, and nothing else in the row changes.
+        self.assertEqual(p.added_default_columns(77).get('domains'), None)
+        self.assertEqual(p.added_default_columns(78)['domains'], (('mail_clients_use_own_name', 0),))
+        self.change_source("INSERT INTO ssl_certificates(id,domain_id,type,cert_path,key_path,expires_at,status,secure_mail) "
+                           "VALUES(89,85,'letsencrypt','/fixture/cert.pem','/fixture/key.pem','2030-01-01','active',1)")
+        result = self.migrated_to(78)
+        connection = sqlite3.connect(result['database'])
+        self.assertEqual(connection.execute('SELECT mail_clients_use_own_name FROM domains WHERE id=85').fetchone(), (1,))
+        connection.close()
+        proof = self.verify(result, 78)
+        self.assertEqual(proof['old_rows_missing_or_changed'], 0)
+        connection = sqlite3.connect(result['database'])
+        connection.execute('UPDATE domains SET mail_clients_use_own_name=0 WHERE id=85')
+        connection.commit()
+        connection.close()
+        with self.assertRaises(p.Refused):
+            self.verify(result, 78)
+        # Without a certificate that secured mail, 1 is not what 78 wrote.
+        self.setUp()
+        result = self.migrated_to(78)
+        connection = sqlite3.connect(result['database'])
+        connection.execute('UPDATE domains SET mail_clients_use_own_name=1 WHERE id=85')
+        connection.commit()
+        connection.close()
+        with self.assertRaises(p.Refused):
+            self.verify(result, 78)
 
     def test_migration66_defaults_must_hold_in_every_old_row(self):
         # alpha.128: 66 adds NOT NULL columns with a fixed default to the old
