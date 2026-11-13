@@ -252,10 +252,23 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 		return
 	}
+	ids := make([]int, 0, len(databases))
+	for _, db := range databases {
+		ids = append(ids, db.ID)
+	}
+	// alpha.133 round 5: what deleting each database leaves of its users.
+	fates, err := p.databaseUserFates(ctx, ids)
+	if err != nil {
+		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
+		return
+	}
 	for i := range databases {
 		databases[i].Users = users[databases[i].ID]
 		if databases[i].Users == nil {
 			databases[i].Users = []domainDatabaseUser{}
+		}
+		for j := range databases[i].Users {
+			databases[i].Users[j].Stays = fates[databases[i].ID][databases[i].Users[j].ID]
 		}
 	}
 
@@ -355,6 +368,14 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 	if err != nil {
 		writeServerError(w, err)
 		return
+	}
+
+	// alpha.133 round 5: this subscription's own user of that name may be
+	// given to the new database below; that waits for a deletion of the same
+	// engine (database_delete.go).
+	if engineServer, err := repositories.NewPostgresDatabaseServerRepository(pool).GetByID(ctx, serverID); err == nil {
+		unlockEngine := lockDatabaseEngineUsers(engineServer)
+		defer unlockEngine()
 	}
 
 	// alpha.129: the database's and its user's names must be free on this
@@ -540,11 +561,12 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	// kalır, yalnız bu veritabanının kullanıcıları gider.
 	deleted, err := p.deleteDatabaseRecord(ctx, dbID)
 	if err != nil {
-		writeDatabaseDeleteError(w, r, dbName, err)
+		p.writeDatabaseDeleteError(w, r, dbName, err)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]any{"status": "success",
-		"users_removed": nonNilStrings(deleted.UsersRemoved), "users_kept": nonNilStrings(deleted.UsersKept)})
+	// alpha.133 round 5: recorded like the Databases page's delete.
+	p.auditDatabaseDeletion(r, deleted, "deleted")
+	json.NewEncoder(w).Encode(databaseDeletionAnswer("success", deleted))
 }
 
 // sanitizeName turns a domain into the leading fragment of a generated

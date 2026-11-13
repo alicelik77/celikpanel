@@ -251,7 +251,9 @@ func TestVisibleDatabasesCarryNoSecret(t *testing.T) {
 			}
 		}
 		for _, user := range db["users"].([]any) {
-			if got := keys(user); got != "id,username" {
+			// alpha.133 round 5: "stays" (what deleting the database leaves
+			// of the user) when the user is not removed with it.
+			if got := keys(user); got != "id,username" && got != "id,stays,username" {
 				t.Fatalf("user keys %s", got)
 			}
 		}

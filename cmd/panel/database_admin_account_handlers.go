@@ -102,6 +102,37 @@ func databaseEngineIsOnThisMachine(host string) bool {
 	}
 }
 
+// databaseRecordIsOurLocalEngine: a server record CelikPanel may reach through
+// the Agent's own door on this machine (alpha.133 round 5). The door reaches
+// the machine's own engine only - MariaDB over its socket whatever the record
+// says, PostgreSQL the cluster on the record's port - so a record qualifies
+// only when it is on this machine, is CelikPanel's own (its account is
+// CelikPanel's, or it holds no credential at all: a record an administrator
+// registered with a credential of their own is theirs), and, for MariaDB,
+// names the socket engine's port (none, or the port autodiscovery records).
+// Every other record is reached with its own credential.
+//
+// Agent'ın kapısından yalnız bu makinedeki, CelikPanel'in kendi kaydı olan ve
+// MariaDB için soketteki motorun portunu gösteren kayıt geçer.
+func databaseRecordIsOurLocalEngine(server *core.DatabaseServer) bool {
+	if server == nil || !databaseEngineIsOnThisMachine(server.Host) {
+		return false
+	}
+	name := strings.TrimSpace(server.AdminUsername)
+	ours := name == transport.DatabaseAdminAccountName || (name == "" && strings.TrimSpace(server.AdminPasswordEncrypted) == "")
+	if !ours {
+		return false
+	}
+	if dbDriverTypeFor(server) == "mariadb" {
+		return server.Port == 0 || server.Port == mariaDBSocketEnginePort
+	}
+	return true
+}
+
+// mariaDBSocketEnginePort is the port autodiscovery records for the
+// machine's own MariaDB (database_server_types.default_port).
+const mariaDBSocketEnginePort = 3306
+
 // loadDatabaseServerForAdminAccount does the checks every one of these
 // handlers needs, in the order that makes a refusal say the right thing.
 // loadDatabaseServerForAdminAccount, bu isleyicilerin her birinin ihtiyac

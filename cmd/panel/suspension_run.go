@@ -179,12 +179,10 @@ type suspensionPreview struct {
 	Notes         []string `json:"notes"`
 }
 
+// localDatabaseHost: one answer for "this address is this machine" (alpha.133
+// round 5: it lacked "[::1]", which databaseEngineIsOnThisMachine had).
 func localDatabaseHost(host string) bool {
-	switch strings.ToLower(strings.TrimSpace(host)) {
-	case "", "localhost", "127.0.0.1", "::1":
-		return true
-	}
-	return false
+	return databaseEngineIsOnThisMachine(host)
 }
 
 // planSuspension reads the subscription's resources: the affected-resource

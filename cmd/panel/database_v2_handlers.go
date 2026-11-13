@@ -139,26 +139,11 @@ func writeDatabaseEngineError(
 	server *core.DatabaseServer,
 	err error,
 ) {
-	refusal := services.ClassifyDatabaseEngineRefusal(err)
-	if refusal == services.DatabaseEngineRefusalNone {
-		writeServerError(w, err)
-		return
-	}
-	driverType := ""
-	if server != nil {
-		driverType = dbDriverTypeFor(server)
-	}
-	message := services.DatabaseEngineRefusalMessage(driverType, refusal)
-	if message == "" {
-		writeServerError(w, err)
-		return
-	}
-	code := errCodeDatabaseEngineUnreachable
-	if refusal == services.DatabaseEngineRefusalCredential {
-		code = errCodeDatabaseEngineCredentialRefused
-	}
-	log.Printf("[409][database] %s: %v", code, err)
-	writeCodedError(w, http.StatusConflict, code, message, "")
+	// alpha.133 round 5: one writer, so every answer with these codes carries
+	// the engine's name its sentence needs ({engine}); without a request the
+	// reader is not known to be an administrator, so the general sentence.
+	// Tek yazıcı: bu kodlu her yanıt {engine} değerini taşır.
+	writeDatabaseEngineErrorFor(w, nil, server, err)
 }
 
 // databaseServerTypeName resolves the engine identifier the drivers switch on
@@ -590,6 +575,10 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	if !p.requireDatabaseServerRights(w, r, subscriptionID, server.TypeID) {
 		return
 	}
+	// alpha.133 round 5: an existing account given to this database waits
+	// for a deletion of the same engine (database_delete.go).
+	unlockEngine := lockDatabaseEngineUsers(server)
+	defer unlockEngine()
 
 	// Resolve every caller-supplied reference before constructing a driver or
 	// mutating the physical engine/repository.
@@ -864,7 +853,7 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusNotFound, "invalid request")
 		return
 	}
-	owner, err := p.visibleDatabaseRecordOwner(ctx, currentCaller(r), database.SubscriptionID, database.ServerID)
+	_, err = p.visibleDatabaseRecordOwner(ctx, currentCaller(r), database.SubscriptionID, database.ServerID)
 	if errors.Is(err, errNotFound) {
 		writeClientError(w, http.StatusNotFound, "invalid request")
 		return
@@ -875,22 +864,19 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// alpha.133 round 5: the database, its own users and its records, the
-	// same way as the domain's Databases section (database_delete.go).
+	// same way as the domain's Databases section (database_delete.go). The
+	// audit row names who acted (the session's person, and the account acted
+	// as during "Log in as"), whose database it was and its users.
 	deleted, err := p.deleteDatabaseRecord(ctx, databaseID)
 	if err != nil {
-		writeDatabaseDeleteError(w, r, database.Name, err)
+		p.writeDatabaseDeleteError(w, r, database.Name, err)
 		return
 	}
-	// The row names who acted (the session's person, and the account acted
-	// as during "Log in as") and whose database it was.
-	p.auditDetailed(r, "database.delete:"+database.Name, "database", databaseID,
-		map[string]any{"owner": owner.Username, "owner_id": owner.ID,
-			"users_removed": deleted.UsersRemoved, "users_kept": deleted.UsersKept})
+	p.auditDatabaseDeletion(r, deleted, "deleted")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]any{"status": "deleted",
-		"users_removed": nonNilStrings(deleted.UsersRemoved), "users_kept": nonNilStrings(deleted.UsersKept)})
+	json.NewEncoder(w).Encode(databaseDeletionAnswer("deleted", deleted))
 }
 
 // User Management Endpoints (per server)
@@ -1330,6 +1316,10 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 	if !p.requireDatabaseServerRights(w, r, server.SubscriptionID, server.TypeID) {
 		return
 	}
+	// alpha.133 round 5: never between a deletion's choice of users and
+	// their removal on the same engine (database_delete.go).
+	unlockEngine := lockDatabaseEngineUsers(server)
+	defer unlockEngine()
 
 	// A server match alone is not tenant isolation: legacy/corrupt metadata can
 	// contain a user from another subscription on the same logical server.

@@ -307,9 +307,12 @@ func (p *Panel) handleRemoveDatabaseAccessUser(w http.ResponseWriter, r *http.Re
 	// alpha.129: its remote access rules went with the user's row; the next
 	// apply closes their addresses (the Agent already dropped the copies).
 	kickDatabaseRemoteSync()
+	// alpha.133 round 5: an account with rights its owner gave by hand stays
+	// on the engine without CelikPanel's grant (resp.Kept); it is no longer
+	// CelikPanel's, so its record goes either way, and the answer says so.
 	p.auditDetailed(r, "database.user.remove:"+user.Username, "database_user", user.ID,
-		map[string]any{"database": target.identity.Name, "was_absent": resp.Absent})
-	_ = json.NewEncoder(w).Encode(map[string]any{"status": "removed"})
+		map[string]any{"database": target.identity.Name, "was_absent": resp.Absent, "kept_on_engine": resp.Kept})
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "removed", "kept_on_engine": resp.Kept})
 }
 
 // databaseAccessNative is the Agent's side, replaceable in tests.

@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -267,5 +270,105 @@ func TestDatabaseDeleteOnAnotherMachineUsesTheRecordAndSaysARefusalPlainly(t *te
 	}
 	if strings.Join(driver.dropped, ",") != "customer_matrix_test_shop" || strings.Join(driver.usersDropped, ",") != "cust_user" {
 		t.Fatalf("remote drops %v users %v", driver.dropped, driver.usersDropped)
+	}
+}
+
+// S1 (review of round 5): the Agent's door reaches the machine's own engine
+// only. A record an administrator registered on this machine with their own
+// account and another port (a container, a tunnel) is reached with that
+// account; nothing goes to the Agent.
+func TestDatabaseDeleteOfAnAdministratorsOwnLocalRecordNeverUsesTheAgent(t *testing.T) {
+	f := newVisibleDatabasesFixture(t)
+	drops := recordDatabaseDrops(t)
+	native := &fakeDatabaseAccessNative{}
+	f.panel.databaseAccessNative = native
+	sealed, err := f.box.Encrypt("the-administrators-own-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.exec(t, `UPDATE database_servers SET host = '127.0.0.1', port = 3307, admin_username = 'dbadmin', root_password_encrypted = ? WHERE id = 9921`, sealed)
+	driver := &remoteDeleteDriver{}
+	var configs []services.DriverConfig
+	saved := newDatabaseDriver
+	newDatabaseDriver = func(config services.DriverConfig) (services.DatabaseDriver, error) {
+		configs = append(configs, config)
+		return driver, nil
+	}
+	t.Cleanup(func() { newDatabaseDriver = saved })
+	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	if len(drops.requests) != 0 || len(native.removed) != 0 {
+		t.Fatalf("the Agent was asked: drops %+v users %+v", drops.requests, native.removed)
+	}
+	if len(configs) == 0 || configs[0].Port != 3307 || configs[0].Username != "dbadmin" || configs[0].Password != "the-administrators-own-password" {
+		t.Fatalf("driver configs %+v", configs)
+	}
+	if strings.Join(driver.dropped, ",") != "customer_matrix_test_shop" || strings.Join(driver.usersDropped, ",") != "cust_user" {
+		t.Fatalf("dropped %v users %v", driver.dropped, driver.usersDropped)
+	}
+}
+
+func TestDatabaseRecordIsOurLocalEngine(t *testing.T) {
+	for _, c := range []struct {
+		host, engine, admin, sealed string
+		port                        int
+		want                        bool
+	}{
+		{"localhost", "mariadb", "", "", 3306, true},
+		{"[::1]", "mariadb", "", "", 3306, true},
+		{"::1", "mariadb", transport.DatabaseAdminAccountName, "x", 0, true},
+		{"127.0.0.1", "mariadb", "dbadmin", "x", 3307, false},
+		{"127.0.0.1", "mariadb", transport.DatabaseAdminAccountName, "x", 3307, false},
+		{"localhost", "mariadb", "", "x", 3306, false}, // a password without an account: before R-057, the administrator's
+		{"db.example.net", "mariadb", "", "", 3306, false},
+		{"localhost", "postgresql", transport.DatabaseAdminAccountName, "x", 5433, true},
+		{"localhost", "postgresql", "postgres", "x", 5432, false},
+	} {
+		server := &core.DatabaseServer{Host: c.host, TypeName: c.engine, AdminUsername: c.admin, AdminPasswordEncrypted: c.sealed, Port: c.port}
+		if got := databaseRecordIsOurLocalEngine(server); got != c.want {
+			t.Errorf("%+v: %v, want %v", c, got, c.want)
+		}
+	}
+	if !localDatabaseHost("[::1]") {
+		t.Error("localDatabaseHost does not know [::1]")
+	}
+}
+
+// S2 (review of round 5): the sentences of these two codes name the engine
+// ({engine}); every answer with them carries it, from either writer, and
+// nothing else writes them.
+func TestDatabaseEngineRefusalsAlwaysNameTheEngine(t *testing.T) {
+	refused := services.WrapDatabaseEngineFailure(errors.New("exit status 1"), []byte("ERROR 1045 (28000): Access denied for user 'x'@'localhost' (using password: YES)"))
+	down := services.WrapDatabaseEngineFailure(errors.New("exit status 1"), []byte("ERROR 2002 (HY000): Can't connect to local server through socket"))
+	for _, c := range []struct {
+		engine, want string
+		err          error
+	}{{"mariadb", "MariaDB", refused}, {"postgresql", "PostgreSQL", down}} {
+		rec := httptest.NewRecorder()
+		writeDatabaseEngineError(rec, &core.DatabaseServer{TypeName: c.engine}, c.err)
+		var body map[string]any
+		_ = json.Unmarshal(rec.Body.Bytes(), &body)
+		vars, _ := body["vars"].(map[string]any)
+		if rec.Code != http.StatusConflict || vars["engine"] != c.want || body["reason"] != nil || body["action"] != nil {
+			t.Fatalf("%s: %d %s", c.engine, rec.Code, rec.Body.String())
+		}
+	}
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == "httperr.go" || name == "database_delete.go" {
+			continue
+		}
+		source, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(source), "errCodeDatabaseEngineCredentialRefused") || strings.Contains(string(source), "errCodeDatabaseEngineUnreachable") {
+			t.Errorf("%s writes a database engine refusal itself; use writeDatabaseEngineError(For)", name)
+		}
 	}
 }

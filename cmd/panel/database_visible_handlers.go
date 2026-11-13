@@ -56,6 +56,10 @@ type visibleDatabaseDomain struct {
 type visibleDatabaseUser struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
+	// Stays (alpha.133 round 5): what deleting the database leaves of the
+	// user: "" (removed with it), "shared" (another database uses the same
+	// account) or "account" (an engine's or CelikPanel's own account).
+	Stays string `json:"stays,omitempty"`
 }
 
 type visibleDatabase struct {
@@ -271,7 +275,25 @@ func (p *Panel) visibleDatabaseRows(ctx context.Context, caller *Caller, ids map
 			out[i].Users = append(out[i].Users, user)
 		}
 	}
-	return out, users.Err()
+	if err := users.Err(); err != nil {
+		return nil, err
+	}
+	// The delete question says which users go and which stay, decided as the
+	// deletion decides it (database_delete.go).
+	listed := make([]int, 0, len(out))
+	for _, db := range out {
+		listed = append(listed, db.ID)
+	}
+	fates, err := p.databaseUserFates(ctx, listed)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		for j := range out[i].Users {
+			out[i].Users[j].Stays = fates[out[i].ID][out[i].Users[j].ID]
+		}
+	}
+	return out, nil
 }
 
 // callerMayCreateDatabase: true when one of the caller's visible domains
