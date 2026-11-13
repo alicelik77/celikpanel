@@ -44,9 +44,17 @@ test('proof timeout and challenge texts no longer say nothing retries by itself'
     assert.match(en[key], /re-checks this same publication by itself/);
     assert.match(tr[key], /aynı yayını kendiliğinden yeniden denetler/);
   }
-  // Causes that need a person still say so.
-  assert.match(en['err.DNS_PUBLICATION_FAILED.dns_peer_enrollment_required'], /Nothing retries by itself/);
-  assert.match(en['err.DNS_PUBLICATION_FAILED.dns_peer_proof_internal'], /Nothing retries by itself/);
+  // alpha.133 round 5: every DNS proof reason but the unresolved check
+  // record is re-checked by itself, so none says that nothing retries or
+  // names a retry button the page no longer has.
+  for (const reason of ['dns_peer_enrollment_required', 'dns_peer_enrollment_changed', 'dns_peer_inspection_unknown',
+    'dns_peer_native_unknown', 'dns_peer_owner_edit_unknown', 'dns_peer_catalog_transfer_refused', 'dns_peer_proof_internal']) {
+    const key = `err.DNS_PUBLICATION_FAILED.${reason}`;
+    assert.doesNotMatch(en[key], /Nothing retries by itself|Retry this deletion|then retry/, reason);
+    assert.doesNotMatch(tr[key], /Kendiliğinden yeniden denenmez|tekrar dene|yeniden denemeli/, reason);
+    assert.match(en[key], /by itself every few minutes/, reason);
+    assert.match(tr[key], /birkaç dakikada bir/, reason);
+  }
 });
 
 test('a held change names its cause and says it is published by itself afterwards', () => {

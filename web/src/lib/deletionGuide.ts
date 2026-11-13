@@ -1,6 +1,6 @@
 import type { TranslationKey } from '../i18n/en';
 import { formatTime } from './dateFormat';
-import { domainDeletionBlocksRetry, domainDeletionGuideReason, type DomainDeletionFollowUp } from './domainDeletionPending';
+import { domainDeletionBlocksRetry, domainDeletionGuideNeedsPerson, domainDeletionGuideReason, type DomainDeletionFollowUp } from './domainDeletionPending';
 
 // The words of a domain deletion waiting for its DNS step (alpha.133, D-024):
 // why in one sentence, who acts, the next step only when someone has one,
@@ -22,8 +22,10 @@ export const DELETION_RECORD_LIST_COMMAND = 'sudo ls -la /var/lib/celikpanel-age
 
 /** What happens next when the server did not say: a reason that needs a person, or CelikPanel's own re-check. */
 export function deletionGuideFollowUp(reason: string, followUp?: DomainDeletionFollowUp): DomainDeletionFollowUp {
-    if (followUp) return followUp;
-    return reason === 'dns_peer_journal_unresolved' ? 'person' : 'automatic';
+    // The one reason CelikPanel never re-checks by itself: a person acts,
+    // whatever else an answer might say.
+    if (reason === 'dns_peer_journal_unresolved') return followUp === 'stopped' ? 'stopped' : 'person';
+    return followUp ?? 'automatic';
 }
 
 export interface DeletionGuideInput {
@@ -56,10 +58,10 @@ export function deletionGuideWords(
     place: DeletionGuidePlace = 'banner',
     now: number = Date.now(),
 ): DeletionGuideWords | null {
-    const guide = domainDeletionGuideReason(input.reason);
+    const guide = domainDeletionGuideReason(input.reason, input.detail);
     if (!guide) return null;
     const k = (suffix: string, vars?: Record<string, string | number>) => t(`domains.deletionGuide.${suffix}` as TranslationKey, vars);
-    const side = input.reason === 'dns_peer_proof_timeout' && input.detail
+    const side = guide === 'proofTimeout' && input.detail
         ? t(`err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout.${input.detail}` as TranslationKey)
         : '';
     const why = side && !side.startsWith('err.') ? `${k(`${guide}.why`)} ${side}` : k(`${guide}.why`);
@@ -67,6 +69,19 @@ export function deletionGuideWords(
     // The row offers no Delete while the list carries this reason on by
     // itself (domainDeletionBlocksRetry): its texts never send anyone there.
     const noRetry = domainDeletionBlocksRetry(input.reason);
+    // A cause somebody must fix on one of the two servers (alpha.133 round
+    // 5): CelikPanel still checks again by itself and finishes the deletion
+    // once it is fixed, so who acts and the one next step are the reason's own.
+    const person = domainDeletionGuideNeedsPerson(guide);
+    const at = input.nextCheckAt ? Date.parse(input.nextCheckAt) : Number.NaN;
+    // When the next check runs: then.{at,now,soon}, or a family's own
+    // (then.fix.*: once the cause is fixed; then.answer.*: once the backup
+    // answers).
+    const when = (family: '' | 'fix.' | 'answer.') => Number.isNaN(at)
+        ? k(`then.${family}soon`)
+        : at <= now
+            ? k(`then.${family}now`)
+            : k(`then.${family}at`, { time: formatTime(new Date(at), locale) });
     switch (deletionGuideFollowUp(input.reason, input.followUp)) {
         case 'person':
             return admin
@@ -83,17 +98,17 @@ export function deletionGuideWords(
         case 'stuck':
             return {
                 tone: 'blocked', automatic: false, why,
-                who: admin ? k('who.youAdministrator') : k('who.administrator'),
-                next: admin ? k('stuck.next') : k('stuck.nextOther'),
+                who: admin ? k(person ? `${guide}.who` : 'who.youAdministrator') : k('who.administrator'),
+                next: admin ? k(person ? `${guide}.next` : 'stuck.next') : k('stuck.nextOther'),
                 then: k('then.stuck'),
             };
         default: {
-            const at = input.nextCheckAt ? Date.parse(input.nextCheckAt) : Number.NaN;
-            const then = Number.isNaN(at)
-                ? k('then.soon')
-                : at <= now
-                    ? k('then.now')
-                    : k('then.at', { time: formatTime(new Date(at), locale) });
+            if (person) {
+                return admin
+                    ? { tone: 'blocked', automatic: false, why, who: k(`${guide}.who`), next: k(`${guide}.next`), then: when('fix.') }
+                    : { tone: 'blocked', automatic: false, why, who: k('who.administrator'), next: k('journalUnresolved.nextOther'), then: when('fix.') };
+            }
+            const then = when(guide === 'peerNoAnswer' ? 'answer.' : '');
             return { tone: 'waiting', automatic: true, why, who: k('who.nobody'), then };
         }
     }

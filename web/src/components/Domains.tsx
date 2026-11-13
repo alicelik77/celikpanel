@@ -311,12 +311,18 @@ export function Domains() {
     // that shows domains reads again after 15 s, so a finished deletion leaves
     // the list without a refresh (owner rule 2026-10-31). It only reads.
     // Kendiliğinden süren bir silme varken alan adları 15 sn sonra yeniden okunur.
+    // Any other waiting deletion is read again every minute (alpha.133 round
+    // 5, lab w9: a second open tab kept a deletion that waited for a person
+    // after it was finished from another tab, because only "automatic" ones
+    // were read again). These are the same reads; they start nothing.
+    // Bekleyen her silme dakikada bir yeniden okunur; yalnız okumadır.
     const autoRecheck = pendingDeletions.some((item) => item.automatic);
+    const watchPending = pendingDeletions.length > 0;
     useEffect(() => {
-        if (!autoRecheck) return;
-        const timer = window.setTimeout(() => invalidate('domains', 'dns'), 15000);
+        if (!watchPending) return;
+        const timer = window.setTimeout(() => invalidate('domains', 'dns'), autoRecheck ? 15000 : 60000);
         return () => window.clearTimeout(timer);
-    }, [autoRecheck, listedAt]);
+    }, [watchPending, autoRecheck, listedAt]);
 
     // A domain is "being deleted" while its delete request is on its way, and
     // while the server says CelikPanel carries the deletion on by itself. Its
