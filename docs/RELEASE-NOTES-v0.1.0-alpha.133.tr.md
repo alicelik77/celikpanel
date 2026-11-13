@@ -12,6 +12,27 @@ uyarısı giderildi.
 **Kurulu panelleri yalnız sahibi, panelin kendi güncelleme ekranından
 günceller.**
 
+## alpha.132'den güncellerken
+
+1. Bu güncelleme sırasında tarayıcı hâlâ alpha.132'nin kendi sayfasını
+   çalıştırır; bu yüzden sunucu bitirdiği hâlde güncelleme penceresi ikinci
+   adımında kalabilir. Sonucu görmek için sayfayı yenileyin. alpha.133'ten
+   itibaren pencere kendiliğinden devam eder.
+2. **Güncellemeden sonra CelikPanel'in veritabanı hesabına her veritabanı
+   sunucusunda bir kez yeni parola verin:** **Bileşenler → MariaDB**
+   sayfasını açın ve "CelikPanel'in bu hizmete bağlandığı hesap" bölümünde
+   bir kez **Diğer → Yeni parola ver…** seçin; PostgreSQL kuruluysa aynısını
+   **Bileşenler → PostgreSQL** sayfasında yapın. Bunu yapana dek, bu
+   sürümden önce kurulmuş bir sunucuda var olan bir veritabanı kullanıcısını
+   başka bir veritabanına eklemek reddedilir ve veritabanı kullanıcılarının
+   bağlantı sınırları (planın "veritabanı kullanıcısı başına bağlantı"
+   sınırı) uygulanmayabilir. Nedeni: CelikPanel kendi veritabanı hesabının
+   parolasının bir kopyasını her müşteri için ayrı tutuyordu; parola değişince
+   eski kopyalar çalışmaz oldu. Bu sürüm bundan sonra bütün kopyaları birlikte
+   günceller, ama zaten geride kalmış kopyaları onarmaz; kendiliğinden onarım
+   sonraki sürümde gelir. Bu arada veritabanları, siteler ve kullanıcıları
+   çalışmayı sürdürür, veritabanı silmek de bu kopyalara bağlı değildir.
+
 ## Sizin için ne değişiyor
 
 ### Veritabanları: kim neyi görebiliyorsa tek liste
@@ -214,64 +235,52 @@ Bir test bunu istisnasız korur.
   "yapılandırma dosyası yok" rozeti çıkmaz, disk kullanımı ölçülmez ve ana
   sayfanın sertifika listesinde yer almaz.
 
-### alpha.132'den güncellerken
-
-Bu güncelleme sırasında tarayıcı hâlâ alpha.132'nin kendi sayfasını
-çalıştırır; bu yüzden sunucu bitirdiği hâlde güncelleme penceresi ikinci
-adımında kalabilir. Sonucu görmek için sayfayı yenileyin. alpha.133'ten
-itibaren pencere kendiliğinden devam eder.
-
 ## Bilinen sınırlar
 
-- **Site yedekleri bir programın dosyalarını ve verisini içermez.** Bir
-  sitenin yedeği web klasörünü (tam yedekte veritabanlarını da) tutar;
-  yüklenen bir programın ya da Python uygulamasının çalıştığı klasörü ve
-  orada tuttuğu veriyi tutmaz. Bu, sonraki sürümde düzeltilecek. O zamana
-  dek: alan adının zamanlanmış **tam** yedeği veritabanlarını kapsar;
-  programın klasörünün kendi kopyanızı saklayın.
-- **Alan adını silmek, panelin o alan adının veritabanlarına ait kayıtlarını
-  kaldırır ama veritabanlarının kendisini sunucuda bırakır.** Silme sorusu
-  bunu söyler; onların da gitmesini istiyorsanız önce veritabanlarını silin.
-  Bu soruda bir seçim sonraki sürümde gelecek.
-- **Bu sürümden önce kurulmuş bir sunucuda veritabanı kullanıcılarının
-  bağlantı sınırları uygulanmıyor olabilir** (planın "veritabanı kullanıcısı
-  başına bağlantı" sınırı). CelikPanel kendi veritabanı hesabının parolasının
-  bir kopyasını her müşteri için ayrı tutuyordu; parola değişince eski
-  kopyalar çalışmaz oldu. Bu sürüm bundan sonra bütün kopyaları birlikte
-  günceller, ama zaten geride kalmış kopyaları onarmaz. Düzeltmek için bir
-  yönetici **Bileşenler → MariaDB** sayfasını açar ve "CelikPanel'in bu
-  hizmete bağlandığı hesap" bölümünde bir kez **Diğer → Yeni parola ver…**
-  seçer; PostgreSQL kuruluysa aynısını **Bileşenler → PostgreSQL**
-  sayfasında yapar. Başka hiçbir şey etkilenmez: veritabanları, siteler ve
-  kullanıcıları çalışmayı sürdürür, veritabanı silmek de artık bu kopyalara
-  bağlı değildir. Kendiliğinden onarım sonraki sürümde gelir.
-- CelikPanel'in kendi veritabanı hesabı MariaDB ya da PostgreSQL sayfasından
-  kaldırılırsa, sonraki yeni müşteri onu yeniden açar. Düzeltmesi sonraki
-  sürümde gelir.
-- **CelikPanel'in tanımadığı bir MariaDB hesabı, silinen veritabanı
-  üzerindeki haklarını korur.** MariaDB bu hakları veritabanı gittikten sonra
-  da saklar; aynı adla sonradan açılan bir veritabanı onları devralır.
-  CelikPanel bunları veritabanının kendi kullanıcılarından kaldırır: silinen,
-  başka bir veritabanı da kullandığı için kalan ve kendi hakları için
-  tutulan kullanıcılardan; bu adlardaki bütün hesaplardan, elle açılanlardan
-  da. CelikPanel dışında açılmış başka adlı bir hesaptan kaldırmaz. Böyle bir hesaba bir veritabanında hak
+### Veritabanları
+
+- **Veritabanı silmenin ele almadığı bir MariaDB hesabı, silinen veritabanı
+  üzerindeki haklarını korur.** Bu, CelikPanel dışında açılmış başka
+  kullanıcı adlı bir hesaptır; daha önce veritabanından kaldırılmış bir
+  kullanıcının adıyla elle açılmış bir hesap da öyledir. MariaDB bu hakları
+  veritabanı gittikten sonra da saklar; aynı adla sonradan açılan bir
+  veritabanı onları devralır. Böyle bir hesaba bir veritabanında hak
   verdiyseniz, veritabanını silerken o hakları sunucuda kaldırın (`REVOKE ALL
-  PRIVILEGES ON ad.* FROM hesap`). Bu sonraki sürümde gelir.
+  PRIVILEGES ON ad.* FROM hesap`). alpha.134, silinen bir veritabanını anan
+  her hakkı her hesaptan kaldırır.
 - **Tam olarak tek bir veritabanı adı için verilen haklar alpha.134'te
   gelene kadar, bir veritabanı kullanıcısının hakları aynı sunucudaki başka
   bir veritabanını da kapsayabilir:** adı, kendi adından yalnız kendi adında
   `_` olan yerlerde ayrılan bir veritabanını. MariaDB hakları hâlâ ad
   kalıbıyla verilir; bu kalıpta `_` herhangi bir tek karakter yerine geçer.
   alpha.134 var olanları da dönüştürür.
+- **Bir kullanıcının hesaplarını bırakan bir silmeden sonra** (CelikPanel
+  dışında verilmiş hakları olduğu için) **aynı adla bir veritabanı yeniden
+  açılamaz;** önce bu hesaplar veritabanı sunucusunda kaldırılmalıdır. Ret,
+  kullanıcı adının alınmış olduğunu söyler ama neyin onu boşa çıkaracağını
+  henüz söylemez; Türkçe ekranda ayrıntısı İngilizcedir.
 - **Yarım kalan bir silmeden sonra Sil'e yeniden basmak, arada sunucuda aynı
   adla açılmış bir veritabanını siler** (elle, bir geri yüklemeyle ya da bir
   kurulumla açılmış olabilir). Ekran böyle bir veritabanı bulduğunda bunu
   söyler. Veritabanının zaten silinmiş olduğunun hatırlanması alpha.134'te
   gelir.
+- **PostgreSQL: başka bir veritabanına eklenen kullanıcı, yalnız orada
+  CelikPanel'in kendi hesabının sonradan açtığı tablolarda hak alır;**
+  veritabanının kendi kullanıcısına ait tablolarda almaz. Bu, laboratuvarda
+  bulundu.
+- **Eklenmiş bir kullanıcıyı bir veritabanından kaldırmak, kullanıcının
+  kaldırıldığını söyler;** başka bir şey onu hâlâ kullandığı için hesabı
+  veritabanı sunucusunda haksız olarak kalsa bile. O adla elle açılmış bir
+  hesap veritabanı üzerindeki haklarını korur (bilerek böyle) ve sonuç bunu
+  anmaz.
 - **Kendi hesabıyla bağlanılan bir veritabanı sunucusunda kullanıcı
   kaldırmak** (başka bir makine ya da bir yöneticinin kaydettiği sunucu) bu
   sürümde yapılmaz: sahibinin orada verdiği hakların denetlenmesi gerekir ve
   o hesap bunları okuyamayabilir. Kullanıcılar kalır, ekranlar bunu söyler.
+- Panel ile Agent'ı farklı sürümdeyken (güncelleme sırasında) veritabanı
+  silmek veritabanını kaldırır ama kullanıcılarını henüz kaldırmaz:
+  veritabanı bir notla listede durur, güncellemeden sonra **Sil**'e yeniden
+  basmak işi bitirir.
 - Bazı başka veritabanı adımları (aboneliği askıya alma, veritabanı
   boyutları, dışarıdan bağlantılar, devirden sonraki parola değişikliği) bir
   veritabanı sunucusunun bu makinede olup olmadığına hâlâ yalnız adresine
@@ -279,14 +288,20 @@ itibaren pencere kendiliğinden devam eder.
   sunucu iki ayrı sunucu sayılır. Uygulama kurmak, veritabanı kopyalamak ve
   bir veritabanını PostgreSQL sürümleri arasında taşımak henüz aynı
   sunucudaki bir silmeyi beklemez. Bunlar sonraki bir sürümde gelir.
-- Panel ile Agent'ı farklı sürümdeyken (güncelleme sırasında) veritabanı
-  silmek veritabanını kaldırır ama kullanıcılarını henüz kaldırmaz:
-  veritabanı bir notla listede durur, güncellemeden sonra **Sil**'e yeniden
-  basmak işi bitirir.
+- CelikPanel'in kendi veritabanı hesabı MariaDB ya da PostgreSQL sayfasından
+  kaldırılırsa, sonraki yeni müşteri onu yeniden açar. Düzeltmesi sonraki
+  sürümde gelir.
+- **Alan adını silmek, panelin o alan adının veritabanlarına ait kayıtlarını
+  kaldırır ama veritabanlarının kendisini sunucuda bırakır.** Silme sorusu
+  bunu söyler; onların da gitmesini istiyorsanız önce veritabanlarını silin.
+  Bu soruda bir seçim sonraki sürümde gelecek.
 - **Kapladığı yer sütunu** Veritabanları listesinde yok; bütün liste için
   boyutlar tek seferde okunabildiğinde gelecek.
-- **Sertifika ekranı posta adının kapsanıp kapsanmadığını henüz
-  söylemiyor.**
+- Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi
+  kendisine verilen alan adlarının sayfalarındadır.
+
+### DNS çiftinde alan adı silme
+
 - alpha.132'de bu şekilde takılan bir silme, önceki silmenin denetim kaydı
   ister sağlam ister yarım kaldırılmış olsun, güncellemeden birkaç dakika
   sonra kendiliğinden biter; yeter ki o önceki silmenin kaydı hâlâ tutuluyor
@@ -299,10 +314,6 @@ itibaren pencere kendiliğinden devam eder.
   kendiliğinden yeniden denetlenmez. Sahip için, adın yazılmasıyla onaylanan
   bir işlem planlandı. İşi son 128 tutulan işlemin dışına düşmüş önceki bir
   silme bu duruma girer.
-- Güncelleyicinin kendisi çalışmadan önce başarısız olan bir güncelleme
-  işçisi, başarısız işaretini sonraki başarılı bir güncellemeye dek korur.
-- Alan adı sayfasının Gelişmiş bölümü, silinmeyi bekleyen bir alan adı için
-  hâlâ "Yeniden oluştur" önerebilir.
 - DNS çiftinde bir silme, iki deneme arasında sunucuda CelikPanel dışında
   başka bir bölge eklenir ya da kaldırılırsa da kendiliğinden bir çıkış yolu
   olmadan bekler (bu sürümden önce de olabiliyordu). Denetim kaydının
@@ -310,6 +321,13 @@ itibaren pencere kendiliğinden devam eder.
   durum değil; bir yazmadan hemen sonra, veri diske ulaşmadan elektrik
   kesilirse sonraki denetimin bağlayamadığı bir dosya yine kalabilir ve o
   zaman sunucu yöneticisi adlandırılır.
+- Bir silme, CelikPanel'in kendiliğinden yeniden denetlediği bir nedenle
+  beklerken (yedeğin yetişmemesi ya da yanıt vermemesi, süresi dolan bir
+  denetim ve yeniden denetlenen diğerleri) bu sunucuda DNS elle
+  değiştirilirse sonraki denetim CelikPanel Agent'ı yeniden başlatılana kadar
+  her değişikliği bekletecek duruma yine getirebilir; bu, bu sürümden önce de
+  olabiliyordu. Doğru düzeltme, böyle bir değişikliği denetimin kendisinde
+  bekleyen bir sahip değişikliği saymaktır; planlandı.
 - Yedek DNS sunucusunun doğrulamasıyla ilgili olmayan silme nedenleri
   (örneğin yerel rndc anahtarı, beklemeye alınmış Agent, katılmış bir
   sunucunun ana DNS sunucusundaki kaldırması) önceki tek metinlerini
@@ -321,13 +339,6 @@ itibaren pencere kendiliğinden devam eder.
   dakikada bir yeniden denetlenir. Bunun bedeli her seferinde kısa bir
   denetim ve bir günlük satırıdır; düzeltmeden sonra silmenin kendiliğinden
   bitmesini sağlayan budur.
-- Bir silme, CelikPanel'in kendiliğinden yeniden denetlediği bir nedenle
-  beklerken (yedeğin yetişmemesi ya da yanıt vermemesi, süresi dolan bir
-  denetim ve yeniden denetlenen diğerleri) bu sunucuda DNS elle
-  değiştirilirse sonraki denetim CelikPanel Agent'ı yeniden başlatılana kadar
-  her değişikliği bekletecek duruma yine getirebilir; bu, bu sürümden önce de
-  olabiliyordu. Doğru düzeltme, böyle bir değişikliği denetimin kendisinde
-  bekleyen bir sahip değişikliği saymaktır; planlandı.
 - Denetime yanıt verdikten hemen sonra yanıt vermeyi bırakan yedek, bu
   sunucunun bir değişikliği değil, yetişmeye çalışan yedektir (kendiliğinden
   yeniden denetlenir).
@@ -341,27 +352,54 @@ itibaren pencere kendiliğinden devam eder.
 - CelikPanel dışında yapılan bir DNS değişikliği kanıtın son bir-üç
   saniyesine denk gelirse sonradan bulunur: silme bekler ve yeniden denenir,
   asla bitti diye bildirilmez.
-- Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi
-  kendisine verilen alan adlarının sayfalarındadır.
-- **Laboratuvarın şimdiye dek denetledikleri** (bu sürümün adaylarında üç
-  deneme):
-  - Yanıt vermeyen yedek DNS sunucusu gerçek bir PowerDNS/BIND çiftinde
-    denetlendi: bağlantısı engellendi, reddedildi, yanıt verdikten hemen
-    sonra koptu ve DNS hizmeti durduruldu. Her seferinde yukarıda anlatıldığı
-    gibi davrandı.
-  - Listeden veritabanı silme gerçek MariaDB 11.8 ve PostgreSQL 17 üzerinde
-    denetlendi.
-  - **Bir çiftte henüz denetlenmeyenler:** bu sunucudaki DNS elle
-    değiştiriliyor olabileceği için bir kişinin yapması gereken durum
-    (laboratuvar ona ulaşamadı: PowerDNS'i durdurmak yönetim hizmetini
-    bekletir; bu, yukarıdaki açık konudur), yedek DNS sunucusunun değişen
-    anahtarı ve bir yöneticinin kaydettiği ikinci bir veritabanı sunucusu.
-  - Bu adaydaki, kalan hesaplardan hakların kaldırılmasının laboratuvar
-    denetimi henüz yapılacak.
-  - Bu adayda alpha.132'den panelin kendi güncelleme ekranıyla tam
-    güncelleme ve her rolle elle denenen ekranlar yayından önce buraya
-    eklenir.
+
+### Diğer
+
+- **Site yedekleri bir programın dosyalarını ve verisini içermez.** Bir
+  sitenin yedeği web klasörünü (tam yedekte veritabanlarını da) tutar;
+  yüklenen bir programın ya da Python uygulamasının çalıştığı klasörü ve
+  orada tuttuğu veriyi tutmaz. Bu, sonraki sürümde düzeltilecek. O zamana
+  dek: alan adının zamanlanmış **tam** yedeği veritabanlarını kapsar;
+  programın klasörünün kendi kopyanızı saklayın.
+- **Sertifika ekranı posta adının kapsanıp kapsanmadığını henüz
+  söylemiyor.**
+- Güncelleyicinin kendisi çalışmadan önce başarısız olan bir güncelleme
+  işçisi, başarısız işaretini sonraki başarılı bir güncellemeye dek korur.
+- Alan adı sayfasının Gelişmiş bölümü, silinmeyi bekleyen bir alan adı için
+  hâlâ "Yeniden oluştur" önerebilir.
 - Önceki sınırlar sürüyor (bkz. alpha.132).
+
+## Laboratuvarda denetlenenler
+
+Bu sürümün adaylarında dört laboratuvar denetimi yapıldı; dördüncüsü sürüm
+adayının kendisinde.
+
+- **Yanıt vermeyen yedek DNS sunucusu** gerçek bir PowerDNS/BIND çiftinde
+  denetlendi: bağlantısı engellendi, reddedildi, yanıt verdikten hemen sonra
+  koptu ve DNS hizmeti durduruldu. Her seferinde silme yukarıda anlatıldığı
+  gibi davrandı.
+- **Veritabanı silme** listeden gerçek MariaDB 11.8 ve PostgreSQL 17
+  üzerinde denetlendi. MariaDB 11.8.6 (Debian 13) ve MariaDB 10.11.14
+  (Ubuntu 24.04) üzerinde, bir veritabanı silindikten sonra silmenin ele
+  aldığı hesaplarda onu anan hiçbir hak kalmadı: aynı kullanıcı adıyla elle
+  açılmış bir hesap (`::1` ve ağ maskeli adreslerle de), tablo, sütun ve
+  yordam hakları ve başka bir veritabanıyla paylaşılan bir kullanıcı (öbür
+  veritabanını korur ve hâlâ oturum açar). Başka bir veritabanındaki haklar,
+  birkaç veritabanını kapsayan bir kalıp hakkı, aynı adlı bir rolün hakları
+  ve adı yalnız büyük harfle ayrılan bir veritabanının hakları olduğu gibi
+  kaldı. PostgreSQL 17'de iki veritabanının paylaştığı bir rol kaldı ve
+  öbürüne hâlâ bağlandı.
+- İki laboratuvar sunucusu da sürüm adayına panelin kendi güncelleme
+  sayfasıyla 95 ve 108 saniyede güncellendi.
+- **Laboratuvarda denetlenmeyenler:** veritabanı adı yeniden açıldıktan
+  sonra kalan bir hesapla gerçek bir oturum açma (laboratuvar sunucuları
+  yerel oturumu localhost hesabına bağlar; denetlenen, böyle bir hesabın o
+  ad üzerinde artık hiçbir hakkı olmadığıdır); kısmi bir sonuç ve "bu adla
+  bir veritabanı sunucuda yeniden var" cümlesi (yalnız bileşen testleri); bu
+  sunucudaki DNS elle değiştiriliyor olabileceği için bir kişinin yapması
+  gereken durum (PowerDNS'i durdurmak yönetim hizmetini bekletir; bu,
+  yukarıdaki açık konudur); yedek DNS sunucusunun değişen anahtarı ve bir
+  yöneticinin kaydettiği ikinci bir veritabanı sunucusu.
 
 ## Kanıt
 

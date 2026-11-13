@@ -11,6 +11,27 @@ DNS pair finishes again, and a false blocklist alarm is gone.
 **Only the owner updates installed panels, from the panel's own update
 screen.**
 
+## Updating from alpha.132
+
+1. During this update the browser still runs alpha.132's own page, so the
+   update window can stay on its second step although the server has
+   finished. Reload the page to see the result. From alpha.133 on, the
+   window resumes by itself.
+2. **After the update, give CelikPanel's database account a new password
+   once on each database server:** open **Components → MariaDB** and, under
+   "The account CelikPanel connects to this service with", choose
+   **More → New password…** once; then the same on **Components →
+   PostgreSQL** if PostgreSQL is installed. Until you do, on a server
+   installed before this version, adding an existing database user to
+   another database is refused, and the connection limits of database users
+   (a plan's "connections per database user") may not be applied. The
+   reason: CelikPanel kept a copy of its own database account's password per
+   customer, and older copies stopped working when the password changed.
+   This release keeps every copy in step from now on but does not repair
+   copies that are already out of step; automatic repair comes in the next
+   release. Databases, sites and their users keep working meanwhile, and
+   deleting a database does not depend on these copies.
+
 ## What changes for you
 
 ### Databases: one list, by who may see what
@@ -210,64 +231,50 @@ the screen. A test keeps it that way, with no exceptions.
   "configuration file missing" badge, it is not measured for disk use, and
   it is not in the home page's certificate list.
 
-### Updating from alpha.132
-
-During this update the browser still runs alpha.132's own page, so the
-update window can stay on its second step although the server has
-finished. Reload the page to see the result. From alpha.133 on, the window
-resumes by itself.
-
 ## Known limits
 
-- **Site backups do not include a program's files and data.** A backup of
-  a site holds its web folder (and its databases in a full backup), not
-  the folder an uploaded program or Python app runs from or the data it
-  keeps there. This is fixed in the next release. Until then: a scheduled
-  **full** backup of the domain covers its databases; keep your own copy of
-  the program's folder.
-- **Deleting a domain removes the panel's records of its databases but
-  leaves the databases themselves on the server.** The delete question says
-  so; delete the databases first if they should go too. A choice in that
-  question comes in the next release.
-- **On a server installed before this version, the connection limits of
-  database users may not be applied** (a plan's "connections per database
-  user"). CelikPanel kept a copy of its own database account's password per
-  customer, and older copies stopped working when the password changed.
-  This release keeps every copy in step from now on, but it does not repair
-  copies that are already out of step. To put them right, an administrator
-  opens **Components → MariaDB** and, under "The account CelikPanel connects
-  to this service with", chooses **More → New password…** once; then the
-  same on **Components → PostgreSQL** if PostgreSQL is installed. Nothing
-  else is affected: databases, sites and their users keep working, and
-  deleting a database no longer depends on these copies. Automatic repair
-  comes in the next release.
-- If CelikPanel's own database account is removed on the MariaDB or
-  PostgreSQL page, the next new customer opens it again. A fix comes in the
-  next release.
-- **A MariaDB account CelikPanel does not know keeps its rights on a deleted
-  database.** MariaDB keeps such rights after the database is gone, and a
-  later database of the same name would inherit them. CelikPanel removes
-  them from the database's own users - those it removes, those that stay
-  because another database uses them and those kept for rights of their
-  own - on every account of their names, also accounts made by hand; but
-  not from an account with another name that was made outside CelikPanel. If you gave such an account rights on a database,
-  take them away on the server when you delete it (`REVOKE ALL PRIVILEGES ON
-  name.* FROM account`). This comes in the next release.
+### Databases
+
+- **A MariaDB account that a database deletion does not handle keeps its
+  rights on the deleted database.** This is an account with another user
+  name that was made outside CelikPanel, and also an account made by hand
+  under the name of a user that was removed from the database earlier.
+  MariaDB keeps such rights after the database is gone, and a later
+  database of the same name would inherit them. If you gave such an account
+  rights on a database, take them away on the server when you delete it
+  (`REVOKE ALL PRIVILEGES ON name.* FROM account`). alpha.134 removes every
+  right naming a deleted database from every account.
 - **Until rights for exactly one database name arrive in alpha.134, a
   database user's rights can also cover another database on the same server**
   whose name differs from its own only where its own name has `_`. MariaDB
   rights are still given by name pattern, in which `_` stands for any one
   character; alpha.134 also converts the existing ones.
+- **After a deletion that kept a user's accounts** (because they have rights
+  made outside CelikPanel), **a database of the same name cannot be created
+  again** until those accounts are removed on the database server. The
+  refusal says the user name is taken, but not yet what frees it, and on a
+  Turkish screen its detail is in English.
 - **After a deletion that did not finish, pressing Delete again deletes a
   database of the same name that was created on the server in the meantime**
   (by hand, by a restore or by an installer). The screen says so when it
   finds one. Remembering that the database was already deleted comes in
   alpha.134.
+- **PostgreSQL: a user added to another database gets rights only on the
+  tables that CelikPanel's own account makes there later,** not on the
+  tables the database's own user owns. This was found in the lab.
+- **Removing an added user from a database says the user was removed** even
+  when its account stays on the database server, with no rights, because
+  something else still uses it. A hand-made account of that name keeps its
+  rights on the database (by design), and the result does not mention it.
 - **Removing users on a database server reached with its own account**
   (another machine, or one an administrator registered) is not done in
   this release: it needs a check of the rights the owner gave there, which
   that account may not be allowed to read. The users stay and the screens
   say so.
+- While the panel and its Agent are from different versions (during an
+  update), deleting a database removes the database but not yet its users:
+  the database stays in the list with a note, and pressing **Delete** again
+  after the update finishes it.
 - Some other database steps (suspending a subscription, database sizes,
   outside connections, the password change after a transfer) still decide
   whether a database server is on this machine by its address alone, and a
@@ -275,14 +282,20 @@ resumes by itself.
   counts as two. Installing an application, copying a database and moving
   a database between PostgreSQL versions do not yet wait for a deletion on
   the same server. These come in a later release.
-- While the panel and its Agent are from different versions (during an
-  update), deleting a database removes the database but not yet its users:
-  the database stays in the list with a note, and pressing **Delete** again
-  after the update finishes it.
+- If CelikPanel's own database account is removed on the MariaDB or
+  PostgreSQL page, the next new customer opens it again. A fix comes in the
+  next release.
+- **Deleting a domain removes the panel's records of its databases but
+  leaves the databases themselves on the server.** The delete question says
+  so; delete the databases first if they should go too. A choice in that
+  question comes in the next release.
 - **The size column is absent** from the Databases list until sizes can be
   read in one call for the whole list.
-- **The certificate screen does not yet say whether the mail name is
-  covered.**
+- A team member's Databases list is empty; their databases are on the
+  pages of the domains they were given, as before.
+
+### Domain deletion on a DNS pair
+
 - A deletion that stopped this way on alpha.132 finishes by itself within a
   few minutes after the update, whether the earlier deletion's check record
   is intact or was left half retired, as long as the record of that earlier
@@ -296,10 +309,6 @@ resumes by itself.
   re-checked automatically. An action for the owner, with a typed
   confirmation, is planned. An earlier deletion whose job has dropped out
   of the last 128 kept operations lands in this state.
-- An update worker that fails before the updater itself runs keeps its
-  failed mark until a later update succeeds.
-- The domain page's Advanced section can still offer "Recreate" for a
-  domain that is waiting for its deletion.
 - A deletion on a DNS pair also waits with no automatic way forward if,
   between two attempts, another zone is added or removed outside CelikPanel
   on the server (possible before this release too). A process stopped in
@@ -307,6 +316,13 @@ resumes by itself.
   case; a power loss right after a write, before its data reached the disk,
   can still leave a file the next check cannot attribute, which then names
   the server administrator.
+- If DNS on this server is changed by hand while a deletion waits for a
+  reason CelikPanel re-checks by itself (the backup catching up or not
+  answering, a check that ran out of time, and the others it re-checks),
+  the next check can still put the CelikPanel Agent on hold for every
+  change until it is restarted; this was possible before this release too.
+  The proper fix is to treat such a change as a waiting owner edit in the
+  check itself; it is planned.
 - The deletion reasons that are not about the backup DNS server's
   confirmation (for example a local rndc key, a held Agent, a joined
   server's removal on the main DNS server) still show their earlier single
@@ -316,13 +332,6 @@ resumes by itself.
   could not run its own check) is now checked again every few minutes too.
   That costs one short check and one log line each time; it is what lets
   the deletion finish by itself after the fix.
-- If DNS on this server is changed by hand while a deletion waits for a
-  reason CelikPanel re-checks by itself (the backup catching up or not
-  answering, a check that ran out of time, and the others it re-checks),
-  the next check can still put the CelikPanel Agent on hold for every
-  change until it is restarted; this was possible before this release too.
-  The proper fix is to treat such a change as a waiting owner edit in the
-  check itself; it is planned.
 - A backup that stops answering just after it answered the check is the
   backup catching up (re-checked by itself), not a change of this server.
 - During the update itself, for a few seconds the old panel cannot read the
@@ -335,27 +344,54 @@ resumes by itself.
 - If a DNS change outside CelikPanel lands in the last one to three seconds
   of the proof, it is found afterwards: the deletion stays waiting and is
   retried, and it is never reported as done.
-- A team member's Databases list is empty; their databases are on the
-  pages of the domains they were given, as before.
-- **What the lab has checked so far** (three runs on candidates of this
-  release):
-  - A backup DNS server that does not answer was checked on a real
-    PowerDNS/BIND pair: its connection blocked, refused, dropping out right
-    after it answered, and its DNS service stopped. Each time it behaved as
-    described above.
-  - Deleting a database from the list was checked on real MariaDB 11.8 and
-    PostgreSQL 17.
-  - **Not yet checked on a pair:** the state where a person must act
-    because DNS on this server may be changed by hand (the lab could not
-    reach it: stopping PowerDNS puts the Agent on hold, which is the open
-    item above), a changed host key of the backup DNS server, and a second
-    database server registered by an administrator.
-  - The removal of rights from kept accounts in this candidate has its lab
-    check still to come.
-  - The full update from alpha.132 through the panel's own update screen on
-    this candidate, and the screens tried by hand as each role, are added
-    here before publication.
+
+### Other
+
+- **Site backups do not include a program's files and data.** A backup of
+  a site holds its web folder (and its databases in a full backup), not
+  the folder an uploaded program or Python app runs from or the data it
+  keeps there. This is fixed in the next release. Until then: a scheduled
+  **full** backup of the domain covers its databases; keep your own copy of
+  the program's folder.
+- **The certificate screen does not yet say whether the mail name is
+  covered.**
+- An update worker that fails before the updater itself runs keeps its
+  failed mark until a later update succeeds.
+- The domain page's Advanced section can still offer "Recreate" for a
+  domain that is waiting for its deletion.
 - Earlier limits still apply (see alpha.132).
+
+## Checked in the lab
+
+Four lab checks ran on candidates of this release, the fourth on the
+release candidate itself.
+
+- **A backup DNS server that does not answer** was checked on a real
+  PowerDNS/BIND pair: its connection blocked, refused, dropping out right
+  after it answered, and its DNS service stopped. Each time the deletion
+  behaved as described above.
+- **Deleting a database** from the list was checked on real MariaDB 11.8
+  and PostgreSQL 17. On MariaDB 11.8.6 (Debian 13) and MariaDB 10.11.14
+  (Ubuntu 24.04), after a database was deleted no right naming it was left
+  on the accounts the deletion handles: an account made by hand under the
+  same user name (also with `::1` and netmask hosts), table, column and
+  routine rights, and a user shared with another database (it keeps the
+  other database and still logs in). Rights on another database, a pattern
+  right covering several databases, a same-named role's rights and the
+  rights of a database whose name differs only in upper case were left
+  untouched. On PostgreSQL 17, a role shared by two databases stayed and
+  still connected to the other one.
+- Both lab servers were updated to the release candidate through the
+  panel's own update page, in 95 and 108 seconds.
+- **Not checked in the lab:** an actual login as a kept account after the
+  database name was created again (the lab servers map a local login to the
+  localhost account; what was checked is that such an account holds no
+  right on the name any more); a partial result and the sentence "a
+  database of this name is on the server again" (component tests only); the
+  state where a person must act because DNS on this server may be changed
+  by hand (stopping PowerDNS puts the Agent on hold, which is the open item
+  above); a changed host key of the backup DNS server; a second database
+  server registered by an administrator.
 
 ## Evidence
 

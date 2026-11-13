@@ -53,11 +53,19 @@ same rules.
     made by the owner and then given to another role. A schema made later by
     the owner is covered; one made by another role is not.
   - Never `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION`, `BYPASSRLS`.
+  - Found in the alpha.133 lab (open): a user added to another database got
+    rights only on tables CelikPanel's own account made there later, not on
+    the tables the database's own user owns. The statements above describe
+    the intent; this gap is not fixed yet.
 - Creation is exclusive: a name the engine already has changes nothing.
   Removal takes away the user and its rights and never the database: MariaDB
   `DROP USER` on every host; PostgreSQL `REASSIGN OWNED BY` the user to the
   database's owner, `DROP OWNED BY`, `DROP ROLE` (a table the user made stays,
   owned by the owner). The user made with the database goes only with it.
+  Open (alpha.133): when something else still uses the user, its account
+  stays on the engine with no rights, yet the result says the user was
+  removed; a hand-made account of that name keeps its rights on the live
+  database (by design) and the result does not mention it.
 - Deleting a database (alpha.133, the same for the left-menu Databases page
   and the domain's Databases section): the database is dropped first (on
   PostgreSQL its open sessions are ended first), then every user recorded for
@@ -98,7 +106,12 @@ same rules.
   server-wide right and a role are left alone. PostgreSQL leaves nothing that
   names a dropped database (dropdb removes its role settings and shared
   dependencies with the pg_database row). Open: an account with another name,
-  made outside CelikPanel, keeps its rights on a deleted database; database
+  made outside CelikPanel, keeps its rights on a deleted database, and so
+  does a hand-made account under the name of a user removed from the
+  database earlier (alpha.134 removes every right naming a deleted database
+  from every account); after a deletion that kept a user's accounts, a
+  database of the same name cannot be created again until those accounts
+  are removed on the engine, and the refusal does not yet say so; database
   rights are still given by name pattern (`_` = any one character), exact
   names come in alpha.134.
 - Plans: there is no database-user quota in the plans
