@@ -205,6 +205,8 @@ resumes by itself.
   case; a power loss right after a write, before its data reached the disk,
   can still leave a file the next check cannot attribute, which then names
   the server administrator.
+- A deletion that is stuck while the backup DNS server is still catching
+  up has no retry on the page; the screen names support as the next step.
 - Other waiting reasons of a deletion (for example a missing inspection
   set-up between the two servers) still show their earlier, longer text,
   some of which names "Retry this deletion"; that control is More →

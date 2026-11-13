@@ -209,6 +209,8 @@ itibaren pencere kendiliğinden devam eder.
   durum değil; bir yazmadan hemen sonra, veri diske ulaşmadan elektrik
   kesilirse sonraki denetimin bağlayamadığı bir dosya yine kalabilir ve o
   zaman sunucu yöneticisi adlandırılır.
+- Yedek DNS sunucusu henüz yetişirken takılan bir silme için sayfada
+  yeniden deneme yok; ekran sonraki adım olarak desteği adlandırır.
 - Bir silmenin diğer bekleme nedenleri (örneğin iki sunucu arasında
   kurulmamış inceleme erişimi) önceki, daha uzun metinlerini göstermeyi
   sürdürür; bunların bazıları "Bu silme işlemini tekrar dene" der; o düğme,
