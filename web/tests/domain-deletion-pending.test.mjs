@@ -294,12 +294,14 @@ test('a check that could not complete waits for the automatic re-check and says 
   const trU = tr['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unresolved'];
   assert.match(enU, /Who acts: this server’s administrator/);
   assert.match(trU, /Kim yapar: bu sunucunun yöneticisi/);
+  // alpha.133 review (W8): this fallback can reach any role through an API
+  // error: no command, no private path, no menu; it says who to tell.
   for (const text of [enU, trU]) {
-    assert.ok(text.includes('sudo journalctl -u celikpanel-agent | grep peer'));
-    assert.ok(text.includes('sudo ls -la /var/lib/celikpanel-agent-private'));
+    assert.doesNotMatch(text, /sudo|\/var\/lib|journalctl/);
+    assert.ok(!text.includes('→'), text);
   }
-  assert.ok(enU.includes(`${enScreens['kit.rows.more']} → ${enScreens['domains.action.delete']}`));
-  assert.ok(trU.includes(`${trScreens['kit.rows.more']} → ${trScreens['domains.action.delete']}`));
+  assert.match(enU, /if that is not you, tell them/);
+  assert.match(trU, /siz değilseniz ona haber verin/);
   assert.doesNotMatch(enU + trU, /Nobody needs|kimsenin bir şey yapması gerekmiyor|Sizin bir şey yapmanız gerekmiyor/);
 });
 
@@ -453,7 +455,9 @@ test('a running deletion names its live step; anything unreviewed is ignored', a
 test('a deletion re-checked by itself does not say that someone needs to act', async () => {
   const { readFileSync } = await import('node:fs');
   const read = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
-  assert.match(read('components/Domains.tsx'), /if \(RECHECKED_BY_ITSELF\.has\(reason\)\) \{[\s\S]{0,400}return \{ state: 'blocked', subtitle: t\('domains\.step\.rechecksAlone'\)/);
+  // alpha.133 review: only while the server says CelikPanel re-checks it by
+  // itself (follow_up automatic) does the window say nobody needs to act.
+  assert.match(read('components/Domains.tsx'), /if \(continuesByItself\(reason, next\?\.followUp\)\) \{[\s\S]{0,400}return \{ state: 'blocked', subtitle: t\('domains\.step\.rechecksAlone'\)/);
   const progress = read('components/OperationProgress.tsx');
   assert.match(progress, /const endLine = end \? \(end\.state !== 'done' && end\.subtitle\) \|\| t\(END_TITLE\[end\.state\]\) : '';/);
   assert.match(progress, /description=\{end \? endLine : t\('operation\.wait'\)\}/);
