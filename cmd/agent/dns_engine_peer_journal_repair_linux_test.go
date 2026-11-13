@@ -91,6 +91,15 @@ func runRealBINDPeerProof(t *testing.T, previous dnspeerjournal.RecordV1, ledger
 	plan dnsV3PrimaryPropagationPlan, checks *nativePeerCurrentChecks, budget dnsPeerProofBudget,
 ) error {
 	t.Helper()
+	return runRealBINDPeerProofAt(t, previous, ledger, plan, 1, checks, budget)
+}
+
+// runRealBINDPeerProofAt is runRealBINDPeerProof for the deletion's ledger
+// attempt ledgerAttempt.
+func runRealBINDPeerProofAt(t *testing.T, previous dnspeerjournal.RecordV1, ledger serviceMutationLedger,
+	plan dnsV3PrimaryPropagationPlan, ledgerAttempt uint64, checks *nativePeerCurrentChecks, budget dnsPeerProofBudget,
+) error {
+	t.Helper()
 	load := func() (serviceMutationLedger, error) { return ledger, nil }
 	run := newDNSPeerProofRun(context.Background(), budget, plan.Changed.Domain, "BIND")
 	var next uint64
@@ -121,14 +130,14 @@ func runRealBINDPeerProof(t *testing.T, previous dnspeerjournal.RecordV1, ledger
 	enrollment := previous.EnrollmentSHA256
 	return runNativePeerProofTail(run, checks, nativePeerProofTail{
 		publish: func(verify func() error) error {
-			return dnspeerjournal.Publish(request, nil, enrollment, 1, verify)
+			return dnspeerjournal.Publish(request, nil, enrollment, ledgerAttempt, verify)
 		},
 		recheckEnrollment: func() error { return nil },
 		inspect:           func(context.Context) error { return nil },
 		afterInspection:   func(context.Context, func() error) error { return nil },
 		verifyAnswer:      func(consume func(string) error) error { return consume(digest) },
 		consume: func(digest string, verify func() error) error {
-			return dnspeerjournal.ConsumeOnce(request, enrollment, digest, 1, verify)
+			return dnspeerjournal.ConsumeOnce(request, enrollment, digest, ledgerAttempt, verify)
 		},
 	})
 }
@@ -386,5 +395,79 @@ func TestPrepareJournalWorkIgnoresAnExpiredStepContext(t *testing.T) {
 	}
 	if names := directoryNames(t, dir); len(names) != 0 {
 		t.Fatalf("journal work was cut short: %v", names)
+	}
+}
+
+// ownerServerShapedFixture is the owner's PowerDNS primary as read (read-only)
+// on 13 Nov 2026: the journal holds the consumed record of ANOTHER zone's
+// finished deletion with request attempt 4 and ledger attempt 183; the
+// ledger keeps that request as a succeeded dns_zone_sync published at
+// attempt 183; this deletion's own job is pending (propagation-pending,
+// attempt 162, error code dns_peer_proof_timeout).
+func ownerServerShapedFixture(t *testing.T) (dnspeerjournal.RecordV1, serviceMutationLedger, dnsV3PrimaryPropagationPlan, uint64) {
+	t.Helper()
+	base, ledger, plan := historicalBINDPeerChallengeFixture(t)
+	request := base.Request
+	request.Attempt = 4
+	request.DeletedZone = "earlier-shop.example.test"
+	digest, err := dnspeerproof.RequestSHA256(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := dnspeerjournal.RecordV1{
+		Schema: dnspeerjournal.SchemaV1, State: dnspeerjournal.StateConsumed,
+		LedgerAttempt: 183, EnrollmentSHA256: base.EnrollmentSHA256,
+		RequestSHA256: digest, Request: request,
+	}
+	if err := previous.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	ledger = cloneServiceMutationLedger(ledger)
+	old := ledger.Jobs[request.MutationRequestID]
+	old.Target, old.Attempt = request.DeletedZone, 183
+	if old.Phase, err = formatDNSZoneSyncV3PublishedPhase(old.RequestID, old.Target, old.PackageName); err != nil {
+		t.Fatal(err)
+	}
+	own := ledger.Jobs[plan.Operation.RequestID]
+	own.Status, own.Attempt, own.ErrorCode = serviceMutationStatusPending, 162, transport.DNSPeerPendingProofTimeout
+	if own.Phase, err = formatDNSZoneSyncV3Phase(dnsZoneSyncV3PropagationPending, own.RequestID, own.Target, own.PackageName); err != nil {
+		t.Fatal(err)
+	}
+	own.LeaseExpiresAt = time.Time{}
+	own.FinishedAt = own.UpdatedAt
+	ledger.ActiveRequestID = ""
+	if err := validateServiceMutationLedger(&ledger); err != nil {
+		t.Fatalf("owner-shaped ledger: %v", err)
+	}
+	return previous, ledger, plan, 162
+}
+
+// The owner's server in both states it can be in when he updates: the
+// earlier deletion's record intact, or torn by an alpha.132 retirement. The
+// first attempt retires or repairs it and the deletion's proof completes,
+// with its own challenge at attempt 1 under ledger attempt 162.
+func TestOwnerServerShapedStatesCompleteOnTheFirstAttempt(t *testing.T) {
+	dir := realPeerJournalDirectory(t)
+	captureAgentLog(t)
+	previous, ledger, plan, attempt := ownerServerShapedFixture(t)
+	raw := encodedRecord(t, previous)
+	for name, setup := range map[string]func(){
+		"record intact": func() { putRootFile(t, dnspeerjournal.Path, raw) },
+		"record torn by alpha.132": func() {
+			putRootFile(t, dnspeerjournal.Path, nil)
+			putRootFile(t, filepath.Join(dir, ".dns-peer-retired-1d291fcb0d73e582d8c9ae595505fb98"), raw)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			setup()
+			if err := runRealBINDPeerProofAt(t, previous, ledger, plan, attempt, heldOnlyChecks(), dnsPeerProofSteps); err != nil {
+				t.Fatalf("first attempt: %v (%q)", err, pendingDNSPeerCode(err))
+			}
+			stored, err := dnspeerjournal.Read()
+			if err != nil || stored.Request.Attempt != 1 || stored.LedgerAttempt != attempt {
+				t.Fatalf("the deletion's own challenge: %+v %v", stored, err)
+			}
+			finishRealBINDDeletion(t, dir, plan)
+		})
 	}
 }

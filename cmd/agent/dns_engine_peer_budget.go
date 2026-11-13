@@ -172,6 +172,14 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 	if err == nil || errors.Is(err, errDNSProducerCatalogRestampedBeforeChallenge) {
 		return err
 	}
+	// An outcome that already carries a reviewed code of its own state is an
+	// observation the step made, not a deadline, even when it came back after
+	// the step's time ran out (alpha.133 review: an unresolved check record
+	// behind a slow fsync must not come back as an automatic proof timeout).
+	if code := pendingDNSPeerCode(err); dnsPeerCodeOutlivesDeadline(code) {
+		r.stopped(step, code, err)
+		return err
+	}
 	if r.base.Err() == nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		// Before acceptance: nothing of the proof was consumed (the deletion
 		// itself is already committed on this server); the same publication
@@ -189,6 +197,27 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 	}
 	r.stopped(step, pendingDNSPeerCode(err), err)
 	return err
+}
+
+// dnsPeerCodeOutlivesDeadline reports a reviewed code that names a state the
+// step found (this server's check record, the enrollment, the Agent's own
+// precondition, the secondary's transfer refusal), which a deadline cannot
+// have caused. The inspection and owner-edit codes are excluded: the
+// transport and the probes report a check that could not complete under
+// them, and after the step's deadline that is the deadline's doing.
+func dnsPeerCodeOutlivesDeadline(code string) bool {
+	reason, _, ok := transport.SplitDNSPeerPendingCode(code)
+	if !ok {
+		return false
+	}
+	switch reason {
+	case transport.DNSPeerPendingJournalUnresolved, transport.DNSPeerPendingJournalUnknown,
+		transport.DNSPeerPendingEnrollmentRequired, transport.DNSPeerPendingEnrollmentChanged,
+		transport.DNSPeerPendingProofInternal, transport.DNSPeerPendingCatalogTransferRefused:
+		return true
+	default:
+		return false
+	}
 }
 
 // accepted returns the consume context. It is created on the first call,
