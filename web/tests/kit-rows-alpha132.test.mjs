@@ -310,6 +310,20 @@ test('a refusal whose only words are the server\'s is said plainly, with them un
   assert.equal(apiError.refusalText({ message: 'quota reached' }, t, 'users.createFailed'), `${t('users.createFailed')}. The server said: quota reached`);
 });
 
+test('a coded sentence never reaches the reader with an unfilled {placeholder} (alpha.133 round 5)', () => {
+  for (const code of ['DATABASE_ENGINE_CREDENTIAL_REFUSED', 'DATABASE_ENGINE_UNREACHABLE']) {
+    for (const translate of [t, tr]) {
+      for (const reason of [undefined, 'administrator']) {
+        const filled = apiError.apiErrorText({ message: 'raw english', code, reason, vars: { engine: 'MariaDB' } }, translate);
+        assert.ok(filled.includes('MariaDB') && !/\{\w+\}/.test(filled), filled);
+        // An answer without the value (an older writer) never shows "{engine}".
+        const bare = apiError.apiErrorText({ message: 'raw english', code, reason }, translate);
+        assert.doesNotMatch(bare, /\{\w+\}/, `${code} ${reason ?? ''}: ${bare}`);
+      }
+    }
+  }
+});
+
 // --- No leftovers -----------------------------------------------------------------------------
 
 test('the replaced pieces are gone: icon-only row actions, the old guidance block and its copies', () => {

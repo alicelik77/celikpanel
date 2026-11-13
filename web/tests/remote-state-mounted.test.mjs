@@ -158,6 +158,8 @@ const own = {
   '/lib/licenseOffline': compileSource('lib/licenseOffline.ts', () => stub),
   // Plans and rights (alpha.117): the shipped decoders and helpers.
   '/lib/rights': compileSource('lib/rights.ts', (specifier) => (specifier.endsWith('/apiError') ? apiErrorURL : stub)),
+  // alpha.133 round 5: what deleting a database does to its users, the shipped words.
+  '/lib/databaseDeleteWords': compileSource('lib/databaseDeleteWords.ts', () => stub),
 };
 // The two notices of 10 Oct 2026 are the shipped ones: what a service action
 // ended with, and a change whose one-time result is not kept.
@@ -946,6 +948,31 @@ test('Domain databases: nothing is created on an engine the server did not name'
     await mount(DomainDatabaseManager, domain);
     await press(buttons('ddb.create')[0]);
     assert.deepEqual(tree.root.findAll((node) => node.type === 'option').map((node) => node.props.value), ['mysql']);
+  } finally {
+    await cleanup();
+  }
+});
+
+// --- Domain databases: the delete question and an unknown result (alpha.133 round 5)
+
+test('Domain databases: the delete question names the users that go and those that stay, and an unknown result reads the list again', async () => {
+  const list = json({ databases: [{ id: 3, name: 'example_com_app', type: 'mysql', user: 'app', created_at: '2026-01-01T00:00:00Z',
+    users: [{ id: 7, username: 'example_com_app_user', access: 'owner' }, { id: 8, username: 'shared_reader', access: 'read', stays: 'shared' }] }], available_types: ['mysql'] });
+  serve({ '/api/v1/domains/1/databases': list }, 'admin', {
+    '/api/v1/domains/1/databases/3': () => Response.json({ error: 'No answer came back', code: 'DATABASE_DELETE_UNCONFIRMED', vars: { name: 'example_com_app' } }, { status: 502 }),
+  });
+  const asked = [];
+  globalThis.confirm = (message, request) => { asked.push(request); return true; };
+  try {
+    await mount(DomainDatabaseManager, domain);
+    const before = reads('/api/v1/domains/1/databases');
+    await press(buttons('databases.deleteDatabase')[0]);
+    assert.equal(asked.length, 1);
+    // (This harness's words are the bare keys.)
+    assert.deepEqual(asked[0].lost, ['databases.delete.lostUsers']);
+    assert.deepEqual(asked[0].kept, ['databases.delete.keptShared']);
+    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1);
+    assert.ok(reads('/api/v1/domains/1/databases') > before, 'an unknown result did not read the list again');
   } finally {
     await cleanup();
   }

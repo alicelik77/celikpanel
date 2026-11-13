@@ -37,6 +37,7 @@ const decoderURL = compileSource('lib/visibleDatabases.ts', () => stub);
 const pageURL = replaceLazyImport(shared.compile('components/databases/DatabasesPage.tsx', {
   '/lib/visibleDatabases': decoderURL,
   '/auth/domainAccess': compileSource('auth/domainAccess.ts', () => stub),
+  '/lib/databaseDeleteWords': compileSource('lib/databaseDeleteWords.ts', () => stub),
 }), '../DatabaseUserPassword', passwordForm);
 const { DatabasesPage } = await import(pageURL);
 const { decodeVisibleDatabases, VISIBLE_DATABASES_URL } = await import(decoderURL);
@@ -196,8 +197,8 @@ test('"Open" and the name take the person to the owner\'s domain page at its Dat
 
 test('delete asks in the panel with what is lost, what stays and the typed name, then sends one DELETE and reads the list again', async () => {
   try {
-    // kahve_rapor also reads the owner's archive database: it stays.
-    const list = ADMIN_LIST.map((item) => (item.id === 4 ? { ...item, users: [{ id: 32, username: 'kahve_rapor' }] } : item));
+    // The server says kahve_rapor stays (another database uses it).
+    const list = ADMIN_LIST.map((item) => (item.id === 3 ? { ...item, users: [{ id: 31, username: 'kahve_app' }, { id: 32, username: 'kahve_rapor', stays: 'shared' }] } : item));
     await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(list)) }, { '/api/v1/databases/3': json({ status: 'deleted' }) });
     await openMenu('kahvedukkani_dr_test_magaza');
     // Declined: nothing is sent.
@@ -224,6 +225,23 @@ test('delete asks in the panel with what is lost, what stays and the typed name,
     assert.deepEqual(calls.filter((call) => call.method === 'DELETE').map((call) => call.url), ['/api/v1/databases/3']);
     assert.ok(calls.filter((call) => call.url === VISIBLE_DATABASES_URL).length > before, 'the list is not read again');
     assert.deepEqual(globalThis.page.toasts, [['success', 'databases.dbDeleted']]);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('an engine or CelikPanel account is said as staying; accounts the server kept for their own rights are said after the delete', async () => {
+  try {
+    const list = ADMIN_LIST.map((item) => (item.id === 3 ? { ...item, users: [{ id: 31, username: 'kahve_app' }, { id: 32, username: 'root', stays: 'account' }] } : item));
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(list)) },
+      { '/api/v1/databases/3': json({ status: 'deleted', users_removed: [], users_kept: ['root'], users_kept_on_engine: ['kahve_app'] }) });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    const [request] = globalThis.page.asked;
+    assert.deepEqual(request.lost.slice(1), ['databases.delete.lostUsers{"users":"kahve_app"}']);
+    assert.ok(request.kept.includes('databases.delete.keptAccount{"users":"root"}'));
+    assert.deepEqual(globalThis.page.toasts, [['success', 'databases.dbDeletedKept{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app"}']]);
   } finally {
     await cleanup();
   }
@@ -292,7 +310,8 @@ test('a refused delete says the reason in the reader’s words: the administrato
     assert.equal(buttonsWith('common.goFix').length, 0, 'a customer is sent to a page they do not have');
     // Both languages carry both sentences, with the same placeholders.
     for (const key of ['err.DATABASE_ENGINE_CREDENTIAL_REFUSED', 'err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator', 'err.DATABASE_ENGINE_UNREACHABLE', 'err.DATABASE_ENGINE_UNREACHABLE.administrator',
-      'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown']) {
+      'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown',
+      'err.DATABASE_DELETE_RECORDS_LEFT', 'databases.delete.lostUsers', 'databases.delete.keptShared', 'databases.delete.keptAccount', 'databases.dbDeletedKept']) {
       assert.ok(enScreens[key] && trScreens[key], key);
       const holes = (value) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');
       assert.equal(holes(trScreens[key]), holes(enScreens[key]), key);

@@ -66,6 +66,7 @@ export const enRefusalsScreens = {
     "err.DATABASE_DELETE_UNCONFIRMED": "No answer came back, so it is not known whether {name} was deleted. Nothing is sent again by itself; the list is being read again. If {name} is still listed, press Delete again: it continues where it stopped.",
     "err.DATABASE_DELETE_USERS_LEFT": "{name} was deleted, but its users {users} were not removed yet, so it stays in the list. Press Delete again to finish; if it is refused again, the server administrator finds the reason in CelikPanel’s log.",
     "err.DATABASE_DELETE_USERS_LEFT.unknown": "{name} was deleted; for its users {users} no answer came back, so it is not known whether they were removed. It stays in the list until they are: press Delete again to finish.",
+    "err.DATABASE_DELETE_RECORDS_LEFT": "{name} was deleted on the database server, but CelikPanel’s records of it were not removed, so it is still listed. Press Delete again to finish; nothing else is needed.",
 } as const;
 
 export type RefusalsScreenKey = keyof typeof enRefusalsScreens;
