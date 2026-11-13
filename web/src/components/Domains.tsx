@@ -316,11 +316,24 @@ export function Domains() {
     // after it was finished from another tab, because only "automatic" ones
     // were read again). These are the same reads; they start nothing.
     // Bekleyen her silme dakikada bir yeniden okunur; yalnız okumadır.
+    // A read that fails keeps the chain going at the same pace (review of
+    // round 5: one failed read used to end it until a manual refresh); a
+    // read still on its way is never doubled.
+    // Başarısız okuma zinciri durdurmaz; süren okumanın üstüne yenisi açılmaz.
     const autoRecheck = pendingDeletions.some((item) => item.automatic);
     const watchPending = pendingDeletions.length > 0;
+    const listReading = useRef(false);
+    listReading.current = list.reading;
     useEffect(() => {
         if (!watchPending) return;
-        const timer = window.setTimeout(() => invalidate('domains', 'dns'), autoRecheck ? 15000 : 60000);
+        let timer = 0;
+        const arm = () => {
+            timer = window.setTimeout(() => {
+                if (!listReading.current) invalidate('domains', 'dns');
+                arm();
+            }, autoRecheck ? 15000 : 60000);
+        };
+        arm();
         return () => window.clearTimeout(timer);
     }, [watchPending, autoRecheck, listedAt]);
 

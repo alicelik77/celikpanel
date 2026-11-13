@@ -942,6 +942,42 @@ test('Domains: a waiting deletion finished from another tab leaves this tab by i
   }
 });
 
+// Review of round 5 (N2): a read of the list that fails does not end the
+// re-reading; the next one comes at the same pace and the finished deletion
+// still leaves by itself. Reads only.
+test('Domains: a failed re-read of a waiting deletion keeps the list reading by itself', async () => {
+  const pendingRow = { ...domainRow, id: 9, domain_name: 'leaving.example', status: 'pending' };
+  let phase = 'pending';
+  serve({
+    '/api/v1/domains': (request) => (phase === 'fail'
+      ? json({ error: 'server sentence', code: 'INTERNAL' }, 502)(request)
+      : json(phase === 'done' ? [] : [pendingRow])(request)),
+    '/api/v1/domains/9/deletion-status': (request) => (phase === 'done'
+      ? new Response(null, { status: 204 })
+      : json({ status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_journal_unresolved', follow_up: 'person' })(request)),
+  });
+  const timers = [];
+  Object.assign(globalThis.window, { setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout: () => {} });
+  const fire = async () => {
+    const timer = timers.filter((item) => item.ms === 60000).pop();
+    assert.ok(timer, `no read again armed (timers ${timers.map((item) => item.ms)})`);
+    timers.length = 0;
+    await act(async () => { timer.fn(); await settled(); await settled(); await settled(); });
+  };
+  try {
+    await mount(Domains);
+    assert.ok(has('leaving.example') && has('domains.deletionWaiting'));
+    phase = 'fail';
+    await fire();
+    phase = 'done';
+    await fire();
+    assert.ok(!has('leaving.example') && !has('domains.deletionWaiting'), 'the list stopped reading after one failed read');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
+  } finally {
+    await cleanup();
+  }
+});
+
 // alpha.133 round 5: every DNS proof reason on the waiting notice has why,
 // who acts, the next step when a person has one and how it continues; a
 // backup that does not answer needs nobody; one that refuses names who acts.
