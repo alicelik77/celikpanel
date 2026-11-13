@@ -67,7 +67,6 @@ test('every reviewed pending reason has readable EN/TR copy', () => {
     'dns_peer_enrollment_changed',
     'dns_peer_inspection_unknown',
     'dns_peer_native_unknown',
-    'dns_peer_journal_unknown',
     'dns_peer_owner_edit_unknown',
     'dns_peer_catalog_transfer_refused',
     'dns_peer_proof_internal',
@@ -279,25 +278,29 @@ test('a proof timeout says what is already true, that CelikPanel checks again by
   assert.equal(domainDeletionDetailKey('dns_peer_owner_edit_unknown', 'local_check'), null);
 });
 
-test('a challenge that cannot be reconciled waits for the automatic re-check, then names the Agent log and why a retry is safe', () => {
+test('a check that could not complete waits for the automatic re-check and says nobody needs to act (alpha.133)', () => {
   const en_ = en['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown'];
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown'];
-  assert.match(en_, /could not write or match its single-use check challenge/);
-  assert.match(tr_, /yazamadı ya da eşleştiremedi/);
-  // D-024: while the Panel re-checks by itself it is a waiting state; the
-  // administrator's log step comes only after that, for a lasting result.
-  assert.match(en_, /Nobody needs to do anything now/);
-  assert.match(tr_, /kimsenin bir şey yapması gerekmiyor/);
+  // The Agent now finishes an interrupted change of its check record by
+  // itself, so a re-check can finish this: why, nobody acts, how it goes on.
+  assert.match(en_, /because this server could not complete its last check/);
+  assert.match(tr_, /bu sunucu son denetimini tamamlayamadı/);
+  assert.match(en_, /You do not need to do anything/);
+  assert.match(tr_, /Sizin bir şey yapmanız gerekmiyor/);
   for (const text of [en_, tr_]) {
-    assert.ok(text.includes('sudo journalctl -u celikpanel-agent | grep peer'));
+    assert.doesNotMatch(text, /challenge|journal|nonce|journalctl|Retry this deletion|Bu silme işlemini tekrar dene/);
   }
-  assert.ok(en_.indexOf('Nobody needs to do anything now') < en_.indexOf('journalctl'));
-  assert.ok(tr_.indexOf('kimsenin bir şey yapması gerekmiyor') < tr_.indexOf('journalctl'));
-  assert.match(en_, /retry is safe because each challenge can be used only once/);
-  assert.match(tr_, /yalnız bir kez kullanılabildiği/);
-  assert.match(tr_, /yeniden denemek güvenlidir/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  const enU = en['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unresolved'];
+  const trU = tr['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unresolved'];
+  assert.match(enU, /Who acts: this server’s administrator/);
+  assert.match(trU, /Kim yapar: bu sunucunun yöneticisi/);
+  for (const text of [enU, trU]) {
+    assert.ok(text.includes('sudo journalctl -u celikpanel-agent | grep peer'));
+    assert.ok(text.includes('sudo ls -la /var/lib/celikpanel-agent-private'));
+  }
+  assert.ok(enU.includes(`${enScreens['kit.rows.more']} → ${enScreens['domains.action.delete']}`));
+  assert.ok(trU.includes(`${trScreens['kit.rows.more']} → ${trScreens['domains.action.delete']}`));
+  assert.doesNotMatch(enU + trU, /Nobody needs|kimsenin bir şey yapması gerekmiyor|Sizin bir şey yapmanız gerekmiyor/);
 });
 
 test('owner-edit guidance keeps its meaning and names the serial comparison', () => {

@@ -12,11 +12,19 @@ import (
 const dnsPeerCatchingUpEnglish = "The DNS change is saved and in effect on this server, but the backup DNS server has not caught up with it yet: it did not confirm the change within its check time (it may be restarting, offline or briefly unreachable). Nobody needs to do anything: CelikPanel re-checks this same publication by itself, first after about 15 seconds and then less often (at most every 5 minutes), and completes it as soon as the backup has caught up; Server → DNS and peer servers shows the next check. Until then other DNS changes wait for it. If this lasts, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53."
 
 // dnsPeerJournalUnknownEnglish: the backup's confirmation of a deletion is not
-// complete because this server's single-use check challenge could not be
-// written or matched this time. The Panel re-checks with a new challenge by
-// itself, so nobody needs to act yet; only a result that lasts sends the
-// administrator to the Agent log.
-const dnsPeerJournalUnknownEnglish = "The DNS change is saved and in effect on this server; only the confirmation that the backup DNS server removed the zone is not complete: this server could not write or match its single-use check challenge this time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself with a new challenge, first after about 15 seconds and then less often (at most every 5 minutes); Server → DNS and peer servers shows the next check, and it continues from where it stopped. A retry is safe because each challenge can be used only once and a retry starts a new one; this server's owner can also retry now with “Retry this deletion”. Only if this message stays after several checks does this server's administrator read the Agent log lines for this deletion with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason."
+// complete because this server could not complete its own check record this
+// time. Since alpha.133 the Agent finishes an interrupted change of that
+// record by itself in the next attempt and a state it cannot prove is
+// dns_peer_journal_unresolved, so a re-check can finish this one and nobody
+// needs to act. One sentence each: why, who, how it continues (D-024); the
+// same words as the screen (web dnsPublication part, deletionGuide).
+const dnsPeerJournalUnknownEnglish = "This domain is removed from DNS on this server; that the backup DNS server removed it too is not confirmed yet, because this server could not complete its last check. Nobody needs to do anything. CelikPanel re-checks this same publication by itself, at most every 5 minutes."
+
+// dnsPeerJournalUnresolvedEnglish (alpha.133): the record this server keeps
+// for that check is in a state the Agent cannot attribute to an interrupted
+// change of its own; it keeps it and does not retry by itself. Who acts and
+// the one next step come first; the commands are in the screen's details.
+const dnsPeerJournalUnresolvedEnglish = "This domain is removed from DNS on this server, but the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: the server administrator. Next step: send the CelikPanel Agent's lines about this (sudo journalctl -u celikpanel-agent | grep peer) and the list of files in /var/lib/celikpanel-agent-private (sudo ls -la /var/lib/celikpanel-agent-private) to CelikPanel support, and do not delete those files yourself. CelikPanel does not check this again by itself; once the record is sorted out, deleting the domain again continues this same publication from where it stopped."
 
 // dnsPeerProofTimeoutEnglish: a step of the proof of the backup ran out of
 // time. The zone is already removed on this server and the backup most
@@ -47,6 +55,8 @@ func dnsPeerProofTimeoutDetailEnglish(detail string) string {
 // recovery path is the same one the owner's retry uses). Causes that need a
 // person keep their guidance and wait for the owner (D-024, RESILIENCE-
 // CONTRACT 4: repeated deterministic failure ends automatic attempts).
+// dns_peer_journal_unresolved (alpha.133) is such a cause: the Agent keeps a
+// check record it cannot prove, and waiting does not change it.
 func dnsPeerPendingRetriesAutomatically(code string) bool {
 	if code == "" {
 		return true
@@ -83,6 +93,8 @@ func dnsPeerPendingEnglish(code string) string {
 		// D7): the Panel re-checks it by itself, so the administrator step
 		// is only for a result that lasts.
 		return dnsPeerJournalUnknownEnglish
+	case transport.DNSPeerPendingJournalUnresolved:
+		return dnsPeerJournalUnresolvedEnglish
 	case transport.DNSPeerPendingOwnerEditUnknown:
 		return "The DNS change is saved, but local or peer evidence changed during verification. This server's administrator must reconcile the accepted operation with native DNS configuration: compare the catalog zone and zone serials on both servers, then retry this same publication."
 	case transport.DNSPeerPendingCatalogTransferRefused:

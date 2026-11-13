@@ -74,7 +74,7 @@ func TestChallengeWriteRunsOneFullRecheckAndFitsItsBound(t *testing.T) {
 	journal := &sameOperationJournal{}
 	retired := 0
 	reconcile := func(verify func() error) error {
-		return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, journal.read,
+		return reconcileHistoricalBINDPeerChallengeAt(nextPlan, verify, load, cleanBINDJournal, journal.read,
 			func(_ dnspeerproof.RequestV1, _, _ string, _ uint64, _ dnspeerjournal.VerifyCurrent) error {
 				retired++
 				return nil

@@ -420,6 +420,10 @@ func (c *nativePeerCurrentChecks) journalOpWith(verify func() error, what string
 			return last
 		}
 		err = errors.Join(err, last)
+	} else if pendingDNSPeerCode(err) != "" {
+		// The operation's own reviewed outcome (the reconciliation's
+		// dns_peer_journal_unresolved), its held checks having passed.
+		return err
 	}
 	return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown, fmt.Errorf("%s: %w", what, err))
 }

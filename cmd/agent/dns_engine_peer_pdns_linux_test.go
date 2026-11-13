@@ -110,7 +110,7 @@ func TestNativePDNSHistoricalChallengeRetiresOnlyExactTerminal(t *testing.T) {
 		return nil
 	}
 	if err := reconcileHistoricalPDNSPeerChallengeAt(next, current,
-		func() (serviceMutationLedger, error) { return ledger, nil }, read, retire); err != nil || !retired || reads != 2 {
+		func() (serviceMutationLedger, error) { return ledger, nil }, cleanPDNSJournal, read, retire); err != nil || !retired || reads != 2 {
 		t.Fatalf("exact prior result not retired: %v retired=%v reads=%d", err, retired, reads)
 	}
 	for _, edit := range []func(*serviceMutationLedger){
@@ -128,7 +128,7 @@ func TestNativePDNSHistoricalChallengeRetiresOnlyExactTerminal(t *testing.T) {
 		edit(&changed)
 		retired = false
 		if err := reconcileHistoricalPDNSPeerChallengeAt(next, func() error { return nil },
-			func() (serviceMutationLedger, error) { return changed, nil },
+			func() (serviceMutationLedger, error) { return changed, nil }, cleanPDNSJournal,
 			func() (pdnspeerjournal.RecordV1, error) { return previous, nil }, retire); err == nil || retired {
 			t.Fatalf("nonterminal history retired: %v", err)
 		}
@@ -152,4 +152,13 @@ func TestPDNSInspectionPendingCodeCarriesTheInspectorReason(t *testing.T) {
 			t.Fatalf("%v lost through the pending error or ledger", err)
 		}
 	}
+}
+
+// cleanPDNSJournal is pdnspeerjournal.Recover on a journal with nothing to
+// finish: it runs the held check once, as Recover does.
+func cleanPDNSJournal(verify pdnspeerjournal.VerifyCurrent, _ pdnspeerjournal.FinishedCheck) (pdnspeerjournal.Repair, error) {
+	if verify() != nil {
+		return pdnspeerjournal.RepairNone, pdnspeerjournal.StateError{Code: pdnspeerjournal.Unknown}
+	}
+	return pdnspeerjournal.RepairNone, nil
 }

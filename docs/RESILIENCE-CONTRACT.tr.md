@@ -7408,3 +7408,66 @@ bağlantıyı tutar.
   meşgul ve düz ret için bekleme ve sınırlı bırakma, ardından düzeltilmiş planın
   kurulması; sahibin uzlaştırmasıyla bırakma; yeniden başlatmada kısıtlamadan
   bitirme. Gerçek sistem koşusu yok. **Hiçbir P0 işi kapanmaz**; P0.4 kısmi kalır.
+
+### Dal a133/dnsproof4 (DNS eş denetim kaydının yarım kalan değişikliğini sonraki deneme tamamlar; kanıtlanamayanın kendi nedeni var; şema değişikliği yok; ilkeler 2, 3 ve 4; P0.4; D-024; D-025; 2026-11-13)
+
+- **Olay.** alpha.133 lab'ı, boşta sunucu, BIND yedekli PowerDNS ana sunucu:
+  alpha.132'de kendiliğinden bir yeniden denetim, önceki silmenin tüketilmiş
+  denetim kaydını kaldırırken hazırlığın 8 saniyesini doldurdu. alpha.132'nin
+  kaldırması kaydı boş bir mezar taşıyla takas ediyor, sonra bir şey silmeden
+  önce bitiş denetimini (adımın bağlamında tam yerel DNS denetimiyle) çalıştırıyordu
+  (`v0.1.0-alpha.132`'de `internal/dnspeerjournal/store_linux.go` 231-288); süre
+  dolunca takastan sonra bu denetim başarısız oldu ve iki dosya da kaldı: 0 baytlık
+  kayıt dosyası ve tüketilmiş kaydı tutan `.dns-peer-retired-*`. `455b31173` her özel
+  ara dosyayı reddetti (`countOrphanStages`) ve hiçbir şey onarmadı; ekran kimsenin
+  bir şey yapması gerekmediğini söylerken silme hiç bitmedi.
+- **`455b31173`'te kalan neden.** Günlüğe artık bağlam ulaşmıyordu (tutulan
+  denetimler), ama takas ile son silme arasında öldürme, elektrik kesintisi ya da
+  bir hata (tutulan denetimin başarısız olması, fsync ya da silme hatası) aynı durumu
+  bırakıyordu; takastan önce ya da sonra öldürülen bir yazma da bir ara dosya
+  bırakıyordu ve her biri sonraki bütün kanıtları durduruyordu. Ayrıca bir dizin
+  tanımlayıcısında ilkinden sonraki her ara dosya listelemesi dizinin sonundan
+  okuyup hiçbir şey görmüyordu.
+- **Değişiklik.** Kaldırma, tutulan kilitler altındaki aynı bitiş kanıtından sonra
+  kaydın özel bir ada tek bir `RENAME_NOREPLACE` ile taşınmasıdır; ardından hiçbir
+  şey onu durduramaz ve tamamlanması (kimlik denetimi, fsync, silme, fsync) onarımın
+  kullandığı yordamdır. `Recover` (iki günlükte de) hazırlıkta tutulan denetimler
+  altında önce çalışır ve tam olarak şu durumları tamamlar ya da geri alır: yok ya da
+  geçerli bir kaydın yanında boş ara dosya (silinir); yok ya da 0 baytlık bir kaydın
+  yanında, işlemi tutulan kilitler altında okunan iş kaydında bitmiş-yayımlanmış
+  görünen kaldırılmış kayıt (silinir, önce 0 baytlık kayıt); yok bir kaydın yanında
+  denetim ara dosyası (hiç yayımlanmadı, silinir); içeriğiyle kaydın önceki hâli ya
+  da hiç yayımlanmamış sonraki hâli olan denetim ara dosyası (silinir). Hiçbir zaman
+  kayıt yazmaz ya da geri koymaz. Gerisi (iki ara dosya, yabancı ya da güvensiz
+  dosyalar, tek başına 0 baytlık kayıt, bir kaydın yanında kaldırılmış kayıt, işlemi
+  bitmemiş kaldırılmış kayıt) ve iş kaydının bitmiş göstermediği başka bir işlemin
+  kaydı `dns_peer_journal_unresolved`'dır: dokunulmaz, kendiliğinden yeniden
+  denetlenmez, yöneticilere tek bildirim gider, ekran yöneticiyi ve tek sonraki adımı
+  adlandırır. Ara dosya listelemeleri dizini baştan okur.
+- **Tek kullanım neden korunur.** Bir yanıt yalnız ConsumeOnce ile, etkin denemenin
+  günlükteki güncel bekleyen kaydına karşı kabul edilir. Onarım yalnız bu kayıt
+  olmayan dosyaları ya da işlemi bitmiş bir kaydı siler; kabul edilebilir yanıtları
+  yalnız azaltabilir ve her sonraki denetimin yeni bir nonce'u vardır. Hiç
+  yayımlanmamış bir ara dosya hiç gönderilmedi (yayım, takastan önce biter). Bitmiş
+  bir silmenin kanıtı tüketilmiş kayıt değil, iş kaydının bitiş makbuzudur; böyle bir
+  durum olmayan sahip değişiklikleri incelenmek üzere kalır.
+- **Ekran.** Silme durumu `follow_up` (`automatic`, `stuck`, `stopped`, `person`) ve
+  `next_check_at` alanlarını kazanır. Alan Adları kutusu kitin Guidance bloğudur: ne
+  bekliyor, tek cümleyle neden, kim yapar ("Sizin bir şey yapmanız gerekmiyor" yalnız
+  `automatic` için), sonraki adım, sonraki denetimin saati, sayfanın kendi düğmesi ve
+  yalnız yöneticiler için kapalı Ayrıntılar altında komutlar. Silme penceresi ve
+  bildirim aynı cümleleri kullanır (yeni tembel yüklenen ekran parçası
+  `deletionGuide`; açılış yolunda 0,11 KiB gzip kaldı).
+- **Kanıt.** WSL konuğunda bileşen ve üretim yolu testleri: lab durumu, Frankfurt'un
+  sağlam durumu, alpha.133 ve alpha.132 kaldırmasının ve her yazmanın her dosya
+  işleminde durma (o işlemdeki dizinin kopyası), onarımın içinde durma, reddedilen
+  durumların değişmemesi, dizinde hiçbir şey kalmaması, onarımdan sonra hazırlığın
+  süresinin dolması, süresi geçmiş adım bağlamı; panel: çözülemeyen neden için
+  kendiliğinden deneme olmaması ve tek bildirim, `follow_up` değerleri. Henüz gerçek
+  sistem koşusu yok; lab `a133-idle` anlık görüntüsünü yeniden koşar.
+- **Kalan.** İş kaydından düşmüş (128 işin ötesi) ya da başarısız bir işlemin kaydı
+  kaldırılmaz, çözülemeyen sayılır. Çözülemeyen durum için sahip eylemi yok (öneri:
+  adı yazılarak onaylanan "denetim kaydını kenara koy ve yeniden denetle"). Elektrik
+  kesintisine dayanıklılık dosya sisteminin dosya ve dizin fsync'ine uymasına
+  bağlıdır. Silmenin diğer nedenleri önceki uzun metinlerini korur. **Hiçbir P0 işi
+  kapanmaz**; P0.4 kısmi kalır.

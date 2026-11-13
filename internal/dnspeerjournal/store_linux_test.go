@@ -405,7 +405,7 @@ func TestOwnerEditAtTerminalRetirementExchangeIsPreserved(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := s.retireAt(request, enrollment, digest, 1, allow, func(at string) {
-		if at != "before_exchange" {
+		if at != "before_rename" {
 			return
 		}
 		if e := os.WriteFile(s.path, []byte("owner terminal edit"), 0600); e != nil {
@@ -565,9 +565,10 @@ func TestCatalogAdvanceRefusedUnlessVerifiedRestampOfSameOperation(t *testing.T)
 
 // The agent's prepare step budgets a retirement by this count
 // (cmd/agent retireCallsPerRetirement): a successful retirement calls its
-// terminal verifier exactly four times. A change here must change that
-// budget model and its incident test (12 Nov 2026).
-func TestRetireVerifiesTerminalFourTimes(t *testing.T) {
+// terminal verifier exactly twice, both before its one rename (alpha.133;
+// four times, two of them after the exchange, until then). A change here
+// must change that budget model and its incident test (12 Nov 2026).
+func TestRetireVerifiesTerminalTwice(t *testing.T) {
 	s, request, digest := fixture(t)
 	if err := s.publish(request, fixtureMembers, enrollment, 1, allow, nil); err != nil {
 		t.Fatal(err)
@@ -576,8 +577,8 @@ func TestRetireVerifiesTerminalFourTimes(t *testing.T) {
 	if err := s.retire(request, enrollment, digest, 1, func() error { calls++; return nil }); err != nil {
 		t.Fatal(err)
 	}
-	if calls != 4 {
-		t.Fatalf("retirement verified %d times, want 4", calls)
+	if calls != 2 {
+		t.Fatalf("retirement verified %d times, want 2", calls)
 	}
 }
 

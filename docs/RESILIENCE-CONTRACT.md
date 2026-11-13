@@ -8186,3 +8186,68 @@ until the backup reports ready.
   runner wait and the bounded release for a busy and a plain refusal, then a revised
   plan installing; the owner's reconcile releasing it; startup after a restart
   finishing it without degrading. No native run. **No P0 item is closed**; P0.4 stays partial.
+
+### Branch a133/dnsproof4 (an interrupted change of the DNS peer check record is finished by the next attempt; what cannot be proved has its own reason; no schema change; invariants 2, 3 and 4; P0.4; D-024; D-025; 2026-11-13)
+
+- **Incident.** alpha.133 lab, idle host, PowerDNS primary with a BIND backup:
+  on alpha.132 an automatic re-check ran out of prepare's 8 s inside the
+  retirement of the previous deletion's consumed check record. alpha.132's
+  retirement exchanged the record with an empty tombstone and then ran the
+  terminal check (with the full local DNS recheck, under the step's context)
+  before removing anything (`internal/dnspeerjournal/store_linux.go` 231-288 at
+  `v0.1.0-alpha.132`); the deadline failed that check after the exchange, the
+  function returned with both files retained: a 0-byte record file and
+  `.dns-peer-retired-*` holding the consumed record. `455b31173` refused every
+  private stage (`countOrphanStages`) and nothing repaired it; the deletion never
+  finished while the screen said nobody needed to act.
+- **Cause still present in `455b31173`.** No context reached the journal any more
+  (held checks), but a kill, a power loss, or any error between the exchange
+  and the last unlink (a held check failing, an fsync or unlink error) left the
+  same state, and a write killed before or after its exchange left a challenge
+  stage; every such stage blocked all later proofs. Also, every stage listing
+  after the first on one directory descriptor read from its end and saw nothing.
+- **Change.** A retirement is one `RENAME_NOREPLACE` of the record to a private
+  retired name, after the same terminal proof under the held locks; nothing can
+  veto it afterwards, and its completion (identity check, fsync, unlink, fsync)
+  is the routine the repair uses. `Recover` (both journals) runs first in
+  prepare under the held checks and finishes or rolls back exactly these states:
+  an empty stage beside an absent or valid record (removed); a retired record
+  beside an absent or 0-byte record whose operation the ledger, read under the
+  held locks, shows terminal-published (removed, 0-byte record first); a
+  challenge stage beside an absent record (never published, removed); a challenge
+  stage that is the record's before-image or its never-published successor by
+  content (removed). It never writes or restores a record. Everything else (two
+  stages, foreign or unsafe files, a 0-byte record alone, a retired record beside
+  a record, a retired record whose operation is not finished) and a record of
+  another operation the ledger does not show finished are
+  `dns_peer_journal_unresolved`: kept untouched, not re-checked automatically,
+  one administrator notification, the screen names the administrator and the one
+  next step. Stage listings rewind the directory.
+- **Why single use holds.** An answer is accepted only by ConsumeOnce against the
+  journal's current outstanding record of the active attempt. The repair only
+  removes files that are not that record, or a record whose operation is
+  terminal; it can only make fewer answers acceptable, and every next challenge
+  has a fresh nonce. A never-published stage was never sent (publish precedes the
+  exchange). The ledger's terminal receipt, not the consumed record, is the
+  evidence of a finished deletion; owner edits that are not such a state stay
+  for review.
+- **Screen.** Deletion status gains `follow_up` (`automatic`, `stuck`,
+  `stopped`, `person`) and `next_check_at`. The Domains banner is the kit's
+  Guidance: what waits, why in one sentence, who acts ("You do not need to do
+  anything" only for `automatic`), the next step, the next check's time, the
+  page's own button, and the commands under a closed Details for administrators
+  only. The deletion window and the notification use the same sentences (new
+  lazily loaded screen part `deletionGuide`; boot path 0.11 KiB gzip left).
+- **Evidence.** Component and production-path tests in the WSL guest: the lab
+  state, Frankfurt's intact state, a stop at every file operation of the
+  alpha.133 and alpha.132 retirement and of every write (copied directory at that
+  operation), a stop inside the repair, the refused states unchanged, nothing left
+  in the directory, prepare running out of time after the repair, an expired step
+  context; panel: no automatic attempt and one notice for the unresolved reason,
+  follow-up values. No native run yet; the lab re-runs the `a133-idle` snapshot.
+- **Remaining.** A record of an operation pruned from the ledger (beyond 128 jobs)
+  or failed is unresolved, not retired. No owner action for the unresolved state
+  (proposal: a typed-confirmation "set the check record aside and re-check").
+  Power-loss durability depends on the filesystem honouring file and directory
+  fsync. Other deletion reasons keep their earlier long texts. **No P0 item is
+  closed**; P0.4 stays partial.
