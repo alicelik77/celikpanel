@@ -22,9 +22,10 @@ const dnsPeerJournalUnknownEnglish = "This domain is removed from DNS on this se
 
 // dnsPeerJournalUnresolvedEnglish (alpha.133): the record this server keeps
 // for that check is in a state the Agent cannot attribute to an interrupted
-// change of its own; it keeps it and does not retry by itself. Who acts and
-// the one next step come first; the commands are in the screen's details.
-const dnsPeerJournalUnresolvedEnglish = "This domain is removed from DNS on this server, but the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: the server administrator. Next step: send the CelikPanel Agent's lines about this (sudo journalctl -u celikpanel-agent | grep peer) and the list of files in /var/lib/celikpanel-agent-private (sudo ls -la /var/lib/celikpanel-agent-private) to CelikPanel support, and do not delete those files yourself. CelikPanel does not check this again by itself; once the record is sorted out, deleting the domain again continues this same publication from where it stopped."
+// change of its own; it keeps it and does not retry by itself. Plain words
+// only: this text can reach any role through an API error, so the commands
+// stay in the administrator's closed Details on Domains.
+const dnsPeerJournalUnresolvedEnglish = "This domain is removed from DNS on this server, but the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: this server's administrator; if that is not you, tell them. CelikPanel no longer checks this every few minutes; once the administrator has sorted it out, deleting the domain again continues this same publication from where it stopped."
 
 // dnsPeerProofTimeoutEnglish: a step of the proof of the backup ran out of
 // time. The zone is already removed on this server and the backup most

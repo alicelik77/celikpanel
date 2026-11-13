@@ -1064,7 +1064,10 @@ func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dn
 		"zone": lease.ZoneName, "reason": reason, "detail": detail,
 		"delete": lease.DesiredAction == "delete", "checks": entry.Repeats,
 	}
-	p.raiseAccountNotice(ctx, db, recipients, noticeDNSPublicationStuck, true,
+	// One notification per exact publication; when its state changes (stuck,
+	// then a person must act) the same notification says the new state and
+	// is shown again, so the earlier text never stays readable beside it.
+	p.reviseAccountNotice(ctx, db, recipients, noticeDNSPublicationStuck, true,
 		"dns_publication:"+lease.ZoneName, lease.RequestID, body, "/dns-infrastructure")
 }
 
@@ -1085,7 +1088,7 @@ func (p *Panel) clearDNSPublicationStuckNotice(ctx context.Context, lease dnsZon
 // such a notification exists.
 func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases []dnsZoneEngineLease) {
 	rows, err := p.db.GetDB().QueryContext(ctx,
-		`SELECT DISTINCT period FROM account_notices WHERE kind = ? AND seen_at IS NULL`,
+		`SELECT DISTINCT period, COALESCE(json_extract(body, '$.reason'), '') FROM account_notices WHERE kind = ? AND seen_at IS NULL`,
 		noticeDNSPublicationStuck)
 	if err != nil {
 		return
@@ -1094,11 +1097,25 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	for _, lease := range leases {
 		pending[lease.RequestID] = true
 	}
+	scheduler := p.dnsPendingPublications()
 	var ended []string
 	for rows.Next() {
-		var period string
-		if rows.Scan(&period) == nil && !pending[period] {
+		var period, reason string
+		if rows.Scan(&period, &reason) != nil {
+			continue
+		}
+		if !pending[period] {
 			ended = append(ended, period)
+			continue
+		}
+		// "A person must act" no longer holds once the exact job reports
+		// another cause (alpha.133 review): the administrator acted.
+		if reason == transport.DNSPeerPendingJournalUnresolved {
+			if entry, ok := scheduler.entry(period); ok && entry.Observed && entry.Code != "" {
+				if current, _, known := transport.SplitDNSPeerPendingCode(entry.Code); known && current != reason {
+					ended = append(ended, period)
+				}
+			}
 		}
 	}
 	rows.Close()
@@ -1107,12 +1124,27 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	}
 }
 
+// dnsDeletionRowDeleteEnabled reports whether a domain's row on Domains
+// offers More → Delete… while its deletion waits with this reason. The web
+// list disables it while CelikPanel carries the deletion on by itself
+// (web lib/domainDeletionPending.ts automaticDeletionReasons; of the peer
+// reasons only dns_peer_catching_up). tests/deletion-guide-alpha133.test.mjs
+// checks the two lists agree.
+func dnsDeletionRowDeleteEnabled(reason string) bool {
+	switch reason {
+	case transport.DNSPeerPendingCatchingUp:
+		return false
+	default:
+		return true
+	}
+}
+
 // The notification sentences of dns_peer_journal_unresolved: the same why,
 // who, next step and how it continues as the deletion banner's
 // (web dnsPublication part, domains.deletionGuide.journalUnresolved.*).
 const (
-	dnsJournalUnresolvedNoticeEN = "the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: you. Send the CelikPanel Agent's lines about this and the list of files in its private folder to CelikPanel support (on this server: sudo journalctl -u celikpanel-agent | grep peer and sudo ls -la /var/lib/celikpanel-agent-private), and do not delete those files yourself. CelikPanel does not check this again by itself; once the record is sorted out, deleting the domain again on Domains continues this same deletion."
-	dnsJournalUnresolvedNoticeTR = "yedek DNS sunucusunun da kaldırdığını doğrulamak için bu sunucunun tuttuğu kayıt, CelikPanel'in kendiliğinden düzeltemeyeceği bir durumda. Kim yapar: siz. CelikPanel Agent'ın bununla ilgili satırlarını ve özel klasöründeki dosyaların listesini CelikPanel desteğine gönderin (bu sunucuda: sudo journalctl -u celikpanel-agent | grep peer ve sudo ls -la /var/lib/celikpanel-agent-private); bu dosyaları kendiniz silmeyin. CelikPanel bunu kendiliğinden yeniden denetlemez; kayıt düzeltilince Alan Adları sayfasında alan adını yeniden silmek aynı silmeyi sürdürür."
+	dnsJournalUnresolvedNoticeEN = "the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: you. On Domains, open Details in this deletion's waiting notice and send the two command outputs it shows to CelikPanel support; do not delete those files yourself. CelikPanel no longer checks this every few minutes; once the record is sorted out, More → Delete… on the domain's row continues this same deletion."
+	dnsJournalUnresolvedNoticeTR = "yedek DNS sunucusunun da kaldırdığını doğrulamak için bu sunucunun tuttuğu kayıt, CelikPanel'in kendiliğinden düzeltemeyeceği bir durumda. Kim yapar: siz. Alan Adları sayfasında bu silmenin bekleme kutusundaki Ayrıntılar'ı açın ve gösterdiği iki komutun çıktısını CelikPanel desteğine gönderin; o dosyaları kendiniz silmeyin. CelikPanel bunu artık birkaç dakikada bir denetlemiyor; kayıt düzeltilince bu alan adının satırındaki Diğer → Sil… aynı silmeyi sürdürür."
 )
 
 // dnsPublicationStuckNoticeWords: what is already true, why it is stuck,
@@ -1136,13 +1168,15 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 	}
 	nextEN := " CelikPanel keeps checking it by itself every 5 minutes, and other DNS changes wait for it."
 	nextTR := " CelikPanel bunu 5 dakikada bir kendiliğinden denetlemeyi sürdürür; diğer DNS değişiklikleri onu bekler."
-	if deletion {
+	reason, detail := bodyString(body, "reason"), bodyString(body, "detail")
+	if deletion && dnsDeletionRowDeleteEnabled(reason) {
 		// The control that exists (alpha.133): the domain's row on Domains,
-		// More → Delete…, retries the same deletion at once.
+		// More → Delete…, retries the same deletion at once. Only where that
+		// control is enabled for the reason (the notice goes to
+		// administrators, who have it).
 		nextEN += " On Domains, More → Delete… on this domain's row checks again at once."
 		nextTR += " Alan Adları sayfasında bu alan adının satırındaki Diğer → Sil… hemen yeniden denetler."
 	}
-	reason, detail := bodyString(body, "reason"), bodyString(body, "detail")
 	if reason == transport.DNSPeerPendingJournalUnresolved {
 		// Not re-checked by itself (alpha.133): no "keeps checking" sentence.
 		w.TitleEN = "The removal of " + zone + " from DNS waits for the server administrator"

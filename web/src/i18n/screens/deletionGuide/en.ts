@@ -24,17 +24,22 @@ export const enDeletionGuideScreens = {
     'domains.deletionGuide.who.administrator': 'This server’s administrator.',
     // The next step of a person.
     'domains.deletionGuide.journalUnresolved.next': 'Send the two command outputs under Details to CelikPanel support, and do not delete those files yourself.',
+    'domains.deletionGuide.journalUnresolved.nextWindow': 'Open Details in the waiting notice at the top of Domains and send the two command outputs it shows to CelikPanel support; do not delete those files yourself.',
     'domains.deletionGuide.journalUnresolved.nextOther': 'Tell this server’s administrator (your hosting provider); nothing is needed from you.',
     'domains.deletionGuide.stuck.next': 'Follow the step in the notification CelikPanel sent about this deletion.',
     'domains.deletionGuide.stuck.nextOther': 'Tell this server’s administrator (your hosting provider) if this stays.',
     'domains.deletionGuide.stopped.next': 'Read the CelikPanel Agent’s lines with the command under Details and fix what they name.',
+    'domains.deletionGuide.stopped.nextWindow': 'Open Details in the waiting notice at the top of Domains, read the CelikPanel Agent’s lines with the command it shows and fix what they name.',
     // How it continues.
     'domains.deletionGuide.then.at': 'CelikPanel checks again by itself at about {time}; once that is confirmed, the deletion finishes by itself.',
     'domains.deletionGuide.then.now': 'CelikPanel is checking it again right now; once that is confirmed, the deletion finishes by itself.',
     'domains.deletionGuide.then.soon': 'CelikPanel checks again by itself within a few minutes; once that is confirmed, the deletion finishes by itself.',
     'domains.deletionGuide.then.stuck': 'CelikPanel keeps checking every 5 minutes; once the cause is gone, the deletion finishes by itself.',
-    'domains.deletionGuide.then.person': 'CelikPanel does not check this again by itself. Once the record is sorted out, More → Delete… on this domain’s row continues this same deletion.',
+    'domains.deletionGuide.then.person': 'CelikPanel no longer checks this every few minutes. Once the record is sorted out, More → Delete… on this domain’s row continues this same deletion.',
+    'domains.deletionGuide.then.personOther': 'CelikPanel no longer checks this every few minutes; once this server’s administrator has sorted it out, the deletion continues from where it stopped.',
     'domains.deletionGuide.then.stopped': 'CelikPanel’s automatic checks of this step have ended. Once the cause is gone, More → Delete… on this domain’s row continues this same deletion.',
+    'domains.deletionGuide.then.stoppedOther': 'CelikPanel’s automatic checks of this step have ended; once this server’s administrator has dealt with the cause, the deletion continues.',
+    'domains.deletionGuide.then.stoppedSupport': 'CelikPanel’s automatic checks of this step have ended, and this page offers no retry while the backup catches up; once the cause is fixed, CelikPanel support helps continue the deletion.',
     // Behind the closed "Details".
     'domains.deletionGuide.stepNote.person': 'Waits for this server’s administrator.',
     'domains.deletionGuide.details': 'Details',

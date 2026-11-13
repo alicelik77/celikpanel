@@ -7469,5 +7469,29 @@ bağlantıyı tutar.
   kaldırılmaz, çözülemeyen sayılır. Çözülemeyen durum için sahip eylemi yok (öneri:
   adı yazılarak onaylanan "denetim kaydını kenara koy ve yeniden denetle"). Elektrik
   kesintisine dayanıklılık dosya sisteminin dosya ve dizin fsync'ine uymasına
-  bağlıdır. Silmenin diğer nedenleri önceki uzun metinlerini korur. **Hiçbir P0 işi
+  bağlıdır; bir ara dosyanın yazılması ile fsync'i arasındaki elektrik kesintisi,
+  baytları kayıt olmayan tam boyutlu bir ara dosya bırakabilir: bu durum
+  onarılmaz, çözülemeyen sayılır. Silmenin diğer nedenleri önceki uzun
+  metinlerini korur. **Hiçbir P0 işi
   kapanmaz**; P0.4 kısmi kalır.
+- **İnceleme düzeltmeleri (aynı dal, 2026-11-13).** Yöneticilere bir yayın için
+  giden tek bildirim artık güncel durumunu söyler: takılan bir yayın "bir kişi
+  yapmalı" durumuna geçince aynı bildirim yeni metni alır, yeniden gösterilir ve
+  yeniden postalanır (`reviseAccountNotice`); yönetici bir şey yaptıktan sonra
+  neden değişince ve yayın bitince kaldırılır. Silme penceresi, toplu silme notları
+  ve DELETE yanıtı sunucunun `follow_up` alanını izler: yalnız `automatic` kimsenin
+  bir şey yapması gerekmediğini söyler; pencere komutlar için kutunun Ayrıntılar'ına
+  yönlendirir; Diğer → Sil…'e yalnız yönetici gönderilir, satırı Sil sunmayan bir
+  neden için asla (`dns_peer_catching_up` takılma bildirimi dahil). Bir kanıt
+  adımının süresi dolduktan sonra bulunan durum (çözülemeyen kayıt, eşleşme,
+  Agent'ın kendi önkoşulu) kendi kodunu korur. Çözülemeyen nedenin API yedek
+  metninde komut ya da özel yol yok. Sahibin sunucusu biçiminde test eklendi
+  (istek denemesi 4, iş kaydı denemesi 183, bu silme 162. denemede bekliyor).
+- **Yalnız root ile çalışan testler.** Günlük deposu testleri
+  (`internal/dnspeerjournal`, `internal/pdnspeerjournal`) root ister;
+  `cmd/agent/dns_engine_peer_journal_repair_linux_test.go` içindeki üretim yolu
+  testleri ayrıca boş, özel bir agent-private dizini ve
+  `CELIKPANEL_TEST_REAL_PEER_JOURNAL=1` ister. CI bunları atlar. Geliştirme
+  konuğunda root olarak yukarıdaki İngilizce bölümdeki komutla çalıştırılır;
+  `dns_engine_peer_journal_repair_linux_test.go` testlerinden hiçbiri SKIP
+  dememelidir.

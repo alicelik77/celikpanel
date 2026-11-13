@@ -230,7 +230,7 @@ function reviewedDetail(pending: Record<string, unknown>, reason: string): strin
         : '';
 }
 
-async function readPendingBody(response: Response): Promise<{ reason: string; detail: string }> {
+async function readPendingBody(response: Response): Promise<{ reason: string; detail: string; followUp?: DomainDeletionFollowUp; nextCheckAt?: string }> {
     if (response.status !== 202) return { reason: '', detail: '' };
     try {
         const body: unknown = await response.json();
@@ -244,7 +244,7 @@ async function readPendingBody(response: Response): Promise<{ reason: string; de
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason
             : '';
-        return { reason, detail: reviewedDetail(pending, reason) };
+        return { reason, detail: reviewedDetail(pending, reason), ...(reason ? reviewedFollowUp(pending) : {}) };
     } catch {
         return { reason: '', detail: '' };
     }
@@ -259,10 +259,12 @@ export async function readDomainDeletionOutcome(response: Response): Promise<{
     state: 'pending' | 'succeeded' | 'error';
     reason: string;
     detail?: string;
+    followUp?: DomainDeletionFollowUp;
+    nextCheckAt?: string;
 }> {
     if (response.status === 202) {
-        const { reason, detail } = await readPendingBody(response);
-        return detail ? { state: 'pending', reason, detail } : { state: 'pending', reason };
+        const { reason, detail, ...next } = await readPendingBody(response);
+        return { state: 'pending', reason, ...(detail ? { detail } : {}), ...next };
     }
     if (response.status === 200 || response.status === 204) {
         return { state: 'succeeded', reason: '' };

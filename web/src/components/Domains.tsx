@@ -13,7 +13,8 @@ import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { DNSCheckToolNotice } from './DNSCheckToolNotice';
-import { DeletionWaitingGuide, deletionGuideFollowUp, deletionGuideText, deletionGuideWords, type DeletionGuideInput } from './DeletionWaitingGuide';
+import { DeletionWaitingGuide } from './DeletionWaitingGuide';
+import { deletionGuideFollowUp, deletionGuideText, deletionGuideWords, type DeletionGuideInput, type DeletionGuidePlace } from '../lib/deletionGuide';
 import { Guidance } from './kit/rows/Guidance';
 import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionGuideReason, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage, type DomainDeletionFollowUp } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
@@ -241,11 +242,12 @@ export function Domains() {
             ? capabilities.remote.state === 'known' ? dnsEngineBlockerText(capabilities.remote.value, t) : t('domains.add.needsDns')
             : t('err.DNS_SETTINGS_REQUIRED');
 
-    const pendingMessage = (reason: string, detail = '', next?: Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>) => {
+    const pendingMessage = (reason: string, detail = '', next?: Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>, place: DeletionGuidePlace = 'banner') => {
         // A reason the deletion guide words (alpha.133): why, who acts, the
-        // next step and how it continues, the same sentences as the banner.
-        const words = deletionGuideWords({ reason, detail, ...next }, isAdmin, t, locale);
-        if (words) return deletionGuideText(words);
+        // next step and how it continues, the same sentences as the banner;
+        // the window and the bulk notes point to the banner's Details.
+        const words = deletionGuideWords({ reason, detail, ...next }, isAdmin, t, locale, place);
+        if (words) return deletionGuideText(words, t);
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;
         const translated = key ? t(key) : '';
         if (!key || translated === key) return t('domains.deletionPending');
@@ -414,7 +416,7 @@ export function Domains() {
                         show(index, { state: 'done', note: result.note });
                     } else {
                         unfinished++;
-                        show(index, result.kind === 'pending' && (domainDeletionBlocksRetry(result.reason) || RECHECKED_BY_ITSELF.has(result.reason))
+                        show(index, result.kind === 'pending' && continuesByItself(result.reason, result.followUp)
                             ? { state: 'waiting', note: t('domains.step.continuesAlone') }
                             : { state: 'failed', note: deleteResultText(result) });
                     }
@@ -446,13 +448,13 @@ export function Domains() {
 
     type DeleteResult =
         | { kind: 'done'; note?: string }
-        | { kind: 'pending'; reason: string; detail?: string; stage: string }
+        | ({ kind: 'pending'; reason: string; detail?: string; stage: string } & Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>)
         | { kind: 'failed'; text: string }
         | { kind: 'unknown' };
 
     const deleteResultText = (result: DeleteResult) =>
         result.kind === 'failed' ? result.text
-            : result.kind === 'pending' ? pendingMessage(result.reason, result.detail)
+            : result.kind === 'pending' ? pendingMessage(result.reason, result.detail, result, 'window')
                 : result.kind === 'unknown' ? t('common.resultUnknown') : '';
 
     const deleteDomain = async (id: number, name: string): Promise<DeleteResult> => {
@@ -485,7 +487,7 @@ export function Domains() {
         { id: 'request', label: t('domains.step.request', { name }), state: 'running', since },
         { id: 'finish', label: t('domains.step.finish'), state: 'pending' },
     ];
-    const deletionSteps = (name: string, stage: string, reason: string, since: number, failed = false): OperationStep[] => {
+    const deletionSteps = (name: string, stage: string, reason: string, since: number, failed = false, note?: string): OperationStep[] => {
         const waitNote: Record<string, string> = {
             remote_dns_removal_confirming: t('domains.step.note.confirming'),
             dns_peer_catching_up: t('domains.step.note.catchingUp'),
@@ -494,7 +496,6 @@ export function Domains() {
             // by CelikPanel itself. Waiting, not failed.
             dns_peer_proof_timeout: t('domains.step.note.verifying'),
             dns_peer_journal_unknown: t('domains.step.note.verifying'),
-            dns_peer_journal_unresolved: t('domains.deletionGuide.stepNote.person'),
         };
         // The joined server's DNS removal is done once the main server confirmed it.
         const step = reason === 'remote_dns_removed_finishing' ? 'finish' : STAGE_STEP[stage];
@@ -515,12 +516,13 @@ export function Domains() {
             certificates: t('domains.step.done.certificates'),
             finish: t('domains.step.done.finish'),
         };
-        const current: OperationStep['state'] = failed ? 'failed' : waitNote[reason] ? 'waiting' : 'running';
+        const waiting = note ?? waitNote[reason];
+        const current: OperationStep['state'] = failed ? 'failed' : waiting ? 'waiting' : 'running';
         return STEP_ORDER.map((id, index) => ({
             id,
             label: index < at ? doneLabels[id] : labels[id],
             state: index < at ? 'done' : index > at ? 'pending' : current,
-            ...(index === at ? { since, note: failed ? undefined : waitNote[reason] } : {}),
+            ...(index === at ? { since, note: failed ? undefined : waiting } : {}),
         }));
     };
 
@@ -532,23 +534,31 @@ export function Domains() {
     // Reasons of this server's DNS step that the Panel re-checks by itself,
     // while a press of "Retry this deletion" stays possible.
     const RECHECKED_BY_ITSELF = new Set(['dns_peer_proof_timeout', 'dns_peer_journal_unknown']);
+    // While the server says CelikPanel re-checks it by itself (follow_up
+    // automatic): only then do the window and the bulk notes say that nobody
+    // needs to act and that it continues alone (alpha.133 review).
+    const continuesByItself = (reason: string, followUp?: DeletionGuideInput['followUp']) =>
+        (RECHECKED_BY_ITSELF.has(reason) || domainDeletionBlocksRetry(reason)) &&
+        (domainDeletionGuideReason(reason) === null || deletionGuideFollowUp(reason, followUp) === 'automatic');
 
     // How a pending answer ends the window when CelikPanel does not carry it
     // on by itself: the step it stopped at is marked, and the reason (who
     // acts, the next step) is said.
-    const pendingEnd = (name: string, report: OperationReport, stage: string, reason: string, detail: string | undefined, since: number): OperationEnd => {
-        if (RECHECKED_BY_ITSELF.has(reason)) {
+    const pendingEnd = (name: string, report: OperationReport, stage: string, reason: string, detail: string | undefined, since: number,
+        next?: Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>): OperationEnd => {
+        if (continuesByItself(reason, next?.followUp)) {
             // Nothing failed: the removal is done here and CelikPanel checks
             // the backup's confirmation again by itself (alpha.133).
             report.steps(deletionSteps(name, stage, reason, since));
             // "Someone needs to act" would not be true here: nobody does.
-            return { state: 'blocked', subtitle: t('domains.step.rechecksAlone'), reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
+            return { state: 'blocked', subtitle: t('domains.step.rechecksAlone'), reason: `${pendingMessage(reason, detail, next, 'window')} ${t('domains.step.continuesAlone')}` };
         }
-        if (reason === 'dns_peer_journal_unresolved') {
+        if (domainDeletionGuideReason(reason) !== null) {
             // Not a failure of the deletion: it waits for the server's
-            // administrator, who is named with the one next step (alpha.133).
-            report.steps(deletionSteps(name, stage, reason, since));
-            return { state: 'blocked', reason: pendingMessage(reason, detail) };
+            // administrator (stuck, checks ended, or a check record CelikPanel
+            // cannot sort out), who is named with the one next step.
+            report.steps(deletionSteps(name, stage, reason, since, false, t('domains.deletionGuide.stepNote.person')));
+            return { state: 'blocked', reason: pendingMessage(reason, detail, next, 'window') };
         }
         report.steps(deletionSteps(name, stage, reason, since, true));
         return { state: reason ? 'failed' : 'unknown', reason: pendingMessage(reason, detail) };
@@ -583,18 +593,22 @@ export function Domains() {
                     return { state: 'unknown', reason: t('domains.step.stopped', { name }) };
                 }
                 const { reason, detail } = saved.saved;
+                const next = { followUp: saved.saved.followUp, nextCheckAt: saved.saved.nextCheckAt };
                 if (`${saved.stage}/${reason}` !== last) {
                     last = `${saved.stage}/${reason}`;
                     stepSince = Date.now();
                 }
-                if (!domainDeletionBlocksRetry(reason)) {
+                // A reason the guide words whose follow-up is not CelikPanel's
+                // own re-check ends the window with who acts (alpha.133).
+                if (!domainDeletionBlocksRetry(reason) ||
+                    (domainDeletionGuideReason(reason) !== null && !continuesByItself(reason, next.followUp))) {
                     changed();
-                    return pendingEnd(name, report, saved.stage, reason, detail, stepSince);
+                    return pendingEnd(name, report, saved.stage, reason, detail, stepSince, next);
                 }
                 report.steps(deletionSteps(name, saved.stage, reason, stepSince));
                 if (Date.now() - startedAt > FOLLOW_LIMIT_MS) {
                     changed();
-                    return { state: 'blocked', reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
+                    return { state: 'blocked', reason: `${pendingMessage(reason, detail, next, 'window')} ${t('domains.step.continuesAlone')}` };
                 }
             }
             await new Promise((resolve) => window.setTimeout(resolve, 3000));
@@ -637,7 +651,10 @@ export function Domains() {
         }
         if (result.kind === 'failed') return { state: 'failed', reason: result.text };
         if (result.kind === 'unknown') return { state: 'unknown', reason: t('common.resultUnknown') };
-        if (!domainDeletionBlocksRetry(result.reason)) return pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now());
+        if (!domainDeletionBlocksRetry(result.reason) ||
+            (domainDeletionGuideReason(result.reason) !== null && !continuesByItself(result.reason, result.followUp))) {
+            return pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now(), result);
+        }
         report.steps(deletionSteps(name, result.stage, result.reason, Date.now()));
         return followDeletion(id, name, report, startedAt);
     };
@@ -648,16 +665,19 @@ export function Domains() {
             const stage = await readDomainDeletionStage(res);
             const outcome = await readDomainDeletionOutcome(res);
             if (outcome.state === 'pending') {
-                const message = pendingMessage(outcome.reason, outcome.detail);
+                const message = pendingMessage(outcome.reason, outcome.detail, outcome);
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
-                    { id, name, message, ...pendingFlags(outcome.reason), guide: { reason: outcome.reason, detail: outcome.detail } },
+                    {
+                        id, name, message, ...pendingFlags(outcome.reason, outcome.followUp),
+                        guide: { reason: outcome.reason, detail: outcome.detail, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt },
+                    },
                 ]);
                 // No toast: the window and the banner above the list say it.
                 setSelected((s) => s.filter((x) => x !== id));
                 changed();
-                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage };
+                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt };
             }
             if (outcome.state === 'error') {
                 // The refusal and its fix stay at the top of the list until the

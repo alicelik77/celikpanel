@@ -110,7 +110,10 @@ Bir test bunu istisnasız korur.
   kendi denetimleri bunu bitirebiliyorken), sonraki denetimin saati ve
   sayfanın kendi "Silme durumunu kontrol et" düğmesi; yöneticinin komutu ve
   teknik açıklama kapalı "Ayrıntılar" altındadır. Silme penceresi ve bildirim
-  aynı cümleleri kullanır ve yalnız var olan düğmeleri adlandırır.
+  aynı cümleleri kullanır ve aynı durumu izler (CelikPanel kendiliğinden mi
+  denetliyor, yöneticilere mi bildirildi, bir kişi mi yapmalı); yalnız okuyanın
+  sahip olduğu düğmeleri adlandırır ve pencere komutlar için kutunun
+  Ayrıntılar'ına yönlendirir.
 
 ### Diğer düzeltmeler
 
@@ -202,7 +205,10 @@ itibaren pencere kendiliğinden devam eder.
 - DNS çiftinde bir silme, iki deneme arasında sunucuda CelikPanel dışında
   başka bir bölge eklenir ya da kaldırılırsa da kendiliğinden bir çıkış yolu
   olmadan bekler (bu sürümden önce de olabiliyordu). Denetim kaydının
-  yazılması ya da kaldırılması sırasında durma artık böyle bir durum değil.
+  yazılması ya da kaldırılması sırasında durdurulan bir süreç artık böyle bir
+  durum değil; bir yazmadan hemen sonra, veri diske ulaşmadan elektrik
+  kesilirse sonraki denetimin bağlayamadığı bir dosya yine kalabilir ve o
+  zaman sunucu yöneticisi adlandırılır.
 - Bir silmenin diğer bekleme nedenleri (örneğin iki sunucu arasında
   kurulmamış inceleme erişimi) önceki, daha uzun metinlerini göstermeyi
   sürdürür; bunların bazıları "Bu silme işlemini tekrar dene" der; o düğme,

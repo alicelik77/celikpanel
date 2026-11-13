@@ -108,7 +108,10 @@ the screen. A test keeps it that way, with no exceptions.
   finish it), the next check's time, and the page's own "Check deletion
   status" button; the command for an administrator and the technical
   explanation are under a closed "Details". The deletion window and the
-  notification use the same sentences, and name only controls that exist.
+  notification use the same sentences and follow the same state (whether
+  CelikPanel re-checks by itself, the administrators were notified, or a
+  person must act); they name only controls the reader has, and the window
+  points to the banner's Details for the commands.
 
 ### Other corrections
 
@@ -197,8 +200,11 @@ resumes by itself.
   domain that is waiting for its deletion.
 - A deletion on a DNS pair also waits with no automatic way forward if,
   between two attempts, another zone is added or removed outside CelikPanel
-  on the server (possible before this release too). A stop in the middle
-  of a check record's write or retirement is no longer such a case.
+  on the server (possible before this release too). A process stopped in
+  the middle of a check record's write or retirement is no longer such a
+  case; a power loss right after a write, before its data reached the disk,
+  can still leave a file the next check cannot attribute, which then names
+  the server administrator.
 - Other waiting reasons of a deletion (for example a missing inspection
   set-up between the two servers) still show their earlier, longer text,
   some of which names "Retry this deletion"; that control is More →
