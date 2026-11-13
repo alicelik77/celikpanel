@@ -874,41 +874,23 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get server info
-	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
-	server, err := serverRepo.GetByID(ctx, database.ServerID)
+	// alpha.133 round 5: the database, its own users and its records, the
+	// same way as the domain's Databases section (database_delete.go).
+	deleted, err := p.deleteDatabaseRecord(ctx, databaseID)
 	if err != nil {
-		http.Error(w, "server not found", http.StatusNotFound)
-		return
-	}
-
-	driver, err := p.dbDriverFor(server)
-	if err != nil {
-		writeServerError(w, err)
-		return
-	}
-
-	// Delete from server
-	reportOperationStep(ctx, "delete")
-	if err := driver.DeleteDatabase(database.Name); err != nil {
-		writeDatabaseEngineError(w, server, err)
-		return
-	}
-
-	// Delete from PostgreSQL (cascade deletes grants)
-	reportOperationStep(ctx, "records")
-	if err := dbRepo.Delete(ctx, databaseID); err != nil {
-		writeServerError(w, err)
+		writeDatabaseDeleteError(w, r, database.Name, err)
 		return
 	}
 	// The row names who acted (the session's person, and the account acted
 	// as during "Log in as") and whose database it was.
 	p.auditDetailed(r, "database.delete:"+database.Name, "database", databaseID,
-		map[string]any{"owner": owner.Username, "owner_id": owner.ID})
+		map[string]any{"owner": owner.Username, "owner_id": owner.ID,
+			"users_removed": deleted.UsersRemoved, "users_kept": deleted.UsersKept})
 
-	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+	json.NewEncoder(w).Encode(map[string]any{"status": "deleted",
+		"users_removed": nonNilStrings(deleted.UsersRemoved), "users_kept": nonNilStrings(deleted.UsersKept)})
 }
 
 // User Management Endpoints (per server)
