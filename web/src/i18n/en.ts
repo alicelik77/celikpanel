@@ -88,6 +88,7 @@ import type { FtpLoginsScreenKey } from './screens/ftpLogins/en';
 import type { DbConfigScreenKey } from './screens/dbConfig/en';
 import type { PgLeftoversScreenKey } from './screens/pgLeftovers/en';
 import type { DomainSectionsScreenKey } from './screens/domainSections/en';
+import type { DeletionGuideScreenKey } from './screens/deletionGuide/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -601,5 +602,6 @@ export type ScreenKey =
     | FtpLoginsScreenKey
     | DbConfigScreenKey
     | PgLeftoversScreenKey
-    | DomainSectionsScreenKey;
+    | DomainSectionsScreenKey
+    | DeletionGuideScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

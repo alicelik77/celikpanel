@@ -5,6 +5,9 @@ const reviewedDNSPeerReasons = new Set([
     'dns_peer_inspection_unknown',
     'dns_peer_native_unknown',
     'dns_peer_journal_unknown',
+    // alpha.133: this server's check record is in a state the Agent cannot
+    // sort out by itself; the server administrator acts.
+    'dns_peer_journal_unresolved',
     'dns_peer_owner_edit_unknown',
     // The secondary's named refused the inspector's local catalog transfer.
     'dns_peer_catalog_transfer_refused',
@@ -81,6 +84,41 @@ export function domainDeletionDetailKey(reason: string, detail: string): string 
         return `err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout.${detail}`;
     }
     return null;
+}
+
+// The reasons of this server's DNS step that the deletion guide says as why,
+// who acts, next step and how it continues (alpha.133, screen part
+// "deletionGuide"), by their key segment.
+// Neden, kim yapar, sonraki adım ve nasıl sürer biçiminde söylenen nedenler.
+const guideReasons: Record<string, string> = {
+    dns_peer_journal_unknown: 'journalUnknown',
+    dns_peer_journal_unresolved: 'journalUnresolved',
+    dns_peer_proof_timeout: 'proofTimeout',
+    dns_peer_catching_up: 'catchingUp',
+};
+
+/** The deletion guide's key segment of a reason, or null when it has none. */
+export function domainDeletionGuideReason(reason: string): string | null {
+    return Object.prototype.hasOwnProperty.call(guideReasons, reason) ? guideReasons[reason] : null;
+}
+
+// What happens next to a deletion's DNS step, as the server says it
+// (follow_up, alpha.133): CelikPanel re-checks it and that can finish it;
+// the re-checks continue but the administrators were notified; the automatic
+// checks ended; or a person must act first.
+// Sonra ne olacağı: kendiliğinden, takıldı (yönetici bildirildi), durdu, kişi.
+export type DomainDeletionFollowUp = 'automatic' | 'stuck' | 'stopped' | 'person';
+const followUps = new Set<string>(['automatic', 'stuck', 'stopped', 'person']);
+
+function reviewedFollowUp(pending: Record<string, unknown>): { followUp?: DomainDeletionFollowUp; nextCheckAt?: string } {
+    const out: { followUp?: DomainDeletionFollowUp; nextCheckAt?: string } = {};
+    if (typeof pending.follow_up === 'string' && followUps.has(pending.follow_up)) {
+        out.followUp = pending.follow_up as DomainDeletionFollowUp;
+    }
+    if (typeof pending.next_check_at === 'string' && !Number.isNaN(Date.parse(pending.next_check_at))) {
+        out.nextCheckAt = pending.next_check_at;
+    }
+    return out;
 }
 
 // A verified failure of a non-DNS deletion stage on this server, by stage.
@@ -259,7 +297,7 @@ export async function readDomainDeletionDKIM(
 // means the marker exists but the exact DNS/Agent reason remains unknown.
 export async function readSavedDomainDeletionState(
     response: Response,
-): Promise<{ reason: string; detail: string } | null> {
+): Promise<SavedDomainDeletion | null> {
     if (response.status !== 200) return null;
     try {
         const body: unknown = await response.json();
@@ -281,10 +319,18 @@ export async function readSavedDomainDeletionState(
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason
             : '';
-        return { reason, detail: reviewedDetail(pending, reason) };
+        return { reason, detail: reviewedDetail(pending, reason), ...(reason ? reviewedFollowUp(pending) : {}) };
     } catch {
         return null;
     }
+}
+
+/** A saved deletion marker's reviewed reason, its detail and what happens next. */
+export interface SavedDomainDeletion {
+    reason: string;
+    detail: string;
+    followUp?: DomainDeletionFollowUp;
+    nextCheckAt?: string;
 }
 
 // What one read of a domain's saved deletion marker established. `known` with
@@ -297,7 +343,7 @@ export async function readSavedDomainDeletionState(
 // finished between the list's answer and this read (lab run 6).
 // `gone`, sunucunun 404'üdür: alan adı artık yok, silme bitmiştir.
 export type SavedDomainDeletionRead =
-    | { state: 'known'; saved: { reason: string; detail: string } | null }
+    | { state: 'known'; saved: SavedDomainDeletion | null }
     | { state: 'gone' }
     | { state: 'unknown' };
 

@@ -13,7 +13,9 @@ import { PageHeader } from './PageHeader';
 import { BlockingProblems } from './BlockingProblems';
 import { readApiError, refusalText, type ApiError } from '../lib/apiError';
 import { DNSCheckToolNotice } from './DNSCheckToolNotice';
-import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage } from '../lib/domainDeletionPending';
+import { DeletionWaitingGuide, deletionGuideFollowUp, deletionGuideText, deletionGuideWords, type DeletionGuideInput } from './DeletionWaitingGuide';
+import { Guidance } from './kit/rows/Guidance';
+import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionGuideReason, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage, type DomainDeletionFollowUp } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
@@ -85,11 +87,17 @@ interface PendingDeletion {
     blocksRetry?: boolean;
     // The whole sentence is "nothing to do": said in one line.
     quiet?: boolean;
+    // The reason, its detail and what happens next, for the guide (alpha.133).
+    guide?: DeletionGuideInput;
 }
 
 // What a pending reason means for the row and the banner.
-const pendingFlags = (reason: string) => ({
-    automatic: domainDeletionReasonAutomatic(reason),
+// A reason the guide words reads again on its own while CelikPanel re-checks
+// it by itself (alpha.133), so a finished deletion leaves without a refresh;
+// a press of Delete stays possible for it.
+const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp) => ({
+    automatic: domainDeletionReasonAutomatic(reason) ||
+        (domainDeletionGuideReason(reason) !== null && deletionGuideFollowUp(reason, followUp) === 'automatic'),
     blocksRetry: domainDeletionBlocksRetry(reason),
     quiet: domainDeletionQuiet(reason),
 });
@@ -233,7 +241,11 @@ export function Domains() {
             ? capabilities.remote.state === 'known' ? dnsEngineBlockerText(capabilities.remote.value, t) : t('domains.add.needsDns')
             : t('err.DNS_SETTINGS_REQUIRED');
 
-    const pendingMessage = (reason: string, detail = '') => {
+    const pendingMessage = (reason: string, detail = '', next?: Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>) => {
+        // A reason the deletion guide words (alpha.133): why, who acts, the
+        // next step and how it continues, the same sentences as the banner.
+        const words = deletionGuideWords({ reason, detail, ...next }, isAdmin, t, locale);
+        if (words) return deletionGuideText(words);
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;
         const translated = key ? t(key) : '';
         if (!key || translated === key) return t('domains.deletionPending');
@@ -272,8 +284,9 @@ export function Domains() {
             }
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
-                id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail),
-                ...pendingFlags(saved.saved.reason),
+                id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail, saved.saved),
+                ...pendingFlags(saved.saved.reason, saved.saved.followUp),
+                guide: { reason: saved.saved.reason, detail: saved.saved.detail, followUp: saved.saved.followUp, nextCheckAt: saved.saved.nextCheckAt },
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
@@ -481,6 +494,7 @@ export function Domains() {
             // by CelikPanel itself. Waiting, not failed.
             dns_peer_proof_timeout: t('domains.step.note.verifying'),
             dns_peer_journal_unknown: t('domains.step.note.verifying'),
+            dns_peer_journal_unresolved: t('domains.deletionGuide.stepNote.person'),
         };
         // The joined server's DNS removal is done once the main server confirmed it.
         const step = reason === 'remote_dns_removed_finishing' ? 'finish' : STAGE_STEP[stage];
@@ -529,6 +543,12 @@ export function Domains() {
             report.steps(deletionSteps(name, stage, reason, since));
             // "Someone needs to act" would not be true here: nobody does.
             return { state: 'blocked', subtitle: t('domains.step.rechecksAlone'), reason: `${pendingMessage(reason, detail)} ${t('domains.step.continuesAlone')}` };
+        }
+        if (reason === 'dns_peer_journal_unresolved') {
+            // Not a failure of the deletion: it waits for the server's
+            // administrator, who is named with the one next step (alpha.133).
+            report.steps(deletionSteps(name, stage, reason, since));
+            return { state: 'blocked', reason: pendingMessage(reason, detail) };
         }
         report.steps(deletionSteps(name, stage, reason, since, true));
         return { state: reason ? 'failed' : 'unknown', reason: pendingMessage(reason, detail) };
@@ -632,7 +652,7 @@ export function Domains() {
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
-                    { id, name, message, ...pendingFlags(outcome.reason) },
+                    { id, name, message, ...pendingFlags(outcome.reason), guide: { reason: outcome.reason, detail: outcome.detail } },
                 ]);
                 // No toast: the window and the banner above the list say it.
                 setSelected((s) => s.filter((x) => x !== id));
@@ -732,13 +752,18 @@ export function Domains() {
                     {t('domains.beingDeletedLine', { name: pending.name })}
                 </p>
             ) : (
-                <div key={pending.id} role="status" className="mb-4 rounded-lg border border-warning bg-warning/10 p-4 text-sm text-fg">
-                    <p className="font-semibold">{t('domains.deletionWaiting', { name: pending.name })}</p>
-                    <p className="mt-1">{pending.message}</p>
-                    <Button variant="secondary" className="mt-3" onClick={reload}>
-                        {t('domains.checkDeletionStatus')}
-                    </Button>
-                </div>
+                pending.guide && deletionGuideWords(pending.guide, isAdmin, t, locale) ? (
+                    <DeletionWaitingGuide key={pending.id} name={pending.name} input={pending.guide} admin={isAdmin} onCheck={reload} />
+                ) : (
+                    <Guidance
+                        key={pending.id}
+                        className="mb-4"
+                        tone="blocked"
+                        title={t('domains.deletionWaiting', { name: pending.name })}
+                        why={pending.message}
+                        action={<Button variant="secondary" onClick={reload}>{t('domains.checkDeletionStatus')}</Button>}
+                    />
+                )
             ))))}
 
             <RemoteGate

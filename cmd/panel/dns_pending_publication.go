@@ -333,6 +333,23 @@ func (s *dnsPendingPublicationScheduler) takeStuckNotice(requestID string) (dnsP
 	return *entry, true
 }
 
+// takePersonNotice reports, once per entry, that the administrators must be
+// told about a cause that needs a person and that only a notification can
+// bring to them: dns_peer_journal_unresolved (alpha.133). It marks it raised.
+func (s *dnsPendingPublicationScheduler) takePersonNotice(requestID string) (dnsPendingPublicationEntry, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry := s.entries[requestID]
+	if entry == nil || entry.Noticed {
+		return dnsPendingPublicationEntry{}, false
+	}
+	if reason, _, ok := transport.SplitDNSPeerPendingCode(entry.Code); !ok || reason != transport.DNSPeerPendingJournalUnresolved {
+		return dnsPendingPublicationEntry{}, false
+	}
+	entry.Noticed = true
+	return *entry, true
+}
+
 func (s *dnsPendingPublicationScheduler) markObserved(requestID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -498,7 +515,9 @@ func (p *Panel) reconcilePendingDNSPublicationsOnce(ctx context.Context) {
 				continue
 			}
 			// A person must act (or automatic attempts ended): keep the
-			// guidance, look again later for a changed cause.
+			// guidance, look again later for a changed cause. A cause only
+			// the administrators can resolve is also sent to them once.
+			p.raiseDNSPublicationPersonNotice(ctx, lease)
 			scheduler.postpone(lease.RequestID, dnsPendingPublicationOwnerRecheck)
 			continue
 		}
@@ -1010,6 +1029,26 @@ func (p *Panel) raiseDNSPublicationStuckNotice(ctx context.Context, lease dnsZon
 	if !due {
 		return
 	}
+	p.notifyDNSPublicationAdministrators(ctx, lease, entry)
+	log.Printf("pending DNS publication %s is stuck (reason=%s, %d checks in a row); the administrators were notified",
+		lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats)
+}
+
+// raiseDNSPublicationPersonNotice tells the administrators once that the
+// exact pending publication of lease waits for them (takePersonNotice).
+func (p *Panel) raiseDNSPublicationPersonNotice(ctx context.Context, lease dnsZoneEngineLease) {
+	entry, due := p.dnsPendingPublications().takePersonNotice(lease.RequestID)
+	if !due {
+		return
+	}
+	p.notifyDNSPublicationAdministrators(ctx, lease, entry)
+	log.Printf("pending DNS publication %s waits for the server administrator (reason=%s); the administrators were notified",
+		lease.ZoneName, dnsPendingReasonForLog(entry.Code))
+}
+
+// notifyDNSPublicationAdministrators raises the one dns_publication_stuck
+// notification of entry's exact publication. Errors are logged only.
+func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dnsZoneEngineLease, entry dnsPendingPublicationEntry) {
 	db := p.db.GetDB()
 	ids, err := administratorIDs(ctx, db)
 	if err != nil {
@@ -1027,8 +1066,6 @@ func (p *Panel) raiseDNSPublicationStuckNotice(ctx context.Context, lease dnsZon
 	}
 	p.raiseAccountNotice(ctx, db, recipients, noticeDNSPublicationStuck, true,
 		"dns_publication:"+lease.ZoneName, lease.RequestID, body, "/dns-infrastructure")
-	log.Printf("pending DNS publication %s is stuck (reason=%s, %d checks in a row); the administrators were notified",
-		lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats)
 }
 
 // clearDNSPublicationStuckNotice marks the notification of a publication
@@ -1070,6 +1107,14 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	}
 }
 
+// The notification sentences of dns_peer_journal_unresolved: the same why,
+// who, next step and how it continues as the deletion banner's
+// (web dnsPublication part, domains.deletionGuide.journalUnresolved.*).
+const (
+	dnsJournalUnresolvedNoticeEN = "the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: you. Send the CelikPanel Agent's lines about this and the list of files in its private folder to CelikPanel support (on this server: sudo journalctl -u celikpanel-agent | grep peer and sudo ls -la /var/lib/celikpanel-agent-private), and do not delete those files yourself. CelikPanel does not check this again by itself; once the record is sorted out, deleting the domain again on Domains continues this same deletion."
+	dnsJournalUnresolvedNoticeTR = "yedek DNS sunucusunun da kaldırdığını doğrulamak için bu sunucunun tuttuğu kayıt, CelikPanel'in kendiliğinden düzeltemeyeceği bir durumda. Kim yapar: siz. CelikPanel Agent'ın bununla ilgili satırlarını ve özel klasöründeki dosyaların listesini CelikPanel desteğine gönderin (bu sunucuda: sudo journalctl -u celikpanel-agent | grep peer ve sudo ls -la /var/lib/celikpanel-agent-private); bu dosyaları kendiniz silmeyin. CelikPanel bunu kendiliğinden yeniden denetlemez; kayıt düzeltilince Alan Adları sayfasında alan adını yeniden silmek aynı silmeyi sürdürür."
+)
+
 // dnsPublicationStuckNoticeWords: what is already true, why it is stuck,
 // who acts and the next step, by the reviewed reason. No peer output, path
 // or credential; the Agent log line is the one command an administrator
@@ -1092,10 +1137,24 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 	nextEN := " CelikPanel keeps checking it by itself every 5 minutes, and other DNS changes wait for it."
 	nextTR := " CelikPanel bunu 5 dakikada bir kendiliğinden denetlemeyi sürdürür; diğer DNS değişiklikleri onu bekler."
 	if deletion {
-		nextEN += " “Retry this deletion” on Domains checks again at once."
-		nextTR += " Alan adları sayfasındaki “Bu silme işlemini tekrar dene” hemen yeniden denetler."
+		// The control that exists (alpha.133): the domain's row on Domains,
+		// More → Delete…, retries the same deletion at once.
+		nextEN += " On Domains, More → Delete… on this domain's row checks again at once."
+		nextTR += " Alan Adları sayfasında bu alan adının satırındaki Diğer → Sil… hemen yeniden denetler."
 	}
 	reason, detail := bodyString(body, "reason"), bodyString(body, "detail")
+	if reason == transport.DNSPeerPendingJournalUnresolved {
+		// Not re-checked by itself (alpha.133): no "keeps checking" sentence.
+		w.TitleEN = "The removal of " + zone + " from DNS waits for the server administrator"
+		w.TitleTR = zone + " alan adının DNS'ten kaldırılması sunucu yöneticisini bekliyor"
+		if !deletion {
+			w.TitleEN = "The DNS change of " + zone + " waits for the server administrator"
+			w.TitleTR = zone + " DNS değişikliği sunucu yöneticisini bekliyor"
+		}
+		w.TextEN = doneEN + ", but " + dnsJournalUnresolvedNoticeEN
+		w.TextTR = doneTR + "; ancak " + dnsJournalUnresolvedNoticeTR
+		return w
+	}
 	switch {
 	case reason == transport.DNSPeerPendingProofTimeout && detail == transport.DNSPeerProofTimeoutLocalCheck:
 		w.TextEN = doneEN + ", but confirming that the backup DNS server removed it too has failed the same way in every check for a quarter of an hour: this server's own part of the check does not finish in time. The backup DNS server is not the cause. Who acts: you. Check whether something keeps this server busy (processor or disk). If it is not busy, send the CelikPanel Agent's lines about this to CelikPanel; on this server run: sudo journalctl -u celikpanel-agent | grep peer." + nextEN

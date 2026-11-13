@@ -209,6 +209,12 @@ type domainDeletionStatusResponse struct {
 	// ErrorLine is the bounded first line of a verified stage failure.
 	ErrorLine string `json:"error_line,omitempty"`
 	Message   string `json:"message"`
+	// FollowUp and NextCheckAt (alpha.133): for a DNS step pending on a
+	// reviewed peer reason, what happens next, from the reconciler's state
+	// of that exact publication (domainDeletionDNSFollowUp). The screen says
+	// "nobody needs to do anything" only for "automatic".
+	FollowUp    string `json:"follow_up,omitempty"`
+	NextCheckAt string `json:"next_check_at,omitempty"`
 }
 
 // handleDomainDeletionStatus only observes the saved domain marker, V3 lease,
@@ -316,6 +322,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 			// is reconciled). A running job the reconciler does not track
 			// keeps the conservative answer below.
 			result = recheck
+			result.FollowUp, result.NextCheckAt = p.domainDeletionDNSFollowUp(snapshot.lease, p.dnsPendingPublicationCode(snapshot.lease))
 			after, rereadErr := p.readDomainDeletionStatusSnapshot(r.Context(), domainID)
 			if rereadErr != nil || !sameDomainDeletionStatusSnapshot(snapshot, after) {
 				result = domainDeletionChangingStatus()
@@ -336,6 +343,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 				result.Reason = reason
 				result.Detail = detail
 				result.Message = p.domainDeletionDNSMessage(snapshot.lease, dnsZoneV3PendingCodeFromJob(job), message)
+				result.FollowUp, result.NextCheckAt = p.domainDeletionDNSFollowUp(snapshot.lease, dnsZoneV3PendingCodeFromJob(job))
 			}
 		}
 	}
@@ -368,6 +376,7 @@ func (p *Panel) domainDeletionAheadStatus(ctx context.Context, domainID int, sna
 				Message: "An earlier DNS change of this domain is still waiting, and its removal from DNS is published right after it. " +
 					p.domainDeletionDNSMessage(snapshot.lease, code, message),
 			}
+			result.FollowUp, result.NextCheckAt = p.domainDeletionDNSFollowUp(snapshot.lease, code)
 		}
 	}
 	after, err := p.readDomainDeletionStatusSnapshot(ctx, domainID)
@@ -447,6 +456,51 @@ func (p *Panel) domainDeletionDNSMessage(lease dnsZoneEngineLease, code, message
 		return message + " " + domainDeletionFinishesByItselfEnglish
 	}
 	return message
+}
+
+// What happens next after a reviewed pending reason of a deletion's DNS step
+// (domainDeletionStatusResponse.FollowUp).
+const (
+	// CelikPanel re-checks the same publication by itself and that can
+	// finish it; NextCheckAt says when, if the reconciler has scheduled it.
+	domainDeletionFollowUpAutomatic = "automatic"
+	// The re-checks continue, but the same cause lasted for a quarter of an
+	// hour: the administrators were notified (dns_publication_stuck).
+	domainDeletionFollowUpStuck = "stuck"
+	// The automatic checks ended after repeated failures.
+	domainDeletionFollowUpStopped = "stopped"
+	// The reason needs a person before anything can continue.
+	domainDeletionFollowUpPerson = "person"
+)
+
+// domainDeletionDNSFollowUp classifies, from the reconciler's memory only,
+// what happens next to the exact pending publication of lease with code.
+// It starts nothing.
+func (p *Panel) domainDeletionDNSFollowUp(lease dnsZoneEngineLease, code string) (followUp, nextCheckAt string) {
+	entry, known := p.dnsPendingPublications().entry(lease.RequestID)
+	known = known && entry.Lease == lease
+	switch {
+	case known && entry.Stopped:
+		return domainDeletionFollowUpStopped, ""
+	case !dnsPeerPendingRetriesAutomatically(code):
+		return domainDeletionFollowUpPerson, ""
+	}
+	if known && entry.Automatic && !entry.NextAt.IsZero() {
+		nextCheckAt = entry.NextAt.UTC().Format(time.RFC3339)
+	}
+	if known && entry.Stuck {
+		return domainDeletionFollowUpStuck, nextCheckAt
+	}
+	return domainDeletionFollowUpAutomatic, nextCheckAt
+}
+
+// dnsPendingPublicationCode is the reviewed code the reconciler last read
+// for lease, or "".
+func (p *Panel) dnsPendingPublicationCode(lease dnsZoneEngineLease) string {
+	if entry, ok := p.dnsPendingPublications().entry(lease.RequestID); ok && entry.Lease == lease {
+		return entry.Code
+	}
+	return ""
 }
 
 func domainDeletionChangingStatus() domainDeletionStatusResponse {

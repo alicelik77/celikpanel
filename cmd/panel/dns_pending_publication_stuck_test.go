@@ -154,14 +154,14 @@ func TestDNSPublicationStuckNoticeWords(t *testing.T) {
 	}{
 		{transport.DNSPeerPendingProofTimeout, transport.DNSPeerProofTimeoutLocalCheck, true,
 			[]string{"gone.example is removed from DNS on this server", "this server's own part of the check",
-				"The backup DNS server is not the cause", "Who acts: you", "journalctl -u celikpanel-agent", "Retry this deletion"},
+				"The backup DNS server is not the cause", "Who acts: you", "journalctl -u celikpanel-agent", "More → Delete…"},
 			[]string{"SSH", "port 53"}},
 		{transport.DNSPeerPendingProofTimeout, transport.DNSPeerProofTimeoutPeerExchange, true,
 			[]string{"is removed from DNS on this server", "has not answered", "SSH (port 22", "whoever runs the backup DNS server"},
 			[]string{"journalctl"}},
 		{transport.DNSPeerPendingCatchingUp, "", false,
 			[]string{"The DNS change of gone.example is in effect on this server", "has not caught up", "TCP port 53"},
-			[]string{"Retry this deletion", "removed"}},
+			[]string{"Retry this deletion", "Delete…", "removed"}},
 		{transport.DNSPeerPendingJournalUnknown, "", true,
 			[]string{"is removed from DNS on this server", "Server → DNS and peer servers", "journalctl"}, nil},
 	} {

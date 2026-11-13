@@ -172,6 +172,8 @@ own['/lib/certificateNames'] = compileSource('lib/certificateNames.ts', () => st
 own['/CertificateReachNotice'] = shared.compile('components/CertificateReachNotice.tsx', own);
 // alpha.114: the names a new site found pointing elsewhere, the shipped card.
 own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
+// alpha.133: the guide of a deletion waiting for its DNS step is the shipped one.
+own['/DeletionWaitingGuide'] = shared.compile('components/DeletionWaitingGuide.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
 const load = async (name, more = {}) => (await import(shared.compile(`components/${name}.tsx`, { ...own, ...more })))[name];
 const AddDomainModal = (await import(modalURL)).AddDomainModal;
@@ -855,13 +857,45 @@ test('Domains: a pending row whose saved deletion could not be read says exactly
     await cleanup();
   }
   serve({ '/api/v1/domains': json([pendingRow]), '/api/v1/domains/9/deletion-status': json({ status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_proof_timeout' }) });
+  // While CelikPanel re-checks it by itself the page reads again on its own
+  // (alpha.133): its 15 s timer, never a change.
+  const rereads = [];
+  Object.assign(globalThis.window, { setTimeout: (fn, ms) => { rereads.push(ms); return rereads.length; }, clearTimeout: () => {} });
   try {
     await mount(Domains);
-    // The stand-in catalogue has no sentence for the reason, so the screen
-    // falls back to its generic waiting text, as it does for an unreviewed one.
-    assert.ok(has('domains.deletionWaiting') && has('domains.deletionPending') && !has('domains.pendingUnknown'));
+    assert.ok(rereads.includes(15000), 'the page does not read again by itself');
+    // alpha.133: a reason CelikPanel re-checks by itself is said as the guide:
+    // why, nobody needs to act, how it continues, the one button of the page.
+    assert.ok(has('domains.deletionWaiting') && has('domains.deletionGuide.proofTimeout.why') &&
+      has('domains.deletionGuide.who.nobody') && has('domains.deletionGuide.then.soon') &&
+      has('domains.checkDeletionStatus') && !has('domains.pendingUnknown'));
+    assert.ok(!has('domains.retryDeletion'), 'a button that is not on the page is named');
   } finally {
     await cleanup();
+  }
+  // The check record this server cannot sort out: the administrator acts,
+  // with the one next step; the commands sit under the closed Details.
+  const unresolved = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_journal_unresolved', follow_up: 'person' };
+  for (const role of ['admin', 'customer']) {
+    serve({ '/api/v1/domains': json([pendingRow]), '/api/v1/domains/9/deletion-status': json(unresolved) }, role);
+    try {
+      await mount(Domains);
+      assert.ok(has('domains.deletionGuide.journalUnresolved.why') && has('domains.deletionGuide.then.person'), role);
+      assert.ok(!has('domains.deletionGuide.who.nobody'), `${role}: told that nobody needs to act`);
+      if (role === 'admin') {
+        assert.ok(has('domains.deletionGuide.who.youAdministrator') && has('domains.deletionGuide.journalUnresolved.next'));
+        assert.ok(has('sudo journalctl -u celikpanel-agent | grep peer') && has('sudo ls -la /var/lib/celikpanel-agent-private'));
+        const details = tree.root.findAll((node) => node.type === 'details');
+        assert.equal(details.length, 1);
+        assert.ok(!details[0].props.open, 'the details are open');
+      } else {
+        assert.ok(has('domains.deletionGuide.who.administrator') && has('domains.deletionGuide.journalUnresolved.nextOther'));
+        assert.ok(!has('journalctl') && !has('/var/lib/celikpanel-agent-private'), 'a customer is shown a command');
+      }
+      assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
+    } finally {
+      await cleanup();
+    }
   }
 });
 
