@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -34,10 +35,13 @@ import (
 // dnsPublicationMu (the same order as every publication) and the Agent admits
 // one resume of one exact pending job at a time.
 //
-// Causes that need a person (dnsPeerPendingRetriesAutomatically) are never
-// retried in a loop; they keep their guidance until the owner retries or the
-// cause changes. Repeated failures that are not a reviewed pending result end
-// automatic attempts (RESILIENCE-CONTRACT invariant 4).
+// The causes that stop the automatic re-checks (dnsPeerPendingRetriesAutomatically:
+// an unresolved check record, an owner edit of this server's DNS) are never
+// retried in a loop; the administrators get one notification and the guidance
+// stays until a person retries or the cause changes. Every other reviewed
+// cause is re-checked (alpha.133 round 5). Repeated failures that are not a
+// reviewed pending result end automatic attempts (RESILIENCE-CONTRACT
+// invariant 4).
 //
 // A transient cause that comes back the same way dnsPendingPublicationStuckAfter
 // times in a row (about a quarter of an hour) is no longer reported as
@@ -96,12 +100,18 @@ type dnsPendingPublicationEntry struct {
 	// LastPending: the last attempt ended with the same exact operation still
 	// pending (as opposed to an error or no attempt yet).
 	LastPending bool
-	// Repeats: attempts in a row that ended pending with this same Code.
-	// Stuck: Repeats reached dnsPendingPublicationStuckAfter; Noticed: its
-	// notification was raised. All three clear when the code changes.
-	Repeats int
-	Stuck   bool
-	Noticed bool
+	// Repeats: automatic attempts in a row that ended pending, whatever
+	// their code (alpha.133 round 5 review: a backup whose reason alternated
+	// faster than the threshold was never reported). Stuck: Repeats reached
+	// dnsPendingPublicationStuckAfter. Noticed: the notification of this
+	// episode was raised; NoticeCode: the code it describes. A change of code
+	// keeps all four; the notice is brought up to date only when its text
+	// really changes (notifyDNSPublicationAdministrators). A failed attempt
+	// resets Repeats; a person's resolved cause starts a new episode.
+	Repeats    int
+	Stuck      bool
+	Noticed    bool
+	NoticeCode string
 }
 
 type dnsPendingPublicationScheduler struct {
@@ -224,7 +234,6 @@ func (s *dnsPendingPublicationScheduler) observeCode(lease dnsZoneEngineLease, c
 	if entry.Code != code {
 		entry.Stopped = false
 		entry.Failures = 0
-		entry.Repeats, entry.Stuck, entry.Noticed = 0, false, false
 	}
 	entry.Observed = true
 	entry.Code = code
@@ -294,7 +303,6 @@ func (s *dnsPendingPublicationScheduler) recordAttempt(
 		if codeKnown {
 			if entry.Code != code {
 				entry.Stopped = false
-				entry.Repeats, entry.Stuck, entry.Noticed = 0, false, false
 			}
 			entry.Code = code
 		}
@@ -320,33 +328,48 @@ func (s *dnsPendingPublicationScheduler) recordAttempt(
 	return *entry
 }
 
-// takeStuckNotice reports, once per stuck entry, that its notification is
-// due, and marks it raised.
-func (s *dnsPendingPublicationScheduler) takeStuckNotice(requestID string) (dnsPendingPublicationEntry, bool) {
+// takeStuckNotice reports that the notification of a stuck entry is due:
+// first (loud: shown and mailed) once per episode, then again only when the
+// code it describes changed (quiet: brought up to date in place). It marks it
+// raised for the current code.
+func (s *dnsPendingPublicationScheduler) takeStuckNotice(requestID string) (entry dnsPendingPublicationEntry, due, loud bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry := s.entries[requestID]
-	if entry == nil || !entry.Stuck || entry.Noticed {
-		return dnsPendingPublicationEntry{}, false
+	current := s.entries[requestID]
+	if current == nil || !current.Stuck || (current.Noticed && current.NoticeCode == current.Code) {
+		return dnsPendingPublicationEntry{}, false, false
 	}
-	entry.Noticed = true
-	return *entry, true
+	loud = !current.Noticed
+	current.Noticed, current.NoticeCode = true, current.Code
+	return *current, true, loud
+}
+
+// resetNotice starts a new episode after a person's cause was resolved: the
+// next stuck state is counted and told afresh.
+func (s *dnsPendingPublicationScheduler) resetNotice(requestID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if entry := s.entries[requestID]; entry != nil {
+		entry.Repeats, entry.Stuck, entry.Noticed, entry.NoticeCode = 0, false, false, ""
+	}
 }
 
 // takePersonNotice reports, once per entry, that the administrators must be
 // told about a cause that needs a person and that only a notification can
-// bring to them: dns_peer_journal_unresolved (alpha.133). It marks it raised.
+// bring to them: every code that stops the automatic re-checks
+// (transport.DNSPeerPendingStopsAutomaticRechecks: an unresolved check record,
+// or an owner edit of this server's DNS; alpha.133). It marks it raised.
 func (s *dnsPendingPublicationScheduler) takePersonNotice(requestID string) (dnsPendingPublicationEntry, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry := s.entries[requestID]
-	if entry == nil || entry.Noticed {
+	if entry == nil || (entry.Noticed && entry.NoticeCode == entry.Code) {
 		return dnsPendingPublicationEntry{}, false
 	}
-	if reason, _, ok := transport.SplitDNSPeerPendingCode(entry.Code); !ok || reason != transport.DNSPeerPendingJournalUnresolved {
+	if !transport.DNSPeerPendingStopsAutomaticRechecks(entry.Code) {
 		return dnsPendingPublicationEntry{}, false
 	}
-	entry.Noticed = true
+	entry.Noticed, entry.NoticeCode = true, entry.Code
 	return *entry, true
 }
 
@@ -538,7 +561,7 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 	defer p.serviceMutationMu.Unlock()
 	dnsPublicationMu.Lock()
 	defer dnsPublicationMu.Unlock()
-	attemptCtx, cancel := context.WithTimeout(ctx, dnsPendingPublicationAttemptLimit)
+	attemptCtx, cancel := context.WithTimeout(context.WithValue(ctx, dnsPendingReconcilerAttemptKey{}, true), dnsPendingPublicationAttemptLimit)
 	defer cancel()
 	done, stale, err := p.resumePendingDNSPublicationLocked(attemptCtx, lease, true)
 	if stale {
@@ -563,6 +586,15 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 		log.Printf("pending DNS publication %s: its re-check is still running on the Agent; its result is read again in %s",
 			lease.ZoneName, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
 	case dnsPendingPublicationStillPending:
+		if !entry.Automatic {
+			// alpha.133 round 5: this line said "next automatic re-check"
+			// for every reason, also for one that is not re-checked; what
+			// follows is only a read of its status (it starts nothing).
+			log.Printf("pending DNS publication %s still waits (reason=%s, %d in a row); not re-checked automatically: it waits for the server administrator; its status is read again in %s",
+				lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
+			p.raiseDNSPublicationPersonNotice(ctx, lease)
+			break
+		}
 		log.Printf("pending DNS publication %s still waits (reason=%s, %d in a row); next automatic re-check in %s",
 			lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
 		p.raiseDNSPublicationStuckNotice(ctx, lease)
@@ -570,6 +602,15 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 		log.Printf("pending DNS publication %s: automatic re-check failed (%d in a row): %v",
 			lease.ZoneName, entry.Failures, err)
 	}
+}
+
+// dnsPendingReconcilerAttemptKey marks the context of the reconciler's own
+// attempt (attemptPendingDNSPublication), as opposed to a person's press.
+type dnsPendingReconcilerAttemptKey struct{}
+
+func dnsPendingReconcilerAttempt(ctx context.Context) bool {
+	automatic, _ := ctx.Value(dnsPendingReconcilerAttemptKey{}).(bool)
+	return automatic
 }
 
 func dnsPendingReasonForLog(code string) string {
@@ -1025,11 +1066,11 @@ func init() {
 // raiseDNSPublicationStuckNotice tells the administrators once that the
 // exact pending publication of lease is stuck. Errors are logged only.
 func (p *Panel) raiseDNSPublicationStuckNotice(ctx context.Context, lease dnsZoneEngineLease) {
-	entry, due := p.dnsPendingPublications().takeStuckNotice(lease.RequestID)
+	entry, due, loud := p.dnsPendingPublications().takeStuckNotice(lease.RequestID)
 	if !due {
 		return
 	}
-	p.notifyDNSPublicationAdministrators(ctx, lease, entry)
+	p.notifyDNSPublicationAdministrators(ctx, lease, entry, loud)
 	log.Printf("pending DNS publication %s is stuck (reason=%s, %d checks in a row); the administrators were notified",
 		lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats)
 }
@@ -1041,14 +1082,22 @@ func (p *Panel) raiseDNSPublicationPersonNotice(ctx context.Context, lease dnsZo
 	if !due {
 		return
 	}
-	p.notifyDNSPublicationAdministrators(ctx, lease, entry)
+	// A person must act now: shown and mailed again if its text changed.
+	p.notifyDNSPublicationAdministrators(ctx, lease, entry, true)
 	log.Printf("pending DNS publication %s waits for the server administrator (reason=%s); the administrators were notified",
 		lease.ZoneName, dnsPendingReasonForLog(entry.Code))
 }
 
 // notifyDNSPublicationAdministrators raises the one dns_publication_stuck
 // notification of entry's exact publication. Errors are logged only.
-func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dnsZoneEngineLease, entry dnsPendingPublicationEntry) {
+//
+// alpha.133 round 5 review: a stored notice whose words would not change is
+// left as it is (a reason that alternates between codes with the same text,
+// or a panel restart, never shows or mails it again). When the words change,
+// a loud notice (the first of an episode, or a person must act now) is shown
+// and mailed again; a quiet one (the stuck cause changed) only takes the new
+// words in place.
+func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dnsZoneEngineLease, entry dnsPendingPublicationEntry, loud bool) {
 	db := p.db.GetDB()
 	ids, err := administratorIDs(ctx, db)
 	if err != nil {
@@ -1064,11 +1113,56 @@ func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dn
 		"zone": lease.ZoneName, "reason": reason, "detail": detail,
 		"delete": lease.DesiredAction == "delete", "checks": entry.Repeats,
 	}
-	// One notification per exact publication; when its state changes (stuck,
-	// then a person must act) the same notification says the new state and
+	var stored string
+	switch err := db.QueryRowContext(ctx, `SELECT body FROM account_notices WHERE kind = ? AND period = ? LIMIT 1`,
+		noticeDNSPublicationStuck, lease.RequestID).Scan(&stored); {
+	case err == nil:
+		var previous map[string]any
+		if json.Unmarshal([]byte(stored), &previous) == nil &&
+			dnsPublicationStuckNoticeWords(audienceAdministrator, previous) == dnsPublicationStuckNoticeWords(audienceAdministrator, body) {
+			return
+		}
+		if !loud {
+			raw, err := json.Marshal(body)
+			if err == nil {
+				_, err = db.ExecContext(ctx, `UPDATE account_notices SET body = ? WHERE kind = ? AND period = ?`,
+					string(raw), noticeDNSPublicationStuck, lease.RequestID)
+			}
+			if err != nil {
+				log.Printf("pending DNS publication %s: update its notification: %v", lease.ZoneName, err)
+			}
+			return
+		}
+	case !errors.Is(err, sql.ErrNoRows):
+		log.Printf("pending DNS publication %s: read its notification: %v", lease.ZoneName, err)
+		return
+	}
+	// One notification per exact publication; when it must be told again
+	// (a person must act now) the same notification says the new state and
 	// is shown again, so the earlier text never stays readable beside it.
 	p.reviseAccountNotice(ctx, db, recipients, noticeDNSPublicationStuck, true,
-		"dns_publication:"+lease.ZoneName, lease.RequestID, body, "/dns-infrastructure")
+		"dns_publication:"+lease.ZoneName, lease.RequestID, body, dnsPublicationNoticeFixPath(lease.DesiredAction == "delete"))
+}
+
+// dnsPublicationNoticeCode joins a notice body's reason and detail back into
+// the pending code.
+func dnsPublicationNoticeCode(reason, detail string) string {
+	if detail == "" {
+		return reason
+	}
+	return reason + ":" + detail
+}
+
+// dnsPublicationNoticeFixPath is the page the notification's button opens:
+// the page its text sends the reader to (alpha.133 round 5: a deletion's
+// notification said "On Domains, open Details …" while its button opened
+// Server → DNS and peer servers). A deletion's waiting notice with its next
+// step is on Domains; any other DNS change's state is on the DNS page.
+func dnsPublicationNoticeFixPath(deletion bool) string {
+	if deletion {
+		return "/domains"
+	}
+	return "/dns-infrastructure"
 }
 
 // clearDNSPublicationStuckNotice marks the notification of a publication
@@ -1088,7 +1182,7 @@ func (p *Panel) clearDNSPublicationStuckNotice(ctx context.Context, lease dnsZon
 // such a notification exists.
 func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases []dnsZoneEngineLease) {
 	rows, err := p.db.GetDB().QueryContext(ctx,
-		`SELECT DISTINCT period, COALESCE(json_extract(body, '$.reason'), '') FROM account_notices WHERE kind = ? AND seen_at IS NULL`,
+		`SELECT DISTINCT period, COALESCE(json_extract(body, '$.reason'), ''), COALESCE(json_extract(body, '$.detail'), '') FROM account_notices WHERE kind = ? AND seen_at IS NULL`,
 		noticeDNSPublicationStuck)
 	if err != nil {
 		return
@@ -1100,8 +1194,8 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	scheduler := p.dnsPendingPublications()
 	var ended []string
 	for rows.Next() {
-		var period, reason string
-		if rows.Scan(&period, &reason) != nil {
+		var period, reason, detail string
+		if rows.Scan(&period, &reason, &detail) != nil {
 			continue
 		}
 		if !pending[period] {
@@ -1110,9 +1204,10 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 		}
 		// "A person must act" no longer holds once the exact job reports
 		// another cause (alpha.133 review): the administrator acted.
-		if reason == transport.DNSPeerPendingJournalUnresolved {
-			if entry, ok := scheduler.entry(period); ok && entry.Observed && entry.Code != "" {
-				if current, _, known := transport.SplitDNSPeerPendingCode(entry.Code); known && current != reason {
+		stored := dnsPublicationNoticeCode(reason, detail)
+		if transport.DNSPeerPendingStopsAutomaticRechecks(stored) {
+			if entry, ok := scheduler.entry(period); ok && entry.Observed && entry.Code != "" && entry.Code != stored {
+				if _, _, known := transport.SplitDNSPeerPendingCode(entry.Code); known {
 					ended = append(ended, period)
 				}
 			}
@@ -1121,6 +1216,7 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	rows.Close()
 	for _, period := range ended {
 		p.clearDNSPublicationStuckNotice(ctx, dnsZoneEngineLease{RequestID: period})
+		scheduler.resetNotice(period)
 	}
 }
 
@@ -1189,6 +1285,20 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 		w.TextTR = doneTR + "; ancak " + dnsJournalUnresolvedNoticeTR
 		return w
 	}
+	if transport.DNSPeerPendingStopsAutomaticRechecks(dnsPublicationNoticeCode(reason, detail)) {
+		// An owner edit of this server's DNS (alpha.133 round 5): not
+		// re-checked by itself; the administrator finishes the change and
+		// the row's Delete continues the same deletion.
+		w.TitleEN = "The removal of " + zone + " from DNS waits for the server administrator"
+		w.TitleTR = zone + " alan adının DNS'ten kaldırılması sunucu yöneticisini bekliyor"
+		if !deletion {
+			w.TitleEN = "The DNS change of " + zone + " waits for the server administrator"
+			w.TitleTR = zone + " DNS değişikliği sunucu yöneticisini bekliyor"
+		}
+		w.TextEN = doneEN + ", but the DNS of this server changed while it was being confirmed, so CelikPanel does not confirm it and does not check it again by itself: it never acts over a change made by hand. Who acts: you. Finish any change you or someone else is making to this server's DNS. Then on Domains, More → Delete… on this domain's row continues this same deletion."
+		w.TextTR = doneTR + "; ancak doğrulanırken bu sunucunun DNS'i değişti, bu yüzden CelikPanel bunu doğrulamıyor ve kendiliğinden yeniden denetlemiyor: elle yapılan bir değişikliğin üzerinden asla iş yapmaz. Kim yapar: siz. Bu sunucunun DNS'inde sizin ya da bir başkasının yaptığı değişikliği tamamlayın. Ardından Alan Adları sayfasında bu alan adının satırındaki Diğer → Sil… aynı silmeyi sürdürür."
+		return w
+	}
 	switch {
 	case reason == transport.DNSPeerPendingProofTimeout && detail == transport.DNSPeerProofTimeoutLocalCheck:
 		w.TextEN = doneEN + ", but confirming that the backup DNS server removed it too has failed the same way in every check for a quarter of an hour: this server's own part of the check does not finish in time. The backup DNS server is not the cause. Who acts: you. Check whether something keeps this server busy (processor or disk). If it is not busy, send the CelikPanel Agent's lines about this to CelikPanel; on this server run: sudo journalctl -u celikpanel-agent | grep peer." + nextEN
@@ -1199,6 +1309,11 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 	case reason == transport.DNSPeerPendingCatchingUp:
 		w.TextEN = doneEN + ", but for a quarter of an hour the backup DNS server has not caught up with it. Who acts: you, or whoever runs the backup DNS server. Check that the backup DNS server is switched on and that it reaches this server on TCP port 53. Nothing else is needed: the next check continues by itself." + nextEN
 		w.TextTR = doneTR + ", ancak yedek DNS sunucusu çeyrek saattir buna yetişmedi. Kim yapar: siz ya da yedek DNS sunucusunu yöneten kişi. Yedek DNS sunucusunun açık olduğunu ve bu sunucuya TCP 53 numaralı bağlantı noktasından ulaşabildiğini denetleyin. Başka bir şey gerekmez: sonraki denetim kendiliğinden sürer." + nextTR
+	case deletion:
+		// Every reason of a deletion has its own why, who and next step in
+		// the waiting notice on Domains (the page this notification opens).
+		w.TextEN = doneEN + ", but its confirmation by the backup DNS server has failed the same way in every check for a quarter of an hour. Who acts: you. On Domains, the waiting notice of this deletion says why and the one thing to do; the CelikPanel Agent's lines on this server name the step that stops: sudo journalctl -u celikpanel-agent | grep peer. Send them to CelikPanel if the notice does not say what to fix." + nextEN
+		w.TextTR = doneTR + ", ancak yedek DNS sunucusunun bunu doğrulaması çeyrek saattir her denetimde aynı biçimde başarısız oluyor. Kim yapar: siz. Alan Adları sayfasında bu silmenin bekleme kutusu nedenini ve yapılacak tek şeyi söyler; bu sunucudaki CelikPanel Agent satırları duran adımı söyler: sudo journalctl -u celikpanel-agent | grep peer. Kutu neyin düzeltileceğini söylemiyorsa bu satırları CelikPanel'e gönderin." + nextTR
 	default:
 		w.TextEN = doneEN + ", but its confirmation by the backup DNS server has failed the same way in every check for a quarter of an hour. Who acts: you. Server → DNS and peer servers shows the reason; the CelikPanel Agent's lines on this server name the step that stops: sudo journalctl -u celikpanel-agent | grep peer. Send them to CelikPanel if the reason does not say what to fix." + nextEN
 		w.TextTR = doneTR + ", ancak yedek DNS sunucusunun bunu doğrulaması çeyrek saattir her denetimde aynı biçimde başarısız oluyor. Kim yapar: siz. Sunucu → DNS ve eş sunucular nedeni gösterir; bu sunucudaki CelikPanel Agent satırları duran adımı söyler: sudo journalctl -u celikpanel-agent | grep peer. Neden neyin düzeltileceğini söylemiyorsa bu satırları CelikPanel'e gönderin." + nextTR

@@ -7495,3 +7495,140 @@ bağlantıyı tutar.
   konuğunda root olarak yukarıdaki İngilizce bölümdeki komutla çalıştırılır;
   `dns_engine_peer_journal_repair_linux_test.go` testlerinden hiçbiri SKIP
   dememelidir.
+
+### Dal a133/proofwait (yanıt vermeyen yedek DNS sunucusu her zaman beklemedir; kendiliğinden yeniden denetimler yalnız çözülemeyen denetim kaydında ya da bu sunucuda sahibin değişikliğinde durur; şema değişikliği yok; ilkeler 1, 3 ve 4; P0.4; D-022; D-024; D-025; 2026-11-13)
+
+- **Olay.** alpha.133 lab'ı, ikinci boşta çalışma (`194a4b4e4`), PowerDNS ana
+  sunucu ve SSH bağlantı noktası engellenmiş bir BIND yedek: `w9.test` için iki
+  yeniden denetim `dns_peer_proof_timeout:peer_exchange` (`exchange=10.001s`),
+  üçüncüsü `dns_peer_inspection_unknown` (`exchange=10s`) ile bitti. Yedek
+  yeniden yanıt verdikten sonra da silme, biri Diğer → Sil…'e basana kadar
+  bekledi; kutu tek bir jargon satırıydı.
+- **Neden.** Değişim adımının bağlamı ile bağlayıcının kendi yoklayıcı süresi
+  aynı an için iki zamanlayıcıdır: `net`, bağlantının yazma süresini
+  `ctx.Deadline()`'dan koyar (Go 1.26.5'te `net/fd_unix.go` 78-82) ve
+  `ctx.Done()` henüz açıkken yoklayıcının zaman aşımını döndürür (119-125).
+  Aktarım o zaman `peer_inspection_unavailable` döndürdü (`194a4b4e4`'te
+  `internal/dnspeertransport/transport_linux.go` 239-241) ve `stepWithin`
+  `ctx.Err()`'i boş okudu (`cmd/agent/dns_engine_peer_budget.go` 183); dokuzda
+  bir, çalışma zamanının hangi zamanlayıcıyı önce çalıştırdığıdır. Panelin
+  işçisi her kod için "next automatic re-check in 1m0s" yazdı ama
+  `dns_peer_inspection_unknown` yeniden denetlenmiyordu
+  (`cmd/panel/dns_peer_pending_guidance.go` 61-77). Davranış koda uyuyordu;
+  günlük satırı yanlıştı.
+- **Aktarım.** SSH değişimi hatalarını ayırır. Yanıt yok (`peer_no_answer`):
+  bağlanma başarısız (reddedildi, yol yok, zaman aşımı), bağlantı sunucu
+  anahtarından önce bitti, sıfırlandı ya da süresi doldu, ya da komutun
+  sonucundan önce koptu. Kabul edilemeyen yanıt: sunucu anahtarı denetiminden
+  önce başarısız anahtar değişimi (doğrulanmayan sunucu anahtarı imzası, ortak
+  anahtar algoritması yok, protokol hatası, ilk baytları `SSH-` olmayan başka
+  bir hizmet), kayıtlı anahtarın ya da oturumun reddi, çok büyük yanıt,
+  sıfırdan farklı çıkış. Sabitlenmişten başka bir SSH sunucu anahtarı
+  `peer_host_key_changed`; bu sunucunun kendi kaydı ya da anahtar dosyası
+  `peer_enrollment_invalid` olur ve `Inspect` bunları geçirir. Agent yanıt
+  yokluğunu `dns_peer_proof_timeout:peer_exchange`'e, başka sunucu anahtarını
+  yeni gözden geçirilmiş `dns_peer_enrollment_changed:host_key`'e, bu sunucunun
+  anahtarını `dns_peer_enrollment_changed`'e, gerisini
+  `dns_peer_inspection_unknown`'a eşler.
+- **Adım sınırı.** Bir adım süresinin dolup dolmadığını süre sınırından da
+  okur (`dnsPeerStepDeadlineMargin`, 100 ms), ama yalnız süresi dolan bir
+  denetim, değişimin "yanıt yok"u ya da gözden geçirilmiş kodu veya bulgusu
+  olmayan bir hata için. Gözden geçirilmiş kod ya da bulgu (bir yoklamanın ya da
+  son yeniden denetimin bulduğu sahip değişikliği, yedeğin verdiği yanıt)
+  kodunu korur; onun için yalnız `ctx.Err()` karar verir.
+- **Yeniden denetim kuralı** (`transport.DNSPeerPendingStopsAutomaticRechecks`;
+  Agent'ın günlük satırı, panel ve web için tek kural). Kendiliğinden yeniden
+  denetimler, başka bir denetimin sonucu kanıtlanabilir biçimde
+  değiştiremeyeceği yerde (`dns_peer_journal_unresolved`) ya da durumun, sunucu
+  sahibinin bu sunucunun DNS'ini elle değiştiriyor olabileceğini söylediği
+  yerde durur (`dns_peer_owner_edit_unknown`, yalın ya da `operation_attempt`,
+  `engine_state`, `active_engine`, `native_binding`, `deletion_receipt`,
+  `producer_catalog`, `catalog_probe`, `authority` denetimleriyle): CelikPanel
+  sahibin değişikliğinin üzerinden kendiliğinden iş yapmaz (D-022) ve yeniden
+  denetim `RecoverZone`'u çalıştırır; onun ön denetimleri bu değişikliklerin
+  birkaçını her Agent değişikliğini bekleten belirsizlik sayar
+  (`cmd/agent/dns_engine_rpc.go` 313-345 ve 412-443; PowerDNS bölge satırları,
+  `dns_engine_pdns.go` 975-987; tek etkin motor, `dns_engine_host.go` 3218;
+  BIND dönemi, eski durum ve tek etkin denetimleri, 1209-1251 ve 1331).
+  Yedek tarafındaki `transfer_observed` ve `zone_answered` denetimleri bu yerel
+  ön denetimlerden sonra, yayılımın içinde gözlenir ve yayılımın her sonucu
+  bekleme olarak sarılır (`dns_engine_pdns_propagation.go` 263-276,
+  `dns_engine_bind_propagation.go` 184); kendiliğinden kalırlar. `authority` bu
+  sunucunun katalog seri numarasını izleyebildiği için kişi durumudur. Diğer
+  her neden 15 sn'den 5 dk'ya ikiye katlanarak yeniden denetlenir, nedeni ne
+  olursa olsun üst üste altı bekleme sonucundan sonra "takıldı"; hiçbir şeyin
+  yeniden denetlemediği bir duruma dönmez. Gözden geçirilmiş bekleme sonucu
+  olmayan tekrarlanan hatalar kendiliğinden denemeleri yine bitirir
+  (`stopped`, ilke 4).
+- **Bildirimler.** Her kişi durumu yöneticilere tek bildirim gönderir
+  (`takePersonNotice`); neden değişince kaldırılır. Takılma bir kez bildirilir;
+  takılmanın nedeni değişince saklanan metin yeniden gösterilmeden ve
+  postalanmadan yerinde güncellenir; metni değişmeyecek bir bildirime
+  dokunulmaz. Silmenin bildirimi Alan Adları sayfasını açar.
+- **Ekran.** Her gözden geçirilmiş neden neden, kim yapar, tek sonraki adım ve
+  nasıl süreceğini söyler (web kılavuzu, `deletionGuide` ve `deletionGuidePeer`
+  parçaları); bu sunucuda sahibin değişikliği yöneticiyi adlandırır, "değişikliği
+  tamamlayın, ardından Diğer → Sil…" der ve kendiliğinden biteceğini asla
+  söylemez; değişen sunucu anahtarı, erişimi yeniden kurmadan önce gerçek bir
+  yeniden kurulum ya da anahtar değişikliğinin doğrulanmasını ister (bunun için
+  düğme yok; adımlar Ayrıntılar altındaki dns-peer-enroll aracıdır). Liste
+  bekleyen silmeyi her durumda, başarısız bir okumadan sonra da okumayı sürdürür.
+- **Kurtarma.** Güncellenmiş panelde yeniden denetlenen bir kodla bekleyen silme
+  sonraki taramada yeniden denetlenir ve neden ortadan kalkınca biter. Bu
+  sunucuda sahibin değişikliğiyle bekleyene dokunulmaz; yönetici değişikliği
+  bitirdikten sonra Diğer → Sil…'e basar. Saklanan biçim değişmez;
+  `dns_peer_enrollment_changed:host_key` mevcut hata kodu alanında yeni bir
+  bileşik koddur (eski bir panel yalın nedenin metnini gösterir).
+- **Kanıt.** WSL konuğunda bileşen ve üretim yolu testleri: her biçim için
+  yerel döngü sunucularına ve bağlayıcılara karşı gerçek SSH değişimi
+  (reddedildi, yarışan bağlayıcı zamanlayıcısı, önce bağlam, yol yok, sessiz
+  bağlantı noktası, sıfırlama, komuttan sonra kopma, başka sunucu anahtarı,
+  doğrulanmayan imza, yalnız RSA anahtarlı sunucu, bağlantı noktasında başka
+  hizmet, anahtar reddi, oturum reddi, sıfırdan farklı çıkış, eksik yerel
+  anahtar); w9 dalgası; sınırdan 50 ms önce gelen gözden geçirilmiş bulgular;
+  panelin uzlaştırıcısı w9 dizisinde, reddeden yedekte, bu sunucunun her sahip
+  değişikliği denetiminde (taramalar boyunca ve yeniden başlatmadan sonra Agent
+  çağrısı yok, tek bildirim, basış sürdürür) ve değişen nedenlerde; her kod ve
+  bileşik için web koruması; ikinci sekmedeki ve başarısız okumadan sonraki
+  liste. Gerçek sistemde çalıştırılmadı.
+- **Yeniden inceleme düzeltmeleri.** Değişimden sonraki katalog denetimi
+  sırasında yanıt vermeyi bırakan yedek (bu sunucunun kendi kataloğu
+  eşleşirken yoklaması `dnsPeerBehind`), aynı gözlem için dalganın okuması
+  olan `dns_peer_catching_up` olur, `owner_edit_unknown:catalog_probe` değil
+  (`dns_engine_peer_after_inspection.go`); `catalog_probe` bu sunucunun kendi
+  farkı için kalır. Kişi kodlarını üreten her yer bir kez gözden geçirildi;
+  hepsi yalnız yerel kanıt okur: yerel yeniden denetimler
+  (`recheckBINDPeerLocalEvidence`, `recheckPDNSPeerLocalEvidence*`,
+  `recheckPDNSNativeBindingAt`, kaydedilen üretici kataloğu), iş kaydı denemesi
+  (`peerCurrentPendingCodeAt`), BIND yapılandırması
+  (`pendingExactBINDV3OwnerEdit`), `catalog_probe` ve `authority` (bu sunucunun
+  kaydı) ve denetim kaydı uzlaştırması (`dns_peer_journal_unresolved`).
+  Uzlaştırıcının, süren bir işi bekleyen kendi denemesi, iş durdurucu bir kodla
+  beklemede biterse artık kurtarmayı çalıştırmaz (`reconcileDNSZoneEngineLease`);
+  bir kişinin basışı yine çalıştırır. Sunucu anahtarı Ayrıntıları aracın kabul
+  ettiği sırayı verir (`primary-revoke`, yalnız kayıt dosyasını kenara alır ve
+  DNS çoğaltmasını sürdürür; ardından ilk kurulum adımları); kurulum var olan
+  bir erişimin yerine asla yenisini koymaz ve yönlendirme artık bunu söylemez.
+- **Açık.**
+  - Bu sürümden önce kendiliğinden olan kodlar (`dns_peer_catching_up`,
+    `dns_peer_proof_timeout`, `dns_peer_journal_unknown`) ve bu sürümün yeniden
+    denetlediği kodlar, sahip bekleme sırasında bu sunucunun DNS'ini
+    değiştirirse aynı Agent beklemesine yine ulaşabilir: sonraki yeniden
+    denetimin `RecoverZone` ön denetimleri değişikliği belirsizlik sayar. Doğru
+    düzeltme, iki `RecoverZone` yolunda da sahip değişikliği biçimli her ön
+    denetim hatasını, `pendingExactBINDV3OwnerEdit`'in BIND yapılandırma
+    denetimi için yaptığı gibi bekleyen bir sahip değişikliği olarak
+    sınıflandırmaktır. Denenmedi.
+  - Sonucu değişmeyen yeniden denetlenmiş bir deneme yaklaşık dört satır yazar
+    (Agent'ın "stopped at step", "step times … outcome" ve "recovery remains
+    pending" satırları ile panelin "still waits" satırı), yavaş aralıkta 5
+    dakikada bir; Agent'ın üç satırını bire indirmek küçük bir değişiklik
+    değil, bırakıldı.
+  - Metni kaldırılan bir bildirimle aynı olan yeni bir kişi dönemi yeniden
+    gösterilmez (kabul edilebilir: o kodları yalnız bir basış değiştirir).
+  - Güncelleme sırasında bir alpha.132 paneli güncellenmiş Agent ile konuştuğu
+    birkaç saniye boyunca yeni bileşik kodu
+    `dns_peer_enrollment_changed:host_key` gözden geçirilmemiş sayar
+    (önceki bileşik kodlarla aynı sınıf).
+  - Gerçek sistemde ölçülmedi; lab w9'u yineler. **Hiçbir P0 işi kapanmadı**;
+    P0.4 kısmi kalır.

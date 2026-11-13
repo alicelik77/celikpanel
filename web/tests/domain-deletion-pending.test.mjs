@@ -159,8 +159,10 @@ test('refused local catalog transfer names the secondary owner, the statement, b
   }
   assert.match(en_, /backup DNS server's owner/);
   assert.match(tr_, /yedek DNS sunucusunun sahibi/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  // alpha.133 round 5: re-checked by itself; no retry button is named.
+  assert.match(en_, /checks this same publication again by itself/);
+  assert.match(tr_, /kendiliğinden yeniden denetler/);
+  assert.ok(!en_.includes(enScreens['domains.retryDeletion']) && !tr_.includes(trScreens['domains.retryDeletion']));
 });
 
 test('only a reviewed inspector detail of an incomplete inspection is kept, with EN/TR copy', async () => {
@@ -225,7 +227,7 @@ test('an internal proof failure names no owner change, the owner, the log comman
   assert.match(en_, /could not run its own check of the backup DNS server/);
   assert.match(en_, /No change by either server's owner was found/);
   assert.match(en_, /server owner/);
-  assert.match(en_, /Retrying does not help until/);
+  assert.match(en_, /Checking again does not help until/);
   assert.match(en_, /DNS answers are unaffected/);
   assert.doesNotMatch(en_, /evidence changed|reconcile/);
   assert.match(tr_, /kendi denetimiyle kontrol edemedi/);
@@ -233,8 +235,11 @@ test('an internal proof failure names no owner change, the owner, the log comman
   assert.match(tr_, /sunucunun sahibi/);
   assert.match(tr_, /DNS yanıtları etkilenmez/);
   assert.doesNotMatch(tr_, /kanıt değişti|uzlaştır/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  // alpha.133 round 5: after the Agent is fixed, the next automatic check
+  // continues it; no retry button is named.
+  assert.match(en_, /with nothing to press/);
+  assert.match(tr_, /hiçbir şeye basmadan/);
+  assert.ok(!en_.includes(enScreens['domains.retryDeletion']) && !tr_.includes(trScreens['domains.retryDeletion']));
 });
 
 // alpha.133 (incident of 12 Nov 2026): the old text said nothing had changed
@@ -310,9 +315,8 @@ test('owner-edit guidance keeps its meaning and names the serial comparison', ()
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_owner_edit_unknown'];
   assert.match(en_, /evidence changed during verification/);
   assert.match(en_, /compare the catalog zone and zone serials on both servers/);
-  assert.match(tr_, /seri numaralarını karşılaştırıp/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  assert.match(tr_, /seri numaralarını karşılaştırmalı/);
+  assert.ok(!en_.includes(enScreens['domains.retryDeletion']) && !tr_.includes(trScreens['domains.retryDeletion']));
 });
 
 test('owner-edit pending names the check that differed through its own sentence', async () => {

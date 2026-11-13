@@ -96,9 +96,9 @@ interface PendingDeletion {
 // A reason the guide words reads again on its own while CelikPanel re-checks
 // it by itself (alpha.133), so a finished deletion leaves without a refresh;
 // a press of Delete stays possible for it.
-const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp) => ({
+const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp, detail = '') => ({
     automatic: domainDeletionReasonAutomatic(reason) ||
-        (domainDeletionGuideReason(reason) !== null && deletionGuideFollowUp(reason, followUp) === 'automatic'),
+        (domainDeletionGuideReason(reason, detail) !== null && deletionGuideFollowUp(reason, followUp, detail) === 'automatic'),
     blocksRetry: domainDeletionBlocksRetry(reason),
     quiet: domainDeletionQuiet(reason),
 });
@@ -287,7 +287,7 @@ export function Domains() {
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail, saved.saved),
-                ...pendingFlags(saved.saved.reason, saved.saved.followUp),
+                ...pendingFlags(saved.saved.reason, saved.saved.followUp, saved.saved.detail),
                 guide: { reason: saved.saved.reason, detail: saved.saved.detail, followUp: saved.saved.followUp, nextCheckAt: saved.saved.nextCheckAt },
             };
         })).then((observed) => {
@@ -311,12 +311,31 @@ export function Domains() {
     // that shows domains reads again after 15 s, so a finished deletion leaves
     // the list without a refresh (owner rule 2026-10-31). It only reads.
     // Kendiliğinden süren bir silme varken alan adları 15 sn sonra yeniden okunur.
+    // Any other waiting deletion is read again every minute (alpha.133 round
+    // 5, lab w9: a second open tab kept a deletion that waited for a person
+    // after it was finished from another tab, because only "automatic" ones
+    // were read again). These are the same reads; they start nothing.
+    // Bekleyen her silme dakikada bir yeniden okunur; yalnız okumadır.
+    // A read that fails keeps the chain going at the same pace (review of
+    // round 5: one failed read used to end it until a manual refresh); a
+    // read still on its way is never doubled.
+    // Başarısız okuma zinciri durdurmaz; süren okumanın üstüne yenisi açılmaz.
     const autoRecheck = pendingDeletions.some((item) => item.automatic);
+    const watchPending = pendingDeletions.length > 0;
+    const listReading = useRef(false);
+    listReading.current = list.reading;
     useEffect(() => {
-        if (!autoRecheck) return;
-        const timer = window.setTimeout(() => invalidate('domains', 'dns'), 15000);
+        if (!watchPending) return;
+        let timer = 0;
+        const arm = () => {
+            timer = window.setTimeout(() => {
+                if (!listReading.current) invalidate('domains', 'dns');
+                arm();
+            }, autoRecheck ? 15000 : 60000);
+        };
+        arm();
         return () => window.clearTimeout(timer);
-    }, [autoRecheck, listedAt]);
+    }, [watchPending, autoRecheck, listedAt]);
 
     // A domain is "being deleted" while its delete request is on its way, and
     // while the server says CelikPanel carries the deletion on by itself. Its

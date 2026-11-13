@@ -159,8 +159,9 @@ func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
 			bounded, cancel := context.WithTimeout(ctx, transportLimit)
 			defer cancel()
 			<-bounded.Done()
-			return pendingDNSPeerCause(inspectionPendingCode(""),
-				dnspeertransport.Unknown{Code: dnspeertransport.CodeUnavailable})
+			// What the transport returns once its time ran out: no answer.
+			return pendingDNSPeerCause(bindInspectionPendingCode(dnspeertransport.Unknown{Code: dnspeertransport.CodeNoAnswer}),
+				dnspeertransport.Unknown{Code: dnspeertransport.CodeNoAnswer})
 		}); err != nil {
 			return err
 		}
@@ -177,7 +178,7 @@ func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
 	}
 	text := logs.String()
 	for _, want := range []string{
-		"stopped at step exchange as dns_peer_proof_timeout:peer_exchange: peer_inspection_unavailable",
+		"stopped at step exchange as dns_peer_proof_timeout:peer_exchange: peer_no_answer",
 		"outcome pending dns_peer_proof_timeout:peer_exchange",
 	} {
 		if !strings.Contains(text, want) {

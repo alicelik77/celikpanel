@@ -90,6 +90,12 @@ func verifyEnrolledDNSPeerDeletion(ctx context.Context, authority dnsPeerAXFRAut
 // the BIND path does: the pending code, plus the reviewed reason the
 // authenticated PowerDNS inspector reported, if any.
 func pdnsInspectionPendingCode(err error) string {
+	switch {
+	case pdnspeertransport.IsCode(err, pdnspeertransport.CodeNoAnswer),
+		pdnspeertransport.IsCode(err, pdnspeertransport.CodeHostKeyChanged),
+		pdnspeertransport.IsCode(err, pdnspeertransport.CodeEnrollment):
+		return bindInspectionPendingCode(err)
+	}
 	return inspectionPendingCode(pdnspeertransport.InspectorReason(err))
 }
 

@@ -2,7 +2,7 @@ import { Guidance } from './kit/rows/Guidance';
 import { Button } from './ui';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/en';
-import { domainDeletionGuideReason } from '../lib/domainDeletionPending';
+import { domainDeletionDetailKey, domainDeletionGuideReason } from '../lib/domainDeletionPending';
 import {
     DELETION_LOG_COMMAND, DELETION_RECORD_LIST_COMMAND, deletionGuideFollowUp, deletionGuideWords, type DeletionGuideInput,
 } from '../lib/deletionGuide';
@@ -25,8 +25,13 @@ export function DeletionWaitingGuide({ name, input, admin, onCheck }: {
 }) {
     const { t, locale } = useI18n();
     const words = deletionGuideWords(input, admin, t, locale, 'banner');
-    const guide = domainDeletionGuideReason(input.reason);
+    const guide = domainDeletionGuideReason(input.reason, input.detail);
     if (!words || !guide) return null;
+    // What the backup's check tool reported, or which comparison differed:
+    // technical, so only in the administrator's Details.
+    const detailKey = domainDeletionDetailKey(input.reason, input.detail ?? '') as TranslationKey | null;
+    // (The proof timeout's side is already part of its why.)
+    const detailText = detailKey && input.reason !== 'dns_peer_proof_timeout' ? t(detailKey) : '';
     return (
         <Guidance
             className="mb-4"
@@ -38,11 +43,12 @@ export function DeletionWaitingGuide({ name, input, admin, onCheck }: {
             then={words.then}
             action={<Button variant="secondary" onClick={onCheck}>{t('domains.checkDeletionStatus')}</Button>}
             data-domain-deletion-guide={name}
-            data-follow-up={deletionGuideFollowUp(input.reason, input.followUp)}
+            data-follow-up={deletionGuideFollowUp(input.reason, input.followUp, input.detail)}
         >
             {admin && (
                 <details className="text-xs text-fg-muted" data-deletion-guide-details="">
                     <summary className="cursor-pointer">{t(`domains.deletionGuide.details` as TranslationKey)}</summary>
+                    {detailText && detailText !== detailKey && <p className="mt-1 break-words">{detailText}</p>}
                     <p className="mt-1 break-words">{t(`domains.deletionGuide.${guide}.details` as TranslationKey)}</p>
                     <code className="mt-1 block break-words">{DELETION_LOG_COMMAND}</code>
                     {input.reason === 'dns_peer_journal_unresolved' && (

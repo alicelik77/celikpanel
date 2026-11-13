@@ -89,6 +89,7 @@ import type { DbConfigScreenKey } from './screens/dbConfig/en';
 import type { PgLeftoversScreenKey } from './screens/pgLeftovers/en';
 import type { DomainSectionsScreenKey } from './screens/domainSections/en';
 import type { DeletionGuideScreenKey } from './screens/deletionGuide/en';
+import type { DeletionGuidePeerScreenKey } from './screens/deletionGuidePeer/en';
 
 export const en = {
     'app.name': 'CelikPanel',
@@ -603,5 +604,6 @@ export type ScreenKey =
     | DbConfigScreenKey
     | PgLeftoversScreenKey
     | DomainSectionsScreenKey
-    | DeletionGuideScreenKey;
+    | DeletionGuideScreenKey
+    | DeletionGuidePeerScreenKey;
 export type TranslationKey = ShellKey | ScreenKey | SetupDNSKey | MonitoringAlertsKey | MailOutgoingKey | DataToolsKey | DbRemoteKey | MailConfigKey;

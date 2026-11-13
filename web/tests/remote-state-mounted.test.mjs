@@ -342,6 +342,10 @@ function serve(overrides = {}, role = 'admin', changes = {}) {
       assign(address) { moved.push(address); },
     },
     open() {},
+    // A page's own timers (for example the list reading a waiting deletion
+    // again) are recorded by the tests that follow them; here they never fire.
+    setTimeout: () => 0,
+    clearTimeout() {},
   };
   const table = { ...healthy, ...overrides };
   globalThis.fetch = (url, options = {}) => {
@@ -896,6 +900,121 @@ test('Domains: a pending row whose saved deletion could not be read says exactly
       assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
     } finally {
       await cleanup();
+    }
+  }
+});
+
+// alpha.133 round 5 (lab w9): a second open Domains tab kept a deletion that
+// waited for a person after it was finished from another tab (still listed
+// 20 minutes later): only deletions CelikPanel re-checks by itself were read
+// again. Every waiting deletion is now read again by itself (15 s while
+// CelikPanel re-checks, otherwise every minute); reads only, never a change.
+test('Domains: a waiting deletion finished from another tab leaves this tab by itself, in every state', async () => {
+  const pendingRow = { ...domainRow, id: 9, domain_name: 'leaving.example', status: 'pending' };
+  for (const [state, body, wait] of [
+    ['the backup does not answer', { reason: 'dns_peer_proof_timeout', detail: 'peer_exchange', follow_up: 'automatic' }, 15000],
+    ['the backup refuses, stuck', { reason: 'dns_peer_inspection_unknown', follow_up: 'stuck' }, 60000],
+    ['a person must act', { reason: 'dns_peer_journal_unresolved', follow_up: 'person' }, 60000],
+    ['automatic checks ended', { reason: 'dns_peer_owner_edit_unknown', follow_up: 'stopped' }, 60000],
+  ]) {
+    let finished = false;
+    serve({
+      '/api/v1/domains': (request) => json(finished ? [] : [pendingRow])(request),
+      '/api/v1/domains/9/deletion-status': (request) => (finished
+        ? new Response(null, { status: 204 })
+        : json({ status: 'deletion_pending', stage: 'dns_cleanup', ...body })(request)),
+    });
+    const timers = [];
+    Object.assign(globalThis.window, { setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout: () => {} });
+    try {
+      await mount(Domains);
+      assert.ok(has('domains.deletionWaiting') && has('leaving.example'), `${state}: not shown as waiting`);
+      const reread = timers.find((timer) => timer.ms === wait);
+      assert.ok(reread, `${state}: no read again after ${wait} ms (timers ${timers.map((timer) => timer.ms)})`);
+      // Another tab finished it.
+      finished = true;
+      await act(async () => { reread.fn(); await settled(); await settled(); await settled(); });
+      assert.ok(!has('domains.deletionWaiting') && !has('leaving.example'), `${state}: the finished deletion is still listed`);
+      assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, `${state}: reading again sent a change`);
+    } finally {
+      await cleanup();
+    }
+  }
+});
+
+// Review of round 5 (N2): a read of the list that fails does not end the
+// re-reading; the next one comes at the same pace and the finished deletion
+// still leaves by itself. Reads only.
+test('Domains: a failed re-read of a waiting deletion keeps the list reading by itself', async () => {
+  const pendingRow = { ...domainRow, id: 9, domain_name: 'leaving.example', status: 'pending' };
+  let phase = 'pending';
+  serve({
+    '/api/v1/domains': (request) => (phase === 'fail'
+      ? json({ error: 'server sentence', code: 'INTERNAL' }, 502)(request)
+      : json(phase === 'done' ? [] : [pendingRow])(request)),
+    '/api/v1/domains/9/deletion-status': (request) => (phase === 'done'
+      ? new Response(null, { status: 204 })
+      : json({ status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_journal_unresolved', follow_up: 'person' })(request)),
+  });
+  const timers = [];
+  Object.assign(globalThis.window, { setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout: () => {} });
+  const fire = async () => {
+    const timer = timers.filter((item) => item.ms === 60000).pop();
+    assert.ok(timer, `no read again armed (timers ${timers.map((item) => item.ms)})`);
+    timers.length = 0;
+    await act(async () => { timer.fn(); await settled(); await settled(); await settled(); });
+  };
+  try {
+    await mount(Domains);
+    assert.ok(has('leaving.example') && has('domains.deletionWaiting'));
+    phase = 'fail';
+    await fire();
+    phase = 'done';
+    await fire();
+    assert.ok(!has('leaving.example') && !has('domains.deletionWaiting'), 'the list stopped reading after one failed read');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
+  } finally {
+    await cleanup();
+  }
+});
+
+// alpha.133 round 5: every DNS proof reason on the waiting notice has why,
+// who acts, the next step when a person has one and how it continues; a
+// backup that does not answer needs nobody; one that refuses names who acts.
+// A customer sees no command and no Details.
+test('Domains: the backup that does not answer and the backup that refuses, as administrator and customer', async () => {
+  const pendingRow = { ...domainRow, id: 9, domain_name: 'leaving.example', status: 'pending' };
+  for (const role of ['admin', 'customer']) {
+    for (const [body, guide, nobody] of [
+      [{ reason: 'dns_peer_proof_timeout', detail: 'peer_exchange', follow_up: 'automatic', next_check_at: '2099-01-01T00:00:00Z' }, 'peerNoAnswer', true],
+      [{ reason: 'dns_peer_inspection_unknown', detail: 'named_unavailable', follow_up: 'automatic', next_check_at: '2099-01-01T00:00:00Z' }, 'peerRefused', false],
+    ]) {
+      serve({ '/api/v1/domains': json([pendingRow]), '/api/v1/domains/9/deletion-status': json({ status: 'deletion_pending', stage: 'dns_cleanup', ...body }) }, role);
+      const label = `${role} ${guide}`;
+      try {
+        await mount(Domains);
+        assert.ok(has(`domains.deletionGuide.${guide}.why`), `${label}: why`);
+        assert.equal(has('domains.deletionGuide.who.nobody'), nobody, `${label}: nobody-acts`);
+        assert.ok(has(nobody ? 'domains.deletionGuide.then.answer.at' : 'domains.deletionGuide.then.fix.at'), `${label}: how it continues`);
+        if (!nobody) {
+          assert.ok(has(role === 'admin' ? `domains.deletionGuide.${guide}.next` : 'domains.deletionGuide.journalUnresolved.nextOther'), `${label}: next step`);
+          assert.ok(has(role === 'admin' ? `domains.deletionGuide.${guide}.who` : 'domains.deletionGuide.who.administrator'), `${label}: who`);
+        }
+        assert.ok(has('domains.checkDeletionStatus') && !has('domains.retryDeletion'), `${label}: buttons`);
+        const details = tree.root.findAll((node) => node.type === 'details');
+        if (role === 'admin') {
+          assert.equal(details.length, 1, `${label}: details`);
+          assert.ok(!details[0].props.open && has('sudo journalctl -u celikpanel-agent | grep peer'), `${label}: closed details with the command`);
+          assert.ok(has(`domains.deletionGuide.${guide}.details`), `${label}: the explanation under Details`);
+        } else {
+          assert.equal(details.length, 0, `${label}: a customer has Details`);
+          assert.ok(!has('journalctl') && !has('domains.peerInspectorDetail.'), `${label}: a customer is shown technical text`);
+        }
+        assert.ok(!has('dns_peer_'), `${label}: a reason code on screen`);
+        assert.equal(calls.filter((call) => call.method !== 'GET').length, 0);
+      } finally {
+        await cleanup();
+      }
     }
   }
 });
@@ -2491,7 +2610,7 @@ test('Domains: the deletion window says who acts from the server\u2019s follow-u
     { body: { reason: 'dns_peer_proof_timeout', follow_up: 'automatic' }, subtitle: 'domains.step.rechecksAlone',
       has: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone'], not: ['domains.deletionGuide.who.youAdministrator'] },
     { body: { reason: 'dns_peer_proof_timeout', follow_up: 'stuck' }, subtitle: undefined,
-      has: ['domains.deletionGuide.who.youAdministrator', 'domains.deletionGuide.stuck.next', 'domains.deletionGuide.then.stuck'],
+      has: ['domains.deletionGuide.who.youAdministrator', 'domains.deletionGuide.proofTimeout.stuckNext', 'domains.deletionGuide.then.stuck'],
       not: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone'] },
     { body: { reason: 'dns_peer_journal_unresolved', follow_up: 'person' }, subtitle: undefined,
       has: ['domains.deletionGuide.journalUnresolved.nextWindow', 'domains.deletionGuide.then.person'],

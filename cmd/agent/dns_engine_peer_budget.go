@@ -176,11 +176,16 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 	// observation the step made, not a deadline, even when it came back after
 	// the step's time ran out (alpha.133 review: an unresolved check record
 	// behind a slow fsync must not come back as an automatic proof timeout).
-	if code := pendingDNSPeerCode(err); dnsPeerCodeOutlivesDeadline(code) {
+	if code := pendingDNSPeerCode(err); dnsPeerCodeOutlivesDeadline(code) || dnsPeerAnswerOutlivesDeadline(err) {
 		r.stopped(step, code, err)
 		return err
 	}
-	if r.base.Err() == nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+	// Whether the step ran out of time is read from its bound, not only from
+	// ctx.Err(): a transport's own deadline for the same instant (the dialer's
+	// poller) can return a moment before the context's timer has fired
+	// (alpha.133 round 5, lab w9: one of nine attempts).
+	if r.base.Err() == nil && (errors.Is(ctx.Err(), context.DeadlineExceeded) ||
+		dnsPeerDeadlineMarginApplies(err) && dnsPeerStepDeadlineReached(ctx, time.Now())) {
 		// Before acceptance: nothing of the proof was consumed (the deletion
 		// itself is already committed on this server); the same publication
 		// is retried as a new attempt. The code names which side ran out of
@@ -199,12 +204,73 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 	return err
 }
 
+// dnsPeerStepDeadlineMargin: a step that comes back this close to its bound,
+// or later, ran out of time, whatever error value it carries. Two timers set
+// for the same instant (the step's context and a transport's own deadline)
+// fire microseconds to a few milliseconds apart; timers never fire early, so
+// the margin only has to absorb scheduling between them. 100 ms is far below
+// every step's measured cost (0.5 s or more) and bound (8 s or more).
+const dnsPeerStepDeadlineMargin = 100 * time.Millisecond
+
+// dnsPeerStepDeadlineReached reports whether ctx's deadline expired, or is at
+// most dnsPeerStepDeadlineMargin away at now. A context without a deadline
+// has not run out of time.
+func dnsPeerStepDeadlineReached(ctx context.Context, now time.Time) bool {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return true
+	}
+	deadline, ok := ctx.Deadline()
+	return ok && !now.Before(deadline.Add(-dnsPeerStepDeadlineMargin))
+}
+
+// dnsPeerDeadlineMarginApplies reports an outcome that the margin may read as
+// the step's deadline (alpha.133 round 5 review): a check that ran out of
+// time, the exchange's "no answer", or an error that carries no reviewed code
+// or finding. A reviewed code or finding (an owner edit found by a probe or a
+// recheck, the Agent's own precondition) is a completed observation; for it
+// only ctx.Err() says that the step ran out of time.
+func dnsPeerDeadlineMarginApplies(err error) bool {
+	if isDNSPeerProofDeadline(err) {
+		return true
+	}
+	cause := dnsPeerPendingCause(err)
+	if cause == nil {
+		cause = err
+	}
+	var noAnswer interface{ PeerNoAnswer() bool }
+	if errors.As(cause, &noAnswer) && noAnswer.PeerNoAnswer() {
+		return true
+	}
+	if pendingDNSPeerCode(err) != "" {
+		return false
+	}
+	var ownerEdit *dnsPeerOwnerEditError
+	var internal *dnsPeerProofInternalError
+	return !errors.As(err, &ownerEdit) && !errors.As(err, &internal)
+}
+
+// dnsPeerAnswerOutlivesDeadline reports an inspection the backup did answer,
+// with an answer this server cannot accept (refused, another host key, the
+// enrolled key refused, an oversized or malformed answer: the transport's
+// PeerAnswered). Such an outcome proves something about the answer and keeps
+// its own code even at the step's bound; "no answer" never does.
+func dnsPeerAnswerOutlivesDeadline(err error) bool {
+	cause := dnsPeerPendingCause(err)
+	if cause == nil {
+		cause = err
+	}
+	var answered interface{ PeerAnswered() bool }
+	return errors.As(cause, &answered) && answered.PeerAnswered()
+}
+
 // dnsPeerCodeOutlivesDeadline reports a reviewed code that names a state the
 // step found (this server's check record, the enrollment, the Agent's own
 // precondition, the secondary's transfer refusal), which a deadline cannot
 // have caused. The inspection and owner-edit codes are excluded: the
 // transport and the probes report a check that could not complete under
-// them, and after the step's deadline that is the deadline's doing.
+// them, and after the step's deadline that is the deadline's doing. An
+// inspection the backup provably answered is kept by
+// dnsPeerAnswerOutlivesDeadline instead (alpha.133 round 5).
 func dnsPeerCodeOutlivesDeadline(code string) bool {
 	reason, _, ok := transport.SplitDNSPeerPendingCode(code)
 	if !ok {
@@ -350,7 +416,7 @@ func (c *nativePeerCurrentChecks) at(ctx context.Context) func() error {
 				return dnsPeerProofInternal(errors.New("local evidence recheck is missing"))
 			}
 			err := c.local(ctx)
-			if err != nil && ctx.Err() != nil {
+			if err != nil && (ctx.Err() != nil || dnsPeerDeadlineMarginApplies(err) && dnsPeerStepDeadlineReached(ctx, time.Now())) {
 				return dnsPeerProofDeadlineAt(transport.DNSPeerProofTimeoutLocalCheck, err)
 			}
 			return err

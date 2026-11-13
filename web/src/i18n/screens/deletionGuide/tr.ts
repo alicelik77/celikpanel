@@ -13,7 +13,6 @@ export const trDeletionGuideScreens: Record<DeletionGuideScreenKey, string> = {
     'domains.deletionGuide.journalUnresolved.next': 'Ayrıntılar’daki iki komutun çıktısını CelikPanel desteğine gönderin; o dosyaları kendiniz silmeyin.',
     'domains.deletionGuide.journalUnresolved.nextWindow': 'Alan Adları sayfasının üstündeki bekleme kutusunda Ayrıntılar’ı açın ve gösterdiği iki komutun çıktısını CelikPanel desteğine gönderin; o dosyaları kendiniz silmeyin.',
     'domains.deletionGuide.journalUnresolved.nextOther': 'Bu sunucunun yöneticisine (barındırma sağlayıcınıza) haber verin; sizden başka bir şey gerekmiyor.',
-    'domains.deletionGuide.stuck.next': 'CelikPanel’in bu silme için gönderdiği bildirimdeki adımı uygulayın.',
     'domains.deletionGuide.stuck.nextOther': 'Bu durum sürerse bu sunucunun yöneticisine (barındırma sağlayıcınıza) haber verin.',
     'domains.deletionGuide.stopped.next': 'Ayrıntılar’daki komutla CelikPanel Agent’ın satırlarını okuyun ve adını verdikleri sorunu giderin.',
     'domains.deletionGuide.stopped.nextWindow': 'Alan Adları sayfasının üstündeki bekleme kutusunda Ayrıntılar’ı açın, gösterdiği komutla CelikPanel Agent’ın satırlarını okuyun ve adını verdikleri sorunu giderin.',

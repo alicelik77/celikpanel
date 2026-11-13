@@ -593,11 +593,25 @@ func TestNativePeerAfterInspectionNamesTheCheck(t *testing.T) {
 		want  string
 	}{
 		{"all hold", func(*fakeRestampPair, *nativePeerAfterInspectionProbes, *dnsPeerAXFRAuthority) {}, ""},
+		// alpha.133 round 5 re-review: this server's own catalog differs
+		// from its record: a local edit, a person state.
 		{"catalog probe", func(pair *fakeRestampPair, _ *nativePeerAfterInspectionProbes, _ *dnsPeerAXFRAuthority) {
+			pair.mu.Lock()
+			pair.producer.Serial = 1790745100
+			pair.mu.Unlock()
+		}, "dns_peer_owner_edit_unknown:catalog_probe"},
+		// Only the backup serves another catalog, or stopped answering right
+		// after the exchange: the backup catching up, re-checked by itself.
+		{"backup behind", func(pair *fakeRestampPair, _ *nativePeerAfterInspectionProbes, _ *dnsPeerAXFRAuthority) {
 			pair.mu.Lock()
 			pair.peer.Serial = 1790745100
 			pair.mu.Unlock()
-		}, "dns_peer_owner_edit_unknown:catalog_probe"},
+		}, "dns_peer_catching_up"},
+		{"backup unreachable after the exchange", func(_ *fakeRestampPair, probes *nativePeerAfterInspectionProbes, _ *dnsPeerAXFRAuthority) {
+			probes.peerCatalog = func(context.Context, string, string, string) (dnsCatalogAXFRResult, error) {
+				return dnsCatalogAXFRResult{}, errors.New("dial tcp: connect: no route to host")
+			}
+		}, "dns_peer_catching_up"},
 		{"authority", func(_ *fakeRestampPair, _ *nativePeerAfterInspectionProbes, authority *dnsPeerAXFRAuthority) {
 			authority.catalog = "catalog-c0000214.celikpanel.invalid"
 		}, "dns_peer_owner_edit_unknown:authority"},
@@ -628,7 +642,12 @@ func TestNativePeerAfterInspectionNamesTheCheck(t *testing.T) {
 			if got := pendingDNSPeerCode(err); got != tc.want || (tc.want == "") != (err == nil) {
 				t.Fatalf("code=%q err=%v", got, err)
 			}
-			if tc.want != "" {
+			// Local findings stop the automatic re-checks; backup-side ones do not.
+			local := strings.HasSuffix(tc.want, ":catalog_probe") || strings.HasSuffix(tc.want, ":authority")
+			if tc.want != "" && transport.DNSPeerPendingStopsAutomaticRechecks(tc.want) != local {
+				t.Fatalf("%s: re-check rule disagrees", tc.want)
+			}
+			if strings.Contains(tc.want, ":") {
 				_, check, _ := strings.Cut(tc.want, ":")
 				if !strings.Contains(logs.String(), "check="+check) {
 					t.Fatalf("check not logged: %q", logs.String())

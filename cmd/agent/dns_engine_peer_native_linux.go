@@ -130,7 +130,7 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			var err error
 			response, authenticated, err = dnspeertransport.Inspect(ctx, enrollment.Transport, request, dnspeertransport.SSH{})
 			if err != nil {
-				return pendingDNSPeerCause(inspectionPendingCode(dnspeertransport.InspectorReason(err)), err)
+				return pendingDNSPeerCause(bindInspectionPendingCode(err), err)
 			}
 			return nil
 		},
@@ -155,6 +155,28 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256, digest, attempt, verify)
 		},
 	})
+}
+
+// bindInspectionPendingCode classifies an incomplete BIND-secondary
+// inspection (the PowerDNS path shares the transport and this mapping):
+//   - no answer at all: the exchange's timeout (peerNoAnswerPendingCode),
+//     however quickly or at whichever instant of the step's bound it came;
+//   - another SSH host key: dns_peer_enrollment_changed:host_key;
+//   - this server's own enrollment or key file unusable:
+//     dns_peer_enrollment_changed (alpha.133 round 5 review: it was shown as
+//     the backup refusing);
+//   - any other answer this server cannot accept: dns_peer_inspection_unknown
+//     with the inspector's reviewed reason.
+func bindInspectionPendingCode(err error) string {
+	switch {
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeNoAnswer):
+		return peerNoAnswerPendingCode
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeHostKeyChanged):
+		return transport.DNSPeerPendingEnrollmentChangedWithDetail(transport.DNSPeerEnrollmentChangedHostKey)
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeEnrollment):
+		return transport.DNSPeerPendingEnrollmentChanged
+	}
+	return inspectionPendingCode(dnspeertransport.InspectorReason(err))
 }
 
 // nextBINDPeerChallengeAttempt is the journal part of prepare: reconcile

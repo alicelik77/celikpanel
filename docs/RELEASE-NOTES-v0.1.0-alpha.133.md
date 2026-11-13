@@ -73,10 +73,9 @@ the screen. A test keeps it that way, with no exceptions.
   that deletion's one-time check first. The full check now runs four
   times, only where the proof depends on it; the writes in between check
   only what authorizes them (both locks, the exact attempt, the pairing).
-  The earlier deletion's clean-up runs once. A deletion is expected to
-  take about 9–12 seconds instead of 20–27 (TO CONFIRM after the lab run).
-  These changes are proven by component tests; the real two-server check
-  is the lab re-run that is still to come.
+  The earlier deletion's clean-up runs once. Measured in the lab on an idle
+  pair, a deletion's DNS confirmation now takes 6.5–8.0 seconds (it took
+  20–27 seconds on alpha.132), each step 1.5–2.0 seconds.
 - When the backup's confirmation is late, the window says the truth: the
   domain is already removed from DNS on this server, only the backup's
   confirmation is open, **nobody needs to act** and CelikPanel checks again
@@ -112,6 +111,42 @@ the screen. A test keeps it that way, with no exceptions.
   CelikPanel re-checks by itself, the administrators were notified, or a
   person must act); they name only controls the reader has, and the window
   points to the banner's Details for the commands.
+- **A backup DNS server that is briefly unreachable no longer strands a
+  deletion.** In the lab, a backup whose connection was blocked for about
+  45 seconds turned one of nine checks into "a person must act", and the
+  deletion then waited until someone pressed Delete again, although the
+  backup answered again. A backup that does not answer (switched off,
+  restarting, unreachable, or no answer in time) is now always a wait that
+  needs nobody, however the connection failed, and CelikPanel keeps
+  checking until the backup answers; then the deletion finishes by itself.
+- **CelikPanel stops its own checks only in two cases:** a check record it
+  cannot sort out by itself (another check cannot change it), or DNS on
+  this server that may be being changed by hand: CelikPanel never acts over
+  an owner's change by itself. Both name the administrator and send one
+  notification; after the change is finished, More → Delete… on the
+  domain's row continues the same deletion. Every other reason (the backup
+  refusing the check, check access that is missing or changed, a refused
+  transfer, the backup still serving the zone, an Agent that needs a fix)
+  is checked again at the same slow pace, so the deletion finishes by itself
+  once the cause is fixed. After six pending checks in a row, whatever the
+  reason, the administrators get one notification; it is not mailed again
+  when the reason only changes.
+- **A changed identity of the backup is named as such.** If the backup DNS
+  server presents another SSH host key than the one this server knows, the
+  notice asks the administrator to confirm that the backup was really
+  reinstalled or re-keyed before setting the check access up again, and to
+  treat it as a security problem otherwise. A problem with this server's
+  own check key is no longer shown as the backup refusing.
+- **Every waiting reason now says why, who acts, the one next step and how
+  it continues**, in English and Turkish, on Domains, in the deletion window
+  and in the bulk notes. "You do not need to do anything" appears only when
+  the next check can finish it by itself. Customers and team members see no
+  command and no Details.
+- The notification about a stuck deletion opens Domains, where its text
+  sends the reader (it opened DNS and peer servers). A second open Domains
+  tab now follows a waiting deletion in every state and drops it once it is
+  finished elsewhere (it used to stay listed). The Agent's and the panel's
+  log lines say whether the next check is automatic.
 
 ### Other corrections
 
@@ -207,10 +242,28 @@ resumes by itself.
   the server administrator.
 - A deletion that is stuck while the backup DNS server is still catching
   up has no retry on the page; the screen names support as the next step.
-- Other waiting reasons of a deletion (for example a missing inspection
-  set-up between the two servers) still show their earlier, longer text,
-  some of which names "Retry this deletion"; that control is More →
-  Delete… on the domain's row.
+- The deletion reasons that are not about the backup DNS server's
+  confirmation (for example a local rndc key, a held Agent, a joined
+  server's removal on the main DNS server) still show their earlier single
+  text; the held-Agent and rndc texts still name "Retry this deletion",
+  which is More → Delete… on the domain's row.
+- A reason that only a fix or an update can change (for example the Agent
+  could not run its own check) is now checked again every few minutes too.
+  That costs one short check and one log line each time; it is what lets
+  the deletion finish by itself after the fix.
+- If DNS on this server is changed by hand while a deletion waits for a
+  reason CelikPanel re-checks by itself (the backup catching up or not
+  answering, a check that ran out of time, and the others it re-checks),
+  the next check can still put the CelikPanel Agent on hold for every
+  change until it is restarted; this was possible before this release too.
+  The proper fix is to treat such a change as a waiting owner edit in the
+  check itself; it is planned.
+- A backup that stops answering just after it answered the check is the
+  backup catching up (re-checked by itself), not a change of this server.
+- During the update itself, for a few seconds the old panel cannot read the
+  new "changed host key" reason and shows the generic text.
+- A re-check whose result does not change writes about four log lines,
+  every 5 minutes at the slow pace.
 - A re-check that is held back by a DNS change made outside CelikPanel can
   still outlast the agent's lease; its result is then not counted and the
   next re-check decides.
@@ -240,7 +293,14 @@ readers treat as unknown). The check record's file steps changed, not its
 content: a retirement is one rename to a private name, and the Agent
 finishes or undoes what an earlier release left half done (RESILIENCE-CONTRACT,
 "Branch a133/dnsproof4"). The deletion status gains the optional fields
-`follow_up` and `next_check_at`. The Agent's blocklist answer gains the additive gob
+`follow_up` and `next_check_at`. A backup that gives no answer is recorded
+as the existing `dns_peer_proof_timeout:peer_exchange`, however the
+connection failed (the SSH transport now tells no answer from an answer it
+cannot accept). Another host key is the new composite
+`dns_peer_enrollment_changed:host_key` in the same field (an older Panel shows
+the plain reason's text). `follow_up` is `person` only for
+`dns_peer_journal_unresolved` and an owner edit of this server
+(RESILIENCE-CONTRACT, "Branch a133/proofwait"). The Agent's blocklist answer gains the additive gob
 fields Outcome, Reason and Sublists; an older Panel reads Listed, which a
 current Agent sets only for a documented listing, and an older Agent's
 answer is shown as "could not check". Release sequence 132 → 133.
