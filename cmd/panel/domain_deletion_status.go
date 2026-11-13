@@ -215,6 +215,9 @@ type domainDeletionStatusResponse struct {
 	// "nobody needs to do anything" only for "automatic".
 	FollowUp    string `json:"follow_up,omitempty"`
 	NextCheckAt string `json:"next_check_at,omitempty"`
+	// Databases (alpha.134): the accepted plan's choice for the domain's
+	// databases, "keep" or "delete"; absent when no plan is saved.
+	Databases string `json:"databases,omitempty"`
 }
 
 // handleDomainDeletionStatus only observes the saved domain marker, V3 lease,
@@ -235,8 +238,18 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	// alpha.134: every answer names the accepted plan's choice for the
+	// domain's databases, so a retry's question says what it carries out.
+	var choice string
+	if plan, ok := readDomainDeletionPlan(r.Context(), p.db.GetDB(), domainID, snapshot.domain); ok {
+		choice = plan.Databases
+	}
+	encode := func(answer domainDeletionStatusResponse) {
+		answer.Databases = choice
+		_ = json.NewEncoder(w).Encode(answer)
+	}
 	if snapshot.inconsistent {
-		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+		encode(domainDeletionStatusResponse{
 			Status: domainDeletionPendingStatus, Stage: domainDeletionMarkerCheckStage,
 			Reason:  domainDeletionMarkerInconsistentReason,
 			Message: domainDeletionMarkerInconsistentEnglish,
@@ -246,7 +259,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 	if p.deletionsRunning.isRunning(domainID) {
 		// The request is still working and re-checks by itself; what it
 		// saved so far is not its outcome (D-024).
-		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+		encode(domainDeletionStatusResponse{
 			Status: domainDeletionPendingStatus, Stage: domainDeletionRunningStage,
 			Reason:  domainDeletionRunningReason,
 			Step:    p.deletionsRunning.step(domainID),
@@ -255,7 +268,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if snapshot.failed {
-		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+		encode(domainDeletionStatusResponse{
 			Status: domainDeletionStatusFailed, Stage: snapshot.failure.Stage,
 			Reason: snapshot.failure.Reason, ErrorLine: snapshot.failure.ErrorLine,
 			Message: domainDeletionStageFailureEnglish(snapshot.failure.Stage),
@@ -263,30 +276,30 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if snapshot.remote {
-		_ = json.NewEncoder(w).Encode(p.remoteDomainDeletionStatus(domainID, snapshot.remoteDNS))
+		encode(p.remoteDomainDeletionStatus(domainID, snapshot.remoteDNS))
 		return
 	}
 	if snapshot.dnsRemoved {
 		// A failing finish is said, not hidden; from the third failure with
 		// its stage, error line and the person's retry (D-024).
-		_ = json.NewEncoder(w).Encode(domainDeletionFinishStatus(
+		encode(domainDeletionFinishStatus(
 			readDomainDeletionFinishRecord(r.Context(), p.db.GetDB(), domainID, snapshot.domain)))
 		return
 	}
 	if snapshot.dnsFailed {
-		_ = json.NewEncoder(w).Encode(domainDeletionStatusResponse{
+		encode(domainDeletionStatusResponse{
 			Status: domainDeletionPendingStatus, Stage: "dns_cleanup",
 			Reason: domainDeletionDNSRemovalFailedReason, Message: domainDeletionDNSRemovalFailedEnglish,
 		})
 		return
 	}
 	if snapshot.dnsWaiting {
-		_ = json.NewEncoder(w).Encode(p.domainDeletionDNSWaitingStatus())
+		encode(p.domainDeletionDNSWaitingStatus())
 		return
 	}
 	if snapshot.dnsHeldAlone {
 		if result, waiting := p.domainDeletionPairWaitStatus(r.Context()); waiting {
-			_ = json.NewEncoder(w).Encode(result)
+			encode(result)
 			return
 		}
 	}
@@ -350,7 +363,7 @@ func (p *Panel) handleDomainDeletionStatus(w http.ResponseWriter, r *http.Reques
 	if snapshot.ahead {
 		result = p.domainDeletionAheadStatus(r.Context(), domainID, snapshot)
 	}
-	_ = json.NewEncoder(w).Encode(result)
+	encode(result)
 }
 
 // domainDeletionAheadStatus answers for a removal that waits for an earlier

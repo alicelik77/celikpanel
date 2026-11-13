@@ -40,9 +40,9 @@ func dirNames(t *testing.T, dir string) []string {
 
 func TestRemoveSiteLogsTakesTheSiteLogsAndTheirRotationsOnly(t *testing.T) {
 	dir := t.TempDir()
-	saved := siteNginxLogDir
-	siteNginxLogDir = dir
-	t.Cleanup(func() { siteNginxLogDir = saved })
+	saved := siteLogDir
+	siteLogDir = dir
+	t.Cleanup(func() { siteLogDir = saved })
 	for _, name := range []string{
 		"example.test-access.log", "example.test-access.log.1", "example.test-access.log.2.gz",
 		"example.test-access.log-20261112", "example.test-access.log-20261111.gz",
@@ -65,7 +65,7 @@ func TestRemoveSiteLogsTakesTheSiteLogsAndTheirRotationsOnly(t *testing.T) {
 	}
 }
 
-func TestRemoveLogFamilyRefusesALinkAndNamesIt(t *testing.T) {
+func TestRemoveTrafficLogsRefusesALinkAndNamesIt(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(t.TempDir(), "elsewhere")
 	writeCleanupTestFile(t, target, "keep")
@@ -74,7 +74,7 @@ func TestRemoveLogFamilyRefusesALinkAndNamesIt(t *testing.T) {
 	}
 	writeCleanupTestFile(t, filepath.Join(dir, "7.log.1"), "old")
 	writeCleanupTestFile(t, filepath.Join(dir, "70.log"), "another site")
-	err := removeLogFamily(dir, "7.log")
+	err := removeMatchingFiles(dir, trafficLogFamily(7))
 	if err == nil || !strings.Contains(err.Error(), "not a regular file") {
 		t.Fatalf("err = %v", err)
 	}
@@ -120,17 +120,37 @@ func TestRemoveSiteChallengeRootRemovesTheFolderAndRefusesALink(t *testing.T) {
 	}
 	t.Cleanup(func() { siteChallengeRoot = saved })
 	writeCleanupTestFile(t, filepath.Join(root, "subscriptions", "7", "domains", "11", ".well-known", "acme-challenge", "token"), "x")
+	// Another domain of the same subscription keeps the subscription's folders.
+	writeCleanupTestFile(t, filepath.Join(root, "subscriptions", "7", "domains", "12", ".well-known", "acme-challenge", "keep"), "x")
 	if err := removeSiteChallengeRoot(7, 11); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(filepath.Join(root, "subscriptions", "7", "domains", "11")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("challenge folder kept")
 	}
-	if _, err := os.Lstat(filepath.Join(root, "subscriptions", "7", "domains")); err != nil {
-		t.Fatal("the subscription's folder was removed")
+	if _, err := os.Lstat(filepath.Join(root, "subscriptions", "7", "domains", "12", ".well-known", "acme-challenge", "keep")); err != nil {
+		t.Fatal("another domain's folder was touched")
 	}
 	if err := removeSiteChallengeRoot(7, 11); err != nil {
 		t.Fatalf("second run: %v", err)
+	}
+	// The subscription's last domain: its empty folders go too (Frankfurt,
+	// 12 Nov 2026: the empty folder stayed after a finished deletion).
+	if err := os.RemoveAll(filepath.Join(root, "subscriptions", "7", "domains", "12")); err != nil {
+		t.Fatal(err)
+	}
+	writeCleanupTestFile(t, filepath.Join(root, "subscriptions", "7", "domains", "11", ".well-known", "acme-challenge", "token"), "x")
+	if err := removeSiteChallengeRoot(7, 11); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "subscriptions", "7")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("the subscription's empty folders stayed")
+	}
+	if _, err := os.Lstat(filepath.Join(root, "subscriptions")); err != nil {
+		t.Fatal("the folder of all subscriptions was removed")
+	}
+	if err := os.MkdirAll(filepath.Join(root, "subscriptions", "7", "domains"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	target := t.TempDir()
 	if err := os.Symlink(target, filepath.Join(root, "subscriptions", "7", "domains", "11")); err != nil {

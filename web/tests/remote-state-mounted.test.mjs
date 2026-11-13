@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
+import { apiErrorURL, compileSource, dataModule, domainDeletionQuestionURL, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
@@ -139,7 +139,7 @@ const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
   '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL,
   // alpha.134: the delete question and the words of its result, shipped.
-  '/lib/domainDeletionQuestion': compileSource('lib/domainDeletionQuestion.ts', () => stub), '/lib/subscriptions': subscriptionsURL,
+  '/lib/domainDeletionQuestion': domainDeletionQuestionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
   // alpha.132: the keys of a row of section tabs (Settings, a domain's page).
@@ -2619,7 +2619,9 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
     // are one choice, off at first, naming them.
     assert.deepEqual(question.lost, ['domains.delete.lost.site', 'domains.delete.lost.mail', 'domains.delete.lost.dns', 'domains.delete.lost.schedule']);
     assert.deepEqual(question.kept, ['domains.delete.kept.backups', 'domains.delete.kept.mail', 'domains.delete.kept.dns']);
-    assert.deepEqual(question.option, { label: 'domains.delete.databasesOption', lost: ['domains.delete.lost.databases'] });
+    // Ticked, each database's data goes (with the users the Databases page
+    // would remove; these two have none recorded).
+    assert.deepEqual(question.option, { label: 'domains.delete.databasesOption', lost: ['databases.delete.lostData', 'databases.delete.lostData'] });
     assert.deepEqual(question.typedName, { value: 'alicelik.com.tr', label: 'domains.delete.typeName', ignoreCase: true }, 'deleting a domain does not ask for its name');
     const deletes = calls.filter((call) => call.method === 'DELETE');
     assert.equal(deletes.length, 1, 'more than one DELETE was sent');
@@ -2639,6 +2641,45 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
     delete globalThis.operationSteps;
     delete globalThis.operationEnds;
     await cleanup();
+  }
+});
+
+// alpha.134: a deletion that stopped at a step only the server's
+// administrator can fix tells anybody else whom to ask, never a server
+// command; its retry repeats the databases choice it was accepted with,
+// says it, offers no box and sends no new choice.
+test('Domains: a stopped deletion says whom to ask, and its retry repeats the accepted databases choice', async () => {
+  const pendingRow = { ...domainRow, id: 9, domain_name: 'leaving.example', status: 'pending' };
+  for (const role of ['admin', 'customer']) {
+    const live = liveDomains({ domains: [pendingRow], zones: [] });
+    serve({
+      ...live.table,
+      '/api/v1/domains/9/deletion-status': json({ status: 'failed', stage: 'site_cleanup', reason: 'site_cleanup_failed', error_line: 'scheduled tasks', databases: 'delete' }),
+    }, role, {
+      '/api/v1/domains/9': () => { live.state.domains = []; return Response.json({ status: 'deleted', domain: 'leaving.example' }); },
+    });
+    globalThis.operationSteps = [];
+    globalThis.operationEnds = [];
+    try {
+      await mount(Domains);
+      assert.equal(has('domains.deletion.stoppedAskAdmin'), role === 'customer', `${role}: whom to ask`);
+      assert.ok(!has('journalctl') && !has('site_cleanup'), `${role}: a command or a code on screen`);
+      let question = null;
+      globalThis.confirm = (_message, request) => { question = request; return true; };
+      await openRowMenu('leaving.example');
+      await press(rowItem('delete'));
+      await act(async () => { await settled(); await settled(); });
+      assert.equal(question.message, 'domains.deleteWhat domains.delete.retryDelete', `${role}: the retry does not say the accepted choice`);
+      assert.equal(question.option, undefined, `${role}: the retry offered the choice again`);
+      assert.ok(!calls.some((call) => call.url === '/api/v1/domains/9/databases'), `${role}: the retry read the databases for a choice it does not offer`);
+      const deletes = calls.filter((call) => call.method === 'DELETE');
+      assert.deepEqual(deletes.map((call) => call.url), ['/api/v1/domains/9'], `${role}: the retry sent a choice`);
+      assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    } finally {
+      delete globalThis.operationSteps;
+      delete globalThis.operationEnds;
+      await cleanup();
+    }
   }
 });
 

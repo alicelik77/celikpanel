@@ -24,9 +24,13 @@ import (
 //   - Databases are a choice. "keep" (the default) unbinds them from the
 //     domain: they stay in their engine and in the panel, listed on the
 //     Databases page as bound to no domain, with their users, passwords and
-//     remote access rules unchanged. "delete" drops each database and the
-//     users that have rights on no other database, in the engine and in the
-//     panel, as its own step. Until alpha.133 the domain row's foreign key
+//     remote access rules unchanged. "delete" deletes each database through
+//     the one database deletion of the Databases page and the domain's
+//     Databases section (deleteDatabaseRecord, database_delete.go): the same
+//     per-user fates, the same rights removal after the drop, the same audit
+//     rows and the same partial results, one database at a time, so pressing
+//     the deletion again continues with what is left. There is no second
+//     implementation here. Until alpha.133 the domain row's foreign key
 //     (databases_v2.domain_id ON DELETE CASCADE) removed the panel's records
 //     while nothing dropped the databases: they stayed in the engine,
 //     invisible and unmanageable.
@@ -81,8 +85,8 @@ var domainDeletionStageFailureKinds = map[string]struct{ reason, english string 
 		"Deletion stopped while removing this domain's website from this server; error_line names the part that is still there. The DNS zone and the databases are unchanged. " +
 			"The server administrator checks that part on this server, then retries this same deletion, which repeats the removal and continues. Nothing retries by itself."},
 	domainDeletionStageDatabases: {domainDeletionReasonDatabases,
-		"Deletion stopped while deleting this domain's databases; error_line names the database. The website is already removed; the DNS zone is unchanged. " +
-			"The server administrator makes sure that database engine runs (Services), then retries this same deletion, which deletes the remaining databases and continues. Nothing retries by itself."},
+		"Deletion stopped while deleting this domain's databases; error_line says which database and what is left of it. The website is already removed; the DNS zone is unchanged. " +
+			"Retry this same deletion: it deletes what is left and continues. If it stops here again, the server administrator makes sure the database engine runs (Services). Nothing retries by itself."},
 }
 
 func domainDeletionStageFailureEnglish(stage string) string {
@@ -249,13 +253,39 @@ func domainBoundDatabases(ctx context.Context, q interface {
 	return out, nil
 }
 
-// domainDeletionKept is what the deletion's answer says stays, and which
-// databases it deleted.
+// domainDeletionKept is what the deletion's answer says stays, which
+// databases it deleted and, when a database deletion did not finish, that
+// deletion's own answer.
 type domainDeletionKept struct {
-	Databases []domainDeletionPlanDatabase `json:"databases,omitempty"`
-	Deleted   []domainDeletionPlanDatabase `json:"deleted_databases,omitempty"`
-	Mail      *domainDeletionKeptMail      `json:"mail,omitempty"`
-	Backups   *transport.KeptBackups       `json:"backups,omitempty"`
+	// Choice is the accepted plan's choice for the databases ("keep" or
+	// "delete"), so a retry's question can say it.
+	Choice    string                          `json:"choice,omitempty"`
+	Databases []domainDeletionPlanDatabase    `json:"databases,omitempty"`
+	Deleted   []domainDeletionDeletedDatabase `json:"deleted_databases,omitempty"`
+	// DatabaseFailure: the database whose deletion did not finish, with the
+	// answer the Databases page would have given for it (the same code,
+	// reason and facts, so the screen uses the same sentences).
+	DatabaseFailure *domainDeletionDatabaseFailure `json:"database_failure,omitempty"`
+	Mail            *domainDeletionKeptMail        `json:"mail,omitempty"`
+	Backups         *transport.KeptBackups         `json:"backups,omitempty"`
+}
+
+// domainDeletionDeletedDatabase is one deleted database. The user lists are
+// the database deletion's own answer (databaseDeletionAnswer) for a database
+// this press deleted; one an earlier press deleted carries none.
+type domainDeletionDeletedDatabase struct {
+	domainDeletionPlanDatabase
+	UsersRemoved       []string `json:"users_removed,omitempty"`
+	UsersKept          []string `json:"users_kept,omitempty"`
+	UsersKeptOnEngine  []string `json:"users_kept_on_engine,omitempty"`
+	UsersKeptUnchecked []string `json:"users_kept_unchecked,omitempty"`
+	UsersKeptOnServer  []string `json:"users_kept_on_server,omitempty"`
+}
+
+type domainDeletionDatabaseFailure struct {
+	Name   string          `json:"name"`
+	Status int             `json:"status"`
+	Answer json.RawMessage `json:"answer"`
 }
 
 type domainDeletionKeptMail struct {
@@ -265,18 +295,19 @@ type domainDeletionKeptMail struct {
 }
 
 func (k *domainDeletionKept) empty() bool {
-	return len(k.Databases) == 0 && len(k.Deleted) == 0 && k.Mail == nil && k.Backups == nil
+	return len(k.Databases) == 0 && len(k.Deleted) == 0 && k.DatabaseFailure == nil && k.Mail == nil && k.Backups == nil
 }
 
-// planKeptDatabases names what the plan does with the databases.
+// planDatabases names what the plan does with the databases before its
+// database step runs: kept ones stay whatever happens; deleted ones are
+// named as each is deleted (runDomainDeletionDatabaseStage).
 func (k *domainDeletionKept) planDatabases(plan domainDeletionPlan) {
-	if plan.Databases == domainDeletionDatabasesDelete {
-		k.Deleted = plan.Covered
-		k.Databases = nil
-		return
-	}
-	k.Databases = plan.Covered
+	k.Choice = plan.Databases
 	k.Deleted = nil
+	k.Databases = nil
+	if plan.Databases != domainDeletionDatabasesDelete {
+		k.Databases = plan.Covered
+	}
 }
 
 // runDomainDeletionMailListsStage applies the sender-limit lists and the
@@ -336,121 +367,17 @@ func (p *Panel) recordDomainDeletionStageFailure(ctx context.Context, domainID i
 	return failure
 }
 
-// domainDatabaseDrop is what dropping one database needs.
-type domainDatabaseDrop struct {
-	ID         int
-	Name       string
-	ServerType string
-	Port       int
-	// Users whose every right is on a database of this plan: they go with
-	// the plan's databases. A user with rights elsewhere stays.
-	Users []domainDeletionDatabaseUser
-}
-
-type domainDeletionDatabaseUser struct {
-	ID       int
-	Username string
-}
-
-// readDomainDatabaseDrops reads the plan's databases still bound to the
-// domain, with their users that have no right on any database outside the
-// plan. Read only.
-func readDomainDatabaseDrops(ctx context.Context, db *sql.DB, domainID int, plan domainDeletionPlan) ([]domainDatabaseDrop, error) {
-	inPlan := map[int]bool{}
-	for _, item := range plan.Covered {
-		inPlan[item.ID] = true
-	}
-	var drops []domainDatabaseDrop
-	for _, item := range plan.Covered {
-		drop := domainDatabaseDrop{ID: item.ID}
-		err := db.QueryRowContext(ctx, `
-			SELECT d.name, dst.name, ds.port
-			FROM databases_v2 d
-			JOIN database_servers ds ON ds.id = d.server_id
-			JOIN database_server_types dst ON dst.id = ds.type_id
-			WHERE d.id = ? AND d.domain_id = ?`, item.ID, domainID).Scan(&drop.Name, &drop.ServerType, &drop.Port)
-		if errors.Is(err, sql.ErrNoRows) {
-			// Deleted by an earlier attempt, or by its owner meanwhile.
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("read database %d: %w", item.ID, err)
-		}
-		rows, err := db.QueryContext(ctx, `
-			SELECT u.id, u.username
-			FROM database_user_grants g
-			JOIN database_users u ON u.id = g.user_id
-			WHERE g.database_id = ?
-			ORDER BY u.username, u.id`, item.ID)
-		if err != nil {
-			return nil, fmt.Errorf("read the users of database %s: %w", drop.Name, err)
-		}
-		var users []domainDeletionDatabaseUser
-		for rows.Next() {
-			var user domainDeletionDatabaseUser
-			if err := rows.Scan(&user.ID, &user.Username); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			users = append(users, user)
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
-		for _, user := range users {
-			others, err := db.QueryContext(ctx, `SELECT database_id FROM database_user_grants WHERE user_id = ?`, user.ID)
-			if err != nil {
-				return nil, err
-			}
-			exclusive := true
-			for others.Next() {
-				var databaseID int
-				if err := others.Scan(&databaseID); err != nil {
-					others.Close()
-					return nil, err
-				}
-				if !inPlan[databaseID] {
-					exclusive = false
-				}
-			}
-			others.Close()
-			if err := others.Err(); err != nil {
-				return nil, err
-			}
-			if exclusive {
-				drop.Users = append(drop.Users, user)
-			}
-		}
-		drops = append(drops, drop)
-	}
-	return drops, nil
-}
-
-// errDomainDatabaseDropRefused: the Agent answered that a database or user
-// was not dropped (a verified failure).
-type errDomainDatabaseDropRefused struct {
-	database string
-	reason   string
-}
-
-func (e *errDomainDatabaseDropRefused) Error() string {
-	return "database " + e.database + ": " + e.reason
-}
-
-// domainDeletionDropDatabase is replaced by tests: one Agent.DeleteDatabase.
-var domainDeletionDropDatabase = func(p *Panel, ctx context.Context, request transport.DeleteDatabaseRequest) (transport.DeleteDatabaseResponse, error) {
-	var response transport.DeleteDatabaseResponse
-	err := p.callAgentContext(ctx, "Agent.DeleteDatabase", request, &response)
-	return response, err
-}
-
 // runDomainDeletionDatabaseStage carries out the plan's database choice.
 // keep: the plan's databases are unbound from the domain now (the final
-// step unbinds any other too). delete: each database and its exclusive users
-// are dropped in the engine, then removed from the panel; one database at a
-// time, so a retry continues with the ones that remain.
-func (p *Panel) runDomainDeletionDatabaseStage(ctx context.Context, domainID int, domain string, plan domainDeletionPlan) error {
+// step unbinds any other too). delete: each database of the plan still bound
+// to the domain is deleted by deleteDatabaseRecord, the one database
+// deletion of the Databases page and the domain's Databases section, and
+// recorded in the audit log the same way; one database at a time, so a retry
+// continues with the ones that remain. A database deletion that does not
+// finish stops this step: its own answer goes into kept.DatabaseFailure, and
+// the database stays listed (bound to the domain) until a retry finishes it.
+func (p *Panel) runDomainDeletionDatabaseStage(ctx context.Context, r *http.Request, domainID int, domain string,
+	plan domainDeletionPlan, kept *domainDeletionKept) error {
 	db := p.db.GetDB()
 	if plan.Databases != domainDeletionDatabasesDelete {
 		if _, err := db.ExecContext(ctx, `
@@ -461,81 +388,54 @@ func (p *Panel) runDomainDeletionDatabaseStage(ctx context.Context, domainID int
 		}
 		return nil
 	}
-	drops, err := readDomainDatabaseDrops(ctx, db, domainID, plan)
-	if err != nil {
-		return p.recordDomainDeletionStageFailure(ctx, domainID, domain, domainDeletionStageDatabases, err, true)
-	}
-	dropped := false
-	for _, drop := range drops {
-		request := transport.DeleteDatabaseRequest{
-			Type: apiTypeNameFor(drop.ServerType), Name: drop.Name, RequireUserCleanup: true,
-		}
-		if drop.ServerType == "postgresql" {
-			request.Port = drop.Port
-		}
-		// One call per user (dropping the database is idempotent), or one
-		// without a user when the database has none of its own.
-		users := drop.Users
-		if len(users) == 0 {
-			users = []domainDeletionDatabaseUser{{}}
-		}
-		for _, user := range users {
-			request.User = user.Username
-			response, callErr := domainDeletionDropDatabase(p, ctx, request)
-			if callErr != nil {
-				return p.recordDomainDeletionStageFailure(ctx, domainID, domain, domainDeletionStageDatabases,
-					fmt.Errorf("database %s: %w", drop.Name, callErr), false)
-			}
-			if !response.Success {
-				reason := strings.TrimSpace(response.Error)
-				if response.Refusal != nil {
-					reason = "its database engine does not run (" + strings.TrimSpace(response.Refusal.Reason) + ")"
-				}
-				if reason == "" {
-					reason = "the database engine did not confirm the removal"
-				}
-				return p.recordDomainDeletionStageFailure(ctx, domainID, domain, domainDeletionStageDatabases,
-					&errDomainDatabaseDropRefused{database: drop.Name, reason: reason}, true)
-			}
-		}
-		if err := removeDroppedDatabaseRecords(ctx, db, domainID, drop); err != nil {
+	for _, item := range plan.Covered {
+		var bound int
+		if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM databases_v2 WHERE id = ? AND domain_id = ?`,
+			item.ID, domainID).Scan(&bound); err != nil {
 			return p.recordDomainDeletionStageFailure(ctx, domainID, domain, domainDeletionStageDatabases,
-				fmt.Errorf("database %s: remove its records: %w", drop.Name, err), true)
+				fmt.Errorf("database %s: read its record: %w", item.Name, err), true)
 		}
-		dropped = true
-	}
-	if dropped {
-		kickDatabaseRemoteSync() // remote database access follows the removed users
+		if bound == 0 {
+			// Deleted by an earlier press of this deletion, or by its owner
+			// meanwhile: gone either way.
+			kept.Deleted = append(kept.Deleted, domainDeletionDeletedDatabase{domainDeletionPlanDatabase: item})
+			continue
+		}
+		deleted, err := p.deleteDatabaseRecord(ctx, item.ID)
+		if err != nil {
+			return p.domainDeletionDatabaseFailed(ctx, r, domainID, domain, item, err, kept)
+		}
+		p.auditDatabaseDeletion(r, deleted, "deleted")
+		kept.Deleted = append(kept.Deleted, domainDeletionDeletedDatabase{
+			domainDeletionPlanDatabase: item,
+			UsersRemoved:               deleted.UsersRemoved, UsersKept: deleted.UsersKept,
+			UsersKeptOnEngine: deleted.UsersKeptOnEngine, UsersKeptUnchecked: deleted.UsersKeptUnchecked,
+			UsersKeptOnServer: deleted.UsersKeptOnServer,
+		})
 	}
 	return nil
 }
 
-// removeDroppedDatabaseRecords removes the panel's records of a database the
-// engine confirmed dropped, and of its users the engine dropped with it.
-func removeDroppedDatabaseRecords(ctx context.Context, db *sql.DB, domainID int, drop domainDatabaseDrop) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+// domainDeletionDatabaseFailed stops the database step at a database whose
+// deletion did not finish. The answer and audit row are the ones the
+// Databases page gives (databaseDeleteFailureAnswer); the domain deletion
+// keeps a verified failure with its marker unless nothing at all is known
+// (no answer before the database was dropped), which reads as unknown.
+func (p *Panel) domainDeletionDatabaseFailed(ctx context.Context, r *http.Request, domainID int, domain string,
+	item domainDeletionPlanDatabase, err error, kept *domainDeletionKept) error {
+	status, answer := p.databaseDeleteFailureAnswer(r, item.Name, err)
+	kept.DatabaseFailure = &domainDeletionDatabaseFailure{Name: item.Name, Status: status, Answer: answer}
+	line := err.Error()
+	var body struct {
+		Error string `json:"error"`
 	}
-	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM databases_v2 WHERE id = ? AND domain_id = ?`, drop.ID, domainID); err != nil {
-		return err
+	if json.Unmarshal(answer, &body) == nil && strings.TrimSpace(body.Error) != "" {
+		line = body.Error
 	}
-	for _, user := range drop.Users {
-		// Its grants on this plan's other databases go with them later; the
-		// row goes once no grant refers to it.
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM database_user_grants WHERE user_id = ?
-			  AND database_id IN (SELECT id FROM databases_v2 WHERE domain_id = ?)`, user.ID, domainID); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM database_users
-			WHERE id = ? AND NOT EXISTS (SELECT 1 FROM database_user_grants WHERE user_id = ?)`, user.ID, user.ID); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
+	var failed *databaseDeleteError
+	unknown := errors.As(err, &failed) && failed.unknown && !failed.databaseGone && !agentUnreachableAlone(errors.Unwrap(failed.cause))
+	return p.recordDomainDeletionStageFailure(ctx, domainID, domain, domainDeletionStageDatabases,
+		fmt.Errorf("database %s: %s", item.Name, line), !unknown)
 }
 
 // writeDomainDeletionPlanFixed answers a retry that names the other database

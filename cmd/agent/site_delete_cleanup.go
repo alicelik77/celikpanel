@@ -32,7 +32,13 @@ import (
 //     -error.log, written by the site's vhost, with their rotated copies; and
 //     CelikPanel's own traffic log /var/log/celikpanel/traffic/<id>.log.
 //   - The site's HTTP-01 challenge folder under
-//     /var/lib/celikpanel-agent/acme-http-01/subscriptions/<S>/domains/<id>.
+//     /var/lib/celikpanel-agent/acme-http-01/subscriptions/<S>/domains/<id>
+//     (found on Frankfurt after a deletion, 12 Nov 2026), and the
+//     subscription's folders above it once they are empty.
+//
+// Every removal is idempotent (absent is done), so an interrupted deletion
+// run again finishes the same work; what cannot be removed is named in the
+// answer's error and the deletion stops at the site step (D-024).
 //
 // Only exact names derived from the deleted site's canonical domain and
 // immutable identities are touched, only regular files (never a link), and a
@@ -43,8 +49,9 @@ import (
 // Silinen sitenin crontab'ı, web sunucusu günlükleri ve doğrulama klasörü de
 // kaldırılır; yedekler silinmez, yalnız yeri, sayısı ve boyutu söylenir.
 
-// siteNginxLogDir is where the site's vhost writes its logs (a seam for tests).
-var siteNginxLogDir = "/var/log/nginx"
+// The site's nginx logs are the ones site_logs.go names (siteLogDir,
+// siteLogLiveName, siteLogRotatedPattern): one definition of which files
+// belong to a site, for the log page, the retention and this removal.
 
 // siteCronSpoolPaths are the places a crontab lives: Debian/Ubuntu cron and
 // cronie (Arch, Fedora). A seam for tests.
@@ -67,9 +74,12 @@ var siteBackupDir = func(subscriptionID, domainID int) (string, error) {
 	})
 }
 
-// rotatedSuffix matches what logrotate appends: .1, .2.gz, -20261112,
-// -20261112.gz (dateext), and nothing at all.
-var rotatedSuffix = regexp.MustCompile(`^((\.[0-9]{1,4})|(-[0-9]{8,10}))?(\.(gz|xz|bz2|zst))?$`)
+// trafficLogFamily matches CelikPanel's traffic log of one site and the
+// copies its logrotate rule makes (<id>.log.1, <id>.log.2.gz; traffic_collect.go).
+func trafficLogFamily(domainID int) func(string) bool {
+	pattern := regexp.MustCompile(`^` + strconv.Itoa(domainID) + `\.log(\.[0-9]{1,4}(\.(gz|xz|bz2|zst))?)?$`)
+	return pattern.MatchString
+}
 
 // removeSiteCrontab removes the site account's crontab, then makes sure no
 // spool file of that name is left (an account deleted by an earlier attempt
@@ -121,8 +131,8 @@ func removeRegularFile(path string) error {
 	return nil
 }
 
-// removeLogFamily removes base and its rotated copies from dir.
-func removeLogFamily(dir, base string) error {
+// removeMatchingFiles removes the regular files of dir that match names.
+func removeMatchingFiles(dir string, match func(string) bool) error {
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -132,11 +142,10 @@ func removeLogFamily(dir, base string) error {
 	}
 	var failures []string
 	for _, entry := range entries {
-		name := entry.Name()
-		if !strings.HasPrefix(name, base) || !rotatedSuffix.MatchString(name[len(base):]) {
+		if !match(entry.Name()) {
 			continue
 		}
-		if err := removeRegularFile(filepath.Join(dir, name)); err != nil {
+		if err := removeRegularFile(filepath.Join(dir, entry.Name())); err != nil {
 			failures = append(failures, err.Error())
 		}
 	}
@@ -150,13 +159,14 @@ func removeLogFamily(dir, base string) error {
 // their rotated copies.
 func removeSiteLogs(domain string, domainID int) error {
 	var failures []string
-	for _, base := range []string{domain + "-access.log", domain + "-error.log"} {
-		if err := removeLogFamily(siteNginxLogDir, base); err != nil {
-			failures = append(failures, err.Error())
-		}
+	rotated := siteLogRotatedPattern(domain)
+	if err := removeMatchingFiles(siteLogDir, func(name string) bool {
+		return siteLogLiveName(domain, name) || rotated.MatchString(name)
+	}); err != nil {
+		failures = append(failures, err.Error())
 	}
 	if domainID > 0 {
-		if err := removeLogFamily(services.TrafficLogDir(), strconv.Itoa(domainID)+".log"); err != nil {
+		if err := removeMatchingFiles(services.TrafficLogDir(), trafficLogFamily(domainID)); err != nil {
 			failures = append(failures, err.Error())
 		}
 	}
@@ -167,24 +177,63 @@ func removeSiteLogs(domain string, domainID int) error {
 }
 
 // removeSiteChallengeRoot removes the site's HTTP-01 challenge folder (root's,
-// outside every tenant home). A link in its place is refused.
+// outside every tenant home), then its "domains" and subscription folders
+// when nothing else is left in them. A link in place of a folder is refused.
 func removeSiteChallengeRoot(subscriptionID, domainID int) error {
 	root, err := siteChallengeRoot(subscriptionID, domainID)
 	if err != nil {
 		return err
 	}
 	info, err := os.Lstat(root)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("inspect %s: %w", root, err)
+	}
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("%s is not a folder; it was left as it is", root)
+		}
+		if err := os.RemoveAll(root); err != nil {
+			return fmt.Errorf("remove %s: %w", root, err)
+		}
+	}
+	// .../subscriptions/<S>/domains, then .../subscriptions/<S>: removed only
+	// while empty (another domain of the subscription keeps them).
+	parent := filepath.Dir(root)
+	for _, dir := range []string{parent, filepath.Dir(parent)} {
+		if err := removeEmptyFolder(dir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// removeEmptyFolder removes dir when it is a folder with nothing in it;
+// absent or not empty is left alone, a link is refused.
+func removeEmptyFolder(dir string) error {
+	info, err := os.Lstat(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("inspect %s: %w", root, err)
+		return fmt.Errorf("inspect %s: %w", dir, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%s is not a folder; it was left as it is", root)
+		return fmt.Errorf("%s is not a folder; it was left as it is", dir)
 	}
-	if err := os.RemoveAll(root); err != nil {
-		return fmt.Errorf("remove %s: %w", root, err)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", dir, err)
+	}
+	if len(entries) > 0 {
+		return nil
+	}
+	if err := os.Remove(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		// Something was put there meanwhile (a certificate of another domain
+		// of the subscription): it stays.
+		if entries, readErr := os.ReadDir(dir); readErr == nil && len(entries) > 0 {
+			return nil
+		}
+		return fmt.Errorf("remove %s: %w", dir, err)
 	}
 	return nil
 }

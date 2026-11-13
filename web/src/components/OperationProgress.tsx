@@ -135,13 +135,13 @@ export default function OperationProgress({ title, tone, steps, startedAt, end: 
             {end && end.state !== 'done' && (
                 <p
                     role={end.state === 'failed' ? 'alert' : 'status'}
-                    className={`mt-4 rounded-lg border px-4 py-3 text-sm leading-6 text-fg ${end.state === 'failed' ? 'border-danger/40 bg-danger/5' : 'border-warning-mark/50 bg-warning-mark/10'}`}
+                    className={`mt-4 rounded-lg border px-4 py-3 text-sm leading-6 text-fg [overflow-wrap:anywhere] ${end.state === 'failed' ? 'border-danger/40 bg-danger/5' : 'border-warning-mark/50 bg-warning-mark/10'}`}
                     data-operation-end={end.state}
                 >
                     {end.reason}
                 </p>
             )}
-            {end?.state === 'done' && end.message && <p className="mt-4 text-sm text-fg-muted" data-operation-end="done">{end.message}</p>}
+            {end?.state === 'done' && end.message && <p className="mt-4 text-sm text-fg-muted [overflow-wrap:anywhere]" data-operation-end="done">{end.message}</p>}
         </Dialog>
     );
 }

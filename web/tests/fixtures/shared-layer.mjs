@@ -89,6 +89,15 @@ export const lostAnswerURL = compileSource('lib/lostAnswer.ts', (specifier) => (
 export const domainDatabasesURL = compileSource('lib/domainDatabases.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/domainDatabases.ts')(specifier)
 ));
+// alpha.134: the domain delete question and the words of its result, with
+// the database deletion's own words and the one error reader.
+export const databaseDeleteWordsURL = compileSource('lib/databaseDeleteWords.ts', unexpected('lib/databaseDeleteWords.ts'));
+export const domainDeletionQuestionURL = compileSource('lib/domainDeletionQuestion.ts', (specifier) => (
+  specifier.endsWith('/domainDatabases') ? domainDatabasesURL
+    : specifier.endsWith('/databaseDeleteWords') ? databaseDeleteWordsURL
+      : specifier.endsWith('/apiError') ? apiErrorURL
+        : unexpected('lib/domainDeletionQuestion.ts')(specifier)
+));
 export const downloadURL = compileSource('lib/download.ts', (specifier) => (
   specifier.endsWith('/apiError') ? apiErrorURL : unexpected('lib/download.ts')(specifier)
 ));

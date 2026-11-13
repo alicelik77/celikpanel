@@ -3,20 +3,23 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // alpha.134: a domain deletion keeps the domain's databases (unbound, still
-// in the panel) unless the person chose to delete them; deleting them drops
-// each database and its own users as a real, resumable step.
+// in the panel) unless the person chose to delete them; deleting them goes
+// through the one database deletion of the Databases page
+// (deleteDatabaseRecord): the same users' fates, the same audit rows, the
+// same partial result, and pressing the deletion again continues. The Agent
+// is faked at the same seams the database deletion's own tests use
+// (databaseDeleteAgent, databaseAccessNative).
 
 type deletionDatabaseFixture struct {
 	domainID       int
@@ -28,9 +31,9 @@ type deletionDatabaseFixture struct {
 	sharedUser     int
 }
 
-// seedDeletionDatabases gives the domain two MariaDB databases: shop_db
-// (its own user shop_user) and blog_db (blog_user, who also has rights on
-// elsewhere_db, a database bound to no domain).
+// seedDeletionDatabases gives the domain two MariaDB databases on this
+// machine's engine: shop_db (its own user shop_user) and blog_db (blog_user,
+// who also has rights on elsewhere_db, a database bound to no domain).
 func seedDeletionDatabases(t *testing.T, p *Panel, domainID, subscriptionID int) deletionDatabaseFixture {
 	t.Helper()
 	db := p.db.GetDB()
@@ -60,43 +63,6 @@ func seedDeletionDatabases(t *testing.T, p *Panel, domainID, subscriptionID int)
 	return f
 }
 
-type recordedDatabaseDrops struct {
-	sync.Mutex
-	requests []transport.DeleteDatabaseRequest
-	// failName answers Success=false for this database while failures > 0.
-	failName string
-	failures int
-}
-
-func fakeDomainDatabaseDrops(t *testing.T) *recordedDatabaseDrops {
-	t.Helper()
-	recorded := &recordedDatabaseDrops{}
-	saved := domainDeletionDropDatabase
-	domainDeletionDropDatabase = func(_ *Panel, _ context.Context, request transport.DeleteDatabaseRequest) (transport.DeleteDatabaseResponse, error) {
-		recorded.Lock()
-		defer recorded.Unlock()
-		recorded.requests = append(recorded.requests, request)
-		if request.Name == recorded.failName && recorded.failures > 0 {
-			recorded.failures--
-			return transport.DeleteDatabaseResponse{Error: "failed to drop database"}, nil
-		}
-		return transport.DeleteDatabaseResponse{Success: true}, nil
-	}
-	t.Cleanup(func() { domainDeletionDropDatabase = saved })
-	return recorded
-}
-
-func (r *recordedDatabaseDrops) dropped() []string {
-	r.Lock()
-	defer r.Unlock()
-	var out []string
-	for _, request := range r.requests {
-		out = append(out, request.Name+"/"+request.User)
-	}
-	sort.Strings(out)
-	return out
-}
-
 func deleteDomainWithQuery(t *testing.T, p *Panel, domainID int, query string) *httptest.ResponseRecorder {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/domains/%d%s", domainID, query), nil)
@@ -106,15 +72,12 @@ func deleteDomainWithQuery(t *testing.T, p *Panel, domainID int, query string) *
 }
 
 type deletionAnswer struct {
-	Status    string `json:"status"`
-	Stage     string `json:"stage"`
-	Reason    string `json:"reason"`
-	ErrorLine string `json:"error_line"`
-	Code      string `json:"code"`
-	Kept      struct {
-		Databases []domainDeletionPlanDatabase `json:"databases"`
-		Deleted   []domainDeletionPlanDatabase `json:"deleted_databases"`
-	} `json:"kept"`
+	Status    string             `json:"status"`
+	Stage     string             `json:"stage"`
+	Reason    string             `json:"reason"`
+	ErrorLine string             `json:"error_line"`
+	Code      string             `json:"code"`
+	Kept      domainDeletionKept `json:"kept"`
 }
 
 func decodeDeletionAnswer(t *testing.T, recorder *httptest.ResponseRecorder) deletionAnswer {
@@ -155,20 +118,39 @@ func newDatabaseDeletionPanel(t *testing.T, domain string) (*Panel, deletionData
 	return p, fixture, agent
 }
 
+// deletionDatabaseFakes fakes the Agent's database drop and user removal at
+// the database deletion's own seams.
+func deletionDatabaseFakes(t *testing.T, p *Panel) (*recordedDatabaseDrops, *fakeDatabaseAccessNative) {
+	t.Helper()
+	drops := recordDatabaseDrops(t)
+	native := &fakeDatabaseAccessNative{}
+	p.databaseAccessNative = native
+	return drops, native
+}
+
+func droppedNames(drops *recordedDatabaseDrops) string {
+	names := []string{}
+	for _, request := range drops.requests {
+		names = append(names, request.Name)
+	}
+	return strings.Join(names, ",")
+}
+
 func TestDomainDeletionKeepsDatabasesUnboundByDefault(t *testing.T) {
 	p, f, _ := newDatabaseDeletionPanel(t, "keep-databases.example")
-	drops := fakeDomainDatabaseDrops(t)
+	drops, native := deletionDatabaseFakes(t, p)
 
 	recorder := deleteDomainForSagaTest(t, p, f.domainID)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("delete = %d %s", recorder.Code, recorder.Body.String())
 	}
 	answer := decodeDeletionAnswer(t, recorder)
-	if answer.Status != "deleted" || len(answer.Kept.Databases) != 2 || len(answer.Kept.Deleted) != 0 {
-		t.Fatalf("answer = %+v", answer)
+	if answer.Status != "deleted" || answer.Kept.Choice != domainDeletionDatabasesKeep ||
+		len(answer.Kept.Databases) != 2 || len(answer.Kept.Deleted) != 0 {
+		t.Fatalf("answer = %s", recorder.Body.String())
 	}
-	if got := drops.dropped(); len(got) != 0 {
-		t.Fatalf("a kept database was dropped: %v", got)
+	if len(drops.requests) != 0 || len(native.removed) != 0 {
+		t.Fatalf("a kept database was touched: drops %v users %q", drops.requests, removedUsernames(native))
 	}
 	for _, id := range []int{f.keepOne, f.keepTwo} {
 		exists, bound := databaseBinding(t, p, id)
@@ -187,27 +169,44 @@ func TestDomainDeletionKeepsDatabasesUnboundByDefault(t *testing.T) {
 	}
 }
 
-func TestDomainDeletionDeletesChosenDatabasesAndTheirOwnUsers(t *testing.T) {
+func TestDomainDeletionDeletesChosenDatabasesThroughTheOneDatabaseDeletion(t *testing.T) {
 	p, f, _ := newDatabaseDeletionPanel(t, "delete-databases.example")
-	drops := fakeDomainDatabaseDrops(t)
+	drops, native := deletionDatabaseFakes(t, p)
 
 	recorder := deleteDomainWithQuery(t, p, f.domainID, "?databases=delete")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("delete = %d %s", recorder.Code, recorder.Body.String())
 	}
 	answer := decodeDeletionAnswer(t, recorder)
-	if len(answer.Kept.Deleted) != 2 || len(answer.Kept.Databases) != 0 {
-		t.Fatalf("answer = %+v", answer)
+	if answer.Kept.Choice != domainDeletionDatabasesDelete || len(answer.Kept.Deleted) != 2 || len(answer.Kept.Databases) != 0 {
+		t.Fatalf("answer = %s", recorder.Body.String())
 	}
-	// shop_db goes with shop_user; blog_db goes, but blog_user keeps its
-	// rights on elsewhere_db and is not dropped.
-	if got, want := strings.Join(drops.dropped(), ","), "blog_db/,shop_db/shop_user"; got != want {
-		t.Fatalf("drops = %s, want %s", got, want)
+	// The databases are dropped without a user (the one deletion never names
+	// a user to the drop); then each user: shop_user goes, blog_user stays
+	// (elsewhere_db uses it) and only loses its rights on blog_db.
+	if got := droppedNames(drops); got != "blog_db,shop_db" {
+		t.Fatalf("drops = %s", got)
 	}
 	for _, request := range drops.requests {
-		if request.Type != "mysql" || !request.RequireUserCleanup {
+		if request.Type != "mysql" || request.User != "" {
 			t.Fatalf("drop request = %+v", request)
 		}
+	}
+	if removed := removedUsernames(native); removed != "blog_user,shop_user" {
+		t.Fatalf("user removals = %q", removed)
+	}
+	for _, request := range native.removed {
+		if !request.DatabaseDropped || request.RightsOnly != (request.Username == "blog_user") {
+			t.Fatalf("user removal = %+v", request)
+		}
+	}
+	// The answer carries the database deletion's own words per database.
+	byName := map[string]domainDeletionDeletedDatabase{}
+	for _, item := range answer.Kept.Deleted {
+		byName[item.Name] = item
+	}
+	if strings.Join(byName["shop_db"].UsersRemoved, ",") != "shop_user" || strings.Join(byName["blog_db"].UsersKept, ",") != "blog_user" {
+		t.Fatalf("deleted = %+v", answer.Kept.Deleted)
 	}
 	for _, id := range []int{f.keepOne, f.keepTwo} {
 		if exists, _ := databaseBinding(t, p, id); exists {
@@ -223,25 +222,46 @@ func TestDomainDeletionDeletesChosenDatabasesAndTheirOwnUsers(t *testing.T) {
 	if n := deletionCountRows(t, p, `SELECT COUNT(*) FROM database_user_grants WHERE user_id = ? AND database_id = ?`, f.sharedUser, f.elsewhere); n != 1 {
 		t.Fatalf("shared user's other grant lost")
 	}
+	// The same audit rows as the Databases page writes.
+	for _, action := range []string{"database.delete:shop_db", "database.delete:blog_db"} {
+		if n := deletionCountRows(t, p, `SELECT COUNT(*) FROM audit_logs WHERE action = ?`, action); n != 1 {
+			t.Fatalf("audit %s = %d", action, n)
+		}
+	}
 }
 
-func TestDomainDeletionDatabaseFailureIsNamedAndResumesTheSamePlan(t *testing.T) {
+// A database whose users are not all done stops the domain deletion at its
+// database step with the database deletion's own partial answer; the
+// database stays listed and bound; pressing the deletion again continues.
+func TestDomainDeletionDatabasePartialResultStopsAndTheRetryContinues(t *testing.T) {
 	p, f, agent := newDatabaseDeletionPanel(t, "resume-databases.example")
-	drops := fakeDomainDatabaseDrops(t)
-	drops.failName, drops.failures = "shop_db", 1
+	drops, native := deletionDatabaseFakes(t, p)
+	native.failRemove = true
 
 	first := deleteDomainWithQuery(t, p, f.domainID, "?databases=delete")
 	requireDeletionPendingStage(t, first, domainDeletionStageDatabases)
 	answer := decodeDeletionAnswer(t, first)
-	if answer.Reason != domainDeletionReasonDatabases || !strings.Contains(answer.ErrorLine, "shop_db") {
-		t.Fatalf("pending answer = %+v", answer)
+	if answer.Reason != domainDeletionReasonDatabases || !strings.Contains(answer.ErrorLine, "blog_db") {
+		t.Fatalf("pending answer = %s", first.Body.String())
 	}
-	// blog_db (first by name) is gone; shop_db is still there, bound.
-	if exists, _ := databaseBinding(t, p, f.keepTwo); exists {
-		t.Fatal("blog_db kept after it was dropped")
+	failure := answer.Kept.DatabaseFailure
+	var body apiErrorBody
+	if failure == nil || failure.Name != "blog_db" || failure.Status != http.StatusConflict || json.Unmarshal(failure.Answer, &body) != nil ||
+		body.Code != errCodeDatabaseDeleteUsersLeft || body.Reason != "rights" || body.Vars["name"] != "blog_db" || !body.PartialSuccess {
+		t.Fatalf("database failure = %s", first.Body.String())
 	}
-	if exists, bound := databaseBinding(t, p, f.keepOne); !exists || bound == nil || *bound != f.domainID {
-		t.Fatalf("shop_db: exists=%v bound=%v", exists, bound)
+	if n := deletionCountRows(t, p, `SELECT COUNT(*) FROM audit_logs WHERE action = 'database.delete.partial:blog_db'`); n != 1 {
+		t.Fatalf("partial audit rows = %d", n)
+	}
+	// blog_db (first by name) stays listed and bound until it is finished;
+	// shop_db was not reached.
+	for _, id := range []int{f.keepOne, f.keepTwo} {
+		if exists, bound := databaseBinding(t, p, id); !exists || bound == nil || *bound != f.domainID {
+			t.Fatalf("database %d: exists=%v bound=%v", id, exists, bound)
+		}
+	}
+	if got := droppedNames(drops); got != "blog_db" {
+		t.Fatalf("drops = %s", got)
 	}
 	// The site step ran before; the DNS step did not.
 	agent.callsMu.Lock()
@@ -250,7 +270,7 @@ func TestDomainDeletionDatabaseFailureIsNamedAndResumesTheSamePlan(t *testing.T)
 	if sites != 1 || syncs != 0 {
 		t.Fatalf("site calls=%d dns calls=%d", sites, syncs)
 	}
-	// A status read names the failure (D-024) and changes nothing.
+	// A status read names the failure and the plan (D-024) and changes nothing.
 	status := httptest.NewRecorder()
 	p.handleDomainDeletionStatus(status, httptest.NewRequest(http.MethodGet, "/", nil), f.domainID)
 	var read domainDeletionStatusResponse
@@ -258,7 +278,8 @@ func TestDomainDeletionDatabaseFailureIsNamedAndResumesTheSamePlan(t *testing.T)
 		t.Fatal(err)
 	}
 	if read.Status != domainDeletionStatusFailed || read.Stage != domainDeletionStageDatabases ||
-		read.Reason != domainDeletionReasonDatabases || !strings.Contains(read.Message, "database engine") {
+		read.Reason != domainDeletionReasonDatabases || read.Databases != domainDeletionDatabasesDelete ||
+		!strings.Contains(read.Message, "Retry this same deletion") {
 		t.Fatalf("status = %+v", read)
 	}
 	// Retrying with the other choice is refused before anything changes.
@@ -269,13 +290,22 @@ func TestDomainDeletionDatabaseFailureIsNamedAndResumesTheSamePlan(t *testing.T)
 	if exists, bound := databaseBinding(t, p, f.keepOne); !exists || bound == nil {
 		t.Fatal("the refused retry changed shop_db")
 	}
-	// The plain retry continues the accepted plan.
+	// The plain retry continues the accepted plan from blog_db.
+	native.failRemove = false
 	second := deleteDomainForSagaTest(t, p, f.domainID)
 	if second.Code != http.StatusOK {
 		t.Fatalf("retry = %d %s", second.Code, second.Body.String())
 	}
-	if exists, _ := databaseBinding(t, p, f.keepOne); exists {
-		t.Fatal("shop_db kept after the retry")
+	if got := droppedNames(drops); got != "blog_db,blog_db,shop_db" {
+		t.Fatalf("drops after the retry = %s", got)
+	}
+	for _, id := range []int{f.keepOne, f.keepTwo} {
+		if exists, _ := databaseBinding(t, p, id); exists {
+			t.Fatalf("database %d kept after the retry", id)
+		}
+	}
+	if done := decodeDeletionAnswer(t, second); len(done.Kept.Deleted) != 2 || done.Kept.DatabaseFailure != nil {
+		t.Fatalf("final answer = %s", second.Body.String())
 	}
 	if n := deletionCountRows(t, p, `SELECT COUNT(*) FROM panel_settings WHERE key IN (?, ?)`,
 		domainDeletionPlanKey(f.domainID), domainDeletionFailureKey(f.domainID)); n != 0 {
@@ -283,16 +313,43 @@ func TestDomainDeletionDatabaseFailureIsNamedAndResumesTheSamePlan(t *testing.T)
 	}
 }
 
+// No answer to the drop: whether the database went is not known. The
+// database deletion's own unknown answer is carried, the domain deletion
+// keeps no failure (its status reads as not known), and nothing else ran.
+func TestDomainDeletionDatabaseDropWithoutAnAnswerIsUnknown(t *testing.T) {
+	p, f, agent := newDatabaseDeletionPanel(t, "unknown-databases.example")
+	drops, native := deletionDatabaseFakes(t, p)
+	drops.answer = func(*transport.DeleteDatabaseResponse) error { return errors.New("read: connection reset mid-call") }
+
+	first := deleteDomainWithQuery(t, p, f.domainID, "?databases=delete")
+	requireDeletionPendingStage(t, first, domainDeletionStageDatabases)
+	answer := decodeDeletionAnswer(t, first)
+	var body apiErrorBody
+	if answer.Reason != "" || answer.Kept.DatabaseFailure == nil || answer.Kept.DatabaseFailure.Status != http.StatusBadGateway ||
+		json.Unmarshal(answer.Kept.DatabaseFailure.Answer, &body) != nil || body.Code != errCodeDatabaseDeleteUnconfirmed {
+		t.Fatalf("answer = %s", first.Body.String())
+	}
+	if len(native.removed) != 0 || deletionCountRows(t, p, `SELECT COUNT(*) FROM panel_settings WHERE key = ?`, domainDeletionFailureKey(f.domainID)) != 0 {
+		t.Fatal("an unknown drop went on, or was kept as a verified failure")
+	}
+	agent.callsMu.Lock()
+	syncs := len(agent.syncRequests)
+	agent.callsMu.Unlock()
+	if syncs != 0 {
+		t.Fatalf("the DNS step ran after an unknown database step")
+	}
+}
+
 func TestDomainDeletionRefusesAnUnknownDatabaseChoice(t *testing.T) {
 	p, f, _ := newDatabaseDeletionPanel(t, "bad-choice.example")
-	drops := fakeDomainDatabaseDrops(t)
+	drops := recordDatabaseDrops(t)
 	for _, query := range []string{"?databases=all", "?databases=keep&databases=delete"} {
 		recorder := deleteDomainWithQuery(t, p, f.domainID, query)
 		if recorder.Code != http.StatusBadRequest {
 			t.Fatalf("%s = %d", query, recorder.Code)
 		}
 	}
-	if n := deletionCountRows(t, p, `SELECT COUNT(*) FROM domain_deletion_operations WHERE domain_id = ?`, f.domainID); n != 0 || len(drops.dropped()) != 0 {
+	if n := deletionCountRows(t, p, `SELECT COUNT(*) FROM domain_deletion_operations WHERE domain_id = ?`, f.domainID); n != 0 || len(drops.requests) != 0 {
 		t.Fatal("a refused choice started the deletion")
 	}
 }
@@ -379,7 +436,7 @@ func TestMailListsSkipADomainBeingDeleted(t *testing.T) {
 // reach the deletion itself.
 func TestDomainDeletionDatabaseChoiceRoleMatrix(t *testing.T) {
 	f := newAccessUsersFixture(t)
-	drops := fakeDomainDatabaseDrops(t)
+	drops := recordDatabaseDrops(t)
 	path := fmt.Sprintf("/api/v1/domains/%d?databases=delete", authzMatrixCustomerDomainID)
 	for _, stranger := range []int{9708, 9707, authzMatrixOutsiderID} {
 		if got := f.call(t, stranger, http.MethodDelete, path, ""); got.Code != http.StatusNotFound {
@@ -395,7 +452,7 @@ func TestDomainDeletionDatabaseChoiceRoleMatrix(t *testing.T) {
 			t.Fatalf("allowed %d refused: %d %s", allowed, got.Code, got.Body.String())
 		}
 	}
-	if got := drops.dropped(); len(got) != 0 {
+	if got := drops.requests; len(got) != 0 {
 		t.Fatalf("dropped without a deletion: %v", got)
 	}
 	if n := deletionCountRows(t, f.panel, `SELECT COUNT(*) FROM databases_v2 WHERE domain_id = ?`, authzMatrixCustomerDomainID); n != 2 {
@@ -407,7 +464,7 @@ func TestDomainDeletionDatabaseChoiceRoleMatrix(t *testing.T) {
 // answer already says what stays; the retry finishes and says it again.
 func TestDomainDeletionSiteFailureIsNamedAndTheAnswerSaysWhatStays(t *testing.T) {
 	p, f, agent := newDatabaseDeletionPanel(t, "site-failure.example")
-	fakeDomainDatabaseDrops(t)
+	recordDatabaseDrops(t)
 	if _, err := p.db.GetDB().Exec(`INSERT INTO email_accounts (domain_id, address, password_hash, quota_mb)
 		VALUES (?, 'info@site-failure.example', 'x', 100)`, f.domainID); err != nil {
 		t.Fatal(err)

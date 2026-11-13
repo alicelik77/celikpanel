@@ -18,7 +18,7 @@ import { deletionGuideFollowUp, deletionGuideText, deletionGuideWords, type Dele
 import { Guidance } from './kit/rows/Guidance';
 import { domainDeletionBlocksRetry, domainDeletionDetailKey, domainDeletionGuideReason, domainDeletionQuiet, domainDeletionReasonAutomatic, domainDeletionReasonKey, readDomainDeletionDKIM, readDomainDeletionOutcome, readDomainDeletionStage, readSavedDomainDeletion, readSavedDomainDeletionWithStage, type DomainDeletionFollowUp } from '../lib/domainDeletionPending';
 import { decodeList, gateOn, invalidate, lastKnown, useRemote } from '../lib/remote';
-import { domainBulkDeleteLists, domainDeleteQuestion, domainDeletionKeptSentences, readDomainDatabasesForDeletion, readDomainDeletionKept, type DomainDeletionKept } from '../lib/domainDeletionQuestion';
+import { domainBulkDeleteLists, domainDeleteQuestion, domainDeletionDatabaseFailureText, domainDeletionKeptSentences, readDomainDatabasesForDeletion, readDomainDeletionKept, type DomainDeletionKept } from '../lib/domainDeletionQuestion';
 import { SUBSCRIPTIONS_URL, decodeSubscriptions } from '../lib/subscriptions';
 import { INFRASTRUCTURE_ZONES_URL, decodeInfrastructureZones, infrastructureZonePath } from '../lib/infrastructureZones';
 import { dnsBlocker, dnsEngineBlockerText, useHostingCapabilities } from '../lib/hostingCapabilities';
@@ -91,6 +91,8 @@ interface PendingDeletion {
     quiet?: boolean;
     // The reason, its detail and what happens next, for the guide (alpha.133).
     guide?: DeletionGuideInput;
+    // alpha.134: the databases choice the deletion was accepted with.
+    databases?: 'keep' | 'delete';
 }
 
 // What a pending reason means for the row and the banner.
@@ -103,6 +105,10 @@ const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp, detail 
     blocksRetry: domainDeletionBlocksRetry(reason),
     quiet: domainDeletionQuiet(reason),
 });
+
+// The stages a deletion stops at that only the server's administrator can
+// fix on the server (alpha.134).
+const SERVER_SIDE_STOPS = new Set(['mail_runtime_cleanup_failed', 'mail_lists_cleanup_failed', 'site_cleanup_failed']);
 
 const HIDDEN_INVALID_ACCESS = 'One or more domains were hidden because their access information was invalid. / Bir veya daha fazla alan adı, erişim bilgisi geçersiz olduğu için gizlendi.';
 
@@ -250,6 +256,10 @@ export function Domains() {
         const words = deletionGuideWords({ reason, detail, ...next }, isAdmin, t, locale, place);
         if (words) return deletionGuideText(words, t);
         const key = domainDeletionReasonKey(reason) as TranslationKey | null;
+        // alpha.134: a step only the server's administrator can fix (its
+        // sentence names server commands) is told to anybody else as whom
+        // to ask and how the same deletion continues.
+        if (!isAdmin && SERVER_SIDE_STOPS.has(reason)) return t('domains.deletion.stoppedAskAdmin');
         const translated = key ? t(key) : '';
         if (!key || translated === key) return t('domains.deletionPending');
         // What the secondary's inspector reported, or which check of this
@@ -290,6 +300,7 @@ export function Domains() {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail, saved.saved),
                 ...pendingFlags(saved.saved.reason, saved.saved.followUp, saved.saved.detail),
                 guide: { reason: saved.saved.reason, detail: saved.saved.detail, followUp: saved.saved.followUp, nextCheckAt: saved.saved.nextCheckAt },
+                databases: saved.saved.databases,
             };
         })).then((observed) => {
             if (epoch === pendingReadEpoch.current) {
@@ -394,8 +405,11 @@ export function Domains() {
     // bir seçimdir (varsayılan tutmak); ad yazılır.
     const handleDelete = async (id: number, name: string) => {
         if (!listCurrent || beingDeleted(id)) return;
-        const databases = await readDomainDatabasesForDeletion(API_BASE, id);
-        const question = domainDeleteQuestion(t, databases);
+        // A deletion that started earlier and stopped repeats the choice it
+        // was accepted with; its question says it and offers none.
+        const accepted = pendingDeletions.find((item) => item.id === id)?.databases;
+        const databases = accepted ? null : await readDomainDatabasesForDeletion(API_BASE, id);
+        const question = domainDeleteQuestion(t, databases, accepted);
         await confirmAction({
             title: t('domains.deleteTitle', { name }),
             ...question,
@@ -472,7 +486,7 @@ export function Domains() {
 
     type DeleteResult =
         | { kind: 'done'; note?: string }
-        | ({ kind: 'pending'; reason: string; detail?: string; stage: string } & Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>)
+        | ({ kind: 'pending'; reason: string; detail?: string; stage: string; databaseText?: string } & Pick<DeletionGuideInput, 'followUp' | 'nextCheckAt'>)
         | { kind: 'failed'; text: string }
         | { kind: 'unknown' };
 
@@ -693,7 +707,8 @@ export function Domains() {
         if (result.kind === 'unknown') return { state: 'unknown', reason: t('common.resultUnknown') };
         if (!domainDeletionBlocksRetry(result.reason) ||
             (domainDeletionGuideReason(result.reason) !== null && !continuesByItself(result.reason, result.followUp))) {
-            return pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now(), result);
+            const end = pendingEnd(name, report, result.stage, result.reason, result.detail, Date.now(), result);
+            return result.databaseText && end.state !== 'done' ? { ...end, reason: result.databaseText } : end;
         }
         report.steps(deletionSteps(name, result.stage, result.reason, Date.now()));
         return followDeletion(id, name, report, startedAt);
@@ -707,19 +722,25 @@ export function Domains() {
             const stage = await readDomainDeletionStage(res);
             const outcome = await readDomainDeletionOutcome(res);
             if (outcome.state === 'pending') {
-                const message = pendingMessage(outcome.reason, outcome.detail, outcome);
+                // A database whose deletion did not finish is said instead, with the
+                // Databases page's own sentence (alpha.134).
+                const failed = domainDeletionDatabaseFailureText(t, kept);
+                const databaseText = failed ? `${t('domains.deletion.stoppedAtDatabases')} ${failed}` : '';
+                const said = pendingMessage(outcome.reason, outcome.detail, outcome);
+                const message = databaseText || said;
                 pendingReadEpoch.current++;
                 setPendingDeletions((current) => [
                     ...current.filter((item) => item.id !== id),
                     {
                         id, name, message, ...pendingFlags(outcome.reason, outcome.followUp),
                         guide: { reason: outcome.reason, detail: outcome.detail, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt },
+                        databases: kept?.choice ?? undefined,
                     },
                 ]);
                 // No toast: the window and the banner above the list say it.
                 setSelected((s) => s.filter((x) => x !== id));
                 changed();
-                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt };
+                return { kind: 'pending', reason: outcome.reason, detail: outcome.detail, stage, followUp: outcome.followUp, nextCheckAt: outcome.nextCheckAt, databaseText };
             }
             if (outcome.state === 'error') {
                 // The refusal and its fix stay at the top of the list until the

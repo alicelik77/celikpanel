@@ -46,6 +46,17 @@ export function databaseDeleteUserLines(t: T, name: string, users: ReadonlyArray
  */
 export async function databaseDeletedKeptWords(t: T, name: string, res: Response): Promise<string | null> {
     const answer: unknown = await res.json().then((value: unknown) => value, () => null);
+    const notes = databaseKeptNotes(t, name, answer);
+    return notes.length > 0 ? [t('databases.deletedNamed', { name }), ...notes].join(' ') : null;
+}
+
+/**
+ * The notes of one deletion's answer (`users_kept_on_engine`,
+ * `users_kept_unchecked`, `users_kept_on_server`), also for a database a
+ * domain deletion deleted (alpha.134: its answer carries the same fields per
+ * database).
+ */
+export function databaseKeptNotes(t: T, name: string, answer: unknown): string[] {
     const list = (field: string) => {
         const value = answer && typeof answer === 'object' ? (answer as Record<string, unknown>)[field] : undefined;
         return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '').join(', ') : '';
@@ -55,5 +66,5 @@ export async function databaseDeletedKeptWords(t: T, name: string, res: Response
         const users = list(field);
         if (users) notes.push(t(key, { name, users }));
     }
-    return notes.length > 0 ? [t('databases.deletedNamed', { name }), ...notes].join(' ') : null;
+    return notes;
 }

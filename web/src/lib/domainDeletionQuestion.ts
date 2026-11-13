@@ -1,99 +1,119 @@
 import type { ConfirmRequest } from './confirmAction';
 import type { TranslationKey } from '../i18n/en';
+import { decodeDomainDatabases, type DatabaseInfo } from './domainDatabases';
+import { databaseDeleteDescribable, databaseDeleteUserLines, databaseKeptNotes } from './databaseDeleteWords';
+import { readApiError, refusalText, type ApiError } from './apiError';
 
 // The delete question of a domain and the words of its result (alpha.134).
 //
 // The question lists truthfully what goes and what stays and offers one
-// choice for the domain's databases: deleting them (with the users that have
-// rights on no other database) or keeping them. Kept is the default: kept
-// databases stay in the panel, on the Databases page, bound to no domain.
-// The server carries out exactly that choice (cmd/panel/domain_delete_cleanup.go)
-// and answers what stayed: the unbound databases, where the stored mail was
-// moved aside and the kept backups, which the result names with what can be
-// done with them later.
+// choice for the domain's databases: deleting them or keeping them. Kept is
+// the default: kept databases stay in the panel, on the Databases page,
+// bound to no domain. Deleting them is the Databases page's own deletion
+// (cmd/panel/database_delete.go, through the domain deletion's database
+// step), so the question says per database which users go and which stay
+// with the same lines as that page (lib/databaseDeleteWords.ts), and offers
+// no deletion it cannot describe. A retry of a deletion that stopped repeats
+// the choice accepted when it started and says it; it offers no choice.
+// The server answers what stayed: the kept databases, where the stored mail
+// was moved aside and the kept backups, which the result names with what can
+// be done with them later; and a database deletion that did not finish, said
+// with the Databases page's own sentence.
 //
 // Alan adı silme sorusu ve sonucu: veritabanları bir seçimdir (varsayılan
-// tutmak); kalanlar sonuçta yeri ve boyutuyla söylenir.
+// tutmak); silinirse Veritabanları sayfasının silmesiyle ve sözleriyle.
 
 type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
-/** One database of the domain, as its Databases section lists it. */
-export interface DomainDatabaseRef {
-    id: number;
-    name: string;
-}
-
-/** What the domain's databases read before the question: a list, or not known. */
-export type DomainDatabasesRead = DomainDatabaseRef[] | null;
+/** The domain's databases read before the question (with their users' fates), or null when not known. */
+export type DomainDatabasesRead = DatabaseInfo[] | null;
 
 /** Reads the domain's databases for the question; null when they could not be read. */
 export async function readDomainDatabasesForDeletion(base: string, domainId: number): Promise<DomainDatabasesRead> {
     try {
         const response = await fetch(`${base}/domains/${domainId}/databases`);
         if (response.status !== 200) return null;
-        const body: unknown = await response.json();
-        const list = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>).databases : undefined;
-        if (!Array.isArray(list)) return null;
-        const out: DomainDatabaseRef[] = [];
-        for (const item of list) {
-            if (!item || typeof item !== 'object') return null;
-            const { id, name } = item as Record<string, unknown>;
-            if (typeof id !== 'number' || typeof name !== 'string' || name === '') return null;
-            out.push({ id, name });
-        }
-        return out.sort((a, b) => a.name.localeCompare(b.name));
+        const { databases } = decodeDomainDatabases(await response.json());
+        if (databases.some((item) => !item || typeof item.name !== 'string' || item.name === '')) return null;
+        return [...databases].sort((a, b) => a.name.localeCompare(b.name));
     } catch {
         return null;
     }
 }
 
+const baseLists = (t: Translate) => ({
+    lost: [t('domains.delete.lost.site'), t('domains.delete.lost.mail'), t('domains.delete.lost.dns'), t('domains.delete.lost.schedule')],
+    kept: [t('domains.delete.kept.backups'), t('domains.delete.kept.mail'), t('domains.delete.kept.dns')],
+});
+
 /**
  * The question's lists and its one choice. `databases`: the domain's
  * databases, [] when it has none, null when they could not be read (they are
- * then kept: nothing is deleted that the question did not name).
+ * then kept: nothing is deleted that the question did not name). `accepted`:
+ * the choice of a deletion that was started earlier and stopped; its retry
+ * repeats it and offers none.
  */
-export function domainDeleteQuestion(t: Translate, databases: DomainDatabasesRead): Pick<ConfirmRequest, 'message' | 'lost' | 'kept' | 'option'> {
-    const lost = [t('domains.delete.lost.site'), t('domains.delete.lost.mail'), t('domains.delete.lost.dns'), t('domains.delete.lost.schedule')];
-    const kept = [t('domains.delete.kept.backups'), t('domains.delete.kept.mail'), t('domains.delete.kept.dns')];
+export function domainDeleteQuestion(t: Translate, databases: DomainDatabasesRead, accepted?: 'keep' | 'delete'): Pick<ConfirmRequest, 'message' | 'lost' | 'kept' | 'option'> {
+    const { lost, kept } = baseLists(t);
+    if (accepted) {
+        return { message: `${t('domains.deleteWhat')} ${t(accepted === 'delete' ? 'domains.delete.retryDelete' : 'domains.delete.retryKeep')}`, lost, kept };
+    }
     if (databases === null) {
         return { message: t('domains.deleteWhat'), lost, kept: [t('domains.delete.kept.databasesUnread'), ...kept] };
     }
     if (databases.length === 0) {
         return { message: t('domains.deleteWhat'), lost, kept };
     }
-    const names = databases.map((item) => item.name).join(', ');
+    // The Databases page offers no deletion whose users it cannot describe;
+    // neither does this question.
+    if (!databases.every((item) => databaseDeleteDescribable(item.users ?? []))) {
+        return { message: t('domains.deleteWhat'), lost, kept: [t('domains.delete.kept.databasesUsersUnknown', { n: databases.length }), ...kept] };
+    }
+    const optionLost: string[] = [];
+    const optionKept: string[] = [];
+    for (const item of databases) {
+        const users = databaseDeleteUserLines(t, item.name, item.users ?? []);
+        optionLost.push(t('databases.delete.lostData', { name: item.name }), ...users.lost);
+        optionKept.push(...users.kept);
+    }
     return {
         message: `${t('domains.deleteWhat')} ${t('domains.delete.databasesStay', { n: databases.length })}`,
         lost,
         kept,
         option: {
             label: t('domains.delete.databasesOption', { n: databases.length }),
-            lost: [t('domains.delete.lost.databases', { names })],
+            lost: optionLost,
+            ...(optionKept.length > 0 ? { kept: optionKept } : {}),
         },
     };
 }
 
 /** The databases choice a bulk deletion takes: kept, said once. */
 export function domainBulkDeleteLists(t: Translate): Pick<ConfirmRequest, 'lost' | 'kept'> {
-    return {
-        lost: [t('domains.delete.lost.site'), t('domains.delete.lost.mail'), t('domains.delete.lost.dns'), t('domains.delete.lost.schedule')],
-        kept: [t('domains.delete.kept.databasesUnbound'), t('domains.delete.kept.backups'), t('domains.delete.kept.mail'), t('domains.delete.kept.dns')],
-    };
+    const { lost, kept } = baseLists(t);
+    return { lost, kept: [t('domains.delete.kept.databasesUnbound'), ...kept] };
 }
 
-/** What a deletion's answer says stayed, and which databases it deleted. */
+/** A database a deletion deleted, with its deletion's answer fields. */
+export interface DomainDeletedDatabase {
+    name: string;
+    answer: Record<string, unknown>;
+}
+
+/** What a deletion's answer says stayed, which databases it deleted, and a database deletion that did not finish. */
 export interface DomainDeletionKept {
+    choice: 'keep' | 'delete' | null;
     databases: string[];
-    deleted: string[];
+    deleted: DomainDeletedDatabase[];
+    databaseFailure: ApiError | null;
     mail: { path: string; bytes: number } | null;
     backups: { path: string; files: number; bytes: number; unknown: boolean } | null;
 }
 
-function names(value: unknown): string[] {
-    if (!Array.isArray(value)) return [];
-    return value
-        .map((item) => (item && typeof item === 'object' ? (item as Record<string, unknown>).name : undefined))
-        .filter((name): name is string => typeof name === 'string' && name !== '');
+function records(value: unknown): Record<string, unknown>[] {
+    return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === 'object' && !Array.isArray(item) &&
+        typeof (item as Record<string, unknown>).name === 'string' && (item as Record<string, unknown>).name !== '') : [];
 }
 
 /** Reads `kept` of a deletion answer (200 or 202) without using up its body; null when there is none. */
@@ -105,6 +125,7 @@ export async function readDomainDeletionKept(response: Response): Promise<Domain
         const value = kept as Record<string, unknown>;
         const mailValue = value.mail as Record<string, unknown> | undefined;
         const backupValue = value.backups as Record<string, unknown> | undefined;
+        const failureValue = value.database_failure as Record<string, unknown> | undefined;
         const mail = mailValue && typeof mailValue.path === 'string' && mailValue.path.startsWith('/')
             ? { path: mailValue.path, bytes: typeof mailValue.bytes === 'number' ? mailValue.bytes : -1 }
             : null;
@@ -116,11 +137,28 @@ export async function readDomainDeletionKept(response: Response): Promise<Domain
                 unknown: backupValue.unknown === true,
             }
             : null;
-        const result = { databases: names(value.databases), deleted: names(value.deleted_databases), mail, backups };
-        return result.databases.length || result.deleted.length || mail || backups ? result : null;
+        // The Databases page's own answer for the database whose deletion did
+        // not finish, read the one way an error answer is read.
+        const databaseFailure = failureValue && failureValue.answer && typeof failureValue.answer === 'object'
+            ? await readApiError(new Response(JSON.stringify(failureValue.answer), {
+                status: typeof failureValue.status === 'number' && failureValue.status >= 200 && failureValue.status < 600 ? failureValue.status : 500,
+            }))
+            : null;
+        const result: DomainDeletionKept = {
+            choice: value.choice === 'keep' || value.choice === 'delete' ? value.choice : null,
+            databases: records(value.databases).map((item) => item.name as string),
+            deleted: records(value.deleted_databases).map((item) => ({ name: item.name as string, answer: item })),
+            databaseFailure, mail, backups,
+        };
+        return result.choice || result.databases.length || result.deleted.length || databaseFailure || mail || backups ? result : null;
     } catch {
         return null;
     }
+}
+
+/** The sentence of a database deletion that did not finish inside a domain deletion: the Databases page's own. */
+export function domainDeletionDatabaseFailureText(t: Translate, kept: DomainDeletionKept | null): string {
+    return kept?.databaseFailure ? refusalText(kept.databaseFailure, t, 'ddb.deleteFailed') : '';
 }
 
 /**
@@ -131,7 +169,10 @@ export async function readDomainDeletionKept(response: Response): Promise<Domain
 export function domainDeletionKeptSentences(t: Translate, kept: DomainDeletionKept | null, admin: boolean, size: (bytes: number) => string): string[] {
     if (!kept) return [];
     const out: string[] = [];
-    if (kept.deleted.length) out.push(t('domains.deleted.databasesDeleted', { names: kept.deleted.join(', ') }));
+    if (kept.deleted.length) {
+        out.push(t('domains.deleted.databasesDeleted', { names: kept.deleted.map((item) => item.name).join(', ') }));
+        for (const item of kept.deleted) out.push(...databaseKeptNotes(t, item.name, item.answer));
+    }
     if (kept.databases.length) out.push(t('domains.deleted.databasesKept', { names: kept.databases.join(', ') }));
     if (kept.mail) {
         const amount = kept.mail.bytes >= 0 ? size(kept.mail.bytes) : t('domains.deleted.sizeUnknown');

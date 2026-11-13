@@ -91,9 +91,10 @@ export default function ConfirmDetails({ request, disabled, onAnswer }: {
     const onOption = (chosen: boolean) => { setOption(chosen); tell(chosen, typed); };
     const onTyped = (text: string) => { setTyped(text); tell(option, text); };
     const lost = [...(request.lost ?? []), ...(option ? choice?.lost ?? [] : [])];
+    const kept = [...(request.kept ?? []), ...(option ? choice?.kept ?? [] : [])];
     return (
         <div className="space-y-4">
-            <ConfirmLists lost={lost} kept={request.kept} />
+            <ConfirmLists lost={lost} kept={kept} />
             {choice && (
                 <label className="flex items-start gap-2 text-sm text-fg">
                     <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={option} disabled={disabled}

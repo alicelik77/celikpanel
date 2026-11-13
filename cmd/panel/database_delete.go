@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -19,10 +20,12 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// Deleting a database (alpha.133 round 5). One function does it for both
-// places a database is deleted from: the left-menu Databases page
-// (DELETE /api/v1/databases/{id}) and the domain's Databases section
-// (DELETE /api/v1/domains/{d}/databases/{id}).
+// Deleting a database (alpha.133 round 5). One function does it for every
+// place a database is deleted from: the left-menu Databases page
+// (DELETE /api/v1/databases/{id}), the domain's Databases section
+// (DELETE /api/v1/domains/{d}/databases/{id}) and, since alpha.134, a domain
+// deletion asked to delete the domain's databases too
+// (domain_delete_cleanup.go).
 //
 // What goes: the database, and every user CelikPanel recorded for it that
 // nothing else uses (the owner's rule: no leftovers). What stays: a user that
@@ -842,6 +845,24 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 			"The database server did not delete "+name+"; nothing was changed. Try again; if it fails again, the administrator finds the reason in the panel's log.",
 			"", nil, map[string]string{"name": name})
 	}
+}
+
+// databaseDeleteFailureAnswer is the answer writeDatabaseDeleteError gives
+// for a deletion that did not finish - its status and JSON body - with the
+// same audit row, for a caller that carries it inside its own answer: a
+// domain deletion that deletes the domain's databases (alpha.134,
+// domain_delete_cleanup.go). The screens word it with the same sentences.
+func (p *Panel) databaseDeleteFailureAnswer(r *http.Request, name string, err error) (int, json.RawMessage) {
+	recorder := &requestIdentityRecorder{header: http.Header{}}
+	p.writeDatabaseDeleteError(recorder, r, name, err)
+	body := bytes.TrimSpace(recorder.body.Bytes())
+	if !json.Valid(body) {
+		body, _ = json.Marshal(map[string]string{"error": string(body)})
+	}
+	if recorder.code == 0 {
+		recorder.code = http.StatusOK
+	}
+	return recorder.code, json.RawMessage(body)
 }
 
 // writeDatabaseEngineErrorFor is the one writer of a database engine's

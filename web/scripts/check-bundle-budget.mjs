@@ -330,6 +330,11 @@ const screenPartBudgets = {
   // confirmation, split out of "deletionGuide" by size. A new part, set with
   // at least 25% headroom from its Turkish file: 7.62 / 1.90 KiB.
   deletionGuidePeer: kib(10, 2.5),
+  // alpha.134: the domain delete question, its result and the reasons a
+  // deletion stops at its own steps, split out of "sites" and "errors"
+  // (both full). A new part, set with at least 25% headroom from its
+  // Turkish file: 5.30 / 1.71 KiB.
+  domainDelete: kib(7.5, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

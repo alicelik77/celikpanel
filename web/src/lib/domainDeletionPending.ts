@@ -359,27 +359,34 @@ export async function readSavedDomainDeletionState(
     try {
         const body: unknown = await response.json();
         if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
-        const pending = body as Record<string, unknown>;
-        if (pending.status === 'unknown' && pending.stage === 'unknown') return { reason: '', detail: '' };
-        // A recorded, verified stage failure: the marker exists and the same
-        // deletion can be retried; an unreviewed failure shows the generic text.
-        if (pending.status === 'failed') return { reason: reviewedStageFailure(pending), detail: '' };
-        if (pending.status !== 'deletion_pending') return null;
-        if (pending.stage === dnsRemovedStage && pending.reason === dnsRemovedReason) {
-            return { reason: dnsRemovedReason, detail: '' };
-        }
-        if (pending.stage === runningStage && pending.reason === runningReason) {
-            return { reason: runningReason, detail: '' };
-        }
-        if (ownReason(pending)) return { reason: ownReason(pending), detail: '' };
-        if (pending.stage !== 'dns_cleanup') return { reason: '', detail: '' };
-        const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
-            ? pending.reason
-            : '';
-        return { reason, detail: reviewedDetail(pending, reason), ...(reason ? reviewedFollowUp(pending) : {}) };
+        const saved = savedDomainDeletionState(body as Record<string, unknown>);
+        // alpha.134: the choice for the domain's databases this deletion was
+        // accepted with, so its retry says it and repeats it.
+        const databases = (body as Record<string, unknown>).databases;
+        return saved && (databases === 'keep' || databases === 'delete') ? { ...saved, databases } : saved;
     } catch {
         return null;
     }
+}
+
+function savedDomainDeletionState(pending: Record<string, unknown>): SavedDomainDeletion | null {
+    if (pending.status === 'unknown' && pending.stage === 'unknown') return { reason: '', detail: '' };
+    // A recorded, verified stage failure: the marker exists and the same
+    // deletion can be retried; an unreviewed failure shows the generic text.
+    if (pending.status === 'failed') return { reason: reviewedStageFailure(pending), detail: '' };
+    if (pending.status !== 'deletion_pending') return null;
+    if (pending.stage === dnsRemovedStage && pending.reason === dnsRemovedReason) {
+        return { reason: dnsRemovedReason, detail: '' };
+    }
+    if (pending.stage === runningStage && pending.reason === runningReason) {
+        return { reason: runningReason, detail: '' };
+    }
+    if (ownReason(pending)) return { reason: ownReason(pending), detail: '' };
+    if (pending.stage !== 'dns_cleanup') return { reason: '', detail: '' };
+    const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
+        ? pending.reason
+        : '';
+    return { reason, detail: reviewedDetail(pending, reason), ...(reason ? reviewedFollowUp(pending) : {}) };
 }
 
 /** A saved deletion marker's reviewed reason, its detail and what happens next. */
@@ -388,6 +395,8 @@ export interface SavedDomainDeletion {
     detail: string;
     followUp?: DomainDeletionFollowUp;
     nextCheckAt?: string;
+    /** alpha.134: the databases choice the deletion was accepted with (its retry repeats it). */
+    databases?: 'keep' | 'delete';
 }
 
 // What one read of a domain's saved deletion marker established. `known` with

@@ -109,10 +109,10 @@ export interface ConfirmRequest {
     typedName?: TypedName;
     /**
      * One heavier choice inside the question, off at first ("Also delete the
-     * app's data"). Ticked, its `lost` lines join the list and its
+     * app's data"). Ticked, its `lost` and `kept` lines join the lists and its
      * `typedName` must be typed. The action receives whether it was ticked.
      */
-    option?: { label: string; lost?: string[]; typedName?: TypedName };
+    option?: { label: string; lost?: string[]; kept?: string[]; typedName?: TypedName };
     /** danger: the change removes or overwrites something. */
     tone?: 'default' | 'danger';
     /** The progress window's title while the action runs, e.g. "Deleting example.com". */

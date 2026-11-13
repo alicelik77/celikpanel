@@ -1014,9 +1014,9 @@ func (p *Panel) handleDeleteDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// alpha.134: the domain's databases, as the accepted plan says: unbound
-	// and kept, or deleted with their own users.
+	// and kept, or deleted by the one database deletion (database_delete.go).
 	step(domainDeletionStageDatabases)
-	if err := p.runDomainDeletionDatabaseStage(ctx, domainID, domain.Name, plan); err != nil {
+	if err := p.runDomainDeletionDatabaseStage(ctx, r, domainID, domain.Name, plan, &kept); err != nil {
 		pending(domainDeletionStageDatabases, err)
 		return
 	}

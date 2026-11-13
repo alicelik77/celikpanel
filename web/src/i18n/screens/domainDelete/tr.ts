@@ -1,0 +1,34 @@
+// The Turkish half of the screen catalogue part "domainDelete"; ./en.ts defines its keys.
+// "domainDelete" ekran parçasının Türkçe yarısı; anahtarlarını ./en.ts tanımlar.
+import type { DomainDeleteScreenKey } from './en';
+
+export const trDomainDeleteScreens: Record<DomainDeleteScreenKey, string> = {
+    'domains.delete.lost.site': 'Web sitesi, dosyaları, ek FTP girişleri, zamanlanmış görevleri ve günlükleri',
+    'domains.delete.lost.mail': 'Posta kutuları ve yönlendirmeleri: bu adreslere posta artık gelmez',
+    'domains.delete.lost.dns': 'CelikPanel’deki DNS kayıtları ve SSL sertifikaları',
+    'domains.delete.lost.schedule': 'Yedekleme zamanlaması',
+    'domains.delete.kept.databasesUnread': 'Alan adının veritabanları şu an okunamadı; bu yüzden hiçbiri silinmez: Veritabanları sayfasında hiçbir alan adına bağlı olmadan kalır.',
+    'domains.delete.kept.databasesUnbound': 'Veritabanları silinmez: Veritabanları sayfasında hiçbir alan adına bağlı olmadan kalır; oradan yönetebilir ya da silebilirsiniz.',
+    'domains.delete.kept.databasesUsersUnknown': '{n} veritabanı kalır: kullanıcılarından hangilerinin kaldırılacağı şu an okunamadı, bu yüzden burada silinmeleri önerilmiyor. Veritabanları sayfasında hiçbir alan adına bağlı olmadan görünürler; daha sonra oradan silebilirsiniz.',
+    'domains.delete.databasesStay': 'Aşağıdaki kutuyu işaretlemezseniz alan adının {n} veritabanı kalır: Veritabanları sayfasında hiçbir alan adına bağlı olmadan, kullanıcıları ve parolalarıyla görünür; onları oradan yönetirsiniz.',
+    'domains.delete.databasesOption': 'Veritabanlarını da sil ({n})',
+    'domains.delete.retryKeep': 'Bu silme daha önce başlatıldı ve kaldığı yerden sürer. Veritabanları, o zaman seçildiği gibi kalır: Veritabanları sayfasında hiçbir alan adına bağlı olmadan görünürler.',
+    'domains.delete.retryDelete': 'Bu silme daha önce başlatıldı ve kaldığı yerden sürer. Veritabanları, o zaman seçildiği gibi, başka hiçbir şeyin kullanmadığı kullanıcılarıyla birlikte silinir.',
+    'domains.delete.kept.backups': 'Alınmış yedekler silinmez: bu sunucuda ve uzak yedek hedefinde kalır, ama panelde artık görünmez. Saklamak istediğiniz yedeği önce Yedekler bölümünden indirin.',
+    'domains.delete.kept.mail': 'Posta kutularındaki iletiler silinmez; sunucuda bir kenara kaldırılır.',
+    'domains.delete.kept.dns': 'Başka bir DNS sağlayıcısındaki kayıtlara dokunulmaz.',
+    'domains.delete.typeName': 'Silmek için {name} yazın',
+    'domains.deleted.databasesDeleted': 'Silinen veritabanları: {names}.',
+    'domains.deleted.databasesKept': 'Şu veritabanları kaldı: {names}. Veritabanları sayfasında hiçbir alan adına bağlı olmadan görünürler; oradan yeni parola verebilir ya da silebilirsiniz.',
+    'domains.deleted.mailKeptAdmin': 'Posta kutularındaki iletiler ({size}) bu sunucuda {path} klasörüne kaldırıldı. Gerekirse oradan geri alabilirsiniz; artık gerekmiyorsa bu klasörü sunucuda silin.',
+    'domains.deleted.mailKept': 'Posta kutularındaki iletiler ({size}) sunucuda bir kenarda saklanıyor. Geri almak ya da tamamen sildirmek için sunucu yöneticinize başvurun.',
+    'domains.deleted.backupsKeptAdmin': 'Alınmış yedekler kaldı: {n} dosya, {size}, {path} klasöründe. Artık gerekmiyorsa bu klasörü sunucuda silin.',
+    'domains.deleted.backupsKept': 'Alınmış yedekler ({n} dosya, {size}) sunucuda kaldı. İndirmek ya da sildirmek için sunucu yöneticinize başvurun.',
+    'domains.deleted.sizeUnknown': 'boyutu okunamadı',
+    'domains.deletion.stoppedAskAdmin': 'Silme, sunucuda bitmeden durdu; kaldırılmış olanlar kaldırılmış olarak kalır. Nedeni sunucu yöneticiniz sunucuda bulup düzeltir. Ardından “Bu silme işlemini tekrar dene” (bu alan adında Sil) ile sürdürün: kaldığı yerden devam eder.',
+    'domains.deletion.stoppedAtDatabases': 'Silme, alan adının veritabanlarında durdu; web sitesi önceden kaldırıldı, DNS bölgesi değişmedi.',
+    'err.DOMAIN_DELETION_FAILED.mail_lists_cleanup_failed': 'Silme işlemi, bu alan adı sunucunun gönderim sınırı listelerinden çıkarılırken durdu. Web sitesi, DNS bölgesi ve veritabanları değişmedi. Sunucu yöneticisi bu sunucuda Posta → Gönderim sınırları sayfasını açar, orada söyleneni düzeltir, sonra “Bu silme işlemini tekrar dene” düğmesini kullanır. Kendiliğinden yeniden denenmez.',
+    'err.DOMAIN_DELETION_FAILED.site_cleanup_failed': 'Silme işlemi, bu alan adının web sitesi bu sunucudan kaldırılırken durdu: bir parçası (örneğin zamanlanmış görevleri, günlükleri ya da dosyaları) kaldırılamadı. DNS bölgesi ve veritabanları değişmedi. Sunucu yöneticisi hangi parça olduğunu panel günlüğünde bulur (sudo journalctl -u celikpanel-panel | grep "domain deletion"), onu bu sunucuda denetler, sonra “Bu silme işlemini tekrar dene” düğmesini kullanır; kaldırma yinelenir ve silme sürer. Kendiliğinden yeniden denenmez.',
+    'err.DOMAIN_DELETION_FAILED.database_cleanup_failed': 'Silme, alan adının veritabanlarında durdu: web sitesi önceden kaldırıldı, DNS bölgesi değişmedi, henüz silinmemiş bir veritabanı listede duruyor. “Bu silme işlemini tekrar dene” (bu alan adında Sil) ile sürdürün: kalanı siler ve devam eder. Yine burada durursa sunucu yöneticisi veritabanı sunucusunun çalıştığını denetler (Hizmetler sayfası). Kendiliğinden yeniden denenmez.',
+    'err.DOMAIN_DELETION_PLAN_FIXED': 'Bu silme işlemi alan adının veritabanları için öteki seçimle sürüyor; bu yüzden hiçbir şey değişmedi. “Bu silme işlemini tekrar dene” düğmesini bu seçimi değiştirmeden kullanın; silme başladığı gibi sürer.',
+};
