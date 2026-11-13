@@ -116,8 +116,57 @@ same rules.
   after a deletion that kept a user's accounts, a database of the same name
   cannot be created again until those accounts are removed on the engine,
   and the refusal does not yet say so.
-  Open: database rights are still given by name pattern (`_` = any one
-  character); exact names follow.
+- Rights by exact name (alpha.134). MariaDB reads the database name of a
+  database-level grant (`GRANT … ON name.*`) as a pattern: `_` is any one
+  character, `%` any run (MySQL 8.0 manual, GRANT, "Object Quoting
+  Guidelines"; the alpha.133 lab measured it on MariaDB 11.8.6 and 10.11.14:
+  a grant on `labd_1__wp`.* let its user create a table in labd_12_wp).
+  Every name CelikPanel makes holds `_`, so subscription 5's `s5__x` covered
+  subscription 51's `s51_x`. Since alpha.134 every grant is written by the
+  exact name (`s5\_\_x`.*: creating a database or a user, giving a user to
+  another database, remote copies), and every place that takes a right away
+  or counts it handles both forms. Table, column and routine grants name the
+  database literally and do not change.
+  - The grants written before are rewritten on each MariaDB the panel
+    manages (this machine's, through the Agent; a registered one, with its
+    record's account), only those the panel's records prove its own: a
+    recorded user given a recorded database, on localhost or a remote copy
+    the Agent's remote access record lists. For each such row the
+    before-image (account, host, stored name, privileges) is written to
+    `database_grant_forms` (migration 078) first; then the same privileges
+    are granted by the exact name and checked, and the pattern form is
+    revoked and checked - access is never lost, and an interruption at any
+    step is continued from the engine on the next round. A row that is not
+    what was captured is captured again first; a row failing three times
+    waits a day. A row holding the grant option, or a privilege CelikPanel
+    never gives, is the owner's: listed, not changed. Every rewritten row
+    gets an audit row with the other databases its pattern reached ("it no
+    longer reaches …"), and the MariaDB page lists them.
+  - Rows that cannot be proven CelikPanel's (made by hand, or left by a
+    database CelikPanel no longer records) are never changed. The MariaDB
+    page lists them with the databases they reach now and the exact
+    statements to narrow them (administrator only, under Details); the
+    administrators get one notification while such rows exist.
+  - When it runs: in the panel's own loop (hourly), never within the first
+    minutes after a start, never while the latest update attempt to this
+    build is not verified (the release recovery observation says
+    "succeeded", or none was recorded), never while the server is busy, on
+    this machine only while the Agent is the same build. Until then the
+    page says "waiting" and why. A refused credential, an unreachable
+    server or an account that may not read or change the grant tables is
+    "blocked" with that reason; each round asks again (read only) and
+    continues when the cause is gone. A server that is not MariaDB (MySQL)
+    gets exact new grants but no automatic rewrite: its rows are listed.
+  - Going back to alpha.133 (snapshot restore of the panel database): the
+    exact-form grants stay on the engine and keep working. alpha.133 code
+    then (documented, not built): drops both forms when a database is
+    deleted; but removing an added user from a live database looks for the
+    pattern form only, so the exact grant stays (the account is kept with
+    it) or a registered server's revoke answers "no such grant"; and remote
+    copies of such a user are not refreshed (their grant name is refused).
+    Updating to alpha.134 again continues from the engine.
+  - Open: a one-click narrowing for the listed rows; the exact behaviour of
+    `SHOW GRANTS`/`mysql.db` on MySQL 8 with `partial_revokes` (no lab).
 - Plans: there is no database-user quota in the plans
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".

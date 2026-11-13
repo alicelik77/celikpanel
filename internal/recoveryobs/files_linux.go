@@ -74,23 +74,68 @@ func LastAttemptForTarget(commit string) (Attempt, bool) {
 }
 
 func lastAttemptAt(root, commit string, uid, gid uint32, anchor string) (Attempt, bool) {
-	if !ValidCommit(commit) {
+	latest, ok := latestStatusAt(root, commit, uid, gid, anchor)
+	// A newer attempt that is still running, waiting for recovery or verified
+	// forward hides older outcomes; nothing older is described in its place.
+	if !ok || latest == nil || (latest.Phase != "failed" && latest.Phase != "recovered") {
 		return Attempt{}, false
+	}
+	return Attempt{RequestID: latest.RequestID, Phase: latest.Phase, FailureCode: latest.FailureCode, FinishedAt: latest.ObservedAt}, true
+}
+
+// LatestPhaseForTarget (alpha.134) reads, without Agent RPC or any mutation,
+// the phase of the latest recorded update attempt to commit: "" when none is
+// recorded (or no update was ever observed on this host), known false when
+// the observations cannot be read. A caller holds back optional work while
+// an update to its own build is not yet verified ("succeeded"); it never
+// authorizes anything by itself.
+// LatestPhaseForTarget: bu derlemeye son güncelleme denemesinin aşaması;
+// okunamıyorsa bilinmiyor. Yalnız bekletmek için kullanılır.
+func LatestPhaseForTarget(commit string) (phase string, known bool) {
+	if !ValidCommit(commit) {
+		return "", false
+	}
+	if _, err := os.Lstat(Root); errors.Is(err, os.ErrNotExist) {
+		return "", true
+	}
+	gid, err := panelGID()
+	if err != nil {
+		return "", false
+	}
+	return latestPhaseAt(Root, commit, 0, gid, "/")
+}
+
+func latestPhaseAt(root, commit string, uid, gid uint32, anchor string) (string, bool) {
+	latest, ok := latestStatusAt(root, commit, uid, gid, anchor)
+	if !ok {
+		return "", false
+	}
+	if latest == nil {
+		return "", true
+	}
+	return latest.Phase, true
+}
+
+// latestStatusAt is the latest valid status of an attempt to commit (nil:
+// none); false when the directory cannot be read within its bound.
+func latestStatusAt(root, commit string, uid, gid uint32, anchor string) (*Status, bool) {
+	if !ValidCommit(commit) {
+		return nil, false
 	}
 	fd, err := openRoot(root, uid, gid, anchor, false)
 	if err != nil {
-		return Attempt{}, false
+		return nil, false
 	}
 	defer unix.Close(fd)
 	listFD, err := unix.Openat(fd, ".", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if err != nil {
-		return Attempt{}, false
+		return nil, false
 	}
 	dir := os.NewFile(uintptr(listFD), "recovery-observations")
 	names, err := dir.Readdirnames(MaxAttemptEntries + 1)
 	dir.Close()
 	if (err != nil && !errors.Is(err, io.EOF)) || len(names) > MaxAttemptEntries {
-		return Attempt{}, false
+		return nil, false
 	}
 	var latest *Status
 	for _, name := range names {
@@ -110,12 +155,7 @@ func lastAttemptAt(root, commit string, uid, gid uint32, anchor string) (Attempt
 			latest = &copied
 		}
 	}
-	// A newer attempt that is still running, waiting for recovery or verified
-	// forward hides older outcomes; nothing older is described in its place.
-	if latest == nil || (latest.Phase != "failed" && latest.Phase != "recovered") {
-		return Attempt{}, false
-	}
-	return Attempt{RequestID: latest.RequestID, Phase: latest.Phase, FailureCode: latest.FailureCode, FinishedAt: latest.ObservedAt}, true
+	return latest, true
 }
 
 // statusAtFD reads one request's status and its optional exact sidecars

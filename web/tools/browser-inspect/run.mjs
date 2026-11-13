@@ -1822,6 +1822,8 @@ const scenarios = {
 (await import('./scenarios-batch31.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 (await import('./scenarios-batch32.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 (await import('./scenarios-batch33.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
+// alpha.134: database rights by exact name.
+(await import('./scenarios-batch34.mjs')).default(scenarios, { base, vp, locale, theme, out, viewport, ctl, reset, drainLog, newPage, closePage, shot, into, clickByText, waitFor, pause, quiet });
 // --- end of batch 30 ---
 
 for (const [name, run] of Object.entries(scenarios)) {

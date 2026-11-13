@@ -154,7 +154,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.MailPasswordFingerprintV1
 		Agent.FileAccessStateV1 Agent.FileAccessPreviewV1 Agent.SuspensionInspectV1
 		Agent.FTPLoginsStateV1
-		Agent.DatabaseRemoteStatusV1
+		Agent.DatabaseRemoteStatusV1 Agent.DatabaseGrantFormsScanV1
 		Agent.TrafficCollectV1 Agent.SubscriptionDiskUsageV1
 		Agent.AppPrerequisitesV1
 		Agent.EmergencyUnitsInspectV1
@@ -269,7 +269,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
-		Agent.RemoveDroppedDatabaseRightsV1
+		Agent.RemoveDroppedDatabaseRightsV1 Agent.DatabaseGrantFormConvertV1
 		Agent.ApplyDatabaseRemoteV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectAccessNarrowing, agentRPCCapabilityFirewall, `
@@ -481,17 +481,20 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.RemoveDatabaseAccessUserV1": agentRPCMutationTimeout,
 	// alpha.134: the rights naming a deleted database, from every grantee.
 	"Agent.RemoveDroppedDatabaseRightsV1": agentRPCMutationTimeout,
-	"Agent.EndMailSessionsV1":             agentRPCMutationTimeout,
-	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
-	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
-	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
-	"Agent.SetEmergencyAppLockV1":         agentRPCMutationTimeout,
-	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,
-	"Agent.UpdatePHPPoolConfig":           agentRPCMutationTimeout,
-	"Agent.UploadFile":                    agentRPCMutationTimeout,
-	"Agent.WriteFile":                     agentRPCMutationTimeout,
+	// alpha.134: rights by exact name (read, then one row at a time).
+	"Agent.DatabaseGrantFormsScanV1":   agentRPCStandardReadTimeout,
+	"Agent.DatabaseGrantFormConvertV1": agentRPCMutationTimeout,
+	"Agent.EndMailSessionsV1":          agentRPCMutationTimeout,
+	"Agent.SetAppUnitSuspensionV1":     agentRPCMutationTimeout,
+	"Agent.EmergencyUnitsInspectV1":    agentRPCStandardReadTimeout,
+	"Agent.SetEmergencyUnitLockV1":     agentRPCMutationTimeout,
+	"Agent.SetEmergencyAppLockV1":      agentRPCMutationTimeout,
+	"Agent.UpdateMySQLConfig":          agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfig":            agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfiguration":     agentRPCMutationTimeout,
+	"Agent.UpdatePHPPoolConfig":        agentRPCMutationTimeout,
+	"Agent.UploadFile":                 agentRPCMutationTimeout,
+	"Agent.WriteFile":                  agentRPCMutationTimeout,
 
 	// Repository publication/removal refreshes package metadata and can be
 	// bounded by network and package-manager latency.

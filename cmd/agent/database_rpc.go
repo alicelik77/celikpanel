@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/hostcmd"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -192,7 +193,7 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 	if _, err := mysqlExecStatement(fmt.Sprintf("CREATE DATABASE %s;", dbIdent)); err != nil {
 		if !hasOperation || !verifyMySQLOwnership(dbIdent, req.OperationID, req.CleanupToken) {
 			resp.Error = "database already exists or could not be created exclusively"
-			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
+			if mysqlNameExists("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + mysqlLiteral(req.Name) + ";") {
 				resp.NameTaken = "database"
 			}
 			return nil
@@ -240,9 +241,17 @@ func (a *Agent) createMySQLDatabase(req CreateDatabaseRequest, resp *CreateDatab
 		}
 	}
 
+	// alpha.134: the grant names the database exactly (`shop\_a`.*); written
+	// as `shop_a`.* it is a pattern that also covers shop1a, shopXa and so
+	// on (internal/mariadbgrant).
+	grantTarget, err := mariadbgrant.Target(req.Name)
+	if err != nil {
+		resp.Error = fmt.Sprintf("invalid database name: %v", err)
+		return nil
+	}
 	if _, err := mysqlExecStatement(fmt.Sprintf(
 		"GRANT ALL PRIVILEGES ON %s.* TO %s@'localhost'; FLUSH PRIVILEGES;",
-		dbIdent, userLiteral,
+		grantTarget, userLiteral,
 	)); err != nil {
 		// A resumed operation already had a durable marker. Preserve it for
 		// retry instead of deleting resources after an ambiguous prior result.

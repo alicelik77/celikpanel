@@ -277,6 +277,23 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.134: rights by exact name.
+			name: "DatabaseGrantFormsScanV1",
+			run: func(expected string) string {
+				var response transport.DatabaseGrantFormsScanResponse
+				_ = agent.DatabaseGrantFormsScanV1(&transport.DatabaseGrantFormsScanRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
+			name: "DatabaseGrantFormConvertV1",
+			run: func(expected string) string {
+				var response transport.DatabaseGrantFormConvertResponse
+				_ = agent.DatabaseGrantFormConvertV1(&transport.DatabaseGrantFormConvertRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.128 (G25): per-domain mail options.
 			name: "SetMailDomainOptionsV1",
 			run: func(expected string) string {

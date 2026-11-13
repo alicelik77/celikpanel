@@ -255,6 +255,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.database.repair': '{target} veritabanının tablolarını onardı',
     'dashboard.audit.action.database.remote.add': '{target} veritabanına bağlanmak için bir adrese izin verdi',
     'dashboard.audit.action.database.remote.offer': 'bu sunucuda veritabanlarına dışarıdan bağlantıları değiştirdi',
+    'dashboard.audit.action.database.right.exact': '{target} veritabanındaki bir hak tam adına daraltıldı; artık başka veritabanlarını kapsamıyor',
     'dashboard.audit.action.database.remote.expire': '{target} veritabanına dışarıdan bağlanma izni olan bir adresin süresi doldu ve adres kaldırıldı',
     'dashboard.audit.action.database.remote.extend': 'bir adresin {target} veritabanına dışarıdan bağlanma süresini değiştirdi',
     'dashboard.audit.action.database.remote.mariadb_name_lookup': 'CelikPanel’in MariaDB ad çözümlemesini kapatma onayını değiştirdi',

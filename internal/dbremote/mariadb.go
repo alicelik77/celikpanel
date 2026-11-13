@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 )
 
 // A MariaDB account is user@host, so a remote rule needs an account of its
@@ -116,8 +118,6 @@ func mysqlString(value string) string {
 	return "'" + strings.ReplaceAll(strings.ReplaceAll(value, `\`, `\\`), `'`, `\'`) + "'"
 }
 
-func mysqlIdent(value string) string { return "`" + strings.ReplaceAll(value, "`", "``") + "`" }
-
 // MariaDBAccountName renders 'user'@'host' after checking both parts.
 func MariaDBAccountName(user, host string) (string, error) {
 	if err := validName(user); err != nil {
@@ -198,7 +198,9 @@ func RevokeAllMariaDB(user, host string) (string, error) {
 	return "REVOKE ALL PRIVILEGES, GRANT OPTION FROM " + name + ";", nil
 }
 
-// GrantMariaDB renders one database grant for a remote account.
+// GrantMariaDB renders one database grant for a remote account, by the
+// database's exact name (alpha.134: `shop\_a`.*; written `shop_a`.* the
+// grant is a pattern that also covers other databases).
 func GrantMariaDB(privileges, database, user, host string) (string, error) {
 	if _, err := normalizeMariaDBPrivileges(privileges); err != nil {
 		return "", err
@@ -206,11 +208,15 @@ func GrantMariaDB(privileges, database, user, host string) (string, error) {
 	if err := validName(database); err != nil {
 		return "", err
 	}
+	target, err := mariadbgrant.Target(database)
+	if err != nil {
+		return "", err
+	}
 	name, err := MariaDBAccountName(user, host)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("GRANT %s ON %s.* TO %s;", privileges, mysqlIdent(database), name), nil
+	return fmt.Sprintf("GRANT %s ON %s.* TO %s;", privileges, target, name), nil
 }
 
 // mariadbPrivilegeNames: database-level privileges that are copied.
@@ -246,8 +252,18 @@ type LocalGrants struct {
 	// Global is true when the account holds any server-wide privilege other
 	// than USAGE: such an account is never reachable from outside.
 	Global bool
-	// Databases maps a database to its normalized privilege list.
+	// Databases maps a database to its normalized privilege list: the grant
+	// in its exact form when the account has one, otherwise the one in the
+	// pattern form (alpha.134).
 	Databases map[string]string
+	// Exact and Patterns (alpha.134) split the same grants by the form they
+	// are held in: the exact form (`shop\_a`.*, written since alpha.134)
+	// and the pattern form (`shop_a`.*, written before; `_` covers any one
+	// character). A grant whose name is neither form of one database (a
+	// wildcard on purpose, `shop\_%`) is in none of these maps: it is never
+	// copied to a remote account.
+	Exact    map[string]string
+	Patterns map[string]string
 }
 
 var grantLine = regexp.MustCompile("^GRANT (.+?) ON (\\*|`(?:[^`]|``)+`)\\.\\* TO `((?:[^`]|``)+)`@`((?:[^`]|``)+)`(.*)$")
@@ -258,7 +274,7 @@ var grantLine = regexp.MustCompile("^GRANT (.+?) ON (\\*|`(?:[^`]|``)+`)\\.\\* T
 // one. The lines may carry the password hash (IDENTIFIED BY PASSWORD): this
 // function never returns or quotes them.
 func ParseMariaDBGrants(lines []string, user, host string) (LocalGrants, error) {
-	out := LocalGrants{Databases: map[string]string{}}
+	out := LocalGrants{Databases: map[string]string{}, Exact: map[string]string{}, Patterns: map[string]string{}}
 	for _, raw := range lines {
 		line := strings.TrimSpace(raw)
 		if line == "" {
@@ -289,8 +305,22 @@ func ParseMariaDBGrants(lines []string, user, host string) (LocalGrants, error) 
 			// Passing privileges on is the owner's business, not a remote client's.
 			out.Global = true
 		}
-		database := strings.ReplaceAll(strings.Trim(scope, "`"), "``", "`")
-		out.Databases[database] = normalized
+		stored := strings.ReplaceAll(strings.Trim(scope, "`"), "``", "`")
+		database, pattern, ok := mariadbgrant.Decode(stored)
+		if !ok {
+			continue // a wildcard on purpose, or a name CelikPanel does not write
+		}
+		if pattern {
+			out.Patterns[database] = normalized
+		} else {
+			out.Exact[database] = normalized
+		}
+	}
+	for database, privileges := range out.Patterns {
+		out.Databases[database] = privileges
+	}
+	for database, privileges := range out.Exact {
+		out.Databases[database] = privileges
 	}
 	return out, nil
 }
@@ -482,7 +512,13 @@ func mariadbPrivilegeSet(text string) (map[string]bool, error) {
 // loses a privilege it keeps (re-review). The one exception is narrowing
 // ALL PRIVILEGES to a list, which MariaDB can only express as REVOKE ALL
 // then GRANT.
-func MariaDBPrivilegeChange(current, want, database, user, host string) ([]string, error) {
+//
+// current is the copy's grant in the exact form. alpha.134: currentPattern
+// says the copy also holds a grant in the pattern form (written before
+// alpha.134); the wanted grant is then written in the exact form first and
+// the pattern form is taken away after it, so the copy never loses access
+// it keeps and no longer reaches other databases.
+func MariaDBPrivilegeChange(current string, currentPattern bool, want, database, user, host string) ([]string, error) {
 	name, err := MariaDBAccountName(user, host)
 	if err != nil {
 		return nil, err
@@ -490,7 +526,23 @@ func MariaDBPrivilegeChange(current, want, database, user, host string) ([]strin
 	if err := validName(database); err != nil {
 		return nil, err
 	}
-	on := " ON " + mysqlIdent(database) + ".* "
+	exact, err := mariadbgrant.Target(database)
+	if err != nil {
+		return nil, err
+	}
+	out, err := mariadbExactPrivilegeChange(current, want, name, " ON "+exact+".* ")
+	if err != nil || !currentPattern {
+		return out, err
+	}
+	pattern, err := mariadbgrant.PatternTarget(database)
+	if err != nil {
+		return nil, err
+	}
+	return append(out, "REVOKE ALL PRIVILEGES ON "+pattern+".* FROM "+name+";"), nil
+}
+
+// mariadbExactPrivilegeChange is MariaDBPrivilegeChange for one form.
+func mariadbExactPrivilegeChange(current, want, name, on string) ([]string, error) {
 	switch {
 	case current == "" && want == "":
 		return nil, nil

@@ -89,6 +89,8 @@ var auditActionNames = []string{
 	"database.remote.offer",
 	"database.remote.remove",
 	"database.repair",
+	// alpha.134: a right rewritten from its name pattern to the database's exact name.
+	"database.right.exact",
 	"database.user.add",
 	"database.user.password",
 	"database.user.remove",

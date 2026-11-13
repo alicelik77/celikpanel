@@ -213,7 +213,7 @@ func TestOtherRightsCheckComparesSchemaNamesExactly(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"BINARY TABLE_SCHEMA NOT IN ('shop_a', 'shop\\\\_a')",
+		"BINARY TABLE_SCHEMA NOT IN (X'73686F705F61', X'73686F705C5F61')",
 		"TABLE_PRIVILEGES WHERE GRANTEE IN ('\\'shop_a_user\\'@\\'localhost\\'') AND BINARY TABLE_SCHEMA <> 'shop_a'",
 		"COLUMN_PRIVILEGES WHERE GRANTEE IN ('\\'shop_a_user\\'@\\'localhost\\'') AND BINARY TABLE_SCHEMA <> 'shop_a'",
 		"AND Db <> 'shop_a'",
@@ -226,21 +226,20 @@ func TestOtherRightsCheckComparesSchemaNamesExactly(t *testing.T) {
 
 // The domain page's "remove added user" acts on a database that still
 // exists (no DatabaseDropped): only CelikPanel's own hosts lose their grant
-// there, compared exactly; nothing is deleted from the grant tables. An
-// escaped-form grant the owner wrote by hand on localhost (`shop\_a`.*)
-// names this database as well: when the account has no other rights it is
-// dropped with everything (removing the user from this database is what was
-// asked); when it is kept for other rights, only CelikPanel's own grant
-// (written `shop_a`.*) is revoked and the owner's hand-made line stays - it
-// is the owner's change on a live database.
+// there, compared exactly; nothing is deleted from the grant tables. When
+// the account is kept for other rights, CelikPanel's grant on this database
+// goes from its own hosts in each form the host holds it (alpha.134: the
+// exact form `shop\_a`.* written since alpha.134, the pattern form
+// `shop_a`.* written before); hosts the owner made keep theirs. When the
+// account has no other rights it is dropped with everything.
 func TestRemovingAUserFromALiveDatabaseTouchesOnlyCelikPanelsHosts(t *testing.T) {
 	withOwnHosts(t)
 	got := recordMySQL(t, func(statement string) string {
 		switch {
 		case strings.HasPrefix(statement, "SELECT CONCAT('host=', Host)"):
 			return "host=10.%\nhost=localhost\n"
-		case strings.Contains(statement, "BINARY TABLE_SCHEMA = 'shop'"):
-			return "n=1\n"
+		case strings.HasPrefix(statement, "SELECT CONCAT('f=', HEX(Db))") && strings.Contains(statement, "Host = X'6C6F63616C686F7374'"):
+			return "f=73686F70\n"
 		}
 		return "n=0\n"
 	})
@@ -250,6 +249,27 @@ func TestRemovingAUserFromALiveDatabaseTouchesOnlyCelikPanelsHosts(t *testing.T)
 	if !resp.Applied || !resp.Kept || strings.Contains(all, "DELETE FROM mysql.") || strings.Contains(all, "FROM 'shop_user'@'10.%'") ||
 		!strings.Contains(all, "REVOKE ALL PRIVILEGES ON `shop`.* FROM 'shop_user'@'localhost';") {
 		t.Fatalf("resp = %+v statements %v", resp, *got)
+	}
+
+	// Both forms on localhost (an exact grant and one written before
+	// alpha.134): both go, the exact one by its escaped name.
+	both := recordMySQL(t, func(statement string) string {
+		switch {
+		case strings.HasPrefix(statement, "SELECT CONCAT('host=', Host)"):
+			return "host=10.%\nhost=localhost\n"
+		case strings.HasPrefix(statement, "SELECT CONCAT('f=', HEX(Db))"):
+			return "f=73686F705F61\nf=73686F705C5F61\n"
+		}
+		return "n=0\n"
+	})
+	resp = transport.DatabaseAccessUserResponse{}
+	removeMySQLAccessUser(&transport.DatabaseAccessUserRequest{Engine: "mysql", Database: "shop_a", Username: "shop_a_user"}, &resp)
+	all = strings.Join(*both, "\n")
+	if !resp.Applied || !resp.Kept ||
+		!strings.Contains(all, "REVOKE ALL PRIVILEGES ON `shop_a`.* FROM 'shop_a_user'@'localhost';") ||
+		!strings.Contains(all, "REVOKE ALL PRIVILEGES ON `shop\\_a`.* FROM 'shop_a_user'@'localhost';") ||
+		strings.Contains(all, "@'10.%'") {
+		t.Fatalf("resp = %+v statements %v", resp, *both)
 	}
 
 	escaped := recordMySQL(t, func(statement string) string {

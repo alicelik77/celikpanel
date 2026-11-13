@@ -1,5 +1,7 @@
 package transport
 
+import "github.com/alicelik/celikpanel/internal/mariadbgrant"
+
 // More users for one database (alpha.129): a user that only reads it, or
 // one that reads and writes it, made and removed on the local engine by the
 // Agent. Creation is exclusive (an account name that already exists on the
@@ -107,4 +109,36 @@ type DroppedDatabaseRightsResponse struct {
 	// again continues.
 	RightsLeft bool   `json:"rights_left,omitempty"`
 	Error      string `json:"error,omitempty"`
+}
+
+// DatabaseGrantFormsScanRequest (alpha.134) reads the machine's own MariaDB
+// for the rewrite of pattern-form grants to the exact form. Read only.
+// Kalıp biçimli hakların okunması; salt okur.
+type DatabaseGrantFormsScanRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+}
+
+// DatabaseGrantFormsScanResponse is what the read found. RemoteHosts: for
+// each account name of a pattern row, the hosts of its remote copies the
+// Agent's remote access record lists (CelikPanel's own besides localhost).
+type DatabaseGrantFormsScanResponse struct {
+	Scan          mariadbgrant.Scan   `json:"scan"`
+	RemoteHosts   map[string][]string `json:"remote_hosts,omitempty"`
+	BuildMismatch bool                `json:"build_mismatch,omitempty"`
+	Error         string              `json:"error,omitempty"`
+}
+
+// DatabaseGrantFormConvertRequest rewrites one captured pattern-form row to
+// the exact form (mariadbgrant.Convert).
+type DatabaseGrantFormConvertRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	mariadbgrant.ConvertRequest
+}
+
+// DatabaseGrantFormConvertResponse: Outcome is one of mariadbgrant's
+// Converted, AlreadyExact, Gone, Changed, OwnerRow; Error when it stopped.
+type DatabaseGrantFormConvertResponse struct {
+	Outcome       string `json:"outcome,omitempty"`
+	BuildMismatch bool   `json:"build_mismatch,omitempty"`
+	Error         string `json:"error,omitempty"`
 }

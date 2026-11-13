@@ -249,7 +249,10 @@ func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.Mar
 	for db := range wanted {
 		databases[db] = true
 	}
-	for db := range current.grants.Databases {
+	for db := range current.grants.Exact {
+		databases[db] = true
+	}
+	for db := range current.grants.Patterns {
 		databases[db] = true
 	}
 	names := make([]string, 0, len(databases))
@@ -258,7 +261,10 @@ func mariadbCopyChanges(account dbremote.MariaDBAccount, credential dbremote.Mar
 	}
 	sort.Strings(names)
 	for _, db := range names {
-		change, err := dbremote.MariaDBPrivilegeChange(current.grants.Databases[db], wanted[db], db, account.User, account.Host)
+		// alpha.134: a copy holding the pattern form (`shop_a`.*, written
+		// before alpha.134) is rewritten to the exact form.
+		_, pattern := current.grants.Patterns[db]
+		change, err := dbremote.MariaDBPrivilegeChange(current.grants.Exact[db], pattern, wanted[db], db, account.User, account.Host)
 		if err != nil {
 			return nil, err
 		}

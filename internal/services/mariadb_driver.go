@@ -220,7 +220,9 @@ func (d *MariaDBDriver) CreateDatabase(name string) error {
 	// alpha.129: exclusive. "IF NOT EXISTS" took over a database of the same
 	// name that was already there (another account's, or one made outside
 	// CelikPanel) and the caller then granted its new user on it.
-	if taken, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + literal + ";"); err != nil {
+	// alpha.134: compared exactly (BINARY); information_schema compares names
+	// case-insensitively.
+	if taken, err := d.countIsNonZero("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + literal + ";"); err != nil {
 		return err
 	} else if taken {
 		return fmt.Errorf("database %s: %w", name, ErrDatabaseNameTaken)
@@ -378,9 +380,15 @@ func (d *MariaDBDriver) ListUsers() ([]string, error) {
 	return users, nil
 }
 
-// GrantPrivileges grants privileges to a user on a database
+// GrantPrivileges grants privileges to a user on a database. alpha.134: by
+// the database's exact name (`shop\_a`.*): written as `shop_a`.* the grant
+// is a pattern in which `_` stands for any one character
+// (internal/mariadbgrant).
 func (d *MariaDBDriver) GrantPrivileges(database, user, privileges string) error {
-	dbIdent, err := QuoteMySQLIdentifier(database)
+	if _, err := QuoteMySQLIdentifier(database); err != nil {
+		return fmt.Errorf("invalid database name: %w", err)
+	}
+	dbIdent, err := mariadbgrant.Target(database)
 	if err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
@@ -406,10 +414,11 @@ func (d *MariaDBDriver) GrantPrivileges(database, user, privileges string) error
 	return d.executeSQL("FLUSH PRIVILEGES;")
 }
 
-// RevokePrivileges revokes privileges from a user on a database
+// RevokePrivileges revokes privileges from a user on a database. alpha.134:
+// the grant may be held in the exact form (written since alpha.134) or the
+// pattern form (written before); each form the account holds is taken away.
 func (d *MariaDBDriver) RevokePrivileges(database, user string) error {
-	dbIdent, err := QuoteMySQLIdentifier(database)
-	if err != nil {
+	if _, err := QuoteMySQLIdentifier(database); err != nil {
 		return fmt.Errorf("invalid database name: %w", err)
 	}
 	if err := ValidateSQLIdentifier(user); err != nil {
@@ -419,8 +428,7 @@ func (d *MariaDBDriver) RevokePrivileges(database, user string) error {
 	if err != nil {
 		return fmt.Errorf("invalid username: %w", err)
 	}
-	sql := fmt.Sprintf("REVOKE ALL PRIVILEGES ON %s.* FROM %s@'localhost';", dbIdent, userLiteral)
-	if err := d.executeSQL(sql); err != nil {
+	if err := d.revokeDatabaseGrantForms(database, user, userLiteral); err != nil {
 		return err
 	}
 	// alpha.129: a remote copy loses every privilege (closed, never more
@@ -432,6 +440,52 @@ func (d *MariaDBDriver) RevokePrivileges(database, user string) error {
 		return err
 	}
 	return d.executeSQL("FLUSH PRIVILEGES;")
+}
+
+// revokeDatabaseGrantForms takes user@localhost's grant on the database away
+// in each form the account holds. When the grant table cannot be read with
+// the record's account, both forms are revoked one by one and it is enough
+// that one of them was there.
+func (d *MariaDBDriver) revokeDatabaseGrantForms(database, user, userLiteral string) error {
+	exact, _ := mariadbgrant.Target(database)
+	pattern, _ := mariadbgrant.PatternTarget(database)
+	targets := map[string]string{database: pattern, mariadbgrant.Exact(database): exact}
+	output, readErr := d.runSQL("SELECT CONCAT('f=', HEX(Db)) FROM mysql.db WHERE User = " + mariadbgrant.Hex(user) +
+		" AND Host = 'localhost' AND Db IN (" + mariadbgrant.HexList(mariadbgrant.Forms(database)) + ");")
+	if readErr == nil {
+		for _, value := range mariadbgrant.Markers(output, "f") {
+			stored, err := mariadbgrant.FromHex(value)
+			if err != nil {
+				return err
+			}
+			target, ok := targets[stored]
+			if !ok {
+				continue
+			}
+			if err := d.executeSQL(fmt.Sprintf("REVOKE ALL PRIVILEGES ON %s.* FROM %s@'localhost';", target, userLiteral)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	var firstErr error
+	revoked := false
+	for _, target := range []string{exact, pattern} {
+		if target == pattern && exact == pattern {
+			break
+		}
+		if err := d.executeSQL(fmt.Sprintf("REVOKE ALL PRIVILEGES ON %s.* FROM %s@'localhost';", target, userLiteral)); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		revoked = true
+	}
+	if !revoked {
+		return firstErr
+	}
+	return nil
 }
 
 // forEachRemoteCopy runs one statement for every remote copy of a user
@@ -467,6 +521,11 @@ func (d *MariaDBDriver) executeSQL(sql string) error {
 	_, err := d.runSQL(sql)
 	return err
 }
+
+// GrantExec (alpha.134) runs statements for internal/mariadbgrant with the
+// record's own account: the rewrite of pattern-form grants on a registered
+// MariaDB (cmd/panel database_grant_forms.go).
+func (d *MariaDBDriver) GrantExec() mariadbgrant.Exec { return d.runSQL }
 
 // RemoveRightsOnDroppedDatabase (alpha.134) takes every right that names a
 // dropped database from every grantee on this server, with the record's own

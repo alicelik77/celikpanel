@@ -274,6 +274,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.database.repair': 'repaired the tables of the database {target}',
     'dashboard.audit.action.database.remote.add': 'allowed an address to connect to the database {target}',
     'dashboard.audit.action.database.remote.offer': 'changed connections from outside to databases on this server',
+    'dashboard.audit.action.database.right.exact': 'a right on the database {target} was narrowed to its exact name; it no longer covers other databases',
     'dashboard.audit.action.database.remote.expire': 'an address allowed to connect to the database {target} from outside reached its end and was removed',
     'dashboard.audit.action.database.remote.extend': 'changed how long an address may connect to the database {target} from outside',
     'dashboard.audit.action.database.remote.mariadb_name_lookup': 'changed whether CelikPanel may turn off MariaDB host name lookup',

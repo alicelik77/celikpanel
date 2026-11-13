@@ -43,6 +43,9 @@ const alpha128LazyParts = {
   // its own address (its own chunk; on the Security page since alpha.133,
   // with CelikPanel's own account on the MariaDB and PostgreSQL pages).
   './DatabaseRemoteServerPanel': ['DatabaseRemoteServerPanel', 'EngineAccountBlock'],
+  // alpha.134: database rights by exact name on the MariaDB page (its own
+  // chunk and its own mounted tests).
+  './DatabaseGrantFormsBlock': ['DatabaseGrantFormsBlock'],
 };
 
 export function compileSource(path, resolve) {

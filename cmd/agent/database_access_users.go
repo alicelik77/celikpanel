@@ -160,7 +160,13 @@ func (a *Agent) RemoveDatabaseAccessUserV1(req *transport.DatabaseAccessUserRequ
 func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *transport.DatabaseAccessUserResponse) {
 	user, _ := services.QuoteMySQLStringLiteral(req.Username)
 	dbLiteral, _ := services.QuoteMySQLStringLiteral(req.Database)
-	dbIdent, err := services.QuoteMySQLIdentifier(req.Database)
+	if _, err := services.QuoteMySQLIdentifier(req.Database); err != nil {
+		resp.Error = "invalid database name; nothing was changed"
+		return
+	}
+	// alpha.134: the grant names the database exactly (`shop\_a`.*), never
+	// the pattern `shop_a`.* that also covers other databases.
+	target, err := mariadbgrant.Target(req.Database)
 	if err != nil {
 		resp.Error = "invalid database name; nothing was changed"
 		return
@@ -171,7 +177,7 @@ func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		return
 	}
 	output, err := mysqlExecStatement("SELECT CONCAT('users=', COUNT(*)) FROM mysql.user WHERE User = " + user + "; " +
-		"SELECT CONCAT('databases=', COUNT(*)) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = " + dbLiteral + ";")
+		"SELECT CONCAT('databases=', COUNT(*)) FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + dbLiteral + ";")
 	if err != nil {
 		resp.Error = hostcmd.Fail("the database server could not be asked about the name; nothing was changed", output, err, databaseClientMeaning).Error()
 		return
@@ -199,7 +205,7 @@ func createMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	if req.Access == transport.DatabaseAccessWrite {
 		rights = "ALL PRIVILEGES"
 	}
-	if output, err := mysqlExecStatement("GRANT " + rights + " ON " + dbIdent + ".* TO " + user + "@'localhost'; FLUSH PRIVILEGES;"); err != nil {
+	if output, err := mysqlExecStatement("GRANT " + rights + " ON " + target + ".* TO " + user + "@'localhost'; FLUSH PRIVILEGES;"); err != nil {
 		failure := hostcmd.Fail("the database server did not give the new user its rights", output, err, databaseClientMeaning).Error()
 		if _, dropErr := mysqlExecStatement("DROP USER IF EXISTS " + user + "@'localhost';"); dropErr != nil {
 			resp.CleanupIncomplete = true
@@ -308,22 +314,37 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 			resp.Applied, resp.Kept, resp.KeptReason = true, true, keptReason
 			return
 		}
-		// CelikPanel's grant on this database goes from each of its hosts. A
-		// host whose grant could not be looked up is revoked anyway; "no such
-		// grant" (1141) then means there was none.
+		// CelikPanel's grant on this database goes from each of its hosts, in
+		// each form the host holds it (alpha.134: the exact form written
+		// since alpha.134, the pattern form written before). A host whose
+		// grants could not be looked up is revoked in both forms anyway; "no
+		// such grant" (1141) then means there was none.
+		exactTarget, err := mariadbgrant.Target(req.Database)
+		if err != nil {
+			resp.Error = "invalid database name; nothing was changed"
+			return
+		}
+		patternTarget := dbIdent
+		targets := map[string]string{req.Database: patternTarget, mariadbgrant.Exact(req.Database): exactTarget}
 		revoked := false
 		for _, host := range ownHosts {
-			has, err := mysqlAccessUserHasGrantOn(req.Username, host, req.Database)
-			if err == nil && !has {
-				continue
+			forms, err := mysqlAccessUserGrantForms(req.Username, host, req.Database)
+			if err != nil {
+				forms = mariadbgrant.Forms(req.Database)
 			}
 			literal, _ := services.QuoteMySQLStringLiteral(host)
-			output, err := mysqlExecStatement("REVOKE ALL PRIVILEGES ON " + dbIdent + ".* FROM " + user + "@" + literal + ";")
-			if err != nil && !mysqlNoSuchGrant(output) {
-				resp.Error = hostcmd.Fail("the database server did not take the user's rights on "+req.Database+" away", output, err, databaseClientMeaning).Error()
-				return
+			for _, form := range forms {
+				target, ok := targets[form]
+				if !ok {
+					continue
+				}
+				output, err := mysqlExecStatement("REVOKE ALL PRIVILEGES ON " + target + ".* FROM " + user + "@" + literal + ";")
+				if err != nil && !mysqlNoSuchGrant(output) {
+					resp.Error = hostcmd.Fail("the database server did not take the user's rights on "+req.Database+" away", output, err, databaseClientMeaning).Error()
+					return
+				}
+				revoked = revoked || err == nil
 			}
-			revoked = revoked || err == nil
 		}
 		if revoked {
 			if output, err := mysqlExecStatement("FLUSH PRIVILEGES;"); err != nil {
@@ -349,38 +370,6 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	}
 	resp.Applied = true
 	followRemovedMySQLAccessUser(req.Username)
-}
-
-// mysqlDatabasePatternForms are the two ways a DATABASE-level grant
-// (mysql.db, SCHEMA_PRIVILEGES) can be written for this database: as written
-// (the panel's own GRANT writes `name`.*, and so did the lab's hand-made
-// grant) and with its wildcard characters escaped (`name\_x`.*). Both are
-// patterns: unescaped, `_` matches any one character, so the written form
-// also covers names that differ in those places - that is how MariaDB stores
-// database-level grants (open, alpha.134). A pattern that covers several
-// databases on purpose (`shop\_%`) is neither form: it stays and counts as a
-// right elsewhere. Table, column and routine rows hold the literal name and
-// are compared with the name only.
-// Veritabanı düzeyindeki bir hakkın bu veritabanı için iki yazımı.
-func mysqlDatabasePatternForms(database string) []string {
-	escaped := strings.NewReplacer(`_`, `\_`, `%`, `\%`).Replace(database)
-	if escaped == database {
-		return []string{database}
-	}
-	return []string{database, escaped}
-}
-
-// mysqlLiterals quotes each value as a MariaDB string, joined for IN (...).
-func mysqlLiterals(values []string) (string, error) {
-	quoted := make([]string, 0, len(values))
-	for _, value := range values {
-		literal, err := services.QuoteMySQLStringLiteral(value)
-		if err != nil {
-			return "", err
-		}
-		quoted = append(quoted, literal)
-	}
-	return strings.Join(quoted, ", "), nil
 }
 
 // mysqlDatabaseGone asks the engine whether a database of exactly that name
@@ -517,13 +506,14 @@ func mysqlAccessUserOtherRights(username, database string, hosts []string) (bool
 	user, _ := services.QuoteMySQLStringLiteral(username)
 	// "Not this database", compared BINARY (information_schema compares
 	// names case-insensitively, so a hand-made right on SHOP_A would pass for
-	// shop_a): at database level neither pattern form of its name; at table,
+	// shop_a): at database level neither form of its name (as written, or
+	// exact; mariadbgrant.Forms, compared as hexadecimal literals); at table,
 	// column and routine level not its literal name. A wildcard pattern
 	// counts as elsewhere.
-	patterns, err := mysqlLiterals(mysqlDatabasePatternForms(database))
-	if err != nil {
+	if !mariadbgrant.ValidName(database) {
 		return false, errors.New("invalid database name")
 	}
+	patterns := mariadbgrant.HexList(mariadbgrant.Forms(database))
 	name, _ := services.QuoteMySQLStringLiteral(database)
 	var grantees, hostLiterals []string
 	for _, host := range hosts {
@@ -570,23 +560,26 @@ func mysqlAccessUserOtherRights(username, database string, hosts []string) (bool
 	return count != "0", nil
 }
 
-// mysqlAccessUserHasGrantOn: whether user@host has a grant on the database
-// (a REVOKE of a grant that is not there is an engine error).
-func mysqlAccessUserHasGrantOn(username, host, database string) (bool, error) {
-	grantee, err := services.QuoteMySQLStringLiteral("'" + username + "'@'" + host + "'")
+// mysqlAccessUserGrantForms (alpha.134): the forms in which user@host
+// holds a database-level grant on the database, as stored - the name as
+// written (a pattern) and its exact form - read from mysql.db by
+// hexadecimal value, so neither sql_mode nor the client's escaping changes
+// the answer.
+func mysqlAccessUserGrantForms(username, host, database string) ([]string, error) {
+	output, err := mysqlExecStatement("SELECT CONCAT('f=', HEX(Db)) FROM mysql.db WHERE User = " + mariadbgrant.Hex(username) +
+		" AND Host = " + mariadbgrant.Hex(host) + " AND Db IN (" + mariadbgrant.HexList(mariadbgrant.Forms(database)) + ");")
 	if err != nil {
-		return false, fmt.Errorf("the account's host %q cannot be written as a MariaDB string", host)
+		return nil, hostcmd.Fail("the database server could not be asked about the user's rights", output, err, databaseClientMeaning)
 	}
-	db, _ := services.QuoteMySQLStringLiteral(database)
-	output, err := mysqlExecStatement("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE = " + grantee + " AND BINARY TABLE_SCHEMA = " + db + ";")
-	if err != nil {
-		return false, hostcmd.Fail("the database server could not be asked about the user's rights", output, err, databaseClientMeaning)
+	var forms []string
+	for _, value := range mariadbgrant.Markers(output, "f") {
+		stored, err := mariadbgrant.FromHex(value)
+		if err != nil {
+			return nil, err
+		}
+		forms = append(forms, stored)
 	}
-	count, ok := markerValue(output, "n")
-	if !ok {
-		return false, errors.New("the database server's answer about the user's rights could not be read")
-	}
-	return count != "0", nil
+	return forms, nil
 }
 
 // followRemovedMySQLAccessUser keeps the remote access record

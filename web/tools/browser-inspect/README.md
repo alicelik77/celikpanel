@@ -754,3 +754,10 @@ Roundcube's Manage page with the Webmail address card without an address (the
 suggestion), a check with no record yet (the record and the zone hosted here), a
 ready check and its set-up confirmation, and an enabled, proved address with its
 removal confirmation (`y33address`). Same conventions as batch 30.
+
+`scenarios-batch34.mjs` draws alpha.134's "Database rights by exact name" block
+on the MariaDB page from overrides only: nothing to do, being rewritten, waiting
+for a verified panel update, a registered server whose account is refused with
+narrowed rights and rights left as they are (Details open), a server that is not
+MariaDB, and the one home notification about rights left as they are
+(`y34grants`). Same conventions as batch 30.
