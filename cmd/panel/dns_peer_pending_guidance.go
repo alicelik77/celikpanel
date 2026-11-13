@@ -51,36 +51,34 @@ func dnsPeerProofTimeoutDetailEnglish(detail string) string {
 // dnsPeerPendingRetriesAutomatically reports whether the Panel re-checks a
 // pending publication with this code by itself.
 //
-// The rule (owner's lead, alpha.133 round 5): only a reason for which another
-// check provably cannot change the result stops the automatic re-checks.
-// Today that is dns_peer_journal_unresolved alone: the Agent keeps a check
-// record it cannot prove and never changes it by itself, so a re-check finds
-// the same files. Every other reason can clear by itself or because somebody
-// repairs either server (the backup switched off or unreachable, refusing the
-// check, an inspection access that was changed, a refused catalog transfer,
-// local evidence that changed back, an Agent that was updated), so it is
-// re-checked at the same slow cadence (15 s doubling to 5 min) and the
-// deletion finishes by itself, with no press, once the cause is gone. Such a
-// reason still becomes "stuck" after dnsPendingPublicationStuckAfter checks
-// in a row and the administrators are notified; it never becomes a state in
-// which nothing checks again. A re-check is the exact recovery of the same
-// accepted operation, the one a press of More → Delete… runs, one at a time
-// under the host mutation lock, and never a second deletion: making it
-// automatic changes when it runs, not what runs.
+// The rule (alpha.133 round 5, with its review): automatic re-checks stop
+// when another check provably cannot change the result
+// (dns_peer_journal_unresolved), or when the state says the server owner may
+// be changing this server's DNS by hand (dns_peer_owner_edit_unknown, plain or
+// found by a check of this server or the pair's identity): CelikPanel does
+// not act on its own over an owner's change (D-022), and the re-check's
+// recovery pre-checks treat some such edits as ambiguity that holds every
+// Agent change (RecoverDNSZoneV3, poisonDNSZoneSyncV3Runtime). One rule for
+// the Agent's log line and the Panel: transport.DNSPeerPendingStopsAutomaticRechecks.
+//
+// Every other reason can clear by itself or because somebody repairs either
+// server (the backup switched off, unreachable or refusing the check, a check
+// access that was changed, a refused catalog transfer, the backup still
+// serving the deleted zone, an Agent that was updated), so it is re-checked
+// at the same slow cadence (15 s doubling to 5 min) and the deletion finishes
+// by itself once the cause is gone. Such a reason still becomes "stuck" after
+// dnsPendingPublicationStuckAfter checks in a row and the administrators are
+// notified; it never becomes a state in which nothing checks again. A
+// re-check is the exact recovery of the same accepted operation, the one a
+// press of More → Delete… runs, under the host mutation lock; it never starts
+// a second deletion.
 //
 // Until this round only the backup catching up, a proof step that ran out of
 // time and dns_peer_journal_unknown were re-checked: a backup that did not
 // answer for one attempt and came back as dns_peer_inspection_unknown (lab
 // w9) left the deletion waiting until a person pressed Delete again.
 func dnsPeerPendingRetriesAutomatically(code string) bool {
-	if code == "" {
-		return true
-	}
-	reason, _, ok := transport.SplitDNSPeerPendingCode(code)
-	if !ok {
-		return true
-	}
-	return reason != transport.DNSPeerPendingJournalUnresolved
+	return !transport.DNSPeerPendingStopsAutomaticRechecks(code)
 }
 
 // These fallbacks are used by older clients without the translated reason key.
@@ -104,7 +102,7 @@ func dnsPeerPendingEnglish(code string) string {
 	case transport.DNSPeerPendingJournalUnresolved:
 		return dnsPeerJournalUnresolvedEnglish
 	case transport.DNSPeerPendingOwnerEditUnknown:
-		return "The DNS change is saved, but local or peer evidence changed during verification. This server's administrator must reconcile the accepted operation with native DNS configuration: compare the catalog zone and zone serials on both servers; CelikPanel checks this same publication again by itself every few minutes and continues it once the evidence matches."
+		return "The DNS change is saved, but local or peer evidence changed during verification. This server's administrator must reconcile the accepted operation with native DNS configuration: finish any change made by hand and compare the catalog zone and zone serials on both servers. CelikPanel does not check this again by itself while this server's DNS may be changed by hand (a difference seen only on the backup is checked again every few minutes); once it matches, deleting the domain again continues this same publication."
 	case transport.DNSPeerPendingCatalogTransferRefused:
 		return "The DNS change is saved, but the secondary has not been shown to have removed the zone: the secondary's named refused the inspector's local transfer of the catalog zone (allow-transfer). The secondary's owner allows that transfer from loopback on the secondary. A secondary whose DNS CelikPanel set up with this release already allows it; on one set up by an earlier release it arrives when CelikPanel next writes that server's DNS configuration. On a secondary you run without CelikPanel, add 127.0.0.1 and ::1 to the catalog zone's allow-transfer in named's configuration and reload named. CelikPanel checks this same publication again by itself every few minutes and continues it from where it stopped once the transfer is allowed."
 	case transport.DNSPeerPendingProofInternal:
@@ -191,6 +189,12 @@ func dnsPeerPendingDetailEnglish(reason, detail string) string {
 		return dnsPeerOwnerEditDetailEnglish(detail)
 	case transport.DNSPeerPendingProofTimeout:
 		return dnsPeerProofTimeoutDetailEnglish(detail)
+	case transport.DNSPeerPendingEnrollmentChanged:
+		if detail == transport.DNSPeerEnrollmentChangedHostKey {
+			// alpha.133 round 5 review: possibly a security event.
+			return "The backup DNS server answered with another SSH host key than the pinned one. Find out whether it was really reinstalled or re-keyed before you set the check access up again; if it was not, treat it as a security problem."
+		}
+		return ""
 	default:
 		return ""
 	}

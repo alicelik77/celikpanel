@@ -21,7 +21,9 @@ const (
 	CodeUnavailable = dnspeertransport.CodeUnavailable
 	CodeMalformed   = dnspeertransport.CodeMalformed
 	CodeNoAnswer    = dnspeertransport.CodeNoAnswer
-	maxWireSize     = 4096
+	// CodeHostKeyChanged: another SSH host key than the pinned one.
+	CodeHostKeyChanged = dnspeertransport.CodeHostKeyChanged
+	maxWireSize        = 4096
 )
 
 func IsCode(err error, code Code) bool { return dnspeertransport.IsCode(err, code) }
@@ -74,8 +76,10 @@ func Inspect(ctx context.Context, enrollment Enrollment, request pdnspeerproof.R
 		// non-zero. At most one reviewed token bound to this request survives.
 		return zero, noAuth, Unknown{Code: CodeUnavailable, Reason: pdnsInspectorReason(reason)}
 	}
-	if IsCode(err, CodeNoAnswer) {
-		return zero, noAuth, Unknown{Code: CodeNoAnswer}
+	for _, code := range []Code{CodeNoAnswer, CodeHostKeyChanged, CodeEnrollment} {
+		if IsCode(err, code) {
+			return zero, noAuth, Unknown{Code: code}
+		}
 	}
 	if err != nil || !auth.Established || auth.PeerIP != enrollment.PeerIP ||
 		auth.IdentitySHA256 != enrollment.HostKeySHA256 {

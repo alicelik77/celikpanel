@@ -96,9 +96,9 @@ interface PendingDeletion {
 // A reason the guide words reads again on its own while CelikPanel re-checks
 // it by itself (alpha.133), so a finished deletion leaves without a refresh;
 // a press of Delete stays possible for it.
-const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp) => ({
+const pendingFlags = (reason: string, followUp?: DomainDeletionFollowUp, detail = '') => ({
     automatic: domainDeletionReasonAutomatic(reason) ||
-        (domainDeletionGuideReason(reason) !== null && deletionGuideFollowUp(reason, followUp) === 'automatic'),
+        (domainDeletionGuideReason(reason, detail) !== null && deletionGuideFollowUp(reason, followUp, detail) === 'automatic'),
     blocksRetry: domainDeletionBlocksRetry(reason),
     quiet: domainDeletionQuiet(reason),
 });
@@ -287,7 +287,7 @@ export function Domains() {
             if (saved.state === 'unknown') return { id: domain.id, name: domain.domain_name, message: null };
             return saved.saved === null ? null : {
                 id: domain.id, name: domain.domain_name, message: pendingMessage(saved.saved.reason, saved.saved.detail, saved.saved),
-                ...pendingFlags(saved.saved.reason, saved.saved.followUp),
+                ...pendingFlags(saved.saved.reason, saved.saved.followUp, saved.saved.detail),
                 guide: { reason: saved.saved.reason, detail: saved.saved.detail, followUp: saved.saved.followUp, nextCheckAt: saved.saved.nextCheckAt },
             };
         })).then((observed) => {

@@ -34,10 +34,13 @@ import (
 // dnsPublicationMu (the same order as every publication) and the Agent admits
 // one resume of one exact pending job at a time.
 //
-// Causes that need a person (dnsPeerPendingRetriesAutomatically) are never
-// retried in a loop; they keep their guidance until the owner retries or the
-// cause changes. Repeated failures that are not a reviewed pending result end
-// automatic attempts (RESILIENCE-CONTRACT invariant 4).
+// The causes that stop the automatic re-checks (dnsPeerPendingRetriesAutomatically:
+// an unresolved check record, an owner edit of this server's DNS) are never
+// retried in a loop; the administrators get one notification and the guidance
+// stays until a person retries or the cause changes. Every other reviewed
+// cause is re-checked (alpha.133 round 5). Repeated failures that are not a
+// reviewed pending result end automatic attempts (RESILIENCE-CONTRACT
+// invariant 4).
 //
 // A transient cause that comes back the same way dnsPendingPublicationStuckAfter
 // times in a row (about a quarter of an hour) is no longer reported as
@@ -335,7 +338,9 @@ func (s *dnsPendingPublicationScheduler) takeStuckNotice(requestID string) (dnsP
 
 // takePersonNotice reports, once per entry, that the administrators must be
 // told about a cause that needs a person and that only a notification can
-// bring to them: dns_peer_journal_unresolved (alpha.133). It marks it raised.
+// bring to them: every code that stops the automatic re-checks
+// (transport.DNSPeerPendingStopsAutomaticRechecks: an unresolved check record,
+// or an owner edit of this server's DNS; alpha.133). It marks it raised.
 func (s *dnsPendingPublicationScheduler) takePersonNotice(requestID string) (dnsPendingPublicationEntry, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -343,7 +348,7 @@ func (s *dnsPendingPublicationScheduler) takePersonNotice(requestID string) (dns
 	if entry == nil || entry.Noticed {
 		return dnsPendingPublicationEntry{}, false
 	}
-	if reason, _, ok := transport.SplitDNSPeerPendingCode(entry.Code); !ok || reason != transport.DNSPeerPendingJournalUnresolved {
+	if !transport.DNSPeerPendingStopsAutomaticRechecks(entry.Code) {
 		return dnsPendingPublicationEntry{}, false
 	}
 	entry.Noticed = true
@@ -1080,6 +1085,15 @@ func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dn
 		"dns_publication:"+lease.ZoneName, lease.RequestID, body, dnsPublicationNoticeFixPath(lease.DesiredAction == "delete"))
 }
 
+// dnsPublicationNoticeCode joins a notice body's reason and detail back into
+// the pending code.
+func dnsPublicationNoticeCode(reason, detail string) string {
+	if detail == "" {
+		return reason
+	}
+	return reason + ":" + detail
+}
+
 // dnsPublicationNoticeFixPath is the page the notification's button opens:
 // the page its text sends the reader to (alpha.133 round 5: a deletion's
 // notification said "On Domains, open Details …" while its button opened
@@ -1109,7 +1123,7 @@ func (p *Panel) clearDNSPublicationStuckNotice(ctx context.Context, lease dnsZon
 // such a notification exists.
 func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases []dnsZoneEngineLease) {
 	rows, err := p.db.GetDB().QueryContext(ctx,
-		`SELECT DISTINCT period, COALESCE(json_extract(body, '$.reason'), '') FROM account_notices WHERE kind = ? AND seen_at IS NULL`,
+		`SELECT DISTINCT period, COALESCE(json_extract(body, '$.reason'), ''), COALESCE(json_extract(body, '$.detail'), '') FROM account_notices WHERE kind = ? AND seen_at IS NULL`,
 		noticeDNSPublicationStuck)
 	if err != nil {
 		return
@@ -1121,8 +1135,8 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	scheduler := p.dnsPendingPublications()
 	var ended []string
 	for rows.Next() {
-		var period, reason string
-		if rows.Scan(&period, &reason) != nil {
+		var period, reason, detail string
+		if rows.Scan(&period, &reason, &detail) != nil {
 			continue
 		}
 		if !pending[period] {
@@ -1131,9 +1145,10 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 		}
 		// "A person must act" no longer holds once the exact job reports
 		// another cause (alpha.133 review): the administrator acted.
-		if reason == transport.DNSPeerPendingJournalUnresolved {
-			if entry, ok := scheduler.entry(period); ok && entry.Observed && entry.Code != "" {
-				if current, _, known := transport.SplitDNSPeerPendingCode(entry.Code); known && current != reason {
+		stored := dnsPublicationNoticeCode(reason, detail)
+		if transport.DNSPeerPendingStopsAutomaticRechecks(stored) {
+			if entry, ok := scheduler.entry(period); ok && entry.Observed && entry.Code != "" && entry.Code != stored {
+				if _, _, known := transport.SplitDNSPeerPendingCode(entry.Code); known {
 					ended = append(ended, period)
 				}
 			}
@@ -1208,6 +1223,20 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 		}
 		w.TextEN = doneEN + ", but " + dnsJournalUnresolvedNoticeEN
 		w.TextTR = doneTR + "; ancak " + dnsJournalUnresolvedNoticeTR
+		return w
+	}
+	if transport.DNSPeerPendingStopsAutomaticRechecks(dnsPublicationNoticeCode(reason, detail)) {
+		// An owner edit of this server's DNS (alpha.133 round 5): not
+		// re-checked by itself; the administrator finishes the change and
+		// the row's Delete continues the same deletion.
+		w.TitleEN = "The removal of " + zone + " from DNS waits for the server administrator"
+		w.TitleTR = zone + " alan adının DNS'ten kaldırılması sunucu yöneticisini bekliyor"
+		if !deletion {
+			w.TitleEN = "The DNS change of " + zone + " waits for the server administrator"
+			w.TitleTR = zone + " DNS değişikliği sunucu yöneticisini bekliyor"
+		}
+		w.TextEN = doneEN + ", but the DNS of this server changed while it was being confirmed, so CelikPanel does not confirm it and does not check it again by itself: it never acts over a change made by hand. Who acts: you. Finish any change you or someone else is making to this server's DNS. Then on Domains, More → Delete… on this domain's row continues this same deletion."
+		w.TextTR = doneTR + "; ancak doğrulanırken bu sunucunun DNS'i değişti, bu yüzden CelikPanel bunu doğrulamıyor ve kendiliğinden yeniden denetlemiyor: elle yapılan bir değişikliğin üzerinden asla iş yapmaz. Kim yapar: siz. Bu sunucunun DNS'inde sizin ya da bir başkasının yaptığı değişikliği tamamlayın. Ardından Alan Adları sayfasında bu alan adının satırındaki Diğer → Sil… aynı silmeyi sürdürür."
 		return w
 	}
 	switch {

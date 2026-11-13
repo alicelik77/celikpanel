@@ -139,12 +139,17 @@ func TestW9BackupThatAnswersAndRefusesKeepsItsCode(t *testing.T) {
 
 // The Agent's line for the one reason the Panel does not re-check says so.
 func TestAwaitingPeerLineFollowsTheCode(t *testing.T) {
-	unresolved := pairedDeletionAwaitingPeer(dnsV3ProofNativePeer, transport.DNSPeerPendingJournalUnresolved).Error()
-	if strings.Contains(unresolved, "again automatically until") || !strings.Contains(unresolved, "does not check this operation again automatically") {
-		t.Fatalf("unresolved line: %s", unresolved)
+	for _, code := range []string{transport.DNSPeerPendingJournalUnresolved, transport.DNSPeerPendingOwnerEditUnknown,
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog),
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckAuthority)} {
+		line := pairedDeletionAwaitingPeer(dnsV3ProofNativePeer, code).Error()
+		if strings.Contains(line, "again automatically until") || !strings.Contains(line, "does not check this operation again automatically") {
+			t.Fatalf("%s line: %s", code, line)
+		}
 	}
 	for _, code := range []string{"", transport.DNSPeerPendingCatchingUp, transport.DNSPeerPendingInspectionUnknown,
-		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange), transport.DNSPeerPendingProofInternal} {
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange), transport.DNSPeerPendingProofInternal,
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckZoneAnswered)} {
 		line := pairedDeletionAwaitingPeer(dnsV3ProofNativePeer, code).Error()
 		if !strings.Contains(line, "checks the same operation again automatically until it is confirmed") {
 			t.Fatalf("%q line: %s", code, line)

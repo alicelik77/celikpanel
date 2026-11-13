@@ -1,6 +1,6 @@
 import type { TranslationKey } from '../i18n/en';
 import { formatTime } from './dateFormat';
-import { domainDeletionBlocksRetry, domainDeletionGuideNeedsPerson, domainDeletionGuideReason, type DomainDeletionFollowUp } from './domainDeletionPending';
+import { domainDeletionBlocksRetry, domainDeletionGuideNeedsPerson, domainDeletionGuideReason, domainDeletionStopsRechecks, type DomainDeletionFollowUp } from './domainDeletionPending';
 
 // The words of a domain deletion waiting for its DNS step (alpha.133, D-024):
 // why in one sentence, who acts, the next step only when someone has one,
@@ -21,11 +21,13 @@ export const DELETION_LOG_COMMAND = 'sudo journalctl -u celikpanel-agent | grep 
 export const DELETION_RECORD_LIST_COMMAND = 'sudo ls -la /var/lib/celikpanel-agent-private';
 
 /** What happens next when the server did not say: a reason that needs a person, or CelikPanel's own re-check. */
-export function deletionGuideFollowUp(reason: string, followUp?: DomainDeletionFollowUp): DomainDeletionFollowUp {
-    // The one reason CelikPanel never re-checks by itself: a person acts,
+export function deletionGuideFollowUp(reason: string, followUp?: DomainDeletionFollowUp, detail = ''): DomainDeletionFollowUp {
+    // The reasons CelikPanel never re-checks by itself: a person acts,
     // whatever else an answer might say.
-    if (reason === 'dns_peer_journal_unresolved') return followUp === 'stopped' ? 'stopped' : 'person';
-    return followUp ?? 'automatic';
+    if (domainDeletionStopsRechecks(reason, detail)) return followUp === 'stopped' ? 'stopped' : 'person';
+    // Every other reason is re-checked (alpha.133 round 5); "person" from an
+    // older answer means the same as the re-check with who acts.
+    return !followUp || followUp === 'person' ? 'automatic' : followUp;
 }
 
 export interface DeletionGuideInput {
@@ -82,13 +84,15 @@ export function deletionGuideWords(
         : at <= now
             ? k(`then.${family}now`)
             : k(`then.${family}at`, { time: formatTime(new Date(at), locale) });
-    switch (deletionGuideFollowUp(input.reason, input.followUp)) {
+    switch (deletionGuideFollowUp(input.reason, input.followUp, input.detail)) {
         case 'person':
+            // An unresolved check record, or an owner edit of this server's
+            // DNS (alpha.133 round 5 review): CelikPanel waits for the person.
             return admin
                 ? {
                     tone: 'blocked', automatic: false, why, who: k('who.youAdministrator'),
-                    next: guide === 'journalUnresolved' ? k(window ? 'journalUnresolved.nextWindow' : 'journalUnresolved.next') : k('stuck.next'),
-                    then: k(noRetry ? 'then.stoppedSupport' : 'then.person'),
+                    next: guide === 'journalUnresolved' ? k(window ? 'journalUnresolved.nextWindow' : 'journalUnresolved.next') : k(`${guide}.next`),
+                    then: k(noRetry ? 'then.stoppedSupport' : guide === 'journalUnresolved' ? 'then.person' : `${guide}.then`),
                 }
                 : { tone: 'blocked', automatic: false, why, who: k('who.administrator'), next: k('journalUnresolved.nextOther'), then: k('then.personOther') };
         case 'stopped':
@@ -99,7 +103,9 @@ export function deletionGuideWords(
             return {
                 tone: 'blocked', automatic: false, why,
                 who: admin ? k(person ? `${guide}.who` : 'who.youAdministrator') : k('who.administrator'),
-                next: admin ? k(person ? `${guide}.next` : 'stuck.next') : k('stuck.nextOther'),
+                // One concrete step: the reason's own, or for a reason
+                // CelikPanel's checks usually clear, what to look at now.
+                next: admin ? k(person ? `${guide}.next` : `${guide}.stuckNext`) : k('stuck.nextOther'),
                 then: k('then.stuck'),
             };
         default: {

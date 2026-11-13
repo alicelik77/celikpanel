@@ -26,7 +26,6 @@ export const enDeletionGuideScreens = {
     'domains.deletionGuide.journalUnresolved.next': 'Send the two command outputs under Details to CelikPanel support, and do not delete those files yourself.',
     'domains.deletionGuide.journalUnresolved.nextWindow': 'Open Details in the waiting notice at the top of Domains and send the two command outputs it shows to CelikPanel support; do not delete those files yourself.',
     'domains.deletionGuide.journalUnresolved.nextOther': 'Tell this server’s administrator (your hosting provider); nothing is needed from you.',
-    'domains.deletionGuide.stuck.next': 'Follow the step in the notification CelikPanel sent about this deletion.',
     'domains.deletionGuide.stuck.nextOther': 'Tell this server’s administrator (your hosting provider) if this stays.',
     'domains.deletionGuide.stopped.next': 'Read the CelikPanel Agent’s lines with the command under Details and fix what they name.',
     'domains.deletionGuide.stopped.nextWindow': 'Open Details in the waiting notice at the top of Domains, read the CelikPanel Agent’s lines with the command it shows and fix what they name.',

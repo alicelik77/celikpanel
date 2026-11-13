@@ -43,7 +43,7 @@ export function DeletionWaitingGuide({ name, input, admin, onCheck }: {
             then={words.then}
             action={<Button variant="secondary" onClick={onCheck}>{t('domains.checkDeletionStatus')}</Button>}
             data-domain-deletion-guide={name}
-            data-follow-up={deletionGuideFollowUp(input.reason, input.followUp)}
+            data-follow-up={deletionGuideFollowUp(input.reason, input.followUp, input.detail)}
         >
             {admin && (
                 <details className="text-xs text-fg-muted" data-deletion-guide-details="">

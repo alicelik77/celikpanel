@@ -304,15 +304,20 @@ func TestDNSPendingPublicationOwnerActionCauseIsNotRetried(t *testing.T) {
 		transport.DNSPeerPendingEnrollmentRequired, transport.DNSPeerPendingEnrollmentChanged,
 		transport.DNSPeerPendingInspectionUnknown, transport.DNSPeerPendingInspectionUnknownWithDetail(transport.DNSPeerInspectorReasonNamedUnavailable),
 		transport.DNSPeerPendingNativeUnknown,
-		transport.DNSPeerPendingOwnerEditUnknown, transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog),
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckTransferObserved),
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckZoneAnswered),
 		transport.DNSPeerPendingCatalogTransferRefused, transport.DNSPeerPendingProofInternal,
 	} {
 		if !dnsPeerPendingRetriesAutomatically(retried) {
 			t.Fatalf("%q can clear by itself or by a repair and must be re-checked automatically", retried)
 		}
 	}
-	if dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnresolved) {
-		t.Fatal("dns_peer_journal_unresolved: a re-check cannot change it and must not be retried in a loop")
+	for _, person := range []string{transport.DNSPeerPendingJournalUnresolved, transport.DNSPeerPendingOwnerEditUnknown,
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog),
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckAuthority)} {
+		if dnsPeerPendingRetriesAutomatically(person) {
+			t.Fatalf("%s must not be retried in a loop", person)
+		}
 	}
 }
 

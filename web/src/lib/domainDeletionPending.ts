@@ -69,6 +69,9 @@ const reviewedDetailsByReason: Record<string, Set<string>> = {
     dns_peer_inspection_unknown: reviewedInspectorDetails,
     dns_peer_owner_edit_unknown: reviewedOwnerEditChecks,
     dns_peer_proof_timeout: reviewedProofTimeoutSides,
+    // alpha.133 round 5 review: the backup presented another SSH host key
+    // (its own guide, "peerHostKeyChanged").
+    dns_peer_enrollment_changed: new Set(['host_key']),
 };
 
 // The translation key of a reviewed detail sentence, or null.
@@ -114,7 +117,28 @@ const guideReasons: Record<string, string> = {
  */
 export function domainDeletionGuideReason(reason: string, detail = ''): string | null {
     if (reason === 'dns_peer_proof_timeout' && detail === 'peer_exchange') return 'peerNoAnswer';
+    // The backup still transfers or answers for the deleted zone: the
+    // backup's answer did not show the removal (alpha.133 round 5 review).
+    if (reason === 'dns_peer_owner_edit_unknown' && backupSideOwnerEditChecks.has(detail)) return 'peerNotRemoved';
+    if (reason === 'dns_peer_enrollment_changed' && detail === 'host_key') return 'peerHostKeyChanged';
     return Object.prototype.hasOwnProperty.call(guideReasons, reason) ? guideReasons[reason] : null;
+}
+
+// Owner-edit checks that only look at the backup DNS server (they run after
+// the recovery's own pre-checks of this server); the others mean this
+// server's DNS may be changed by hand.
+const backupSideOwnerEditChecks = new Set(['transfer_observed', 'zone_answered']);
+
+/**
+ * Whether CelikPanel stops checking a deletion's DNS step by itself
+ * (cmd/panel dnsPeerPendingRetriesAutomatically, one rule in
+ * internal/transport DNSPeerPendingStopsAutomaticRechecks): a check record it
+ * cannot sort out, or an owner edit of this server's DNS, which CelikPanel
+ * never acts over on its own.
+ */
+export function domainDeletionStopsRechecks(reason: string, detail = ''): boolean {
+    return reason === 'dns_peer_journal_unresolved' ||
+        (reason === 'dns_peer_owner_edit_unknown' && !backupSideOwnerEditChecks.has(detail));
 }
 
 /**
@@ -122,7 +146,7 @@ export function domainDeletionGuideReason(reason: string, detail = ''): string |
  * still checks again by itself and the deletion finishes once it is fixed,
  * but "you do not need to do anything" would be untrue.
  */
-const personGuides = new Set(['peerSetup', 'peerAccessChanged', 'peerRefused', 'peerNotRemoved', 'evidenceChanged', 'transferRefused', 'internal']);
+const personGuides = new Set(['peerSetup', 'peerAccessChanged', 'peerHostKeyChanged', 'peerRefused', 'peerNotRemoved', 'evidenceChanged', 'transferRefused', 'internal']);
 
 export function domainDeletionGuideNeedsPerson(guide: string): boolean {
     return personGuides.has(guide);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { domainDeletionBlocksRetry, domainDeletionGuideReason, readDomainDeletionOutcome, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
+import { domainDeletionBlocksRetry, domainDeletionGuideReason, domainDeletionStopsRechecks, readDomainDeletionOutcome, readSavedDomainDeletionState } from '../src/lib/domainDeletionPending.ts';
 import { compileSource, dateFormatURL } from './fixtures/shared-layer.mjs';
 import { enDeletionGuideScreens } from '../src/i18n/screens/deletionGuide/en.ts';
 import { trDeletionGuideScreens } from '../src/i18n/screens/deletionGuide/tr.ts';
@@ -165,7 +165,10 @@ test('every DNS proof reason reaches the screen with all its rows', () => {
   const finishesByItself = new Set(['journalUnknown', 'proofTimeout', 'catchingUp', 'peerNoAnswer']);
   for (const [screens, words, lang] of [[enScreens, en, 'en'], [trScreens, tr, 'tr']]) {
     const t = translate({ ...screens, ...words });
-    for (const [reason, detail] of [...peerReasons.map((code) => [code, '']), ['dns_peer_proof_timeout', 'peer_exchange'], ['dns_peer_proof_timeout', 'local_check']]) {
+    const composites = [['dns_peer_proof_timeout', 'peer_exchange'], ['dns_peer_proof_timeout', 'local_check'], ['dns_peer_enrollment_changed', 'host_key'],
+      ...['operation_attempt', 'engine_state', 'active_engine', 'native_binding', 'deletion_receipt', 'producer_catalog', 'catalog_probe', 'authority',
+        'transfer_observed', 'zone_answered'].map((check) => ['dns_peer_owner_edit_unknown', check])];
+    for (const [reason, detail] of [...peerReasons.map((code) => [code, '']), ...composites]) {
       const segment = domainDeletionGuideReason(reason, detail);
       assert.ok(segment, `${reason}: no guide`);
       assert.ok(words[`domains.deletionGuide.${segment}.why`] && words[`domains.deletionGuide.${segment}.details`], `${lang} ${segment}: why or details`);
@@ -179,8 +182,15 @@ test('every DNS proof reason reaches the screen with all its rows', () => {
             assert.ok(!text.includes('domains.deletionGuide.') && !text.includes('err.'), `${label}: missing key in ${text}`);
             assert.doesNotMatch(text, /dns_peer|_unknown|SSH|pinned|sabitlenmi|inspection|inceleme|publication|yayın/i, `${label}: jargon or a code: ${text}`);
             if (!guide.automatic) assert.ok(guide.next, `${label}: a person acts but no next step`);
+            // Review of round 5 (S1): an owner edit of this server's DNS is a
+            // person state; nothing there says it finishes by itself.
+            if (domainDeletionStopsRechecks(reason, detail) && followUp !== 'stopped') {
+              assert.ok(!guide.automatic && guide.tone === 'blocked', `${label}: not a person state`);
+              assert.doesNotMatch(text, /finishes by itself|kendiliğinden biter|nothing more is needed|değiştirilmediyse/, `${label}: promises it continues alone`);
+            }
             if (guide.automatic) {
-              assert.ok(finishesByItself.has(segment) && (followUp === undefined || followUp === 'automatic'),
+              // "person" for a re-checked reason reads as the re-check itself.
+              assert.ok(finishesByItself.has(segment) && (followUp === undefined || followUp === 'automatic' || followUp === 'person'),
                 `${label}: says nobody needs to act`);
             }
           }

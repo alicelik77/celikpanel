@@ -73,13 +73,19 @@ const (
 	// is classified the same however quickly or at whichever instant of the
 	// time bound it came back.
 	CodeNoAnswer Code = "peer_no_answer"
+	// CodeHostKeyChanged (alpha.133 round 5 review): the peer answered with
+	// another SSH host key than the pinned one. An answer, and a possible
+	// security event; the Agent reports dns_peer_enrollment_changed:host_key.
+	CodeHostKeyChanged Code = "peer_host_key_changed"
 )
 
 // PeerAnswered reports an inspection the enrolled peer did answer (with an
 // answer this server cannot accept): CodeUnavailable or CodeMalformed. Such
 // an outcome keeps its own reason even when it came back at the step's time
 // bound; CodeNoAnswer, CodeEnrollment and anything else do not.
-func (e Unknown) PeerAnswered() bool { return e.Code == CodeUnavailable || e.Code == CodeMalformed }
+func (e Unknown) PeerAnswered() bool {
+	return e.Code == CodeUnavailable || e.Code == CodeMalformed || e.Code == CodeHostKeyChanged
+}
 
 // Unknown never asserts absence, failure of the native service, or deletion.
 // Details from SSH, including paths and stderr, are deliberately not returned.
@@ -188,8 +194,13 @@ func Inspect(ctx context.Context, enrollment Enrollment, request dnspeerproof.Re
 			Code: CodeUnavailable, Reason: bindInspectorReason(reason),
 		}
 	}
-	if IsCode(err, CodeNoAnswer) {
-		return dnspeerproof.ResponseV1{}, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
+	// No answer, another host key, and this server's own enrollment or key
+	// file (alpha.133 round 5 review: an unreadable key here is not the
+	// backup refusing) keep their own codes.
+	for _, code := range []Code{CodeNoAnswer, CodeHostKeyChanged, CodeEnrollment} {
+		if IsCode(err, code) {
+			return dnspeerproof.ResponseV1{}, dnspeerproof.PeerAuthentication{}, Unknown{Code: code}
+		}
 	}
 	if err != nil || !auth.Established || auth.PeerIP != enrollment.PeerIP || auth.IdentitySHA256 != enrollment.HostKeySHA256 {
 		return dnspeerproof.ResponseV1{}, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
@@ -237,6 +248,7 @@ func exchangeFixed(ctx context.Context, enrollment Enrollment, request []byte, c
 func connectionLost(err error) bool {
 	var netErr net.Error
 	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, io.ErrClosedPipe) ||
 		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) ||
 		errors.Is(err, os.ErrDeadlineExceeded) || errors.As(err, &netErr)
 }
@@ -324,14 +336,23 @@ func exchangeFixedAt(ctx context.Context, enrollment Enrollment, request []byte,
 		}
 	}()
 	defer close(closed)
-	clientConn, chans, reqs, err := ssh.NewClientConn(conn, net.JoinHostPort(enrollment.PeerIP, "22"), config)
+	banner := &bannerConn{Conn: conn}
+	clientConn, chans, reqs, err := ssh.NewClientConn(banner, net.JoinHostPort(enrollment.PeerIP, "22"), config)
 	switch {
 	case hostKeySeen && !matched:
-		// Another host answered on the peer's address.
-		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
+		// Another host key on the peer's address.
+		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeHostKeyChanged}
+	case err != nil && !hostKeySeen && !banner.notSSH():
+		// Before any host key was accepted for checking: a connection that
+		// ended, was reset or ran out of time is no answer; a failed key
+		// exchange (no common algorithm, a host key signature that does not
+		// verify, a protocol error) is an answer this server cannot accept
+		// (alpha.133 round 5 review: x/crypto verifies the signature before
+		// it calls HostKeyCallback).
+		return nil, dnspeerproof.PeerAuthentication{}, noAnswerOr(ctx, err)
 	case err != nil && !hostKeySeen:
-		// The connection ended (or the time ran out) before any host key.
-		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeNoAnswer}
+		// Another service answered on the SSH port.
+		return nil, dnspeerproof.PeerAuthentication{}, Unknown{Code: CodeUnavailable}
 	case err != nil:
 		// The pinned host refused the enrolled key, unless the connection
 		// itself was lost or the time ran out during authentication.
@@ -376,6 +397,29 @@ func exchangeFixedAt(ctx context.Context, enrollment Enrollment, request []byte,
 	}
 	auth := dnspeerproof.PeerAuthentication{Established: true, IdentitySHA256: enrollment.HostKeySHA256, PeerIP: enrollment.PeerIP}
 	return stdout.Bytes(), auth, nil
+}
+
+// bannerConn keeps the first bytes the peer sent, so that a service other
+// than SSH on the peer's port (its first bytes are not "SSH-") is told from
+// an sshd that went away before its host key.
+type bannerConn struct {
+	net.Conn
+	first []byte
+}
+
+func (c *bannerConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	if need := 4 - len(c.first); need > 0 && n > 0 {
+		c.first = append(c.first, p[:min(need, n)]...)
+	}
+	return n, err
+}
+
+// notSSH reports that the peer sent bytes and they do not start an SSH
+// identification line. RFC 4253 allows other lines before it, so this is only
+// read when the handshake failed.
+func (c *bannerConn) notSSH() bool {
+	return len(c.first) > 0 && !bytes.HasPrefix([]byte("SSH-"), c.first) && !bytes.HasPrefix(c.first, []byte("SSH-"))
 }
 
 type limitedBuffer struct {

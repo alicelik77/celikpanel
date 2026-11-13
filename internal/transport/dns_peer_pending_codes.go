@@ -132,6 +132,23 @@ const (
 	DNSPeerProofTimeoutPeerExchange = "peer_exchange"
 )
 
+// DNSPeerEnrollmentChangedHostKey (alpha.133 round 5 review): the detail of
+// dns_peer_enrollment_changed when the backup presented another SSH host key
+// than the pinned one. It may be a reinstall or re-key of the backup, or a
+// security problem; only the administrator can tell, so it has its own
+// guidance ("dns_peer_enrollment_changed:host_key").
+const DNSPeerEnrollmentChangedHostKey = "host_key"
+
+// DNSPeerPendingEnrollmentChangedWithDetail returns the composite code of an
+// enrollment that cannot be trusted with one reviewed detail; an unreviewed
+// detail keeps the plain reason.
+func DNSPeerPendingEnrollmentChangedWithDetail(detail string) string {
+	if detail != DNSPeerEnrollmentChangedHostKey {
+		return DNSPeerPendingEnrollmentChanged
+	}
+	return DNSPeerPendingEnrollmentChanged + dnsPeerPendingDetailSeparator + detail
+}
+
 // ValidDNSPeerProofTimeoutDetail reports a reviewed proof-timeout detail.
 func ValidDNSPeerProofTimeoutDetail(detail string) bool {
 	return detail == DNSPeerProofTimeoutLocalCheck || detail == DNSPeerProofTimeoutPeerExchange
@@ -218,6 +235,10 @@ func SplitDNSPeerPendingCode(code string) (reason, detail string, ok bool) {
 		if !ValidDNSPeerProofTimeoutDetail(detail) {
 			return "", "", false
 		}
+	case DNSPeerPendingEnrollmentChanged:
+		if detail != DNSPeerEnrollmentChangedHostKey {
+			return "", "", false
+		}
 	default:
 		return "", "", false
 	}
@@ -238,6 +259,34 @@ func validDNSPeerPendingReason(code string) bool {
 		DNSPeerPendingCatchingUp,
 		DNSPeerPendingJournalUnresolved:
 		return true
+	default:
+		return false
+	}
+}
+
+// DNSPeerPendingStopsAutomaticRechecks reports a pending code the Panel does
+// not re-check by itself (alpha.133 round 5). Automatic re-checks stop when
+// another check provably cannot change the result (dns_peer_journal_unresolved:
+// the Agent never changes an unprovable check record by itself), or when the
+// state says the server owner may be changing this server's DNS by hand
+// (dns_peer_owner_edit_unknown, plain or found by a check of this server or
+// of the pair's identity): CelikPanel does not act on its own over an owner's
+// change (D-022), and a re-check of such a state can make the Agent hold
+// every change (its recovery pre-checks treat some owner edits as ambiguity).
+// The backup-side owner-edit checks (the backup still transfers or answers
+// for the deleted zone) are observed only after those pre-checks, inside the
+// propagation, whose every outcome is a pending result; they stay automatic.
+// Every other reviewed code, an unreviewed one and "" are re-checked.
+func DNSPeerPendingStopsAutomaticRechecks(code string) bool {
+	reason, detail, ok := SplitDNSPeerPendingCode(code)
+	if !ok {
+		return false
+	}
+	switch reason {
+	case DNSPeerPendingJournalUnresolved:
+		return true
+	case DNSPeerPendingOwnerEditUnknown:
+		return detail != DNSPeerOwnerEditCheckTransferObserved && detail != DNSPeerOwnerEditCheckZoneAnswered
 	default:
 		return false
 	}

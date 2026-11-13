@@ -328,13 +328,14 @@ func catalogAXFRProbesForSourceEngine(engine transport.DNSEngine) (dnsCatalogAXF
 // denetimler onaysız bitince Panel söyler.
 //
 // alpha.133 round 5: the line's ending follows the reviewed code (pending,
-// "" when none): the Panel re-checks every code automatically except
-// dns_peer_journal_unresolved, which waits for the server administrator
-// (cmd/panel dnsPeerPendingRetriesAutomatically). Until then it said "checks
-// the same operation again automatically" for every code.
+// "" when none), by the rule the Panel follows
+// (transport.DNSPeerPendingStopsAutomaticRechecks: an unresolved check record
+// or an owner edit of this server's DNS waits for the server administrator;
+// everything else is checked again). Until then it said "checks the same
+// operation again automatically" for every code.
 func pairedDeletionAwaitingPeer(check dnsV3ProofCheck, pending string) error {
-	if reason, _, ok := transport.SplitDNSPeerPendingCode(pending); ok && reason == transport.DNSPeerPendingJournalUnresolved {
-		return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s): this server's check record of the backup's confirmation is in a state the Agent cannot sort out by itself; the Panel does not check this operation again automatically and asks the server administrator to act", check)
+	if transport.DNSPeerPendingStopsAutomaticRechecks(pending) {
+		return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s, reason=%s): the Panel does not check this operation again automatically and asks the server administrator to act", check, pending)
 	}
 	return fmt.Errorf("paired DNS deletion is not confirmed yet (check=%s): waiting for the backup DNS server to confirm the deletion; the Panel checks the same operation again automatically until it is confirmed and notifies the administrators if the same cause lasts", check)
 }

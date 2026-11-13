@@ -5,6 +5,9 @@ package dnspeertransport
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"io"
 	"net"
@@ -15,6 +18,40 @@ import (
 
 	"golang.org/x/crypto/ssh"
 )
+
+// badSignatureSigner presents the pinned public key but signs with another
+// key: the host key signature does not verify.
+type badSignatureSigner struct {
+	pinned ssh.PublicKey
+	other  ssh.Signer
+}
+
+func (s badSignatureSigner) PublicKey() ssh.PublicKey { return s.pinned }
+func (s badSignatureSigner) Sign(r io.Reader, data []byte) (*ssh.Signature, error) {
+	return s.other.Sign(r, data)
+}
+
+// lineServer answers on a loopback port with fixed bytes and closes: a
+// service that is not SSH.
+func lineServer(t *testing.T, payload string) func(context.Context, string) (net.Conn, error) {
+	return func(ctx context.Context, _ string) (net.Conn, error) {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			return nil, err
+		}
+		go func() {
+			defer listener.Close()
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_, _ = io.WriteString(conn, payload)
+			time.Sleep(50 * time.Millisecond)
+			conn.Close()
+		}()
+		return (&net.Dialer{}).DialContext(ctx, "tcp", listener.Addr().String())
+	}
+}
 
 // exchangeServer serves one SSH connection whose session behaves as mode
 // says: "reject" refuses the session channel, "exit1" runs the command and
@@ -70,13 +107,18 @@ func (s *exchangeServer) dial(ctx context.Context, _ string) (net.Conn, error) {
 					conn.Close()
 					return
 				case "exit1":
+					// The request first, as the inspector reads it.
+					_, _ = io.Copy(io.Discard, channel)
 					_, _ = io.WriteString(channel.Stderr(), "not a reviewed line\n")
 					_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{1}))
 				default:
+					_, _ = io.Copy(io.Discard, channel)
 					_, _ = io.WriteString(channel, "answer\n")
 					_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{0}))
 				}
 				channel.Close()
+				// Let the client read the result and close first.
+				_ = conn.Wait()
 				return
 			}
 		}
@@ -107,7 +149,7 @@ func exchangeCode(err error) Code {
 func TestExchangeTellsNoAnswerFromAnAnswerWeCannotAccept(t *testing.T) {
 	keyPath, clientKey := probeKeyFile(t)
 	host, digest := probeHostSigner(t)
-	enrollment := Enrollment{PeerIP: "192.0.2.11", Username: "celikpeer", HostKeySHA256: digest, PrivateKeyPath: keyPath, Timeout: 3 * time.Second}
+	enrollment := Enrollment{PeerIP: "192.0.2.11", Username: "celikpeer", HostKeySHA256: digest, PrivateKeyPath: keyPath, Timeout: 10 * time.Second}
 	request := []byte("request")
 	run := func(t *testing.T, timeout time.Duration, dial func(context.Context, string) (net.Conn, error)) (Code, time.Duration) {
 		t.Helper()
@@ -182,30 +224,64 @@ func TestExchangeTellsNoAnswerFromAnAnswerWeCannotAccept(t *testing.T) {
 		})
 	}
 	other, _ := probeHostSigner(t)
+	_, otherPrivate, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherSigner, err := ssh.NewSignerFromKey(otherPrivate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsaSigner, err := ssh.NewSignerFromKey(rsaKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
 		name string
 		dial func(context.Context, string) (net.Conn, error)
 		want Code
 	}{
-		{"another host key", (&exchangeServer{probeServer{hostSigner: other, authorized: clientKey}, "ok"}).dial, CodeUnavailable},
+		{"another host key", (&exchangeServer{probeServer{hostSigner: other, authorized: clientKey}, "ok"}).dial, CodeHostKeyChanged},
+		// Review of round 5 (W1): before HostKeyCallback, x/crypto verifies
+		// the host key signature and agrees on algorithms; those failures are
+		// answers, not "the backup does not answer".
+		{"the pinned key with a bad signature", (&exchangeServer{probeServer{hostSigner: badSignatureSigner{host.PublicKey(), otherSigner}, authorized: clientKey}, "ok"}).dial, CodeUnavailable},
+		{"no ed25519 host key (RSA only)", (&exchangeServer{probeServer{hostSigner: rsaSigner, authorized: clientKey}, "ok"}).dial, CodeUnavailable},
+		{"another service on the SSH port", lineServer(t, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"), CodeUnavailable},
 		{"the enrolled key refused", (&exchangeServer{probeServer{hostSigner: host}, "ok"}).dial, CodeUnavailable},
 		{"the session refused", (&exchangeServer{probeServer{hostSigner: host, authorized: clientKey}, "reject"}).dial, CodeUnavailable},
 		{"the forced command exited 1", (&exchangeServer{probeServer{hostSigner: host, authorized: clientKey}, "exit1"}).dial, "command_failed"},
 		{"an answer", (&exchangeServer{probeServer{hostSigner: host, authorized: clientKey}, "ok"}).dial, "answered"},
 	} {
 		t.Run("answer: "+tc.name, func(t *testing.T) {
-			if got, _ := run(t, 3*time.Second, tc.dial); got != tc.want {
+			if got, _ := run(t, 10*time.Second, tc.dial); got != tc.want {
 				t.Fatalf("got %s, want %s", got, tc.want)
 			}
 		})
 	}
 	// Inspect passes "no answer" through and keeps an answer an answer.
 	fixtureEnrollment, fixtureRequest, _, _ := proofFixture(t)
-	if _, _, err := Inspect(context.Background(), fixtureEnrollment, fixtureRequest,
-		&fakeExchange{err: Unknown{Code: CodeNoAnswer}}); !IsCode(err, CodeNoAnswer) {
-		t.Fatalf("Inspect turned no answer into %v", err)
+	for _, code := range []Code{CodeNoAnswer, CodeHostKeyChanged, CodeEnrollment} {
+		// W2: this server's own unusable key (CodeEnrollment from
+		// readOwnerKey) is not the backup refusing.
+		if _, _, err := Inspect(context.Background(), fixtureEnrollment, fixtureRequest,
+			&fakeExchange{err: Unknown{Code: code}}); !IsCode(err, code) {
+			t.Fatalf("Inspect turned %s into %v", code, err)
+		}
+	}
+	// The real exchange: an enrolled key file that is missing is this
+	// server's own enrollment problem, before any connection.
+	missing := enrollment
+	missing.PrivateKeyPath = keyPath + ".absent"
+	if _, _, err := exchangeFixedAt(context.Background(), missing, request, FixedCommand, refused); !IsCode(err, CodeEnrollment) {
+		t.Fatalf("missing key: %v", err)
 	}
 	if !(Unknown{Code: CodeUnavailable}).PeerAnswered() || !(Unknown{Code: CodeMalformed}).PeerAnswered() ||
+		!(Unknown{Code: CodeHostKeyChanged}).PeerAnswered() ||
 		(Unknown{Code: CodeNoAnswer}).PeerAnswered() || (Unknown{Code: CodeEnrollment}).PeerAnswered() {
 		t.Fatal("PeerAnswered does not follow the codes")
 	}

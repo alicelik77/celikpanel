@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -109,9 +110,9 @@ func TestBackupThatRefusesIsRecheckedAndFinishesOnceItStops(t *testing.T) {
 	}
 }
 
-// Every reviewed DNS proof reason is re-checked except the one a re-check
-// cannot change; its deletion status says so.
-func TestOnlyAnUnresolvedCheckRecordStopsTheRechecks(t *testing.T) {
+// Every reviewed DNS proof reason is re-checked except an unresolved check
+// record and an owner edit of this server; its deletion status says so.
+func TestOnlyUnresolvedRecordsAndOwnerEditsStopTheRechecks(t *testing.T) {
 	panel := &Panel{}
 	lease := dnsZoneEngineLease{RequestID: strings.Repeat("d", 32), ZoneName: "table.example"}
 	for _, code := range []string{
@@ -121,7 +122,9 @@ func TestOnlyAnUnresolvedCheckRecordStopsTheRechecks(t *testing.T) {
 		transport.DNSPeerPendingJournalUnknown, transport.DNSPeerPendingEnrollmentRequired,
 		transport.DNSPeerPendingEnrollmentChanged, transport.DNSPeerPendingInspectionUnknown,
 		transport.DNSPeerPendingInspectionUnknownWithDetail(transport.DNSPeerInspectorReasonPolicy),
-		transport.DNSPeerPendingNativeUnknown, transport.DNSPeerPendingOwnerEditUnknown,
+		transport.DNSPeerPendingNativeUnknown,
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckTransferObserved),
+		transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckZoneAnswered),
 		transport.DNSPeerPendingCatalogTransferRefused, transport.DNSPeerPendingProofInternal,
 	} {
 		if !dnsPeerPendingRetriesAutomatically(code) {
@@ -131,8 +134,93 @@ func TestOnlyAnUnresolvedCheckRecordStopsTheRechecks(t *testing.T) {
 			t.Fatalf("%s follow-up %q", code, followUp)
 		}
 	}
-	if followUp, _ := panel.domainDeletionDNSFollowUp(lease, transport.DNSPeerPendingJournalUnresolved); followUp != domainDeletionFollowUpPerson {
-		t.Fatalf("unresolved follow-up %q", followUp)
+	for _, code := range localOwnerEditCodes() {
+		if followUp, next := panel.domainDeletionDNSFollowUp(lease, code); followUp != domainDeletionFollowUpPerson || next != "" {
+			t.Fatalf("%s follow-up %q %q", code, followUp, next)
+		}
+	}
+}
+
+// localOwnerEditCodes are the owner-edit codes found on this server or in the
+// pair's identity, plus the plain code and an unresolved check record: the
+// states that stop the automatic re-checks (alpha.133 round 5 review, S1).
+func localOwnerEditCodes() []string {
+	codes := []string{transport.DNSPeerPendingJournalUnresolved, transport.DNSPeerPendingOwnerEditUnknown}
+	for _, check := range []string{
+		transport.DNSPeerOwnerEditCheckOperationAttempt, transport.DNSPeerOwnerEditCheckEngineState,
+		transport.DNSPeerOwnerEditCheckActiveEngine, transport.DNSPeerOwnerEditCheckNativeBinding,
+		transport.DNSPeerOwnerEditCheckDeletionReceipt, transport.DNSPeerOwnerEditCheckProducerCatalog,
+		transport.DNSPeerOwnerEditCheckCatalogProbe, transport.DNSPeerOwnerEditCheckAuthority,
+	} {
+		codes = append(codes, transport.DNSPeerPendingOwnerEditUnknownWithDetail(check))
+	}
+	return codes
+}
+
+// S1 (review of round 5): a deletion waiting because this server's DNS may be
+// changed by hand is never re-checked by the Panel's own timer (its recovery
+// pre-checks can hold every Agent change), also on the first scan after a
+// restart with the code already stored; the administrators get exactly one
+// notification, the status says a person acts, and a press continues it.
+func TestOwnerEditOfThisServerIsNotRecheckedAndNotifiesOnce(t *testing.T) {
+	for _, code := range localOwnerEditCodes()[1:] {
+		t.Run(code, func(t *testing.T) {
+			panel, agent, clock, scheduler := newPendingPublicationPanel(t, "edited.example")
+			ctx := context.Background()
+			if _, err := panel.db.GetDB().Exec(`INSERT INTO users (username, password_hash, email, role) VALUES
+				('edit-admin', 'x', 'admin@example.test', 'admin')`); err != nil {
+				t.Fatal(err)
+			}
+			admins, err := administratorIDs(ctx, panel.db.GetDB())
+			if err != nil || len(admins) == 0 {
+				t.Fatalf("administrators=%v err=%v", admins, err)
+			}
+			configurePendingWithCode(t, agent, code)
+			pending := true
+			recoverOutcome(t, agent, func() bool { return pending }, func() string { return code })
+			if err := panel.syncZoneToDNS(ctx, "edited.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
+				t.Fatalf("initial err=%v", err)
+			}
+			lease, err := readDNSZoneEngineLease(ctx, panel.db.GetDB(), "edited.example")
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, before := pendingAgentCalls(agent)
+			scan := func(n int) {
+				for i := 0; i < n; i++ {
+					panel.reconcilePendingDNSPublicationsOnce(ctx)
+					clock.Advance(dnsPendingPublicationMaxDelay + time.Second)
+				}
+			}
+			scan(6)
+			// A panel restart: the code is read from the stored job at once.
+			scheduler = useTestPendingScheduler(panel, clock)
+			scan(6)
+			if _, after := pendingAgentCalls(agent); len(after) != len(before) {
+				t.Fatalf("re-checked %d time(s) by the Panel's own timer", len(after)-len(before))
+			}
+			if entry, _ := scheduler.entry(lease.RequestID); entry.Automatic || entry.Code != code {
+				t.Fatalf("entry=%+v", entry)
+			}
+			if followUp, next := panel.domainDeletionDNSFollowUp(lease, code); followUp != domainDeletionFollowUpPerson || next != "" {
+				t.Fatalf("follow-up %q %q", followUp, next)
+			}
+			unseen, total := stuckNoticeRows(t, panel)
+			if unseen != len(admins) || total != len(admins) {
+				t.Fatalf("notices unseen=%d total=%d, want %d", unseen, total, len(admins))
+			}
+			// The administrator finished the change and pressed Delete: the
+			// same operation continues and completes.
+			pending = false
+			panel.attemptPendingDNSPublication(ctx, lease)
+			if leaseCount(t, panel) != 0 {
+				t.Fatal("the press did not continue the deletion")
+			}
+			panel.reconcilePendingDNSPublicationsOnce(ctx)
+			if unseen, _ := stuckNoticeRows(t, panel); unseen != 0 {
+				t.Fatalf("finished: %d notices still unseen", unseen)
+			}
+		})
 	}
 }
 

@@ -2574,7 +2574,7 @@ test('Domains: the deletion window says who acts from the server\u2019s follow-u
     { body: { reason: 'dns_peer_proof_timeout', follow_up: 'automatic' }, subtitle: 'domains.step.rechecksAlone',
       has: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone'], not: ['domains.deletionGuide.who.youAdministrator'] },
     { body: { reason: 'dns_peer_proof_timeout', follow_up: 'stuck' }, subtitle: undefined,
-      has: ['domains.deletionGuide.who.youAdministrator', 'domains.deletionGuide.stuck.next', 'domains.deletionGuide.then.stuck'],
+      has: ['domains.deletionGuide.who.youAdministrator', 'domains.deletionGuide.proofTimeout.stuckNext', 'domains.deletionGuide.then.stuck'],
       not: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone'] },
     { body: { reason: 'dns_peer_journal_unresolved', follow_up: 'person' }, subtitle: undefined,
       has: ['domains.deletionGuide.journalUnresolved.nextWindow', 'domains.deletionGuide.then.person'],

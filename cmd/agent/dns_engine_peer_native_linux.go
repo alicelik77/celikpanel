@@ -158,13 +158,23 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 }
 
 // bindInspectionPendingCode classifies an incomplete BIND-secondary
-// inspection: a backup that gave no answer at all is the exchange's timeout
-// (peerNoAnswerPendingCode), however quickly or at whichever instant of the
-// step's bound the transport came back; an answer this server cannot accept
-// keeps dns_peer_inspection_unknown with the inspector's reviewed reason.
+// inspection (the PowerDNS path shares the transport and this mapping):
+//   - no answer at all: the exchange's timeout (peerNoAnswerPendingCode),
+//     however quickly or at whichever instant of the step's bound it came;
+//   - another SSH host key: dns_peer_enrollment_changed:host_key;
+//   - this server's own enrollment or key file unusable:
+//     dns_peer_enrollment_changed (alpha.133 round 5 review: it was shown as
+//     the backup refusing);
+//   - any other answer this server cannot accept: dns_peer_inspection_unknown
+//     with the inspector's reviewed reason.
 func bindInspectionPendingCode(err error) string {
-	if dnspeertransport.IsCode(err, dnspeertransport.CodeNoAnswer) {
+	switch {
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeNoAnswer):
 		return peerNoAnswerPendingCode
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeHostKeyChanged):
+		return transport.DNSPeerPendingEnrollmentChangedWithDetail(transport.DNSPeerEnrollmentChangedHostKey)
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeEnrollment):
+		return transport.DNSPeerPendingEnrollmentChanged
 	}
 	return inspectionPendingCode(dnspeertransport.InspectorReason(err))
 }
