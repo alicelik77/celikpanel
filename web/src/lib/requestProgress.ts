@@ -42,6 +42,8 @@ export interface StepLabel {
     note?: string;
     /** A check before anything is changed: a refusal here is an unmet prerequisite. */
     check?: boolean;
+    /** Shown only when the server's plan names it (a step some runs do not have). */
+    whenPlanned?: boolean;
 }
 
 export type ProgressRead =
@@ -88,7 +90,7 @@ export type StepsAt = 'running' | 'done' | 'failed' | 'unknown';
 export function progressSteps(labels: StepLabel[], t: T, plan: string[] | undefined, step: string | undefined, since: number, at: StepsAt, status?: number): OperationStep[] {
     const known = new Map(labels.map((label) => [label.id, label]));
     const planned = plan?.filter((id) => known.has(id));
-    const order = planned && planned.length > 0 ? planned : labels.map((label) => label.id);
+    const order = planned && planned.length > 0 ? planned : labels.filter((label) => !label.whenPlanned).map((label) => label.id);
     const index = step && order.includes(step) ? order.indexOf(step) : 0;
     return order.map((id, position) => {
         const label = known.get(id)!;
@@ -288,7 +290,10 @@ export const sslIssueSteps = (t: T, name: string, authority: string): StepLabel[
 export const backupRestoreSteps = (t: T): StepLabel[] => [
     { id: 'check', label: t('opstep.restore.check'), check: true },
     { id: 'inspect', label: t('opstep.restore.inspect'), check: true },
+    // Only for a backup that holds the site's running program (the server's plan names them).
+    { id: 'program_stop', label: t('opstep.restore.programStop'), whenPlanned: true },
     { id: 'restore', label: t('opstep.restore.restore'), note: t('opstep.restore.restoreNote') },
+    { id: 'program_start', label: t('opstep.restore.programStart'), whenPlanned: true },
     { id: 'finish', label: t('opstep.restore.finish') },
 ];
 

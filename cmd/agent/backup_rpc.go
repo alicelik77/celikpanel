@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/backupspec"
 	"github.com/alicelik/celikpanel/internal/hostingpath"
@@ -73,6 +74,31 @@ func (a *Agent) InspectBackup(req *backupspec.InspectRequest, resp *backupspec.I
 	resp.Success = true
 	resp.Backup = info
 	resp.Databases = databases
+	return nil
+}
+
+// backupContentsTimeLimit bounds the measurement below the Panel's 60-second
+// read timeout; past it the sizes are "at least".
+const backupContentsTimeLimit = 45 * time.Second
+
+// BackupContentsV1 says what a files backup of the site would hold now
+// (docs/SITE-BACKUP-CONTENTS-DESIGN.md), measured with the archive's own walk
+// and rules. Reads only.
+// BackupContentsV1, sitenin dosya yedeğinin şu an neleri içereceğini söyler.
+func (a *Agent) BackupContentsV1(req *backupspec.ListRequest, resp *backupspec.ContentsResponse) error {
+	scope := listScope(req)
+	if err := validateV2Scope(scope); err != nil {
+		return err
+	}
+	docroot, err := backupDocumentRoot(scope.SubscriptionID, scope.DomainID)
+	if err != nil {
+		return err
+	}
+	home, err := backupSiteHome(scope.SubscriptionID, scope.DomainID)
+	if err != nil {
+		return err
+	}
+	*resp = measureSiteBackup(docroot, home, backupContentsTimeLimit)
 	return nil
 }
 

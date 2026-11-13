@@ -43,7 +43,7 @@ func (a *Agent) createBackupPhysical(identity backupCreateIdentity) (backupspec.
 	defer os.RemoveAll(workDir)
 
 	manifest := backupManifest{
-		Version:        backupspec.ProtocolVersion,
+		Version:        backupspec.ManifestVersionSite,
 		Type:           identity.typeName,
 		Origin:         identity.origin,
 		JobKey:         identity.jobKey,
@@ -56,12 +56,18 @@ func (a *Agent) createBackupPhysical(identity backupCreateIdentity) (backupspec.
 		if err := buildFilesPayload(identity.scope, workDir, &manifest); err != nil {
 			return backupspec.Info{}, err
 		}
+		if err := buildHomePayload(identity.scope, workDir, &manifest); err != nil {
+			return backupspec.Info{}, err
+		}
 	case backupspec.TypeDatabase:
 		if err := buildDatabasePayload(workDir, identity.databases[0], &manifest); err != nil {
 			return backupspec.Info{}, err
 		}
 	case backupspec.TypeFull:
 		if err := buildFilesPayload(identity.scope, workDir, &manifest); err != nil {
+			return backupspec.Info{}, err
+		}
+		if err := buildHomePayload(identity.scope, workDir, &manifest); err != nil {
 			return backupspec.Info{}, err
 		}
 		for _, database := range identity.databases {
@@ -104,6 +110,38 @@ func buildFilesPayload(scope backupScope, workDir string, manifest *backupManife
 	}
 	manifest.Files, err = describePayload(payloadPath, filesPayloadName)
 	return err
+}
+
+// buildHomePayload adds the site-home areas (docs/SITE-BACKUP-CONTENTS-DESIGN.md)
+// when the site has any: the manifest becomes version 3. A site without an
+// area keeps the version-2 package unchanged.
+// Sitenin ev dizini alanları varsa eklenir; paket sürüm 3 olur.
+func buildHomePayload(scope backupScope, workDir string, manifest *backupManifest) error {
+	home, err := backupSiteHome(scope.SubscriptionID, scope.DomainID)
+	if err != nil {
+		return err
+	}
+	payloadPath := filepath.Join(workDir, filepath.FromSlash(homePayloadName))
+	if err := mkdirPrivate(filepath.Dir(payloadPath)); err != nil {
+		return err
+	}
+	walk, wrote, err := safeCreateHomeArchive(home, payloadPath)
+	if err != nil {
+		return err
+	}
+	if !wrote {
+		return nil
+	}
+	payload, err := describePayload(payloadPath, homePayloadName)
+	if err != nil {
+		return err
+	}
+	manifest.Version = backupspec.ManifestVersionHome
+	manifest.Home = &payload
+	manifest.Areas = walk.areas
+	manifest.LeftOut = walk.left.items
+	manifest.LeftOutMore = walk.left.more
+	return nil
 }
 
 func buildDatabasePayload(workDir string, database backupspec.DatabaseIdentity, manifest *backupManifest) error {

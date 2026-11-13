@@ -883,6 +883,7 @@ var domainSubrouteRights = map[string]domainSubrouteRight{
 	"backup-schedule":    {right: rightBackups},
 	"backup-restore":     {right: rightBackups},
 	"backup-download":    {right: rightBackups, gateReads: true},
+	"backup-contents":    {right: rightBackups},
 	"ssl-letsencrypt":    {right: rightSSLACME},
 	"ssl-upload":         {right: rightSSLCustom},
 	"site-protect":       {right: rightSiteProtect},

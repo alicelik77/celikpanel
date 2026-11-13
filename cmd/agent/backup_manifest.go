@@ -20,6 +20,11 @@ import (
 const backupManifestName = "manifest.json"
 const filesPayloadName = "payload/files.tar.gz"
 
+// homePayloadName holds the site-home areas of a version-3 package
+// (docs/SITE-BACKUP-CONTENTS-DESIGN.md): entries named app/... and
+// apps/<app>/..., relative to the site home.
+const homePayloadName = "payload/home.tar.gz"
+
 type manifestPayload struct {
 	Name   string `json:"name"`
 	Size   int64  `json:"size"`
@@ -41,6 +46,13 @@ type backupManifest struct {
 	CreatedAt      time.Time          `json:"created_at"`
 	Files          manifestPayload    `json:"files,omitempty"`
 	Databases      []manifestDatabase `json:"databases,omitempty"`
+	// Version 3 only (nil and empty in version 2, so a version-2 manifest
+	// is written exactly as before): the site-home payload, the areas it
+	// holds and what those areas leave out.
+	Home        *manifestPayload     `json:"home,omitempty"`
+	Areas       []backupspec.Area    `json:"areas,omitempty"`
+	LeftOut     []backupspec.LeftOut `json:"left_out,omitempty"`
+	LeftOutMore int                  `json:"left_out_more,omitempty"`
 }
 
 var backupNow = time.Now
@@ -58,7 +70,17 @@ func (m backupManifest) info(name string, size int64, legacy bool) backupspec.In
 		Name: name, Size: size, Type: m.Type, Origin: m.Origin,
 		DatabaseID: manifestDatabaseID(m), Legacy: legacy, Restorable: true,
 		CreatedAt: m.CreatedAt,
+		Format:    m.Version, Areas: m.Areas, LeftOut: m.LeftOut, LeftOutMore: m.LeftOutMore,
 	}
+}
+
+// areaNames lists the site-home areas a manifest holds.
+func (m backupManifest) areaNames() []string {
+	names := make([]string, 0, len(m.Areas))
+	for _, area := range m.Areas {
+		names = append(names, area.Name)
+	}
+	return names
 }
 
 func manifestDatabaseID(m backupManifest) int {
@@ -133,7 +155,16 @@ func validPackageEntryName(name string) bool {
 }
 
 func validateManifest(m backupManifest, scope backupScope) error {
-	if m.Version != backupspec.ProtocolVersion {
+	switch m.Version {
+	case backupspec.ManifestVersionSite:
+		if m.Home != nil || len(m.Areas) != 0 || len(m.LeftOut) != 0 || m.LeftOutMore != 0 {
+			return errors.New("version 2 manifest names site-home areas")
+		}
+	case backupspec.ManifestVersionHome:
+		if err := validateManifestHome(m); err != nil {
+			return err
+		}
+	default:
 		return errors.New("manifest version mismatch")
 	}
 	if m.SubscriptionID != scope.SubscriptionID || m.DomainID != scope.DomainID {
@@ -237,6 +268,9 @@ func sortedPayloads(m backupManifest) []manifestPayload {
 	result := make([]manifestPayload, 0, len(m.Databases)+1)
 	if m.Files.Name != "" {
 		result = append(result, m.Files)
+	}
+	if m.Home != nil {
+		result = append(result, *m.Home)
 	}
 	for _, database := range m.Databases {
 		result = append(result, database.Payload)

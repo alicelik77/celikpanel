@@ -35,6 +35,8 @@ export const enOpstepsScreens = {
     'opstep.restore.inspect': 'Reading the backup and checking it is safe to restore',
     'opstep.restore.restore': 'Putting the files and databases back',
     'opstep.restore.restoreNote': 'A large site can take several minutes. You do not need to do anything.',
+    'opstep.restore.programStop': 'Stopping the site’s program',
+    'opstep.restore.programStart': 'Starting the program again and waiting for it to answer',
     'opstep.restore.finish': 'Finishing',
 
     'opstep.backup.title': 'Backing up {name}',

@@ -136,7 +136,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.GetDKIMStatus Agent.GetErrorLogs Agent.GetExtendedPHPConfig Agent.GetMailPolicy
 		Agent.GetMailQuotaStatus Agent.GetMySQLConfig Agent.GetPHPConfig Agent.GetPHPConfiguration
 		Agent.GetPHPExtensions Agent.GetPHPLogs Agent.GetPHPPoolConfig Agent.GetPHPPools
-		Agent.GetServices Agent.HostPlatform Agent.InspectBackup Agent.InspectCpmove
+		Agent.GetServices Agent.HostPlatform Agent.InspectBackup Agent.BackupContentsV1 Agent.InspectCpmove
 		Agent.InspectInstalledCertificate Agent.InstalledPackageVersionsV1 Agent.InstalledRepoPackages Agent.InstalledServiceIDs
 		Agent.InstalledServiceIDsStrict Agent.ListBackups Agent.ListCronJobs Agent.ListFiles
 		Agent.ListNodeLTS Agent.ListNodeVersions Agent.ListServiceInstances
@@ -382,6 +382,7 @@ var agentRPCTimeouts = map[string]time.Duration{
 	"Agent.MailServerSettingsStatusV1":    agentRPCQuickReadTimeout,
 	"Agent.ReadFile":                      agentRPCStandardReadTimeout,
 	"Agent.InspectBackup":                 agentRPCStandardReadTimeout,
+	"Agent.BackupContentsV1":              agentRPCStandardReadTimeout, // one walk, 45 s in the Agent
 	"Agent.ListBackups":                   agentRPCStandardReadTimeout,
 	"Agent.ReadBackupChunk":               agentRPCStandardReadTimeout,
 	"Agent.ReadSystemSQLiteSnapshotChunk": agentRPCStandardReadTimeout,

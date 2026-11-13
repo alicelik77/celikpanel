@@ -848,30 +848,14 @@ func (p *Panel) handleRuntimeAppControl(w http.ResponseWriter, r *http.Request, 
 	// held or suspended, and on a host whose sandbox level the
 	// administrator did not accept.
 	if req.Action != "stop" {
-		offerings, err := p.loadRuntimeOfferings(ctx)
+		reason, message, vars, err := p.runtimeStartRefusal(ctx, a)
 		if err != nil {
 			writeServerError(w, err)
 			return
 		}
-		o, has := offerings[a.OfferingID]
-		if has && o.Held {
-			writeRuntimeAppRefusal(w, http.StatusConflict, "held",
-				"Nothing was changed: the administrator has put "+runtimeKindName(a.Kind)+" on a security hold. It can be started again when the hold is lifted.", nil)
+		if reason != "" {
+			writeRuntimeAppRefusal(w, http.StatusConflict, reason, message, vars)
 			return
-		}
-		if suspended, err := p.subscriptionSuspended(ctx, a.SubscriptionID); err != nil {
-			writeServerError(w, err)
-			return
-		} else if suspended {
-			writeRuntimeAppRefusal(w, http.StatusConflict, "suspended", "Nothing was changed: this subscription is suspended.", nil)
-			return
-		}
-		if caps, err := p.runtimeHostLevel(ctx); err == nil {
-			if gaps := runtimeLevelRefusal(caps, o); gaps != "" {
-				writeRuntimeAppRefusal(w, http.StatusConflict, "sandbox_reduced",
-					"Nothing was changed: this server does not enforce the full sandbox ("+gaps+") and the administrator has not accepted these gaps.", map[string]string{"gaps": gaps})
-				return
-			}
 		}
 	}
 	resp, err := p.runtimeAppNativeOps().control(ctx, transport.RuntimeAppControlRequest{Target: a.target(), Action: req.Action})
@@ -910,6 +894,33 @@ func (p *Panel) handleRuntimeAppControl(w http.ResponseWriter, r *http.Request, 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"state": state})
+}
+
+// runtimeStartRefusal is why a program may not be started now (the gates of
+// the Programs tab's start, also used by a backup restore that stopped the
+// program): a security hold, a suspended subscription, or a sandbox level the
+// administrator did not accept. reason is "" when it may start; err is a
+// read that failed.
+func (p *Panel) runtimeStartRefusal(ctx context.Context, a runtimeApp) (reason, message string, vars map[string]string, err error) {
+	offerings, err := p.loadRuntimeOfferings(ctx)
+	if err != nil {
+		return "", "", nil, err
+	}
+	o, has := offerings[a.OfferingID]
+	if has && o.Held {
+		return "held", "Nothing was changed: the administrator has put " + runtimeKindName(a.Kind) + " on a security hold. It can be started again when the hold is lifted.", nil, nil
+	}
+	if suspended, err := p.subscriptionSuspended(ctx, a.SubscriptionID); err != nil {
+		return "", "", nil, err
+	} else if suspended {
+		return "suspended", "Nothing was changed: this subscription is suspended.", nil, nil
+	}
+	if caps, err := p.runtimeHostLevel(ctx); err == nil {
+		if gaps := runtimeLevelRefusal(caps, o); gaps != "" {
+			return "sandbox_reduced", "Nothing was changed: this server does not enforce the full sandbox (" + gaps + ") and the administrator has not accepted these gaps.", map[string]string{"gaps": gaps}, nil
+		}
+	}
+	return "", "", nil, nil
 }
 
 func (p *Panel) handleRuntimeAppEnv(w http.ResponseWriter, r *http.Request, domainID int) {

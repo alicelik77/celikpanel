@@ -107,6 +107,8 @@ const good = {
   [`${D}/backups`]: { backups: [{ name: 'files-1.tar.gz', size: 2048, type: 'files', origin: 'manual', legacy: false, restorable: true, created_at: '2026-10-08T10:00:00Z' }] },
   [`${D}/databases`]: { databases: [{ id: 3, name: 'shop', type: 'mariadb', user: 'shop', created_at: '' }], available_types: ['mysql'] },
   [`${D}/backups/schedule`]: { enabled: false, version: 'v1' },
+  // What a backup of this site holds (docs/SITE-BACKUP-CONTENTS-DESIGN.md).
+  [`${D}/backups/contents`]: { site_bytes: 2048, site_files: 3, areas: [], left_out: [], left_out_bytes: 0, backup_free_bytes: 1e10, complete: true, program: null },
   [`${D}/cron`]: { jobs: [{ id: 'a1', schedule: '0 * * * *', command: 'php artisan schedule:run', enabled: true, comment: '' }], version: 'c1' },
 };
 // What the same read answers when the server really has nothing.
