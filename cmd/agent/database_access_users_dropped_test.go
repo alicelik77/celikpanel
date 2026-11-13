@@ -54,7 +54,7 @@ func droppedRemoval(t *testing.T, rightsOnly bool, answer func(string) string) (
 	var resp transport.DatabaseAccessUserResponse
 	removeMySQLAccessUser(&transport.DatabaseAccessUserRequest{Engine: "mysql", Database: hand5,
 		Username: hand5User, DatabaseDropped: true, RightsOnly: rightsOnly}, &resp)
-	return resp, got
+	return resp, *got
 }
 
 func deleteStatements(got []string) []string {
@@ -157,7 +157,7 @@ func TestOtherRightsCheckComparesSchemaNamesExactly(t *testing.T) {
 	var resp transport.DatabaseAccessUserResponse
 	removeMySQLAccessUser(&transport.DatabaseAccessUserRequest{Engine: "mysql", Database: "shop_a", Username: "shop_a_user"}, &resp)
 	var check string
-	for _, statement := range got {
+	for _, statement := range *got {
 		if strings.Contains(statement, "information_schema.USER_PRIVILEGES") {
 			check = statement
 		}
