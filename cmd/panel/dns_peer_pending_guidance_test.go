@@ -196,16 +196,19 @@ func TestDNSPeerProofInternalGuidanceIsNotAnOwnerEdit(t *testing.T) {
 		"No change by either server's owner was found",
 		"server owner",
 		"sudo journalctl -u celikpanel-agent | grep peer",
-		"Retrying does not help until the CelikPanel Agent is updated",
-		"“Retry this deletion”",
-		"same publication",
+		// alpha.133 round 5: re-checked by itself; it finishes after the
+		// fixing update with nothing to press, and names no retry button.
+		"Checking again does not help until the CelikPanel Agent is updated",
+		"checks this same publication again by itself every few minutes",
+		"with nothing to press",
 		"deletion stays pending and DNS answers are unaffected",
 	} {
 		if !strings.Contains(message, want) {
 			t.Fatalf("internal guidance lacks %q: %s", want, message)
 		}
 	}
-	if strings.Contains(message, "evidence changed") || strings.Contains(message, "reconcile") {
+	if strings.Contains(message, "evidence changed") || strings.Contains(message, "reconcile") ||
+		strings.Contains(message, "Retry this deletion") || strings.Contains(message, "Nothing retries by itself") {
 		t.Fatalf("internal guidance claims an owner change: %s", message)
 	}
 	_, _, ownerEdit, _ := dnsPeerPendingGuidance(transport.DNSPeerPendingOwnerEditUnknown)
