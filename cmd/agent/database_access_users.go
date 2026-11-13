@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/alicelik/celikpanel/internal/dbremote"
 	"github.com/alicelik/celikpanel/internal/hostcmd"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -217,7 +218,74 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		followRemovedMySQLAccessUser(req.Username)
 		return
 	}
+	// alpha.133 round 5 (AGENTS.md: the owner's own changes are detected,
+	// never silently overwritten). The account goes only when every right it
+	// has is one CelikPanel gave: on this database, from localhost or from a
+	// remote copy CelikPanel made. A host CelikPanel did not create, or a
+	// right on another database, globally, on a routine or through a role,
+	// keeps the account; then only CelikPanel's grant on this database goes.
+	// Hesabın CelikPanel'in vermediği bir hakkı varsa hesap kalır; yalnız bu
+	// veritabanındaki hakkı alınır.
+	// What cannot be checked keeps the account too (fail closed, reported as
+	// "unchecked"), so a check that fails is never retried on every press.
+	// Denetlenemeyen hesap da kalır; her basışta yinelenen hata olmaz.
+	keptReason := ""
+	ours, err := mysqlAccessUserOwnHosts(req.Username)
+	if err != nil {
+		keptReason = transport.DatabaseAccessKeptUnchecked
+		log.Printf("database user removal: the remote access record could not be read: %v", err)
+	}
+	var ownHosts []string
+	for _, host := range hosts {
+		if ours[host] {
+			ownHosts = append(ownHosts, host)
+		} else if keptReason == "" {
+			keptReason = transport.DatabaseAccessKeptOtherRights
+		}
+	}
+	if keptReason == "" && len(ownHosts) > 0 {
+		other, err := mysqlAccessUserOtherRights(req.Username, req.Database, ownHosts)
+		switch {
+		case err != nil:
+			keptReason = transport.DatabaseAccessKeptUnchecked
+			log.Printf("database user removal: %v", err)
+		case other:
+			keptReason = transport.DatabaseAccessKeptOtherRights
+		}
+	}
 	user, _ := services.QuoteMySQLStringLiteral(req.Username)
+	if keptReason != "" {
+		dbIdent, err := services.QuoteMySQLIdentifier(req.Database)
+		if err != nil {
+			resp.Error = "invalid database name; nothing was changed"
+			return
+		}
+		// CelikPanel's grant on this database goes from each of its hosts. A
+		// host whose grant could not be looked up is revoked anyway; "no such
+		// grant" (1141) then means there was none.
+		revoked := false
+		for _, host := range ownHosts {
+			has, err := mysqlAccessUserHasGrantOn(req.Username, host, req.Database)
+			if err == nil && !has {
+				continue
+			}
+			literal, _ := services.QuoteMySQLStringLiteral(host)
+			output, err := mysqlExecStatement("REVOKE ALL PRIVILEGES ON " + dbIdent + ".* FROM " + user + "@" + literal + ";")
+			if err != nil && !mysqlNoSuchGrant(output) {
+				resp.Error = hostcmd.Fail("the database server did not take the user's rights on "+req.Database+" away", output, err, databaseClientMeaning).Error()
+				return
+			}
+			revoked = revoked || err == nil
+		}
+		if revoked {
+			if output, err := mysqlExecStatement("FLUSH PRIVILEGES;"); err != nil {
+				resp.Error = hostcmd.Fail("the database server did not take the user's rights on "+req.Database+" away", output, err, databaseClientMeaning).Error()
+				return
+			}
+		}
+		resp.Applied, resp.Kept, resp.KeptReason = true, true, keptReason
+		return
+	}
 	accounts := make([]string, 0, len(hosts))
 	for _, host := range hosts {
 		literal, err := services.QuoteMySQLStringLiteral(host)
@@ -233,6 +301,110 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	}
 	resp.Applied = true
 	followRemovedMySQLAccessUser(req.Username)
+}
+
+// mysqlNoSuchGrant reads MariaDB's "There is no such grant defined" (1141).
+func mysqlNoSuchGrant(output []byte) bool {
+	text := strings.ToLower(string(output))
+	return strings.Contains(text, "there is no such grant") || strings.Contains(text, "error 1141")
+}
+
+// mysqlAccessUserOwnHosts is the set of hosts of the account CelikPanel
+// created: localhost, and the remote copies its remote-access record lists
+// (docs/DATABASE-REMOTE-ACCESS.md). A record that cannot be read is an error:
+// the caller then keeps the account. Tests replace it.
+var mysqlAccessUserOwnHosts = func(username string) (map[string]bool, error) {
+	hosts := map[string]bool{"localhost": true}
+	databaseRemoteMu.Lock()
+	defer databaseRemoteMu.Unlock()
+	state, err := loadDatabaseRemoteState()
+	if err != nil {
+		return hosts, err
+	}
+	for _, target := range state.Targets {
+		if target.Engine != dbremote.EngineMySQL {
+			continue
+		}
+		for _, id := range target.Accounts {
+			if user, host := splitAccountID(id); user == username {
+				hosts[host] = true
+			}
+		}
+	}
+	return hosts, nil
+}
+
+// mysqlAccessUserOtherRights: whether the account, from the given hosts, has
+// any right that is not on this database: global (beyond USAGE), on another
+// database, table or column, on a routine, or through a role.
+func mysqlAccessUserOtherRights(username, database string, hosts []string) (bool, error) {
+	user, _ := services.QuoteMySQLStringLiteral(username)
+	db, err := services.QuoteMySQLStringLiteral(database)
+	if err != nil {
+		return false, errors.New("invalid database name")
+	}
+	var grantees, hostLiterals []string
+	for _, host := range hosts {
+		grantee, err := services.QuoteMySQLStringLiteral("'" + username + "'@'" + host + "'")
+		if err != nil {
+			return false, fmt.Errorf("the account's host %q cannot be written as a MariaDB string", host)
+		}
+		literal, _ := services.QuoteMySQLStringLiteral(host)
+		grantees = append(grantees, grantee)
+		hostLiterals = append(hostLiterals, literal)
+	}
+	in, hostIn := strings.Join(grantees, ", "), strings.Join(hostLiterals, ", ")
+	// mysql.roles_mapping is MariaDB's; MySQL 8 (which a server may run in
+	// MariaDB's place) has none, and a statement naming it fails on every
+	// press. Asked first; absent, there are no MariaDB roles to count.
+	// mysql.roles_mapping yalnız MariaDB'de vardır; önce sorulur.
+	rolesOutput, err := mysqlExecStatement("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'mysql' AND TABLE_NAME = 'roles_mapping';")
+	if err != nil {
+		return false, hostcmd.Fail("the database server could not be asked about its role table", rolesOutput, err, databaseClientMeaning)
+	}
+	rolesTable, ok := markerValue(rolesOutput, "n")
+	if !ok {
+		return false, errors.New("the database server's answer about its role table could not be read")
+	}
+	roles := ""
+	if rolesTable != "0" {
+		roles = " + (SELECT COUNT(*) FROM mysql.roles_mapping WHERE User = " + user + " AND Host IN (" + hostIn + "))"
+	}
+	statement := "SELECT CONCAT('n=', " +
+		"(SELECT COUNT(*) FROM information_schema.USER_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND PRIVILEGE_TYPE <> 'USAGE')" +
+		" + (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA <> " + db + ")" +
+		" + (SELECT COUNT(*) FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA <> " + db + ")" +
+		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA <> " + db + ")" +
+		" + (SELECT COUNT(*) FROM mysql.procs_priv WHERE User = " + user + " AND Host IN (" + hostIn + ") AND Db <> " + db + ")" +
+		roles + ");"
+	output, err := mysqlExecStatement(statement)
+	if err != nil {
+		return false, hostcmd.Fail("the database server could not be asked about the user's other rights", output, err, databaseClientMeaning)
+	}
+	count, ok := markerValue(output, "n")
+	if !ok {
+		return false, errors.New("the database server's answer about the user's other rights could not be read")
+	}
+	return count != "0", nil
+}
+
+// mysqlAccessUserHasGrantOn: whether user@host has a grant on the database
+// (a REVOKE of a grant that is not there is an engine error).
+func mysqlAccessUserHasGrantOn(username, host, database string) (bool, error) {
+	grantee, err := services.QuoteMySQLStringLiteral("'" + username + "'@'" + host + "'")
+	if err != nil {
+		return false, fmt.Errorf("the account's host %q cannot be written as a MariaDB string", host)
+	}
+	db, _ := services.QuoteMySQLStringLiteral(database)
+	output, err := mysqlExecStatement("SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE = " + grantee + " AND TABLE_SCHEMA = " + db + ";")
+	if err != nil {
+		return false, hostcmd.Fail("the database server could not be asked about the user's rights", output, err, databaseClientMeaning)
+	}
+	count, ok := markerValue(output, "n")
+	if !ok {
+		return false, errors.New("the database server's answer about the user's rights could not be read")
+	}
+	return count != "0", nil
 }
 
 // followRemovedMySQLAccessUser keeps the remote access record
@@ -472,9 +644,63 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 			return
 		}
 	}
+	// alpha.133 round 5: a role that still owns something or holds a right
+	// anywhere else on the server (or a membership), which CelikPanel did not
+	// give, is the owner's: it stays, reported as kept, instead of a DROP ROLE
+	// that the engine refuses on every press.
+	// Başka yerde hakkı ya da nesnesi olan rol sahibinindir; kalır.
+	literal, _ := services.QuotePGStringLiteral(req.Username)
+	output, err := run(postgreSQLRoleElsewhereStatement(literal))
+	if err != nil {
+		resp.Error = hostcmd.Fail("the user's rights in "+req.Database+" were taken away, but the database server could not be asked what else the user has", output, err, databaseClientMeaning).Error()
+		return
+	}
+	deps, ok := markerValue(output, "deps")
+	if !ok {
+		resp.Error = "the user's rights in " + req.Database + " were taken away, but the database server's answer about what else the user has could not be read"
+		return
+	}
+	if deps != "0" {
+		resp.Applied, resp.Kept, resp.KeptReason = true, true, transport.DatabaseAccessKeptOtherRights
+		return
+	}
 	if output, err := run("DROP ROLE " + ident + ";"); err != nil {
-		resp.Error = hostcmd.Fail("the user's rights in "+req.Database+" were taken away, but the database server did not remove the user (it may still have rights in another database of this server)", output, err, databaseClientMeaning).Error()
+		if postgreSQLRoleHasDependents(output) {
+			resp.Applied, resp.Kept, resp.KeptReason = true, true, transport.DatabaseAccessKeptOtherRights
+			return
+		}
+		resp.Error = hostcmd.Fail("the user's rights in "+req.Database+" were taken away, but the database server did not remove the user", output, err, databaseClientMeaning).Error()
 		return
 	}
 	resp.Applied = true
+}
+
+// postgreSQLRoleElsewhereStatement counts what a role still has that
+// CelikPanel did not give it: anything it owns or holds a right on anywhere
+// on the server (pg_shdepend), a membership of it in another role, and a
+// membership of another role in it - except the one PostgreSQL 16 and later
+// make by themselves when a non-superuser with CREATEROLE creates a role
+// ("GRANT created_role TO creating_role WITH ADMIN TRUE, SET FALSE, INHERIT
+// FALSE", granted by the bootstrap superuser): CelikPanel's own account
+// (celikpanel_admin, LOGIN CREATEDB CREATEROLE) creates roles through a
+// record's credential and so is a member of each of them, and the bootstrap
+// superuser (oid 10) is excluded for the same kind of row. DROP ROLE revokes
+// memberships in both directions by itself (PostgreSQL docs, DROP ROLE).
+// Bir rolün CelikPanel'in vermediği nesnesi, hakkı ya da üyeliği; PostgreSQL
+// 16'nın rolü oluşturan hesaba kendiliğinden verdiği üyelik sayılmaz.
+func postgreSQLRoleElsewhereStatement(literal string) string {
+	admin, _ := services.QuotePGStringLiteral(databaseAdminAccountName)
+	return "SELECT 'deps=' || ((SELECT count(*) FROM pg_catalog.pg_shdepend d JOIN pg_catalog.pg_roles r ON r.oid = d.refobjid" +
+		" WHERE d.refclassid = 'pg_catalog.pg_authid'::regclass AND r.rolname = " + literal + ")" +
+		" + (SELECT count(*) FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles r ON r.oid = m.member WHERE r.rolname = " + literal + ")" +
+		" + (SELECT count(*) FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles r ON r.oid = m.roleid" +
+		" JOIN pg_catalog.pg_roles who ON who.oid = m.member" +
+		" WHERE r.rolname = " + literal + " AND m.member <> 10 AND who.rolname <> " + admin + "));"
+}
+
+// postgreSQLRoleHasDependents reads DROP ROLE's refusal "role ... cannot be
+// dropped because some objects depend on it" (SQLSTATE 2BP01).
+func postgreSQLRoleHasDependents(output []byte) bool {
+	text := strings.ToLower(string(output))
+	return strings.Contains(text, "cannot be dropped because some objects depend on it") || strings.Contains(text, "2bp01")
 }

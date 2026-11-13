@@ -14,6 +14,7 @@ import { invalidate, lastKnown, mapRemote, useRemote, type Remote } from '../lib
 import { decodeDomainDatabases, databaseEngine, engineLabel, type DatabaseEngine, type DatabaseInfo, type DatabaseType } from '../lib/domainDatabases';
 import { useHostingCapabilities, type CapabilitiesRemote } from '../lib/hostingCapabilities';
 import { confirmAction } from '../lib/confirmAction';
+import { databaseDeleteDescribable, databaseDeleteUserLines, databaseDeletedKeptWords } from '../lib/databaseDeleteWords';
 import { PasswordInput } from './PasswordInput';
 import { AdminInstallLink } from './AdminInstallLink';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
@@ -250,8 +251,14 @@ export function DomainDatabaseManager({
     };
 
     const handleDeleteDatabase = async (db: DatabaseInfo) => {
-        if (readOnly || list.remote.state !== 'known' || answer.holding) return;
+        // Not offered while it cannot be said which users would go (review N-F).
+        if (readOnly || list.remote.state !== 'known' || answer.holding || !databaseDeleteDescribable(db.users ?? [])) return;
+        // alpha.133 round 5: the same lines as the Databases page - which users
+        // go with it and which stay (lib/databaseDeleteWords.ts).
+        const users = databaseDeleteUserLines(t, db.users ?? []);
         await confirmAction({ message: t('ddb.confirmDelete', { name: db.name }), confirmLabel: t('common.delete'), tone: 'danger',
+            ...(users.lost.length > 0 ? { lost: users.lost } : {}),
+            ...(users.kept.length > 0 ? { kept: users.kept } : {}),
             action: async (report) => {
                 try {
                     // The server's own steps (alpha.127).
@@ -260,11 +267,14 @@ export function DomainDatabaseManager({
 
                     if (res.ok) {
                         clearRefusal();
-                        showToast('success', t('ddb.deleted', { name: db.name }));
+                        const kept = await databaseDeletedKeptWords(t, db.name, res);
+                        showToast('success', kept ?? t('ddb.deleted', { name: db.name }));
                         invalidate('databases');
                     } else {
                         // The server's reason (a user that still has grants…) is kept, on the page too.
                         refuse(await readApiError(res), 'ddb.deleteFailed');
+                        // alpha.133 round 5: an unknown or partial result is read again too.
+                        invalidate('databases');
                     }
                 } catch {
                     // No answer: whether it was deleted is not known; the list is read again.
@@ -454,7 +464,7 @@ export function DomainDatabaseManager({
                                         {!readOnly && (
                                             <button
                                                 onClick={() => handleDeleteDatabase(db)}
-                                                disabled={shown.stale}
+                                                disabled={shown.stale || !databaseDeleteDescribable(db.users ?? [])}
                                                 className="rounded-md p-2 text-fg-subtle transition-colors hover:bg-danger/10 hover:text-danger disabled:pointer-events-none disabled:opacity-40"
                                                 title={t('databases.deleteDatabase', { name: db.name })}
                                                 aria-label={t('databases.deleteDatabase', { name: db.name })}

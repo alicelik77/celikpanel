@@ -385,6 +385,14 @@ func (a *Agent) deleteMySQLDatabase(req DeleteDatabaseRequest, resp *DeleteDatab
 	return nil
 }
 
+// postgreSQLDropDatabaseScript ends every other session on the database and
+// drops it, in one psql run (autocommit: DROP DATABASE cannot run inside a
+// transaction block).
+func postgreSQLDropDatabaseScript(nameLiteral, ident string) string {
+	return "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE datname = " + nameLiteral +
+		" AND pid <> pg_backend_pid();\nDROP DATABASE IF EXISTS " + ident + ";"
+}
+
 // R-053 stood the other way round from here. There, a client diagnostic was
 // discarded and the panel could not say why an engine refused it. Here the
 // diagnostic was forwarded whole - the error plus the command output -
@@ -554,9 +562,19 @@ func (a *Agent) deletePostgreSQLDatabase(req DeleteDatabaseRequest, resp *Delete
 		return nil
 	}
 
-	// Drop database
-	output, err := run(
-		fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbIdent))
+	// Drop database. alpha.133 round 5: the sessions open on it are ended
+	// first, in the same psql run, as the panel's own driver always did
+	// (internal/services/postgresql_driver.go DeleteDatabase); a plain DROP
+	// failed on every press while a site still held a connection. Ending
+	// backends works on every PostgreSQL major the systems ship (DROP ...
+	// WITH (FORCE) would need 13 or later). The name is a value here.
+	// Önce açık oturumlar sonlandırılır, sonra veritabanı silinir.
+	nameLiteral, err := services.QuotePGStringLiteral(req.Name)
+	if err != nil {
+		resp.Error = fmt.Sprintf("invalid database name: %v", err)
+		return nil
+	}
+	output, err := run(postgreSQLDropDatabaseScript(nameLiteral, dbIdent))
 	if err != nil {
 		resp.Success = false
 		resp.Error = hostcmd.Fail("failed to drop database", output, err, databaseClientMeaning).Error()

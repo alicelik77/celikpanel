@@ -179,6 +179,8 @@ type domainDatabaseUser struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 	Access   string `json:"access"`
+	// Stays (alpha.133 round 5): as visibleDatabaseUser.Stays.
+	Stays string `json:"stays,omitempty"`
 }
 
 // domainDatabaseUsers lists the users of the domain's databases, by

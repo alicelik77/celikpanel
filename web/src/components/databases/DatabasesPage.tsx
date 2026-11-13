@@ -15,6 +15,7 @@ import { useRefusal } from '../../lib/useRefusal';
 import { confirmAction } from '../../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../../lib/requestProgress';
 import { formatDate } from '../../lib/dateFormat';
+import { databaseDeleteDescribable, databaseDeleteUserLines, databaseDeletedKeptWords } from '../../lib/databaseDeleteWords';
 import { showToast } from '../Toast';
 import {
     VISIBLE_DATABASES_URL, databaseDeleteURL, databaseUserPasswordURL, decodeVisibleDatabases,
@@ -95,17 +96,19 @@ export function DatabasesPage() {
 
     const remove = async (db: VisibleDatabase) => {
         const size = sizeText(db);
+        // Which users go with it and which stay, as the server will decide
+        // (lib/databaseDeleteWords.ts; alpha.133 round 5).
+        const users = databaseDeleteUserLines(t, db.users);
         await confirmAction({
             title: t('databases.delete.title', { name: db.name }),
             message: t('databases.delete.message'),
             lost: [
                 size ? t('databases.delete.lostDataSized', { name: db.name, size }) : t('databases.delete.lostData', { name: db.name }),
-                ...(db.users.length > 0 ? [t('databases.delete.lostAccess', { users: db.users.map((user) => user.username).join(', ') })] : []),
+                ...users.lost,
             ],
             kept: [
                 ...(db.domain ? [t('databases.delete.keptDomain', { domain: db.domain.name })] : []),
-                // Deleting here keeps the database's users (the domain page's delete removes them).
-                ...(db.users.length > 0 ? [t(db.domain ? 'databases.delete.keptUsersDomain' : 'databases.delete.keptUsers', { users: db.users.map((user) => user.username).join(', ') })] : []),
+                ...users.kept,
                 t('databases.delete.keptOthers'),
             ],
             typedName: { value: db.name, label: t('databases.delete.typed', { name: db.name }) },
@@ -124,7 +127,8 @@ export function DatabasesPage() {
                     }
                     setRefusal(null);
                     if (passwordFor?.id === db.id) setPasswordFor(null);
-                    showToast('success', t('databases.dbDeleted'));
+                    const kept = await databaseDeletedKeptWords(t, db.name, res);
+                    showToast('success', kept ?? t('databases.dbDeleted'));
                 } catch {
                     // No answer: whether it was deleted is not known; the list is read again.
                     showToast('error', t('common.resultUnknown'));
@@ -147,7 +151,13 @@ export function DatabasesPage() {
                     disabledReason: why ?? (db.users.length === 0 ? t('databases.noUsers') : undefined),
                     onSelect: () => setPasswordFor(db),
                 },
-                { id: 'delete', label: t('databases.deleteDb'), icon: Trash2, danger: true, disabled: stale, disabledReason: why, onSelect: () => remove(db) },
+                // A deletion whose users' fate could not be read is not offered (review N-F).
+                {
+                    id: 'delete', label: t('databases.deleteDb'), icon: Trash2, danger: true,
+                    disabled: stale || !databaseDeleteDescribable(db.users),
+                    disabledReason: why ?? (databaseDeleteDescribable(db.users) ? undefined : t('databases.delete.usersUnknown')),
+                    onSelect: () => remove(db),
+                },
             ],
         };
     };

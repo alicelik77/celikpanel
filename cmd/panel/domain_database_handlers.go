@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -252,10 +253,20 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
 		return
 	}
+	ids := make([]int, 0, len(databases))
+	for _, db := range databases {
+		ids = append(ids, db.ID)
+	}
+	// alpha.133 round 5: what deleting each database leaves of its users.
+	// A failure to tell is "unknown" per user; the list still loads.
+	fates := p.databaseUserFates(ctx, ids)
 	for i := range databases {
 		databases[i].Users = users[databases[i].ID]
 		if databases[i].Users == nil {
 			databases[i].Users = []domainDatabaseUser{}
+		}
+		for j := range databases[i].Users {
+			databases[i].Users[j].Stays = databaseUserStays(fates, databases[i].ID, databases[i].Users[j].ID)
 		}
 	}
 
@@ -355,6 +366,34 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 	if err != nil {
 		writeServerError(w, err)
 		return
+	}
+
+	// alpha.133 round 5 (review W-C): when this subscription already has a
+	// user record of that name, the record is given to the new database below;
+	// that step waits at most databaseEngineLinkWait for a deletion on the
+	// same engine and holds the gate until the records are written. A new
+	// name needs no gate.
+	var existingUser int
+	if err := pool.QueryRowContext(ctx, `SELECT COUNT(*) FROM database_users WHERE server_id = ? AND username = ?`, serverID, dbUser).Scan(&existingUser); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if existingUser > 0 {
+		engineServer, err := repositories.NewPostgresDatabaseServerRepository(pool).GetByID(ctx, serverID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		release, err := acquireDatabaseEngineGate(ctx, engineServer, databaseEngineLinkWait)
+		if errors.Is(err, errDatabaseEngineBusy) {
+			writeDatabaseEngineBusy(w)
+			return
+		}
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		defer release()
 	}
 
 	// alpha.129: the database's and its user's names must be free on this
@@ -524,99 +563,28 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	// Domain'e göre süz; bir veritabanı yalnızca kendi domain'i üzerinden
 	// silinebilsin (yönlendirici, çağıranın o domain'in sahibi olduğunu
 	// zaten doğruladı).
-	var dbName, serverType string
-	var serverPort int
+	var dbName string
 	err = pool.QueryRowContext(ctx, `
-		SELECT d.name, dst.name, ds.port
-		FROM databases_v2 d
-		JOIN database_servers ds ON ds.id = d.server_id
-		JOIN database_server_types dst ON dst.id = ds.type_id
-		WHERE d.id = ? AND d.domain_id = ?
-	`, dbID, domainID).Scan(&dbName, &serverType, &serverPort)
+		SELECT d.name FROM databases_v2 d WHERE d.id = ? AND d.domain_id = ?
+	`, dbID, domainID).Scan(&dbName)
 	if err != nil {
 		http.Error(w, "Database not found", http.StatusNotFound)
 		return
 	}
 
-	// The auto-created user rides along with the database.
-	// Otomatik oluşturulan kullanıcı veritabanıyla birlikte gider.
-	var userID int
-	var dbUser string
-	err = pool.QueryRowContext(ctx, `
-		SELECT u.id, u.username
-		FROM database_user_grants g
-		JOIN database_users u ON u.id = g.user_id
-		WHERE g.database_id = ?
-		ORDER BY g.id LIMIT 1
-	`, dbID).Scan(&userID, &dbUser)
-	if err != nil && err != sql.ErrNoRows {
-		writeServerError(w, err)
-		return
-	}
-
-	// Delete database via agent RPC
-	var agentResp transport.DeleteDatabaseResponse
-
-	agentReq := transport.DeleteDatabaseRequest{
-		Type: apiTypeNameFor(serverType),
-		Name: dbName,
-		User: dbUser,
-	}
-	if serverType == "postgresql" {
-		// alpha.108: the cluster the record says the database lives on.
-		agentReq.Port = serverPort
-	}
-
-	reportOperationStep(r.Context(), "delete")
-	err = p.callAgent("Agent.DeleteDatabase", agentReq, &agentResp)
-	if err == nil && agentResp.Refusal != nil {
-		// alpha.127: the cluster this database lives on does not run (its
-		// program removed, or stopped); nothing was dropped and the record
-		// stays.
-		writeDatabaseClusterRefusal(w, r, agentResp.Refusal)
-		return
-	}
-	if err != nil || !agentResp.Success {
-		writeAgentError(w, err, agentResp.Error)
-		return
-	}
-
-	tx, err := pool.BeginTx(ctx, nil)
+	// alpha.133 round 5: one deletion for both screens (database_delete.go).
+	// It used to drop the first user on the engine even when another
+	// database still used it, and to leave every other user behind.
+	// İki ekran için tek silme: başka veritabanının kullandığı kullanıcı
+	// kalır, yalnız bu veritabanının kullanıcıları gider.
+	deleted, err := p.deleteDatabaseRecord(ctx, dbID)
 	if err != nil {
-		writeServerError(w, err)
+		p.writeDatabaseDeleteError(w, r, dbName, err)
 		return
 	}
-	defer tx.Rollback()
-
-	// Deleting the database cascades its grants.
-	// Veritabanını silmek yetkilerini de beraberinde siler.
-	reportOperationStep(r.Context(), "records")
-	_, err = tx.ExecContext(ctx, "DELETE FROM databases_v2 WHERE id = ?", dbID)
-	if err != nil {
-		http.Error(w, "Failed to remove database record", http.StatusInternalServerError)
-		return
-	}
-
-	if userID != 0 {
-		// Drop the user record only when nothing else references it.
-		// Kullanıcı kaydını yalnızca başka hiçbir yetki ona başvurmuyorken sil.
-		_, err = tx.ExecContext(ctx, `
-			DELETE FROM database_users
-			WHERE id = ? AND NOT EXISTS (SELECT 1 FROM database_user_grants WHERE user_id = ?)
-		`, userID, userID)
-		if err != nil {
-			http.Error(w, "Failed to remove database user record", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		writeServerError(w, err)
-		return
-	}
-
-	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	// alpha.133 round 5: recorded like the Databases page's delete.
+	p.auditDatabaseDeletion(r, deleted, "deleted")
+	json.NewEncoder(w).Encode(databaseDeletionAnswer("success", deleted))
 }
 
 // sanitizeName turns a domain into the leading fragment of a generated

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -101,6 +102,37 @@ func databaseEngineIsOnThisMachine(host string) bool {
 	}
 }
 
+// databaseRecordIsOurLocalEngine: a server record CelikPanel may reach through
+// the Agent's own door on this machine (alpha.133 round 5). The door reaches
+// the machine's own engine only - MariaDB over its socket whatever the record
+// says, PostgreSQL the cluster on the record's port - so a record qualifies
+// only when it is on this machine, is CelikPanel's own (its account is
+// CelikPanel's, or it holds no credential at all: a record an administrator
+// registered with a credential of their own is theirs), and, for MariaDB,
+// names the socket engine's port (none, or the port autodiscovery records).
+// Every other record is reached with its own credential.
+//
+// Agent'ın kapısından yalnız bu makinedeki, CelikPanel'in kendi kaydı olan ve
+// MariaDB için soketteki motorun portunu gösteren kayıt geçer.
+func databaseRecordIsOurLocalEngine(server *core.DatabaseServer) bool {
+	if server == nil || !databaseEngineIsOnThisMachine(server.Host) {
+		return false
+	}
+	name := strings.TrimSpace(server.AdminUsername)
+	ours := name == transport.DatabaseAdminAccountName || (name == "" && strings.TrimSpace(server.AdminPasswordEncrypted) == "")
+	if !ours {
+		return false
+	}
+	if dbDriverTypeFor(server) == "mariadb" {
+		return server.Port == 0 || server.Port == mariaDBSocketEnginePort
+	}
+	return true
+}
+
+// mariaDBSocketEnginePort is the port autodiscovery records for the
+// machine's own MariaDB (database_server_types.default_port).
+const mariaDBSocketEnginePort = 3306
+
 // loadDatabaseServerForAdminAccount does the checks every one of these
 // handlers needs, in the order that makes a refusal say the right thing.
 // loadDatabaseServerForAdminAccount, bu isleyicilerin her birinin ihtiyac
@@ -152,7 +184,9 @@ func (p *Panel) handleProvisionDatabaseAdminAccount(w http.ResponseWriter, r *ht
 	// writes is built from the state the previous call left.
 	// Sunucu başına bu hesabın tek değişikliği (D-029). İç içe geçen iki çağrı
 	// motoru bir parolada, Panel'i ötekinde bırakabilirdi.
-	unlock := databaseAdminAccountLocks.lock(server.ID)
+	// alpha.133 round 5: the account is one per engine on this machine, so
+	// the lock is too (databaseAdminAccountLockKey).
+	unlock := databaseAdminAccountLocks.lock(databaseAdminAccountLockKey(server))
 	defer unlock()
 	server, err := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB()).GetByID(r.Context(), server.ID)
 	if err != nil {
@@ -207,6 +241,10 @@ func (p *Panel) handleProvisionDatabaseAdminAccount(w http.ResponseWriter, r *ht
 	p.recordEngineVersion(server)
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
 	if err := serverRepo.Update(r.Context(), server); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if err := p.shareDatabaseAdminAccount(r.Context(), server); err != nil {
 		writeServerError(w, err)
 		return
 	}
@@ -282,7 +320,7 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 	}
 	// Never interleaved with opening or re-keying the same account (D-029).
 	// Aynı hesabın açılması ya da yeniden anahtarlanmasıyla iç içe geçmez.
-	unlock := databaseAdminAccountLocks.lock(server.ID)
+	unlock := databaseAdminAccountLocks.lock(databaseAdminAccountLockKey(server))
 	defer unlock()
 	server, err := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB()).GetByID(r.Context(), server.ID)
 	if err != nil {
@@ -313,6 +351,10 @@ func (p *Panel) handleRemoveDatabaseAdminAccount(w http.ResponseWriter, r *http.
 	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
 	reportOperationStep(r.Context(), "records")
 	if err := serverRepo.Update(r.Context(), server); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if err := p.shareDatabaseAdminAccount(r.Context(), server); err != nil {
 		writeServerError(w, err)
 		return
 	}
@@ -394,38 +436,132 @@ func (p *Panel) provisionDatabaseAdminAccountsFor(
 			if strings.TrimSpace(server.AdminUsername) != "" {
 				continue
 			}
-			password, sealed, err := p.newSealedDatabaseAdminPassword()
-			if err != nil {
-				return err
-			}
-			var resp transport.ProvisionDatabaseAdminAccountResponse
-			if err := p.callAgentContext(ctx, "Agent.ProvisionDatabaseAdminAccount",
-				&transport.ProvisionDatabaseAdminAccountRequest{
-					Engine: engine, Password: password, Port: databaseAdminAccountPort(server),
-				}, &resp); err != nil {
-				if agentUnreachableAlone(err) {
-					return err
-				}
-				if first == nil {
-					first = err
-				}
+			unlock := databaseAdminAccountLocks.lock(databaseAdminAccountLockKey(server))
+			err := p.provisionOneDatabaseAdminAccount(ctx, engine, server)
+			unlock()
+			if err == nil {
 				continue
 			}
-			if !resp.Provisioned {
-				if first == nil {
-					first = fmt.Errorf("%s", resp.Error)
-				}
-				continue
+			var stop provisionStop
+			if errors.As(err, &stop) {
+				return stop.err
 			}
-			server.AdminUsername = resp.Username
-			server.AdminPasswordEncrypted = sealed
-			p.recordEngineVersion(server)
-			if err := serverRepo.Update(ctx, server); err != nil {
-				return err
+			if first == nil {
+				first = err
 			}
 		}
 	}
 	return first
+}
+
+// provisionStop: a failure that ends provisionDatabaseAdminAccountsFor.
+type provisionStop struct{ err error }
+
+func (s provisionStop) Error() string { return s.err.Error() }
+
+// provisionOneDatabaseAdminAccount opens (or re-keys) the account on one
+// record's engine and records it on every record of that engine. The caller
+// holds the engine's lock; the record is read again under it, so a record
+// another call has just given the account is left as it is.
+func (p *Panel) provisionOneDatabaseAdminAccount(ctx context.Context, engine string, listed *core.DatabaseServer) error {
+	serverRepo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
+	server, err := serverRepo.GetByID(ctx, listed.ID)
+	if err != nil {
+		return provisionStop{err}
+	}
+	if strings.TrimSpace(server.AdminUsername) != "" {
+		return nil
+	}
+	password, sealed, err := p.newSealedDatabaseAdminPassword()
+	if err != nil {
+		return provisionStop{err}
+	}
+	var resp transport.ProvisionDatabaseAdminAccountResponse
+	if err := p.callAgentContext(ctx, "Agent.ProvisionDatabaseAdminAccount",
+		&transport.ProvisionDatabaseAdminAccountRequest{
+			Engine: engine, Password: password, Port: databaseAdminAccountPort(server),
+		}, &resp); err != nil {
+		if agentUnreachableAlone(err) {
+			return provisionStop{err}
+		}
+		return err
+	}
+	if !resp.Provisioned {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	server.AdminUsername = resp.Username
+	server.AdminPasswordEncrypted = sealed
+	p.recordEngineVersion(server)
+	if err := serverRepo.Update(ctx, server); err != nil {
+		return provisionStop{err}
+	}
+	if err := p.shareDatabaseAdminAccount(ctx, server); err != nil {
+		return provisionStop{err}
+	}
+	return nil
+}
+
+// alpha.133 round 5. CelikPanel's account on an engine of this machine is
+// one account, but every subscription has its own server record holding a
+// copy of its credential. Opening the account, or giving it a new password,
+// used to write only the record it was done through, so every other record
+// kept a password the engine no longer accepted: a customer's database could
+// then not be deleted (409 DATABASE_ENGINE_CREDENTIAL_REFUSED in the lab),
+// and the connection limits of their users were not written. Now the same
+// credential is written to every record of that engine on this machine
+// (MariaDB: all; PostgreSQL: the same port, one cluster), and removing the
+// account clears it from all of them. A record that holds a credential an
+// administrator gave (another account name, or a password without a name,
+// as before R-057) is left as it is.
+//
+// Panelin bu makinedeki bir motorda tek hesabı vardır; aynı kimlik bilgisi o
+// motorun bütün kayıtlarına yazılır, kaldırılınca hepsinden silinir.
+// Yöneticinin verdiği kimlik bilgisi değiştirilmez.
+
+// databaseAdminAccountLockKey is the lock of the account a record's
+// credential belongs to: one per engine on this machine (negative keys, so
+// they never meet a record id), the record itself elsewhere.
+func databaseAdminAccountLockKey(server *core.DatabaseServer) int {
+	if server == nil || !databaseEngineIsOnThisMachine(server.Host) {
+		if server == nil {
+			return 0
+		}
+		return server.ID
+	}
+	if dbDriverTypeFor(server) == "postgresql" {
+		return -100000 - server.Port
+	}
+	return -1
+}
+
+// shareDatabaseAdminAccount writes server's account (or its absence) to the
+// other records of the same engine on this machine.
+func (p *Panel) shareDatabaseAdminAccount(ctx context.Context, server *core.DatabaseServer) error {
+	if server == nil || !databaseEngineIsOnThisMachine(server.Host) {
+		return nil
+	}
+	port := 0
+	if dbDriverTypeFor(server) == "postgresql" {
+		port = server.Port
+	}
+	var username, sealed any
+	if name := strings.TrimSpace(server.AdminUsername); name != "" {
+		username, sealed = name, server.AdminPasswordEncrypted
+	}
+	_, err := p.db.GetDB().ExecContext(ctx, `
+		UPDATE database_servers
+		SET admin_username = ?1, root_password_encrypted = ?2, updated_at = datetime('now')
+		WHERE id <> ?3 AND type_id = ?4
+		  AND COALESCE(status, 'active') <> 'retired'
+		  AND LOWER(TRIM(COALESCE(host, ''))) IN ('', 'localhost', '127.0.0.1', '::1', '[::1]')
+		  AND (?5 = 0 OR port = ?5)
+		  AND (COALESCE(admin_username, '') = ?6
+		       OR (COALESCE(admin_username, '') = '' AND COALESCE(root_password_encrypted, '') = ''))`,
+		username, sealed, server.ID, server.TypeID, port, transport.DatabaseAdminAccountName)
+	if err != nil {
+		return fmt.Errorf("record CelikPanel's account on the other records of this %s: %w", server.TypeName, err)
+	}
+	return nil
 }
 
 // databaseAdminAccountPort is the cluster a PostgreSQL record is (alpha.108:

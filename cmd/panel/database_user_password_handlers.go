@@ -150,7 +150,9 @@ func (p *Panel) applyDatabaseUserPassword(w http.ResponseWriter, r *http.Request
 	}
 
 	answer := map[string]any{"success": true}
-	if localDatabaseHost(server.Host) {
+	// alpha.133 round 5: the Agent's door only for CelikPanel's own record of
+	// the machine's engine (databaseRecordIsOurLocalEngine).
+	if databaseRecordIsOurLocalEngine(server) {
 		engine, port := "mysql", 0
 		if dbDriverTypeFor(server) == "postgresql" {
 			engine, port = "postgresql", server.Port
@@ -214,7 +216,7 @@ func (p *Panel) applyDatabaseUserPassword(w http.ResponseWriter, r *http.Request
 		reportOperationStep(ctx, "password")
 		if err := driver.ChangePassword(user.Username, password); err != nil {
 			release()
-			writeDatabaseEngineError(w, server, err)
+			writeDatabaseEngineErrorFor(w, r, server, err)
 			return
 		}
 		reportOperationStep(ctx, "records")

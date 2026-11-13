@@ -33,6 +33,14 @@ type DatabaseAccessUserRequest struct {
 }
 
 // DatabaseAccessUserResponse says what happened.
+// DatabaseAccessKeptOtherRights is the KeptReason of an account kept for
+// rights CelikPanel did not give.
+const DatabaseAccessKeptOtherRights = "other_rights"
+
+// DatabaseAccessKeptUnchecked is the KeptReason of an account kept because
+// what else it has could not be checked (fail closed).
+const DatabaseAccessKeptUnchecked = "unchecked"
+
 type DatabaseAccessUserResponse struct {
 	Applied bool `json:"applied"`
 	// Exists: creation found the account name already on the engine; nothing
@@ -42,7 +50,15 @@ type DatabaseAccessUserResponse struct {
 	Absent bool `json:"absent,omitempty"`
 	// CleanupIncomplete: a failed creation could not take back the account
 	// it had just made.
-	CleanupIncomplete bool                    `json:"cleanup_incomplete,omitempty"`
-	Refusal           *DatabaseClusterRefusal `json:"refusal,omitempty"`
-	Error             string                  `json:"error,omitempty"`
+	CleanupIncomplete bool `json:"cleanup_incomplete,omitempty"`
+	// Kept (alpha.133 round 5): removal found rights on the account that
+	// CelikPanel did not give - on another database, globally, or on a host
+	// CelikPanel did not create - so the account stays; only what CelikPanel
+	// gave on this database was taken away. KeptReason: "other_rights".
+	// Additive. Kept: hesabın CelikPanel'in vermediği başka hakları var; hesap
+	// kalır, yalnız bu veritabanındaki hakları alınır.
+	Kept       bool                    `json:"kept,omitempty"`
+	KeptReason string                  `json:"kept_reason,omitempty"`
+	Refusal    *DatabaseClusterRefusal `json:"refusal,omitempty"`
+	Error      string                  `json:"error,omitempty"`
 }

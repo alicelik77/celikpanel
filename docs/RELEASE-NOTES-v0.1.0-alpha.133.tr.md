@@ -27,10 +27,27 @@ günceller.**
 - **Her satır işlemlerini sözle söyler:** "Aç" alan adının Veritabanları
   bölümüne götürür; "Diğer" menüsünde **Yeni parola ver…** (birden çok kullanıcı
   varsa hangisi diye sorar) ve **Sil…** (neyin gidip neyin kaldığını listeler
-  ve veritabanının adının yazılmasını ister) vardır. Bu listeden silmek
-  **veritabanının kullanıcılarını silmez**; soru bunu ve veritabanı alan
-  adının Veritabanları bölümünden silinirse onunla açılan kullanıcının da
-  silindiğini söyler.
+  ve veritabanının adının yazılmasını ister) vardır.
+- **Veritabanı silmek bu listede de alan adının Veritabanları bölümünde de
+  aynı çalışır ve geride bir şey bırakmaz:** veritabanı ve onu kullanan
+  başka veritabanı olmayan her kullanıcı gider. Başka bir veritabanının da
+  kullandığı kullanıcı ile veritabanı sunucusunun ve CelikPanel'in kendi
+  hesapları kalır; iki silme sorusu da hangi kullanıcıların gidip
+  hangilerinin kaldığını söyler. Sahibinin sunucuda CelikPanel dışında elle
+  başka haklar verdiği bir kullanıcı da sunucuda kalır, yalnız silinen
+  veritabanına erişimi alınır; silmeden sonraki bildirim bunu söyler.
+  CelikPanel'in o sunucunun kendi hesabıyla bağlandığı bir veritabanı
+  sunucusunda (başka bir makine ya da bir yöneticinin kendisinin kaydettiği
+  bir sunucu) yalnız veritabanı silinir, kullanıcıları kalır; soru bunu önce,
+  bildirim sonra söyler.
+  Önceden bir müşterinin veritabanını bu listeden silmek, Türkçe ekranda
+  İngilizce "CelikPanel'in tuttuğu kimlik bilgisi reddedildi" sözüyle
+  reddedilebiliyor ve kullanıcıları geride kalıyordu.
+- Bir sitenin hâlâ bağlı olduğu PostgreSQL veritabanı da silinir; açık
+  bağlantıları önce kapatılır.
+- Silme yarıda kalırsa veritabanı listede durur ve **Sil**'e yeniden basmak
+  işi bitirir; ekran ne olduğunu söyler (silindi, silinmedi ya da
+  bilinmiyor) ve denetim günlüğü her silmeyi, yarım kalanı da kaydeder.
 - **"Veritabanı ekle"** "Hangi alan adı için?" diye sorar ve o alan adının
   Veritabanları bölümünü formu açık olarak getirir.
 - Parolalar ve veritabanının içeriği bu sayfada hiç gösterilmez. Liste her
@@ -212,11 +229,36 @@ itibaren pencere kendiliğinden devam eder.
   kaldırır ama veritabanlarının kendisini sunucuda bırakır.** Silme sorusu
   bunu söyler; onların da gitmesini istiyorsanız önce veritabanlarını silin.
   Bu soruda bir seçim sonraki sürümde gelecek.
-- **Veritabanları listesinden bir veritabanını silmek kullanıcılarını
-  silmez;** kullanıcılar veritabanı sunucusunda kalır. Panel bir kullanıcıyı
-  yalnız erişebildiği bir veritabanının altında gösterir; onunla açılan
-  kullanıcının da gitmesi gerekiyorsa veritabanını alan adının Veritabanları
-  bölümünden silin.
+- **Bu sürümden önce kurulmuş bir sunucuda veritabanı kullanıcılarının
+  bağlantı sınırları uygulanmıyor olabilir** (planın "veritabanı kullanıcısı
+  başına bağlantı" sınırı). CelikPanel kendi veritabanı hesabının parolasının
+  bir kopyasını her müşteri için ayrı tutuyordu; parola değişince eski
+  kopyalar çalışmaz oldu. Bu sürüm bundan sonra bütün kopyaları birlikte
+  günceller, ama zaten geride kalmış kopyaları onarmaz. Düzeltmek için bir
+  yönetici **Bileşenler → MariaDB** sayfasını açar ve "CelikPanel'in bu
+  hizmete bağlandığı hesap" bölümünde bir kez **Diğer → Yeni parola ver…**
+  seçer; PostgreSQL kuruluysa aynısını **Bileşenler → PostgreSQL**
+  sayfasında yapar. Başka hiçbir şey etkilenmez: veritabanları, siteler ve
+  kullanıcıları çalışmayı sürdürür, veritabanı silmek de artık bu kopyalara
+  bağlı değildir. Kendiliğinden onarım sonraki sürümde gelir.
+- CelikPanel'in kendi veritabanı hesabı MariaDB ya da PostgreSQL sayfasından
+  kaldırılırsa, sonraki yeni müşteri onu yeniden açar. Düzeltmesi sonraki
+  sürümde gelir.
+- **Kendi hesabıyla bağlanılan bir veritabanı sunucusunda kullanıcı
+  kaldırmak** (başka bir makine ya da bir yöneticinin kaydettiği sunucu) bu
+  sürümde yapılmaz: sahibinin orada verdiği hakların denetlenmesi gerekir ve
+  o hesap bunları okuyamayabilir. Kullanıcılar kalır, ekranlar bunu söyler.
+- Bazı başka veritabanı adımları (aboneliği askıya alma, veritabanı
+  boyutları, dışarıdan bağlantılar, devirden sonraki parola değişikliği) bir
+  veritabanı sunucusunun bu makinede olup olmadığına hâlâ yalnız adresine
+  bakarak karar verir; bir kez IP adresiyle, bir kez adıyla kaydedilen
+  sunucu iki ayrı sunucu sayılır. Uygulama kurmak, veritabanı kopyalamak ve
+  bir veritabanını PostgreSQL sürümleri arasında taşımak henüz aynı
+  sunucudaki bir silmeyi beklemez. Bunlar sonraki bir sürümde gelir.
+- Panel ile Agent'ı farklı sürümdeyken (güncelleme sırasında) veritabanı
+  silmek veritabanını kaldırır ama kullanıcılarını henüz kaldırmaz:
+  veritabanı bir notla listede durur, güncellemeden sonra **Sil**'e yeniden
+  basmak işi bitirir.
 - **Kapladığı yer sütunu** Veritabanları listesinde yok; bütün liste için
   boyutlar tek seferde okunabildiğinde gelecek.
 - **Sertifika ekranı posta adının kapsanıp kapsanmadığını henüz

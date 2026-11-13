@@ -9,11 +9,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/services"
+	"github.com/alicelik/celikpanel/internal/transport"
 )
 
 // alpha.133: the left-menu Databases page lists every database the caller may
@@ -71,9 +71,20 @@ func newVisibleDatabasesFixture(t *testing.T) visibleDatabasesFixture {
 		}, nil
 	}
 	t.Cleanup(func() { readDatabaseEngineServices = saved })
+	// alpha.133 round 5: a database on this machine is deleted through the
+	// Agent (database_delete.go), never with a record's stored credential.
 	savedDriver := newDatabaseDriver
-	newDatabaseDriver = func(services.DriverConfig) (services.DatabaseDriver, error) { return &visibleDeleteDriver{}, nil }
+	newDatabaseDriver = func(services.DriverConfig) (services.DatabaseDriver, error) {
+		return nil, errors.New("a local engine was reached with a record's stored credential")
+	}
 	t.Cleanup(func() { newDatabaseDriver = savedDriver })
+	savedAgent := databaseDeleteAgent
+	databaseDeleteAgent = func(_ *Panel, _ context.Context, _ transport.DeleteDatabaseRequest, resp *transport.DeleteDatabaseResponse) error {
+		resp.Success = true
+		return nil
+	}
+	t.Cleanup(func() { databaseDeleteAgent = savedAgent })
+	f.panel.databaseAccessNative = &fakeDatabaseAccessNative{}
 
 	impersonation, err := f.panel.sessions.CreateImpersonation(context.Background(), authzMatrixCustomerID, authzMatrixAdminID)
 	if err != nil {
@@ -96,20 +107,6 @@ func newVisibleDatabasesFixture(t *testing.T) visibleDatabasesFixture {
 		f.panel.handleDatabaseSubroute(w, r, "/api/v1/database-users/")
 	})
 	return visibleDatabasesFixture{accessUsersFixture: f, handler: f.panel.requireAuth(mux), tokens: tokens}
-}
-
-var visibleDeleteDriverDrops struct {
-	sync.Mutex
-	names []string
-}
-
-type visibleDeleteDriver struct{ authzGrantIsolationDriver }
-
-func (d *visibleDeleteDriver) DeleteDatabase(name string) error {
-	visibleDeleteDriverDrops.Lock()
-	defer visibleDeleteDriverDrops.Unlock()
-	visibleDeleteDriverDrops.names = append(visibleDeleteDriverDrops.names, name)
-	return nil
 }
 
 func (f visibleDatabasesFixture) as(t *testing.T, who, method, path, body string) *httptest.ResponseRecorder {
@@ -254,7 +251,9 @@ func TestVisibleDatabasesCarryNoSecret(t *testing.T) {
 			}
 		}
 		for _, user := range db["users"].([]any) {
-			if got := keys(user); got != "id,username" {
+			// alpha.133 round 5: "stays" (what deleting the database leaves
+			// of the user) when the user is not removed with it.
+			if got := keys(user); got != "id,username" && got != "id,stays,username" {
 				t.Fatalf("user keys %s", got)
 			}
 		}
@@ -343,13 +342,15 @@ func TestVisibleDatabaseRowActionsRoleMatrix(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			f := newVisibleDatabasesFixture(t)
 			f.native.passwords = nil
-			deleted := f.as(t, row.who, http.MethodDelete, "/api/v1/databases/"+strconv.Itoa(row.database), "")
-			if deleted.Code != row.want {
-				t.Fatalf("delete: %d %s", deleted.Code, deleted.Body.String())
-			}
+			// The password first: deleting the database removes the users
+			// only it uses (alpha.133 round 5).
 			password := f.as(t, row.who, http.MethodPost, "/api/v1/database-users/"+strconv.Itoa(row.user)+"/password", strong)
 			if password.Code != row.want {
 				t.Fatalf("password: %d %s", password.Code, password.Body.String())
+			}
+			deleted := f.as(t, row.who, http.MethodDelete, "/api/v1/databases/"+strconv.Itoa(row.database), "")
+			if deleted.Code != row.want {
+				t.Fatalf("delete: %d %s", deleted.Code, deleted.Body.String())
 			}
 			remaining := f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = ?`, row.database)
 			if row.want == http.StatusOK {

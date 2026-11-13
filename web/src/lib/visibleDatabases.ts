@@ -1,3 +1,5 @@
+import type { DatabaseUserStays } from './databaseDeleteWords';
+
 // The databases the signed-in person may see (alpha.133, the one visibility
 // rule): an administrator every database on the server, a reseller their own
 // customers', a customer and a team member only their own. One address, one
@@ -45,7 +47,8 @@ export interface VisibleDatabase {
     sizeBytes: number | null;
     /** null: the record carries no creation time. */
     createdAt: string | null;
-    users: Array<{ id: number; username: string }>;
+    /** stays (alpha.133 round 5): what deleting the database leaves of the user; absent = removed with it. */
+    users: Array<{ id: number; username: string; stays?: DatabaseUserStays }>;
 }
 
 export interface VisibleEngine {
@@ -105,7 +108,8 @@ function decodeDatabase(raw: unknown): VisibleDatabase {
     const users = db.users.map((item) => {
         const user = item as Record<string, unknown> | null;
         if (!user || typeof user !== 'object' || !isId(user.id) || !isText(user.username)) shape('database.users[]');
-        return { id: user.id, username: user.username };
+        const stays: DatabaseUserStays | undefined = user.stays === 'shared' || user.stays === 'account' || user.stays === 'server' || user.stays === 'unknown' ? user.stays : undefined;
+        return stays ? { id: user.id, username: user.username, stays } : { id: user.id, username: user.username };
     });
     return {
         id: db.id,

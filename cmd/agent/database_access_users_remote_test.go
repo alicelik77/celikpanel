@@ -27,6 +27,11 @@ func TestRemoveMySQLAccessUserTakesItsRemoteCopiesOutOfTheRecord(t *testing.T) {
 		if strings.HasPrefix(statement, "SELECT CONCAT('host=', Host)") {
 			return []byte("host=203.0.113.7\nhost=localhost\n"), nil
 		}
+		// alpha.133 round 5: asked whether the account has rights CelikPanel
+		// did not give; here it has none.
+		if strings.HasPrefix(statement, "SELECT CONCAT('n=', ") {
+			return []byte("n=0\n"), nil
+		}
 		return nil, nil
 	}
 	var resp transport.DatabaseAccessUserResponse
