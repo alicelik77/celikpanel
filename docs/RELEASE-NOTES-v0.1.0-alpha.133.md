@@ -35,6 +35,10 @@ screen.**
   which stay. A user its owner gave other rights on the server by hand
   (outside CelikPanel) stays on the server too, with only its access to the
   deleted database taken away, and the notice after the delete says so.
+  On a database server CelikPanel reaches with that server's own account
+  (another machine, or a database server an administrator registered
+  themselves), only the database is deleted and its users stay; the
+  question says so before, and the notice after.
   Before, deleting a customer's database from this list could be refused
   with "the server refused the credential CelikPanel holds", in English on
   a Turkish screen, and its users were left behind.
@@ -202,6 +206,18 @@ resumes by itself.
 - If CelikPanel's own database account is removed on the MariaDB or
   PostgreSQL page, the next new customer opens it again. A fix comes in the
   next release.
+- **Removing users on a database server reached with its own account**
+  (another machine, or one an administrator registered) is not done in
+  this release: it needs a check of the rights the owner gave there, which
+  that account may not be allowed to read. The users stay and the screens
+  say so.
+- Some other database steps (suspending a subscription, database sizes,
+  outside connections, the password change after a transfer) still decide
+  whether a database server is on this machine by its address alone, and a
+  database server registered once by its IP address and once by its name
+  counts as two. Installing an application, copying a database and moving
+  a database between PostgreSQL versions do not yet wait for a deletion on
+  the same server. These come in a later release.
 - While the panel and its Agent are from different versions (during an
   update), deleting a database removes the database but not yet its users:
   the database stays in the list with a note, and pressing **Delete** again

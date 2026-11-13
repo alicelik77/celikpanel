@@ -74,7 +74,17 @@ same rules.
   owning or holding anything elsewhere, or a membership (PostgreSQL) - and
   takes away only CelikPanel's grant on this database; the answer says it is
   kept on the engine and its record goes. Giving an existing account to a
-  database waits while a deletion on the same engine runs.
+  database waits while a deletion on the same engine runs (at most 10 s,
+  then DATABASE_ENGINE_BUSY; a deletion waits at most 30 s for such a step).
+  On an engine reached with the record's own account (another machine, an
+  administrator's own record) only the database is dropped and every user
+  stays ("stays": "server"); removing users there needs a rights check that
+  account may not be able to perform (open). The PostgreSQL check does not
+  count the membership PostgreSQL 16+ grants a role's creator by itself;
+  on MariaDB a routine in the deleted database is not a right elsewhere, the
+  role table is asked for only where it exists, and a check that fails keeps
+  the account ("unchecked"). Open: none of these statements has run on a
+  real engine yet (the lab check does that).
 - Plans: there is no database-user quota in the plans
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".

@@ -36,6 +36,10 @@ günceller.**
   hangilerinin kaldığını söyler. Sahibinin sunucuda CelikPanel dışında elle
   başka haklar verdiği bir kullanıcı da sunucuda kalır, yalnız silinen
   veritabanına erişimi alınır; silmeden sonraki bildirim bunu söyler.
+  CelikPanel'in o sunucunun kendi hesabıyla bağlandığı bir veritabanı
+  sunucusunda (başka bir makine ya da bir yöneticinin kendisinin kaydettiği
+  bir sunucu) yalnız veritabanı silinir, kullanıcıları kalır; soru bunu önce,
+  bildirim sonra söyler.
   Önceden bir müşterinin veritabanını bu listeden silmek, Türkçe ekranda
   İngilizce "CelikPanel'in tuttuğu kimlik bilgisi reddedildi" sözüyle
   reddedilebiliyor ve kullanıcıları geride kalıyordu.
@@ -205,6 +209,17 @@ itibaren pencere kendiliğinden devam eder.
 - CelikPanel'in kendi veritabanı hesabı MariaDB ya da PostgreSQL sayfasından
   kaldırılırsa, sonraki yeni müşteri onu yeniden açar. Düzeltmesi sonraki
   sürümde gelir.
+- **Kendi hesabıyla bağlanılan bir veritabanı sunucusunda kullanıcı
+  kaldırmak** (başka bir makine ya da bir yöneticinin kaydettiği sunucu) bu
+  sürümde yapılmaz: sahibinin orada verdiği hakların denetlenmesi gerekir ve
+  o hesap bunları okuyamayabilir. Kullanıcılar kalır, ekranlar bunu söyler.
+- Bazı başka veritabanı adımları (aboneliği askıya alma, veritabanı
+  boyutları, dışarıdan bağlantılar, devirden sonraki parola değişikliği) bir
+  veritabanı sunucusunun bu makinede olup olmadığına hâlâ yalnız adresine
+  bakarak karar verir; bir kez IP adresiyle, bir kez adıyla kaydedilen
+  sunucu iki ayrı sunucu sayılır. Uygulama kurmak, veritabanı kopyalamak ve
+  bir veritabanını PostgreSQL sürümleri arasında taşımak henüz aynı
+  sunucudaki bir silmeyi beklemez. Bunlar sonraki bir sürümde gelir.
 - Panel ile Agent'ı farklı sürümdeyken (güncelleme sırasında) veritabanı
   silmek veritabanını kaldırır ama kullanıcılarını henüz kaldırmaz:
   veritabanı bir notla listede durur, güncellemeden sonra **Sil**'e yeniden
