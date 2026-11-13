@@ -122,8 +122,8 @@ func TestDomainDeletionStatusNamesAgentHold(t *testing.T) {
 // that receipt by itself without starting anything on the server.
 func TestDNSPendingPublicationRecordsAgentFinishedOperationAfterStop(t *testing.T) {
 	panel, agent, clock, scheduler := newPendingPublicationPanel(t, "stopped-pending.example")
-	configurePendingWithCode(t, agent, transport.DNSPeerPendingEnrollmentRequired)
-	recoverOutcome(t, agent, func() bool { return true }, func() string { return transport.DNSPeerPendingEnrollmentRequired })
+	configurePendingWithCode(t, agent, transport.DNSPeerPendingJournalUnresolved)
+	recoverOutcome(t, agent, func() bool { return true }, func() string { return transport.DNSPeerPendingJournalUnresolved })
 	ctx := context.Background()
 	if err := panel.syncZoneToDNS(ctx, "stopped-pending.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
 		t.Fatalf("initial err=%v", err)

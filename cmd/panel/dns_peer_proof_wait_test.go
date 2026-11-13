@@ -1,0 +1,175 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+
+	"github.com/alicelik/celikpanel/internal/transport"
+)
+
+// alpha.133 round 5 (lab w9, 13 Nov 2026): a backup DNS server that was
+// unreachable for about 45 seconds turned one of nine re-checks into
+// dns_peer_inspection_unknown, which the Panel did not re-check, so the
+// deletion stayed waiting after the backup answered again until a person
+// pressed Delete. Every reason a re-check can change is now re-checked; only
+// dns_peer_journal_unresolved stops the re-checks.
+
+// runPendingSequence lets the reconciler run, with no press, while the
+// scripted Agent answers each re-check with the next code; "" completes it.
+// It returns the follow-up the deletion status reports after each re-check.
+func runPendingSequence(t *testing.T, zone string, codes []string) (followUps []string, recovers int) {
+	t.Helper()
+	panel, agent, clock, scheduler := newPendingPublicationPanel(t, zone)
+	ctx := context.Background()
+	configurePendingWithCode(t, agent, codes[0])
+	step := 0
+	current := func() string { return codes[step] }
+	recoverOutcome(t, agent, func() bool { return current() != "" }, current)
+	base := agent.recoverHook
+	agent.recoverHook = func(request transport.RecoverDNSZoneV3Request, response *transport.RecoverDNSZoneV3Response) error {
+		recovers++
+		err := base(request, response)
+		if step < len(codes)-1 {
+			step++
+		}
+		return err
+	}
+	if err := panel.syncZoneToDNS(ctx, zone, false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
+		t.Fatalf("initial err=%v", err)
+	}
+	lease, err := readDNSZoneEngineLease(ctx, panel.db.GetDB(), zone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The publication's own request resumed its operation at most once.
+	recovers, step = 0, 1
+	panel.reconcilePendingDNSPublicationsOnce(ctx) // discovery
+	for i := 0; i < 3*len(codes) && leaseCount(t, panel) != 0; i++ {
+		entry, ok := scheduler.entry(lease.RequestID)
+		if !ok {
+			break
+		}
+		clock.Advance(entry.NextAt.Sub(clock.Now()))
+		panel.reconcilePendingDNSPublicationsOnce(ctx)
+		if entry, ok := scheduler.entry(lease.RequestID); ok {
+			followUp, _ := panel.domainDeletionDNSFollowUp(lease, entry.Code)
+			followUps = append(followUps, followUp)
+		}
+	}
+	if leaseCount(t, panel) != 0 {
+		t.Fatalf("%s did not finish by itself; follow-ups %v, re-checks %d", zone, followUps, recovers)
+	}
+	return followUps, recovers
+}
+
+// The w9 sequence: the backup does not answer for three attempts (each
+// ending at the exchange's bound; the Agent now reports every shape of that
+// as dns_peer_proof_timeout:peer_exchange, and the alpha.133 race's
+// dns_peer_inspection_unknown is re-checked too), then it answers and the
+// deletion finishes with no press.
+func TestBackupThatDoesNotAnswerIsRecheckedUntilTheDeletionFinishes(t *testing.T) {
+	noAnswer := transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange)
+	followUps, recovers := runPendingSequence(t, "w9.example", []string{
+		noAnswer, noAnswer, transport.DNSPeerPendingInspectionUnknown, noAnswer, "",
+	})
+	if recovers != 4 {
+		t.Fatalf("re-checks %d, want 4 (three waits, then the one that finishes)", recovers)
+	}
+	for _, followUp := range followUps {
+		if followUp != domainDeletionFollowUpAutomatic {
+			t.Fatalf("follow-ups %v: every wait must be automatic", followUps)
+		}
+	}
+}
+
+// A backup that answers and refuses keeps its own code, is still re-checked
+// (and becomes "stuck" after the same number in a row, with one
+// notification), and the deletion finishes once it stops refusing.
+func TestBackupThatRefusesIsRecheckedAndFinishesOnceItStops(t *testing.T) {
+	refused := transport.DNSPeerPendingInspectionUnknownWithDetail(transport.DNSPeerInspectorReasonNamedUnavailable)
+	codes := []string{}
+	for i := 0; i < dnsPendingPublicationStuckAfter+2; i++ {
+		codes = append(codes, refused)
+	}
+	codes = append(codes, "")
+	followUps, recovers := runPendingSequence(t, "refusing.example", codes)
+	if recovers != len(codes)-1 {
+		t.Fatalf("re-checks %d, want %d", recovers, len(codes)-1)
+	}
+	if followUps[0] != domainDeletionFollowUpAutomatic ||
+		followUps[dnsPendingPublicationStuckAfter-1] != domainDeletionFollowUpStuck {
+		t.Fatalf("follow-ups %v", followUps)
+	}
+	for _, followUp := range followUps {
+		if followUp == domainDeletionFollowUpPerson || followUp == domainDeletionFollowUpStopped {
+			t.Fatalf("follow-ups %v: a refusing backup never stops the checks", followUps)
+		}
+	}
+}
+
+// Every reviewed DNS proof reason is re-checked except the one a re-check
+// cannot change; its deletion status says so.
+func TestOnlyAnUnresolvedCheckRecordStopsTheRechecks(t *testing.T) {
+	panel := &Panel{}
+	lease := dnsZoneEngineLease{RequestID: strings.Repeat("d", 32), ZoneName: "table.example"}
+	for _, code := range []string{
+		transport.DNSPeerPendingCatchingUp, transport.DNSPeerPendingProofTimeout,
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutLocalCheck),
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange),
+		transport.DNSPeerPendingJournalUnknown, transport.DNSPeerPendingEnrollmentRequired,
+		transport.DNSPeerPendingEnrollmentChanged, transport.DNSPeerPendingInspectionUnknown,
+		transport.DNSPeerPendingInspectionUnknownWithDetail(transport.DNSPeerInspectorReasonPolicy),
+		transport.DNSPeerPendingNativeUnknown, transport.DNSPeerPendingOwnerEditUnknown,
+		transport.DNSPeerPendingCatalogTransferRefused, transport.DNSPeerPendingProofInternal,
+	} {
+		if !dnsPeerPendingRetriesAutomatically(code) {
+			t.Fatalf("%s is not re-checked", code)
+		}
+		if followUp, _ := panel.domainDeletionDNSFollowUp(lease, code); followUp != domainDeletionFollowUpAutomatic {
+			t.Fatalf("%s follow-up %q", code, followUp)
+		}
+	}
+	if followUp, _ := panel.domainDeletionDNSFollowUp(lease, transport.DNSPeerPendingJournalUnresolved); followUp != domainDeletionFollowUpPerson {
+		t.Fatalf("unresolved follow-up %q", followUp)
+	}
+}
+
+// The notification's button opens the page its text names: a deletion's
+// waiting notice is on Domains; another DNS change's state on the DNS page.
+func TestDeletionNotificationOpensDomains(t *testing.T) {
+	panel := newDNSPanelForTest(t)
+	ctx := context.Background()
+	if _, err := panel.db.GetDB().Exec(`INSERT INTO users (username, password_hash, email, role) VALUES
+		('link-admin', 'x', 'admin@example.test', 'admin')`); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		action, reason, want string
+	}{
+		{"delete", transport.DNSPeerPendingJournalUnresolved, "/domains"},
+		{"delete", transport.DNSPeerPendingInspectionUnknown, "/domains"},
+		{"upsert", transport.DNSPeerPendingCatchingUp, "/dns-infrastructure"},
+	} {
+		lease := dnsZoneEngineLease{RequestID: strings.Repeat(tc.action[:1], 32), ZoneName: tc.action + ".example", DesiredAction: tc.action}
+		panel.notifyDNSPublicationAdministrators(ctx, lease, dnsPendingPublicationEntry{Lease: lease, Code: tc.reason, Repeats: 6})
+		var fix, body string
+		if err := panel.db.GetDB().QueryRow(`SELECT fix_path, body FROM account_notices WHERE kind = ? AND period = ?`,
+			noticeDNSPublicationStuck, lease.RequestID).Scan(&fix, &body); err != nil {
+			t.Fatal(err)
+		}
+		if fix != tc.want {
+			t.Fatalf("%s %s: button opens %q, want %q", tc.action, tc.reason, fix, tc.want)
+		}
+		words := dnsPublicationStuckNoticeWords(audienceAdministrator, map[string]any{
+			"zone": lease.ZoneName, "reason": tc.reason, "delete": tc.action == "delete",
+		})
+		if tc.want == "/domains" && (!strings.Contains(words.TextEN, "On Domains") || strings.Contains(words.TextEN, "Server → DNS and peer servers")) {
+			t.Fatalf("%s: text does not send the reader to Domains: %s", tc.reason, words.TextEN)
+		}
+		if tc.want == "/dns-infrastructure" && strings.Contains(words.TextEN, "On Domains, the waiting notice") {
+			t.Fatalf("%s: a DNS change's text sends the reader to Domains: %s", tc.reason, words.TextEN)
+		}
+	}
+}

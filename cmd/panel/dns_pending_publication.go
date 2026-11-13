@@ -563,6 +563,15 @@ func (p *Panel) attemptPendingDNSPublication(ctx context.Context, lease dnsZoneE
 		log.Printf("pending DNS publication %s: its re-check is still running on the Agent; its result is read again in %s",
 			lease.ZoneName, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
 	case dnsPendingPublicationStillPending:
+		if !entry.Automatic {
+			// alpha.133 round 5: this line said "next automatic re-check"
+			// for every reason, also for one that is not re-checked; what
+			// follows is only a read of its status (it starts nothing).
+			log.Printf("pending DNS publication %s still waits (reason=%s, %d in a row); not re-checked automatically: it waits for the server administrator; its status is read again in %s",
+				lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
+			p.raiseDNSPublicationPersonNotice(ctx, lease)
+			break
+		}
 		log.Printf("pending DNS publication %s still waits (reason=%s, %d in a row); next automatic re-check in %s",
 			lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats, entry.NextAt.Sub(scheduler.now()).Round(time.Second))
 		p.raiseDNSPublicationStuckNotice(ctx, lease)
@@ -1068,7 +1077,19 @@ func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dn
 	// then a person must act) the same notification says the new state and
 	// is shown again, so the earlier text never stays readable beside it.
 	p.reviseAccountNotice(ctx, db, recipients, noticeDNSPublicationStuck, true,
-		"dns_publication:"+lease.ZoneName, lease.RequestID, body, "/dns-infrastructure")
+		"dns_publication:"+lease.ZoneName, lease.RequestID, body, dnsPublicationNoticeFixPath(lease.DesiredAction == "delete"))
+}
+
+// dnsPublicationNoticeFixPath is the page the notification's button opens:
+// the page its text sends the reader to (alpha.133 round 5: a deletion's
+// notification said "On Domains, open Details …" while its button opened
+// Server → DNS and peer servers). A deletion's waiting notice with its next
+// step is on Domains; any other DNS change's state is on the DNS page.
+func dnsPublicationNoticeFixPath(deletion bool) string {
+	if deletion {
+		return "/domains"
+	}
+	return "/dns-infrastructure"
 }
 
 // clearDNSPublicationStuckNotice marks the notification of a publication
@@ -1199,6 +1220,11 @@ func dnsPublicationStuckNoticeWords(_ string, body map[string]any) accountNotice
 	case reason == transport.DNSPeerPendingCatchingUp:
 		w.TextEN = doneEN + ", but for a quarter of an hour the backup DNS server has not caught up with it. Who acts: you, or whoever runs the backup DNS server. Check that the backup DNS server is switched on and that it reaches this server on TCP port 53. Nothing else is needed: the next check continues by itself." + nextEN
 		w.TextTR = doneTR + ", ancak yedek DNS sunucusu çeyrek saattir buna yetişmedi. Kim yapar: siz ya da yedek DNS sunucusunu yöneten kişi. Yedek DNS sunucusunun açık olduğunu ve bu sunucuya TCP 53 numaralı bağlantı noktasından ulaşabildiğini denetleyin. Başka bir şey gerekmez: sonraki denetim kendiliğinden sürer." + nextTR
+	case deletion:
+		// Every reason of a deletion has its own why, who and next step in
+		// the waiting notice on Domains (the page this notification opens).
+		w.TextEN = doneEN + ", but its confirmation by the backup DNS server has failed the same way in every check for a quarter of an hour. Who acts: you. On Domains, the waiting notice of this deletion says why and the one thing to do; the CelikPanel Agent's lines on this server name the step that stops: sudo journalctl -u celikpanel-agent | grep peer. Send them to CelikPanel if the notice does not say what to fix." + nextEN
+		w.TextTR = doneTR + ", ancak yedek DNS sunucusunun bunu doğrulaması çeyrek saattir her denetimde aynı biçimde başarısız oluyor. Kim yapar: siz. Alan Adları sayfasında bu silmenin bekleme kutusu nedenini ve yapılacak tek şeyi söyler; bu sunucudaki CelikPanel Agent satırları duran adımı söyler: sudo journalctl -u celikpanel-agent | grep peer. Kutu neyin düzeltileceğini söylemiyorsa bu satırları CelikPanel'e gönderin." + nextTR
 	default:
 		w.TextEN = doneEN + ", but its confirmation by the backup DNS server has failed the same way in every check for a quarter of an hour. Who acts: you. Server → DNS and peer servers shows the reason; the CelikPanel Agent's lines on this server name the step that stops: sudo journalctl -u celikpanel-agent | grep peer. Send them to CelikPanel if the reason does not say what to fix." + nextEN
 		w.TextTR = doneTR + ", ancak yedek DNS sunucusunun bunu doğrulaması çeyrek saattir her denetimde aynı biçimde başarısız oluyor. Kim yapar: siz. Sunucu → DNS ve eş sunucular nedeni gösterir; bu sunucudaki CelikPanel Agent satırları duran adımı söyler: sudo journalctl -u celikpanel-agent | grep peer. Neden neyin düzeltileceğini söylemiyorsa bu satırları CelikPanel'e gönderin." + nextTR

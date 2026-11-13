@@ -154,7 +154,7 @@ func TestDNSPeerPendingGuidanceSplitsReviewedInspectorDetail(t *testing.T) {
 	reason, detail, message, ok = dnsPeerPendingGuidance(transport.DNSPeerPendingCatalogTransferRefused)
 	if !ok || reason != transport.DNSPeerPendingCatalogTransferRefused || detail != "" ||
 		!strings.Contains(message, "allow-transfer") || !strings.Contains(message, "127.0.0.1 and ::1") ||
-		!strings.Contains(message, "retry the same publication") {
+		!strings.Contains(message, "checks this same publication again by itself") {
 		t.Fatalf("typed refusal: %q %q %q %t", reason, detail, message, ok)
 	}
 	for _, code := range []string{"dns_peer_inspection_unknown:raw", "dns_peer_native_unknown:named_unavailable", "nope"} {

@@ -262,12 +262,13 @@ func TestDNSPendingPublicationSurvivesPanelRestart(t *testing.T) {
 	}
 }
 
-// Causes that need a person are not retried in a loop; when the cause changes
-// to a transient one, the re-check resumes.
+// The one cause a re-check provably cannot change (dns_peer_journal_unresolved)
+// is not retried in a loop; when the cause changes, the re-check resumes.
+// Every other reviewed code is re-checked (alpha.133 round 5).
 func TestDNSPendingPublicationOwnerActionCauseIsNotRetried(t *testing.T) {
 	panel, agent, clock, scheduler := newPendingPublicationPanel(t, "owner-pending.example")
-	configurePendingWithCode(t, agent, transport.DNSPeerPendingEnrollmentRequired)
-	code := transport.DNSPeerPendingEnrollmentRequired
+	configurePendingWithCode(t, agent, transport.DNSPeerPendingJournalUnresolved)
+	code := transport.DNSPeerPendingJournalUnresolved
 	recoverOutcome(t, agent, func() bool { return true }, func() string { return code })
 	if err := panel.syncZoneToDNS(context.Background(), "owner-pending.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
 		t.Fatalf("initial err=%v", err)
@@ -281,11 +282,11 @@ func TestDNSPendingPublicationOwnerActionCauseIsNotRetried(t *testing.T) {
 		t.Fatalf("owner-action cause was retried %d time(s) after the publication's own attempt", len(recoveries)-1)
 	}
 	views, _ := panel.dnsPendingPublicationViews(ctx)
-	if len(views) != 1 || views[0].Automatic || views[0].Reason != transport.DNSPeerPendingEnrollmentRequired || views[0].NextCheckAt != "" {
+	if len(views) != 1 || views[0].Automatic || views[0].Reason != transport.DNSPeerPendingJournalUnresolved || views[0].NextCheckAt != "" {
 		t.Fatalf("owner-action view=%+v", views)
 	}
-	// The cause changes (for example the owner set up inspection access and
-	// the Agent now reports a proof timeout): automatic re-checks resume.
+	// The cause changes (the administrator sorted the record out and the
+	// Agent now reports a proof timeout): automatic re-checks resume.
 	lease, _ := readDNSZoneEngineLease(ctx, panel.db.GetDB(), "owner-pending.example")
 	setPendingJobCode(t, agent, lease.RequestID, transport.DNSPeerPendingProofTimeout)
 	code = transport.DNSPeerPendingProofTimeout
@@ -297,20 +298,21 @@ func TestDNSPendingPublicationOwnerActionCauseIsNotRetried(t *testing.T) {
 	if entry, _ := scheduler.entry(lease.RequestID); !entry.Automatic || entry.Code != transport.DNSPeerPendingProofTimeout {
 		t.Fatalf("entry after cause change=%+v", entry)
 	}
-	for _, retried := range []string{transport.DNSPeerPendingCatchingUp, transport.DNSPeerPendingProofTimeout, transport.DNSPeerPendingJournalUnknown, ""} {
-		if !dnsPeerPendingRetriesAutomatically(retried) {
-			t.Fatalf("%q must be re-checked automatically", retried)
-		}
-	}
-	for _, person := range []string{
+	for _, retried := range []string{
+		transport.DNSPeerPendingCatchingUp, transport.DNSPeerPendingProofTimeout, transport.DNSPeerPendingJournalUnknown, "",
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange),
 		transport.DNSPeerPendingEnrollmentRequired, transport.DNSPeerPendingEnrollmentChanged,
-		transport.DNSPeerPendingInspectionUnknown, transport.DNSPeerPendingNativeUnknown,
+		transport.DNSPeerPendingInspectionUnknown, transport.DNSPeerPendingInspectionUnknownWithDetail(transport.DNSPeerInspectorReasonNamedUnavailable),
+		transport.DNSPeerPendingNativeUnknown,
 		transport.DNSPeerPendingOwnerEditUnknown, transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog),
 		transport.DNSPeerPendingCatalogTransferRefused, transport.DNSPeerPendingProofInternal,
 	} {
-		if dnsPeerPendingRetriesAutomatically(person) {
-			t.Fatalf("%q needs a person and must not be retried in a loop", person)
+		if !dnsPeerPendingRetriesAutomatically(retried) {
+			t.Fatalf("%q can clear by itself or by a repair and must be re-checked automatically", retried)
 		}
+	}
+	if dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnresolved) {
+		t.Fatal("dns_peer_journal_unresolved: a re-check cannot change it and must not be retried in a loop")
 	}
 }
 
@@ -453,15 +455,15 @@ func TestDNSHeldChangeIsHeldThenPublishedByItself(t *testing.T) {
 // A held change on a cause that needs a person is refused without an attempt.
 func TestDNSHeldChangeBehindOwnerActionCauseMakesNoAttempt(t *testing.T) {
 	panel, agent, _, _ := newPendingPublicationPanel(t, "a-owner.example", "b-owner.example")
-	configurePendingWithCode(t, agent, transport.DNSPeerPendingEnrollmentRequired)
-	recoverOutcome(t, agent, func() bool { return true }, func() string { return transport.DNSPeerPendingEnrollmentRequired })
+	configurePendingWithCode(t, agent, transport.DNSPeerPendingJournalUnresolved)
+	recoverOutcome(t, agent, func() bool { return true }, func() string { return transport.DNSPeerPendingJournalUnresolved })
 	ctx := context.Background()
 	if err := panel.syncZoneToDNS(ctx, "a-owner.example", false); !errors.Is(err, errDNSZoneV3PropagationDeferred) {
 		t.Fatalf("initial err=%v", err)
 	}
 	err := panel.syncZoneToDNS(ctx, "b-owner.example", false)
 	var held *dnsPublicationHeldError
-	if !errors.As(err, &held) || held.Automatic || held.heldReason() != transport.DNSPeerPendingEnrollmentRequired {
+	if !errors.As(err, &held) || held.Automatic || held.heldReason() != transport.DNSPeerPendingJournalUnresolved {
 		t.Fatalf("held err=%v held=%+v", err, held)
 	}
 	if body := held.apiBody(); body.Error != dnsPublicationHeldMessage || !strings.Contains(body.Error, "publishes this change by itself") {

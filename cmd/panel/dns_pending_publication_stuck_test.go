@@ -162,8 +162,14 @@ func TestDNSPublicationStuckNoticeWords(t *testing.T) {
 		{transport.DNSPeerPendingCatchingUp, "", false,
 			[]string{"The DNS change of gone.example is in effect on this server", "has not caught up", "TCP port 53"},
 			[]string{"Retry this deletion", "Delete…", "removed"}},
+		// A deletion's notification sends the reader to the waiting notice
+		// on Domains, the page its button opens (alpha.133 round 5).
 		{transport.DNSPeerPendingJournalUnknown, "", true,
-			[]string{"is removed from DNS on this server", "Server → DNS and peer servers", "journalctl"}, nil},
+			[]string{"is removed from DNS on this server", "On Domains, the waiting notice of this deletion", "journalctl"},
+			[]string{"Server → DNS and peer servers"}},
+		{transport.DNSPeerPendingJournalUnknown, "", false,
+			[]string{"is in effect on this server", "Server → DNS and peer servers", "journalctl"},
+			[]string{"On Domains"}},
 	} {
 		words := dnsPublicationStuckNoticeWords(audienceAdministrator, map[string]any{
 			"zone": "gone.example", "reason": tc.reason, "detail": tc.detail, "delete": tc.delete,
