@@ -119,13 +119,24 @@ the screen. A test keeps it that way, with no exceptions.
   restarting, unreachable, or no answer in time) is now always a wait that
   needs nobody, however the connection failed, and CelikPanel keeps
   checking until the backup answers; then the deletion finishes by itself.
-- **Only one reason stops CelikPanel's own checks:** a check record it
-  cannot sort out by itself, which another check cannot change. Every other
-  reason (the backup refusing the check, check access that is missing or
-  changed, a refused transfer, DNS changed during the check, an Agent that
-  needs a fix) is checked again at the same slow pace, so the deletion
-  finishes by itself once the cause is fixed. After six of the same in a
-  row the administrators get the one notification as before.
+- **CelikPanel stops its own checks only in two cases:** a check record it
+  cannot sort out by itself (another check cannot change it), or DNS on
+  this server that may be being changed by hand: CelikPanel never acts over
+  an owner's change by itself. Both name the administrator and send one
+  notification; after the change is finished, More → Delete… on the
+  domain's row continues the same deletion. Every other reason (the backup
+  refusing the check, check access that is missing or changed, a refused
+  transfer, the backup still serving the zone, an Agent that needs a fix)
+  is checked again at the same slow pace, so the deletion finishes by itself
+  once the cause is fixed. After six pending checks in a row, whatever the
+  reason, the administrators get one notification; it is not mailed again
+  when the reason only changes.
+- **A changed identity of the backup is named as such.** If the backup DNS
+  server presents another SSH host key than the one this server knows, the
+  notice asks the administrator to confirm that the backup was really
+  reinstalled or re-keyed before setting the check access up again, and to
+  treat it as a security problem otherwise. A problem with this server's
+  own check key is no longer shown as the backup refusing.
 - **Every waiting reason now says why, who acts, the one next step and how
   it continues**, in English and Turkish, on Domains, in the deletion window
   and in the bulk notes. "You do not need to do anything" appears only when
@@ -240,10 +251,15 @@ resumes by itself.
   could not run its own check) is now checked again every few minutes too.
   That costs one short check and one log line each time; it is what lets
   the deletion finish by itself after the fix.
-- A DNS change made by hand while a deletion is being confirmed is checked
-  again by itself too. The check is the same one More → Delete… runs and it
-  never overwrites the change, but the same difference is then reported
-  every few minutes until someone looks.
+- If DNS on this server is changed by hand while a deletion waits for a
+  reason CelikPanel re-checks by itself (the backup catching up or not
+  answering, a check that ran out of time, and the others it re-checks),
+  the next check can still put the CelikPanel Agent on hold for every
+  change until it is restarted; this was possible before this release too.
+  The proper fix is to treat such a change as a waiting owner edit in the
+  check itself; it is planned.
+- A re-check whose result does not change writes about four log lines,
+  every 5 minutes at the slow pace.
 - A re-check that is held back by a DNS change made outside CelikPanel can
   still outlast the agent's lease; its result is then not counted and the
   next re-check decides.
@@ -276,7 +292,10 @@ finishes or undoes what an earlier release left half done (RESILIENCE-CONTRACT,
 `follow_up` and `next_check_at`. A backup that gives no answer is recorded
 as the existing `dns_peer_proof_timeout:peer_exchange`, however the
 connection failed (the SSH transport now tells no answer from an answer it
-cannot accept); `follow_up` is `person` only for `dns_peer_journal_unresolved`
+cannot accept). Another host key is the new composite
+`dns_peer_enrollment_changed:host_key` in the same field (an older Panel shows
+the plain reason's text). `follow_up` is `person` only for
+`dns_peer_journal_unresolved` and an owner edit of this server
 (RESILIENCE-CONTRACT, "Branch a133/proofwait"). The Agent's blocklist answer gains the additive gob
 fields Outcome, Reason and Sublists; an older Panel reads Listed, which a
 current Agent sets only for a documented listing, and an older Agent's

@@ -121,13 +121,24 @@ Bir test bunu istisnasız korur.
   yanıt yok) artık bağlantı nasıl koparsa kopsun her zaman kimsenin bir şey
   yapmasını gerektirmeyen bir beklemedir; CelikPanel yedek yanıt verene kadar
   denetlemeyi sürdürür ve silme kendiliğinden biter.
-- **CelikPanel'in kendi denetimlerini yalnız bir neden durdurur:**
-  kendiliğinden düzeltemediği ve başka bir denetimin değiştiremeyeceği bir
-  denetim kaydı. Diğer her neden (yedeğin denetimi reddetmesi, eksik ya da
-  değişmiş denetim erişimi, reddedilen aktarım, denetim sırasında değişen DNS,
-  düzeltme gereken bir Agent) aynı yavaş aralıkla yeniden denetlenir; neden
-  düzelince silme kendiliğinden biter. Aynı neden üst üste altı kez olursa
-  yöneticilere eskisi gibi tek bildirim gider.
+- **CelikPanel kendi denetimlerini yalnız iki durumda durdurur:**
+  kendiliğinden düzeltemediği bir denetim kaydı (başka bir denetim onu
+  değiştiremez) ya da bu sunucuda elle değiştiriliyor olabilecek DNS:
+  CelikPanel sahibin değişikliğinin üzerinden asla kendiliğinden iş yapmaz.
+  İkisi de yöneticiyi adlandırır ve tek bildirim gönderir; değişiklik bitince
+  alan adının satırındaki Diğer → Sil… aynı silmeyi sürdürür. Diğer her neden
+  (yedeğin denetimi reddetmesi, eksik ya da değişmiş denetim erişimi,
+  reddedilen aktarım, bölgeyi hâlâ sunan yedek, düzeltme gereken bir Agent)
+  aynı yavaş aralıkla yeniden denetlenir; neden düzelince silme kendiliğinden
+  biter. Nedeni ne olursa olsun üst üste altı bekleme sonucundan sonra
+  yöneticilere tek bildirim gider; yalnız neden değiştiğinde yeniden
+  postalanmaz.
+- **Yedeğin değişen kimliği adıyla söylenir.** Yedek DNS sunucusu bu
+  sunucunun tanıdığından başka bir SSH sunucu anahtarı sunarsa kutu,
+  yöneticiden denetim erişimini yeniden kurmadan önce yedeğin gerçekten
+  yeniden kurulduğunu ya da anahtarının değiştiğini doğrulamasını, öyle
+  değilse bunu bir güvenlik sorunu saymasını ister. Bu sunucunun kendi denetim
+  anahtarıyla ilgili bir sorun artık yedeğin reddi olarak gösterilmez.
 - **Her bekleme nedeni artık neden, kim yapar, tek sonraki adım ve nasıl
   süreceğini söylüyor**; Türkçe ve İngilizce, Alan Adları sayfasında, silme
   penceresinde ve toplu silme notlarında. "Sizin bir şey yapmanız
@@ -246,10 +257,15 @@ itibaren pencere kendiliğinden devam eder.
   dakikada bir yeniden denetlenir. Bunun bedeli her seferinde kısa bir
   denetim ve bir günlük satırıdır; düzeltmeden sonra silmenin kendiliğinden
   bitmesini sağlayan budur.
-- Bir silme doğrulanırken elle yapılan bir DNS değişikliği de kendiliğinden
-  yeniden denetlenir. Denetim, Diğer → Sil…'in çalıştırdığı denetimin aynısıdır
-  ve değişikliğin üzerine asla yazmaz; ancak biri bakana kadar aynı fark
-  birkaç dakikada bir bildirilir.
+- Bir silme, CelikPanel'in kendiliğinden yeniden denetlediği bir nedenle
+  beklerken (yedeğin yetişmemesi ya da yanıt vermemesi, süresi dolan bir
+  denetim ve yeniden denetlenen diğerleri) bu sunucuda DNS elle
+  değiştirilirse sonraki denetim CelikPanel Agent'ı yeniden başlatılana kadar
+  her değişikliği bekletecek duruma yine getirebilir; bu, bu sürümden önce de
+  olabiliyordu. Doğru düzeltme, böyle bir değişikliği denetimin kendisinde
+  bekleyen bir sahip değişikliği saymaktır; planlandı.
+- Sonucu değişmeyen bir yeniden denetim yaklaşık dört günlük satırı yazar;
+  yavaş aralıkta 5 dakikada bir.
 - CelikPanel dışında yapılan bir DNS değişikliğinin geri tuttuğu bir yeniden
   denetim, yönetim hizmetinin süre kirasını yine aşabilir; o zaman sonucu
   sayılmaz ve bir sonraki yeniden denetim karar verir.
@@ -282,8 +298,11 @@ Agent, önceki bir sürümün yarım bıraktığını tamamlar ya da geri alır
 `follow_up` ve `next_check_at` alanlarını kazanır. Yanıt vermeyen bir yedek,
 bağlantı nasıl koparsa kopsun mevcut `dns_peer_proof_timeout:peer_exchange`
 koduyla kaydedilir (SSH aktarımı artık yanıt yokluğunu kabul edemediği bir
-yanıttan ayırır); `follow_up` yalnız `dns_peer_journal_unresolved` için
-`person` olur (RESILIENCE-CONTRACT, "Branch a133/proofwait"). Yönetim hizmetinin kara liste
+yanıttan ayırır). Başka bir sunucu anahtarı aynı alanda yeni bileşik kod
+`dns_peer_enrollment_changed:host_key` olur (eski bir panel yalın nedenin
+metnini gösterir). `follow_up` yalnız `dns_peer_journal_unresolved` ve bu
+sunucuda sahibin değişikliği için `person` olur (RESILIENCE-CONTRACT, "Dal
+a133/proofwait"). Yönetim hizmetinin kara liste
 yanıtına geriye uyumlu Outcome, Reason ve Sublists alanları eklendi; eski
 panel Listed alanını okur ve güncel hizmet bunu yalnız belgelenmiş bir
 listeleme için koyar; eski hizmetin yanıtı "denetlenemedi" olarak gösterilir.
