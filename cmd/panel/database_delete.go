@@ -96,6 +96,11 @@ const (
 	// databaseUserUnknown: what deleting would leave could not be read (lists
 	// only; the screens then offer no deletion).
 	databaseUserUnknown = "unknown"
+	// databaseUserServerShared: another database uses it AND the database's
+	// server record is reached with its own account; the user stays on that
+	// server untouched (no rights are taken; review). Its record stays, as
+	// for every shared user.
+	databaseUserServerShared = "server_shared"
 )
 
 // databaseDeleteUser is one user recorded for the database being deleted.
@@ -418,6 +423,12 @@ func databaseUserFatesOf(ctx context.Context, q databaseQueryer, databaseIDs []i
 		case !databaseRecordIsOurLocalEngine(server):
 			user.Stays = databaseUserServer
 		}
+		// On a record reached with its own account nothing is taken from a
+		// shared user: said as such, never "its rights go". Which records are
+		// forgotten does not change (only the "server" case is).
+		if user.Stays == databaseUserShared && !databaseRecordIsOurLocalEngine(server) {
+			user.Stays = databaseUserServerShared
+		}
 		out[g.database] = append(out[g.database], user)
 	}
 	return out, nil
@@ -516,6 +527,8 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 			deletion.UsersKeptOnServer = append(deletion.UsersKeptOnServer, user.Username)
 		case databaseUserShared:
 			shared = append(shared, user)
+			deletion.UsersKept = append(deletion.UsersKept, user.Username)
+		case databaseUserServerShared:
 			deletion.UsersKept = append(deletion.UsersKept, user.Username)
 		default:
 			deletion.UsersKept = append(deletion.UsersKept, user.Username)
@@ -651,6 +664,11 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 		case err != nil:
 			unknown = true
 			left = append(left, s.user.Username)
+			if s.rightsOnly {
+				// It stays by design; what is not known is whether its
+				// rights on the database went.
+				rightsLeft = append(rightsLeft, s.user.Username)
+			}
 			log.Printf("database deletion %s: user %s: %v", name, s.user.Username, err)
 		case answer.Refusal != nil || !answer.Applied:
 			left = append(left, s.user.Username)
@@ -783,8 +801,12 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 		switch {
 		case failed.databaseExists:
 			body.Reason = "exists"
-		case failed.unknown:
+		case failed.unknown && len(failed.rightsLeft) == 0:
 			body.Reason = "unknown"
+		case failed.unknown && len(pending) == 0:
+			body.Reason = "unknown_rights"
+		case failed.unknown:
+			body.Reason = "unknown_mixed"
 		case len(pending) == 0:
 			body.Reason = "rights"
 		case len(failed.rightsLeft) > 0:

@@ -108,7 +108,7 @@ function decodeDatabase(raw: unknown): VisibleDatabase {
     const users = db.users.map((item) => {
         const user = item as Record<string, unknown> | null;
         if (!user || typeof user !== 'object' || !isId(user.id) || !isText(user.username)) shape('database.users[]');
-        const stays: DatabaseUserStays | undefined = user.stays === 'shared' || user.stays === 'account' || user.stays === 'server' || user.stays === 'unknown' ? user.stays : undefined;
+        const stays: DatabaseUserStays | undefined = user.stays === 'shared' || user.stays === 'account' || user.stays === 'server' || user.stays === 'server_shared' || user.stays === 'unknown' ? user.stays : undefined;
         return stays ? { id: user.id, username: user.username, stays } : { id: user.id, username: user.username };
     });
     return {

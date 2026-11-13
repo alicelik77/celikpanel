@@ -103,6 +103,7 @@ export const enMailDatabasesScreens = {
     'databases.delete.keptShared': 'Its users ({users}): another database uses them too, so they stay; the rights given for {name} itself are removed',
     'databases.delete.keptAccount': 'Its users ({users}): an account of the database server itself or of CelikPanel, so they stay',
     'databases.delete.keptServer': 'Its users ({users}): this database server is reached with its own account, and CelikPanel does not remove users there, so they stay',
+    'databases.delete.keptServerShared': 'Its users ({users}): another database uses them too, and this database server is reached with its own account, so they stay on it untouched',
     'databases.delete.usersUnknown': 'It could not be read which of its users would be removed, so it cannot be deleted right now. The list reads itself again; try again in a moment.',
     'databases.delete.keptOthers': 'The owner’s account and other databases',
     'databases.delete.typed': 'Type {name} to delete it',

@@ -250,9 +250,16 @@ resumes by itself.
   not from an account with another name that was made outside CelikPanel. If you gave such an account rights on a database,
   take them away on the server when you delete it (`REVOKE ALL PRIVILEGES ON
   name.* FROM account`). This comes in the next release.
-- **MariaDB database rights are still given by name pattern,** in which
-  `_` stands for any one character. Rights given for exactly one database
-  name, and the conversion of the existing ones, come in alpha.134.
+- **Until rights for exactly one database name arrive in alpha.134, a
+  database user's rights can also cover another database on the same server**
+  whose name differs from its own only where its own name has `_`. MariaDB
+  rights are still given by name pattern, in which `_` stands for any one
+  character; alpha.134 also converts the existing ones.
+- **After a deletion that did not finish, pressing Delete again deletes a
+  database of the same name that was created on the server in the meantime**
+  (by hand, by a restore or by an installer). The screen says so when it
+  finds one. Remembering that the database was already deleted comes in
+  alpha.134.
 - **Removing users on a database server reached with its own account**
   (another machine, or one an administrator registered) is not done in
   this release: it needs a check of the rights the owner gave there, which

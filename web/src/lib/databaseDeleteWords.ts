@@ -7,13 +7,15 @@ import type { TranslationKey } from '../i18n/en';
 // absent = removed with the database, "shared" = another database uses the
 // same account, "account" = an engine's or CelikPanel's own account,
 // "server" = the database server is reached with its own account and
-// CelikPanel does not remove users there, "unknown" = it could not be read
+// CelikPanel does not remove users there, "server_shared" = another database
+// uses it on such a server (it stays there untouched), "unknown" = it could
+// not be read
 // (then no deletion is offered).
 //
 // Bir veritabanı silinince kullanıcılarına ne olacağı; iki silme yerinde de
 // aynı sözler.
 
-export type DatabaseUserStays = 'shared' | 'account' | 'server' | 'unknown';
+export type DatabaseUserStays = 'shared' | 'account' | 'server' | 'server_shared' | 'unknown';
 
 type T = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 type User = { username: string; stays?: DatabaseUserStays };
@@ -28,7 +30,7 @@ export function databaseDeleteUserLines(t: T, name: string, users: ReadonlyArray
     const names = (stays: DatabaseUserStays | undefined) => users.filter((user) => user.stays === stays).map((user) => user.username).join(', ');
     const removed = names(undefined);
     const kept: string[] = [];
-    for (const [stays, key] of [['shared', 'databases.delete.keptShared'], ['account', 'databases.delete.keptAccount'], ['server', 'databases.delete.keptServer']] as const) {
+    for (const [stays, key] of [['shared', 'databases.delete.keptShared'], ['account', 'databases.delete.keptAccount'], ['server', 'databases.delete.keptServer'], ['server_shared', 'databases.delete.keptServerShared']] as const) {
         const list = names(stays);
         if (list) kept.push(t(key, { users: list, name }));
     }

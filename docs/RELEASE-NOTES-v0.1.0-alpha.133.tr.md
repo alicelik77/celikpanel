@@ -253,9 +253,17 @@ itibaren pencere kendiliğinden devam eder.
   da. CelikPanel dışında açılmış başka adlı bir hesaptan kaldırmaz. Böyle bir hesaba bir veritabanında hak
   verdiyseniz, veritabanını silerken o hakları sunucuda kaldırın (`REVOKE ALL
   PRIVILEGES ON ad.* FROM hesap`). Bu sonraki sürümde gelir.
-- **MariaDB veritabanı hakları hâlâ ad kalıbıyla verilir;** bu kalıpta `_`
-  herhangi bir tek karakter yerine geçer. Tam olarak tek bir veritabanı adı
-  için verilen haklar ve var olanların dönüştürülmesi alpha.134'te gelir.
+- **Tam olarak tek bir veritabanı adı için verilen haklar alpha.134'te
+  gelene kadar, bir veritabanı kullanıcısının hakları aynı sunucudaki başka
+  bir veritabanını da kapsayabilir:** adı, kendi adından yalnız kendi adında
+  `_` olan yerlerde ayrılan bir veritabanını. MariaDB hakları hâlâ ad
+  kalıbıyla verilir; bu kalıpta `_` herhangi bir tek karakter yerine geçer.
+  alpha.134 var olanları da dönüştürür.
+- **Yarım kalan bir silmeden sonra Sil'e yeniden basmak, arada sunucuda aynı
+  adla açılmış bir veritabanını siler** (elle, bir geri yüklemeyle ya da bir
+  kurulumla açılmış olabilir). Ekran böyle bir veritabanı bulduğunda bunu
+  söyler. Veritabanının zaten silinmiş olduğunun hatırlanması alpha.134'te
+  gelir.
 - **Kendi hesabıyla bağlanılan bir veritabanı sunucusunda kullanıcı
   kaldırmak** (başka bir makine ya da bir yöneticinin kaydettiği sunucu) bu
   sürümde yapılmaz: sahibinin orada verdiği hakların denetlenmesi gerekir ve
