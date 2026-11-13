@@ -38,6 +38,12 @@ type DatabaseAccessUserRequest struct {
 	// Additive. Silinen veritabanını adlandıran her hak, hesap kalsa da
 	// bütün host'lardan kaldırılır.
 	DatabaseDropped bool `json:"database_dropped,omitempty"`
+	// RightsOnly (with DatabaseDropped): the user stays (another database uses
+	// it); only the rights that name the dropped database go - no DROP USER,
+	// no check of other rights. Additive.
+	// RightsOnly: kullanıcı kalır, yalnız silinen veritabanını adlandıran
+	// hakları gider.
+	RightsOnly bool `json:"rights_only,omitempty"`
 }
 
 // DatabaseAccessUserResponse says what happened.
@@ -73,4 +79,7 @@ type DatabaseAccessUserResponse struct {
 	// names the dropped database could not be removed from it (Applied is
 	// false; removing again continues). Additive.
 	RightsLeft bool `json:"rights_left,omitempty"`
+	// DatabaseExists (with DatabaseDropped): the engine still has a database of
+	// that name, so nothing was removed. Additive.
+	DatabaseExists bool `json:"database_exists,omitempty"`
 }
