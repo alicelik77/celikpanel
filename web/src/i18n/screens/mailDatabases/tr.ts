@@ -25,8 +25,8 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'databases.empty.databasesHint': 'Bu sunucuda ilk veritabanınızı oluşturun',
     'databases.dbDeleted': 'Veritabanı silindi',
     'databases.deletedNamed': '{name} silindi.',
-    'databases.keptNote.otherRights': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü orada CelikPanel dışında verilmiş başka hakları da var; yalnız {name} erişimleri kaldırıldı.',
-    'databases.keptNote.unchecked': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü CelikPanel orada başka nelere sahip olduklarını denetleyemedi; yalnız {name} erişimleri kaldırıldı.',
+    'databases.keptNote.otherRights': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü orada CelikPanel dışında açılmış hesapları ya da verilmiş hakları da var; {name} üzerindeki bütün hakları kaldırıldı.',
+    'databases.keptNote.unchecked': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü CelikPanel orada başka nelere sahip olduklarını denetleyemedi; {name} üzerindeki bütün hakları kaldırıldı.',
     'databases.keptNote.server': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır: CelikPanel o sunucuya kendi hesabıyla bağlanır ve orada kullanıcı kaldırmaz.',
     // alpha.133: the left menu's Databases page (one visibility rule, drawings V15–V17).
     'databases.scope.admin': 'Sunucudaki bütün veritabanları',

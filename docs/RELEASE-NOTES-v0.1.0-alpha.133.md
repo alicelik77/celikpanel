@@ -241,6 +241,14 @@ resumes by itself.
 - If CelikPanel's own database account is removed on the MariaDB or
   PostgreSQL page, the next new customer opens it again. A fix comes in the
   next release.
+- **A MariaDB account CelikPanel does not know keeps its rights on a deleted
+  database.** MariaDB keeps such rights after the database is gone, and a
+  later database of the same name would inherit them. CelikPanel removes
+  them from the database's own users (every host of their names, also
+  hosts made by hand), but not from an account with another name that was
+  made outside CelikPanel. If you gave such an account rights on a database,
+  take them away on the server when you delete it (`REVOKE ALL PRIVILEGES ON
+  name.* FROM account`). This comes in the next release.
 - **Removing users on a database server reached with its own account**
   (another machine, or one an administrator registered) is not done in
   this release: it needs a check of the rights the owner gave there, which

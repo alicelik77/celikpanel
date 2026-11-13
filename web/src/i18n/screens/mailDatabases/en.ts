@@ -32,8 +32,8 @@ export const enMailDatabasesScreens = {
     'databases.empty.databasesHint': 'Create your first database on this server',
     'databases.dbDeleted': 'Database deleted',
     'databases.deletedNamed': '{name} deleted.',
-    'databases.keptNote.otherRights': 'Its users ({users}) stay on the database server because they also have rights given there outside CelikPanel; only their access to {name} was removed.',
-    'databases.keptNote.unchecked': 'Its users ({users}) stay on the database server because CelikPanel could not check what else they have there; only their access to {name} was removed.',
+    'databases.keptNote.otherRights': 'Its users ({users}) stay on the database server because they also have accounts or rights there that were made outside CelikPanel; every right they had on {name} was removed.',
+    'databases.keptNote.unchecked': 'Its users ({users}) stay on the database server because CelikPanel could not check what else they have there; every right they had on {name} was removed.',
     'databases.keptNote.server': 'Its users ({users}) stay on the database server: CelikPanel reaches that server with its own account and does not remove users there.',
     // alpha.133: the left menu's Databases page (one visibility rule, drawings V15–V17).
     'databases.scope.admin': 'All databases on this server',

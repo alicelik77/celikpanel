@@ -132,6 +132,9 @@ type databaseDeleteError struct {
 	databaseGone bool
 	// usersLeft: the database's own users the engine has not removed.
 	usersLeft []string
+	// rightsLeft: of usersLeft, the kept accounts that still hold a right
+	// naming the dropped database (the Agent's RightsLeft).
+	rightsLeft []string
 	// recordsLeft: the engine is done; the records were not removed.
 	recordsLeft bool
 	refusal     *transport.DatabaseClusterRefusal
@@ -607,12 +610,15 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 		return nil, &databaseDeleteError{cause: fmt.Errorf("drop database %s: the engine did not drop it", name)}
 	}
 	kept := map[string]string{}
-	var left []string
+	var left, rightsLeft []string
 	unknown := false
 	for _, user := range remove {
+		// DatabaseDropped: an account that is kept loses every right that
+		// names the dropped database, on every host of its name (lab finding
+		// of alpha.133: a hand-made host kept ALL PRIVILEGES on it).
 		answer, err := p.databaseAccessNativeOps().remove(ctx, transport.DatabaseAccessUserRequest{
 			ExpectedBuildCommit: strings.TrimSpace(buildCommit), Engine: engine, Port: port,
-			Database: name, Username: user.Username,
+			Database: name, Username: user.Username, DatabaseDropped: true,
 		})
 		switch {
 		case err != nil:
@@ -621,6 +627,9 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 			log.Printf("database deletion %s: remove user %s: %v", name, user.Username, err)
 		case answer.Refusal != nil || !answer.Applied:
 			left = append(left, user.Username)
+			if answer.RightsLeft {
+				rightsLeft = append(rightsLeft, user.Username)
+			}
 			log.Printf("[409][database] %s %s: user %s: %s", errCodeDatabaseDeleteUsersLeft, name, user.Username, boundedAgentDiagnostic(answer.Error))
 		case answer.Kept:
 			kept[user.Username] = answer.KeptReason
@@ -630,7 +639,7 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 		}
 	}
 	if len(left) > 0 {
-		return kept, &databaseDeleteError{unknown: unknown, databaseGone: true, usersLeft: left,
+		return kept, &databaseDeleteError{unknown: unknown, databaseGone: true, usersLeft: left, rightsLeft: rightsLeft,
 			cause: fmt.Errorf("database %s was dropped; its users %s were not all removed", name, strings.Join(left, ", "))}
 	}
 	return kept, nil
@@ -723,8 +732,13 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 			Code: errCodeDatabaseDeleteUsersLeft, PartialSuccess: true, MutationApplied: true,
 			Vars: map[string]string{"name": name, "users": strings.Join(failed.usersLeft, ", ")},
 		}
-		if failed.unknown {
+		switch {
+		case failed.unknown:
 			body.Reason = "unknown"
+		case len(failed.rightsLeft) == len(failed.usersLeft):
+			// Every user left is a kept account that still holds a right on
+			// the dropped database: said as such, never "access removed".
+			body.Reason = "rights"
 		}
 		_ = json.NewEncoder(w).Encode(body)
 	case failed.recordsLeft:

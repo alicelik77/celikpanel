@@ -60,6 +60,7 @@ export const trRefusalsScreens: Record<RefusalsScreenKey, string> = {
     "err.DATABASE_DELETE_UNCONFIRMED": "Yanıt gelmedi; bu yüzden {name} veritabanının silinip silinmediği bilinmiyor. Hiçbir şey kendiliğinden yeniden gönderilmez; liste yeniden okunuyor. {name} hâlâ listedeyse Sil’e yeniden basın: kaldığı yerden sürer.",
     "err.DATABASE_DELETE_USERS_LEFT": "{name} silindi, ama kullanıcıları ({users}) henüz kaldırılmadı; bu yüzden listede duruyor. Bitirmek için Sil’e yeniden basın; yine reddedilirse sunucu yöneticisi nedeni CelikPanel’in günlüğünde bulur.",
     "err.DATABASE_DELETE_USERS_LEFT.unknown": "{name} silindi; kullanıcıları ({users}) için yanıt gelmedi, bu yüzden kaldırılıp kaldırılmadıkları bilinmiyor. Kaldırılana kadar listede durur: bitirmek için Sil’e yeniden basın.",
+    "err.DATABASE_DELETE_USERS_LEFT.rights": "{name} silindi. Kullanıcıları ({users}) veritabanı sunucusunda kalır, ama {name} üzerindeki bir hakları henüz kaldırılamadı; bu yüzden listede duruyor. Bitirmek için Sil’e yeniden basın; yine reddedilirse sunucu yöneticisi nedeni CelikPanel’in günlüğünde bulur.",
     "err.DATABASE_ENGINE_BUSY": "Bu veritabanı sunucusunda başka bir veritabanı değişikliği sürüyor; bu yüzden hiçbir şey değişmedi. Biraz sonra yeniden deneyin.",
     "err.DATABASE_DELETE_RECORDS_LEFT": "{name} veritabanı sunucusunda silindi, ama CelikPanel’deki kayıtları kaldırılamadı; bu yüzden hâlâ listede. Bitirmek için Sil’e yeniden basın; başka bir şey gerekmez.",
 };

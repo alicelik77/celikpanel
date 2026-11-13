@@ -260,6 +260,21 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 			resp.Error = "invalid database name; nothing was changed"
 			return
 		}
+		if req.DatabaseDropped {
+			// The database is gone, but MariaDB keeps the rights that name it
+			// (MariaDB KB, DROP DATABASE / DROP TABLE: "user privileges ... are
+			// not automatically dropped"); a later database of the same name
+			// would inherit them. Every right that names it goes from every
+			// host of this name, the owner's own hosts too; the account and its
+			// other rights stay.
+			// Silinen veritabanını adlandıran her hak her host'tan kaldırılır.
+			if err := mysqlRemoveRightsOnDroppedDatabase(req.Username, req.Database); err != nil {
+				resp.Error, resp.RightsLeft = err.Error(), true
+				return
+			}
+			resp.Applied, resp.Kept, resp.KeptReason = true, true, keptReason
+			return
+		}
 		// CelikPanel's grant on this database goes from each of its hosts. A
 		// host whose grant could not be looked up is revoked anyway; "no such
 		// grant" (1141) then means there was none.
@@ -303,6 +318,65 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	followRemovedMySQLAccessUser(req.Username)
 }
 
+// mysqlDatabaseNameForms are the two ways a grant can name one database
+// exactly: as written (the panel's own GRANT writes `name`.*, and so did the
+// lab's hand-made grant), and with its wildcard characters escaped
+// (`name\_x`.*). A pattern that matches several databases (`shop\_%`) is
+// neither: it names no one database, stays, and counts as another right.
+// Bir veritabanını tam adlandıran iki yazım.
+func mysqlDatabaseNameForms(database string) []string {
+	escaped := strings.NewReplacer(`_`, `\_`, `%`, `\%`).Replace(database)
+	if escaped == database {
+		return []string{database}
+	}
+	return []string{database, escaped}
+}
+
+// mysqlRemoveRightsOnDroppedDatabase deletes, for every host of the user
+// name, the grant-table rows that name the dropped database exactly -
+// database, table, column and routine level - and checks that none is left.
+// The rows are matched by equality on the stored name (the grant tables keep
+// it in a binary column), so a right on another database, or a wildcard
+// grant, is never touched.
+func mysqlRemoveRightsOnDroppedDatabase(username, database string) error {
+	user, err := services.QuoteMySQLStringLiteral(username)
+	if err != nil {
+		return errors.New("invalid database user name")
+	}
+	var forms []string
+	for _, form := range mysqlDatabaseNameForms(database) {
+		literal, err := services.QuoteMySQLStringLiteral(form)
+		if err != nil {
+			return errors.New("invalid database name")
+		}
+		forms = append(forms, literal)
+	}
+	in := strings.Join(forms, ", ")
+	tables := []string{"mysql.db", "mysql.tables_priv", "mysql.columns_priv", "mysql.procs_priv"}
+	var statements, counts []string
+	for _, table := range tables {
+		where := " WHERE User = " + user + " AND Db IN (" + in + ")"
+		statements = append(statements, "DELETE FROM "+table+where+";")
+		counts = append(counts, "(SELECT COUNT(*) FROM "+table+where+")")
+	}
+	statements = append(statements, "FLUSH PRIVILEGES;")
+	if output, err := mysqlExecStatement(strings.Join(statements, "\n")); err != nil {
+		return hostcmd.Fail("the database server did not take away the rights on "+database+" that the kept user still had", output, err, databaseClientMeaning)
+	}
+	output, err := mysqlExecStatement("SELECT CONCAT('n=', " + strings.Join(counts, " + ") + ");")
+	if err != nil {
+		return hostcmd.Fail("the database server could not be asked whether rights on "+database+" are left", output, err, databaseClientMeaning)
+	}
+	left, ok := markerValue(output, "n")
+	if !ok {
+		return errors.New("the database server's answer about rights left on " + database + " could not be read")
+	}
+	if left != "0" {
+		return fmt.Errorf("%s right(s) on %s are still recorded for the kept user", left, database)
+	}
+	return nil
+}
+
 // mysqlNoSuchGrant reads MariaDB's "There is no such grant defined" (1141).
 func mysqlNoSuchGrant(output []byte) bool {
 	text := strings.ToLower(string(output))
@@ -339,10 +413,17 @@ var mysqlAccessUserOwnHosts = func(username string) (map[string]bool, error) {
 // database, table or column, on a routine, or through a role.
 func mysqlAccessUserOtherRights(username, database string, hosts []string) (bool, error) {
 	user, _ := services.QuoteMySQLStringLiteral(username)
-	db, err := services.QuoteMySQLStringLiteral(database)
-	if err != nil {
-		return false, errors.New("invalid database name")
+	var forms []string
+	for _, form := range mysqlDatabaseNameForms(database) {
+		literal, err := services.QuoteMySQLStringLiteral(form)
+		if err != nil {
+			return false, errors.New("invalid database name")
+		}
+		forms = append(forms, literal)
 	}
+	// "Not this database": neither exact form of its name (a grant written
+	// either way names it); a wildcard pattern counts as elsewhere.
+	db := "(" + strings.Join(forms, ", ") + ")"
 	var grantees, hostLiterals []string
 	for _, host := range hosts {
 		grantee, err := services.QuoteMySQLStringLiteral("'" + username + "'@'" + host + "'")
@@ -372,10 +453,10 @@ func mysqlAccessUserOtherRights(username, database string, hosts []string) (bool
 	}
 	statement := "SELECT CONCAT('n=', " +
 		"(SELECT COUNT(*) FROM information_schema.USER_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND PRIVILEGE_TYPE <> 'USAGE')" +
-		" + (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA <> " + db + ")" +
-		" + (SELECT COUNT(*) FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA <> " + db + ")" +
-		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA <> " + db + ")" +
-		" + (SELECT COUNT(*) FROM mysql.procs_priv WHERE User = " + user + " AND Host IN (" + hostIn + ") AND Db <> " + db + ")" +
+		" + (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA NOT IN " + db + ")" +
+		" + (SELECT COUNT(*) FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA NOT IN " + db + ")" +
+		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE GRANTEE IN (" + in + ") AND TABLE_SCHEMA NOT IN " + db + ")" +
+		" + (SELECT COUNT(*) FROM mysql.procs_priv WHERE User = " + user + " AND Host IN (" + hostIn + ") AND Db NOT IN " + db + ")" +
 		roles + ");"
 	output, err := mysqlExecStatement(statement)
 	if err != nil {

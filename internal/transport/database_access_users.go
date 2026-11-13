@@ -30,6 +30,14 @@ type DatabaseAccessUserRequest struct {
 	// shares what it makes with them (alpha.129).
 	Readers []string `json:"readers,omitempty"`
 	Writers []string `json:"writers,omitempty"`
+	// DatabaseDropped (alpha.133 lab round): removal as part of deleting the
+	// database, which is already dropped. An account that is kept then loses
+	// every right that names this database on every host of the name - the
+	// owner's own hosts too - because MariaDB keeps such rights after DROP
+	// DATABASE and a later database of the same name would inherit them.
+	// Additive. Silinen veritabanını adlandıran her hak, hesap kalsa da
+	// bütün host'lardan kaldırılır.
+	DatabaseDropped bool `json:"database_dropped,omitempty"`
 }
 
 // DatabaseAccessUserResponse says what happened.
@@ -61,4 +69,8 @@ type DatabaseAccessUserResponse struct {
 	KeptReason string                  `json:"kept_reason,omitempty"`
 	Refusal    *DatabaseClusterRefusal `json:"refusal,omitempty"`
 	Error      string                  `json:"error,omitempty"`
+	// RightsLeft (alpha.133 lab round): the account is kept, but a right that
+	// names the dropped database could not be removed from it (Applied is
+	// false; removing again continues). Additive.
+	RightsLeft bool `json:"rights_left,omitempty"`
 }
