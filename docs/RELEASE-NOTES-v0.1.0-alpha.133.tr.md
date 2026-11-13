@@ -264,6 +264,11 @@ itibaren pencere kendiliğinden devam eder.
   her değişikliği bekletecek duruma yine getirebilir; bu, bu sürümden önce de
   olabiliyordu. Doğru düzeltme, böyle bir değişikliği denetimin kendisinde
   bekleyen bir sahip değişikliği saymaktır; planlandı.
+- Denetime yanıt verdikten hemen sonra yanıt vermeyi bırakan yedek, bu
+  sunucunun bir değişikliği değil, yetişmeye çalışan yedektir (kendiliğinden
+  yeniden denetlenir).
+- Güncellemenin kendisi sırasında birkaç saniye eski panel yeni "sunucu
+  anahtarı değişti" nedenini okuyamaz ve genel metni gösterir.
 - Sonucu değişmeyen bir yeniden denetim yaklaşık dört günlük satırı yazar;
   yavaş aralıkta 5 dakikada bir.
 - CelikPanel dışında yapılan bir DNS değişikliğinin geri tuttuğu bir yeniden

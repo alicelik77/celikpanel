@@ -258,6 +258,10 @@ resumes by itself.
   change until it is restarted; this was possible before this release too.
   The proper fix is to treat such a change as a waiting owner edit in the
   check itself; it is planned.
+- A backup that stops answering just after it answered the check is the
+  backup catching up (re-checked by itself), not a change of this server.
+- During the update itself, for a few seconds the old panel cannot read the
+  new "changed host key" reason and shows the generic text.
 - A re-check whose result does not change writes about four log lines,
   every 5 minutes at the slow pace.
 - A re-check that is held back by a DNS change made outside CelikPanel can

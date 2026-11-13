@@ -7591,6 +7591,24 @@ bağlantıyı tutar.
   çağrısı yok, tek bildirim, basış sürdürür) ve değişen nedenlerde; her kod ve
   bileşik için web koruması; ikinci sekmedeki ve başarısız okumadan sonraki
   liste. Gerçek sistemde çalıştırılmadı.
+- **Yeniden inceleme düzeltmeleri.** Değişimden sonraki katalog denetimi
+  sırasında yanıt vermeyi bırakan yedek (bu sunucunun kendi kataloğu
+  eşleşirken yoklaması `dnsPeerBehind`), aynı gözlem için dalganın okuması
+  olan `dns_peer_catching_up` olur, `owner_edit_unknown:catalog_probe` değil
+  (`dns_engine_peer_after_inspection.go`); `catalog_probe` bu sunucunun kendi
+  farkı için kalır. Kişi kodlarını üreten her yer bir kez gözden geçirildi;
+  hepsi yalnız yerel kanıt okur: yerel yeniden denetimler
+  (`recheckBINDPeerLocalEvidence`, `recheckPDNSPeerLocalEvidence*`,
+  `recheckPDNSNativeBindingAt`, kaydedilen üretici kataloğu), iş kaydı denemesi
+  (`peerCurrentPendingCodeAt`), BIND yapılandırması
+  (`pendingExactBINDV3OwnerEdit`), `catalog_probe` ve `authority` (bu sunucunun
+  kaydı) ve denetim kaydı uzlaştırması (`dns_peer_journal_unresolved`).
+  Uzlaştırıcının, süren bir işi bekleyen kendi denemesi, iş durdurucu bir kodla
+  beklemede biterse artık kurtarmayı çalıştırmaz (`reconcileDNSZoneEngineLease`);
+  bir kişinin basışı yine çalıştırır. Sunucu anahtarı Ayrıntıları aracın kabul
+  ettiği sırayı verir (`primary-revoke`, yalnız kayıt dosyasını kenara alır ve
+  DNS çoğaltmasını sürdürür; ardından ilk kurulum adımları); kurulum var olan
+  bir erişimin yerine asla yenisini koymaz ve yönlendirme artık bunu söylemez.
 - **Açık.**
   - Bu sürümden önce kendiliğinden olan kodlar (`dns_peer_catching_up`,
     `dns_peer_proof_timeout`, `dns_peer_journal_unknown`) ve bu sürümün yeniden
@@ -7606,5 +7624,11 @@ bağlantıyı tutar.
     pending" satırları ile panelin "still waits" satırı), yavaş aralıkta 5
     dakikada bir; Agent'ın üç satırını bire indirmek küçük bir değişiklik
     değil, bırakıldı.
+  - Metni kaldırılan bir bildirimle aynı olan yeni bir kişi dönemi yeniden
+    gösterilmez (kabul edilebilir: o kodları yalnız bir basış değiştirir).
+  - Güncelleme sırasında bir alpha.132 paneli güncellenmiş Agent ile konuştuğu
+    birkaç saniye boyunca yeni bileşik kodu
+    `dns_peer_enrollment_changed:host_key` gözden geçirilmemiş sayar
+    (önceki bileşik kodlarla aynı sınıf).
   - Gerçek sistemde ölçülmedi; lab w9'u yineler. **Hiçbir P0 işi kapanmadı**;
     P0.4 kısmi kalır.

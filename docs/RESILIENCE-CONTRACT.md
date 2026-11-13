@@ -8369,6 +8369,24 @@ until the backup reports ready.
   Agent call across scans and after a restart, one notification, a press
   continues it), alternating reasons; the web guard over every code and
   composite; the list in a second tab and after a failed read. No native run.
+- **Re-review corrections.** A backup that stops answering within the
+  post-inspection catalog check (its probe is `dnsPeerBehind` while this
+  server's own catalog matched) is `dns_peer_catching_up`, the wave's reading
+  of the same observation, not `owner_edit_unknown:catalog_probe`
+  (`dns_engine_peer_after_inspection.go`); `catalog_probe` stays for this
+  server's own mismatch. Producers of the person codes, walked once, all
+  read local evidence only: the local rechecks (`recheckBINDPeerLocalEvidence`,
+  `recheckPDNSPeerLocalEvidence*`, `recheckPDNSNativeBindingAt`, the recorded
+  producer catalog), the ledger attempt (`peerCurrentPendingCodeAt`), the BIND
+  configuration (`pendingExactBINDV3OwnerEdit`), `catalog_probe` and
+  `authority` (this server's record), and the check-record reconciliation
+  (`dns_peer_journal_unresolved`). The reconciler's own attempt that waited
+  for a running job no longer runs the recovery when it ends pending with a
+  stop code (`reconcileDNSZoneEngineLease`); a person's press still does.
+  The host-key Details give the sequence the tool accepts (`primary-revoke`,
+  which only renames the enrollment record aside and leaves DNS replication
+  running, then the first-time steps); setup never replaces an existing
+  access, and the guidance no longer says it does.
 - **Open.**
   - Codes that were automatic before this release (`dns_peer_catching_up`,
     `dns_peer_proof_timeout`, `dns_peer_journal_unknown`) and the codes this
@@ -8383,5 +8401,10 @@ until the backup reports ready.
     remains pending", and the Panel's "still waits"), every 5 minutes at the
     slow pace; folding the Agent's three into one is more than a small change
     and is left.
+  - A new person episode whose words are identical to a retired notice is
+    not shown again (acceptable: only a press changes those codes).
+  - For the few seconds an alpha.132 Panel talks to the updated Agent during
+    the update, it rejects the new composite `dns_peer_enrollment_changed:host_key`
+    as an unreviewed code (the same class as earlier composites).
   - Not measured natively; the lab repeats w9. **No P0 item is closed**; P0.4
     stays partial.
