@@ -9,7 +9,10 @@ import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { CertificateIssueNotice, isCertificateIssueFailure } from './CertificateIssueNotice';
 import { CertificateReachNotice } from './CertificateReachNotice';
 import { certificateReachGate, decodeCertificateReach, type CertificateReachGate } from '../lib/certificateNames';
-import { decodeListIn, lastKnown, useRemote } from '../lib/remote';
+import { decodeListIn, invalidate, lastKnown, useRemote } from '../lib/remote';
+import { useNavigate } from '../router';
+import { CertificateCoverage, type CoverageActions } from './domain/CertificateCoverage';
+import { coverageURL, decodeCoverage } from './domain/coverageLines';
 import { formatHSTSRemainingSeconds } from '../lib/hstsRemaining';
 import { sslTier, sslTierLabelFor } from '../lib/sslTier';
 import { useLostAnswer } from '../lib/lostAnswer';
@@ -109,6 +112,10 @@ interface SettingsReport {
     notSent: SettingsPart[];
 }
 
+// The mail certificate's steps; the server names the ones it runs ("site" only
+// for a domain whose mail programs are told its own mail name).
+const MAIL_CERT_STEPS = ['check!', 'mail_tls', 'tlsa', 'site'];
+
 const PART_WORDS: Record<SettingsPart, TranslationKey> = {
     renewal: 'ssl.save.part.renewal',
     https: 'ssl.save.part.https',
@@ -191,13 +198,21 @@ export function DomainSSLSettings({
     // one, and an answer for the domain just left is dropped.
     // Başka alan adı başka adrestir: yanıtı bunun altında görünmez.
     const ssl = useRemote(`/api/v1/domains/${domainId}/ssl`, decodeSSLData);
+    // What the certificate protects (alpha.134): read beside the certificate
+    // and again after every change of it.
+    // Sertifikanın neyi koruduğu: sertifikayla birlikte ve her değişiklikten sonra okunur.
+    const coverage = useRemote(`${coverageURL(domainId)}`, decodeCoverage, { init: { cache: 'no-store' } });
+    const navigate = useNavigate();
     const mailState = useRemote(mailAvailable === true ? `/api/v1/domains/${domainId}/ssl/mail` : null, decodeSecureMail);
     const providersRead = useRemote(SSL_PROVIDERS_URL, decodeProviders);
     const [clockMs, setClockMs] = useState(() => Date.now());
     const [issuing, setIssuing] = useState(false);
     const [email, setEmail] = useState('');
     const [autoRenew, setAutoRenew] = useState(true);
-    const [includeMail, setIncludeMail] = useState(false);
+    // alpha.134: mail.<domain> is in a request by default when it points
+    // here (the server decides with its own check); the person can leave it out.
+    // Posta adı, bu sunucuyu gösteriyorsa istekte varsayılan olarak vardır; kişi çıkarabilir.
+    const [excludeMail, setExcludeMail] = useState(false);
     const [chosenSource, setCertSource] = useState<'letsencrypt' | 'custom'>(acmeOpen ? 'letsencrypt' : 'custom');
     // A source the rights close is never shown; the open one stands in for it.
     const certSource: 'letsencrypt' | 'custom' = (chosenSource === 'letsencrypt' ? acmeOpen : customOpen) ? chosenSource : (acmeOpen ? 'letsencrypt' : 'custom');
@@ -243,13 +258,22 @@ export function DomainSSLSettings({
         decodeCertificateReach,
         { init: { cache: 'no-store' } },
     );
+    // Where mail.<domain> points, from the same read: a name that points here
+    // is in the request unless left out; any other name is left out by the
+    // server and never stops the request.
+    // mail.<alan adı> nereyi gösteriyor: buradaysa istekte vardır; değilse sunucu onu dışarıda bırakır.
+    const mailReach = reach.remote.state === 'known'
+        ? reach.remote.value.certificate_names.find((check) => check.kind === 'mail') ?? null
+        : null;
+    const mailCanBeIncluded = mailAvailable === true && (mailReach === null || mailReach.state !== 'elsewhere');
+    const mailIncluded = mailCanBeIncluded && !excludeMail;
     const gate: CertificateReachGate = !reachWanted
         ? { kind: 'open' }
         : certificateReachGate(
               reach.remote.state === 'known' ? reach.remote.value : null,
               reach.remote.state === 'unknown',
               domainName,
-              mailAvailable === true && includeMail,
+              mailIncluded && mailReach?.state === 'here',
           );
     const reachHolds = gate.kind === 'blocked' || gate.kind === 'checking';
     // Whether mail uses the certificate: `false` only where the server has no
@@ -290,6 +314,7 @@ export function DomainSSLSettings({
     // döneceğine onun okuması karar verir.
     const issueAnswer = useLostAnswer(() => {
         void mailState.retry();
+        void coverage.retry();
         return ssl.retry();
     });
     const dismissIssueAnswer = issueAnswer.dismiss;
@@ -303,7 +328,7 @@ export function DomainSSLSettings({
     useEffect(() => {
         dismissIssueAnswer();
         setShowReissue(false);
-        setIncludeMail(false);
+        setExcludeMail(false);
         setCertSource('letsencrypt');
         setSettingsReport(null);
         // Another domain's settings are not this one's draft.
@@ -325,15 +350,7 @@ export function DomainSSLSettings({
         } else if (!next.has_certificate) {
             setAutoRenew(true);
         }
-        const loadedMailName = `mail.${normaliseDNSName(next.domain_name || domainName)}`;
-        const loadedDNSNames = Array.isArray(next.certificate?.dns_names)
-            ? uniqueDNSNames(next.certificate.dns_names)
-            : [];
-        setIncludeMail(
-            mailAvailable === true &&
-                next.has_certificate &&
-                loadedDNSNames.some((name) => normaliseDNSName(name) === loadedMailName),
-        );
+        setExcludeMail(false);
         // Keyed on the answer itself: a new read, or another domain's.
     }, [observedAt, ssl.remote.state, domainId, mailAvailable]);
 
@@ -373,8 +390,11 @@ export function DomainSSLSettings({
     // Sertifikayı ve posta durumunu yeniden okur; yalnız okur.
     const retrySSL = ssl.retry;
     const retryMailState = mailState.retry;
+    const retryCoverage = coverage.retry;
     const loadSSLData = async () => {
-        await Promise.all([retrySSL(), retryMailState()]);
+        // The mail screen's settings say the same as this list: read again too.
+        invalidate('mail');
+        await Promise.all([retrySSL(), retryMailState(), retryCoverage()]);
     };
 
     // The answer to a change did not arrive: whether it was made is not known.
@@ -404,27 +424,38 @@ export function DomainSSLSettings({
     // allowNotPointed: the owner states the names are behind a proxy such as
     // Cloudflare. Only the "not pointed here" check is skipped, by the server
     // too; a failure is then the certificate authority's own answer.
-    const handleIssue = async (allowNotPointed = false) => {
+    // oneClick (alpha.134): the coverage list's "Cover the mail name too" and
+    // "Get it again with this name" - the same request again, from the same
+    // authority with the same renewal choice and the account's own address,
+    // with every name that points here (mail.<domain> included).
+    // oneClick: listenin tek düğmeli "yeniden al" eylemleri; aynı istek, aynı kuruluş.
+    const handleIssue = async (allowNotPointed = false, oneClick?: 'cover' | 'reissue') => {
         if (readOnly || locked || providersRead.remote.state !== 'known') return;
-        if (reachHolds && !(allowNotPointed && gate.kind === 'blocked')) return;
-        if (!email) return showToast('error', t('ssl.emailRequired'));
+        if (!oneClick && reachHolds && !(allowNotPointed && gate.kind === 'blocked')) return;
+        if (!oneClick && !email) return showToast('error', t('ssl.emailRequired'));
         const isReissue = data?.has_certificate === true;
         if (isReissue && mailAvailable !== false && secureMail === null) {
             showToast('warning', t('ssl.mailStateUnknownReplacement'));
             return;
         }
+        const mailName = `mail.${normaliseDNSName(domainName)}`;
+        const withMail = oneClick ? mailAvailable === true : mailIncluded;
         const confirmationKey: TranslationKey =
-            isReissue && secureMail === true && !includeMail
-                ? 'ssl.reissueConfirmMail'
-                : isReissue && includeMail
-                  ? 'ssl.reissueConfirmWithMail'
-                  : includeMail
-                    ? 'ssl.issueConfirmWithMail'
-                    : isReissue
-                      ? 'ssl.reissueConfirm'
-                      : 'ssl.issueConfirm';
+            oneClick === 'cover'
+                ? 'certcover.confirm.cover'
+                : oneClick === 'reissue'
+                  ? 'certcover.confirm.reissue'
+                  : isReissue && secureMail === true && !withMail
+                    ? 'ssl.reissueConfirmMail'
+                    : isReissue && withMail
+                      ? 'ssl.reissueConfirmWithMail'
+                      : withMail
+                        ? 'ssl.issueConfirmWithMail'
+                        : isReissue
+                          ? 'ssl.reissueConfirm'
+                          : 'ssl.issueConfirm';
         const authority = providers.find((candidate) => candidate.id === provider)?.name ?? provider;
-        await confirmAction({ message: t(confirmationKey, { name: domainName, mailName: `mail.${normaliseDNSName(domainName)}`, authority }),
+        await confirmAction({ message: t(confirmationKey, { name: domainName, mailName, authority }),
             progressTitle: t('opstep.ssl.title', { name: domainName }),
             action: async (report) => {
                 setIssuing(true);
@@ -437,9 +468,15 @@ export function DomainSSLSettings({
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', ...progress.headers },
                         body: JSON.stringify({
-                            email,
+                            // One press asks with the account's own address (the server's rule for an empty one).
+                            email: oneClick ? '' : email,
                             auto_renew: autoRenew,
-                            include_mail: mailAvailable === true && includeMail,
+                            ...(!oneClick && excludeMail ? { exclude_mail: true } : {}),
+                            // "Cover the mail name too" asks for the name itself: the
+                            // server refuses before any authority is asked when the
+                            // name no longer points here, instead of getting the same
+                            // certificate again without it.
+                            ...(oneClick === 'cover' ? { include_mail: true } : {}),
                             provider,
                             eab_key_id: eabKid,
                             eab_hmac_key: eabHmac,
@@ -475,6 +512,9 @@ export function DomainSSLSettings({
                         // (the screen's read was older): read it again, and the
                         // refusal below says it in words.
                         if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void reach.retry();
+                        // The list reads it again too: the line then says where the
+                        // name points and the next step.
+                        if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void coverage.retry();
                         // What certbot's run came to is a sentence with something
                         // to correct: it stays on the page.
                         // certbot çalışmasının sonucu düzeltilecek bir şey taşır:
@@ -492,15 +532,24 @@ export function DomainSSLSettings({
                     // owner's and does not use it yet (D-031 step 1b).
                     let issuedStatus = '';
                     let notRunAddress = '';
+                    let mailNote = '';
+                    let mailServed = false;
                     try {
                         const issued = (await res.json()) as IssuedAnswer | null;
                         issuedStatus = String(issued?.status ?? '');
                         notRunAddress = validationNotRunAddress(issued);
+                        mailNote = typeof issued?.mail_note === 'string' ? issued.mail_note : '';
+                        mailServed = issued?.mail_served === true;
                     } catch {
                         issuedStatus = '';
                     }
                     if (issuedStatus === 'waiting_for_owner') showToast('warning', t('ssl.issuedWaitingForOwner'));
+                    else if (oneClick === 'cover' && mailServed) showToast('success', t('certcover.done.covered', { mailName }));
                     else showToast('success', t(isReissue ? 'ssl.reissued' : 'ssl.issued'));
+                    // What happened to the mail name that was not asked for, in words.
+                    if (mailNote === 'mail_not_switched' || mailNote === 'site_file_kept') {
+                        showToast('warning', t(`certcover.note.${mailNote}` as TranslationKey, { mailName }));
+                    }
                     // The request went ahead without the probe (set11 cell A6).
                     if (notRunAddress) showToast('warning', t('ssl.validationNotRun', { address: notRunAddress }));
                     setShowReissue(false);
@@ -627,7 +676,7 @@ export function DomainSSLSettings({
             const sent: { answer: Response | null; lost: boolean } = { answer: null, lost: false };
             await followOperation({ progressTitle: t('opstep.mailCert.title', { name: domainName }), action: async (progress) => {
                 try {
-                    sent.answer = await sendWithSteps(progress, flowSteps(t, 'mailCert', ['check!', 'mail_tls', 'tlsa'], { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
+                    sent.answer = await sendWithSteps(progress, flowSteps(t, 'mailCert', MAIL_CERT_STEPS, { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
                         (headers) => fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', ...headers },
@@ -696,6 +745,42 @@ export function DomainSSLSettings({
         } finally {
             setRetrying(false);
         }
+    };
+
+    // "Use it for mail too" (alpha.134): mail starts serving the certificate
+    // that already covers mail.<domain>, in the progress window with the
+    // server's steps. What mail programs are told does not change.
+    // "Postada da kullan": posta, adı zaten kapsayan sertifikayı sunmaya başlar.
+    const handleUseForMail = async () => {
+        if (readOnly || locked) return;
+        const targetDomainId = domainId;
+        const mailName = `mail.${normaliseDNSName(domainName)}`;
+        await confirmAction({ message: t('certcover.confirm.useForMail', { mailName }),
+            progressTitle: t('opstep.mailCert.title', { name: normaliseDNSName(domainName) }),
+            action: async (report) => {
+                try {
+                    const res = await sendWithSteps(report, flowSteps(t, 'mailCert', MAIL_CERT_STEPS, { name: normaliseDNSName(domainName) }), t, `mailCert.${targetDomainId}`,
+                        (headers) => fetch(`/api/v1/domains/${targetDomainId}/ssl/mail`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', ...headers },
+                            body: JSON.stringify({ secure_mail: true }),
+                        }));
+                    if (answerWasLost(res)) {
+                        await resultUnknown(targetDomainId);
+                        return;
+                    }
+                    if (!res.ok) {
+                        const apiError = await readApiError(res);
+                        if (currentDomainIdRef.current === targetDomainId) setActionRefusal({ problem: apiError, sentence: 'ssl.settingsFailed' });
+                        return;
+                    }
+                    if (currentDomainIdRef.current === targetDomainId) showToast('success', t('certcover.done.useForMail', { mailName }));
+                    await loadSSLData();
+                } catch {
+                    await resultUnknown(targetDomainId);
+                }
+            },
+        });
     };
 
     const handleDelete = async () => {
@@ -781,7 +866,7 @@ export function DomainSSLSettings({
     const replacementBlockedByMailState = data.has_certificate && mailStateUnknown;
     const plannedCertificateNames = uniqueDNSNames([
         ...managedNames,
-        ...(mailAvailable === true && includeMail ? [mailName] : []),
+        ...(mailIncluded && mailReach?.state === 'here' ? [mailName] : []),
     ]);
     const nativeLabel = cert ? renewalLabelKey(cert) : null;
     const guide = cert ? renewalGuidance(cert) : null;
@@ -816,6 +901,39 @@ export function DomainSSLSettings({
         valid: { icon: CheckCircle, color: 'text-success' },
     }[status];
     const TierIcon = tier.icon;
+    // The list's actions are this screen's own. A request again goes in one
+    // press only where it can (a free certificate from an authority that
+    // needs no account keys); otherwise its form opens.
+    // Listenin eylemleri bu ekranındır; tek basışla yalnız olabildiği yerde.
+    const providerNeedsKeys = providers.find((candidate) => candidate.id === provider)?.needs_eab === true;
+    const requestAgain = (kind: 'cover' | 'reissue') => () => {
+        if (cert?.type === 'letsencrypt' && !providerNeedsKeys) {
+            void handleIssue(false, kind);
+            return;
+        }
+        setCertSource('letsencrypt');
+        setShowReissue(true);
+    };
+    const sectionPath = (section: string) => `/domains/${encodeURIComponent(normaliseDNSName(domainName))}?section=${section}`;
+    const coverageActions: CoverageActions = {
+        ...(readOnly ? {} : {
+            reissue: acmeOpen ? requestAgain('reissue') : undefined,
+            coverMail: acmeOpen ? requestAgain('cover') : undefined,
+            upload: customOpen ? () => { setCertSource('custom'); setShowReissue(true); } : undefined,
+            useForMail: mailAvailable === true ? () => void handleUseForMail() : undefined,
+        }),
+        openDns: () => navigate(`${sectionPath('dns')}&part=records`),
+        openMail: () => navigate(sectionPath('mail')),
+        busy: locked || issuing || uploading || removing || draft.saving,
+    };
+    const coverageList = (
+        <CertificateCoverage
+            coverage={coverage.remote}
+            onRetry={() => void coverage.retry()}
+            rereading={coverage.reading}
+            actions={coverageActions}
+        />
+    );
 
     return (
         <div>
@@ -849,7 +967,7 @@ export function DomainSSLSettings({
                     domainName={domainName}
                     onRecheck={() => void reach.retry()}
                     rechecking={reach.reading}
-                    onLeaveOutMail={() => setIncludeMail(false)}
+                    onLeaveOutMail={() => setExcludeMail(true)}
                     onRequestAnyway={() => void handleIssue(true)}
                     requestAnywayDisabled={issuing || !email.trim() || locked}
                     className="mb-4"
@@ -975,12 +1093,10 @@ export function DomainSSLSettings({
                                         {cert.trust_error}
                                     </p>
                                 )}
-                                <SecuredNames
-                                    names={managedNames}
-                                    primaryName={domainName}
-                                    certificateDNSNames={certificateDNSNames}
-                                    inventoryComplete={managedNamesFromServer !== null}
-                                />
+                                {/* What is protected stands right under the certificate's
+                                    facts, so a name it does not cover and its one fix are
+                                    seen before the switches and buttons. */}
+                                {coverageList}
                                 {cert.type === 'letsencrypt' && (
                                     <div className="mt-4 border-t border-border pt-4">
                                         <ControlledToggle
@@ -1049,7 +1165,10 @@ export function DomainSSLSettings({
                                 ) : null}
                             </>
                         ) : (
-                            <p className="mt-1 text-sm text-fg-muted">{t('ssl.noCert')}</p>
+                            <>
+                                <p className="mt-1 text-sm text-fg-muted">{t('ssl.noCert')}</p>
+                                {coverageList}
+                            </>
                         )}
                     </div>
                 </div>
@@ -1152,22 +1271,33 @@ export function DomainSSLSettings({
                                 <span className="text-sm text-fg">{t('ssl.autoRenewOn')}</span>
                             </label>
                             {mailAvailable === true ? (
-                                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface-subtle px-3 py-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={includeMail}
-                                        onChange={(e) => setIncludeMail(e.target.checked)}
-                                        className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                                    />
-                                    <span>
-                                        <span className="block text-sm font-medium text-fg">
-                                            {t('ssl.includeMail', { name: mailName })}
+                                mailCanBeIncluded ? (
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface-subtle px-3 py-3" data-ssl-mail-name="">
+                                        <input
+                                            type="checkbox"
+                                            checked={mailIncluded}
+                                            onChange={(e) => setExcludeMail(!e.target.checked)}
+                                            className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                                        />
+                                        <span>
+                                            <span className="block text-sm font-medium text-fg">
+                                                {t('certcover.form.mail', { name: mailName })}
+                                            </span>
+                                            <span className="mt-1 block text-xs text-fg-muted">
+                                                {t(mailReach?.state === 'unknown' ? 'certcover.form.mailUnknown' : 'certcover.form.mailHint', { name: mailName })}
+                                            </span>
                                         </span>
-                                        <span className="mt-1 block text-xs text-fg-muted">
-                                            {t('ssl.includeMailHint', { name: mailName })}
+                                    </label>
+                                ) : (
+                                    <p className="flex items-start gap-2 rounded-lg border border-border bg-surface-subtle px-3 py-2 text-xs text-fg-muted" data-ssl-mail-name="left-out">
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" />
+                                        <span>
+                                            {mailReach && mailReach.ips.length > 0
+                                                ? t('certcover.form.mailElsewhere', { name: mailName, ips: mailReach.ips.join(', ') })
+                                                : t('certcover.form.mailNoAddress', { name: mailName })}
                                         </span>
-                                    </span>
-                                </label>
+                                    </p>
+                                )
                             ) : (
                                 <p className="flex items-start gap-2 rounded-lg border border-border bg-surface-subtle px-3 py-2 text-xs text-fg-muted">
                                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" />
@@ -1200,7 +1330,7 @@ export function DomainSSLSettings({
                                     domainName={domainName}
                                     onRecheck={() => void reach.retry()}
                                     rechecking={reach.reading}
-                                    onLeaveOutMail={() => setIncludeMail(false)}
+                                    onLeaveOutMail={() => setExcludeMail(true)}
                                     onRequestAnyway={() => void handleIssue(true)}
                                     requestAnywayDisabled={issuing || !email.trim() || locked}
                                 />
@@ -1495,90 +1625,6 @@ function PlannedCertificateNames({
     );
 }
 
-function SecuredNames({
-    names,
-    primaryName,
-    certificateDNSNames,
-    inventoryComplete,
-}: {
-    names: string[];
-    primaryName: string;
-    certificateDNSNames: string[] | null;
-    inventoryComplete: boolean;
-}) {
-    const { t } = useI18n();
-    const normalisedPrimary = normaliseDNSName(primaryName);
-
-    return (
-        <div className="mt-4 border-t border-border pt-4">
-            <p className="text-sm font-semibold text-fg">{t('ssl.securedNames')}</p>
-            <p className="mt-0.5 text-xs text-fg-muted">
-                {certificateDNSNames === null ? t('ssl.securedNamesUnknown') : t('ssl.securedNamesHint')}
-            </p>
-            {!inventoryComplete && <p className="mt-1 text-xs text-warning">{t('ssl.managedNamesUnknown')}</p>}
-            <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-                {names.map((name) => {
-                    const covered =
-                        certificateDNSNames === null ? null : certificateCoversName(certificateDNSNames, name);
-                    const normalisedName = normaliseDNSName(name);
-                    const component =
-                        normalisedName === normalisedPrimary
-                            ? t('ssl.component.domain')
-                            : normalisedName === `www.${normalisedPrimary}`
-                              ? t('ssl.component.www')
-                              : t('ssl.component.alias');
-
-                    return (
-                        <li key={normalisedName} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                            <span className="min-w-0">
-                                <span className="block font-medium text-fg">{name}</span>
-                                <span className="block text-xs text-fg-subtle">{component}</span>
-                            </span>
-                            <span
-                                className={
-                                    covered === null
-                                        ? 'inline-flex items-center gap-1.5 text-fg-subtle'
-                                        : covered
-                                          ? 'inline-flex items-center gap-1.5 text-success'
-                                          : 'inline-flex items-center gap-1.5 text-danger'
-                                }
-                            >
-                                {covered === null ? (
-                                    <AlertTriangle className="h-4 w-4" />
-                                ) : covered ? (
-                                    <CheckCircle className="h-4 w-4" />
-                                ) : (
-                                    <XCircle className="h-4 w-4" />
-                                )}
-                                {covered === null
-                                    ? t('ssl.coverage.unknown')
-                                    : covered
-                                      ? t('ssl.coverage.secured')
-                                      : t('ssl.coverage.uncovered')}
-                            </span>
-                        </li>
-                    );
-                })}
-            </ul>
-            {certificateDNSNames !== null && certificateDNSNames.length > 0 && (
-                <div className="mt-3">
-                    <p className="text-xs font-medium text-fg-muted">{t('ssl.certificateNames')}</p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {certificateDNSNames.map((name) => (
-                            <span
-                                key={normaliseDNSName(name)}
-                                className="rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-fg-muted"
-                            >
-                                {name}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
 function renewalStatusMeta(status: string): { label: TranslationKey; color: string } | null {
     switch (status) {
         case 'current':
@@ -1692,7 +1738,7 @@ export function certificateCoversName(dnsNames: string[], hostname: string): boo
 // A certificate request that went ahead although the validation probe could
 // not be sent from this server: the site listens on an address that is not
 // this server's (set11 cell A6, 2026-10-11). The address, or ''.
-type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown };
+type IssuedAnswer = { status?: unknown; validation_probe?: unknown; validation_unknown_reason?: unknown; validation_address?: unknown; mail_note?: unknown; mail_served?: unknown };
 
 function validationNotRunAddress(answer: IssuedAnswer | null | undefined): string {
     if (!answer || answer.validation_probe !== 'not_run' || answer.validation_unknown_reason !== 'address_not_local') return '';

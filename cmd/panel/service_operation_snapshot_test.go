@@ -1441,6 +1441,8 @@ func createPreLedgerPanelDatabaseInDirectory(t *testing.T, directory string) str
 		t.Fatal(err)
 	}
 	if _, err := database.GetDB().Exec(`
+        -- Reverse the name mail programs are told (migration 78, alpha.134).
+        ALTER TABLE domains DROP COLUMN mail_clients_use_own_name;
         -- Reverse the mail relay (migration 77, alpha.130).
         DROP TABLE mail_sender_rules;
         DROP TABLE mail_server_options;

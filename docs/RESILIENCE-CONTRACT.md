@@ -8408,3 +8408,41 @@ until the backup reports ready.
     as an unreviewed code (the same class as earlier composites).
   - Not measured natively; the lab repeats w9. **No P0 item is closed**; P0.4
     stays partial.
+
+### Branch a134/certcover (a domain's certificate says what it protects and covers mail.<domain> by default; schema 77 -> 78; invariants 1, 2 and 4; P0.5 unchanged; D-022; D-024; D-025; 2026-11-13)
+
+- **Defect.** Owner report: a site's certificate did not cover `mail.<domain>`,
+  so programs set up with that name (the MX and hand-typed settings) warned, and
+  no screen said which names a certificate protects. Design:
+  [CERTIFICATE-COVERAGE.md](CERTIFICATE-COVERAGE.md).
+- **Contract.** A new certificate request includes `mail.<domain>` only when mail
+  is on this server and the public DNS shows the name here; a name that points
+  elsewhere, has no address or could not be checked is left out and the request
+  goes on, so no certificate authority is asked for a name that will fail. Mail
+  then serves the certificate for that name only (Postfix SNI entry, Dovecot
+  `local_name`); the server's mail name keeps its certificate on every port and
+  the name programs are told does not change. Existing certificates are never
+  re-issued by themselves: the list shows the gap with one action ("Cover the
+  mail name too"), which asks for the name explicitly and is refused before any
+  authority when the name no longer points here. A name that does not point here
+  is an unmet prerequisite (its own badge, who acts, the address to point to, a
+  read-only "Check again"), never a failure.
+- **Schema transition.** Migration 078 adds `domains.mail_clients_use_own_name`
+  (0/1, default 0) and sets 1 for every domain whose active certificate secured
+  mail before, so no program is told another name after the update. Additive; the
+  release before refuses a ledger with 078; going back is the pre-update snapshot
+  restore (D-025).
+- **Recovery.** A request is staged as before (D-029): a refused or failed request
+  leaves the old certificate, its files and mail unchanged. If mail says a known
+  no to serving the new name, the ledger and mail are put back and the answer says
+  so ("Use it for mail too" retries); an unknown result keeps the existing
+  dependents-pending state and its retry. Renewal with the panel absent is
+  certbot's lineage and its native deploy hook, unchanged (P0.5); a certificate
+  the panel still renews itself keeps the mail name and requires it in the renewed
+  certificate.
+- **Evidence.** Component tests in the WSL guest: `TestCertificateCoverageTable`,
+  `TestCertificateCoverageEndpointReadsOnly`, the five request tests of
+  `certificate_mail_default_test.go`, `TestARenewalKeepsTheMailNameTheCertificateCovers`,
+  the migration tests in `internal/db`, `internal/mailtlsconfig`; mounted web tests
+  `web/tests/certificate-coverage-alpha134.test.mjs`. No real authority, no native
+  run: the lab steps are in CERTIFICATE-COVERAGE.md §8. **No P0 item is closed.**

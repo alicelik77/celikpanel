@@ -7632,3 +7632,36 @@ bağlantıyı tutar.
     (önceki bileşik kodlarla aynı sınıf).
   - Gerçek sistemde ölçülmedi; lab w9'u yineler. **Hiçbir P0 işi kapanmadı**;
     P0.4 kısmi kalır.
+
+### Dal a134/certcover (alan adının sertifikası neyi koruduğunu söyler ve mail.<alan adı> adını varsayılan olarak kapsar; şema 77 -> 78; ilke 1, 2 ve 4; P0.5 değişmedi; D-022; D-024; D-025; 2026-11-13)
+
+- **Kusur.** Sahibin bildirimi: sitenin sertifikası `mail.<alan adı>` adını
+  kapsamıyordu; bu adla ayarlanmış programlar uyarı veriyordu ve hiçbir ekran
+  sertifikanın hangi adları koruduğunu söylemiyordu. Tasarım:
+  [CERTIFICATE-COVERAGE.md](CERTIFICATE-COVERAGE.md).
+- **Sözleşme.** Yeni sertifika isteği `mail.<alan adı>` adını yalnız posta bu
+  sunucudaysa ve genel DNS adı burada gösteriyorsa içerir; başka yeri gösteren,
+  adresi olmayan ya da denetlenemeyen ad dışarıda kalır ve istek sürer; hiçbir
+  sertifika kuruluşundan başarısız olacak bir ad istenmez. Posta sertifikayı
+  yalnız o ad için sunar; sunucunun posta adı her bağlantı noktasında kendi
+  sertifikasını korur, programlara söylenen ad değişmez. Var olan sertifikalar
+  kendiliğinden yeniden alınmaz: liste eksiği tek eylemle gösterir ("Posta adını
+  da kapsa"); bu eylem adı açıkça ister ve ad artık burayı göstermiyorsa hiçbir
+  kuruluşa sorulmadan reddedilir. Burayı göstermeyen ad karşılanmamış önkoşuldur
+  (kendi etiketi, kimin ne yapacağı, gösterilecek adres, salt-okur "Yeniden
+  denetle"); hata değildir.
+- **Şema geçişi.** 078 göçü `domains.mail_clients_use_own_name` (0/1, varsayılan 0)
+  ekler ve etkin sertifikası daha önce postayı koruyan her alan adı için 1 yazar;
+  güncellemeden sonra hiçbir programa başka ad söylenmez. Eklemelidir; önceki
+  sürüm 078 içeren kaydı reddeder; geri dönüş güncelleme öncesi anlık görüntüden
+  geri yüklemedir (D-025).
+- **Kurtarma.** İstek eskisi gibi hazırlık alanında yürür (D-029): reddedilen ya da
+  başarısız istek eski sertifikayı, dosyalarını ve postayı değiştirmez. Posta yeni
+  adı sunmaya bilinen bir hayır derse kayıt ve posta geri alınır ve yanıt bunu
+  söyler ("Postada da kullan" yeniden dener); sonucu bilinmeyen adım mevcut
+  bekleyen durumunu ve yeniden denemesini korur. Panel yokken yenileme certbot'un
+  kendi zinciri ve yerel dağıtım kancasıdır, değişmedi (P0.5); panelin hâlâ
+  kendisi yenilediği sertifika posta adını korur ve yenisinde ister.
+- **Kanıt.** WSL konuğunda bileşen testleri ve `web/tests/certificate-coverage-alpha134.test.mjs`.
+  Gerçek sertifika kuruluşu yok, gerçek sistemde çalıştırılmadı; lab adımları
+  CERTIFICATE-COVERAGE.md §8'de. **Hiçbir P0 işi kapanmadı.**

@@ -25,7 +25,7 @@ const screenFiles = [
   'AddDomainModal', 'Domains', 'databases/DatabasesPage', 'DomainDatabaseManager',
   'DomainConnection', 'DomainDNSManager', 'DomainPHPSettings', 'HostingTypePanel',
   // The second batch.
-  'Settings', 'UsersPage', 'DomainFileManager', 'DomainSSLSettings', 'ImportPage', 'LicenseNotice', 'MonitoringPage',
+  'Settings', 'UsersPage', 'DomainFileManager', 'DomainSSLSettings', 'domain/CertificateCoverage', 'ImportPage', 'LicenseNotice', 'MonitoringPage',
   'ComponentDetail', 'ServiceRecordLookup', 'ServiceShell', 'DomainDetail',
   // The infrastructure zone's page (2026-10-16).
   'InfrastructureZone',
@@ -195,6 +195,9 @@ const AccountPage = (await import(replaceLazyImport(replaceLazyImport(shared.com
 const UsersPage = await load('UsersPage');
 const fileManagerURL = shared.compile('components/DomainFileManager.tsx', own);
 const DomainFileManager = (await import(fileManagerURL)).DomainFileManager;
+// alpha.134: the certificate screen's list of what is protected, the shipped modules.
+own['/coverageLines'] = compileSource('components/domain/coverageLines.ts', (specifier) => (specifier.endsWith('/dateFormat') ? shared.resolve('/lib/dateFormat') : stub));
+own['/CertificateCoverage'] = shared.compile('components/domain/CertificateCoverage.tsx', own);
 const sslSettingsURL = shared.compile('components/DomainSSLSettings.tsx', own);
 const DomainSSLSettings = (await import(sslSettingsURL)).DomainSSLSettings;
 const ImportPage = await load('ImportPage');
@@ -304,6 +307,8 @@ const healthy = {
   '/api/v1/domains/1/ssl/mail': json({ secure_mail: false }),
   '/api/v1/domains/1/usage': json({ disk_usage: 1024, bandwidth: 2048 }),
   '/api/v1/ssl/providers': json({ providers: [{ id: 'letsencrypt', name: 'Let’s Encrypt', note: '', needs_eab: false }] }),
+  // alpha.134: what the certificate protects, read beside it.
+  '/api/v1/domains/1/ssl/coverage': json({ mail_name: 'mail.example.com', lines: [] }),
   '/api/v1/metrics/history': json({ samples: [1, 2, 3].map((n) => ({ ts: `2026-10-09T00:0${n}:00Z`, cpu: 10 * n, mem_used: n, mem_total: 8, disk_used: n, disk_total: 80, load1: n / 10 })) }),
   '/api/v1/metrics/problems': json({ checked_at: '2026-10-09T00:04:00Z', problems: [], unknown: [] }),
   '/api/v1/managed-services': json({ services: [{ id: 'redis', name: 'Redis', kind: 'service', is_installed: true, status: 'active (running)', unit: 'redis-server', versions: [], ports: ['6379/tcp'], config_files: [{ path: '/etc/redis/redis.conf', is_managed: false }] }] }),
@@ -1905,7 +1910,7 @@ test('Domain certificate: Get certificate is off while the domain does not point
   } finally { await cleanup(); }
 });
 
-test('Domain certificate: only the mail name failing is offered without it', async () => {
+test('Domain certificate: a mail name that points elsewhere is left out and never stops the request (alpha.134)', async () => {
   const none = { domain_id: 1, domain_name: 'example.com', has_certificate: false, managed_names: ['example.com', 'www.example.com'], settings: { force_https: false, hsts_enabled: false, hsts_max_age: 300 } };
   const checks = [
     { name: 'example.com', kind: 'site', state: 'here', ips: [] }, { name: 'www.example.com', kind: 'site', state: 'here', ips: [] },
@@ -1916,13 +1921,12 @@ test('Domain certificate: only the mail name failing is offered without it', asy
   try {
     await mount(DomainSSLSettings, { ...domain, mailAvailable: true });
     await act(async () => { tree.root.findAllByProps({ type: 'email' })[0].props.onChange({ target: { value: 'owner@example.com' } }); await settled(); });
-    assert.equal(issueButton().props.disabled, false, 'the mail name is not part of the request until it is chosen');
-    // The form's checkboxes in order: renew automatically, then the mail name.
-    await act(async () => { tree.root.findAllByProps({ type: 'checkbox' })[1].props.onChange({ target: { checked: true } }); await settled(); });
-    assert.equal(issueButton().props.disabled, true, 'with the mail name chosen the request is not offered');
-    assert.ok(has('ssl.reach.inline.mailOnly'));
-    await press(buttons('ssl.reach.leaveOutMail')[0]);
-    assert.equal(issueButton().props.disabled, false, 'requesting without the mail name is offered');
+    assert.equal(issueButton().props.disabled, false, 'a mail name that is elsewhere stopped the request');
+    // The mail name is not offered as a choice; its reason is said in its place.
+    assert.equal(tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-ssl-mail-name'] === '').length, 0);
+    assert.equal(tree.root.findAll((node) => typeof node.type === 'string' && node.props['data-ssl-mail-name'] === 'left-out').length, 1);
+    assert.ok(has('certcover.form.mailNoAddress'));
+    assert.ok(!has('ssl.reach.inline.mailOnly'));
   } finally { await cleanup(); }
 });
 
