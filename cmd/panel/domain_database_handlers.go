@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -257,18 +258,15 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		ids = append(ids, db.ID)
 	}
 	// alpha.133 round 5: what deleting each database leaves of its users.
-	fates, err := p.databaseUserFates(ctx, ids)
-	if err != nil {
-		http.Error(w, "Failed to load databases", http.StatusInternalServerError)
-		return
-	}
+	// A failure to tell is "unknown" per user; the list still loads.
+	fates := p.databaseUserFates(ctx, ids)
 	for i := range databases {
 		databases[i].Users = users[databases[i].ID]
 		if databases[i].Users == nil {
 			databases[i].Users = []domainDatabaseUser{}
 		}
 		for j := range databases[i].Users {
-			databases[i].Users[j].Stays = fates[databases[i].ID][databases[i].Users[j].ID]
+			databases[i].Users[j].Stays = databaseUserStays(fates, databases[i].ID, databases[i].Users[j].ID)
 		}
 	}
 
@@ -370,12 +368,32 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 
-	// alpha.133 round 5: this subscription's own user of that name may be
-	// given to the new database below; that waits for a deletion of the same
-	// engine (database_delete.go).
-	if engineServer, err := repositories.NewPostgresDatabaseServerRepository(pool).GetByID(ctx, serverID); err == nil {
-		unlockEngine := lockDatabaseEngineUsers(engineServer)
-		defer unlockEngine()
+	// alpha.133 round 5 (review W-C): when this subscription already has a
+	// user record of that name, the record is given to the new database below;
+	// that step waits at most databaseEngineLinkWait for a deletion on the
+	// same engine and holds the gate until the records are written. A new
+	// name needs no gate.
+	var existingUser int
+	if err := pool.QueryRowContext(ctx, `SELECT COUNT(*) FROM database_users WHERE server_id = ? AND username = ?`, serverID, dbUser).Scan(&existingUser); err != nil {
+		writeServerError(w, err)
+		return
+	}
+	if existingUser > 0 {
+		engineServer, err := repositories.NewPostgresDatabaseServerRepository(pool).GetByID(ctx, serverID)
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		release, err := acquireDatabaseEngineGate(ctx, engineServer, databaseEngineLinkWait)
+		if errors.Is(err, errDatabaseEngineBusy) {
+			writeDatabaseEngineBusy(w)
+			return
+		}
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		defer release()
 	}
 
 	// alpha.129: the database's and its user's names must be free on this

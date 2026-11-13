@@ -162,6 +162,11 @@ func TestDatabaseDeleteWithoutAnAnswerIsUnknownAndChangesNoRecord(t *testing.T) 
 	if got.Code != http.StatusBadGateway || !strings.Contains(got.Body.String(), errCodeDatabaseDeleteUnconfirmed) {
 		t.Fatalf("%d %s", got.Code, got.Body.String())
 	}
+	// N (review): an attempt whose result is not known is recorded as such.
+	var unknownRows int
+	if err := f.panel.db.GetDB().QueryRow(`SELECT COUNT(*) FROM audit_logs WHERE action = 'database.delete.unknown:customer_matrix_test_shop'`).Scan(&unknownRows); err != nil || unknownRows != 1 {
+		t.Fatalf("unknown attempt audit rows %d %v", unknownRows, err)
+	}
 	if len(native.removed) != 0 || f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`) != 1 {
 		t.Fatal("an unknown drop went on to users or records")
 	}
@@ -265,11 +270,32 @@ func TestDatabaseDeleteOnAnotherMachineUsesTheRecordAndSaysARefusalPlainly(t *te
 	}
 
 	driver.refuse = false
-	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
+	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
+	if got.Code != http.StatusOK {
 		t.Fatalf("%d %s", got.Code, got.Body.String())
 	}
-	if strings.Join(driver.dropped, ",") != "customer_matrix_test_shop" || strings.Join(driver.usersDropped, ",") != "cust_user" {
-		t.Fatalf("remote drops %v users %v", driver.dropped, driver.usersDropped)
+	assertDatabaseDroppedUsersKeptOnServer(t, f, driver, got.Body.Bytes())
+}
+
+// W-A (review): on an engine reached with the record's own account the
+// database goes and every user stays on the engine (said, with its reason);
+// CelikPanel's records of the users only it used go.
+func assertDatabaseDroppedUsersKeptOnServer(t *testing.T, f visibleDatabasesFixture, driver *remoteDeleteDriver, body []byte) {
+	t.Helper()
+	if strings.Join(driver.dropped, ",") != "customer_matrix_test_shop" || len(driver.usersDropped) != 0 {
+		t.Fatalf("dropped %v users %v", driver.dropped, driver.usersDropped)
+	}
+	var answer struct {
+		Removed  []string `json:"users_removed"`
+		Kept     []string `json:"users_kept"`
+		OnServer []string `json:"users_kept_on_server"`
+	}
+	_ = json.Unmarshal(body, &answer)
+	if len(answer.Removed) != 0 || strings.Join(answer.OnServer, ",") != "cust_user" || strings.Join(answer.Kept, ",") != "wp_user" {
+		t.Fatalf("answer %s", body)
+	}
+	if f.count(t, `SELECT COUNT(*) FROM database_users WHERE id = 9941`) != 0 || f.count(t, `SELECT COUNT(*) FROM database_users WHERE id = 9942`) != 1 {
+		t.Fatal("records of the users are not as expected")
 	}
 }
 
@@ -295,7 +321,14 @@ func TestDatabaseDeleteOfAnAdministratorsOwnLocalRecordNeverUsesTheAgent(t *test
 		return driver, nil
 	}
 	t.Cleanup(func() { newDatabaseDriver = saved })
-	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
+	// The question says it in advance: the user only this database uses stays
+	// on the server; the shared one stays because another database uses it.
+	fates := f.panel.databaseUserFates(context.Background(), []int{9961, 9962})
+	if fates[9961][9941] != databaseUserServer || fates[9961][9942] != databaseUserShared || fates[9962][9942] != databaseUserShared {
+		t.Fatalf("fates %v", fates)
+	}
+	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
+	if got.Code != http.StatusOK {
 		t.Fatalf("%d %s", got.Code, got.Body.String())
 	}
 	if len(drops.requests) != 0 || len(native.removed) != 0 {
@@ -304,9 +337,7 @@ func TestDatabaseDeleteOfAnAdministratorsOwnLocalRecordNeverUsesTheAgent(t *test
 	if len(configs) == 0 || configs[0].Port != 3307 || configs[0].Username != "dbadmin" || configs[0].Password != "the-administrators-own-password" {
 		t.Fatalf("driver configs %+v", configs)
 	}
-	if strings.Join(driver.dropped, ",") != "customer_matrix_test_shop" || strings.Join(driver.usersDropped, ",") != "cust_user" {
-		t.Fatalf("dropped %v users %v", driver.dropped, driver.usersDropped)
-	}
+	assertDatabaseDroppedUsersKeptOnServer(t, f, driver, got.Body.Bytes())
 }
 
 func TestDatabaseRecordIsOurLocalEngine(t *testing.T) {
@@ -346,7 +377,7 @@ func TestDatabaseEngineRefusalsAlwaysNameTheEngine(t *testing.T) {
 		err          error
 	}{{"mariadb", "MariaDB", refused}, {"postgresql", "PostgreSQL", down}} {
 		rec := httptest.NewRecorder()
-		writeDatabaseEngineError(rec, &core.DatabaseServer{TypeName: c.engine}, c.err)
+		writeDatabaseEngineErrorFor(rec, httptest.NewRequest(http.MethodGet, "/", nil), &core.DatabaseServer{TypeName: c.engine}, c.err)
 		var body map[string]any
 		_ = json.Unmarshal(rec.Body.Bytes(), &body)
 		vars, _ := body["vars"].(map[string]any)
@@ -368,7 +399,28 @@ func TestDatabaseEngineRefusalsAlwaysNameTheEngine(t *testing.T) {
 			t.Fatal(err)
 		}
 		if strings.Contains(string(source), "errCodeDatabaseEngineCredentialRefused") || strings.Contains(string(source), "errCodeDatabaseEngineUnreachable") {
-			t.Errorf("%s writes a database engine refusal itself; use writeDatabaseEngineError(For)", name)
+			t.Errorf("%s writes a database engine refusal itself; use writeDatabaseEngineErrorFor", name)
 		}
 	}
+}
+
+// W-A on the domain route: the same deletion, the same answer.
+func TestDatabaseDeleteOnTheDomainPageOfAnAdministratorsRecordKeepsTheUsers(t *testing.T) {
+	f := newVisibleDatabasesFixture(t)
+	recordDatabaseDrops(t)
+	f.panel.databaseAccessNative = &fakeDatabaseAccessNative{}
+	sealed, err := f.box.Encrypt("the-administrators-own-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.exec(t, `UPDATE database_servers SET host = '127.0.0.1', port = 3307, admin_username = 'dbadmin', root_password_encrypted = ? WHERE id = 9921`, sealed)
+	driver := &remoteDeleteDriver{}
+	saved := newDatabaseDriver
+	newDatabaseDriver = func(services.DriverConfig) (services.DatabaseDriver, error) { return driver, nil }
+	t.Cleanup(func() { newDatabaseDriver = saved })
+	got := f.call(t, authzMatrixCustomerID, http.MethodDelete, "/api/v1/domains/9902/databases/9961", "")
+	if got.Code != http.StatusOK {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	assertDatabaseDroppedUsersKeptOnServer(t, f, driver, got.Body.Bytes())
 }

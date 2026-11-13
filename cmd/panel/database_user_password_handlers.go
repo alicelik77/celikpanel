@@ -216,7 +216,7 @@ func (p *Panel) applyDatabaseUserPassword(w http.ResponseWriter, r *http.Request
 		reportOperationStep(ctx, "password")
 		if err := driver.ChangePassword(user.Username, password); err != nil {
 			release()
-			writeDatabaseEngineError(w, server, err)
+			writeDatabaseEngineErrorFor(w, r, server, err)
 			return
 		}
 		reportOperationStep(ctx, "records")

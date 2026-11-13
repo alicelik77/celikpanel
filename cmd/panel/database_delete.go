@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/alicelik/celikpanel/internal/core"
 	"github.com/alicelik/celikpanel/internal/repositories"
@@ -47,7 +48,7 @@ import (
 // transaction. Until the records go the database stays listed, and pressing
 // Delete again runs the same steps over what is left. Grants to an engine
 // account wait while a deletion of the same engine runs
-// (lockDatabaseEngineUsers), so a user is never given to another database
+// (acquireDatabaseEngineGate), so a user is never given to another database
 // between being classified and being dropped.
 //
 // Veritabanını silmek: veritabanı ve onu kullanan başka hiçbir şey olmayan
@@ -88,6 +89,13 @@ const (
 	// databaseUserAccount: an engine's or CelikPanel's own account, or a
 	// name CelikPanel does not manage.
 	databaseUserAccount = "account"
+	// databaseUserServer: the database's server record is reached with its
+	// own account (another machine, or an administrator's own record on this
+	// one); CelikPanel does not remove users there (review W-A).
+	databaseUserServer = "server"
+	// databaseUserUnknown: what deleting would leave could not be read (lists
+	// only; the screens then offer no deletion).
+	databaseUserUnknown = "unknown"
 )
 
 // databaseDeleteUser is one user recorded for the database being deleted.
@@ -107,6 +115,12 @@ type databaseDeletion struct {
 	// UsersKeptOnEngine: the Agent found rights the owner gave by hand and
 	// kept the account (only CelikPanel's grant on this database went).
 	UsersKeptOnEngine []string
+	// UsersKeptUnchecked: the Agent kept the accounts because what else they
+	// have could not be checked (fail closed).
+	UsersKeptUnchecked []string
+	// UsersKeptOnServer: an engine reached with the record's own account;
+	// CelikPanel does not remove users there.
+	UsersKeptOnServer []string
 }
 
 // databaseDeleteError says how far a deletion got (D-024: a verified failure,
@@ -171,16 +185,67 @@ func databaseServerEngineIdentity(server *core.DatabaseServer) string {
 	return databaseEngineIdentity(dbDriverTypeFor(server), server.Host, server.Port)
 }
 
-// databaseEngineUserLocks serialise, per engine, deciding which accounts a
-// deletion removes with giving an account to a database (alpha.133 round 5).
-var databaseEngineUserLocks keyedLocks
+// The engine-account gate (alpha.133 round 5, narrowed after review W-C).
+// A deletion holds it for one engine from choosing which accounts it removes
+// until its records are written; the few steps that give an EXISTING user
+// record to a database (a grant, a new database for an existing user, a
+// domain database reusing a record of its name) hold it only around that
+// step. Nobody waits silently or long: such a step waits at most
+// databaseEngineLinkWait for a deletion in progress and is otherwise refused
+// with DATABASE_ENGINE_BUSY ("another database change on this server is
+// running; try again shortly"); a deletion waits at most
+// databaseEngineDeleteWait for such a step. Creating a database with a new
+// user never takes it.
+// Bir silme, bir motorda kullanıcıları seçtiği andan kayıtlarını yazana dek
+// kapıyı tutar; var olan bir kullanıcıyı bağlayan adım yalnız o adımda tutar
+// ve en çok birkaç saniye bekler, sonra "biraz sonra yeniden deneyin" der.
+var databaseEngineGates = struct {
+	sync.Mutex
+	gates map[string]chan struct{}
+}{gates: map[string]chan struct{}{}}
 
-// lockDatabaseEngineUsers waits for the engine of a record and returns the
-// release.
-func lockDatabaseEngineUsers(server *core.DatabaseServer) func() {
-	hash := fnv.New32a()
-	_, _ = hash.Write([]byte(databaseServerEngineIdentity(server)))
-	return databaseEngineUserLocks.lock(int(hash.Sum32() & 0x7fffffff))
+// The longest anything waits at the gate (tests shorten them).
+var (
+	databaseEngineLinkWait   = 10 * time.Second
+	databaseEngineDeleteWait = 30 * time.Second
+)
+
+const (
+	// errCodeDatabaseEngineBusy: another database change on this engine is
+	// running; nothing was changed.
+	errCodeDatabaseEngineBusy = "DATABASE_ENGINE_BUSY"
+)
+
+// errDatabaseEngineBusy: the gate was not free within the bound.
+var errDatabaseEngineBusy = errors.New("another database change on this database server is running")
+
+// acquireDatabaseEngineGate waits at most `wait` for the gate of a record's
+// engine and returns its release.
+func acquireDatabaseEngineGate(ctx context.Context, server *core.DatabaseServer, wait time.Duration) (func(), error) {
+	key := databaseServerEngineIdentity(server)
+	databaseEngineGates.Lock()
+	gate := databaseEngineGates.gates[key]
+	if gate == nil {
+		gate = make(chan struct{}, 1)
+		databaseEngineGates.gates[key] = gate
+	}
+	databaseEngineGates.Unlock()
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case gate <- struct{}{}:
+		return func() { <-gate }, nil
+	case <-timer.C:
+		return nil, errDatabaseEngineBusy
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// writeDatabaseEngineBusy answers a step refused by the gate.
+func writeDatabaseEngineBusy(w http.ResponseWriter) {
+	writeCodedError(w, http.StatusConflict, errCodeDatabaseEngineBusy,
+		"Another database change on this database server is running, so nothing was changed. Try again in a moment.", "")
 }
 
 // databaseQueryer is a pool or a transaction.
@@ -189,125 +254,217 @@ type databaseQueryer interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// databaseDeleteUsers reads the users recorded for the database and what
-// becomes of each when it is deleted.
-func databaseDeleteUsers(ctx context.Context, q databaseQueryer, databaseID int, server *core.DatabaseServer, subscriptionID int) ([]databaseDeleteUser, error) {
-	identity := databaseServerEngineIdentity(server)
+// databaseUserFatesOf reads what deleting each of the databases would do to
+// each of its users, for any number of databases in five queries (review
+// N-F: the lists ask this on every read). A user stays when:
+//   - it is recorded for another server record or subscription (shared);
+//   - it is an engine's or CelikPanel's own account (account);
+//   - another database uses the same engine account: a grant of the record on
+//     another database, or another record of the same name on the same
+//     engine, any server record, any subscription (shared);
+//   - the database's record is not CelikPanel's own record of this machine's
+//     engine: such an engine is reached with the record's own account, and
+//     CelikPanel does not remove users there (server; review W-A).
+//
+// Bir veritabanı silinirse her kullanıcısına ne olacağı; kaç veritabanı
+// olursa olsun beş sorgu.
+func databaseUserFatesOf(ctx context.Context, q databaseQueryer, databaseIDs []int) (map[int][]databaseDeleteUser, error) {
+	out := map[int][]databaseDeleteUser{}
+	if len(databaseIDs) == 0 {
+		return out, nil
+	}
+	marks := strings.TrimSuffix(strings.Repeat("?,", len(databaseIDs)), ",")
+	ids := make([]any, len(databaseIDs))
+	for i, id := range databaseIDs {
+		ids[i] = id
+	}
+
+	servers := map[int]*core.DatabaseServer{}
 	rows, err := q.QueryContext(ctx, `
-		SELECT u.id, u.username, u.server_id, u.subscription_id
-		FROM database_user_grants g
-		JOIN database_users u ON u.id = g.user_id
-		WHERE g.database_id = ?
-		ORDER BY g.id`, databaseID)
+		SELECT ds.id, dst.name, COALESCE(ds.host, ''), ds.port, COALESCE(ds.admin_username, ''), COALESCE(ds.root_password_encrypted, '')
+		FROM database_servers ds JOIN database_server_types dst ON dst.id = ds.type_id`)
 	if err != nil {
-		return nil, fmt.Errorf("read the users of database %d: %w", databaseID, err)
+		return nil, fmt.Errorf("read the database servers: %w", err)
 	}
-	type recorded struct {
-		user                   databaseDeleteUser
-		serverID, subscription int
-	}
-	var found []recorded
-	seen := map[int]bool{}
 	for rows.Next() {
-		var r recorded
-		if err := rows.Scan(&r.user.ID, &r.user.Username, &r.serverID, &r.subscription); err != nil {
+		server := &core.DatabaseServer{}
+		if err := rows.Scan(&server.ID, &server.TypeName, &server.Host, &server.Port, &server.AdminUsername, &server.AdminPasswordEncrypted); err != nil {
 			rows.Close()
-			return nil, fmt.Errorf("read a user of database %d: %w", databaseID, err)
+			return nil, err
 		}
-		if !seen[r.user.ID] {
-			seen[r.user.ID] = true
-			found = append(found, r)
-		}
+		servers[server.ID] = server
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
 	}
-	users := make([]databaseDeleteUser, 0, len(found))
-	for _, r := range found {
-		user := r.user
+
+	type place struct{ server, subscription int }
+	databases := map[int]place{}
+	rows, err = q.QueryContext(ctx, `SELECT id, server_id, subscription_id FROM databases_v2 WHERE id IN (`+marks+`)`, ids...)
+	if err != nil {
+		return nil, fmt.Errorf("read the databases: %w", err)
+	}
+	for rows.Next() {
+		var id int
+		var at place
+		if err := rows.Scan(&id, &at.server, &at.subscription); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		databases[id] = at
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	type granted struct {
+		database int
+		user     databaseDeleteUser
+		at       place
+	}
+	var grants []granted
+	rows, err = q.QueryContext(ctx, `
+		SELECT g.database_id, u.id, u.username, u.server_id, u.subscription_id
+		FROM database_user_grants g JOIN database_users u ON u.id = g.user_id
+		WHERE g.database_id IN (`+marks+`)
+		ORDER BY g.database_id, g.id`, ids...)
+	if err != nil {
+		return nil, fmt.Errorf("read the users of the databases: %w", err)
+	}
+	for rows.Next() {
+		var g granted
+		if err := rows.Scan(&g.database, &g.user.ID, &g.user.Username, &g.at.server, &g.at.subscription); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		grants = append(grants, g)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	// Every grant of these users, on any database.
+	otherGrants := map[int][]int{}
+	rows, err = q.QueryContext(ctx, `
+		SELECT user_id, database_id FROM database_user_grants
+		WHERE user_id IN (SELECT user_id FROM database_user_grants WHERE database_id IN (`+marks+`))`, ids...)
+	if err != nil {
+		return nil, fmt.Errorf("read the other grants of the users: %w", err)
+	}
+	for rows.Next() {
+		var user, database int
+		if err := rows.Scan(&user, &database); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		otherGrants[user] = append(otherGrants[user], database)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	// Every record of the same names, on any server record.
+	sameName := map[string][]databaseUserRecordRef{}
+	rows, err = q.QueryContext(ctx, `
+		SELECT id, username, server_id FROM database_users
+		WHERE username IN (SELECT u.username FROM database_user_grants g JOIN database_users u ON u.id = g.user_id WHERE g.database_id IN (`+marks+`))`, ids...)
+	if err != nil {
+		return nil, fmt.Errorf("read the records of the same names: %w", err)
+	}
+	for rows.Next() {
+		var n databaseUserRecordRef
+		var name string
+		if err := rows.Scan(&n.id, &name, &n.server); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		sameName[name] = append(sameName[name], n)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+
+	seen := map[[2]int]bool{}
+	for _, g := range grants {
+		if seen[[2]int{g.database, g.user.ID}] {
+			continue
+		}
+		seen[[2]int{g.database, g.user.ID}] = true
+		at, ok := databases[g.database]
+		server := servers[at.server]
+		if !ok || server == nil {
+			return nil, fmt.Errorf("database %d has no server record", g.database)
+		}
+		user := g.user
+		identity := databaseServerEngineIdentity(server)
 		switch {
-		case r.serverID != server.ID || r.subscription != subscriptionID:
+		case g.at != at:
 			user.Stays = databaseUserShared
 		case databaseNeverRemovedUser(user.Username, server):
 			user.Stays = databaseUserAccount
-		default:
-			shared, err := databaseAccountUsedElsewhere(ctx, q, databaseID, user, identity)
-			if err != nil {
-				return nil, err
-			}
-			if shared {
-				user.Stays = databaseUserShared
-			}
+		case databaseAccountElsewhere(g.database, user, otherGrants[user.ID], sameName[user.Username], servers, identity):
+			user.Stays = databaseUserShared
+		case !databaseRecordIsOurLocalEngine(server):
+			user.Stays = databaseUserServer
 		}
-		users = append(users, user)
-	}
-	return users, nil
-}
-
-// databaseAccountUsedElsewhere: whether the engine account behind a user
-// record is used by anything but this database: a grant of the record on
-// another database, or another record of the same name on the same engine
-// (any server record, any subscription).
-func databaseAccountUsedElsewhere(ctx context.Context, q databaseQueryer, databaseID int, user databaseDeleteUser, identity string) (bool, error) {
-	var grants int
-	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM database_user_grants WHERE user_id = ? AND database_id <> ?`, user.ID, databaseID).Scan(&grants); err != nil {
-		return false, fmt.Errorf("read the other grants of %s: %w", user.Username, err)
-	}
-	if grants > 0 {
-		return true, nil
-	}
-	rows, err := q.QueryContext(ctx, `
-		SELECT dst.name, COALESCE(ds.host, ''), ds.port
-		FROM database_users ou
-		JOIN database_servers ds ON ds.id = ou.server_id
-		JOIN database_server_types dst ON dst.id = ds.type_id
-		WHERE ou.username = ? AND ou.id <> ?`, user.Username, user.ID)
-	if err != nil {
-		return false, fmt.Errorf("read the other records of %s: %w", user.Username, err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var kind, host string
-		var port int
-		if err := rows.Scan(&kind, &host, &port); err != nil {
-			return false, err
-		}
-		if databaseEngineIdentity(dbDriverTypeFor(&core.DatabaseServer{TypeName: kind}), host, port) == identity {
-			return true, nil
-		}
-	}
-	return false, rows.Err()
-}
-
-// databaseUserFates is what becomes of each user of each database if it is
-// deleted, for the lists that ask before a deletion (user id -> Stays).
-func (p *Panel) databaseUserFates(ctx context.Context, databaseIDs []int) (map[int]map[int]string, error) {
-	out := map[int]map[int]string{}
-	repo := repositories.NewPostgresDatabaseServerRepository(p.db.GetDB())
-	servers := map[int]*core.DatabaseServer{}
-	for _, id := range databaseIDs {
-		var serverID, subscriptionID int
-		if err := p.db.GetDB().QueryRowContext(ctx, `SELECT server_id, subscription_id FROM databases_v2 WHERE id = ?`, id).Scan(&serverID, &subscriptionID); err != nil {
-			return nil, err
-		}
-		server := servers[serverID]
-		if server == nil {
-			loaded, err := repo.GetByID(ctx, serverID)
-			if err != nil {
-				return nil, err
-			}
-			server, servers[serverID] = loaded, loaded
-		}
-		users, err := databaseDeleteUsers(ctx, p.db.GetDB(), id, server, subscriptionID)
-		if err != nil {
-			return nil, err
-		}
-		out[id] = map[int]string{}
-		for _, user := range users {
-			out[id][user.ID] = user.Stays
-		}
+		out[g.database] = append(out[g.database], user)
 	}
 	return out, nil
+}
+
+// databaseUserRecordRef is one user record: its id and server record.
+type databaseUserRecordRef struct{ id, server int }
+
+// databaseAccountElsewhere: the engine account behind a user record is used
+// by something other than this database.
+func databaseAccountElsewhere(database int, user databaseDeleteUser, grants []int, records []databaseUserRecordRef, servers map[int]*core.DatabaseServer, identity string) bool {
+	for _, other := range grants {
+		if other != database {
+			return true
+		}
+	}
+	for _, record := range records {
+		if record.id == user.ID {
+			continue
+		}
+		if server := servers[record.server]; server != nil && databaseServerEngineIdentity(server) == identity {
+			return true
+		}
+	}
+	return false
+}
+
+// databaseUserFates is what becomes of each user of each listed database if
+// it is deleted (user id -> Stays). A failure to tell is "unknown" for every
+// user, logged; the list itself still loads, and the screens then offer no
+// deletion they cannot describe.
+func (p *Panel) databaseUserFates(ctx context.Context, databaseIDs []int) map[int]map[int]string {
+	out := map[int]map[int]string{}
+	fates, err := databaseUserFatesRead(ctx, p.db.GetDB(), databaseIDs)
+	if err != nil {
+		log.Printf("database lists: what deleting would leave of each user could not be read: %v", err)
+	}
+	for _, id := range databaseIDs {
+		out[id] = map[int]string{}
+		for _, user := range fates[id] {
+			out[id][user.ID] = user.Stays
+		}
+		if err != nil {
+			out[id][0] = databaseUserUnknown
+		}
+	}
+	return out
+}
+
+// databaseUserFatesRead is databaseUserFatesOf for the lists; tests replace it.
+var databaseUserFatesRead = databaseUserFatesOf
+
+// databaseUserStays is the Stays a list answers for one user.
+func databaseUserStays(fates map[int]map[int]string, databaseID, userID int) string {
+	if fates[databaseID][0] == databaseUserUnknown {
+		return databaseUserUnknown
+	}
+	return fates[databaseID][userID]
 }
 
 // deleteDatabaseRecord deletes the database with this id: on the engine, its
@@ -323,17 +480,27 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	if err != nil {
 		return nil, fmt.Errorf("read the server of database %d: %w", databaseID, err)
 	}
-	unlock := lockDatabaseEngineUsers(server)
-	defer unlock()
-	users, err := databaseDeleteUsers(ctx, p.db.GetDB(), databaseID, server, deletion.SubscriptionID)
+	release, err := acquireDatabaseEngineGate(ctx, server, databaseEngineDeleteWait)
 	if err != nil {
 		return nil, err
 	}
-	var remove []databaseDeleteUser
-	for _, user := range users {
-		if user.Stays == databaseUserRemoved {
+	defer release()
+	fates, err := databaseUserFatesOf(ctx, p.db.GetDB(), []int{databaseID})
+	if err != nil {
+		return nil, err
+	}
+	// remove: CelikPanel removes them from the engine. forget: they stay on
+	// an engine CelikPanel reaches with the record's own account, and their
+	// records go with the database (nothing else uses them).
+	var remove, forget []databaseDeleteUser
+	for _, user := range fates[databaseID] {
+		switch user.Stays {
+		case databaseUserRemoved:
 			remove = append(remove, user)
-		} else {
+		case databaseUserServer:
+			forget = append(forget, user)
+			deletion.UsersKeptOnServer = append(deletion.UsersKeptOnServer, user.Username)
+		default:
 			deletion.UsersKept = append(deletion.UsersKept, user.Username)
 		}
 	}
@@ -342,14 +509,14 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	}
 
 	reportOperationStep(ctx, "delete")
-	var keptOnEngine map[string]bool
+	var keptOnEngine map[string]string
 	// Only CelikPanel's own record of the machine's engine goes through the
 	// Agent's door; a record an administrator registered with their own
 	// credential (127.0.0.1:3307, a container) is reached with it.
 	if databaseRecordIsOurLocalEngine(server) {
 		keptOnEngine, err = p.deleteDatabaseOnThisMachine(ctx, server, deletion.Name, remove)
 	} else {
-		err = p.deleteDatabaseElsewhere(server, deletion.Name, remove)
+		err = p.deleteDatabaseElsewhere(server, deletion.Name)
 	}
 	var failed *databaseDeleteError
 	errors.As(err, &failed)
@@ -361,7 +528,9 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	}
 	for _, user := range remove {
 		switch {
-		case keptOnEngine[user.Username]:
+		case keptOnEngine[user.Username] == transport.DatabaseAccessKeptUnchecked:
+			deletion.UsersKeptUnchecked = append(deletion.UsersKeptUnchecked, user.Username)
+		case keptOnEngine[user.Username] != "":
 			deletion.UsersKeptOnEngine = append(deletion.UsersKeptOnEngine, user.Username)
 		case err == nil || (failed != nil && failed.databaseGone && !left[user.Username]):
 			deletion.UsersRemoved = append(deletion.UsersRemoved, user.Username)
@@ -400,9 +569,10 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	if _, err := tx.ExecContext(ctx, `DELETE FROM databases_v2 WHERE id = ?`, databaseID); err != nil {
 		return nil, recordsLeft(fmt.Errorf("remove the record of database %s: %w", deletion.Name, err))
 	}
-	for _, user := range remove {
-		// Removed from the engine, or kept there with the owner's own rights:
-		// either way no longer CelikPanel's.
+	for _, user := range append(remove, forget...) {
+		// Removed from the engine, or kept there (the owner's own rights, or
+		// an engine reached with the record's account): either way no longer
+		// CelikPanel's.
 		if _, err := tx.ExecContext(ctx, `DELETE FROM database_users WHERE id = ? AND NOT EXISTS (SELECT 1 FROM database_user_grants WHERE user_id = ?)`, user.ID, user.ID); err != nil {
 			return nil, recordsLeft(fmt.Errorf("remove the record of user %s: %w", user.Username, err))
 		}
@@ -417,7 +587,7 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 // deleteDatabaseOnThisMachine drops the database and then its own users
 // through the Agent. It answers the users the Agent kept for rights the
 // owner gave by hand.
-func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.DatabaseServer, name string, remove []databaseDeleteUser) (map[string]bool, error) {
+func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.DatabaseServer, name string, remove []databaseDeleteUser) (map[string]string, error) {
 	engine, port := "mysql", 0
 	if dbDriverTypeFor(server) == "postgresql" {
 		engine, port = "postgresql", server.Port
@@ -436,7 +606,7 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 		log.Printf("[409][database] %s %s: %s", errCodeDatabaseDeleteFailed, name, boundedAgentDiagnostic(resp.Error))
 		return nil, &databaseDeleteError{cause: fmt.Errorf("drop database %s: the engine did not drop it", name)}
 	}
-	kept := map[string]bool{}
+	kept := map[string]string{}
 	var left []string
 	unknown := false
 	for _, user := range remove {
@@ -453,7 +623,10 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 			left = append(left, user.Username)
 			log.Printf("[409][database] %s %s: user %s: %s", errCodeDatabaseDeleteUsersLeft, name, user.Username, boundedAgentDiagnostic(answer.Error))
 		case answer.Kept:
-			kept[user.Username] = true
+			kept[user.Username] = answer.KeptReason
+			if kept[user.Username] == "" {
+				kept[user.Username] = transport.DatabaseAccessKeptOtherRights
+			}
 		}
 	}
 	if len(left) > 0 {
@@ -463,30 +636,20 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 	return kept, nil
 }
 
-// deleteDatabaseElsewhere drops the database and its own users on an engine
-// reached with the record's own credential.
-func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, name string, remove []databaseDeleteUser) error {
+// deleteDatabaseElsewhere drops the database on an engine reached with the
+// record's own credential (another machine, or an administrator's own record
+// on this one). Its users stay (review W-A): removing them safely needs a
+// look at the rights the owner gave there, which the record's account may
+// not be able to read; the answer says they stay and why.
+// Kendi hesabıyla bağlanılan sunucuda yalnız veritabanı silinir; kullanıcılar
+// kalır.
+func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, name string) error {
 	driver, err := p.dbDriverFor(server)
 	if err != nil {
 		return fmt.Errorf("open the credential of database server %d: %w", server.ID, err)
 	}
 	if err := driver.DeleteDatabase(name); err != nil {
 		return &databaseDeleteError{engine: err, server: server, cause: fmt.Errorf("drop database %s: %w", name, err)}
-	}
-	var left []string
-	var first error
-	for _, user := range remove {
-		if err := driver.DeleteUser(user.Username); err != nil {
-			left = append(left, user.Username)
-			if first == nil {
-				first = err
-			}
-			log.Printf("database deletion %s: remove user %s: %v", name, user.Username, err)
-		}
-	}
-	if len(left) > 0 {
-		return &databaseDeleteError{databaseGone: true, usersLeft: left, engine: first, server: server,
-			cause: fmt.Errorf("database %s was dropped; its users %s were not all removed: %w", name, strings.Join(left, ", "), first)}
 	}
 	return nil
 }
@@ -496,7 +659,9 @@ func databaseDeletionAnswer(status string, deletion *databaseDeletion) map[strin
 	return map[string]any{"status": status,
 		"users_removed":        nonNilStrings(deletion.UsersRemoved),
 		"users_kept":           nonNilStrings(deletion.UsersKept),
-		"users_kept_on_engine": nonNilStrings(deletion.UsersKeptOnEngine)}
+		"users_kept_on_engine": nonNilStrings(deletion.UsersKeptOnEngine),
+		"users_kept_unchecked": nonNilStrings(deletion.UsersKeptUnchecked),
+		"users_kept_on_server": nonNilStrings(deletion.UsersKeptOnServer)}
 }
 
 // auditDatabaseDeletion records a deletion that changed the engine, on
@@ -509,15 +674,21 @@ func (p *Panel) auditDatabaseDeletion(r *http.Request, deletion *databaseDeletio
 	}
 	details := map[string]any{"outcome": outcome,
 		"users_removed": nonNilStrings(deletion.UsersRemoved), "users_kept": nonNilStrings(deletion.UsersKept),
-		"users_kept_on_engine": nonNilStrings(deletion.UsersKeptOnEngine)}
+		"users_kept_on_engine": nonNilStrings(deletion.UsersKeptOnEngine),
+		"users_kept_unchecked": nonNilStrings(deletion.UsersKeptUnchecked),
+		"users_kept_on_server": nonNilStrings(deletion.UsersKeptOnServer)}
 	if owner, ok := p.databaseSubscriptionOwner(r.Context(), deletion.SubscriptionID); ok {
 		details["owner"], details["owner_id"] = owner.Username, owner.ID
 	}
-	if outcome == "deleted" {
+	switch outcome {
+	case "deleted":
 		p.auditDetailed(r, "database.delete:"+deletion.Name, "database", deletion.ID, details)
-		return
+	case "unknown":
+		// No answer came back: an attempt whose result is not known.
+		p.auditDetailed(r, "database.delete.unknown:"+deletion.Name, "database", deletion.ID, details)
+	default:
+		p.auditDetailed(r, "database.delete.partial:"+deletion.Name, "database", deletion.ID, details)
 	}
-	p.auditDetailed(r, "database.delete.partial:"+deletion.Name, "database", deletion.ID, details)
 }
 
 // writeDatabaseDeleteError answers a deletion that did not finish, in the
@@ -527,6 +698,10 @@ func (p *Panel) auditDatabaseDeletion(r *http.Request, deletion *databaseDeletio
 func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request, name string, err error) {
 	var failed *databaseDeleteError
 	if !errors.As(err, &failed) {
+		if errors.Is(err, errDatabaseEngineBusy) {
+			writeDatabaseEngineBusy(w)
+			return
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			writeClientError(w, http.StatusNotFound, "invalid request")
 			return
@@ -567,7 +742,9 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 		// The Agent could not be reached: nothing ran.
 		writeAgentError(w, errors.Unwrap(failed.cause), "")
 	case failed.unknown:
-		// No answer: whether it ran is not known; the list is read again.
+		// No answer: whether it ran is not known; the list is read again. The
+		// attempt is recorded with its unknown result.
+		p.auditDatabaseDeletion(r, failed.deletion, "unknown")
 		log.Printf("[502][database] %s: %v", errCodeDatabaseDeleteUnconfirmed, failed.cause)
 		writeCodedErrorVars(w, http.StatusBadGateway, errCodeDatabaseDeleteUnconfirmed,
 			"No answer came back, so it is not known whether "+name+" was deleted. The list is read again: if "+name+" is still there, press Delete again; it continues from where it stopped.",
@@ -581,8 +758,8 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 	}
 }
 
-// writeDatabaseEngineErrorFor is writeDatabaseEngineError for a request: an
-// administrator is the one who acts, so their answer carries the reason
+// writeDatabaseEngineErrorFor is the one writer of a database engine's
+// refusal (R-053), for every handler: an administrator is the one who acts, so their answer carries the reason
 // "administrator" (their sentence names the page) and the page itself;
 // anybody else is told to ask the server administrator. Every answer carries
 // the engine's name its sentence needs. The engine's own words stay in the
@@ -597,11 +774,7 @@ func writeDatabaseEngineErrorFor(w http.ResponseWriter, r *http.Request, server 
 	}
 	message := services.DatabaseEngineRefusalMessage(driverType, refusal)
 	if message == "" {
-		if r == nil {
-			writeServerError(w, err)
-		} else {
-			writeServerErrorFor(w, r, err)
-		}
+		writeServerErrorFor(w, r, err)
 		return
 	}
 	code := errCodeDatabaseEngineUnreachable
@@ -610,8 +783,7 @@ func writeDatabaseEngineErrorFor(w http.ResponseWriter, r *http.Request, server 
 	}
 	log.Printf("[409][database] %s: %v", code, err)
 	body := apiErrorBody{Error: message, Code: code, Vars: map[string]string{"engine": databaseEngineDisplayName(driverType)}}
-	// Without a request the general sentence (ask the server administrator).
-	if caller := callerOf(r); caller != nil && caller.hasAccountRole(roleAdmin) {
+	if caller := currentCaller(r); caller != nil && caller.hasAccountRole(roleAdmin) {
 		body.Reason = "administrator"
 		if driverType == "mariadb" || driverType == "postgresql" {
 			body.Action = "/components/" + driverType
@@ -620,14 +792,6 @@ func writeDatabaseEngineErrorFor(w http.ResponseWriter, r *http.Request, server 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
 	_ = json.NewEncoder(w).Encode(body)
-}
-
-// callerOf is currentCaller for a request that may be absent.
-func callerOf(r *http.Request) *Caller {
-	if r == nil {
-		return nil
-	}
-	return currentCaller(r)
 }
 
 // databaseEngineDisplayName is the engine's product name for a sentence.

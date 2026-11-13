@@ -247,6 +247,7 @@ export const trDashboardScreens: Record<DashboardScreenKey, string> = {
     'dashboard.audit.action.database.copy': '{target} veritabanını kopyaladı',
     'dashboard.audit.action.database.copy.failed': '{target} veritabanını kopyalayamadı',
     'dashboard.audit.action.database.delete': '{target} veritabanını sildi',
+    'dashboard.audit.action.database.delete.unknown': '{target} veritabanını silmeyi denedi; yanıt gelmediği için sonucu bilinmiyor',
     'dashboard.audit.action.database.delete.partial': '{target} veritabanını silmeye başladı; silme bitmedi',
     'dashboard.audit.action.database.export': '{target} veritabanını dışa aktardı',
     'dashboard.audit.action.database.import': '{target} veritabanına dosya içe aktardı',

@@ -266,6 +266,7 @@ export const enDashboardScreens = {
     'dashboard.audit.action.database.copy': 'copied the database {target}',
     'dashboard.audit.action.database.copy.failed': 'could not copy the database {target}',
     'dashboard.audit.action.database.delete': 'deleted the database {target}',
+    'dashboard.audit.action.database.delete.unknown': 'tried to delete the database {target}; no answer came back, so the result is not known',
     'dashboard.audit.action.database.delete.partial': 'started deleting the database {target}; it did not finish',
     'dashboard.audit.action.database.export': 'exported the database {target}',
     'dashboard.audit.action.database.import': 'imported a file into the database {target}',

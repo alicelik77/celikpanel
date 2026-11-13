@@ -284,13 +284,11 @@ func (p *Panel) visibleDatabaseRows(ctx context.Context, caller *Caller, ids map
 	for _, db := range out {
 		listed = append(listed, db.ID)
 	}
-	fates, err := p.databaseUserFates(ctx, listed)
-	if err != nil {
-		return nil, err
-	}
+	// A failure to tell is "unknown" per user; the list still loads.
+	fates := p.databaseUserFates(ctx, listed)
 	for i := range out {
 		for j := range out[i].Users {
-			out[i].Users[j].Stays = fates[out[i].ID][out[i].Users[j].ID]
+			out[i].Users[j].Stays = databaseUserStays(fates, out[i].ID, out[i].Users[j].ID)
 		}
 	}
 	return out, nil

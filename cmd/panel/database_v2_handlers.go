@@ -120,32 +120,6 @@ func (p *Panel) dbDriverFor(server *core.DatabaseServer) (services.DatabaseDrive
 	})
 }
 
-// R-053. Every call into an engine goes through here on the way back out.
-// Two of the ways an engine can refuse have an instruction attached, and an
-// operator who is given the instruction never has to leave the panel to work
-// out what "internal server error" meant. Everything else keeps the ordinary
-// path, so an unrecognised failure is still reported as the unknown it is.
-//
-// The engine's own words are logged and never returned: the sentence the
-// caller receives is written here, in the product's voice, from the panel's
-// own engine identifier.
-//
-// R-053. Bir motora yapilan her cagri donuste buradan gecer. Motorun reddetme
-// bicimlerinden ikisinin bir talimati vardir; talimati alan operator "internal
-// server error"in ne demek oldugunu cozmek icin panelden ayrilmak zorunda
-// kalmaz. Motorun kendi sozleri gunluge yazilir, asla dondurulmez.
-func writeDatabaseEngineError(
-	w http.ResponseWriter,
-	server *core.DatabaseServer,
-	err error,
-) {
-	// alpha.133 round 5: one writer, so every answer with these codes carries
-	// the engine's name its sentence needs ({engine}); without a request the
-	// reader is not known to be an administrator, so the general sentence.
-	// Tek yazıcı: bu kodlu her yanıt {engine} değerini taşır.
-	writeDatabaseEngineErrorFor(w, nil, server, err)
-}
-
 // databaseServerTypeName resolves the engine identifier the drivers switch on
 // from the type the caller registered. An unknown type resolves to the empty
 // string, which selects no driver - the registration is then recorded without
@@ -368,7 +342,7 @@ func (p *Panel) handleCreateDatabaseV2Server(w http.ResponseWriter, r *http.Requ
 	// burada okur.
 	if driver, driverErr := p.dbDriverFor(server); driverErr == nil {
 		if err := driver.TestConnection(); err != nil {
-			writeDatabaseEngineError(w, server, err)
+			writeDatabaseEngineErrorFor(w, r, server, err)
 			return
 		}
 	}
@@ -575,11 +549,6 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	if !p.requireDatabaseServerRights(w, r, subscriptionID, server.TypeID) {
 		return
 	}
-	// alpha.133 round 5: an existing account given to this database waits
-	// for a deletion of the same engine (database_delete.go).
-	unlockEngine := lockDatabaseEngineUsers(server)
-	defer unlockEngine()
-
 	// Resolve every caller-supplied reference before constructing a driver or
 	// mutating the physical engine/repository.
 	//
@@ -667,6 +636,28 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// alpha.133 round 5 (review W-C): giving an EXISTING user record to the
+	// new database waits, at most databaseEngineLinkWait, for a deletion on
+	// the same engine, and holds the gate until its records are written; a
+	// new user needs no gate.
+	if selectedUser.ID != 0 {
+		release, err := acquireDatabaseEngineGate(ctx, server, databaseEngineLinkWait)
+		if errors.Is(err, errDatabaseEngineBusy) {
+			writeDatabaseEngineBusy(w)
+			return
+		}
+		if err != nil {
+			writeServerError(w, err)
+			return
+		}
+		defer release()
+		var still int
+		if err := p.db.GetDB().QueryRowContext(ctx, `SELECT COUNT(*) FROM database_users WHERE id = ?`, selectedUser.ID).Scan(&still); err != nil || still == 0 {
+			writeClientError(w, http.StatusNotFound, "invalid request")
+			return
+		}
+	}
+
 	driver, err := p.dbDriverFor(server)
 	if err != nil {
 		writeServerError(w, err)
@@ -680,7 +671,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 			writeDatabaseNameTaken(w, "database", dbName)
 			return
 		}
-		writeDatabaseEngineError(w, server, err)
+		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
 
@@ -704,7 +695,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 				writeDatabaseNameTaken(w, "user", selectedUser.Username)
 				return
 			}
-			writeDatabaseEngineError(w, server, databaseMutationError(
+			writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(
 				fmt.Errorf("create physical database user: %w", err), compensation,
 			))
 			return
@@ -712,7 +703,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 		userCreated = true
 		// alpha.128 (G5): the new user's connection limit, from its limits.
 		if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, selectedUser.Username); err != nil {
-			writeDatabaseEngineError(w, server, databaseMutationError(
+			writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(
 				fmt.Errorf("set the database user's connection limit: %w", err),
 				compensateCreatedDatabase(driver, dbName, selectedUser.Username, false, true),
 			))
@@ -735,7 +726,7 @@ func (p *Panel) handleCreateDatabaseV2(w http.ResponseWriter, r *http.Request) {
 	if err := driver.GrantPrivileges(dbName, selectedUser.Username, privileges); err != nil {
 		// A driver error may represent a partially-applied grant. The database
 		// was created by this request, so revoking on it is safe.
-		writeDatabaseEngineError(w, server, databaseMutationError(
+		writeDatabaseEngineErrorFor(w, r, server, databaseMutationError(
 			fmt.Errorf("grant physical database privileges: %w", err),
 			compensateCreatedDatabase(driver, dbName, selectedUser.Username, true, userCreated),
 		))
@@ -1056,13 +1047,13 @@ func (p *Panel) handleCreateDatabaseV2User(w http.ResponseWriter, r *http.Reques
 			writeDatabaseNameTaken(w, "user", username)
 			return
 		}
-		writeDatabaseEngineError(w, server, err)
+		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
 	// alpha.128 (G5): the new user's connection limit, from its limits; a
 	// user the engine did not take the limit for is removed again.
 	if err := p.applyNewUserConnectionLimit(ctx, server, driver, subscriptionID, username); err != nil {
-		writeDatabaseEngineError(w, server, errors.Join(fmt.Errorf("set the database user's connection limit: %w", err), driver.DeleteUser(username)))
+		writeDatabaseEngineErrorFor(w, r, server, errors.Join(fmt.Errorf("set the database user's connection limit: %w", err), driver.DeleteUser(username)))
 		return
 	}
 
@@ -1161,7 +1152,7 @@ func (p *Panel) handleDeleteDatabaseV2User(w http.ResponseWriter, r *http.Reques
 	// Delete from server
 	reportOperationStep(ctx, "delete")
 	if err := driver.DeleteUser(user.Username); err != nil {
-		writeDatabaseEngineError(w, server, err)
+		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
 
@@ -1316,10 +1307,19 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 	if !p.requireDatabaseServerRights(w, r, server.SubscriptionID, server.TypeID) {
 		return
 	}
-	// alpha.133 round 5: never between a deletion's choice of users and
-	// their removal on the same engine (database_delete.go).
-	unlockEngine := lockDatabaseEngineUsers(server)
-	defer unlockEngine()
+	// alpha.133 round 5 (review W-C): never between a deletion's choice of
+	// users and their removal on the same engine; waits at most
+	// databaseEngineLinkWait, then says the server is busy.
+	release, err := acquireDatabaseEngineGate(ctx, server, databaseEngineLinkWait)
+	if errors.Is(err, errDatabaseEngineBusy) {
+		writeDatabaseEngineBusy(w)
+		return
+	}
+	if err != nil {
+		writeServerError(w, err)
+		return
+	}
+	defer release()
 
 	// A server match alone is not tenant isolation: legacy/corrupt metadata can
 	// contain a user from another subscription on the same logical server.
@@ -1345,7 +1345,7 @@ func (p *Panel) handleGrantDatabaseAccess(w http.ResponseWriter, r *http.Request
 
 	// Grant on server
 	if err := driver.GrantPrivileges(database.Name, user.Username, privileges); err != nil {
-		writeDatabaseEngineError(w, server, err)
+		writeDatabaseEngineErrorFor(w, r, server, err)
 		return
 	}
 
@@ -1445,9 +1445,7 @@ func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Reques
 
 	// Metadata remains authoritative until the physical revoke succeeds.
 	if err := driver.RevokePrivileges(database.Name, user.Username); err != nil {
-		writeDatabaseEngineError(
-			w, server, fmt.Errorf("revoke physical database privileges: %w", err),
-		)
+		writeDatabaseEngineErrorFor(w, r, server, fmt.Errorf("revoke physical database privileges: %w", err))
 		return
 	}
 

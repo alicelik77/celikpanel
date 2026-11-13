@@ -15,7 +15,7 @@ import { useRefusal } from '../../lib/useRefusal';
 import { confirmAction } from '../../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../../lib/requestProgress';
 import { formatDate } from '../../lib/dateFormat';
-import { databaseDeleteUserLines, databaseDeletedKeptWords } from '../../lib/databaseDeleteWords';
+import { databaseDeleteDescribable, databaseDeleteUserLines, databaseDeletedKeptWords } from '../../lib/databaseDeleteWords';
 import { showToast } from '../Toast';
 import {
     VISIBLE_DATABASES_URL, databaseDeleteURL, databaseUserPasswordURL, decodeVisibleDatabases,
@@ -151,7 +151,13 @@ export function DatabasesPage() {
                     disabledReason: why ?? (db.users.length === 0 ? t('databases.noUsers') : undefined),
                     onSelect: () => setPasswordFor(db),
                 },
-                { id: 'delete', label: t('databases.deleteDb'), icon: Trash2, danger: true, disabled: stale, disabledReason: why, onSelect: () => remove(db) },
+                // A deletion whose users' fate could not be read is not offered (review N-F).
+                {
+                    id: 'delete', label: t('databases.deleteDb'), icon: Trash2, danger: true,
+                    disabled: stale || !databaseDeleteDescribable(db.users),
+                    disabledReason: why ?? (databaseDeleteDescribable(db.users) ? undefined : t('databases.delete.usersUnknown')),
+                    onSelect: () => remove(db),
+                },
             ],
         };
     };

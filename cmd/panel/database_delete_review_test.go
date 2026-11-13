@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -54,9 +55,9 @@ func TestDatabaseDeleteKeepsAnAccountAnotherRecordOfTheSameEngineNames(t *testin
 	f.exec(t, `INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9963, 9951, 'ALL')`)
 	f.exec(t, `INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9961, 9944, 'ALL')`)
 	// The list says it before the deletion, decided the same way.
-	fates, err := f.panel.databaseUserFates(context.Background(), []int{9961})
-	if err != nil || fates[9961][9941] != databaseUserShared || fates[9961][9944] != databaseUserShared || fates[9961][9942] != databaseUserShared {
-		t.Fatalf("fates %v %v", fates, err)
+	fates := f.panel.databaseUserFates(context.Background(), []int{9961})
+	if fates[9961][9941] != databaseUserShared || fates[9961][9944] != databaseUserShared || fates[9961][9942] != databaseUserShared {
+		t.Fatalf("fates %v", fates)
 	}
 	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
 	if got.Code != http.StatusOK {
@@ -193,5 +194,46 @@ func TestAGrantDuringADeletionOfTheSameEngineWaits(t *testing.T) {
 	}
 	if f.count(t, `SELECT COUNT(*) FROM database_user_grants WHERE user_id = 9941`) != 0 {
 		t.Fatal("a grant of the dropped account was recorded")
+	}
+}
+
+// W-C (review): a grant that meets a deletion on the same engine waits a
+// short, bounded time and is then refused, typed, instead of waiting silently.
+func TestAGrantThatMeetsALongDeletionIsToldTheServerIsBusy(t *testing.T) {
+	f := newVisibleDatabasesFixture(t)
+	recordDatabaseDrops(t)
+	f.panel.databaseAccessNative = &fakeDatabaseAccessNative{}
+	savedWait := databaseEngineLinkWait
+	databaseEngineLinkWait = 50 * time.Millisecond
+	t.Cleanup(func() { databaseEngineLinkWait = savedWait })
+	answer := make(chan string, 1)
+	databaseDeleteAfterClassify = func() {
+		answer <- f.as(t, "admin", http.MethodPost, "/api/v1/databases/9962/grants", `{"user_id":9941}`).Body.String()
+	}
+	t.Cleanup(func() { databaseDeleteAfterClassify = nil })
+	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	if body := <-answer; !strings.Contains(body, errCodeDatabaseEngineBusy) {
+		t.Fatalf("grant answer %s", body)
+	}
+}
+
+// N-F (review): the lists load when what deleting would leave cannot be
+// read; each user then says "unknown" and the screens offer no deletion.
+func TestDatabaseListsLoadWhenFatesCannotBeRead(t *testing.T) {
+	f := newVisibleDatabasesFixture(t)
+	saved := databaseUserFatesRead
+	databaseUserFatesRead = func(context.Context, databaseQueryer, []int) (map[int][]databaseDeleteUser, error) {
+		return nil, errors.New("read failed")
+	}
+	t.Cleanup(func() { databaseUserFatesRead = saved })
+	got := f.as(t, "admin", http.MethodGet, databasesVisiblePath, "")
+	if got.Code != http.StatusOK || !strings.Contains(got.Body.String(), `"stays":"unknown"`) {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	domain := f.call(t, authzMatrixCustomerID, http.MethodGet, "/api/v1/domains/9902/databases", "")
+	if domain.Code != http.StatusOK || !strings.Contains(domain.Body.String(), `"stays":"unknown"`) {
+		t.Fatalf("%d %s", domain.Code, domain.Body.String())
 	}
 }
