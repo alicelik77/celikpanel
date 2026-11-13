@@ -25,7 +25,7 @@ günceller.**
   tıklamak o sütuna göre sıralar. Telefonda her satır bir karttır. Müşteri
   veritabanlarını alan adına göre gruplanmış görür.
 - **Her satır işlemlerini sözle söyler:** "Aç" alan adının Veritabanları
-  bölümüne götürür; "Diğer" menüsünde **Yeni parola…** (birden çok kullanıcı
+  bölümüne götürür; "Diğer" menüsünde **Yeni parola ver…** (birden çok kullanıcı
   varsa hangisi diye sorar) ve **Sil…** (neyin gidip neyin kaldığını listeler
   ve veritabanının adının yazılmasını ister) vardır. Bu listeden silmek
   **veritabanının kullanıcılarını silmez**; soru bunu ve veritabanı alan
@@ -48,7 +48,7 @@ günceller.**
   yapacağı, sonraki adım ve tek düğme düz Türkçeyle yazar.
 - **CelikPanel'in MariaDB'ye ya da PostgreSQL'e bağlandığı hesap**, Bileşenler
   altında o hizmetin sayfasında; "Diğer" menüsünde Parolayı göster, Yeni
-  parola… ve Hesabı kaldır… vardır.
+  parola ver… ve Hesabı kaldır… vardır.
 - Yöneticinin Veritabanları listesinin sonunda Güvenlik'teki dışarıdan
   bağlantı ayarına giden sade bir bağlantı var. Alan adının dışarıdan
   bağlantı kartı, anahtarı kendisi açmak yerine yöneticiyi oraya götürür.
@@ -244,8 +244,6 @@ itibaren pencere kendiliğinden devam eder.
   durum değil; bir yazmadan hemen sonra, veri diske ulaşmadan elektrik
   kesilirse sonraki denetimin bağlayamadığı bir dosya yine kalabilir ve o
   zaman sunucu yöneticisi adlandırılır.
-- Yedek DNS sunucusu henüz yetişirken takılan bir silme için sayfada
-  yeniden deneme yok; ekran sonraki adım olarak desteği adlandırır.
 - Yedek DNS sunucusunun doğrulamasıyla ilgili olmayan silme nedenleri
   (örneğin yerel rndc anahtarı, beklemeye alınmış Agent, katılmış bir
   sunucunun ana DNS sunucusundaki kaldırması) önceki tek metinlerini
@@ -279,9 +277,9 @@ itibaren pencere kendiliğinden devam eder.
   asla bitti diye bildirilmez.
 - Ekip üyesinin Veritabanları listesi boştur; veritabanları, eskisi gibi
   kendisine verilen alan adlarının sayfalarındadır.
-- LAB DENEMESİNDEN SONRA DOĞRULANACAK: gerçek sistem denetimi (alpha.132'den
-  panelin kendi güncelleme ekranıyla güncelleme; elle neyin, hangi rollerle
-  denendiği; neyin denetlenmediği).
+- Bu sürümün gerçek sistem denetimi (alpha.132'den panelin kendi güncelleme
+  ekranıyla güncelleme, her rolle elle denenen ekranlar) henüz yapılacak;
+  neyi kapsadığı ve neyi kapsamadığı yayından önce buraya eklenir.
 - Önceki sınırlar sürüyor (bkz. alpha.132).
 
 ## Kanıt

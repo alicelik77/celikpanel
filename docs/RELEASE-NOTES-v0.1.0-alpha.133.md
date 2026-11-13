@@ -240,8 +240,6 @@ resumes by itself.
   case; a power loss right after a write, before its data reached the disk,
   can still leave a file the next check cannot attribute, which then names
   the server administrator.
-- A deletion that is stuck while the backup DNS server is still catching
-  up has no retry on the page; the screen names support as the next step.
 - The deletion reasons that are not about the backup DNS server's
   confirmation (for example a local rndc key, a held Agent, a joined
   server's removal on the main DNS server) still show their earlier single
@@ -272,9 +270,10 @@ resumes by itself.
   retried, and it is never reported as done.
 - A team member's Databases list is empty; their databases are on the
   pages of the domains they were given, as before.
-- TO CONFIRM after the lab run: real-system check (update from alpha.132
-  through the panel's own update screen; what was tried by hand, as which
-  roles; what was not checked).
+- The real-system check of this release (an update from alpha.132 through
+  the panel's own update screen, the screens tried by hand as each role) is
+  still to come; what it covered and what it did not cover is added here
+  before publication.
 - Earlier limits still apply (see alpha.132).
 
 ## Evidence
