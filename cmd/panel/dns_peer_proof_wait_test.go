@@ -241,7 +241,7 @@ func TestDeletionNotificationOpensDomains(t *testing.T) {
 		{"upsert", transport.DNSPeerPendingCatchingUp, "/dns-infrastructure"},
 	} {
 		lease := dnsZoneEngineLease{RequestID: strings.Repeat(tc.action[:1], 32), ZoneName: tc.action + ".example", DesiredAction: tc.action}
-		panel.notifyDNSPublicationAdministrators(ctx, lease, dnsPendingPublicationEntry{Lease: lease, Code: tc.reason, Repeats: 6})
+		panel.notifyDNSPublicationAdministrators(ctx, lease, dnsPendingPublicationEntry{Lease: lease, Code: tc.reason, Repeats: 6}, true)
 		var fix, body string
 		if err := panel.db.GetDB().QueryRow(`SELECT fix_path, body FROM account_notices WHERE kind = ? AND period = ?`,
 			noticeDNSPublicationStuck, lease.RequestID).Scan(&fix, &body); err != nil {

@@ -125,16 +125,22 @@ func TestDNSPendingPublicationStuckResetsOnChangedCause(t *testing.T) {
 	if !scheduler.entries[lease.RequestID].Stuck || panel.dnsPendingPublicationsAutomatic() {
 		t.Fatal("a stuck publication still counts as continuing by itself")
 	}
-	if _, due := scheduler.takeStuckNotice(lease.RequestID); !due {
+	if _, due, loud := scheduler.takeStuckNotice(lease.RequestID); !due || !loud {
 		t.Fatal("first notice not due")
 	}
-	if _, due := scheduler.takeStuckNotice(lease.RequestID); due {
+	if _, due, _ := scheduler.takeStuckNotice(lease.RequestID); due {
 		t.Fatal("notice due twice")
 	}
+	// Review of round 5 (W3): a changed cause keeps the stuck state (the
+	// re-checks in a row are counted whatever the reason); its notice is
+	// brought up to date quietly.
 	scheduler.recordAttempt(lease, dnsPendingPublicationStillPending, transport.DNSPeerPendingCatchingUp, true)
 	entry, _ := scheduler.entry(lease.RequestID)
-	if entry.Stuck || entry.Noticed || entry.Repeats != 1 {
-		t.Fatalf("changed cause kept the stuck state: %+v", entry)
+	if !entry.Stuck || !entry.Noticed || entry.Repeats != dnsPendingPublicationStuckAfter+1 {
+		t.Fatalf("changed cause lost the stuck state: %+v", entry)
+	}
+	if _, due, loud := scheduler.takeStuckNotice(lease.RequestID); !due || loud {
+		t.Fatal("a changed stuck cause is not brought up to date quietly")
 	}
 	// An error that is not a pending result breaks the run as well.
 	scheduler.recordAttempt(lease, dnsPendingPublicationFailed, "", false)

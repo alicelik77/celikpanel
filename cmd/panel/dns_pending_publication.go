@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -99,12 +100,18 @@ type dnsPendingPublicationEntry struct {
 	// LastPending: the last attempt ended with the same exact operation still
 	// pending (as opposed to an error or no attempt yet).
 	LastPending bool
-	// Repeats: attempts in a row that ended pending with this same Code.
-	// Stuck: Repeats reached dnsPendingPublicationStuckAfter; Noticed: its
-	// notification was raised. All three clear when the code changes.
-	Repeats int
-	Stuck   bool
-	Noticed bool
+	// Repeats: automatic attempts in a row that ended pending, whatever
+	// their code (alpha.133 round 5 review: a backup whose reason alternated
+	// faster than the threshold was never reported). Stuck: Repeats reached
+	// dnsPendingPublicationStuckAfter. Noticed: the notification of this
+	// episode was raised; NoticeCode: the code it describes. A change of code
+	// keeps all four; the notice is brought up to date only when its text
+	// really changes (notifyDNSPublicationAdministrators). A failed attempt
+	// resets Repeats; a person's resolved cause starts a new episode.
+	Repeats    int
+	Stuck      bool
+	Noticed    bool
+	NoticeCode string
 }
 
 type dnsPendingPublicationScheduler struct {
@@ -227,7 +234,6 @@ func (s *dnsPendingPublicationScheduler) observeCode(lease dnsZoneEngineLease, c
 	if entry.Code != code {
 		entry.Stopped = false
 		entry.Failures = 0
-		entry.Repeats, entry.Stuck, entry.Noticed = 0, false, false
 	}
 	entry.Observed = true
 	entry.Code = code
@@ -297,7 +303,6 @@ func (s *dnsPendingPublicationScheduler) recordAttempt(
 		if codeKnown {
 			if entry.Code != code {
 				entry.Stopped = false
-				entry.Repeats, entry.Stuck, entry.Noticed = 0, false, false
 			}
 			entry.Code = code
 		}
@@ -323,17 +328,30 @@ func (s *dnsPendingPublicationScheduler) recordAttempt(
 	return *entry
 }
 
-// takeStuckNotice reports, once per stuck entry, that its notification is
-// due, and marks it raised.
-func (s *dnsPendingPublicationScheduler) takeStuckNotice(requestID string) (dnsPendingPublicationEntry, bool) {
+// takeStuckNotice reports that the notification of a stuck entry is due:
+// first (loud: shown and mailed) once per episode, then again only when the
+// code it describes changed (quiet: brought up to date in place). It marks it
+// raised for the current code.
+func (s *dnsPendingPublicationScheduler) takeStuckNotice(requestID string) (entry dnsPendingPublicationEntry, due, loud bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	entry := s.entries[requestID]
-	if entry == nil || !entry.Stuck || entry.Noticed {
-		return dnsPendingPublicationEntry{}, false
+	current := s.entries[requestID]
+	if current == nil || !current.Stuck || (current.Noticed && current.NoticeCode == current.Code) {
+		return dnsPendingPublicationEntry{}, false, false
 	}
-	entry.Noticed = true
-	return *entry, true
+	loud = !current.Noticed
+	current.Noticed, current.NoticeCode = true, current.Code
+	return *current, true, loud
+}
+
+// resetNotice starts a new episode after a person's cause was resolved: the
+// next stuck state is counted and told afresh.
+func (s *dnsPendingPublicationScheduler) resetNotice(requestID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if entry := s.entries[requestID]; entry != nil {
+		entry.Repeats, entry.Stuck, entry.Noticed, entry.NoticeCode = 0, false, false, ""
+	}
 }
 
 // takePersonNotice reports, once per entry, that the administrators must be
@@ -345,13 +363,13 @@ func (s *dnsPendingPublicationScheduler) takePersonNotice(requestID string) (dns
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry := s.entries[requestID]
-	if entry == nil || entry.Noticed {
+	if entry == nil || (entry.Noticed && entry.NoticeCode == entry.Code) {
 		return dnsPendingPublicationEntry{}, false
 	}
 	if !transport.DNSPeerPendingStopsAutomaticRechecks(entry.Code) {
 		return dnsPendingPublicationEntry{}, false
 	}
-	entry.Noticed = true
+	entry.Noticed, entry.NoticeCode = true, entry.Code
 	return *entry, true
 }
 
@@ -1039,11 +1057,11 @@ func init() {
 // raiseDNSPublicationStuckNotice tells the administrators once that the
 // exact pending publication of lease is stuck. Errors are logged only.
 func (p *Panel) raiseDNSPublicationStuckNotice(ctx context.Context, lease dnsZoneEngineLease) {
-	entry, due := p.dnsPendingPublications().takeStuckNotice(lease.RequestID)
+	entry, due, loud := p.dnsPendingPublications().takeStuckNotice(lease.RequestID)
 	if !due {
 		return
 	}
-	p.notifyDNSPublicationAdministrators(ctx, lease, entry)
+	p.notifyDNSPublicationAdministrators(ctx, lease, entry, loud)
 	log.Printf("pending DNS publication %s is stuck (reason=%s, %d checks in a row); the administrators were notified",
 		lease.ZoneName, dnsPendingReasonForLog(entry.Code), entry.Repeats)
 }
@@ -1055,14 +1073,22 @@ func (p *Panel) raiseDNSPublicationPersonNotice(ctx context.Context, lease dnsZo
 	if !due {
 		return
 	}
-	p.notifyDNSPublicationAdministrators(ctx, lease, entry)
+	// A person must act now: shown and mailed again if its text changed.
+	p.notifyDNSPublicationAdministrators(ctx, lease, entry, true)
 	log.Printf("pending DNS publication %s waits for the server administrator (reason=%s); the administrators were notified",
 		lease.ZoneName, dnsPendingReasonForLog(entry.Code))
 }
 
 // notifyDNSPublicationAdministrators raises the one dns_publication_stuck
 // notification of entry's exact publication. Errors are logged only.
-func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dnsZoneEngineLease, entry dnsPendingPublicationEntry) {
+//
+// alpha.133 round 5 review: a stored notice whose words would not change is
+// left as it is (a reason that alternates between codes with the same text,
+// or a panel restart, never shows or mails it again). When the words change,
+// a loud notice (the first of an episode, or a person must act now) is shown
+// and mailed again; a quiet one (the stuck cause changed) only takes the new
+// words in place.
+func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dnsZoneEngineLease, entry dnsPendingPublicationEntry, loud bool) {
 	db := p.db.GetDB()
 	ids, err := administratorIDs(ctx, db)
 	if err != nil {
@@ -1078,8 +1104,32 @@ func (p *Panel) notifyDNSPublicationAdministrators(ctx context.Context, lease dn
 		"zone": lease.ZoneName, "reason": reason, "detail": detail,
 		"delete": lease.DesiredAction == "delete", "checks": entry.Repeats,
 	}
-	// One notification per exact publication; when its state changes (stuck,
-	// then a person must act) the same notification says the new state and
+	var stored string
+	switch err := db.QueryRowContext(ctx, `SELECT body FROM account_notices WHERE kind = ? AND period = ? LIMIT 1`,
+		noticeDNSPublicationStuck, lease.RequestID).Scan(&stored); {
+	case err == nil:
+		var previous map[string]any
+		if json.Unmarshal([]byte(stored), &previous) == nil &&
+			dnsPublicationStuckNoticeWords(audienceAdministrator, previous) == dnsPublicationStuckNoticeWords(audienceAdministrator, body) {
+			return
+		}
+		if !loud {
+			raw, err := json.Marshal(body)
+			if err == nil {
+				_, err = db.ExecContext(ctx, `UPDATE account_notices SET body = ? WHERE kind = ? AND period = ?`,
+					string(raw), noticeDNSPublicationStuck, lease.RequestID)
+			}
+			if err != nil {
+				log.Printf("pending DNS publication %s: update its notification: %v", lease.ZoneName, err)
+			}
+			return
+		}
+	case !errors.Is(err, sql.ErrNoRows):
+		log.Printf("pending DNS publication %s: read its notification: %v", lease.ZoneName, err)
+		return
+	}
+	// One notification per exact publication; when it must be told again
+	// (a person must act now) the same notification says the new state and
 	// is shown again, so the earlier text never stays readable beside it.
 	p.reviseAccountNotice(ctx, db, recipients, noticeDNSPublicationStuck, true,
 		"dns_publication:"+lease.ZoneName, lease.RequestID, body, dnsPublicationNoticeFixPath(lease.DesiredAction == "delete"))
@@ -1157,6 +1207,7 @@ func (p *Panel) clearEndedDNSPublicationStuckNotices(ctx context.Context, leases
 	rows.Close()
 	for _, period := range ended {
 		p.clearDNSPublicationStuckNotice(ctx, dnsZoneEngineLease{RequestID: period})
+		scheduler.resetNotice(period)
 	}
 }
 
