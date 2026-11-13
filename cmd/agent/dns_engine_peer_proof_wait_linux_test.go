@@ -90,10 +90,8 @@ func TestW9BackupWithoutAnswerIsAWaitWhateverTheTransportReturned(t *testing.T) 
 		{"dial timer before the step's timer (the w9 race)", returnAtBound(t, noAnswerInspection())},
 		{"the step's timer first", returnAfterBound(noAnswerInspection())},
 		{"connection refused at once", returnAtOnce(noAnswerInspection())},
-		// The alpha.133 transport's shape for the same race: an inspection
-		// code with no answer behind it, at the bound.
-		{"an inspection code at the bound with nothing answered", returnAtBound(t,
-			pendingDNSPeerCause(transport.DNSPeerPendingInspectionUnknown, errors.New("i/o timeout")))},
+		// A check that failed with no reviewed code or finding at the bound.
+		{"an unreviewed error at the bound", returnAtBound(t, errors.New("i/o timeout"))},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			logs.Reset()
@@ -178,5 +176,47 @@ func TestStepDeadlineReachedReadsTheBound(t *testing.T) {
 	}
 	if dnsPeerStepDeadlineReached(context.Background(), time.Now()) {
 		t.Fatal("a context without a deadline ran out of time")
+	}
+}
+
+// Review of round 5 (W4): the margin reads only an unreviewed outcome or the
+// exchange's "no answer" as the deadline. A reviewed finding that came back
+// 50 ms before the bound keeps its code: in post_inspection (the backup
+// still answers for the deleted zone) and in the final recheck (an owner edit
+// of this server).
+func TestReviewedFindingNearTheBoundKeepsItsCode(t *testing.T) {
+	captureAgentLog(t)
+	budget := scaledPeerProofBudget()
+	zoneAnswered := transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckZoneAnswered)
+	atBound := func(ctx context.Context) {
+		deadline, _ := ctx.Deadline()
+		time.Sleep(time.Until(deadline) - 50*time.Millisecond)
+	}
+	run := newDNSPeerProofRun(context.Background(), budget, "w9.test", "BIND")
+	err := run.step(dnsPeerProofStepPostInspection, func(ctx context.Context) error {
+		atBound(ctx)
+		return pendingDNSPeerOwnerEdit(dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckZoneAnswered, "the backup still answers"))
+	})
+	if code := pendingDNSPeerCode(err); code != zoneAnswered {
+		t.Fatalf("post_inspection: %q, want %q", code, zoneAnswered)
+	}
+	checks := &nativePeerCurrentChecks{
+		attempt:    func() error { return nil },
+		enrollment: func() error { return nil },
+		local: func(ctx context.Context) error {
+			atBound(ctx)
+			return dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckProducerCatalog, "the catalog changed")
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), budget.consume)
+	defer cancel()
+	producer := transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog)
+	if code := pendingDNSPeerCode(checks.at(ctx)()); code != producer {
+		t.Fatalf("final recheck: %q, want %q", code, producer)
+	}
+	// An unreviewed failure at the same instant is still the deadline.
+	checks.local = func(ctx context.Context) error { atBound(ctx); return errors.New("probe: i/o timeout") }
+	if err := checks.at(ctx)(); !isDNSPeerProofDeadline(err) {
+		t.Fatalf("unreviewed failure at the bound: %v", err)
 	}
 }

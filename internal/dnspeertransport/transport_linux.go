@@ -83,6 +83,9 @@ const (
 // answer this server cannot accept): CodeUnavailable or CodeMalformed. Such
 // an outcome keeps its own reason even when it came back at the step's time
 // bound; CodeNoAnswer, CodeEnrollment and anything else do not.
+// PeerNoAnswer reports CodeNoAnswer.
+func (e Unknown) PeerNoAnswer() bool { return e.Code == CodeNoAnswer }
+
 func (e Unknown) PeerAnswered() bool {
 	return e.Code == CodeUnavailable || e.Code == CodeMalformed || e.Code == CodeHostKeyChanged
 }

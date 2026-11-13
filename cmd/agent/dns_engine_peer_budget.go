@@ -184,7 +184,8 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 	// ctx.Err(): a transport's own deadline for the same instant (the dialer's
 	// poller) can return a moment before the context's timer has fired
 	// (alpha.133 round 5, lab w9: one of nine attempts).
-	if r.base.Err() == nil && dnsPeerStepDeadlineReached(ctx, time.Now()) {
+	if r.base.Err() == nil && (errors.Is(ctx.Err(), context.DeadlineExceeded) ||
+		dnsPeerDeadlineMarginApplies(err) && dnsPeerStepDeadlineReached(ctx, time.Now())) {
 		// Before acceptance: nothing of the proof was consumed (the deletion
 		// itself is already committed on this server); the same publication
 		// is retried as a new attempt. The code names which side ran out of
@@ -220,6 +221,32 @@ func dnsPeerStepDeadlineReached(ctx context.Context, now time.Time) bool {
 	}
 	deadline, ok := ctx.Deadline()
 	return ok && !now.Before(deadline.Add(-dnsPeerStepDeadlineMargin))
+}
+
+// dnsPeerDeadlineMarginApplies reports an outcome that the margin may read as
+// the step's deadline (alpha.133 round 5 review): a check that ran out of
+// time, the exchange's "no answer", or an error that carries no reviewed code
+// or finding. A reviewed code or finding (an owner edit found by a probe or a
+// recheck, the Agent's own precondition) is a completed observation; for it
+// only ctx.Err() says that the step ran out of time.
+func dnsPeerDeadlineMarginApplies(err error) bool {
+	if isDNSPeerProofDeadline(err) {
+		return true
+	}
+	cause := dnsPeerPendingCause(err)
+	if cause == nil {
+		cause = err
+	}
+	var noAnswer interface{ PeerNoAnswer() bool }
+	if errors.As(cause, &noAnswer) && noAnswer.PeerNoAnswer() {
+		return true
+	}
+	if pendingDNSPeerCode(err) != "" {
+		return false
+	}
+	var ownerEdit *dnsPeerOwnerEditError
+	var internal *dnsPeerProofInternalError
+	return !errors.As(err, &ownerEdit) && !errors.As(err, &internal)
 }
 
 // dnsPeerAnswerOutlivesDeadline reports an inspection the backup did answer,
@@ -389,7 +416,7 @@ func (c *nativePeerCurrentChecks) at(ctx context.Context) func() error {
 				return dnsPeerProofInternal(errors.New("local evidence recheck is missing"))
 			}
 			err := c.local(ctx)
-			if err != nil && (ctx.Err() != nil || dnsPeerStepDeadlineReached(ctx, time.Now())) {
+			if err != nil && (ctx.Err() != nil || dnsPeerDeadlineMarginApplies(err) && dnsPeerStepDeadlineReached(ctx, time.Now())) {
 				return dnsPeerProofDeadlineAt(transport.DNSPeerProofTimeoutLocalCheck, err)
 			}
 			return err
