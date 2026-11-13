@@ -75,7 +75,9 @@ Bir test bunu istisnasız korur.
   çalışıyor; aradaki yazmalar yalnız onlara yetki verenleri denetliyor (iki
   kilit, tam deneme, eşleşme). Önceki silmenin temizliği bir kez yapılıyor.
   Bir silmenin 20–27 saniye yerine yaklaşık 9–12 saniye sürmesi bekleniyor
-  (LAB DENEMESİNDEN SONRA DOĞRULANACAK).
+  (LAB DENEMESİNDEN SONRA DOĞRULANACAK). Bu değişiklikler bileşen
+  testleriyle kanıtlandı; gerçek iki sunuculu denetim, henüz yapılacak olan
+  lab tekrarıdır.
 - Yedek sunucunun doğrulaması geciktiğinde pencere doğruyu söyler: alan adı
   bu sunucuda DNS'ten zaten kaldırıldı, açık olan yalnız yedek sunucunun
   doğrulaması, **kimsenin bir şey yapması gerekmiyor** ve CelikPanel
@@ -144,6 +146,21 @@ Bir test bunu istisnasız korur.
 - Türkçede parola için her yerde "Parola", yeniden deneme için "Tekrar dene"
   denir; telefonda Alan adları sayfasının başlığı plan kartlarından önce
   gelir; bildirimin kapatma düğmesi sizin dilinizde adlandırılır.
+- **Güncelleme penceresi güncellemeyi sonuna dek izler;** güncelleme
+  sırasında sayfa bir an bekletilse bile (bu tarayıcı daha önce başarılı bir
+  güncelleme yaptıysa ikinci adımda kalıyordu). Hiçbir şey değişmeden
+  reddedilen bir güncelleme isteği geride başarısız bir hizmet birimi
+  bırakmaz.
+- **Silinmeyi bekleyen bir alan adı yalnız silme durumunu gösterir:**
+  "yapılandırma dosyası yok" rozeti çıkmaz, disk kullanımı ölçülmez ve ana
+  sayfanın sertifika listesinde yer almaz.
+
+### alpha.132'den güncellerken
+
+Bu güncelleme sırasında tarayıcı hâlâ alpha.132'nin kendi sayfasını
+çalıştırır; bu yüzden sunucu bitirdiği hâlde güncelleme penceresi ikinci
+adımında kalabilir. Sonucu görmek için sayfayı yenileyin. alpha.133'ten
+itibaren pencere kendiliğinden devam eder.
 
 ## Bilinen sınırlar
 
@@ -172,6 +189,16 @@ Bir test bunu istisnasız korur.
   olsun (son 128 işlem tutulur). Kayıt düşmüşse silme artık sunucu
   yöneticisinin yapacağını söyler (iki komutun çıktısını desteğe gönderin);
   bunun için henüz bir düğme yok.
+- **CelikPanel'in kanıtlayamadığı ("çözülemedi") bir denetim kaydı için
+  panelde henüz bir işlem yok.** Ekran sunucu yöneticisini ve çıktısı
+  desteğe gönderilecek iki salt-okur komutu söyler; hiçbir şey silinmez ya da
+  kendiliğinden yeniden denetlenmez. Sahip için, adın yazılmasıyla onaylanan
+  bir işlem planlandı. İşi son 128 tutulan işlemin dışına düşmüş önceki bir
+  silme bu duruma girer.
+- Güncelleyicinin kendisi çalışmadan önce başarısız olan bir güncelleme
+  işçisi, başarısız işaretini sonraki başarılı bir güncellemeye dek korur.
+- Alan adı sayfasının Gelişmiş bölümü, silinmeyi bekleyen bir alan adı için
+  hâlâ "Yeniden oluştur" önerebilir.
 - DNS çiftinde bir silme, iki deneme arasında sunucuda CelikPanel dışında
   başka bir bölge eklenir ya da kaldırılırsa da kendiliğinden bir çıkış yolu
   olmadan bekler (bu sürümden önce de olabiliyordu). Denetim kaydının

@@ -75,6 +75,8 @@ the screen. A test keeps it that way, with no exceptions.
   only what authorizes them (both locks, the exact attempt, the pairing).
   The earlier deletion's clean-up runs once. A deletion is expected to
   take about 9–12 seconds instead of 20–27 (TO CONFIRM after the lab run).
+  These changes are proven by component tests; the real two-server check
+  is the lab re-run that is still to come.
 - When the backup's confirmation is late, the window says the truth: the
   domain is already removed from DNS on this server, only the backup's
   confirmation is open, **nobody needs to act** and CelikPanel checks again
@@ -140,6 +142,21 @@ the screen. A test keeps it that way, with no exceptions.
 - Turkish uses "Parola" for a password and "Tekrar dene" for retry
   everywhere; the domain list's title comes before the plan cards on a
   phone; the notice's close button is named in your language.
+- **The update window follows the update to its end** even when the page
+  was held for a moment during the update (it used to stay on its second
+  step when this browser had done an earlier successful update). An update
+  press refused before anything changed leaves no failed service unit
+  behind.
+- **A domain waiting for its deletion shows only its deletion state:** no
+  "configuration file missing" badge, it is not measured for disk use, and
+  it is not in the home page's certificate list.
+
+### Updating from alpha.132
+
+During this update the browser still runs alpha.132's own page, so the
+update window can stay on its second step although the server has
+finished. Reload the page to see the result. From alpha.133 on, the window
+resumes by itself.
 
 ## Known limits
 
@@ -168,6 +185,16 @@ the screen. A test keeps it that way, with no exceptions.
   dropped out, the deletion now says that the server administrator acts
   (send the two command outputs to support); there is no button for it
   yet.
+- **A check record CelikPanel cannot prove ("unresolved") has no action in
+  the panel yet.** The screen names the server administrator and the two
+  read-only commands whose output goes to support; nothing is deleted or
+  re-checked automatically. An action for the owner, with a typed
+  confirmation, is planned. An earlier deletion whose job has dropped out
+  of the last 128 kept operations lands in this state.
+- An update worker that fails before the updater itself runs keeps its
+  failed mark until a later update succeeds.
+- The domain page's Advanced section can still offer "Recreate" for a
+  domain that is waiting for its deletion.
 - A deletion on a DNS pair also waits with no automatic way forward if,
   between two attempts, another zone is added or removed outside CelikPanel
   on the server (possible before this release too). A stop in the middle
