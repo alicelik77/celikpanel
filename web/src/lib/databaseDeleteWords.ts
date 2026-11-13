@@ -50,10 +50,19 @@ export async function databaseDeletedKeptWords(t: T, name: string, res: Response
         const value = answer && typeof answer === 'object' ? (answer as Record<string, unknown>)[field] : undefined;
         return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '').join(', ') : '';
     };
+    const field = (key: string): unknown => (answer && typeof answer === 'object' ? (answer as Record<string, unknown>)[key] : undefined);
     const notes: string[] = [];
-    for (const [field, key] of [['users_kept_on_engine', 'databases.keptNote.otherRights'], ['users_kept_unchecked', 'databases.keptNote.unchecked'], ['users_kept_on_server', 'databases.keptNote.server']] as const) {
-        const users = list(field);
-        if (users) notes.push(t(key, { name, users }));
+    for (const [key, words] of [['users_kept_on_engine', 'databases.keptNote.otherRights'], ['users_kept_unchecked', 'databases.keptNote.unchecked'], ['users_kept_on_server', 'databases.keptNote.server']] as const) {
+        const users = list(key);
+        if (users) notes.push(t(words, { name, users }));
     }
+    // alpha.134: rights naming the database were taken from other accounts
+    // (an administrator gets their names, everybody else the count), or may
+    // remain on a server CelikPanel reaches with an account that could not.
+    const accounts = list('rights_removed_from');
+    const count = field('rights_removed_count');
+    if (accounts) notes.push(t('databases.keptNote.rightsFrom', { name, accounts }));
+    else if (typeof count === 'number' && count > 0) notes.push(t('databases.keptNote.rightsCount', { name, count }));
+    if (field('rights_may_remain') === true) notes.push(t('databases.keptNote.rightsMayRemain', { name }));
     return notes.length > 0 ? [t('databases.deletedNamed', { name }), ...notes].join(' ') : null;
 }

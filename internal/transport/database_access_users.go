@@ -83,3 +83,28 @@ type DatabaseAccessUserResponse struct {
 	// that name, so nothing was removed. Additive.
 	DatabaseExists bool `json:"database_exists,omitempty"`
 }
+
+// DroppedDatabaseRightsRequest (alpha.134): after a database is deleted on
+// the machine's own MariaDB, every right that names it goes from every
+// grantee - accounts made by hand, accounts under any name and roles - while
+// the accounts and roles stay. Only while no database of that name exists.
+// Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır.
+type DroppedDatabaseRightsRequest struct {
+	ExpectedBuildCommit string `json:"expected_build_commit"`
+	Database            string `json:"database"`
+}
+
+// DroppedDatabaseRightsResponse says whose rights went.
+type DroppedDatabaseRightsResponse struct {
+	Applied bool `json:"applied"`
+	// Grantees: user@host of each account (a role's name alone) that held a
+	// right naming the database and lost it. Names only.
+	Grantees []string `json:"grantees,omitempty"`
+	// DatabaseExists: a database of that name exists (again); nothing was
+	// changed.
+	DatabaseExists bool `json:"database_exists,omitempty"`
+	// RightsLeft: something naming the database is still loaded; removing
+	// again continues.
+	RightsLeft bool   `json:"rights_left,omitempty"`
+	Error      string `json:"error,omitempty"`
+}

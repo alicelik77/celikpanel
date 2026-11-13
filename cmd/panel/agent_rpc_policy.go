@@ -269,6 +269,7 @@ var agentRPCAuthorizationGroups = []agentRPCAuthorizationGroup{
 		Agent.DatabaseExportV1 Agent.DatabaseImportUploadV1 Agent.DatabaseImportSafetyV1
 		Agent.DatabaseImportV1 Agent.DatabaseCopyV1 Agent.DatabaseCheckV1
 		Agent.CreateDatabaseAccessUserV1 Agent.RemoveDatabaseAccessUserV1
+		Agent.RemoveDroppedDatabaseRightsV1
 		Agent.ApplyDatabaseRemoteV1
 	`),
 	agentRPCAuthGroup(agentRPCEffectAccessNarrowing, agentRPCCapabilityFirewall, `
@@ -478,17 +479,19 @@ var agentRPCTimeouts = map[string]time.Duration{
 	// alpha.129: a database's added users.
 	"Agent.CreateDatabaseAccessUserV1": agentRPCMutationTimeout,
 	"Agent.RemoveDatabaseAccessUserV1": agentRPCMutationTimeout,
-	"Agent.EndMailSessionsV1":          agentRPCMutationTimeout,
-	"Agent.SetAppUnitSuspensionV1":     agentRPCMutationTimeout,
-	"Agent.EmergencyUnitsInspectV1":    agentRPCStandardReadTimeout,
-	"Agent.SetEmergencyUnitLockV1":     agentRPCMutationTimeout,
-	"Agent.SetEmergencyAppLockV1":      agentRPCMutationTimeout,
-	"Agent.UpdateMySQLConfig":          agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfig":            agentRPCMutationTimeout,
-	"Agent.UpdatePHPConfiguration":     agentRPCMutationTimeout,
-	"Agent.UpdatePHPPoolConfig":        agentRPCMutationTimeout,
-	"Agent.UploadFile":                 agentRPCMutationTimeout,
-	"Agent.WriteFile":                  agentRPCMutationTimeout,
+	// alpha.134: the rights naming a deleted database, from every grantee.
+	"Agent.RemoveDroppedDatabaseRightsV1": agentRPCMutationTimeout,
+	"Agent.EndMailSessionsV1":             agentRPCMutationTimeout,
+	"Agent.SetAppUnitSuspensionV1":        agentRPCMutationTimeout,
+	"Agent.EmergencyUnitsInspectV1":       agentRPCStandardReadTimeout,
+	"Agent.SetEmergencyUnitLockV1":        agentRPCMutationTimeout,
+	"Agent.SetEmergencyAppLockV1":         agentRPCMutationTimeout,
+	"Agent.UpdateMySQLConfig":             agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfig":               agentRPCMutationTimeout,
+	"Agent.UpdatePHPConfiguration":        agentRPCMutationTimeout,
+	"Agent.UpdatePHPPoolConfig":           agentRPCMutationTimeout,
+	"Agent.UploadFile":                    agentRPCMutationTimeout,
+	"Agent.WriteFile":                     agentRPCMutationTimeout,
 
 	// Repository publication/removal refreshes package metadata and can be
 	// bounded by network and package-manager latency.

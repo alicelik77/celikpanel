@@ -268,6 +268,15 @@ func protectedBuildGateOperations() []buildGateOperation {
 			},
 		},
 		{
+			// alpha.134: the rights naming a deleted database.
+			name: "RemoveDroppedDatabaseRightsV1",
+			run: func(expected string) string {
+				var response transport.DroppedDatabaseRightsResponse
+				_ = agent.RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{ExpectedBuildCommit: expected}, &response)
+				return response.Error
+			},
+		},
+		{
 			// alpha.128 (G25): per-domain mail options.
 			name: "SetMailDomainOptionsV1",
 			run: func(expected string) string {

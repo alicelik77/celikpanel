@@ -7,44 +7,57 @@ import (
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
-// alpha.133 lab finding (MariaDB 11.8) and its review: when a database is
-// deleted, a user that stays (kept for its owner's rights, or shared with
-// another database) loses every right that names the dropped database, on
-// every LISTED host of its name (never the empty host of a MariaDB role of
-// the same name); only while no database of that name exists; database
-// level by its two pattern forms, table, column and routine level by the
-// literal name; checked afterwards against what the server has loaded. A
-// right on another database or a wildcard pattern is never touched.
+// alpha.133 lab finding (MariaDB 11.8) and its review, widened in alpha.134:
+// when a database is deleted, every right that names it goes from EVERY
+// grantee - CelikPanel's users, accounts made by hand under any name and
+// roles (their rows have the empty host); the accounts and roles stay. Only
+// while no database of that name exists; database level by its two name
+// forms, table, column and routine level by the literal name, compared as
+// hexadecimal literals; checked afterwards against what the server has
+// loaded. A right on another database or a wildcard pattern is never
+// touched. (alpha.133's lab result "a same-named role's rows are left" is
+// changed on purpose: a re-created name must not hand its tables to the
+// role's members.)
 
 const (
-	hand5         = "pastane_dr_test_hand5"
-	hand5User     = "pastane_dr_test_hand5_user"
-	hand5Owner    = " WHERE User = 'pastane_dr_test_hand5_user' AND Host IN ('10.%', 'localhost')"
-	hand5Absent   = " AND NOT EXISTS (SELECT 1 FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = 'pastane_dr_test_hand5')"
-	hand5Patterns = `('pastane_dr_test_hand5', 'pastane\\_dr\\_test\\_hand5')`
+	hand5     = "pastane_dr_test_hand5"
+	hand5User = "pastane_dr_test_hand5_user"
+	// The two forms of the name as hexadecimal literals: as written, and
+	// with `_` escaped.
+	hand5Hex      = "X'70617374616E655F64725F746573745F68616E6435'"
+	hand5ExactHex = "X'70617374616E655C5F64725C5F746573745C5F68616E6435'"
+	hand5Absent   = " AND NOT EXISTS (SELECT 1 FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + hand5Hex + ")"
 )
 
-// The exact removal for the hand5 user on hosts '10.%' and localhost.
+// The exact removal: every grantee, both name forms, never while the
+// database exists.
 var hand5Deletes = []string{
-	"DELETE FROM mysql.db" + hand5Owner + " AND Db IN " + hand5Patterns + hand5Absent + ";",
-	"DELETE FROM mysql.tables_priv" + hand5Owner + " AND Db = 'pastane_dr_test_hand5'" + hand5Absent + ";",
-	"DELETE FROM mysql.columns_priv" + hand5Owner + " AND Db = 'pastane_dr_test_hand5'" + hand5Absent + ";",
-	"DELETE FROM mysql.procs_priv" + hand5Owner + " AND Db = 'pastane_dr_test_hand5'" + hand5Absent + ";",
+	"DELETE FROM mysql.db WHERE Db IN (" + hand5Hex + ", " + hand5ExactHex + ")" + hand5Absent + ";",
+	"DELETE FROM mysql.tables_priv WHERE Db = " + hand5Hex + hand5Absent + ";",
+	"DELETE FROM mysql.columns_priv WHERE Db = " + hand5Hex + hand5Absent + ";",
+	"DELETE FROM mysql.procs_priv WHERE Db = " + hand5Hex + hand5Absent + ";",
 	"FLUSH PRIVILEGES;",
 }
+
+// hand5Grantees: the hand-made account, an account of another name and a
+// role (empty host) hold a right naming the database.
+const hand5Grantees = "g=70617374616E655F64725F746573745F68616E64355F75736572 31302E25\n" +
+	"g=6F746865725F6F776E6572 6C6F63616C686F7374\n" +
+	"g=7265706F7274696E67 \n"
 
 func droppedRemoval(t *testing.T, rightsOnly bool, answer func(string) string) (transport.DatabaseAccessUserResponse, []string) {
 	t.Helper()
 	got := recordMySQL(t, func(statement string) string {
 		switch {
 		case strings.HasPrefix(statement, "SELECT CONCAT('host=', Host)"):
-			// A MariaDB role of the same name has Host '' and is not listed.
 			return "host=10.%\nhost=localhost\n"
 		case strings.HasPrefix(statement, "SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA"):
 			if out := answer(statement); out != "" {
 				return out
 			}
 			return "n=0\n"
+		case strings.HasPrefix(statement, "SELECT CONCAT('g=', HEX(User)"):
+			return hand5Grantees
 		}
 		if out := answer(statement); out != "" {
 			return out
@@ -66,7 +79,7 @@ func deleteStatements(got []string) []string {
 	return nil
 }
 
-func TestDroppedDatabaseLeavesNoRightOnAHandMadeHost(t *testing.T) {
+func TestDroppedDatabaseLeavesNoRightOnAnyGrantee(t *testing.T) {
 	withOwnHosts(t)
 	resp, got := droppedRemoval(t, false, func(string) string { return "" })
 	if !resp.Applied || !resp.Kept || resp.RightsLeft || resp.Error != "" {
@@ -75,13 +88,12 @@ func TestDroppedDatabaseLeavesNoRightOnAHandMadeHost(t *testing.T) {
 	if strings.Contains(strings.Join(got, "\n"), "DROP USER") {
 		t.Fatal("an account with a host its owner made was dropped")
 	}
-	// Exactly these statements: the listed hosts only (a role's empty host
-	// is not among them), exact name forms per table, never while the
-	// database exists. A widened WHERE fails here.
+	// Exactly these statements: no account filter (every grantee, roles
+	// too), both name forms, never while the database exists.
 	if deletes := deleteStatements(got); strings.Join(deletes, "\n") != strings.Join(hand5Deletes, "\n") {
 		t.Fatalf("removal statements:\n%s\nwant:\n%s", strings.Join(deletes, "\n"), strings.Join(hand5Deletes, "\n"))
 	}
-	// What the server LOADED after the flush is read, not the tables again.
+	// What the server LOADED after the flush is read, for every grantee.
 	var loaded string
 	for _, statement := range got {
 		if strings.HasPrefix(statement, "SELECT CONCAT('n=', (SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES") {
@@ -89,20 +101,23 @@ func TestDroppedDatabaseLeavesNoRightOnAHandMadeHost(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"BINARY TABLE_SCHEMA IN " + hand5Patterns,
-		"information_schema.TABLE_PRIVILEGES WHERE GRANTEE IN (",
-		"information_schema.COLUMN_PRIVILEGES WHERE GRANTEE IN (",
-		"BINARY TABLE_SCHEMA = 'pastane_dr_test_hand5'",
-		"FROM mysql.procs_priv" + hand5Owner + " AND Db = 'pastane_dr_test_hand5'",
+		"BINARY TABLE_SCHEMA IN (" + hand5Hex + ", " + hand5ExactHex + ")",
+		"information_schema.TABLE_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + hand5Hex,
+		"information_schema.COLUMN_PRIVILEGES WHERE BINARY TABLE_SCHEMA = " + hand5Hex,
+		"FROM mysql.procs_priv WHERE Db = " + hand5Hex,
+		"FROM mysql.db WHERE Db IN (" + hand5Hex + ", " + hand5ExactHex + ")",
 	} {
 		if !strings.Contains(loaded, want) {
 			t.Fatalf("the loaded-rights check lacks %q: %s", want, loaded)
 		}
 	}
+	if strings.Contains(loaded, "GRANTEE IN") || strings.Contains(loaded, "User =") {
+		t.Fatalf("the loaded-rights check is limited to some grantees: %s", loaded)
+	}
 }
 
 // A shared user (another database uses it): rights only - no DROP USER, no
-// check of other rights; the same exact removal.
+// check of other rights; the same removal from every grantee.
 func TestDroppedDatabaseSharedUserLosesOnlyItsRightsOnIt(t *testing.T) {
 	withOwnHosts(t)
 	resp, got := droppedRemoval(t, true, func(string) string { return "" })
@@ -138,6 +153,41 @@ func TestDroppedDatabaseRightThatIsStillLoadedIsSaidAsLeft(t *testing.T) {
 	})
 	if resp.Applied || !resp.RightsLeft || resp.Error == "" {
 		t.Fatalf("resp = %+v", resp)
+	}
+}
+
+// The Agent's own step after a deletion: every grantee, answered by name
+// (a role by its name alone); a re-created name changes nothing.
+func TestRemoveDroppedDatabaseRightsNamesEveryGrantee(t *testing.T) {
+	got := recordMySQL(t, func(statement string) string {
+		if strings.HasPrefix(statement, "SELECT CONCAT('g=', HEX(User)") {
+			return hand5Grantees
+		}
+		return "n=0\n"
+	})
+	var resp transport.DroppedDatabaseRightsResponse
+	if err := (&Agent{}).RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Database: hand5}, &resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.Applied || strings.Join(resp.Grantees, ",") != "other_owner@localhost,pastane_dr_test_hand5_user@10.%,reporting" {
+		t.Fatalf("resp = %+v", resp)
+	}
+	if deletes := deleteStatements(*got); strings.Join(deletes, "\n") != strings.Join(hand5Deletes, "\n") {
+		t.Fatalf("removal statements %v", deletes)
+	}
+
+	exists := recordMySQL(t, func(statement string) string {
+		if strings.HasPrefix(statement, "SELECT CONCAT('n=', COUNT(*)) FROM information_schema.SCHEMATA") {
+			return "n=1\n"
+		}
+		return "n=0\n"
+	})
+	resp = transport.DroppedDatabaseRightsResponse{}
+	_ = (&Agent{}).RemoveDroppedDatabaseRightsV1(&transport.DroppedDatabaseRightsRequest{
+		ExpectedBuildCommit: strings.TrimSpace(buildCommit), Database: hand5}, &resp)
+	if resp.Applied || !resp.DatabaseExists || deleteStatements(*exists) != nil {
+		t.Fatalf("a re-created name: resp = %+v statements %v", resp, *exists)
 	}
 }
 

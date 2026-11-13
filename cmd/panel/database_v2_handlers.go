@@ -867,7 +867,7 @@ func (p *Panel) handleDeleteDatabaseV2(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(databaseDeletionAnswer("deleted", deleted))
+	json.NewEncoder(w).Encode(databaseDeletionAnswerFor(r, "deleted", deleted))
 }
 
 // User Management Endpoints (per server)

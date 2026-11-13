@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alicelik/celikpanel/internal/dbremote"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 )
 
 // MariaDBDriver implements DatabaseDriver for MariaDB
@@ -465,4 +466,22 @@ func (d *MariaDBDriver) forEachRemoteCopy(userLiteral string, statement func(acc
 func (d *MariaDBDriver) executeSQL(sql string) error {
 	_, err := d.runSQL(sql)
 	return err
+}
+
+// RemoveRightsOnDroppedDatabase (alpha.134) takes every right that names a
+// dropped database from every grantee on this server, with the record's own
+// account (mariadbgrant.RemoveDroppedRights), and answers whose rights went.
+// An account that may not read or change the grant tables gets an error;
+// the caller then says rights may remain there.
+// Silinen veritabanını adlandıran haklar, kaydın kendi hesabıyla kaldırılır.
+func (d *MariaDBDriver) RemoveRightsOnDroppedDatabase(name string) ([]string, error) {
+	grantees, err := mariadbgrant.RemoveDroppedRights(d.runSQL, name)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(grantees))
+	for _, grantee := range grantees {
+		out = append(out, grantee.String())
+	}
+	return out, nil
 }

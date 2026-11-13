@@ -9,6 +9,7 @@ import (
 
 	"github.com/alicelik/celikpanel/internal/dbremote"
 	"github.com/alicelik/celikpanel/internal/hostcmd"
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
@@ -243,7 +244,7 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 	if req.RightsOnly && req.DatabaseDropped {
 		// A user another database uses: it stays; only the rights that name
 		// the dropped database go.
-		if err := mysqlRemoveRightsOnDroppedDatabase(req.Username, req.Database, hosts); err != nil {
+		if _, err := mysqlRemoveRightsOnDroppedDatabase(req.Database); err != nil {
 			mysqlDroppedRightsAnswer(resp, req.Database, err)
 			return
 		}
@@ -297,11 +298,10 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 			// (MariaDB KB, DROP DATABASE / DROP TABLE: "user privileges ... are
 			// not automatically dropped"); a later database of the same name
 			// would inherit them. Every right that names it goes from every
-			// listed host of this name, the owner's own hosts too; the account
-			// and its other rights stay.
-			// Silinen veritabanını adlandıran her hak, adın listelenen bütün
-			// hesaplarından kaldırılır.
-			if err := mysqlRemoveRightsOnDroppedDatabase(req.Username, req.Database, hosts); err != nil {
+			// grantee (alpha.134: accounts of any name and roles too); the
+			// account and its other rights stay.
+			// Silinen veritabanını adlandıran her hak her hesaptan kaldırılır.
+			if _, err := mysqlRemoveRightsOnDroppedDatabase(req.Database); err != nil {
 				mysqlDroppedRightsAnswer(resp, req.Database, err)
 				return
 			}
@@ -401,88 +401,82 @@ func mysqlDatabaseGone(database string) (bool, error) {
 	return count == "0", nil
 }
 
-// mysqlRemoveRightsOnDroppedDatabase deletes, for the listed hosts of the
-// user name (never the empty host of a MariaDB role of the same name), the
-// grant-table rows that name the dropped database: database level by its two
-// pattern forms, table, column and routine level by the literal name - and
-// only while no database of that name exists (a database recreated in
-// between is not touched). It then reads what the server has LOADED after
-// the flush (information_schema for the grantees, procs_priv by host) and
-// fails when anything naming the database is still there.
-// Silinen veritabanını adlandıran satırlar, yalnız listelenen hesaplardan
-// silinir; sonra sunucunun yüklediği haklara bakılır.
-func mysqlRemoveRightsOnDroppedDatabase(username, database string, hosts []string) error {
-	user, err := services.QuoteMySQLStringLiteral(username)
-	if err != nil {
-		return errors.New("invalid database user name")
-	}
-	name, err := services.QuoteMySQLStringLiteral(database)
-	if err != nil {
-		return errors.New("invalid database name")
-	}
-	patterns, err := mysqlLiterals(mysqlDatabasePatternForms(database))
-	if err != nil {
-		return errors.New("invalid database name")
-	}
-	hostIn, err := mysqlLiterals(hosts)
-	if err != nil {
-		return errors.New("an account host cannot be written as a MariaDB string")
-	}
-	var grantees []string
-	for _, host := range hosts {
-		grantees = append(grantees, "'"+username+"'@'"+host+"'")
-	}
-	granteeIn, err := mysqlLiterals(grantees)
-	if err != nil {
-		return errors.New("an account host cannot be written as a MariaDB string")
-	}
-	absent := " AND NOT EXISTS (SELECT 1 FROM information_schema.SCHEMATA WHERE BINARY SCHEMA_NAME = " + name + ")"
-	owner := " WHERE User = " + user + " AND Host IN (" + hostIn + ")"
-	statements := []string{
-		"DELETE FROM mysql.db" + owner + " AND Db IN (" + patterns + ")" + absent + ";",
-		"DELETE FROM mysql.tables_priv" + owner + " AND Db = " + name + absent + ";",
-		"DELETE FROM mysql.columns_priv" + owner + " AND Db = " + name + absent + ";",
-		"DELETE FROM mysql.procs_priv" + owner + " AND Db = " + name + absent + ";",
-		"FLUSH PRIVILEGES;",
-	}
-	if output, err := mysqlExecStatement(strings.Join(statements, "\n")); err != nil {
-		return hostcmd.Fail("the database server did not take away the rights on "+database+" that the user still had", output, err, databaseClientMeaning)
-	}
-	loaded := "SELECT CONCAT('n=', " +
-		"(SELECT COUNT(*) FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE IN (" + granteeIn + ") AND BINARY TABLE_SCHEMA IN (" + patterns + "))" +
-		" + (SELECT COUNT(*) FROM information_schema.TABLE_PRIVILEGES WHERE GRANTEE IN (" + granteeIn + ") AND BINARY TABLE_SCHEMA = " + name + ")" +
-		" + (SELECT COUNT(*) FROM information_schema.COLUMN_PRIVILEGES WHERE GRANTEE IN (" + granteeIn + ") AND BINARY TABLE_SCHEMA = " + name + ")" +
-		" + (SELECT COUNT(*) FROM mysql.procs_priv" + owner + " AND Db = " + name + "));"
-	output, err := mysqlExecStatement(loaded)
-	if err != nil {
-		return hostcmd.Fail("the database server could not be asked whether rights on "+database+" are left", output, err, databaseClientMeaning)
-	}
-	left, ok := markerValue(output, "n")
-	if !ok {
-		return errors.New("the database server's answer about rights left on " + database + " could not be read")
-	}
-	if left != "0" {
-		// A database made again between the first check and the DELETE
-		// (whose NOT EXISTS then skipped every row) is not "rights left".
-		if gone, err := mysqlDatabaseGone(database); err == nil && !gone {
-			return errMySQLDatabaseRecreated
-		}
-		return fmt.Errorf("%s right(s) on %s are still loaded for the user", left, database)
-	}
-	return nil
+// mysqlRemoveRightsOnDroppedDatabase (alpha.134) deletes every grant row that
+// names the dropped database from EVERY grantee - CelikPanel's own users,
+// accounts made by hand under any name, and roles - only while no database
+// of that name exists, then reads what the server has loaded
+// (mariadbgrant.RemoveDroppedRights). The accounts and roles stay; a pattern
+// that merely matches the name is never touched. It answers whose rights
+// went.
+// Silinen veritabanını adlandıran haklar her hesaptan ve rolden kaldırılır.
+func mysqlRemoveRightsOnDroppedDatabase(database string) ([]mariadbgrant.Grantee, error) {
+	return mariadbgrant.RemoveDroppedRights(mysqlGrantExec("the database server"), database)
 }
 
-// errMySQLDatabaseRecreated: a database of the dropped name exists again.
-var errMySQLDatabaseRecreated = errors.New("a database of that name exists again on the database server; nothing was changed")
+// mysqlGrantExec runs statements for internal/mariadbgrant: a failure keeps
+// what the client's answer means (hostcmd), never the statement's text.
+func mysqlGrantExec(what string) mariadbgrant.Exec {
+	return func(statement string) ([]byte, error) {
+		output, err := mysqlExecStatement(statement)
+		if err != nil {
+			return output, hostcmd.Fail(what+" did not answer", output, err, databaseClientMeaning)
+		}
+		return output, nil
+	}
+}
 
 // mysqlDroppedRightsAnswer fills the answer of a failed removal of the
 // rights on a dropped database.
 func mysqlDroppedRightsAnswer(resp *transport.DatabaseAccessUserResponse, database string, err error) {
-	if errors.Is(err, errMySQLDatabaseRecreated) {
+	var left *mariadbgrant.RightsLeftError
+	switch {
+	case errors.Is(err, mariadbgrant.ErrDatabaseExists):
 		resp.Error, resp.DatabaseExists = "the database "+database+" exists again on the database server; nothing was changed", true
-		return
+	case errors.As(err, &left):
+		resp.Error, resp.RightsLeft = left.Error(), true
+	default:
+		resp.Error, resp.RightsLeft = err.Error(), true
 	}
-	resp.Error, resp.RightsLeft = err.Error(), true
+}
+
+// RemoveDroppedDatabaseRightsV1 (alpha.134) takes every right that names a
+// database CelikPanel deleted on this machine's MariaDB from every grantee,
+// once the users of that database were handled. The accounts and roles stay.
+// Silinmiş veritabanını adlandıran haklar her hesaptan kaldırılır.
+func (a *Agent) RemoveDroppedDatabaseRightsV1(req *transport.DroppedDatabaseRightsRequest, resp *transport.DroppedDatabaseRightsResponse) error {
+	if req == nil || resp == nil {
+		return errors.New("dropped database rights request and response are required")
+	}
+	*resp = transport.DroppedDatabaseRightsResponse{}
+	if err := requireExpectedBuildCommit(req.ExpectedBuildCommit, "removing the rights of a deleted database"); err != nil {
+		resp.Error = err.Error()
+		return nil
+	}
+	if err := services.ValidateSQLIdentifier(req.Database); err != nil || !mariadbgrant.ValidName(req.Database) {
+		resp.Error = "invalid database name; nothing was changed"
+		return nil
+	}
+	suspensionDatabaseMutex.Lock()
+	defer suspensionDatabaseMutex.Unlock()
+	grantees, err := mysqlRemoveRightsOnDroppedDatabase(req.Database)
+	var left *mariadbgrant.RightsLeftError
+	switch {
+	case errors.Is(err, mariadbgrant.ErrDatabaseExists):
+		resp.DatabaseExists = true
+		resp.Error = "the database " + req.Database + " exists again on the database server; nothing was changed"
+	case errors.As(err, &left):
+		resp.RightsLeft = true
+		resp.Error = left.Error()
+	case err != nil:
+		resp.RightsLeft = true
+		resp.Error = err.Error()
+	default:
+		resp.Applied = true
+		for _, grantee := range grantees {
+			resp.Grantees = append(resp.Grantees, grantee.String())
+		}
+	}
+	return nil
 }
 
 // mysqlNoSuchGrant reads MariaDB's "There is no such grant defined" (1141).

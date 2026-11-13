@@ -584,7 +584,7 @@ func (p *Panel) handleDeleteDatabase(w http.ResponseWriter, r *http.Request) {
 	}
 	// alpha.133 round 5: recorded like the Databases page's delete.
 	p.auditDatabaseDeletion(r, deleted, "deleted")
-	json.NewEncoder(w).Encode(databaseDeletionAnswer("success", deleted))
+	json.NewEncoder(w).Encode(databaseDeletionAnswerFor(r, "success", deleted))
 }
 
 // sanitizeName turns a domain into the leading fragment of a generated
