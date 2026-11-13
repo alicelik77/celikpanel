@@ -216,7 +216,7 @@ test('delete asks in the panel with what is lost, what stays and the typed name,
     // alpha.133 round 5: the users only this database uses are removed with
     // it; one another database also uses stays (the server decides the same).
     assert.deepEqual(request.lost, ['databases.delete.lostDataSized{"name":"kahvedukkani_dr_test_magaza","size":"14 MB"}', 'databases.delete.lostUsers{"users":"kahve_app"}']);
-    assert.deepEqual(request.kept, ['databases.delete.keptDomain{"domain":"kahvedukkani.dr.test"}', 'databases.delete.keptShared{"users":"kahve_rapor"}', 'databases.delete.keptOthers']);
+    assert.deepEqual(request.kept, ['databases.delete.keptDomain{"domain":"kahvedukkani.dr.test"}', 'databases.delete.keptShared{"users":"kahve_rapor","name":"kahvedukkani_dr_test_magaza"}', 'databases.delete.keptOthers']);
     // Confirmed: one DELETE, the list is read again, the toast says it.
     globalThis.page.answer = true;
     const before = calls.filter((call) => call.url === VISIBLE_DATABASES_URL).length;
@@ -240,7 +240,7 @@ test('an engine or CelikPanel account is said as staying; accounts the server ke
     await press(menuItem('delete'));
     const [request] = globalThis.page.asked;
     assert.deepEqual(request.lost.slice(1), ['databases.delete.lostUsers{"users":"kahve_app"}']);
-    assert.ok(request.kept.includes('databases.delete.keptAccount{"users":"root"}'));
+    assert.ok(request.kept.includes('databases.delete.keptAccount{"users":"root","name":"kahvedukkani_dr_test_magaza"}'));
     assert.deepEqual(globalThis.page.toasts, [['success', 'databases.deletedNamed{"name":"kahvedukkani_dr_test_magaza"} databases.keptNote.otherRights{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app"}']]);
   } finally {
     await cleanup();
@@ -258,7 +258,7 @@ test('a server reached with its own account: the question says its users stay; a
     await press(menuItem('delete'));
     const [request] = globalThis.page.asked;
     assert.equal(request.lost.length, 1, 'only the data is lost');
-    assert.ok(request.kept.includes('databases.delete.keptServer{"users":"kahve_app"}'));
+    assert.ok(request.kept.includes('databases.delete.keptServer{"users":"kahve_app","name":"kahvedukkani_dr_test_magaza"}'));
     assert.deepEqual(globalThis.page.toasts, [['success', 'databases.deletedNamed{"name":"kahvedukkani_dr_test_magaza"} databases.keptNote.server{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app"}']]);
     // A database whose users' fate is unknown: no delete offered, and why.
     await openMenu('bayi1_deneme');
@@ -266,6 +266,22 @@ test('a server reached with its own account: the question says its users stay; a
     assert.equal(item.props['aria-disabled'], true);
     assert.ok(has('databases.delete.usersUnknown'), 'the reason is not said');
     assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.endsWith('/5')).length, 0);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('a deletion that left something says per group what is still to do, in the reader\u2019s words', async () => {
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST)) }, {
+      '/api/v1/databases/3': () => Response.json({ error: 'raw english', code: 'DATABASE_DELETE_USERS_LEFT', reason: 'mixed', partial_success: true, mutation_applied: true,
+        vars: { name: 'kahvedukkani_dr_test_magaza', users: 'kahve_app, kahve_rapor', pending: 'kahve_app', rights: 'kahve_rapor' } }, { status: 409 }),
+    });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(has('err.DATABASE_DELETE_USERS_LEFT.mixed{"name":"kahvedukkani_dr_test_magaza","users":"kahve_app, kahve_rapor","pending":"kahve_app","rights":"kahve_rapor"}'), text());
+    assert.ok(!has('raw english'));
   } finally {
     await cleanup();
   }
@@ -334,7 +350,7 @@ test('a refused delete says the reason in the reader’s words: the administrato
     assert.equal(buttonsWith('common.goFix').length, 0, 'a customer is sent to a page they do not have');
     // Both languages carry both sentences, with the same placeholders.
     for (const key of ['err.DATABASE_ENGINE_CREDENTIAL_REFUSED', 'err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator', 'err.DATABASE_ENGINE_UNREACHABLE', 'err.DATABASE_ENGINE_UNREACHABLE.administrator',
-      'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown',
+      'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown', 'err.DATABASE_DELETE_USERS_LEFT.rights', 'err.DATABASE_DELETE_USERS_LEFT.mixed', 'err.DATABASE_DELETE_USERS_LEFT.exists',
       'err.DATABASE_DELETE_RECORDS_LEFT', 'err.DATABASE_ENGINE_BUSY', 'databases.delete.lostUsers', 'databases.delete.keptShared', 'databases.delete.keptAccount', 'databases.delete.keptServer',
       'databases.delete.usersUnknown', 'databases.deletedNamed', 'databases.keptNote.otherRights', 'databases.keptNote.unchecked', 'databases.keptNote.server']) {
       assert.ok(enScreens[key] && trScreens[key], key);

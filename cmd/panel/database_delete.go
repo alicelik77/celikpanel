@@ -121,6 +121,11 @@ type databaseDeletion struct {
 	// UsersKeptOnServer: an engine reached with the record's own account;
 	// CelikPanel does not remove users there.
 	UsersKeptOnServer []string
+	// UsersLeft: users a deletion that did not finish still has to do
+	// something about; UsersRightsLeft: those of them that stay on the engine
+	// but still hold a right on the dropped database (for the audit row).
+	UsersLeft       []string
+	UsersRightsLeft []string
 }
 
 // databaseDeleteError says how far a deletion got (D-024: a verified failure,
@@ -132,6 +137,12 @@ type databaseDeleteError struct {
 	databaseGone bool
 	// usersLeft: the database's own users the engine has not removed.
 	usersLeft []string
+	// rightsLeft: of usersLeft, the accounts that stay but still hold a
+	// right naming the dropped database (the Agent's RightsLeft).
+	rightsLeft []string
+	// databaseExists: the engine has a database of that name again, so the
+	// Agent removed nothing from the users.
+	databaseExists bool
 	// recordsLeft: the engine is done; the records were not removed.
 	recordsLeft bool
 	refusal     *transport.DatabaseClusterRefusal
@@ -492,7 +503,10 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	// remove: CelikPanel removes them from the engine. forget: they stay on
 	// an engine CelikPanel reaches with the record's own account, and their
 	// records go with the database (nothing else uses them).
-	var remove, forget []databaseDeleteUser
+	// shared: they stay because another database uses them, but their rights
+	// on this database go with it (review: CelikPanel's own GRANT on it would
+	// otherwise stay in mysql.db).
+	var remove, forget, shared []databaseDeleteUser
 	for _, user := range fates[databaseID] {
 		switch user.Stays {
 		case databaseUserRemoved:
@@ -500,6 +514,9 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 		case databaseUserServer:
 			forget = append(forget, user)
 			deletion.UsersKeptOnServer = append(deletion.UsersKeptOnServer, user.Username)
+		case databaseUserShared:
+			shared = append(shared, user)
+			deletion.UsersKept = append(deletion.UsersKept, user.Username)
 		default:
 			deletion.UsersKept = append(deletion.UsersKept, user.Username)
 		}
@@ -514,7 +531,7 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	// Agent's door; a record an administrator registered with their own
 	// credential (127.0.0.1:3307, a container) is reached with it.
 	if databaseRecordIsOurLocalEngine(server) {
-		keptOnEngine, err = p.deleteDatabaseOnThisMachine(ctx, server, deletion.Name, remove)
+		keptOnEngine, err = p.deleteDatabaseOnThisMachine(ctx, server, deletion.Name, remove, shared)
 	} else {
 		err = p.deleteDatabaseElsewhere(server, deletion.Name)
 	}
@@ -538,6 +555,7 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	}
 	if err != nil {
 		if failed != nil {
+			deletion.UsersLeft, deletion.UsersRightsLeft = failed.usersLeft, failed.rightsLeft
 			failed.deletion = deletion
 		}
 		return nil, err
@@ -587,7 +605,7 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 // deleteDatabaseOnThisMachine drops the database and then its own users
 // through the Agent. It answers the users the Agent kept for rights the
 // owner gave by hand.
-func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.DatabaseServer, name string, remove []databaseDeleteUser) (map[string]string, error) {
+func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.DatabaseServer, name string, remove, shared []databaseDeleteUser) (map[string]string, error) {
 	engine, port := "mysql", 0
 	if dbDriverTypeFor(server) == "postgresql" {
 		engine, port = "postgresql", server.Port
@@ -607,31 +625,52 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 		return nil, &databaseDeleteError{cause: fmt.Errorf("drop database %s: the engine did not drop it", name)}
 	}
 	kept := map[string]string{}
-	var left []string
-	unknown := false
+	var left, rightsLeft []string
+	unknown, exists := false, false
+	// remove: the user goes unless the Agent finds rights its owner gave by
+	// hand. shared: the user stays; only its rights on the dropped database go
+	// (RightsOnly). Both tell the Agent the database is dropped; it checks
+	// that itself and touches nothing while a database of that name exists.
+	type step struct {
+		user       databaseDeleteUser
+		rightsOnly bool
+	}
+	var steps []step
 	for _, user := range remove {
+		steps = append(steps, step{user: user})
+	}
+	for _, user := range shared {
+		steps = append(steps, step{user: user, rightsOnly: true})
+	}
+	for _, s := range steps {
 		answer, err := p.databaseAccessNativeOps().remove(ctx, transport.DatabaseAccessUserRequest{
 			ExpectedBuildCommit: strings.TrimSpace(buildCommit), Engine: engine, Port: port,
-			Database: name, Username: user.Username,
+			Database: name, Username: s.user.Username, DatabaseDropped: true, RightsOnly: s.rightsOnly,
 		})
 		switch {
 		case err != nil:
 			unknown = true
-			left = append(left, user.Username)
-			log.Printf("database deletion %s: remove user %s: %v", name, user.Username, err)
+			left = append(left, s.user.Username)
+			log.Printf("database deletion %s: user %s: %v", name, s.user.Username, err)
 		case answer.Refusal != nil || !answer.Applied:
-			left = append(left, user.Username)
-			log.Printf("[409][database] %s %s: user %s: %s", errCodeDatabaseDeleteUsersLeft, name, user.Username, boundedAgentDiagnostic(answer.Error))
+			left = append(left, s.user.Username)
+			if answer.DatabaseExists {
+				exists = true
+			}
+			if answer.RightsLeft || (s.rightsOnly && !answer.DatabaseExists) {
+				rightsLeft = append(rightsLeft, s.user.Username)
+			}
+			log.Printf("[409][database] %s %s: user %s: %s", errCodeDatabaseDeleteUsersLeft, name, s.user.Username, boundedAgentDiagnostic(answer.Error))
 		case answer.Kept:
-			kept[user.Username] = answer.KeptReason
-			if kept[user.Username] == "" {
-				kept[user.Username] = transport.DatabaseAccessKeptOtherRights
+			kept[s.user.Username] = answer.KeptReason
+			if kept[s.user.Username] == "" {
+				kept[s.user.Username] = transport.DatabaseAccessKeptOtherRights
 			}
 		}
 	}
 	if len(left) > 0 {
-		return kept, &databaseDeleteError{unknown: unknown, databaseGone: true, usersLeft: left,
-			cause: fmt.Errorf("database %s was dropped; its users %s were not all removed", name, strings.Join(left, ", "))}
+		return kept, &databaseDeleteError{unknown: unknown, databaseGone: true, usersLeft: left, rightsLeft: rightsLeft, databaseExists: exists,
+			cause: fmt.Errorf("database %s was dropped; for its users %s not everything was done", name, strings.Join(left, ", "))}
 	}
 	return kept, nil
 }
@@ -677,6 +716,10 @@ func (p *Panel) auditDatabaseDeletion(r *http.Request, deletion *databaseDeletio
 		"users_kept_on_engine": nonNilStrings(deletion.UsersKeptOnEngine),
 		"users_kept_unchecked": nonNilStrings(deletion.UsersKeptUnchecked),
 		"users_kept_on_server": nonNilStrings(deletion.UsersKeptOnServer)}
+	if len(deletion.UsersLeft) > 0 {
+		details["users_left"] = deletion.UsersLeft
+		details["users_rights_left"] = nonNilStrings(deletion.UsersRightsLeft)
+	}
 	if owner, ok := p.databaseSubscriptionOwner(r.Context(), deletion.SubscriptionID); ok {
 		details["owner"], details["owner_id"] = owner.Username, owner.ID
 	}
@@ -717,14 +760,35 @@ func (p *Panel) writeDatabaseDeleteError(w http.ResponseWriter, r *http.Request,
 		log.Printf("[409][database] %s: %v", errCodeDatabaseDeleteUsersLeft, failed.cause)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict)
-		body := apiErrorBody{
-			Error: "The database " + name + " was deleted, but its users " + strings.Join(failed.usersLeft, ", ") +
-				" were not removed yet. It stays in the list until they are; press Delete again to finish.",
-			Code: errCodeDatabaseDeleteUsersLeft, PartialSuccess: true, MutationApplied: true,
-			Vars: map[string]string{"name": name, "users": strings.Join(failed.usersLeft, ", ")},
+		// Per group (review): users still to be removed, and users that stay
+		// but still hold a right on the dropped database; one "press Delete
+		// again" line.
+		rights := map[string]bool{}
+		for _, user := range failed.rightsLeft {
+			rights[user] = true
 		}
-		if failed.unknown {
+		var pending []string
+		for _, user := range failed.usersLeft {
+			if !rights[user] {
+				pending = append(pending, user)
+			}
+		}
+		body := apiErrorBody{
+			Error: "The database " + name + " was deleted, but not everything was done for its users (" + strings.Join(failed.usersLeft, ", ") +
+				"). It stays in the list until it is; press Delete again to finish.",
+			Code: errCodeDatabaseDeleteUsersLeft, PartialSuccess: true, MutationApplied: true,
+			Vars: map[string]string{"name": name, "users": strings.Join(failed.usersLeft, ", "),
+				"pending": strings.Join(pending, ", "), "rights": strings.Join(failed.rightsLeft, ", ")},
+		}
+		switch {
+		case failed.databaseExists:
+			body.Reason = "exists"
+		case failed.unknown:
 			body.Reason = "unknown"
+		case len(pending) == 0:
+			body.Reason = "rights"
+		case len(failed.rightsLeft) > 0:
+			body.Reason = "mixed"
 		}
 		_ = json.NewEncoder(w).Encode(body)
 	case failed.recordsLeft:

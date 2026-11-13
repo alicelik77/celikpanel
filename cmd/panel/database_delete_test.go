@@ -66,12 +66,14 @@ func TestDatabaseDeleteRemovesItsOwnUsersAndKeepsASharedOne(t *testing.T) {
 		t.Fatalf("drop requests %+v", drops.requests)
 	}
 	// cust_user and shop_rapor only reach this database; wp_user also reads
-	// the blog database and stays.
-	if removed := removedUsernames(native); removed != "cust_user,shop_rapor" {
+	// the blog database and stays, but loses its rights on this one
+	// (RightsOnly, review of the lab round).
+	if removed := removedUsernames(native); removed != "cust_user,shop_rapor,wp_user" {
 		t.Fatalf("removed %q", removed)
 	}
 	for _, req := range native.removed {
-		if req.Database != "customer_matrix_test_shop" || req.Engine != "mysql" || req.ExpectedBuildCommit != strings.TrimSpace(buildCommit) {
+		if req.Database != "customer_matrix_test_shop" || req.Engine != "mysql" || req.ExpectedBuildCommit != strings.TrimSpace(buildCommit) ||
+			!req.DatabaseDropped || req.RightsOnly != (req.Username == "wp_user") {
 			t.Fatalf("user removal %+v", req)
 		}
 	}
@@ -128,8 +130,13 @@ func TestDatabaseDeleteInterruptedAfterTheDropIsFinishedByDeletingAgain(t *testi
 	if body["code"] != errCodeDatabaseDeleteUsersLeft || body["partial_success"] != true || body["mutation_applied"] != true {
 		t.Fatalf("answer %s", got.Body.String())
 	}
-	if vars, _ := body["vars"].(map[string]any); vars["users"] != "cust_user" || vars["name"] != "customer_matrix_test_shop" {
-		t.Fatalf("vars %v", body["vars"])
+	// cust_user is still to be removed; wp_user stays but its right on the
+	// database was not removed: both said, per group (review item 8).
+	if vars, _ := body["vars"].(map[string]any); vars["pending"] != "cust_user" || vars["rights"] != "wp_user" || vars["name"] != "customer_matrix_test_shop" || body["reason"] != "mixed" {
+		t.Fatalf("answer %s", got.Body.String())
+	}
+	if details := auditDetails(t, f, "database.delete.partial:customer_matrix_test_shop"); len(details["users_left"].([]any)) != 2 || len(details["users_rights_left"].([]any)) != 1 {
+		t.Fatalf("audit %v", details)
 	}
 	// The records stay until the users are gone: the list still shows it.
 	if n := f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`); n != 1 {
@@ -144,7 +151,7 @@ func TestDatabaseDeleteInterruptedAfterTheDropIsFinishedByDeletingAgain(t *testi
 	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
 		t.Fatalf("again: %d %s", got.Code, got.Body.String())
 	}
-	if len(drops.requests) != 2 || removedUsernames(native) != "cust_user" {
+	if len(drops.requests) != 2 || removedUsernames(native) != "cust_user,wp_user" {
 		t.Fatalf("second run: drops %d, removed %q", len(drops.requests), removedUsernames(native))
 	}
 	if n := f.count(t, `SELECT COUNT(*) FROM databases_v2 WHERE id = 9961`) + f.count(t, `SELECT COUNT(*) FROM database_users WHERE id = 9941`); n != 0 {
@@ -192,7 +199,7 @@ func TestDatabaseDeleteOnTheDomainPageIsTheSameDeletion(t *testing.T) {
 	}
 	// The domain page used to drop the first user on the engine whatever
 	// else used it: wp_user (also on the blog database) now stays.
-	if len(drops.requests) != 1 || drops.requests[0].User != "" || removedUsernames(native) != "cust_user" {
+	if len(drops.requests) != 1 || drops.requests[0].User != "" || removedUsernames(native) != "cust_user,wp_user" || native.removed[0].RightsOnly || !native.removed[1].RightsOnly {
 		t.Fatalf("drops %+v removed %q", drops.requests, removedUsernames(native))
 	}
 	if f.count(t, `SELECT COUNT(*) FROM database_users WHERE id = 9942`) != 1 {
@@ -210,7 +217,7 @@ func TestDatabaseDeleteNeverRemovesTheEnginesOrCelikPanelsOwnAccount(t *testing.
 	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", ""); got.Code != http.StatusOK {
 		t.Fatalf("%d %s", got.Code, got.Body.String())
 	}
-	if removed := removedUsernames(native); removed != "cust_user" {
+	if removed := removedUsernames(native); removed != "cust_user,wp_user" {
 		t.Fatalf("removed %q", removed)
 	}
 }

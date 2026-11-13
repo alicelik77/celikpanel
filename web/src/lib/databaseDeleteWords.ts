@@ -24,13 +24,13 @@ export function databaseDeleteDescribable(users: ReadonlyArray<User>): boolean {
 }
 
 /** The question's lines: which users go with the database, which stay and why. */
-export function databaseDeleteUserLines(t: T, users: ReadonlyArray<User>): { lost: string[]; kept: string[] } {
+export function databaseDeleteUserLines(t: T, name: string, users: ReadonlyArray<User>): { lost: string[]; kept: string[] } {
     const names = (stays: DatabaseUserStays | undefined) => users.filter((user) => user.stays === stays).map((user) => user.username).join(', ');
     const removed = names(undefined);
     const kept: string[] = [];
     for (const [stays, key] of [['shared', 'databases.delete.keptShared'], ['account', 'databases.delete.keptAccount'], ['server', 'databases.delete.keptServer']] as const) {
         const list = names(stays);
-        if (list) kept.push(t(key, { users: list }));
+        if (list) kept.push(t(key, { users: list, name }));
     }
     return { lost: removed ? [t('databases.delete.lostUsers', { users: removed })] : [], kept };
 }

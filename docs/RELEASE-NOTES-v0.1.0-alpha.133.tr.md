@@ -244,6 +244,18 @@ itibaren pencere kendiliğinden devam eder.
 - CelikPanel'in kendi veritabanı hesabı MariaDB ya da PostgreSQL sayfasından
   kaldırılırsa, sonraki yeni müşteri onu yeniden açar. Düzeltmesi sonraki
   sürümde gelir.
+- **CelikPanel'in tanımadığı bir MariaDB hesabı, silinen veritabanı
+  üzerindeki haklarını korur.** MariaDB bu hakları veritabanı gittikten sonra
+  da saklar; aynı adla sonradan açılan bir veritabanı onları devralır.
+  CelikPanel bunları veritabanının kendi kullanıcılarından kaldırır: silinen,
+  başka bir veritabanı da kullandığı için kalan ve kendi hakları için
+  tutulan kullanıcılardan; bu adlardaki bütün hesaplardan, elle açılanlardan
+  da. CelikPanel dışında açılmış başka adlı bir hesaptan kaldırmaz. Böyle bir hesaba bir veritabanında hak
+  verdiyseniz, veritabanını silerken o hakları sunucuda kaldırın (`REVOKE ALL
+  PRIVILEGES ON ad.* FROM hesap`). Bu sonraki sürümde gelir.
+- **MariaDB veritabanı hakları hâlâ ad kalıbıyla verilir;** bu kalıpta `_`
+  herhangi bir tek karakter yerine geçer. Tam olarak tek bir veritabanı adı
+  için verilen haklar ve var olanların dönüştürülmesi alpha.134'te gelir.
 - **Kendi hesabıyla bağlanılan bir veritabanı sunucusunda kullanıcı
   kaldırmak** (başka bir makine ya da bir yöneticinin kaydettiği sunucu) bu
   sürümde yapılmaz: sahibinin orada verdiği hakların denetlenmesi gerekir ve

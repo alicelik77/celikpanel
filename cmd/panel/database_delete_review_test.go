@@ -63,7 +63,13 @@ func TestDatabaseDeleteKeepsAnAccountAnotherRecordOfTheSameEngineNames(t *testin
 	if got.Code != http.StatusOK {
 		t.Fatalf("%d %s", got.Code, got.Body.String())
 	}
-	if len(native.removed) != 0 {
+	// Every user stays; each loses only its rights on this database.
+	for _, req := range native.removed {
+		if !req.RightsOnly || !req.DatabaseDropped {
+			t.Fatalf("a staying user was asked for more than its rights: %+v", req)
+		}
+	}
+	if len(native.removed) != 3 {
 		t.Fatalf("removed %+v", native.removed)
 	}
 	var answer struct {
@@ -114,7 +120,7 @@ func TestDatabaseDeleteKeepsAccountsTheAgentWouldRefuse(t *testing.T) {
 	f.exec(t, `INSERT INTO database_users (id, server_id, subscription_id, username, password) VALUES (9952, 9921, 9802, 'pg_monitor', 'x'), (9953, 9921, 9802, 'debian-sys-maint', 'x')`)
 	f.exec(t, `INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9961, 9952, 'ALL'), (9961, 9953, 'ALL')`)
 	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")
-	if got.Code != http.StatusOK || removedUsernames(native) != "cust_user" {
+	if got.Code != http.StatusOK || removedUsernames(native) != "cust_user,wp_user" {
 		t.Fatalf("%d %s removed %q", got.Code, got.Body.String(), removedUsernames(native))
 	}
 }

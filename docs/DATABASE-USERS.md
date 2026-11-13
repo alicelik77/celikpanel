@@ -83,8 +83,24 @@ same rules.
   count the membership PostgreSQL 16+ grants a role's creator by itself;
   on MariaDB a routine in the deleted database is not a right elsewhere, the
   role table is asked for only where it exists, and a check that fails keeps
-  the account ("unchecked"). Open: none of these statements has run on a
-  real engine yet (the lab check does that).
+  the account ("unchecked"). A user that stays - kept for its owner's
+  rights, or shared with another database - loses every right that names the
+  deleted database, on every listed account of its name (hand-made ones too,
+  never the empty host of a MariaDB role of the same name): MariaDB keeps such
+  rights after DROP DATABASE (KB) and a later database of the same name would
+  inherit them. The Agent first asks the engine that no database of that name
+  exists (and every statement repeats that condition); then it deletes the
+  rows of mysql.db by the name's two pattern forms (as written, or with
+  `_`/`%` escaped) and of tables_priv, columns_priv and procs_priv by the
+  literal name, flushes, and reads what the server has loaded
+  (information_schema for those accounts, procs_priv) - anything left is a
+  partial result ("rights"). A pattern that covers several databases, a
+  server-wide right and a role are left alone. PostgreSQL leaves nothing that
+  names a dropped database (dropdb removes its role settings and shared
+  dependencies with the pg_database row). Open: an account with another name,
+  made outside CelikPanel, keeps its rights on a deleted database; database
+  rights are still given by name pattern (`_` = any one character), exact
+  names come in alpha.134.
 - Plans: there is no database-user quota in the plans
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".
