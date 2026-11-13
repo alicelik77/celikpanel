@@ -216,11 +216,28 @@ and `gpg` and `tar`. These come from the distribution's official packages (`gnup
    - `payload/files.tar.gz`: the site's files (files and full backups).
    - `payload/databases/<id>.sql.gz`: one compressed dump per database (database and full
      backups).
+   - `payload/home.tar.gz` (only when `manifest.json` says `"version": 3`): the site home's
+     program or Python app folder `app` and each service app's folder `apps/<app>`, as
+     `manifest.json` lists them under `areas` (files and full backups).
 5. **Put the files back** into the site's document root (example path):
 
    ```sh
    tar -xzf restore/payload/files.tar.gz -C /var/www/example.com/public_html
    ```
+
+   **Program and app folders** (version 3 only): stop the program or app first and move its
+   current folder aside, then unpack into the site home (the folder that holds
+   `public_html`) and give the files to the site home's owner, because the archive stores no
+   owners (do the same for each `apps/<app>` folder). Example path:
+
+   ```sh
+   site=/var/www/celikpanel/subscriptions/3/sites/7
+   tar -xzf restore/payload/home.tar.gz -C "$site"
+   chown -hR --reference="$site" "$site/app"
+   ```
+
+   Environment files (secret values) are never in a backup: enter them again where the
+   program reads them.
 
 6. **Load each database.**
    - MariaDB or MySQL:
