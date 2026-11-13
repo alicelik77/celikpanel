@@ -544,8 +544,9 @@ const openings = (list, id) => list.find((section) => section.id === id)?.parts.
 
 test('Site and Advanced start their parts open or closed by the site kind; the other sections keep every part open', () => {
   assert.deepEqual(openings(build({ role: 'admin' }), 'site'), ['type:true', 'apps:true', 'ai:false', 'programs:false', 'php:true', 'redirects:true']);
-  assert.deepEqual(openings(build({ role: 'admin', projectType: 'service_app' }), 'site'), ['type:true', 'ai:true', 'programs:false', 'redirects:true']);
-  assert.deepEqual(openings(build({ role: 'admin', projectType: 'runtime_app' }), 'site'), ['type:true', 'ai:false', 'programs:true', 'redirects:true']);
+  // alpha.133: the part that is the site leads (tests/site-lead-alpha133.test.mjs).
+  assert.deepEqual(openings(build({ role: 'admin', projectType: 'service_app' }), 'site'), ['ai:true', 'type:true', 'programs:false', 'redirects:true']);
+  assert.deepEqual(openings(build({ role: 'admin', projectType: 'runtime_app' }), 'site'), ['programs:true', 'type:true', 'ai:false', 'redirects:true']);
   assert.deepEqual(openings(build({ role: 'admin' }), 'advanced'), ['cron:true', 'logs:false', 'git:false', 'copy:false', 'web:false', 'config:false']);
   for (const section of build({ role: 'admin' }).filter((item) => item.id !== 'site' && item.id !== 'advanced')) {
     for (const part of section.parts) assert.equal(part.startsOpen, undefined, `${section.id}/${part.id} is not a closable card`);

@@ -307,7 +307,7 @@ export function TransferDialog({ owner, request, onClose }: {
                         ) : (
                             <label className="block">
                                 <span className="mb-1 block text-xs text-fg-muted">{t('transfer.subscription')}</span>
-                                <select className={inputClass} value={subID} onChange={(e) => { setChosenSub(Number(e.target.value)); setToID(0); reset(); }}>
+                                <select className={`${inputClass} field-lg`} value={subID} onChange={(e) => { setChosenSub(Number(e.target.value)); setToID(0); reset(); }}>
                                     {owned.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </label>
@@ -322,7 +322,7 @@ export function TransferDialog({ owner, request, onClose }: {
                         ) : (
                             <label className="block">
                                 <span className="mb-1 block text-xs text-fg-muted">{t('transfer.receiver')}</span>
-                                <select className={inputClass} value={toID} onChange={(e) => { setToID(Number(e.target.value)); reset(); }} data-transfer-receiver="">
+                                <select className={`${inputClass} field-md`} value={toID} onChange={(e) => { setToID(Number(e.target.value)); reset(); }} data-transfer-receiver="">
                                     <option value={0}>{t('transfer.receiverChoose')}</option>
                                     {shown.value.map((r) => (
                                         <option key={r.id} value={r.id}>{r.reseller ? `${r.username} (${r.reseller})` : r.username}</option>
@@ -516,7 +516,7 @@ export function TransferRequestsList() {
                         <ErrorBanner error={refusal} sentence="transfer.requests.unknown" />
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('transfer.requests.rejectReason')}</span>
-                            <input className={inputClass} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+                            <input className={`${inputClass} field-xl`} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
                         </label>
                     </div>
                 </Dialog>
@@ -615,11 +615,11 @@ export function TransferRequestCard() {
                                             <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                                 <label>
                                                     <span className="mb-1 block text-xs text-fg-muted">{t('transfer.ask.to')}</span>
-                                                    <input className={inputClass} value={to} maxLength={100} onChange={(e) => setTo(e.target.value)} />
+                                                    <input className={`${inputClass} field-lg`} value={to} maxLength={100} onChange={(e) => setTo(e.target.value)} />
                                                 </label>
                                                 <label>
                                                     <span className="mb-1 block text-xs text-fg-muted">{t('transfer.ask.note')}</span>
-                                                    <input className={inputClass} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+                                                    <input className={`${inputClass} field-xl`} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
                                                 </label>
                                                 <div className="flex gap-2 sm:col-span-2 sm:justify-end">
                                                     <Button type="button" onClick={() => setAskFor(0)} disabled={busy}>{t('common.cancel')}</Button>

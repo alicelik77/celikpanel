@@ -22,6 +22,7 @@ func TestDNSPeerPendingGuidanceOnlyRecognizesReviewedCodes(t *testing.T) {
 		transport.DNSPeerPendingOwnerEditUnknown,
 		transport.DNSPeerPendingProofInternal,
 		transport.DNSPeerPendingProofTimeout,
+		transport.DNSPeerPendingJournalUnresolved,
 	} {
 		body, ok := dnsPeerPendingAPIError(errors.Join(
 			errors.New("untrusted remote output"), &dnsZoneV3PropagationPendingError{Code: code, Exact: true},
@@ -153,7 +154,7 @@ func TestDNSPeerPendingGuidanceSplitsReviewedInspectorDetail(t *testing.T) {
 	reason, detail, message, ok = dnsPeerPendingGuidance(transport.DNSPeerPendingCatalogTransferRefused)
 	if !ok || reason != transport.DNSPeerPendingCatalogTransferRefused || detail != "" ||
 		!strings.Contains(message, "allow-transfer") || !strings.Contains(message, "127.0.0.1 and ::1") ||
-		!strings.Contains(message, "retry the same publication") {
+		!strings.Contains(message, "checks this same publication again by itself") {
 		t.Fatalf("typed refusal: %q %q %q %t", reason, detail, message, ok)
 	}
 	for _, code := range []string{"dns_peer_inspection_unknown:raw", "dns_peer_native_unknown:named_unavailable", "nope"} {
@@ -195,16 +196,19 @@ func TestDNSPeerProofInternalGuidanceIsNotAnOwnerEdit(t *testing.T) {
 		"No change by either server's owner was found",
 		"server owner",
 		"sudo journalctl -u celikpanel-agent | grep peer",
-		"Retrying does not help until the CelikPanel Agent is updated",
-		"“Retry this deletion”",
-		"same publication",
+		// alpha.133 round 5: re-checked by itself; it finishes after the
+		// fixing update with nothing to press, and names no retry button.
+		"Checking again does not help until the CelikPanel Agent is updated",
+		"checks this same publication again by itself every few minutes",
+		"with nothing to press",
 		"deletion stays pending and DNS answers are unaffected",
 	} {
 		if !strings.Contains(message, want) {
 			t.Fatalf("internal guidance lacks %q: %s", want, message)
 		}
 	}
-	if strings.Contains(message, "evidence changed") || strings.Contains(message, "reconcile") {
+	if strings.Contains(message, "evidence changed") || strings.Contains(message, "reconcile") ||
+		strings.Contains(message, "Retry this deletion") || strings.Contains(message, "Nothing retries by itself") {
 		t.Fatalf("internal guidance claims an owner change: %s", message)
 	}
 	_, _, ownerEdit, _ := dnsPeerPendingGuidance(transport.DNSPeerPendingOwnerEditUnknown)
@@ -256,50 +260,90 @@ func TestDNSPeerPendingGuidanceSplitsOwnerEditCheck(t *testing.T) {
 	}
 }
 
-// pair6 P6-1: a step of the proof ran out of its time before the peer's
-// answer was accepted. The text says nothing changed, who retries now, what
-// to check if it repeats, and never claims an owner change or a fixed Agent.
+// pair6 P6-1, corrected in alpha.133 (incident of 12 Nov 2026): a step of
+// the proof ran out of its time before the peer's answer was accepted. The
+// zone is already removed on this server, so the text never says nothing was
+// changed; it says CelikPanel checks again by itself and when the
+// administrator is told, and the detail names the side that ran out of time.
+// A customer-visible text names no port or command.
 func TestDNSPeerProofTimeoutGuidanceNamesRetryAndChecks(t *testing.T) {
-	reason, detail, message, ok := dnsPeerPendingGuidance(transport.DNSPeerPendingProofTimeout)
-	if !ok || reason != transport.DNSPeerPendingProofTimeout || detail != "" {
-		t.Fatalf("timeout code: %q %q %t", reason, detail, ok)
-	}
-	for _, want := range []string{
-		"did not finish within its time",
-		"Nothing was changed on either server",
-		"deletion stays pending and DNS answers are unaffected",
-		"retry now with “Retry this deletion”",
-		"same publication",
-		"SSH port",
-		"overloaded",
+	for code, side := range map[string]string{
+		transport.DNSPeerPendingProofTimeout:                                                      "",
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutLocalCheck):   "this server's own part of the check that ran out of time, not the backup DNS server",
+		transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange): "backup DNS server's answer that did not come in time",
 	} {
-		if !strings.Contains(message, want) {
-			t.Fatalf("timeout guidance lacks %q: %s", want, message)
+		reason, detail, message, ok := dnsPeerPendingGuidance(code)
+		if !ok || reason != transport.DNSPeerPendingProofTimeout || (side == "") != (detail == "") {
+			t.Fatalf("%s: %q %q %t", code, reason, detail, ok)
+		}
+		for _, want := range []string{
+			"The domain is removed from DNS on this server",
+			"not confirmed yet, because the check did not finish in time",
+			"Nobody needs to do anything now",
+			"re-checks this same publication by itself",
+			"finishes the deletion by itself",
+			"the server's administrator gets a notification",
+			side,
+		} {
+			if !strings.Contains(message, want) {
+				t.Fatalf("%s guidance lacks %q: %s", code, want, message)
+			}
+		}
+		for _, not := range []string{"Nothing was changed", "DNS answers are unaffected", "SSH", "port",
+			"overloaded", "journalctl", "evidence changed", "Retrying does not help"} {
+			if strings.Contains(message, not) {
+				t.Fatalf("%s guidance says %q: %s", code, not, message)
+			}
 		}
 	}
-	for _, not := range []string{"evidence changed", "reconcile", "Retrying does not help"} {
-		if strings.Contains(message, not) {
-			t.Fatalf("timeout guidance says %q: %s", not, message)
-		}
-	}
+	// alpha.133 (lab of 12 Nov 2026): the Agent now finishes an interrupted
+	// change of its check record by itself, so a re-check can finish this:
+	// why, nobody acts, how it continues; no jargon, no command, no button
+	// that is not on the screen.
 	_, _, journal, _ := dnsPeerPendingGuidance(transport.DNSPeerPendingJournalUnknown)
 	for _, want := range []string{
-		"could not write or match its single-use check challenge",
-		"Nobody needs to do anything now",
-		"re-checks this same publication by itself with a new challenge",
-		"sudo journalctl -u celikpanel-agent | grep peer",
-		"retry is safe because each challenge can be used only once",
-		"“Retry this deletion”",
-		"same publication",
+		"This domain is removed from DNS on this server",
+		"because this server could not complete its last check",
+		"Nobody needs to do anything",
+		"re-checks this same publication by itself, at most every 5 minutes",
 	} {
 		if !strings.Contains(journal, want) {
 			t.Fatalf("journal guidance lacks %q: %s", want, journal)
 		}
 	}
-	// While the Panel's own re-checks run it is a waiting state (D-024): the
-	// waiting sentence comes before the administrator's log step.
-	if strings.Index(journal, "Nobody needs to do anything now") > strings.Index(journal, "journalctl") ||
-		!dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnknown) {
-		t.Fatalf("journal guidance escalates before the automatic re-checks: %s", journal)
+	for _, not := range []string{"challenge", "journal", "nonce", "proof", "journalctl", "Retry this deletion"} {
+		if strings.Contains(journal, not) {
+			t.Fatalf("journal guidance says %q: %s", not, journal)
+		}
+	}
+	if !dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnknown) {
+		t.Fatal("journal_unknown is no longer re-checked automatically")
+	}
+}
+
+// alpha.133: a check record the Agent cannot prove. Who acts (the server
+// administrator) and the one next step first; it is not re-checked by
+// itself and the text never says nobody needs to act.
+func TestDNSPeerJournalUnresolvedGuidanceNamesTheAdministrator(t *testing.T) {
+	reason, detail, message, ok := dnsPeerPendingGuidance(transport.DNSPeerPendingJournalUnresolved)
+	if !ok || reason != transport.DNSPeerPendingJournalUnresolved || detail != "" {
+		t.Fatalf("unresolved: %q %q %t", reason, detail, ok)
+	}
+	for _, want := range []string{
+		"cannot sort out by itself", "Who acts: this server's administrator", "if that is not you, tell them",
+		"no longer checks this every few minutes", "same publication",
+	} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("unresolved guidance lacks %q: %s", want, message)
+		}
+	}
+	if strings.Contains(message, "sudo") || strings.Contains(message, "/var/lib") {
+		t.Fatalf("a command or private path outside the administrator's Details: %s", message)
+	}
+	if strings.Contains(message, "Nobody needs") || dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnresolved) {
+		t.Fatalf("unresolved promises automatic progress: %s", message)
+	}
+	if !strings.Contains(dnsPeerPendingEnglish(transport.DNSPeerPendingJournalUnknown), "Nobody needs") {
+		t.Fatal("the self-repairing reason lost its waiting sentence")
 	}
 }

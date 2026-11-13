@@ -98,14 +98,14 @@ export function SiteCopyPanel({ domainId, domainName }: { domainId: number; doma
                 <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
                     <label className="block text-sm font-medium text-fg">
                         <span>{t('copy.target')}</span>
-                        <select value={picked?.domain_id ?? 0} onChange={(e) => setTarget(Number(e.target.value))} className={`${inputClass} mt-1`}>
+                        <select value={picked?.domain_id ?? 0} onChange={(e) => setTarget(Number(e.target.value))} className={`${inputClass} mt-1 field-lg`}>
                             {state.targets.map((item) => <option key={item.domain_id} value={item.domain_id}>{item.domain}</option>)}
                         </select>
                     </label>
                     {state.databases.length > 0 && (
                         <label className="block text-sm font-medium text-fg">
                             <span>{t('copy.database')}</span>
-                            <select value={database} onChange={(e) => setDatabase(Number(e.target.value))} className={`${inputClass} mt-1`}>
+                            <select value={database} onChange={(e) => setDatabase(Number(e.target.value))} className={`${inputClass} mt-1 field-md`}>
                                 <option value={0}>{t('copy.filesOnly')}</option>
                                 {state.databases.map((item) => <option key={item.id} value={item.id}>{t('copy.withDatabase', { name: item.name })}</option>)}
                             </select>

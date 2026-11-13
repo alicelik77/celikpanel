@@ -10,6 +10,11 @@ func TestDNSPeerPendingCodesAcceptOnlyReviewedCompositeDetail(t *testing.T) {
 		"dns_peer_proof_internal:named_unavailable":            {"", ""},
 		"dns_peer_proof_timeout":                               {"dns_peer_proof_timeout", ""},
 		"dns_peer_proof_timeout:exchange":                      {"", ""},
+		"dns_peer_proof_timeout:local_check":                   {"dns_peer_proof_timeout", "local_check"},
+		"dns_peer_proof_timeout:peer_exchange":                 {"dns_peer_proof_timeout", "peer_exchange"},
+		"dns_peer_proof_timeout:producer_catalog":              {"", ""},
+		"dns_peer_owner_edit_unknown:local_check":              {"", ""},
+		"dns_peer_inspection_unknown:peer_exchange":            {"", ""},
 		"dns_peer_inspection_unknown:named_unavailable":        {"dns_peer_inspection_unknown", "named_unavailable"},
 		"dns_peer_inspection_unknown:observation_expired":      {"dns_peer_inspection_unknown", "observation_expired"},
 		"dns_peer_inspection_unknown:config_unreviewed":        {"dns_peer_inspection_unknown", "config_unreviewed"},
@@ -40,6 +45,12 @@ func TestDNSPeerPendingCodesAcceptOnlyReviewedCompositeDetail(t *testing.T) {
 		DNSPeerPendingOwnerEditUnknownWithDetail("config_unreviewed") != DNSPeerPendingOwnerEditUnknown ||
 		DNSPeerPendingOwnerEditUnknownWithDetail("authority") != "dns_peer_owner_edit_unknown:authority" {
 		t.Fatal("owner-edit composite accepted an unreviewed check")
+	}
+	if DNSPeerPendingProofTimeoutWithDetail("exchange") != DNSPeerPendingProofTimeout ||
+		DNSPeerPendingProofTimeoutWithDetail("") != DNSPeerPendingProofTimeout ||
+		DNSPeerPendingProofTimeoutWithDetail(DNSPeerProofTimeoutLocalCheck) != "dns_peer_proof_timeout:local_check" ||
+		DNSPeerPendingProofTimeoutWithDetail(DNSPeerProofTimeoutPeerExchange) != "dns_peer_proof_timeout:peer_exchange" {
+		t.Fatal("proof-timeout composite accepted an unreviewed detail")
 	}
 }
 

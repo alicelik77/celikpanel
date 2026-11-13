@@ -159,7 +159,7 @@ func (backend *linuxSystemUpdateBackend) resetFailedWorkerUnit(ctx context.Conte
 	if output, err := systemUpdateCommandRunner(probeCtx, systemctl, []string{"reset-failed", unit}); err != nil {
 		return fmt.Errorf("systemctl reset-failed: %w: %s", err, sanitizedSystemUpdateError(errors.New(string(output))))
 	}
-	log.Printf("self-update: cleared the failed mark of %s; a later update succeeded and the attempt's record is kept", unit)
+	log.Printf("self-update: cleared the failed mark of %s; the attempt is finished and its record is kept", unit)
 	return nil
 }
 

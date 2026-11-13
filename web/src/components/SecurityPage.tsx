@@ -21,6 +21,8 @@ const PanelAccessCard = lazy(() => import('./PanelSessions').then((module) => ({
 const AllSessionsCard = lazy(() => import('./PanelSessions').then((module) => ({ default: module.AllSessionsCard })));
 // alpha.130: SSH password sign-in, with its own words, in its own chunk.
 const SSHPasswordLoginCard = lazy(() => import('./SSHPasswordLoginCard').then((module) => ({ default: module.SSHPasswordLoginCard })));
+// alpha.133: Open to the outside (connections to customers' databases), in its own chunk.
+const OutsideConnectionsCard = lazy(() => import('./DatabaseRemoteServerPanel').then((module) => ({ default: module.DatabaseRemoteServerPanel })));
 
 // Server → Security (D-037, owner 2026-10-22): one page that answers "is my
 // server safe?". Nothing here is new: the firewall box that used to open from
@@ -79,6 +81,7 @@ export function SecurityPage() {
                 <Suspense fallback={null}><PanelAccessCard /></Suspense>
                 <Suspense fallback={null}><AllSessionsCard /></Suspense>
                 <Fail2banStatus />
+                <Suspense fallback={null}><OutsideConnectionsCard /></Suspense>
                 <EmergencyArea />
                 <div data-security-section="audit">
                     <SecurityAuditCard />

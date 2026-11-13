@@ -86,6 +86,11 @@ func dnsZoneV3PendingCodeFromJob(job *agentMutationJob) string {
 	return ""
 }
 
+// errDNSZoneV3RecoveryStillRunning: the Panel stopped waiting while the
+// exact recovery attempt was still running on the Agent. Its result is not
+// known yet; it is not another result of the earlier attempt (alpha.133).
+var errDNSZoneV3RecoveryStillRunning = errors.New("exact DNS V3 recovery remains active")
+
 var errDNSZoneV3PropagationDeferred = errors.New(
 	"DNS zone V3 paired propagation recovery is deferred",
 )
@@ -838,8 +843,8 @@ func (p *Panel) recoverPendingDNSZoneV3(
 			if job != nil &&
 				validateDNSZoneSyncV3RecoveringJob(job, identity) == nil {
 				return false, &dnsAgentPublicationError{Err: fmt.Errorf(
-					"%w: exact recovering attempt remains active: %v",
-					errDNSZoneV3PropagationDeferred,
+					"%w: %w: %v",
+					errDNSZoneV3PropagationDeferred, errDNSZoneV3RecoveryStillRunning,
 					errors.Join(callErr, waitErr),
 				)}
 			}
@@ -877,7 +882,7 @@ func (p *Panel) recoverPendingDNSZoneV3(
 	if agentMutationActive(job.Status) {
 		return false, &dnsAgentPublicationError{Err: errors.Join(
 			callErr,
-			errors.New("exact DNS V3 recovery remains active"),
+			errDNSZoneV3RecoveryStillRunning,
 		)}
 	}
 	return false, &dnsAgentPublicationError{Err: errors.Join(
@@ -983,6 +988,7 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 	if err := validateAgentMutationIdentity(job, identity); err != nil {
 		return false, err
 	}
+	waited := false
 	if agentMutationActive(job.Status) {
 		if hold != "" {
 			// A held Agent never moves this job: it is not "in progress".
@@ -997,6 +1003,7 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 			return false, &dnsAgentPublicationError{Err: errors.New("DNS V3 publication is already in progress")}
 		}
 		job, err = p.waitExpectedAgentMutationTerminal(ctx, identity)
+		waited = true
 		if err != nil && (job == nil || agentMutationActive(job.Status)) {
 			return false, &dnsAgentPublicationError{Err: fmt.Errorf("wait for durable DNS V3 publication: %w", err)}
 		}
@@ -1007,6 +1014,16 @@ func (p *Panel) reconcileDNSZoneEngineLease(
 	if job.Status == agentMutationPending {
 		if err := validateDNSZoneSyncV3PendingJob(job, identity); err != nil {
 			return false, err
+		}
+		// The reconciler's own attempt that waited for an active job (for
+		// example the Agent's startup recovery) does not run the recovery
+		// for a code that stops the automatic re-checks (alpha.133 round 5
+		// re-review): an owner edit of this server, an unresolved check
+		// record. A person's press still recovers it.
+		if code := dnsZoneV3PendingCodeFromJob(job); waited && dnsPendingReconcilerAttempt(ctx) &&
+			transport.DNSPeerPendingStopsAutomaticRechecks(code) {
+			return false, &dnsAgentPublicationError{Err: fmt.Errorf("%w: %w",
+				errDNSZoneV3PropagationDeferred, &dnsZoneV3PropagationPendingError{Code: code, Exact: true})}
 		}
 		return p.recoverPendingDNSZoneV3(ctx, lease)
 	}

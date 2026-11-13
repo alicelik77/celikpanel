@@ -138,7 +138,7 @@ func TestNativePeerProofAcceptedLateInWaveCompletesUnderFreshContext(t *testing.
 }
 
 // A deadline during the SSH exchange, before any answer, is the reviewed
-// dns_peer_proof_timeout: consume never runs. The enrollment's transport
+// dns_peer_proof_timeout naming the secondary's exchange: consume never runs. The enrollment's transport
 // bound, when tighter, is the step's own deadline, so the transport can never
 // outlive the step and misreport its timeout as an inspection failure.
 func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
@@ -159,8 +159,9 @@ func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
 			bounded, cancel := context.WithTimeout(ctx, transportLimit)
 			defer cancel()
 			<-bounded.Done()
-			return pendingDNSPeerCause(inspectionPendingCode(""),
-				dnspeertransport.Unknown{Code: dnspeertransport.CodeUnavailable})
+			// What the transport returns once its time ran out: no answer.
+			return pendingDNSPeerCause(bindInspectionPendingCode(dnspeertransport.Unknown{Code: dnspeertransport.CodeNoAnswer}),
+				dnspeertransport.Unknown{Code: dnspeertransport.CodeNoAnswer})
 		}); err != nil {
 			return err
 		}
@@ -168,16 +169,17 @@ func TestNativePeerProofDeadlineDuringExchangeIsProofTimeout(t *testing.T) {
 	}
 	err := completeDNSV3PrimaryPropagationWithNativeAt(context.Background(), plan, soa, localAXFR,
 		peerCatalog, peerZone, native)
-	if pendingDNSPeerCode(err) != transport.DNSPeerPendingProofTimeout || consumed {
+	exchangeTimeout := transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange)
+	if pendingDNSPeerCode(err) != exchangeTimeout || consumed {
 		t.Fatalf("exchange deadline: code=%q consumed=%t err=%v", pendingDNSPeerCode(err), consumed, err)
 	}
-	if dnsZoneV3PendingLedgerCode(pendingDNSPeerCode(err)) != transport.DNSPeerPendingProofTimeout {
-		t.Fatal("the ledger does not keep dns_peer_proof_timeout")
+	if dnsZoneV3PendingLedgerCode(pendingDNSPeerCode(err)) != exchangeTimeout {
+		t.Fatal("the ledger does not keep dns_peer_proof_timeout:peer_exchange")
 	}
 	text := logs.String()
 	for _, want := range []string{
-		"stopped at step exchange as dns_peer_proof_timeout: peer_inspection_unavailable",
-		"outcome pending dns_peer_proof_timeout",
+		"stopped at step exchange as dns_peer_proof_timeout:peer_exchange: peer_no_answer",
+		"outcome pending dns_peer_proof_timeout:peer_exchange",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("log lacks %q:\n%s", want, text)
@@ -250,18 +252,26 @@ func TestNativePeerConsumeOutcomes(t *testing.T) {
 			attempt: func() error { return nil }, enrollment: func() error { return nil }, local: local,
 		}
 	}
+	// The production composition (alpha.133): consume-once under the held
+	// checks, then the one full recheck before success.
+	consume := func(c *nativePeerCurrentChecks, run *dnsPeerProofRun) error {
+		if err := c.journalOpHeld("consume-once", consumeOnce); err != nil {
+			return err
+		}
+		return c.at(run.accepted())()
+	}
 
 	calls := 0
 	edited := newChecks(func(context.Context) error {
 		calls++
-		if calls == 2 {
+		if calls == 1 {
 			return dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckProducerCatalog,
 				"recorded catalog serial 7; observed serial 9 with a new member")
 		}
 		return nil
 	})
 	run := newDNSPeerProofRun(context.Background(), budget, "gone.example.test", "test")
-	err := run.consume(func() error { return edited.journalOp(run.accepted(), "consume-once", consumeOnce) })
+	err := run.consume(func() error { return consume(edited, run) })
 	want := transport.DNSPeerPendingOwnerEditUnknownWithDetail(transport.DNSPeerOwnerEditCheckProducerCatalog)
 	if pendingDNSPeerCode(err) != want {
 		t.Fatalf("real difference at consume: %q (%v)", pendingDNSPeerCode(err), err)
@@ -270,7 +280,7 @@ func TestNativePeerConsumeOutcomes(t *testing.T) {
 	journal := newChecks(func(context.Context) error { return nil })
 	run = newDNSPeerProofRun(context.Background(), budget, "gone.example.test", "test")
 	err = run.consume(func() error {
-		return journal.journalOp(run.accepted(), "consume-once", func(func() error) error {
+		return journal.journalOpHeld("consume-once", func(func() error) error {
 			return errors.New("challenge journal mismatch")
 		})
 	})
@@ -281,9 +291,10 @@ func TestNativePeerConsumeOutcomes(t *testing.T) {
 		t.Fatalf("consume failure cause not logged:\n%s", logs)
 	}
 
-	slow := newChecks(func(ctx context.Context) error { return sleepUnder(ctx, budget.consume) })
+	// The final recheck alone outlasts the fresh consume bound.
+	slow := newChecks(func(ctx context.Context) error { return sleepUnder(ctx, 2*budget.consume) })
 	run = newDNSPeerProofRun(context.Background(), budget, "gone.example.test", "test")
-	err = run.consume(func() error { return slow.journalOp(run.accepted(), "consume-once", consumeOnce) })
+	err = run.consume(func() error { return consume(slow, run) })
 	if code := pendingDNSPeerCode(err); code != transport.DNSPeerPendingJournalUnknown {
 		t.Fatalf("fresh consume bound exhausted: %q (%v)", code, err)
 	}
@@ -292,9 +303,13 @@ func TestNativePeerConsumeOutcomes(t *testing.T) {
 	parent, cancelParent := context.WithCancel(context.Background())
 	run = newDNSPeerProofRun(parent, budget, "gone.example.test", "test")
 	cancelParent()
-	ok := newChecks(func(ctx context.Context) error { return sleepUnder(ctx, time.Millisecond) })
-	if err := run.consume(func() error { return ok.journalOp(run.accepted(), "consume-once", consumeOnce) }); err != nil {
+	locals := 0
+	ok := newChecks(func(ctx context.Context) error { locals++; return sleepUnder(ctx, time.Millisecond) })
+	if err := run.consume(func() error { return consume(ok, run) }); err != nil {
 		t.Fatalf("consume ran under a cancelled parent: %v", err)
+	}
+	if locals != 1 {
+		t.Fatalf("consume ran %d full local rechecks, want 1 (after consume-once)", locals)
 	}
 }
 

@@ -281,6 +281,17 @@ function notInPlan(id: SectionId, v: Viewer): string[] | undefined {
 
 const ORDER: Record<DomainAccessMode, number> = { none: 0, view: 1, manage: 2 };
 
+// The part of Site that IS the site for a program or a service app: it comes
+// first in Site, before "Site type" (owner, 12 Nov 2026: after alpha.132 he
+// could not find his running Go program in the Site section).
+// Program ya da hizmet uygulaması olan sitede Site bölümünün ilk parçası.
+const SITE_LEAD: Partial<Record<string, PartId>> = { runtime_app: 'programs', service_app: 'ai' };
+
+/** The Site part that holds what runs on a site of this kind, if the kind has one. */
+export function siteLeadPart(projectType: string | null | undefined): PartId | null {
+    return SITE_LEAD[projectType || 'php'] ?? null;
+}
+
 /**
  * The sections this viewer sees on this domain, always in SECTION_ORDER: a
  * section the plan closes keeps its own place, faded. A section with nothing
@@ -314,6 +325,9 @@ export function buildSections(input: SectionInput): SectionView[] {
             if (rule.startsOpen) view.startsOpen = rule.startsOpen(viewer);
             return view;
         });
+        const lead = id === 'site' ? siteLeadPart(type) : null;
+        const at = lead ? parts.findIndex((part) => part.id === lead) : -1;
+        if (at > 0) parts.unshift(...parts.splice(at, 1));
         if (parts.length > 0) {
             sections.push({ id, parts });
             continue;

@@ -2438,8 +2438,9 @@ with no way to proceed after the owner reconciled.
   job alike;
 - the PowerDNS local recheck in the native proof (`recheckPDNSPeerLocalEvidence`;
   formerly `reflect.DeepEqual(current, plan.Evidence)`), run before the
-  challenge, inside journal publish and consume-once, after the SSH round trip
-  and before success;
+  challenge, after the challenge is durable (until alpha.133: inside journal
+  publish and consume-once), after the SSH round trip and before success (see
+  "Native peer proof: one local recheck per step" below);
 - the BIND local recheck (`recheckBINDPeerLocalEvidence`; formerly
   `reflect.DeepEqual(current, plan)`). The plan identity is now compared by
   `sameDNSV3PlanIdentity` and the evidence by the rule, which for BIND admits
@@ -2586,10 +2587,10 @@ passes it the request context, and each step has its own bound
 | Step | Work | Measured (pair 5/6, batch 11) | Bound |
 | --- | --- | --- | --- |
 | `prepare` | active attempt, probe selection, enrollment read, recheck, previous-challenge reconciliation, journal read, challenge mint | about 1-3 s | 8 s |
-| `challenge_write` | journal publish (four rechecks, durable write), enrollment recheck | 3.5-4.1 s | 12 s |
+| `challenge_write` | journal publish (four rechecks, durable write; alpha.133: held checks, then one recheck), enrollment recheck | 3.5-4.1 s | 12 s |
 | `exchange` | SSH connect, pinned host key, key auth, forced command, answer | 2.5-4 s | 10 s = `dnspeertransport.ExchangeLimit` |
 | `post_inspection` | recheck, catalog AXFRs, no-transfer, SOA, recheck (re-stamp wait at most 5 s) | about 2-3 s | 10 s |
-| `consume` | `Verify`, consume-once (three rechecks, durable write), final recheck | about 3-4 s | 20 s, fresh context |
+| `consume` | `Verify`, consume-once (three rechecks, durable write; alpha.133: held checks only), final recheck | about 3-4 s | 20 s (alpha.133: 18 s), fresh context |
 
 Total wall bound 60 s for the native proof, after at most 15 s of wave DNS
 probes. The enrollment's transport bound (`Enrollment.Timeout`, built by both
@@ -2711,6 +2712,58 @@ pending:
   at step" line naming the step and the underlying error;
 - batch 12 `z04`/`z05` as listed in the section above, now also with these
   lines.
+
+### Native peer proof: one local recheck per step (alpha.133, 2026-11-12)
+
+**Incident and lab.** On the owner's PowerDNS primary a pending deletion stayed
+"waiting to be deleted": retiring an older operation's challenge ran the full
+local recheck seven times inside `prepare` (8 s). After that was corrected, the
+lab (PowerDNS primary, BIND backup) showed six attempts in a row stopping at
+`challenge_write` after 12.0 s on a loaded host; idle it cost 6.8-7.5 s,
+`consume` 8.1-9.9 s and `post_inspection` 3.1-4.0 s. Every journal write passed
+the full local recheck as its verifier, and the journal calls it four times per
+write: twelve full rechecks per attempt at about 1.5-2 s idle each.
+
+**Change.** The verifier of journal publish, consume-once and retirement is
+now the held check: both external locks, the exact active ledger attempt and
+the unchanged enrollment (`nativePeerCurrentChecks.held`). The full local
+recheck runs once at each point the proof depends on it: before the challenge
+is minted; after the challenge is durable and before it is sent (on the
+PowerDNS-secondary path it also admits a daemon re-stamp so that a re-stamped
+challenge is not sent; on the BIND-secondary path that check is not made,
+recorded as an open item); after the SSH round trip before the probes; and
+after consume-once before success. Four per attempt. `prepare` takes 10 s
+(loaded cost reached 5.8-8.1 s) and `consume` 18 s; the 60 s total stays the
+hard bound. A step that runs out of time names its side
+(`dns_peer_proof_timeout:local_check` or `:peer_exchange`), including a
+post-inspection wait for the secondary's catalog transfer. Both native
+verifiers run the same post-mint sequence (`runNativePeerProofTail`).
+
+**Trade-off, recorded plainly.** Until alpha.133 a recheck also ran just
+before consume-once. Now a native owner edit made in the 1-3 s between the
+post-round-trip recheck and the final recheck is found after the challenge is
+consumed, not before. The result is still pending as
+`dns_peer_owner_edit_unknown` with its check and a retry, never success; the
+next attempt mints a new challenge, which supersedes the consumed record
+(`admissibleSuccessor` does not compare `State`).
+
+**Panel side.** One automatic re-check now waits 90 s
+(`dnsPendingPublicationAttemptLimit` = `panelMutationRecoveryTimeout`) instead
+of 45 s: the Agent's recovery runs the 15 s wave and at most 60 s of proof, and
+the Panel's heartbeat keeps the Agent's 20 s lease only while it waits; after
+it stopped waiting, the lease expiry cancelled a proof still within its own
+bound. A re-check the Panel stops waiting for while the exact Agent job is
+still running is no longer counted as another result of the earlier cause (it
+raised a false "stuck" notification). The deletion status keeps the reason the
+re-check last read while that re-check runs, and its next-step sentence follows
+the reconciler's state (continues by itself, stuck with the administrators
+notified, or automatic checks ended).
+
+Persisted formats are unchanged (journal sidecar v1, ledger v1). Evidence:
+component tests in `cmd/agent` (`dns_engine_peer_recheck_count_linux_test.go`,
+`dns_engine_peer_tail_linux_test.go`), `internal/dnspeerjournal` and
+`cmd/panel`; the lab must re-measure per-step times on an idle host and show
+a deletion stuck on alpha.132 finishing by itself after the update.
 
 ## Standalone deletion proof without a served parent (D5, 2026-10-31)
 

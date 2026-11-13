@@ -1,4 +1,5 @@
 import { decodeList } from './remote';
+import type { DatabaseUserStays } from './databaseDeleteWords';
 
 // The databases of one domain: GET /api/v1/domains/{id}/databases. One
 // address, one decoder, for every screen that reads it (the Databases tab and
@@ -13,6 +14,8 @@ export interface DatabaseUserInfo {
     id: number;
     username: string;
     access: 'owner' | 'read' | 'write';
+    /** alpha.133 round 5: what deleting the database leaves of the user; absent = removed with it. */
+    stays?: DatabaseUserStays;
 }
 
 export interface DatabaseInfo {

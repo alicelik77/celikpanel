@@ -5,9 +5,17 @@
 // The caller must hold and verify the external host and publication locks and
 // prove an active running/recovering ledger admission with the exact request,
 // owner and ledger attempt. Pending with no ActiveRequestID is not authority.
+// That, with the unchanged enrollment, is what the VerifyCurrent callback of
+// Publish and ConsumeOnce checks at each write boundary. The native DNS
+// evidence of the proof is the caller's to recheck once around each write
+// (since alpha.133: before minting, after Publish before the exchange, and
+// after ConsumeOnce before terminal success), not at every boundary.
 // Publish must finish before any network exchange. Only an authenticated,
 // validated native peer response may invoke ConsumeOnce. The caller then
-// rechecks current ledger, enrollment and native state before terminal success.
+// rechecks current ledger, enrollment and native state before terminal success;
+// a difference found there leaves the operation pending, and the next attempt's
+// challenge supersedes the consumed record (admissibleSuccessor does not
+// compare State).
 //
 // After a process restart or restored backup, the caller always mints a fresh
 // cryptographically random nonce and increasing proof attempt under the active
@@ -18,8 +26,12 @@
 // only over the identical catalog member set, which the store verifies from
 // the members the caller passes (the PowerDNS daemon's own re-stamp); any
 // other catalog, enrollment or operation change remains a context mismatch.
-// Retire requires exact terminal-ledger proof. Any abandoned private stage blocks proof work until owner review; a crash
-// during staging has no automatic cleanup or silent retry.
+// Retire requires exact terminal-ledger proof and is one rename (alpha.133).
+// A private stage left by an interrupted write or retirement blocks Read,
+// Publish, ConsumeOnce and Retire. Recover, run by the caller under the same
+// held authority before any new challenge, finishes or rolls back exactly the
+// states such an interruption can leave (recover_linux.go) and refuses every
+// other one as Unresolved, which needs a person; it never writes a record.
 // Missing or unsafe storage is never interpreted as successful deletion.
 //
 // Direct privileged owner edits outside the external lock protocol may produce

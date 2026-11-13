@@ -154,7 +154,7 @@ export function ForgotPassword({ onBack }: { onBack: () => void }) {
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             disabled={sending}
-                            className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-fg outline-none transition-shadow focus:border-primary"
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-fg outline-none transition-shadow focus:border-primary field-lg"
                         />
                     </label>
                     {problem && (

@@ -267,7 +267,7 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder={t('addons.admin.search')}
-                            className={inputClass}
+                            className={`${inputClass} field-full`}
                         />
                     </div>
                     <div className="max-h-[42rem] divide-y divide-border overflow-y-auto">
@@ -317,20 +317,20 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <Field label={t('addons.category')} htmlFor="catalog-category">
-                                    <input id="catalog-category" value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} className={inputClass} />
+                                    <input id="catalog-category" value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} className={`${inputClass} field-md`} />
                                 </Field>
                                 <Field label={t('addons.admin.vendor')} htmlFor="catalog-vendor">
-                                    <input id="catalog-vendor" value={draft.vendor} onChange={(event) => setDraft({ ...draft, vendor: event.target.value })} className={inputClass} />
+                                    <input id="catalog-vendor" value={draft.vendor} onChange={(event) => setDraft({ ...draft, vendor: event.target.value })} className={`${inputClass} field-md`} />
                                 </Field>
                                 <Field label={t('addons.status')} hint={original.release_state !== 'available' ? t('addons.admin.publishGuard') : undefined} htmlFor="catalog-state">
-                                    <select id="catalog-state" value={draft.release_state} onChange={(event) => setDraft({ ...draft, release_state: event.target.value as ReleaseState })} className={inputClass}>
+                                    <select id="catalog-state" value={draft.release_state} onChange={(event) => setDraft({ ...draft, release_state: event.target.value as ReleaseState })} className={`${inputClass} field-md`}>
                                         {original.release_state === 'available' && <option value="available">{t('addons.state.available')}</option>}
                                         <option value="coming_soon">{t('addons.state.comingSoon')}</option>
                                         <option value="retired">{t('addons.admin.stateRetired')}</option>
                                     </select>
                                 </Field>
                                 <Field label={t('addons.admin.sortOrder')} htmlFor="catalog-sort">
-                                    <input id="catalog-sort" type="number" min={0} max={1000000} value={draft.sort_order} onChange={(event) => setDraft({ ...draft, sort_order: Number(event.target.value) })} className={inputClass} />
+                                    <input id="catalog-sort" type="number" min={0} max={1000000} value={draft.sort_order} onChange={(event) => setDraft({ ...draft, sort_order: Number(event.target.value) })} className={`${inputClass} field-sm`} />
                                 </Field>
                             </div>
 
@@ -353,10 +353,10 @@ export function StoreCatalogAdmin({ onDirtyChange }: { onDirtyChange?: (dirty: b
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <Field label={t('addons.admin.icon')} htmlFor="catalog-icon">
-                                    <input id="catalog-icon" value={draft.metadata.icon} onChange={(event) => setDraft({ ...draft, metadata: { ...draft.metadata, icon: event.target.value } })} className={inputClass} />
+                                    <input id="catalog-icon" value={draft.metadata.icon} onChange={(event) => setDraft({ ...draft, metadata: { ...draft.metadata, icon: event.target.value } })} className={`${inputClass} field-md`} />
                                 </Field>
                                 <Field label={t('addons.admin.tags')} hint={t('addons.admin.tagsHint')} htmlFor="catalog-tags">
-                                    <input id="catalog-tags" value={draft.tagsText} onChange={(event) => setDraft({ ...draft, tagsText: event.target.value })} className={inputClass} />
+                                    <input id="catalog-tags" value={draft.tagsText} onChange={(event) => setDraft({ ...draft, tagsText: event.target.value })} className={`${inputClass} field-lg`} />
                                 </Field>
                             </div>
 
@@ -447,7 +447,7 @@ function LocalizedFields({ localeLabel, name, description, onName, onDescription
                     id={`${fieldPrefix}-name`}
                     value={name}
                     onChange={(event) => onName(event.target.value)}
-                    className={inputClass}
+                    className={`${inputClass} field-lg`}
                 />
             </Field>
             <Field label={t('addons.admin.description')} htmlFor={`${fieldPrefix}-description`}>

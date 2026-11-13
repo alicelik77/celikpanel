@@ -267,7 +267,7 @@ test('flowSteps names each step by its flow, shares the common words and marks c
         sslUpload: ['validate', 'install'], sslRemove: ['detach'], mailCert: ['check', 'mail_tls', 'tlsa'], dns: ['check', 'save', 'publish'],
         pdns: ['check', 'configure', 'sync'], phpIni: ['check', 'apply'], hosting: ['check', 'switch'],
         service: ['check', 'start', 'stop', 'restart', 'refresh'], malware: ['check', 'quarantine', 'restore', 'delete', 'save'],
-        dbDelete: ['check', 'delete'], dbUserDelete: ['check', 'delete'], adminRemove: ['check', 'remove'], userDelete: ['delete'],
+        dbDelete: ['check', 'delete'], adminRemove: ['check', 'remove'], userDelete: ['delete'],
         common: ['reload', 'mail', 'records'],
     })) {
         for (const id of ids) assert.ok(en.includes(`'opstep.${flow}.${id}'`), `no words for ${flow}.${id}`);
@@ -294,8 +294,8 @@ test('the other confirmed changes follow the server steps', () => {
         ['components/DomainSSLSettings.tsx', "'sslUpload'"], ['components/DomainSSLSettings.tsx', "'sslRemove'"], ['components/DomainSSLSettings.tsx', "'mailCert'"],
         ['components/DomainDNSManager.tsx', "'dns'"], ['components/PowerDNSManagement.tsx', "'pdns'"], ['components/PHPExtendedConfig.tsx', "'phpIni'"],
         ['components/HostingTypePanel.tsx', "'hosting'"], ['components/ServiceShell.tsx', "'service'"], ['components/DomainMalwareScan.tsx', "'malware'"],
-        ['components/DatabaseManagementV2.tsx', "'dbDelete'"], ['components/DatabaseManagementV2.tsx', "'dbUserDelete'"], ['components/DomainDatabaseManager.tsx', "'dbDelete'"],
-        ['components/DatabaseAccountStrip.tsx', "'adminRemove'"], ['components/UsersPage.tsx', "'userDelete'"],
+        ['components/databases/DatabasesPage.tsx', "'dbDelete'"], ['components/DomainDatabaseManager.tsx', "'dbDelete'"],
+        ['components/DatabaseRemoteServerPanel.tsx', "'adminRemove'"], ['components/UsersPage.tsx', "'userDelete'"],
     ]) {
         const text = source(path);
         assert.ok(text.includes(`flowSteps(t, ${flow}`) && text.includes('sendWithSteps(report'), `${path} does not follow ${flow}`);

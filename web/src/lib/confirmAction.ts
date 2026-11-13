@@ -59,7 +59,11 @@ export interface OperationStep {
  */
 export type OperationEnd =
     | { state: 'done'; message?: string; title?: string }
-    | { state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void }; title?: string };
+    | {
+        state: 'failed' | 'blocked' | 'unknown'; reason: string; fix?: { label: string; run: () => void }; title?: string;
+        /** The line under the title in place of the state's own word, when that word would not be true (alpha.133: a blocked ending that nobody needs to act on). */
+        subtitle?: string;
+    };
 
 /** What a running action can tell the window. */
 export interface OperationReport {

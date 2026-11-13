@@ -235,6 +235,19 @@ func (p *Panel) writeDomainDeletionPending(
 			// completes it by itself, that the deletion then finishes by
 			// itself too (domain_deletion_pending_dns.go).
 			domainDeletionDNSPendingAnswer(response, cause)
+			// What happens next, as the status read says it (alpha.133
+			// review: the deletion window must not assume CelikPanel
+			// re-checks by itself). Read only.
+			var pending *dnsZoneV3PropagationPendingError
+			if errors.As(cause, &pending) && pending.Exact && response["reason"] != "" {
+				if lease, err := readDNSZoneEngineLease(r.Context(), p.db.GetDB(), domain); err == nil {
+					followUp, next := p.domainDeletionDNSFollowUp(lease, pending.Code)
+					response["follow_up"] = followUp
+					if next != "" {
+						response["next_check_at"] = next
+					}
+				}
+			}
 		}
 	}
 	var stageFailure *domainDeletionStageFailure

@@ -70,8 +70,6 @@ test('a new password field turns on the rule; sign-in and current-password field
   // The forms that set a password the panel keeps or the server applies.
   const rule = {
     'components/DomainMailManager.tsx': ['field="mailbox"'],
-    'components/AddDatabaseModalV2.tsx': ['field="database_user"'],
-    'components/AddUserModalV2.tsx': ['field="database_user"'],
     'components/DomainDatabaseManager.tsx': ['field="database_user"'],
     'components/DomainFileAccess.tsx': ['field="file_access"'],
     'components/DomainSiteFeatures.tsx': ['field="site_protect"'],

@@ -322,11 +322,11 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.username')}</span>
-                            <input value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} autoFocus />
+                            <input value={username} onChange={(e) => setUsername(e.target.value)} className={`${inputClass} field-md`} autoFocus />
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.email')}</span>
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`${inputClass} field-lg`} />
                         </label>
                         <label>
                             <span className="mb-1 block text-xs text-fg-muted">{t('users.form.password')}</span>
@@ -337,7 +337,7 @@ function AccountsTab({ isAdmin, onCreatePlan }: { isAdmin: boolean; onCreatePlan
                             <select
                                 value={newRole}
                                 onChange={(e) => { setNewRole(e.target.value); setNewRights(UNLIMITED_CHOICE); }}
-                                className={inputClass}
+                                className={`${inputClass} field-sm`}
                                 disabled={!isAdmin}
                             >
                                 <option value="customer">{t('users.role.customer')}</option>

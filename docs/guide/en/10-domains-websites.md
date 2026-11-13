@@ -10,7 +10,7 @@ Everything you host lives under a domain: the website, its mail, its databases a
 
 ## The domain list {#domain-list}
 
-**Domains** in the menu lists your domains with their type, disk usage, traffic and status. Choose a domain, or **Manage**, to open its page. **Visit site** opens the website; **Delete** removes the domain with its site, mail and databases for good. Take a backup first (see [Backups](guide:backups#backups)).
+**Domains** in the menu lists your domains with their type, disk usage, traffic and status. Choose a domain, or **Manage**, to open its page. **Visit site** opens the website; **Delete** removes the domain with its site and mail for good, once you type its name; the question lists what goes and what stays. Its databases stay on the database server but leave the panel, so delete them first if they should go too. Take a backup first (see [Backups](guide:backups#backups)).
 
 ## Adding a domain {#adding}
 

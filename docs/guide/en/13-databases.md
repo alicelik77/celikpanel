@@ -21,14 +21,14 @@ A user with the same name and `_user` at the end, here `example_com_shop_user`, 
 
 ## The Databases page {#databases-page}
 
-**Databases** in the menu shows every database and user of your account, on the tabs **Databases** and **Users**. **Create database** asks for:
+**Databases** in the menu lists every database you may see: an administrator sees every database on the server with its **Owner**, a reseller their customers' databases, a customer their own, grouped by domain. Passwords and the contents of a database are never shown here.
 
-- the **Database name**: letters, digits and underscores only;
-- the **Website** it belongs to, or **No website (standalone database)**. A database that belongs to a website is deleted with it;
-- the **Database user**: a **New user** or an **Existing user**. **Make a strong password** fills one in for you;
-- the **Permissions**: **ALL (full access)** or **SELECT (read only)**.
+- **Open** takes you to the database's domain, at its **Databases** section.
+- **More › New password…** gives one of the database's users a new password. Programs that use the old password stop connecting until they get the new one; an application CelikPanel installed gets it automatically.
+- **More › Delete…** deletes the database and all its data once you type its name. Its users are not deleted; deleting the database in its domain's **Databases** section also removes the user created with it.
+- **Add database** asks **For which domain?** and opens that domain's **Databases** section with its form.
 
-**Create user** adds a user on its own. To give a user a new password, use its key button. Programs that use the old password stop connecting until they get the new one; an application CelikPanel installed gets it automatically.
+What belongs to the server is not on this page. An administrator turns connections from outside on or off on **Security**, under **Open to the outside**, and finds the account CelikPanel connects to MariaDB or PostgreSQL with on that service's page in **Components**.
 
 ## phpMyAdmin and phpPgAdmin {#web-tools}
 

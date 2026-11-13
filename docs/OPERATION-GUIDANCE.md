@@ -11109,3 +11109,72 @@ continues:
   says programs stop when they reconnect); a security pause of sending ends, an
   administrator's manual pause stays and the page names who opens it; the
   mailbox is told.
+
+### Blocklist check: listed, not listed, or could not check (alpha.133, 2026-11-12)
+
+The owner was told his mail server's address was on a spam blocklist. It was
+not: Spamhaus refuses questions that arrive through a public DNS resolver
+(answer `127.255.255.254`), and every address answer was read as "listed".
+A refusal is not evidence about the address, so the check now has three
+outcomes, read against each list's documented codes:
+
+| Outcome | Shown as | Who acts | Next step |
+|---|---|---|---|
+| Listed (documented listing code) | the list named, red | administrator (customers: the provider) | look the address up on the list's own site, ask for removal, check again |
+| Policy listing (Spamhaus PBL) | "policy list", not a spam complaint | hosting provider or the list's removal page | ask the provider to delist the range, check again |
+| Not listed (NXDOMAIN) | clean | nobody | — |
+| Could not check: public resolver refused, too many queries, an undocumented answer, no answer in time, or an older Agent that cannot tell a refusal from a listing | a grey line that never colours the card or the domain and says it tells nothing about the address | administrator for the resolver (use the provider's or a local resolver), otherwise nobody | check again later; after the panel update for the older-Agent case |
+
+Customers and resellers get the short sentence without server details. A
+"could not check" never turns into "listed" or "clean" by itself; only a new
+check replaces it.
+
+### A deletion waiting for the backup DNS server: which reasons are checked again (alpha.133, 2026-11-13)
+
+In the lab a backup DNS server that was unreachable for about 45 seconds
+turned one deletion check into "a person must act"; the deletion then waited
+after the backup came back until someone pressed Delete again, and the screen
+showed one technical sentence. The rule for every reason of a deletion's DNS
+confirmation:
+
+- **CelikPanel stops its own checks only in two cases:** another check
+  provably cannot change the result (a check record CelikPanel cannot sort
+  out, `dns_peer_journal_unresolved`), or this server's DNS may be being
+  changed by hand (an owner edit found on this server or in the pair's
+  identity). CelikPanel never acts over an owner's change by itself; the
+  administrators get one notification, and after finishing the change More →
+  Delete… on the domain's row continues the same deletion.
+- **Every other reason is checked again** at the same slow pace (15 seconds,
+  doubling to every 5 minutes), and the deletion finishes by itself, with
+  nothing to press, once the cause is gone. After six pending checks in a row
+  (whatever the reason) the administrators get one notification ("stuck");
+  the checks go on. A check is the same one More → Delete… runs; status reads
+  never start one.
+- **A backup that does not answer needs nobody.** Switched off, restarting,
+  unreachable or no answer in time is a wait, however the connection failed.
+- **Who acts is the reason's own.** "You do not need to do anything" is said
+  only where the next automatic check can finish the deletion.
+
+| Reason | What the owner reads | Who acts | Checked again |
+|---|---|---|---|
+| backup has not caught up (`dns_peer_catching_up`) | the backup has not caught up yet | nobody (stuck: check the backup is on and reachable) | yes |
+| backup did not answer (`dns_peer_proof_timeout:peer_exchange`) | the backup did not answer; finishes once it answers | nobody (stuck: same) | yes |
+| this server's check ran out of time (`dns_peer_proof_timeout`, `:local_check`) | the check did not finish in time | nobody (stuck: is this server busy; else send the Agent's lines) | yes |
+| this server's last check did not complete (`dns_peer_journal_unknown`) | the last check did not complete | nobody (stuck: send the Agent's lines) | yes |
+| backup answered but did not confirm (`dns_peer_inspection_unknown`, incl. a failed key exchange or another service on the port) | the backup answered without confirming | administrator or the backup's operator | yes |
+| no check access set up (`dns_peer_enrollment_required`) | the backup cannot be checked yet | administrator: Server setup on this server | yes |
+| check access changed, or this server's own key unusable (`dns_peer_enrollment_changed`) | the check access changed or cannot be trusted | administrator | yes |
+| the backup presented another host key (`dns_peer_enrollment_changed:host_key`) | the backup answered with a different identity | administrator: confirm a real reinstall or re-key before setting the access up again; otherwise a security problem | yes |
+| backup's state did not show the removal (`dns_peer_native_unknown`; also `dns_peer_owner_edit_unknown:transfer_observed` / `:zone_answered`, the backup still serving the zone) | the backup's answer did not show the removal | administrator or the backup's operator | yes |
+| backup refused its own transfer (`dns_peer_catalog_transfer_refused`) | the backup did not let its check read the list | administrator or the backup's operator | yes |
+| this server could not run its check (`dns_peer_proof_internal`) | this server could not run its check | administrator: send the Agent's lines to support | yes |
+| DNS of this server changed during the check (`dns_peer_owner_edit_unknown`, plain or `operation_attempt`, `engine_state`, `active_engine`, `native_binding`, `deletion_receipt`, `producer_catalog`, `catalog_probe`, `authority`) | DNS changed while confirming | administrator: finish the change, then More → Delete… | **no** (one notification) |
+| check record CelikPanel cannot sort out (`dns_peer_journal_unresolved`) | the check record is in a state CelikPanel cannot sort out | administrator: send two command outputs to support | **no** (one notification) |
+
+Customers and team members are told to contact the server's administrator
+and never see a command. Technical detail and commands are in the
+administrator's closed Details. Other deletion reasons (not about the backup
+DNS server's confirmation) keep their single sentence for now. Open: a
+re-checked reason can still make the Agent hold every change if the owner
+edits this server's DNS during the wait (RESILIENCE-CONTRACT, "Branch
+a133/proofwait").

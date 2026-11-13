@@ -471,7 +471,7 @@ function TwoFactorPanel() {
                                             inputMode="numeric"
                                             autoComplete="one-time-code"
                                             placeholder="000000"
-                                            className={`${inputClass} font-mono tracking-widest`}
+                                            className={`${inputClass} font-mono tracking-widest field-sm`}
                                         />
                                     </label>
                                 </div>
@@ -497,7 +497,7 @@ function TwoFactorPanel() {
                                         inputMode="numeric"
                                         autoComplete="one-time-code"
                                         placeholder="000000"
-                                        className={`${inputClass} font-mono tracking-widest`}
+                                        className={`${inputClass} font-mono tracking-widest field-sm`}
                                     />
                                 </label>
                             </div>
@@ -525,7 +525,7 @@ function TwoFactorPanel() {
                             <a href={setup.uri} className="text-sm text-primary hover:underline">{t('settings.2fa.openApp')}</a>
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-fg-muted">{t('settings.2fa.enterCode')}</label>
-                                <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" className={`${inputClass} max-w-[12rem] font-mono text-lg tracking-[0.3em]`} />
+                                <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" className={`${inputClass} font-mono text-lg tracking-[0.3em] field-sm`} />
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="primary" icon={ShieldCheck} disabled={locked || !setupPw || code.length < 6} onClick={enable}>

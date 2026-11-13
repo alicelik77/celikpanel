@@ -162,7 +162,7 @@ export function PHPManagement({ versions, onBack }: PHPManagementProps) {
                         <select
                             value={version}
                             onChange={(e) => void switchTo({ version: e.target.value })}
-                            className="rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium text-fg outline-none focus:border-primary"
+                            className="rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium text-fg outline-none focus:border-primary field-sm"
                         >
                             {versions.map((v) => (
                                 <option key={v} value={v}>

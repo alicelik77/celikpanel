@@ -45,14 +45,34 @@ func dnsPeerPendingCause(err error) error {
 // The step runner turns it into dns_peer_proof_timeout before the peer's
 // answer was accepted, and into dns_peer_journal_unknown at consume-once.
 // err is kept for the Agent log and deliberately not unwrapped, so a nested
-// reviewed code cannot leak through it.
-type dnsPeerProofDeadlineError struct{ err error }
+// reviewed code cannot leak through it. side names which server the check
+// that ran out of time was waiting for (transport.DNSPeerProofTimeout*), ""
+// when it involved both; a step that names no side of its own reports it.
+type dnsPeerProofDeadlineError struct {
+	err  error
+	side string
+}
 
 func (e *dnsPeerProofDeadlineError) Error() string {
 	return "native DNS peer proof check ran out of time: " + errorTextOrNone(e.err)
 }
 
 func dnsPeerProofDeadline(err error) error { return &dnsPeerProofDeadlineError{err: err} }
+
+// dnsPeerProofDeadlineAt is dnsPeerProofDeadline for a check that waited on
+// one side only.
+func dnsPeerProofDeadlineAt(side string, err error) error {
+	return &dnsPeerProofDeadlineError{err: err, side: side}
+}
+
+// dnsPeerProofDeadlineSide is the side a deadline error names, or "".
+func dnsPeerProofDeadlineSide(err error) string {
+	var deadline *dnsPeerProofDeadlineError
+	if errors.As(err, &deadline) {
+		return deadline.side
+	}
+	return ""
+}
 
 func isDNSPeerProofDeadline(err error) bool {
 	var deadline *dnsPeerProofDeadlineError
@@ -239,6 +259,14 @@ func nativePeerProofCatalogProbes(plan dnsV3PrimaryPropagationPlan) (dnsCatalogA
 	}
 	return local, peer, nil
 }
+
+// peerNoAnswerPendingCode is the reviewed code of an exchange the backup DNS
+// server did not answer at all: switched off, restarting, unreachable, or no
+// answer within the exchange's bound (alpha.133 round 5). It is the
+// exchange's timeout whether the transport came back at the bound or at once
+// (connection refused), so it is re-checked automatically and the deletion
+// finishes by itself once the backup answers.
+var peerNoAnswerPendingCode = transport.DNSPeerPendingProofTimeoutWithDetail(transport.DNSPeerProofTimeoutPeerExchange)
 
 // inspectionPendingCode classifies an incomplete authenticated inspection by
 // the reviewed reason token its forced command reported, if any. A refused

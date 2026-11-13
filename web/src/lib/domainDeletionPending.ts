@@ -5,6 +5,9 @@ const reviewedDNSPeerReasons = new Set([
     'dns_peer_inspection_unknown',
     'dns_peer_native_unknown',
     'dns_peer_journal_unknown',
+    // alpha.133: this server's check record is in a state the Agent cannot
+    // sort out by itself; the server administrator acts.
+    'dns_peer_journal_unresolved',
     'dns_peer_owner_edit_unknown',
     // The secondary's named refused the inspector's local catalog transfer.
     'dns_peer_catalog_transfer_refused',
@@ -12,7 +15,8 @@ const reviewedDNSPeerReasons = new Set([
     // change was found. A retry waits for a fixed Agent.
     'dns_peer_proof_internal',
     // A step of the proof of the secondary ran out of its time before the
-    // peer's answer was accepted; nothing changed. Retrying now is the action.
+    // peer's answer was accepted. The zone is already removed on this server;
+    // the Panel re-checks by itself (alpha.133: the detail names the side).
     'dns_peer_proof_timeout',
     // The backup DNS server has not caught up with this server yet; the
     // Panel re-checks the same publication by itself.
@@ -56,10 +60,18 @@ const reviewedOwnerEditChecks = new Set([
     'zone_answered',
 ]);
 
+// Which side of the proof ran out of time (alpha.133): this server's own
+// checks, or the backup DNS server's answer.
+const reviewedProofTimeoutSides = new Set(['local_check', 'peer_exchange']);
+
 // The reviewed detail tokens of each reason that carries one.
 const reviewedDetailsByReason: Record<string, Set<string>> = {
     dns_peer_inspection_unknown: reviewedInspectorDetails,
     dns_peer_owner_edit_unknown: reviewedOwnerEditChecks,
+    dns_peer_proof_timeout: reviewedProofTimeoutSides,
+    // alpha.133 round 5 review: the backup presented another SSH host key
+    // (its own guide, "peerHostKeyChanged").
+    dns_peer_enrollment_changed: new Set(['host_key']),
 };
 
 // The translation key of a reviewed detail sentence, or null.
@@ -71,7 +83,92 @@ export function domainDeletionDetailKey(reason: string, detail: string): string 
     if (reason === 'dns_peer_owner_edit_unknown' && reviewedOwnerEditChecks.has(detail)) {
         return `domains.peerOwnerEditDetail.${detail}`;
     }
+    if (reason === 'dns_peer_proof_timeout' && reviewedProofTimeoutSides.has(detail)) {
+        return `err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout.${detail}`;
+    }
     return null;
+}
+
+// The reasons of this server's DNS step that the deletion guide says as why,
+// who acts, next step and how it continues (alpha.133, screen part
+// "deletionGuide"), by their key segment.
+// Neden, kim yapar, sonraki adım ve nasıl sürer biçiminde söylenen nedenler.
+// alpha.133 round 5: every DNS proof reason has its guide (lab w9: a backup
+// that did not answer showed one jargon row with no who, next step or how it
+// continues).
+const guideReasons: Record<string, string> = {
+    dns_peer_journal_unknown: 'journalUnknown',
+    dns_peer_journal_unresolved: 'journalUnresolved',
+    dns_peer_proof_timeout: 'proofTimeout',
+    dns_peer_catching_up: 'catchingUp',
+    dns_peer_enrollment_required: 'peerSetup',
+    dns_peer_enrollment_changed: 'peerAccessChanged',
+    dns_peer_inspection_unknown: 'peerRefused',
+    dns_peer_native_unknown: 'peerNotRemoved',
+    dns_peer_owner_edit_unknown: 'evidenceChanged',
+    dns_peer_catalog_transfer_refused: 'transferRefused',
+    dns_peer_proof_internal: 'internal',
+};
+
+/**
+ * The deletion guide's key segment of a reason, or null when it has none.
+ * The backup's exchange that got no answer (dns_peer_proof_timeout with the
+ * detail peer_exchange) has its own: the backup did not answer.
+ */
+export function domainDeletionGuideReason(reason: string, detail = ''): string | null {
+    if (reason === 'dns_peer_proof_timeout' && detail === 'peer_exchange') return 'peerNoAnswer';
+    // The backup still transfers or answers for the deleted zone: the
+    // backup's answer did not show the removal (alpha.133 round 5 review).
+    if (reason === 'dns_peer_owner_edit_unknown' && backupSideOwnerEditChecks.has(detail)) return 'peerNotRemoved';
+    if (reason === 'dns_peer_enrollment_changed' && detail === 'host_key') return 'peerHostKeyChanged';
+    return Object.prototype.hasOwnProperty.call(guideReasons, reason) ? guideReasons[reason] : null;
+}
+
+// Owner-edit checks that only look at the backup DNS server (they run after
+// the recovery's own pre-checks of this server); the others mean this
+// server's DNS may be changed by hand.
+const backupSideOwnerEditChecks = new Set(['transfer_observed', 'zone_answered']);
+
+/**
+ * Whether CelikPanel stops checking a deletion's DNS step by itself
+ * (cmd/panel dnsPeerPendingRetriesAutomatically, one rule in
+ * internal/transport DNSPeerPendingStopsAutomaticRechecks): a check record it
+ * cannot sort out, or an owner edit of this server's DNS, which CelikPanel
+ * never acts over on its own.
+ */
+export function domainDeletionStopsRechecks(reason: string, detail = ''): boolean {
+    return reason === 'dns_peer_journal_unresolved' ||
+        (reason === 'dns_peer_owner_edit_unknown' && !backupSideOwnerEditChecks.has(detail));
+}
+
+/**
+ * Guides whose cause a person has to fix on one of the two servers. CelikPanel
+ * still checks again by itself and the deletion finishes once it is fixed,
+ * but "you do not need to do anything" would be untrue.
+ */
+const personGuides = new Set(['peerSetup', 'peerAccessChanged', 'peerHostKeyChanged', 'peerRefused', 'peerNotRemoved', 'evidenceChanged', 'transferRefused', 'internal']);
+
+export function domainDeletionGuideNeedsPerson(guide: string): boolean {
+    return personGuides.has(guide);
+}
+
+// What happens next to a deletion's DNS step, as the server says it
+// (follow_up, alpha.133): CelikPanel re-checks it and that can finish it;
+// the re-checks continue but the administrators were notified; the automatic
+// checks ended; or a person must act first.
+// Sonra ne olacağı: kendiliğinden, takıldı (yönetici bildirildi), durdu, kişi.
+export type DomainDeletionFollowUp = 'automatic' | 'stuck' | 'stopped' | 'person';
+const followUps = new Set<string>(['automatic', 'stuck', 'stopped', 'person']);
+
+function reviewedFollowUp(pending: Record<string, unknown>): { followUp?: DomainDeletionFollowUp; nextCheckAt?: string } {
+    const out: { followUp?: DomainDeletionFollowUp; nextCheckAt?: string } = {};
+    if (typeof pending.follow_up === 'string' && followUps.has(pending.follow_up)) {
+        out.followUp = pending.follow_up as DomainDeletionFollowUp;
+    }
+    if (typeof pending.next_check_at === 'string' && !Number.isNaN(Date.parse(pending.next_check_at))) {
+        out.nextCheckAt = pending.next_check_at;
+    }
+    return out;
 }
 
 // A verified failure of a non-DNS deletion stage on this server, by stage.
@@ -183,7 +280,7 @@ function reviewedDetail(pending: Record<string, unknown>, reason: string): strin
         : '';
 }
 
-async function readPendingBody(response: Response): Promise<{ reason: string; detail: string }> {
+async function readPendingBody(response: Response): Promise<{ reason: string; detail: string; followUp?: DomainDeletionFollowUp; nextCheckAt?: string }> {
     if (response.status !== 202) return { reason: '', detail: '' };
     try {
         const body: unknown = await response.json();
@@ -197,7 +294,7 @@ async function readPendingBody(response: Response): Promise<{ reason: string; de
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason
             : '';
-        return { reason, detail: reviewedDetail(pending, reason) };
+        return { reason, detail: reviewedDetail(pending, reason), ...(reason ? reviewedFollowUp(pending) : {}) };
     } catch {
         return { reason: '', detail: '' };
     }
@@ -212,10 +309,12 @@ export async function readDomainDeletionOutcome(response: Response): Promise<{
     state: 'pending' | 'succeeded' | 'error';
     reason: string;
     detail?: string;
+    followUp?: DomainDeletionFollowUp;
+    nextCheckAt?: string;
 }> {
     if (response.status === 202) {
-        const { reason, detail } = await readPendingBody(response);
-        return detail ? { state: 'pending', reason, detail } : { state: 'pending', reason };
+        const { reason, detail, ...next } = await readPendingBody(response);
+        return { state: 'pending', reason, ...(detail ? { detail } : {}), ...next };
     }
     if (response.status === 200 || response.status === 204) {
         return { state: 'succeeded', reason: '' };
@@ -250,7 +349,7 @@ export async function readDomainDeletionDKIM(
 // means the marker exists but the exact DNS/Agent reason remains unknown.
 export async function readSavedDomainDeletionState(
     response: Response,
-): Promise<{ reason: string; detail: string } | null> {
+): Promise<SavedDomainDeletion | null> {
     if (response.status !== 200) return null;
     try {
         const body: unknown = await response.json();
@@ -272,10 +371,18 @@ export async function readSavedDomainDeletionState(
         const reason = typeof pending.reason === 'string' && reviewedDNSPeerReasons.has(pending.reason)
             ? pending.reason
             : '';
-        return { reason, detail: reviewedDetail(pending, reason) };
+        return { reason, detail: reviewedDetail(pending, reason), ...(reason ? reviewedFollowUp(pending) : {}) };
     } catch {
         return null;
     }
+}
+
+/** A saved deletion marker's reviewed reason, its detail and what happens next. */
+export interface SavedDomainDeletion {
+    reason: string;
+    detail: string;
+    followUp?: DomainDeletionFollowUp;
+    nextCheckAt?: string;
 }
 
 // What one read of a domain's saved deletion marker established. `known` with
@@ -288,7 +395,7 @@ export async function readSavedDomainDeletionState(
 // finished between the list's answer and this read (lab run 6).
 // `gone`, sunucunun 404'üdür: alan adı artık yok, silme bitmiştir.
 export type SavedDomainDeletionRead =
-    | { state: 'known'; saved: { reason: string; detail: string } | null }
+    | { state: 'known'; saved: SavedDomainDeletion | null }
     | { state: 'gone' }
     | { state: 'unknown' };
 

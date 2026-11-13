@@ -28,7 +28,46 @@ const (
 	Unknown  Code = "peer_challenge_unknown"
 	Mismatch Code = "peer_challenge_context_mismatch"
 	Replay   Code = "peer_challenge_replayed"
+	// Unresolved: the journal directory holds a state no interrupted write or
+	// retirement of this package can produce, or one whose completion cannot
+	// be proved (Recover). Unlike Unknown it does not change by waiting: a
+	// person must look at it.
+	Unresolved Code = "peer_challenge_unresolved"
 )
+
+// The private names beside Path. A challenge stage is a write's temporary
+// file (and, after an exchange, the displaced before-image); a retired stage
+// holds a record between its retirement's rename and its removal.
+const (
+	challengePrefix = ".dns-peer-challenge-"
+	retiredPrefix   = ".dns-peer-retired-"
+)
+
+// Repair names what Recover did to an interrupted change. RepairNone: the
+// journal needed nothing.
+type Repair string
+
+const (
+	RepairNone Repair = ""
+	// A retirement whose rename (or, before alpha.133, whose exchange with
+	// an empty tombstone) happened: the retired record of a finished
+	// operation was removed (and the empty tombstone with it).
+	RepairRetirementCompleted Repair = "retirement_completed"
+	// An empty private file of a write or retirement that stopped before it
+	// wrote anything was removed; the journal itself was not changed.
+	RepairEmptyStageRemoved Repair = "empty_stage_removed"
+	// A write whose exchange happened: its displaced before-image was removed.
+	RepairWriteCompleted Repair = "write_completed"
+	// A write that stopped before its record became the journal: its
+	// never-published staged record was removed.
+	RepairWriteRolledBack Repair = "write_rolled_back"
+)
+
+// FinishedCheck reports whether record's operation is terminal (published)
+// in the durable ledger, read under the caller's held locks. An error means
+// the answer is not known (the locks or the ledger could not be checked);
+// false means the ledger was read and does not show it finished.
+type FinishedCheck func(record RecordV1) (bool, error)
 
 type StateError struct{ Code Code }
 

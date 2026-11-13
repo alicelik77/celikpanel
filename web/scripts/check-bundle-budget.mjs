@@ -322,6 +322,14 @@ const screenPartBudgets = {
   // domain.part., domain.notInPlan.). A new part, set with at least 25%
   // headroom from its Turkish file: 2.86 / 1.01 KiB.
   domainSections: kib(4, 1.5),
+  // v0.1.0-alpha.133: a domain deletion waiting for its DNS step, said as
+  // why, who acts, next step and how it continues (domains.deletionGuide.).
+  // A new part, set with at least 25% headroom from its Turkish file.
+  deletionGuide: kib(7, 2.5),
+  // alpha.133 round 5: the guide's other reasons of the backup DNS server's
+  // confirmation, split out of "deletionGuide" by size. A new part, set with
+  // at least 25% headroom from its Turkish file: 7.62 / 1.90 KiB.
+  deletionGuidePeer: kib(10, 2.5),
 }
 
 // Translation chunks, named by source. The shell halves are held to the

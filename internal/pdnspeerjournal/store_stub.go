@@ -17,3 +17,5 @@ func ConsumeOnce(pdnspeerproof.RequestV1, string, string, uint64, VerifyCurrent)
 func Retire(pdnspeerproof.RequestV1, string, string, uint64, VerifyCurrent) error {
 	return StateError{Unknown}
 }
+
+func Recover(VerifyCurrent, FinishedCheck) (Repair, error) { return RepairNone, StateError{Unknown} }

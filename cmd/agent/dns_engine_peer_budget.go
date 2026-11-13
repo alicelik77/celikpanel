@@ -23,18 +23,19 @@ import (
 // now runs from the request context, not the wave's, and each step has its
 // own bound:
 //
-//	step             measured (pair 5/6, batch 11)   bound
-//	prepare          about 1-3 s                     8 s
+//	step             measured (pair 5/6, batch 11)   bound (alpha.133: dnsPeerProofSteps)
+//	prepare          about 1-3 s                     8 s (10 s)
 //	challenge_write  3.5-4.1 s                       12 s
 //	exchange         2.5-4 s                         10 s (dnspeertransport.ExchangeLimit)
 //	post_inspection  about 2-3 s                     10 s
-//	consume          3 rechecks + write, 3-4 s       20 s, fresh context
+//	consume          3 rechecks + write, 3-4 s       20 s (18 s), fresh context
 //
 // Total wall bound 60 s. Once a challenge is minted, every step before
 // acceptance also ends expiryReserve before the challenge expires, so that
 // consume-once still reaches its own expiry check (the challenge lives 30 s).
 // A step that runs out of time before the peer's answer was accepted is
-// dns_peer_proof_timeout. After dnspeerproof.Verify accepted the answer,
+// dns_peer_proof_timeout, with the side that ran out of time
+// (dnsPeerProofStep.timeoutSide). After dnspeerproof.Verify accepted the answer,
 // consume-once and the final recheck run under a fresh context derived from
 // context.WithoutCancel of the request context: a positive answer is never
 // discarded because a clock of an earlier step ran out.
@@ -60,13 +61,41 @@ type dnsPeerProofBudget struct {
 }
 
 // dnsPeerProofSteps is the production budget. Tests scale it down.
+//
+// alpha.133 (lab of 12 Nov 2026, PowerDNS primary with a BIND backup, idle):
+// prepare 1.6-2.6 s, challenge_write 6.8-7.5 s (once 11.5 s, once timed out
+// at 12.2 s), exchange 0.5-0.8 s, post_inspection 3.1-4.0 s, consume
+// 8.1-9.9 s; loaded host: prepare 3.1-5.8 s (once 8.1 s) and challenge_write
+// over 12 s six times in a row. With one full local recheck per step
+// (nativePeerCurrentChecks, "Where the full local recheck runs") the expected
+// idle cost is about one recheck plus the journal write: prepare,
+// challenge_write and consume about 2 s, post_inspection about 3 s. Every
+// bound is at least three times that; prepare takes 10 s (its loaded cost
+// reached 5.8-8.1 s) and consume gives up 2 s for it (18 s, nine times its
+// new idle cost). The hard upper bound stays the 60 s total.
 var dnsPeerProofSteps = dnsPeerProofBudget{
-	prepare:        8 * time.Second,
+	prepare:        10 * time.Second,
 	challengeWrite: 12 * time.Second,
 	exchange:       10 * time.Second, // = dnspeertransport.ExchangeLimit (linux test)
 	postInspection: 10 * time.Second,
-	consume:        20 * time.Second,
+	consume:        18 * time.Second,
 	expiryReserve:  5 * time.Second,
+}
+
+// timeoutSide names which side of the proof a step's deadline concerns:
+// prepare and challenge_write run only this server's checks; the exchange is
+// the secondary's inspector; post_inspection probes both servers, so the
+// check that ran out of time names the side (dnsPeerProofDeadlineSide):
+// this server's recheck, or the wait for the secondary's catalog transfer.
+func (step dnsPeerProofStep) timeoutSide() string {
+	switch step {
+	case dnsPeerProofStepPrepare, dnsPeerProofStepChallengeWrite:
+		return transport.DNSPeerProofTimeoutLocalCheck
+	case dnsPeerProofStepExchange:
+		return transport.DNSPeerProofTimeoutPeerExchange
+	default:
+		return ""
+	}
 }
 
 func (b dnsPeerProofBudget) limit(step dnsPeerProofStep) time.Duration {
@@ -143,14 +172,118 @@ func (r *dnsPeerProofRun) stepWithin(step dnsPeerProofStep, limit time.Duration,
 	if err == nil || errors.Is(err, errDNSProducerCatalogRestampedBeforeChallenge) {
 		return err
 	}
-	if r.base.Err() == nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		// Before acceptance: nothing was consumed, nothing changed on either
-		// server; the same publication is retried as a new attempt.
-		r.stopped(step, transport.DNSPeerPendingProofTimeout, err)
-		return pendingDNSPeerCause(transport.DNSPeerPendingProofTimeout, err)
+	// An outcome that already carries a reviewed code of its own state is an
+	// observation the step made, not a deadline, even when it came back after
+	// the step's time ran out (alpha.133 review: an unresolved check record
+	// behind a slow fsync must not come back as an automatic proof timeout).
+	if code := pendingDNSPeerCode(err); dnsPeerCodeOutlivesDeadline(code) || dnsPeerAnswerOutlivesDeadline(err) {
+		r.stopped(step, code, err)
+		return err
+	}
+	// Whether the step ran out of time is read from its bound, not only from
+	// ctx.Err(): a transport's own deadline for the same instant (the dialer's
+	// poller) can return a moment before the context's timer has fired
+	// (alpha.133 round 5, lab w9: one of nine attempts).
+	if r.base.Err() == nil && (errors.Is(ctx.Err(), context.DeadlineExceeded) ||
+		dnsPeerDeadlineMarginApplies(err) && dnsPeerStepDeadlineReached(ctx, time.Now())) {
+		// Before acceptance: nothing of the proof was consumed (the deletion
+		// itself is already committed on this server); the same publication
+		// is retried as a new attempt. The code names which side ran out of
+		// time, so the owner is not sent to the secondary for this server's
+		// own checks (incident of 12 Nov 2026).
+		side := step.timeoutSide()
+		if side == "" {
+			// post_inspection: the check that ran out of time names it.
+			side = dnsPeerProofDeadlineSide(err)
+		}
+		code := transport.DNSPeerPendingProofTimeoutWithDetail(side)
+		r.stopped(step, code, err)
+		return pendingDNSPeerCause(code, err)
 	}
 	r.stopped(step, pendingDNSPeerCode(err), err)
 	return err
+}
+
+// dnsPeerStepDeadlineMargin: a step that comes back this close to its bound,
+// or later, ran out of time, whatever error value it carries. Two timers set
+// for the same instant (the step's context and a transport's own deadline)
+// fire microseconds to a few milliseconds apart; timers never fire early, so
+// the margin only has to absorb scheduling between them. 100 ms is far below
+// every step's measured cost (0.5 s or more) and bound (8 s or more).
+const dnsPeerStepDeadlineMargin = 100 * time.Millisecond
+
+// dnsPeerStepDeadlineReached reports whether ctx's deadline expired, or is at
+// most dnsPeerStepDeadlineMargin away at now. A context without a deadline
+// has not run out of time.
+func dnsPeerStepDeadlineReached(ctx context.Context, now time.Time) bool {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return true
+	}
+	deadline, ok := ctx.Deadline()
+	return ok && !now.Before(deadline.Add(-dnsPeerStepDeadlineMargin))
+}
+
+// dnsPeerDeadlineMarginApplies reports an outcome that the margin may read as
+// the step's deadline (alpha.133 round 5 review): a check that ran out of
+// time, the exchange's "no answer", or an error that carries no reviewed code
+// or finding. A reviewed code or finding (an owner edit found by a probe or a
+// recheck, the Agent's own precondition) is a completed observation; for it
+// only ctx.Err() says that the step ran out of time.
+func dnsPeerDeadlineMarginApplies(err error) bool {
+	if isDNSPeerProofDeadline(err) {
+		return true
+	}
+	cause := dnsPeerPendingCause(err)
+	if cause == nil {
+		cause = err
+	}
+	var noAnswer interface{ PeerNoAnswer() bool }
+	if errors.As(cause, &noAnswer) && noAnswer.PeerNoAnswer() {
+		return true
+	}
+	if pendingDNSPeerCode(err) != "" {
+		return false
+	}
+	var ownerEdit *dnsPeerOwnerEditError
+	var internal *dnsPeerProofInternalError
+	return !errors.As(err, &ownerEdit) && !errors.As(err, &internal)
+}
+
+// dnsPeerAnswerOutlivesDeadline reports an inspection the backup did answer,
+// with an answer this server cannot accept (refused, another host key, the
+// enrolled key refused, an oversized or malformed answer: the transport's
+// PeerAnswered). Such an outcome proves something about the answer and keeps
+// its own code even at the step's bound; "no answer" never does.
+func dnsPeerAnswerOutlivesDeadline(err error) bool {
+	cause := dnsPeerPendingCause(err)
+	if cause == nil {
+		cause = err
+	}
+	var answered interface{ PeerAnswered() bool }
+	return errors.As(cause, &answered) && answered.PeerAnswered()
+}
+
+// dnsPeerCodeOutlivesDeadline reports a reviewed code that names a state the
+// step found (this server's check record, the enrollment, the Agent's own
+// precondition, the secondary's transfer refusal), which a deadline cannot
+// have caused. The inspection and owner-edit codes are excluded: the
+// transport and the probes report a check that could not complete under
+// them, and after the step's deadline that is the deadline's doing. An
+// inspection the backup provably answered is kept by
+// dnsPeerAnswerOutlivesDeadline instead (alpha.133 round 5).
+func dnsPeerCodeOutlivesDeadline(code string) bool {
+	reason, _, ok := transport.SplitDNSPeerPendingCode(code)
+	if !ok {
+		return false
+	}
+	switch reason {
+	case transport.DNSPeerPendingJournalUnresolved, transport.DNSPeerPendingJournalUnknown,
+		transport.DNSPeerPendingEnrollmentRequired, transport.DNSPeerPendingEnrollmentChanged,
+		transport.DNSPeerPendingProofInternal, transport.DNSPeerPendingCatalogTransferRefused:
+		return true
+	default:
+		return false
+	}
 }
 
 // accepted returns the consume context. It is created on the first call,
@@ -283,8 +416,8 @@ func (c *nativePeerCurrentChecks) at(ctx context.Context) func() error {
 				return dnsPeerProofInternal(errors.New("local evidence recheck is missing"))
 			}
 			err := c.local(ctx)
-			if err != nil && ctx.Err() != nil {
-				return dnsPeerProofDeadline(err)
+			if err != nil && (ctx.Err() != nil || dnsPeerDeadlineMarginApplies(err) && dnsPeerStepDeadlineReached(ctx, time.Now())) {
+				return dnsPeerProofDeadlineAt(transport.DNSPeerProofTimeoutLocalCheck, err)
 			}
 			return err
 		})
@@ -293,13 +426,87 @@ func (c *nativePeerCurrentChecks) at(ctx context.Context) func() error {
 	}
 }
 
-// journalOp runs one private challenge journal operation whose rechecks run
-// under ctx. A recheck that found a reviewed difference keeps its own code;
-// a recheck that ran out of time stays a deadline for the step runner;
-// anything else is dns_peer_journal_unknown with its cause logged.
-func (c *nativePeerCurrentChecks) journalOp(ctx context.Context, what string, op func(func() error) error) error {
+// held is the recheck of what authorizes journal work without the local DNS
+// evidence: the exact active ledger attempt under both held external locks
+// (attempt) and the unchanged enrollment. It runs no command and takes no
+// context.
+func (c *nativePeerCurrentChecks) held() error {
+	err := peerCurrentPendingCodeAt(c.attempt, c.enrollment, func() error { return nil })
+	c.last = err
+	return err
+}
+
+// Where the full local recheck runs (alpha.133, lab of 12 Nov 2026).
+//
+// A full local recheck (at) re-reads this server's DNS evidence: the engine
+// state receipt twice, the native binding (unit processes, database file)
+// twice, that only the managed DNS service is active, the exact deletion
+// receipt and the producer catalog; about 1.5-2 s on an idle PowerDNS
+// primary and 3 s or more on a loaded one. Until alpha.133 every journal
+// write ran it at each of its internal boundaries: publish 4 times
+// (challenge_write 7 s idle, over 12 s loaded: the lab's timeouts), consume
+// 4 times plus once after (9-10 s idle), post_inspection twice: 12 per
+// attempt.
+//
+// The journal operations need the held checks at their boundaries: both
+// external locks and the exact active ledger attempt (what authorizes any
+// journal write) and the unchanged enrollment. The local evidence is a
+// property of the proof, judged against the attempt's recorded plan, not of
+// the write; it is checked once at each point the proof depends on it:
+//
+//	prepare          before the challenge is minted (prepareJournal)
+//	challenge_write  after the challenge is durable, before it is sent
+//	                 (writeChallenge). It admits a daemon re-stamp into the
+//	                 record; the PowerDNS-secondary path then does not send
+//	                 the re-stamped challenge (restamped); the BIND-secondary
+//	                 path does not make that check (open, pre-existing)
+//	post_inspection  after the network round trip, before the catalog and
+//	                 zone probes (and again on a probe retry)
+//	consume          after consume-once, before terminal success (final)
+//
+// Each compares with the same recorded evidence, so a lasting change at any
+// moment between mint and success is seen by the next one; the dropped
+// rechecks re-sampled the same comparison milliseconds apart. Four per
+// attempt instead of twelve. The one trade-off: an owner edit in the 1-3 s
+// between the post-inspection recheck and the final one is now found after
+// consume-once, not before it. The result is still pending (owner edit) and
+// retried, never success; the next attempt's challenge supersedes the
+// consumed record (the journal's successor rule does not compare State).
+
+// journalOpHeld runs one private challenge journal operation whose rechecks
+// are the held ones. A recheck that found a reviewed difference keeps its own
+// code; anything else is dns_peer_journal_unknown with its cause logged.
+func (c *nativePeerCurrentChecks) journalOpHeld(what string, op func(func() error) error) error {
+	return c.journalOpWith(c.held, what, op)
+}
+
+// prepareJournal is the journal part of a native proof's prepare step:
+// reconcile retires an earlier terminal operation's challenge under the held
+// checks (incident of 12 Nov 2026: seven full local rechecks overran
+// prepare's 8 s on every attempt and the retirement never completed), then
+// the full current-evidence recheck runs under ctx before any challenge is
+// minted. A challenge of this same operation left by an earlier attempt
+// costs nothing here: the next publish supersedes it.
+func (c *nativePeerCurrentChecks) prepareJournal(ctx context.Context, reconcile func(func() error) error) error {
+	if err := c.journalOpHeld("previous challenge reconciliation", reconcile); err != nil {
+		return err
+	}
+	return c.at(ctx)()
+}
+
+// writeChallenge is the challenge_write step's journal work: publish under
+// the held checks, then one full recheck under ctx once the challenge is
+// durable and before it is sent.
+func (c *nativePeerCurrentChecks) writeChallenge(ctx context.Context, publish func(func() error) error) error {
+	if err := c.journalOpHeld("challenge publish", publish); err != nil {
+		return err
+	}
+	return c.at(ctx)()
+}
+
+func (c *nativePeerCurrentChecks) journalOpWith(verify func() error, what string, op func(func() error) error) error {
 	c.last = nil
-	err := op(c.at(ctx))
+	err := op(verify)
 	if err == nil {
 		return nil
 	}
@@ -308,6 +515,89 @@ func (c *nativePeerCurrentChecks) journalOp(ctx context.Context, what string, op
 			return last
 		}
 		err = errors.Join(err, last)
+	} else if pendingDNSPeerCode(err) != "" {
+		// The operation's own reviewed outcome (the reconciliation's
+		// dns_peer_journal_unresolved), its held checks having passed.
+		return err
 	}
 	return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown, fmt.Errorf("%s: %w", what, err))
+}
+
+// nativePeerProofTail is what a native proof does once its challenge is
+// minted. Both native verifiers (BIND and PowerDNS secondaries) supply their
+// typed journal, transport and answer verification; runNativePeerProofTail
+// owns the order of the steps and where the full local recheck runs.
+type nativePeerProofTail struct {
+	// publish writes the minted challenge durably (journal Publish).
+	publish func(verify func() error) error
+	// restamped reports a daemon re-stamp admitted since the challenge's
+	// serial, given the challenge write's outcome; nil on a path that does
+	// not judge it here.
+	restamped         func(writeErr error) bool
+	recheckEnrollment func() error
+	exchangeLimit     time.Duration
+	// inspect is the authenticated exchange with the secondary's inspector.
+	inspect func(ctx context.Context) error
+	// afterInspection runs the post-inspection probes with the full recheck.
+	afterInspection func(ctx context.Context, verifyCurrent func() error) error
+	// verifyAnswer validates the inspector's answer and calls consume for an
+	// accepted one only; it returns the validation error.
+	verifyAnswer func(consume func(digest string) error) error
+	// consume marks the published challenge consumed (journal ConsumeOnce).
+	consume func(digest string, verify func() error) error
+}
+
+// runNativePeerProofTail runs challenge_write, exchange, post_inspection and
+// consume. Nothing is sent when the challenge write or its recheck failed; a
+// challenge is consumed only for an accepted answer; success needs the final
+// full recheck after consume-once.
+func runNativePeerProofTail(run *dnsPeerProofRun, checks *nativePeerCurrentChecks, tail nativePeerProofTail) error {
+	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
+		err := checks.writeChallenge(ctx, tail.publish)
+		if tail.restamped != nil && tail.restamped(err) {
+			return errDNSProducerCatalogRestampedBeforeExchange
+		}
+		if err != nil {
+			return err
+		}
+		if err := tail.recheckEnrollment(); err != nil {
+			return pendingDNSPeerCause(transport.DNSPeerPendingEnrollmentChanged, err)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := run.stepWithin(dnsPeerProofStepExchange, tail.exchangeLimit, tail.inspect); err != nil {
+		return err
+	}
+	if err := run.step(dnsPeerProofStepPostInspection, func(ctx context.Context) error {
+		verifyCurrent := checks.at(ctx)
+		if err := verifyCurrent(); err != nil {
+			return err
+		}
+		// No second full recheck here: consume's final recheck, after
+		// consume-once and before success, makes the same comparison
+		// ("Where the full local recheck runs").
+		return tail.afterInspection(ctx, verifyCurrent)
+	}); err != nil {
+		return err
+	}
+	return run.consume(func() error {
+		var consumeErr error
+		err := tail.verifyAnswer(func(digest string) error {
+			consumeErr = checks.journalOpHeld("consume-once", func(verify func() error) error {
+				return tail.consume(digest, verify)
+			})
+			return consumeErr
+		})
+		if consumeErr != nil {
+			return consumeErr
+		}
+		if err != nil {
+			return pendingDNSPeerCause(transport.DNSPeerPendingNativeUnknown, err)
+		}
+		// The answer was accepted: the final recheck runs under the fresh
+		// consume context, never under an earlier step's clock.
+		return checks.at(run.accepted())()
+	})
 }

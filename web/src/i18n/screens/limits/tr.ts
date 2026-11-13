@@ -93,6 +93,7 @@ export const trLimitsScreens: Record<LimitsScreenKey, string> = {
     'limits.plan.notifyDisk': 'Uyarı düzeyi (disk, %)',
     'limits.plan.notifyTraffic': 'Uyarı düzeyi (trafik, %)',
     'limits.plan.notifyRange': '50 ile 95 arasında.',
+    'limits.plan.outside': '“{name}” sınırının dışında. Düzeltin, sonra kaydedin.',
     'limits.plan.overselling.title': 'Havuzdan fazlasını dağıtmak',
     'limits.plan.overselling.allowed': 'İzin verilir: müşterilerin sınırları toplamda fazla olabilir; gerçek kullanımı havuz sınırlar (varsayılan)',
     'limits.plan.overselling.not_allowed': 'İzin verilmez: yalnız havuzda kalanı dağıt',

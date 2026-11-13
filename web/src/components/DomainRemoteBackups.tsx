@@ -163,9 +163,9 @@ export function DomainRemoteBackups({ domainId, readOnly, sendName, onSendClosed
                                         {t('rbak.objects.title')}
                                     </h4>
                                     <div className="flex flex-wrap items-end gap-2">
-                                        <label className="min-w-0 flex-1 text-sm" htmlFor="rbak-objects-destination">
+                                        <label className="min-w-0 text-sm" htmlFor="rbak-objects-destination">
                                             <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.destination')}</span>
-                                            <select id="rbak-objects-destination" className={inputClass}
+                                            <select id="rbak-objects-destination" className={`${inputClass} field-lg`}
                                                 value={objectsDestination || String(site.destinations[0].id)}
                                                 onChange={(event) => setObjectsDestination(event.target.value)}>
                                                 {site.destinations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -467,7 +467,7 @@ function SendDialog({ name, destinations, busy, holding, onSend, onClose }: {
             ) : (
                 <label className="block text-sm" htmlFor="rbak-send-destination">
                     <span className="mb-1 block text-xs text-fg-muted">{t('rbak.sched.destination')}</span>
-                    <select id="rbak-send-destination" className={inputClass} value={destination} disabled={busy}
+                    <select id="rbak-send-destination" className={`${inputClass} field-lg`} value={destination} disabled={busy}
                         onChange={(event) => setDestination(event.target.value)}>
                         {destinations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>

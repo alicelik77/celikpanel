@@ -23,10 +23,14 @@ const (
 	// Retrying does not help until the Agent is corrected.
 	DNSPeerPendingProofInternal = "dns_peer_proof_internal"
 	// DNSPeerPendingProofTimeout: a step of the native proof of the secondary
-	// (writing the challenge, the SSH exchange with the inspector, or the DNS
-	// checks after it) did not finish within its bound, before the peer's
-	// answer was accepted. Nothing was changed on either server and nothing
-	// was consumed; the same publication is retried as a new attempt.
+	// (this server's own checks before the exchange, the SSH exchange with the
+	// inspector, or the DNS checks after it) did not finish within its bound,
+	// before the peer's answer was accepted. The deletion itself is already
+	// committed on this server; nothing of the proof was consumed and the
+	// same publication is retried as a new attempt. Since alpha.133 the code
+	// may carry which side ran out of time (DNSPeerProofTimeoutLocalCheck,
+	// DNSPeerProofTimeoutPeerExchange); the plain code is a step that
+	// involves both servers, or an older Agent.
 	DNSPeerPendingProofTimeout = "dns_peer_proof_timeout"
 	// DNSPeerPendingCatchingUp: the change is applied on this server, but
 	// within the propagation check's time the backup (secondary) did not
@@ -36,6 +40,15 @@ const (
 	// backup has caught up. Applies to additions, record changes and
 	// deletions alike.
 	DNSPeerPendingCatchingUp = "dns_peer_catching_up"
+	// DNSPeerPendingJournalUnresolved (alpha.133, lab of 12 Nov 2026): this
+	// server's single-use check record of the peer proof is in a state the
+	// Agent cannot attribute to an interrupted write or retirement of its
+	// own (it finishes those by itself, in the same attempt), or it holds
+	// the record of another operation the ledger does not show finished.
+	// Waiting does not change it: unlike dns_peer_journal_unknown it is not
+	// re-checked automatically and names the server administrator. The
+	// deletion itself is committed on this server; nothing is undone.
+	DNSPeerPendingJournalUnresolved = "dns_peer_journal_unresolved"
 )
 
 // Reviewed reasons the owner-enrolled secondary inspector may report for an
@@ -107,6 +120,50 @@ const (
 	DNSPeerOwnerEditCheckZoneAnswered = "zone_answered"
 )
 
+// Reviewed details of dns_peer_proof_timeout (alpha.133, incident of 12 Nov
+// 2026): which side of the proof ran out of time. They travel only as these
+// tokens; the Agent log names the step and its cause.
+const (
+	// This server's own checks before any contact with the secondary
+	// (prepare, challenge write) ran out of time.
+	DNSPeerProofTimeoutLocalCheck = "local_check"
+	// The authenticated exchange with the secondary's inspector did not
+	// answer within its time.
+	DNSPeerProofTimeoutPeerExchange = "peer_exchange"
+)
+
+// DNSPeerEnrollmentChangedHostKey (alpha.133 round 5 review): the detail of
+// dns_peer_enrollment_changed when the backup presented another SSH host key
+// than the pinned one. It may be a reinstall or re-key of the backup, or a
+// security problem; only the administrator can tell, so it has its own
+// guidance ("dns_peer_enrollment_changed:host_key").
+const DNSPeerEnrollmentChangedHostKey = "host_key"
+
+// DNSPeerPendingEnrollmentChangedWithDetail returns the composite code of an
+// enrollment that cannot be trusted with one reviewed detail; an unreviewed
+// detail keeps the plain reason.
+func DNSPeerPendingEnrollmentChangedWithDetail(detail string) string {
+	if detail != DNSPeerEnrollmentChangedHostKey {
+		return DNSPeerPendingEnrollmentChanged
+	}
+	return DNSPeerPendingEnrollmentChanged + dnsPeerPendingDetailSeparator + detail
+}
+
+// ValidDNSPeerProofTimeoutDetail reports a reviewed proof-timeout detail.
+func ValidDNSPeerProofTimeoutDetail(detail string) bool {
+	return detail == DNSPeerProofTimeoutLocalCheck || detail == DNSPeerProofTimeoutPeerExchange
+}
+
+// DNSPeerPendingProofTimeoutWithDetail returns the composite code naming the
+// side that ran out of time, for example "dns_peer_proof_timeout:local_check".
+// An unreviewed detail keeps the plain reason.
+func DNSPeerPendingProofTimeoutWithDetail(detail string) string {
+	if !ValidDNSPeerProofTimeoutDetail(detail) {
+		return DNSPeerPendingProofTimeout
+	}
+	return DNSPeerPendingProofTimeout + dnsPeerPendingDetailSeparator + detail
+}
+
 // ValidDNSPeerOwnerEditCheck reports a reviewed owner-edit check token.
 func ValidDNSPeerOwnerEditCheck(check string) bool {
 	switch check {
@@ -156,8 +213,9 @@ func DNSPeerPendingInspectionUnknownWithDetail(reason string) string {
 
 // SplitDNSPeerPendingCode returns the reviewed reason and optional reviewed
 // detail of a pending code: an inspector reason for
-// dns_peer_inspection_unknown, or an owner-edit check for
-// dns_peer_owner_edit_unknown. ok is false for anything unreviewed.
+// dns_peer_inspection_unknown, an owner-edit check for
+// dns_peer_owner_edit_unknown, or the side that ran out of time for
+// dns_peer_proof_timeout. ok is false for anything unreviewed.
 func SplitDNSPeerPendingCode(code string) (reason, detail string, ok bool) {
 	reason, detail, composite := strings.Cut(code, dnsPeerPendingDetailSeparator)
 	if !composite {
@@ -171,6 +229,14 @@ func SplitDNSPeerPendingCode(code string) (reason, detail string, ok bool) {
 		}
 	case DNSPeerPendingOwnerEditUnknown:
 		if !ValidDNSPeerOwnerEditCheck(detail) {
+			return "", "", false
+		}
+	case DNSPeerPendingProofTimeout:
+		if !ValidDNSPeerProofTimeoutDetail(detail) {
+			return "", "", false
+		}
+	case DNSPeerPendingEnrollmentChanged:
+		if detail != DNSPeerEnrollmentChangedHostKey {
 			return "", "", false
 		}
 	default:
@@ -190,8 +256,37 @@ func validDNSPeerPendingReason(code string) bool {
 		DNSPeerPendingCatalogTransferRefused,
 		DNSPeerPendingProofInternal,
 		DNSPeerPendingProofTimeout,
-		DNSPeerPendingCatchingUp:
+		DNSPeerPendingCatchingUp,
+		DNSPeerPendingJournalUnresolved:
 		return true
+	default:
+		return false
+	}
+}
+
+// DNSPeerPendingStopsAutomaticRechecks reports a pending code the Panel does
+// not re-check by itself (alpha.133 round 5). Automatic re-checks stop when
+// another check provably cannot change the result (dns_peer_journal_unresolved:
+// the Agent never changes an unprovable check record by itself), or when the
+// state says the server owner may be changing this server's DNS by hand
+// (dns_peer_owner_edit_unknown, plain or found by a check of this server or
+// of the pair's identity): CelikPanel does not act on its own over an owner's
+// change (D-022), and a re-check of such a state can make the Agent hold
+// every change (its recovery pre-checks treat some owner edits as ambiguity).
+// The backup-side owner-edit checks (the backup still transfers or answers
+// for the deleted zone) are observed only after those pre-checks, inside the
+// propagation, whose every outcome is a pending result; they stay automatic.
+// Every other reviewed code, an unreviewed one and "" are re-checked.
+func DNSPeerPendingStopsAutomaticRechecks(code string) bool {
+	reason, detail, ok := SplitDNSPeerPendingCode(code)
+	if !ok {
+		return false
+	}
+	switch reason {
+	case DNSPeerPendingJournalUnresolved:
+		return true
+	case DNSPeerPendingOwnerEditUnknown:
+		return detail != DNSPeerOwnerEditCheckTransferObserved && detail != DNSPeerOwnerEditCheckZoneAnswered
 	default:
 		return false
 	}

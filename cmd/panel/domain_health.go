@@ -353,8 +353,12 @@ func (p *Panel) domainHealthMail(ctx context.Context, domainID int, name string,
 	}
 	check.At, check.Earlier = view.CheckedAt.UTC().Format(time.RFC3339), view.Rechecking
 	status := map[string]string{}
+	var rbl healthCheck
 	for _, c := range report.Checks {
 		status[c.ID] = c.Status
+		if c.ID == "rbl" {
+			rbl = c
+		}
 	}
 	var missing, pending []string
 	for _, id := range []string{"spf", "dkim", "dmarc"} {
@@ -372,7 +376,13 @@ func (p *Panel) domainHealthMail(ctx context.Context, domainID int, name string,
 	case status["port25"] == "fail":
 		check.State, check.Code, check.Fix = "problem", "port25_blocked", serverFix
 	case status["rbl"] == "fail":
-		check.State, check.Code, check.Fix = "problem", "listed", serverFix
+		// alpha.133: only a documented listing is "fail"; a list that could
+		// not be asked is "unknown" there and never reaches this line. A
+		// policy entry (Spamhaus PBL) is said as what it is.
+		check.State, check.Code, check.Items, check.Fix = "problem", "listed", rbl.Items, serverFix
+		if rbl.Detail == "policy" {
+			check.Code = "listed_policy"
+		}
 	case status["ptr"] == "fail":
 		check.State, check.Code, check.Fix = "problem", "ptr_missing", serverFix
 	case len(pending) > 0:

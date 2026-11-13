@@ -390,6 +390,7 @@ const READ_KEY_ADDRESSES: Record<ReadKey, readonly RegExp[]> = {
     databases: [
         /^\/api\/v1\/database-servers(\/|\?|$)/,
         /^\/api\/v1\/domains\/\d+\/databases(\?|$)/,
+        /^\/api\/v1\/databases(\/|\?|$)/,
         DASHBOARD, SUBSCRIPTION_USAGE,
     ],
     users: [/^\/api\/v1\/users(\/|\?|$)/, /^\/api\/v1\/invitations(\?|$)/, SUBSCRIPTION_USAGE],

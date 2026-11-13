@@ -160,7 +160,7 @@ export function PanelPortCard() {
                                     <p className="max-w-[75ch] text-fg-muted">{t('panelPort.how', { minutes: 10 })}</p>
                                     <label className="block max-w-xs" htmlFor="panel-port-input">
                                         <span className="mb-1 block font-medium text-fg">{t('panelPort.input')}</span>
-                                        <input id="panel-port-input" inputMode="numeric" pattern="[0-9]*" value={port} onChange={(event) => setPort(event.target.value.replace(/[^0-9]/g, '').slice(0, 5))} placeholder={String(view.default_port)} className={inputClass} />
+                                        <input id="panel-port-input" inputMode="numeric" pattern="[0-9]*" value={port} onChange={(event) => setPort(event.target.value.replace(/[^0-9]/g, '').slice(0, 5))} placeholder={String(view.default_port)} className={`${inputClass} field-xs`} />
                                     </label>
                                     <p className="max-w-[75ch] text-xs text-fg-subtle">{t('panelPort.provider')}</p>
                                     <Button type="submit" variant="primary" loading={busy} disabled={!port}>{t('panelPort.start')}</Button>

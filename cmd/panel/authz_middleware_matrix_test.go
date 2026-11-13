@@ -132,6 +132,7 @@ func newAuthzMatrixFixture(t *testing.T) authzMatrixFixture {
 		serviceRemovalImpactPath,
 		"/api/v1/system-databases",
 		storeCatalogAdminPath,
+		databasesVisiblePath,
 	} {
 		mux.Handle(path, pass)
 	}
@@ -203,6 +204,13 @@ func TestRequireAuthRoleEndpointMatrix(t *testing.T) {
 		{name: "anonymous may not read what a removal affects", method: http.MethodGet, path: serviceRemovalImpactPath + "?service_id=nginx", want: http.StatusUnauthorized},
 		{name: "reseller may not maintain system SQLite", method: http.MethodGet, path: "/api/v1/system-databases", userID: authzMatrixResellerID, want: http.StatusForbidden},
 		{name: "customer may not edit Store catalog", method: http.MethodGet, path: storeCatalogAdminPath, userID: authzMatrixCustomerID, want: http.StatusForbidden},
+		// alpha.133: the visible databases list has the gate of the other
+		// /api/v1/databases routes; the handler filters by visibility.
+		{name: "anonymous may not list visible databases", method: http.MethodGet, path: databasesVisiblePath, want: http.StatusUnauthorized},
+		{name: "admin may list visible databases", method: http.MethodGet, path: databasesVisiblePath, userID: authzMatrixAdminID, want: http.StatusNoContent},
+		{name: "reseller may list visible databases", method: http.MethodGet, path: databasesVisiblePath, userID: authzMatrixResellerID, want: http.StatusNoContent},
+		{name: "customer may list visible databases", method: http.MethodGet, path: databasesVisiblePath, userID: authzMatrixCustomerID, want: http.StatusNoContent},
+		{name: "suspended account may not list visible databases", method: http.MethodGet, path: databasesVisiblePath, userID: authzMatrixSuspendedID, want: http.StatusForbidden},
 	}
 
 	for _, test := range tests {

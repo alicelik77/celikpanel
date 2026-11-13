@@ -319,7 +319,7 @@ export function MailAutoresponderDialog({
                     </label>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('mail.autoreply.subject')}</span>
-                        <input value={form.subject} maxLength={200} onChange={(e) => set('subject', e.target.value)} disabled={busy} className={inputClass} />
+                        <input value={form.subject} maxLength={200} onChange={(e) => set('subject', e.target.value)} disabled={busy} className={`${inputClass} field-xl`} />
                     </label>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('mail.autoreply.message')}</span>
@@ -336,11 +336,11 @@ export function MailAutoresponderDialog({
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('mail.autoreply.start')}</span>
-                            <input type="date" value={form.start} onChange={(e) => set('start', e.target.value)} disabled={busy} className={inputClass} />
+                            <input type="date" value={form.start} onChange={(e) => set('start', e.target.value)} disabled={busy} className={`${inputClass} field-sm`} />
                         </label>
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('mail.autoreply.end')}</span>
-                            <input type="date" value={form.end} onChange={(e) => set('end', e.target.value)} disabled={busy} aria-invalid={!datesValid} className={inputClass} />
+                            <input type="date" value={form.end} onChange={(e) => set('end', e.target.value)} disabled={busy} aria-invalid={!datesValid} className={`${inputClass} field-sm`} />
                         </label>
                         <label className="block">
                             <span className="mb-1 block text-xs text-fg-muted">{t('mail.autoreply.interval')}</span>
@@ -352,13 +352,13 @@ export function MailAutoresponderDialog({
                                 onChange={(e) => set('days', Number(e.target.value))}
                                 disabled={busy}
                                 aria-invalid={!daysValid}
-                                className={inputClass}
+                                className={`${inputClass} field-xs`}
                             />
                         </label>
                     </div>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('mail.autoreply.addresses')}</span>
-                        <input value={form.addresses} onChange={(e) => set('addresses', e.target.value)} disabled={busy} className={inputClass} />
+                        <input value={form.addresses} onChange={(e) => set('addresses', e.target.value)} disabled={busy} className={`${inputClass} field-xl`} />
                     </label>
                     <p className="text-xs text-fg-subtle">{t('mail.autoreply.help')}</p>
                 </div>

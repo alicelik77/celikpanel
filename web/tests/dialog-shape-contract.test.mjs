@@ -157,9 +157,7 @@ test('every dialogue in the product is the shared one', () => {
   assert.deepEqual(Object.fromEntries([...users].sort()), {
     'AccessGuidance.tsx': 1,
     'AccessHold.tsx': 1,
-    'AddDatabaseModalV2.tsx': 1,
     'AddDomainModal.tsx': 1,
-    'AddUserModalV2.tsx': 1,
     'ChangePasswordModal.tsx': 1,
     // The product's own confirmation (6 Nov 2026), answering confirmAction().
     'ConfirmHost.tsx': 1,
@@ -169,7 +167,8 @@ test('every dialogue in the product is the shared one', () => {
     'ChangeEmailModal.tsx': 1,
     'DNSEngineCard.tsx': 1,
     'Dashboard.tsx': 1,
-    'DatabaseAccountStrip.tsx': 1,
+    // alpha.133: CelikPanel's engine account (its password, shown once) with Security › Open to the outside.
+    'DatabaseRemoteServerPanel.tsx': 1,
     'DomainMailManager.tsx': 1,
     // alpha.124: the sending mailbox's settings, password shown once (passwordless mail).
     'PasswordlessMailNotice.tsx': 1,

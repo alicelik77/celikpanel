@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Database, Lightbulb } from 'lucide-react';
 import { ServiceShell } from './ServiceShell';
 import { ComponentPanels } from './ComponentDetail';
@@ -8,6 +8,8 @@ import { useI18n } from '../i18n';
 import { useComponentConfigFiles } from '../lib/managedServices';
 import { Checking, CouldNotCheck, inputClass } from './ui';
 import { editorCardHeight } from './ConfigFileNotices';
+// alpha.133: the account CelikPanel connects with (drawing B18), in its own chunk.
+const EngineAccountBlock = lazy(() => import('./DatabaseRemoteServerPanel').then((module) => ({ default: module.EngineAccountBlock })));
 
 interface MariaDBManagementProps {
     onBack: () => void;
@@ -41,7 +43,7 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
         : undefined;
     const selected = chosen && known?.includes(chosen) ? chosen : preferred;
 
-    const tips = [t('mariadb.tip.bind'), t('mariadb.tip.buffer'), t('mariadb.tip.logs')];
+    const tips = [t('mariadb.tip.buffer'), t('mariadb.tip.logs')];
 
     return (
         <ServiceShell serviceId="mariadb" name="MariaDB" icon={Database} onBack={onBack}>
@@ -67,7 +69,7 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
                                 id="mariadb-config-file"
                                 value={selected ?? ''}
                                 onChange={(e) => setChosen(e.target.value)}
-                                className={`${inputClass} font-mono`}
+                                className={`${inputClass} field-xl font-mono`}
                             >
                                 {known.map((path) => (
                                     <option key={path} value={path}>
@@ -116,6 +118,7 @@ export function MariaDBManagement({ onBack }: MariaDBManagementProps) {
                 Üstteki dosya listesiyle aynı okumadan çizilirler; o okuma
                 sürerken ya da başarısız olduğunda bunu üstteki kart bir kez,
                 tek bir Tekrar dene ile söyler. */}
+            <div className="mt-6 empty:hidden"><Suspense fallback={null}><EngineAccountBlock engine="mariadb" /></Suspense></div>
             {/* alpha.108: PostgreSQL runs majors side by side; MariaDB cannot,
                 and its in-place major change is not offered (D-038 §7). */}
             <div className="mt-6" data-mariadb-majors=""><LifeLine tone="info">{t('pgc.mariadb.noSideBySide')}</LifeLine></div>

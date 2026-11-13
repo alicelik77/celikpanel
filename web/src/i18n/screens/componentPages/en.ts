@@ -122,7 +122,6 @@ export const enComponentPagesScreens = {
     'pdns.readOnlyNote': 'The panel owns this file — manual edits would be overwritten on the next repair or sync.',
 
     'mariadb.tips': 'MariaDB tips',
-    'mariadb.tip.bind': 'Use bind-address = 0.0.0.0 to allow remote connections.',
     'mariadb.tip.buffer': 'Tune innodb_buffer_pool_size (roughly 70% of RAM) for performance.',
     'mariadb.tip.logs': 'Check the error logs if the service fails to start.',
 

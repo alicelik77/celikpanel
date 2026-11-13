@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -62,7 +63,9 @@ export function showToast(type: ToastType, message: string, extra?: ToastExtra) 
 }
 
 export function ToastContainer() {
+    const { t } = useI18n();
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const removeToast = (id: number) => setToasts(prev => prev.filter(item => item.id !== id));
 
     useEffect(() => {
         // A failure or a warning stays until it is closed (owner feedback
@@ -76,9 +79,7 @@ export function ToastContainer() {
             onScreen.add(id);
             setToasts(prev => [...prev, toast].slice(-toastLimit));
             if (toastStays(toast.type)) return;
-            setTimeout(() => {
-                setToasts(prev => prev.filter(t => t.id !== toast.id));
-            }, 5000);
+            setTimeout(() => removeToast(toast.id), 5000);
         };
         toastListeners.push(listener);
         return () => {
@@ -86,10 +87,6 @@ export function ToastContainer() {
             if (index > -1) toastListeners.splice(index, 1);
         };
     }, []);
-
-    const removeToast = (id: number) => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-    };
 
     // What is on screen, by key, kept in step with the list (also when the
     // newest four push an older one out).
@@ -121,8 +118,8 @@ export function ToastContainer() {
             {toasts.map(toast => (
                 <div
                     key={toast.id}
+                    // The role is the live region: alert is assertive, status polite.
                     role={toast.type === 'error' ? 'alert' : 'status'}
-                    aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
                     aria-atomic={true}
                     className={`flex items-start gap-3 p-4 rounded-lg border backdrop-blur-sm shadow-lg animate-slide-in ${getStyles(toast.type)}`}
                 >
@@ -147,7 +144,7 @@ export function ToastContainer() {
                     </div>
                     <button
                         type={'button'}
-                        aria-label={'Dismiss notification'}
+                        aria-label={t('common.close')}
                         onClick={() => removeToast(toast.id)}
                         className={'rounded p-1 text-inherit transition-colors hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current'}
                     >

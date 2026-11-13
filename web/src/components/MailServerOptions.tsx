@@ -232,14 +232,14 @@ export function MailServerOptions() {
                                 <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('mcfg.sender.desc')}</p>
                                 {sender && <StateLine {...sender} />}
                                 <div className="flex flex-wrap items-end gap-3">
-                                    <label className="min-w-0 flex-1 basis-64 text-sm">
+                                    <label className="min-w-0 text-sm">
                                         <span className="mb-1 block text-xs text-fg-muted">{t('mcfg.sender.value')}</span>
                                         <input type="text" autoComplete="off" spellCheck={false} placeholder="spam.example · someone@example.com" value={value}
-                                            onChange={(event) => setValue(event.target.value)} className={inputClass} />
+                                            onChange={(event) => setValue(event.target.value)} className={`${inputClass} field-lg`} />
                                     </label>
                                     <label className="text-sm">
                                         <span className="mb-1 block text-xs text-fg-muted">{t('mcfg.sender.action')}</span>
-                                        <select className={`${inputClass} w-auto`} value={action} onChange={(event) => setAction(event.target.value as 'block' | 'allow')}>
+                                        <select className={`${inputClass} field-md`} value={action} onChange={(event) => setAction(event.target.value as 'block' | 'allow')}>
                                             <option value="block">{t('mcfg.sender.block')}</option>
                                             <option value="allow">{t('mcfg.sender.allow')}</option>
                                         </select>

@@ -59,7 +59,7 @@ export function TypedNameField({ id, label, value, onChange, ...input }: {
             <input
                 {...input}
                 id={id}
-                className={`${inputClass} font-mono`}
+                className={`${inputClass} field-lg font-mono`}
                 autoComplete="off"
                 spellCheck={false}
                 value={value}

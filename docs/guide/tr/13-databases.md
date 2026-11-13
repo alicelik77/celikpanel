@@ -21,14 +21,14 @@ Aynı adın sonuna `_user` eklenmiş, tam yetkili bir kullanıcı da oluşturulu
 
 ## Veritabanları sayfası {#databases-page}
 
-Menüdeki **Veritabanları** sayfası hesabınızın bütün veritabanlarını ve kullanıcılarını **Veritabanları** ve **Kullanıcılar** sekmelerinde gösterir. **Veritabanı oluştur** şunları sorar:
+Menüdeki **Veritabanları** sayfası görebildiğiniz her veritabanını listeler: yönetici sunucudaki bütün veritabanlarını **Sahibi** ile, bayi müşterilerinin veritabanlarını, müşteri kendi veritabanlarını alan adına göre gruplanmış görür. Parolalar ve veritabanının içeriği burada hiç gösterilmez.
 
-- **Veritabanı adı**: yalnız harf, rakam ve alt çizgi;
-- bağlı olduğu **Web sitesi** ya da **Web sitesi yok (bağımsız veritabanı)**. Bir siteye bağlı veritabanı site silinince onunla silinir;
-- **Veritabanı kullanıcısı**: **Yeni kullanıcı** ya da **Var olan kullanıcı**. **Güçlü bir parola üret** sizin için parola yazar;
-- **İzinler**: **ALL (tam erişim)** ya da **SELECT (yalnızca okuma)**.
+- **Aç**, veritabanının alan adına, **Veritabanları** bölümüne götürür.
+- **Diğer › Yeni parola…** veritabanının kullanıcılarından birine yeni parola verir. Eski parolayı kullanan programlar yenisini alana dek bağlanamaz; CelikPanel'in kurduğu uygulama yenisini kendiliğinden alır.
+- **Diğer › Sil…** adını yazdığınızda veritabanını bütün verisiyle siler. Kullanıcıları silinmez; veritabanını alan adının **Veritabanları** bölümünden silerseniz onunla birlikte açılan kullanıcı da silinir.
+- **Veritabanı ekle** **Hangi alan adı için?** diye sorar ve o alan adının **Veritabanları** bölümünü formuyla açar.
 
-**Kullanıcı oluştur** tek başına bir kullanıcı ekler. Bir kullanıcıya yeni parola vermek için anahtar düğmesini kullanın. Eski parolayı kullanan programlar yenisini alana dek bağlanamaz; CelikPanel'in kurduğu uygulama yenisini kendiliğinden alır.
+Sunucunun kendi işleri bu sayfada değildir. Yönetici dışarıdan bağlantıları **Güvenlik** sayfasında, **Dışarıya açık olanlar** altında açıp kapatır; CelikPanel'in MariaDB'ye ya da PostgreSQL'e bağlandığı hesabı **Bileşenler**'de o hizmetin sayfasında bulur.
 
 ## phpMyAdmin ve phpPgAdmin {#web-tools}
 

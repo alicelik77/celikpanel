@@ -393,7 +393,7 @@ export function WordPressToolsPanel({ domainId }: { domainId: number }) {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <label className="sr-only" htmlFor={`wpt-target-${domainId}`}>{t('wpt.clone.target')}</label>
                                         <select id={`wpt-target-${domainId}`} value={target} onChange={(e) => setTarget(e.target.value)}
-                                            className="min-h-9 rounded-lg border border-border bg-surface px-2 text-sm text-fg">
+                                            className="min-h-9 rounded-lg border border-border bg-surface px-2 text-sm text-fg field-lg">
                                             <option value="">{t('wpt.clone.choose')}</option>
                                             {targets.remote.state === 'known' && targets.remote.value.map((c) => <option key={c.domain_id} value={c.domain_id}>{c.domain}</option>)}
                                         </select>

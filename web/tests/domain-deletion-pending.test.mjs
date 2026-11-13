@@ -67,7 +67,6 @@ test('every reviewed pending reason has readable EN/TR copy', () => {
     'dns_peer_enrollment_changed',
     'dns_peer_inspection_unknown',
     'dns_peer_native_unknown',
-    'dns_peer_journal_unknown',
     'dns_peer_owner_edit_unknown',
     'dns_peer_catalog_transfer_refused',
     'dns_peer_proof_internal',
@@ -160,8 +159,10 @@ test('refused local catalog transfer names the secondary owner, the statement, b
   }
   assert.match(en_, /backup DNS server's owner/);
   assert.match(tr_, /yedek DNS sunucusunun sahibi/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  // alpha.133 round 5: re-checked by itself; no retry button is named.
+  assert.match(en_, /checks this same publication again by itself/);
+  assert.match(tr_, /kendiliğinden yeniden denetler/);
+  assert.ok(!en_.includes(enScreens['domains.retryDeletion']) && !tr_.includes(trScreens['domains.retryDeletion']));
 });
 
 test('only a reviewed inspector detail of an incomplete inspection is kept, with EN/TR copy', async () => {
@@ -226,7 +227,7 @@ test('an internal proof failure names no owner change, the owner, the log comman
   assert.match(en_, /could not run its own check of the backup DNS server/);
   assert.match(en_, /No change by either server's owner was found/);
   assert.match(en_, /server owner/);
-  assert.match(en_, /Retrying does not help until/);
+  assert.match(en_, /Checking again does not help until/);
   assert.match(en_, /DNS answers are unaffected/);
   assert.doesNotMatch(en_, /evidence changed|reconcile/);
   assert.match(tr_, /kendi denetimiyle kontrol edemedi/);
@@ -234,11 +235,17 @@ test('an internal proof failure names no owner change, the owner, the log comman
   assert.match(tr_, /sunucunun sahibi/);
   assert.match(tr_, /DNS yanıtları etkilenmez/);
   assert.doesNotMatch(tr_, /kanıt değişti|uzlaştır/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  // alpha.133 round 5: after the Agent is fixed, the next automatic check
+  // continues it; no retry button is named.
+  assert.match(en_, /with nothing to press/);
+  assert.match(tr_, /hiçbir şeye basmadan/);
+  assert.ok(!en_.includes(enScreens['domains.retryDeletion']) && !tr_.includes(trScreens['domains.retryDeletion']));
 });
 
-test('a proof timeout says nothing changed, who retries now and what to check if it repeats', async () => {
+// alpha.133 (incident of 12 Nov 2026): the old text said nothing had changed
+// and sent the owner to the backup's SSH port, although the zone was already
+// removed on this server and this server's own check had run out of time.
+test('a proof timeout says what is already true, that CelikPanel checks again by itself, and which side ran out of time', async () => {
   assert.deepEqual(await readDomainDeletionOutcome(response(202, {
     status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_proof_timeout',
   })), { state: 'pending', reason: 'dns_peer_proof_timeout' });
@@ -247,45 +254,60 @@ test('a proof timeout says nothing changed, who retries now and what to check if
   })), 'dns_peer_proof_timeout');
   const en_ = en['err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout'];
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout'];
-  assert.match(en_, /did not finish within its time/);
-  assert.match(en_, /Nothing was changed on either server/);
-  assert.match(en_, /DNS answers are unaffected/);
-  assert.match(en_, /retry now/);
-  assert.match(en_, /SSH port/);
-  assert.match(en_, /overloaded/);
-  assert.doesNotMatch(en_, /evidence changed|reconcile|Retrying does not help/);
-  assert.match(tr_, /sürede bitmedi/);
-  assert.match(tr_, /Hiçbir sunucuda bir şey değiştirilmedi/);
-  assert.match(tr_, /DNS yanıtları etkilenmez/);
-  assert.match(tr_, /SSH bağlantı noktasına/);
-  assert.match(tr_, /aşırı yüklü/);
-  assert.doesNotMatch(tr_, /uzlaştır/);
+  assert.match(en_, /removed from DNS on this server/);
+  assert.match(en_, /not confirmed yet, because the check did not finish in time/);
+  assert.match(en_, /Nobody needs to do anything now/);
+  assert.match(en_, /administrator gets a notification/);
+  assert.match(tr_, /bu sunucuda DNS'ten kaldırıldı/);
+  assert.match(tr_, /henüz doğrulanmadı/);
+  assert.match(tr_, /kimsenin bir şey yapması gerekmiyor/);
+  assert.match(tr_, /yöneticisine ne yapması gerektiğini/);
   for (const text of [en_, tr_]) {
+    assert.doesNotMatch(text, /Nothing was changed|değiştirilmedi|DNS answers are unaffected|etkilenmez/);
+    assert.doesNotMatch(text, /SSH|port|bağlantı noktası|journalctl|overloaded|aşırı yüklü/);
     assert.doesNotMatch(text, /secret|password|parola/i);
   }
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  for (const [detail, enWant, trWant] of [
+    ['local_check', /this server's own part of the check/, /bu sunucunun kendi denetimiydi/],
+    ['peer_exchange', /backup DNS server's answer that did not come in time/, /yedek DNS sunucusunun yanıtıydı/],
+  ]) {
+    assert.deepEqual(await readDomainDeletionOutcome(response(202, {
+      status: 'deletion_pending', stage: 'dns_cleanup', reason: 'dns_peer_proof_timeout', detail,
+    })), { state: 'pending', reason: 'dns_peer_proof_timeout', detail });
+    const key = domainDeletionDetailKey('dns_peer_proof_timeout', detail);
+    assert.equal(key, `err.DNS_PUBLICATION_FAILED.dns_peer_proof_timeout.${detail}`);
+    assert.match(en[key], enWant);
+    assert.match(tr[key], trWant);
+  }
+  assert.equal(domainDeletionDetailKey('dns_peer_proof_timeout', 'exchange'), null);
+  assert.equal(domainDeletionDetailKey('dns_peer_owner_edit_unknown', 'local_check'), null);
 });
 
-test('a challenge that cannot be reconciled waits for the automatic re-check, then names the Agent log and why a retry is safe', () => {
+test('a check that could not complete waits for the automatic re-check and says nobody needs to act (alpha.133)', () => {
   const en_ = en['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown'];
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unknown'];
-  assert.match(en_, /could not write or match its single-use check challenge/);
-  assert.match(tr_, /yazamadı ya da eşleştiremedi/);
-  // D-024: while the Panel re-checks by itself it is a waiting state; the
-  // administrator's log step comes only after that, for a lasting result.
-  assert.match(en_, /Nobody needs to do anything now/);
-  assert.match(tr_, /kimsenin bir şey yapması gerekmiyor/);
+  // The Agent now finishes an interrupted change of its check record by
+  // itself, so a re-check can finish this: why, nobody acts, how it goes on.
+  assert.match(en_, /because this server could not complete its last check/);
+  assert.match(tr_, /bu sunucu son denetimini tamamlayamadı/);
+  assert.match(en_, /You do not need to do anything/);
+  assert.match(tr_, /Sizin bir şey yapmanız gerekmiyor/);
   for (const text of [en_, tr_]) {
-    assert.ok(text.includes('sudo journalctl -u celikpanel-agent | grep peer'));
+    assert.doesNotMatch(text, /challenge|journal|nonce|journalctl|Retry this deletion|Bu silme işlemini tekrar dene/);
   }
-  assert.ok(en_.indexOf('Nobody needs to do anything now') < en_.indexOf('journalctl'));
-  assert.ok(tr_.indexOf('kimsenin bir şey yapması gerekmiyor') < tr_.indexOf('journalctl'));
-  assert.match(en_, /retry is safe because each challenge can be used only once/);
-  assert.match(tr_, /yalnız bir kez kullanılabildiği/);
-  assert.match(tr_, /yeniden denemek güvenlidir/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  const enU = en['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unresolved'];
+  const trU = tr['err.DNS_PUBLICATION_FAILED.dns_peer_journal_unresolved'];
+  assert.match(enU, /Who acts: this server’s administrator/);
+  assert.match(trU, /Kim yapar: bu sunucunun yöneticisi/);
+  // alpha.133 review (W8): this fallback can reach any role through an API
+  // error: no command, no private path, no menu; it says who to tell.
+  for (const text of [enU, trU]) {
+    assert.doesNotMatch(text, /sudo|\/var\/lib|journalctl/);
+    assert.ok(!text.includes('→'), text);
+  }
+  assert.match(enU, /if that is not you, tell them/);
+  assert.match(trU, /siz değilseniz ona haber verin/);
+  assert.doesNotMatch(enU + trU, /Nobody needs|kimsenin bir şey yapması gerekmiyor|Sizin bir şey yapmanız gerekmiyor/);
 });
 
 test('owner-edit guidance keeps its meaning and names the serial comparison', () => {
@@ -293,9 +315,8 @@ test('owner-edit guidance keeps its meaning and names the serial comparison', ()
   const tr_ = tr['err.DNS_PUBLICATION_FAILED.dns_peer_owner_edit_unknown'];
   assert.match(en_, /evidence changed during verification/);
   assert.match(en_, /compare the catalog zone and zone serials on both servers/);
-  assert.match(tr_, /seri numaralarını karşılaştırıp/);
-  assert.ok(en_.includes(`“${enScreens['domains.retryDeletion']}”`));
-  assert.ok(tr_.includes(`“${trScreens['domains.retryDeletion']}”`));
+  assert.match(tr_, /seri numaralarını karşılaştırmalı/);
+  assert.ok(!en_.includes(enScreens['domains.retryDeletion']) && !tr_.includes(trScreens['domains.retryDeletion']));
 });
 
 test('owner-edit pending names the check that differed through its own sentence', async () => {
@@ -429,4 +450,21 @@ test('a running deletion names its live step; anything unreviewed is ignored', a
   assert.equal(await readDomainDeletionStage(response(200, { status: 'deletion_pending', stage: 'running', reason: 'deletion_running', step: 'rm -rf' })), 'running');
   // `step` counts only while the request runs.
   assert.equal(await readDomainDeletionStage(response(200, { status: 'failed', stage: 'site_cleanup', step: 'ledger_delete' })), 'site_cleanup');
+});
+
+// alpha.133 integration: a deletion whose backup confirmation CelikPanel
+// re-checks by itself ends the window as blocked, but its line under the
+// title must not say that someone needs to act; every other blocked ending
+// keeps the state's own word.
+test('a deletion re-checked by itself does not say that someone needs to act', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+  // alpha.133 review: only while the server says CelikPanel re-checks it by
+  // itself (follow_up automatic) does the window say nobody needs to act.
+  assert.match(read('components/Domains.tsx'), /if \(continuesByItself\(reason, next\?\.followUp\)\) \{[\s\S]{0,400}return \{ state: 'blocked', subtitle: t\('domains\.step\.rechecksAlone'\)/);
+  const progress = read('components/OperationProgress.tsx');
+  assert.match(progress, /const endLine = end \? \(end\.state !== 'done' && end\.subtitle\) \|\| t\(END_TITLE\[end\.state\]\) : '';/);
+  assert.match(progress, /description=\{end \? endLine : t\('operation\.wait'\)\}/);
+  assert.match(enScreens['domains.step.rechecksAlone'], /Nobody needs to act/);
+  assert.match(trScreens['domains.step.rechecksAlone'], /Kimsenin bir şey yapması gerekmiyor/);
 });

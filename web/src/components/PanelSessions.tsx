@@ -317,7 +317,7 @@ export function PanelAccessCard() {
                             <fieldset className="grid gap-4" disabled={impersonating || saving}>
                                 <label className="grid gap-1 text-sm">
                                     <span className="font-semibold text-fg">{t('pacc.idle')}</span>
-                                    <select className={inputClass} value={idle ?? value.idle_minutes} onChange={(event) => setIdle(Number(event.target.value))} data-panel-access-idle>
+                                    <select className={`${inputClass} field-sm`} value={idle ?? value.idle_minutes} onChange={(event) => setIdle(Number(event.target.value))} data-panel-access-idle>
                                         {value.idle_choices.map((choice) => <option key={choice} value={choice}>{idleLabel(choice, t)}</option>)}
                                     </select>
                                     <span className="text-xs text-fg-muted">{t('pacc.idleHint')}</span>

@@ -296,7 +296,7 @@ export function DomainFileManager({ domainId, readOnly = false }: DomainFileMana
                             onChange={(e) => setNewName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && createItem()}
                             placeholder={createType === 'folder' ? 'folder-name' : 'filename.txt'}
-                            className={`${inputClass} max-w-xs font-mono`}
+                            className={`${inputClass} font-mono field-lg`}
                             autoFocus
                         />
                         <Button variant="primary" onClick={createItem} disabled={!folderKnown || !newName.trim()}>

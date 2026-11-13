@@ -110,7 +110,7 @@ func TestNativePDNSHistoricalChallengeRetiresOnlyExactTerminal(t *testing.T) {
 		return nil
 	}
 	if err := reconcileHistoricalPDNSPeerChallengeAt(next, current,
-		func() (serviceMutationLedger, error) { return ledger, nil }, read, retire); err != nil || !retired || reads != 2 {
+		func() (serviceMutationLedger, error) { return ledger, nil }, cleanPDNSJournal, read, retire); err != nil || !retired || reads != 2 {
 		t.Fatalf("exact prior result not retired: %v retired=%v reads=%d", err, retired, reads)
 	}
 	for _, edit := range []func(*serviceMutationLedger){
@@ -128,7 +128,7 @@ func TestNativePDNSHistoricalChallengeRetiresOnlyExactTerminal(t *testing.T) {
 		edit(&changed)
 		retired = false
 		if err := reconcileHistoricalPDNSPeerChallengeAt(next, func() error { return nil },
-			func() (serviceMutationLedger, error) { return changed, nil },
+			func() (serviceMutationLedger, error) { return changed, nil }, cleanPDNSJournal,
 			func() (pdnspeerjournal.RecordV1, error) { return previous, nil }, retire); err == nil || retired {
 			t.Fatalf("nonterminal history retired: %v", err)
 		}
@@ -143,7 +143,16 @@ func TestPDNSInspectionPendingCodeCarriesTheInspectorReason(t *testing.T) {
 		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeUnavailable}:                              transport.DNSPeerPendingInspectionUnknown,
 		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeMalformed, Reason: "config_unreviewed"}:   transport.DNSPeerPendingInspectionUnknown,
 		errors.New("config_unreviewed"): transport.DNSPeerPendingInspectionUnknown,
+		// alpha.133 round 5: no answer at all is the exchange's timeout.
+		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeNoAnswer}: "dns_peer_proof_timeout:peer_exchange",
+		// Review of round 5: this server's own key is not the backup refusing,
+		// and another host key has its own detail.
+		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeEnrollment}:     transport.DNSPeerPendingEnrollmentChanged,
+		pdnspeertransport.Unknown{Code: pdnspeertransport.CodeHostKeyChanged}: "dns_peer_enrollment_changed:host_key",
 	} {
+		if bindInspectionPendingCode(err) != want {
+			t.Fatalf("%v: the BIND path maps it to %q, want %q", err, bindInspectionPendingCode(err), want)
+		}
 		got := pdnsInspectionPendingCode(err)
 		if got != want || !transport.ValidDNSPeerPendingCode(got) {
 			t.Fatalf("%v -> %q, want %q", err, got, want)
@@ -152,4 +161,13 @@ func TestPDNSInspectionPendingCodeCarriesTheInspectorReason(t *testing.T) {
 			t.Fatalf("%v lost through the pending error or ledger", err)
 		}
 	}
+}
+
+// cleanPDNSJournal is pdnspeerjournal.Recover on a journal with nothing to
+// finish: it runs the held check once, as Recover does.
+func cleanPDNSJournal(verify pdnspeerjournal.VerifyCurrent, _ pdnspeerjournal.FinishedCheck) (pdnspeerjournal.Repair, error) {
+	if verify() != nil {
+		return pdnspeerjournal.RepairNone, pdnspeerjournal.StateError{Code: pdnspeerjournal.Unknown}
+	}
+	return pdnspeerjournal.RepairNone, nil
 }

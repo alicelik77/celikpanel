@@ -12,36 +12,73 @@ import (
 const dnsPeerCatchingUpEnglish = "The DNS change is saved and in effect on this server, but the backup DNS server has not caught up with it yet: it did not confirm the change within its check time (it may be restarting, offline or briefly unreachable). Nobody needs to do anything: CelikPanel re-checks this same publication by itself, first after about 15 seconds and then less often (at most every 5 minutes), and completes it as soon as the backup has caught up; Server → DNS and peer servers shows the next check. Until then other DNS changes wait for it. If this lasts, the server administrator checks that the backup DNS server is running and reachable from this server on TCP port 53."
 
 // dnsPeerJournalUnknownEnglish: the backup's confirmation of a deletion is not
-// complete because this server's single-use check challenge could not be
-// written or matched this time. The Panel re-checks with a new challenge by
-// itself, so nobody needs to act yet; only a result that lasts sends the
-// administrator to the Agent log.
-const dnsPeerJournalUnknownEnglish = "The DNS change is saved and in effect on this server; only the confirmation that the backup DNS server removed the zone is not complete: this server could not write or match its single-use check challenge this time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself with a new challenge, first after about 15 seconds and then less often (at most every 5 minutes); Server → DNS and peer servers shows the next check, and it continues from where it stopped. A retry is safe because each challenge can be used only once and a retry starts a new one; this server's owner can also retry now with “Retry this deletion”. Only if this message stays after several checks does this server's administrator read the Agent log lines for this deletion with sudo journalctl -u celikpanel-agent | grep peer; they name the step that stopped and its reason."
+// complete because this server could not complete its own check record this
+// time. Since alpha.133 the Agent finishes an interrupted change of that
+// record by itself in the next attempt and a state it cannot prove is
+// dns_peer_journal_unresolved, so a re-check can finish this one and nobody
+// needs to act. One sentence each: why, who, how it continues (D-024); the
+// same words as the screen (web dnsPublication part, deletionGuide).
+const dnsPeerJournalUnknownEnglish = "This domain is removed from DNS on this server; that the backup DNS server removed it too is not confirmed yet, because this server could not complete its last check. Nobody needs to do anything. CelikPanel re-checks this same publication by itself, at most every 5 minutes."
+
+// dnsPeerJournalUnresolvedEnglish (alpha.133): the record this server keeps
+// for that check is in a state the Agent cannot attribute to an interrupted
+// change of its own; it keeps it and does not retry by itself. Plain words
+// only: this text can reach any role through an API error, so the commands
+// stay in the administrator's closed Details on Domains.
+const dnsPeerJournalUnresolvedEnglish = "This domain is removed from DNS on this server, but the record this server keeps to confirm that the backup DNS server removed it too is in a state CelikPanel cannot sort out by itself. Who acts: this server's administrator; if that is not you, tell them. CelikPanel no longer checks this every few minutes; once the administrator has sorted it out, deleting the domain again continues this same publication from where it stopped."
+
+// dnsPeerProofTimeoutEnglish: a step of the proof of the backup ran out of
+// time. The zone is already removed on this server and the backup most
+// likely followed (its zone list comes from this server); only the
+// confirmation is open. Never "nothing was changed": the removal is done
+// here. The Panel re-checks by itself (a press meanwhile starts nothing);
+// after dnsPendingPublicationStuckAfter such checks the administrator gets a
+// notification with the next step (dns_pending_publication.go).
+const dnsPeerProofTimeoutEnglish = "The domain is removed from DNS on this server; that the backup DNS server removed it too is not confirmed yet, because the check did not finish in time. Nobody needs to do anything now: CelikPanel re-checks this same publication by itself (at most every 5 minutes) and then finishes the deletion by itself. If it stays like this for about a quarter of an hour, the server's administrator gets a notification saying what to do."
+
+// dnsPeerProofTimeoutDetailEnglish names which side ran out of time.
+func dnsPeerProofTimeoutDetailEnglish(detail string) string {
+	switch detail {
+	case transport.DNSPeerProofTimeoutLocalCheck:
+		return "It was this server's own part of the check that ran out of time, not the backup DNS server."
+	case transport.DNSPeerProofTimeoutPeerExchange:
+		return "It was the backup DNS server's answer that did not come in time: it may be switched off, restarting or not reachable from this server."
+	default:
+		return ""
+	}
+}
 
 // dnsPeerPendingRetriesAutomatically reports whether the Panel re-checks a
-// pending publication with this code by itself. Only transient causes are
-// re-checked: the backup catching up, a proof step that ran out of time, a
-// challenge that could not be reconciled (each challenge is single-use, so a
-// re-check starts a new one) and an unclassified pending result (the exact
-// recovery path is the same one the owner's retry uses). Causes that need a
-// person keep their guidance and wait for the owner (D-024, RESILIENCE-
-// CONTRACT 4: repeated deterministic failure ends automatic attempts).
+// pending publication with this code by itself.
+//
+// The rule (alpha.133 round 5, with its review): automatic re-checks stop
+// when another check provably cannot change the result
+// (dns_peer_journal_unresolved), or when the state says the server owner may
+// be changing this server's DNS by hand (dns_peer_owner_edit_unknown, plain or
+// found by a check of this server or the pair's identity): CelikPanel does
+// not act on its own over an owner's change (D-022), and the re-check's
+// recovery pre-checks treat some such edits as ambiguity that holds every
+// Agent change (RecoverDNSZoneV3, poisonDNSZoneSyncV3Runtime). One rule for
+// the Agent's log line and the Panel: transport.DNSPeerPendingStopsAutomaticRechecks.
+//
+// Every other reason can clear by itself or because somebody repairs either
+// server (the backup switched off, unreachable or refusing the check, a check
+// access that was changed, a refused catalog transfer, the backup still
+// serving the deleted zone, an Agent that was updated), so it is re-checked
+// at the same slow cadence (15 s doubling to 5 min) and the deletion finishes
+// by itself once the cause is gone. Such a reason still becomes "stuck" after
+// dnsPendingPublicationStuckAfter checks in a row and the administrators are
+// notified; it never becomes a state in which nothing checks again. A
+// re-check is the exact recovery of the same accepted operation, the one a
+// press of More → Delete… runs, under the host mutation lock; it never starts
+// a second deletion.
+//
+// Until this round only the backup catching up, a proof step that ran out of
+// time and dns_peer_journal_unknown were re-checked: a backup that did not
+// answer for one attempt and came back as dns_peer_inspection_unknown (lab
+// w9) left the deletion waiting until a person pressed Delete again.
 func dnsPeerPendingRetriesAutomatically(code string) bool {
-	if code == "" {
-		return true
-	}
-	reason, _, ok := transport.SplitDNSPeerPendingCode(code)
-	if !ok {
-		return true
-	}
-	switch reason {
-	case transport.DNSPeerPendingCatchingUp,
-		transport.DNSPeerPendingProofTimeout,
-		transport.DNSPeerPendingJournalUnknown:
-		return true
-	default:
-		return false
-	}
+	return !transport.DNSPeerPendingStopsAutomaticRechecks(code)
 }
 
 // These fallbacks are used by older clients without the translated reason key.
@@ -50,30 +87,35 @@ func dnsPeerPendingRetriesAutomatically(code string) bool {
 func dnsPeerPendingEnglish(code string) string {
 	switch code {
 	case transport.DNSPeerPendingEnrollmentRequired:
-		return "The DNS change is saved on this server, but the secondary has not been shown to have removed the zone: no inspection access is set up between the two servers. On two CelikPanel servers joined with a setup join code, setup sets it up by itself and either server's setup page says why it has not; otherwise the administrators of both servers set it up once with the dns-peer-enroll owner tool (add --engine pdns to each command when the secondary runs PowerDNS): primary-prepare here, secondary-install and secondary-host-key on the secondary, then primary-activate here. After that, retry the same publication; it continues from where it stopped. Nothing retries by itself."
+		return "The DNS change is saved on this server, but the secondary has not been shown to have removed the zone: no inspection access is set up between the two servers. On two CelikPanel servers joined with a setup join code, setup sets it up by itself and either server's setup page says why it has not; otherwise the administrators of both servers set it up once with the dns-peer-enroll owner tool (add --engine pdns to each command when the secondary runs PowerDNS): primary-prepare here, secondary-install and secondary-host-key on the secondary, then primary-activate here. CelikPanel checks this same publication again by itself every few minutes and continues it from where it stopped once the access is set up."
 	case transport.DNSPeerPendingEnrollmentChanged:
-		return "The DNS change is saved, but peer inspection enrollment could not be trusted. This server's administrator must check its peer identity and credential enrollment, then retry this same publication."
+		return "The DNS change is saved, but peer inspection enrollment could not be trusted. This server's administrator must check its peer identity and credential enrollment; CelikPanel checks this same publication again by itself every few minutes and continues it once that is correct."
 	case transport.DNSPeerPendingInspectionUnknown:
-		return "The DNS change is saved, but authenticated secondary inspection could not complete. This server's administrator and the secondary owner must check the pinned SSH channel and inspector access, then retry this same publication."
+		return "The DNS change is saved on this server, but the backup DNS server answered this server's check without confirming it. This server's administrator and the backup server's owner check that the backup still lets this server run its check; CelikPanel checks this same publication again by itself every few minutes and continues it once the backup confirms."
 	case transport.DNSPeerPendingNativeUnknown:
-		return "The DNS change is saved, but the secondary's native secondary DNS state did not prove the deleted zone absent. The secondary owner must inspect its loaded zones and transfer state, then retry this same publication."
+		return "The DNS change is saved, but the secondary's native secondary DNS state did not prove the deleted zone absent. The secondary owner must inspect its loaded zones and transfer state; CelikPanel checks this same publication again by itself every few minutes and continues it once the secondary confirms."
 	case transport.DNSPeerPendingJournalUnknown:
 		// A waiting state first (D-024; final alpha.113 acceptance run 4,
 		// D7): the Panel re-checks it by itself, so the administrator step
 		// is only for a result that lasts.
 		return dnsPeerJournalUnknownEnglish
+	case transport.DNSPeerPendingJournalUnresolved:
+		return dnsPeerJournalUnresolvedEnglish
 	case transport.DNSPeerPendingOwnerEditUnknown:
-		return "The DNS change is saved, but local or peer evidence changed during verification. This server's administrator must reconcile the accepted operation with native DNS configuration: compare the catalog zone and zone serials on both servers, then retry this same publication."
+		return "The DNS change is saved, but local or peer evidence changed during verification. This server's administrator must reconcile the accepted operation with native DNS configuration: finish any change made by hand and compare the catalog zone and zone serials on both servers. CelikPanel does not check this again by itself while this server's DNS may be changed by hand (a difference seen only on the backup is checked again every few minutes); once it matches, deleting the domain again continues this same publication."
 	case transport.DNSPeerPendingCatalogTransferRefused:
-		return "The DNS change is saved, but the secondary has not been shown to have removed the zone: the secondary's named refused the inspector's local transfer of the catalog zone (allow-transfer). The secondary's owner allows that transfer from loopback on the secondary. A secondary whose DNS CelikPanel set up with this release already allows it; on one set up by an earlier release it arrives when CelikPanel next writes that server's DNS configuration. On a secondary you run without CelikPanel, add 127.0.0.1 and ::1 to the catalog zone's allow-transfer in named's configuration and reload named. Then retry the same publication; it continues from where it stopped. Nothing retries by itself."
+		return "The DNS change is saved, but the secondary has not been shown to have removed the zone: the secondary's named refused the inspector's local transfer of the catalog zone (allow-transfer). The secondary's owner allows that transfer from loopback on the secondary. A secondary whose DNS CelikPanel set up with this release already allows it; on one set up by an earlier release it arrives when CelikPanel next writes that server's DNS configuration. On a secondary you run without CelikPanel, add 127.0.0.1 and ::1 to the catalog zone's allow-transfer in named's configuration and reload named. CelikPanel checks this same publication again by itself every few minutes and continues it from where it stopped once the transfer is allowed."
 	case transport.DNSPeerPendingProofInternal:
-		return "The DNS change is saved on this server, but the deletion is not verified yet: this server could not run its own check of the secondary. No change by either server's owner was found, and nothing on either server needs to be undone. The server owner checks the CelikPanel Agent log on this server with sudo journalctl -u celikpanel-agent | grep peer and reports those lines to CelikPanel. Retrying does not help until the CelikPanel Agent is updated with a fix; after that update, use “Retry this deletion” to retry the same publication; it continues from where it stopped. Until then the deletion stays pending and DNS answers are unaffected. Nothing retries by itself."
+		return "The DNS change is saved on this server, but the deletion is not verified yet: this server could not run its own check of the secondary. No change by either server's owner was found, and nothing on either server needs to be undone. The server owner checks the CelikPanel Agent log on this server with sudo journalctl -u celikpanel-agent | grep peer and reports those lines to CelikPanel. Checking again does not help until the CelikPanel Agent is updated with a fix; CelikPanel checks this same publication again by itself every few minutes, so after that update it continues from where it stopped with nothing to press. Until then the deletion stays pending and DNS answers are unaffected."
 	case transport.DNSPeerPendingProofTimeout:
-		return "The DNS change is saved on this server, but the deletion is not verified yet: the check of the secondary did not finish within its time. Nothing was changed on either server; the deletion stays pending and DNS answers are unaffected. CelikPanel re-checks this same publication by itself (first after about 15 seconds, then less often, at most every 5 minutes) and it continues from where it stopped. This server's owner can also retry now with “Retry this deletion”. If it keeps happening, either server's owner checks that this server can reach the secondary's SSH port and that neither server is overloaded."
+		// alpha.133 (incident of 12 Nov 2026): the deletion is already in
+		// effect on this server; only the backup's confirmation is open.
+		// The side that ran out of time is the detail sentence.
+		return dnsPeerProofTimeoutEnglish
 	case transport.DNSPeerPendingCatchingUp:
 		return dnsPeerCatchingUpEnglish
 	default:
-		return "The DNS change is saved, but paired deletion is unverified. The server administrator must inspect the exact DNS operation and secondary state, then retry this same publication."
+		return "The DNS change is saved, but paired deletion is unverified. The server administrator must inspect the exact DNS operation and secondary state; CelikPanel checks this same publication again by itself every few minutes."
 	}
 }
 
@@ -137,13 +179,22 @@ func dnsPeerOwnerEditDetailEnglish(check string) string {
 }
 
 // dnsPeerPendingDetailEnglish selects the detail sentence by the reason the
-// detail refines: an inspector reason or an owner-edit check.
+// detail refines: an inspector reason, an owner-edit check or the side of a
+// proof timeout.
 func dnsPeerPendingDetailEnglish(reason, detail string) string {
 	switch reason {
 	case transport.DNSPeerPendingInspectionUnknown:
 		return dnsPeerInspectorDetailEnglish(detail)
 	case transport.DNSPeerPendingOwnerEditUnknown:
 		return dnsPeerOwnerEditDetailEnglish(detail)
+	case transport.DNSPeerPendingProofTimeout:
+		return dnsPeerProofTimeoutDetailEnglish(detail)
+	case transport.DNSPeerPendingEnrollmentChanged:
+		if detail == transport.DNSPeerEnrollmentChangedHostKey {
+			// alpha.133 round 5 review: possibly a security event.
+			return "The backup DNS server answered with another SSH host key than the pinned one. Find out whether it was really reinstalled or re-keyed before you set the check access up again; if it was not, treat it as a security problem."
+		}
+		return ""
 	default:
 		return ""
 	}

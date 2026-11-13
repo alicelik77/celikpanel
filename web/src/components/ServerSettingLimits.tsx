@@ -161,7 +161,7 @@ export function PolicyEditor({ policy, limits, observedAt, onSaved, stale = fals
                                     <td className="px-3 py-2">
                                         <input type="number" value={d.ceiling} min={limit?.min} max={limit?.max} placeholder={t('limits.server.none')}
                                             aria-label={`${name}: ${t('limits.server.ceiling')}`} aria-invalid={bad || undefined} disabled={draft.saving}
-                                            onChange={(e) => edit(row.key, { ...d, ceiling: e.target.value })} className={`${inputClass} max-w-36`} />
+                                            onChange={(e) => edit(row.key, { ...d, ceiling: e.target.value })} className={`${inputClass} field-sm`} />
                                         {value !== null && limit && !bad && <span className="ml-2 text-xs text-fg-subtle">{unitText(t, limit.unit, value)}</span>}
                                         {error && <span className="mt-1 block text-xs text-danger" role="alert" data-limit-error={row.key}>{error}</span>}
                                     </td>

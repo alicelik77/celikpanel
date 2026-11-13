@@ -3,7 +3,9 @@
 // file editor - with what a refused save says and why. Split out of
 // "mailDatabases" when the plain reasons of a refused save took it over its
 // ceiling.
-// Key prefixes kept here: dbconf.
+// Key prefixes kept here: dbconf.; and, moved from "refusals" (alpha.133,
+// which left that part 1.5 % under its ceiling), the database engine and
+// database deletion refusals err.DATABASE_ENGINE_* and err.DATABASE_DELETE_*.
 // One part of the screen copy; ../../index.tsx fetches every part in
 // parallel and no screen renders before all of them have arrived.
 //
@@ -107,6 +109,27 @@ export const enDbConfigScreens = {
     'dbconf.why.setting.notBoolean': "{service} does not read this value as on or off, and would use {value}. Enter ON or OFF.",
     'dbconf.reloadFailed.restored_unit_reload_failed': "The change was not kept, and the previous file is back in place. The systemd unit of {service} could not reload, with the new file and again with the previous one, so CelikPanel asked {service} directly: it read the previous file again and is running with the settings it had before your change. The reload failed with the previous file too, so the cause is not only this change. On the server, run sudo systemctl reload {unit} to see why, correct it, then save the change here again.",
     'dbconf.reloadFailed.restored_running_unknown': "The change was not kept, and the previous file is back in place. The systemd unit of {service} could not reload, with the new file and again with the previous one, and CelikPanel could not establish which settings {service} is running with now: a reload that fails part-way may already have made it read the new file. On the server, run sudo systemctl reload {unit}, correct what it reports, then reload this page.",
+    // alpha.133 round 5: a database engine's refusals and a database deletion
+    // that did not finish, in the order why, who acts, the next step, how it
+    // goes on (D-024). ".administrator" is the administrator's own sentence:
+    // they are the one who acts, and the button takes them there.
+    "err.DATABASE_ENGINE_CREDENTIAL_REFUSED": "{engine} did not accept CelikPanel’s own account, so nothing was changed. Only the server administrator can fix this: ask them to give CelikPanel’s account on {engine} a new password. Then try again.",
+    "err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator": "{engine} did not accept the password CelikPanel holds for its own account there, so nothing was changed. You fix it: open Components → {engine} and, under “The account CelikPanel connects to this service with”, choose More → “New password…” (for an engine on another machine, set the account’s password there). Then try again.",
+    "err.DATABASE_ENGINE_CREDENTIAL_REFUSED.action": "Open the service page",
+    "err.DATABASE_ENGINE_UNREACHABLE": "{engine} did not answer, so nothing was changed. Only the server administrator can fix this: ask them to start {engine}. Then try again.",
+    "err.DATABASE_ENGINE_UNREACHABLE.administrator": "{engine} did not answer at the address recorded for it, so nothing was changed. You fix it: start it on Components → {engine} (for an engine on another machine, start it there or correct its address). Then try again.",
+    "err.DATABASE_ENGINE_UNREACHABLE.action": "Open the service page",
+    "err.DATABASE_DELETE_FAILED": "The database server did not delete {name}, so nothing was changed. Try again; if it is refused again, the server administrator finds the reason in CelikPanel’s log.",
+    "err.DATABASE_DELETE_UNCONFIRMED": "No answer came back, so it is not known whether {name} was deleted. Nothing is sent again by itself; the list is being read again. If {name} is still listed, press Delete again: it continues where it stopped.",
+    "err.DATABASE_DELETE_USERS_LEFT": "{name} was deleted, but its users {users} were not removed yet, so it stays in the list. Press Delete again to finish; if it is refused again, the server administrator finds the reason in CelikPanel’s log.",
+    "err.DATABASE_DELETE_USERS_LEFT.unknown": "{name} was deleted; for its users {users} no answer came back, so it is not known whether they were removed. It stays in the list until they are: press Delete again to finish.",
+    "err.DATABASE_DELETE_USERS_LEFT.unknown_rights": "{name} was deleted. Its users ({rights}) stay on the database server; no answer came back about removing the rights they were given for {name}, so it is not known whether that was done. It stays in the list until it is: press Delete again to finish.",
+    "err.DATABASE_DELETE_USERS_LEFT.unknown_mixed": "{name} was deleted, but no answer came back for part of the work, so it is not known whether it was done. Still to be removed from the database server: {pending}. Staying on the server, with the rights they were given for {name} still to be removed: {rights}. It stays in the list until this is done: press Delete again to finish.",
+    "err.DATABASE_DELETE_USERS_LEFT.rights": "{name} was deleted. Its users ({users}) stay on the database server, but the rights they were given for {name} could not all be removed yet, so it stays in the list. Press Delete again to finish; if it is refused again, the server administrator finds the reason in CelikPanel’s log.",
+    "err.DATABASE_DELETE_USERS_LEFT.mixed": "{name} was deleted, but it stays in the list for now. Still to be removed from the database server: {pending}. Staying on the server, but the rights they were given for {name} could not all be removed yet: {rights}. Press Delete again to finish; if it is refused again, the server administrator finds the reason in CelikPanel’s log.",
+    "err.DATABASE_DELETE_USERS_LEFT.exists": "{name} was deleted, but a database with this name is on the database server again, made after the deletion (by hand, by a restore or by an installer). Its users ({users}) were therefore left as they are. Pressing Delete again deletes the database that is there now, with everything in it. If it must stay, do not press Delete: the server administrator first moves or backs up its content.",
+    "err.DATABASE_ENGINE_BUSY": "Another database change on this database server is running, so nothing was changed. Try again in a moment.",
+    "err.DATABASE_DELETE_RECORDS_LEFT": "{name} was deleted on the database server, but CelikPanel’s records of it were not removed, so it is still listed. Press Delete again to finish; nothing else is needed.",
 } as const;
 
 export type DbConfigScreenKey = keyof typeof enDbConfigScreens;

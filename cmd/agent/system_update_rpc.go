@@ -270,6 +270,9 @@ func (service *systemUpdateService) start(ctx context.Context, request *transpor
 	if err != nil {
 		return transport.SystemUpdateStartResponse{}, err
 	}
+	if settler, ok := service.backend.(systemUpdateAttemptSettler); ok {
+		go followSystemUpdateAttempt(settler, queued.RequestID, time.Now().Add(systemUpdateSettleWindow), time.Now, time.Sleep)
+	}
 	return transport.SystemUpdateStartResponse{Accepted: true, Status: queued.Status}, nil
 }
 
@@ -521,6 +524,45 @@ func followSystemUpdateRecovery(backend systemUpdateBackend, pending systemUpdat
 		}
 	}
 	log.Printf("self-update: release recovery did not finish within its window; the attempt stays failed until recovery completes and the Agent next starts")
+}
+
+// systemUpdateAttemptSettler is the backend that can clear the unit of an
+// attempt that stopped before changing anything once its worker has ended.
+type systemUpdateAttemptSettler interface {
+	SettleStoppedAttempt(context.Context, string) (bool, error)
+}
+
+var systemUpdateSettleInterval = 3 * time.Second
+
+// The worker unit is bounded to 15 minutes (RuntimeMaxSec) plus its stop
+// timeout; the follow-up never outlives that.
+const systemUpdateSettleWindow = 16 * time.Minute
+
+// followSystemUpdateAttempt reads the attempt this Agent just launched until
+// its worker has ended (alpha.133 lab, 13 Nov 2026: a press refused on a busy
+// package manager left celikpanel-self-update-<id>.service under systemctl
+// --failed, because only a later successful update cleared it). An attempt
+// that stopped before changing anything gets its own unit's failed mark
+// cleared; any other outcome ends the follow-up and keeps the existing rules.
+// A successful update restarts this Agent, which ends the follow-up with it.
+// It reads only and never starts, repeats or abandons an update.
+// Bu Agent'in baslattigi girisimi iscisi bitene kadar okur; hicbir seyi
+// degistirmeden duran girisimin kendi biriminin hata isaretini temizler.
+func followSystemUpdateAttempt(settler systemUpdateAttemptSettler, requestID string, deadline time.Time, now func() time.Time, sleep func(time.Duration)) {
+	reported := false
+	for now().Before(deadline) {
+		sleep(systemUpdateSettleInterval)
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		done, err := settler.SettleStoppedAttempt(ctx, requestID)
+		cancel()
+		if err != nil && !reported {
+			reported = true
+			log.Printf("self-update: reading the attempt %s after its start failed; the Agent keeps trying: %s", requestID, sanitizedSystemUpdateError(err))
+		}
+		if done {
+			return
+		}
+	}
 }
 
 func runtimeSystemUpdatePlatform() (string, string) { return runtime.GOOS, runtime.GOARCH }

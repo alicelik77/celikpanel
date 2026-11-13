@@ -20,7 +20,10 @@ const (
 	CodeEnrollment  = dnspeertransport.CodeEnrollment
 	CodeUnavailable = dnspeertransport.CodeUnavailable
 	CodeMalformed   = dnspeertransport.CodeMalformed
-	maxWireSize     = 4096
+	CodeNoAnswer    = dnspeertransport.CodeNoAnswer
+	// CodeHostKeyChanged: another SSH host key than the pinned one.
+	CodeHostKeyChanged = dnspeertransport.CodeHostKeyChanged
+	maxWireSize        = 4096
 )
 
 func IsCode(err error, code Code) bool { return dnspeertransport.IsCode(err, code) }
@@ -72,6 +75,11 @@ func Inspect(ctx context.Context, enrollment Enrollment, request pdnspeerproof.R
 		// The pinned host ran the owner's forced command, which exited
 		// non-zero. At most one reviewed token bound to this request survives.
 		return zero, noAuth, Unknown{Code: CodeUnavailable, Reason: pdnsInspectorReason(reason)}
+	}
+	for _, code := range []Code{CodeNoAnswer, CodeHostKeyChanged, CodeEnrollment} {
+		if IsCode(err, code) {
+			return zero, noAuth, Unknown{Code: code}
+		}
 	}
 	if err != nil || !auth.Established || auth.PeerIP != enrollment.PeerIP ||
 		auth.IdentitySHA256 != enrollment.HostKeySHA256 {

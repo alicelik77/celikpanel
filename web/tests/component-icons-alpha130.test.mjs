@@ -55,7 +55,8 @@ test('our own marks are lucide line icons and import nothing else', () => {
 });
 
 test('the Databases page draws the engine mark, not the server emoji', () => {
-  const page = read('../src/components/DatabaseManagementV2.tsx');
-  assert.doesNotMatch(page, /\{s\.type_icon\}/);
-  assert.match(page, /<EngineMark engine=\{serverEngine\(s\.type_name\)\} size="sm" \/>/);
+  // alpha.133: the page lists databases (one visibility rule); a customer's row carries its engine's mark.
+  const page = read('../src/components/databases/DatabasesPage.tsx');
+  assert.doesNotMatch(page, /type_icon/);
+  assert.match(page, /<EngineMark engine=\{db\.engine\} size="sm" \/>/);
 });

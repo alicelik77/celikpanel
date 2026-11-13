@@ -809,7 +809,7 @@ function PanelCertificatePanel({ active }: { active: boolean }) {
                             readOnly={pendingOperation !== null}
                             placeholder="panel.example.com"
                             autoComplete="url"
-                            className={inputClass + ' min-w-0 flex-1'}
+                            className={`${inputClass} min-w-0 field-lg`}
                         />
                         <Button
                             className="w-full sm:w-auto"

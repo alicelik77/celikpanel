@@ -11,7 +11,7 @@ import {
     type PasswordStrength,
     type PasswordWindow,
 } from '../lib/passwordPolicy';
-import { inputClass } from './ui';
+import { inputClass, type FieldSize } from './ui';
 
 // The one password field of the panel (owner, 6 Nov 2026). Every password
 // input is this component (tests/password-input-guard.test.mjs keeps it so):
@@ -25,7 +25,7 @@ import { inputClass } from './ui';
 // Panelin tek parola alanı. Yeni parolada üretme, kopyalama, kural, güç
 // göstergesi ve eksik kurallar; mevcut sırlarda yalnız göster/gizle.
 
-type NativeProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange' | 'defaultValue' | 'className'>;
+type NativeProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange' | 'defaultValue' | 'className' | 'size'>;
 
 export interface PasswordInputProps extends NativeProps {
     value: string;
@@ -37,8 +37,10 @@ export interface PasswordInputProps extends NativeProps {
     generate?: boolean;
     /** Called with a generated password (to fill a confirmation field too). */
     onGenerated?: (password: string) => void;
-    /** Extra classes for the input (width, font). */
+    /** Extra classes for the input (font, height). */
     className?: string;
+    /** The field's width (index.css `field-*`): a password is lg unless the form says otherwise. */
+    size?: FieldSize;
 }
 
 const levels: PasswordStrength[] = ['tooWeak', 'acceptable', 'strong', 'veryStrong'];
@@ -64,6 +66,7 @@ export function PasswordInput({
     generate,
     onGenerated,
     className = '',
+    size = 'lg',
     id,
     autoComplete,
     disabled,
@@ -103,7 +106,7 @@ export function PasswordInput({
     const padding = buttons === 3 ? 'pr-24' : buttons === 2 ? 'pr-16' : 'pr-9';
 
     return (
-        <div className="min-w-0">
+        <div className={`min-w-0 field-${size}`}>
             <div className="relative">
                 <input
                     {...rest}
@@ -121,7 +124,7 @@ export function PasswordInput({
                     disabled={disabled}
                     readOnly={readOnly}
                     aria-describedby={[describedBy, isNew ? ruleId : ''].filter(Boolean).join(' ') || undefined}
-                    className={`${inputClass} ${padding} ${className}`}
+                    className={`${inputClass} field-full ${padding} ${className}`}
                 />
                 <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">
                     {canGenerate && (

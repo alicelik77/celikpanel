@@ -88,11 +88,30 @@ func verifyNativePeerAfterInspectionAt(
 		}
 		retry = retry && record.RestampedSince(authority.catalogSerial)
 		if !retry && ctx.Err() != nil {
-			// The step's time ran out: nothing was observed to differ.
-			return dnsPeerProofDeadline(fmt.Errorf("post-inspection catalog pair check (recorded serial %d): %w",
-				evidence.Serial, err))
+			// The step's time ran out: nothing was observed to differ. While
+			// the record moved past the challenge, the check was waiting for
+			// the secondary to transfer the re-stamped catalog.
+			deadlineErr := fmt.Errorf("post-inspection catalog pair check (recorded serial %d): %w",
+				evidence.Serial, err)
+			if record.RestampedSince(authority.catalogSerial) {
+				return dnsPeerProofDeadlineAt(transport.DNSPeerProofTimeoutPeerExchange, deadlineErr)
+			}
+			return dnsPeerProofDeadline(deadlineErr)
+		}
+		if !retry && isDNSPeerBehind(err) {
+			// This server's catalog matched its record; only the backup did
+			// not serve it (it stopped answering after the exchange, is
+			// restarting, or is behind). That is the backup catching up, the
+			// same reading as the wave's for the same observation, and is
+			// re-checked by itself; it is not an edit of this server's DNS
+			// (alpha.133 round 5 re-review: a backup reboot right after it
+			// answered was told "finish your change to this server's DNS").
+			return pendingDNSPeerCause(transport.DNSPeerPendingCatchingUp,
+				fmt.Errorf("post-inspection catalog pair check (recorded serial %d): %w", evidence.Serial, err))
 		}
 		if !retry {
+			// This server's own catalog or member answers differ from the
+			// record: a local edit.
 			return pendingDNSPeerOwnerEdit(dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckCatalogProbe,
 				"after the inspection the catalog pair did not match the recorded evidence (recorded catalog %s serial %d, %d member(s); challenge serial %d; %s): %v",
 				evidence.Domain, evidence.Serial, len(evidence.Members), authority.catalogSerial,
@@ -115,7 +134,9 @@ func verifyNativePeerAfterInspectionAt(
 	}
 	state, err := observePeerZoneTransferAt(ctx, fresh, domain, probes.peerZone)
 	if err != nil && ctx.Err() != nil {
-		return dnsPeerProofDeadline(fmt.Errorf("post-inspection no-transfer probe of %s: %w", domain, err))
+		// A transfer request to the secondary that did not answer in time.
+		return dnsPeerProofDeadlineAt(transport.DNSPeerProofTimeoutPeerExchange,
+			fmt.Errorf("post-inspection no-transfer probe of %s: %w", domain, err))
 	}
 	if err != nil || state != dnsZoneAXFRNoTransfer {
 		return pendingDNSPeerOwnerEdit(dnsPeerOwnerEditf(transport.DNSPeerOwnerEditCheckTransferObserved,

@@ -76,17 +76,19 @@ bu bölümde öyle yazılır.
 
 ### Neredeyiz
 
-- **Son sürüm:** v0.1.0-alpha.128, 7 Kasım 2026'da yayımlandı. Site başına
-  ayarlar (sınırlar içinde), planlarda "yalnız bildir", giden posta
-  sınırları, site başına web sunucusu ayarları, ek FTP/SFTP girişleri,
-  veritabanı araçları, ziyaretçi istatistikleri, uzak API, tek bildirim
-  listesi, oturumlar ve sunucu bakımı ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.128.tr.md)).
-- **Sahibin sunucuları:** Frankfurt ve Boston 127'de; 128'e güncellemeyi
-  sahip panelin kendi güncelleme ekranından başlatacak. Güncellemeden sonra
-  yalnız salt-okur doğrulama yapılır.
-- **Laboratuvar kapsamı:** 128'in yeni özellikleri Debian 13 ve Ubuntu
-  24.04'te denendi. Debian 12, Ubuntu 22.04 ve Arch Linux yalnız otomatik
-  testlerle kapsandı.
+- **Son sürüm:** v0.1.0-alpha.132, 12 Kasım 2026'da yayımlandı: tek kaydetme
+  biçimi, dokuz bölümlü alan adı sayfası, sözcükle satır düğmeleri
+  ([sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.132.tr.md)).
+- **Aday:** v0.1.0-alpha.133 (satır 56): tek görünürlük kuralıyla
+  Veritabanları listesi, Güvenlik'e ve motor sayfalarına taşınan sunucu
+  işleri, içeriğine göre boyutlanan alanlar ve DNS çiftinde takılan alan adı
+  silme.
+- **Sahibin sunucuları:** Frankfurt ve Boston alpha.132'de (salt-okur
+  doğrulama, 12 Kasım 2026). Onları yalnız sahip, panelin kendi güncelleme
+  ekranından günceller.
+- **Laboratuvar kapsamı:** alpha.132, Ubuntu 24.04'te alpha.131'den
+  güncellenerek denendi (tek sunucu, üç deneme). alpha.133 laboratuvar
+  denemesi bekliyor.
 
 ### Çalışma kuralları (değişmez)
 
@@ -101,85 +103,53 @@ bu bölümde öyle yazılır.
 
 ### Sıradaki sürümler
 
-**alpha.129 — Veritabanları ve 128'in açıkları**
-1. Veritabanı kullanıcısının parolasını değiştirme (üretme, göster/gizle,
-   güç göstergesi, 127 parola kuralı). Bugün kullanıcı yalnız oluşturulup
-   silinebiliyor.
-2. Aynı veritabanına ek kullanıcı: "salt okunur" ya da "okuma-yazma".
-3. Bağlantı rehberi: pgAdmin, DBeaver ve HeidiSQL ile bağlanmak için sunucu
-   adı, port, kullanıcı ve adımlar; yönetici için SSH tüneli yolu.
-4. Dışarıdan bağlantı (sahip kararı bekliyor, aşağıya bakın): önerilen kural
-   varsayılan kapalı, yalnız eklenen IP adresleri, şifreli bağlantı, yanlış
-   parola denemelerinin yavaşlatılması, plan izniyle.
-5. Veritabanı kartları: motorun işareti ve rengi (resmî logolar ancak iki
-   projenin marka kuralları izin verirse, yoksa kendi işaretimiz), MariaDB
-   veritabanına "MySQL" yazılmaması, dosya seçilmeden önce kapalı ama normal
-   görünen "İçe aktar" düğmesi, boyut/tablo/bağlantı sayılarının okunur
-   kutuları.
-6. Aynı adlı iki farklı motor veritabanı serbest kalır; yalnız dışa aktarma
-   ve yedek dosya adlarında motor yer alır (aynı adlı iki dosya birbirinin
-   üstüne yazılmasın). Alan adına bağlı olmayan veritabanlarında ad kuralı
-   doğrulanır.
-7. 128'in açık kalanları: yeni özelliklerin Debian 12, Ubuntu 22.04 ve Arch
-   Linux'ta laboratuvar denemesi; günlük saklama ve büyük site kopyası
-   denemesi; DNS yayını beklenen alan adının anahtarla silinmesi; aynı saat
-   içinde yeniden açılan posta kutusunun gerektiğinde yeniden durdurulması.
+**alpha.133 — Görünürlüğe göre veritabanı listesi, yerine taşınan sunucu işleri, içeriğine göre boyutlanan alanlar (Aday)**
+Sol menüdeki Veritabanları sayfası kişinin görebildiği her veritabanını tek görünürlük kuralıyla
+listeler (sahip, 12 Kasım 2026: yönetici boş liste görüyordu); sunucunun dışarıdan bağlantı
+anahtarı Güvenlik'e, CelikPanel'in motor hesabı MariaDB ve PostgreSQL sayfalarına taşındı; her
+alan tuttuğu değer kadar geniş; alpha.132'nin açık işleri (plan sınırları, aktarma formu, alan
+adı silme sorusu, sözcükler); kara liste denetimi bir reddi artık listeleme saymaz; program
+sitesinde Programlar parçası başa gelir; iki sunuculu DNS çiftinde takılan alan adı silme yeniden
+biter. Bkz. satır 56.
 
-**alpha.130 — Posta**
-1. Posta programlarının kendiliğinden ayarlanması (Thunderbird, Outlook):
-   site şablonu değişikliği ve sertifika işiyle birlikte.
-2. Dış aktarıcı (smarthost): postayı başka bir sunucu üzerinden gönderme.
-   Diğer posta sunucusu ayarları (Dovecot sınırları, alt adresleme, DKIM
-   anahtarı değişimi, izin ve engel listeleri) talebe göre birer birer.
-   alpha.130 alt adreslemeyi ve sunucu genelinde gönderen listesini yapar;
-   DKIM değişimi, Dovecot sınırları ve alan adına özel listeler tasarım notu
-   olarak kalır (docs/MAIL-SERVER-SETTINGS-DESIGN.md).
-3. Joker sertifika (`*.alanadi`): alpha.114'te ertelendi. Yalnız PowerDNS
-   üzerinde, DNS doğrulamasıyla; BIND'de açık bir retle. alpha.130'da
-   yapılmadı: tasarım notu (docs/WILDCARD-CERTIFICATE-DESIGN.md) sahibin
-   kararını bekliyor.
-4. Posta kutusu kurtarma adresi ve sıfırlama bağlantısı: parolasız bir giriş
-   yolu olduğu için önce güvenlik incelemesi; inceleme geçmezse yapılmaz ve
-   nedeni yazılır.
-
-**alpha.131 — Port değişikliğinden sonra veritabanına dışarıdan bağlantı (küçük düzeltme sürümü)**
-Sahip Boston'da PostgreSQL'i 5433'ten 5432'ye taşıdı ve dışarıdan bağlantı durdu (kapalı kaldı,
-hiçbir şey açığa çıkmadı). Kayıt artık kümeyi izliyor, port değişince onunla taşınıyor; sunucu
-anahtarı açıkken müşterilerin adresleri hiçbir zaman yeniden başlatma gerektirmiyor. Bkz. satır 54.
-
-**alpha.132 — Tek kaydetme biçimi, dokuz bölümlü alan adı sayfası, sözcükle satır düğmeleri**
-İlk küçük tasarım sürümü (sahip, 12 Kasım 2026: yeniden tasarım çizildiği gibi onaylandı; küçük
-sürümler, hazır olan yayımlanır). Ayarlar yalnız Kaydet ile kaydedilir (değişen satırlar
-işaretli, Vazgeç, kaydedilmemiş değişiklikle çıkarken panelin kendi penceresi sorar); alan adı
-sayfası bugünkü ekranları yeniden gruplayarak dokuz bölümdür ve eski her bağlantı çalışır; alan
-adı listesi düğmeleri, türleri ve durumları sözcükle ve bir "Diğer" menüsüyle söyler, tek yol
-gösterme kutusu kopyaların yerini alır. Bkz. satır 55.
+**alpha.134 — alpha.133'ün bilinen sınırlarının düzeltmeleri**
+1. Site yedekleri bir programın ya da Python uygulamasının klasörünü ve verisini içerir.
+2. Alan adı silinirken veritabanlarına ne olacağı sorulur ve geride kalanlar temizlenir.
+3. Sertifika ekranı sertifikanın neyi, posta adı dâhil, kapsadığını söyler.
+4. Veritabanları listesinde boyutlar, bütün liste için tek seferde okunarak.
+5. MariaDB haklarının tek bir veritabanı adına verilmesi ve mevcutların dönüştürülmesi.
+6. Veritabanı silme, veritabanının zaten silinmiş olduğunu hatırlar; arada aynı adla açılan veritabanı ikinci basışla silinmez.
+7. Silinen bir veritabanını anan her hak her hesaptan kaldırılır (daha önce kaldırılmış bir kullanıcının adıyla elle açılmış hesaptan da).
+8. Kullanıcının hesaplarını bırakan bir silmeden sonra aynı adla veritabanı açma reddi, adı neyin boşa çıkaracağını okuyanın dilinde söyler.
+9. PostgreSQL: başka bir veritabanına eklenen kullanıcı, veritabanının kendi kullanıcısına ait tablolarda da hak alır.
 
 Ardından gelen tasarım sürümleri, onaylanan sırayla (sahip, 12 Kasım 2026). Her biri kendi
 bölümlerinin içini onaylı çizimlere göre yeniden tasarlar; küçük sürümler, hazır olunca yayımlanır.
 
-**alpha.133 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
+**alpha.135 — Genel Bakış, alan adı listesi ve müşterinin ana sayfası**
 Alan adının Genel Bakış'ı, alan adı listesi ve müşterinin ana sayfası çizildiği gibi; her birinin
 gereken özet ve sağlık bilgileri satır başına değil tek istekte okunur.
 
-**alpha.134 — E-posta**
+**alpha.136 — E-posta**
 E-posta bölümü çizildiği gibi.
 
-**alpha.135 — Veritabanları**
-Veritabanları bölümü, hesabın bütün alan adlarını kapsayan "Sahibi" sütunlu birleşik liste ve
-sunucu sayfası; dışarıdan bağlantı, yönetici sunucuda açtığında orada onaylı tek bir yeniden
-başlatmayla hazırlanır (önceki alpha.132 planından buraya taşındı); daha anlaşılır PostgreSQL
-ayarları (geçerli değerler, CelikPanel'in satırları işaretli).
+**alpha.137 — Veritabanları bölümü**
+Alan adının Veritabanları bölümü çizildiği gibi; dışarıdan bağlantı, yönetici sunucu anahtarını
+açtığında orada onaylı tek bir yeniden başlatmayla hazırlanır; daha anlaşılır PostgreSQL ayarları
+(geçerli değerler, CelikPanel'in satırları işaretli).
 
-**alpha.136 — Alan adı ve DNS, Güvenlik**
+**alpha.138 — Alan adı ve DNS, Güvenlik**
 Kayıt düzenleme ve Alan adı ve DNS bölümü çizildiği gibi; Güvenlik bölümü (sertifika, korumalı
 klasörler, zararlı yazılım taraması) çizildiği gibi.
 
-**alpha.137 — Site ve Dosyalar**
+**alpha.139 — Site ve Dosyalar**
 Site ve Dosyalar bölümleri çizildiği gibi.
 
-**alpha.138 — Yedekler ve Gelişmiş**
+**alpha.140 — Yedekler ve Gelişmiş**
 Yedekler ve Gelişmiş bölümleri çizildiği gibi; gerektirdikleri sunucu ayarı taşımalarıyla.
+
+**alpha.141 — Yönetici, bayi ve hesap sayfaları**
+İkinci onaylı önerinin sayfaları (sahip, 12 Kasım 2026).
 
 Önceki alpha.132 planından da taşınanlar, dokundukları ekranların sürümüne yerleşir: Mağaza
 katalog yönetimi, bir iznin neden eksik olduğu, lisans hizmeti kesintisinin adıyla söylenmesi.
@@ -253,18 +223,16 @@ gerekçesiyle değiştirilir.
 
 ### Sahibin kararını bekleyenler
 
-1. **Veritabanına dışarıdan bağlantı** (129): önerilen kural yukarıda.
+1. **Joker sertifika** (`*.alanadi`): tasarım notu,
+   [docs/WILDCARD-CERTIFICATE-DESIGN.md](docs/WILDCARD-CERTIFICATE-DESIGN.md)
+   (yalnız PowerDNS'te, DNS ile doğrulanır; BIND'de açık bir ret).
 2. **Web uygulaması güvenlik duvarı (ModSecurity):** Arch'ta resmî paketi
    yok, Ubuntu'da yalnız topluluk deposunda. Seçenekler: yalnız resmî paketi
    olan sistemlerde sunmak ya da yapmamak.
 3. **Lisans ve iş modeli:** önerilen açık çekirdek; fiyat sunucu başına,
    hesap sayısına göre değil.
 4. **PostgreSQL aracı:** açık kaynak mı, ayrı depo mu.
-5. **Sürüm büyüklüğü:** yukarıdaki gibi konulu ve laboratuvarlı sürümler mi,
-   yoksa 1–3 işlik küçük sürümler mi.
-6. **Beta:** ne zaman ve hangi işletmecilerle.
-7. **Posta kutusu kurtarma adresi:** güvenlik incelemesinden sonra
-   yapılsın mı.
+5. **Beta:** ne zaman ve hangi işletmecilerle.
 
 ### Bilerek yapılmayanlar (değişmedi)
 
@@ -2282,6 +2250,7 @@ kabul işi açık kalır.
 | 53 | `v0.1.0-alpha.130` sürüm incelemesi. **Yayımlandı, 8 Kasım 2026 (sürüm commit'i `67d6131d5`; ön sürüm 16:43:42Z; portal yaklaşık 16:49Z, dış denetim 27/27).** Posta: kendiliğinden ayarlanan programlar (üst alan adı başına sabit nginx yanıtlarıyla Thunderbird autoconfig ve Outlook Autodiscover; HTTPS yalnız sertifika adları kapsıyorsa, adlar yalnız genel DNS buraya gösteriyorsa eklenir; eksik bölge kayıtları tek tıkla eklenir, var olan asla değiştirilmez; docs/MAIL-AUTOCONFIG.md), sunucu genelinde aktarma sunucusu (`celikpanel-relay` taşıyıcısı, zorunlu TLS üzerinden SASL, mühürlü parola, hiçbir şey göndermeyen oturum açma denemesi, sahibin aktarma ayarları fark edilir ve üzerine yazılmaz, kapatınca artık kalmaz; docs/MAIL-RELAY.md), sunucu genelinde alt adresleme (`recipient_delimiter = +`, Debian/Ubuntu'nun kendi satırı korunur, Dovecot yalnız okunur) ve sunucu genelinde gönderen izin/engel listesi (`check_sender_access`, asla OK değil, kendi alan adları reddedilir; docs/MAIL-SERVER-SETTINGS-DESIGN.md), yazılı güvenlik incelemesinden sonra posta kutusu kurtarma adresi ve sıfırlama bağlantısı (doğrulanmış adres, parola parmak izine, abonelik sahibine ve alan adı satırına bağlı 30 dakikalık tek kullanımlık bağlantı, herkese aynı yanıt, hız sınırları, Ajan'da karşılaştırıp yazma; docs/MAILBOX-RECOVERY-REVIEW.md), elle durdurulan gönderim hiçbir parola değişikliğiyle açılmaz. Veritabanına dışarıdan bağlanma (docs/DATABASE-REMOTE-ACCESS.md): yalnız adres yasaklayan MariaDB Fail2ban kuralı ve onayla CelikPanel'in kendi seçenek dosyasında kapatılan ad çözme, paket varsayılanı öneklerde PostgreSQL Fail2ban katmanı, süreli erişim (varsayılan 1 gün, 7 gün, süresiz; süre bitimi eşitleme döngüsünce kayıtla kaldırılır), sunucu açılırken süzgeçten çıkarma (D5), `nft flush ruleset` sonrasında kayıtlı kurallardan panel güvenlik duvarının geri kurulması (D6), Veritabanları sayfasında yönetici bölümü, sunucu ayrıntısı içermeyen müşteri görünümü. Haklar (docs/PLANS-AND-RIGHTS.md §15): her sunumun tek deposu (Sunulanlar sekmesinden isteğe bağlı izinler `admin_offered_permissions`'a gider; katalogda yönetilen öğeler `OFFERED_IN_CATALOG` ile salt okunur; `VERSION_WITHDRAWN`; eski gizli girdiler geri çekilmiş sunum olarak taşınır, hiçbir şey açılmaz), her yanıtta öğenin durumu, her ekranda aynı izin başlıkları, müşterinin değiştirebileceği ayar yalnız müşterinin değer seçtiği yerde, Türkçe katalog metinleri. İşletim (docs/A130-OPS-LAB.md): SSH parola girişi sshd'nin karar verdiği gibi okunur ve sahip tarafından `00-celikpanel.conf` ile kapatılır (kilitlenme koruması, yalnız yeniden yükleme), panel TLS denetimi sertifikanın kendi adıyla sorar, güvenlik güncellemeleri kartı düz sözlerle ve bekleyen yeniden başlatmayla, yanlış 'Postfix çalışmıyor' yok (hizmetin çalıştığını kanıtlayan birimin canlı okunması; eski taramalar 'denetlenmedi'), her tarih arayüz dili biçimleyicisinden. Simgeler: her bileşenin kendi simgesi, kendi çizdiğimiz fil ve deniz aslanı motor işaretleri. PostgreSQL ve kalıntılar (docs/LEFTOVERS-AUDIT.md): Debian/Ubuntu'da sürüm kaldırma paketleri tamamen temizler (istemci paketi de; yapılandırma, veri ve günlükler temizlikten sonra silinir; initdb'nin oluşturduğundan fazlasını taşıyan küme önce arşivlenir; küme veritabanı taşıdıkça yine reddedilir), yeni kalıntı kümeler açılıştan sonra bir kez 30 günlük, yalnız root'a açık `-auto` arşiviyle kaldırılır, diğerlerine Arşivle ve kaldır sunulur (`pg_leftover_remove`, adımlar check/archive/records), yapılandırma düzenleyicileri yalnız çalışan kümeler için ve küme seçimiyle, kuralı ya da ayarı neden ve çözümüyle adlandıran ret uyarısı, Dovecot/Postfix/postfwd/Node.js kaldırmaları CelikPanel'in dosyalarını hâlâ CelikPanel'inse götürür. Laboratuvar düzeltmeleri: veritabanına dışarıdan bağlanma panel açılışında hizmet kilidi almaz (durumdan okunan özet, 3 dakika boyunca ya da sunucu meşgulken tam uygulama yok, kilitsiz daraltma), böylece sürüm kurtarmanın boşta denetimi onu asla beklemez; kalıntı temizliği kaldırılan sürümün `rc` ve kullanılmayan istemci paketlerini de güvenli kaldırma yoluyla temizler, açılıştan 10 dakika sonra ve yalnız sakin sunucuda (kayıt `postgresql.cluster.leftover.purged`/`.failed`); tek sürüm kaldırma yeniden çalışır (`versionFromPackage`, küme satırlarında "PostgreSQL N'yi kaldır"); PostgreSQL'in tamamen kaldırılması hiçbir şey bırakmaz (`rc` paketler, istemci/belge paketleri, `postgresql-common`, boş klasörler, gereksiz `libpq5`, CelikPanel'in PGDG kaynağı/anahtarı/önceliği); apt temizlemesi yalnız sahibin systemd ek ayarlarını geri koyar, bileşenin kendi klasörlerini boşaltıp kaldırır, sahibe ait olabilecek dosyaları ve değişmiş yapılandırma dosyalarını `/var/backups/celikpanel/kept/<bileşen>-<zaman>/` altına kopyalar (yanıtta adıyla), Dovecot kaldırılınca `/etc/dovecot/users` da gider ve posta kurulumu Dovecot'u programından tanır; BIND ikincillerinde CelikPanel'in kendi `Match User celikpeer` bloğu SSH parola girişini kapatmayı artık engellemez, ek ayar root:root olduğundan yeniden açma çalışır; posta "Şimdi ayarla" isteği (`matchDomainSubroute` içinde `mail/autoconfig`) artık 404 vermez; onaylanan MariaDB `skip-name-resolve` satırı sonraki kuralla yeniden yazılır; izleme Debian 13'te çalışan `postfix.service` birimini okur (Ubuntu'nun çıkmış sarmalayıcısında yine `postfix@-`); dışarıdan erişimi kapatan yazmalar (kaldırma, daha erken bitiş, sunucu anahtarını kapatma) `PANEL_STARTING` sırasında kilitsiz daraltmayla kabul edilir, açma yine 503 (plan/haklar geri çekmesi ve süre bitimi taraması açılışı bekler); systemd açılırken reddedilen yazma çıplak 500 yerine `Retry-After: 15` ve EN/TR yönlendirmeyle 503 `HOST_STARTING` döner. Yalnız tasarım notu: joker sertifika (docs/WILDCARD-CERTIFICATE-DESIGN.md, sahibin kararı gerekli), DKIM anahtar değişimi, Dovecot sınırları, alan adına özel gönderen listeleri, alan adına özel aktarma; sahibin kararını bekleyen kalıntılar (MariaDB verisi, Roundcube veritabanı, WireGuard anahtarları, posta verisi, Arch phpMyAdmin ini). Geçişler 075 `database_remote_rule_expiry`, 076 `mailbox_recovery`, 077 `mail_relay` (eklemeli). Sürüm sırası 129 → 130. Laboratuvar turu düzeltmelerinden sonra geçti (QEMU, Debian 13 ilk sunucu + Boston'un PostgreSQL geçmişini taşıyan katılmış Ubuntu 24.04: 129 → 130 70–84 saniye, şema 77, zorla başarısız bırakılan güncelleme ilk denemede geri alındı, panel 29–31 saniye kapalı; kanıt laboratuvar dalında `deploy/e2e/dns-pair-acceptance/evidence/a130/`; denenmeyenler: Arch, IPv6 kuralları, Roundcube oturumunun kapanması, bayi eksikliği uyarısı). [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.130.tr.md). | Yayımlandı |
 | 54 | `v0.1.0-alpha.131` sürüm incelemesi. **Yayımlandı, 11 Kasım 2026 (sürüm commit'i `b0bc1393b`; ön sürüm 18:12:58Z; portal yaklaşık 18:17Z, dış denetim 27/27).** Veritabanına dışarıdan bağlanma PostgreSQL kümesinin port değişikliğini izliyor (Boston, 8 Kasım 2026: 5433 → 5432 sonrasında her kural reddedildi, güvenli tarafta kaldı): Ajan kaydı sürüm 2 her kümenin veri klasörünü taşır (sürüm 1 okunurken dönüştürülür, ilk uygulama baştan sona; 130 Ajanı sürüm 2'yi reddeder ve hiçbir şeyi değiştirmez), her uygulama portu kümesini kaybetmiş kaydı onarır (veri klasöründen ya da CelikPanel'in kendi ayarlarının tam olarak tek kümede bulunmasından; belirsizlik hiçbir şey açmaz), kanıtlanmış port değişikliği kaydı, süzgeç portunu ve eski Fail2ban kuralını taşır ve tam uygulama ister; sunucu anahtarı açıkken son adres gidince dinleme, TLS ve `auth_delay` kalır (yalnız anahtarı kapatmak geri alır); MariaDB etkilenmez. Müşteri kartı: satır yerleşimi, yeni bitiş için açık Uygula/Vazgeç, sunucunun kendi adı, sakin sahip ayarı metni, aralıklar, elle yenileme yok. Geçiş yok (şema 77). Sürüm sırası 130 → 131. Laboratuvar geçti (Ubuntu 24.04: 130'da yeniden üretildi, güncellemeden sonra yeniden başlatmasız 404 saniyede kendiliğinden düzeldi, 5432 → 5434 port değişikliği 6 saniyede izlendi; kanıt laboratuvar dalında `deploy/e2e/dns-pair-acceptance/evidence/a131/`). Açık: yönetici kartı adres yokken motoru açık gösterir; anahtarın yeniden tasarımı ve bütün ekranlar için açık kaydetme kuralı alpha.132'de. [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.131.tr.md). | Yayımlandı |
 | 55 | `v0.1.0-alpha.132` sürüm incelemesi. **Yayımlandı, 12 Kasım 2026 (sürüm commit'i `8c9c9ce64`; ön sürüm 07:31:20Z; portal yaklaşık 08:21Z, dış denetim 27/27).** İlk küçük tasarım sürümü (sahip, 12 Kasım 2026). Tek kaydetme biçimi: ortak taslak, kaydetme çubuğu, değişiklik işaretleri, sunucuda değişen değer notu ve panelin kendi penceresinde çıkış sorusu (yönlendirici bağlantıları, Geri/İleri, bölüm ve Kullanıcılar sekmesi değişimi; `beforeunload` tek yerde) `components/kit/save` içinde; tıklayınca kaydeden her ayar denetimi dönüştürüldü (parça parça rapor veren sertifika ayarları, WordPress otomatik güncellemeleri, haftalık tarama, PHP havuzu, web ayarları ve yönergeleri, Node.js değişkenleri, program ayarları, site türü, www yönlendirmesi, otomatik yedekler, gönderim sınırları, otomatik yanıt, diğer girişler, zamanlanmış görevler, yazmadan önce yeniden okuyan dosya düzenleyici; Sunulanlar, sunulan sürümler, adım adım uygulanan PHP eklentileri, güncelleme denetimi, posta kuralları, bildirimler, plan formları, sunucu sınırları, parola düzeyi); kaybolan yanıt ikinci kez gönderilmez; değişince kaydeden her denetimde bir sözleşme testi artık başarısız olur (istisnasız). Programları ve hizmet uygulamalarını kaldırmak için yapılandırılmış onay (gidecekler/kalacaklar, yazılan ad). Alan adı sayfası: yeniden gruplanmış dokuz bölüm (Genel Bakış, Site, Dosyalar, E-posta, Veritabanları, Alan adı ve DNS, Güvenlik, Yedekler, Gelişmiş), her biri tembel parça (sayfa parçası 160 → 17 KiB); yer `?section=&part=` içinde; eski `?tab=` (sunucunun kurduğu bağlantılar, `account_notices.fix_path`, sağlık `{tab, sub}`) kalıcı eşleme tablosuyla korunur ve yerinde yeniden yazılır; planın kapattığı bölüm yerinde soluk kalır ve kimin ekleyeceğini söyler; ekip üyeleri yalnız verilen bölümleri görür. Satır düğmeleri: alan adı listesinde "Diğer" menülü `RowActions` (Sil… sonda), sözcükle türler ve durumlar (`siteKindWord`, `StateLabel`), tek `Guidance` kutusu, retlerde "Ayrıntı". Eski sekmeleri anan metinler artık bölümleri anıyor (EN, TR, kılavuz). Geçiş yok (şema 77), Go ya da Ajan değişikliği yok. Sürüm sırası 131 → 132. Açık: bölümlerin içi bugünkü ekranlar (133–138'de yeniden tasarlanır); dosya düzenleyicide denetim-yazma aralığı; PHP eklentileri birer birer; program/Python tür sözcüğü; "Diğer" menüsü yalnız alan adı listesinde; gerçek sistem denemesi: alpha.131'den panelin kendi güncelleme ekranıyla güncelleme, Ubuntu 24.04, tek sunucu, laboratuvar, üç deneme. [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.132.tr.md). | Yayımlandı |
+| 56 | `v0.1.0-alpha.133` sürüm incelemesi. **Aday.** İkinci küçük tasarım sürümü (sahip, 12 Kasım 2026). Tek görünürlük kuralıyla veritabanı listesi: `GET /api/v1/databases/visible` (`visibleOwnerIDs`: yönetici hepsi, bayi kendisi + müşterileri, müşteri kendisi; ekip üyesine boş liste; yalnız adlar, sahipler, alan adları, motorlar ve kullanıcı adları, asla parola, bağlantı sırrı ya da içerik; Ajan sorulamadığında `engines` null, bu sürümde `size_bytes` null); veritabanı silme ve veritabanı kullanıcısına yeni parola, çağıranın ilk aboneliğine göre değil kaydın sahibinin görünürlüğüne göre yetkilendirilir (olmayan ve başkasına ait aynı yanıtı alır; rol matrisi testi; `database.delete` denetim satırı yapanı ve sahibi yazar); yeni `components/databases/DatabasesPage.tsx` (Sahibi sütunu, arama, sıralanan başlıklar, telefonda kartlar, müşteriye alan adına göre gruplu, Aç / Yeni parola ver… / Sil… satır işlemleri ve yazılan ad, "Hangi alan adı için?" alan adının formunu `?create=1` ile açar); eski sayfa, iki penceresi ve 60 anahtar kaldırıldı. Sunucu işleri taşındı: dışarıdan bağlantı anahtarı Güvenlik › Dışarıya açık olanlar'a (açık kaydetme, motor başına hazırlık yol gösterme kutularıyla, Ajan cümlesi Ayrıntı altında), CelikPanel'in motor hesabı MariaDB/PostgreSQL sayfalarına; MariaDB'nin `bind-address = 0.0.0.0` ipucu kaldırıldı. Alan boyutları: `index.css` içinde altı belirteç, `src/components` altındaki her alan boyutlu, istisnasız koruma testi. alpha.132 artıkları: plan sınırları aralık dışı değeri kapalı Kaydet'in yanında adlandırır, aktarma formu kaydetme takımında ve hiçbir şey kaydetmeyen bağlantı denemesiyle, alan adı silme gidenleri ve kalanları yazılan adla listeler, "Parola"/"Tekrar dene". Kara liste denetimi: yanıtlar her listenin belgelediği kodlara göre okunur (listede / listede değil / nedeniyle denetlenemedi); geriye uyumlu gob alanları Outcome, Reason, Sublists; eski Ajanın yanıtı "denetlenemedi"; SORBS çıkarıldı. Program ya da hizmet uygulaması sitesinde Site bölümü o parçayla başlar; Genel Bakış kutucuğu orada ne çalıştığını söyler. İki sunuculu DNS çiftinde takılan alan adı silme (12 Kasım 2026): eş kanıtı günlüğü tam yerel motor denetimini deneme başına 12 kez (her biri ~1,7 s) süre sınırları içinde çalıştırıyordu; yazma içi denetleyici artık yalnız yazmaya yetki vereni denetler (iki kilit, tam iş kaydı denemesi, kayıt) ve tam denetim kanıtın dayandığı dört noktada bir kez çalışır; önceki bitmiş işlemin doğrulama kaydı önce tutulan denetimler altında emekliye ayrılır; sınırlar hazırlık 8 → 10 s, tüketme 20 → 18 s, toplam 60 s; iki kanıt yolu tek kuyruğu paylaşır; panel bir yeniden denetim için 90 s bekler ve bırakılan süren denemeyi yineleme saymaz; son 1–3 s'deki bir sahip düzenlemesi tek-tüketmeden sonra bulunur (bekler + yeniden dener, asla başarı değil; docs/DNS-ENGINE-ARTIFACT.md); mevcut hata kodu alanında `dns_peer_proof_timeout:local_check` / `:peer_exchange` neden kodları; doğru EN/TR metinler, başarısız değil bekliyor, biten adımlar bitti olarak okunur; aynı nedenle 6 bekleyen yeniden denetimden sonra yöneticilere tek `dns_publication_stuck` bildirimi, yeniden denetimler sürer; günlük eki ve iş kaydı v1 kalır. Laboratuvar turu 1 (`455b31173` üzerinde boşta deneme): önceki doğrulama kaydını emekliye ayırırken kesilen bir alpha.132 yeniden denetimi 0 baytlık bir kayıt ve sahipsiz bir emekli dosyası bıraktı; sonraki her yeniden denetim reddedilirken ekran kimsenin bir şey yapmasına gerek olmadığını söylüyordu; artık emekliye ayırma tek adımdır, hazırlığın başındaki `Recover` yarım kalan her emekliye ayırmayı ya da yazmayı onarır, kanıtlayamadığı durum yeni `dns_peer_journal_unresolved` nedenidir (kendiliğinden yeniden denetlenmez, yönetici adlandırılır, tek bildirim); silme durumuna isteğe bağlı `follow_up` / `next_check_at` eklendi; bekleme şeridi, pencere ve bildirim tembel yüklenen `deletionGuide` parçasında tek kısa `Guidance` kutusudur. Güncelleme penceresi: erişim beklemesinden sonra sürer; hiçbir şey değişmeden reddedilen istek başarısız systemd birimi bırakmaz; silinmeyi bekleyen alan adında yapılandırma eksik rozeti yok, disk kullanımı ölçülmez, ana sayfa sertifika listesinde yer almaz. Geçiş yok (şema 77). Sürüm sırası 132 → 133. Liste ve alan adı sayfası için tek veritabanı silme (`cmd/panel/database_delete.go`): CelikPanel'in kendi yerel motoru Ajan üzerinden (saklı kimlik bilgisi yok), diğer her kayıt kendi sürücüsüyle ve yalnız veritabanı silinerek; veritabanı için açılan kullanıcılar, başka veritabanı kullanmıyorsa, elle verilmiş hakları yoksa ve motora kendi hesabıyla ulaşılmıyorsa silinir (kalan her kullanıcı öncesinde ve sonrasında nedeniyle adlandırılır); PostgreSQL oturumları önce sonlandırılır; motor hesabı o motorun her yerel kaydına yazılır; türlü sonuçlar ve denetim satırları; motor başına sınırlı geçit (`DATABASE_ENGINE_BUSY`); çevrilmiş retler; laboratuvar denemesi 3'ten sonra silmenin bıraktığı her hesap (paylaşılan kullanıcılar ve aynı adla elle açılmış hesaplar dâhil), motor veritabanının gittiğini doğruladıktan sonra silinen veritabanı üzerindeki haklarını kaybeder; kısmi sonuçlar grup grup söylenir ve denetlenir. Yanıt vermeyen yedek DNS sunucusu her zaman kendiliğinden beklemedir; tek kural (`DNSPeerPendingStopsAutomaticRechecks`) kendiliğinden yeniden denetimleri yalnız sahip düzenlemesi durumlarında ve çözülemeyen denetim kaydında durdurur; kişi durumu başına tek bildirim; her neden için tam yol gösterme tembel yüklenen `deletionGuidePeer` parçasında; boştaki lab çiftinde ölçülen DNS doğrulaması 6,5–8,0 s. Açık: program dosyaları ve verisi site yedeğinde yok; alan adı silme veritabanlarını sunucuda bırakır; önceden kurulan sunucularda veritabanı kullanıcılarının bağlantı sınırı, motor hesabına yeni parola verilene dek uygulanmayabilir (onarım sonraki sürümde); kendi hesabıyla ulaşılan motorda kullanıcı silme yapılmıyor; CelikPanel dışında başka adla açılmış bir MariaDB hesabı silinen veritabanı üzerindeki haklarını korur; MariaDB hakları hâlâ ad kalıbıyla verilir, bu yüzden bir kullanıcının hakları adı yalnız kendi adında `_` olan yerlerde ayrılan başka bir veritabanını da kapsayabilir (tam ad hakları ve dönüştürme alpha.134'te); yarım kalan bir silmeden sonra Sil'e yeniden basmak arada aynı adla açılmış veritabanını siler (silmenin hatırlanması alpha.134'te); PostgreSQL yalnız-haklar kipine uyar (paylaşılan rol asla silinmez) ve iki motor da doğrulanmış silme olmadan yalnız-haklar isteğini reddeder; Adayda 4. laboratuvar denetimi geçti: silmenin ele aldığı hesaplarda silinen veritabanını anan hak kalmıyor (MariaDB 11.8.6 ve 10.11.14, `::1`/ağ maskeli aynı adlı elle açılmış hesaplar, tablo/sütun/yordam hakları, paylaşılan kullanıcılar), ilgisiz haklara dokunulmuyor, iki veritabanının paylaştığı PostgreSQL 17 rolü kalıyor, iki sunucu panelin kendi sayfasıyla 95 s ve 108 s'de güncellendi; yanıt vermeyen yedek daha önce gerçek bir PowerDNS/BIND çiftinde doğrulandı; laboratuvarda denetlenmeyenler: ad yeniden açıldıktan sonra kalan hesapla oturum, kısmi sonuç, sahip düzenlemesi kişi durumu, değişen yedek anahtarı, yöneticinin kaydettiği ikinci motor. Açık kalanlar: daha önce kaldırılmış bir kullanıcının adıyla elle açılmış hesap haklarını korur; kullanıcının hesaplarını bırakan bir silmeden sonra aynı adla veritabanı yeniden açılamaz; motor hesabına yeni parola verilene dek var olan kullanıcıyı başka veritabanına eklemek reddedilir; başka veritabanına eklenen PostgreSQL kullanıcısı yalnız CelikPanel hesabının sonradan açtığı tablolarda hak alır; eklenmiş kullanıcıyı kaldırmak hesabı kalsa da kaldırıldı der; bazı veritabanı adımları yerelliği hâlâ adrese göre belirliyor; boyut sütunu yok; posta adı kapsamı sertifika ekranında yok; çözülemeyen denetim kaydı için panelde henüz işlem yok (adın yazılmasıyla onaylanan sahip işlemi planlandı); güncelleyiciden önce başarısız olan güncelleme işçisi işaretini sonraki başarıya dek korur; Gelişmiş, silinmeyi bekleyen alan adı için hâlâ Yeniden oluştur önerebilir; laboratuvar tekrarı bekliyor. [Sürüm notları](docs/RELEASE-NOTES-v0.1.0-alpha.133.tr.md). | Aday |
 
 **Açık iş (alpha.95, 17 Ekim 2026): her bileşen için kurulu paket sürümünü okumak.** Bileşen taraması bir sürümü yalnız PHP-FPM ve Node.js için doldurur (çalışma ortamı örneklerinden). Agent'ın birim başına ikili yoklaması bir paket sürümü değildir, birkaç birim için güvenilmezdir ve birimi olmayan araçları kapsamaz; bu yüzden Bileşenler satırları sürümü yalnız bilindiği yerde söyler. Gerçek yanıt yeni bir Agent RPC'si ya da genişletilmiş `dpkg`/`pacman` sorguları ister; henüz hiçbir sürümün parçası değildir ([D-034 değişikliği](docs/DECISIONS.tr.md)). **Güncelleme 2026-10-21: v0.1.0-alpha.97 adayı için kaynakta uygulandı** ([D-036](docs/DECISIONS.tr.md)): bileşen taraması başına paket veritabanının salt-okur bir Agent sorgusu, Bileşenler satırlarında ve her bileşen sayfasında gösterilir; bilinmeyen, bilinmeyen olarak kalır. **Hâlâ açık:** hiçbir kurulu sunucuda ölçülmedi; açık iş ancak sahip Boston ve Frankfurt'ta gerçek sürümleri gördüğünde kapanır. **Güncelleme 2026-10-22: Boston ölçüldü.** Sahibin ekran görüntüsü, Boston'un alpha.97'de olduğunu ve Bileşenler'de gerçek sürümlerin göründüğünü gösterir (PowerDNS 4.8.3, Nginx 1.24.0, PostgreSQL 16.15, certbot 2.9.0, Fail2ban 1.0.2, nftables 1.0.9, cron 3.0pl1, Node.js 24.21.0): D-036'nın kurulu bir sunucudaki ilk ölçümü. **Bundan sonra hâlâ açık:** Frankfurt'un alpha.97 durumu bildirilmedi, bu yüzden açık iş kapanmaz; tek bir sunucunun tek bir ekran görüntüsü de her bileşenin, meşgul bir paket yöneticisinin ya da korunan bir okumanın denetimi değildir. **Güncelleme 22 Ekim 2026 (alpha.98):** sahip Frankfurt'un alpha.98'de olduğunu bildirdi, ama Bileşenler'deki sürümlerini bildirmedi; bu yüzden açık iş açık kalır. **Güncelleme 22 Ekim 2026 (alpha.100; alpha.101 adayıyla kaydedildi):** sahibin Frankfurt ekranı Bileşenler'de paket sürümlerini gösterdi; phpMyAdmin'in kısa biçimi "5.2.2-really…" okunuyordu, çünkü Debian'daki bir "really" sürümü gerçekte dağıtılan sürüme kısaltılmıyordu. Bu, v0.1.0-alpha.101 adayı için kaynakta düzeltildi ([D-036 notu](docs/DECISIONS.tr.md)). Açık iş açık kalır: düzeltilmiş kısa biçim henüz hiçbir kurulu sunucuda görülmedi.
 

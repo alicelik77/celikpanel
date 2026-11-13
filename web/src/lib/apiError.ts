@@ -138,6 +138,8 @@ function refusalVars(e: ApiError, t: T): Record<string, string> | undefined {
     return vars;
 }
 
+const UNFILLED = /\{\w+\}/;
+
 // apiErrorText prefers the localized text of a coded refusal and falls back
 // to the server message, then to a generic error.
 // apiErrorText, kodlu reddin yerelleştirilmiş metnini tercih eder; sunucu
@@ -196,14 +198,16 @@ export function apiErrorText(e: ApiError, t: T, fallbackKey: TranslationKey = 'c
             }
             if (e.message) return e.message;
         }
+        // A sentence whose value did not come with the answer would show its
+        // "{name}" to the reader: it is not used (alpha.133 round 5).
         if (e.reason) {
             const refined = ('err.' + e.code + '.' + e.reason) as TranslationKey;
             const named = t(refined, vars);
-            if (named !== refined) return named;
+            if (named !== refined && !UNFILLED.test(named)) return named;
         }
         const key = ('err.' + e.code) as TranslationKey;
         const s = t(key, vars);
-        if (s !== key) return s;
+        if (s !== key && !UNFILLED.test(s)) return s;
     }
     return e.message || t(fallbackKey);
 }

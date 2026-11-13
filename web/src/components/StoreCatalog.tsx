@@ -176,7 +176,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                                 {t('addons.resultCount', { shown: filteredItems.length, total: items.length })}
                             </p>
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_180px_180px]">
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_auto_auto]">
                             <label className="relative sm:col-span-2 xl:col-span-1">
                                 <span className="sr-only">{t('addons.search')}</span>
                                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
@@ -185,12 +185,12 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                                     value={query}
                                     onChange={(event) => setQuery(event.target.value)}
                                     placeholder={t('addons.searchPlaceholder')}
-                                    className={`${inputClass} pl-9`}
+                                    className={`${inputClass} pl-9 field-full`}
                                 />
                             </label>
                             <label>
                                 <span className="sr-only">{t('addons.category')}</span>
-                                <select value={category} onChange={(event) => setCategory(event.target.value)} className={inputClass}>
+                                <select value={category} onChange={(event) => setCategory(event.target.value)} className={`${inputClass} field-md`}>
                                     <option value="all">{t('addons.allCategories')}</option>
                                     {categories.map((itemCategory) => (
                                         <option key={itemCategory} value={itemCategory}>{categoryLabel(itemCategory, t)}</option>
@@ -199,7 +199,7 @@ export function StoreCatalog({ items, subscription, busyItemIDs, onAction }: Sto
                             </label>
                             <label>
                                 <span className="sr-only">{t('addons.status')}</span>
-                                <select value={state} onChange={(event) => setState(event.target.value as StateFilter)} className={inputClass}>
+                                <select value={state} onChange={(event) => setState(event.target.value as StateFilter)} className={`${inputClass} field-md`}>
                                     <option value="all">{t('addons.allStatuses')}</option>
                                     <option value="available">{t('addons.state.available')}</option>
                                     <option value="included">{t('addons.state.included')}</option>

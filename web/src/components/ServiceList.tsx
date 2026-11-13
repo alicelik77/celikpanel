@@ -2980,7 +2980,7 @@ function MailProfileInstallDialog({
                                         setHostnameDraft(event.target.value);
                                         setHostnameTouched(true);
                                     }}
-                                    className={`mt-1 w-full rounded-lg border bg-surface px-3 py-1.5 font-mono text-sm text-fg placeholder:text-fg-subtle ${
+                                    className={`field-lg mt-1 rounded-lg border bg-surface px-3 py-1.5 font-mono text-sm text-fg placeholder:text-fg-subtle ${
                                         hostnameInvalid && hostnameTouched
                                             ? 'border-danger focus:border-danger'
                                             : 'border-border-strong focus:border-primary'
@@ -4369,7 +4369,7 @@ function VersionRemovalImpact({ name, whole, serviceId, version, read, onRetry, 
                                 value={target}
                                 onChange={(event) => onMoveTo(event.target.value)}
                                 disabled={moving}
-                                className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11"
+                                className="rounded-lg border border-border-strong bg-surface px-2 py-1 font-mono text-sm text-fg max-sm:min-h-11 field-sm"
                             >
                                 {targets.map((option) => <option key={option} value={option}>PHP {option}</option>)}
                             </select>

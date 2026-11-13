@@ -9,7 +9,7 @@ import type { TranslationKey } from '../i18n/en';
 import { invalidate, lastKnown, useRemote, useRereadWhileRechecking, type Remote } from '../lib/remote';
 import { Button, Checking, CouldNotCheck, Dialog, ErrorBanner, KnownEmpty, RemoteGate, UsageBar, inputClass } from './ui';
 import { MailAuthPanel } from './MailAuthPanel';
-import { MailSettingsPanel } from './MailSettingsPanel';
+import { MailSettingsPanel, rblSentence } from './MailSettingsPanel';
 import { MailAutoresponderDialog } from './MailAutoresponderDialog';
 import { confirmAction } from '../lib/confirmAction';
 import { flowSteps, sendWithSteps } from '../lib/requestProgress';
@@ -475,12 +475,12 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
 
             {activeTab === 'auth' ? (
                 <>
-                    <DeliverabilityCard domainId={domainId} />
+                    <DeliverabilityCard domainId={domainId} admin={role === 'admin'} />
                     <MailAuthPanel domainId={domainId} readOnly={readOnly} />
                 </>
             ) : activeTab === 'settings' ? (
                 <>
-                    <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} />
+                    <MailSettingsPanel domainId={domainId} domainName={domainName} readOnly={readOnly} admin={role === 'admin'} />
                     <Suspense fallback={null}><DomainMailOptions domainId={domainId} domainName={domainName} readOnly={readOnly} /></Suspense>
                 </>
             ) : (
@@ -504,8 +504,8 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.username')}</span>
-                                <div className="flex items-center rounded-lg border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
-                                    <input value={user} onChange={(e) => setUser(e.target.value)} placeholder="info" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-fg outline-none" />
+                                <div className="field-lg flex items-center rounded-lg border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
+                                    <input value={user} onChange={(e) => setUser(e.target.value)} placeholder="info" className="field-full min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-fg outline-none" />
                                     <span className="whitespace-nowrap px-2 text-sm text-fg-subtle">@{domainName}</span>
                                 </div>
                             </label>
@@ -515,18 +515,18 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                             </label>
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.quota')}</span>
-                                <input type="number" value={quota} onChange={(e) => setQuota(parseInt(e.target.value))} className={inputClass} />
+                                <input type="number" value={quota} onChange={(e) => setQuota(parseInt(e.target.value))} className={`${inputClass} field-sm`} />
                             </label>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.source')}</span>
-                                <input value={fwdSource} onChange={(e) => setFwdSource(e.target.value)} placeholder={`info@${domainName}`} className={inputClass} />
+                                <input value={fwdSource} onChange={(e) => setFwdSource(e.target.value)} placeholder={`info@${domainName}`} className={`${inputClass} field-lg`} />
                             </label>
                             <label>
                                 <span className="mb-1 block text-xs text-fg-muted">{t('mail.destination')}</span>
-                                <input value={fwdDest} onChange={(e) => setFwdDest(e.target.value)} placeholder="personal@gmail.com" className={inputClass} />
+                                <input value={fwdDest} onChange={(e) => setFwdDest(e.target.value)} placeholder="personal@gmail.com" className={`${inputClass} field-lg`} />
                             </label>
                         </div>
                     )}
@@ -573,14 +573,14 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                 <Button type="button" onClick={() => setSelected(new Set())}>{t('mail.cancel')}</Button>
                                 {bulkLimitOpen && (
                                     <span className="flex w-full flex-wrap items-center gap-2">
-                                        <select className={`${inputClass} w-auto`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
+                                        <select className={`${inputClass} field-sm`} value={bulkMode} onChange={(event) => setBulkMode(event.target.value as typeof bulkMode)} aria-label={t('mail.bulk.limit')}>
                                             <option value="default">{t('mail.bulk.modeDefault')}</option>
                                             <option value="custom">{t('mail.bulk.modeCustom')}</option>
                                             <option value="unlimited">{t('mail.bulk.modeUnlimited')}</option>
                                         </select>
                                         {bulkMode === 'custom' && (
                                             <input type="number" min={1} value={bulkPerHour} aria-label={t('mail.bulk.perHour')}
-                                                onChange={(event) => setBulkPerHour(Math.max(1, parseInt(event.target.value, 10) || 1))} className={`${inputClass} w-28`} />
+                                                onChange={(event) => setBulkPerHour(Math.max(1, parseInt(event.target.value, 10) || 1))} className={`${inputClass} field-xs`} />
                                         )}
                                         <Button type="button" variant="primary" onClick={() => void bulkLimit(accounts)}>{t('mail.bulk.apply')}</Button>
                                     </span>
@@ -646,7 +646,7 @@ export function DomainMailManager({ domainId, domainName, readOnly = false }: Do
                                                                 value={quotaDraft}
                                                                 onChange={(e) => setQuotaDraft(parseInt(e.target.value))}
                                                                 onKeyDown={(e) => e.key === 'Enter' && saveQuota(a.id)}
-                                                                className={`${inputClass} w-24 py-1`}
+                                                                className={`${inputClass} py-1 field-xs`}
                                                                 autoFocus
                                                             />
                                                             <span className="text-xs">MB</span>
@@ -947,7 +947,7 @@ interface MailHealth {
     overall: string;
     server_ip: string;
     expected_ptr: string;
-    checks: { id: string; status: string; detail?: string }[];
+    checks: { id: string; status: string; detail?: string; items?: string[] }[];
     /** alpha.127: when this check ran; rechecking = it runs again behind the card. */
     checked_at?: string;
     rechecking?: boolean;
@@ -959,7 +959,7 @@ function decodeMailHealth(raw: unknown): MailHealth {
     return health as MailHealth;
 }
 
-function DeliverabilityCard({ domainId }: { domainId: number }) {
+function DeliverabilityCard({ domainId, admin }: { domainId: number; admin: boolean }) {
     const { t, locale } = useI18n();
     // The checks are read from the server. While they are read the card says
     // so; when they could not be read it says that, with Retry, instead of
@@ -985,6 +985,10 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
         ok: 'bg-success', warn: 'bg-warning', fail: 'bg-danger', unknown: 'bg-fg-subtle',
     };
     const ptr = data.checks.find((c) => c.id === 'ptr');
+    // alpha.133: the blocklist line says listed, or could not be checked and
+    // why (a grey dot that never colours the card), in words, not codes.
+    const rbl = data.checks.find((c) => c.id === 'rbl');
+    const rblSays = rbl ? rblSentence(t, { status: rbl.status, code: rbl.detail, items: rbl.items }, admin) : null;
 
     return (
         <section className="mb-5 rounded-xl border border-border bg-surface p-5">
@@ -1003,13 +1007,18 @@ function DeliverabilityCard({ domainId }: { domainId: number }) {
                     <div key={c.id} className="flex items-center gap-2 text-sm">
                         <span className={`h-2 w-2 shrink-0 rounded-full ${tone[c.status] ?? 'bg-fg-subtle'}`} />
                         <span className="text-fg">{t(`mail.health.${c.id}` as Parameters<typeof t>[0])}</span>
-                        {c.detail && <span className="truncate text-xs text-fg-subtle">{c.detail}</span>}
+                        {c.detail && c.id !== 'rbl' && <span className="truncate text-xs text-fg-subtle">{c.detail}</span>}
                     </div>
                 ))}
             </div>
             {ptr && ptr.status !== 'ok' && (
                 <p className="mt-3 rounded-lg bg-warning-mark/20 px-3 py-2 text-xs text-fg-muted">
                     {t('mail.health.ptrFix', { ip: data.server_ip, host: data.expected_ptr })}
+                </p>
+            )}
+            {rblSays && (
+                <p className={`mt-3 rounded-lg px-3 py-2 text-xs text-fg-muted ${rbl?.status === 'fail' ? 'bg-warning-mark/20' : 'border border-border'}`} data-rbl-say={rbl?.status}>
+                    {rblSays}
                 </p>
             )}
         </section>

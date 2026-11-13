@@ -469,7 +469,7 @@ function MailPolicySection() {
                                     <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.maxSize')}{mark('sizeMB')}</span>
                                     <input type="number" min={1} max={200} value={form.sizeMB}
                                         onChange={(e) => draft.set('sizeMB', Math.max(1, Math.min(200, parseInt(e.target.value) || 25)))}
-                                        className={inputClass} />
+                                        className={`${inputClass} field-xs`} />
                                 </label>
                                 {moved('sizeMB', (value) => String(value.sizeMB))}
                             </div>
@@ -478,7 +478,7 @@ function MailPolicySection() {
                                     <label className="block text-sm">
                                         <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.zones')}{mark('zones')}</span>
                                         <input value={form.zones} onChange={(e) => draft.set('zones', e.target.value)}
-                                            disabled={!form.dnsblOn} className={inputClass} placeholder="zen.spamhaus.org" />
+                                            disabled={!form.dnsblOn} className={`${inputClass} field-xl`} placeholder="zen.spamhaus.org" />
                                     </label>
                                     {moved('zones', (value) => value.zones)}
                                 </div>
@@ -527,7 +527,7 @@ function MailPolicySection() {
                                     <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.rateLabel')}{mark('rate')}</span>
                                     <input type="number" min={1} max={10000} value={form.rate}
                                         onChange={(e) => draft.set('rate', Math.max(1, Math.min(10000, parseInt(e.target.value) || 30)))}
-                                        className={inputClass} />
+                                        className={`${inputClass} field-xs`} />
                                 </label>
                                 {moved('rate', (value) => String(value.rate))}
                             </div>
@@ -539,7 +539,7 @@ function MailPolicySection() {
                                     <span className="mb-1 block text-xs text-fg-muted">{t('mailpolicy.connections')}{mark('connections')}</span>
                                     <input type="number" min={0} max={1000} value={form.connections}
                                         onChange={(e) => draft.set('connections', Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
-                                        className={inputClass} />
+                                        className={`${inputClass} field-xs`} />
                                     <span className="mt-1 block text-xs text-fg-subtle">{t('mailpolicy.connectionsHint')}</span>
                                 </label>
                                 {moved('connections', (value) => String(value.connections ?? ''))}

@@ -1108,7 +1108,7 @@ export function DomainSSLSettings({
                                             setEabKid('');
                                             setEabHmac('');
                                         }}
-                                        className={inputClass}
+                                        className={`${inputClass} field-md`}
                                     >
                                         {providers.map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
@@ -1127,7 +1127,7 @@ export function DomainSSLSettings({
                             {providers.find((p) => p.id === provider)?.needs_eab && (
                                 <>
                                     <Field label={t('ssl.eabKid')} hint={t('ssl.eabHint')}>
-                                        <input value={eabKid} onChange={(e) => setEabKid(e.target.value)} className={inputClass} autoComplete="off" />
+                                        <input value={eabKid} onChange={(e) => setEabKid(e.target.value)} className={`${inputClass} field-md`} autoComplete="off" />
                                     </Field>
                                     <Field label={t('ssl.eabHmac')}>
                                         <PasswordInput
@@ -1144,7 +1144,7 @@ export function DomainSSLSettings({
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="admin@example.com"
-                                    className={inputClass}
+                                    className={`${inputClass} field-lg`}
                                 />
                             </Field>
                             <label className="flex cursor-pointer items-center gap-2">
@@ -1292,7 +1292,7 @@ export function DomainSSLSettings({
                                 <select
                                     value={settings.hsts_max_age}
                                     onChange={(event) => draft.set('hsts_max_age', Number(event.target.value))}
-                                    className={inputClass}
+                                    className={`${inputClass} field-lg`}
                                     disabled={readOnly || locked || draft.saving}
                                 >
                                     {!HSTS_PRESETS.some((preset) => preset.seconds === savedSettings.hsts_max_age) && (

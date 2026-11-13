@@ -50,7 +50,7 @@ export function MailDeliveryLookup({ domainId }: { domainId: number }) {
             <p className="mb-3 max-w-[75ch] text-sm text-fg-muted">{t('mdl.desc')}</p>
             <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); ask(); }}>
                 <input type="email" value={address} onChange={(event) => setAddress(event.target.value)} placeholder={t('mdl.placeholder')}
-                    aria-label={t('mdl.placeholder')} className={`${inputClass} max-w-xs`} />
+                    aria-label={t('mdl.placeholder')} className={`${inputClass} field-lg`} />
                 <Button type="submit" icon={Search} loading={read.reading}>{t('mdl.search')}</Button>
             </form>
             {asked && (

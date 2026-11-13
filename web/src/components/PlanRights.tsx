@@ -20,6 +20,7 @@ import { useDraft } from './kit/save/draft';
 import { ChangedMark, SaveBar, ServerMovedNote, changedRowClass } from './kit/save/SaveBar';
 import { useSaveWords } from './kit/save/words';
 import { useLeaveGuard } from './kit/save/leaveGuard';
+import type { OutsideField } from './PlanLimitsSection';
 
 // The offered applications (alpha.118) are their own chunk, fetched with the tab.
 // alpha.128: the plan's limits of site settings, a chunk of its own.
@@ -97,6 +98,9 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
     const [lost, setLost] = useState(false);
     const [pending, setPending] = useState<{ preview: RightsPreview; sentence: string; body: string } | null>(null);
     const [refusal, setRefusal] = useState<ApiError | null>(null);
+    // alpha.133: a limit typed outside its range is named beside Save, which
+    // stays off until it is corrected (the server would refuse it).
+    const [outside, setOutside] = useState<OutsideField | null>(null);
     const url = kind === 'reseller'
         ? (isNew ? RESELLER_PLANS_URL : `${RESELLER_PLANS_URL}/${plan.id}`)
         : (isNew ? '/api/v1/plans' : `/api/v1/plans/${plan.id}`);
@@ -181,7 +185,7 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                 <div className={`min-w-0 max-w-md flex-1 ${nameChanged ? `-mx-2 rounded-r px-2 ${changedRowClass}` : ''}`}>
                     <label className="block">
                         <span className="mb-1 block text-xs text-fg-muted">{t('plans.form.name')}{nameChanged && !isNew && <ChangedMark />}</span>
-                        <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={inputClass} autoFocus />
+                        <input id={`${idPrefix}-name`} value={plan.name} onChange={(e) => setPlan({ ...plan, name: e.target.value })} className={`${inputClass} field-md`} autoFocus />
                     </label>
                 </div>
                 <Button type="button" icon={X} onClick={() => void close()} disabled={busy} data-plan-close="">{t('common.close')}</Button>
@@ -200,7 +204,7 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                 />
             </div>
             <Suspense fallback={<Checking label={t('limits.checking')} />}>
-                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} base={isNew ? undefined : initial} />
+                <PlanLimitsSection kind={kind} plan={plan} onPlan={setPlan} idPrefix={idPrefix} base={isNew ? undefined : initial} onOutside={setOutside} />
             </Suspense>
             {!isNew && !touched && initial.rights?.all_permissions && initial.rights.all_software && (
                 <p className="mt-3 text-xs text-fg-muted">{t('rights.plan.everythingKept')}</p>
@@ -220,7 +224,7 @@ export function PlanEditor({ kind, initial, grantor, grantorIsReseller, onClose 
                     // A new plan is created only by Save: the bar stays until then.
                     count={isNew ? 'some' : changes.length}
                     saving={busy}
-                    blockedBy={nameMissing ? t('acct.plan.missing') : undefined}
+                    blockedBy={nameMissing ? t('acct.plan.missing') : outside ? t('limits.plan.outside', { name: outside.name }) : undefined}
                     unknown={lost ? { held: true, checking: false, onCheck: () => { invalidate('plans', 'rights'); setLost(false); } } : undefined}
                     onSave={() => void save(false)}
                     onDiscard={isNew ? onClose : discard}

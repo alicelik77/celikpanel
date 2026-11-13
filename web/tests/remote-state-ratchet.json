@@ -1,5 +1,5 @@
 {
-  "//": "Remote-state ratchet allow-list (tests/remote-state-ratchet.test.mjs). Per file: how many times each old pattern of reading the server still occurs. These numbers may only go DOWN. Never raise one and never add a file: read through src/lib/remote.ts instead. After migrating a screen run: node tests/remote-state-ratchet.mjs --tighten Moves (not new reads): v0.1.0-alpha.98 split the firewall box out of src/components/ServiceList.tsx into src/components/FirewallPanel.tsx (D-037), so the Security page does not load the Components page; its one read moved with it and the totals did not change.",
+  "//": "Remote-state ratchet allow-list (tests/remote-state-ratchet.test.mjs). Per file: how many times each old pattern of reading the server still occurs. These numbers may only go DOWN. Never raise one and never add a file: read through src/lib/remote.ts instead. After migrating a screen run: node tests/remote-state-ratchet.mjs --tighten Moves (not new reads): v0.1.0-alpha.98 split the firewall box out of src/components/ServiceList.tsx into src/components/FirewallPanel.tsx (D-037), so the Security page does not load the Components page; its one read moved with it and the totals did not change. v0.1.0-alpha.133 moved CelikPanel's engine account (its one-time password read, never kept in the shared read store) from src/components/DatabaseAccountStrip.tsx into src/components/DatabaseRemoteServerPanel.tsx; the totals did not change.",
   "patterns": {
     "valueFromFailure": "a failed read becomes a value: x.ok ? … : null | [] | {}",
     "swallowedFailure": "a failed read is swallowed: empty catch {} around a read, or .catch(() => {})",
@@ -12,9 +12,6 @@
       "swallowedFailure": 1
     },
     "src/auth/usePanelSession.ts": {
-      "rawRead": 1
-    },
-    "src/components/AddDatabaseModalV2.tsx": {
       "rawRead": 1
     },
     "src/components/AddonsPage.tsx": {
@@ -32,7 +29,7 @@
       "swallowedFailure": 3,
       "rawRead": 4
     },
-    "src/components/DatabaseAccountStrip.tsx": {
+    "src/components/DatabaseRemoteServerPanel.tsx": {
       "rawRead": 1
     },
     "src/components/DomainLogsViewer.tsx": {

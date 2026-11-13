@@ -150,7 +150,7 @@ export function DatabaseUsers({ domainId, databaseId, databaseName, users, readO
                     <label className="block text-xs text-fg-muted">
                         {t('dbu.name')}
                         <input type="text" value={name} onChange={(e) => setName(e.target.value.toLowerCase())} placeholder="reader" maxLength={16}
-                            className={`${inputClass} mt-1`} autoComplete="off" />
+                            className={`${inputClass} mt-1 field-md`} autoComplete="off" />
                         <span className="mt-1 block text-fg-subtle">
                             {t('dbu.fullName')} <span className="break-all font-mono text-fg">{databaseName}_{name || '…'}</span>. {t('dbu.nameHint')}
                         </span>

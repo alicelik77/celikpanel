@@ -870,6 +870,14 @@ func (backend *linuxSystemUpdateBackend) Status(ctx context.Context, requestID s
 	}
 	if err == nil {
 		backend.clearAfterSuccessLocked(ctx, state, others)
+		// An attempt that stopped before changing anything has no later
+		// step; reading it clears its own unit's failed mark (alpha.133).
+		// resetFailedUnit acts only on a unit systemd reports as failed.
+		if systemUpdateStoppedUnchanged(state) && backend.resetFailedUnit != nil {
+			if resetErr := backend.resetFailedUnit(ctx, state.RequestID); resetErr != nil {
+				log.Printf("self-update: the attempt %s that stopped before changing anything keeps its failed unit mark: %s", state.RequestID, sanitizedSystemUpdateError(resetErr))
+			}
+		}
 	}
 	return state, err
 }
@@ -979,18 +987,19 @@ func (backend *linuxSystemUpdateBackend) Reconcile(ctx context.Context) error {
 // later retried successfully).
 //
 // Only when no attempt is active (Reconcile returns before this otherwise),
-// and only the units of attempts that a later successful update resolved:
-// the successful attempt itself and every earlier failed one. A failed
-// attempt with no later success is unresolved and keeps its unit as it is
-// (its OnFailure recovery may still need it). The unit names come from this
-// Agent's own attempt records, never from a listing, so no other unit is
-// touched. Each attempt's record under the state root is kept: it is the
-// evidence, and the journal keeps the unit's log.
+// and only the units of attempts that a later successful update resolved
+// (the successful attempt itself and every earlier failed one) or that
+// stopped before changing anything (systemUpdateStoppedUnchanged, alpha.133).
+// Any other failed attempt with no later success is unresolved and keeps its
+// unit as it is. The unit names come from this Agent's own attempt records,
+// never from a listing, so no other unit is touched. Each attempt's record
+// under the state root is kept: it is the evidence, and the journal keeps the
+// unit's log.
 func (backend *linuxSystemUpdateBackend) clearFinishedWorkerUnits(ctx context.Context, states []*systemUpdateState) {
 	if backend.resetFailedUnit == nil {
 		return
 	}
-	for _, requestID := range systemUpdateResolvedAttempts(states) {
+	for _, requestID := range systemUpdateClearableAttempts(states) {
 		if err := backend.resetFailedUnit(ctx, requestID); err != nil {
 			log.Printf("self-update: the finished attempt %s keeps its failed unit mark: %s", requestID, sanitizedSystemUpdateError(err))
 		}
@@ -1033,6 +1042,89 @@ func systemUpdateResolvedAttempts(states []*systemUpdateState) []string {
 	}
 	sort.Strings(ids)
 	return ids
+}
+
+// systemUpdateUnchangedLineRE is the reviewed updater's own last line for an
+// attempt that stopped before its host-mutation boundary; the Panel reads the
+// same line (cmd/panel/system_update_handlers.go, panelUpdateFailureLine).
+var systemUpdateUnchangedLineRE = regexp.MustCompile(`(?:^|: )!! CELIKPANEL_UPDATE_FAILURE code=[a-z_]{1,64} state=unchanged reason=`)
+
+// systemUpdateStoppedUnchanged reports whether an attempt's own record says
+// the reviewed updater refused before changing anything, for example on a
+// busy package manager (alpha.133 lab, 13 Nov 2026: the refused press's unit
+// stayed under systemctl --failed). Such an attempt is final: nothing follows
+// it for its request, release recovery has no transaction of it to restore
+// (it works from its own transaction root, never from the worker unit), and
+// the owner starts a new request. Its record and the unit's journal keep the
+// result; only systemd's failed mark of its own unit may be cleared.
+// Kayit, guncelleyicinin hicbir seyi degistirmeden durdugunu soyluyorsa girisim
+// sondur; yalniz kendi biriminin hata isareti temizlenebilir.
+func systemUpdateStoppedUnchanged(state *systemUpdateState) bool {
+	return state != nil && state.Status == systemUpdateFailed && !systemUpdateStateIsAbandonReceipt(state) &&
+		systemUpdateRequestRE.MatchString(state.RequestID) && systemUpdateUnchangedLineRE.MatchString(state.Error)
+}
+
+// systemUpdateClearableAttempts is the request ids whose units may be cleared
+// when no attempt is active: those a later success resolved and those that
+// stopped before changing anything.
+func systemUpdateClearableAttempts(states []*systemUpdateState) []string {
+	ids := systemUpdateResolvedAttempts(states)
+	seen := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		seen[id] = true
+	}
+	for _, state := range states {
+		if systemUpdateStoppedUnchanged(state) && !seen[state.RequestID] {
+			seen[state.RequestID] = true
+			ids = append(ids, state.RequestID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// SettleStoppedAttempt clears the failed mark of one attempt's own unit once
+// its record says it stopped before changing anything and systemd says its
+// worker has ended (alpha.133). done is true when nothing more is to be done
+// for this attempt: it was settled now, it succeeded, or it failed in a way
+// that keeps its unit (the existing rules then apply). It is false while the
+// attempt or its worker is still running, so the caller reads again. Reads the
+// record and the unit; the only change is reset-failed of that exact unit.
+// Hicbir seyi degistirmeden duran girisimin kendi biriminin hata isaretini,
+// isci bittikten sonra temizler; baska bir sey degistirmez.
+func (backend *linuxSystemUpdateBackend) SettleStoppedAttempt(ctx context.Context, requestID string) (bool, error) {
+	backend.mu.Lock()
+	defer backend.mu.Unlock()
+	stateLock, err := acquireSystemUpdateStateLock(ctx, backend.stateRoot)
+	if err != nil {
+		return false, err
+	}
+	defer stateLock.Close()
+	state, err := readSystemUpdateState(backend.stateRoot, requestID)
+	if errors.Is(err, errSystemUpdateNotFound) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if state.active() {
+		return false, nil
+	}
+	if !systemUpdateStoppedUnchanged(state) {
+		return true, nil
+	}
+	if backend.unitState != nil {
+		unit, err := backend.unitState(ctx, requestID)
+		if err != nil || unit != systemUpdateUnitInactive {
+			return false, err
+		}
+	}
+	if backend.resetFailedUnit != nil {
+		if err := backend.resetFailedUnit(ctx, requestID); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 // Startup reconciliation must not provision update trust/state on a host that

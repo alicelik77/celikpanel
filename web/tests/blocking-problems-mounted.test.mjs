@@ -265,7 +265,7 @@ for (const locale of ['en', 'tr']) {
 // A failure or warning toast stays until it is closed; a confirmation leaves
 // by itself (owner feedback 2026-10-31: failures only in toasts that vanish).
 test('error and warning toasts stay until closed; success leaves after five seconds', async () => {
-    const lucide = dataURL('export const CheckCircle = () => null, XCircle = () => null, Info = () => null, AlertTriangle = () => null, X = () => null;');
+    const lucide = dataURL('export const CheckCircle = () => null, XCircle = () => null, Info = () => null, AlertTriangle = () => null, X = () => null, useI18n = () => ({ t: (key) => key });');
     const toastURL = dataURL(`import React from '${reactURL}';\n` + compile('../src/components/Toast.tsx').replace(/from ['"]([^'"]+)['"]/g, (_, from) => `from '${from === 'react' ? reactURL : lucide}'`));
     const { ToastContainer, showToast } = await import(toastURL);
     const timers = [];

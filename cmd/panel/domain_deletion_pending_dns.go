@@ -199,7 +199,9 @@ func (p *Panel) localDomainDeletionContinuesByItself(ctx context.Context, domain
 		if !pending || !dnsPeerPendingRetriesAutomatically(code) {
 			return false, nil
 		}
-		if entry, ok := p.dnsPendingPublications().entry(snapshot.lease.RequestID); ok && entry.Stopped {
+		// Stuck (the same cause for a quarter of an hour, administrators
+		// notified): a press is a person's retry again.
+		if entry, ok := p.dnsPendingPublications().entry(snapshot.lease.RequestID); ok && (entry.Stopped || entry.Stuck) {
 			return false, nil
 		}
 		return true, nil
@@ -208,14 +210,14 @@ func (p *Panel) localDomainDeletionContinuesByItself(ctx context.Context, domain
 }
 
 // dnsPendingPublicationsAutomatic: every exact publication the reconciler
-// knows is re-checked automatically (none needs a person or stopped after
-// repeated failures). Memory only; read only.
+// knows is re-checked automatically (none needs a person, stopped after
+// repeated failures or is stuck on the same cause). Memory only; read only.
 func (p *Panel) dnsPendingPublicationsAutomatic() bool {
 	scheduler := p.dnsPendingPublications()
 	scheduler.mu.Lock()
 	defer scheduler.mu.Unlock()
 	for _, entry := range scheduler.entries {
-		if !entry.Automatic || entry.Stopped {
+		if !entry.Automatic || entry.Stopped || entry.Stuck {
 			return false
 		}
 	}

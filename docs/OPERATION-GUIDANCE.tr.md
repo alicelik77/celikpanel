@@ -10998,3 +10998,73 @@ açılış yolunu büyütmemek için tek genel adımı korur). Kısa değişikli
 korur; ekran tek başına adım çizmez. Bunlarda sayfa yenilenince pencere henüz
 yeniden açılmaz (değişiklik sunucuda sürer, sayfa sonucunu gösterir); alan adı
 silme kendi adım deposunu ve deletion_already_running kuralını korur.
+
+### Kara liste denetimi: listede, listede değil ya da denetlenemedi (alpha.133, 12 Kasım 2026)
+
+Sahibe posta sunucusunun adresinin bir spam kara listesinde olduğu söylendi.
+Değildi: Spamhaus, herkese açık bir DNS sunucusu üzerinden gelen soruları
+reddeder (`127.255.255.254` yanıtı) ve her adres yanıtı "listede" diye
+okunuyordu. Bir ret adres hakkında kanıt değildir; denetimin artık her
+listenin belgelediği kodlara göre okunan üç sonucu vardır:
+
+| Sonuç | Gösterim | Kim yapar | Sonraki adım |
+|---|---|---|---|
+| Listede (belgelenmiş listeleme kodu) | listenin adı, kırmızı | yönetici (müşteri için sağlayıcı) | adresi listenin kendi sitesinde sorgulayın, çıkarılma isteyin, yeniden denetleyin |
+| Politika listesi (Spamhaus PBL) | "politika listesi", spam şikâyeti değil | barındırma sağlayıcısı ya da listenin çıkarma sayfası | sağlayıcıdan aralığı listeden çıkarmasını isteyin, yeniden denetleyin |
+| Listede değil (NXDOMAIN) | temiz | kimse | — |
+| Denetlenemedi: herkese açık DNS sunucusu reddetti, çok fazla soru, belgelenmemiş yanıt, zamanında yanıt yok ya da reddi listelemeden ayıramayan eski bir yönetim hizmeti | kartı ve alan adını hiç boyamayan, adres hakkında bir şey söylemediğini belirten gri satır | DNS sunucusu için yönetici (sağlayıcının ya da sunucudaki bir DNS sunucusu), aksi hâlde kimse | daha sonra yeniden denetleyin; eski hizmet durumunda panel güncellemesinden sonra |
+
+Müşteri ve bayi, sunucu ayrıntısı olmadan kısa cümleyi görür. "Denetlenemedi"
+kendiliğinden "listede" ya da "temiz" olmaz; onu yalnız yeni bir denetim
+değiştirir.
+
+### Yedek DNS sunucusunu bekleyen silme: hangi nedenler yeniden denetlenir (alpha.133, 13 Kasım 2026)
+
+Lab'da yaklaşık 45 saniye ulaşılamayan bir yedek DNS sunucusu bir silme
+denetimini "bir kişi yapmalı" durumuna çevirdi; yedek geri geldikten sonra da
+silme, biri Sil'e yeniden basana kadar bekledi ve ekran tek bir teknik cümle
+gösterdi. Bir silmenin DNS doğrulamasının her nedeni için kural:
+
+- **CelikPanel kendi denetimlerini yalnız iki durumda durdurur:** başka bir
+  denetim sonucu kanıtlanabilir biçimde değiştiremez (CelikPanel'in
+  düzeltemediği bir denetim kaydı, `dns_peer_journal_unresolved`) ya da bu
+  sunucunun DNS'i elle değiştiriliyor olabilir (bu sunucuda ya da çiftin
+  kimliğinde bulunan sahip değişikliği). CelikPanel sahibin değişikliğinin
+  üzerinden asla kendiliğinden iş yapmaz; yöneticilere tek bildirim gider ve
+  değişiklik bitince alan adının satırındaki Diğer → Sil… aynı silmeyi sürdürür.
+- **Diğer her neden yeniden denetlenir**; aynı yavaş aralıkla (15 saniye, ikiye
+  katlanarak 5 dakikada bire kadar) ve neden ortadan kalkınca silme hiçbir şeye
+  basmadan kendiliğinden biter. Nedeni ne olursa olsun üst üste altı bekleme
+  sonucundan sonra yöneticilere tek bildirim gider ("takıldı"); denetimler
+  sürer. Denetim, Diğer → Sil…'in çalıştırdığı denetimin aynısıdır; durum
+  okumak asla bir denetim başlatmaz.
+- **Yanıt vermeyen bir yedek kimseyi gerektirmez.** Kapalı, yeniden başlıyor,
+  ulaşılamıyor ya da zamanında yanıt yok; bağlantı nasıl koparsa kopsun bir
+  beklemedir.
+- **Kimin yapacağı nedenin kendisinindir.** "Sizin bir şey yapmanız
+  gerekmiyor" yalnız sonraki kendiliğinden denetimin silmeyi bitirebileceği
+  yerde söylenir.
+
+| Neden | Sahibin okuduğu | Kim yapar | Yeniden denetlenir |
+|---|---|---|---|
+| yedek henüz yetişmedi (`dns_peer_catching_up`) | yedek buna henüz yetişmedi | kimse (takılınca: yedeğin açık ve ulaşılabilir olduğu denetlenir) | evet |
+| yedek yanıt vermedi (`dns_peer_proof_timeout:peer_exchange`) | yedek yanıt vermedi; yanıt verince biter | kimse (takılınca: aynı) | evet |
+| bu sunucunun denetimi zamanında bitmedi (`dns_peer_proof_timeout`, `:local_check`) | denetim zamanında bitmedi | kimse (takılınca: sunucu meşgul mü; değilse Agent satırları gönderilir) | evet |
+| bu sunucunun son denetimi tamamlanmadı (`dns_peer_journal_unknown`) | son denetim tamamlanmadı | kimse (takılınca: Agent satırları gönderilir) | evet |
+| yedek yanıt verdi ama doğrulamadı (`dns_peer_inspection_unknown`; başarısız anahtar değişimi ya da bağlantı noktasında başka hizmet dahil) | yedek doğrulamadan yanıt verdi | yönetici ya da yedeği yöneten | evet |
+| denetim erişimi kurulmamış (`dns_peer_enrollment_required`) | yedek henüz denetlenemiyor | yönetici: bu sunucuda Sunucu kurulumu | evet |
+| denetim erişimi değişmiş ya da bu sunucunun kendi anahtarı kullanılamıyor (`dns_peer_enrollment_changed`) | denetim erişimi değişmiş ya da güvenilir değil | yönetici | evet |
+| yedek başka bir sunucu anahtarı sundu (`dns_peer_enrollment_changed:host_key`) | yedek farklı bir kimlikle yanıt verdi | yönetici: erişimi yeniden kurmadan önce gerçek bir yeniden kurulum ya da anahtar değişikliği doğrulanır; değilse güvenlik sorunu | evet |
+| yedeğin durumu kaldırmayı göstermedi (`dns_peer_native_unknown`; ayrıca `dns_peer_owner_edit_unknown:transfer_observed` / `:zone_answered`, yedek bölgeyi hâlâ sunuyor) | yedeğin yanıtı kaldırmayı göstermedi | yönetici ya da yedeği yöneten | evet |
+| yedek kendi aktarımını reddetti (`dns_peer_catalog_transfer_refused`) | yedek denetiminin listeyi okumasına izin vermedi | yönetici ya da yedeği yöneten | evet |
+| bu sunucu denetimini çalıştıramadı (`dns_peer_proof_internal`) | bu sunucu denetimini çalıştıramadı | yönetici: Agent satırlarını desteğe gönderir | evet |
+| denetim sırasında bu sunucunun DNS'i değişti (`dns_peer_owner_edit_unknown`, yalın ya da `operation_attempt`, `engine_state`, `active_engine`, `native_binding`, `deletion_receipt`, `producer_catalog`, `catalog_probe`, `authority`) | doğrulanırken DNS değişti | yönetici: değişikliği tamamlar, ardından Diğer → Sil… | **hayır** (tek bildirim) |
+| CelikPanel'in düzeltemediği denetim kaydı (`dns_peer_journal_unresolved`) | denetim kaydı CelikPanel'in düzeltemeyeceği bir durumda | yönetici: iki komut çıktısını desteğe gönderir | **hayır** (tek bildirim) |
+
+Müşteri ve ekip üyelerine sunucunun yöneticisine başvurmaları söylenir;
+hiçbir komut görmezler. Teknik ayrıntı ve komutlar yöneticinin kapalı
+Ayrıntılar bölümündedir. Diğer silme nedenleri (yedek DNS sunucusunun
+doğrulamasıyla ilgili olmayanlar) şimdilik tek cümlelerini korur. Açık:
+yeniden denetlenen bir neden, sahip bekleme sırasında bu sunucunun DNS'ini
+değiştirirse Agent'ın her değişikliği bekletmesine yine yol açabilir
+(RESILIENCE-CONTRACT, "Dal a133/proofwait").

@@ -325,7 +325,8 @@ func (p *Panel) handleMailRBL(w http.ResponseWriter, r *http.Request) {
 		writeClientError(w, http.StatusConflict, resp.Error)
 		return
 	}
-	json.NewEncoder(w).Encode(resp)
+	// alpha.133: listed / not listed / could not check, per list and in sum.
+	json.NewEncoder(w).Encode(rblView(resp))
 }
 
 // domainNameByID resolves a panel domain id to its name (small helper for the

@@ -8186,3 +8186,225 @@ until the backup reports ready.
   runner wait and the bounded release for a busy and a plain refusal, then a revised
   plan installing; the owner's reconcile releasing it; startup after a restart
   finishing it without degrading. No native run. **No P0 item is closed**; P0.4 stays partial.
+
+### Branch a133/dnsproof4 (an interrupted change of the DNS peer check record is finished by the next attempt; what cannot be proved has its own reason; no schema change; invariants 2, 3 and 4; P0.4; D-024; D-025; 2026-11-13)
+
+- **Incident.** alpha.133 lab, idle host, PowerDNS primary with a BIND backup:
+  on alpha.132 an automatic re-check ran out of prepare's 8 s inside the
+  retirement of the previous deletion's consumed check record. alpha.132's
+  retirement exchanged the record with an empty tombstone and then ran the
+  terminal check (with the full local DNS recheck, under the step's context)
+  before removing anything (`internal/dnspeerjournal/store_linux.go` 231-288 at
+  `v0.1.0-alpha.132`); the deadline failed that check after the exchange, the
+  function returned with both files retained: a 0-byte record file and
+  `.dns-peer-retired-*` holding the consumed record. `455b31173` refused every
+  private stage (`countOrphanStages`) and nothing repaired it; the deletion never
+  finished while the screen said nobody needed to act.
+- **Cause still present in `455b31173`.** No context reached the journal any more
+  (held checks), but a kill, a power loss, or any error between the exchange
+  and the last unlink (a held check failing, an fsync or unlink error) left the
+  same state, and a write killed before or after its exchange left a challenge
+  stage; every such stage blocked all later proofs. Also, every stage listing
+  after the first on one directory descriptor read from its end and saw nothing.
+- **Change.** A retirement is one `RENAME_NOREPLACE` of the record to a private
+  retired name, after the same terminal proof under the held locks; nothing can
+  veto it afterwards, and its completion (identity check, fsync, unlink, fsync)
+  is the routine the repair uses. `Recover` (both journals) runs first in
+  prepare under the held checks and finishes or rolls back exactly these states:
+  an empty stage beside an absent or valid record (removed); a retired record
+  beside an absent or 0-byte record whose operation the ledger, read under the
+  held locks, shows terminal-published (removed, 0-byte record first); a
+  challenge stage beside an absent record (never published, removed); a challenge
+  stage that is the record's before-image or its never-published successor by
+  content (removed). It never writes or restores a record. Everything else (two
+  stages, foreign or unsafe files, a 0-byte record alone, a retired record beside
+  a record, a retired record whose operation is not finished) and a record of
+  another operation the ledger does not show finished are
+  `dns_peer_journal_unresolved`: kept untouched, not re-checked automatically,
+  one administrator notification, the screen names the administrator and the one
+  next step. Stage listings rewind the directory.
+- **Why single use holds.** An answer is accepted only by ConsumeOnce against the
+  journal's current outstanding record of the active attempt. The repair only
+  removes files that are not that record, or a record whose operation is
+  terminal; it can only make fewer answers acceptable, and every next challenge
+  has a fresh nonce. A never-published stage was never sent (publish precedes the
+  exchange). The ledger's terminal receipt, not the consumed record, is the
+  evidence of a finished deletion; owner edits that are not such a state stay
+  for review.
+- **Screen.** Deletion status gains `follow_up` (`automatic`, `stuck`,
+  `stopped`, `person`) and `next_check_at`. The Domains banner is the kit's
+  Guidance: what waits, why in one sentence, who acts ("You do not need to do
+  anything" only for `automatic`), the next step, the next check's time, the
+  page's own button, and the commands under a closed Details for administrators
+  only. The deletion window and the notification use the same sentences (new
+  lazily loaded screen part `deletionGuide`; boot path 0.11 KiB gzip left).
+- **Evidence.** Component and production-path tests in the WSL guest: the lab
+  state, Frankfurt's intact state, a stop at every file operation of the
+  alpha.133 and alpha.132 retirement and of every write (copied directory at that
+  operation), a stop inside the repair, the refused states unchanged, nothing left
+  in the directory, prepare running out of time after the repair, an expired step
+  context; panel: no automatic attempt and one notice for the unresolved reason,
+  follow-up values. No native run yet; the lab re-runs the `a133-idle` snapshot.
+- **Remaining.** A record of an operation pruned from the ledger (beyond 128 jobs)
+  or failed is unresolved, not retired. No owner action for the unresolved state
+  (proposal: a typed-confirmation "set the check record aside and re-check").
+  Power-loss durability depends on the filesystem honouring file and directory
+  fsync, and a power loss between a stage's write and its fsync can leave a
+  full-size stage whose bytes are not a record: that state is unresolved, not
+  repaired. Other deletion reasons keep their earlier long texts. **No P0 item is
+  closed**; P0.4 stays partial.
+- **Review corrections (same branch, 2026-11-13).** The administrators' one
+  notification of an exact publication now says its current state: when a stuck
+  publication turns into "a person must act", the same notification takes the new
+  text and is shown and mailed again (`reviseAccountNotice`); it is retired when
+  the cause changes after the administrator acted and when the publication ends.
+  The deletion window, the bulk notes and the DELETE answer follow the server's
+  `follow_up`: only `automatic` says nobody needs to act; the window points to the
+  banner's Details for the commands; only an administrator is sent to More →
+  Delete…, and never for a reason whose row offers no Delete (the stuck notice of
+  `dns_peer_catching_up` included). A state found after a proof step's deadline
+  (unresolved record, enrollment, the Agent's own precondition) keeps its code.
+  The API fallback text of the unresolved reason carries no command or private
+  path. Test added in the shape of the owner's server (request attempt 4, ledger
+  attempt 183, this deletion pending at attempt 162).
+- **Root-only tests.** The journal-store tests (`internal/dnspeerjournal`,
+  `internal/pdnspeerjournal`) need root; the production-path tests in
+  `cmd/agent/dns_engine_peer_journal_repair_linux_test.go` also need an empty,
+  private agent-private directory and `CELIKPANEL_TEST_REAL_PEER_JOURNAL=1`. CI
+  skips them. Run them in the development guest as root:
+  `unshare --mount --propagation private bash -c 'mkdir -p /var/tmp/peer-iso /var/lib/celikpanel-agent-private && chmod 700 /var/tmp/peer-iso && mount --bind /var/tmp/peer-iso /var/lib/celikpanel-agent-private && go test -count=1 -v ./internal/dnspeerjournal ./internal/pdnspeerjournal && CELIKPANEL_TEST_REAL_PEER_JOURNAL=1 go test -count=1 -v ./cmd/agent -run "^Test(LabTorn|IntactEarlier|EveryStateOfAnInterrupted|RepairSurvives|UnprovableJournal|PrepareJournalWorkIgnores|OwnerServerShaped|NativePeerTailConsumedChallengeIsSupersededOnTheRealStore)"'` (from the source root; 58 PASS lines, no SKIP)
+  and check that no test of `dns_engine_peer_journal_repair_linux_test.go` reports SKIP.
+
+### Branch a133/proofwait (a backup DNS server that does not answer is always a wait; automatic re-checks stop only for an unresolved check record or an owner edit of this server; no schema change; invariants 1, 3 and 4; P0.4; D-022; D-024; D-025; 2026-11-13)
+
+- **Incident.** alpha.133 lab, second idle run (`194a4b4e4`), PowerDNS primary
+  with a BIND backup whose SSH port was blocked: two re-checks of `w9.test`
+  ended `dns_peer_proof_timeout:peer_exchange` (`exchange=10.001s`), the third
+  `dns_peer_inspection_unknown` (`exchange=10s`). The deletion then waited after
+  the backup answered again, until a person pressed More → Delete…; the
+  banner was one jargon row.
+- **Cause.** The exchange step's context and the dialer's own poller deadline
+  are two timers for the same instant: `net` sets the connect's write deadline
+  from `ctx.Deadline()` (`net/fd_unix.go` 78-82 in Go 1.26.5) and returns the
+  poller's timeout while `ctx.Done()` is still open (119-125). The transport
+  then returned `peer_inspection_unavailable`
+  (`internal/dnspeertransport/transport_linux.go` 239-241 at `194a4b4e4`) and
+  `stepWithin` read `ctx.Err()` as nil (`cmd/agent/dns_engine_peer_budget.go`
+  183), so the inspection code was kept; one in nine is which timer the
+  runtime fired first. The Panel's worker logged "next automatic re-check in
+  1m0s" for every code, but `dns_peer_inspection_unknown` was not re-checked
+  (`cmd/panel/dns_peer_pending_guidance.go` 61-77): `recordAttempt` set
+  `Automatic=false` and the scan only read the status every minute. The
+  behaviour matched the code; the log line was wrong.
+- **Transport.** The SSH exchange classifies its failures. No answer
+  (`peer_no_answer`): the dial failed (refused, no route, timed out), the
+  connection ended, was reset or ran out of time before a host key, or was
+  lost before the command's result. An answer this server cannot accept: a
+  failed key exchange before the host key callback (a host key signature that
+  does not verify, no common host key algorithm, a protocol error, another
+  service on the port, whose first bytes are not `SSH-`), the enrolled key or
+  the session refused, an oversized answer, a non-zero exit (with its
+  digest-bound reason). Another SSH host key than the pinned one is
+  `peer_host_key_changed`; this server's own enrollment or key file is
+  `peer_enrollment_invalid`, passed through by `Inspect`. The Agent maps no
+  answer to `dns_peer_proof_timeout:peer_exchange`, another host key to the new
+  reviewed `dns_peer_enrollment_changed:host_key`, this server's key to
+  `dns_peer_enrollment_changed`, the rest to `dns_peer_inspection_unknown`.
+- **Step bound.** A step also reads whether it ran out of time from its
+  deadline (`dnsPeerStepDeadlineMargin`, 100 ms), but only for a check that
+  ran out of time, the exchange's "no answer" or an error without a reviewed
+  code or finding. A reviewed code or finding (an owner edit found by a probe
+  or by the final recheck, an answer the backup gave) keeps its code; for it
+  only `ctx.Err()` decides.
+- **The re-check rule** (`transport.DNSPeerPendingStopsAutomaticRechecks`, one
+  rule for the Agent's log line, the Panel and the web). Automatic re-checks
+  stop when another check provably cannot change the result
+  (`dns_peer_journal_unresolved`), or when the state says the server owner may
+  be changing this server's DNS by hand (`dns_peer_owner_edit_unknown`, plain
+  or with the checks `operation_attempt`, `engine_state`, `active_engine`,
+  `native_binding`, `deletion_receipt`, `producer_catalog`, `catalog_probe`,
+  `authority`): CelikPanel does not act on its own over an owner's change
+  (D-022), and a re-check runs `RecoverZone`, whose pre-checks treat several
+  such edits as ambiguity that holds every Agent change
+  (`cmd/agent/dns_engine_rpc.go` 313-345 and 412-443; PowerDNS zone rows,
+  `dns_engine_pdns.go` 975-987; the only active engine, `dns_engine_host.go`
+  3218; the BIND epoch, legacy state and only-active checks, 1209-1251 and
+  1331). The backup-side checks `transfer_observed` and `zone_answered` are
+  observed inside the propagation, after those local pre-checks, and every
+  propagation outcome is wrapped as pending (`dns_engine_pdns_propagation.go`
+  263-276, `dns_engine_bind_propagation.go` 184); they stay automatic.
+  `authority` can follow this server's catalog serial and is a person state.
+  Every other reason is re-checked at 15 s doubling to 5 min, "stuck" after six
+  pending re-checks in a row whatever their reason; it never becomes a state in
+  which nothing checks again. Repeated failures that are not a reviewed
+  pending result still end the automatic attempts (`stopped`, invariant 4).
+- **Notifications.** Every person state raises one notification to the
+  administrators (`takePersonNotice`), retired when the cause changes. A
+  stuck episode is told once; when the stuck cause changes, the stored words
+  are brought up to date in place without being shown or mailed again; a
+  notice whose words would not change is left as it is. A deletion's
+  notification opens Domains.
+- **Screen.** Every reviewed reason has why, who acts, the one next step and
+  how it continues (web guide, parts `deletionGuide` and `deletionGuidePeer`);
+  an owner edit of this server names the administrator, "finish the change,
+  then More → Delete…", and never says it finishes by itself; a changed host
+  key asks to confirm a real reinstall or re-key before setting the access up
+  again (there is no button for that; the steps are the dns-peer-enroll owner
+  tool under Details). The list keeps reading a waiting deletion in every
+  state, also after a failed read.
+- **Recovery.** A deletion waiting with a re-checked code on an updated Panel
+  is re-checked by the next scan and finishes once the cause is gone. One
+  waiting with an owner edit of this server is not touched; the administrator
+  presses More → Delete… after finishing the change. No stored format changes;
+  `dns_peer_enrollment_changed:host_key` is a new composite in the existing
+  error-code field (an older Panel shows the plain reason's text).
+- **Evidence.** Component and production-path tests in the WSL guest: the
+  real SSH exchange against loopback servers and dialers for every shape
+  (refused, the racing dial timer, the context first, no route, silent port,
+  reset, lost after the command, another host key, a bad host key signature,
+  an RSA-only host, another service on the port, the key refused, the session
+  refused, a non-zero exit, a missing local key); the w9 wave; reviewed
+  findings 50 ms before the bound; the Panel's reconciler through the w9
+  sequence, a refusing backup, every owner-edit check of this server (no
+  Agent call across scans and after a restart, one notification, a press
+  continues it), alternating reasons; the web guard over every code and
+  composite; the list in a second tab and after a failed read. No native run.
+- **Re-review corrections.** A backup that stops answering within the
+  post-inspection catalog check (its probe is `dnsPeerBehind` while this
+  server's own catalog matched) is `dns_peer_catching_up`, the wave's reading
+  of the same observation, not `owner_edit_unknown:catalog_probe`
+  (`dns_engine_peer_after_inspection.go`); `catalog_probe` stays for this
+  server's own mismatch. Producers of the person codes, walked once, all
+  read local evidence only: the local rechecks (`recheckBINDPeerLocalEvidence`,
+  `recheckPDNSPeerLocalEvidence*`, `recheckPDNSNativeBindingAt`, the recorded
+  producer catalog), the ledger attempt (`peerCurrentPendingCodeAt`), the BIND
+  configuration (`pendingExactBINDV3OwnerEdit`), `catalog_probe` and
+  `authority` (this server's record), and the check-record reconciliation
+  (`dns_peer_journal_unresolved`). The reconciler's own attempt that waited
+  for a running job no longer runs the recovery when it ends pending with a
+  stop code (`reconcileDNSZoneEngineLease`); a person's press still does.
+  The host-key Details give the sequence the tool accepts (`primary-revoke`,
+  which only renames the enrollment record aside and leaves DNS replication
+  running, then the first-time steps); setup never replaces an existing
+  access, and the guidance no longer says it does.
+- **Open.**
+  - Codes that were automatic before this release (`dns_peer_catching_up`,
+    `dns_peer_proof_timeout`, `dns_peer_journal_unknown`) and the codes this
+    release re-checks can still reach the same Agent hold when the owner edits
+    this server's DNS during a wait: the next re-check's `RecoverZone`
+    pre-checks treat the edit as ambiguity. The proper fix is to classify each
+    owner-edit-shaped pre-check failure in both `RecoverZone` paths as a
+    waiting owner edit, as `pendingExactBINDV3OwnerEdit` does for the BIND
+    configuration check. Not attempted.
+  - A re-checked attempt whose result does not change logs about four lines
+    (the Agent's "stopped at step", "step times … outcome" and "recovery
+    remains pending", and the Panel's "still waits"), every 5 minutes at the
+    slow pace; folding the Agent's three into one is more than a small change
+    and is left.
+  - A new person episode whose words are identical to a retired notice is
+    not shown again (acceptable: only a press changes those codes).
+  - For the few seconds an alpha.132 Panel talks to the updated Agent during
+    the update, it rejects the new composite `dns_peer_enrollment_changed:host_key`
+    as an unreviewed code (the same class as earlier composites).
+  - Not measured natively; the lab repeats w9. **No P0 item is closed**; P0.4
+    stays partial.

@@ -140,7 +140,7 @@ export const trSecurityScreens: Record<SecurityScreenKey, string> = {
     'vpn.configOnce': 'Yalnızca bir kez gösterilir — özel anahtar saklanmaz. Şimdi indirin ve WireGuard uygulamasına aktarın.',
     'vpn.configNotShown': "{name} cihazı eklendi; ikinci kez eklenmedi. Yapılandırması bu sayfaya ulaşmadı; yapılandırma yalnızca bir kez gösterilir ve saklanmaz, bu yüzden yeniden gösterilemez. {name} aşağıdaki listedeyse onu kaldırın; sonra yeni bir yapılandırma almak için cihazı yeniden ekleyin.",
     'vpn.deliveryAckFailed': 'Sunucu teslimi doğrulayamadı. Bu sayfayı açık tutup yeniden deneyin; doğrulanmayan erişim otomatik kaldırılır.',
-    'vpn.retryDeliveryAck': 'Doğrulamayı yeniden dene',
+    'vpn.retryDeliveryAck': 'Doğrulamayı tekrar dene',
     'vpn.deliveryConfirmed': 'Yapılandırma teslimi doğrulandı.',
     'vpn.savedClose': 'Kaydettim — kapat',
     'vpn.download': '.conf indir',

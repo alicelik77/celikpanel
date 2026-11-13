@@ -227,8 +227,7 @@ export function OutgoingMailboxLimits({ domainId, readOnly, onChangePassword }: 
                                             {opened.includes(row.id) || draft.isChanged(id) ? (
                                                 <div className={`-mx-2 mt-2 rounded-r px-2 py-2 ${draft.isChanged(id) ? changedRowClass : ''}`}>
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <div className="w-full sm:w-64">
-                                                        <select className={inputClass} value={modeOf(limit)} disabled={draft.saving} aria-label={t('mout.mailbox')}
+                                                        <select className={`${inputClass} field-md`} value={modeOf(limit)} disabled={draft.saving} aria-label={t('mout.mailbox')}
                                                             onChange={(event) => {
                                                                 const mode = event.target.value as Mode;
                                                                 draft.set(id, mode !== 'custom' ? mode : `custom:${e.custom ?? (e.default > 0 ? e.default : 100)}`);
@@ -237,13 +236,12 @@ export function OutgoingMailboxLimits({ domainId, readOnly, onChangePassword }: 
                                                             <option value="custom">{t('mout.dom.mode.custom')}</option>
                                                             {(view.ceiling === 0 || view.may_exceed_ceiling) && <option value="unlimited">{t('mout.dom.mode.unlimited')}</option>}
                                                         </select>
-                                                        </div>
                                                         {modeOf(limit) === 'custom' && (
                                                             <label className="flex items-center gap-2 text-xs text-fg-muted">
-                                                                <span className="w-28">
+                                                                <span>
                                                                     <input type="number" min={1} max={view.ceiling > 0 && !view.may_exceed_ceiling ? view.ceiling : 1000000} value={perHourOf(limit)}
                                                                         disabled={draft.saving} onChange={(event) => draft.set(id, `custom:${event.target.value.trim()}`)}
-                                                                        className={inputClass} aria-label={t('mout.perHour')} />
+                                                                        className={`${inputClass} field-sm`} aria-label={t('mout.perHour')} />
                                                                 </span>
                                                                 {t('mout.perHour')}
                                                             </label>

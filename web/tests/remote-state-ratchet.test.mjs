@@ -193,7 +193,7 @@ test('the totals never exceed the pinned ceilings', () => {
 
 test('the screens of the first four batches are off the list for good', () => {
   for (const name of [
-    'AddDomainModal', 'Domains', 'DatabaseManagementV2', 'DomainDatabaseManager', 'DomainConnection', 'CurrentSettings',
+    'AddDomainModal', 'Domains', 'databases/DatabasesPage', 'DomainDatabaseManager', 'DomainConnection', 'CurrentSettings',
     // The second batch.
     'Settings', 'UsersPage', 'DomainFileManager', 'DomainSSLSettings', 'DomainDetail', 'ImportPage', 'LicenseNotice',
     'MonitoringPage', 'ComponentDetail', 'ServiceRecordLookup', 'HelpDrawer',

@@ -1,4 +1,4 @@
-# Remote access to databases (alpha.129, alpha.130, alpha.131)
+# Remote access to databases (alpha.129, alpha.130, alpha.131, alpha.133)
 
 Status: design accepted by the owner on 7 Nov 2026; implementation in
 alpha.129 (branch `feat/a129-db-remote`); the owner's decisions of 8 Nov 2026
@@ -273,6 +273,9 @@ is not restored by the guard; that is the administrator's step, as before.
 
 ### The administrator's section on the Databases page
 
+(Moved to Security in alpha.133; see "alpha.133: where the server matters
+live" below. The paragraph keeps what alpha.130 built.)
+
 The server switch was only inside a domain's database card. The Databases
 page now has a section of its own with the switch and, per engine instance,
 what is still missing before a listed address could work (Fail2ban, host
@@ -412,6 +415,42 @@ over without proof). No schema change. Recovery: going back to alpha.130
 leaves a version-2 record unreadable for that Agent (remote access changes
 nothing, the filter stays loaded by its guard) until the update is applied
 again or the record is restored from the pre-update snapshot.
+
+## alpha.133: where the server matters live
+
+The left menu's Databases page is now only the list of databases each
+person may see (one visibility rule: the administrator every database, a
+reseller their customers', a customer their own). What belongs to the
+server left it:
+
+- **The server switch** "Customers may connect to their databases from
+  outside" is on **Security › Open to the outside**
+  (`/security#outside-connections`), administrators only. It is the same
+  stored offer as before (`admin_offered_permissions`, `database_remote`,
+  also written by the Offered tab), saved only with Save; the question
+  before saving says what turning it on or off means, and turning it off
+  lists that every address customers listed stops working. Under it each
+  installed engine says "Ready · port · encrypted connections only" or
+  "Not ready" with one guidance block per problem code (why, who acts, the
+  next step, one button: Open Components, Apply again, or turn off host
+  name lookup); the Agent's own sentence is only under a closed "Details".
+  The card reads itself again every 30 seconds.
+- **CelikPanel's own engine account** (the account the panel connects to
+  MariaDB or PostgreSQL with, R-057) is on the **MariaDB and PostgreSQL
+  component pages**, in the block "The account CelikPanel connects to this
+  service with", for this machine's installed engine and administrators
+  only. Its "More" menu has Show password (audited), New password… and
+  Remove account… (the question lists what stops and what stays).
+  Requests, the show-once password and the lost-answer handling are
+  unchanged.
+- A domain's database card tells the administrator that the switch is in
+  Security › Open to the outside and its button leads there; it no longer
+  turns the switch on itself. The "Allow an address" field is sized for an
+  address.
+- The MariaDB page no longer suggests `bind-address = 0.0.0.0`: listening
+  is changed only by the apply described above, for listed addresses.
+
+No endpoint, stored format or Agent behaviour changed for this move.
 
 ## Known limits (alpha.130)
 

@@ -10,7 +10,7 @@ Barındırdığınız her şey bir alan adının altında durur: web sitesi, e-p
 
 ## Alan adı listesi {#domain-list}
 
-Menüdeki **Alan Adları** sayfası alan adlarınızı türü, disk kullanımı, trafiği ve durumuyla listeler. Sayfasını açmak için alan adını ya da **Yönet** düğmesini seçin. **Siteyi ziyaret et** siteyi açar; **Sil** alan adını sitesi, e-postası ve veritabanlarıyla birlikte kalıcı olarak kaldırır. Silmeden önce yedek alın (bkz. [Yedekler](guide:backups#backups)).
+Menüdeki **Alan Adları** sayfası alan adlarınızı türü, disk kullanımı, trafiği ve durumuyla listeler. Sayfasını açmak için alan adını ya da **Yönet** düğmesini seçin. **Siteyi ziyaret et** siteyi açar; **Sil**, adını yazdığınızda alan adını sitesi ve e-postasıyla birlikte kalıcı olarak kaldırır; soru neyin gidip neyin kaldığını listeler. Veritabanları veritabanı sunucusunda kalır ama panelden çıkar; onların da gitmesini istiyorsanız önce onları silin. Silmeden önce yedek alın (bkz. [Yedekler](guide:backups#backups)).
 
 ## Alan adı eklemek {#adding}
 

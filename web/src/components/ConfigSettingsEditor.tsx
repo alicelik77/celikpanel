@@ -171,7 +171,7 @@ function SettingsForm({
                 onChange={(event) => setSearch(event.target.value)}
                 aria-label={t('dbconf.search')}
                 placeholder={t('dbconf.search')}
-                className={`${inputClass} mb-3 max-w-sm`}
+                className={`${inputClass} mb-3 field-lg`}
             />
             {shown.length === 0 ? (
                 <p className="py-6 text-sm text-fg-muted">{t('dbconf.noMatch', { term: search.trim() })}</p>
@@ -279,7 +279,7 @@ function SettingRow({
                     aria-describedby={refusal ? `${id}-refusal` : undefined}
                     spellCheck={false}
                     autoComplete="off"
-                    className={`w-full rounded-lg border bg-surface px-3 py-2 font-mono text-sm text-fg outline-none transition-shadow focus:border-primary disabled:bg-surface-2 disabled:text-fg-muted ${
+                    className={`field-lg rounded-lg border bg-surface px-3 py-2 font-mono text-sm text-fg outline-none transition-shadow focus:border-primary disabled:bg-surface-2 disabled:text-fg-muted ${
                         refusal ? 'border-danger' : 'border-border-strong'
                     }`}
                 />

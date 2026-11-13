@@ -82,7 +82,7 @@ func TestWriteDatabaseEngineError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
-			writeDatabaseEngineError(recorder, tc.server, tc.err)
+			writeDatabaseEngineErrorFor(recorder, httptest.NewRequest(http.MethodGet, "/", nil), tc.server, tc.err)
 			if recorder.Code != tc.wantStatus {
 				t.Fatalf("status = %d, want %d", recorder.Code, tc.wantStatus)
 			}

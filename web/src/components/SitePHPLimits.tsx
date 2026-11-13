@@ -101,7 +101,7 @@ function LimitInput({ f, value, onChange, disabled, t }: { f: LimitField; value:
                 <select
                     value={selectValue}
                     disabled={disabled}
-                    className={inputClass}
+                    className={`${inputClass} field-md`}
                     onChange={(e) => {
                         const v = e.target.value;
                         if (v === 'custom') { setCustom(true); if (value === null) onChange(f.default ?? f.min); return; }
@@ -126,7 +126,7 @@ function LimitInput({ f, value, onChange, disabled, t }: { f: LimitField; value:
                         value={value ?? ''}
                         disabled={disabled}
                         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-                        className={`${inputClass} max-w-32`}
+                        className={`${inputClass} field-sm`}
                     />
                 )}
             </div>
@@ -272,10 +272,10 @@ export function SitePHPLimits({ domainId, domainName, readOnly = false }: { doma
                                         <div key={f.field} className={marked(f.field)}>
                                         <Field label={t(`limits.php.free.${f.field}` as TranslationKey)}>
                                             {f.field === 'timezone' ? (
-                                                <input value={value} disabled={disabled} placeholder={t('limits.php.timezonePlaceholder')} className={inputClass}
+                                                <input value={value} disabled={disabled} placeholder={t('limits.php.timezonePlaceholder')} className={`${inputClass} field-md`}
                                                     onChange={(e) => draft.set(f.field, e.target.value.trim() || null)} />
                                             ) : (
-                                                <select value={value} disabled={disabled} className={inputClass} onChange={(e) => draft.set(f.field, e.target.value || null)}>
+                                                <select value={value} disabled={disabled} className={`${inputClass} field-md`} onChange={(e) => draft.set(f.field, e.target.value || null)}>
                                                     <option value="">{serverOption}</option>
                                                     {(f.values ?? []).map((option) => (
                                                         <option key={option} value={option}>

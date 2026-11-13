@@ -205,10 +205,15 @@ func (p *Panel) measureSiteDisk(ctx context.Context, domainID int, siteHome, dom
 // so a domain page mostly finds a recent number.
 func (p *Panel) measureDueSiteDisks(ctx context.Context) error {
 	cutoff := usageNow().Add(-diskMeasureInterval).UTC().Format(time.RFC3339)
+	// A site whose domain is being deleted is not measured: its files are
+	// removed on purpose, and asking every round only logged "could not be
+	// measured" for it (alpha.133 lab, sil7.test, every five minutes).
+	// Silinmekte olan alan adinin sitesi olculmez.
 	rows, err := p.db.GetDB().QueryContext(ctx, `
 		SELECT s.domain_id, s.document_root, d.name
 		FROM sites s JOIN domains d ON d.id = s.domain_id
 		WHERE COALESCE(s.document_root, '') <> '' AND (s.usage_updated_at IS NULL OR s.usage_updated_at < ?)
+		  AND NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = s.domain_id)
 		ORDER BY COALESCE(s.usage_updated_at, ''), s.domain_id
 		LIMIT ?`, cutoff, diskMeasurePerTick)
 	if err != nil {

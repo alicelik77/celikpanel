@@ -291,6 +291,47 @@ func (p *Panel) raiseAccountNotice(ctx context.Context, q sqlQueryer, recipients
 	}
 }
 
+// reviseAccountNotice is raiseAccountNotice for a notice whose one subject
+// and period moves between states that say different things (alpha.133: a
+// DNS publication that is stuck, then needs a person). A stored notice of
+// the same person, kind, subject and period whose body names another reason
+// or detail takes the new body and is shown and mailed again as new, so no
+// earlier, now untrue text stays readable; one with the same reason and
+// detail is left as it is (a panel restart never repeats it); none is stored
+// as new.
+func (p *Panel) reviseAccountNotice(ctx context.Context, q sqlQueryer, recipients []usageRecipient, kind string, needsAction bool, subjectKey, period string, body map[string]any, fixPath string) {
+	if kind == "" || len(kind) > 64 || period == "" || len(period) > 64 || len(subjectKey) > 200 {
+		log.Printf("[notices] %q: kind, subject or period out of bounds; not stored", kind)
+		return
+	}
+	raw, err := json.Marshal(body)
+	if err != nil || len(raw) > 8192 {
+		log.Printf("[notices] %s: body not revised (%v, %d bytes)", kind, err, len(raw))
+		return
+	}
+	reason, _ := body["reason"].(string)
+	detail, _ := body["detail"].(string)
+	action := 0
+	if needsAction {
+		action = 1
+	}
+	for _, recipient := range recipients {
+		if recipient.UserID <= 0 {
+			continue
+		}
+		if _, err := q.ExecContext(ctx, `
+			UPDATE account_notices
+			SET body = ?, needs_action = ?, fix_path = ?, seen_at = NULL, created_at = datetime('now'),
+			    mail_state = 'pending', mail_detail = NULL
+			WHERE user_id = ? AND kind = ? AND subject_key = ? AND period = ?
+			  AND (COALESCE(json_extract(body, '$.reason'), '') <> ? OR COALESCE(json_extract(body, '$.detail'), '') <> ?)`,
+			string(raw), action, validNoticeFixPath(fixPath), recipient.UserID, kind, subjectKey, period, reason, detail); err != nil {
+			log.Printf("[notices] revise %s for user %d: %v", kind, recipient.UserID, err)
+		}
+	}
+	p.raiseAccountNotice(ctx, q, recipients, kind, needsAction, subjectKey, period, body, fixPath)
+}
+
 // accountNoticeMailText is one notice as an email: English, then Turkish,
 // then the page to open.
 func accountNoticeMailText(words accountNoticeWords, baseURL, fixPath string) (string, string) {

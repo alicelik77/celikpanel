@@ -90,12 +90,12 @@ export function LogRetentionCard({ domainId }: { domainId: number }) {
             <p className="mt-0.5 text-xs text-fg-muted">{system}</p>
             {state.may_change && (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <select value={scope} onChange={(e) => { setScope(e.target.value as Scope); setDays(null); }} className={`${inputClass} sm:w-56`} aria-label={t('logs.keep.scope')}>
+                    <select value={scope} onChange={(e) => { setScope(e.target.value as Scope); setDays(null); }} className={`${inputClass} field-md`} aria-label={t('logs.keep.scope')}>
                         <option value="subscription">{t('logs.keep.scope.subscription')}</option>
                         {state.plan_id ? <option value="plan">{t('logs.keep.scope.plan', { plan: state.plan_name ?? '' })}</option> : null}
                         <option value="server">{t('logs.keep.scope.server')}</option>
                     </select>
-                    <select value={chosen} onChange={(e) => setDays(Number(e.target.value))} className={`${inputClass} sm:w-56`} aria-label={t('logs.keep.title')}>
+                    <select value={chosen} onChange={(e) => setDays(Number(e.target.value))} className={`${inputClass} field-md`} aria-label={t('logs.keep.title')}>
                         {(CHOICES.includes(chosen) ? CHOICES : [...CHOICES, chosen]).map((n) => <option key={n} value={n}>{label(n)}</option>)}
                     </select>
                     <Button type="button" variant="primary" disabled={chosen === valueOf(scope)} onClick={() => void save()}>{t('logs.keep.save')}</Button>

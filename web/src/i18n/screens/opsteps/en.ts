@@ -108,8 +108,6 @@ export const enOpstepsScreens = {
 
     'opstep.dbDelete.check': 'Checking the database',
     'opstep.dbDelete.delete': 'Deleting {name} on the database server',
-    'opstep.dbUserDelete.check': 'Checking the database user',
-    'opstep.dbUserDelete.delete': 'Deleting the user {name} on the database server',
     'opstep.adminRemove.check': 'Checking CelikPanel’s account',
     'opstep.adminRemove.remove': 'Removing CelikPanel’s account from the database server',
     'opstep.userDelete.delete': 'Checking {name} owns nothing and deleting the account',

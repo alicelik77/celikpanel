@@ -91,25 +91,16 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 			},
 			local: func(ctx context.Context) error { return recheckNativePeerLocalEvidence(ctx, plan, record) },
 		}
-		if err := checks.at(ctx)(); err != nil {
-			return err
-		}
-		if err := checks.journalOp(ctx, "previous challenge reconciliation", func(verify func() error) error {
+		// An interrupted change of the journal is finished and an earlier,
+		// terminal operation's challenge is retired first, under the held
+		// checks only (nativePeerCurrentChecks.prepareJournal): it completes
+		// in milliseconds and stays done even if the full local recheck
+		// runs out of this step's time.
+		next, err := nextBINDPeerChallengeAttempt(ctx, checks, func(verify func() error) error {
 			return reconcileHistoricalBINDPeerChallenge(m, plan, verify)
-		}); err != nil {
+		}, dnspeerjournal.Read)
+		if err != nil {
 			return err
-		}
-		next := uint64(1)
-		previous, err := dnspeerjournal.Read()
-		if err == nil {
-			if previous.Request.Attempt == ^uint64(0) {
-				return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
-					errors.New("challenge journal attempt counter is exhausted"))
-			}
-			next = previous.Request.Attempt + 1
-		} else if !dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
-			return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
-				fmt.Errorf("challenge journal read: %w", err))
 		}
 		// A daemon re-stamp admitted by the rechecks above moved the recorded
 		// catalog past the serial the wave proved: no challenge is minted;
@@ -126,94 +117,156 @@ func verifyEnrolledBINDPeerDeletion(ctx context.Context, authority dnsPeerAXFRAu
 	}); err != nil {
 		return err
 	}
-	if err := run.step(dnsPeerProofStepChallengeWrite, func(ctx context.Context) error {
-		if err := checks.journalOp(ctx, "challenge publish", func(verify func() error) error {
-			// The members bind the request's catalog digest; a challenge
-			// written before a PowerDNS daemon re-stamp of the same member
-			// set is superseded, not a mismatch (dnspeerjournal).
+	return runNativePeerProofTail(run, checks, nativePeerProofTail{
+		// The members bind the request's catalog digest; a challenge written
+		// before a PowerDNS daemon re-stamp of the same member set is
+		// superseded, not a mismatch (dnspeerjournal).
+		publish: func(verify func() error) error {
 			return dnspeerjournal.Publish(request, plan.Evidence.Members, enrollment.RecordSHA256, attempt, verify)
-		}); err != nil {
+		},
+		recheckEnrollment: func() error { return dnspeerenrollment.Recheck(enrollment) },
+		exchangeLimit:     enrollment.Transport.Timeout,
+		inspect: func(ctx context.Context) error {
+			var err error
+			response, authenticated, err = dnspeertransport.Inspect(ctx, enrollment.Transport, request, dnspeertransport.SSH{})
+			if err != nil {
+				return pendingDNSPeerCause(bindInspectionPendingCode(err), err)
+			}
+			return nil
+		},
+		// The source-bound catalog and no-transfer evidence must still
+		// match after the network round trip. A contradictory positive DNS
+		// answer stays fatal.
+		afterInspection: func(ctx context.Context, verifyCurrent func() error) error {
+			return verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
+				nativePeerAfterInspectionProbes{
+					soa: probeDNSZoneSOA, localCatalog: localCatalogProbe,
+					peerCatalog: peerCatalogProbe, peerZone: probeDNSBoundZoneAXFR,
+				}, verifyCurrent)
+		},
+		verifyAnswer: func(consume func(string) error) error {
+			accepted := false
+			_, err := dnspeerproof.Verify(request, response, authenticated, time.Now(),
+				func(digest string) bool { accepted = true; return consume(digest) == nil })
+			run.logAnswer(response.CatalogState, response.MemberState, response.NativeState, accepted, err)
 			return err
-		}
-		if err := dnspeerenrollment.Recheck(enrollment); err != nil {
-			return pendingDNSPeerCause(transport.DNSPeerPendingEnrollmentChanged, err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	if err := run.stepWithin(dnsPeerProofStepExchange, enrollment.Transport.Timeout, func(ctx context.Context) error {
-		var err error
-		response, authenticated, err = dnspeertransport.Inspect(ctx, enrollment.Transport, request, dnspeertransport.SSH{})
-		if err != nil {
-			return pendingDNSPeerCause(inspectionPendingCode(dnspeertransport.InspectorReason(err)), err)
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	// The source-bound catalog and no-transfer evidence must still match after
-	// the network round trip. A contradictory positive DNS answer stays fatal.
-	if err := run.step(dnsPeerProofStepPostInspection, func(ctx context.Context) error {
-		verifyCurrent := checks.at(ctx)
-		if err := verifyCurrent(); err != nil {
-			return err
-		}
-		if err := verifyNativePeerAfterInspectionAt(ctx, record, authority, plan.Changed.Domain,
-			nativePeerAfterInspectionProbes{
-				soa: probeDNSZoneSOA, localCatalog: localCatalogProbe,
-				peerCatalog: peerCatalogProbe, peerZone: probeDNSBoundZoneAXFR,
-			}, verifyCurrent); err != nil {
-			return err
-		}
-		return verifyCurrent()
-	}); err != nil {
-		return err
-	}
-	return run.consume(func() error {
-		accepted := false
-		var consumeErr error
-		_, err := dnspeerproof.Verify(request, response, authenticated, time.Now(),
-			func(digest string) bool {
-				// The answer is accepted: consume-once runs under the fresh
-				// consume context, never under an earlier step's clock.
-				accepted = true
-				consumeErr = checks.journalOp(run.accepted(), "consume-once", func(verify func() error) error {
-					return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256,
-						digest, attempt, verify)
-				})
-				return consumeErr == nil
-			})
-		run.logAnswer(response.CatalogState, response.MemberState, response.NativeState, accepted, err)
-		if consumeErr != nil {
-			return consumeErr
-		}
-		if err != nil {
-			return pendingDNSPeerCause(transport.DNSPeerPendingNativeUnknown, err)
-		}
-		return checks.at(run.accepted())()
+		},
+		consume: func(digest string, verify func() error) error {
+			return dnspeerjournal.ConsumeOnce(request, enrollment.RecordSHA256, digest, attempt, verify)
+		},
 	})
+}
+
+// bindInspectionPendingCode classifies an incomplete BIND-secondary
+// inspection (the PowerDNS path shares the transport and this mapping):
+//   - no answer at all: the exchange's timeout (peerNoAnswerPendingCode),
+//     however quickly or at whichever instant of the step's bound it came;
+//   - another SSH host key: dns_peer_enrollment_changed:host_key;
+//   - this server's own enrollment or key file unusable:
+//     dns_peer_enrollment_changed (alpha.133 round 5 review: it was shown as
+//     the backup refusing);
+//   - any other answer this server cannot accept: dns_peer_inspection_unknown
+//     with the inspector's reviewed reason.
+func bindInspectionPendingCode(err error) string {
+	switch {
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeNoAnswer):
+		return peerNoAnswerPendingCode
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeHostKeyChanged):
+		return transport.DNSPeerPendingEnrollmentChangedWithDetail(transport.DNSPeerEnrollmentChangedHostKey)
+	case dnspeertransport.IsCode(err, dnspeertransport.CodeEnrollment):
+		return transport.DNSPeerPendingEnrollmentChanged
+	}
+	return inspectionPendingCode(dnspeertransport.InspectorReason(err))
+}
+
+// nextBINDPeerChallengeAttempt is the journal part of prepare: reconcile
+// (recovery of an interrupted change, retirement of an earlier operation's
+// challenge) under the held checks, the full local recheck, then the next
+// proof attempt number from the journal.
+func nextBINDPeerChallengeAttempt(ctx context.Context, checks *nativePeerCurrentChecks,
+	reconcile func(verify func() error) error, read func() (dnspeerjournal.RecordV1, error),
+) (uint64, error) {
+	if err := checks.prepareJournal(ctx, reconcile); err != nil {
+		return 0, err
+	}
+	previous, err := read()
+	if err == nil {
+		if previous.Request.Attempt == ^uint64(0) {
+			return 0, pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+				errors.New("challenge journal attempt counter is exhausted"))
+		}
+		return previous.Request.Attempt + 1, nil
+	}
+	if !dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
+		return 0, pendingDNSPeerCause(transport.DNSPeerPendingJournalUnknown,
+			fmt.Errorf("challenge journal read: %w", err))
+	}
+	return 1, nil
 }
 
 // A crash after terminal ledger publication but before challenge retirement
 // must not block a later independent deletion. The current operation holds the
 // host and publication locks. Only an exact historical published result may
 // retire old evidence; anything else remains unknown and cannot mint a request.
+//
+// verifyCurrent is the held recheck (nativePeerCurrentChecks.held): both
+// external locks, the exact active ledger attempt of this operation and the
+// unchanged enrollment, plus, in verifyTerminal, the earlier operation's
+// exact terminal ledger result. That is the same authority the terminal
+// retirement after a successful publication uses
+// (retireTerminalBINDPeerChallenge: locks and the exact terminal ledger).
+// The local DNS evidence of the current deletion is not part of it:
+// retiring a challenge whose operation is terminal authorizes nothing for
+// this deletion, whose own challenge is minted only after the full recheck
+// and published under it. Until alpha.133 the full recheck ran here seven
+// times (once before, once before Retire, four times inside it, once after);
+// at 1-1.5 s each it overran prepare's 8 s on every attempt, so the
+// retirement never completed and every retry repeated it (12 Nov 2026).
 func reconcileHistoricalBINDPeerChallenge(
 	m *serviceMutationManager, plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error,
 ) error {
 	return reconcileHistoricalBINDPeerChallengeAt(plan, verifyCurrent,
-		m.loadLedgerFromDisk, dnspeerjournal.Read, dnspeerjournal.Retire)
+		m.loadLedgerFromDisk, dnspeerjournal.Recover, dnspeerjournal.Read, dnspeerjournal.Retire)
 }
 
+// An interrupted change of the journal is finished first (alpha.133, lab of
+// 12 Nov 2026: alpha.132 left a 0-byte journal beside the retired record of
+// a finished deletion and the next deletion never finished). Recover runs
+// under the same held recheck and asks the same terminal ledger question as
+// the retirement below; what it cannot prove, and a journal holding another
+// operation's record that the ledger read under the held locks does not show
+// finished, are dns_peer_journal_unresolved: waiting does not change them.
 func reconcileHistoricalBINDPeerChallengeAt(
 	plan dnsV3PrimaryPropagationPlan, verifyCurrent func() error,
 	loadLedger func() (serviceMutationLedger, error),
+	recoverJournal func(dnspeerjournal.VerifyCurrent, dnspeerjournal.FinishedCheck) (dnspeerjournal.Repair, error),
 	read func() (dnspeerjournal.RecordV1, error),
 	retire func(dnspeerproof.RequestV1, string, string, uint64, dnspeerjournal.VerifyCurrent) error,
 ) error {
-	if verifyCurrent == nil || loadLedger == nil || read == nil || retire == nil {
+	if verifyCurrent == nil || loadLedger == nil || recoverJournal == nil || read == nil || retire == nil {
 		return errors.New("native BIND challenge reconciliation is unavailable")
+	}
+	finished := func(record dnspeerjournal.RecordV1) (bool, error) {
+		if err := verifyCurrent(); err != nil {
+			return false, err
+		}
+		ledger, err := loadLedger()
+		if err != nil {
+			return false, err
+		}
+		return historicalBINDPeerChallengeMatchesLedger(record, &ledger), nil
+	}
+	repair, err := recoverJournal(verifyCurrent, finished)
+	if dnspeerjournal.IsCode(err, dnspeerjournal.Unresolved) {
+		return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+			errors.New("native BIND challenge journal holds files no interrupted write or retirement leaves; they are kept for review"))
+	}
+	if err != nil {
+		return errors.New("native BIND challenge journal could not be checked for an interrupted change")
+	}
+	if repair != dnspeerjournal.RepairNone {
+		log.Printf("DNS peer proof for %s finished an interrupted change of its check record (%s) before minting its own",
+			plan.Changed.Domain, repair)
 	}
 	previous, err := read()
 	if dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
@@ -238,8 +291,12 @@ func reconcileHistoricalBINDPeerChallengeAt(
 		}
 		return nil
 	}
-	if err := verifyTerminal(); err != nil {
+	if done, err := finished(previous); err != nil {
 		return err
+	} else if !done {
+		return pendingDNSPeerCause(transport.DNSPeerPendingJournalUnresolved,
+			fmt.Errorf("native BIND challenge journal holds the record of another operation (%s, ledger attempt %d) that the ledger does not show finished",
+				previous.Request.DeletedZone, previous.LedgerAttempt))
 	}
 	if err := retire(previous.Request, previous.EnrollmentSHA256,
 		previous.RequestSHA256, previous.LedgerAttempt, verifyTerminal); err != nil {
@@ -248,7 +305,12 @@ func reconcileHistoricalBINDPeerChallengeAt(
 	if _, err := read(); !dnspeerjournal.IsCode(err, dnspeerjournal.Missing) {
 		return errors.New("previous native BIND challenge retirement is unverified")
 	}
-	return verifyCurrent()
+	if err := verifyCurrent(); err != nil {
+		return err
+	}
+	log.Printf("DNS peer proof for %s retired the challenge of an earlier finished deletion (%s, ledger attempt %d) before minting its own",
+		plan.Changed.Domain, previous.Request.DeletedZone, previous.LedgerAttempt)
+	return nil
 }
 
 func historicalBINDPeerChallengeMatchesLedger(previous dnspeerjournal.RecordV1, ledger *serviceMutationLedger) bool {
@@ -342,8 +404,9 @@ const pdnsPeerLocalRecheckDelay = 250 * time.Millisecond
 
 // The PowerDNS producer, exact V3 deletion receipt and native daemon must
 // continue to describe the same state captured before peer inspection. This
-// check runs before minting, after the SSH round trip, during consume-once and
-// once more before reporting success. The producer catalog is judged against
+// check runs before minting, after the challenge is durable, after the SSH
+// round trip and once more after consume-once before reporting success
+// (nativePeerCurrentChecks, "Where the full local recheck runs"). The producer catalog is judged against
 // the attempt's recorded evidence by classifyProducerCatalogEvidence; an
 // admitted daemon re-stamp re-stamps the record once the whole recheck held.
 func recheckPDNSPeerLocalEvidence(ctx context.Context, plan dnsV3PrimaryPropagationPlan, record *dnsRecordedProducerCatalog) error {

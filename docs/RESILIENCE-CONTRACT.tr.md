@@ -7408,3 +7408,227 @@ bağlantıyı tutar.
   meşgul ve düz ret için bekleme ve sınırlı bırakma, ardından düzeltilmiş planın
   kurulması; sahibin uzlaştırmasıyla bırakma; yeniden başlatmada kısıtlamadan
   bitirme. Gerçek sistem koşusu yok. **Hiçbir P0 işi kapanmaz**; P0.4 kısmi kalır.
+
+### Dal a133/dnsproof4 (DNS eş denetim kaydının yarım kalan değişikliğini sonraki deneme tamamlar; kanıtlanamayanın kendi nedeni var; şema değişikliği yok; ilkeler 2, 3 ve 4; P0.4; D-024; D-025; 2026-11-13)
+
+- **Olay.** alpha.133 lab'ı, boşta sunucu, BIND yedekli PowerDNS ana sunucu:
+  alpha.132'de kendiliğinden bir yeniden denetim, önceki silmenin tüketilmiş
+  denetim kaydını kaldırırken hazırlığın 8 saniyesini doldurdu. alpha.132'nin
+  kaldırması kaydı boş bir mezar taşıyla takas ediyor, sonra bir şey silmeden
+  önce bitiş denetimini (adımın bağlamında tam yerel DNS denetimiyle) çalıştırıyordu
+  (`v0.1.0-alpha.132`'de `internal/dnspeerjournal/store_linux.go` 231-288); süre
+  dolunca takastan sonra bu denetim başarısız oldu ve iki dosya da kaldı: 0 baytlık
+  kayıt dosyası ve tüketilmiş kaydı tutan `.dns-peer-retired-*`. `455b31173` her özel
+  ara dosyayı reddetti (`countOrphanStages`) ve hiçbir şey onarmadı; ekran kimsenin
+  bir şey yapması gerekmediğini söylerken silme hiç bitmedi.
+- **`455b31173`'te kalan neden.** Günlüğe artık bağlam ulaşmıyordu (tutulan
+  denetimler), ama takas ile son silme arasında öldürme, elektrik kesintisi ya da
+  bir hata (tutulan denetimin başarısız olması, fsync ya da silme hatası) aynı durumu
+  bırakıyordu; takastan önce ya da sonra öldürülen bir yazma da bir ara dosya
+  bırakıyordu ve her biri sonraki bütün kanıtları durduruyordu. Ayrıca bir dizin
+  tanımlayıcısında ilkinden sonraki her ara dosya listelemesi dizinin sonundan
+  okuyup hiçbir şey görmüyordu.
+- **Değişiklik.** Kaldırma, tutulan kilitler altındaki aynı bitiş kanıtından sonra
+  kaydın özel bir ada tek bir `RENAME_NOREPLACE` ile taşınmasıdır; ardından hiçbir
+  şey onu durduramaz ve tamamlanması (kimlik denetimi, fsync, silme, fsync) onarımın
+  kullandığı yordamdır. `Recover` (iki günlükte de) hazırlıkta tutulan denetimler
+  altında önce çalışır ve tam olarak şu durumları tamamlar ya da geri alır: yok ya da
+  geçerli bir kaydın yanında boş ara dosya (silinir); yok ya da 0 baytlık bir kaydın
+  yanında, işlemi tutulan kilitler altında okunan iş kaydında bitmiş-yayımlanmış
+  görünen kaldırılmış kayıt (silinir, önce 0 baytlık kayıt); yok bir kaydın yanında
+  denetim ara dosyası (hiç yayımlanmadı, silinir); içeriğiyle kaydın önceki hâli ya
+  da hiç yayımlanmamış sonraki hâli olan denetim ara dosyası (silinir). Hiçbir zaman
+  kayıt yazmaz ya da geri koymaz. Gerisi (iki ara dosya, yabancı ya da güvensiz
+  dosyalar, tek başına 0 baytlık kayıt, bir kaydın yanında kaldırılmış kayıt, işlemi
+  bitmemiş kaldırılmış kayıt) ve iş kaydının bitmiş göstermediği başka bir işlemin
+  kaydı `dns_peer_journal_unresolved`'dır: dokunulmaz, kendiliğinden yeniden
+  denetlenmez, yöneticilere tek bildirim gider, ekran yöneticiyi ve tek sonraki adımı
+  adlandırır. Ara dosya listelemeleri dizini baştan okur.
+- **Tek kullanım neden korunur.** Bir yanıt yalnız ConsumeOnce ile, etkin denemenin
+  günlükteki güncel bekleyen kaydına karşı kabul edilir. Onarım yalnız bu kayıt
+  olmayan dosyaları ya da işlemi bitmiş bir kaydı siler; kabul edilebilir yanıtları
+  yalnız azaltabilir ve her sonraki denetimin yeni bir nonce'u vardır. Hiç
+  yayımlanmamış bir ara dosya hiç gönderilmedi (yayım, takastan önce biter). Bitmiş
+  bir silmenin kanıtı tüketilmiş kayıt değil, iş kaydının bitiş makbuzudur; böyle bir
+  durum olmayan sahip değişiklikleri incelenmek üzere kalır.
+- **Ekran.** Silme durumu `follow_up` (`automatic`, `stuck`, `stopped`, `person`) ve
+  `next_check_at` alanlarını kazanır. Alan Adları kutusu kitin Guidance bloğudur: ne
+  bekliyor, tek cümleyle neden, kim yapar ("Sizin bir şey yapmanız gerekmiyor" yalnız
+  `automatic` için), sonraki adım, sonraki denetimin saati, sayfanın kendi düğmesi ve
+  yalnız yöneticiler için kapalı Ayrıntılar altında komutlar. Silme penceresi ve
+  bildirim aynı cümleleri kullanır (yeni tembel yüklenen ekran parçası
+  `deletionGuide`; açılış yolunda 0,11 KiB gzip kaldı).
+- **Kanıt.** WSL konuğunda bileşen ve üretim yolu testleri: lab durumu, Frankfurt'un
+  sağlam durumu, alpha.133 ve alpha.132 kaldırmasının ve her yazmanın her dosya
+  işleminde durma (o işlemdeki dizinin kopyası), onarımın içinde durma, reddedilen
+  durumların değişmemesi, dizinde hiçbir şey kalmaması, onarımdan sonra hazırlığın
+  süresinin dolması, süresi geçmiş adım bağlamı; panel: çözülemeyen neden için
+  kendiliğinden deneme olmaması ve tek bildirim, `follow_up` değerleri. Henüz gerçek
+  sistem koşusu yok; lab `a133-idle` anlık görüntüsünü yeniden koşar.
+- **Kalan.** İş kaydından düşmüş (128 işin ötesi) ya da başarısız bir işlemin kaydı
+  kaldırılmaz, çözülemeyen sayılır. Çözülemeyen durum için sahip eylemi yok (öneri:
+  adı yazılarak onaylanan "denetim kaydını kenara koy ve yeniden denetle"). Elektrik
+  kesintisine dayanıklılık dosya sisteminin dosya ve dizin fsync'ine uymasına
+  bağlıdır; bir ara dosyanın yazılması ile fsync'i arasındaki elektrik kesintisi,
+  baytları kayıt olmayan tam boyutlu bir ara dosya bırakabilir: bu durum
+  onarılmaz, çözülemeyen sayılır. Silmenin diğer nedenleri önceki uzun
+  metinlerini korur. **Hiçbir P0 işi
+  kapanmaz**; P0.4 kısmi kalır.
+- **İnceleme düzeltmeleri (aynı dal, 2026-11-13).** Yöneticilere bir yayın için
+  giden tek bildirim artık güncel durumunu söyler: takılan bir yayın "bir kişi
+  yapmalı" durumuna geçince aynı bildirim yeni metni alır, yeniden gösterilir ve
+  yeniden postalanır (`reviseAccountNotice`); yönetici bir şey yaptıktan sonra
+  neden değişince ve yayın bitince kaldırılır. Silme penceresi, toplu silme notları
+  ve DELETE yanıtı sunucunun `follow_up` alanını izler: yalnız `automatic` kimsenin
+  bir şey yapması gerekmediğini söyler; pencere komutlar için kutunun Ayrıntılar'ına
+  yönlendirir; Diğer → Sil…'e yalnız yönetici gönderilir, satırı Sil sunmayan bir
+  neden için asla (`dns_peer_catching_up` takılma bildirimi dahil). Bir kanıt
+  adımının süresi dolduktan sonra bulunan durum (çözülemeyen kayıt, eşleşme,
+  Agent'ın kendi önkoşulu) kendi kodunu korur. Çözülemeyen nedenin API yedek
+  metninde komut ya da özel yol yok. Sahibin sunucusu biçiminde test eklendi
+  (istek denemesi 4, iş kaydı denemesi 183, bu silme 162. denemede bekliyor).
+- **Yalnız root ile çalışan testler.** Günlük deposu testleri
+  (`internal/dnspeerjournal`, `internal/pdnspeerjournal`) root ister;
+  `cmd/agent/dns_engine_peer_journal_repair_linux_test.go` içindeki üretim yolu
+  testleri ayrıca boş, özel bir agent-private dizini ve
+  `CELIKPANEL_TEST_REAL_PEER_JOURNAL=1` ister. CI bunları atlar. Geliştirme
+  konuğunda root olarak yukarıdaki İngilizce bölümdeki komutla çalıştırılır;
+  `dns_engine_peer_journal_repair_linux_test.go` testlerinden hiçbiri SKIP
+  dememelidir.
+
+### Dal a133/proofwait (yanıt vermeyen yedek DNS sunucusu her zaman beklemedir; kendiliğinden yeniden denetimler yalnız çözülemeyen denetim kaydında ya da bu sunucuda sahibin değişikliğinde durur; şema değişikliği yok; ilkeler 1, 3 ve 4; P0.4; D-022; D-024; D-025; 2026-11-13)
+
+- **Olay.** alpha.133 lab'ı, ikinci boşta çalışma (`194a4b4e4`), PowerDNS ana
+  sunucu ve SSH bağlantı noktası engellenmiş bir BIND yedek: `w9.test` için iki
+  yeniden denetim `dns_peer_proof_timeout:peer_exchange` (`exchange=10.001s`),
+  üçüncüsü `dns_peer_inspection_unknown` (`exchange=10s`) ile bitti. Yedek
+  yeniden yanıt verdikten sonra da silme, biri Diğer → Sil…'e basana kadar
+  bekledi; kutu tek bir jargon satırıydı.
+- **Neden.** Değişim adımının bağlamı ile bağlayıcının kendi yoklayıcı süresi
+  aynı an için iki zamanlayıcıdır: `net`, bağlantının yazma süresini
+  `ctx.Deadline()`'dan koyar (Go 1.26.5'te `net/fd_unix.go` 78-82) ve
+  `ctx.Done()` henüz açıkken yoklayıcının zaman aşımını döndürür (119-125).
+  Aktarım o zaman `peer_inspection_unavailable` döndürdü (`194a4b4e4`'te
+  `internal/dnspeertransport/transport_linux.go` 239-241) ve `stepWithin`
+  `ctx.Err()`'i boş okudu (`cmd/agent/dns_engine_peer_budget.go` 183); dokuzda
+  bir, çalışma zamanının hangi zamanlayıcıyı önce çalıştırdığıdır. Panelin
+  işçisi her kod için "next automatic re-check in 1m0s" yazdı ama
+  `dns_peer_inspection_unknown` yeniden denetlenmiyordu
+  (`cmd/panel/dns_peer_pending_guidance.go` 61-77). Davranış koda uyuyordu;
+  günlük satırı yanlıştı.
+- **Aktarım.** SSH değişimi hatalarını ayırır. Yanıt yok (`peer_no_answer`):
+  bağlanma başarısız (reddedildi, yol yok, zaman aşımı), bağlantı sunucu
+  anahtarından önce bitti, sıfırlandı ya da süresi doldu, ya da komutun
+  sonucundan önce koptu. Kabul edilemeyen yanıt: sunucu anahtarı denetiminden
+  önce başarısız anahtar değişimi (doğrulanmayan sunucu anahtarı imzası, ortak
+  anahtar algoritması yok, protokol hatası, ilk baytları `SSH-` olmayan başka
+  bir hizmet), kayıtlı anahtarın ya da oturumun reddi, çok büyük yanıt,
+  sıfırdan farklı çıkış. Sabitlenmişten başka bir SSH sunucu anahtarı
+  `peer_host_key_changed`; bu sunucunun kendi kaydı ya da anahtar dosyası
+  `peer_enrollment_invalid` olur ve `Inspect` bunları geçirir. Agent yanıt
+  yokluğunu `dns_peer_proof_timeout:peer_exchange`'e, başka sunucu anahtarını
+  yeni gözden geçirilmiş `dns_peer_enrollment_changed:host_key`'e, bu sunucunun
+  anahtarını `dns_peer_enrollment_changed`'e, gerisini
+  `dns_peer_inspection_unknown`'a eşler.
+- **Adım sınırı.** Bir adım süresinin dolup dolmadığını süre sınırından da
+  okur (`dnsPeerStepDeadlineMargin`, 100 ms), ama yalnız süresi dolan bir
+  denetim, değişimin "yanıt yok"u ya da gözden geçirilmiş kodu veya bulgusu
+  olmayan bir hata için. Gözden geçirilmiş kod ya da bulgu (bir yoklamanın ya da
+  son yeniden denetimin bulduğu sahip değişikliği, yedeğin verdiği yanıt)
+  kodunu korur; onun için yalnız `ctx.Err()` karar verir.
+- **Yeniden denetim kuralı** (`transport.DNSPeerPendingStopsAutomaticRechecks`;
+  Agent'ın günlük satırı, panel ve web için tek kural). Kendiliğinden yeniden
+  denetimler, başka bir denetimin sonucu kanıtlanabilir biçimde
+  değiştiremeyeceği yerde (`dns_peer_journal_unresolved`) ya da durumun, sunucu
+  sahibinin bu sunucunun DNS'ini elle değiştiriyor olabileceğini söylediği
+  yerde durur (`dns_peer_owner_edit_unknown`, yalın ya da `operation_attempt`,
+  `engine_state`, `active_engine`, `native_binding`, `deletion_receipt`,
+  `producer_catalog`, `catalog_probe`, `authority` denetimleriyle): CelikPanel
+  sahibin değişikliğinin üzerinden kendiliğinden iş yapmaz (D-022) ve yeniden
+  denetim `RecoverZone`'u çalıştırır; onun ön denetimleri bu değişikliklerin
+  birkaçını her Agent değişikliğini bekleten belirsizlik sayar
+  (`cmd/agent/dns_engine_rpc.go` 313-345 ve 412-443; PowerDNS bölge satırları,
+  `dns_engine_pdns.go` 975-987; tek etkin motor, `dns_engine_host.go` 3218;
+  BIND dönemi, eski durum ve tek etkin denetimleri, 1209-1251 ve 1331).
+  Yedek tarafındaki `transfer_observed` ve `zone_answered` denetimleri bu yerel
+  ön denetimlerden sonra, yayılımın içinde gözlenir ve yayılımın her sonucu
+  bekleme olarak sarılır (`dns_engine_pdns_propagation.go` 263-276,
+  `dns_engine_bind_propagation.go` 184); kendiliğinden kalırlar. `authority` bu
+  sunucunun katalog seri numarasını izleyebildiği için kişi durumudur. Diğer
+  her neden 15 sn'den 5 dk'ya ikiye katlanarak yeniden denetlenir, nedeni ne
+  olursa olsun üst üste altı bekleme sonucundan sonra "takıldı"; hiçbir şeyin
+  yeniden denetlemediği bir duruma dönmez. Gözden geçirilmiş bekleme sonucu
+  olmayan tekrarlanan hatalar kendiliğinden denemeleri yine bitirir
+  (`stopped`, ilke 4).
+- **Bildirimler.** Her kişi durumu yöneticilere tek bildirim gönderir
+  (`takePersonNotice`); neden değişince kaldırılır. Takılma bir kez bildirilir;
+  takılmanın nedeni değişince saklanan metin yeniden gösterilmeden ve
+  postalanmadan yerinde güncellenir; metni değişmeyecek bir bildirime
+  dokunulmaz. Silmenin bildirimi Alan Adları sayfasını açar.
+- **Ekran.** Her gözden geçirilmiş neden neden, kim yapar, tek sonraki adım ve
+  nasıl süreceğini söyler (web kılavuzu, `deletionGuide` ve `deletionGuidePeer`
+  parçaları); bu sunucuda sahibin değişikliği yöneticiyi adlandırır, "değişikliği
+  tamamlayın, ardından Diğer → Sil…" der ve kendiliğinden biteceğini asla
+  söylemez; değişen sunucu anahtarı, erişimi yeniden kurmadan önce gerçek bir
+  yeniden kurulum ya da anahtar değişikliğinin doğrulanmasını ister (bunun için
+  düğme yok; adımlar Ayrıntılar altındaki dns-peer-enroll aracıdır). Liste
+  bekleyen silmeyi her durumda, başarısız bir okumadan sonra da okumayı sürdürür.
+- **Kurtarma.** Güncellenmiş panelde yeniden denetlenen bir kodla bekleyen silme
+  sonraki taramada yeniden denetlenir ve neden ortadan kalkınca biter. Bu
+  sunucuda sahibin değişikliğiyle bekleyene dokunulmaz; yönetici değişikliği
+  bitirdikten sonra Diğer → Sil…'e basar. Saklanan biçim değişmez;
+  `dns_peer_enrollment_changed:host_key` mevcut hata kodu alanında yeni bir
+  bileşik koddur (eski bir panel yalın nedenin metnini gösterir).
+- **Kanıt.** WSL konuğunda bileşen ve üretim yolu testleri: her biçim için
+  yerel döngü sunucularına ve bağlayıcılara karşı gerçek SSH değişimi
+  (reddedildi, yarışan bağlayıcı zamanlayıcısı, önce bağlam, yol yok, sessiz
+  bağlantı noktası, sıfırlama, komuttan sonra kopma, başka sunucu anahtarı,
+  doğrulanmayan imza, yalnız RSA anahtarlı sunucu, bağlantı noktasında başka
+  hizmet, anahtar reddi, oturum reddi, sıfırdan farklı çıkış, eksik yerel
+  anahtar); w9 dalgası; sınırdan 50 ms önce gelen gözden geçirilmiş bulgular;
+  panelin uzlaştırıcısı w9 dizisinde, reddeden yedekte, bu sunucunun her sahip
+  değişikliği denetiminde (taramalar boyunca ve yeniden başlatmadan sonra Agent
+  çağrısı yok, tek bildirim, basış sürdürür) ve değişen nedenlerde; her kod ve
+  bileşik için web koruması; ikinci sekmedeki ve başarısız okumadan sonraki
+  liste. Gerçek sistemde çalıştırılmadı.
+- **Yeniden inceleme düzeltmeleri.** Değişimden sonraki katalog denetimi
+  sırasında yanıt vermeyi bırakan yedek (bu sunucunun kendi kataloğu
+  eşleşirken yoklaması `dnsPeerBehind`), aynı gözlem için dalganın okuması
+  olan `dns_peer_catching_up` olur, `owner_edit_unknown:catalog_probe` değil
+  (`dns_engine_peer_after_inspection.go`); `catalog_probe` bu sunucunun kendi
+  farkı için kalır. Kişi kodlarını üreten her yer bir kez gözden geçirildi;
+  hepsi yalnız yerel kanıt okur: yerel yeniden denetimler
+  (`recheckBINDPeerLocalEvidence`, `recheckPDNSPeerLocalEvidence*`,
+  `recheckPDNSNativeBindingAt`, kaydedilen üretici kataloğu), iş kaydı denemesi
+  (`peerCurrentPendingCodeAt`), BIND yapılandırması
+  (`pendingExactBINDV3OwnerEdit`), `catalog_probe` ve `authority` (bu sunucunun
+  kaydı) ve denetim kaydı uzlaştırması (`dns_peer_journal_unresolved`).
+  Uzlaştırıcının, süren bir işi bekleyen kendi denemesi, iş durdurucu bir kodla
+  beklemede biterse artık kurtarmayı çalıştırmaz (`reconcileDNSZoneEngineLease`);
+  bir kişinin basışı yine çalıştırır. Sunucu anahtarı Ayrıntıları aracın kabul
+  ettiği sırayı verir (`primary-revoke`, yalnız kayıt dosyasını kenara alır ve
+  DNS çoğaltmasını sürdürür; ardından ilk kurulum adımları); kurulum var olan
+  bir erişimin yerine asla yenisini koymaz ve yönlendirme artık bunu söylemez.
+- **Açık.**
+  - Bu sürümden önce kendiliğinden olan kodlar (`dns_peer_catching_up`,
+    `dns_peer_proof_timeout`, `dns_peer_journal_unknown`) ve bu sürümün yeniden
+    denetlediği kodlar, sahip bekleme sırasında bu sunucunun DNS'ini
+    değiştirirse aynı Agent beklemesine yine ulaşabilir: sonraki yeniden
+    denetimin `RecoverZone` ön denetimleri değişikliği belirsizlik sayar. Doğru
+    düzeltme, iki `RecoverZone` yolunda da sahip değişikliği biçimli her ön
+    denetim hatasını, `pendingExactBINDV3OwnerEdit`'in BIND yapılandırma
+    denetimi için yaptığı gibi bekleyen bir sahip değişikliği olarak
+    sınıflandırmaktır. Denenmedi.
+  - Sonucu değişmeyen yeniden denetlenmiş bir deneme yaklaşık dört satır yazar
+    (Agent'ın "stopped at step", "step times … outcome" ve "recovery remains
+    pending" satırları ile panelin "still waits" satırı), yavaş aralıkta 5
+    dakikada bir; Agent'ın üç satırını bire indirmek küçük bir değişiklik
+    değil, bırakıldı.
+  - Metni kaldırılan bir bildirimle aynı olan yeni bir kişi dönemi yeniden
+    gösterilmez (kabul edilebilir: o kodları yalnız bir basış değiştirir).
+  - Güncelleme sırasında bir alpha.132 paneli güncellenmiş Agent ile konuştuğu
+    birkaç saniye boyunca yeni bileşik kodu
+    `dns_peer_enrollment_changed:host_key` gözden geçirilmemiş sayar
+    (önceki bileşik kodlarla aynı sınıf).
+  - Gerçek sistemde ölçülmedi; lab w9'u yineler. **Hiçbir P0 işi kapanmadı**;
+    P0.4 kısmi kalır.

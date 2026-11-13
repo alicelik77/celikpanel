@@ -96,7 +96,7 @@ export const trServiceAppsScreens: Record<ServiceAppsScreenKey, string> = {
     'svcapps.op.kind.install': 'Kurulum',
     'svcapps.op.kind.update': 'Güncelleme',
     'svcapps.op.kind.uninstall': 'Kaldırma',
-    'svcapps.op.retry': 'Yeniden dene',
+    'svcapps.op.retry': 'Tekrar dene',
     'svcapps.op.serverSaid': 'Sunucunun yanıtı: {message}',
     'svcapps.op.done.note': 'Son işlem: {message}',
     'svcapps.reason.install_failed': 'npm veya pip bir hatayla durdu. Nedenini görmek için aşağıdaki kurulum günlüğünü açın; nedeni giderin (çoğu zaman eksik derleme araçları veya internet erişimi yokluğu), sonra yeniden deneyin. Kim işlem yapar: siz; sunucu paketleri için yönetici.',
