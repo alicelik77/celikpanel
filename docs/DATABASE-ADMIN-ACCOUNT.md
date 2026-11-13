@@ -137,9 +137,12 @@ it is. Records that are already out of step on an installed server are put
 right by the next "New password…" on the engine's page, or by the next
 subscription that claims the engine.
 
-Deleting a database no longer depends on these records at all for an engine on
-this machine: like creating one and giving a user a new password, it goes
-through the Agent's local privileged path.
+Deleting a database no longer depends on these records for CelikPanel's own
+record of an engine on this machine: like creating one and giving a user a
+new password, it goes through the Agent's local privileged path. A record an
+administrator registered with a credential of their own - also on this
+machine, for example `127.0.0.1:3307` - is reached with that credential, never
+through the Agent, which only reaches the machine's own engine.
 
 ## What an administrator can see and do
 
