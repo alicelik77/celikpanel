@@ -985,12 +985,23 @@ type domainSiteConfigSummary struct {
 // state and then across the files, the vhost first on a tie): the vhost
 // always, the pool of a PHP site, the unit of a Node site, each from its
 // newest ledger row.
+//
+// A domain that is being deleted, or waits for the rest of its deletion,
+// has none (alpha.133 lab, 13 Nov 2026: sil7.test carried "configuration
+// file missing" beside "waiting to be deleted" because the deletion had
+// removed the file on purpose). The list row and the domain page's header
+// both read this summary; they show the deletion state only. A domain whose
+// file is missing while it is not being deleted keeps its badge.
+// Silinmekte olan ya da silinmeyi bekleyen alan adinin ozeti yoktur; satir
+// ve sayfa yalniz silme durumunu gosterir.
 func (p *Panel) domainSiteConfigSummaries(ctx context.Context) (map[int]domainSiteConfigSummary, error) {
 	rows, err := p.db.GetDB().QueryContext(ctx, `
 		SELECT m.domain_id, m.kind, m.state, m.adopted_from, m.decision, m.decision_file_sha256,
 		       m.file_sha256, m.state_reason, COALESCE(s.project_type, 'php')
 		FROM managed_site_files m LEFT JOIN sites s ON s.id = m.site_id
-		WHERE m.kind IN (?, ?, ?) ORDER BY m.id`,
+		WHERE m.kind IN (?, ?, ?)
+		  AND NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = m.domain_id)
+		ORDER BY m.id`,
 		transport.SiteFileKindNginxVhost, transport.SiteFileKindPHPPool, transport.SiteFileKindAppUnit)
 	if err != nil {
 		return nil, err

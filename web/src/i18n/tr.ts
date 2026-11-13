@@ -32,7 +32,7 @@ export const tr: Record<ShellKey, string> = {
     'recovery.operationTitle': "Güncelleme ve kurtarma durumu",
     'recovery.noOperation': "Bu tarayıcıda kayıtlı güncelleme işlem kimliği yok. Bu sayfa, tam işlem kimliği olmadan bir güncelleme sonucunu eşleştiremez.",
     'recovery.operationId': "İşlem kimliği",
-    'recovery.observationUnavailable': "En son sonuç okunamadı. Aşağıdaki sonuç, çalışmanın hâlâ sürdüğünün onayı değil, son doğrulanmış gözlemdir. Tekrar kontrol edin; ikinci bir güncelleme başlatmayın.",
+    'recovery.observationUnavailable': "Son durum okunamadı; kendiliğinden yeniden okunur. Aşağıda bir durum görünüyorsa son doğrulanan durumdur; işin hâlâ sürdüğünü göstermez. İkinci bir güncelleme başlatmayın.",
     'recovery.observedAt': "Son doğrulanmış gözlem",
     'recovery.previousFailure': "Önceden kaydedilmiş hata",
     'recovery.checkStatus': "Bu işlemi kontrol et",

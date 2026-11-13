@@ -74,6 +74,167 @@ func TestSystemUpdateClearsOnlyResolvedAttemptUnits(t *testing.T) {
 	}
 }
 
+// alpha.133 lab (13 Nov 2026): a press refused on a busy package manager left
+// its celikpanel-self-update-<id>.service under systemctl --failed, because
+// only a later successful update cleared it. An attempt whose own record says
+// the reviewed updater stopped before changing anything is final; its unit's
+// failed mark is cleared at Agent start and when it is read, and its record is
+// kept. Attempts that may still need recovery keep their unit.
+func TestSystemUpdateClearsTheUnitOfAnAttemptThatStoppedUnchanged(t *testing.T) {
+	root := linuxSystemUpdateTestRoot(t)
+	at := func(id, failure string) *systemUpdateState {
+		state := linuxSystemUpdateTestState(strings.Repeat(id, 32))
+		state.Status, state.Error = systemUpdateFailed, failure
+		state.CreatedAt, state.UpdatedAt = "2026-11-12T22:23:35Z", "2026-11-12T22:23:35Z"
+		if err := writeSystemUpdateState(root, state, nil); err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+	refused := at("1", "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail=")
+	preflight := at("2", "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_preflight_refused state=unchanged reason=update preflight step=agent_idle class=check_failed detail=")
+	needsRecovery := at("3", "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped detail=")
+	untyped := at("4", "installer stopped")
+
+	backend := newLinuxSystemUpdateBackend()
+	backend.stateRoot = root
+	backend.floorPath = filepath.Join(root, "missing-floor")
+	backend.now = func() time.Time { return time.Date(2026, 11, 13, 1, 0, 0, 0, time.UTC) }
+	backend.installedBuild = func(context.Context) (string, string, error) { return "v1.2.2", strings.Repeat("c", 40), nil }
+	backend.unitState = func(context.Context, string) (systemUpdateUnitState, error) { return systemUpdateUnitInactive, nil }
+	backend.observe = nil
+	var cleared []string
+	backend.resetFailedUnit = func(_ context.Context, id string) error { cleared = append(cleared, id); return nil }
+
+	// Agent start: only the two that stopped unchanged.
+	if err := backend.Reconcile(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{refused.RequestID, preflight.RequestID}; !reflect.DeepEqual(cleared, want) {
+		t.Fatalf("cleared %v, want %v", cleared, want)
+	}
+
+	// A read of the refused attempt clears its own unit; a read of the others does not.
+	cleared = nil
+	if _, err := backend.Status(context.Background(), refused.RequestID); err != nil {
+		t.Fatal(err)
+	}
+	for _, other := range []*systemUpdateState{needsRecovery, untyped} {
+		if _, err := backend.Status(context.Background(), other.RequestID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if want := []string{refused.RequestID}; !reflect.DeepEqual(cleared, want) {
+		t.Fatalf("status reads cleared %v, want %v", cleared, want)
+	}
+	for _, state := range []*systemUpdateState{refused, preflight, needsRecovery, untyped} {
+		loaded, err := readSystemUpdateState(root, state.RequestID)
+		if err != nil || loaded.Status != systemUpdateFailed || loaded.Error != state.Error {
+			t.Fatalf("the attempt's record %s changed: %v %v", state.RequestID, loaded, err)
+		}
+	}
+
+	// An abandon receipt never had a worker; it is not an unchanged stop.
+	receipt := linuxSystemUpdateTestState(strings.Repeat("5", 32))
+	receipt.Status, receipt.Error = systemUpdateFailed, systemUpdateAbandonedError
+	if systemUpdateStoppedUnchanged(receipt) {
+		t.Fatal("an abandon receipt was taken for an unchanged stop")
+	}
+}
+
+// The follow-up after a start clears a refused attempt's unit only once its
+// worker has ended, and stops for every other outcome.
+func TestSystemUpdateSettleStoppedAttemptWaitsForItsWorker(t *testing.T) {
+	root := linuxSystemUpdateTestRoot(t)
+	state := linuxSystemUpdateTestState(strings.Repeat("6", 32))
+	state.Status = systemUpdateRunning
+	state.CreatedAt, state.UpdatedAt = "2026-11-12T22:23:35Z", "2026-11-12T22:23:35Z"
+	write := func() {
+		if err := writeSystemUpdateState(root, state, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write()
+	backend := newLinuxSystemUpdateBackend()
+	backend.stateRoot = root
+	unit := systemUpdateUnitActive
+	backend.unitState = func(context.Context, string) (systemUpdateUnitState, error) { return unit, nil }
+	var cleared []string
+	backend.resetFailedUnit = func(_ context.Context, id string) error { cleared = append(cleared, id); return nil }
+	settle := func(id string) bool {
+		t.Helper()
+		done, err := backend.SettleStoppedAttempt(context.Background(), id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return done
+	}
+
+	if settle(state.RequestID) || len(cleared) != 0 {
+		t.Fatalf("a running attempt was settled: %v", cleared)
+	}
+	// The worker wrote the refusal and is still exiting.
+	state.Status = systemUpdateFailed
+	state.Error = "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=package_manager_busy state=unchanged reason=the host package manager is active detail="
+	state.UpdatedAt = "2026-11-12T22:24:15Z"
+	write()
+	if settle(state.RequestID) || len(cleared) != 0 {
+		t.Fatalf("settled while the worker unit was still active: %v", cleared)
+	}
+	unit = systemUpdateUnitInactive
+	if !settle(state.RequestID) || !reflect.DeepEqual(cleared, []string{state.RequestID}) {
+		t.Fatalf("the ended refusal was not settled: %v", cleared)
+	}
+
+	// Every other outcome ends the follow-up without touching the unit.
+	for _, outcome := range []struct{ status, failure string }{
+		{systemUpdateFailed, "reviewed updater failed: exit status 1: !! CELIKPANEL_UPDATE_FAILURE code=update_failed state=recovery_required reason=installer stopped detail="},
+		{systemUpdateFailed, "installer stopped"},
+		{systemUpdateSucceeded, ""},
+	} {
+		cleared = nil
+		state.Status, state.Error = outcome.status, outcome.failure
+		write()
+		if !settle(state.RequestID) || len(cleared) != 0 {
+			t.Fatalf("%s %q: cleared %v", outcome.status, outcome.failure, cleared)
+		}
+	}
+	if !settle(strings.Repeat("7", 32)) {
+		t.Fatal("an unknown attempt keeps the follow-up running")
+	}
+}
+
+type fakeSystemUpdateSettler struct {
+	answers []bool
+	calls   int
+}
+
+func (settler *fakeSystemUpdateSettler) SettleStoppedAttempt(context.Context, string) (bool, error) {
+	settler.calls++
+	if settler.calls > len(settler.answers) {
+		return false, errors.New("unexpected read")
+	}
+	return settler.answers[settler.calls-1], nil
+}
+
+func TestFollowSystemUpdateAttemptStopsWhenSettledAndIsBounded(t *testing.T) {
+	start := time.Date(2026, 11, 13, 1, 0, 0, 0, time.UTC)
+	clock := start
+	settler := &fakeSystemUpdateSettler{answers: []bool{false, false, true}}
+	followSystemUpdateAttempt(settler, strings.Repeat("8", 32), start.Add(systemUpdateSettleWindow),
+		func() time.Time { return clock }, func(d time.Duration) { clock = clock.Add(d) })
+	if settler.calls != 3 {
+		t.Fatalf("reads = %d, want 3 (stops once settled)", settler.calls)
+	}
+	never := &fakeSystemUpdateSettler{answers: make([]bool, 1000)}
+	clock = start
+	followSystemUpdateAttempt(never, strings.Repeat("8", 32), start.Add(30*time.Second),
+		func() time.Time { return clock }, func(d time.Duration) { clock = clock.Add(d) })
+	if never.calls != 10 {
+		t.Fatalf("bounded follow-up made %d reads, want 10 within 30 seconds", never.calls)
+	}
+}
+
 // The reset names exactly the attempt's own unit, and only when systemd says
 // that unit failed.
 func TestSystemUpdateResetFailedWorkerUnitTouchesOnlyItsOwnFailedUnit(t *testing.T) {

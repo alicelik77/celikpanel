@@ -68,11 +68,16 @@ func (p *Panel) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A domain being deleted is not a health item: its certificates go at the
+	// deletion's own certificate step, and the home page says nothing about
+	// what the deletion removes on purpose (alpha.133).
+	// Silinmekte olan alan adinin sertifikasi ana sayfada uyari degildir.
 	rows, err := db.QueryContext(r.Context(), `
 		SELECT d.id, d.name, c.expires_at, COALESCE(c.renewal_status, '')
 		FROM ssl_certificates c
 		JOIN domains d ON d.id = c.domain_id
-		WHERE c.status = 'active'`)
+		WHERE c.status = 'active'
+		  AND NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = d.id)`)
 	if err != nil {
 		writeServerError(w, fmt.Errorf("list certificates for dashboard: %w", err))
 		return
