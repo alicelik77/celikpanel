@@ -83,6 +83,16 @@ export function decodeCoverage(raw: unknown): Coverage {
 
 type Say = (key: TranslationKey, values?: Record<string, string | number>) => string;
 
+/**
+ * The order of the list: every name that is not protected (a gap, a name
+ * waiting for DNS, one that could not be checked) first, so the problem and
+ * its one action are the first thing seen; then the protected names. Each
+ * group keeps the server's order.
+ */
+export function problemsFirst(lines: readonly CoverageLine[]): CoverageLine[] {
+    return [...lines.filter((line) => line.state !== 'protected'), ...lines.filter((line) => line.state === 'protected')];
+}
+
 /** What the line is ("Web site", "Mail programs (the name they are told)"). */
 export function lineKindWords(t: Say, line: CoverageLine): string {
     if (line.kind === 'site') return t(`certcover.kind.${line.role ?? 'alias'}` as TranslationKey);

@@ -4,12 +4,14 @@ import type { TranslationKey } from '../../i18n/en';
 import { Checking, CouldNotCheck } from '../ui';
 import { RowActions, type RowAction } from '../kit/rows/RowActions';
 import type { Remote } from '../../lib/remote';
-import { isDNSPrerequisite, lineKindWords, lineNextWords, lineWords, type Coverage, type CoverageAction, type CoverageLine } from './coverageLines';
+import { isDNSPrerequisite, lineKindWords, lineNextWords, lineWords, problemsFirst, type Coverage, type CoverageAction, type CoverageLine } from './coverageLines';
 
 // "Neler korunuyor" (alpha.134, docs/CERTIFICATE-COVERAGE.md): one list of
 // everything of the domain that visitors and mail programs connect to - what
 // it is, the name, and "Protected" (by which certificate, until when) or
-// "Not protected" with one sentence and at most one action. It only shows
+// "Not protected" with one sentence and at most one action. Names that are
+// not protected come first, then the protected ones; one list, always open,
+// nothing folded. It only shows
 // what the server said; the actions are the certificate screen's own
 // (handed in), so each runs in that screen's progress window.
 //
@@ -77,7 +79,7 @@ export function CertificateCoverage({ coverage, onRetry, rereading, actions }: {
             )}
             {coverage.state === 'known' && coverage.value.lines.length > 0 && (
                 <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-                    {coverage.value.lines.map((line) => {
+                    {problemsFirst(coverage.value.lines).map((line) => {
                         // A name waiting for DNS is a prerequisite, not a failure:
                         // its badge says what it waits for, in the warning tone.
                         const waiting = isDNSPrerequisite(line);

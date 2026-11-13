@@ -63,7 +63,10 @@ No certificate authority is asked for such a name.
 
 The list stands right under the certificate's facts and its state notes,
 before the renewal switch and the buttons, so a gap and its one fix are seen
-first.
+first. Inside the list, every name that is not protected (a gap, a name
+waiting for DNS, one that could not be checked) comes first, then the
+protected names, each group in the server's order: one list, always open,
+nothing folded.
 
 The mail screen states the same line under the server name, with the same
 words ("Bu adı güvenilir bir sertifika koruyor (… tarihine kadar)").

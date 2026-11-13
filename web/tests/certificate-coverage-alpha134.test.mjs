@@ -154,6 +154,37 @@ test('the list says every line from the server, with its certificate and end, or
   } finally { await unmount(); }
 });
 
+test('names that are not protected come first, then the protected ones in the server\'s order; one list, nothing folded', async () => {
+  const unknownLine = { kind: 'webmail', name: 'webmail.server.example', state: 'unknown', reason: 'not_checked' };
+  const waitingLine = { kind: 'site', role: 'alias', name: 'shop.example.com', state: 'not_protected', reason: 'points_elsewhere', ips: ['198.51.100.7'], action: 'recheck' };
+  // The server's order puts the gap fourth, the unknown line third and the
+  // waiting alias last: on screen the problems lead, in that same order.
+  sslServer({ coverage: { ...ownersCase, server_ip: '203.0.113.10', lines: [...ownersCase.lines.slice(0, 2), unknownLine, ...ownersCase.lines.slice(2), waitingLine] } });
+  await mount(ssl());
+  try {
+    const shown = tree.root.findAll((node) => node.type === 'li' && node.props['data-coverage-line'] !== undefined)
+      .map((node) => [node.props['data-coverage-state'], nodeText(node.find((part) => part.type === 'span' && String(part.props.className).includes('font-mono')))]);
+    assert.deepEqual(shown, [
+      ['unknown', 'webmail.server.example'],
+      ['not_protected', 'mail.example.com'],
+      ['not_protected', 'shop.example.com'],
+      ['protected', 'example.com'],
+      ['protected', 'www.example.com'],
+      ['protected', 'mail.server.example'],
+      ['protected', 'autoconfig.example.com'],
+      ['protected', 'autodiscover.example.com'],
+    ]);
+    // The first line's one action is on screen without opening anything.
+    assert.ok(button('certcover.action.cover_mail'), 'the gap\'s action is not shown');
+    assert.equal(tree.root.findAll((node) => node.type === 'details' || node.props['aria-expanded'] !== undefined).length, 0, 'something in the list is folded');
+  } finally { await unmount(); }
+  // The helper keeps each group's order and changes nothing it is given.
+  const given = ownersCase.lines.map((line) => lines.decodeCoverageLine(line));
+  const ordered = lines.problemsFirst(given);
+  assert.deepEqual(ordered.map((line) => line.name), ['mail.example.com', 'example.com', 'www.example.com', 'mail.server.example', 'autoconfig.example.com', 'autodiscover.example.com']);
+  assert.deepEqual(given.map((line) => line.name), ownersCase.lines.map((line) => line.name));
+});
+
 test('the list could not be read: said as not known, never as unprotected, with a retry', async () => {
   const state = sslServer();
   state.coverage = json({ error: 'agent did not answer' }, 503);
