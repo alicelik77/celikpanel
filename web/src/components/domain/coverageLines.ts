@@ -12,7 +12,7 @@ import { formatDate } from '../../lib/dateFormat';
 export type CoverageKind = 'site' | 'webmail' | 'mail_programs' | 'mail_name' | 'mail_setup';
 export type CoverageState = 'protected' | 'not_protected' | 'unknown';
 export type CoverageBy = 'domain_certificate' | 'server_mail_certificate' | 'webmail_certificate';
-export type CoverageAction = 'reissue' | 'cover_mail' | 'upload' | 'use_for_mail' | 'dns' | 'mail_setup';
+export type CoverageAction = 'reissue' | 'cover_mail' | 'upload' | 'use_for_mail' | 'dns' | 'mail_setup' | 'recheck';
 
 export interface CoverageLine {
     kind: CoverageKind;
@@ -29,6 +29,8 @@ export interface CoverageLine {
 export interface Coverage {
     lines: CoverageLine[];
     mail_name: string;
+    /** The address a name must point to ("" when the server does not know it). */
+    server_ip: string;
 }
 
 export const coverageURL = (domainId: number) => `/api/v1/domains/${domainId}/ssl/coverage`;
@@ -36,7 +38,7 @@ export const coverageURL = (domainId: number) => `/api/v1/domains/${domainId}/ss
 const KINDS: readonly string[] = ['site', 'webmail', 'mail_programs', 'mail_name', 'mail_setup'];
 const STATES: readonly string[] = ['protected', 'not_protected', 'unknown'];
 const BY: readonly string[] = ['domain_certificate', 'server_mail_certificate', 'webmail_certificate'];
-const ACTIONS: readonly string[] = ['reissue', 'cover_mail', 'upload', 'use_for_mail', 'dns', 'mail_setup'];
+const ACTIONS: readonly string[] = ['reissue', 'cover_mail', 'upload', 'use_for_mail', 'dns', 'mail_setup', 'recheck'];
 const REASONS: readonly string[] = [
     'no_certificate', 'not_in_certificate', 'points_elsewhere', 'no_address', 'certificate_not_usable',
     'mail_not_using', 'server_certificate_not_ready', 'mail_name_unknown', 'webmail_no_certificate', 'not_checked',
@@ -75,6 +77,7 @@ export function decodeCoverage(raw: unknown): Coverage {
     return {
         lines: body.lines.map(decodeCoverageLine).filter((line): line is CoverageLine => line !== null),
         mail_name: body.mail_name,
+        server_ip: typeof body.server_ip === 'string' ? body.server_ip : '',
     };
 }
 
@@ -92,6 +95,25 @@ export function lineWords(t: Say, locale: 'tr' | 'en', line: CoverageLine): stri
         return t(`certcover.by.${line.by}` as TranslationKey, { date: formatDate(new Date(line.until), locale) });
     }
     return t(`certcover.reason.${line.reason ?? 'not_checked'}` as TranslationKey, { ips: line.ips.join(', ') });
+}
+
+/**
+ * A name that does not point here waits for a DNS change: an unmet
+ * prerequisite, not a failure (D-024). Its badge says so instead of "Not
+ * protected", and its next step says who changes what, where, and what then
+ * appears here.
+ */
+export function isDNSPrerequisite(line: CoverageLine): boolean {
+    return line.state === 'not_protected' && (line.reason === 'points_elsewhere' || line.reason === 'no_address');
+}
+
+/** The next step of a name that waits for DNS; "" for any other line. */
+export function lineNextWords(t: Say, line: CoverageLine, serverIp: string): string {
+    if (!isDNSPrerequisite(line)) return '';
+    return t(line.kind === 'mail_name' ? 'certcover.next.mail' : 'certcover.next.site', {
+        ip: serverIp || t('certcover.ip.unknown'),
+        where: t(line.action === 'recheck' ? 'certcover.where.elsewhere' : 'certcover.where.here'),
+    });
 }
 
 /**

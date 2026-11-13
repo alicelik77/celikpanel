@@ -472,6 +472,11 @@ export function DomainSSLSettings({
                             email: oneClick ? '' : email,
                             auto_renew: autoRenew,
                             ...(!oneClick && excludeMail ? { exclude_mail: true } : {}),
+                            // "Cover the mail name too" asks for the name itself: the
+                            // server refuses before any authority is asked when the
+                            // name no longer points here, instead of getting the same
+                            // certificate again without it.
+                            ...(oneClick === 'cover' ? { include_mail: true } : {}),
                             provider,
                             eab_key_id: eabKid,
                             eab_hmac_key: eabHmac,
@@ -507,6 +512,9 @@ export function DomainSSLSettings({
                         // (the screen's read was older): read it again, and the
                         // refusal below says it in words.
                         if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void reach.retry();
+                        // The list reads it again too: the line then says where the
+                        // name points and the next step.
+                        if (apiError.code === 'CERTIFICATE_DOMAIN_NOT_POINTED') void coverage.retry();
                         // What certbot's run came to is a sentence with something
                         // to correct: it stays on the page.
                         // certbot çalışmasının sonucu düzeltilecek bir şey taşır:
@@ -918,6 +926,14 @@ export function DomainSSLSettings({
         openMail: () => navigate(sectionPath('mail')),
         busy: locked || issuing || uploading || removing || draft.saving,
     };
+    const coverageList = (
+        <CertificateCoverage
+            coverage={coverage.remote}
+            onRetry={() => void coverage.retry()}
+            rereading={coverage.reading}
+            actions={coverageActions}
+        />
+    );
 
     return (
         <div>
@@ -1077,6 +1093,10 @@ export function DomainSSLSettings({
                                         {cert.trust_error}
                                     </p>
                                 )}
+                                {/* What is protected stands right under the certificate's
+                                    facts, so a name it does not cover and its one fix are
+                                    seen before the switches and buttons. */}
+                                {coverageList}
                                 {cert.type === 'letsencrypt' && (
                                     <div className="mt-4 border-t border-border pt-4">
                                         <ControlledToggle
@@ -1145,14 +1165,11 @@ export function DomainSSLSettings({
                                 ) : null}
                             </>
                         ) : (
-                            <p className="mt-1 text-sm text-fg-muted">{t('ssl.noCert')}</p>
+                            <>
+                                <p className="mt-1 text-sm text-fg-muted">{t('ssl.noCert')}</p>
+                                {coverageList}
+                            </>
                         )}
-                        <CertificateCoverage
-                            coverage={coverage.remote}
-                            onRetry={() => void coverage.retry()}
-                            rereading={coverage.reading}
-                            actions={coverageActions}
-                        />
                     </div>
                 </div>
             </FormSection>

@@ -47,8 +47,23 @@ name and switch mail to it), *Bu adla yeniden al* (request again: every name
 of the site and every name that points here is included), *Postada da kullan*
 (mail starts using the certificate that already covers the name), *DNS
 kayıtlarını aç* (only where this server holds the zone), *Posta ayarlarını
-aç* (auto-setup records). An uploaded certificate cannot be requested again:
-its action opens the upload form.
+aç* (auto-setup records), *Yeniden denetle* (the zone is run elsewhere: the
+list asks the public DNS again; it only reads). An uploaded certificate
+cannot be requested again: its action opens the upload form.
+
+A name that points elsewhere or has no address is an **unmet prerequisite,
+not a failure** (D-024): its badge says *Başka yeri gösteriyor* / *DNS’te
+adresi yok* in the warning tone instead of *Korunmuyor*, and under the
+reason one sentence says who acts and what to do: point the name's A record
+to this server's address (`server_ip` of the answer) in this server's DNS
+records or where the domain's DNS is run, and what then appears in the list.
+For `mail.<domain>` it also says that nothing is needed when the domain's
+mail is elsewhere (mail being installed is a server fact, not a domain one).
+No certificate authority is asked for such a name.
+
+The list stands right under the certificate's facts and its state notes,
+before the renewal switch and the buttons, so a gap and its one fix are seen
+first.
 
 The mail screen states the same line under the server name, with the same
 words ("Bu adı güvenilir bir sertifika koruyor (… tarihine kadar)").
@@ -94,7 +109,11 @@ there puts mail back as it was.
 Nothing changes silently. A certificate without the mail name shows the line
 **Korunmuyor** with *Posta adını da kapsa*. That one press requests the
 certificate again (same authority, same renewal setting, the account's
-address) in the progress window with the real steps. If the authority
+address) in the progress window with the real steps. It asks for the mail
+name by name (`include_mail`): if the name no longer points here, the server
+refuses before any authority is asked (`CERTIFICATE_DOMAIN_NOT_POINTED`), and
+the list is read again and shows the name's next step. It never gets the same
+certificate again without the name it was pressed for. If the authority
 refuses, the old certificate and mail stay as they were (the request is
 staged; D-029). Authorities that need account keys (EAB) open the request
 form instead of a one-press request.
@@ -107,7 +126,11 @@ reloads Postfix and Dovecot when the map or drop-in names the lineage's live
 files. The per-name blocks name only those live paths; no CelikPanel program
 is involved. A renewal fails as a whole if any name stops pointing here
 (certbot validates every name): the existing renewal guidance reports it,
-like any other name of the site.
+like any other name of the site. A certificate of an earlier release that
+the panel still renews itself (`cert_renewal.go`) keeps `mail.<domain>` the
+same way: the renewal validates the name when the current certificate
+carries it and requires the renewed one to carry exactly the site's names and
+it, and `secure_mail` is carried over.
 
 ## 6. Out of scope
 

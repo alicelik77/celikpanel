@@ -330,3 +330,45 @@ func TestMailSwitchRewritesTheAutoSetupAnswersOnlyWhenWhatProgramsAreToldChanges
 		t.Fatalf("told after serving stopped = %q", told)
 	}
 }
+
+// Renewal keeps the names a certificate covers: a certificate the panel still
+// renews itself (an earlier release's) that carries mail.<domain> validates
+// the name again and is accepted only when the renewed certificate still
+// carries it. A renewed certificate without it is a failed renewal and the
+// certificate in use stays. (Certificates of this release are renewed by
+// certbot's own lineage, which keeps its names without the panel.)
+func TestARenewalKeepsTheMailNameTheCertificateCovers(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		drops   bool
+		renewed bool
+	}{
+		{name: "the renewed certificate keeps the mail name", renewed: true},
+		{name: "a renewed certificate without it is refused", drops: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p, domainID, certificateID, agent := newValidationRestoreRenewalFixture(t, "exact")
+			agent.mailInCertificate, agent.renewedDropsMail = true, tc.drops
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			p.renewLetsEncrypt(ctx, certificateID, domainID, "ssl-state.example")
+			calls := validationRestoreApplyCalls(agent)
+			if len(calls) == 0 || !equalStringSlices(calls[0].ACMEChallengeNames, []string{"mail.ssl-state.example"}) {
+				t.Fatalf("the renewal did not validate the mail name: %+v", calls)
+			}
+			var activeID int
+			var status string
+			if err := p.db.GetDB().QueryRow(`
+				SELECT id, COALESCE(renewal_status, '') FROM ssl_certificates
+				WHERE domain_id = ? AND status = 'active'`, domainID).Scan(&activeID, &status); err != nil {
+				t.Fatal(err)
+			}
+			if tc.renewed && activeID == certificateID {
+				t.Fatalf("the renewed certificate was not taken (status %q)", status)
+			}
+			if !tc.renewed && (activeID != certificateID || status != "failed") {
+				t.Fatalf("a renewal that lost the mail name: active %d (was %d), status %q", activeID, certificateID, status)
+			}
+		})
+	}
+}

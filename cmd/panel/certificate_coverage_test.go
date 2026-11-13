@@ -116,7 +116,7 @@ func TestCertificateCoverageTable(t *testing.T) {
 			want: []want{
 				{"site", "example.com", "protected", "domain_certificate", "", ""},
 				{"mail_programs", "mail.server.example", "protected", "server_mail_certificate", "", ""},
-				{"mail_name", "mail.example.com", "not_protected", "", "points_elsewhere", ""},
+				{"mail_name", "mail.example.com", "not_protected", "", "points_elsewhere", "recheck"},
 			},
 		},
 		{
@@ -225,6 +225,20 @@ func TestCertificateCoverageTable(t *testing.T) {
 			},
 		},
 		{
+			// An unmet prerequisite, not a failure: with the zone run
+			// elsewhere the one action looks at the public DNS again; no
+			// request is offered for a name that does not point here.
+			name: "names that do not point here, DNS run elsewhere: look again, never request",
+			in: coverageInput{Domain: "example.com", SiteNames: []string{"example.com", "new.example.com", "old.example.com"},
+				CertificateKnown: true, Certificate: cert(false, "example.com"),
+				DNS: dns(elsewhere("new.example.com"), elsewhere("old.example.com", "203.0.113.5"))},
+			want: []want{
+				{"site", "example.com", "protected", "domain_certificate", "", ""},
+				{"site", "new.example.com", "not_protected", "", "no_address", "recheck"},
+				{"site", "old.example.com", "not_protected", "", "points_elsewhere", "recheck"},
+			},
+		},
+		{
 			name: "the certificate could not be read: not known, never 'not protected'",
 			in: mailBase(coverageInput{Domain: "example.com", SiteNames: site[:1], CertificateKnown: false,
 				ServerMail: coverageServerMail{State: "unknown"}, DNS: dns(here("mail.example.com"))}),
@@ -271,10 +285,13 @@ func TestCertificateCoverageEndpointReadsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(database.Close)
-	saved, savedResolvers := mailAutoconfigMailHere, certificateNameResolvers
-	t.Cleanup(func() { mailAutoconfigMailHere, certificateNameResolvers = saved, savedResolvers })
+	saved, savedResolvers, savedAddresses := mailAutoconfigMailHere, certificateNameResolvers, certificateServerAddresses
+	t.Cleanup(func() {
+		mailAutoconfigMailHere, certificateNameResolvers, certificateServerAddresses = saved, savedResolvers, savedAddresses
+	})
 	mailAutoconfigMailHere = func(*Panel, context.Context) bool { return false }
 	certificateNameResolvers = func() []namedConnectionResolver { return nil }
+	certificateServerAddresses = func() []string { return []string{"2001:db8::10", "192.0.2.10"} }
 	p := &Panel{db: database}
 	for _, stmt := range []string{
 		`INSERT INTO users (id, username, password_hash, email, role) VALUES (9602, 'cust1', 'x', 'cust1@example.net', 'customer')`,
@@ -290,7 +307,8 @@ func TestCertificateCoverageEndpointReadsOnly(t *testing.T) {
 	p.handleCertificateCoverage(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/domains/9801/ssl/coverage", nil), 9801)
 	body := recorder.Body.String()
 	if recorder.Code != http.StatusOK || !strings.Contains(body, `"name":"example.com","state":"not_protected","reason":"no_certificate"`) ||
-		!strings.Contains(body, `"mail_name":"mail.example.com"`) || strings.Contains(body, "mail_programs") {
+		!strings.Contains(body, `"mail_name":"mail.example.com"`) || strings.Contains(body, "mail_programs") ||
+		!strings.Contains(body, `"server_ip":"192.0.2.10"`) {
 		t.Fatalf("coverage = %d %s", recorder.Code, body)
 	}
 	recorder = httptest.NewRecorder()

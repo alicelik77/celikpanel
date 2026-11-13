@@ -1,10 +1,10 @@
-import { CheckCircle, HelpCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, HelpCircle, XCircle } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import type { TranslationKey } from '../../i18n/en';
 import { Checking, CouldNotCheck } from '../ui';
 import { RowActions, type RowAction } from '../kit/rows/RowActions';
 import type { Remote } from '../../lib/remote';
-import { lineKindWords, lineWords, type Coverage, type CoverageAction, type CoverageLine } from './coverageLines';
+import { isDNSPrerequisite, lineKindWords, lineNextWords, lineWords, type Coverage, type CoverageAction, type CoverageLine } from './coverageLines';
 
 // "Neler korunuyor" (alpha.134, docs/CERTIFICATE-COVERAGE.md): one list of
 // everything of the domain that visitors and mail programs connect to - what
@@ -59,6 +59,9 @@ export function CertificateCoverage({ coverage, onRetry, rereading, actions }: {
                 return actions.openDns ? { id, label, onSelect: actions.openDns } : null;
             case 'mail_setup':
                 return actions.openMail ? { id, label, onSelect: actions.openMail } : null;
+            case 'recheck':
+                // Reads only: the public DNS is asked again.
+                return { id, label, onSelect: onRetry, disabled: rereading };
             default:
                 return null;
         }
@@ -75,8 +78,12 @@ export function CertificateCoverage({ coverage, onRetry, rereading, actions }: {
             {coverage.state === 'known' && coverage.value.lines.length > 0 && (
                 <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
                     {coverage.value.lines.map((line) => {
-                        const Icon = STATE_ICON[line.state];
+                        // A name waiting for DNS is a prerequisite, not a failure:
+                        // its badge says what it waits for, in the warning tone.
+                        const waiting = isDNSPrerequisite(line);
+                        const Icon = waiting ? AlertTriangle : STATE_ICON[line.state];
                         const fix = line.state === 'protected' ? null : action(line);
+                        const next = lineNextWords(t, line, coverage.value.server_ip);
                         return (
                             <li
                                 key={`${line.kind}:${line.name}`}
@@ -88,11 +95,12 @@ export function CertificateCoverage({ coverage, onRetry, rereading, actions }: {
                                     <span className="block text-xs text-fg-subtle">{lineKindWords(t, line)}</span>
                                     <span className="block break-all font-mono text-fg">{line.name || '—'}</span>
                                     <span className="mt-0.5 block text-xs text-fg-muted">{lineWords(t, locale, line)}</span>
+                                    {next && <span className="mt-1 block text-xs text-fg" data-coverage-next="">{next}</span>}
                                 </span>
                                 <span className="flex shrink-0 flex-wrap items-center justify-end gap-3 max-sm:w-full max-sm:justify-start">
-                                    <span className={`inline-flex items-center gap-1.5 font-medium ${STATE_TONE[line.state]}`}>
+                                    <span className={`inline-flex items-center gap-1.5 font-medium ${waiting ? 'text-warning' : STATE_TONE[line.state]}`}>
                                         <Icon className="h-4 w-4" aria-hidden="true" />
-                                        {t(`certcover.state.${line.state}` as TranslationKey)}
+                                        {t(`certcover.state.${waiting ? line.reason : line.state}` as TranslationKey)}
                                     </span>
                                     {fix && <RowActions name={line.name} actions={[fix]} />}
                                 </span>

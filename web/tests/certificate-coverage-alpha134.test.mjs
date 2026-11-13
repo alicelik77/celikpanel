@@ -173,8 +173,9 @@ test('"Cover the mail name too": one request again in the progress window; the l
     assert.equal(sent.length, 1);
     assert.equal(sent[0].path, '/api/v1/domains/1/ssl/letsencrypt');
     // Same authority, same renewal choice, the account's own address, and
-    // nothing that leaves the mail name out.
-    assert.deepEqual(sent[0].body, { email: '', auto_renew: true, provider: 'letsencrypt', eab_key_id: '', eab_hmac_key: '', reissue: true });
+    // the mail name asked for by name: the server refuses before any
+    // authority is asked if it no longer points here.
+    assert.deepEqual(sent[0].body, { email: '', auto_renew: true, include_mail: true, provider: 'letsencrypt', eab_key_id: '', eab_hmac_key: '', reissue: true });
     assert.ok(globalThis.operationSteps.length > 0, 'the request did not run in the progress window');
     assert.ok(globalThis.toasts.some(([tone, message]) => tone === 'success' && message.startsWith('certcover.done.covered')));
     assert.ok(reads.filter((path) => path.endsWith('/ssl/coverage')).length > before, 'the list was not read again');
@@ -203,6 +204,25 @@ test('a refused request again changes nothing on screen and says why', async () 
   } finally { await unmount(); }
 });
 
+test('"Cover the mail name too" for a name that moved away: refused before any authority, and the list is read again', async () => {
+  const state = sslServer({ issue: () => {
+    state.coverage = { ...ownersCase, server_ip: '192.0.2.10', lines: ownersCase.lines.map((line) => (line.kind === 'mail_name'
+      ? { kind: 'mail_name', name: line.name, state: 'not_protected', reason: 'points_elsewhere', ips: ['198.51.100.7'], action: 'recheck' } : line)) };
+    return json({ error: 'mail.example.com does not point to this server yet', code: 'CERTIFICATE_DOMAIN_NOT_POINTED', reason: 'mail_name', vars: { names: 'mail.example.com', ip: '192.0.2.10' } }, 409);
+  } });
+  await mount(ssl());
+  try {
+    const before = reads.filter((path) => path.endsWith('/ssl/coverage')).length;
+    await press(button('certcover.action.cover_mail'));
+    assert.equal(sent.length, 1);
+    assert.ok(!globalThis.toasts.some(([tone]) => tone === 'success'));
+    assert.ok(reads.filter((path) => path.endsWith('/ssl/coverage')).length > before, 'the list was not read again');
+    const line = nodeText(lineOf('mail_name', 'mail.example.com'));
+    assert.ok(line.includes('certcover.state.points_elsewhere'), 'the line does not say it waits for DNS');
+    assert.ok(line.includes('certcover.action.recheck'));
+  } finally { await unmount(); }
+});
+
 test('"Use it for mail too" asks mail to serve the certificate that already covers the name', async () => {
   sslServer({ coverage: { mail_name: 'mail.example.com', lines: [{ kind: 'mail_name', name: 'mail.example.com', state: 'not_protected', reason: 'mail_not_using', action: 'use_for_mail' }] } });
   await mount(ssl());
@@ -215,17 +235,39 @@ test('"Use it for mail too" asks mail to serve the certificate that already cove
 });
 
 test('a name that points elsewhere opens the DNS records on this page; a view-only member gets no request', async () => {
-  sslServer({ coverage: { mail_name: 'mail.example.com', lines: [
+  sslServer({ coverage: { mail_name: 'mail.example.com', server_ip: '192.0.2.10', lines: [
     { kind: 'mail_name', name: 'mail.example.com', state: 'not_protected', reason: 'points_elsewhere', ips: ['198.51.100.7'], action: 'dns' },
     { kind: 'site', role: 'alias', name: 'shop.example.net', state: 'not_protected', reason: 'not_in_certificate', action: 'reissue' },
   ] } });
   await mount(ssl({ readOnly: true }));
   try {
-    assert.ok(nodeText(lineOf('mail_name', 'mail.example.com')).includes('certcover.reason.points_elsewhere{"ips":"198.51.100.7"}'));
+    const mailLine = nodeText(lineOf('mail_name', 'mail.example.com'));
+    assert.ok(mailLine.includes('certcover.reason.points_elsewhere{"ips":"198.51.100.7"}'));
+    // An unmet prerequisite: its own badge, never "Not protected", and the
+    // next step names this server's records and the address.
+    assert.ok(mailLine.includes('certcover.state.points_elsewhere'));
+    assert.ok(!mailLine.includes('certcover.state.not_protected'));
+    assert.ok(mailLine.includes('certcover.next.mail{"ip":"192.0.2.10","where":"certcover.where.here"}'), mailLine);
     await press(button('certcover.action.dns'));
     assert.deepEqual(globalThis.navigations, ['/domains/example.com?section=dns&part=records']);
     assert.equal(button('certcover.action.reissue'), undefined, 'a view-only member is offered a request');
     assert.equal(sent.length, 0);
+  } finally { await unmount(); }
+});
+
+test('a name whose DNS is run elsewhere: who changes what, and "Check again" only reads', async () => {
+  sslServer({ coverage: { mail_name: 'mail.example.com', server_ip: '', lines: [
+    { kind: 'site', role: 'alias', name: 'shop.example.com', state: 'not_protected', reason: 'no_address', action: 'recheck' },
+  ] } });
+  await mount(ssl());
+  try {
+    const line = nodeText(lineOf('site', 'shop.example.com'));
+    assert.ok(line.includes('certcover.state.no_address'));
+    assert.ok(line.includes('certcover.next.site{"ip":"certcover.ip.unknown","where":"certcover.where.elsewhere"}'), line);
+    const before = reads.filter((path) => path.endsWith('/ssl/coverage')).length;
+    await press(button('certcover.action.recheck'));
+    assert.equal(sent.length, 0, 'checking again sent a change');
+    assert.ok(reads.filter((path) => path.endsWith('/ssl/coverage')).length > before, 'the public DNS was not asked again');
   } finally { await unmount(); }
 });
 

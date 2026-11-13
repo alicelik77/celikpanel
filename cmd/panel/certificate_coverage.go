@@ -88,7 +88,22 @@ const (
 	// coverageActionMailSetup: the mail screen adds the missing auto-setup
 	// records.
 	coverageActionMailSetup = "mail_setup"
+	// coverageActionRecheck: the name waits for a DNS change made elsewhere
+	// (the zone is not on this server); the list asks the public DNS again.
+	// An unmet prerequisite, not a failure: nothing is requested from a
+	// certificate authority for a name that does not point here.
+	coverageActionRecheck = "recheck"
 )
+
+// dnsPrerequisiteAction is the one action of a name that does not point
+// here: this server's DNS records when the zone is here, otherwise a new
+// look at the public DNS once whoever runs the zone has changed it.
+func (in coverageInput) dnsPrerequisiteAction() string {
+	if in.DNSHere {
+		return coverageActionDNS
+	}
+	return coverageActionRecheck
+}
 
 // coverageLine is one line of the list.
 type coverageLine struct {
@@ -229,16 +244,12 @@ func (in coverageInput) nameLine(kind, name string, setup bool) coverageLine {
 	switch {
 	case known && check.State == certificateNameElsewhere && len(check.IPs) > 0:
 		line.Reason, line.IPs = coverageReasonPointsElsewhere, append([]string(nil), check.IPs...)
-		if in.DNSHere {
-			line.Action = coverageActionDNS
-		}
+		line.Action = in.dnsPrerequisiteAction()
 	case known && check.State == certificateNameElsewhere:
 		line.Reason = coverageReasonNoAddress
-		if in.DNSHere {
-			line.Action = coverageActionDNS
-			if setup {
-				line.Action = coverageActionMailSetup
-			}
+		line.Action = in.dnsPrerequisiteAction()
+		if in.DNSHere && setup {
+			line.Action = coverageActionMailSetup
 		}
 	default:
 		// It points here, or where it points is not known: the request
@@ -302,9 +313,7 @@ func (in coverageInput) mailNameLine(mailName string) (coverageLine, bool) {
 		line.State, line.Reason = coverageUnknown, coverageReasonNotChecked
 	case check.State == certificateNameElsewhere:
 		line.State, line.Reason, line.IPs = coverageNotProtected, coverageReasonPointsElsewhere, append([]string(nil), check.IPs...)
-		if in.DNSHere {
-			line.Action = coverageActionDNS
-		}
+		line.Action = in.dnsPrerequisiteAction()
 	case in.Certificate == nil:
 		line.State, line.Reason = coverageNotProtected, coverageReasonNoCertificate
 	default:
@@ -527,8 +536,22 @@ func (p *Panel) handleCertificateCoverage(w http.ResponseWriter, r *http.Request
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"lines":      certificateCoverage(in),
-		"mail_name":  "mail." + in.Domain,
+		"lines":     certificateCoverage(in),
+		"mail_name": "mail." + in.Domain,
+		// server_ip: the address a name must point to, for the next step of
+		// a name that points elsewhere ("" when it is not known).
+		"server_ip":  coverageServerIPv4(certificateServerAddresses()),
 		"checked_at": time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+// coverageServerIPv4 is the first IPv4 address of this server: the one an A
+// record names. "" when the server has none known.
+func coverageServerIPv4(addresses []string) string {
+	for _, address := range addresses {
+		if ip := net.ParseIP(address); ip != nil && ip.To4() != nil {
+			return ip.String()
+		}
+	}
+	return ""
 }
