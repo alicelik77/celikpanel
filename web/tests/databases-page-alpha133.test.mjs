@@ -196,7 +196,9 @@ test('"Open" and the name take the person to the owner\'s domain page at its Dat
 
 test('delete asks in the panel with what is lost, what stays and the typed name, then sends one DELETE and reads the list again', async () => {
   try {
-    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST)) }, { '/api/v1/databases/3': json({ status: 'deleted' }) });
+    // kahve_rapor also reads the owner's archive database: it stays.
+    const list = ADMIN_LIST.map((item) => (item.id === 4 ? { ...item, users: [{ id: 32, username: 'kahve_rapor' }] } : item));
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(list)) }, { '/api/v1/databases/3': json({ status: 'deleted' }) });
     await openMenu('kahvedukkani_dr_test_magaza');
     // Declined: nothing is sent.
     globalThis.page.answer = false;
@@ -210,9 +212,10 @@ test('delete asks in the panel with what is lost, what stays and the typed name,
     assert.equal(typedNameMatches('kahvedukkani_dr_test_maga', request.typedName), false);
     assert.equal(typedNameMatches('Kahvedukkani_dr_test_magaza', request.typedName), false);
     assert.equal(typedNameMatches('kahvedukkani_dr_test_magaza', request.typedName), true);
-    assert.deepEqual(request.lost, ['databases.delete.lostDataSized{"name":"kahvedukkani_dr_test_magaza","size":"14 MB"}', 'databases.delete.lostAccess{"users":"kahve_app, kahve_rapor"}']);
-    // Deleting from this list keeps the database's users (the domain page's delete removes the one created with it).
-    assert.deepEqual(request.kept, ['databases.delete.keptDomain{"domain":"kahvedukkani.dr.test"}', 'databases.delete.keptUsersDomain{"users":"kahve_app, kahve_rapor"}', 'databases.delete.keptOthers']);
+    // alpha.133 round 5: the users only this database uses are removed with
+    // it; one another database also uses stays (the server decides the same).
+    assert.deepEqual(request.lost, ['databases.delete.lostDataSized{"name":"kahvedukkani_dr_test_magaza","size":"14 MB"}', 'databases.delete.lostUsers{"users":"kahve_app"}']);
+    assert.deepEqual(request.kept, ['databases.delete.keptDomain{"domain":"kahvedukkani.dr.test"}', 'databases.delete.keptShared{"users":"kahve_rapor"}', 'databases.delete.keptOthers']);
     // Confirmed: one DELETE, the list is read again, the toast says it.
     globalThis.page.answer = true;
     const before = calls.filter((call) => call.url === VISIBLE_DATABASES_URL).length;
@@ -221,6 +224,80 @@ test('delete asks in the panel with what is lost, what stays and the typed name,
     assert.deepEqual(calls.filter((call) => call.method === 'DELETE').map((call) => call.url), ['/api/v1/databases/3']);
     assert.ok(calls.filter((call) => call.url === VISIBLE_DATABASES_URL).length > before, 'the list is not read again');
     assert.deepEqual(globalThis.page.toasts, [['success', 'databases.dbDeleted']]);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('after a delete the row leaves the list by itself; another open tab drops it at its next half-minute read', async () => {
+  const intervals = [];
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
+  globalThis.clearInterval = () => {};
+  try {
+    let current = ADMIN_LIST;
+    const routes = { [VISIBLE_DATABASES_URL]: () => Response.json(answer(current)) };
+    // This tab deletes: the list is read again at once, no reload.
+    await mount('admin', routes, { '/api/v1/databases/3': () => { current = current.filter((item) => item.id !== 3); return Response.json({ status: 'deleted' }); } });
+    assert.ok(rows().includes('kahvedukkani_dr_test_magaza'));
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(!rows().includes('kahvedukkani_dr_test_magaza'), 'the deleted row is still drawn');
+    assert.equal(rows().length, 5);
+    await cleanup();
+    // Another tab (its own page) learns of a delete made elsewhere at its
+    // next half-minute read while it is visible; nothing is pressed there.
+    intervals.length = 0;
+    await mount('admin', routes);
+    assert.ok(rows().includes('bayi1_deneme'));
+    current = current.filter((item) => item.id !== 5);
+    const tick = intervals.find((entry) => entry.ms === 30_000);
+    assert.ok(tick, 'no half-minute read is set');
+    await act(async () => { tick.fn(); await settled(); });
+    assert.ok(!rows().includes('bayi1_deneme'), 'the other tab still draws a deleted database');
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'a read changed something');
+  } finally {
+    globalThis.setInterval = realSetInterval;
+    globalThis.clearInterval = realClearInterval;
+    await cleanup();
+  }
+});
+
+test('a refused delete says the reason in the reader’s words: the administrator gets the fix and its page, a customer is told to ask the administrator', async () => {
+  const refusal = (extra) => () => Response.json({
+    error: 'This MariaDB server is running and answering, but it refused the credential CelikPanel holds for it.',
+    code: 'DATABASE_ENGINE_CREDENTIAL_REFUSED', vars: { engine: 'MariaDB' }, ...extra,
+  }, { status: 409 });
+  try {
+    await mount('admin', { [VISIBLE_DATABASES_URL]: json(answer(ADMIN_LIST)) },
+      { '/api/v1/databases/3': refusal({ reason: 'administrator', action: '/components/mariadb' }) });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(has('err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator{"engine":"MariaDB"}'), text());
+    assert.ok(!has('refused the credential'), 'the server’s English sentence is drawn');
+    assert.ok(rows().includes('kahvedukkani_dr_test_magaza'), 'a refused delete removed the row');
+    await press(buttonsWith('common.goFix')[0]);
+    assert.deepEqual(globalThis.page.navigated, ['/components/mariadb']);
+    await cleanup();
+
+    await mount('customer', { [VISIBLE_DATABASES_URL]: json(answer([db(3, 'kahvedukkani_dr_test_magaza', owner('musteri1', { self: true }), 'kahvedukkani.dr.test')])) },
+      { '/api/v1/databases/3': refusal({}) });
+    globalThis.page.answer = true;
+    await openMenu('kahvedukkani_dr_test_magaza');
+    await press(menuItem('delete'));
+    assert.ok(has('err.DATABASE_ENGINE_CREDENTIAL_REFUSED{"engine":"MariaDB"}'), text());
+    assert.equal(buttonsWith('common.goFix').length, 0, 'a customer is sent to a page they do not have');
+    // Both languages carry both sentences, with the same placeholders.
+    for (const key of ['err.DATABASE_ENGINE_CREDENTIAL_REFUSED', 'err.DATABASE_ENGINE_CREDENTIAL_REFUSED.administrator', 'err.DATABASE_ENGINE_UNREACHABLE', 'err.DATABASE_ENGINE_UNREACHABLE.administrator',
+      'err.DATABASE_DELETE_FAILED', 'err.DATABASE_DELETE_UNCONFIRMED', 'err.DATABASE_DELETE_USERS_LEFT', 'err.DATABASE_DELETE_USERS_LEFT.unknown']) {
+      assert.ok(enScreens[key] && trScreens[key], key);
+      const holes = (value) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');
+      assert.equal(holes(trScreens[key]), holes(enScreens[key]), key);
+      assert.doesNotMatch(trScreens[key], /CREDENTIAL|REFUSED|credential/, key);
+    }
   } finally {
     await cleanup();
   }

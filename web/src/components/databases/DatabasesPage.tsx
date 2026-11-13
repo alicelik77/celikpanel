@@ -95,17 +95,24 @@ export function DatabasesPage() {
 
     const remove = async (db: VisibleDatabase) => {
         const size = sizeText(db);
+        // Deleting removes the users only this database uses; one another
+        // database of the same owner also uses stays (alpha.133 round 5, the
+        // server decides the same way). Those databases are in this list: one
+        // owner's databases are all visible or none.
+        const elsewhere = new Set((known?.databases ?? []).filter((other) => other.id !== db.id).flatMap((other) => other.users.map((user) => user.id)));
+        const names = (shared: boolean) => db.users.filter((user) => elsewhere.has(user.id) === shared).map((user) => user.username).join(', ');
+        const removedUsers = names(false);
+        const keptUsers = names(true);
         await confirmAction({
             title: t('databases.delete.title', { name: db.name }),
             message: t('databases.delete.message'),
             lost: [
                 size ? t('databases.delete.lostDataSized', { name: db.name, size }) : t('databases.delete.lostData', { name: db.name }),
-                ...(db.users.length > 0 ? [t('databases.delete.lostAccess', { users: db.users.map((user) => user.username).join(', ') })] : []),
+                ...(removedUsers ? [t('databases.delete.lostUsers', { users: removedUsers })] : []),
             ],
             kept: [
                 ...(db.domain ? [t('databases.delete.keptDomain', { domain: db.domain.name })] : []),
-                // Deleting here keeps the database's users (the domain page's delete removes them).
-                ...(db.users.length > 0 ? [t(db.domain ? 'databases.delete.keptUsersDomain' : 'databases.delete.keptUsers', { users: db.users.map((user) => user.username).join(', ') })] : []),
+                ...(keptUsers ? [t('databases.delete.keptShared', { users: keptUsers })] : []),
                 t('databases.delete.keptOthers'),
             ],
             typedName: { value: db.name, label: t('databases.delete.typed', { name: db.name }) },
