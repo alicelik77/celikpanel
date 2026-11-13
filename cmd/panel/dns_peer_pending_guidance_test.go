@@ -327,13 +327,15 @@ func TestDNSPeerJournalUnresolvedGuidanceNamesTheAdministrator(t *testing.T) {
 		t.Fatalf("unresolved: %q %q %t", reason, detail, ok)
 	}
 	for _, want := range []string{
-		"cannot sort out by itself", "Who acts: the server administrator",
-		"sudo journalctl -u celikpanel-agent | grep peer", "sudo ls -la /var/lib/celikpanel-agent-private",
-		"do not delete those files yourself", "does not check this again by itself", "same publication",
+		"cannot sort out by itself", "Who acts: this server's administrator", "if that is not you, tell them",
+		"no longer checks this every few minutes", "same publication",
 	} {
 		if !strings.Contains(message, want) {
 			t.Fatalf("unresolved guidance lacks %q: %s", want, message)
 		}
+	}
+	if strings.Contains(message, "sudo") || strings.Contains(message, "/var/lib") {
+		t.Fatalf("a command or private path outside the administrator's Details: %s", message)
 	}
 	if strings.Contains(message, "Nobody needs") || dnsPeerPendingRetriesAutomatically(transport.DNSPeerPendingJournalUnresolved) {
 		t.Fatalf("unresolved promises automatic progress: %s", message)

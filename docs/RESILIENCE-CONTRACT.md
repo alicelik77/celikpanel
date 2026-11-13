@@ -8249,5 +8249,28 @@ until the backup reports ready.
   or failed is unresolved, not retired. No owner action for the unresolved state
   (proposal: a typed-confirmation "set the check record aside and re-check").
   Power-loss durability depends on the filesystem honouring file and directory
-  fsync. Other deletion reasons keep their earlier long texts. **No P0 item is
+  fsync, and a power loss between a stage's write and its fsync can leave a
+  full-size stage whose bytes are not a record: that state is unresolved, not
+  repaired. Other deletion reasons keep their earlier long texts. **No P0 item is
   closed**; P0.4 stays partial.
+- **Review corrections (same branch, 2026-11-13).** The administrators' one
+  notification of an exact publication now says its current state: when a stuck
+  publication turns into "a person must act", the same notification takes the new
+  text and is shown and mailed again (`reviseAccountNotice`); it is retired when
+  the cause changes after the administrator acted and when the publication ends.
+  The deletion window, the bulk notes and the DELETE answer follow the server's
+  `follow_up`: only `automatic` says nobody needs to act; the window points to the
+  banner's Details for the commands; only an administrator is sent to More →
+  Delete…, and never for a reason whose row offers no Delete (the stuck notice of
+  `dns_peer_catching_up` included). A state found after a proof step's deadline
+  (unresolved record, enrollment, the Agent's own precondition) keeps its code.
+  The API fallback text of the unresolved reason carries no command or private
+  path. Test added in the shape of the owner's server (request attempt 4, ledger
+  attempt 183, this deletion pending at attempt 162).
+- **Root-only tests.** The journal-store tests (`internal/dnspeerjournal`,
+  `internal/pdnspeerjournal`) need root; the production-path tests in
+  `cmd/agent/dns_engine_peer_journal_repair_linux_test.go` also need an empty,
+  private agent-private directory and `CELIKPANEL_TEST_REAL_PEER_JOURNAL=1`. CI
+  skips them. Run them in the development guest as root:
+  `unshare --mount --propagation private bash -c 'mkdir -p /var/tmp/peer-iso /var/lib/celikpanel-agent-private && chmod 700 /var/tmp/peer-iso && mount --bind /var/tmp/peer-iso /var/lib/celikpanel-agent-private && go test -count=1 -v ./internal/dnspeerjournal ./internal/pdnspeerjournal && CELIKPANEL_TEST_REAL_PEER_JOURNAL=1 go test -count=1 -v ./cmd/agent -run "^Test(LabTorn|IntactEarlier|EveryStateOfAnInterrupted|RepairSurvives|UnprovableJournal|PrepareJournalWorkIgnores|OwnerServerShaped|NativePeerTailConsumedChallengeIsSupersededOnTheRealStore)"'` (from the source root; 58 PASS lines, no SKIP)
+  and check that no test of `dns_engine_peer_journal_repair_linux_test.go` reports SKIP.

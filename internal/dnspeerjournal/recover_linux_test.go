@@ -17,10 +17,11 @@ import (
 
 // Interrupted writes and retirements (alpha.133, lab of 12 Nov 2026). A stop
 // at a file operation is simulated by copying the directory exactly as it is
-// at that operation (a killed process runs no deferred cleanup; a power loss
-// keeps at most what was made durable, which is always one of these copies
-// because every step is followed by an fsync), then running Recover on the
-// copy as the next attempt would.
+// at that operation (a killed process runs no deferred cleanup), then running
+// Recover on the copy as the next attempt would. A power loss is not fully
+// covered by these copies: between a stage's write and its fsync the file
+// system may keep a stage of full size whose bytes are not the record (or
+// zeros); Recover refuses that as Unresolved rather than repairing it.
 
 const journalName = "dns-peer-challenge-v1.json"
 

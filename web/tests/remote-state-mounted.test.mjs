@@ -173,6 +173,7 @@ own['/CertificateReachNotice'] = shared.compile('components/CertificateReachNoti
 // alpha.114: the names a new site found pointing elsewhere, the shipped card.
 own['/KeptSiteRecords'] = shared.compile('components/KeptSiteRecords.tsx', own);
 // alpha.133: the guide of a deletion waiting for its DNS step is the shipped one.
+own['/lib/deletionGuide'] = compileSource('lib/deletionGuide.ts', (specifier) => (specifier.endsWith('/domainDeletionPending') ? deletionURL : shared.resolve(specifier.replace(/^\.\//, '../lib/'))));
 own['/DeletionWaitingGuide'] = shared.compile('components/DeletionWaitingGuide.tsx', own);
 const modalURL = shared.compile('components/AddDomainModal.tsx', own);
 const load = async (name, more = {}) => (await import(shared.compile(`components/${name}.tsx`, { ...own, ...more })))[name];
@@ -880,7 +881,7 @@ test('Domains: a pending row whose saved deletion could not be read says exactly
     serve({ '/api/v1/domains': json([pendingRow]), '/api/v1/domains/9/deletion-status': json(unresolved) }, role);
     try {
       await mount(Domains);
-      assert.ok(has('domains.deletionGuide.journalUnresolved.why') && has('domains.deletionGuide.then.person'), role);
+      assert.ok(has('domains.deletionGuide.journalUnresolved.why') && has(role === 'admin' ? 'domains.deletionGuide.then.person' : 'domains.deletionGuide.then.personOther'), role);
       assert.ok(!has('domains.deletionGuide.who.nobody'), `${role}: told that nobody needs to act`);
       if (role === 'admin') {
         assert.ok(has('domains.deletionGuide.who.youAdministrator') && has('domains.deletionGuide.journalUnresolved.next'));
@@ -2478,6 +2479,57 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
     delete globalThis.operationSteps;
     delete globalThis.operationEnds;
     await cleanup();
+  }
+});
+
+// alpha.133 review (S2): the deletion window follows what the server says
+// happens next. Only while CelikPanel re-checks by itself does it say that
+// nobody needs to act and that it continues alone; stuck and unresolved name
+// the administrator, and the window points to the banner's Details.
+test('Domains: the deletion window says who acts from the server\u2019s follow-up', async () => {
+  const cases = [
+    { body: { reason: 'dns_peer_proof_timeout', follow_up: 'automatic' }, subtitle: 'domains.step.rechecksAlone',
+      has: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone'], not: ['domains.deletionGuide.who.youAdministrator'] },
+    { body: { reason: 'dns_peer_proof_timeout', follow_up: 'stuck' }, subtitle: undefined,
+      has: ['domains.deletionGuide.who.youAdministrator', 'domains.deletionGuide.stuck.next', 'domains.deletionGuide.then.stuck'],
+      not: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone'] },
+    { body: { reason: 'dns_peer_journal_unresolved', follow_up: 'person' }, subtitle: undefined,
+      has: ['domains.deletionGuide.journalUnresolved.nextWindow', 'domains.deletionGuide.then.person'],
+      not: ['domains.deletionGuide.who.nobody', 'domains.step.continuesAlone', 'journalctl'] },
+  ];
+  for (const { body, subtitle, has: wanted, not } of cases) {
+    const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', ...body };
+    const live = liveDomains({ domains: [siteRow(4, 'alicelik.com.tr')], zones: [] });
+    serve({ ...live.table, '/api/v1/domains/4/deletion-status': () => Response.json(pendingBody) }, 'admin', {
+      '/api/v1/domains/4': () => {
+        live.state.domains = [{ ...siteRow(4, 'alicelik.com.tr'), status: 'pending' }];
+        return Response.json(pendingBody, { status: 202 });
+      },
+    });
+    Object.assign(globalThis.window, { setTimeout, clearTimeout });
+    globalThis.operationSteps = [];
+    globalThis.operationEnds = [];
+    try {
+      await mount(Domains);
+      globalThis.confirm = () => true;
+      await openRowMenu('alicelik.com.tr');
+      await press(rowItem('delete'));
+      await act(async () => { await settled(); await settled(); });
+      const end = globalThis.operationEnds.at(-1);
+      assert.ok(end, `${body.follow_up}: the window did not end`);
+      assert.equal(end.state, 'blocked', body.follow_up);
+      assert.equal(end.subtitle, subtitle, `${body.follow_up}: subtitle`);
+      for (const key of wanted) assert.ok(end.reason.includes(key), `${body.follow_up}: lacks ${key}: ${end.reason}`);
+      for (const key of not) assert.ok(!end.reason.includes(key), `${body.follow_up}: says ${key}: ${end.reason}`);
+      if (body.follow_up !== 'automatic') {
+        const waiting = globalThis.operationSteps.flat().filter((step) => step.state === 'waiting').at(-1);
+        assert.equal(waiting?.note, 'domains.deletionGuide.stepNote.person', `${body.follow_up}: the step does not say who it waits for`);
+      }
+    } finally {
+      delete globalThis.operationSteps;
+      delete globalThis.operationEnds;
+      await cleanup();
+    }
   }
 });
 
