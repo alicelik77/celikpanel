@@ -331,7 +331,7 @@ func TestDatabaseDeleteOfAnAdministratorsOwnLocalRecordNeverUsesTheAgent(t *test
 	// The question says it in advance: the user only this database uses stays
 	// on the server; the shared one stays because another database uses it.
 	fates := f.panel.databaseUserFates(context.Background(), []int{9961, 9962})
-	if fates[9961][9941] != databaseUserServer || fates[9961][9942] != databaseUserShared || fates[9962][9942] != databaseUserShared {
+	if fates[9961][9941] != databaseUserServer || fates[9961][9942] != databaseUserServerShared || fates[9962][9942] != databaseUserServerShared {
 		t.Fatalf("fates %v", fates)
 	}
 	got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9961", "")

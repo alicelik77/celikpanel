@@ -60,6 +60,12 @@ func validDatabaseAccessUser(req *transport.DatabaseAccessUserRequest, creating 
 	if err := services.ValidateSQLIdentifier(req.Username); err != nil {
 		return fmt.Errorf("invalid database user name: %w", err)
 	}
+	// A rights-only removal belongs to a deleted database; on its own it
+	// would fall through to removing the whole user (review).
+	// Yalnız-haklar kaldırması silinmiş bir veritabanı içindir.
+	if req.RightsOnly && (creating || !req.DatabaseDropped) {
+		return errors.New("a rights-only removal is for a deleted database only")
+	}
 	if suspensionReservedDatabaseUser(req.Username) {
 		return fmt.Errorf("%s is an engine or CelikPanel account", req.Username)
 	}
@@ -238,7 +244,7 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 		// A user another database uses: it stays; only the rights that name
 		// the dropped database go.
 		if err := mysqlRemoveRightsOnDroppedDatabase(req.Username, req.Database, hosts); err != nil {
-			resp.Error, resp.RightsLeft = err.Error(), true
+			mysqlDroppedRightsAnswer(resp, req.Database, err)
 			return
 		}
 		resp.Applied = true
@@ -296,7 +302,7 @@ func removeMySQLAccessUser(req *transport.DatabaseAccessUserRequest, resp *trans
 			// Silinen veritabanını adlandıran her hak, adın listelenen bütün
 			// hesaplarından kaldırılır.
 			if err := mysqlRemoveRightsOnDroppedDatabase(req.Username, req.Database, hosts); err != nil {
-				resp.Error, resp.RightsLeft = err.Error(), true
+				mysqlDroppedRightsAnswer(resp, req.Database, err)
 				return
 			}
 			resp.Applied, resp.Kept, resp.KeptReason = true, true, keptReason
@@ -456,9 +462,27 @@ func mysqlRemoveRightsOnDroppedDatabase(username, database string, hosts []strin
 		return errors.New("the database server's answer about rights left on " + database + " could not be read")
 	}
 	if left != "0" {
+		// A database made again between the first check and the DELETE
+		// (whose NOT EXISTS then skipped every row) is not "rights left".
+		if gone, err := mysqlDatabaseGone(database); err == nil && !gone {
+			return errMySQLDatabaseRecreated
+		}
 		return fmt.Errorf("%s right(s) on %s are still loaded for the user", left, database)
 	}
 	return nil
+}
+
+// errMySQLDatabaseRecreated: a database of the dropped name exists again.
+var errMySQLDatabaseRecreated = errors.New("a database of that name exists again on the database server; nothing was changed")
+
+// mysqlDroppedRightsAnswer fills the answer of a failed removal of the
+// rights on a dropped database.
+func mysqlDroppedRightsAnswer(resp *transport.DatabaseAccessUserResponse, database string, err error) {
+	if errors.Is(err, errMySQLDatabaseRecreated) {
+		resp.Error, resp.DatabaseExists = "the database "+database+" exists again on the database server; nothing was changed", true
+		return
+	}
+	resp.Error, resp.RightsLeft = err.Error(), true
 }
 
 // mysqlNoSuchGrant reads MariaDB's "There is no such grant defined" (1141).
@@ -784,6 +808,21 @@ func removePostgreSQLAccessUser(run func(string) ([]byte, error), req *transport
 	roles, owner, err := postgreSQLAccessFacts(run, req.Username, req.Database)
 	if err != nil {
 		resp.Error = err.Error() + "; nothing was changed"
+		return
+	}
+	// The mirror of the MariaDB guard (review): the deleted database must be
+	// gone (owner "" means pg_database has no row of that name), else nothing
+	// is changed. A user another database uses stays: dropping the database
+	// already took every right inside it (PostgreSQL keeps nothing that
+	// names a dropped database - dropdb, lab-confirmed on 17), so a
+	// rights-only removal has nothing left to do.
+	// Silinen veritabanı gerçekten gitmiş olmalı; kalan kullanıcıya dokunulmaz.
+	if req.DatabaseDropped && owner != "" {
+		resp.Error, resp.DatabaseExists = "the database "+req.Database+" still exists on the database server; nothing was changed", true
+		return
+	}
+	if req.RightsOnly {
+		resp.Applied = true
 		return
 	}
 	if roles == "0" {

@@ -25,8 +25,8 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'databases.empty.databasesHint': 'Bu sunucuda ilk veritabanınızı oluşturun',
     'databases.dbDeleted': 'Veritabanı silindi',
     'databases.deletedNamed': '{name} silindi.',
-    'databases.keptNote.otherRights': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü orada CelikPanel dışında açılmış hesapları ya da verilmiş hakları da var. Yalnız {name} için verilmiş hakları kaldırıldı; birden çok veritabanını ya da bütün sunucuyu kapsayan ve bir rol üzerinden gelen hakları kalır.',
-    'databases.keptNote.unchecked': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü CelikPanel orada başka nelere sahip olduklarını denetleyemedi. Yalnız {name} için verilmiş hakları kaldırıldı; birden çok veritabanını ya da bütün sunucuyu kapsayan ve bir rol üzerinden gelen hakları kalır.',
+    'databases.keptNote.otherRights': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü orada CelikPanel dışında açılmış hesapları ya da verilmiş hakları da var. Yalnız {name} için verilmiş hakları kaldırıldı; birden çok veritabanını ya da bütün sunucuyu kapsayan hakları ile bir rol üzerinden gelen hakları kalır.',
+    'databases.keptNote.unchecked': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır, çünkü CelikPanel orada başka nelere sahip olduklarını denetleyemedi. Yalnız {name} için verilmiş hakları kaldırıldı; birden çok veritabanını ya da bütün sunucuyu kapsayan hakları ile bir rol üzerinden gelen hakları kalır.',
     'databases.keptNote.server': 'Kullanıcıları ({users}) veritabanı sunucusunda kalır: CelikPanel o sunucuya kendi hesabıyla bağlanır ve orada kullanıcı kaldırmaz.',
     // alpha.133: the left menu's Databases page (one visibility rule, drawings V15–V17).
     'databases.scope.admin': 'Sunucudaki bütün veritabanları',
@@ -96,6 +96,7 @@ export const trMailDatabasesScreens: Record<MailDatabasesScreenKey, string> = {
     'databases.delete.keptShared': 'Kullanıcıları ({users}): başka bir veritabanı da kullandığı için kalır; yalnız {name} için verilmiş hakları kaldırılır',
     'databases.delete.keptAccount': 'Kullanıcıları ({users}): veritabanı sunucusunun ya da CelikPanel’in kendi hesabı olduğu için kalır',
     'databases.delete.keptServer': 'Kullanıcıları ({users}): bu veritabanı sunucusuna kendi hesabıyla bağlanılır ve CelikPanel orada kullanıcı kaldırmaz; bu yüzden kalır',
+    'databases.delete.keptServerShared': 'Kullanıcıları ({users}): başka bir veritabanı da kullanır ve bu veritabanı sunucusuna kendi hesabıyla bağlanılır; bu yüzden sunucuda olduğu gibi kalır',
     'databases.delete.usersUnknown': 'Kullanıcılarından hangilerinin kaldırılacağı okunamadı; bu yüzden şu an silinemez. Liste kendini yeniden okur; biraz sonra yeniden deneyin.',
     'databases.delete.keptOthers': 'Sahibinin hesabı ve diğer veritabanları',
     'databases.delete.typed': 'Silmek için {name} yazın',
