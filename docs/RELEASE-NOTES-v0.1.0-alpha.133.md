@@ -33,10 +33,10 @@ screen.**
   another database also uses stays, and so do the database server's and
   CelikPanel's own accounts; both delete questions say which users go and
   which stay. A user its owner gave other rights on the server by hand
-  (outside CelikPanel) stays on the server too. Every user that stays loses
-  its rights on the deleted database, on every account of its name, also
-  one made by hand under the same name; the notice after the delete says
-  so. (An account with another name made outside CelikPanel is a known
+  (outside CelikPanel) stays on the server too. On the database server
+  CelikPanel runs on this machine, every user that stays loses its rights
+  on the deleted database, on every account of its name, also one made by
+  hand under the same name; the notice after the delete says so. (An account with another name made outside CelikPanel is a known
   limit below.)
   On a database server CelikPanel reaches with that server's own account
   (another machine, or a database server an administrator registered

@@ -34,8 +34,9 @@ günceller.**
   kullandığı kullanıcı ile veritabanı sunucusunun ve CelikPanel'in kendi
   hesapları kalır; iki silme sorusu da hangi kullanıcıların gidip
   hangilerinin kaldığını söyler. Sahibinin sunucuda CelikPanel dışında elle
-  başka haklar verdiği bir kullanıcı da sunucuda kalır. Kalan her kullanıcı,
-  adını taşıyan her hesapta, aynı adla elle açılmış hesapta da, silinen
+  başka haklar verdiği bir kullanıcı da sunucuda kalır. CelikPanel'in bu
+  makinede çalıştırdığı veritabanı sunucusunda kalan her kullanıcı, adını
+  taşıyan her hesapta, aynı adla elle açılmış hesapta da, silinen
   veritabanı üzerindeki haklarını kaybeder; silmeden sonraki bildirim bunu
   söyler. (CelikPanel dışında başka bir adla açılmış hesap aşağıda bilinen
   bir sınırdır.)
