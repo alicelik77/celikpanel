@@ -2,6 +2,8 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.133.md)
 
+> **Yayımlandı**, 13 Kasım 2026 (UTC): sürüm commit'i `ec3fa904b`, GitHub ön sürümü 18:39:47Z, indirme portalı yaklaşık 18:44Z (dış denetim 27/27).
+
 Küçük tasarım sürümlerinin ikincisi. Sol menüdeki **Veritabanları** sayfası
 artık herkesin veritabanlarını tek görünürlük kuralıyla listeliyor; sunucunun
 kendi işleri bu sayfadan çıkıp Güvenlik sayfasına ve MariaDB ile PostgreSQL
