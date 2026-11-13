@@ -58,6 +58,17 @@ same rules.
   `DROP USER` on every host; PostgreSQL `REASSIGN OWNED BY` the user to the
   database's owner, `DROP OWNED BY`, `DROP ROLE` (a table the user made stays,
   owned by the owner). The user made with the database goes only with it.
+- Deleting a database (alpha.133, the same for the left-menu Databases page
+  and the domain's Databases section): the database is dropped first, then
+  every user recorded for it that no other database uses, with the removal
+  above; a user that another database also uses stays, and the engines' own
+  accounts and CelikPanel's never go. The records are removed last, in one
+  transaction, so an interrupted deletion keeps the database listed and the
+  same Delete finishes it. Which users are CelikPanel's is decided by its own
+  records (`database_users` and their grants); a right given on the engine by
+  hand to a recorded user elsewhere is not known to it (on PostgreSQL the
+  engine then refuses `DROP ROLE` and the database stays listed with the user
+  named).
 - Plans: there is no database-user quota in the plans
   (docs/PLANS-AND-RIGHTS.md), so none is counted; the databases permission
   and the engine offering apply, and team members need "manage".

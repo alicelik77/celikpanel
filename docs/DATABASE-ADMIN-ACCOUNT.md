@@ -118,6 +118,29 @@ A failure does not fail autodiscovery. The engine is installed and the row is
 correct either way; a list that will not render because of a credential would
 be a worse thing to do than a card that says the account is not there yet.
 
+### One account, many records (alpha.133)
+
+The account is one per engine on the machine (for PostgreSQL, one per
+cluster port), but every subscription keeps its own record of the engine, and
+each record holds a copy of the credential. Until alpha.133 opening the account
+for a new subscription, or giving it a new password, re-keyed the one account
+and wrote only the record it went through; every other record then held a
+password the engine no longer accepted. A customer's database could not be
+deleted (409 `DATABASE_ENGINE_CREDENTIAL_REFUSED`) and the connection limits of
+customers' users were not written.
+
+Now opening, re-keying or removing the account writes the result to every
+record of that engine on this machine, one change per engine at a time. A
+record that holds a credential an administrator gave on purpose (another
+account name, or a password recorded without one, as before R-057) is left as
+it is. Records that are already out of step on an installed server are put
+right by the next "New password…" on the engine's page, or by the next
+subscription that claims the engine.
+
+Deleting a database no longer depends on these records at all for an engine on
+this machine: like creating one and giving a user a new password, it goes
+through the Agent's local privileged path.
+
 ## What an administrator can see and do
 
 The password is the panel's, but it is not the panel's secret to keep from the
