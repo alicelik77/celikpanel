@@ -26,10 +26,24 @@ screen.**
 - **Each row says its actions in words:** "Open" goes to the domain's
   Databases section; the "More" menu has **New password…** (asks which user
   when there are several) and **Delete…** (lists what is lost and what
-  stays and asks for the database's name to be typed). Deleting from this
-  list **keeps the database's users**; the question says so, and that
-  deleting the database in its domain's Databases section also removes the
-  user created with it.
+  stays and asks for the database's name to be typed).
+- **Deleting a database works the same from this list and from the
+  domain's Databases section, and leaves nothing behind:** the database
+  goes, and with it every user that no other database uses. A user that
+  another database also uses stays, and so do the database server's and
+  CelikPanel's own accounts; both delete questions say which users go and
+  which stay. A user its owner gave other rights on the server by hand
+  (outside CelikPanel) stays on the server too, with only its access to the
+  deleted database taken away, and the notice after the delete says so.
+  Before, deleting a customer's database from this list could be refused
+  with "the server refused the credential CelikPanel holds", in English on
+  a Turkish screen, and its users were left behind.
+- A PostgreSQL database that a site is still connected to is deleted: its
+  open connections are ended first.
+- If a delete is interrupted, the database stays in the list and pressing
+  **Delete** again finishes it; the screen says what happened (deleted, not
+  deleted, or not known) and the audit log records every delete, also one
+  that finished only partly.
 - **"Add database"** asks "For which domain?" and opens that domain's
   Databases section with its form already open.
 - Passwords and the contents of a database are never shown on this page.
@@ -173,10 +187,25 @@ resumes by itself.
   leaves the databases themselves on the server.** The delete question says
   so; delete the databases first if they should go too. A choice in that
   question comes in the next release.
-- **Deleting a database from the Databases list keeps its users** on the
-  database server. The panel shows a user only under a database it can
-  reach, so delete the database in its domain's Databases section when the
-  user created with it should go too.
+- **On a server installed before this version, the connection limits of
+  database users may not be applied** (a plan's "connections per database
+  user"). CelikPanel kept a copy of its own database account's password per
+  customer, and older copies stopped working when the password changed.
+  This release keeps every copy in step from now on, but it does not repair
+  copies that are already out of step. To put them right, an administrator
+  opens **Components → MariaDB** and, under "The account CelikPanel connects
+  to this service with", chooses **More → New password…** once; then the
+  same on **Components → PostgreSQL** if PostgreSQL is installed. Nothing
+  else is affected: databases, sites and their users keep working, and
+  deleting a database no longer depends on these copies. Automatic repair
+  comes in the next release.
+- If CelikPanel's own database account is removed on the MariaDB or
+  PostgreSQL page, the next new customer opens it again. A fix comes in the
+  next release.
+- While the panel and its Agent are from different versions (during an
+  update), deleting a database removes the database but not yet its users:
+  the database stays in the list with a note, and pressing **Delete** again
+  after the update finishes it.
 - **The size column is absent** from the Databases list until sizes can be
   read in one call for the whole list.
 - **The certificate screen does not yet say whether the mail name is
