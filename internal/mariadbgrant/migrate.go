@@ -3,6 +3,7 @@ package mariadbgrant
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -59,6 +60,10 @@ type Row struct {
 	Unnamed bool `json:"unnamed,omitempty"`
 	// Reached: the other existing databases the stored name covers now.
 	Reached []string `json:"reached,omitempty"`
+	// Missing: no database of the name the row names exists on the engine
+	// (dropped by hand while CelikPanel still records it; verification of
+	// the second review). Such a row is never rewritten - it is listed.
+	Missing bool `json:"missing,omitempty"`
 }
 
 // Scan is what one read of an engine found.
@@ -186,6 +191,11 @@ func ScanEngine(run Exec) (Scan, error) {
 			continue
 		}
 		row.Reached = reached(row.Stored, schemas, scan.FoldCase)
+		if own, _, ok := Decode(row.Stored); ok {
+			row.Missing = !slices.ContainsFunc(schemas, func(schema string) bool {
+				return schema == own || (scan.FoldCase && strings.EqualFold(schema, own))
+			})
+		}
 		scan.Patterns = append(scan.Patterns, row)
 	}
 	sort.Slice(scan.Patterns, func(i, j int) bool {

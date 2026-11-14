@@ -93,6 +93,11 @@ const (
 	grantFormsReasonRecordFailed = "record_failed"
 	// The name's exact form does not fit a grant row (mariadbgrant.ErrExactTooLong).
 	grantFormsReasonNameTooLong = "name_too_long"
+	// grantFormsReasonDatabaseMissing: CelikPanel records the pair, but no
+	// database of that name exists on the engine (dropped by hand). Nothing
+	// is granted; the row is listed until the record is deleted (which runs
+	// the removal) or the database is made again.
+	grantFormsReasonDatabaseMissing = "database_missing"
 	// grantFormsReachedCap: at most this many names are kept per row; the
 	// rest is counted.
 	grantFormsReachedCap = 50
@@ -477,9 +482,6 @@ func (p *Panel) runDatabaseGrantFormsEngine(ctx context.Context, engine grantFor
 	if hold != "" {
 		if pending := p.grantFormsPending(ctx, engine.key); pending > 0 {
 			p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsWaiting, hold, scan.Version)
-			if hold == grantFormsReasonUpdate || hold == grantFormsReasonUpdateUnknown {
-				p.notifyGrantFormsLongWait(ctx, engine.key, hold, pending)
-			}
 		} else {
 			p.setGrantFormsEngine(ctx, engine.key, serverID, grantFormsDone, "", scan.Version)
 		}
@@ -520,6 +522,8 @@ func (p *Panel) recordGrantFormsScan(ctx context.Context, engine grantFormsEngin
 		switch {
 		case ours && (row.GrantOption || row.Unnamed || row.Privileges == ""):
 			kind, reason, database = "owner_row", grantFormsReasonOwnerRow, sql.NullString{String: name, Valid: true}
+		case ours && row.Missing:
+			kind, reason, database = "ours", grantFormsReasonDatabaseMissing, sql.NullString{String: name, Valid: true}
 		case ours && !scan.MariaDB:
 			kind, reason, database = "ours", grantFormsReasonNotMariaDB, sql.NullString{String: name, Valid: true}
 		case ours && !mariadbgrant.ExactFits(name):
@@ -701,9 +705,14 @@ func (p *Panel) convertGrantFormRows(ctx context.Context, engine grantFormsEngin
 			continue
 		}
 		switch outcome {
-		case mariadbgrant.Converted, mariadbgrant.AlreadyExact, mariadbgrant.Gone, mariadbgrant.DatabaseGone:
+		case mariadbgrant.DatabaseGone:
+			// The pair is on record (read above) but the database is gone:
+			// nothing is granted; the row is listed with what to do.
+			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET state = 'left', reason = ?, failures = 0, updated_at = datetime('now') WHERE id = ?`,
+				grantFormsReasonDatabaseMissing, r.id)
+		case mariadbgrant.Converted, mariadbgrant.AlreadyExact, mariadbgrant.Gone:
 			_, _ = p.db.GetDB().ExecContext(ctx, `UPDATE database_grant_forms SET state = 'done', reason = ?, failures = 0, updated_at = datetime('now') WHERE id = ?`, outcome, r.id)
-			if outcome != mariadbgrant.Gone && outcome != mariadbgrant.DatabaseGone {
+			if outcome != mariadbgrant.Gone {
 				var reached []string
 				_ = json.Unmarshal([]byte(r.reached), &reached)
 				p.recordAudit(auditRecord{Action: "database.right.exact:" + r.database, ResourceType: "database_grant_form", ResourceID: int(r.id),
@@ -741,15 +750,22 @@ func (p *Panel) setGrantFormsEngine(ctx context.Context, key string, serverID in
 		failures = 1
 	}
 	if _, err := p.db.GetDB().ExecContext(ctx, `
-		INSERT INTO database_grant_form_engines (engine_key, server_id, state, reason, failures, version, checked_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+		INSERT INTO database_grant_form_engines (engine_key, server_id, state, reason, failures, version, checked_at, updated_at, waiting_since)
+		VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), CASE WHEN ? IN ('waiting', 'blocked') THEN datetime('now') END)
 		ON CONFLICT (engine_key) DO UPDATE SET server_id = excluded.server_id, state = excluded.state, reason = excluded.reason,
 			failures = CASE WHEN excluded.state = 'blocked' THEN database_grant_form_engines.failures + 1 ELSE 0 END,
 			version = CASE WHEN excluded.version <> '' THEN excluded.version ELSE database_grant_form_engines.version END,
+			waiting_since = CASE
+				WHEN excluded.state NOT IN ('waiting', 'blocked') THEN NULL
+				WHEN database_grant_form_engines.state = excluded.state AND database_grant_form_engines.reason = excluded.reason
+					AND database_grant_form_engines.waiting_since IS NOT NULL THEN database_grant_form_engines.waiting_since
+				ELSE datetime('now') END,
 			checked_at = datetime('now'), updated_at = datetime('now')`,
-		key, serverID, state, reason, failures, version); err != nil {
+		key, serverID, state, reason, failures, version, state); err != nil {
 		log.Printf("database rights on %s: its state could not be recorded: %v", key, err)
+		return
 	}
+	p.reviewGrantFormsWait(ctx, key)
 }
 
 // noteGrantReadBack (alpha.134 follow-up) keeps on the engine's state what
@@ -835,21 +851,45 @@ func (p *Panel) notifyDatabasePatternRights(ctx context.Context) {
 		"database_grant_forms", "1", body, "/components/mariadb")
 }
 
-// notifyGrantFormsLongWait (second review): CelikPanel's own pattern rights
-// have waited for a confirmed panel update longer than
-// databaseGrantFormsWaitNotice (counted from the oldest capture): the
-// administrators are told once per engine - the reason, who acts and what
-// next. The MariaDB page keeps saying what it waits for.
-func (p *Panel) notifyGrantFormsLongWait(ctx context.Context, key, reason string, pending int) {
-	var oldest sql.NullString
-	if err := p.db.GetDB().QueryRowContext(ctx, `SELECT MIN(captured_at) FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state = 'captured'`, key).Scan(&oldest); err != nil || !oldest.Valid {
+// grantFormsWaitCauses are the waits that need a person once they last
+// longer than databaseGrantFormsWaitNotice; every blocked state does too.
+var grantFormsWaitCauses = map[string]bool{
+	grantFormsReasonUpdate: true, grantFormsReasonUpdateUnknown: true,
+	grantFormsReasonAgentUnreached: true, grantFormsReasonAgentVersion: true, grantFormsReasonRecordsUnread: true,
+}
+
+// reviewGrantFormsWait (verification of the second review): while an
+// engine has waited, or been blocked, for one cause longer than
+// databaseGrantFormsWaitNotice, the administrators are told once - the
+// cause, who acts and what next (the period is the wait's start, so a later,
+// separate wait is told again). A notification whose cause has ended, or
+// changed, is cleared (marked seen); it never repeats while the wait lasts.
+func (p *Panel) reviewGrantFormsWait(ctx context.Context, key string) {
+	db := p.db.GetDB()
+	var state, reason string
+	var since sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT state, reason, waiting_since FROM database_grant_form_engines WHERE engine_key = ?`, key).
+		Scan(&state, &reason, &since); err != nil {
 		return
 	}
-	at, err := time.Parse("2006-01-02 15:04:05", oldest.String)
+	subject := "database_grant_forms_wait:" + key
+	notable := since.Valid && (state == grantFormsBlocked || (state == grantFormsWaiting && grantFormsWaitCauses[reason]))
+	current := ""
+	if notable {
+		current = since.String
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE account_notices SET seen_at = datetime('now') WHERE kind = ? AND subject_key = ? AND period <> ? AND seen_at IS NULL`,
+		noticeDatabaseRightsWaiting, subject, current); err != nil {
+		log.Printf("database rights on %s: an ended wait's notification could not be cleared: %v", key, err)
+	}
+	if !notable {
+		return
+	}
+	at, err := time.Parse("2006-01-02 15:04:05", since.String)
 	if err != nil || databaseGrantFormsNow().UTC().Sub(at) < databaseGrantFormsWaitNotice {
 		return
 	}
-	ids, err := administratorIDs(ctx, p.db.GetDB())
+	ids, err := administratorIDs(ctx, db)
 	if err != nil {
 		return
 	}
@@ -857,30 +897,47 @@ func (p *Panel) notifyGrantFormsLongWait(ctx context.Context, key, reason string
 	for _, id := range ids {
 		recipients = append(recipients, usageRecipient{id, audienceAdministrator})
 	}
-	p.raiseAccountNotice(ctx, p.db.GetDB(), recipients, noticeDatabaseRightsWaiting, true,
-		"database_grant_forms_wait:"+key, "1", map[string]any{"reason": reason, "rows": pending}, "/components/mariadb")
+	p.raiseAccountNotice(ctx, db, recipients, noticeDatabaseRightsWaiting, true, subject, since.String,
+		map[string]any{"state": state, "reason": reason, "rows": p.grantFormsPending(ctx, key)}, "/components/mariadb")
 }
 
-// databaseRightsWaitingNoticeWords says why the narrowing waits, who acts
-// and what next.
+// databaseRightsWaitingNoticeWords says why the narrowing waits or is
+// blocked, who acts and what next.
 func databaseRightsWaitingNoticeWords(_ string, body map[string]any) accountNoticeWords {
 	rows, _ := body["rows"].(float64)
 	if n, ok := body["rows"].(int); ok {
 		rows = float64(n)
 	}
-	why := "the result of the last CelikPanel update is not confirmed yet (it is still finishing its checks, failed, or is being rolled back)"
-	whyTR := "son CelikPanel güncellemesinin sonucu henüz doğrulanmadı (denetimlerini bitiriyor, başarısız oldu ya da geri alınıyor)"
-	if body["reason"] == grantFormsReasonUpdateUnknown {
-		why = "the record of the last CelikPanel update could not be read"
-		whyTR = "son CelikPanel güncellemesinin kaydı okunamadı"
+	why, whyTR := "it is blocked (the reason is on Components → MariaDB)", "engellendi (nedeni Bileşenler → MariaDB sayfasında)"
+	next := "Open Components → MariaDB: it says what blocks the narrowing and what to do."
+	nextTR := "Bileşenler → MariaDB sayfasını açın: daraltmayı neyin engellediğini ve ne yapacağınızı söyler."
+	updates, updatesTR := "Open Settings → Updates and look at the last update; finish or repeat it.", "Ayarlar → Güncellemeler sayfasını açıp son güncellemeye bakın; bitirin ya da yineleyin."
+	switch body["reason"] {
+	case grantFormsReasonUpdate:
+		why = "the result of the last CelikPanel update is not confirmed yet (it is still finishing its checks, failed, or is being rolled back)"
+		whyTR = "son CelikPanel güncellemesinin sonucu henüz doğrulanmadı (denetimlerini bitiriyor, başarısız oldu ya da geri alınıyor)"
+		next, nextTR = updates, updatesTR
+	case grantFormsReasonUpdateUnknown:
+		why, whyTR = "the record of the last CelikPanel update could not be read", "son CelikPanel güncellemesinin kaydı okunamadı"
+		next, nextTR = updates, updatesTR
+	case grantFormsReasonAgentUnreached:
+		why, whyTR = "the CelikPanel Agent does not answer", "CelikPanel Agent yanıt vermiyor"
+		next = "Restart the Agent on the server: sudo systemctl restart celikpanel-agent (as root, leave out sudo)."
+		nextTR = "Agent’ı sunucuda yeniden başlatın: sudo systemctl restart celikpanel-agent (root olarak oturum açtıysanız sudo yazmayın)."
+	case grantFormsReasonAgentVersion:
+		why, whyTR = "the CelikPanel Agent is another build than the panel", "CelikPanel Agent panelden farklı bir derleme"
+		next, nextTR = "Open Settings → Updates and finish the update, so the panel and its Agent are the same build.", "Ayarlar → Güncellemeler sayfasında güncellemeyi bitirin; panel ve Agent aynı derleme olsun."
+	case grantFormsReasonRecordsUnread:
+		why, whyTR = "CelikPanel could not read its own records", "CelikPanel kendi kayıtlarını okuyamadı"
+		next, nextTR = "Look at CelikPanel’s log for why its database could not be read.", "CelikPanel günlüğünde veritabanının neden okunamadığına bakın."
 	}
 	return accountNoticeWords{
-		TitleEN: "Database rights wait for a confirmed update",
-		TextEN: fmt.Sprintf("For more than a day CelikPanel has been waiting to narrow %d database rights it gave to their exact database names, because %s. Nothing was changed meanwhile. "+
-			"You act: open Settings → Updates and look at the last update; finish or repeat it. The narrowing then starts by itself; Components → MariaDB shows where it stands.", int(rows), why),
-		TitleTR: "Veritabanı hakları doğrulanmış bir güncellemeyi bekliyor",
-		TextTR: fmt.Sprintf("CelikPanel bir günden uzun süredir verdiği %d veritabanı hakkını tam veritabanı adlarına daraltmak için bekliyor; çünkü %s. Bu sürede hiçbir şey değiştirilmedi. "+
-			"Siz yaparsınız: Ayarlar → Güncellemeler sayfasını açıp son güncellemeye bakın; bitirin ya da yineleyin. Daraltma ardından kendiliğinden başlar; Bileşenler → MariaDB nerede olduğunu gösterir.", int(rows), whyTR),
+		TitleEN: "Database rights have waited more than a day",
+		TextEN: fmt.Sprintf("For more than a day CelikPanel has not been able to narrow %d database rights it gave to their exact database names, because %s. Nothing was changed meanwhile. "+
+			"You act: %s The narrowing then goes on by itself; this notice is cleared when the wait ends.", int(rows), why, next),
+		TitleTR: "Veritabanı hakları bir günden uzun süredir bekliyor",
+		TextTR: fmt.Sprintf("CelikPanel bir günden uzun süredir verdiği %d veritabanı hakkını tam veritabanı adlarına daraltamıyor; çünkü %s. Bu sürede hiçbir şey değiştirilmedi. "+
+			"Siz yaparsınız: %s Daraltma ardından kendiliğinden sürer; bekleme bitince bu bildirim kaldırılır.", int(rows), whyTR, nextTR),
 	}
 }
 
@@ -890,7 +947,7 @@ func databaseRightsWaitingNoticeWords(_ string, body map[string]any) accountNoti
 // form (name_too_long).
 func grantFormsLeftGroup(reason string) string {
 	switch reason {
-	case grantFormsReasonOwnerRow, grantFormsReasonNotMariaDB, grantFormsReasonNameTooLong:
+	case grantFormsReasonOwnerRow, grantFormsReasonNotMariaDB, grantFormsReasonNameTooLong, grantFormsReasonDatabaseMissing:
 		return reason
 	}
 	return grantFormsReasonNotProvable
@@ -919,6 +976,10 @@ func databasePatternRightsNoticeWords(_ string, body map[string]any) accountNoti
 	if n := count(grantFormsReasonNotMariaDB); n > 0 {
 		en = append(en, fmt.Sprintf("%d on a database server that is not MariaDB", n))
 		tr = append(tr, fmt.Sprintf("MariaDB olmayan bir veritabanı sunucusundaki %d hak", n))
+	}
+	if n := count(grantFormsReasonDatabaseMissing); n > 0 {
+		en = append(en, fmt.Sprintf("%d naming a database CelikPanel still records but that no longer exists on the server (delete it in Databases, which removes these rights, or create it again)", n))
+		tr = append(tr, fmt.Sprintf("CelikPanel’in hâlâ kaydını tuttuğu ama sunucuda artık olmayan bir veritabanını adlandıran %d hak (Veritabanları’nda silin; bu hakları da kaldırır; ya da veritabanını yeniden oluşturun)", n))
 	}
 	if n := count(grantFormsReasonNameTooLong); n > 0 {
 		en = append(en, fmt.Sprintf("%d whose database name is too long for its exact form", n))
@@ -1057,6 +1118,9 @@ func (p *Panel) databaseGrantFormsView(ctx context.Context) (grantFormsView, err
 		_ = json.Unmarshal([]byte(reached), &row.Reached)
 		row.Reached = nonNilStrings(row.Reached)
 		if state == "left" || state == "blocked" {
+			if row.Reason == grantFormsReasonDatabaseMissing {
+				privileges = "" // no database to narrow to: only its removal
+			}
 			row.Statement, row.StatementKind = mariadbgrant.NarrowStatements(mariadbgrant.Row{User: user, Host: host, Stored: row.Pattern, Privileges: privileges, GrantOption: grantOption == 1})
 			if state == "blocked" {
 				if len(view.Blocked) < grantFormsListCap {

@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
+	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
 )
 
@@ -90,5 +93,44 @@ func TestDatabaseDeleteStaysListedWhileRightsNamingItAreLeft(t *testing.T) {
 				t.Fatal("the record went while rights naming the database were left")
 			}
 		})
+	}
+}
+
+// Second review, verification (S1): on a registered MariaDB every user on
+// record for the deleted database - also one another database on that
+// server shares - is passed to the removal, so its pattern-form right on the
+// deleted name goes even where it reaches another customer's database.
+func TestDatabaseDeleteOnARegisteredServerPassesEveryRecordedUser(t *testing.T) {
+	f := newVisibleDatabasesFixture(t)
+	recordDatabaseDrops(t)
+	db := f.panel.db.GetDB()
+	sealed, err := f.box.Encrypt("registered-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO database_servers (id, subscription_id, type_id, name, version, host, port, root_password_encrypted, admin_username, status)
+		VALUES (9927, 9804, (SELECT id FROM database_server_types WHERE name = 'mariadb'), 'db.example.net', '10.11', 'db.example.net', 3306, ?, 'panel', 'active');
+		INSERT INTO databases_v2 (id, server_id, subscription_id, domain_id, name) VALUES (9967, 9927, 9804, 9906, 'reg_shop'), (9968, 9927, 9804, 9906, 'reg_blog');
+		INSERT INTO database_users (id, server_id, subscription_id, username, password) VALUES (9948, 9927, 9804, 'reg_shared', ?), (9949, 9927, 9804, 'reg_own', ?);
+		INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9967, 9948, 'ALL'), (9968, 9948, 'ALL'), (9967, 9949, 'ALL');`,
+		sealed, sealed, sealed); err != nil {
+		t.Fatal(err)
+	}
+	useRecordingDatabaseDriver(t)
+	var owners []string
+	saved := databaseDroppedRightsElsewhere
+	databaseDroppedRightsElsewhere = func(_ services.DatabaseDriver, name string, recorded []string) (mariadbgrant.DroppedResult, error) {
+		if name == "reg_shop" {
+			owners = append([]string(nil), recorded...)
+		}
+		return mariadbgrant.DroppedResult{}, nil
+	}
+	t.Cleanup(func() { databaseDroppedRightsElsewhere = saved })
+	if got := f.as(t, "admin", http.MethodDelete, "/api/v1/databases/9967", ""); got.Code != http.StatusOK {
+		t.Fatalf("%d %s", got.Code, got.Body.String())
+	}
+	slices.Sort(owners)
+	if strings.Join(owners, ",") != "reg_own,reg_shared" {
+		t.Fatalf("owners passed to the removal: %v", owners)
 	}
 }

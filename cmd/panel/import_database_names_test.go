@@ -65,7 +65,8 @@ func TestImportLeavesOutADatabaseWhoseNameIsTooLongAndSaysSoFirst(t *testing.T) 
 		t.Fatalf("steps %+v", steps)
 	}
 	answer := importApplyAnswerFor("imported.example", 1, 1, steps)
-	if len(answer.LeftOut) != 1 || answer.LeftOut[0] != "database:"+long {
+	if len(answer.LeftOut) != 1 || answer.LeftOut[0] != "database:"+long || answer.Status != importStatusComplete ||
+		len(answer.SkippedDatabases) != 1 || answer.SkippedDatabases[0] != long {
 		t.Fatalf("answer %+v", answer)
 	}
 	var recorded int

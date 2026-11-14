@@ -72,5 +72,9 @@ CREATE TABLE database_grant_form_engines (
     -- Since when a right CelikPanel gave on this engine could not be read
     -- back: its account may not read mysql.db (NULL: not so).
     grants_unverifiable_since TEXT,
+    -- Since when the engine has waited or been blocked for its present
+    -- reason (NULL while it runs or is done): one notification once that
+    -- lasts a day, and again only for a later, separate wait.
+    waiting_since TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -230,6 +230,7 @@ export const enDbServer = {
     'dbgf.details': 'Details',
     'dbgf.state.record_failed': 'What was found on this database server could not be recorded.',
     'dbgf.state.record_failed.next': 'The reason is in CelikPanel’s log (search for “database rights”).',
+    'dbgf.left.reason.database_missing': 'These name a database CelikPanel still records but that no longer exists on this server (it was removed outside CelikPanel), so nothing is given for them. You act: delete that database in Databases (this also takes these rights away), or create the database again under the same name:',
     'dbgf.left.reason.name_too_long': 'These name a database whose name is too long for a right by its exact name (each underscore counts twice; 64 is the limit), so they stay as they are:',
     'dbgf.left.reachesMore': '{list} and {more} more',
     'dbgf.account.role': 'role {name}',

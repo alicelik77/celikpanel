@@ -701,9 +701,14 @@ func (p *Panel) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	answer := importApplyAnswerFor(req.Domain, domainID, siteID, steps)
 	// alpha.118 (D-044): an import grows the subscription; measure it soon.
 	p.requestDiskMeasurement(ctx, req.SubscriptionID)
-	if answer.Status != importStatusComplete {
+	switch {
+	case answer.Status != importStatusComplete:
 		p.audit(r, "import.cpanel.incomplete", "domain", domainID)
-	} else {
+	case len(answer.SkippedDatabases) > 0:
+		// Complete, with databases left out for their names (alpha.134).
+		p.auditDetailed(r, "import.cpanel.complete_with_skips", "domain", domainID,
+			map[string]any{"skipped_databases": answer.SkippedDatabases, "reason": importStateNameTooLong})
+	default:
 		p.audit(r, "import.cpanel.complete", "domain", domainID)
 	}
 	_ = json.NewEncoder(w).Encode(answer)
@@ -864,17 +869,21 @@ const (
 // artık `200`'dür: ya `active` ya da hangi parçaların aktarıldığını ve
 // hangilerinin aktarılmadığını adlarıyla söyleyen `partial`.
 type importApplyAnswer struct {
-	DomainID     int          `json:"domain_id"`
-	SiteID       int          `json:"site_id"`
-	Domain       string       `json:"domain"`
-	Status       string       `json:"status"`
-	DomainStatus string       `json:"domain_status"`
-	Code         string       `json:"code,omitempty"`
-	Message      string       `json:"message,omitempty"`
-	Imported     []string     `json:"imported"`
-	NotImported  []string     `json:"not_imported"`
-	LeftOut      []string     `json:"left_out"`
-	Steps        []importStep `json:"steps"`
+	DomainID     int      `json:"domain_id"`
+	SiteID       int      `json:"site_id"`
+	Domain       string   `json:"domain"`
+	Status       string   `json:"status"`
+	DomainStatus string   `json:"domain_status"`
+	Code         string   `json:"code,omitempty"`
+	Message      string   `json:"message,omitempty"`
+	Imported     []string `json:"imported"`
+	NotImported  []string `json:"not_imported"`
+	LeftOut      []string `json:"left_out"`
+	// SkippedDatabases (alpha.134): databases left out because MariaDB
+	// cannot keep a right on exactly their names; the import is complete
+	// with these left out, and says so.
+	SkippedDatabases []string     `json:"skipped_databases,omitempty"`
+	Steps            []importStep `json:"steps"`
 }
 
 const (
@@ -903,6 +912,9 @@ func importApplyAnswerFor(domain string, domainID, siteID int, steps []importSte
 			// the owner's provider, or nothing of it to import. It does not
 			// make the import partial and is not said to be imported.
 			answer.LeftOut = append(answer.LeftOut, step.Step)
+			if step.State == importStateNameTooLong {
+				answer.SkippedDatabases = append(answer.SkippedDatabases, strings.TrimPrefix(step.Step, "database:"))
+			}
 		default:
 			answer.Imported = append(answer.Imported, step.Step)
 		}

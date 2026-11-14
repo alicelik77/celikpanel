@@ -124,7 +124,7 @@ MIGRATIONS = {
     # alpha.134: 79 database rights by exact name (two new tables, empty after
     # the migration: database_grant_forms and database_grant_form_engines; no
     # old table or row changed).
-    79: '7ea9e51e649479f8e0f4b9932afc6718409d2701bbb8c887a4e6b6a44e0b414a',
+    79: '863ff7e77e5a4b22c230e4ba25adbfe64871a450567a7a2389bac6f01b33ef29',
 }
 # Exact sqlite_schema SQL from the released SQL, including triggers and indexes.
 # Tests reconstruct it from unmodified migration bytes, never a downgraded ledger.
@@ -167,7 +167,7 @@ SCHEMAS = {
     76: '74c13a781b3df839b414dd130d103985236246518f7820a2aa1c8e8f36d18450',
     77: '0ae2d053d88806d865572bacb0efc8d3bb65a09194ccec1543e2ccb26123208e',
     78: 'b37c7ec8ab2efff1fedf38d1af06c2ee44188147eb0a3fbcdf46e5bdca2cb1f3',
-    79: '8c7c8b986ecbb61d8008950c7a17c08def46052124aea8eebaf3c02476a269f0',
+    79: 'e31f87ac1a3919eb50864c32987db5e374cf6aafa078a7e29ff38022cffd8168',
 }
 ADMISSION_SCHEMA = 'celikpanel/lab-populated-database-admission/v1'
 MANIFEST_SCHEMA = 'celikpanel/lab-populated-database-manifest/v1'

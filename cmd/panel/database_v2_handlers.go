@@ -1477,6 +1477,12 @@ func (p *Panel) handleRevokeDatabaseAccess(w http.ResponseWriter, r *http.Reques
 		))
 		return
 	}
+	// The revoked right is gone: a listing of it (a too long name written in
+	// the pattern form) goes too (verification of the second review).
+	if _, err := p.db.GetDB().ExecContext(ctx, `DELETE FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state = 'left' AND database_name = ? AND username = ?`,
+		databaseServerEngineIdentity(server), database.Name, user.Username); err != nil {
+		log.Printf("database rights on %s: the listing of %s on %s could not be removed: %v", databaseServerEngineIdentity(server), user.Username, database.Name, err)
+	}
 
 	kickDatabaseRemoteSync() // alpha.129: after the committed change only (remote database access follows)
 	w.WriteHeader(http.StatusOK)

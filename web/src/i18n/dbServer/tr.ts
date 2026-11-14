@@ -215,6 +215,7 @@ export const trDbServer: Record<DbServerKey, string> = {
     'dbgf.details': 'Ayrıntılar',
     'dbgf.state.record_failed': 'Bu veritabanı sunucusunda bulunanlar kaydedilemedi.',
     'dbgf.state.record_failed.next': 'Nedeni CelikPanel’in günlüğündedir (“database rights” diye arayın).',
+    'dbgf.left.reason.database_missing': 'Bu haklar, CelikPanel’in hâlâ kaydını tuttuğu ama bu sunucuda artık olmayan bir veritabanını adlandırıyor (CelikPanel dışında kaldırılmış); bu yüzden onlar için hiçbir şey verilmez. Siz yaparsınız: o veritabanını Veritabanları’nda silin (bu, bu hakları da kaldırır) ya da veritabanını aynı adla yeniden oluşturun:',
     'dbgf.left.reason.name_too_long': 'Bu haklar, adı tam adlı bir hak için fazla uzun olan bir veritabanını adlandırıyor (her alt çizgi iki karakter sayılır; sınır 64); bu yüzden olduğu gibi kalır:',
     'dbgf.left.reachesMore': '{list} ve {more} veritabanı daha',
     'dbgf.account.role': '{name} rolü',

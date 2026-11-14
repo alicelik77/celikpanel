@@ -259,31 +259,87 @@ func TestGrantFormsSayWhatIsTrueWhileWaiting(t *testing.T) {
 	}
 
 	// Waiting for a confirmed update longer than a day: one notification
-	// to the administrators, not one a round.
+	// to the administrators per wait, never one a round; cleared when the
+	// wait ends; told again for a later, separate wait.
 	if state, reason := grantFormEngineState(t, f); state != grantFormsWaiting || reason != grantFormsReasonUpdate {
 		t.Fatalf("update: %s/%s", state, reason)
 	}
-	notices := func() int {
+	count := func(where string) int {
 		var n int
-		if err := f.panel.db.GetDB().QueryRow(`SELECT COUNT(DISTINCT subject_key) FROM account_notices WHERE kind = ?`, noticeDatabaseRightsWaiting).Scan(&n); err != nil {
+		if err := f.panel.db.GetDB().QueryRow(`SELECT COUNT(DISTINCT period) FROM account_notices WHERE kind = ? AND `+where, noticeDatabaseRightsWaiting).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
 	}
-	if notices() != 0 {
+	ageWait := func(days string) {
+		if _, err := f.panel.db.GetDB().Exec(`UPDATE database_grant_form_engines SET waiting_since = datetime('now', ?) WHERE engine_key = 'mariadb@this-machine:3306'`, "-"+days+" days"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if count("1") != 0 {
 		t.Fatal("told before a day passed")
 	}
-	if _, err := f.panel.db.GetDB().Exec(`UPDATE database_grant_forms SET captured_at = datetime('now', '-2 days') WHERE state = 'captured'`); err != nil {
-		t.Fatal(err)
-	}
+	ageWait("3")
 	for range 2 {
 		f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
 	}
-	if notices() != 1 {
-		t.Fatalf("notices: %d", notices())
+	if count("1") != 1 || count("seen_at IS NULL") != 1 {
+		t.Fatalf("update wait: %d notices", count("1"))
+	}
+	// The update is confirmed: the wait ends and its notification is cleared.
+	databaseGrantFormsUpdatePhase = func(string) (string, bool) { return "succeeded", true }
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	if count("seen_at IS NULL") != 0 {
+		t.Fatal("the ended wait's notification was not cleared")
+	}
+	// A later, separate wait (the Agent stops answering) is told again once.
+	saved = buildCommit
+	buildCommit = strings.Repeat("c", 40)
+	t.Cleanup(func() { buildCommit = saved })
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	ageWait("2")
+	for range 2 {
+		f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	}
+	if count("1") != 2 || count("seen_at IS NULL") != 1 {
+		t.Fatalf("agent wait: %d notices, %d open", count("1"), count("seen_at IS NULL"))
+	}
+	agentWords := databaseRightsWaitingNoticeWords("", map[string]any{"reason": grantFormsReasonAgentUnreached, "rows": float64(1)})
+	if !strings.Contains(agentWords.TextEN, "systemctl restart celikpanel-agent") {
+		t.Fatalf("agent words: %+v", agentWords)
 	}
 	words := databaseRightsWaitingNoticeWords("", map[string]any{"reason": grantFormsReasonUpdate, "rows": float64(2)})
 	if !strings.Contains(words.TextEN, "Settings → Updates") || !strings.Contains(words.TextTR, "Ayarlar → Güncellemeler") {
 		t.Fatalf("words: %+v", words)
 	}
+}
+
+// Verification of the second review: the Agent finds the database gone
+// while the pair is still on record (dropped by hand after the scan): the row
+// is listed with what to do and counted as left, never marked done.
+func TestGrantFormsListARowWhoseDatabaseIsGoneButStillRecorded(t *testing.T) {
+	f, engine := grantFormsFixture(t)
+	engine.outcomeFor = func(req mariadbgrant.ConvertRequest) string {
+		if req.Database == "customer_matrix_test_shop" {
+			return mariadbgrant.DatabaseGone
+		}
+		return mariadbgrant.Converted
+	}
+	f.panel.runDatabaseGrantFormsRound(context.Background(), longAgo())
+	if kind, state, reason := grantFormRowState(t, f, "cust_user", "localhost", "customer_matrix_test_shop"); kind != "ours" || state != "left" || reason != grantFormsReasonDatabaseMissing {
+		t.Fatalf("row %s/%s/%s", kind, state, reason)
+	}
+	view, err := f.panel.databaseGrantFormsView(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range view.Left {
+		if row.Account == "cust_user@localhost" && row.Pattern == "customer_matrix_test_shop" {
+			if row.Reason != grantFormsReasonDatabaseMissing || row.StatementKind != mariadbgrant.StatementRemove {
+				t.Fatalf("listed %+v", row)
+			}
+			return
+		}
+	}
+	t.Fatalf("not listed: %+v", view.Left)
 }

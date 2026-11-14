@@ -70,7 +70,7 @@ export function decodeGrantFormsView(raw: unknown): GrantFormsView {
 }
 
 /** Why a listed row is left; one paragraph per reason above its rows. */
-const LEFT_REASONS = ['not_provable', 'owner_row', 'not_mariadb', 'name_too_long'] as const;
+const LEFT_REASONS = ['not_provable', 'owner_row', 'not_mariadb', 'name_too_long', 'database_missing'] as const;
 type LeftReason = (typeof LEFT_REASONS)[number];
 const leftReason = (row: GrantFormsRow): LeftReason => (LEFT_REASONS as readonly string[]).includes(row.reason ?? '') ? (row.reason as LeftReason) : 'not_provable';
 

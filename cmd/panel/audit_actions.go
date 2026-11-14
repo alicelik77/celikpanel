@@ -177,6 +177,7 @@ var auditActionNames = []string{
 	"impersonate.start",
 	"impersonate.stop",
 	"import.cpanel.complete",
+	"import.cpanel.complete_with_skips",
 	"import.cpanel.incomplete",
 	"mail.account.empty",
 	"logs.retention",

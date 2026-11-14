@@ -113,8 +113,9 @@ same rules.
   (a pattern) that ALSO reaches another existing database is kept, not
   deleted, when its account is not on record for the deleted database; the
   answer lists it (once) with what it still reaches. The accounts on record
-  for the deleted database lose their rows naming it in both forms, from
-  every host, even where the pattern reaches another database - as on
+  for the deleted database (every one, also one another database shares, on
+  this machine's MariaDB or on a registered one) lose their rows naming it
+  in both forms, from every host, even where the pattern reaches another database - as on
   alpha.133; CelikPanel gave them (second review: before the rewrite runs,
   such a row is CelikPanel's own pattern and must not outlive the deletion). The
   user steps report whose rights they removed too, so the answer and the
@@ -168,11 +169,20 @@ same rules.
     only while this rewrite may run, and never at the same moment as a row
     of it; while it is held, a change of rules is still applied to the copy
     in the pattern form (added, narrowed or taken away), as on alpha.133.
+    A row CelikPanel records whose database no longer exists on the engine
+    (dropped by hand) is never rewritten nor marked done: it is listed and
+    counted as left ("the database no longer exists, the record still
+    does"), with what to do - delete the record in Databases, which runs the
+    removal, or create the database again; the round deletes no engine row.
     When CelikPanel's own records cannot be read, the engine shows that the
-    round's result is unknown (records_unread). When the rewrite has waited
-    for a confirmed panel update for more than 24 hours (counted from the
-    oldest capture), the administrators get one notification with the
-    reason, who acts and what to do next. A row holding a privilege
+    round's result is unknown (records_unread). While an engine waits (a
+    panel update not confirmed or not readable, an Agent that does not
+    answer or is another build, unread records) or is blocked, for one
+    cause, for more than 24 hours, the administrators get one notification
+    with the cause, who acts and what next; it is cleared when the wait
+    ends, and a later, separate wait is told again. A listed pattern-form
+    right goes from the list when its grant is revoked or its database is
+    deleted. A row holding a privilege
     CelikPanel cannot name is offered only its removal, never a narrowing
     that would drop that privilege.
   - Every GRANT CelikPanel writes on MariaDB runs with NO_AUTO_CREATE_USER
@@ -201,7 +211,9 @@ same rules.
     database copy checks it before the copy starts. A cPanel import names
     such databases in its preview, with why and what to do (a shorter name
     in cPanel, or create it here under a shorter name), and leaves them out:
-    nothing is created under such a name. Names CelikPanel makes
+    nothing is created under such a name. Such an import is complete with
+    those databases left out: the result says so and names them, and it is
+    audited as import.cpanel.complete_with_skips with their names. Names CelikPanel makes
     itself (application installs, WordPress installs and clones, site
     copies) are shortened at their base until they fit, so they never fail
     late. An existing database of such a name keeps working: a user given

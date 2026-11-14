@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/services"
 )
 
@@ -206,6 +209,21 @@ func TestRegisteredMariaDBWithoutReadRightGrantsAndRecordsUnverifiable(t *testin
 		long, grantFormsReasonNameTooLong).Scan(&listed); err != nil || listed != 1 {
 		t.Fatalf("the pattern-form right is not listed: %d %v", listed, err)
 	}
+	// Revoking it removes the listing too (the list keeps nothing gone).
+	var granted struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &granted); err != nil || granted.ID == 0 {
+		t.Fatalf("grant answer %s", recorder.Body.String())
+	}
+	recorder = httptest.NewRecorder()
+	fixture.panel.handleRevokeDatabaseAccess(recorder, fixture.requestAsOwner(http.MethodDelete, fmt.Sprintf(`/api/v1/grants/%d`, granted.ID), ""))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("revoke: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if err := fixture.sql.QueryRow(`SELECT COUNT(*) FROM database_grant_forms WHERE username = 's9201_long_u'`).Scan(&listed); err != nil || listed != 0 {
+		t.Fatalf("the revoked right is still listed: %d %v", listed, err)
+	}
 	// A NEW database of such a name is refused before anything is made, with
 	// what to do and by how much.
 	answer := create(strings.Repeat("n_", 28), "long_w", "Long-User-Passw0rd!4")
@@ -218,4 +236,78 @@ func TestRegisteredMariaDBWithoutReadRightGrantsAndRecordsUnverifiable(t *testin
 		t.Fatalf("refusal: %+v", refusal)
 	}
 
+}
+
+// Verification of the second review (S2), on the real engine: a database
+// dropped by hand while CelikPanel still records it hides nothing - its
+// pattern right is neither rewritten nor marked done; it is listed (the
+// database no longer exists, the record still does), counted as left, and
+// offered only its removal.
+func TestADatabaseDroppedByHandKeepsItsPatternRightListedOnRealMariaDB(t *testing.T) {
+	port, root := readBackEngine(t)
+	cleanup := "DROP DATABASE IF EXISTS s9201_gone_x; DROP DATABASE IF EXISTS s9201_gone1x; DROP USER IF EXISTS 's9201_gone_u'@'localhost';"
+	rootSQL(t, root, cleanup)
+	t.Cleanup(func() { _, _ = root.GrantExec()(cleanup) })
+	rootSQL(t, root, "CREATE DATABASE s9201_gone_x; CREATE DATABASE s9201_gone1x; CREATE USER 's9201_gone_u'@'localhost' IDENTIFIED BY 'Gone-Passw0rd!1';"+
+		// As alpha.133 wrote it; then the database is dropped by hand.
+		" GRANT ALL PRIVILEGES ON `s9201_gone_x`.* TO 's9201_gone_u'@'localhost'; DROP DATABASE s9201_gone_x;")
+
+	fixture := newDatabaseV2SecurityFixture(t)
+	secret, _ := fixture.box.Encrypt(os.Getenv("CELIKPANEL_TEST_MARIADB_PASSWORD"))
+	if _, err := fixture.sql.Exec(`UPDATE database_servers SET host = '127.0.0.1', port = ?, admin_username = ?, root_password_encrypted = ? WHERE id = ?;
+		UPDATE database_servers SET status = 'retired' WHERE id = ?;`, port, readBackSuperuser(), secret, dbSecurityServer, dbSecurityForeignServer); err != nil {
+		t.Fatal(err)
+	}
+	userSecret, _ := fixture.box.Encrypt("Gone-Passw0rd!1")
+	if _, err := fixture.sql.Exec(`INSERT INTO databases_v2 (id, server_id, subscription_id, domain_id, name) VALUES (9611, ?, ?, ?, 's9201_gone_x');
+		INSERT INTO database_users (id, server_id, subscription_id, username, password) VALUES (9511, ?, ?, 's9201_gone_u', ?);
+		INSERT INTO database_user_grants (database_id, user_id, privileges) VALUES (9611, 9511, 'ALL');`,
+		dbSecurityServer, dbSecuritySubscription, dbSecurityDomain, dbSecurityServer, dbSecuritySubscription, userSecret); err != nil {
+		t.Fatal(err)
+	}
+	saved := []any{databaseGrantFormsUpdatePhase, databaseGrantFormsHostQuiet, databaseGrantFormsCommit}
+	databaseGrantFormsUpdatePhase = func(string) (string, bool) { return "succeeded", true }
+	databaseGrantFormsHostQuiet = func(*Panel, context.Context) bool { return true }
+	databaseGrantFormsCommit = func() string { return strings.Repeat("a", 40) }
+	t.Cleanup(func() {
+		databaseGrantFormsUpdatePhase = saved[0].(func(string) (string, bool))
+		databaseGrantFormsHostQuiet = saved[1].(func(*Panel, context.Context) bool)
+		databaseGrantFormsCommit = saved[2].(func() string)
+	})
+	for range 2 { // never "done" on a later round either
+		fixture.panel.runDatabaseGrantFormsRound(context.Background(), time.Now().Add(-time.Hour))
+	}
+	var state, reason string
+	if err := fixture.sql.QueryRow(`SELECT state, reason FROM database_grant_forms WHERE username = 's9201_gone_u'`).Scan(&state, &reason); err != nil {
+		t.Fatal(err)
+	}
+	if state != "left" || reason != grantFormsReasonDatabaseMissing {
+		t.Fatalf("row %s/%s", state, reason)
+	}
+	if n := readBackMarker(t, root, "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 's9201_gone_u' AND Db = CONCAT('s9201', CHAR(92), '_gone', CHAR(92), '_x');"); n != "0" {
+		t.Fatalf("an exact right was written for a database that does not exist: %s", n)
+	}
+	if n := readBackMarker(t, root, "SELECT CONCAT('n=', COUNT(*)) FROM mysql.db WHERE User = 's9201_gone_u' AND Db = 's9201_gone_x';"); n != "1" {
+		t.Fatalf("the engine row was touched by the round: %s", n)
+	}
+	view, err := fixture.panel.databaseGrantFormsView(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := false
+	for _, row := range view.Left {
+		if row.Account == "s9201_gone_u@localhost" {
+			listed = row.Reason == grantFormsReasonDatabaseMissing && row.StatementKind == mariadbgrant.StatementRemove &&
+				strings.Join(row.Reached, ",") == "s9201_gone1x"
+		}
+	}
+	counted := false
+	for _, engine := range view.Engines {
+		if engine.Name == "owner-logical-server" {
+			counted = engine.Left >= 1
+		}
+	}
+	if !listed || !counted {
+		t.Fatalf("view: %+v %+v", view.Engines, view.Left)
+	}
 }

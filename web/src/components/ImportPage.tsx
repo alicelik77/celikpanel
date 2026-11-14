@@ -93,12 +93,14 @@ interface ImportResult {
     partial: boolean;
     imported: string[];
     notImported: string[];
+    /** Databases left out for their names (complete otherwise). */
+    skippedDatabases: string[];
     steps: StepResult[];
 }
 
 function readImportResult(raw: unknown, domain: string): ImportResult | null {
     if (!raw || typeof raw !== 'object') return null;
-    const data = raw as { steps?: unknown; status?: unknown; domain?: unknown };
+    const data = raw as { steps?: unknown; status?: unknown; domain?: unknown; skipped_databases?: unknown };
     if (!Array.isArray(data.steps)) return null;
     const steps: StepResult[] = data.steps.map((s) => ({
         step: String((s as StepResult)?.step ?? ''),
@@ -115,6 +117,7 @@ function readImportResult(raw: unknown, domain: string): ImportResult | null {
         partial: data.status === 'partial' || steps.some((s) => !s.ok),
         imported: parts.filter((s) => s.ok && !s.state).map((s) => s.step),
         notImported: parts.filter((s) => !s.ok).map((s) => s.step),
+        skippedDatabases: Array.isArray(data.skipped_databases) ? data.skipped_databases.filter((name): name is string => typeof name === 'string') : [],
         steps,
     };
 }
@@ -603,7 +606,9 @@ export function ImportPage() {
                                 <DownloadCloud className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                                 {t('import.resultTitle')}
                             </h3>
-                            <p className="mt-1.5 max-w-[75ch] break-words text-sm text-fg-muted">{t('import.result.complete', { domain: result.domain })}</p>
+                            <p className="mt-1.5 max-w-[75ch] break-words text-sm text-fg-muted">
+                                {t(result.skippedDatabases.length > 0 ? 'import.result.completeSkipped' : 'import.result.complete', { domain: result.domain, names: result.skippedDatabases.join(', ') })}
+                            </p>
                             {/* The next step after a complete import: the site, its
                                 DNS records and its mailboxes (alpha.114).
                                 Tam ice aktarmadan sonraki adim: site, DNS, posta. */}

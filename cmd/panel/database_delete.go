@@ -162,6 +162,9 @@ type databaseDeleteUser struct {
 
 // databaseDeletion is what a deletion did, for the answer and the audit.
 type databaseDeletion struct {
+	// owners: every user on record for the database (second review): their
+	// rights naming it go in both forms on deletion, local or registered.
+	owners         []string
 	ID             int
 	SubscriptionID int
 	Name           string
@@ -584,6 +587,9 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	// otherwise stay in mysql.db).
 	var remove, forget, shared []databaseDeleteUser
 	for _, user := range fates[databaseID] {
+		// Every user on record for the database, whatever becomes of it: its
+		// rights naming the dropped database go in both forms (S1).
+		deletion.owners = append(deletion.owners, user.Username)
 		switch user.Stays {
 		case databaseUserRemoved:
 			remove = append(remove, user)
@@ -664,6 +670,13 @@ func (p *Panel) deleteDatabaseRecord(ctx context.Context, databaseID int) (*data
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM databases_v2 WHERE id = ?`, databaseID); err != nil {
 		return nil, recordsLeft(fmt.Errorf("remove the record of database %s: %w", deletion.Name, err))
+	}
+	// CelikPanel's own listed rows naming it (too long a name, or a database
+	// dropped by hand) went with its rights; the list keeps nothing that is
+	// gone (verification of the second review).
+	if _, err := tx.ExecContext(ctx, `DELETE FROM database_grant_forms WHERE engine_key = ? AND kind = 'ours' AND state = 'left' AND database_name = ?`,
+		databaseServerEngineIdentity(server), deletion.Name); err != nil {
+		return nil, recordsLeft(fmt.Errorf("remove the listed rights of database %s: %w", deletion.Name, err))
 	}
 	for _, user := range append(remove, forget...) {
 		// Removed from the engine, or kept there (the owner's own rights, or
@@ -766,12 +779,8 @@ func (p *Panel) deleteDatabaseOnThisMachine(ctx context.Context, server *core.Da
 	sweepLeft, sweepUnknown := false, false
 	if engine == "mysql" && !exists {
 		var swept transport.DroppedDatabaseRightsResponse
-		owners := make([]string, 0, len(steps))
-		for _, s := range steps {
-			owners = append(owners, s.user.Username)
-		}
 		err := databaseDroppedRightsAgent(p, ctx, transport.DroppedDatabaseRightsRequest{
-			ExpectedBuildCommit: strings.TrimSpace(buildCommit), Database: name, Owners: owners}, &swept)
+			ExpectedBuildCommit: strings.TrimSpace(buildCommit), Database: name, Owners: deletion.owners}, &swept)
 		switch {
 		case err != nil:
 			sweepLeft, sweepUnknown = true, true
@@ -817,7 +826,7 @@ func (p *Panel) deleteDatabaseElsewhere(server *core.DatabaseServer, deletion *d
 		return &databaseDeleteError{engine: err, server: server, cause: fmt.Errorf("drop database %s: %w", name, err)}
 	}
 	if dbDriverTypeFor(server) == "mariadb" {
-		result, err := databaseDroppedRightsElsewhere(driver, name, deletion.UsersKeptOnServer)
+		result, err := databaseDroppedRightsElsewhere(driver, name, deletion.owners)
 		if err != nil {
 			deletion.RightsMayRemain = true
 			log.Printf("database deletion %s on server %d: rights naming it were not removed with the record's account: %v", name, server.ID, err)
