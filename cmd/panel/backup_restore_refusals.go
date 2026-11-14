@@ -46,7 +46,7 @@ func writeRestoreFailure(w http.ResponseWriter, resp backupspec.RestoreResponse)
 			fmt.Sprintf("The restore stopped, and putting the site back did not finish either. The safety copy %s is kept: restore it from this list to return to the state before. The reason is below.", safety), "", detail)
 	case backupspec.RestoreCodeInvalid:
 		writeCodedErrorDetails(w, http.StatusConflict, errCodeRestoreInvalid,
-			"This backup failed its checks (it is damaged or belongs to another site), so nothing was restored and the site is unchanged. Choose another backup.", "", detail)
+			"This backup failed its checks (for example, it is damaged), so nothing was restored and the site is unchanged. Choose another backup.", "", detail)
 	case backupspec.RestoreCodeFinishFailed:
 		writeCodedErrorDetails(w, http.StatusInternalServerError, errCodeRestoreFinishFailed,
 			"The backup was restored, but its last step (cleanup and saving to disk) did not finish. The safety copy taken before is kept. Check the site; restore again if something is missing.", "", detail)

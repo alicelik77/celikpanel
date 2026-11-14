@@ -254,11 +254,14 @@ test('the new words are in English and Turkish, in plain Turkish', () => {
   // sentence instead: each differs from cmd/panel's English message.
   const go = readFileSync(new URL('../../cmd/panel/backup_restore_refusals.go', import.meta.url), 'utf8');
   for (const [key, constant] of [['err.BACKUP_RESTORE_NOT_FOUND', 'errCodeRestoreNotFound'], ['err.BACKUP_RESTORE_OTHER_SITE', 'errCodeRestoreOtherSite'],
-    ['err.BACKUP_RESTORE_NO_SPACE', 'errCodeRestoreNoSpace'], ['err.BACKUP_RESTORE_SITE_ACCOUNT', 'errCodeRestoreSiteAccount']]) {
+    ['err.BACKUP_RESTORE_NO_SPACE', 'errCodeRestoreNoSpace'], ['err.BACKUP_RESTORE_SITE_ACCOUNT', 'errCodeRestoreSiteAccount'],
+    // alpha.128's damaged-backup refusal, too; another site's backup has its own code now.
+    ['err.BACKUP_RESTORE_INVALID', 'errCodeRestoreInvalid']]) {
     const message = go.match(new RegExp(`${constant},\\s*"([^"]+)"`))?.[1];
     assert.ok(message, `${constant} has no message`);
     assert.notEqual(english[key], message, `${key} equals the server's message`);
   }
+  assert.doesNotMatch(`${english['err.BACKUP_RESTORE_INVALID']} ${turkish['err.BACKUP_RESTORE_INVALID']}`, /another site|başka bir site/);
   for (const key of keys) assert.ok(typeof turkish[key] === 'string' && turkish[key].length > 0, `${key} has no Turkish`);
   assert.equal(turkish['bkc.row.noProgramOld'], 'Bu yedek programı içermiyor (eski biçim)');
   assert.equal(turkish['bkc.area.program'], 'Program dosyaları ve verisi ({size})');
