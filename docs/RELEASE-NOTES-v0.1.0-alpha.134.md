@@ -2,7 +2,7 @@
 
 [Türkçe](RELEASE-NOTES-v0.1.0-alpha.134.tr.md)
 
-> **Candidate.** Not published yet; the lab check has not run yet.
+> **Candidate.** Not published yet; the lab checks are not finished yet.
 
 A small release of three jobs. A site's certificate now says what it
 protects, and a new certificate covers the domain's mail name; site backups
@@ -54,8 +54,10 @@ screen.**
    itself.
    - **Replaced certificates go away by themselves; there is nothing to
      press.** A server that got certificates again since alpha.113 holds the
-     certificates they replaced; some minutes after the update is verified
-     these are removed and each one is listed in the audit log.
+     certificates they replaced. A certificate replaced by a new one is
+     removed with certbot within about an hour after the update is verified
+     (at the next hourly check), once nothing uses it; one whose renewal
+     file was edited by hand is kept and noted in the audit log.
 5. If you did not do it after alpha.133: give CelikPanel's database account
    a new password once on each database server (**Components → MariaDB**,
    "The account CelikPanel connects to this service with", **More → New
@@ -109,9 +111,19 @@ screen.**
   it, so it is no longer renewed in the background; this runs only after an
   update is verified, never touches the certificate in use, keeps anything a
   file on the server or a rollback snapshot still names, and writes each
-  removal and each kept certificate to the audit log.
+  removal and each kept certificate to the audit log. A certificate
+  replaced by a new one is removed with certbot within about an hour after
+  the update is verified (at the next hourly check), once nothing uses it;
+  one whose renewal file was edited by hand is kept and noted in the audit
+  log.
 - **A request the certificate authority did not fulfil now says why, who
   acts and what to do next;** customers are no longer sent to a server file.
+- A certificate request that fails because certbot's account at the
+  certificate authority cannot be used now says so, and names the server
+  administrator as the one who acts. The form for getting the certificate
+  again opens with the account's e-mail address filled in.
+- The renewal notes on the certificate screen tell customers what they can
+  do there; server commands and paths are shown to the administrator only.
 - **A newly issued certificate that this server does not trust is reported
   as such** instead of an internal error; the current certificate keeps
   serving.
@@ -207,10 +219,17 @@ screen.**
 
 ### Certificates
 
-- **The new certificate requests have not run against a real certificate
-  authority.** They are covered by component tests; the lab check (with a
-  test authority) has not run yet. Lab steps: docs/CERTIFICATE-COVERAGE.md
-  §8.
+- **The new certificate requests have not run against a public certificate
+  authority.** They ran on real lab systems against the lab's own test
+  authority: covering the mail name, a name that points elsewhere, renewal
+  with the panel stopped, removing and keeping replaced certificates, and
+  the refusals. Lab steps: docs/CERTIFICATE-COVERAGE.md §8.
+- **A replaced certificate whose only hand edit is switching its renewal
+  off** cannot be told apart from CelikPanel's own earlier switch, so it is
+  removed like the others.
+- **The reason "certbot's account at the authority cannot be used"** is
+  recognised from certbot's output and its log; it has been seen with the
+  lab's test authority, not yet with a public one.
 - A name that starts to point to this server after the certificate was
   issued (a new alias, or `mail.<domain>` created later) is shown "Not
   protected" with **Get it again with this name**; it is not added by
@@ -234,8 +253,12 @@ screen.**
 
 ### Site backups
 
-- **The backup and restore of programs is component-tested only;** it has
-  not run on a real system yet. Lab steps: docs/SITE-BACKUP-CONTENTS-DESIGN.md,
+- **The backup and restore of programs ran on real lab systems** for a
+  site program (what a backup holds, restore with the program stopped and
+  started again, the folder's own group, a program you stopped, an older
+  backup, and the refusals). Not run in any lab check yet: restoring a
+  Python (Flask) app, a service app's backup result, and deleting, creating
+  again and restoring a site. Lab steps: docs/SITE-BACKUP-CONTENTS-DESIGN.md,
   "Lab steps".
 - **Deleting a site and then restoring its backup does not work yet.** A
   backup package is bound to its site and subscription, so it cannot be
@@ -396,7 +419,14 @@ and the issue refusals (`cmd/agent/site_cert_retire_test.go`,
 `RetireSiteCertificateLineagesV1` (build-gated), audit actions
 `ssl.lineage.*`, D-040 point 9 amended; additive transport field `Left` and
 code `DATABASE_CREATE_LEFT_OVER`; additive `InspectResponse.Code` and
-restore codes, backup manifest still version 3. The fix round has
-component tests only until the second lab run.
-No real certificate authority and no native run. **No P0 item is closed.**
+restore codes, backup manifest still version 3. Second fix round, after
+lab run 6: a replaced lineage is removed only when its renewal file holds
+nothing but what certbot writes for CelikPanel's request
+(`cmd/agent/site_cert_retire_conf_test.go`), a pass held at start is asked
+again by the hourly round, the account reasons, the renewal box per
+reader, the prefilled address (`web/tests/ssl-renewal-guidance.test.mjs`,
+`web/tests/certificate-coverage-alpha134.test.mjs`). Program backups and
+certificates ran on real lab systems (run 5: H.1–H.3, H.6, H.7, G.1–G.5
+with the lab's own test authority; run 6: B.1, B.2, C.1–C.5); no public
+certificate authority. **No P0 item is closed.**
 Release sequence 133 → 134.

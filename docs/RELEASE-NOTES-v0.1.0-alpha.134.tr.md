@@ -2,7 +2,7 @@
 
 [English](RELEASE-NOTES-v0.1.0-alpha.134.md)
 
-> **Aday.** Henüz yayımlanmadı; laboratuvar denetimi henüz yapılmadı.
+> **Aday.** Henüz yayımlanmadı; laboratuvar denetimleri henüz bitmedi.
 
 Üç işlik küçük bir sürüm. Sitenin sertifikası artık neyi koruduğunu
 söylüyor ve yeni sertifika alan adının posta adını da kapsıyor; site
@@ -55,9 +55,11 @@ günceller.**
    Kendiliğinden hiçbir şey yeniden istenmez.
    - **Yerini yenisine bırakan sertifikalar kendiliğinden kalkar; basmanız
      gereken bir şey yok.** alpha.113'ten bu yana sertifikaları yeniden
-     alınmış bir sunucu, onların yerini aldığı sertifikaları tutar;
-     güncelleme doğrulandıktan birkaç dakika sonra bunlar kaldırılır ve her
-     biri Denetim günlüğünde listelenir.
+     alınmış bir sunucu, onların yerini aldığı sertifikaları tutar.
+     Yenisiyle değiştirilen sertifika, güncelleme doğrulandıktan sonra
+     yaklaşık bir saat içinde (bir sonraki saatlik denetimde), onu kullanan
+     bir şey yoksa certbot ile kaldırılır; yenileme dosyası elle
+     değiştirilmiş olan korunur ve denetim günlüğüne yazılır.
 5. alpha.133'ten sonra yapmadıysanız: CelikPanel'in veritabanı hesabına her
    veritabanı sunucusunda bir kez yeni parola verin (**Bileşenler →
    MariaDB**, "CelikPanel'in bu hizmete bağlandığı hesap", **Diğer → Yeni
@@ -114,9 +116,18 @@ günceller.**
   doğrulandıktan sonra çalışır, kullanımdaki sertifikaya dokunmaz,
   sunucudaki bir dosyanın ya da geri dönüş kopyasının hâlâ andığı
   sertifikayı korur ve her kaldırmayı da her korumayı da Denetim günlüğüne
-  yazar.
+  yazar. Yenisiyle değiştirilen sertifika, güncelleme doğrulandıktan sonra
+  yaklaşık bir saat içinde (bir sonraki saatlik denetimde), onu kullanan bir
+  şey yoksa certbot ile kaldırılır; yenileme dosyası elle değiştirilmiş olan
+  korunur ve denetim günlüğüne yazılır.
 - **Sertifika kuruluşunun yerine getirmediği istek artık nedenini, kimin ne
   yapacağını söylüyor;** müşteriler sunucudaki bir dosyaya yönlendirilmiyor.
+- certbot'un sertifika kuruluşundaki hesabı kullanılamadığı için başarısız
+  olan sertifika isteği artık bunu söylüyor ve işi yapacak kişi olarak
+  sunucu yöneticisini gösteriyor. Sertifikayı yeniden alma formu hesabın
+  e-posta adresi yazılı olarak açılıyor.
+- Sertifika ekranındaki yenileme notları müşteriye orada yapabileceğini
+  söyler; sunucu komutları ve yolları yalnız yöneticiye gösterilir.
 - **Bu sunucunun güvenmediği yeni sertifika iç hata yerine adıyla
   bildiriliyor;** şimdiki sertifika kullanılmaya devam ediyor.
 
@@ -214,9 +225,17 @@ günceller.**
 
 ### Sertifikalar
 
-- **Yeni sertifika istekleri gerçek bir sertifika kuruluşuna karşı
-  denenmedi.** Bileşen testleriyle denetlendi; deneme amaçlı bir sertifika
-  kuruluşuyla yapılacak laboratuvar denetimi henüz yapılmadı.
+- **Yeni sertifika istekleri herkese açık bir sertifika kuruluşuna karşı
+  denenmedi.** Laboratuvarın gerçek sistemlerinde, laboratuvarın kendi
+  deneme kuruluşuna karşı çalıştılar: posta adını kapsama, başka yeri
+  gösteren bir ad, panel durmuşken yenileme, yerini yenisine bırakan
+  sertifikaların kaldırılması ve korunması, retler.
+- **Tek elle değişikliği yenilemesini kapatmak olan, yerini yenisine
+  bırakmış bir sertifika** CelikPanel'in önceki kendi kapatmasından ayırt
+  edilemez; bu yüzden ötekiler gibi kaldırılır.
+- **"certbot'un kuruluştaki hesabı kullanılamıyor" nedeni** certbot'un
+  çıktısından ve günlüğünden tanınır; laboratuvarın deneme kuruluşuyla
+  görüldü, herkese açık bir kuruluşla henüz görülmedi.
 - Sertifika alındıktan sonra bu sunucuyu göstermeye başlayan bir ad (yeni
   bir diğer ad ya da sonradan açılan `mail.<alan adı>`) "Korunmuyor" ve
   **Bu adla yeniden al** düğmesiyle gösterilir; kendiliğinden eklenmez.
@@ -239,8 +258,13 @@ günceller.**
 
 ### Site yedekleri
 
-- **Programların yedeklenmesi ve geri yüklenmesi yalnızca bileşen
-  testleriyle denetlendi;** gerçek bir sunucuda henüz çalıştırılmadı.
+- **Programların yedeklenmesi ve geri yüklenmesi laboratuvarın gerçek
+  sistemlerinde bir site programıyla çalıştı** (yedeğin neleri içerdiği,
+  programı durdurup yeniden başlatan geri yükleme, klasörün kendi grubu,
+  sizin durdurduğunuz program, eski bir yedek ve retler). Hiçbir
+  laboratuvar denetiminde henüz denenmeyenler: bir Python (Flask)
+  uygulamasının geri yüklenmesi, bir hizmet uygulamasının yedek sonucu ve
+  bir siteyi silip yeniden açıp geri yükleme.
 - **Bir siteyi silip ardından yedeğini geri yüklemek henüz çalışmıyor.**
   Bir yedek kendi sitesine ve aboneliğine bağlıdır; bu yüzden panelden yeni
   bir siteye geri yüklenemez. Bu, sonraki bir sürümde gelecek. Yedeğine
@@ -385,7 +409,12 @@ bileşenlerinin testleri (listenin sırası dâhil) geçti; adları İngilizce
 notta yazılı. Laboratuvardan sonraki düzeltme turu panelin veritabanını
 değiştirmez; yerini yenisine bırakan sertifikaları kaldıran yeni bir Agent
 çağrısı ve Denetim günlüğü kayıtları ekler; D-040'ın 9. maddesi buna göre
-değişti. Bu tur ikinci laboratuvar denetimine kadar yalnız bileşen
-testleriyle denetlendi. Gerçek bir sertifika kuruluşu ve gerçek bir sunucu denemesi
-yok. **Temel dayanıklılık işlerinden hiçbiri kapanmadı.** Sürüm sırası 133 →
+değişti. İkinci düzeltme turu (6. laboratuvar denetiminden sonra): yerini
+yenisine bırakan bir sertifika, yenileme dosyasında certbot'un CelikPanel'in
+isteği için yazdıklarından başka bir şey yoksa kaldırılır; açılışta bekletilen
+tur saatlik turda yeniden sorulur; hesap nedenleri, okuyana göre yenileme
+kutusu ve önceden yazılı adres. Program yedekleri ve sertifikalar
+laboratuvarın gerçek sistemlerinde çalıştı (5. denetim: H.1–H.3, H.6, H.7,
+laboratuvarın kendi deneme kuruluşuyla G.1–G.5; 6. denetim: B.1, B.2,
+C.1–C.5); herkese açık bir sertifika kuruluşu yok. **Temel dayanıklılık işlerinden hiçbiri kapanmadı.** Sürüm sırası 133 →
 134.
