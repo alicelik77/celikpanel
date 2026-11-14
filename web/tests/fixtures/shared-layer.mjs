@@ -89,6 +89,8 @@ export const useRefusalURL = compileSource('lib/useRefusal.ts', unexpected('lib/
 export const lostAnswerURL = compileSource('lib/lostAnswer.ts', (specifier) => (
   specifier.endsWith('/requestIdentity') ? requestIdentityURL : unexpected('lib/lostAnswer.ts')(specifier)
 ));
+// alpha.134 fix round: the length rule of a database create's names (the field's half).
+export const databaseNameLimitsURL = compileSource('lib/databaseNameLimits.ts', unexpected('lib/databaseNameLimits.ts'));
 export const domainDatabasesURL = compileSource('lib/domainDatabases.ts', (specifier) => (
   specifier.endsWith('/remote') ? remoteURL : unexpected('lib/domainDatabases.ts')(specifier)
 ));
@@ -241,6 +243,7 @@ export function sharedLayer(stubURL, extra = {}) {
     '/lib/lostAnswer': lostAnswerURL,
     '/lib/siteCertificateRequest': siteCertificateRequestURL,
     '/lib/domainDatabases': domainDatabasesURL,
+    '/lib/databaseNameLimits': databaseNameLimitsURL,
     '/lib/download': downloadURL,
     '/lib/siteWebServerRefused': siteWebServerRefusedURL,
     '/lib/serviceActionNote': serviceActionNoteURL,

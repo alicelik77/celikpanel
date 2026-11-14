@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/alicelik/celikpanel/internal/mariadbgrant"
 	"github.com/alicelik/celikpanel/internal/repositories"
 	"github.com/alicelik/celikpanel/internal/services"
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -276,6 +275,10 @@ func (p *Panel) handleGetDomainDatabases(w http.ResponseWriter, r *http.Request,
 		"domain_name":     domain.Name,
 		"databases":       databases,
 		"available_types": availableTypes,
+		// alpha.134 fix round: what a new database's name begins with, as
+		// the create below makes it (sanitizeName: `.` and `-` become `_`, a
+		// leading digit gets `_`), so the form shows the real name.
+		"name_prefix": sanitizeName(domain.Name) + "_",
 	}
 
 	json.NewEncoder(w).Encode(response)
@@ -324,6 +327,18 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 	// Generate database name (prefix with domain for organization)
 	dbName := fmt.Sprintf("%s_%s", sanitizeName(domain.Name), req.Name)
 	dbUser := dbName + "_user"
+	// alpha.134 fix round: the database and its user must fit the engine
+	// (one rule, services.DatabaseNamesOver, the Agent's too) and hold only
+	// letters, digits and underscores - refused here, before anything is
+	// registered or sent, never a bare error from the Agent.
+	if over := services.DatabaseNamesOver(req.Type, dbName, dbUser); over.By > 0 {
+		writeDatabaseNameTooLong(w, dbName, over)
+		return
+	}
+	if services.ValidateSQLIdentifier(dbName) != nil {
+		writeClientError(w, http.StatusBadRequest, "The database name may hold only letters, digits and underscores. Nothing was changed.")
+		return
+	}
 
 	// Databases live on the subscription's registered engine of the requested
 	// type; auto-registration keeps this working without manual server setup.
@@ -408,13 +423,6 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 
-	// alpha.134 review: on MariaDB a name whose exact form does not fit a
-	// right is refused before anything is made.
-	if serverTypeNameFor(req.Type) != "postgresql" && !mariadbgrant.ExactFits(dbName) {
-		writeDatabaseNameTooLong(w, dbName)
-		return
-	}
-
 	// The subscription's database limit applies on this path too, with the
 	// same refusal as the Databases page (0 = unlimited).
 	// Abonelik veritabanı sınırı bu yolda da geçerlidir.
@@ -450,13 +458,23 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		return
 	}
 	if err == nil && agentResp.NameTooLong {
-		writeDatabaseNameTooLong(w, dbName)
+		writeDatabaseNameTooLong(w, dbName, services.DatabaseNamesOver(req.Type, dbName, dbUser))
 		return
 	}
 	if err == nil && agentResp.NameTaken != "" {
 		// alpha.129: the engine has the name already (made outside
 		// CelikPanel); nothing was changed or taken over.
 		writeDatabaseNameTaken(w, agentResp.NameTaken, map[string]string{"database": dbName, "user": dbUser}[agentResp.NameTaken])
+		return
+	}
+	if err == nil && agentResp.CleanupIncomplete {
+		// alpha.134 fix round: the create stopped and the Agent could not
+		// take back all it had made; the answer names what is left.
+		left := agentResp.Left
+		if len(left) == 0 {
+			left = []string{dbName, dbUser} // an Agent that does not say which
+		}
+		writeDatabaseCreateLeftOver(w, r, dbName, left, errors.New(boundedAgentDiagnostic(agentResp.Error)))
 		return
 	}
 	if err != nil || !agentResp.Success {
@@ -466,9 +484,25 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 
 	// Record metadata in one transaction so the three v2 rows stay consistent.
 	// Meta veriyi tek işlemde kaydet; üç v2 satırı tutarlı kalsın.
+	// alpha.134 fix round: the Agent made the database and its user for this
+	// request (its create is exclusive), so a failure to record them takes
+	// both back; only what could not be removed is named in the answer.
+	failRecords := func(cause error) {
+		undo := transport.DeleteDatabaseRequest{Type: req.Type, Name: dbName, User: dbUser, RequireUserCleanup: true}
+		if serverTypeNameFor(req.Type) == "postgresql" {
+			undo.Port = serverPort
+		}
+		var undone transport.DeleteDatabaseResponse
+		if undoErr := p.callAgent("Agent.DeleteDatabase", undo, &undone); undoErr != nil || !undone.Success {
+			writeDatabaseCreateLeftOver(w, r, dbName, []string{dbName, dbUser},
+				errors.Join(cause, undoErr, errors.New(boundedAgentDiagnostic(undone.Error))))
+			return
+		}
+		writeServerError(w, cause)
+	}
 	tx, err := pool.BeginTx(ctx, nil)
 	if err != nil {
-		writeServerError(w, err)
+		failRecords(err)
 		return
 	}
 	defer tx.Rollback()
@@ -478,12 +512,12 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		VALUES (?, ?, ?, ?)
 	`, serverID, domain.SubscriptionID, domainID, dbName)
 	if err != nil {
-		http.Error(w, "Failed to store database info", http.StatusInternalServerError)
+		failRecords(fmt.Errorf("store database info: %w", err))
 		return
 	}
 	dbID, err := res.LastInsertId()
 	if err != nil {
-		writeServerError(w, err)
+		failRecords(err)
 		return
 	}
 
@@ -505,7 +539,7 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		}
 	}
 	if err != nil {
-		http.Error(w, "Failed to store database user", http.StatusInternalServerError)
+		failRecords(fmt.Errorf("store database user: %w", err))
 		return
 	}
 
@@ -514,12 +548,12 @@ func (p *Panel) handleCreateDatabase(w http.ResponseWriter, r *http.Request, dom
 		VALUES (?, ?, 'ALL')
 	`, dbID, userID)
 	if err != nil {
-		http.Error(w, "Failed to store database grant", http.StatusInternalServerError)
+		failRecords(fmt.Errorf("store database grant: %w", err))
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		writeServerError(w, err)
+		failRecords(err)
 		return
 	}
 	// alpha.128 (G5): the user created here gets its subscription's

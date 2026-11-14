@@ -1077,6 +1077,52 @@ test('Domain databases: nothing is created on an engine the server did not name'
   }
 });
 
+// --- Domain databases: the name the server will make (alpha.134 fix round) ---
+
+test('Domain databases: the full name comes from the server, and a name it would refuse is stopped in the field', async () => {
+  const list = (extra) => json({ databases: [], available_types: ['mysql'], ...extra });
+  const type = async (value) => {
+    const input = tree.root.findAll((node) => node.type === 'input' && node.props.placeholder === 'myapp')[0];
+    await act(async () => { input.props.onChange({ target: { value } }); await settled(); });
+  };
+  const field = () => tree.root.findAll((node) => node.type === 'input' && node.props.placeholder === 'myapp')[0];
+  const problem = () => tree.root.findAll((node) => node.props && node.props['data-name-problem'] === true);
+  // Without the server's prefix no name is guessed (alpha.133 showed k-1_dr_test_... for k_1_dr_test_...).
+  serve({ '/api/v1/domains/1/databases': list({}) });
+  try {
+    await mount(DomainDatabaseManager, domain);
+    await press(buttons('ddb.create')[0]);
+    await type('myapp');
+    assert.equal(has('ddb.prefix'), false, 'a full name was shown that the server did not give');
+  } finally {
+    await cleanup();
+  }
+  serve({ '/api/v1/domains/1/databases': list({ name_prefix: 'k_1_dr_test_' }) });
+  try {
+    await mount(DomainDatabaseManager, domain);
+    await press(buttons('ddb.create')[0]);
+    await type('myapp');
+    assert.ok(has('ddb.prefix'));
+    assert.equal(problem().length, 0);
+    assert.equal(field().props['aria-invalid'], undefined);
+    // The lab's name: on MariaDB its exact form is 22 over (fewer underscores help).
+    await type('a_b_c_d_e_f_g_h_i_j_k_l_m_n_o_p_q_r_s_t_u_v_w_x');
+    assert.ok(has('ddb.tooLongUnderscores'), 'a name the server refuses is not stopped in the field');
+    assert.equal(field().props['aria-invalid'], true);
+    assert.equal(has('ddb.prefix'), false, '"its full name will be" was said of a name the server will not make');
+    // Only the user would be too long (64): the plain words.
+    await type('a'.repeat(47));
+    assert.ok(has('ddb.tooLong') && !has('ddb.tooLongUnderscores'));
+    await type('my-app');
+    assert.ok(has('ddb.nameCharacters'));
+    await type('my_app');
+    assert.equal(problem().length, 0);
+    assert.equal(calls.filter((call) => call.method !== 'GET').length, 0, 'typing sent a request');
+  } finally {
+    await cleanup();
+  }
+});
+
 // --- Domain databases: the delete question and an unknown result (alpha.133 round 5)
 
 test('Domain databases: the delete question names the users that go and those that stay, and an unknown result reads the list again', async () => {

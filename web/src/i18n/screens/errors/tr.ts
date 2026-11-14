@@ -214,6 +214,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     "err.DB_IMPORT_NO_SITE_ACCOUNT": "Bu alan adının dosyayı altında yükleyecek bir barındırma hesabı yok; hiçbir şey yüklenmedi. Alan adına barındırma ekleyin, sonra yeniden içe aktarın.",
     "err.DB_TOOLS_RESTORE_RUNNING": "Bu sitenin bir geri yüklemesi ya da içe aktarması hâlâ sürüyor; hiçbir şey başlatılmadı. Bitmesini bekleyin, sonra yeniden deneyin.",
     "err.DB_COPY_FAILED": "Kopya yapılamadı; yeni veritabanı yeniden kaldırıldı. Asıl veritabanı değişmedi. Sunucunun gerekçesi aşağıda; yeniden deneyin, tekrarlarsa yöneticinize sorun.",
+    "err.DB_COPY_FAILED.kept": "Kopya yapılamadı ve yeni {name} veritabanı yeniden kaldırılamadı: yarım kopya olarak listede duruyor. Onu listeden silin. Asıl veritabanı değişmedi.",
     "err.DB_CHECK_FAILED": "Veritabanı sunucusu bu veritabanını denetleyemedi. Hiçbir şey değiştirilmedi. Sunucunun yanıtı aşağıda.",
     "err.DB_EXPORT_GONE": "Bu dışa aktarma dosyası artık sunucuda yok (bir indirmeden sonra ya da altı saat sonra silinir). Hiçbir şey değiştirilmedi. Yeni bir dışa aktarma yapın.",
     'dbt.exportFailed': 'Dışa aktarma yapılamadı.',
@@ -221,4 +222,7 @@ export const trErrorsScreens: Record<ErrorsScreenKey, string> = {
     'dbt.copyFailed': 'Kopya yapılamadı.',
     'dbt.checkFailed': 'Denetim tamamlanmadı.',
     'err.DATABASE_NAME_TOO_LONG': '{name} veritabanı adı çok uzun. En az {over} karakter daha kısa ya da daha az alt çizgili bir ad seçin (her alt çizgi iki karakter sayılır). Hiçbir şey değiştirilmedi.',
+    'err.DATABASE_NAME_TOO_LONG.length': '{name} veritabanı adı çok uzun. En az {over} karakter daha kısa bir ad seçin. Hiçbir şey değiştirilmedi.',
+    'err.DATABASE_CREATE_LEFT_OVER': '{name} oluşturulurken iş yarıda kaldı ve CelikPanel yaptığını geri alamadı: {left}. Bunlar CelikPanel\'in listesinde yok; kaldırılana kadar aynı ad kullanılamaz. Sunucu yöneticisi bunları veritabanı sunucusundan kaldırır; o zamana kadar başka bir ad seçin.',
+    'err.DATABASE_CREATE_LEFT_OVER.administrator': '{name} oluşturulurken iş yarıda kaldı ve CelikPanel yaptığını geri alamadı: {left}. Bunlar CelikPanel\'in listesinde yok; kaldırılana kadar aynı ad kullanılamaz. Bunları veritabanı sunucusundan kaldırın ya da başka bir ad seçin.',
 };

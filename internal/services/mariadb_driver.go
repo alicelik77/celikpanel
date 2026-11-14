@@ -320,11 +320,16 @@ func (d *MariaDBDriver) CreateUser(username, password string) error {
 	} else if taken {
 		return fmt.Errorf("database user %s: %w", username, ErrDatabaseNameTaken)
 	}
+	// alpha.134 fix round: CREATE USER is the last statement, so an error
+	// here means this call made no account, and the caller's clean-up is
+	// right to leave the name alone. It used to be followed by FLUSH
+	// PRIVILEGES, which an account statement does not need (the server
+	// reloads its own tables; FLUSH is for edits made to the grant tables
+	// directly) and which a registered account without RELOAD is refused
+	// (ERROR 1227): the account then stood, the create was reported failed
+	// and its clean-up left the account behind (alpha.133 lab, P.6).
 	sql := fmt.Sprintf("CREATE USER %s@'localhost' IDENTIFIED BY %s;", userLiteral, pwLiteral)
-	if err := d.executeSQL(sql); err != nil {
-		return err
-	}
-	return d.executeSQL("FLUSH PRIVILEGES;")
+	return d.executeSQL(sql)
 }
 
 // DeleteUser drops a MariaDB user

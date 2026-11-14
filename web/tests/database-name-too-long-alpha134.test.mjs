@@ -33,7 +33,9 @@ test('every caller that can receive DATABASE_NAME_TOO_LONG has its words in both
   for (const file of ['../src/components/DomainDatabaseManager.tsx', '../src/components/databases/DatabasesPage.tsx', '../src/components/DatabaseTools.tsx']) {
     assert.match(read(file), /readApiError/, file);
   }
-  // The server sends both values with the code.
+  // The server sends both values with the code (alpha.134 fix round: and the
+  // reason "length" where underscores do not count twice).
   const server = read('../../cmd/panel/database_names.go');
-  assert.match(server, /errCodeDatabaseNameTooLong,[\s\S]*map\[string\]string\{"name": name, "over": over\}/);
+  assert.match(server, /vars := map\[string\]string\{"name": name, "over": by\}/);
+  assert.match(server, /errCodeDatabaseNameTooLong,[\s\S]*Reason: databaseNameTooLongPlain, Vars: vars/);
 });

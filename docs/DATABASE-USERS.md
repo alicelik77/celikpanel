@@ -245,12 +245,29 @@ same rules.
     gets exact new grants but no automatic rewrite: its rows are listed.
   - Going back to alpha.133 (snapshot restore of the panel database,
     schema 079 back to 077: two steps, this migration and 078): the
-    exact-form grants stay on the engine and keep working. alpha.133 code
-    then (documented, not built): drops both forms when a database is
-    deleted; but removing an added user from a live database looks for the
-    pattern form only, so the exact grant stays (the account is kept with
-    it) or a registered server's revoke answers "no such grant"; and remote
-    copies of such a user are not refreshed (their grant name is refused).
+    exact-form grants stay on the engine and keep working. What alpha.133
+    then does with them (read from the v0.1.0-alpha.133 code; the first
+    point measured in the alpha.134 lab):
+    - Removing an added user from a live domain database (this machine's
+      MariaDB, through the Agent) works: alpha.133 counts both forms of
+      the name as rights on this database, so an account holding only
+      CelikPanel's rights is dropped whole on every host, its exact grant
+      with it (lab: `{"kept_on_engine":false,"status":"removed"}`). Only an
+      account alpha.133 keeps - one with rights elsewhere, a host CelikPanel
+      did not create, or a check that failed - has its grant looked up in
+      the pattern form alone: the exact grant on this database then stays
+      with the account, and the answer says the account was kept.
+    - Taking a right away through the panel's own driver (the API's grant
+      removal, DELETE /api/v1/grants/{id}, which no alpha.133 screen calls,
+      on any MariaDB record, this machine's included) revokes the pattern
+      form only: a right held in the exact form is answered "no such grant"
+      (ERROR 1141), and the right and its record stay.
+    - Deleting a database on this machine's MariaDB (through the Agent)
+      removes the rights of both forms; on a MariaDB reached with its
+      record's own account (a registered one) alpha.133 drops only the
+      database, and every right naming it stays.
+    - Remote copies of such a user are not refreshed (alpha.133 refuses the
+      exact name's backslash in the copy's grant).
     Updating to alpha.134 again continues from the engine.
   - Open: a one-click narrowing for the listed rows; the exact behaviour of
     `SHOW GRANTS`/`mysql.db` on MySQL 8 with `partial_revokes` (no lab).
@@ -307,3 +324,32 @@ Audit of 7 November 2026:
 - Not changed: moving a database to another PostgreSQL cluster
   (`CopyPostgreSQLDatabaseV1`) creates the roles the target lacks and reuses
   roles of the same name already on the target, by design of the move.
+- Lengths (alpha.134): every name a create makes - the database and the
+  user made with it (`<database>_user`), a copy and its user, an added
+  user - holds at most 63 characters on both engines, and on MariaDB the
+  database name's exact form fits 64 (above). One rule
+  (`services.DatabaseNamesOver`) is checked by the panel before anything is
+  sent and by the Agent before anything runs; the domain's create form
+  reads the same test cases, shows the full name as the server makes it
+  (the list's `name_prefix`) and stops such a name beside the field. A name
+  too long is DATABASE_NAME_TOO_LONG with by how much; the words about
+  underscores come only when MariaDB's exact form is the limit exceeded
+  most. A name holding another character than a letter, digit or `_` is
+  refused before the Agent too. Names CelikPanel makes itself (installers,
+  clones, site copies) are shortened by FitBase, which keeps them within 63
+  as well (their user has the database's own name), on both engines.
+- A failed create (alpha.134): what it made is taken back - the user
+  before the database, and only what this request made itself; an account
+  that existed before is never touched. The panel driver's last statement
+  for a new MariaDB user is CREATE USER (an account statement needs no
+  FLUSH PRIVILEGES; an account without RELOAD used to have the new user
+  left behind, alpha.133 lab). When the clean-up cannot finish, the engine
+  is asked what is still there and the answer (DATABASE_CREATE_LEFT_OVER)
+  names it, says the server's administrator removes it, and that the same
+  name is refused until then. The domain create also takes back what the
+  Agent made when its records cannot be written, and a database copy that
+  could not be removed again says so (it stays listed; Delete removes it).
+  Open: a CREATE DATABASE or CREATE USER that gets no answer (a timeout, a
+  lost connection) is not taken back - whether it ran is unknown and the
+  panel keeps no record proving the name its own; the next press is then
+  refused as taken.
