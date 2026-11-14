@@ -1,0 +1,57 @@
+// SCREEN catalogue part "deletionHolding" (alpha.135): what deletions left,
+// kept 30 days and then deleted - the list on Maintenance, its line on the
+// administrator's home page and in the disk warning, and what a mailbox
+// deletion says about its mail. Key prefixes: holding., err.HOLDING_.
+// One part of the screen copy; ../../index.tsx fetches every part in
+// parallel and no screen renders before all of them have arrived.
+//
+// EKRAN katalogu parçası "deletionHolding": silmelerden kalanlar.
+
+export const enDeletionHoldingScreens = {
+    'holding.title': 'What deletions left',
+    'holding.intro': 'The stored mail of deleted domains and mailboxes and the backups of deleted domains on this server are kept here 30 days, then deleted by themselves. Copies at a remote backup destination are not touched.',
+    'holding.checking': 'Reading what deletions left…',
+    'holding.unread': 'The list could not be read, so nothing is shown; this does not mean it is empty. Nothing was changed.',
+    'holding.empty': 'Nothing is kept from deletions.',
+    'holding.summary': '{n} items, {size} in all; the first is deleted on {date}',
+    'holding.row': '{size}; kept until {date}, then deleted',
+    'holding.sizeUnknown': 'size not known',
+    'holding.what.mail': 'Mail of {domain}',
+    'holding.what.mailbox': 'Mail of {mailbox}',
+    'holding.what.backups': 'Backups of {domain} ({n} files)',
+    'holding.domainUnknown': 'a deleted domain (#{id})',
+    'holding.removeNow': 'Delete now…',
+    'holding.removeAll': 'Delete all now…',
+    'holding.download': 'Download',
+    'holding.details': 'Details',
+    'holding.deletedAt': 'Kept since {date}',
+    'holding.adopted': 'Left by an earlier release; its 30 days started on {date}, when it was taken into this list.',
+    'holding.state.waiting': 'Its domain is still being deleted; it is kept until that deletion finishes.',
+    'holding.state.failed': 'The last attempt to delete it failed (the reason is under Details). It is tried again by itself on {date}; once the cause is fixed, Delete now… deletes it at once.',
+    'holding.failure': 'Last attempt: {line}',
+    'holding.state.unknown': 'No answer came to the last attempt to delete it, so it is not known whether it was deleted. It is tried again by itself on {date}.',
+    'holding.files.reading': 'Reading the backup files…',
+    'holding.files.unread': 'The backup files could not be read. Press Download again.',
+    'holding.files.none': 'No backup files are left in it.',
+    'holding.confirm.title': 'Delete {what} now?',
+    'holding.confirm.allTitle': 'Delete all {n} items now?',
+    'holding.confirm.message': 'This cannot be undone. It is deleted now, without waiting for its date.',
+    'holding.confirm.line': '{what}: {size}',
+    'holding.progress': 'Deleting {what}',
+    'holding.progressAll': 'Deleting what deletions left',
+    'holding.done': '{what} deleted',
+    'holding.doneAll': 'Everything deleted',
+    'holding.unfinished': '{n} of them were not deleted; the list says why for each one and tries them again by itself.',
+    'holding.removeFailed': 'It was not deleted.',
+    'holding.home': 'What deletions left: {n} items, {size}; deleted by themselves from {date}.',
+    'holding.open': 'Open the list',
+    'holding.disk': '{size} of it is what deletions left, which can be deleted now without waiting.',
+    'holding.diskAction': 'Open what deletions left',
+    'holding.mailboxKept': 'Its messages are kept 30 days, then deleted; a mailbox made again with this address starts empty.',
+    'holding.mailboxKeptUntil': '{name} deleted. Its messages ({size}) are kept until {date}.',
+    'holding.mailboxAskProvider': 'Until then your provider can give them back.',
+    'err.HOLDING_REMOVE_FAILED': 'It was not deleted; the reason is under the row’s Details. It stays in the list and is tried again by itself; once the cause is fixed, press Delete now… again.',
+    'err.HOLDING_REMOVE_UNKNOWN': 'No answer came, so it is not known whether it was deleted. The list is read again; if it is still there, press Delete now… again.',
+} as const;
+
+export type DeletionHoldingScreenKey = keyof typeof enDeletionHoldingScreens;

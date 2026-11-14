@@ -24,7 +24,8 @@ import { useAuth } from '../auth/AuthContext';
 import type { TranslationKey } from '../i18n/en';
 import { Button, Checking, CouldNotCheck, Dialog, KeepWords, Spinner, UsageBar, Card } from './ui';
 import { PageHeader } from './PageHeader';
-import { siteKindWord } from './kit/words';
+import { siteKindWord, sizeWord } from './kit/words';
+import { formatDate } from '../lib/dateFormat';
 import { MyPlanCard } from './MyPlanCard';
 
 // alpha.128 ops (G18): the person's own notices, "Needs your action" first.
@@ -99,6 +100,8 @@ interface Extras {
     databases: number;
     mail_accounts: number;
     expiring_certs: { domain_name: string; days_left: number; waiting_for_owner?: boolean; served_days_left?: number; renewal_problem?: string }[];
+    /** alpha.135: what deletions left, kept 30 days; the administrator's, null when nothing is kept. */
+    holding: { count: number; bytes: number; earliest: string } | null;
 }
 
 // An answer without the two counts is not "0 databases, 0 mailboxes".
@@ -110,7 +113,15 @@ function decodeExtras(raw: unknown): Extras {
         databases: body.databases,
         mail_accounts: body.mail_accounts,
         expiring_certs: decodeList(body.expiring_certs ?? null),
+        holding: decodeHoldingSummary((body as { holding?: unknown }).holding),
     };
+}
+
+// alpha.135: what deletions left (count, size, first date), or null.
+function decodeHoldingSummary(raw: unknown): Extras['holding'] {
+    const value = raw as { count?: unknown; bytes?: unknown; earliest_remove_after?: unknown } | null | undefined;
+    if (!value || typeof value.count !== 'number' || value.count < 1 || typeof value.bytes !== 'number' || typeof value.earliest_remove_after !== 'string') return null;
+    return { count: value.count, bytes: value.bytes, earliest: value.earliest_remove_after };
 }
 
 const NO_DOMAINS: DomainLite[] = [];
@@ -343,7 +354,7 @@ export function Dashboard() {
 }
 
 function AdminDashboard() {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const navigate = useNavigate();
     const [stats, setStats] = useState<SystemStats | null>(null);
     const [services, setServices] = useState<SvcLite[]>([]);
@@ -1005,6 +1016,13 @@ function AdminDashboard() {
                 the top, each with its fix; nothing when there is none. */}
             <AlertsNotice />
             <ProblemsNow omit={DASHBOARD_SHOWS_ELSEWHERE} quiet />
+            {/* alpha.135: one fact line while something is kept from deletions. */}
+            {extras?.holding && (
+                <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-fg" data-dashboard-holding="">
+                    <span>{t('holding.home', { n: extras.holding.count, size: sizeWord(extras.holding.bytes, locale), date: formatDate(extras.holding.earliest, locale) })}</span>
+                    <Link to="/maintenance#deletion-holding" className="font-semibold text-primary max-sm:min-h-11">{t('holding.open')}</Link>
+                </p>
+            )}
             <Suspense fallback={null}><NotificationsCenter /></Suspense>
 
             {/* A newer signed release, when the Panel found one: one quiet row

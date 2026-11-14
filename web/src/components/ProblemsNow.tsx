@@ -6,6 +6,7 @@ import type { TranslationKey } from '../i18n/en';
 import { apiErrorText, readApiError, type ApiError } from '../lib/apiError';
 import { readServiceActionNote } from '../lib/serviceActionNote';
 import { componentName } from '../lib/componentName';
+import { sizeWord } from './kit/words';
 import { invalidate, useInvalidation, useRemote } from '../lib/remote';
 import { startVisibleReads } from '../lib/visibleReads';
 import { Button } from './ui';
@@ -84,6 +85,9 @@ export interface Problem {
     since?: string;
     observed_at?: string;
     action: { kind: 'start_service' | 'open'; to?: string };
+    /** alpha.135 (disk_full): what deletions left, which can be deleted now. */
+    holding_count?: number;
+    holding_bytes?: number;
 }
 
 export interface ProblemsReport {
@@ -238,6 +242,9 @@ export function ProblemsNow({
                                             {when && <span className="ml-2 text-xs font-normal text-fg-subtle">{when}</span>}
                                         </p>
                                         <p className="mt-1 text-sm leading-6 text-fg-muted">{t(`pnow.${problem.kind}.body` as TranslationKey, vars)}</p>
+                                        {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 && (
+                                            <p className="mt-1 text-sm leading-6 text-fg" data-problem-holding="">{t('holding.disk', { size: sizeWord(problem.holding_bytes ?? 0, locale) })}</p>
+                                        )}
                                         {failed?.key === problem.key && <p className="mt-1 text-sm text-danger" role="alert">{failed.text}</p>}
                                     </div>
                                     {problem.action.kind === 'start_service' ? (
@@ -252,7 +259,7 @@ export function ProblemsNow({
                                         </Button>
                                     ) : showLink ? (
                                         <Link to={problem.action.to as string} className="shrink-0 self-start text-sm font-semibold text-primary max-sm:min-h-11" data-problem-link="">
-                                            {t(`pnow.${problem.kind}.action` as TranslationKey)}
+                                            {problem.kind === 'disk_full' && (problem.holding_bytes ?? 0) > 0 ? t('holding.diskAction') : t(`pnow.${problem.kind}.action` as TranslationKey)}
                                         </Link>
                                     ) : null}
                                 </li>

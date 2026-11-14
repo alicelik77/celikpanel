@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/alicelik/celikpanel/internal/transport"
@@ -100,6 +101,19 @@ func (a *Agent) DeleteMailDomain(
 	}
 	resp.Applied = true
 	resp.Quarantined = quarantined
+	if quarantined {
+		// alpha.134/135: the answer names the holding folder (the Panel's
+		// holding record keeps it; kept 30 days), where it is and its size.
+		resp.QuarantineName = mailDomainQuarantineName(domain, req.DomainID)
+		if root, err := heldMailRoot(); err == nil {
+			resp.QuarantinePath = filepath.Join(root, resp.QuarantineName)
+			bytes, _, unknown := measureHeldTree(resp.QuarantinePath)
+			if unknown {
+				bytes = -1
+			}
+			resp.QuarantineBytes = bytes
+		}
+	}
 	return nil
 }
 

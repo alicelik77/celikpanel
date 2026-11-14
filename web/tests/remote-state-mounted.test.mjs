@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import Renderer, { act } from 'react-test-renderer';
-import { apiErrorURL, compileSource, dataModule, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
+import { apiErrorURL, compileSource, dataModule, domainDeletionQuestionURL, reactURL, remoteURL, replaceLazyImport, sharedLayer } from './fixtures/shared-layer.mjs';
 import { englishCatalogue, englishScreens, turkishCatalogue, turkishScreens } from './locale-catalogue.mjs';
 
 // NO NEGATIVE UI UNLESS KNOWN, on the mounted screens (9 Oct 2026, D-024).
@@ -137,7 +137,9 @@ const hstsRemainingURL = compileSource('lib/hstsRemaining.ts', () => stub);
 // The identity a state-changing request carries is the real one (D-029).
 const requestIdentityURL = compileSource('lib/requestIdentity.ts', () => stub);
 const own = {
-  '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL, '/lib/subscriptions': subscriptionsURL,
+  '/auth/domainAccess': domainAccessURL, '/lib/domainDeletionPending': deletionURL,
+  // alpha.134: the delete question and the words of its result, shipped.
+  '/lib/domainDeletionQuestion': domainDeletionQuestionURL, '/lib/subscriptions': subscriptionsURL,
   '/lib/accounts': accountsURL, '/lib/suspension': compileSource('lib/suspension.ts', besideRemote), '/lib/managedServices': managedServicesURL, '/lib/sslTier': sslTierURL, '/lib/hstsRemaining': hstsRemainingURL,
   '/lib/requestIdentity': requestIdentityURL,
   // alpha.132: the keys of a row of section tabs (Settings, a domain's page).
@@ -184,6 +186,8 @@ const Domains = await load('Domains', { '/AddDomainModal': modalURL });
 // alpha.133: the left menu's Databases page and its one decoder (lib/visibleDatabases.ts).
 const DatabasesPage = (await import(shared.compile('components/databases/DatabasesPage.tsx', { ...own, '/lib/visibleDatabases': compileSource('lib/visibleDatabases.ts', () => stub) }))).DatabasesPage;
 const DomainDatabaseManager = await load('DomainDatabaseManager');
+// alpha.135: Maintenance → What deletions left, the shipped card and decoder.
+const DeletionHoldingCard = await load('DeletionHoldingCard', { '/lib/deletionHolding': compileSource('lib/deletionHolding.ts', () => stub) });
 const DomainConnection = await load('DomainConnection');
 const DomainDNSManager = await load('DomainDNSManager');
 const DomainPHPSettings = await load('DomainPHPSettings');
@@ -2627,11 +2631,17 @@ test('Domains: one confirmation for a bulk delete, and the rows change without a
 // followed in the locked window, step by step (the DNS step waits, and says
 // for what), by reading its saved state only, until it ends; no toast.
 test('Domains: a confirmed delete is followed step by step, by reads only, until it is done', async () => {
-  const pendingBody = { status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming' };
+  // alpha.134: the answer names what stays; the end of the window says it.
+  const pendingBody = {
+    status: 'deletion_pending', stage: 'dns_cleanup', reason: 'remote_dns_removal_confirming',
+    kept: { databases: [{ id: 7, name: 'shop_db', engine: 'mariadb' }], backups: { path: '/var/backups/celikpanel/subscriptions/1/domains/4', files: 2, bytes: 4096, remove_after: '2026-12-14T10:00:00Z' } },
+  };
   const live = liveDomains({ domains: [siteRow(4, 'alicelik.com.tr')], zones: [] });
   let statusReads = 0;
   serve({
     ...live.table,
+    // alpha.134: the question reads the domain's databases first.
+    '/api/v1/domains/4/databases': () => Response.json({ databases: [{ id: 7, name: 'shop_db', engine: 'MariaDB 10.11' }, { id: 8, name: 'blog_db', engine: 'MariaDB 10.11' }] }),
     '/api/v1/domains/4/deletion-status': () => {
       statusReads++;
       if (statusReads < 2) return Response.json(pendingBody);
@@ -2655,26 +2665,79 @@ test('Domains: a confirmed delete is followed step by step, by reads only, until
     await openRowMenu('alicelik.com.tr');
     await press(rowItem('delete'));
     await act(async () => { await settled(); await settled(); });
-    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain and what goes');
+    assert.deepEqual(asked, [['domains.deleteTitle', 'domains.deleteWhat', 'danger', 'domains.deletingTitle']], 'the question does not name the domain, what goes and what goes');
     // alpha.133: what goes and what stays, as the server's deletion does it,
-    // and the name typed before Delete turns on.
+    // and the name typed before Delete turns on. alpha.134: the databases
+    // are one choice, off at first, naming them.
     assert.deepEqual(question.lost, ['domains.delete.lost.site', 'domains.delete.lost.mail', 'domains.delete.lost.dns', 'domains.delete.lost.schedule']);
-    assert.deepEqual(question.kept, ['domains.delete.kept.databases', 'domains.delete.kept.backups', 'domains.delete.kept.mail', 'domains.delete.kept.dns']);
+    assert.deepEqual(question.kept, ['domains.delete.kept.backups', 'domains.delete.kept.mail', 'domains.delete.kept.dns']);
+    // Ticked, each database's data goes (with the users the Databases page
+    // would remove; these two have none recorded).
+    // alpha.135: the choice first, with the sentence that changes with it.
+    assert.deepEqual(question.option, { label: 'domains.delete.databasesOption', first: true, note: { off: 'domains.delete.databasesStay', on: 'domains.delete.databasesGo' }, lost: ['databases.delete.lostData', 'databases.delete.lostData'] });
     assert.deepEqual(question.typedName, { value: 'alicelik.com.tr', label: 'domains.delete.typeName', ignoreCase: true }, 'deleting a domain does not ask for its name');
-    assert.equal(calls.filter((call) => call.method === 'DELETE').length, 1, 'more than one DELETE was sent');
+    const deletes = calls.filter((call) => call.method === 'DELETE');
+    assert.equal(deletes.length, 1, 'more than one DELETE was sent');
+    assert.equal(deletes[0].url, '/api/v1/domains/4?databases=keep', 'the untouched choice did not keep the databases');
     const shown = globalThis.operationSteps.map((steps) => steps.map((step) => `${step.id}=${step.state}`).join(' '));
     assert.equal(shown[0], 'request=running finish=pending');
-    assert.ok(shown.includes('mail=done site=done dns=waiting certificates=pending finish=pending'), `the DNS step did not wait: ${shown.join(' | ')}`);
-    assert.equal(shown.at(-1), 'mail=done site=done dns=done certificates=done finish=done');
+    assert.ok(shown.includes('mail=done site=done databases=done dns=waiting certificates=pending finish=pending'), `the DNS step did not wait: ${shown.join(' | ')}`);
+    assert.equal(shown.at(-1), 'mail=done site=done databases=done dns=done certificates=done finish=done');
     const waiting = globalThis.operationSteps.flat().find((step) => step.state === 'waiting');
     assert.equal(waiting.note, 'domains.step.note.confirming', 'the waiting step does not say for what');
     assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    // What stays is said at the end, with the administrator's folder.
+    // alpha.135: the heading says it is deleted; what stayed in rows; the
+    // administrator's folders under a closed Details.
+    const end = globalThis.operationEnds[0];
+    assert.equal(end.title, 'domains.deleted');
+    assert.deepEqual(end.kept, { title: 'domains.deleted.keptTitle', rows: ['domains.deleted.row.databases', 'domains.deleted.row.backups', 'domains.deleted.row.holdingAdmin'] });
+    assert.deepEqual(end.details, { summary: 'domains.deleted.detailsTitle', lines: ['domains.deleted.detail.backups'] });
     assert.deepEqual(globalThis.currentTest.toasts, [], 'a toast repeated what the window says');
     assert.ok(!has('alicelik.com.tr'), 'the deleted domain stayed in the list');
   } finally {
     delete globalThis.operationSteps;
     delete globalThis.operationEnds;
     await cleanup();
+  }
+});
+
+// alpha.134: a deletion that stopped at a step only the server's
+// administrator can fix tells anybody else whom to ask, never a server
+// command; its retry repeats the databases choice it was accepted with,
+// says it, offers no box and sends no new choice.
+test('Domains: a stopped deletion says whom to ask, and its retry repeats the accepted databases choice', async () => {
+  const pendingRow = { ...domainRow, id: 9, domain_name: 'leaving.example', status: 'pending' };
+  for (const role of ['admin', 'customer']) {
+    const live = liveDomains({ domains: [pendingRow], zones: [] });
+    serve({
+      ...live.table,
+      '/api/v1/domains/9/deletion-status': json({ status: 'failed', stage: 'site_cleanup', reason: 'site_cleanup_failed', error_line: 'scheduled tasks', databases: 'delete' }),
+    }, role, {
+      '/api/v1/domains/9': () => { live.state.domains = []; return Response.json({ status: 'deleted', domain: 'leaving.example' }); },
+    });
+    globalThis.operationSteps = [];
+    globalThis.operationEnds = [];
+    try {
+      await mount(Domains);
+      assert.equal(has('domains.deletion.stoppedAskAdmin'), role === 'customer', `${role}: whom to ask`);
+      assert.ok(!has('journalctl') && !has('site_cleanup'), `${role}: a command or a code on screen`);
+      let question = null;
+      globalThis.confirm = (_message, request) => { question = request; return true; };
+      await openRowMenu('leaving.example');
+      await press(rowItem('delete'));
+      await act(async () => { await settled(); await settled(); });
+      assert.equal(question.message, 'domains.deleteWhat domains.delete.retryDelete', `${role}: the retry does not say the accepted choice`);
+      assert.equal(question.option, undefined, `${role}: the retry offered the choice again`);
+      assert.ok(!calls.some((call) => call.url === '/api/v1/domains/9/databases'), `${role}: the retry read the databases for a choice it does not offer`);
+      const deletes = calls.filter((call) => call.method === 'DELETE');
+      assert.deepEqual(deletes.map((call) => call.url), ['/api/v1/domains/9'], `${role}: the retry sent a choice`);
+      assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done']);
+    } finally {
+      delete globalThis.operationSteps;
+      delete globalThis.operationEnds;
+      await cleanup();
+    }
   }
 });
 
@@ -2855,6 +2918,54 @@ test('Problems now: unknown is never "no problem", and the quiet copy shows only
     await mount(ProblemsNowList, { quiet: true, omit: ['service_stopped'] });
     assert.ok(has('pnow.disk_full.title') && !has('pnow.service_stopped.title'));
   } finally {
+    await cleanup();
+  }
+});
+
+// alpha.135: what deletions left, kept 30 days. One list, always open, with
+// the total at its top; each row Delete now… (and Download for backups);
+// Delete all now… lists everything in the panel's own window and deletes
+// each as its own step; the list reads itself again after.
+test('Maintenance: what deletions left says its total and deletes one or all, each with its own step', async () => {
+  const items = [
+    { id: 'mail.domain-2-6e7ceffb7e3cb3a1', kind: 'mail', domain: 'celikbros.com', domain_id: 2, bytes: 12288, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', adopted: true, path: '/var/mail/vhosts/.celikpanel-quarantine/domain-2-6e7ceffb7e3cb3a1', state: 'kept' },
+    { id: 'backups.s2-d2', kind: 'backups', domain: 'celikbros.com', domain_id: 2, bytes: 52428800, files: 3, deleted_at: '2026-11-14T10:00:00Z', remove_after: '2026-12-14T10:00:00Z', state: 'failed', failure: { kind: 'failed', line: 'permission denied', at: '2026-12-14T10:00:00Z' }, next_try_at: '2026-12-14T11:00:00Z' },
+  ];
+  const removed = [];
+  serve({
+    '/api/v1/maintenance/deletion-holding': () => Response.json({ items: items.filter((item) => !removed.includes(item.id)), summary: { count: 2, bytes: 52441088, earliest_remove_after: '2026-12-14T10:00:00Z' } }),
+    '/api/v1/maintenance/deletion-holding/backups.s2-d2/backups': () => Response.json({ backups: [{ name: 'backup-full-20261110.tar.gz', size: 52428800 }] }),
+  }, 'admin', {
+    '/api/v1/maintenance/deletion-holding/mail.domain-2-6e7ceffb7e3cb3a1': () => { removed.push('mail.domain-2-6e7ceffb7e3cb3a1'); return Response.json({ status: 'removed' }); },
+    '/api/v1/maintenance/deletion-holding/backups.s2-d2': () => { removed.push('backups.s2-d2'); return Response.json({ status: 'removed' }); },
+  });
+  globalThis.operationSteps = [];
+  globalThis.operationEnds = [];
+  try {
+    await mount(DeletionHoldingCard);
+    assert.ok(has('holding.summary') && tree.root.findAll((node) => node.props['data-holding-item'] !== undefined && node.type === 'li').length === 2);
+    assert.ok(has('holding.state.failed'), 'a failed removal is not said');
+    const details = tree.root.findAll((node) => node.type === 'details');
+    assert.ok(details.length === 2 && details.every((node) => !node.props.open), 'the folders are not under closed Details');
+    // Download lists the backup files with their links.
+    await press(rowButton('download')[0]);
+    assert.equal(reads('/api/v1/maintenance/deletion-holding/backups.s2-d2/backups'), 1);
+    assert.ok(tree.root.findAll((node) => node.type === 'a' && String(node.props.href).includes('/download?name=backup-full-20261110.tar.gz')).length === 1);
+    // Delete now… on one row: one question, one DELETE, the list read again.
+    const before = reads('/api/v1/maintenance/deletion-holding');
+    await press(rowButton('remove')[0]);
+    await act(async () => { await settled(); await settled(); });
+    assert.deepEqual(calls.filter((call) => call.method === 'DELETE').map((call) => call.url), ['/api/v1/maintenance/deletion-holding/mail.domain-2-6e7ceffb7e3cb3a1']);
+    assert.ok(reads('/api/v1/maintenance/deletion-holding') > before, 'the list did not read itself again');
+    // Delete all now…: the rest, each its own step.
+    await press(hostButtons().find((node) => node.props['data-holding-remove-all'] !== undefined));
+    await act(async () => { await settled(); await settled(); });
+    assert.deepEqual(calls.filter((call) => call.method === 'DELETE').map((call) => call.url).slice(1), ['/api/v1/maintenance/deletion-holding/backups.s2-d2']);
+    assert.deepEqual(globalThis.operationEnds.map((end) => end.state), ['done', 'done']);
+    assert.ok(has('holding.empty'), 'the emptied list does not say so');
+  } finally {
+    delete globalThis.operationSteps;
+    delete globalThis.operationEnds;
     await cleanup();
   }
 });

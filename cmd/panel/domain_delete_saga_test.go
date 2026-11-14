@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/rpc"
+	"strings"
 	"sync"
 	"testing"
 
@@ -30,6 +31,13 @@ type domainDeletionRPCAgent struct {
 	syncErrorsRemaining   int
 	certErrorsRemaining   int
 	mailFailuresRemaining int
+
+	// alpha.134: a site cleanup the Agent answers as incomplete (while > 0),
+	// what it says stays, and where the stored mail was moved aside.
+	siteFailuresRemaining int
+	siteFailure           string
+	keptBackups           *transport.KeptBackups
+	mailQuarantine        string
 }
 
 func (a *domainDeletionRPCAgent) BeginServiceMutation(
@@ -99,8 +107,14 @@ func (a *domainDeletionRPCAgent) DeleteSite(
 	resp *transport.DeleteSiteResponse,
 ) error {
 	a.callsMu.Lock()
+	defer a.callsMu.Unlock()
 	a.deleteSiteCalls++
-	a.callsMu.Unlock()
+	resp.KeptBackups = a.keptBackups
+	if a.siteFailuresRemaining > 0 {
+		a.siteFailuresRemaining--
+		resp.Error = a.siteFailure
+		return nil
+	}
 	resp.Success = true
 	return nil
 }
@@ -117,6 +131,10 @@ func (a *domainDeletionRPCAgent) DeleteMailDomain(
 		return nil
 	}
 	resp.Applied = true
+	if a.mailQuarantine != "" {
+		resp.Quarantined, resp.QuarantinePath, resp.QuarantineBytes = true, a.mailQuarantine, 2048
+		resp.QuarantineName = a.mailQuarantine[strings.LastIndexByte(a.mailQuarantine, '/')+1:]
+	}
 	return nil
 }
 

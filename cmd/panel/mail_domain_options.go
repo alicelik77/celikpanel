@@ -80,7 +80,8 @@ func domainOptionsEntries(ctx context.Context, db *sql.DB) ([]transport.MailDoma
 	rows, err := db.QueryContext(ctx, `
 		SELECT d.id, lower(d.name), o.incoming_off, COALESCE(o.unknown_reply, '')
 		FROM domain_mail_options o JOIN domains d ON d.id = o.domain_id
-		WHERE o.incoming_off = 1 OR COALESCE(o.unknown_reply, '') <> ''`)
+		WHERE (o.incoming_off = 1 OR COALESCE(o.unknown_reply, '') <> '')
+		  AND NOT EXISTS (SELECT 1 FROM domain_deletion_operations op WHERE op.domain_id = d.id)`)
 	if err != nil {
 		return nil, 0, err
 	}
