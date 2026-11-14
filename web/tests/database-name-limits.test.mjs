@@ -44,3 +44,20 @@ test('the form shows the server\'s own name and the refusal beside the field, in
   }
   assert.notEqual(enScreens['err.DATABASE_CREATE_LEFT_OVER'], enScreens['err.DATABASE_CREATE_LEFT_OVER.administrator']);
 });
+
+// Integration: "1 characters" read wrong - the English length sentences need
+// no plural form. A catalogue sentence identical to the server's message reads
+// as "the server's own words" (refusalParts) and the screen would show a
+// generic sentence with the real one under Details: the server words it
+// differently.
+test('the English length sentences read right for one and for many, and differ from the server\'s words', () => {
+  const keys = ['ddb.tooLong', 'ddb.tooLongUnderscores', 'err.DATABASE_NAME_TOO_LONG', 'err.DATABASE_NAME_TOO_LONG.length'];
+  for (const key of keys) {
+    assert.match(enScreens[key], /too long by \{over\}/, key);
+    assert.doesNotMatch(enScreens[key], /\{over\} characters/, key);
+  }
+  assert.doesNotMatch(read('../src/i18n/dataTools/en.ts'), /\{over\} characters/);
+  const go = read('../../cmd/panel/database_names.go');
+  assert.doesNotMatch(go, /characters shorter|too long by/);
+  assert.match(go, /over the engine's length limit/);
+});

@@ -95,14 +95,14 @@ func writeDatabaseNameTooLong(w http.ResponseWriter, name string, over services.
 	vars := map[string]string{"name": name, "over": by}
 	if over.Underscores {
 		writeCodedErrorVars(w, http.StatusConflict, errCodeDatabaseNameTooLong,
-			"The database name "+name+" is too long. Choose a name at least "+by+" characters shorter, or with fewer underscores (each underscore counts as two characters). Nothing was changed.",
+			"The database name "+name+" is "+by+" over the engine's length limit (each underscore in it counts twice), so nothing was changed. Choose a shorter name, or one with fewer underscores.",
 			"", nil, vars)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
 	_ = json.NewEncoder(w).Encode(apiErrorBody{Code: errCodeDatabaseNameTooLong, Reason: databaseNameTooLongPlain, Vars: vars,
-		Error: "The database name " + name + " is too long. Choose a name at least " + by + " characters shorter. Nothing was changed."})
+		Error: "The database name " + name + " is " + by + " over the engine's length limit, so nothing was changed. Choose a shorter name."})
 }
 
 // errCodeDatabaseCreateLeftOver (alpha.134 fix round): a create stopped, and
