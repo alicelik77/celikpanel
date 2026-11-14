@@ -6,6 +6,11 @@
 //                the zone hosted here), a check that is ready and its set-up
 //                confirmation, then an enabled and proved address
 //
+//   y33dnsadd    (alpha.135) "Add" beside "Copy": the name in the main DNS
+//                server's zone (check, confirmation, steps, end, wait, its
+//                bound, each refusal, unknown, an optional AAAA record), a
+//                name managed elsewhere, and the zone hosted here
+//
 // Every answer comes from the mock on 127.0.0.1 through overrides (SAMPLE
 // data shaped as the Panel answers); nothing is installed, moved or contacted.
 // Otuz üçüncü grup: web postası adresi kartı; hepsi sahte.
@@ -118,6 +123,139 @@ export default function batch33(scenarios, { base, locale, theme, out, viewport,
         await waitFor(page, () => !!document.querySelector('[role="dialog"]'), 5000).catch(() => {});
         await pause(400);
         await snap(page, 'address-remove-confirm');
+        await closePage(page);
+        await clean();
+    };
+
+    // alpha.135 (y33dnsadd): "Add" beside "Copy". On the pair's DNS secondary
+    // the name lives in the main DNS server's zone: the check, the panel's own
+    // confirmation, the steps, the end, the wait for public DNS and its bound,
+    // each refusal, an unknown result, an optional AAAA record; then a name
+    // managed elsewhere (its name servers). The wait's 20-second pace runs on a
+    // compressed clock inside the page so its five-minute bound can be seen.
+    const PEER = { server: 'frankfurt.celikhost.com', zone: 'celikhost.com' };
+    const WEBMAIL = 'webmail.boston.celikhost.com';
+    const RECORD_A = `${WEBMAIL}. 300 IN A 72.62.38.16`;
+    const RECORD_AAAA = `${WEBMAIL}. 300 IN AAAA 2a02:4780:41:1::16`;
+    const PEER_CHECK = (extra = {}) => ({
+        check: {
+            host: WEBMAIL, state: 'not_found', code: 'no_record', ready: false, expected: ['72.62.38.16'], answered: [], firewall: { state: 'open' }, current: '',
+            message: `Public DNS has no address record for ${WEBMAIL} yet.`,
+            records: [{ type: 'A', name: 'webmail.boston', content: '72.62.38.16', ttl: 300, text: RECORD_A }],
+            peer_zone: PEER, owner_action: { who: 'administrator', next: 'x' }, ...extra,
+        },
+    });
+    const READY = { check: { host: WEBMAIL, state: 'ready', ready: true, expected: ['72.62.38.16'], answered: ['72.62.38.16'], firewall: { state: 'open' }, current: '', message: 'ok' } };
+    const ANSWER = (records) => ({ record: { request_id: 'a'.repeat(32), host: WEBMAIL, server: PEER.server, zone: PEER.zone, state: 'done', records } });
+    const NONE_HERE = { ...NONE, suggestion: WEBMAIL, expected: ['72.62.38.16'] };
+    const openPeer = async (checkBody, dnsRecord, { fast = false } = {}) => {
+        await reset(); await clean();
+        await ctl({ override: {
+            '/api/v1/managed-services': { status: 200, body: SCAN() },
+            '/api/v1/managed-services/scan': { status: 200, body: SCAN() },
+            '/api/v1/service/roundcube/update': { status: 200, body: ROUNDCUBE(''), method: 'GET' },
+            '/api/v1/service/roundcube/address': { status: 200, body: checkBody.check.host === HOST ? NONE : NONE_HERE, method: 'GET' },
+            '/api/v1/service/roundcube/address/check': { status: 200, body: checkBody, method: 'POST' },
+            ...(dnsRecord ? { '/api/v1/service/roundcube/address/dns-record': { method: 'POST', ...dnsRecord } } : {}),
+        } });
+        const page = await newPage({});
+        if (fast) {
+            await page.evaluateOnNewDocument(() => {
+                const realTimeout = window.setTimeout.bind(window);
+                const realNow = Date.now;
+                let offset = 0;
+                Date.now = () => realNow() + offset;
+                window.setTimeout = (fn, ms, ...rest) => (ms === 20000 ? realTimeout(() => { offset += 20000; fn(...rest); }, 120) : realTimeout(fn, ms, ...rest));
+            });
+        }
+        await page.goto(`${base}/services/roundcube`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('main', { timeout: 20000 });
+        await quiet(page);
+        await waitFor(page, () => !!document.querySelector('[data-webmail-address]'), 10000).catch(() => {});
+        await pause(700);
+        await check(page);
+        await page.evaluate(() => document.querySelector('[data-webmail-check-result]')?.scrollIntoView({ block: 'center' }));
+        await pause(300);
+        return page;
+    };
+    const offer = async (page, selector = '[data-webmail-peer-offer]') => {
+        await page.evaluate((s) => document.querySelector(s)?.click(), selector);
+        await waitFor(page, () => !!document.querySelector('[data-confirm-action]'), 5000).catch(() => {});
+        await pause(400);
+    };
+    const confirmIt = async (page, wait = 1200) => {
+        await page.evaluate(() => document.querySelector('[data-confirm-action]')?.click());
+        await pause(wait);
+    };
+    const closeEnd = async (page) => {
+        await page.evaluate(() => document.querySelector('[data-operation-close]')?.click());
+        await pause(500);
+        await page.evaluate(() => document.querySelector('[data-webmail-check-result]')?.scrollIntoView({ block: 'center' }));
+        await pause(200);
+    };
+
+    scenarios.y33dnsadd = async () => {
+        let page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'added' }]), delay: 3000 });
+        await snap(page, 'dnsadd-peer-check');
+        await offer(page);
+        await snap(page, 'dnsadd-peer-confirm');
+        await confirmIt(page, 1200);
+        await snap(page, 'dnsadd-peer-progress');
+        await pause(2600);
+        await snap(page, 'dnsadd-peer-done');
+        await closeEnd(page);
+        await snap(page, 'dnsadd-peer-waiting');
+        await closePage(page);
+
+        page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'added' }]) }, { fast: true });
+        await offer(page);
+        await confirmIt(page);
+        await closeEnd(page);
+        await pause(3000);
+        await page.evaluate(() => document.querySelector('[data-webmail-check-result]')?.scrollIntoView({ block: 'center' }));
+        await snap(page, 'dnsadd-peer-timeout');
+        await closePage(page);
+
+        page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'added' }]) }, { fast: true });
+        await ctl({ override: { '/api/v1/service/roundcube/address/check': { status: 200, body: READY, method: 'POST' } } });
+        await offer(page);
+        await confirmIt(page);
+        await closeEnd(page);
+        await pause(800);
+        await page.evaluate(() => document.querySelector('[data-webmail-check-result]')?.scrollIntoView({ block: 'center' }));
+        await snap(page, 'dnsadd-peer-ready');
+        await closePage(page);
+
+        const both = [{ type: 'A', name: 'webmail.boston', content: '72.62.38.16', ttl: 300, text: RECORD_A }, { type: 'AAAA', name: 'webmail.boston', content: '2a02:4780:41:1::16', ttl: 300, text: RECORD_AAAA }];
+        page = await openPeer(PEER_CHECK({ records: both }), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: 'added' }, { type: 'AAAA', text: RECORD_AAAA, outcome: 'refused', code: 'address' }]) });
+        await offer(page);
+        await snap(page, 'dnsadd-peer-confirm-aaaa');
+        await confirmIt(page);
+        await snap(page, 'dnsadd-peer-done-aaaa');
+        await closeEnd(page);
+        await snap(page, 'dnsadd-peer-optional-aaaa');
+        await closePage(page);
+
+        for (const code of ['outside_zone', 'taken', 'address', 'not_ready', 'unauthorized', 'unsupported', 'license', 'unreachable']) {
+            page = await openPeer(PEER_CHECK(), { status: 200, body: ANSWER([{ type: 'A', text: RECORD_A, outcome: code === 'unreachable' ? 'not_sent' : 'refused', code }]) });
+            await offer(page);
+            await confirmIt(page);
+            await snap(page, `dnsadd-refused-${code}`);
+            await closePage(page);
+        }
+        page = await openPeer(PEER_CHECK(), { drop: true });
+        await offer(page);
+        await confirmIt(page);
+        await snap(page, 'dnsadd-unknown');
+        await closePage(page);
+
+        page = await openPeer(PEER_CHECK({ peer_zone: undefined, records: [{ type: 'A', name: `${WEBMAIL}.`, content: '72.62.38.16', ttl: 3600, text: `${WEBMAIL}. 3600 IN A 72.62.38.16` }], managed_by: { zone: 'celikhost.com', nameservers: ['ns1.registrar-dns.example', 'ns2.registrar-dns.example'] } }), null);
+        await snap(page, 'dnsadd-elsewhere');
+        await closePage(page);
+
+        page = await openPeer(CHECK('not_found'), null);
+        await offer(page, '[data-webmail-zone-offer]');
+        await snap(page, 'dnsadd-zone-confirm');
         await closePage(page);
         await clean();
     };

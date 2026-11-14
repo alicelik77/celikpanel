@@ -4,8 +4,9 @@
 // This file covers: the one strict link validator, decoders that fail closed,
 // the address card mounted on the Roundcube Manage page, the confirmations
 // (what will happen, in order; the certificate is kept; the old address goes
-// only after the new one works), a DNS record added only after a confirmation,
-// ONE POST per confirmed action with a request id and only reads afterwards,
+// only after the new one works), ONE POST per confirmed action with a request
+// id and only reads afterwards (adding a DNS record:
+// webmail-dns-add-alpha135.test.mjs),
 // and the EN/TR words.
 //
 // alpha.110: web postası kendi adresinde. Her ekran yalnız https://<ad>/
@@ -108,10 +109,14 @@ const stub = dataModule(`
 const shared = sharedLayer(stub);
 const textURL = shared.compile('lib/webmailAddressText.ts');
 const flowURL = shared.compile('lib/webmailAddressFlow.ts', { '/requestIdentity': requestIdentityURL, '/roundcubeUpdate': roundcubeUpdateURL, '/webmailAddress': webmailAddressLibURL });
+// alpha.135: adding the record (to a zone hosted here or on the main DNS
+// server) is covered in webmail-dns-add-alpha135.test.mjs; here it is inert.
+const recordsStub = dataModule('export const confirmAddToZone = async () => false, confirmAskPeer = async () => false; export const RECHECK_EVERY_MS = 20000, RECHECK_FOR_MS = 300000;');
 const { WebmailAddressCard } = await import(shared.compile('components/WebmailAddressCard.tsx', {
   '/LifeLine': shared.compile('components/LifeLine.tsx'),
   '/lib/webmailAddressText': textURL,
   '/lib/webmailAddressFlow': flowURL,
+  '/lib/webmailAddressRecords': recordsStub,
 }));
 
 const ADDRESS = '/api/v1/service/roundcube/address';
@@ -138,7 +143,7 @@ const notFound = (extra = {}) => checkOf({
   owner_action: { who: 'administrator', next: 'Add the record' }, ...extra,
 });
 
-async function mount({ reads, checks = [], post, ops = [], records, words = en }) {
+async function mount({ reads, checks = [], post, ops = [], words = en }) {
   globalThis.cardWords = words;
   globalThis.document = { addEventListener() {}, removeEventListener() {}, getElementById: () => null, activeElement: null, body: { style: {} } };
   requests = [];
@@ -152,7 +157,6 @@ async function mount({ reads, checks = [], post, ops = [], records, words = en }
     if (url === ADDRESS) return answer(reads[Math.min(readCount++, reads.length - 1)]);
     if (url === ADDRESS + '/check') return answer({ check: checks[Math.min(checkCount++, checks.length - 1)] });
     if (url === ADDRESS + '/remove') return post(init);
-    if (records && url === records.url) return records.answer(init);
     if (url.startsWith('/api/v1/service/operation?')) {
       const next = ops.length > 1 ? ops.shift() : ops[0];
       return next === undefined ? answer({ error: 'not found' }, 404) : answer({ operation: next });
@@ -216,53 +220,7 @@ test('Check only reads; a missing record is an unmet prerequisite shown with the
     assert.ok(text().includes(fill(en['life.addr.thisServer'], { expected: '203.0.113.5' })));
     assert.equal(attr('data-webmail-setup-offer').length, 0, 'not ready: no set-up button');
     assert.equal(attr('data-webmail-zone-offer').length, 0, 'the zone is not hosted here: no shortcut');
-  } finally { await unmount(); }
-});
-
-test('the record is added to a zone this panel hosts only after a confirmation that lists it, then Check runs once', async () => {
-  const zone = { name: 'example.com', records_url: '/api/v1/domains/7/dns/records' };
-  await mount({ reads: [none()], checks: [notFound({ zone }), notFound({ zone })], records: { url: zone.records_url, answer: () => answer({ id: 1 }, 201) } });
-  try {
-    await pressCheck();
-    const before = posts().filter((request) => request.url === zone.records_url).length;
-    assert.equal(before, 0);
-    await click('data-webmail-zone-offer');
-    assert.equal(posts().filter((request) => request.url === zone.records_url).length, 0, 'opening the dialog adds nothing');
-    assert.ok(text().includes(fill(en['life.addr.zoneDialogTitle'], { zone: 'example.com' })));
-    assert.ok(text().includes('mail.example.com. 3600 IN A 203.0.113.5'), 'the dialog lists the record exactly');
-    assert.ok(text().includes(en['life.addr.zoneDialogWait']), 'it says DNS needs a few minutes and Check can be pressed again');
-    await click('data-webmail-zone-confirm');
-    await settle(30);
-    const added = posts().filter((request) => request.url === zone.records_url);
-    assert.equal(added.length, 1);
-    assert.deepEqual(JSON.parse(added[0].body), { name: 'mail', type: 'A', content: '203.0.113.5', ttl: 3600, prio: 0 });
-    assert.equal(posts().filter((request) => request.url === ADDRESS + '/check').length, 2, 'one re-check after adding, never a loop');
-    await settle(1700);
-    assert.equal(posts().filter((request) => request.url === ADDRESS + '/check').length, 2, 'nothing polls the check');
-    assert.ok(text().includes(fill(en['life.addr.added'], { zone: 'example.com' })));
-  } finally { await unmount(); }
-});
-
-test('a refused record, and a lost answer for a record, say what is known and are never sent again', async () => {
-  const zone = { name: 'example.com', records_url: '/api/v1/domains/7/dns/records' };
-  await mount({ reads: [none()], checks: [notFound({ zone })], records: { url: zone.records_url, answer: () => answer({ error: 'record conflicts with a CNAME' }, 409) } });
-  try {
-    await pressCheck();
-    await click('data-webmail-zone-offer');
-    await click('data-webmail-zone-confirm');
-    await settle(30);
-    assert.equal(posts().filter((request) => request.url === zone.records_url).length, 1);
-    assert.ok(text().includes('record conflicts with a CNAME'));
-    assert.ok(text().includes(fill(en['life.addr.addFailed'], { record: 'mail.example.com. 3600 IN A 203.0.113.5', zone: 'example.com', reason: 'record conflicts with a CNAME' })));
-  } finally { await unmount(); }
-  await mount({ reads: [none()], checks: [notFound({ zone })], records: { url: zone.records_url, answer: () => { throw new TypeError('network'); } } });
-  try {
-    await pressCheck();
-    await click('data-webmail-zone-offer');
-    await click('data-webmail-zone-confirm');
-    await settle(30);
-    assert.equal(posts().filter((request) => request.url === zone.records_url).length, 1, 'not sent again');
-    assert.ok(text().includes(fill(en['life.addr.addLost'], { record: 'mail.example.com. 3600 IN A 203.0.113.5' })));
+    assert.equal(attr('data-webmail-peer-offer').length, 0, 'no connection to a main DNS server: no request either');
   } finally { await unmount(); }
 });
 
@@ -515,15 +473,14 @@ test('the flow sends one POST per confirmed action, polls with reads only, and l
   assert.ok(flowSource.includes('readWebmailUpdateOperation(`request_id=${id}`)'));
   assert.ok(flowSource.includes('readWebmailUpdateOperation(`id=${encodeURIComponent(id)}`)'));
   assert.ok(!/setInterval/.test(flowSource + card), 'no interval anywhere');
-  assert.ok(!/setInterval|setTimeout\([^)]*runCheck/.test(card), 'the check is never run on a timer');
   // The follow loop is reads only.
   const loop = flowSource.slice(flowSource.indexOf('const follow'), flowSource.indexOf('// Re-attach'));
   assert.ok(!loop.includes("'POST'") && !loop.includes('fetch('));
-  // The records are sent only from the confirmed action.
-  assert.equal((card.match(/zone\.recordsURL/g) ?? []).length, 1);
-  assert.ok(card.indexOf('const addRecords') < card.indexOf("data-webmail-zone-confirm"));
-  assert.ok(card.includes("onClick={() => setConfirming('zone')}"), 'the zone button only opens the confirmation');
-  assert.ok(card.includes("onClick={() => void addRecords(check)}"));
+  // alpha.135: the records are sent only from the confirmed action of
+  // lib/webmailAddressRecords.ts, and the card's only timed reads are the
+  // bounded wait after an add (webmail-dns-add-alpha135.test.mjs).
+  assert.ok(!card.includes('recordsURL'), 'the card itself sends no record');
+  assert.ok(card.includes('onClick={() => void addToZone(check)}') && card.includes('if (!(await confirmAddToZone(check, addHooks(check.host)))) return;'), 'the zone button only opens the confirmation');
 });
 
 test('the confirmations say that the certificate is kept and the old address goes after the new one works', () => {
@@ -539,7 +496,7 @@ test('the confirmations say that the certificate is kept and the old address goe
 });
 
 test('every key the address screens use exists in English and Turkish, with the same values and no internal names', () => {
-  const sources = [card, read('lib/webmailAddressText.ts'), read('lib/webmailAddressFlow.ts'), read('components/WebmailAccess.tsx')].join('\n');
+  const sources = [card, read('lib/webmailAddressText.ts'), read('lib/webmailAddressFlow.ts'), read('lib/webmailAddressRecords.ts'), read('components/WebmailAccess.tsx')].join('\n');
   const keys = new Set([...sources.matchAll(/'((?:life\.addr|mail\.webmail)\.[A-Za-z_.]+)'/g)].map((m) => m[1]));
   for (const name of ['ready', 'firewall_closed', 'no_record', 'points_elsewhere', 'points_to_peer', 'dns_unreachable', 'server_address_unknown', 'invalid', 'panel_address']) keys.add('life.addr.msg.' + name);
   for (const name of ['ADDRESS_INVALID', 'ROUNDCUBE_NOT_INSTALLED', 'NGINX_UNAVAILABLE', 'PHP_UNAVAILABLE', 'CERTBOT_MISSING', 'NAME_IN_USE', 'CONFIG_OWNER_EDITED', 'NGINX_REJECTED', 'CERTIFICATE_FAILED', 'PROOF_FAILED', 'ROLLBACK_FAILED']) keys.add('life.addr.fail.' + name);

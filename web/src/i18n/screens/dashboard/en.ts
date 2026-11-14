@@ -12,6 +12,11 @@ export const enDashboardScreens = {
     // ---- alpha.110 webmail address ----
     'dashboard.audit.action.webmail.address': 'set up webmail’s own address ({target})',
     'dashboard.audit.action.webmail.address.failed': 'could not set up webmail’s own address ({target})',
+    'dashboard.audit.action.webmail.address.dns_record.requested': 'asked the main DNS server to add the address record of {target}',
+    'dashboard.audit.action.webmail.address.dns_record.added': 'the main DNS server added the address record of {target}',
+    'dashboard.audit.action.webmail.address.dns_record.refused': 'the main DNS server refused to add the address record of {target}',
+    'dashboard.audit.action.webmail.address.dns_record.not_sent': 'could not reach the main DNS server for the address record of {target}',
+    'dashboard.audit.action.webmail.address.dns_record.unknown': 'no answer from the main DNS server about the address record of {target}',
     'dashboard.audit.action.webmail.address.recovered': 'confirmed after a panel restart that webmail’s own address was set up ({target})',
     'dashboard.audit.action.webmail.address.recovered.failed': 'found after a panel restart that webmail’s own address was not set up ({target})',
     'dashboard.audit.action.webmail.address.remove': 'removed webmail’s own address ({target})',
